@@ -1,0 +1,30 @@
+# Node
+node_modules/
+npm-debug.log
+yarn-error.log
+dist/
+build/
+
+# React Native
+.expo/
+.expo-shared/
+android/
+ios/
+*.keystore
+*.jks
+
+# macOS
+.DS_Store
+
+# Env
+.env
+.env.local
+.env.*.local
+
+# Supabase
+.supabase/
+
+
+
+
+

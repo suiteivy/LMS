@@ -1,0 +1,10 @@
+{
+  "name": "lms-app",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "start": "echo 'Run React Native or Supabase dev server manually'"
+  }
+}
+
+
