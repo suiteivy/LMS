@@ -1,7 +1,7 @@
 import { Text, TextInput, View, TouchableOpacity, Image } from "react-native";
 import { SafeAreaView, SafeAreaProvider } from "react-native-safe-area-context";
 import { FontAwesome, Ionicons } from "@expo/vector-icons";
-import React, { useState } from "react"; // Import useState
+import React, { useState } from "react";
 import { useNavigation } from "@react-navigation/native";
 import type { NavigationProp } from "@react-navigation/native";
 
