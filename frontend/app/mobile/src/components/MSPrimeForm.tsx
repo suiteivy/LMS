@@ -33,7 +33,7 @@ const MSPrimeForm: React.FC = () => {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>MS Prime Tech Services</Text>
+      <Text  style={styles.title}>MS Prime Tech Services</Text>
 
       <TextInput
         placeholder="Name"
