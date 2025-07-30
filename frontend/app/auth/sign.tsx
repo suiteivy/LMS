@@ -21,7 +21,7 @@ export default function Index() {
       <SafeAreaView className="flex-1 p-5 bg-[#F1FFF8] relative">
         {/* arrow-back and Logo */}
         <View className="flex-row p-5 justify-between mb-5 mt-3">
-          {/* Use navigation.goBack() for the back arrow */}
+          {/* back arrow */}
           <TouchableOpacity onPress={() => navigation.goBack()}>
             <Ionicons name="arrow-back" size={25} color="black" />
           </TouchableOpacity>
