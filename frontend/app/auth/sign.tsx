@@ -1,7 +1,7 @@
 import { Text, TextInput, View, TouchableOpacity, Image } from "react-native";
 import { SafeAreaView, SafeAreaProvider } from "react-native-safe-area-context";
 import { FontAwesome, Ionicons } from "@expo/vector-icons";
-import React from "react";
+import React, { useState } from "react"; // Import useState
 import { useNavigation } from "@react-navigation/native";
 import type { NavigationProp } from "@react-navigation/native";
 
@@ -15,6 +15,9 @@ type NavigationProps = NavigationProp<RootStackParamList>;
 
 export default function Index() {
   const navigation = useNavigation<NavigationProps>();
+  const [selectedRole, setSelectedRole] = useState<string | null>(null);
+
+  const roles = ["Admin", "Teacher", "Student"];
 
   return (
     <SafeAreaProvider className="">
@@ -73,6 +76,32 @@ export default function Index() {
               Forgot password?
             </Text>
           </TouchableOpacity>
+
+          {/* Role Selection */}
+          <View className="mt-5">
+            <Text className="text-lg text-[#2C3E50] mb-2">Sign in as:</Text>
+            <View className="flex-row justify-around">
+              {roles.map((role) => (
+                <TouchableOpacity
+                  key={role}
+                  className={`py-2 px-4 rounded-full ${
+                    selectedRole === role
+                      ? "bg-[#1ABC9C]"
+                      : "border border-[#1ABC9C]"
+                  }`}
+                  onPress={() => setSelectedRole(role)}
+                >
+                  <Text
+                    className={`${
+                      selectedRole === role ? "text-white" : "text-[#1ABC9C]"
+                    } font-semibold`}
+                  >
+                    {role}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
         </View>
 
         <View className="px-5">
