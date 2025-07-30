@@ -32,7 +32,7 @@ const MSPrimeForm: React.FC = () => {
   };
 
   return (
-    <View style={styles.container}>
+    <View style={styles.container} id="sign">
       <Text style={styles.title}>MS Prime Tech Services</Text>
 
       <TextInput
