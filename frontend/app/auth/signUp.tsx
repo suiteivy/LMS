@@ -7,7 +7,6 @@ import type { NavigationProp } from "@react-navigation/native";
 
 // Defined route params
 type RootStackParamList = {
-  index: undefined;
   "auth/sign": undefined;
 };
 
@@ -22,7 +21,7 @@ export default function App() {
       <SafeAreaView className="flex-1 bg-[#F1FFF8] font-sans">
         <View className="flex-1 p-10">
           <View className="flex-row justify-between mb-5 mt-3">
-            <TouchableOpacity onPress={() => navigation.navigate("index")}>
+            <TouchableOpacity onPress={() => navigation.goBack()}>
               <Ionicons name="arrow-back" size={25} color="black" />
             </TouchableOpacity>
           </View>

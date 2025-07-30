@@ -6,7 +6,6 @@ import { useNavigation } from "@react-navigation/native";
 import type { NavigationProp } from "@react-navigation/native";
 
 type RootStackParamList = {
-  "/": undefined;
   sign: undefined;
   "auth/signUp": undefined;
 };
