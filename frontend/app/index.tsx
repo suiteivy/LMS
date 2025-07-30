@@ -1,4 +1,6 @@
+import "../styles/global.css"
 import { Text, View } from "react-native";
+import MSPrimeForm from "./mobile/src/components/MSPrimeForm";
 
 export default function Index() {
   return (
@@ -9,7 +11,7 @@ export default function Index() {
         alignItems: "center",
       }}
     >
-      <Text>Edit app/index.tsx to edit this screen.</Text>
+     <Text className="text-red-700">Hello Devs</Text>
     </View>
   );
 }
