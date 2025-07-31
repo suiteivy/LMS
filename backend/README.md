@@ -82,7 +82,7 @@ Authorization: Bearer <JWT>
 ```json
 {
   "name": "My School",
-  "domain": "myschool.edu"
+  "location": "Kakamega town"
 }
 ```
 
@@ -103,7 +103,7 @@ Authorization: Bearer <JWT>
   {
     "id": "...",
     "name": "My School",
-    "domain": "myschool.edu",
+    "location": "Kakamega town",
     "created_at": "..."
   },
   ...
@@ -153,7 +153,7 @@ Authorization: Bearer <JWT>
 
 ## 🛡️ Middleware & Security
 
-- **Auth Middleware (`authMiddleware`)** verifies JWT and sets `req.user`, `req.role`, and `req.institution_id`.
+- **Auth Middleware (`authMiddleware`)** verifies JWT and sets `req.user`, `req.userRole`, and `req.institution_id`.
 - **Role Enforcement**:
   - Only `admin` can call `/institutions` (POST).
   - Course creation can optionally enforce teacher-only access:

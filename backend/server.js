@@ -10,11 +10,10 @@ const app = express();
 dotenv.config();
 
 // Middleware
-app.use(cors());
+app.use(cors()); //cors
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-// logging
-app.use(morgan("dev"));
+app.use(morgan("dev")); // logging
 
 // handle cors
 app.use((req, res, next) => {
@@ -39,8 +38,9 @@ app.use("/api/auth", authRoutes);
 app.use("/api/courses", courseRoutes);
 app.use("/api/institutions", institutionRoutes);
 
+// health check
 app.get("/", (req, res) => {
-  res.send("Hello from LMS API!");
+  res.send("Hello from LMS API🚀!");
 });
 
 // error handling
