@@ -4,6 +4,12 @@ exports.createCourse = async (req, res) => {
   const { title, description, teacher_id } = req.body;
   const { institution_id } = req;
 
+  if (req.userRole !== "teacher" || req.userRole !== "admin") {
+    return res
+      .status(403)
+      .json({ error: "Only teachers or admins can create courses" });
+  }
+
   if (!title || !teacher_id) {
     return res.status(400).json({ error: "Missing required fields" });
   }

@@ -2,6 +2,9 @@ const supabase = require("../utils/supabaseClient");
 
 exports.login = async (req, res) => {
   const { email, password } = req.body;
+  if (!email || !password) {
+    return res.status(400).json({ error: "Email and password are required" });
+  }
   try {
     const { data: authData, error: authError } =
       await supabase.auth.signInWithPassword({ email, password });
@@ -32,6 +35,9 @@ exports.login = async (req, res) => {
 
 exports.register = async (req, res) => {
   const { email, password, full_name, role, institution_id } = req.body;
+  if (!email || !password || !full_name || !role || !institution_id) {
+    return res.status(400).json({ error: "All fields are required" });
+  }
   try {
     const { data: authData, error: authError } =
       await supabase.auth.admin.createUser({
