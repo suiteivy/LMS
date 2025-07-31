@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-// Login
+// Login form inputs schema
 export const loginSchema = z.object({
   email: z.string().min(1, "Email is required").email("Invalid email address"),
   password: z
@@ -14,9 +14,11 @@ export const loginSchema = z.object({
 
 export type LoginFormInputs = z.infer<typeof loginSchema>;
 
-// SignUp Schema
+
+//  sign-up form inputs schema
 export const signUpSchema = z
   .object({
+    name: z.string().min(1, "Full Name is required"), // Keep the name field as it was in the previous version
     email: z.string().min(1, "Email is required").email("Invalid email address"),
     password: z
       .string()
@@ -26,7 +28,7 @@ export const signUpSchema = z
   })
   .refine((data) => data.password === data.confirmPassword, {
     message: "Passwords do not match",
-    path: ["confirmPassword"], // attachs the error to the confirmPassword field
-  });
+    path: ["confirmPassword"], 
+  })
 
 export type SignUpFormInputs = z.infer<typeof signUpSchema>;
