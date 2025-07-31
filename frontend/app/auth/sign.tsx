@@ -1,7 +1,8 @@
-import { Text, TextInput, View, TouchableOpacity, Image } from "react-native";
+import { Text, TextInput, View, TouchableOpacity, ActivityIndicator } from "react-native";
 import { SafeAreaView, SafeAreaProvider } from "react-native-safe-area-context";
 import { FontAwesome, Ionicons } from "@expo/vector-icons";
 import React, { useState } from "react";
+import { useAuth } from "@/context/AuthContext";
 import { useNavigation } from "@react-navigation/native";
 import type { NavigationProp } from "@react-navigation/native";
 import { useForm, Controller } from "react-hook-form";
@@ -36,8 +37,31 @@ export default function Index() {
 
   const roles = ["Admin", "Teacher", "Student"];
 
-  const onSubmit = (data: LoginFormInputs) => {
-    console.log("Form Data:", data);
+  const { signIn } = useAuth();
+  const [isLoading, setIsLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  const onSubmit = async (data: LoginFormInputs) => {
+    setIsLoading(true);
+    setErrorMessage(null);
+    
+    try {
+      // Sign in with email and password
+      const { error } = await signIn(data.email, data.password);
+      
+      if (error) {
+        setErrorMessage(error.message || 'Failed to sign in');
+        return;
+      }
+      
+      // Navigate to home screen or dashboard based on role
+      navigation.navigate('index');
+    } catch (error) {
+      setErrorMessage('An unexpected error occurred');
+      console.error('Sign in error:', error);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -172,11 +196,21 @@ export default function Index() {
         </View>
 
         <View className="px-5">
+          {/* Error Message */}
+          {errorMessage && (
+            <Text className="text-red-500 text-sm mt-2">{errorMessage}</Text>
+          )}
+
           <TouchableOpacity
             className="bg-[#2B876E] h-[53px] rounded-lg mt-6 flex justify-center items-center shadow-md"
             onPress={handleSubmit(onSubmit)}
+            disabled={isLoading}
           >
-            <Text className="text-lg text-white font-semibold">Sign In</Text>
+            {isLoading ? (
+              <ActivityIndicator color="white" />
+            ) : (
+              <Text className="text-lg text-white font-semibold">Sign In</Text>
+            )}
           </TouchableOpacity>
         </View>
 

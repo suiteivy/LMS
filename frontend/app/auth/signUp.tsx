@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useAuth } from "@/context/AuthContext";
 import { Text, TextInput, View, TouchableOpacity, Modal, ActivityIndicator } from "react-native";
 import { SafeAreaView, SafeAreaProvider } from "react-native-safe-area-context";
 import { FontAwesome, Ionicons } from "@expo/vector-icons";
@@ -54,16 +55,26 @@ export default function App() {
     }, 2000);
   };
 
+  // Get signUp function from auth context
+  const { signUp } = useAuth();
+
   // Function to handle form submission
   const onSubmit = async (data: SignUpFormInputs) => {
     setIsLoading(true);
-    console.log("Form Data:", data);
+    
     try {
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      showMessage("Account created successfully! Please log in.", true);
+      // Register user with Supabase
+      const { error, data: userData } = await signUp(data.email, data.password, data.name);
+      
+      if (error) {
+        showMessage(`Registration failed: ${error.message}`, false);
+        return;
+      }
+      
+      // Show success message and redirect to sign in
+      showMessage('Account created successfully! Please sign in.', true);
     } catch (error) {
-      console.error("Sign up error:", error);
-      showMessage("Failed to create account. Please try again.", false);
+      showMessage(`An unexpected error occurred: ${error instanceof Error ? error.message : 'Unknown error'}`, false);
     } finally {
       setIsLoading(false);
     }
