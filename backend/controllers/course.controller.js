@@ -2,7 +2,7 @@ const supabase = require("../utils/supabaseClient");
 
 exports.createCourse = async (req, res) => {
   const { title, description, teacher_id } = req.body;
-  const institution_id = req.institution_id;
+  const { institution_id } = req;
 
   if (!title || !teacher_id) {
     return res.status(400).json({ error: "Missing required fields" });

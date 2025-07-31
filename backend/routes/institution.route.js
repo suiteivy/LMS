@@ -7,6 +7,6 @@ const {
 const { authMiddleware } = require("../middleware/auth.middleware");
 
 router.post("/", authMiddleware, createInstitution); // 🔐 Protected
-router.get("/", getInstitutions); // Public or also protect if needed
+router.get("/", getInstitutions);
 
 module.exports = router;
