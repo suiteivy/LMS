@@ -36,7 +36,9 @@ exports.login = async (req, res) => {
 exports.register = async (req, res) => {
   const { email, password, full_name, role, institution_id } = req.body;
   if (!email || !password || !full_name || !role || !institution_id) {
-    return res.status(400).json({ error: "All fields are required" });
+    return res.status(400).json({
+      error: "All fields are required (email, full_name, role, institution_id)",
+    });
   }
   try {
     const { data: authData, error: authError } =

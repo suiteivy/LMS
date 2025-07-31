@@ -39,6 +39,10 @@ app.use("/api/auth", authRoutes);
 app.use("/api/courses", courseRoutes);
 app.use("/api/institutions", institutionRoutes);
 
+app.get("/", (req, res) => {
+  res.send("Hello from LMS API!");
+});
+
 // error handling
 app.use((err, req, res, next) => {
   console.error(err.stack);
