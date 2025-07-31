@@ -21,7 +21,7 @@ async function authMiddleware(req, res, next) {
 
   req.user = user;
   req.institution_id = profile.institution_id;
-  req.role = profile.role;
+  req.userRole = profile.role;
 
   next();
 }
