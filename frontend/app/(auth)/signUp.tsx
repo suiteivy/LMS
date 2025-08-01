@@ -27,8 +27,7 @@ export default function App() {
           </View>
 
           {/* Title */}
-          <Text className="text-4xl text-[#2C3E50] font-bold">Create Your</Text>
-          <Text className="text-4xl text-[#2C3E50] font-bold">Account</Text>
+          <Text className="text-4xl text-[#2C3E50] font-bold">Create Your Account</Text>
           <Text className="text-xs text-[#2C3E50] mt-1">
             Enter new details to create a new account.
           </Text>
