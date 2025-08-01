@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "apps",
-    "slug": "apps",
+    "name": "LMS",
+    "slug": "LMS",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",

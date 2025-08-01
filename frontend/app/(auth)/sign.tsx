@@ -223,7 +223,7 @@ export default function Index() {
         {/* New users */}
         <View className="flex-row absolute bottom-8 left-0 right-0 justify-center">
           <Text className="text-base text-[#2C3E50]">
-            Don't have an account?{" "}
+            Don&apos;t have an account?{" "}
           </Text>
           <TouchableOpacity onPress={() => navigation.navigate("auth/signUp")}>
             <Text className="text-base text-[#34967C] font-semibold">
