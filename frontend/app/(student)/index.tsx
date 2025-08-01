@@ -1,4 +1,4 @@
-import { Text, View,  TouchableOpacity, ScrollView } from "react-native";
+import { Text, View,  TouchableOpacity, ScrollView, StatusBar } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import CircularProgress from "../../components/CircularProgress";
 
@@ -8,6 +8,8 @@ export default function StudentSignUpScreen() {
 
 
     return (
+        <>
+        <StatusBar barStyle="dark-content"/>
         <SafeAreaView className="flex-1">
             <ScrollView className="flex-grow bg-bgMain py-6">
                 <View className="p-4">
@@ -118,4 +120,5 @@ export default function StudentSignUpScreen() {
                 </View>
             </ScrollView>
         </SafeAreaView>
+        </>
     )};
