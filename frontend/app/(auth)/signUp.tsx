@@ -1,14 +1,18 @@
 import React, { useState } from "react";
-import { useAuth } from "@/context/AuthContext";
-import { Text, TextInput, View, TouchableOpacity, Modal, ActivityIndicator } from "react-native";
+import { useAuth } from "@/contexts/AuthContext";
+import {
+  Text,
+  TextInput,
+  View,
+  TouchableOpacity,
+  Modal,
+  ActivityIndicator,
+} from "react-native";
 import { SafeAreaView, SafeAreaProvider } from "react-native-safe-area-context";
 import { FontAwesome, Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import type { NavigationProp } from "@react-navigation/native";
-import { useForm, Controller } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
-import { SignUpFormInputs, signUpSchema } from "@/schema/authSchema";
+import { getAuthErrorMessage, validateSignUpForm } from "@/utils/validation";
 
 // Defined navigation route params
 type RootStackParamList = {
@@ -17,6 +21,14 @@ type RootStackParamList = {
 };
 
 type NavigationProps = NavigationProp<RootStackParamList>;
+
+interface FormData {
+  name: string;
+  email: string;
+  password: string;
+  confirmPassword: string;
+  role: "admin" | "student" | "teacher";
+}
 
 export default function App() {
   const navigation = useNavigation<NavigationProps>();
@@ -27,20 +39,26 @@ export default function App() {
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Initialized React Hook Form with Zod resolver
-  const {
-    control,
-    handleSubmit,
-    formState: { errors },
-  } = useForm<SignUpFormInputs>({
-    resolver: zodResolver(signUpSchema),
-    defaultValues: {
-      name: "",
-      email: "",
-      password: "",
-      confirmPassword: "",
-    },
+  // Form state
+  const [formData, setFormData] = useState<FormData>({
+    name: "",
+    email: "",
+    password: "",
+    confirmPassword: "",
+    role: "student",
   });
+
+  // Form errors
+  const [errors, setErrors] = useState<Record<string, string>>({});
+
+  const roles: Array<{
+    label: string;
+    value: "admin" | "student" | "teacher";
+  }> = [
+    { label: "Admin", value: "admin" },
+    { label: "Teacher", value: "teacher" },
+    { label: "Student", value: "student" },
+  ];
 
   // Function to show a custom message modal
   const showMessage = (msg: string, success: boolean) => {
@@ -55,26 +73,59 @@ export default function App() {
     }, 2000);
   };
 
-  // Get signUp function from auth context
+  // Getting signUp function from auth context
   const { signUp } = useAuth();
 
+  // Handle input changes
+  const handleInputChange = (field: keyof FormData, value: string) => {
+    setFormData((prev) => ({ ...prev, [field]: value }));
+    // Clears error when user starts typing
+    if (errors[field]) {
+      setErrors((prev) => ({ ...prev, [field]: "" }));
+    }
+  };
+
   // Function to handle form submission
-  const onSubmit = async (data: SignUpFormInputs) => {
+  const onSubmit = async () => {
+    // Validate form
+    const validation = validateSignUpForm({
+      email: formData.email,
+      password: formData.password,
+      confirmPassword: formData.confirmPassword,
+      fullName: formData.name,
+      role: formData.role,
+    });
+
+    if (!validation.valid) {
+      setErrors(validation.errors);
+      return;
+    }
+
     setIsLoading(true);
-    
+    setErrors({});
+
     try {
-      // Register user with Supabase
-      const { error, data: userData } = await signUp(data.email, data.password, data.name);
-      
+      // Registering user with Supabase
+      const { error } = await signUp(formData.email, formData.password, {
+        full_name: formData.name,
+        role: formData.role,
+      });
+
       if (error) {
-        showMessage(`Registration failed: ${error.message}`, false);
+        showMessage(
+          `Registration failed: ${getAuthErrorMessage(error)}`,
+          false
+        );
         return;
       }
-      
+
       // Show success message and redirect to sign in
-      showMessage('Account created successfully! Please sign in.', true);
+      showMessage("Account created successfully! Please sign in.", true);
     } catch (error) {
-      showMessage(`An unexpected error occurred: ${error instanceof Error ? error.message : 'Unknown error'}`, false);
+      showMessage(
+        `An unexpected error occurred: ${error instanceof Error ? error.message : "Unknown error"}`,
+        false
+      );
     } finally {
       setIsLoading(false);
     }
@@ -94,7 +145,7 @@ export default function App() {
           {/* Title */}
           <Text className="text-4xl text-[#2C3E50] font-bold">Create Your Account</Text>
           <Text className="text-xs text-[#2C3E50] mt-1">
-            Enter new details to create a new account.
+            Enter your details to create an account.
           </Text>
 
           {/* Form */}
@@ -102,49 +153,67 @@ export default function App() {
             {/* Full Name */}
             <View>
               <Text className="text-lg text-[#2C3E50] mb-2">Full Name</Text>
-              <Controller
-                control={control}
-                name="name"
-                render={({ field: { onChange, onBlur, value } }) => (
-                  <TextInput
-                    className="border border-[#1ABC9C] rounded-lg h-12 px-2.5 text-[#2C3E50]"
-                    placeholder="Enter your full name"
-                    placeholderTextColor="#7E7B7B"
-                    onBlur={onBlur}
-                    onChangeText={onChange}
-                    value={value}
-                  />
-                )}
+              <TextInput
+                className="border border-[#1ABC9C] rounded-lg h-12 px-2.5 text-[#2C3E50]"
+                placeholder="Enter your full name"
+                placeholderTextColor="#7E7B7B"
+                value={formData.name}
+                onChangeText={(value) => handleInputChange("name", value)}
               />
-              {errors.name && (
+              {errors.fullName && (
                 <Text className="text-red-500 text-sm mt-1">
-                  {errors.name.message}
+                  {errors.fullName}
                 </Text>
               )}
             </View>
+
             {/* Email */}
             <View>
               <Text className="text-lg text-[#2C3E50] mb-2">Email</Text>
-              <Controller
-                control={control}
-                name="email"
-                render={({ field: { onChange, onBlur, value } }) => (
-                  <TextInput
-                    keyboardType="email-address"
-                    className="border border-[#1ABC9C] rounded-lg h-12 px-2.5 w-full focus:border-[#2B876E] focus:ring-2 focus:ring-[#2B876E]"
-                    placeholder="Enter your email"
-                    placeholderTextColor="#7E7B7B"
-                    onBlur={onBlur}
-                    onChangeText={onChange}
-                    value={value}
-                    autoCapitalize="none"
-                  />
-                )}
+              <TextInput
+                keyboardType="email-address"
+                className="border border-[#1ABC9C] rounded-lg h-12 px-2.5 w-full focus:border-[#2B876E] focus:ring-2 focus:ring-[#2B876E]"
+                placeholder="Enter your email"
+                placeholderTextColor="#7E7B7B"
+                value={formData.email}
+                onChangeText={(value) => handleInputChange("email", value)}
+                autoCapitalize="none"
               />
               {errors.email && (
                 <Text className="text-red-500 text-sm mt-1">
-                  {errors.email.message}
+                  {errors.email}
                 </Text>
+              )}
+            </View>
+
+            {/* Role Selection */}
+            <View>
+              <Text className="text-lg text-[#2C3E50] mb-2">Select Role</Text>
+              <View className="flex-row justify-around">
+                {roles.map((role) => (
+                  <TouchableOpacity
+                    key={role.value}
+                    className={`py-2 px-4 rounded-full ${
+                      formData.role === role.value
+                        ? "bg-[#1ABC9C]"
+                        : "border border-[#1ABC9C]"
+                    }`}
+                    onPress={() => handleInputChange("role", role.value)}
+                  >
+                    <Text
+                      className={`${
+                        formData.role === role.value
+                          ? "text-white"
+                          : "text-[#1ABC9C]"
+                      } font-semibold text-sm`}
+                    >
+                      {role.label}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+              {errors.role && (
+                <Text className="text-red-500 text-sm mt-1">{errors.role}</Text>
               )}
             </View>
 
@@ -152,20 +221,13 @@ export default function App() {
             <View>
               <Text className="text-lg text-[#2C3E50] mb-2">Password</Text>
               <View className="flex-row items-center border border-[#1ABC9C] h-12 rounded-lg px-2.5 relative">
-                <Controller
-                  control={control}
-                  name="password"
-                  render={({ field: { onChange, onBlur, value } }) => (
-                    <TextInput
-                      secureTextEntry={!showPassword}
-                      className="flex-1 text-[#2C3E50]"
-                      placeholder="Enter your password"
-                      placeholderTextColor="#7E7B7B"
-                      onBlur={onBlur}
-                      onChangeText={onChange}
-                      value={value}
-                    />
-                  )}
+                <TextInput
+                  secureTextEntry={!showPassword}
+                  className="flex-1 text-[#2C3E50]"
+                  placeholder="Enter your password"
+                  placeholderTextColor="#7E7B7B"
+                  value={formData.password}
+                  onChangeText={(value) => handleInputChange("password", value)}
                 />
                 <TouchableOpacity
                   className="absolute right-3 p-1"
@@ -180,7 +242,7 @@ export default function App() {
               </View>
               {errors.password && (
                 <Text className="text-red-500 text-sm mt-1">
-                  {errors.password.message}
+                  {errors.password}
                 </Text>
               )}
             </View>
@@ -191,20 +253,15 @@ export default function App() {
                 Confirm Password
               </Text>
               <View className="flex-row items-center border border-[#1ABC9C] h-12 rounded-lg px-2.5 relative">
-                <Controller
-                  control={control}
-                  name="confirmPassword"
-                  render={({ field: { onChange, onBlur, value } }) => (
-                    <TextInput
-                      secureTextEntry={!showConfirmPassword}
-                      className="flex-1 text-[#2C3E50]"
-                      placeholder="Confirm your password"
-                      placeholderTextColor="#7E7B7B"
-                      onBlur={onBlur}
-                      onChangeText={onChange}
-                      value={value}
-                    />
-                  )}
+                <TextInput
+                  secureTextEntry={!showConfirmPassword}
+                  className="flex-1 text-[#2C3E50]"
+                  placeholder="Confirm your password"
+                  placeholderTextColor="#7E7B7B"
+                  value={formData.confirmPassword}
+                  onChangeText={(value) =>
+                    handleInputChange("confirmPassword", value)
+                  }
                 />
                 <TouchableOpacity
                   className="absolute right-3 p-1"
@@ -219,7 +276,7 @@ export default function App() {
               </View>
               {errors.confirmPassword && (
                 <Text className="text-red-500 text-sm mt-1">
-                  {errors.confirmPassword.message}
+                  {errors.confirmPassword}
                 </Text>
               )}
             </View>
@@ -228,7 +285,7 @@ export default function App() {
           {/* Create Account Button */}
           <TouchableOpacity
             className="bg-[#2B876E] p-5 h-[53px] rounded-lg mt-6 flex justify-center items-center w-full shadow-md"
-            onPress={handleSubmit(onSubmit)}
+            onPress={onSubmit}
             disabled={isLoading}
           >
             {isLoading ? (
@@ -265,8 +322,10 @@ export default function App() {
           visible={isModalVisible}
           onRequestClose={() => setIsModalVisible(false)}
         >
-          <View className="flex-1 justify-center items-center bg-black bg-opacity-50">
-            <View className={`p-5 rounded-lg shadow-lg ${isSuccess ? 'bg-green-500' : 'bg-red-500'}`}>
+          <View className="flex-1 items-center bg-black bg-opacity-50">
+            <View
+              className={`p-5 rounded-lg shadow-lg mt-20 ${isSuccess ? "bg-green-500" : "bg-red-500"}`}
+            >
               <Text className="text-white text-lg font-semibold text-center">
                 {message}
               </Text>
