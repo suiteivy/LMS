@@ -11,7 +11,7 @@ import { LoginFormInputs, loginSchema } from "@/schema/authSchema";
 
 
 type RootStackParamList = {
-  sign: undefined;
+  '/': undefined;
   "auth/signUp": undefined;
 };
 
@@ -55,7 +55,7 @@ export default function Index() {
       }
       
       // Navigate to home screen or dashboard based on role
-      navigation.navigate('index');
+      navigation.navigate('/');
     } catch (error) {
       setErrorMessage('An unexpected error occurred');
       console.error('Sign in error:', error);
