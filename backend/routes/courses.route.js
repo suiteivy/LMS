@@ -7,7 +7,7 @@ const {
 
 const { authMiddleware } = require("../middleware/auth.middleware");
 
-router.post("/", authMiddleware, institutionMiddleware, createCourse);
-router.get("/", authMiddleware, institutionMiddleware, getCourses);
+router.post("/", authMiddleware, createCourse);
+router.get("/", authMiddleware, getCourses);
 
 module.exports = router;
