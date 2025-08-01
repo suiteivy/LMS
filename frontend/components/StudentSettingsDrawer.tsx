@@ -1,8 +1,7 @@
-import { Text, View } from "react-native";
 import { createDrawerNavigator, DrawerContentScrollView, DrawerItem, DrawerItemList } from '@react-navigation/drawer';
-import StudentProfile from "../components/StudentProfile";
-import StudentSettings from "../components/StudentSettings";
-import StudentHelp from "../components/StudentHelp";
+import StudentProfile from "./StudentProfile";
+import StudentSettings from "./StudentSettings";
+import StudentHelp from "./StudentHelp";
 import { UserCircle, Settings, HelpCircle, LogOut } from "lucide-react-native";
 
 const Drawer = createDrawerNavigator();
@@ -27,7 +26,7 @@ export default function StudentSettingsDrawer() {
                 drawerActiveTintColor: "#A1EBE5",
                 drawerInactiveTintColor:"#2C3E50",
                 drawerStyle: {
-                    width: "50%",
+                    width: 200,
                     backgroundColor: "#128C7E",
                 },
                 drawerLabelStyle: {

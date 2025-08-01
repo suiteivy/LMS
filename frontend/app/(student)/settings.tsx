@@ -3,7 +3,7 @@ import StudentSettingsDrawer from "../../components/StudentSettingsDrawer";
 
 export default function Settings() {
     return (
-        <View className="flex-1 bg-bgMain">
+        <View className="flex-grow bg-bgMain">
             <StudentSettingsDrawer/>
         </View>
     )
