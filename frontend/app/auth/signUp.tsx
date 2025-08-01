@@ -187,37 +187,6 @@ export default function App() {
               )}
             </View>
 
-            {/* Role Selection */}
-            <View>
-              <Text className="text-lg text-[#2C3E50] mb-2">Select Role</Text>
-              <View className="flex-row justify-around">
-                {roles.map((role) => (
-                  <TouchableOpacity
-                    key={role.value}
-                    className={`py-2 px-4 rounded-full ${
-                      formData.role === role.value
-                        ? "bg-[#1ABC9C]"
-                        : "border border-[#1ABC9C]"
-                    }`}
-                    onPress={() => handleInputChange("role", role.value)}
-                  >
-                    <Text
-                      className={`${
-                        formData.role === role.value
-                          ? "text-white"
-                          : "text-[#1ABC9C]"
-                      } font-semibold text-sm`}
-                    >
-                      {role.label}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-              {errors.role && (
-                <Text className="text-red-500 text-sm mt-1">{errors.role}</Text>
-              )}
-            </View>
-
             {/* Password */}
             <View>
               <Text className="text-lg text-[#2C3E50] mb-2">Password</Text>
@@ -282,6 +251,37 @@ export default function App() {
               )}
             </View>
           </View>
+
+            {/* Role Selection */}
+            <View>
+              <Text className="text-lg mt-4 text-[#2C3E50] mb-2">Select Role</Text>
+              <View className="flex-row justify-around">
+                {roles.map((role) => (
+                  <TouchableOpacity
+                    key={role.value}
+                    className={`py-2 px-4 rounded-full ${
+                      formData.role === role.value
+                        ? "bg-[#1ABC9C]"
+                        : "border border-[#1ABC9C]"
+                    }`}
+                    onPress={() => handleInputChange("role", role.value)}
+                  >
+                    <Text
+                      className={`${
+                        formData.role === role.value
+                          ? "text-white"
+                          : "text-[#1ABC9C]"
+                      } font-semibold text-sm`}
+                    >
+                      {role.label}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+              {errors.role && (
+                <Text className="text-red-500 text-sm mt-1">{errors.role}</Text>
+              )}
+            </View>
 
           {/* Create Account Button */}
           <TouchableOpacity
