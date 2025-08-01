@@ -1,4 +1,10 @@
-import { Text, TextInput, View, TouchableOpacity, ActivityIndicator, Modal } from "react-native";
+import {
+  Text,
+  TextInput,
+  View,
+  TouchableOpacity,
+  ActivityIndicator,
+} from "react-native";
 import { SafeAreaView, SafeAreaProvider } from "react-native-safe-area-context";
 import { FontAwesome, Ionicons } from "@expo/vector-icons";
 import React, { useState } from "react";
@@ -6,11 +12,10 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useNavigation } from "@react-navigation/native";
 import type { NavigationProp } from "@react-navigation/native";
 import { validateEmail, getAuthErrorMessage } from "@/utils/validation";
-import { authService, supabase } from "@/libs/supabase";
 
 type RootStackParamList = {
+  index: undefined;
   "auth/signUp": undefined;
-  "index": undefined;
 };
 
 type NavigationProps = NavigationProp<RootStackParamList>;
@@ -21,100 +26,115 @@ interface FormData {
   role: "Admin" | "Teacher" | "Student" | undefined;
 }
 
-export default function SignInScreen() {
+export default function Index() {
   const navigation = useNavigation<NavigationProps>();
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [message, setMessage] = useState("");
-  const [isModalVisible, setIsModalVisible] = useState(false);
-  const [isSuccess, setIsSuccess] = useState(false);
 
+  // Form state
   const [formData, setFormData] = useState<FormData>({
     email: "",
     password: "",
     role: undefined,
   });
 
+  // Form errors
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const roles = ["Admin", "Teacher", "Student"];
   const { signIn } = useAuth();
 
-  const handleInputChange = (field: keyof FormData, value: string | undefined) => {
+  // Handle input changes
+  const handleInputChange = (
+    field: keyof FormData,
+    value: string | undefined
+  ) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
-    if (errors[field]) setErrors((prev) => ({ ...prev, [field]: "" }));
-    if (errorMessage) setErrorMessage(null);
+    // Clear error when user starts typing
+    if (errors[field]) {
+      setErrors((prev) => ({ ...prev, [field]: "" }));
+    }
+    // Clear general error message
+    if (errorMessage) {
+      setErrorMessage(null);
+    }
   };
 
-  const showMessage = (msg: string, success: boolean) => {
-    setMessage(msg);
-    setIsSuccess(success);
-    setIsModalVisible(true);
-    setTimeout(() => {
-      setIsModalVisible(false);
-    }, 2000);
-  };
-
+  // Validate form
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {};
-    if (!formData.email) newErrors.email = "Email is required";
-    else if (!validateEmail(formData.email)) newErrors.email = "Please enter a valid email address";
-    if (!formData.password) newErrors.password = "Password is required";
-    if (!formData.role) newErrors.role = "Please select your role";
+
+    if (!formData.email) {
+      newErrors.email = "Email is required";
+    } else if (!validateEmail(formData.email)) {
+      newErrors.email = "Please enter a valid email address";
+    }
+
+    if (!formData.password) {
+      newErrors.password = "Password is required";
+    }
+
+    if (!formData.role) {
+      newErrors.role = "Please select your role";
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
- const onSubmit = async () => {
-  if (!validateForm()) return;
-
-  setIsLoading(true);
-  setErrorMessage(null);
-
-  try {
-    const { data, error } = await authService.signIn(formData.email, formData.password);
-
-    if (error) {
-      setErrorMessage(getAuthErrorMessage(error));
+  const onSubmit = async () => {
+    if (!validateForm()) {
       return;
     }
 
-    const userId = data?.user?.id;
+    setIsLoading(true);
+    setErrorMessage(null);
 
-    const { data: profile, error: profileError } = await authService.getCurrentUserProfile();
+    try {
+      // Sign in with email and password
+      const { error } = await signIn(formData.email, formData.password);
 
-    if (profileError || !profile?.full_name) {
-      showMessage("Welcome back!", true);
-    } else {
-      showMessage(`Welcome back, ${profile.full_name}`, true);
+      if (error) {
+        setErrorMessage(getAuthErrorMessage(error));
+        return;
+      }
+
+      // Navigate to dashboard based on role
+      navigation.navigate("index");
+    } catch (error) {
+      setErrorMessage("An unexpected error occurred");
+      console.error("Sign in error:", error);
+    } finally {
+      setIsLoading(false);
     }
-
-    navigation.navigate("index");
-  } catch (err) {
-    console.error("Sign in error:", err);
-    setErrorMessage("An unexpected error occurred");
-  } finally {
-    setIsLoading(false);
-  }
-};
+  };
 
   return (
-    <SafeAreaProvider>
+    <SafeAreaProvider className="">
       <SafeAreaView className="flex-1 p-5 bg-[#F1FFF8] relative">
-        {/* Back arrow */}
+        {/* arrow-back and Logo */}
         <View className="flex-row p-5 justify-between mb-5 mt-3">
+          {/* back arrow */}
           <TouchableOpacity onPress={() => navigation.goBack()}>
             <Ionicons name="arrow-back" size={25} color="black" />
           </TouchableOpacity>
         </View>
 
         <View className="p-5">
-          <Text className="text-4xl text-[#2C3E50] font-bold">Welcome Back to</Text>
-          <Text className="text-4xl text-[#2C3E50] font-bold">Your Account</Text>
-          <Text className="text-xs text-[#2C3E50]">Enter your email and password to sign back.</Text>
+          {/* Instruction */}
+          <Text className="text-4xl text-[#2C3E50] font-bold">
+            Welcome Back to
+          </Text>
+          <Text className="text-4xl text-[#2C3E50] font-bold">
+            Your Account
+          </Text>
+          <Text className="text-xs text-[#2C3E50]">
+            Enter your email and password to sign back.
+          </Text>
         </View>
 
+        {/* Form Group */}
         <View className="mt-11 p-5">
           {/* Email */}
           <View>
@@ -128,7 +148,9 @@ export default function SignInScreen() {
               onChangeText={(value) => handleInputChange("email", value)}
               autoCapitalize="none"
             />
-            {errors.email && <Text className="text-red-500 text-sm mt-1">{errors.email}</Text>}
+            {errors.email && (
+              <Text className="text-red-500 text-sm mt-1">{errors.email}</Text>
+            )}
           </View>
 
           {/* Password */}
@@ -144,15 +166,25 @@ export default function SignInScreen() {
                 onChangeText={(value) => handleInputChange("password", value)}
               />
               <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
-                <FontAwesome name={showPassword ? "eye" : "eye-slash"} size={24} color="#7E7B7B" />
+                <FontAwesome
+                  name={showPassword ? "eye" : "eye-slash"}
+                  size={24}
+                  color="#7E7B7B"
+                />
               </TouchableOpacity>
             </View>
-            {errors.password && <Text className="text-red-500 text-sm mt-1">{errors.password}</Text>}
+            {errors.password && (
+              <Text className="text-red-500 text-sm mt-1">
+                {errors.password}
+              </Text>
+            )}
           </View>
 
           {/* Forgot Password */}
           <TouchableOpacity>
-            <Text className="text-lg mt-2 text-right text-[#34967C]">Forgot password?</Text>
+            <Text className="text-lg mt-2 text-right text-[#34967C]">
+              Forgot password?
+            </Text>
           </TouchableOpacity>
 
           {/* Role Selection */}
@@ -163,9 +195,16 @@ export default function SignInScreen() {
                 <TouchableOpacity
                   key={role}
                   className={`py-2 px-4 rounded-full ${
-                    formData.role === role ? "bg-[#1ABC9C]" : "border border-[#1ABC9C]"
+                    formData.role === role
+                      ? "bg-[#1ABC9C]"
+                      : "border border-[#1ABC9C]"
                   }`}
-                  onPress={() => handleInputChange("role", role as "Admin" | "Teacher" | "Student")}
+                  onPress={() =>
+                    handleInputChange(
+                      "role",
+                      role as "Admin" | "Teacher" | "Student"
+                    )
+                  }
                 >
                   <Text
                     className={`${
@@ -178,20 +217,23 @@ export default function SignInScreen() {
               ))}
             </View>
             {errors.role && (
-              <Text className="text-red-500 text-sm mt-1 text-center">{errors.role}</Text>
+              <Text className="text-red-500 text-sm mt-1 text-center">
+                {errors.role}
+              </Text>
             )}
           </View>
         </View>
 
-        {/* Error message */}
         <View className="px-5">
+          {/* Error Message */}
           {errorMessage && (
             <View className="bg-red-50 border border-red-200 rounded-lg p-3 mt-2">
-              <Text className="text-red-600 text-sm text-center">{errorMessage}</Text>
+              <Text className="text-red-600 text-sm text-center">
+                {errorMessage}
+              </Text>
             </View>
           )}
 
-          {/* Sign In Button */}
           <TouchableOpacity
             className="bg-[#2B876E] h-[53px] rounded-lg mt-6 flex justify-center items-center shadow-md"
             onPress={onSubmit}
@@ -205,38 +247,23 @@ export default function SignInScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* Divider */}
         <View className="flex-row items-center gap-2.5 mt-7 px-5">
           <View className="border-t border-[#2C3E50] flex-1"></View>
           <Text className="text-lg font-medium text-[#2C3E50]">OR</Text>
           <View className="border-t border-[#2C3E50] flex-1"></View>
         </View>
 
-        {/* Sign up link */}
+        {/* New users */}
         <View className="flex-row absolute bottom-8 left-0 right-0 justify-center">
-          <Text className="text-base text-[#2C3E50]">Don't have an account? </Text>
+          <Text className="text-base text-[#2C3E50]">
+            Don't have an account?{" "}
+          </Text>
           <TouchableOpacity onPress={() => navigation.navigate("auth/signUp")}>
-            <Text className="text-base text-[#34967C] font-semibold">Sign Up</Text>
+            <Text className="text-base text-[#34967C] font-semibold">
+              Sign Up
+            </Text>
           </TouchableOpacity>
         </View>
-
-        {/* Modal Toast */}
-        <Modal
-          animationType="fade"
-          transparent={true}
-          visible={isModalVisible}
-          onRequestClose={() => setIsModalVisible(false)}
-        >
-          <View className="flex-1 items-center bg-black bg-opacity-50">
-            <View
-              className={`p-5 rounded-lg shadow-lg mt-20 ${
-                isSuccess ? "bg-green-500" : "bg-red-500"
-              }`}
-            >
-              <Text className="text-white text-lg font-semibold text-center">{message}</Text>
-            </View>
-          </View>
-        </Modal>
       </SafeAreaView>
     </SafeAreaProvider>
   );
