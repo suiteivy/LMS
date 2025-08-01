@@ -8,9 +8,10 @@ export default function RootLayout() {
     <Stack screenOptions={{
       headerShown: false,
     }}>
-      <Stack.Screen name="/" />
-      <Stack.Screen name="/auth/signUp" />
-      <Stack.Screen name="/sign" />
+      <Stack.Screen name="index" />
+      <Stack.Screen name="(auth)/student" />
+      <Stack.Screen name="(auth)/sign" />
+      <Stack.Screen name="(student)" />
     </Stack>
   );
 }
