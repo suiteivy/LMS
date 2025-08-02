@@ -8,6 +8,14 @@ import { RecentUsersSection } from "./components/RecentUsersSection";
 import { UsersTableSection } from "./components/UsersTableSection";
 import { QuickActionsSection } from "./components/QuickActionsSection";
 import { supabase } from "@/libs/supabase";
+import { NavigationProp, useNavigation } from "@react-navigation/native";
+
+
+type RootStackParamList = {
+  "auth/sign": undefined;
+};
+
+type NavigationProps = NavigationProp<RootStackParamList>;
 
 interface AdminDashboardProps extends BaseComponentProps {
   // Data props
@@ -51,13 +59,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   className = "",
   testID,
 }) => {
+  const navigation = useNavigation<NavigationProps>();
   const handleLogout = async () => {
     const { error } = await supabase.auth.signOut();
     if (error) {
       Alert.alert("Logout Failed", error.message);
     } else {
       // Navigate to login screen or do your own redirect
-      console.log("Logged out successfully");
+        navigation.navigate("auth/sign");
       // You might want to navigate back to login screen here.
     }
   };
