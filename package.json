@@ -10,6 +10,7 @@
     "@react-navigation/native-stack": "^7.3.23",
     "expo": "^53.0.20",
     "gsap": "^3.13.0",
+    "nativewind": "^4.1.23",
     "react": "^19.1.1",
     "react-native": "^0.80.2",
     "react-native-gesture-handler": "~2.24.0",

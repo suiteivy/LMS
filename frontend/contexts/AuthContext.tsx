@@ -3,6 +3,7 @@ import { Session, User } from '@supabase/supabase-js'
 import { Database } from '@/types/database'
 import { authService, supabase } from '@/libs/supabase'
 
+
 type UserProfile = Database['public']['Tables']['users']['Row']
 
 interface AuthContextType {
@@ -21,7 +22,7 @@ interface AuthContextType {
   refreshProfile: () => Promise<UserProfile | null>
 }
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined)
+export const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
 export const useAuth = () => {
   const context = useContext(AuthContext)
