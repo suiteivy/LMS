@@ -3,11 +3,11 @@ import { View, ScrollView, Alert } from "react-native";
 import { supabase } from "@/libs/supabase";
 import { NavigationProp, useNavigation } from "@react-navigation/native";
 import { BaseComponentProps, StatsData, User } from "@/types/types";
-import { DashboardHeader } from "../../components/AdminDashboard/elements/DashboardHeader";
-import { StatsOverview } from "../../components/AdminDashboard/elements/StatsOverview";
-import { RecentUsersSection } from "../../components/AdminDashboard/elements/RecentUsersSection";
-import { UsersTableSection } from "../../components/AdminDashboard/elements/UsersTableSection";
-import { QuickActionsSection } from "../../components/AdminDashboard/elements/QuickActionsSection";
+import { DashboardHeader } from "../(admin)/elements/DashboardHeader";
+import { StatsOverview } from "../(admin)/elements/StatsOverview";
+import { RecentUsersSection } from "../(admin)/elements/RecentUsersSection";
+import { UsersTableSection } from "../(admin)/elements/UsersTableSection";
+import { QuickActionsSection } from "../(admin)/elements/QuickActionsSection";
 
 type RootStackParamList = {
   "auth/sign": undefined;
