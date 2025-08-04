@@ -126,7 +126,7 @@ export default function Index() {
             Your Account
           </Text>
           <Text className="text-xs text-[#2C3E50]">
-            Enter your email and password to sign back.
+            Enter your email and password to get started.
           </Text>
         </View>
 
