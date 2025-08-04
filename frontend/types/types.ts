@@ -3,7 +3,9 @@
  *  Type definitions for dashboard components
  */
 
+import { Ionicons } from "@expo/vector-icons";
 import { ReactNode } from "react";
+import { TextInputProps } from "react-native";
 
 /*
  * User-related types
@@ -54,6 +56,26 @@ export interface StatsData {
   description?: string;
 }
 
+export interface CourseFormData {
+  title: string;
+  description: string;
+  shortDescription: string;
+  category: string;
+  level: string;
+  language: string;
+  price: string;
+  duration: string;
+  maxStudents: string;
+  startDate: string;
+  tags: string[];
+  prerequisites: string;
+  learningOutcomes: string[];
+  courseImage: string | null;
+  isPublic: boolean;
+  allowDiscussions: boolean;
+  certificateEnabled: boolean;
+}
+
 // ----------------------
 // Table-related types
 // ----------------------
@@ -74,6 +96,36 @@ export interface TableData {
 export interface BaseComponentProps {
   className?: string;
   testID?: string;
+}
+
+export interface ImageUploadProps {
+  imageUri: string | null;
+  onImageSelect: (uri: string | null) => void;
+}
+
+export interface SettingsToggleProps {
+  icon: keyof typeof Ionicons.glyphMap;
+  title: string;
+  description: string;
+  value: boolean;
+  onValueChange: (value: boolean) => void;
+}
+
+export interface IconInputProps extends TextInputProps {
+  iconName: keyof typeof Ionicons.glyphMap;
+}
+
+export interface TagInputProps {
+  tags: string[];
+  onAddTag: (tag: string) => void;
+  onRemoveTag: (tag: string) => void;
+}
+
+export interface LearningOutcomesProps {
+  outcomes: string[];
+  onUpdateOutcome: (index: number, value: string) => void;
+  onAddOutcome: () => void;
+  onRemoveOutcome: (index: number) => void;
 }
 
 export type StatsClickHandler = (stat: StatsData) => void;
