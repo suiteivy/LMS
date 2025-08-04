@@ -1,8 +1,8 @@
 import React from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { UserCard } from '../UserCard';
-import { User } from '../types';
+import { User } from '@/types/types';
+import { UserCard } from '@/components/common/UserCard';
 
 interface RecentUsersSectionProps {
   users?: User[];
