@@ -15,7 +15,7 @@ import type { NavigationProp } from "@react-navigation/native";
 import { validateEmail, getAuthErrorMessage } from "@/utils/validation";
 
 type RootStackParamList = {
-  sign: undefined;
+  "index": undefined;
   "auth/signUp": undefined;
 };
 
