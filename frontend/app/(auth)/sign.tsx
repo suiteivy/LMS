@@ -15,7 +15,7 @@ import type { NavigationProp } from "@react-navigation/native";
 import { validateEmail, getAuthErrorMessage } from "@/utils/validation";
 
 type RootStackParamList = {
-  index: undefined;
+  "index": undefined;
   "auth/signUp": undefined;
 };
 
@@ -98,15 +98,9 @@ export default function Index() {
         setErrorMessage(getAuthErrorMessage(error));
         return;
       }
-
-      const freshProfile = await refreshProfile();
-      const name = freshProfile?.full_name || "User";
-
-      showMessage(`Welcome back, ${name}`, true);
-
-      setTimeout(() => {
-        navigation.navigate("index");
-      }, 2000);
+      
+      // Navigate to home screen or dashboard based on role
+      navigation.navigate('index');
     } catch (error) {
       setErrorMessage("An unexpected error occurred");
       console.error("Sign in error:", error);
@@ -251,7 +245,7 @@ export default function Index() {
 
         <View className="flex-row absolute bottom-8 left-0 right-0 justify-center">
           <Text className="text-base text-[#2C3E50]">
-            Don't have an account?{" "}
+            Don&apos;t have an account?{" "}
           </Text>
           <TouchableOpacity onPress={() => navigation.navigate("auth/signUp")}>
             <Text className="text-base text-[#34967C] font-semibold">
