@@ -1,7 +1,5 @@
 import React from "react";
 import { View, ScrollView, Alert } from "react-native";
-
-import { BaseComponentProps, StatsData, User } from "./types";
 import { DashboardHeader } from "./components/DashboardHeader";
 import { StatsOverview } from "./components/StatsOverview";
 import { RecentUsersSection } from "./components/RecentUsersSection";
@@ -9,6 +7,7 @@ import { UsersTableSection } from "./components/UsersTableSection";
 import { QuickActionsSection } from "./components/QuickActionsSection";
 import { supabase } from "@/libs/supabase";
 import { NavigationProp, useNavigation } from "@react-navigation/native";
+import { BaseComponentProps, StatsData, User } from "@/types/types";
 
 
 type RootStackParamList = {
@@ -65,9 +64,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     if (error) {
       Alert.alert("Logout Failed", error.message);
     } else {
-      // Navigate to login screen or do your own redirect
+      // Navigate to login screen
         navigation.navigate("auth/sign");
-      // You might want to navigate back to login screen here.
     }
   };
 

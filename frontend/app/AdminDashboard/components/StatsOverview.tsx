@@ -1,8 +1,7 @@
+import { StatsCard } from '@/components/common/StatsCard';
+import { StatsData } from '@/types/types';
 import React from 'react';
 import { View, Text } from 'react-native';
-import { StatsData } from '../types';
-import { StatsCard } from '../StatsCard';
-
 interface StatsOverviewProps {
   statsData?: StatsData[];
   loading?: boolean;
