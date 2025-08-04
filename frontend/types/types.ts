@@ -76,6 +76,26 @@ export interface BaseComponentProps {
   testID?: string;
 }
 
+export type CourseFormData = {
+  title: string;
+  description: string;
+  shortDescription: string;
+  category: string;
+  level: string;
+  language: string;
+  price: string;
+  duration: string;
+  maxStudents: string;
+  startDate: string;
+  tags: string[];
+  prerequisites: string;
+  learningOutcomes: string[];
+  courseImage: string | null;
+  isPublic: boolean;
+  allowDiscussions: boolean;
+  certificateEnabled: boolean;
+};
+
 export type StatsClickHandler = (stat: StatsData) => void;
 export type UserClickHandler = (user: User) => void;
 export type TableRowClickHandler = (row: TableData) => void;
