@@ -1,6 +1,6 @@
+import { User } from '@/types/types';
 import React from 'react';
 import { View, Text, ActivityIndicator, TouchableOpacity } from 'react-native';
-import { User } from '../types';
 
 interface UsersTableSectionProps {
   users: User[];

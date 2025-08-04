@@ -53,7 +53,7 @@ export const RecentUsersSection: React.FC<RecentUsersSectionProps> = ({
   const renderUsersList = () => (
     <>
       {displayUsers.map(user => (
-        <UserCard
+        <UserCard 
           key={user.id} 
           user={user} 
           variant="compact"

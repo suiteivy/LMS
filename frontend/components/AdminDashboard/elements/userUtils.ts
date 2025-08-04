@@ -1,4 +1,5 @@
-import { CreateUserData, User, UserRole, UserStatus } from "../types";
+import { CreateUserData, User, UserRole, UserStatus } from "@/types/types";
+
 
 
 /*
