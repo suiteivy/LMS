@@ -28,7 +28,7 @@ export default function Index() {
             </Text>
           </View>
           <View className="flex-row items-center justify-center flex-wrap my-8 py-6 gap-16">
-            <TouchableOpacity onPress={()=>router.push("/(auth)/admin")} >
+            <TouchableOpacity onPress={()=>router.push("/AdminDashboard/AdminDashboard")} >
               <View className="items-center p-4 ">
                 <UserStar size={100} color="#1ABC9C" />
                 <Text>Admin</Text>
