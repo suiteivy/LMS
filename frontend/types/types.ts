@@ -128,6 +128,41 @@ export interface LearningOutcomesProps {
   onRemoveOutcome: (index: number) => void;
 }
 
+export interface Course {
+  id: string;
+  title: string;
+  description: string;
+  shortDescription: string;
+  category: string;
+  level: 'beginner' | 'intermediate' | 'advanced' | 'all';
+  instructor: {
+    name: string;
+    avatar?: string;
+  };
+  price: number;
+  originalPrice?: number;
+  duration: string;
+  studentsCount: number;
+  rating: number;
+  reviewsCount: number;
+  image: string;
+  tags: string[];
+  isEnrolled: boolean;
+  progress?: number;
+  lastAccessed?: string;
+  lessons: Lesson[];
+}
+
+export interface Lesson {
+  id: string;
+  title: string;
+  duration: string;
+  isCompleted: boolean;
+  isLocked: boolean;
+  type: 'video' | 'reading' | 'quiz' | 'assignment';
+}
+
+
 export type StatsClickHandler = (stat: StatsData) => void;
 export type UserClickHandler = (user: User) => void;
 export type TableRowClickHandler = (row: TableData) => void;
