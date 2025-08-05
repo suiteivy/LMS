@@ -10,25 +10,17 @@ import { SafeAreaView, SafeAreaProvider } from "react-native-safe-area-context";
 import { FontAwesome, Ionicons } from "@expo/vector-icons";
 import React, { useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import { useNavigation } from "@react-navigation/native";
-import type { NavigationProp } from "@react-navigation/native";
 import { validateEmail, getAuthErrorMessage } from "@/utils/validation";
+import { supabase } from "@/libs/supabase";
+import { router } from "expo-router";
 
-type RootStackParamList = {
-  "index": undefined;
-  "auth/signUp": undefined;
-};
-
-type NavigationProps = NavigationProp<RootStackParamList>;
 
 interface FormData {
   email: string;
   password: string;
-  role: "Admin" | "Teacher" | "Student" | undefined;
 }
 
 export default function Index() {
-  const navigation = useNavigation<NavigationProps>();
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -39,12 +31,10 @@ export default function Index() {
   const [formData, setFormData] = useState<FormData>({
     email: "",
     password: "",
-    role: undefined,
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const roles = ["Admin", "Teacher", "Student"];
-  const { signIn, refreshProfile } = useAuth();
+  const { signIn } = useAuth();
 
   const showMessage = (msg: string, success: boolean) => {
     setMessage(msg);
@@ -55,10 +45,7 @@ export default function Index() {
     }, 2000);
   };
 
-  const handleInputChange = (
-    field: keyof FormData,
-    value: string | undefined
-  ) => {
+  const handleInputChange = (field: keyof FormData, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
     if (errors[field]) setErrors((prev) => ({ ...prev, [field]: "" }));
     if (errorMessage) setErrorMessage(null);
@@ -77,10 +64,6 @@ export default function Index() {
       newErrors.password = "Password is required";
     }
 
-    if (!formData.role) {
-      newErrors.role = "Please select your role";
-    }
-
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -92,15 +75,40 @@ export default function Index() {
     setErrorMessage(null);
 
     try {
-      const { error } = await signIn(formData.email, formData.password);
+      const { error, data } = await signIn(formData.email, formData.password);
 
-      if (error) {
+      if (error || !data?.user) {
         setErrorMessage(getAuthErrorMessage(error));
         return;
       }
-      
-      // Navigate to home screen or dashboard based on role
-      navigation.navigate('index');
+
+      // Fetch user's role from Supabase
+      const { data: userData, error: roleError } = await supabase
+        .from("users")
+        .select("role")
+        .eq("id", data.user.id)
+        .single();
+
+      if (roleError || !userData?.role) {
+        setErrorMessage("Could not fetch user role.");
+        return;
+      }
+
+      // Navigate based on role
+      switch (userData.role) {
+        case "Admin":
+          router.push("admin/dashboard");
+          break;
+        case "Teacher":
+          router.push("teacher/dashboard");
+          break;
+        case "Student":
+          router.push("student/dashboard");
+          break;
+        default:
+          setErrorMessage("Unrecognized user role.");
+          break;
+      }
     } catch (error) {
       setErrorMessage("An unexpected error occurred");
       console.error("Sign in error:", error);
@@ -113,7 +121,7 @@ export default function Index() {
     <SafeAreaProvider>
       <SafeAreaView className="flex-1 p-5 bg-[#F1FFF8] relative">
         <View className="flex-row p-5 justify-between mb-5 mt-3">
-          <TouchableOpacity onPress={() => navigation.goBack()}>
+          <TouchableOpacity onPress={() => router.goBack()}>
             <Ionicons name="arrow-back" size={25} color="black" />
           </TouchableOpacity>
         </View>
@@ -178,41 +186,6 @@ export default function Index() {
               Forgot password?
             </Text>
           </TouchableOpacity>
-
-          <View className="mt-5">
-            <Text className="text-lg text-[#2C3E50] mb-2">Sign in as:</Text>
-            <View className="flex-row justify-around">
-              {roles.map((role) => (
-                <TouchableOpacity
-                  key={role}
-                  className={`py-2 px-4 rounded-full ${
-                    formData.role === role
-                      ? "bg-[#1ABC9C]"
-                      : "border border-[#1ABC9C]"
-                  }`}
-                  onPress={() =>
-                    handleInputChange(
-                      "role",
-                      role as "Admin" | "Teacher" | "Student"
-                    )
-                  }
-                >
-                  <Text
-                    className={`${
-                      formData.role === role ? "text-white" : "text-[#1ABC9C]"
-                    } font-semibold`}
-                  >
-                    {role}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-            {errors.role && (
-              <Text className="text-red-500 text-sm mt-1 text-center">
-                {errors.role}
-              </Text>
-            )}
-          </View>
         </View>
 
         <View className="px-5">
@@ -247,14 +220,13 @@ export default function Index() {
           <Text className="text-base text-[#2C3E50]">
             Don&apos;t have an account?{" "}
           </Text>
-          <TouchableOpacity onPress={() => navigation.navigate("auth/signUp")}>
+          <TouchableOpacity onPress={() =>  router.push("/signUp")}>
             <Text className="text-base text-[#34967C] font-semibold">
               Sign Up
             </Text>
           </TouchableOpacity>
         </View>
 
-        {/* Custom Message Modal */}
         <Modal
           animationType="fade"
           transparent={true}

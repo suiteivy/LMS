@@ -10,17 +10,8 @@ import {
 } from "react-native";
 import { SafeAreaView, SafeAreaProvider } from "react-native-safe-area-context";
 import { FontAwesome, Ionicons } from "@expo/vector-icons";
-import { useNavigation } from "@react-navigation/native";
-import type { NavigationProp } from "@react-navigation/native";
 import { getAuthErrorMessage, validateSignUpForm } from "@/utils/validation";
-
-// Defined navigation route params
-type RootStackParamList = {
-  "auth/sign": undefined;
-  "auth/signUp": undefined;
-};
-
-type NavigationProps = NavigationProp<RootStackParamList>;
+import { router } from "expo-router";
 
 interface FormData {
   name: string;
@@ -31,7 +22,6 @@ interface FormData {
 }
 
 export default function App() {
-  const navigation = useNavigation<NavigationProps>();
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [message, setMessage] = useState("");
@@ -68,7 +58,7 @@ export default function App() {
     setTimeout(() => {
       setIsModalVisible(false);
       if (success) {
-        navigation.navigate("auth/sign");
+         router.push("/sign");
       }
     }, 2000);
   };
@@ -137,7 +127,7 @@ export default function App() {
       <SafeAreaView className="flex-1 bg-[#F1FFF8] font-sans">
         <View className="flex-1 p-10">
           <View className="flex-row justify-between mb-5 mt-3">
-            <TouchableOpacity onPress={() => navigation.goBack()}>
+            <TouchableOpacity onPress={() => router.goBack()}>
               <Ionicons name="arrow-back" size={25} color="black" />
             </TouchableOpacity>
           </View>
@@ -308,7 +298,7 @@ export default function App() {
         {/* Bottom Sign In link */}
         <View className="flex-row justify-center mb-8">
           <Text className="text-lg text-[#2C3E50]">Have an account?</Text>
-          <TouchableOpacity onPress={() => navigation.navigate("auth/sign")}>
+          <TouchableOpacity onPress={() =>   router.push("/sign")}>
             <Text className="text-lg text-[#2B876E] font-semibold ml-1">
               Sign In
             </Text>
