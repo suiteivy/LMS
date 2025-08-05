@@ -13,13 +13,17 @@ async function authMiddleware(req, res, next) {
   // Get institution_id and role
   const { data: profile, error: profileError } = await supabase
     .from("users")
-    .select("institution_id, role")
-    .eq("uid", user.id)
+    .select("id, institution_id, role, full_name, email")
+    .eq("id", user.id)
     .single();
 
   if (profileError) return res.status(403).json({ error: "Unauthorized" });
 
-  req.user = user;
+  // Add user info to request object
+  req.user = {
+    ...profile,
+    id: profile.id // Ensure ID is available for filtering
+  };
   req.institution_id = profile.institution_id;
   req.userRole = profile.role;
 
