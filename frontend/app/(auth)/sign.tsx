@@ -14,7 +14,6 @@ import { validateEmail, getAuthErrorMessage } from "@/utils/validation";
 import { supabase } from "@/libs/supabase";
 import { router } from "expo-router";
 
-
 interface FormData {
   email: string;
   password: string;
@@ -69,49 +68,82 @@ export default function Index() {
   };
 
   const onSubmit = async () => {
-    if (!validateForm()) return;
+    console.log("Form submitted");
+
+    if (!validateForm()) {
+      console.log("Form validation failed");
+      return;
+    }
 
     setIsLoading(true);
     setErrorMessage(null);
 
     try {
+      console.log("Attempting sign in with:", formData.email);
       const { error, data } = await signIn(formData.email, formData.password);
 
-      if (error || !data?.user) {
+      if (error) {
+        console.log("Sign in error:", error);
         setErrorMessage(getAuthErrorMessage(error));
+        setIsLoading(false);
         return;
       }
 
-      // Fetch user's role from Supabase
+      if (!data?.user) {
+        console.log("No user data returned");
+        setErrorMessage("No user data returned");
+        setIsLoading(false);
+        return;
+      }
+
+      console.log("User signed in:", data.user.id);
+
+      // Fetching user's role and full name from Supabase
       const { data: userData, error: roleError } = await supabase
         .from("users")
-        .select("role")
+        .select("role, full_name")
         .eq("id", data.user.id)
         .single();
 
-      if (roleError || !userData?.role) {
-        setErrorMessage("Could not fetch user role.");
+      console.log("Role fetch result:", { userData, roleError });
+
+      if (roleError) {
+        console.log("Role fetch error:", roleError);
+        setErrorMessage("Could not fetch user role: " + roleError.message);
+        setIsLoading(false);
         return;
       }
 
-      // Navigate based on role
-      switch (userData.role) {
-        case "Admin":
-          router.push("admin/dashboard");
-          break;
-        case "Teacher":
-          router.push("teacher/dashboard");
-          break;
-        case "Student":
-          router.push("student/dashboard");
-          break;
-        default:
-          setErrorMessage("Unrecognized user role.");
-          break;
+      if (!userData?.role) {
+        console.log("No role found for user");
+        setErrorMessage("No role assigned to user.");
+        setIsLoading(false);
+        return;
       }
+
+      const name = userData.full_name || "there";
+      showMessage(`👋 Welcome back, ${name}!`, true);
+
+      // timeout to Delay navigation to let modal show
+      setTimeout(() => {
+        switch (userData.role) {
+          case "admin":
+            router.replace("(admin");
+            break;
+          case "teacher":
+            router.replace("/teacher/dashboard");
+            break;
+          case "student":
+            router.replace("/(student)/courses");
+            break;
+          default:
+            setErrorMessage("Unrecognized user role: " + userData.role);
+            break;
+        }
+      }, 2000);
     } catch (error) {
-      setErrorMessage("An unexpected error occurred");
-      console.error("Sign in error:", error);
+      console.error("Unexpected error:", error);
+      setErrorMessage("An unexpected error occurred: " + error.message);
     } finally {
       setIsLoading(false);
     }
@@ -220,7 +252,7 @@ export default function Index() {
           <Text className="text-base text-[#2C3E50]">
             Don&apos;t have an account?{" "}
           </Text>
-          <TouchableOpacity onPress={() =>  router.push("/signUp")}>
+          <TouchableOpacity onPress={() => router.push("/signUp")}>
             <Text className="text-base text-[#34967C] font-semibold">
               Sign Up
             </Text>
