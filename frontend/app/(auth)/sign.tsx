@@ -153,7 +153,7 @@ export default function Index() {
     <SafeAreaProvider>
       <SafeAreaView className="flex-1 p-5 bg-[#F1FFF8] relative">
         <View className="flex-row p-5 justify-between mb-5 mt-3">
-          <TouchableOpacity onPress={() => router.goBack()}>
+          <TouchableOpacity onPress={() => router.push("/")}>
             <Ionicons name="arrow-back" size={25} color="black" />
           </TouchableOpacity>
         </View>
