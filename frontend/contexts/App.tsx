@@ -4,7 +4,8 @@ import RootNavigation from "../navigation/RootNavigation";
 import { AuthProvider } from "./AuthContext";
 import SplashScreen from "../Screens/SplashScreen";
 import TeacherDashboard from "@/Dashboard/TeacherDashboard";
-
+import { RootStackParamList } from "@/navigation/navigation";
+import { NativeStackNavigationProp } from "@native-navigation/native-stack";
 
 
 
@@ -15,7 +16,7 @@ export default function App() {
     <AuthProvider>
       <NavigationContainer>
         <RootNavigation />
-        <SplashScreen navigation={SplashScreen} /> 
+        <SplashScreen navigation={ NativeStackNavigationProp<RootStackParamList, "Splash">} /> 
          <TeacherDashboard />
       </NavigationContainer>
     </AuthProvider>
