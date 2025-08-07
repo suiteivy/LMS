@@ -54,5 +54,3 @@ LMS-App/
 ├── README.md # Overview, setup, and contribution guide
 ├── package.json
 └── LICENSE
-
-
