@@ -3,7 +3,7 @@
 ## Base URL
 
 ```
-http://localhost:4000/api
+https://lms-api-wine.vercel.app/api
 ```
 
 ---
