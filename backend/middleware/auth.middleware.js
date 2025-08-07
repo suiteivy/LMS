@@ -20,7 +20,11 @@ async function authMiddleware(req, res, next) {
   console.log("User profile:", profile, profileError);
   if (profileError) return res.status(403).json({ error: "Unauthorized" });
 
-  req.user = user;
+  // Add user info to request object
+  req.user = {
+    ...profile,
+    id: profile.id // Ensure ID is available for filtering
+  };
   req.institution_id = profile.institution_id;
   // req.userId = user.id;
   req.userRole = profile.role;

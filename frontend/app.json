@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "apps",
-    "slug": "apps",
+    "name": "LMS",
+    "slug": "LMS",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "apps",
+    "scheme": "LMS",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
@@ -38,5 +38,8 @@
     "experiments": {
       "typedRoutes": true
     }
+
+    
   }
+
 }

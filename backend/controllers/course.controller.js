@@ -1,27 +1,32 @@
 const supabase = require("../utils/supabaseClient");
 
 exports.createCourse = async (req, res) => {
-  const { title, description, teacher_id } = req.body;
-  const { institution_id } = req;
+  try {
+    const { title, description } = req.body;
+    const teacher_id = req.user.id;
+    const institution_id = req.institution_id;
 
-  if (req.userRole !== "teacher" && req.userRole !== "admin") {
-    return res
-      .status(403)
-      .json({ error: "Only teachers or admins can create courses" });
+    if (req.userRole !== "teacher" && req.userRole !== "admin") {
+      return res
+        .status(403)
+        .json({ error: "Only teachers or admins can create courses" });
+    }
+
+    if (!title || !teacher_id) {
+      return res.status(400).json({ error: "Missing required fields" });
+    }
+
+    const { data, error } = await supabase
+      .from("courses")
+      .insert([{ title, description, teacher_id, institution_id }]);
+
+    if (error) return res.status(500).json({ error: error.message });
+    res.status(201).json({ message: "Course created", data });
+  } catch (err) {
+    console.error("createCourse error:", err);
+    res.status(500).json({ error: "Server error" });
   }
-
-  if (!title || !teacher_id) {
-    return res.status(400).json({ error: "Missing required fields" });
-  }
-
-  const { data, error } = await supabase
-    .from("courses")
-    .insert([{ title, description, teacher_id, institution_id }]);
-
-  if (error) return res.status(500).json({ error: error.message });
-  res.status(201).json({ message: "Course created", data });
 };
-
 // exports.getCourses = async (req, res) => {
 //   const { institution_id } = req;
 
