@@ -4,7 +4,7 @@ exports.createCourse = async (req, res) => {
   const { title, description, teacher_id } = req.body;
   const { institution_id } = req;
 
-  if (req.userRole !== "teacher" || req.userRole !== "admin") {
+  if (req.userRole !== "teacher" && req.userRole !== "admin") {
     return res
       .status(403)
       .json({ error: "Only teachers or admins can create courses" });
@@ -22,14 +22,73 @@ exports.createCourse = async (req, res) => {
   res.status(201).json({ message: "Course created", data });
 };
 
+// exports.getCourses = async (req, res) => {
+//   const { institution_id } = req;
+
+//   const { data, error } = await supabase
+//     .from("courses")
+//     .select("*")
+//     .eq("institution_id", institution_id);
+
+//   if (error) return res.status(500).json({ error: error.message });
+//   res.json(data);
+// };
+
 exports.getCourses = async (req, res) => {
-  const { institution_id } = req;
+  const { institution_id, user, userRole } = req;
+  console.log("getCourses called with:", { institution_id, user, userRole });
 
-  const { data, error } = await supabase
-    .from("courses")
-    .select("*")
-    .eq("institution_id", institution_id);
+  try {
+    let courses;
+    let error;
 
-  if (error) return res.status(500).json({ error: error.message });
-  res.json(data);
+    if (userRole === "student") {
+      // Step 1: Get course_ids for this student via grades table
+      const { data: gradeRows, error: gradeError } = await supabase
+        .from("grades")
+        .select("course_id")
+        .eq("student_id", user.id);
+
+      if (gradeError)
+        return res.status(500).json({ error: gradeError.message });
+
+      const courseIds = gradeRows.map((row) => row.course_id);
+
+      // Step 2: Get full course details from course IDs
+      const { data, error: courseError } = await supabase
+        .from("courses")
+        .select("*")
+        .in("id", courseIds)
+        .eq("institution_id", institution_id);
+
+      courses = data;
+      error = courseError;
+    } else if (userRole === "teacher") {
+      const { data, error: teacherError } = await supabase
+        .from("courses")
+        .select("*")
+        .eq("teacher_id", userId)
+        .eq("institution_id", institution_id);
+
+      courses = data;
+      error = teacherError;
+    } else if (userRole === "admin") {
+      const { data, error: adminError } = await supabase
+        .from("courses")
+        .select("*")
+        .eq("institution_id", institution_id);
+
+      courses = data;
+      error = adminError;
+    } else {
+      return res.status(403).json({ error: "Unauthorized role" });
+    }
+
+    if (error) return res.status(500).json({ error: error.message });
+
+    res.json(courses);
+  } catch (err) {
+    console.error("getCourses error:", err);
+    res.status(500).json({ error: "Server error" });
+  }
 };

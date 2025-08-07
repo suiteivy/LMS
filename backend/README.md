@@ -139,15 +139,25 @@ Authorization: Bearer <JWT>
 - **401** – Invalid token
 - **500** – Error
 
-### 🔐 List Courses (`GET /courses`)
+### 🔐 List Courses (`GET /courses`) — Get courses based on user role
 
-**Headers:**
+**Behavior:**
 
+- **Admin**: Returns all institution courses.
+- **Teacher**: Returns only courses where they are the instructor.
+- **Student**: Returns only enrolled courses (linked via grades).
+
+**Example Response:**
+
+```json
+[
+  {
+    "id": "course-123",
+    "name": "Biology 101",
+    "teacher_id": "user-456"
+  }
+]
 ```
-Authorization: Bearer <JWT>
-```
-
-**Response (200):** Array of courses for the authenticated user's institution
 
 ---
 
