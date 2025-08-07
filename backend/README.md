@@ -159,6 +159,22 @@ Authorization: Bearer <JWT>
 ]
 ```
 
+<!-- get course by id -->
+
+#### 🔐 List Courses (`GET /courses/:id`) — Get courses by id based on user role
+
+**Example Response:**
+
+```json
+[
+  {
+    "id": "course-123",
+    "name": "Biology 101",
+    "teacher_id": "user-456"
+  }
+]
+```
+
 ---
 
 ## 🛡️ Middleware & Security

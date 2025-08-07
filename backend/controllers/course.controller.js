@@ -41,7 +41,6 @@ exports.createCourse = async (req, res) => {
 
 exports.getCourses = async (req, res) => {
   const { institution_id, user, userRole } = req;
-  console.log("getCourses called with:", { institution_id, user, userRole });
 
   try {
     let courses;
@@ -72,7 +71,7 @@ exports.getCourses = async (req, res) => {
       const { data, error: teacherError } = await supabase
         .from("courses")
         .select("*")
-        .eq("teacher_id", userId)
+        .eq("teacher_id", user.id)
         .eq("institution_id", institution_id);
 
       courses = data;
@@ -94,6 +93,38 @@ exports.getCourses = async (req, res) => {
     res.json(courses);
   } catch (err) {
     console.error("getCourses error:", err);
+    res.status(500).json({ error: "Server error" });
+  }
+};
+
+// getCourseById
+exports.getCourseById = async (req, res) => {
+  const { id } = req.params;
+  const { userRole, institution_id } = req;
+
+  try {
+    // Fetch course details
+    const { data: course, error: courseError } = await supabase
+      .from("courses")
+      .select("*")
+      .eq("id", id)
+      .eq("institution_id", institution_id)
+      .single();
+
+    if (courseError) return res.status(404).json({ error: "Course not found" });
+
+    // Role-based access control
+    if (
+      (userRole === "student" && !course.students?.includes(req.user.id)) ||
+      (userRole === "teacher" && course.teacher_id !== req.user.id) ||
+      (userRole !== "admin" && userRole !== "teacher" && userRole !== "student")
+    ) {
+      return res.status(403).json({ error: "Unauthorized access to course" });
+    }
+
+    res.json(course);
+  } catch (err) {
+    console.error("getCourseById error:", err);
     res.status(500).json({ error: "Server error" });
   }
 };
