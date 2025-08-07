@@ -5,9 +5,10 @@ import { useSchool } from '@/contexts/SchoolContext';
 import { useSession } from 'next-auth/react';
 import { Formik, Form, Field, ErrorMessage } from 'formik';
 import * as Yup from 'yup';
-import { fetchTeacherData, createAssignment } from '@/services/TeacherService';
-import LoadingSpinner from '@/components/ui/LoadingSpinner';
-import ErrorDisplay from '@/components/ui/ErrorDisplay';
+import { fetchTeacherData, createAssignment } from './services/TeacherService'; 
+import LoadingSpinner from '@/components/LoadingSpinner';
+import ErrorDisplay from '@/components/ErrorDisplay';
+import '@/styles/teacherDashboard.css';
 import { toast } from 'react-hot-toast';
 
 type Assignment = {
