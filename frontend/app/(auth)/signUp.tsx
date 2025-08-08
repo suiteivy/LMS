@@ -127,7 +127,7 @@ export default function App() {
       <SafeAreaView className="flex-1 bg-[#F1FFF8] font-sans">
         <View className="flex-1 p-10">
           <View className="flex-row justify-between mb-5 mt-3">
-            <TouchableOpacity onPress={() => router.goBack()}>
+            <TouchableOpacity onPress={() => router.push("/")}>
               <Ionicons name="arrow-back" size={25} color="black" />
             </TouchableOpacity>
           </View>
