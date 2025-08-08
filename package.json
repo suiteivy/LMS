@@ -6,15 +6,22 @@
     "start": "expo start"
   },
   "dependencies": {
+    "@react-navigation/native": "^7.1.16",
+    "@react-navigation/native-stack": "^7.3.23",
     "expo": "^53.0.20",
+    "formik": "^2.4.6",
     "gsap": "^3.13.0",
     "nativewind": "^4.1.23",
+    "next-auth": "^4.24.11",
+    "prisma": "^6.13.0",
     "react": "^19.1.1",
+    "react-hot-toast": "^2.5.2",
     "react-native": "^0.80.2",
     "react-native-gesture-handler": "~2.24.0",
     "react-native-reanimated": "~3.17.4",
     "react-native-safe-area-context": "5.4.0",
-    "react-native-screens": "~4.11.1"
+    "react-native-screens": "~4.11.1",
+    "yup": "^1.7.0"
   },
   "devDependencies": {
     "@react-native-community/cli": "^13.0.0",
