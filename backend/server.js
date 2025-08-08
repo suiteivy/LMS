@@ -40,7 +40,7 @@ app.use("/api/institutions", institutionRoutes);
 
 // health check
 app.get("/", (req, res) => {
-  res.send("Hello from LMS API🚀!");
+  res.status(200).json({ message: "LMS API is running" });
 });
 
 // error handling
