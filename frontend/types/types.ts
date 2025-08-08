@@ -163,6 +163,35 @@ export interface Lesson {
 }
 
 
+export interface StatCardProps {
+  title: string;
+  value: string;
+  icon: keyof typeof Ionicons.glyphMap;
+  change: string;
+}
+
+export interface Courses {
+  id: number;
+  title: string;
+  students: number;
+  completion: number;
+  revenue: string;
+  status: 'active' | 'draft';
+  lastUpdated: string;
+}
+
+export interface Activity {
+  type: 'enrollment' | 'completion' | 'question' | 'review';
+  message: string;
+  time: string;
+}
+
+export interface Event {
+  title: string;
+  date: string;
+  type: 'live' | 'deadline' | 'meeting';
+}
+
 export type StatsClickHandler = (stat: StatsData) => void;
 export type UserClickHandler = (user: User) => void;
 export type TableRowClickHandler = (row: TableData) => void;

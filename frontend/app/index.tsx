@@ -38,7 +38,7 @@ export default function Index() {
                 <Text>Admin</Text>
               </View>
             </TouchableOpacity>
-            <TouchableOpacity onPress={() => router.push("/teacher")}>
+            <TouchableOpacity onPress={() => router.push("/(teacher)")}>
               <View className="items-center p-4 ">
                 <UserCheck size={100} color="#1ABC9C" />
                 <Text>Teacher</Text>
