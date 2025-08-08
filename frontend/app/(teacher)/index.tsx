@@ -15,7 +15,7 @@ import { ActivityItem } from "./element/ActivityItem";
 import { EventItem } from "./element/EventItem";
 import { CourseCard } from "./element/CourseCard";
 
-// Type Definitions
+// Types Definitions
 type ActivityType = "enrollment" | "completion" | "question" | "review";
 type EventType = "live" | "deadline" | "meeting";
 
