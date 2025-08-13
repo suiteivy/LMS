@@ -23,10 +23,10 @@ async function authMiddleware(req, res, next) {
   // Add user info to request object
   req.user = {
     ...profile,
-    id: profile.id // Ensure ID is available for filtering
+    id: profile.id, // Ensure ID is available for filtering
   };
   req.institution_id = profile.institution_id;
-  // req.userId = user.id;
+  req.userId = user.id;
   req.userRole = profile.role;
 
   next();

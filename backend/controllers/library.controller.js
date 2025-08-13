@@ -8,7 +8,7 @@ const FEE_THRESHOLD = 0.5; // 50% required
 async function checkFeeThreshold(userId, institutionId) {
   // This function assumes there is a fees/payments setup.
   // Example approach: sum payments and sum invoice/fees for user and compute ratio.
-  // If no fees table yet, return true (skip check) or integrate with your bursary module.
+  // If no fees table yet, return true (skip check) or integrate with bursary module.
 
   // Try to query a 'fees' or 'payments' table if exists:
   try {
@@ -101,7 +101,7 @@ exports.listBooks = async (req, res) => {
 };
 
 exports.borrowBook = async (req, res) => {
-  const userId = req.userId;
+  const userId = req.user.id;
   const { userRole, institution_id } = req;
   if (userRole !== "student")
     return res.status(403).json({ error: "Only students can borrow" });
@@ -155,7 +155,7 @@ exports.borrowBook = async (req, res) => {
     const feeCheck = await checkFeeThreshold(userId, institution_id);
     if (!feeCheck.ok) {
       // if reason is fees_missing or payments table missing, choose policy:
-      // allow for now or block. We'll block if we can compute ratio and ratio < threshold
+      // Block if compute  ratio < threshold
       if (
         feeCheck.reason === "fees_missing" ||
         feeCheck.reason === "payments_table_missing"
@@ -202,7 +202,7 @@ exports.borrowBook = async (req, res) => {
 };
 
 exports.returnBook = async (req, res) => {
-  const userId = req.userId;
+  const userId = req.user.id;
   const { userRole, institution_id } = req;
   const { borrow_id } = req.body;
   if (!borrow_id) return res.status(400).json({ error: "borrow_id required" });
@@ -245,7 +245,7 @@ exports.returnBook = async (req, res) => {
 exports.borrowHistory = async (req, res) => {
   const { userRole, institution_id } = req;
   const studentId = req.params.studentId;
-  const requesterId = req.userId;
+  const requesterId = req.user.id;
 
   // admin or the user themself only
   if (userRole !== "admin" && requesterId !== studentId) {
