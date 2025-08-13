@@ -4,7 +4,7 @@ const dotenv = require("dotenv");
 const authRoutes = require("./routes/auth.route");
 const courseRoutes = require("./routes/courses.route");
 const institutionRoutes = require("./routes/institution.route");
-const libraryRoutes = require("./routes/library.routes");
+const libraryRoutes = require("./routes/library.route");
 const morgan = require("morgan");
 
 const app = express();
