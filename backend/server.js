@@ -4,6 +4,7 @@ const dotenv = require("dotenv");
 const authRoutes = require("./routes/auth.route");
 const courseRoutes = require("./routes/courses.route");
 const institutionRoutes = require("./routes/institution.route");
+const libraryRoutes = require("./routes/library.routes");
 const morgan = require("morgan");
 
 const app = express();
@@ -37,6 +38,7 @@ app.use((req, res, next) => {
 app.use("/api/auth", authRoutes);
 app.use("/api/courses", courseRoutes);
 app.use("/api/institutions", institutionRoutes);
+app.use("/api/library", libraryRoutes);
 
 // health check
 app.get("/", (req, res) => {
