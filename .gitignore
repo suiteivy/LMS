@@ -21,6 +21,7 @@ ios/
 .env.local
 .env.*.local
 
+
 # Supabase
 .supabase/
 
