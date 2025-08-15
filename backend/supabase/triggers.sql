@@ -1,25 +1,68 @@
--- Trigger function: decrement available_quantity after borrow insert
-create or replace function public._decrement_book_available()
+-- Function: validate and decrement available_quantity
+create or replace function public._validate_and_decrement_book()
 returns trigger language plpgsql as $$
+declare
+  unpaid_ratio numeric;
+  max_borrow int := 3; -- can be made configurable from 'config' table
+  current_borrow_count int;
+  overdue_count int;
 begin
-  -- Only decrement on new borrowed row when not returned
+  -- Check if book is available
+  if (select available_quantity from public.books where id = NEW.book_id) <= 0 then
+    raise exception 'Book not available';
+  end if;
+
+  -- Payment threshold check (>= 50%)
+  select (amount_paid / total_fee) into unpaid_ratio
+  from public.fees
+  where student_id = NEW.student_id;
+
+  if unpaid_ratio < 0.5 then
+    raise exception 'Payment below required threshold (50%)';
+  end if;
+
+  -- Check current borrow count (only unreturned)
+  select count(*) into current_borrow_count
+  from public.borrowed_books
+  where student_id = NEW.student_id and returned_at is null;
+
+  if current_borrow_count >= max_borrow then
+    raise exception 'Borrow limit reached';
+  end if;
+
+  -- Check overdue
+  select count(*) into overdue_count
+  from public.borrowed_books
+  where student_id = NEW.student_id 
+    and returned_at is null 
+    and due_date < current_date;
+
+  if overdue_count > 0 then
+    raise exception 'Overdue books must be returned before borrowing again';
+  end if;
+
+  -- Passed all checks, decrement stock
   update public.books
   set available_quantity = available_quantity - 1
-  where id = NEW.book_id and available_quantity > 0;
+  where id = NEW.book_id;
+
   return NEW;
 end;
 $$;
 
+-- Attach to trigger
+drop trigger if exists trg_borrow_validate_decrement on public.borrowed_books;
+create trigger trg_borrow_validate_decrement
+before insert on public.borrowed_books
+for each row execute function public._validate_and_decrement_book();
 
 
-
--- Trigger function: increment available_quantity after return (when returned_at set)
+-- Increment stock on return
 create or replace function public._increment_book_available()
 returns trigger language plpgsql as $$
 begin
-  -- If returned_at set and previously null, increment
   if (TG_OP = 'UPDATE') then
-    if (NEW.returned_at is not null and (OLD.returned_at is null)) then
+    if (NEW.returned_at is not null and OLD.returned_at is null) then
       update public.books
       set available_quantity = available_quantity + 1
       where id = NEW.book_id;
@@ -29,12 +72,7 @@ begin
 end;
 $$;
 
--- Attach triggers
-drop trigger if exists trg_borrow_decrement on public.borrowed_books;
-create trigger trg_borrow_decrement
-after insert on public.borrowed_books
-for each row execute function public._decrement_book_available();
-
+-- Attach to trigger
 drop trigger if exists trg_borrow_increment on public.borrowed_books;
 create trigger trg_borrow_increment
 after update on public.borrowed_books
