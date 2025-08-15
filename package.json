@@ -18,6 +18,7 @@
   },
   "devDependencies": {
     "@react-native-community/cli": "^13.0.0",
-    "@types/react": "^19.1.9"
+    "@types/react": "^19.1.9",
+    "supabase": "^2.34.3"
   }
 }
