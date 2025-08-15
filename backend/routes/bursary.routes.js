@@ -1,31 +1,28 @@
-const express = require('express');
+const express = require("express");
 const router = express.Router();
-const { authMiddleware } = require('../middleware/auth.middleware');
-const { postFeePayment } = require('../controllers/bursaryController');
+const { authMiddleware } = require("../middleware/auth.middleware");
+const { postFeePayment } = require("../controllers/bursaryController");
 
 // backend/routes/bursary.routes.js
-import express from 'express';
+import express from "express";
 import {
   recordFeePayment,
   getStudentFeeStatus,
   getTeacherEarnings,
   recordTeacherPayment,
-} from '../controllers/bursary.controller.js';
-
-const router = express.Router();
+} from "../controllers/bursary.controller.js";
 
 // Record payment
-router.post('/fees/payment', recordFeePayment);
-router.post('/fees/payment', authMiddleware, postFeePayment);
+router.post("/fees/payment", recordFeePayment);
+router.post("/fees/payment", authMiddleware, postFeePayment);
 
 // Get student's fee status & balance
-router.get('/fees/:studentId', getStudentFeeStatus);
+router.get("/fees/:studentId", getStudentFeeStatus);
 
 // Get teacher's earnings
-router.get('/teacher/earnings/:teacherId', getTeacherEarnings);
+router.get("/teacher/earnings/:teacherId", getTeacherEarnings);
 
 // Record teacher payment (admin only - add auth middleware if needed)
-router.post('/teacher/pay', recordTeacherPayment);
-
+router.post("/teacher/pay", recordTeacherPayment);
 
 export default router;

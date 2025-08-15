@@ -4,7 +4,7 @@ async function hasPaidAtLeastHalf(studentId, courseId) {
   // Get course fee
   const { data: course, error: courseError } = await supabase
     .from('courses')
-    .select('fee_amount')
+    .select('fee_amount') 
     .eq('id', courseId)
     .single();
 
