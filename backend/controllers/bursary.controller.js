@@ -1,14 +1,23 @@
 const supabase = require('../utils/supabaseClient');
+const express = require('express');
+const router = express.Router();
+const { authMiddleware } = require('../middleware/auth.middleware');
+const { postFeePayment } = require('../controllers/bursaryController');
+
 
 // POST /fees/payment
 async function recordFeePayment(req, res) {
   try {
-    const { amount } = req.body;
+    const { amount, course_id } = req.body;
     const studentId = req.user.id;
+
+    if (!amount || !course_id) {
+      return res.status(400).json({ error: 'Missing amount or course_id' });
+    }
 
     const { error } = await supabase
       .from('fees')
-      .insert([{ student_id: studentId, amount_paid: amount }]);
+      .insert([{ student_id: studentId, amount_paid: amount, course_id }]);
 
     if (error) throw error;
     res.json({ message: 'Payment recorded successfully' });
@@ -22,7 +31,6 @@ async function getStudentFeeStatus(req, res) {
   try {
     const { studentId } = req.params;
 
-    // Students can only view their own fee status unless admin
     if (req.userRole === 'student' && req.user.id !== studentId) {
       return res.status(403).json({ error: 'Cannot view another student’s fees' });
     }
@@ -44,7 +52,6 @@ async function getTeacherEarnings(req, res) {
   try {
     const { teacherId } = req.params;
 
-    // Teachers can only view their own earnings
     if (req.userRole === 'teacher' && req.user.id !== teacherId) {
       return res.status(403).json({ error: 'Cannot view another teacher’s earnings' });
     }
@@ -81,5 +88,8 @@ module.exports = {
   recordFeePayment,
   getStudentFeeStatus,
   getTeacherEarnings,
-  recordTeacherPayment
+  recordTeacherPayment,
 };
+
+
+

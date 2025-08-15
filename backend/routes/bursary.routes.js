@@ -1,3 +1,8 @@
+const express = require('express');
+const router = express.Router();
+const { authMiddleware } = require('../middleware/auth.middleware');
+const { postFeePayment } = require('../controllers/bursaryController');
+
 // backend/routes/bursary.routes.js
 import express from 'express';
 import {
@@ -11,6 +16,7 @@ const router = express.Router();
 
 // Record payment
 router.post('/fees/payment', recordFeePayment);
+router.post('/fees/payment', authMiddleware, postFeePayment);
 
 // Get student's fee status & balance
 router.get('/fees/:studentId', getStudentFeeStatus);
@@ -20,5 +26,6 @@ router.get('/teacher/earnings/:teacherId', getTeacherEarnings);
 
 // Record teacher payment (admin only - add auth middleware if needed)
 router.post('/teacher/pay', recordTeacherPayment);
+
 
 export default router;
