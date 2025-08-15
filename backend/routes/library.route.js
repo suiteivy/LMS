@@ -1,19 +1,30 @@
+// routes/libraryRoutes.js
 const express = require("express");
-const router = express.Router();
-const { authMiddleware } = require("../middleware/auth.middleware");
 
 const {
-  listBooks,
   addOrUpdateBook,
+  listBooks,
   borrowBook,
   returnBook,
-  borrowHistory,
+  history,
 } = require("../controllers/library.controller");
+const { authMiddleware } = require("../middleware/auth.middleware");
 
-router.post("/books", authMiddleware, addOrUpdateBook); // admin only
-router.get("/books", authMiddleware, listBooks); // all roles
-router.post("/borrow", authMiddleware, borrowBook); // student
-router.post("/return", authMiddleware, returnBook); // student/admin
-router.get("/history/:studentId", authMiddleware, borrowHistory); // admin or self
+const router = express.Router();
+
+// Admin: add/update book
+router.post("/books", authMiddleware, addOrUpdateBook);
+
+// Anyone (scoped by institution): list books
+router.get("/books", authMiddleware, listBooks);
+
+// Student: borrow
+router.post("/borrow", authMiddleware, borrowBook);
+
+// Student/Admin: return
+router.post("/return", authMiddleware, returnBook);
+
+// History: admin can pass :studentId, student sees own if omitted
+router.get("/history/:studentId", authMiddleware, history);
 
 module.exports = router;
