@@ -53,6 +53,45 @@ export const QuickActionsSection: React.FC<QuickActionsSectionProps> = ({
       }
     },
     {
+      id: 'payment-management',
+      title: 'Student Payments',
+      icon: 'card-outline',
+      color: {
+        bg: 'bg-white',
+        border: 'border-emerald-200',
+        active: 'active:bg-emerald-50',
+        iconBg: 'bg-emerald-100',
+        iconColor: '#059669',
+        textColor: 'text-emerald-800'
+      }
+    },
+    {
+      id: 'teacher-payouts',
+      title: 'Teacher Payouts',
+      icon: 'wallet-outline',
+      color: {
+        bg: 'bg-white',
+        border: 'border-indigo-200',
+        active: 'active:bg-indigo-50',
+        iconBg: 'bg-indigo-100',
+        iconColor: '#6366F1',
+        textColor: 'text-indigo-800'
+      }
+    },
+    {
+      id: 'fee-structure',
+      title: 'Fee Structure',
+      icon: 'calculator-outline',
+      color: {
+        bg: 'bg-white',
+        border: 'border-orange-200',
+        active: 'active:bg-orange-50',
+        iconBg: 'bg-orange-100',
+        iconColor: '#EA580C',
+        textColor: 'text-orange-800'
+      }
+    },
+    {
       id: 'analytics',
       title: 'Analytics',
       icon: 'analytics-outline',
@@ -97,7 +136,7 @@ export const QuickActionsSection: React.FC<QuickActionsSectionProps> = ({
           <View className={`w-12 h-12 ${action.color.iconBg} rounded-full items-center justify-center mb-2`}>
             <Ionicons name={action.icon as any} size={24} color={action.color.iconColor} />
           </View>
-          <Text className={`${action.color.textColor} font-medium text-sm`}>
+          <Text className={`${action.color.textColor} font-medium text-sm text-center`}>
             {action.title}
           </Text>
         </View>
