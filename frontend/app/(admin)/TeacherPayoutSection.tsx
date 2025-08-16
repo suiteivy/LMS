@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -8,23 +8,102 @@ import {
   Modal,
   ScrollView,
 } from 'react-native';
-import { TeacherPayout } from '.';
+
+// Define the TeacherPayout interface
+interface TeacherPayout {
+  id: string;
+  teacher_name: string;
+  amount: number;
+  hours_taught: number;
+  rate_per_hour: number;
+  period_start: string;
+  period_end: string;
+  status: 'pending' | 'processing' | 'paid';
+  payment_date?: string;
+}
 
 interface TeacherPayoutSectionProps {
-  payouts: TeacherPayout[];
-  loading: boolean;
+  payouts?: TeacherPayout[];
+  loading?: boolean;
   onPayoutProcess: (payoutId: string) => void;
   onRefresh?: () => void;
 }
 
+// Mock/Placeholder data for testing
+const PLACEHOLDER_PAYOUTS: TeacherPayout[] = [
+  {
+    id: '1',
+    teacher_name: 'Sarah Johnson',
+    amount: 25000,
+    hours_taught: 40,
+    rate_per_hour: 625,
+    period_start: '2024-07-01',
+    period_end: '2024-07-31',
+    status: 'pending',
+  },
+  {
+    id: '2',
+    teacher_name: 'Michael Chen',
+    amount: 30000,
+    hours_taught: 48,
+    rate_per_hour: 625,
+    period_start: '2024-07-01',
+    period_end: '2024-07-31',
+    status: 'processing',
+  },
+  {
+    id: '3',
+    teacher_name: 'Emma Davis',
+    amount: 18750,
+    hours_taught: 30,
+    rate_per_hour: 625,
+    period_start: '2024-06-01',
+    period_end: '2024-06-30',
+    status: 'paid',
+    payment_date: '2024-07-05',
+  },
+  {
+    id: '4',
+    teacher_name: 'James Wilson',
+    amount: 22500,
+    hours_taught: 36,
+    rate_per_hour: 625,
+    period_start: '2024-07-01',
+    period_end: '2024-07-31',
+    status: 'pending',
+  },
+  {
+    id: '5',
+    teacher_name: 'Lisa Rodriguez',
+    amount: 31250,
+    hours_taught: 50,
+    rate_per_hour: 625,
+    period_start: '2024-06-01',
+    period_end: '2024-06-30',
+    status: 'paid',
+    payment_date: '2024-07-03',
+  },
+];
+
 export const TeacherPayoutSection: React.FC<TeacherPayoutSectionProps> = ({
   payouts,
-  loading,
+  loading = false,
   onPayoutProcess,
   onRefresh,
 }) => {
   const [selectedPayout, setSelectedPayout] = useState<TeacherPayout | null>(null);
   const [showDetails, setShowDetails] = useState(false);
+  const [displayPayouts, setDisplayPayouts] = useState<TeacherPayout[]>([]);
+
+  // Use placeholder data if no payouts provided
+  useEffect(() => {
+    if (payouts && payouts.length > 0) {
+      setDisplayPayouts(payouts);
+    } else {
+      // Use placeholder data for demonstration
+      setDisplayPayouts(PLACEHOLDER_PAYOUTS);
+    }
+  }, [payouts]);
 
   const formatAmount = (amount: number) => {
     return new Intl.NumberFormat('en-KE', {
@@ -66,8 +145,14 @@ export const TeacherPayoutSection: React.FC<TeacherPayoutSectionProps> = ({
   };
 
   const calculateTotalPending = () => {
-    return payouts
+    return displayPayouts
       .filter(payout => payout.status === 'pending')
+      .reduce((total, payout) => total + payout.amount, 0);
+  };
+
+  const calculateTotalPaid = () => {
+    return displayPayouts
+      .filter(payout => payout.status === 'paid')
       .reduce((total, payout) => total + payout.amount, 0);
   };
 
@@ -75,6 +160,13 @@ export const TeacherPayoutSection: React.FC<TeacherPayoutSectionProps> = ({
     <TouchableOpacity
       onPress={() => handlePayoutAction(item)}
       className="bg-white rounded-lg p-4 mb-3 shadow-sm border border-gray-100"
+      style={{
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 3,
+        elevation: 3,
+      }}
     >
       <View className="flex-row justify-between items-start mb-2">
         <Text className="text-lg font-semibold text-gray-900">
@@ -132,30 +224,39 @@ export const TeacherPayoutSection: React.FC<TeacherPayoutSectionProps> = ({
     </TouchableOpacity>
   );
 
-  const pendingPayouts = payouts.filter(p => p.status === 'pending');
+  const pendingPayouts = displayPayouts.filter(p => p.status === 'pending');
+  const paidPayouts = displayPayouts.filter(p => p.status === 'paid');
   const totalPending = calculateTotalPending();
+  const totalPaid = calculateTotalPaid();
 
   return (
-    <View className="flex-1">
-      <View className="mb-4">
+    <View className="flex-1 bg-gray-50">
+          <Text className="text-2xl font-bold text-gray-800">Teachers Payouts</Text>
+      <View className="p-4">
         {/* Summary Cards */}
         <View className="flex-row space-x-3 mb-4">
-          <View className="flex-1 rounded-lg p-4" style={{ backgroundColor: '#F1FFF8' }}>
-            <Text className="text-sm font-medium" style={{ color: '#128C7E' }}>Total Pending</Text>
-            <Text className="text-2xl font-bold" style={{ color: '#16A085' }}>
+          <View className="flex-1 rounded-lg p-4" style={{ backgroundColor: '#FFF3CD' }}>
+            <Text className="text-sm font-medium" style={{ color: '#856404' }}>
+              Total Pending
+            </Text>
+            <Text className="text-2xl font-bold" style={{ color: '#B45309' }}>
               {formatAmount(totalPending)}
             </Text>
-            <Text className="text-sm" style={{ color: '#128C7E' }}>
+            <Text className="text-sm" style={{ color: '#856404' }}>
               {pendingPayouts.length} teacher{pendingPayouts.length !== 1 ? 's' : ''}
             </Text>
           </View>
           
-          <View className="flex-1 rounded-lg p-4" style={{ backgroundColor: '#A1EBE5' }}>
-            <Text className="text-sm font-medium" style={{ color: '#128C7E' }}>This Month</Text>
-            <Text className="text-2xl font-bold" style={{ color: '#16A085' }}>
-              {payouts.filter(p => p.status === 'paid').length}
+          <View className="flex-1 rounded-lg p-4" style={{ backgroundColor: '#D1F2EB' }}>
+            <Text className="text-sm font-medium" style={{ color: '#0C5460' }}>
+              Total Paid
             </Text>
-            <Text className="text-sm" style={{ color: '#128C7E' }}>Payouts processed</Text>
+            <Text className="text-2xl font-bold" style={{ color: '#16A085' }}>
+              {formatAmount(totalPaid)}
+            </Text>
+            <Text className="text-sm" style={{ color: '#0C5460' }}>
+              {paidPayouts.length} completed
+            </Text>
           </View>
         </View>
 
@@ -177,10 +278,17 @@ export const TeacherPayoutSection: React.FC<TeacherPayoutSectionProps> = ({
                 ]
               );
             }}
-            className="px-4 py-3 rounded-lg mb-4 shadow-sm"
-            style={{ backgroundColor: '#1ABC9C' }}
+            className="px-4 py-3 rounded-lg mb-4"
+            style={{ 
+              backgroundColor: '#1ABC9C',
+              shadowColor: '#000',
+              shadowOffset: { width: 0, height: 2 },
+              shadowOpacity: 0.15,
+              shadowRadius: 3,
+              elevation: 3,
+            }}
           >
-            <Text className="text-white font-semibold text-center">
+            <Text className="text-white font-semibold text-center text-base">
               Process All Pending Payouts ({formatAmount(totalPending)})
             </Text>
           </TouchableOpacity>
@@ -189,16 +297,18 @@ export const TeacherPayoutSection: React.FC<TeacherPayoutSectionProps> = ({
 
       {loading ? (
         <View className="flex-1 justify-center items-center">
-          <Text className="text-gray-500">Loading payouts...</Text>
+          <Text className="text-gray-500 text-lg">Loading payouts...</Text>
+          <Text className="text-gray-400 text-sm mt-2">Please wait...</Text>
         </View>
       ) : (
         <FlatList
-          data={payouts}
+          data={displayPayouts}
           renderItem={renderPayoutItem}
           keyExtractor={(item) => item.id}
           showsVerticalScrollIndicator={false}
           refreshing={loading}
           onRefresh={onRefresh}
+          contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 20 }}
           ListEmptyComponent={
             <View className="flex-1 justify-center items-center py-20">
               <Text className="text-gray-500 text-lg">No payouts found</Text>
@@ -206,6 +316,13 @@ export const TeacherPayoutSection: React.FC<TeacherPayoutSectionProps> = ({
                 Teacher payouts will appear here when hours are logged
               </Text>
             </View>
+          }
+          ListHeaderComponent={
+            displayPayouts.length > 0 ? (
+              <Text className="text-lg font-semibold text-gray-900 mb-3">
+                All Payouts ({displayPayouts.length})
+              </Text>
+            ) : null
           }
         />
       )}
@@ -219,7 +336,7 @@ export const TeacherPayoutSection: React.FC<TeacherPayoutSectionProps> = ({
         <View className="flex-1 bg-white">
           <View className="flex-row justify-between items-center p-4 border-b border-gray-200">
             <TouchableOpacity onPress={() => setShowDetails(false)}>
-              <Text className="text-blue-600 text-lg">Close</Text>
+              <Text className="text-blue-600 text-lg font-medium">Close</Text>
             </TouchableOpacity>
             <Text className="text-lg font-semibold">Payout Details</Text>
             <View className="w-12" />
@@ -237,41 +354,41 @@ export const TeacherPayoutSection: React.FC<TeacherPayoutSectionProps> = ({
                 </View>
 
                 <View className="space-y-3">
-                  <View className="flex-row justify-between py-2 border-b border-gray-100">
-                    <Text className="text-gray-600">Amount</Text>
+                  <View className="flex-row justify-between py-3 border-b border-gray-100">
+                    <Text className="text-gray-600 text-base">Amount</Text>
                     <Text className="text-xl font-bold text-blue-600">
                       {formatAmount(selectedPayout.amount)}
                     </Text>
                   </View>
 
-                  <View className="flex-row justify-between py-2 border-b border-gray-100">
-                    <Text className="text-gray-600">Hours Taught</Text>
-                    <Text className="font-medium">{selectedPayout.hours_taught} hours</Text>
+                  <View className="flex-row justify-between py-3 border-b border-gray-100">
+                    <Text className="text-gray-600 text-base">Hours Taught</Text>
+                    <Text className="font-medium text-base">{selectedPayout.hours_taught} hours</Text>
                   </View>
 
-                  <View className="flex-row justify-between py-2 border-b border-gray-100">
-                    <Text className="text-gray-600">Hourly Rate</Text>
-                    <Text className="font-medium">{formatAmount(selectedPayout.rate_per_hour)}</Text>
+                  <View className="flex-row justify-between py-3 border-b border-gray-100">
+                    <Text className="text-gray-600 text-base">Hourly Rate</Text>
+                    <Text className="font-medium text-base">{formatAmount(selectedPayout.rate_per_hour)}</Text>
                   </View>
 
-                  <View className="flex-row justify-between py-2 border-b border-gray-100">
-                    <Text className="text-gray-600">Period Start</Text>
-                    <Text className="font-medium">
+                  <View className="flex-row justify-between py-3 border-b border-gray-100">
+                    <Text className="text-gray-600 text-base">Period Start</Text>
+                    <Text className="font-medium text-base">
                       {new Date(selectedPayout.period_start).toLocaleDateString()}
                     </Text>
                   </View>
 
-                  <View className="flex-row justify-between py-2 border-b border-gray-100">
-                    <Text className="text-gray-600">Period End</Text>
-                    <Text className="font-medium">
+                  <View className="flex-row justify-between py-3 border-b border-gray-100">
+                    <Text className="text-gray-600 text-base">Period End</Text>
+                    <Text className="font-medium text-base">
                       {new Date(selectedPayout.period_end).toLocaleDateString()}
                     </Text>
                   </View>
 
                   {selectedPayout.payment_date && (
-                    <View className="flex-row justify-between py-2 border-b border-gray-100">
-                      <Text className="text-gray-600">Payment Date</Text>
-                      <Text className="font-medium">
+                    <View className="flex-row justify-between py-3 border-b border-gray-100">
+                      <Text className="text-gray-600 text-base">Payment Date</Text>
+                      <Text className="font-medium text-base">
                         {new Date(selectedPayout.payment_date).toLocaleDateString()}
                       </Text>
                     </View>
@@ -284,9 +401,17 @@ export const TeacherPayoutSection: React.FC<TeacherPayoutSectionProps> = ({
                       onPayoutProcess(selectedPayout.id);
                       setShowDetails(false);
                     }}
-                    className="bg-blue-600 px-4 py-3 rounded-lg mt-6"
+                    className="px-4 py-3 rounded-lg mt-6"
+                    style={{ 
+                      backgroundColor: '#3B82F6',
+                      shadowColor: '#000',
+                      shadowOffset: { width: 0, height: 2 },
+                      shadowOpacity: 0.15,
+                      shadowRadius: 3,
+                      elevation: 3,
+                    }}
                   >
-                    <Text className="text-white font-semibold text-center">
+                    <Text className="text-white font-semibold text-center text-base">
                       Process Payout
                     </Text>
                   </TouchableOpacity>
