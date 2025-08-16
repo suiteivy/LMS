@@ -8,8 +8,10 @@ import { StatsOverview } from "./elements/StatsOverview";
 import { RecentUsersSection } from "./elements/RecentUsersSection";
 import { UsersTableSection } from "./elements/UsersTableSection";
 import { QuickActionsSection } from "./elements/QuickActionsSection";
-import { FeeStructureSection, } from "./elements/ FeeStructureSection";
-import { TeacherPayoutSection } from "./elements/PaymentManagementSection";
+
+import { PaymentManagementSection } from "./PaymentManagementSection";
+import { TeacherPayoutSection } from "./TeacherPayoutSection";
+import { FeeStructureSection } from "./ FeeStructureSection";
 
 // interfaces for bursary features
 export interface Payment {
