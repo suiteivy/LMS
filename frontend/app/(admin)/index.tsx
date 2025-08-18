@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { View, ScrollView, Alert } from "react-native";
 import { supabase } from "@/libs/supabase";
 import { router } from "expo-router";
-import { BaseComponentProps, StatsData, User } from "@/types/types";
+import { AdminDashboardProps, FeeStructure, Payment } from "@/types/types";
 import { DashboardHeader } from "./elements/DashboardHeader";
 import { StatsOverview } from "./elements/StatsOverview";
 import { RecentUsersSection } from "./elements/RecentUsersSection";
@@ -13,69 +13,6 @@ import { PaymentManagementSection } from "./PaymentManagementSection";
 import { TeacherPayoutSection } from "./TeacherPayoutSection";
 import { FeeStructureSection } from "./ FeeStructureSection";
 
-// interfaces for bursary features
-export interface Payment {
-  id: string;
-  student_id: string;
-  student_name: string;
-  amount: number;
-  payment_date: string;
-  payment_method: 'cash' | 'bank_transfer' | 'mobile_money';
-  status: 'pending' | 'completed' | 'failed';
-  reference_number?: string;
-  notes?: string;
-}
-
-export interface TeacherPayout {
-  id: string;
-  teacher_id: string;
-  teacher_name: string;
-  amount: number;
-  hours_taught: number;
-  rate_per_hour: number;
-  period_start: string;
-  period_end: string;
-  status: 'pending' | 'paid' | 'processing';
-  payment_date?: string;
-}
-
-export interface FeeStructure {
-  id: string;
-  course_id: string;
-  course_name: string;
-  base_fee: number;
-  registration_fee: number;
-  material_fee: number;
-  teacher_rate: number;
-  bursary_percentage: number;
-  effective_date: string;
-  is_active: boolean;
-}
-
-interface AdminDashboardProps extends BaseComponentProps {
-  statsData?: StatsData[];
-  recentUsers?: User[];
-  allUsers?: User[];
-  payments?: Payment[];
-  teacherPayouts?: TeacherPayout[];
-  feeStructures?: FeeStructure[];
-  statsLoading?: boolean;
-  usersLoading?: boolean;
-  tableLoading?: boolean;
-  paymentsLoading?: boolean;
-  payoutsLoading?: boolean;
-  feeStructuresLoading?: boolean;
-  onStatsPress?: (stat: StatsData) => void;
-  onUserPress?: (user: User) => void;
-  onViewAllUsersPress?: () => void;
-  onRefresh?: () => void;
-  showRecentUsers?: boolean;
-  showUsersTable?: boolean;
-  showPaymentManagement?: boolean;
-  showTeacherPayouts?: boolean;
-  showFeeStructure?: boolean;
-  maxRecentUsers?: number;
-}
 
 export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   statsData = [],
@@ -121,6 +58,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         break;
       case "add-course":
         router.push("/(admin)/CreateCourse");
+        break;
+        case "library":
+        router.push("/(admin)/LibraryAction");
         break;
       case "analytics":
         router.push("/(admin)/analytics");
