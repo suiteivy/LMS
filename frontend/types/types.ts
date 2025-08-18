@@ -258,6 +258,41 @@ export interface BorrowedBook {
   status: "borrowed" | "overdue" | "returned"; // borrowing state
 }
 
+
+export interface Book {
+  id: string;
+  title: string;
+  author: string;
+  isbn: string;
+  category: string;
+  quantity: number;
+  available: number;
+}
+
+export interface BorrowedBook {
+  id: string;
+  bookTitle: string;
+  author: string;
+  isbn: string;
+  borrowerName: string;
+  borrowerEmail: string;
+  borrowDate: Date;
+  dueDate: Date;
+  status: 'borrowed' | 'overdue' | 'returned';
+}
+
+export interface UserRoles {
+  id: string;
+  name: string;
+  description: string;
+  maxBooks: number;
+  borrowDuration: number;
+  canRenew: boolean;
+  maxRenewals: number;
+  finePerDay: number;
+  isActive: boolean;
+}
+
 // Props for the BorrowedBooksOverview component
 export interface BorrowedBooksOverviewProps {
   borrowedBooks?: BorrowedBook[];
