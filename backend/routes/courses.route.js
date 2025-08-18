@@ -27,4 +27,9 @@ router.get("/:id", authMiddleware, getCourseById);
 // Enroll in a course (requires authentication)
 router.post("/enroll", authMiddleware, enrollInCourse);
 
+
+const { enrollStudentInCourse } = require('../controllers/course.controller');
+router.post('/enroll', authMiddleware, enrollStudentInCourse);
+
+
 module.exports = router;
