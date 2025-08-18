@@ -260,7 +260,23 @@ export interface BorrowedBook {
   status: "borrowed" | "overdue" | "returned";
 }
 
-
+export interface BorrowedBooks {
+  id: string;
+  bookTitle: string;
+  author: string;
+  isbn: string;
+  borrowerName: string;
+  borrowerEmail: string;
+  borrowerPhone?: string;
+  borrowerId: string;
+  borrowDate: Date;
+  dueDate: Date;
+  returnDate?: Date;
+  status: "borrowed" | "overdue" | "returned";
+  fineAmount?: number;
+  renewalCount?: number;
+  maxRenewals?: number;
+}
 export interface Book {
   id: string;
   title: string;
@@ -280,7 +296,7 @@ export interface BorrowedBook {
   borrowerEmail: string;
   borrowDate: Date;
   dueDate: Date;
-  status: 'borrowed' | 'overdue' | 'returned';
+  status: "borrowed" | "overdue" | "returned";
 }
 
 export interface UserRoles {
