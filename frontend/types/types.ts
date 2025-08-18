@@ -251,11 +251,13 @@ export interface BorrowedBook {
   bookTitle: string;
   author: string;
   isbn: string;
+  borrowerId: string;
   borrowerName: string;
   borrowerEmail: string;
   borrowDate: Date;
   dueDate: Date;
-  status: "borrowed" | "overdue" | "returned"; // borrowing state
+  returnDate?: Date;
+  status: "borrowed" | "overdue" | "returned";
 }
 
 
