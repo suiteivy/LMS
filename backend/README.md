@@ -177,6 +177,147 @@ Authorization: Bearer <JWT>
 
 ---
 
+---
+
+## 📚 LMS Backend API
+
+### 🔐 Add Book (`POST /books`)
+
+**Headers:**
+
+```
+Authorization: Bearer <JWT>
+```
+
+**Body (JSON):**
+
+```json
+{
+  "title": "Clean Code",
+  "author": "Robert C. Martin",
+  "isbn": "9780132350884",
+  "total_quantity": 5,
+  "institution_id": "UUID_OF_INSTITUTION"
+}
+```
+
+**Responses:**
+
+- **201** – Success, Ok
+- **400** – Missing fields
+- **401** – Invalid token
+- **403** - Admin only
+- **500** – Error
+
+### List Books (GET /books)
+
+**Headers:**
+
+```
+Authorization: Bearer <JWT>
+```
+
+**Body (JSON):**
+
+```json
+[
+  {
+    "id": "uuid",
+    "title": "Clean Code",
+    "author": "Robert C. Martin",
+    "isbn": "9780132350884",
+    "total_quantity": 5,
+    "available_quantity": 5,
+    "institution_id": "uuid",
+    "created_at": "timestamp"
+  }
+]
+```
+
+### 🔐 Borrow Book (POST /borrow/:bookId)
+
+**Headers:**
+
+```
+Authorization: Bearer <JWT>
+```
+
+**Body (JSON):**
+
+```json
+{
+  "due_date": "2025-09-01"
+}
+```
+
+**Responses:**
+
+- **201** – Borrow record created (stock decremented by trigger)
+
+- **400** – Book unavailable / borrow limit reached / overdue books exist / unpaid fees < 50%
+
+- **401** – Unauthorized
+
+### 🔐 Return Book (PUT /borrow/:borrowId/return)
+
+**Headers:**
+
+```
+Authorization: Bearer <JWT>
+```
+
+**Body (JSON):**
+
+```json
+{
+  "returned_at": "2025-08-20"
+}
+```
+
+**Responses:**
+
+- **201** – Book returned successfully (stock incremented by trigger)
+
+- **400** – Invalid borrow record
+
+- **401** – Unauthorized
+
+### 🔐 Borrowing History (GET /borrow/history)
+
+**Headers:**
+
+```
+Authorization: Bearer <JWT>
+```
+
+**Body (JSON):**
+
+```json
+[
+  {
+    "id": "uuid",
+    "book": {
+      "title": "Clean Code",
+      "author": "Robert C. Martin"
+    },
+    "borrowed_at": "2025-08-01",
+    "due_date": "2025-09-01",
+    "returned_at": null,
+    "status": "borrowed"
+  }
+]
+```
+
+**Responses:**
+
+- **200** – Success
+
+- **400** – Bad request
+
+- **401** – Unauthorized
+
+---
+
 ## 🛡️ Middleware & Security
 
 - **Auth Middleware (`authMiddleware`)** verifies JWT and sets `req.user`, `req.userRole`, and `req.institution_id`.
