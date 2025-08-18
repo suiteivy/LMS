@@ -5,7 +5,7 @@ const authRoutes = require("./routes/auth.route");
 const courseRoutes = require("./routes/courses.route");
 const institutionRoutes = require("./routes/institution.route");
 const libraryRoutes = require("./routes/library.route");
-const bursaryRoutes=require("./routes/bursary.route")
+const bursaryRoutes = require("./routes/bursary.route");
 const morgan = require("morgan");
 
 const app = express();
@@ -24,6 +24,7 @@ app.use((req, res, next) => {
     "http://localhost:3000",
     "https://your-production-url.com",
     "http://localhost:5173",
+    "*",
   ]);
   res.header(
     "Access-Control-Allow-Headers",
