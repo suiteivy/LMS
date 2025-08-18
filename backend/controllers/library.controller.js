@@ -202,7 +202,7 @@ exports.borrowBook = async (req, res) => {
       .eq("institution_id", institution_id)
       .single();
     if (bookErr || !book)
-      return res.status(404).json({ error: "Book not found" });
+      return res.status(404).json({ error: "Book not found: " + bookErr });
     if (book.available_quantity <= 0)
       return res.status(400).json({ error: "Book out of stock" });
 
@@ -305,7 +305,7 @@ exports.returnBook = async (req, res) => {
     if (rowErr || !row) {
       return res
         .status(404)
-        .json({ error: "Active borrow not found" + rowErr });
+        .json({ error: "Active borrow not found: " + rowErr?.message });
     }
 
     // Mark as returned

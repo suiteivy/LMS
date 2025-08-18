@@ -3,7 +3,7 @@ const supabase = require("../utils/supabaseClient");
 exports.createCourse = async (req, res) => {
   try {
     const { title, description } = req.body;
-    const teacher_id = req.user.id;
+    const teacher_id = req.req.userId;
     const institution_id = req.institution_id;
 
     if (req.userRole !== "teacher" && req.userRole !== "admin") {
@@ -40,7 +40,7 @@ exports.createCourse = async (req, res) => {
 // };
 
 exports.getCourses = async (req, res) => {
-  const { institution_id, user, userRole } = req;
+  const { institution_id,userRole } = req;
 
   try {
     let courses;
@@ -51,7 +51,7 @@ exports.getCourses = async (req, res) => {
       const { data: gradeRows, error: gradeError } = await supabase
         .from("grades")
         .select("course_id")
-        .eq("student_id", user.id);
+        .eq("student_id", req.userId);
 
       if (gradeError)
         return res.status(500).json({ error: gradeError.message });
@@ -71,7 +71,7 @@ exports.getCourses = async (req, res) => {
       const { data, error: teacherError } = await supabase
         .from("courses")
         .select("*")
-        .eq("teacher_id", user.id)
+        .eq("teacher_id", req.userId)
         .eq("institution_id", institution_id);
 
       courses = data;
@@ -115,8 +115,8 @@ exports.getCourseById = async (req, res) => {
 
     // Role-based access control
     if (
-      (userRole === "student" && !course.students?.includes(req.user.id)) ||
-      (userRole === "teacher" && course.teacher_id !== req.user.id) ||
+      (userRole === "student" && !course.students?.includes(req.req.userId)) ||
+      (userRole === "teacher" && course.teacher_id !== req.req.userId) ||
       (userRole !== "admin" && userRole !== "teacher" && userRole !== "student")
     ) {
       return res.status(403).json({ error: "Unauthorized access to course" });
