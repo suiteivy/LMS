@@ -1,4 +1,6 @@
 const supabase = require("../utils/supabaseClient");
+const { hasPaidAtLeastHalf } = require("../utils/feeUtils");
+
 
 exports.createCourse = async (req, res) => {
   try {
@@ -24,6 +26,39 @@ exports.createCourse = async (req, res) => {
     res.status(201).json({ message: "Course created", data });
   } catch (err) {
     console.error("createCourse error:", err);
+    res.status(500).json({ error: "Server error" });
+  }
+};
+
+exports.enrollInCourse = async (req, res) => {
+  try {
+    const { course_id } = req.body;
+    const student_id = req.user.id;
+
+    // Check if the user is a student
+    if (req.userRole !== "student") {
+      return res.status(403).json({ error: "Only students can enroll in courses" });
+    }
+
+    // Check 50% fee threshold
+    const eligible = await hasPaidAtLeastHalf(student_id, course_id);
+
+    if (!eligible) {
+      return res.status(403).json({
+        error: "You must pay at least 50% of the course fee to enroll",
+      });
+    }
+
+    // Enroll the student
+    const { error } = await supabase
+      .from("grades")
+      .insert([{ student_id, course_id }]);
+
+    if (error) throw error;
+
+    res.status(200).json({ message: "Enrolled successfully" });
+  } catch (err) {
+    console.error("enrollInCourse error:", err);
     res.status(500).json({ error: "Server error" });
   }
 };
