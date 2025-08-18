@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState } from "react";
 import {
   View,
   Text,
@@ -7,60 +7,53 @@ import {
   ScrollView,
   Alert,
   Modal,
-} from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+} from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import { AddUpdateDeleteBooksFormProps, Book } from "@/types/types";
 
-interface Book {
-  id: string;
-  title: string;
-  author: string;
-  isbn: string;
-  category: string;
-  quantity: number;
-  available: number;
-}
-
-interface AddUpdateDeleteBooksFormProps {
-  books?: Book[];
-  onAddBook?: (book: Omit<Book, 'id'>) => void;
-  onUpdateBook?: (id: string, book: Partial<Book>) => void;
-  onDeleteBook?: (id: string) => void;
-}
-
-export const AddUpdateDeleteBooksForm: React.FC<AddUpdateDeleteBooksFormProps> = ({
-  books = [],
-  onAddBook,
-  onUpdateBook,
-  onDeleteBook,
-}) => {
+export const AddUpdateDeleteBooksForm: React.FC<
+  AddUpdateDeleteBooksFormProps
+> = ({ books = [], onAddBook, onUpdateBook, onDeleteBook }) => {
   const [modalVisible, setModalVisible] = useState(false);
+
+  // Tracks the book being edited (null if adding a new one)
   const [editingBook, setEditingBook] = useState<Book | null>(null);
+
+  // Controlled form state for book fields
   const [formData, setFormData] = useState({
-    title: '',
-    author: '',
-    isbn: '',
-    category: '',
-    quantity: '',
+    title: "",
+    author: "",
+    isbn: "",
+    category: "",
+    quantity: "",
   });
 
+  // Borrowed books state (separate from library books)
+  const [borrowedBooks, setBorrowedBooks] = useState<Book[]>([]);
+
+  // Reset form after submit/close
   const resetForm = () => {
     setFormData({
-      title: '',
-      author: '',
-      isbn: '',
-      category: '',
-      quantity: '',
+      title: "",
+      author: "",
+      isbn: "",
+      category: "",
+      quantity: "",
     });
     setEditingBook(null);
   };
 
+  // Handle form submission (add or update book)
   const handleSubmit = () => {
+    // Basic validation
     if (!formData.title || !formData.author || !formData.isbn) {
-      Alert.alert('Error', 'Please fill in all required fields');
+      Alert.alert("Error", "Please fill in all required fields");
       return;
     }
 
-    const bookData = {
+    // Prepare book object
+    const bookData: Book = {
+      id: editingBook ? editingBook.id : Date.now().toString(), // reuse id if editing
       title: formData.title,
       author: formData.author,
       isbn: formData.isbn,
@@ -70,15 +63,27 @@ export const AddUpdateDeleteBooksForm: React.FC<AddUpdateDeleteBooksFormProps> =
     };
 
     if (editingBook) {
+      // update existing
       onUpdateBook?.(editingBook.id, bookData);
+
+      // also update borrowedBooks if it exists there
+      setBorrowedBooks((prev) =>
+        prev.map((b) => (b.id === editingBook.id ? bookData : b))
+      );
     } else {
+      // add new book
       onAddBook?.(bookData);
+
+      // add to borrowedBooks
+      setBorrowedBooks((prev) => [...prev, bookData]);
     }
 
+    // reset modal + form
     resetForm();
     setModalVisible(false);
   };
 
+  // Prefill form when editing a book
   const handleEdit = (book: Book) => {
     setEditingBook(book);
     setFormData({
@@ -91,27 +96,34 @@ export const AddUpdateDeleteBooksForm: React.FC<AddUpdateDeleteBooksFormProps> =
     setModalVisible(true);
   };
 
+  // Delete a book from library (and borrowed list if exists)
   const handleDelete = (book: Book) => {
-    Alert.alert(
-      'Delete Book',
-      `Are you sure you want to delete "${book.title}"?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: () => onDeleteBook?.(book.id),
+    Alert.alert("Delete Book", `Delete "${book.title}"?`, [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Delete",
+        style: "destructive",
+        onPress: () => {
+          onDeleteBook?.(book.id);
+          setBorrowedBooks((prev) => prev.filter((b) => b.id !== book.id));
         },
-      ]
-    );
+      },
+    ]);
   };
 
-  const renderBookItem = (book: Book) => (
+  // Delete book only from borrowed list
+  const handleDeleteBorrowed = (bookId: string) => {
+    setBorrowedBooks((prev) => prev.filter((b) => b.id !== bookId));
+  };
+
+  // Render a single book card (used for both library & borrowed)
+  const renderBookItem = (book: Book, borrowed = false) => (
     <View
       key={book.id}
       className="bg-white rounded-xl p-4 mb-3 shadow-sm border border-teal-100"
     >
       <View className="flex-row justify-between items-start mb-2">
+        {/* Book info */}
         <View className="flex-1">
           <Text className="text-lg font-semibold text-slate-800 mb-1">
             {book.title}
@@ -127,16 +139,22 @@ export const AddUpdateDeleteBooksForm: React.FC<AddUpdateDeleteBooksFormProps> =
             </Text>
           </View>
         </View>
+
+        {/* Action buttons */}
         <View className="flex-row">
-          <TouchableOpacity
-            className="bg-teal-100 p-2 rounded-lg mr-2"
-            onPress={() => handleEdit(book)}
-          >
-            <Ionicons name="pencil" size={16} color="#128C7E" />
-          </TouchableOpacity>
+          {!borrowed && (
+            <TouchableOpacity
+              className="bg-teal-100 p-2 rounded-lg mr-2"
+              onPress={() => handleEdit(book)}
+            >
+              <Ionicons name="pencil" size={16} color="#128C7E" />
+            </TouchableOpacity>
+          )}
           <TouchableOpacity
             className="bg-red-100 p-2 rounded-lg"
-            onPress={() => handleDelete(book)}
+            onPress={() =>
+              borrowed ? handleDeleteBorrowed(book.id) : handleDelete(book)
+            }
           >
             <Ionicons name="trash" size={16} color="#EF4444" />
           </TouchableOpacity>
@@ -167,15 +185,31 @@ export const AddUpdateDeleteBooksForm: React.FC<AddUpdateDeleteBooksFormProps> =
 
       {/* Books List */}
       <ScrollView className="flex-1 p-4">
+        <Text className="text-lg font-semibold mb-3">Library Books</Text>
+
+        {/* If no books */}
         {books.length === 0 ? (
-          <View className="items-center justify-center py-12">
-            <Ionicons name="book-outline" size={64} color="#A1EBE5" />
+          <View className="items-center justify-center py-6">
+            <Ionicons name="book-outline" size={48} color="#A1EBE5" />
             <Text className="text-gray-500 text-center mt-4">
-              No books added yet. Add your first book to get started.
+              No books added yet.
             </Text>
           </View>
         ) : (
-          books.map(renderBookItem)
+          books.map((book) => renderBookItem(book))
+        )}
+
+        {/* Borrowed Books Section */}
+        <Text className="text-lg font-semibold mt-8 mb-3">Borrowed Books</Text>
+        {borrowedBooks.length === 0 ? (
+          <View className="items-center justify-center py-6">
+            <Ionicons name="library-outline" size={48} color="#A1EBE5" />
+            <Text className="text-gray-500 text-center mt-4">
+              No borrowed books yet.
+            </Text>
+          </View>
+        ) : (
+          borrowedBooks.map((book) => renderBookItem(book, true))
         )}
       </ScrollView>
 
@@ -186,10 +220,11 @@ export const AddUpdateDeleteBooksForm: React.FC<AddUpdateDeleteBooksFormProps> =
         presentationStyle="pageSheet"
       >
         <View className="flex-1 bg-white">
+          {/* Modal Header */}
           <View className="bg-teal-600 p-4 pt-12">
             <View className="flex-row justify-between items-center">
               <Text className="text-xl font-bold text-white">
-                {editingBook ? 'Edit Book' : 'Add New Book'}
+                {editingBook ? "Edit Book" : "Add New Book"}
               </Text>
               <TouchableOpacity
                 onPress={() => {
@@ -202,7 +237,9 @@ export const AddUpdateDeleteBooksForm: React.FC<AddUpdateDeleteBooksFormProps> =
             </View>
           </View>
 
+          {/* Modal Form */}
           <ScrollView className="flex-1 p-4">
+            {/* Title */}
             <View className="mb-4">
               <Text className="text-sm font-medium text-slate-700 mb-2">
                 Book Title *
@@ -210,11 +247,14 @@ export const AddUpdateDeleteBooksForm: React.FC<AddUpdateDeleteBooksFormProps> =
               <TextInput
                 className="bg-gray-50 border border-gray-200 rounded-lg p-3"
                 value={formData.title}
-                onChangeText={(text) => setFormData({ ...formData, title: text })}
+                onChangeText={(text) =>
+                  setFormData({ ...formData, title: text })
+                }
                 placeholder="Enter book title"
               />
             </View>
 
+            {/* Author */}
             <View className="mb-4">
               <Text className="text-sm font-medium text-slate-700 mb-2">
                 Author *
@@ -222,11 +262,14 @@ export const AddUpdateDeleteBooksForm: React.FC<AddUpdateDeleteBooksFormProps> =
               <TextInput
                 className="bg-gray-50 border border-gray-200 rounded-lg p-3"
                 value={formData.author}
-                onChangeText={(text) => setFormData({ ...formData, author: text })}
+                onChangeText={(text) =>
+                  setFormData({ ...formData, author: text })
+                }
                 placeholder="Enter author name"
               />
             </View>
 
+            {/* ISBN */}
             <View className="mb-4">
               <Text className="text-sm font-medium text-slate-700 mb-2">
                 ISBN *
@@ -234,11 +277,14 @@ export const AddUpdateDeleteBooksForm: React.FC<AddUpdateDeleteBooksFormProps> =
               <TextInput
                 className="bg-gray-50 border border-gray-200 rounded-lg p-3"
                 value={formData.isbn}
-                onChangeText={(text) => setFormData({ ...formData, isbn: text })}
+                onChangeText={(text) =>
+                  setFormData({ ...formData, isbn: text })
+                }
                 placeholder="Enter ISBN"
               />
             </View>
 
+            {/* Category */}
             <View className="mb-4">
               <Text className="text-sm font-medium text-slate-700 mb-2">
                 Category
@@ -246,11 +292,14 @@ export const AddUpdateDeleteBooksForm: React.FC<AddUpdateDeleteBooksFormProps> =
               <TextInput
                 className="bg-gray-50 border border-gray-200 rounded-lg p-3"
                 value={formData.category}
-                onChangeText={(text) => setFormData({ ...formData, category: text })}
+                onChangeText={(text) =>
+                  setFormData({ ...formData, category: text })
+                }
                 placeholder="Enter category (e.g., Fiction, Science)"
               />
             </View>
 
+            {/* Quantity */}
             <View className="mb-6">
               <Text className="text-sm font-medium text-slate-700 mb-2">
                 Quantity
@@ -258,18 +307,21 @@ export const AddUpdateDeleteBooksForm: React.FC<AddUpdateDeleteBooksFormProps> =
               <TextInput
                 className="bg-gray-50 border border-gray-200 rounded-lg p-3"
                 value={formData.quantity}
-                onChangeText={(text) => setFormData({ ...formData, quantity: text })}
+                onChangeText={(text) =>
+                  setFormData({ ...formData, quantity: text })
+                }
                 placeholder="Enter quantity"
                 keyboardType="numeric"
               />
             </View>
 
+            {/* Submit button */}
             <TouchableOpacity
               className="bg-teal-600 p-4 rounded-lg"
               onPress={handleSubmit}
             >
               <Text className="text-white text-center font-semibold">
-                {editingBook ? 'Update Book' : 'Add Book'}
+                {editingBook ? "Update Book" : "Add Book"}
               </Text>
             </TouchableOpacity>
           </ScrollView>
