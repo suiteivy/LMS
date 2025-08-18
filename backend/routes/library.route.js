@@ -19,10 +19,10 @@ router.post("/books", authMiddleware, addOrUpdateBook);
 router.get("/books", authMiddleware, listBooks);
 
 // Student: borrow
-router.post("/borrow", authMiddleware, borrowBook);
+router.post("/borrow/:bookId", authMiddleware, borrowBook);
 
 // Student/Admin: return
-router.post("/return", authMiddleware, returnBook);
+router.post("/return/:bookId", authMiddleware, returnBook);
 
 // History: admin can pass :studentId, student sees own if omitted
 router.get("/history/:studentId", authMiddleware, history);

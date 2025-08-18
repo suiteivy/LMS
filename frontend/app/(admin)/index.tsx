@@ -2,80 +2,15 @@ import React, { useState } from "react";
 import { View, ScrollView, Alert } from "react-native";
 import { supabase } from "@/libs/supabase";
 import { router } from "expo-router";
-import { BaseComponentProps, StatsData, User } from "@/types/types";
+import { AdminDashboardProps, FeeStructure, Payment } from "@/types/types";
 import { DashboardHeader } from "./elements/DashboardHeader";
 import { StatsOverview } from "./elements/StatsOverview";
 import { RecentUsersSection } from "./elements/RecentUsersSection";
 import { UsersTableSection } from "./elements/UsersTableSection";
 import { QuickActionsSection } from "./elements/QuickActionsSection";
-
-import { PaymentManagementSection } from "./PaymentManagementSection";
-import { TeacherPayoutSection } from "./TeacherPayoutSection";
-import { FeeStructureSection } from "./ FeeStructureSection";
-
-// interfaces for bursary features
-export interface Payment {
-  id: string;
-  student_id: string;
-  student_name: string;
-  amount: number;
-  payment_date: string;
-  payment_method: 'cash' | 'bank_transfer' | 'mobile_money';
-  status: 'pending' | 'completed' | 'failed';
-  reference_number?: string;
-  notes?: string;
-}
-
-export interface TeacherPayout {
-  id: string;
-  teacher_id: string;
-  teacher_name: string;
-  amount: number;
-  hours_taught: number;
-  rate_per_hour: number;
-  period_start: string;
-  period_end: string;
-  status: 'pending' | 'paid' | 'processing';
-  payment_date?: string;
-}
-
-export interface FeeStructure {
-  id: string;
-  course_id: string;
-  course_name: string;
-  base_fee: number;
-  registration_fee: number;
-  material_fee: number;
-  teacher_rate: number;
-  bursary_percentage: number;
-  effective_date: string;
-  is_active: boolean;
-}
-
-interface AdminDashboardProps extends BaseComponentProps {
-  statsData?: StatsData[];
-  recentUsers?: User[];
-  allUsers?: User[];
-  payments?: Payment[];
-  teacherPayouts?: TeacherPayout[];
-  feeStructures?: FeeStructure[];
-  statsLoading?: boolean;
-  usersLoading?: boolean;
-  tableLoading?: boolean;
-  paymentsLoading?: boolean;
-  payoutsLoading?: boolean;
-  feeStructuresLoading?: boolean;
-  onStatsPress?: (stat: StatsData) => void;
-  onUserPress?: (user: User) => void;
-  onViewAllUsersPress?: () => void;
-  onRefresh?: () => void;
-  showRecentUsers?: boolean;
-  showUsersTable?: boolean;
-  showPaymentManagement?: boolean;
-  showTeacherPayouts?: boolean;
-  showFeeStructure?: boolean;
-  maxRecentUsers?: number;
-}
+import { PaymentManagementSection } from "./Bursary/PaymentManagementSection";
+import { TeacherPayoutSection } from "./Bursary/TeacherPayoutSection";
+import { FeeStructureSection } from "./Bursary/ FeeStructureSection";
 
 export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   statsData = [],
@@ -103,7 +38,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   className = "",
   testID,
 }) => {
-  const [activeSection, setActiveSection] = useState<'overview' | 'payments' | 'payouts' | 'fees'>('overview');
+  const [activeSection, setActiveSection] = useState<
+    "overview" | "payments" | "payouts" | "fees"
+  >("overview");
 
   const handleLogout = async () => {
     const { error } = await supabase.auth.signOut();
@@ -122,6 +59,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       case "add-course":
         router.push("/(admin)/CreateCourse");
         break;
+      case "library":
+        router.push("/(admin)/library/LibraryAction");
+        break;
       case "analytics":
         router.push("/(admin)/analytics");
         break;
@@ -129,23 +69,26 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         router.push("/(admin)/settings");
         break;
       case "payment-management":
-        setActiveSection('payments');
+        setActiveSection("payments");
         break;
       case "teacher-payouts":
-        setActiveSection('payouts');
+        setActiveSection("payouts");
         break;
       case "fee-structure":
-        setActiveSection('fees');
+        setActiveSection("fees");
         break;
       default:
-        Alert.alert("Unknown Action", `No screen found for action: ${actionId}`);
+        Alert.alert(
+          "Unknown Action",
+          `No screen found for action: ${actionId}`
+        );
     }
   };
 
-  const handlePaymentSubmit = async (paymentData: Omit<Payment, 'id'>) => {
+  const handlePaymentSubmit = async (paymentData: Omit<Payment, "id">) => {
     try {
       const { data, error } = await supabase
-        .from('payments')
+        .from("payments")
         .insert([paymentData])
         .select();
 
@@ -161,12 +104,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const handlePayoutProcess = async (payoutId: string) => {
     try {
       const { error } = await supabase
-        .from('teacher_payouts')
-        .update({ 
-          status: 'processing',
-          payment_date: new Date().toISOString()
+        .from("teacher_payouts")
+        .update({
+          status: "processing",
+          payment_date: new Date().toISOString(),
         })
-        .eq('id', payoutId);
+        .eq("id", payoutId);
 
       if (error) throw error;
 
@@ -177,10 +120,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     }
   };
 
-  const handleFeeStructureUpdate = async (feeStructure: Partial<FeeStructure>) => {
+  const handleFeeStructureUpdate = async (
+    feeStructure: Partial<FeeStructure>
+  ) => {
     try {
       const { error } = await supabase
-        .from('fee_structures')
+        .from("fee_structures")
         .upsert([feeStructure])
         .select();
 
@@ -200,14 +145,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       showsVerticalScrollIndicator={false}
     >
       <View className="p-4">
-        <DashboardHeader 
-          onRefresh={onRefresh} 
+        <DashboardHeader
+          onRefresh={onRefresh}
           onLogout={handleLogout}
           activeSection={activeSection}
           onSectionChange={setActiveSection}
         />
 
-        {activeSection === 'overview' && (
+        {activeSection === "overview" && (
           <>
             <StatsOverview
               statsData={statsData}
@@ -237,7 +182,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           </>
         )}
 
-        {activeSection === 'payments' && showPaymentManagement && (
+        {activeSection === "payments" && showPaymentManagement && (
           <PaymentManagementSection
             payments={payments}
             loading={paymentsLoading}
@@ -246,7 +191,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           />
         )}
 
-        {activeSection === 'payouts' && showTeacherPayouts && (
+        {activeSection === "payouts" && showTeacherPayouts && (
           <TeacherPayoutSection
             payouts={teacherPayouts}
             loading={payoutsLoading}
@@ -255,7 +200,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           />
         )}
 
-{activeSection === 'fees' && showFeeStructure && (
+        {activeSection === "fees" && showFeeStructure && (
           <FeeStructureSection
             feeStructures={feeStructures}
             loading={feeStructuresLoading}

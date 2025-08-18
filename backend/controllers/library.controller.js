@@ -157,6 +157,7 @@ exports.addOrUpdateBook = async (req, res) => {
 exports.listBooks = async (req, res) => {
   try {
     const { institution_id } = req;
+    console.log("Listing books for institution:", institution_id);
     const includeUnavailable =
       (req.query.includeUnavailable || "").toString().toLowerCase() === "true";
 
@@ -183,19 +184,21 @@ exports.listBooks = async (req, res) => {
 exports.borrowBook = async (req, res) => {
   try {
     const { userRole, user, institution_id } = req;
-    const appUserId = req.user.id; // equals auth.users.id AND public.users.id in your setup
+    const appUserId = req.userId; // equals auth.users.id AND public.users.id in your setup
     if (!["student"].includes(userRole)) {
       return res.status(403).json({ error: "Students only." });
     }
 
-    const { book_id, days = 14 } = req.body;
-    if (!book_id) return res.status(400).json({ error: "book_id is required" });
+    const { bookId } = req.params;
+    console.log("Borrowing book:", bookId);
+    const { days = 14 } = req.body;
+    if (!bookId) return res.status(400).json({ error: "bookId is required" });
 
     // 1) Book must exist in same institution with stock
     const { data: book, error: bookErr } = await supabase
       .from("books")
       .select("*")
-      .eq("id", book_id)
+      .eq("id", bookId)
       .eq("institution_id", institution_id)
       .single();
     if (bookErr || !book)
@@ -241,7 +244,7 @@ exports.borrowBook = async (req, res) => {
       .from("borrowed_books")
       .insert([
         {
-          book_id,
+          book_id: bookId,
           user_id: appUserId,
           institution_id,
           due_date: dueDate.toISOString().slice(0, 10), // date only
@@ -253,14 +256,14 @@ exports.borrowBook = async (req, res) => {
     if (borrowErr) return res.status(500).json({ error: borrowErr.message });
 
     const { error: decErr } = await supabase.rpc("decrement_book_stock", {
-      p_book_id: book_id,
+      p_bookId: bookId,
     });
     // If you don't have RPC, do direct update:
     if (decErr) {
       await supabase
         .from("books")
         .update({ available_quantity: book.available_quantity - 1 })
-        .eq("id", book_id)
+        .eq("id", bookId)
         .eq("institution_id", institution_id);
     }
 
@@ -269,7 +272,7 @@ exports.borrowBook = async (req, res) => {
       .json({ message: "Borrowed", borrow: borrowRow, due_date: dueDate });
   } catch (e) {
     console.error("borrowBook error:", e);
-    return res.status(500).json({ error: "Server error" });
+    return res.status(500).json({ error: "Server error: " + e.message });
   }
 };
 
@@ -277,55 +280,42 @@ exports.borrowBook = async (req, res) => {
 exports.returnBook = async (req, res) => {
   try {
     const { userRole, institution_id } = req;
-    const appUserId = req.user.id;
+    const appUserId = req.userId;
+    const { bookId } = req.params;
 
-    const { borrow_id } = req.body;
-    if (!borrow_id)
-      return res.status(400).json({ error: "borrow_id is required" });
+    if (!bookId) return res.status(400).json({ error: "bookId is required" });
 
-    // Fetch borrow row
-    const { data: row, error: rowErr } = await supabase
+    // Fetch borrow row (student = their own, admin = any)
+    let query = supabase
       .from("borrowed_books")
       .select("*")
-      .eq("id", borrow_id)
+      .eq("book_id", bookId)
       .eq("institution_id", institution_id)
-      .single();
+      .is("returned_at", null);
 
-    if (rowErr || !row) return res.status(404).json({ error: "Not found" });
-    if (row.returned_at)
-      return res.status(400).json({ error: "Already returned" });
-
-    // Students can only return their own; admins can return any
-    if (userRole !== "admin" && row.user_id !== appUserId) {
-      return res.status(403).json({ error: "Not allowed" });
+    if (userRole !== "admin") {
+      query = query.eq("user_id", appUserId);
     }
 
-    // mark returned
+    const { data: row, error: rowErr } = await query
+      .order("borrowed_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (rowErr || !row) {
+      return res
+        .status(404)
+        .json({ error: "Active borrow not found" + rowErr });
+    }
+
+    // Mark as returned
     const nowIso = new Date().toISOString();
     const { error: updErr } = await supabase
       .from("borrowed_books")
       .update({ returned_at: nowIso, status: "returned" })
-      .eq("id", borrow_id)
+      .eq("id", row.id)
       .eq("institution_id", institution_id);
     if (updErr) return res.status(500).json({ error: updErr.message });
-
-    // increment stock
-    const { error: incErr } = await supabase.rpc("increment_book_stock", {
-      p_book_id: row.book_id,
-    });
-    if (incErr) {
-      // fallback direct update
-      await supabase
-        .rpc("safe_increment_book_stock", { p_book_id: row.book_id })
-        .catch(async () => {
-          // final fallback: naive increment
-          await supabase
-            .from("books")
-            .update({ available_quantity: (row.available_quantity || 0) + 1 })
-            .eq("id", row.book_id)
-            .eq("institution_id", institution_id);
-        });
-    }
 
     return res.json({ message: "Returned" });
   } catch (e) {
@@ -341,7 +331,7 @@ exports.history = async (req, res) => {
     const { studentId } = req.params;
 
     const targetUserId =
-      userRole === "admin" && studentId ? studentId : req.user.id;
+      userRole === "admin" && studentId ? studentId : req.userId;
 
     const { data, error } = await supabase
       .from("borrowed_books")
