@@ -1,3 +1,4 @@
+import { FeeStructure } from "@/types/types";
 import React, { useState } from "react";
 import {
   View,
@@ -10,7 +11,6 @@ import {
   Switch,
   ScrollView,
 } from "react-native";
-import { FeeStructure } from ".";
 
 interface FeeStructureSectionProps {
   feeStructures: FeeStructure[];

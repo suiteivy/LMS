@@ -10,7 +10,7 @@ import {
   ScrollView,
 } from "react-native";
 import { Picker } from "@react-native-picker/picker";
-import { Payment } from ".";
+import { Payment } from "@/types/types";
 
 interface PaymentManagementSectionProps {
   payments: Payment[];
