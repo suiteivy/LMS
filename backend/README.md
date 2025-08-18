@@ -181,7 +181,7 @@ Authorization: Bearer <JWT>
 
 ## 📚 LMS Backend API
 
-### 🔐 Add Book (`POST /books`)
+### 🔐 Add Book (`POST /library/books`)
 
 **Headers:**
 
@@ -209,7 +209,7 @@ Authorization: Bearer <JWT>
 - **403** - Admin only
 - **500** – Error
 
-### List Books (GET /books)
+### List Books (`GET /library/books`)
 
 **Headers:**
 
@@ -234,7 +234,7 @@ Authorization: Bearer <JWT>
 ]
 ```
 
-### 🔐 Borrow Book (POST /borrow/:bookId)
+### 🔐 Borrow Book (`POST /library/borrow/:bookId`)
 
 **Headers:**
 
@@ -258,7 +258,7 @@ Authorization: Bearer <JWT>
 
 - **401** – Unauthorized
 
-### 🔐 Return Book (PUT /borrow/:borrowId/return)
+### 🔐 Return Book (`POST /library/return/:borrowId`)
 
 **Headers:**
 
@@ -282,7 +282,7 @@ Authorization: Bearer <JWT>
 
 - **401** – Unauthorized
 
-### 🔐 Borrowing History (GET /borrow/history)
+### 🔐 Borrowing History (`GET /library/history:studentId`)
 
 **Headers:**
 

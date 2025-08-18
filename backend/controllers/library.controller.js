@@ -303,7 +303,9 @@ exports.returnBook = async (req, res) => {
       .maybeSingle();
 
     if (rowErr || !row) {
-      return res.status(404).json({ error: "Active borrow not found"+rowErr });
+      return res
+        .status(404)
+        .json({ error: "Active borrow not found" + rowErr });
     }
 
     // Mark as returned
@@ -315,25 +317,12 @@ exports.returnBook = async (req, res) => {
       .eq("institution_id", institution_id);
     if (updErr) return res.status(500).json({ error: updErr.message });
 
-    // Increment stock
-    // const { error: incErr } = await supabase.rpc("increment_book_stock", {
-    //   p_bookId: row.book_id,
-    // });
-    // if (incErr) {
-    //   await supabase
-    //     .from("books")
-    //     .update({ available_quantity: supabase.raw("available_quantity + 1") })
-    //     .eq("id", row.book_id)
-    //     .eq("institution_id", institution_id);
-    // }
-
     return res.json({ message: "Returned" });
   } catch (e) {
     console.error("returnBook error:", e);
     return res.status(500).json({ error: "Server error" });
   }
 };
-
 
 /** Borrowing history; admin can view anyone, student can view self */
 exports.history = async (req, res) => {
@@ -347,7 +336,7 @@ exports.history = async (req, res) => {
     const { data, error } = await supabase
       .from("borrowed_books")
       .select(
-        "id, bookId, borrowed_at, returned_at, due_date, status, books(title, author, isbn)"
+        "id, book_id, borrowed_at, returned_at, due_date, status, books(title, author, isbn)"
       )
       .eq("user_id", targetUserId)
       .eq("institution_id", institution_id)
