@@ -1,9 +1,11 @@
 const supabase = require("../utils/supabaseClient");
+const { hasPaidAtLeastHalf } = require("../utils/feeUtils");
 
+// CREATE COURSE
 exports.createCourse = async (req, res) => {
   try {
-    const { title, description } = req.body;
-    const teacher_id = req.req.userId;
+    const { title, description, fee_amount, teacher_id } = req.body;
+    let teacherId;
     const institution_id = req.institution_id;
 
     if (req.userRole !== "teacher" && req.userRole !== "admin") {
@@ -12,13 +14,28 @@ exports.createCourse = async (req, res) => {
         .json({ error: "Only teachers or admins can create courses" });
     }
 
-    if (!title || !teacher_id) {
+    if (req.userRole === "teacher") {
+      teacherId = req.userId;
+    }
+    if (req.userRole === "admin") {
+      teacherId = teacher_id;
+    }
+
+    if (!title || !teacherId || !fee_amount) {
       return res.status(400).json({ error: "Missing required fields" });
     }
 
     const { data, error } = await supabase
       .from("courses")
-      .insert([{ title, description, teacher_id, institution_id }]);
+      .insert([
+        {
+          title,
+          description,
+          fee_amount,
+          teacher_id: teacherId,
+          institution_id,
+        },
+      ]);
 
     if (error) return res.status(500).json({ error: error.message });
     res.status(201).json({ message: "Course created", data });
@@ -27,27 +44,49 @@ exports.createCourse = async (req, res) => {
     res.status(500).json({ error: "Server error" });
   }
 };
-// exports.getCourses = async (req, res) => {
-//   const { institution_id } = req;
 
-//   const { data, error } = await supabase
-//     .from("courses")
-//     .select("*")
-//     .eq("institution_id", institution_id);
+//  ENROLL STUDENT WITH 50% PAYMENT CHECK
+const enrollStudentInCourse = async (req, res) => {
+  try {
+    const { course_id } = req.body;
+    const student_id = req.user.id;
 
-//   if (error) return res.status(500).json({ error: error.message });
-//   res.json(data);
-// };
+    if (req.userRole !== "student") {
+      return res
+        .status(403)
+        .json({ error: "Only students can enroll in courses" });
+    }
 
+    const eligible = await hasPaidAtLeastHalf(student_id, course_id);
+
+    if (!eligible) {
+      return res.status(403).json({
+        error: "You must pay at least 50% of the course fee to enroll",
+      });
+    }
+
+    const { error } = await supabase
+      .from("grades")
+      .insert([{ student_id, course_id }]);
+
+    if (error) throw error;
+
+    res.status(200).json({ message: "Enrolled successfully" });
+  } catch (err) {
+    console.error("enrollStudentInCourse error:", err);
+    res.status(500).json({ error: "Server error" });
+  }
+};
+
+// GET COURSES
 exports.getCourses = async (req, res) => {
-  const { institution_id,userRole } = req;
+  const { institution_id, userRole } = req;
 
   try {
     let courses;
     let error;
 
     if (userRole === "student") {
-      // Step 1: Get course_ids for this student via grades table
       const { data: gradeRows, error: gradeError } = await supabase
         .from("grades")
         .select("course_id")
@@ -58,7 +97,6 @@ exports.getCourses = async (req, res) => {
 
       const courseIds = gradeRows.map((row) => row.course_id);
 
-      // Step 2: Get full course details from course IDs
       const { data, error: courseError } = await supabase
         .from("courses")
         .select("*")
@@ -97,13 +135,12 @@ exports.getCourses = async (req, res) => {
   }
 };
 
-// getCourseById
+// GET COURSE BY ID
 exports.getCourseById = async (req, res) => {
   const { id } = req.params;
   const { userRole, institution_id } = req;
 
   try {
-    // Fetch course details
     const { data: course, error: courseError } = await supabase
       .from("courses")
       .select("*")
@@ -113,7 +150,6 @@ exports.getCourseById = async (req, res) => {
 
     if (courseError) return res.status(404).json({ error: "Course not found" });
 
-    // Role-based access control
     if (
       (userRole === "student" && !course.students?.includes(req.req.userId)) ||
       (userRole === "teacher" && course.teacher_id !== req.req.userId) ||
@@ -127,4 +163,12 @@ exports.getCourseById = async (req, res) => {
     console.error("getCourseById error:", err);
     res.status(500).json({ error: "Server error" });
   }
+};
+
+//  EXPORT
+module.exports = {
+  createCourse,
+  getCourses,
+  getCourseById,
+  enrollStudentInCourse,
 };
