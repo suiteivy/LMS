@@ -4,21 +4,38 @@ const { hasPaidAtLeastHalf } = require("../utils/feeUtils");
 // CREATE COURSE
 exports.createCourse = async (req, res) => {
   try {
-    const { title, description, fee_amount } = req.body;
-    const teacher_id = req.user.id;
+    const { title, description, fee_amount, teacher_id } = req.body;
+    let teacherId;
     const institution_id = req.institution_id;
 
     if (req.userRole !== "teacher" && req.userRole !== "admin") {
-      return res.status(403).json({ error: "Only teachers or admins can create courses" });
+      return res
+        .status(403)
+        .json({ error: "Only teachers or admins can create courses" });
     }
 
-    if (!title || !teacher_id || !fee_amount) {
+    if (req.userRole === "teacher") {
+      teacherId = req.userId;
+    }
+    if (req.userRole === "admin") {
+      teacherId = teacher_id;
+    }
+
+    if (!title || !teacherId || !fee_amount) {
       return res.status(400).json({ error: "Missing required fields" });
     }
 
     const { data, error } = await supabase
       .from("courses")
-      .insert([{ title, description, fee_amount, teacher_id, institution_id }]);
+      .insert([
+        {
+          title,
+          description,
+          fee_amount,
+          teacher_id: teacherId,
+          institution_id,
+        },
+      ]);
 
     if (error) return res.status(500).json({ error: error.message });
     res.status(201).json({ message: "Course created", data });
@@ -35,7 +52,9 @@ const enrollStudentInCourse = async (req, res) => {
     const student_id = req.user.id;
 
     if (req.userRole !== "student") {
-      return res.status(403).json({ error: "Only students can enroll in courses" });
+      return res
+        .status(403)
+        .json({ error: "Only students can enroll in courses" });
     }
 
     const eligible = await hasPaidAtLeastHalf(student_id, course_id);
@@ -61,7 +80,7 @@ const enrollStudentInCourse = async (req, res) => {
 
 // GET COURSES
 exports.getCourses = async (req, res) => {
-  const { institution_id, user, userRole } = req;
+  const { institution_id, userRole } = req;
 
   try {
     let courses;
@@ -71,7 +90,7 @@ exports.getCourses = async (req, res) => {
       const { data: gradeRows, error: gradeError } = await supabase
         .from("grades")
         .select("course_id")
-        .eq("student_id", user.id);
+        .eq("student_id", req.userId);
 
       if (gradeError)
         return res.status(500).json({ error: gradeError.message });
@@ -90,7 +109,7 @@ exports.getCourses = async (req, res) => {
       const { data, error: teacherError } = await supabase
         .from("courses")
         .select("*")
-        .eq("teacher_id", user.id)
+        .eq("teacher_id", req.userId)
         .eq("institution_id", institution_id);
 
       courses = data;
@@ -132,8 +151,8 @@ exports.getCourseById = async (req, res) => {
     if (courseError) return res.status(404).json({ error: "Course not found" });
 
     if (
-      (userRole === "student" && !course.students?.includes(req.user.id)) ||
-      (userRole === "teacher" && course.teacher_id !== req.user.id) ||
+      (userRole === "student" && !course.students?.includes(req.req.userId)) ||
+      (userRole === "teacher" && course.teacher_id !== req.req.userId) ||
       (userRole !== "admin" && userRole !== "teacher" && userRole !== "student")
     ) {
       return res.status(403).json({ error: "Unauthorized access to course" });
@@ -151,6 +170,5 @@ module.exports = {
   createCourse,
   getCourses,
   getCourseById,
-  enrollStudentInCourse, 
+  enrollStudentInCourse,
 };
-

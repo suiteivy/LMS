@@ -128,7 +128,8 @@ Authorization: Bearer <JWT>
 {
   "title": "React 101",
   "description": "Learn React basics",
-  "teacher_id": "<UID of teacher>"
+  "teacher_id": "<UID of teacher>",
+  "fee_amount": 4000
 }
 ```
 
