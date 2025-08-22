@@ -25,17 +25,15 @@ exports.createCourse = async (req, res) => {
       return res.status(400).json({ error: "Missing required fields" });
     }
 
-    const { data, error } = await supabase
-      .from("courses")
-      .insert([
-        {
-          title,
-          description,
-          fee_amount,
-          teacher_id: teacherId,
-          institution_id,
-        },
-      ]);
+    const { data, error } = await supabase.from("courses").insert([
+      {
+        title,
+        description,
+        fee_amount,
+        teacher_id: teacherId,
+        institution_id,
+      },
+    ]);
 
     if (error) return res.status(500).json({ error: error.message });
     res.status(201).json({ message: "Course created", data });
@@ -46,7 +44,7 @@ exports.createCourse = async (req, res) => {
 };
 
 //  ENROLL STUDENT WITH 50% PAYMENT CHECK
-const enrollStudentInCourse = async (req, res) => {
+exports.enrollStudentInCourse = async (req, res) => {
   try {
     const { course_id } = req.body;
     const student_id = req.user.id;
@@ -163,12 +161,4 @@ exports.getCourseById = async (req, res) => {
     console.error("getCourseById error:", err);
     res.status(500).json({ error: "Server error" });
   }
-};
-
-//  EXPORT
-module.exports = {
-  createCourse,
-  getCourses,
-  getCourseById,
-  enrollStudentInCourse,
 };
