@@ -2,6 +2,7 @@ import { Platform } from "react-native";
 import axios, { AxiosInstance } from "axios";
 
 /**
+ * To Do:
  * Determines the appropriate base URL for API calls based on environment and platform
  * Priority: Environment variable -> Platform-specific defaults
  * @returns {string} The base URL for API requests
@@ -25,6 +26,7 @@ const getBaseUrl = (): string => {
 };
 
 /**
+ * To Do:
  * Axios instance configured with appropriate base URL and default headers
  * Automatically handles different environments (production/development)
  * and platforms (iOS/Android)
