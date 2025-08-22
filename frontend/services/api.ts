@@ -1,14 +1,14 @@
 import { Platform } from "react-native";
-import axios from "axios";
+import axios, { AxiosInstance } from "axios";
 
 /**
  * Determines the appropriate base URL for API calls based on environment and platform
  * Priority: Environment variable -> Platform-specific defaults
  * @returns {string} The base URL for API requests
  */
-const getBaseUrl = () => {
+const getBaseUrl = (): string => {
   // First priority: Use environment variable if available
-  const envUrl = process.env.EXPO_PUBLIC_URL;
+  const envUrl: string | undefined = process.env.EXPO_PUBLIC_URL;
 
   if (envUrl) {
     return envUrl;
@@ -29,12 +29,12 @@ const getBaseUrl = () => {
  * Automatically handles different environments (production/development)
  * and platforms (iOS/Android)
  */
-export const api = axios.create({
+export const api: AxiosInstance = axios.create({
   baseURL: getBaseUrl(),
-  timeout: 10000, // Added: timeout to prevent hanging requests
+  timeout: 10000, // Added: 10 second timeout to prevent hanging requests
   headers: {
     "Content-Type": "application/json",
-    // Optional: Add common headers that might be needed
+    // Added common headers that might be needed
     Accept: "application/json",
   },
 });
