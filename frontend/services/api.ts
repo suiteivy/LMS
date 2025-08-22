@@ -3,7 +3,7 @@ import axios, { AxiosInstance } from "axios";
 
 /**
  * To Do:
- * Determines the appropriate base URL for API calls based on environment and platform
+ * Determine the appropriate base URL for API calls based on environment and platform
  * Priority: Environment variable -> Platform-specific defaults
  * @returns {string} The base URL for API requests
  */
