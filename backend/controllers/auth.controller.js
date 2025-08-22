@@ -1,7 +1,7 @@
 const supabase = require("../utils/supabaseClient");
 
 exports.login = async (req, res) => {
-  const body= req.body;
+  const body = req.body;
   const email = body?.email;
   const password = body?.password;
   if (!email || !password) {
