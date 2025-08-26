@@ -238,7 +238,7 @@ const LibraryAction = () => {
     try {
       setLoading(true);
 
-      const formattedDate = newDueDate.toISOString().split("T")[0]; // YYYY-MM-DD
+      const formattedDate = newDueDate.toISOString().split("T")[0];
       await LibraryAPI.extendDueDate(borrowId, formattedDate);
 
       setBorrowedBooks((prevBorrowedBooks) =>
@@ -556,7 +556,6 @@ const LibraryAction = () => {
       case "borrowed":
         return (
           <BorrowedBooksOverview
-            borrowedBooks={borrowedBooks}
             onReturnBook={handleReturnBook}
             onExtendDueDate={handleExtendDueDate}
             onSendReminder={handleSendReminder}
