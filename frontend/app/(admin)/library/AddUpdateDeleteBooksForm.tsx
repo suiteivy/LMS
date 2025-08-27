@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -7,19 +7,20 @@ import {
   ScrollView,
   Alert,
   Modal,
+  ActivityIndicator,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { AddUpdateDeleteBooksFormProps, Book } from "@/types/types";
+import { LibraryAPI, useLibraryAPI } from "@/services/LibraryService";
+import { FrontendBook, FrontendBorrowedBook } from "@/services/LibraryService";
 
-export const AddUpdateDeleteBooksForm: React.FC<
-  AddUpdateDeleteBooksFormProps
-> = ({ books = [], onAddBook, onUpdateBook, onDeleteBook }) => {
+export const AddUpdateDeleteBooksForm: React.FC = () => {
+  const [books, setBooks] = useState<FrontendBook[]>([]);
+  const [borrowedBooks, setBorrowedBooks] = useState<FrontendBorrowedBook[]>(
+    []
+  );
   const [modalVisible, setModalVisible] = useState(false);
+  const [editingBook, setEditingBook] = useState<FrontendBook | null>(null);
 
-  // Tracks the book being edited (null if adding a new one)
-  const [editingBook, setEditingBook] = useState<Book | null>(null);
-
-  // Controlled form state for book fields
   const [formData, setFormData] = useState({
     title: "",
     author: "",
@@ -28,10 +29,36 @@ export const AddUpdateDeleteBooksForm: React.FC<
     quantity: "",
   });
 
-  // Borrowed books state (separate from library books)
-  const [borrowedBooks, setBorrowedBooks] = useState<Book[]>([]);
+  const { loading, error, executeWithLoading, clearError } = useLibraryAPI();
 
-  // Reset form after submit/close
+  // Fetch library + borrowed books
+  useEffect(() => {
+    fetchBooks();
+    fetchBorrowedBooks();
+  }, []);
+
+  const fetchBooks = async () => {
+    try {
+      const backendBooks = await executeWithLoading(LibraryAPI.getBooks);
+      setBooks(backendBooks.map(LibraryAPI.transformBookData));
+    } catch (err) {
+      console.error("Failed to fetch books:", err);
+    }
+  };
+
+  const fetchBorrowedBooks = async () => {
+    try {
+      const backendBorrowed = await executeWithLoading(
+        LibraryAPI.getAllBorrowedBooks
+      );
+      setBorrowedBooks(
+        backendBorrowed.map(LibraryAPI.transformBorrowedBookData)
+      );
+    } catch (err) {
+      console.error("Failed to fetch borrowed books:", err);
+    }
+  };
+
   const resetForm = () => {
     setFormData({
       title: "",
@@ -43,48 +70,50 @@ export const AddUpdateDeleteBooksForm: React.FC<
     setEditingBook(null);
   };
 
-  // Handle form submission (add or update book)
-  const handleSubmit = () => {
-    // Basic validation
+  const handleSubmit = async () => {
     if (!formData.title || !formData.author || !formData.isbn) {
       Alert.alert("Error", "Please fill in all required fields");
       return;
     }
 
-    // Prepare book object
-    const bookData: Book = {
-      id: editingBook ? editingBook.id : Date.now().toString(), // reuse id if editing
-      title: formData.title,
-      author: formData.author,
-      isbn: formData.isbn,
-      category: formData.category,
-      quantity: parseInt(formData.quantity) || 1,
-      available: parseInt(formData.quantity) || 1,
-    };
+    try {
+      if (editingBook) {
+        const backendBook = await executeWithLoading(() =>
+          LibraryAPI.updateBook(editingBook.id, {
+            title: formData.title,
+            author: formData.author,
+            isbn: formData.isbn,
+            total_quantity: parseInt(formData.quantity) || 1,
+            category: formData.category,
+          })
+        );
+        const updatedBook = LibraryAPI.transformBookData(backendBook);
+        setBooks((prev) =>
+          prev.map((b) => (b.id === editingBook.id ? updatedBook : b))
+        );
+      } else {
+        const backendBook = await executeWithLoading(() =>
+          LibraryAPI.addBook({
+            title: formData.title,
+            author: formData.author,
+            isbn: formData.isbn,
+            total_quantity: parseInt(formData.quantity) || 1,
+            institution_id: "123", // TODO: replace with dynamic institution_id
+            category: formData.category,
+          })
+        );
+        const newBook = LibraryAPI.transformBookData(backendBook);
+        setBooks((prev) => [...prev, newBook]);
+      }
 
-    if (editingBook) {
-      // update existing
-      onUpdateBook?.(editingBook.id, bookData);
-
-      // also update borrowedBooks if it exists there
-      setBorrowedBooks((prev) =>
-        prev.map((b) => (b.id === editingBook.id ? bookData : b))
-      );
-    } else {
-      // add new book
-      onAddBook?.(bookData);
-
-      // add to borrowedBooks
-      setBorrowedBooks((prev) => [...prev, bookData]);
+      resetForm();
+      setModalVisible(false);
+    } catch (err) {
+      console.error("Submit failed:", err);
     }
-
-    // reset modal + form
-    resetForm();
-    setModalVisible(false);
   };
 
-  // Prefill form when editing a book
-  const handleEdit = (book: Book) => {
+  const handleEdit = (book: FrontendBook) => {
     setEditingBook(book);
     setFormData({
       title: book.title,
@@ -96,34 +125,31 @@ export const AddUpdateDeleteBooksForm: React.FC<
     setModalVisible(true);
   };
 
-  // Delete a book from library (and borrowed list if exists)
-  const handleDelete = (book: Book) => {
+  const handleDelete = (book: FrontendBook) => {
     Alert.alert("Delete Book", `Delete "${book.title}"?`, [
       { text: "Cancel", style: "cancel" },
       {
         text: "Delete",
         style: "destructive",
-        onPress: () => {
-          onDeleteBook?.(book.id);
-          setBorrowedBooks((prev) => prev.filter((b) => b.id !== book.id));
+        onPress: async () => {
+          try {
+            await executeWithLoading(() => LibraryAPI.deleteBook(book.id));
+            setBooks((prev) => prev.filter((b) => b.id !== book.id));
+          } catch (err) {
+            console.error("Delete failed:", err);
+          }
         },
       },
     ]);
   };
 
-  // Delete book only from borrowed list
-  const handleDeleteBorrowed = (bookId: string) => {
-    setBorrowedBooks((prev) => prev.filter((b) => b.id !== bookId));
-  };
-
-  // Render a single book card (used for both library & borrowed)
-  const renderBookItem = (book: Book, borrowed = false) => (
+  // Render book item
+  const renderBookItem = (book: FrontendBook, borrowed = false) => (
     <View
       key={book.id}
       className="bg-white rounded-xl p-4 mb-3 shadow-sm border border-teal-100"
     >
       <View className="flex-row justify-between items-start mb-2">
-        {/* Book info */}
         <View className="flex-1">
           <Text className="text-lg font-semibold text-slate-800 mb-1">
             {book.title}
@@ -140,7 +166,6 @@ export const AddUpdateDeleteBooksForm: React.FC<
           </View>
         </View>
 
-        {/* Action buttons */}
         <View className="flex-row">
           {!borrowed && (
             <TouchableOpacity
@@ -150,14 +175,14 @@ export const AddUpdateDeleteBooksForm: React.FC<
               <Ionicons name="pencil" size={16} color="#128C7E" />
             </TouchableOpacity>
           )}
-          <TouchableOpacity
-            className="bg-red-100 p-2 rounded-lg"
-            onPress={() =>
-              borrowed ? handleDeleteBorrowed(book.id) : handleDelete(book)
-            }
-          >
-            <Ionicons name="trash" size={16} color="#EF4444" />
-          </TouchableOpacity>
+          {!borrowed && (
+            <TouchableOpacity
+              className="bg-red-100 p-2 rounded-lg"
+              onPress={() => handleDelete(book)}
+            >
+              <Ionicons name="trash" size={16} color="#EF4444" />
+            </TouchableOpacity>
+          )}
         </View>
       </View>
     </View>
@@ -183,11 +208,25 @@ export const AddUpdateDeleteBooksForm: React.FC<
         </View>
       </View>
 
+      {/* Loading / Error */}
+      {loading && (
+        <View className="items-center py-4">
+          <ActivityIndicator size="small" color="#128C7E" />
+          <Text className="text-gray-500 mt-2">Loading...</Text>
+        </View>
+      )}
+      {error && (
+        <View className="items-center py-2">
+          <Text className="text-red-500">{error}</Text>
+          <TouchableOpacity onPress={clearError}>
+            <Text className="text-teal-600 underline">Dismiss</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
       {/* Books List */}
       <ScrollView className="flex-1 p-4">
         <Text className="text-lg font-semibold mb-3">Library Books</Text>
-
-        {/* If no books */}
         {books.length === 0 ? (
           <View className="items-center justify-center py-6">
             <Ionicons name="book-outline" size={48} color="#A1EBE5" />
@@ -199,7 +238,7 @@ export const AddUpdateDeleteBooksForm: React.FC<
           books.map((book) => renderBookItem(book))
         )}
 
-        {/* Borrowed Books Section */}
+        {/* Borrowed Books */}
         <Text className="text-lg font-semibold mt-8 mb-3">Borrowed Books</Text>
         {borrowedBooks.length === 0 ? (
           <View className="items-center justify-center py-6">
@@ -209,7 +248,25 @@ export const AddUpdateDeleteBooksForm: React.FC<
             </Text>
           </View>
         ) : (
-          borrowedBooks.map((book) => renderBookItem(book, true))
+          borrowedBooks.map((borrow) => (
+            <View
+              key={borrow.id}
+              className="bg-white rounded-xl p-4 mb-3 shadow-sm border border-teal-100"
+            >
+              <Text className="text-lg font-semibold text-slate-800 mb-1">
+                {borrow.bookTitle}
+              </Text>
+              <Text className="text-sm text-teal-600 mb-1">
+                by {borrow.author}
+              </Text>
+              <Text className="text-xs text-gray-500 mb-1">
+                Borrower: {borrow.borrowerName} ({borrow.borrowerEmail})
+              </Text>
+              <Text className="text-xs text-gray-500">
+                Status: {borrow.status}
+              </Text>
+            </View>
+          ))
         )}
       </ScrollView>
 
@@ -220,7 +277,6 @@ export const AddUpdateDeleteBooksForm: React.FC<
         presentationStyle="pageSheet"
       >
         <View className="flex-1 bg-white">
-          {/* Modal Header */}
           <View className="bg-teal-600 p-4 pt-12">
             <View className="flex-row justify-between items-center">
               <Text className="text-xl font-bold text-white">
@@ -237,7 +293,6 @@ export const AddUpdateDeleteBooksForm: React.FC<
             </View>
           </View>
 
-          {/* Modal Form */}
           <ScrollView className="flex-1 p-4">
             {/* Title */}
             <View className="mb-4">
@@ -315,10 +370,11 @@ export const AddUpdateDeleteBooksForm: React.FC<
               />
             </View>
 
-            {/* Submit button */}
+            {/* Submit */}
             <TouchableOpacity
               className="bg-teal-600 p-4 rounded-lg"
               onPress={handleSubmit}
+              disabled={loading}
             >
               <Text className="text-white text-center font-semibold">
                 {editingBook ? "Update Book" : "Add Book"}

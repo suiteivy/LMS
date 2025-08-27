@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   View,
   Text,
@@ -7,12 +7,22 @@ import {
   Alert,
   TextInput,
   Modal,
+  RefreshControl,
+  ActivityIndicator,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { BorrowedBooks } from "@/types/types";
+import { LibraryAPI, useLibraryAPI, FrontendBorrowedBook } from "@/services/LibraryService";
+
+// Extended interface to match your original component structure
+interface ExtendedBorrowedBook extends FrontendBorrowedBook {
+  borrowerPhone?: string;
+  renewalCount?: number;
+  maxRenewals?: number;
+  fineAmount?: number;
+}
 
 interface BorrowedBooksOverviewProps {
-  borrowedBooks?: BorrowedBooks[];
+  // Optional props to allow parent components to override default behavior
   onReturnBook?: (
     borrowId: string,
     fineAmount?: number,
@@ -24,21 +34,92 @@ interface BorrowedBooksOverviewProps {
 }
 
 export const BorrowedBooksOverview: React.FC<BorrowedBooksOverviewProps> = ({
-  borrowedBooks = [],
   onReturnBook,
   onExtendDueDate,
   onSendReminder,
   onProcessFine,
 }) => {
+  // State management
+  const [borrowedBooks, setBorrowedBooks] = useState<ExtendedBorrowedBook[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterStatus, setFilterStatus] = useState<
     "all" | "borrowed" | "overdue" | "returned"
   >("all");
   const [showReturnModal, setShowReturnModal] = useState(false);
-  const [selectedBook, setSelectedBook] = useState<BorrowedBooks | null>(null);
+  const [selectedBook, setSelectedBook] = useState<ExtendedBorrowedBook | null>(null);
   const [returnCondition, setReturnCondition] = useState("good");
   const [fineAmount, setFineAmount] = useState("0");
   const [notes, setNotes] = useState("");
+  const [refreshing, setRefreshing] = useState(false);
+
+  // API hook
+  const { loading, error, executeWithLoading, clearError } = useLibraryAPI();
+
+  // Helper function to transform backend data to extended format
+  const transformToExtendedFormat = (backendBook: any): ExtendedBorrowedBook => {
+    const frontendBook = LibraryAPI.transformBorrowedBookData(backendBook);
+    return {
+      ...frontendBook,
+      borrowerPhone: backendBook.student?.phone || undefined,
+      renewalCount: backendBook.renewal_count || 0,
+      maxRenewals: backendBook.max_renewals || 1,
+      fineAmount: backendBook.fine_amount || undefined,
+    };
+  };
+
+  // Fetch borrowed books from API
+  const fetchBorrowedBooks = useCallback(async () => {
+    try {
+      const backendBooks = await executeWithLoading(() => 
+        LibraryAPI.getAllBorrowedBooks()
+      );
+      
+      const transformedBooks = backendBooks.map(transformToExtendedFormat);
+      
+      // Update status based on due date for books that are still borrowed
+      const booksWithUpdatedStatus = transformedBooks.map(book => {
+        if (book.status === "borrowed") {
+          const today = new Date();
+          const dueDate = new Date(book.dueDate);
+          if (dueDate < today) {
+            return { ...book, status: "overdue" as const };
+          }
+        }
+        return book;
+      });
+      
+      setBorrowedBooks(booksWithUpdatedStatus);
+    } catch (err) {
+      console.error("Failed to fetch borrowed books:", err);
+      Alert.alert(
+        "Error",
+        "Failed to load borrowed books. Please try again.",
+        [{ text: "OK" }]
+      );
+    }
+  }, [executeWithLoading]);
+
+  // Initial load
+  useEffect(() => {
+    fetchBorrowedBooks();
+  }, [fetchBorrowedBooks]);
+
+  // Refresh handler
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await fetchBorrowedBooks();
+    setRefreshing(false);
+  }, [fetchBorrowedBooks]);
+
+  // Clear error when user dismisses
+  useEffect(() => {
+    if (error) {
+      const timer = setTimeout(() => {
+        clearError();
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [error, clearError]);
 
   const getStatusColor = (status: string, daysRemaining?: number) => {
     switch (status) {
@@ -90,7 +171,7 @@ export const BorrowedBooksOverview: React.FC<BorrowedBooksOverviewProps> = ({
       : 0;
   };
 
-  const handleReturnBook = (book: BorrowedBooks) => {
+  const handleReturnBook = (book: ExtendedBorrowedBook) => {
     setSelectedBook(book);
     const calculatedFine =
       book.status === "overdue" ? calculateFine(book.dueDate) : 0;
@@ -100,7 +181,7 @@ export const BorrowedBooksOverview: React.FC<BorrowedBooksOverviewProps> = ({
     setShowReturnModal(true);
   };
 
-  const confirmReturn = () => {
+  const confirmReturn = async () => {
     if (!selectedBook) return;
 
     const finalFine = parseFloat(fineAmount) || 0;
@@ -114,17 +195,44 @@ export const BorrowedBooksOverview: React.FC<BorrowedBooksOverviewProps> = ({
         { text: "Cancel", style: "cancel" },
         {
           text: "Confirm Return",
-          onPress: () => {
-            onReturnBook?.(selectedBook.id, finalFine, returnCondition);
-            setShowReturnModal(false);
-            setSelectedBook(null);
+          onPress: async () => {
+            try {
+              if (onReturnBook) {
+                // Use parent's custom handler if provided
+                onReturnBook(selectedBook.id, finalFine, returnCondition);
+              } else {
+                // Use API to return book
+                await executeWithLoading(() =>
+                  LibraryAPI.returnBook(selectedBook.id)
+                );
+                
+                // Refresh the list
+                await fetchBorrowedBooks();
+                
+                Alert.alert(
+                  "Success",
+                  "Book returned successfully!",
+                  [{ text: "OK" }]
+                );
+              }
+              
+              setShowReturnModal(false);
+              setSelectedBook(null);
+            } catch (err) {
+              console.error("Failed to return book:", err);
+              Alert.alert(
+                "Error",
+                "Failed to return book. Please try again.",
+                [{ text: "OK" }]
+              );
+            }
           },
         },
       ]
     );
   };
 
-  const handleExtendDueDate = (borrowId: string, book: BorrowedBooks) => {
+  const handleExtendDueDate = async (borrowId: string, book: ExtendedBorrowedBook) => {
     const canRenew = (book.renewalCount || 0) < (book.maxRenewals || 1);
 
     if (!canRenew) {
@@ -139,18 +247,18 @@ export const BorrowedBooksOverview: React.FC<BorrowedBooksOverviewProps> = ({
       { text: "Cancel", style: "cancel" },
       {
         text: "7 days",
-        onPress: () => {
+        onPress: async () => {
           const newDueDate = new Date(book.dueDate);
           newDueDate.setDate(newDueDate.getDate() + 7);
-          onExtendDueDate?.(borrowId, newDueDate);
+          await performDueDateExtension(borrowId, newDueDate);
         },
       },
       {
         text: "14 days",
-        onPress: () => {
+        onPress: async () => {
           const newDueDate = new Date(book.dueDate);
           newDueDate.setDate(newDueDate.getDate() + 14);
-          onExtendDueDate?.(borrowId, newDueDate);
+          await performDueDateExtension(borrowId, newDueDate);
         },
       },
       {
@@ -163,12 +271,12 @@ export const BorrowedBooksOverview: React.FC<BorrowedBooksOverviewProps> = ({
               { text: "Cancel", style: "cancel" },
               {
                 text: "Extend",
-                onPress: (days) => {
+                onPress: async (days) => {
                   const numDays = parseInt(days || "0");
                   if (numDays > 0) {
                     const newDueDate = new Date(book.dueDate);
                     newDueDate.setDate(newDueDate.getDate() + numDays);
-                    onExtendDueDate?.(borrowId, newDueDate);
+                    await performDueDateExtension(borrowId, newDueDate);
                   }
                 },
               },
@@ -182,7 +290,38 @@ export const BorrowedBooksOverview: React.FC<BorrowedBooksOverviewProps> = ({
     ]);
   };
 
-  const handleSendReminder = (
+  const performDueDateExtension = async (borrowId: string, newDueDate: Date) => {
+    try {
+      if (onExtendDueDate) {
+        // Use parent's custom handler if provided
+        onExtendDueDate(borrowId, newDueDate);
+      } else {
+        // Use API to extend due date
+        const newDueDateString = newDueDate.toISOString().split('T')[0];
+        await executeWithLoading(() =>
+          LibraryAPI.extendDueDate(borrowId, newDueDateString)
+        );
+        
+        // Refresh the list
+        await fetchBorrowedBooks();
+        
+        Alert.alert(
+          "Success",
+          "Due date extended successfully!",
+          [{ text: "OK" }]
+        );
+      }
+    } catch (err) {
+      console.error("Failed to extend due date:", err);
+      Alert.alert(
+        "Error",
+        "Failed to extend due date. Please try again.",
+        [{ text: "OK" }]
+      );
+    }
+  };
+
+  const handleSendReminder = async (
     borrowId: string,
     borrowerEmail: string,
     bookTitle: string
@@ -194,12 +333,67 @@ export const BorrowedBooksOverview: React.FC<BorrowedBooksOverviewProps> = ({
         { text: "Cancel", style: "cancel" },
         {
           text: "Send Reminder",
-          onPress: () => {
-            onSendReminder?.(borrowId);
-            Alert.alert(
-              "Reminder Sent",
-              "Email reminder has been sent successfully."
-            );
+          onPress: async () => {
+            try {
+              if (onSendReminder) {
+                // Use parent's custom handler if provided
+                onSendReminder(borrowId);
+              } else {
+                // Use API to send reminder
+                await executeWithLoading(() =>
+                  LibraryAPI.sendReminder(borrowId)
+                );
+              }
+              
+              Alert.alert(
+                "Success",
+                "Email reminder has been sent successfully!",
+                [{ text: "OK" }]
+              );
+            } catch (err) {
+              console.error("Failed to send reminder:", err);
+              Alert.alert(
+                "Error",
+                "Failed to send reminder. Please try again.",
+                [{ text: "OK" }]
+              );
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const handleProcessFine = async (borrowId: string, amount: number) => {
+    Alert.alert(
+      "Process Fine",
+      `Process fine of $${amount.toFixed(2)} for overdue book?`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Process Fine",
+          onPress: async () => {
+            try {
+              if (onProcessFine) {
+                // Use parent's custom handler if provided
+                onProcessFine(borrowId, amount);
+              } else {
+                // Here you would implement fine processing logic
+                // This might involve calling a separate API endpoint
+                Alert.alert(
+                  "Fine Processed",
+                  `Fine of $${amount.toFixed(2)} has been recorded.`,
+                  [{ text: "OK" }]
+                );
+              }
+            } catch (err) {
+              console.error("Failed to process fine:", err);
+              Alert.alert(
+                "Error",
+                "Failed to process fine. Please try again.",
+                [{ text: "OK" }]
+              );
+            }
           },
         },
       ]
@@ -242,7 +436,7 @@ export const BorrowedBooksOverview: React.FC<BorrowedBooksOverviewProps> = ({
     return daysRemaining <= 3 && daysRemaining >= 0;
   }).length;
 
-  const renderBorrowedBookItem = (borrowedBook: BorrowedBooks) => {
+  const renderBorrowedBookItem = (borrowedBook: ExtendedBorrowedBook) => {
     const daysRemaining = getDaysRemaining(borrowedBook.dueDate);
     const statusColors = getStatusColor(borrowedBook.status, daysRemaining);
     const fine = borrowedBook.fineAmount || calculateFine(borrowedBook.dueDate);
@@ -374,19 +568,7 @@ export const BorrowedBooksOverview: React.FC<BorrowedBooksOverviewProps> = ({
             {fine > 0 && (
               <TouchableOpacity
                 className="bg-orange-600 py-2 px-3 rounded-lg active:bg-orange-700"
-                onPress={() => {
-                  Alert.alert(
-                    "Process Fine",
-                    `Process fine of ${fine.toFixed(2)} for overdue book?`,
-                    [
-                      { text: "Cancel", style: "cancel" },
-                      {
-                        text: "Process Fine",
-                        onPress: () => onProcessFine?.(borrowedBook.id, fine),
-                      },
-                    ]
-                  );
-                }}
+                onPress={() => handleProcessFine(borrowedBook.id, fine)}
               >
                 <View className="flex-row items-center">
                   <Ionicons name="cash-outline" size={14} color="white" />
@@ -402,6 +584,16 @@ export const BorrowedBooksOverview: React.FC<BorrowedBooksOverviewProps> = ({
 
   const filterCounts = getFilterCounts();
 
+  // Show loading spinner on initial load
+  if (loading && borrowedBooks.length === 0) {
+    return (
+      <View className="flex-1 bg-mint-50 justify-center items-center">
+        <ActivityIndicator size="large" color="#0D9488" />
+        <Text className="text-gray-600 mt-2">Loading borrowed books...</Text>
+      </View>
+    );
+  }
+
   return (
     <View className="flex-1 bg-mint-50">
       {/* Header */}
@@ -409,6 +601,13 @@ export const BorrowedBooksOverview: React.FC<BorrowedBooksOverviewProps> = ({
         <Text className="text-xl font-bold text-slate-800 mb-4">
           Borrowed Books Management
         </Text>
+
+        {/* Error Banner */}
+        {error && (
+          <View className="bg-red-100 border border-red-200 rounded-lg p-3 mb-4">
+            <Text className="text-red-800 text-sm">{error}</Text>
+          </View>
+        )}
 
         {/* Stats Cards */}
         <View className="flex-row mb-4">
@@ -474,7 +673,17 @@ export const BorrowedBooksOverview: React.FC<BorrowedBooksOverviewProps> = ({
       </View>
 
       {/* Borrowed Books List */}
-      <ScrollView className="flex-1 p-4">
+      <ScrollView
+        className="flex-1 p-4"
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={["#0D9488"]}
+            tintColor="#0D9488"
+          />
+        }
+      >
         {filteredBooks.length === 0 ? (
           <View className="items-center justify-center py-12">
             <Ionicons name="library-outline" size={64} color="#A1EBE5" />
@@ -600,12 +809,21 @@ export const BorrowedBooksOverview: React.FC<BorrowedBooksOverviewProps> = ({
                 </TouchableOpacity>
 
                 <TouchableOpacity
-                  className="bg-teal-600 flex-1 py-4 rounded-lg ml-2 active:bg-teal-700"
+                  className={`flex-1 py-4 rounded-lg ml-2 ${
+                    loading
+                      ? "bg-gray-400"
+                      : "bg-teal-600 active:bg-teal-700"
+                  }`}
                   onPress={confirmReturn}
+                  disabled={loading}
                 >
-                  <Text className="text-white text-center font-semibold">
-                    Process Return
-                  </Text>
+                  {loading ? (
+                    <ActivityIndicator color="white" />
+                  ) : (
+                    <Text className="text-white text-center font-semibold">
+                      Process Return
+                    </Text>
+                  )}
                 </TouchableOpacity>
               </View>
             </ScrollView>

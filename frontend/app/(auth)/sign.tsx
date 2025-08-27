@@ -128,7 +128,7 @@ export default function Index() {
       setTimeout(() => {
         switch (userData.role) {
           case "admin":
-            router.replace("(admin");
+            router.replace("(admin)");
             break;
           case "teacher":
             router.replace("/teacher/dashboard");
