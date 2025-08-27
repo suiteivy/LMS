@@ -3,7 +3,7 @@
 ## Base URL
 
 ```
-http://localhost:4000/api
+https://lms-api-wine.vercel.app/api
 ```
 
 ---
@@ -128,7 +128,8 @@ Authorization: Bearer <JWT>
 {
   "title": "React 101",
   "description": "Learn React basics",
-  "teacher_id": "<UID of teacher>"
+  "teacher_id": "<UID of teacher>",
+  "fee_amount": 4000
 }
 ```
 
@@ -139,7 +140,49 @@ Authorization: Bearer <JWT>
 - **401** – Invalid token
 - **500** – Error
 
-### 🔐 List Courses (`GET /courses`)
+### 🔐 List Courses (`GET /courses`) — Get courses based on user role
+
+**Behavior:**
+
+- **Admin**: Returns all institution courses.
+- **Teacher**: Returns only courses where they are the instructor.
+- **Student**: Returns only enrolled courses (linked via grades).
+
+**Example Response:**
+
+```json
+[
+  {
+    "id": "course-123",
+    "name": "Biology 101",
+    "teacher_id": "user-456"
+  }
+]
+```
+
+<!-- get course by id -->
+
+#### 🔐 List Courses (`GET /courses/:id`) — Get courses by id based on user role
+
+**Example Response:**
+
+```json
+[
+  {
+    "id": "course-123",
+    "name": "Biology 101",
+    "teacher_id": "user-456"
+  }
+]
+```
+
+---
+
+---
+
+## 📚 LMS Backend API
+
+### 🔐 Add Book (`POST /library/books`)
 
 **Headers:**
 
@@ -147,7 +190,132 @@ Authorization: Bearer <JWT>
 Authorization: Bearer <JWT>
 ```
 
-**Response (200):** Array of courses for the authenticated user's institution
+**Body (JSON):**
+
+```json
+{
+  "title": "Clean Code",
+  "author": "Robert C. Martin",
+  "isbn": "9780132350884",
+  "total_quantity": 5,
+  "institution_id": "UUID_OF_INSTITUTION"
+}
+```
+
+**Responses:**
+
+- **201** – Success, Ok
+- **400** – Missing fields
+- **401** – Invalid token
+- **403** - Admin only
+- **500** – Error
+
+### List Books (`GET /library/books`)
+
+**Headers:**
+
+```
+Authorization: Bearer <JWT>
+```
+
+**Body (JSON):**
+
+```json
+[
+  {
+    "id": "uuid",
+    "title": "Clean Code",
+    "author": "Robert C. Martin",
+    "isbn": "9780132350884",
+    "total_quantity": 5,
+    "available_quantity": 5,
+    "institution_id": "uuid",
+    "created_at": "timestamp"
+  }
+]
+```
+
+### 🔐 Borrow Book (`POST /library/borrow/:bookId`)
+
+**Headers:**
+
+```
+Authorization: Bearer <JWT>
+```
+
+**Body (JSON):**
+
+```json
+{
+  "due_date": "2025-09-01"
+}
+```
+
+**Responses:**
+
+- **201** – Borrow record created (stock decremented by trigger)
+
+- **400** – Book unavailable / borrow limit reached / overdue books exist / unpaid fees < 50%
+
+- **401** – Unauthorized
+
+### 🔐 Return Book (`POST /library/return/:borrowId`)
+
+**Headers:**
+
+```
+Authorization: Bearer <JWT>
+```
+
+**Body (JSON):**
+
+```json
+{
+  "returned_at": "2025-08-20"
+}
+```
+
+**Responses:**
+
+- **201** – Book returned successfully (stock incremented by trigger)
+
+- **400** – Invalid borrow record
+
+- **401** – Unauthorized
+
+### 🔐 Borrowing History (`GET /library/history:studentId`)
+
+**Headers:**
+
+```
+Authorization: Bearer <JWT>
+```
+
+**Body (JSON):**
+
+```json
+[
+  {
+    "id": "uuid",
+    "book": {
+      "title": "Clean Code",
+      "author": "Robert C. Martin"
+    },
+    "borrowed_at": "2025-08-01",
+    "due_date": "2025-09-01",
+    "returned_at": null,
+    "status": "borrowed"
+  }
+]
+```
+
+**Responses:**
+
+- **200** – Success
+
+- **400** – Bad request
+
+- **401** – Unauthorized
 
 ---
 

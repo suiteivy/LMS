@@ -1,7 +1,9 @@
 const supabase = require("../utils/supabaseClient");
 
 exports.login = async (req, res) => {
-  const { email, password } = req.body;
+  const body = req.body;
+  const email = body?.email;
+  const password = body?.password;
   if (!email || !password) {
     return res.status(400).json({ error: "Email and password are required" });
   }
@@ -14,7 +16,7 @@ exports.login = async (req, res) => {
     const { data: userData, error: userError } = await supabase
       .from("users")
       .select("full_name, role, institution_id")
-      .eq("uid", user.id)
+      .eq("id", user.id)
       .single();
 
     if (userError) throw userError;

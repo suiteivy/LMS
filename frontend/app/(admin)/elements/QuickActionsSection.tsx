@@ -1,6 +1,6 @@
-import React from 'react';
-import { View, Text, TouchableOpacity } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import React from "react";
+import { View, Text, TouchableOpacity } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 
 interface QuickAction {
   id: string;
@@ -23,61 +23,74 @@ interface QuickActionsSectionProps {
 
 export const QuickActionsSection: React.FC<QuickActionsSectionProps> = ({
   onActionPress,
-  actions
+  actions,
 }) => {
   const defaultActions: QuickAction[] = [
     {
-      id: 'add-user',
-      title: 'Add User',
-      icon: 'person-add',
+      id: "add-user",
+      title: "Add User",
+      icon: "person-add",
       color: {
-        bg: 'bg-white',
-        border: 'border-blue-200',
-        active: 'active:bg-blue-50',
-        iconBg: 'bg-blue-100',
-        iconColor: '#3B82F6',
-        textColor: 'text-blue-800'
-      }
+        bg: "bg-white",
+        border: "border-slate-200",
+        active: "active:bg-slate-50",
+        iconBg: "bg-slate-100",
+        iconColor: "#2C3E50",
+        textColor: "text-slate-800",
+      },
     },
     {
-      id: 'add-course',
-      title: 'Add Course',
-      icon: 'book-outline',
+      id: "add-course",
+      title: "Add Course",
+      icon: "book-outline",
       color: {
-        bg: 'bg-white',
-        border: 'border-green-200',
-        active: 'active:bg-green-50',
-        iconBg: 'bg-green-100',
-        iconColor: '#10B981',
-        textColor: 'text-green-800'
-      }
+        bg: "bg-white",
+        border: "border-slate-200",
+        active: "active:bg-teal-50",
+        iconBg: "bg-slate-100",
+        iconColor: "#2C3E50",
+        textColor: "text-slate-800",
+      },
     },
     {
-      id: 'analytics',
-      title: 'Analytics',
-      icon: 'analytics-outline',
+      id: "library",
+      title: "Library",
+      icon: "library-outline",
       color: {
-        bg: 'bg-white',
-        border: 'border-purple-200',
-        active: 'active:bg-purple-50',
-        iconBg: 'bg-purple-100',
-        iconColor: '#8B5CF6',
-        textColor: 'text-purple-800'
-      }
+        bg: "bg-white",
+        border: "border-slate-200",
+        active: "active:bg-mint-50",
+        iconBg: "bg-slate-100",
+        iconColor: "#2C3E50",
+        textColor: "text-slate-800",
+      },
     },
     {
-      id: 'settings',
-      title: 'Settings',
-      icon: 'settings-outline',
+      id: "analytics",
+      title: "Analytics",
+      icon: "analytics-outline",
       color: {
-        bg: 'bg-white',
-        border: 'border-yellow-200',
-        active: 'active:bg-yellow-50',
-        iconBg: 'bg-yellow-100',
-        iconColor: '#F59E0B',
-        textColor: 'text-yellow-800'
-      }
-    }
+        bg: "bg-white",
+        border: "border-slate-200",
+        active: "active:bg-teal-50",
+        iconBg: "bg-slate-100",
+        iconColor: "#2C3E50",
+        textColor: "text-slate-800",
+      },
+    },
+    {
+      id: "settings",
+      title: "Settings",
+      icon: "settings-outline",
+      color: {
+        bg: "bg-white",
+        border: "border-slate-200",
+        active: "active:bg-slate-50",
+        iconBg: "bg-slate-100",
+        iconColor: "#2C3E50",
+        textColor: "text-slate-800",
+      },
+    },
   ];
 
   const displayActions = actions || defaultActions;
@@ -88,16 +101,24 @@ export const QuickActionsSection: React.FC<QuickActionsSectionProps> = ({
 
   const renderAction = (action: QuickAction) => (
     <View key={action.id} className="w-1/2 px-2 mb-4">
-      <TouchableOpacity 
+      <TouchableOpacity
         className={`${action.color.bg} rounded-xl p-4 shadow-sm border ${action.color.border} ${action.color.active}`}
         activeOpacity={0.7}
         onPress={() => handleActionPress(action.id)}
       >
         <View className="items-center">
-          <View className={`w-12 h-12 ${action.color.iconBg} rounded-full items-center justify-center mb-2`}>
-            <Ionicons name={action.icon as any} size={24} color={action.color.iconColor} />
+          <View
+            className={`w-12 h-12 ${action.color.iconBg} rounded-full items-center justify-center mb-2`}
+          >
+            <Ionicons
+              name={action.icon as any}
+              size={24}
+              color={action.color.iconColor}
+            />
           </View>
-          <Text className={`${action.color.textColor} font-medium text-sm`}>
+          <Text
+            className={`${action.color.textColor} font-medium text-sm text-center`}
+          >
             {action.title}
           </Text>
         </View>
@@ -110,7 +131,7 @@ export const QuickActionsSection: React.FC<QuickActionsSectionProps> = ({
       <Text className="text-lg font-semibold text-gray-900 mb-4">
         Quick Actions
       </Text>
-      
+
       <View className="flex-row flex-wrap -mx-2">
         {displayActions.map(renderAction)}
       </View>
