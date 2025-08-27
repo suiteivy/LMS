@@ -4,6 +4,40 @@
 
 A cross-platform Learning Management System built using **React Native** for the frontend and **Supabase** for the backend. This app supports role-based access (Admin, Student, Teacher), course management, assignments, attendance tracking, grading, notifications, and more.
 
+## 🚀 Getting Started
+
+### Prerequisites
+
+- Node.js (v14 or later)
+- Expo CLI
+- Supabase account
+
+### Installation
+
+1. Clone the repository
+2. Install dependencies:
+   ```bash
+   cd frontend
+   npm install
+   ```
+3. Set up environment variables:
+   - Copy `.env.example` to `.env`
+   - Update with your Supabase credentials
+
+### Supabase Setup
+
+Follow these guides to set up your Supabase project:
+
+1. [Supabase Project Setup](./docs/supabase_project_setup.md)
+2. [Supabase Authentication with Custom Roles](./docs/supabase_auth_setup.md)
+
+### Running the App
+
+```bash
+cd frontend
+npm start
+```
+
 ---
 
 ## 📁 Project Structure
@@ -54,5 +88,3 @@ LMS-App/
 ├── README.md # Overview, setup, and contribution guide
 ├── package.json
 └── LICENSE
-
-

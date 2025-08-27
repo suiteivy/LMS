@@ -4,6 +4,7 @@ npm-debug.log
 yarn-error.log
 dist/
 build/
+.vscode/
 
 # React Native
 .expo/
@@ -21,8 +22,11 @@ ios/
 .env.local
 .env.*.local
 
+
 # Supabase
 .supabase/
+
+
 
 
 
