@@ -1,5 +1,4 @@
-// Library utilities and helper functions
-import { FrontendBook, FrontendBorrowedBook } from '@/services/LibraryService';
+import { FrontendBook, FrontendBorrowedBook } from '@/types/types';
 import { Alert } from 'react-native';
 
 // Additional types for utility functions
