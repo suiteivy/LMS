@@ -2,97 +2,17 @@ import { useState } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { AxiosError } from "axios";
 import { api } from "./api";
-
-// Types for API responses and requests
-export interface BackendBook {
-  id: string;
-  title: string;
-  author: string;
-  isbn: string;
-  total_quantity: number;
-  available_quantity: number;
-  category?: string;
-  institution_id: string;
-  created_at: string;
-}
-
-export interface FrontendBook {
-  id: string;
-  title: string;
-  author: string;
-  isbn: string;
-  category: string;
-  quantity: number;
-  available: number;
-  institutionId: string;
-  createdAt?: string;
-}
-
-export interface BackendBorrowedBook {
-  id: string;
-  book: {
-    title: string;
-    author: string;
-    isbn?: string;
-  };
-  student_id: string;
-  student?: {
-    name: string;
-    email: string;
-  };
-  borrowed_at: string;
-  due_date: string;
-  returned_at?: string;
-  status: "borrowed" | "overdue" | "returned";
-}
-
-export interface FrontendBorrowedBook {
-  id: string;
-  bookTitle: string;
-  author: string;
-  isbn: string;
-  borrowerId: string;
-  borrowerName: string;
-  borrowerEmail: string;
-  borrowDate: Date;
-  dueDate: Date;
-  returnDate?: Date;
-  status: "borrowed" | "overdue" | "returned";
-}
-
-export interface AddBookRequest {
-  title: string;
-  author: string;
-  isbn: string;
-  total_quantity: number;
-  institution_id: string;
-  category?: string;
-}
-
-export interface UpdateBookRequest {
-  title?: string;
-  author?: string;
-  isbn?: string;
-  total_quantity?: number;
-  category?: string;
-}
-
-export interface BorrowBookRequest {
-  due_date: string;
-}
-
-export interface ReturnBookRequest {
-  returned_at: string;
-}
-
-export interface ExtendDueDateRequest {
-  new_due_date: string;
-}
-
-export interface APIError {
-  message: string;
-  status: number;
-}
+import {
+  AddBookRequest,
+  BackendBook,
+  BackendBorrowedBook,
+  BorrowBookRequest,
+  ExtendDueDateRequest,
+  FrontendBook,
+  FrontendBorrowedBook,
+  ReturnBookRequest,
+  UpdateBookRequest,
+} from "@/types/types";
 
 /**
  * Library API Wrapper
@@ -101,7 +21,7 @@ export interface APIError {
 export class LibraryAPI {
   /**
    * Get authorization header with JWT token
-   * @returns {Promise<Record<string, string>>} Authorization headers
+   * @returns {Promise<Record<string, string>>}
    */
   static async getAuthHeaders(): Promise<Record<string, string>> {
     try {
@@ -120,8 +40,8 @@ export class LibraryAPI {
 
   /**
    * Add a new book to the library
-   * @param {AddBookRequest} bookData - Book information
-   * @returns {Promise<BackendBook>} Created book data
+   * @param {AddBookRequest} bookData
+   * @returns {Promise<BackendBook>}
    */
   static async addBook(bookData: AddBookRequest): Promise<BackendBook> {
     try {
@@ -139,7 +59,7 @@ export class LibraryAPI {
 
   /**
    * Get all books in the library
-   * @returns {Promise<BackendBook[]>} List of books
+   * @returns {Promise<BackendBook[]>}
    */
   static async getBooks(): Promise<BackendBook[]> {
     try {
@@ -157,9 +77,9 @@ export class LibraryAPI {
 
   /**
    * Update book information
-   * @param {string} bookId - Book ID
-   * @param {UpdateBookRequest} updateData - Data to update
-   * @returns {Promise<BackendBook>} Updated book data
+   * @param {string} bookId
+   * @param {UpdateBookRequest} updateData
+   * @returns {Promise<BackendBook>}
    */
   static async updateBook(
     bookId: string,
@@ -184,7 +104,7 @@ export class LibraryAPI {
 
   /**
    * Delete a book from the library
-   * @param {string} bookId - Book ID to delete
+   * @param {string} bookId
    * @returns {Promise<void>}
    */
   static async deleteBook(bookId: string): Promise<void> {
@@ -202,9 +122,9 @@ export class LibraryAPI {
 
   /**
    * Borrow a book
-   * @param {string} bookId - Book ID to borrow
-   * @param {string} dueDate - Due date for return (YYYY-MM-DD format)
-   * @returns {Promise<BackendBorrowedBook>} Borrow record
+   * @param {string} bookId
+   * @param {string} dueDate
+   * @returns {Promise<BackendBorrowedBook>}
    */
   static async borrowBook(
     bookId: string,
@@ -231,9 +151,9 @@ export class LibraryAPI {
 
   /**
    * Return a borrowed book
-   * @param {string} borrowId - Borrow record ID
-   * @param {string} returnedAt - Return timestamp (ISO string)
-   * @returns {Promise<BackendBorrowedBook>} Return confirmation
+   * @param {string} borrowId
+   * @param {string} returnedAt
+   * @returns {Promise<BackendBorrowedBook>}
    */
   static async returnBook(
     borrowId: string,
@@ -330,7 +250,7 @@ export class LibraryAPI {
    * Extend due date for a borrowed book
    * @param {string} borrowId - Borrow record ID
    * @param {string} newDueDate - New due date (YYYY-MM-DD format)
-   * @returns {Promise<BackendBorrowedBook>} Updated borrow record
+   * @returns {Promise<BackendBorrowedBook>}
    */
   static async extendDueDate(
     borrowId: string,
@@ -357,7 +277,7 @@ export class LibraryAPI {
 
   /**
    * Handle API errors with user-friendly messages
-   * @param {AxiosError} error - Axios error object
+   * @param {AxiosError} error
    */
   static handleAPIError(error: AxiosError): void {
     if (error.response) {
@@ -402,8 +322,8 @@ export class LibraryAPI {
 
   /**
    * Transform backend book data to frontend format
-   * @param {BackendBook} backendBook - Book data from backend
-   * @returns {FrontendBook} Frontend book format
+   * @param {BackendBook} backendBook
+   * @returns {FrontendBook}
    */
   static transformBookData(backendBook: BackendBook): FrontendBook {
     return {
@@ -411,7 +331,7 @@ export class LibraryAPI {
       title: backendBook.title,
       author: backendBook.author,
       isbn: backendBook.isbn,
-      category: backendBook.category || "General", // Default if not provided
+      category: backendBook.category || "General",
       quantity: backendBook.total_quantity,
       available: backendBook.available_quantity,
       institutionId: backendBook.institution_id,
@@ -421,8 +341,8 @@ export class LibraryAPI {
 
   /**
    * Transform backend borrowed book data to frontend format
-   * @param {BackendBorrowedBook} backendBorrow - Borrow data from backend
-   * @returns {FrontendBorrowedBook} Frontend borrowed book format
+   * @param {BackendBorrowedBook} backendBorrow
+   * @returns {FrontendBorrowedBook}
    */
   static transformBorrowedBookData(
     backendBorrow: BackendBorrowedBook
