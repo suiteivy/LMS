@@ -11,7 +11,7 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { LibraryAPI, useLibraryAPI } from "@/services/LibraryService";
-import { FrontendBook, FrontendBorrowedBook } from "@/services/LibraryService";
+import { FrontendBook, FrontendBorrowedBook } from "@/types/types";
 
 export const AddUpdateDeleteBooksForm: React.FC = () => {
   const [books, setBooks] = useState<FrontendBook[]>([]);
