@@ -40,7 +40,7 @@ exports.getStudentFeeStatus = async (req, res) => {
     if (req.userRole === "student" && req.userId !== studentId) {
       return res
         .status(403)
-        .json({ error: "Cannot view another student’s fees" });
+        .json({ error: "Cannot view another student's fees" });
     }
 
     const { data, error } = await supabase
@@ -63,7 +63,7 @@ exports.getTeacherEarnings = async (req, res) => {
     if (req.userRole === "teacher" && req.userId !== teacherId) {
       return res
         .status(403)
-        .json({ error: "Cannot view another teacher’s earnings" });
+        .json({ error: "Cannot view another teacher's earnings" });
     }
 
     const { data, error } = await supabase
