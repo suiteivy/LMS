@@ -545,14 +545,7 @@ const LibraryAction = () => {
       case "overview":
         return renderOverview();
       case "books":
-        return (
-          <AddUpdateDeleteBooksForm
-            books={books}
-            onAddBook={handleAddBook}
-            onUpdateBook={handleUpdateBook}
-            onDeleteBook={handleDeleteBook}
-          />
-        );
+        return <AddUpdateDeleteBooksForm />;
       case "borrowed":
         return (
           <BorrowedBooksOverview
