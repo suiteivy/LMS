@@ -1,5 +1,7 @@
 'use client';
-import { useState } from 'react';
+import React, { useState } from 'react';
+import BookSearchResults from '@/app/BookSearchResults';
+import BorrowedBooksList from '@/app/BorrowedBooksList';
 
 export default function LibraryPage() {
   const [searchQuery, setSearchQuery] = useState('');

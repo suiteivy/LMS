@@ -8,7 +8,7 @@ import * as Yup from 'yup';
 import { fetchTeacherData, createAssignment } from './services/TeacherService'; 
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import ErrorDisplay from '@/components/ui/ErrorDisplay';
-import '@/styles/teacherDashboard.css';
+// import '@/styles/teacherDashboard.css';
 import { toast } from 'react-hot-toast';
 
 type Assignment = {

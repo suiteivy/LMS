@@ -125,3 +125,5 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
     </View>
   );
 };
+
+export default DashboardHeader

@@ -128,10 +128,10 @@ export default function Index() {
       setTimeout(() => {
         switch (userData.role) {
           case "admin":
-            router.replace("(admin)");
+            router.replace("/(admin)");
             break;
           case "teacher":
-            router.replace("/teacher/dashboard");
+            router.replace("./(teacher)/dashboard");
             break;
           case "student":
             router.replace("/(student)/courses");
@@ -143,7 +143,7 @@ export default function Index() {
       }, 2000);
     } catch (error) {
       console.error("Unexpected error:", error);
-      setErrorMessage("An unexpected error occurred: " + error.message);
+      setErrorMessage("An unexpected error occurred: "  + error);
     } finally {
       setIsLoading(false);
     }

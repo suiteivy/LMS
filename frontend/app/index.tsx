@@ -1,11 +1,6 @@
 import { Text, View, TouchableOpacity, StatusBar } from "react-native";
 import { SafeAreaView, SafeAreaProvider } from "react-native-safe-area-context";
-import {
-  GraduationCap,
-  School,
-  UserCheck,
-  UserStar,
-} from "lucide-react-native";
+import { GraduationCap, School, UserCheck, UserStar } from "lucide-react-native";
 import { router } from "expo-router";
 
 export default function Index() {

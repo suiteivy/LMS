@@ -1,4 +1,5 @@
-import { EarningsSummary, PaymentHistory } from '../../../components';
+import { PaymentHistory } from '../../../components/PaymentHistory';
+import { EarningsSummary } from '../../../components/EarningsSummary';
 
 export default function BursaryPage() {
   return (

@@ -424,3 +424,5 @@ export const TeacherPayoutSection: React.FC<TeacherPayoutSectionProps> = ({
     </View>
   );
 };
+
+export default TeacherPayoutSection

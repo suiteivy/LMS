@@ -17,7 +17,7 @@ export default function App() {
       <NavigationContainer>
         <RootNavigation />
         <SplashScreen navigation={ NativeStackNavigationProp<RootStackParamList, "Splash">} /> 
-         <TeacherDashboard />
+        <TeacherDashboard />
       </NavigationContainer>
     </AuthProvider>
 

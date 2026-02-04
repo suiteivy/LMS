@@ -442,3 +442,5 @@ export const FeeStructureSection: React.FC<FeeStructureSectionProps> = ({
     </View>
   );
 };
+
+export default FeeStructureSection

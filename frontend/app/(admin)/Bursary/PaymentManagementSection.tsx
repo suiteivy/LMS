@@ -289,3 +289,5 @@ export const PaymentManagementSection: React.FC<
     </View>
   );
 };
+
+export default PaymentManagementSection
