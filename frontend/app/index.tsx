@@ -39,7 +39,10 @@ export default function Index() {
                 <Text>Teacher</Text>
               </View>
             </TouchableOpacity>
-            <TouchableOpacity onPress={() => router.push("/(auth)/sign")}>
+            <TouchableOpacity onPress={
+              // () => router.push("/(auth)/sign")
+              () => router.push("/(student)")
+            }>
               <View className="items-center p-4 ">
                 <GraduationCap size={100} color="#1ABC9C" />
                 <Text>Student</Text>

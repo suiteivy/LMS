@@ -1,13 +1,71 @@
-import { View, Text } from "react-native";
+import React, { useState, ReactNode } from "react";
+import { View, Text, TouchableOpacity, Switch, ScrollView } from "react-native";
+import { Bell, Lock, Eye, Globe, ChevronRight, User, LucideIcon } from "lucide-react-native";
+
+interface SettingRowProps{
+    icon: LucideIcon;
+    title: string;
+    onPress?: () => void;
+    isLast?: boolean;
+    children?: ReactNode;
+}
 
 export default function StudentSettings() {
-    return (
-        <View className="flex-1 bg-bgMain">
-            <View className="flex-row justify-center items-center p-10">
-                <Text className="text-3xl text-headingColor font-bold">
-                    Settings
-                </Text>
+    const [notifications, setNotifications] = useState(true)
+    const [darkMode, setDarkMode] = useState(false)
+
+    const SettingRow = ({icon: Icon, title, onPress, isLast, children}: SettingRowProps) => (
+        <TouchableOpacity
+            onPress={onPress}
+            disabled={!onPress}
+            className={`flex-row items-center justify-between p-4 ${!isLast ? 'border-b border-gray-100' : ''}`}
+        >
+            <View className="flex-row items-center flex-1">
+                <View className="p-2 bg-gray-50 rounded-lg mr-3">
+                    <Icon size={20} color="#4b5563" />
+                </View>
+                <Text className="text-gray-700 font-medium text-base">{title}</Text>
             </View>
-        </View>
+            {children ? children : <ChevronRight size={18} color="#9ca3af" />}
+        </TouchableOpacity>
+    )
+
+    return (
+        <ScrollView className="flex-1 bg-gray-50">
+            <View className="p-4 md:p-8 max-w-2xl mx-auto w-full">
+                <Text className="text-2xl font-bold text-gray-900 mb-6">Settings</Text>
+
+                <Text className="text-xs font-bold text-gray-400 uppercase tracking-widest ml-1 mb-2">Account</Text>
+                <View className="bg-white rounded-2xl border border-gray-100 shadow-sm mb-6 overflow-hidden">
+                    <SettingRow icon={User} title="Edit Profile" />
+                    <SettingRow icon={Lock} title="Change Password" />
+                    <SettingRow icon={Globe} title="Language" isLast >
+                        <Text className="text-gray-400 mr-2">English</Text>
+                    </SettingRow>
+                </View>
+
+                <Text className="text-xs font-bold text-gray-400 uppercase tracking-widest ml-1 mb-2">Preferences</Text>
+                <View className="bg-white rounded-2xl border border-gray-100 shadow-sm mb-6 overflow-hidden">
+                    <SettingRow icon={Bell} title="Push Notifications" isLast >
+                        <Switch 
+                            value={notifications}
+                            onValueChange={setNotifications}
+                            trackColor={{false: "#e5e7eb", true: "#0d9488"}}
+                            thumbColor="#ffffff"
+                        />
+                    </SettingRow>
+                </View>
+
+                <Text className="text-xs font-bold text-gray-400 uppercase tracking-widest ml-1 mb-2">Security</Text>
+                <View className="bg-white rounded-2xl border border-gray-100 shadow-sm mb-6 overflow-hidden">
+                    <SettingRow icon={Eye} title="Edit Profile" />
+                    <SettingRow icon={Lock} title="Change Password" />
+                </View>
+
+                <TouchableOpacity className="mt-2 p-4 bg-red-50 rounded-2xl border border-red-100 items-center">
+                    <Text className="text-red-600 font-bold">Delete Account</Text>
+                </TouchableOpacity>
+            </View>
+        </ScrollView>
     )
 }

@@ -285,6 +285,7 @@ export default function Courses() {
   ];
 
   const handleCoursePress = (course: Course) => {
+    
     setSelectedCourse(course);
     setCurrentView("details");
   };
