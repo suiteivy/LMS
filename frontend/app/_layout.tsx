@@ -18,7 +18,7 @@ export default function RootLayout() {
           <Stack.Screen name="/" />
           <Stack.Screen name="/auth/signUp" />
           <Stack.Screen name="/sign" />
-          <Stack.Screen name="(student)" options={{ headerShown: false }} />
+          {/* <Stack.Screen name="(student)" options={{ headerShown: false }} /> */}
         </Stack>
       </SafeAreaProvider>
       </AuthProvider>
