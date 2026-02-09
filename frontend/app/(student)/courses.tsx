@@ -1,10 +1,10 @@
+
 import { CourseDetails } from "@/components/CourseDetails";
 import { CourseList } from "@/components/CourseList";
 
 import { Course } from "@/types/types";
 import { useState } from "react";
-import { View } from "react-native";
-import { ScrollView } from "react-native-gesture-handler";
+import { View,  ScrollView  } from "react-native";
 
 export default function Courses() {
   const [currentView, setCurrentView] = useState<"list" | "details">("list");
@@ -285,6 +285,7 @@ export default function Courses() {
   ];
 
   const handleCoursePress = (course: Course) => {
+    
     setSelectedCourse(course);
     setCurrentView("details");
   };

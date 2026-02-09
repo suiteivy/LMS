@@ -1,124 +1,161 @@
-import { Text, View,  TouchableOpacity, ScrollView, StatusBar } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
-import CircularProgress from "../../components/CircularProgress";
+import React, { useState } from "react";
+import { View, Text, ScrollView, TouchableOpacity, StatusBar } from 'react-native';
+import { Calendar, Clock, Bell, ArrowRight, BookOpen, Star, GraduationCap } from 'lucide-react-native';
+// import Notifications from '../../components/Notifications';
 
+// Define Interface for the QuickAction props
+interface QuickActionProps {
+  icon: any;
+  label: string;
+  color: string;
+}
 
-export default function StudentSignUpScreen() {
+const QuickAction = ({ icon: Icon, label, color }: QuickActionProps) => (
+  <TouchableOpacity className="w-[48%] bg-white p-6 rounded-3xl border border-gray-100 shadow-sm items-center mb-4 active:bg-gray-50">
+    <View style={{ backgroundColor: `${color}15` }} className="p-3 rounded-2xl mb-2">
+      <Icon size={24} color={color} />
+    </View>
+    <Text className="text-gray-800 font-bold">{label}</Text>
+  </TouchableOpacity>
+);
 
+export default function Index() {
+  const [showNotification, setShowNotification] = useState(false);
 
+  return (
+    /* Use a Fragment so we don't add an extra wrapping View that could mess up the Tab layout */
+    <>
+      <StatusBar barStyle="dark-content" />
 
-    return (
-        <>
-        <StatusBar barStyle="dark-content"/>
-        <SafeAreaView className="flex-1">
-            <ScrollView className="flex-grow bg-bgMain py-6">
-                <View className="p-4">
-                    <Text className="text-xl text-headingColor font-bold">
-                        LMS
-                    </Text>
+      <View className="flex-1 bg-gray-50">
+        <ScrollView
+          className="flex-1"
+          showsVerticalScrollIndicator={false}
+          // contentContainerStyle handles the internal padding correctly
+          contentContainerStyle={{ paddingBottom: 100 }}
+        >
+          <View className="p-4 md:p-8">
+            {/* --- 1. Header Section --- */}
+            <View className="flex-row justify-between items-center mb-8">
+              <View>
+                <Text className="text-gray-500 text-base font-medium">
+                  Welcome back,
+                </Text>
+                <Text className="text-3xl font-bold text-gray-900">
+                  Alex Reed 👋
+                </Text>
+              </View>
+
+              <TouchableOpacity
+                className="relative p-2 bg-white rounded-full border border-gray-100 shadow-sm active:opacity-70"
+                onPress={() => setShowNotification(true)}
+              >
+                <Bell size={24} color="#374151" />
+                <View className="absolute top-2 right-2 w-3 h-3 bg-red-500 rounded-full border-2 border-white" />
+              </TouchableOpacity>
+            </View>
+
+            {/* --- 2. Quick Status Cards --- */}
+            <View className="flex-row gap-4 mb-8">
+              <View className="flex-1 bg-teal-600 p-4 rounded-3xl shadow-sm">
+                <Star size={20} color="white" />
+                <Text className="text-white text-2xl font-bold mt-2">3.82</Text>
+                <Text className="text-teal-100 text-xs font-medium uppercase italic">
+                  GPA
+                </Text>
+              </View>
+              <View className="flex-1 bg-white p-4 rounded-3xl border border-gray-100 shadow-sm">
+                <Clock size={20} color="#0d9488" />
+                <Text className="text-gray-900 text-2xl font-bold mt-2">
+                  92%
+                </Text>
+                <Text className="text-gray-400 text-xs font-medium uppercase italic">
+                  Attendance
+                </Text>
+              </View>
+            </View>
+
+            {/* --- 3. Upcoming Schedule --- */}
+            {/* Tightened header: removed pb-8, kept mb-4 */}
+            <View className="flex-row justify-between items-end mb-4 ">
+              <Text className="text-xl font-bold text-gray-900">
+                Today's Schedule
+              </Text>
+              <TouchableOpacity>
+                <Text className="text-teal-600 font-semibold">View All</Text>
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              className="flex-row mb-6 -mx-4 px-4 pb-4"
+            >
+              {/* Card 1 */}
+              <View className="bg-white p-5 rounded-3xl border border-gray-100 shadow-sm mr-4 w-64">
+                <View className="flex-row items-center mb-3">
+                  <View className="bg-orange-100 p-2 rounded-xl mr-3">
+                    <BookOpen size={20} color="#f97316" />
+                  </View>
+                  <Text className="text-gray-400 font-bold text-[10px] uppercase">
+                    CS302 • 09:00 AM
+                  </Text>
                 </View>
-                {/* first row */}
-                <View className="flex-row justify-between items-center p-3">
-                    
-                    <View className="flex-col justify-start bg-bgLight px-3.5 py-10 rounded-lg">
-                        <Text className="text-headingColor text-left text-2xl font-bold">
-                            Hello Jane!
-                        </Text>
-                        <Text className="text-xl text-wrap">
-                            Continue with your learning journey
-                        </Text>
-                    </View>
-                    <View className="flex items-center bg-bgLight px-4 py-5 rounded-lg">
-                        <TouchableOpacity className="bg-actionColor py-4 px-6 rounded-lg">
-                            <Text>New Course</Text>
-                        </TouchableOpacity>
-                    </View>
+                <Text className="text-gray-900 font-bold text-lg mb-1">
+                  Advanced React Native
+                </Text>
+                <Text className="text-gray-500 text-sm">
+                  Lecture Hall B, Room 402
+                </Text>
+              </View>
+
+              {/* Card 2 */}
+              <View className="bg-white p-5 rounded-3xl border border-gray-100 shadow-sm mr-4 w-64">
+                <View className="flex-row items-center mb-3">
+                  <View className="bg-blue-100 p-2 rounded-xl mr-3">
+                    <BookOpen size={20} color="#3b82f6" />
+                  </View>
+                  <Text className="text-gray-400 font-bold text-[10px] uppercase">
+                    DS101 • 11:30 AM
+                  </Text>
                 </View>
-                {/* second row */}
-                <View className="flex-row justify-between p-3">
-                    {/* courses */}
-                    <View className="flex-col ">
-                        <View className="py-2">
-                            <Text className="text-xl text-headingColor font-bold">
-                                Your Courses
-                            </Text>
-                        </View>
-                        
-                        <View className="flex-row gap-3 pb-3">
-                            <View className="flex-col bg-bgLight px-4 py-10 rounded-lg">
-                                <Text className="text-headingColor text-left text-2xl font-bold">
-                                    Course 1
-                                </Text>
-                                <Text className="text-xl text-wrap">
-                                    Learn to code
-                                </Text>
-                            </View>
-                            <View className="flex-col bg-bgLight px-4 py-10 rounded-lg">
-                                <Text className="text-headingColor text-left text-2xl font-bold">
-                                    Course 1
-                                </Text>
-                                <Text className="text-xl text-wrap">
-                                    Learn to code
-                                </Text>
-                            </View>
-                        </View>
-                        <View className="flex-row gap-3">
-                            <View className="flex-col bg-bgLight px-4 py-10 rounded-lg">
-                                <Text className="text-headingColor text-left text-2xl font-bold">
-                                    Course 1
-                                </Text>
-                                <Text className="text-xl text-wrap">
-                                    Learn to code
-                                </Text>
-                            </View>
-                            <View className="flex-col bg-bgLight px-4 py-10 rounded-lg">
-                                <Text className="text-headingColor text-left text-2xl font-bold">
-                                    Course 1
-                                </Text>
-                                <Text className="text-xl text-wrap">
-                                    Learn to code
-                                </Text>
-                            </View> 
-                        </View>
-                    </View>
-                    {/* course progress */}
-                    <View className="flex-col justify-start bg-bgLight px-4 py-10 rounded-lg">
-                        <View className="py-2">
-                            <Text className="font-bold text-headingColor text-xl">Course Progress</Text>
-                        </View>
-                       <CircularProgress
-                        size={100}
-                        progress={75}
-                        
-                        
-                      />
-                    </View>
-                </View>
-                {/* third row */}
-                <View className="flex-row justify-between gap-3 p-3">
-                    <View className="w-[47%]">
-                        <View className="py-2">
-                            <Text className="text-xl font-bold text-headingColor">Upcoming Events</Text>
-                        </View>
-                        <View className="flex-col bg-bgLight px-3.5 py-10 rounded-lg">
-                            <Text className="text-left text-xl text-wrap">
-                                Upcoming math test on 10th July
-                            </Text>
-                        </View>
-                    </View>
-                     <View className="w-[47%]">
-                        <View className="py-2">
-                            <Text className="text-xl font-bold text-headingColor">Announcements</Text>
-                        </View>
-                        <View className="flex-col bg-bgLight px-3.5 py-10 rounded-lg">
-                            <Text className="text-left text-xl text-wrap">
-                                Upcoming math test on 10th July
-                            </Text>
-                            
-                        </View>
-                     </View>
-                </View>
+                <Text className="text-gray-900 font-bold text-lg mb-1">
+                  Database Systems
+                </Text>
+                <Text className="text-gray-500 text-sm">Virtual Lab 2</Text>
+              </View>
             </ScrollView>
-        </SafeAreaView>
-        </>
-    )};
+
+            {/* --- 4. Quick Actions Grid --- */}
+            {/* Removed pt-2 and mt-5, replaced with a clean mt-2 */}
+            <View className="mt-2">
+              <Text className="text-xl font-bold text-gray-900 mb-4">
+                Resources
+              </Text>
+              <View className="flex-row flex-wrap justify-between">
+                <QuickAction
+                  icon={GraduationCap}
+                  label="Library"
+                  color="#0d9488"
+                />
+                <QuickAction icon={Calendar} label="Events" color="#8b5cf6" />
+                <QuickAction
+                  icon={ArrowRight}
+                  label="Assignments"
+                  color="#f43f5e"
+                />
+                <QuickAction icon={Star} label="Grades" color="#eab308" />
+              </View>
+            </View>
+          </View>
+        </ScrollView>
+
+        {/* Notifications Modal rendered outside the ScrollView */}
+        {/* <Notifications
+          visible={showNotification}
+          onClose={() => setShowNotification(false)}
+        /> */}
+      </View>
+    </>
+  );
+}
