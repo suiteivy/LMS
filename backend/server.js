@@ -5,7 +5,8 @@ const authRoutes = require("./routes/auth.route");
 const courseRoutes = require("./routes/courses.route");
 const institutionRoutes = require("./routes/institution.route");
 const libraryRoutes = require("./routes/library.route");
-const bursaryRoutes = require("./routes/bursary.route");
+// Use the role-protected bursary routes
+const bursaryRoutes = require("./routes/bursary.routes");
 const morgan = require("morgan");
 
 const app = express();

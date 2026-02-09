@@ -103,12 +103,10 @@ export default function Index() {
         .from("users")
         .select("role, full_name")
         .eq("id", data.user.id)
-        .single();
-
-      console.log("Role fetch result:", { userData, roleError });
+        .single() as { data: { role: string; full_name: string } | null; error: any };
 
       if (roleError) {
-        console.log("Role fetch error:", roleError);
+        console.error("Role fetch error:", roleError.message);
         setErrorMessage("Could not fetch user role: " + roleError.message);
         setIsLoading(false);
         return;
@@ -128,22 +126,22 @@ export default function Index() {
       setTimeout(() => {
         switch (userData.role) {
           case "admin":
-            router.replace("(admin)");
+            router.replace("/(admin)");
             break;
           case "teacher":
-            router.replace("/teacher/dashboard");
+            router.replace("/(teacher)/teacher");
             break;
           case "student":
-            router.replace("/(student)/courses");
+            router.replace("/(student)");
             break;
           default:
             setErrorMessage("Unrecognized user role: " + userData.role);
             break;
         }
       }, 2000);
-    } catch (error) {
+    } catch (error: unknown) {
       console.error("Unexpected error:", error);
-      setErrorMessage("An unexpected error occurred: " + error.message);
+      setErrorMessage("An unexpected error occurred: " + (error instanceof Error ? error.message : String(error)));
     } finally {
       setIsLoading(false);
     }
@@ -252,7 +250,7 @@ export default function Index() {
           <Text className="text-base text-[#2C3E50]">
             Don&apos;t have an account?{" "}
           </Text>
-          <TouchableOpacity onPress={() => router.push("/signUp")}>
+          <TouchableOpacity onPress={() => router.push("/(auth)/signUp")}>
             <Text className="text-base text-[#34967C] font-semibold">
               Sign Up
             </Text>
@@ -267,9 +265,8 @@ export default function Index() {
         >
           <View className="flex-1 items-center bg-black bg-opacity-50">
             <View
-              className={`p-5 rounded-lg shadow-lg mt-20 ${
-                isSuccess ? "bg-green-500" : "bg-red-500"
-              }`}
+              className={`p-5 rounded-lg shadow-lg mt-20 ${isSuccess ? "bg-green-500" : "bg-red-500"
+                }`}
             >
               <Text className="text-white text-lg font-semibold text-center">
                 {message}

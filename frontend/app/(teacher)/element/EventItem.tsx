@@ -1,26 +1,46 @@
-import React from 'react';
-import { View, Text } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import React from "react";
+import { View, Text } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+
+type EventType = "live" | "deadline" | "meeting";
 
 interface Event {
-  title: string;
-  date: string;
-  type: 'live' | 'deadline' | 'meeting';
+    title: string;
+    date: string;
+    type: EventType;
 }
 
-export const EventItem: React.FC<{ event: Event }> = ({ event }) => (
-  <View className="p-3 border border-gray-100 rounded-lg mb-3">
-    <View className="flex-row items-center mb-2">
-      <View className={`w-2 h-2 rounded-full mr-2 ${
-        event.type === 'live' ? 'bg-red-500' :
-        event.type === 'deadline' ? 'bg-orange-500' :
-        'bg-[#1ABC9C]'
-      }`} />
-      <Text className="text-sm font-medium text-[#2C3E50] flex-1">{event.title}</Text>
-    </View>
-    <View className="flex-row items-center ml-4">
-      <Ionicons name="time" size={12} color="#6B7280" />
-      <Text className="text-xs text-gray-500 ml-1">{event.date}</Text>
-    </View>
-  </View>
-);
+interface EventItemProps {
+    event: Event;
+}
+
+const eventConfig: Record<
+    EventType,
+    { icon: keyof typeof Ionicons.glyphMap; color: string; bgColor: string }
+> = {
+    live: { icon: "videocam", color: "#EF4444", bgColor: "#FEF2F2" },
+    deadline: { icon: "time", color: "#F59E0B", bgColor: "#FFFBEB" },
+    meeting: { icon: "calendar", color: "#3B82F6", bgColor: "#EFF6FF" },
+};
+
+const EventItem: React.FC<EventItemProps> = ({ event }) => {
+    const config = eventConfig[event.type];
+
+    return (
+        <View className="flex-row items-center py-3 border-b border-gray-100 last:border-b-0">
+            <View
+                className="w-10 h-10 rounded-full items-center justify-center mr-3"
+                style={{ backgroundColor: config.bgColor }}
+            >
+                <Ionicons name={config.icon} size={20} color={config.color} />
+            </View>
+            <View className="flex-1">
+                <Text className="text-[#2C3E50] text-sm font-medium">{event.title}</Text>
+                <Text className="text-gray-400 text-xs mt-1">{event.date}</Text>
+            </View>
+        </View>
+    );
+};
+
+export { EventItem };
+export default EventItem;

@@ -10,7 +10,7 @@ import { UsersTableSection } from "./elements/UsersTableSection";
 import { QuickActionsSection } from "./elements/QuickActionsSection";
 import { PaymentManagementSection } from "./Bursary/PaymentManagementSection";
 import { TeacherPayoutSection } from "./Bursary/TeacherPayoutSection";
-import { FeeStructureSection } from "./Bursary/ FeeStructureSection";
+import { FeeStructureSection } from "./Bursary/FeeStructureSection";
 
 export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   statsData = [],
@@ -47,7 +47,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     if (error) {
       Alert.alert("Logout Failed", error.message);
     } else {
-      router.replace("/(auth)/sign");
+      router.replace("/(auth)/signIn");
     }
   };
 

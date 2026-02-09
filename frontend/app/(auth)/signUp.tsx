@@ -45,10 +45,10 @@ export default function App() {
     label: string;
     value: "admin" | "student" | "teacher";
   }> = [
-    { label: "Admin", value: "admin" },
-    { label: "Teacher", value: "teacher" },
-    { label: "Student", value: "student" },
-  ];
+      { label: "Admin", value: "admin" },
+      { label: "Teacher", value: "teacher" },
+      { label: "Student", value: "student" },
+    ];
 
   // Function to show a custom message modal
   const showMessage = (msg: string, success: boolean) => {
@@ -58,7 +58,7 @@ export default function App() {
     setTimeout(() => {
       setIsModalVisible(false);
       if (success) {
-         router.push("/sign");
+        router.push("/(auth)/signIn");
       }
     }, 2000);
   };
@@ -241,36 +241,34 @@ export default function App() {
             </View>
           </View>
 
-            {/* Role Selection */}
-            <View>
-              <Text className="text-lg mt-4 text-[#2C3E50] mb-2">Select Role</Text>
-              <View className="flex-row justify-around">
-                {roles.map((role) => (
-                  <TouchableOpacity
-                    key={role.value}
-                    className={`py-2 px-4 rounded-full ${
-                      formData.role === role.value
-                        ? "bg-[#1ABC9C]"
-                        : "border border-[#1ABC9C]"
+          {/* Role Selection */}
+          <View>
+            <Text className="text-lg mt-4 text-[#2C3E50] mb-2">Select Role</Text>
+            <View className="flex-row justify-around">
+              {roles.map((role) => (
+                <TouchableOpacity
+                  key={role.value}
+                  className={`py-2 px-4 rounded-full ${formData.role === role.value
+                    ? "bg-[#1ABC9C]"
+                    : "border border-[#1ABC9C]"
                     }`}
-                    onPress={() => handleInputChange("role", role.value)}
-                  >
-                    <Text
-                      className={`${
-                        formData.role === role.value
-                          ? "text-white"
-                          : "text-[#1ABC9C]"
+                  onPress={() => handleInputChange("role", role.value)}
+                >
+                  <Text
+                    className={`${formData.role === role.value
+                      ? "text-white"
+                      : "text-[#1ABC9C]"
                       } font-semibold text-sm`}
-                    >
-                      {role.label}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-              {errors.role && (
-                <Text className="text-red-500 text-sm mt-1">{errors.role}</Text>
-              )}
+                  >
+                    {role.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
             </View>
+            {errors.role && (
+              <Text className="text-red-500 text-sm mt-1">{errors.role}</Text>
+            )}
+          </View>
 
           {/* Create Account Button */}
           <TouchableOpacity
@@ -298,7 +296,7 @@ export default function App() {
         {/* Bottom Sign In link */}
         <View className="flex-row justify-center mb-8">
           <Text className="text-lg text-[#2C3E50]">Have an account?</Text>
-          <TouchableOpacity onPress={() =>   router.push("/sign")}>
+          <TouchableOpacity onPress={() => router.push("/(auth)/signIn")}>
             <Text className="text-lg text-[#2B876E] font-semibold ml-1">
               Sign In
             </Text>

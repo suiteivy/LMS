@@ -1,19 +1,12 @@
-export interface PaymentRecord {
+export interface TeacherPayment {
   id: string;
-  date: Date;
-  amount: number;
-  status: 'pending' | 'completed';
-  reference: string;
+  teacher_id: string;
+  amount_paid: number;
+  created_at: string;
 }
 
-export const fetchTeacherEarnings = async (teacherId: string): Promise<{
-  currentMonth: number;
-  totalBalance: number;
-  pending: number;
-  payments: PaymentRecord[];
-}> => {
-
-    const response = await fetch(`/api/teachers/${teacherId}/earnings`);
+export const fetchTeacherEarnings = async (teacherId: string): Promise<TeacherPayment[]> => {
+    const response = await fetch(`/api/bursary/teacher/earnings/${teacherId}`);
     if (!response.ok) {
       throw new Error('Failed to fetch earnings data');
     }

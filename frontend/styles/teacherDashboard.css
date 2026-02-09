@@ -1,0 +1,24 @@
+/* Teacher Dashboard custom styles */
+
+.teacher-dashboard-container {
+  /* Example: limit max width and center content on large screens */
+  max-width: 1200px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.teacher-dashboard-card {
+  /* Slightly stronger shadow and padding for key cards */
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.12);
+  border-radius: 0.75rem;
+}
+
+.teacher-dashboard-tabs {
+  backdrop-filter: blur(12px);
+}
+
+.teacher-dashboard-badge {
+  letter-spacing: 0.03em;
+}
+
+

@@ -12,8 +12,10 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { LibraryAPI, useLibraryAPI } from "@/services/LibraryService";
 import { FrontendBook, FrontendBorrowedBook } from "@/types/types";
+import { useAuth } from "@/contexts/AuthContext";
 
 export const AddUpdateDeleteBooksForm: React.FC = () => {
+  const { profile } = useAuth();
   const [books, setBooks] = useState<FrontendBook[]>([]);
   const [borrowedBooks, setBorrowedBooks] = useState<FrontendBorrowedBook[]>(
     []
@@ -98,7 +100,7 @@ export const AddUpdateDeleteBooksForm: React.FC = () => {
             author: formData.author,
             isbn: formData.isbn,
             total_quantity: parseInt(formData.quantity) || 1,
-            institution_id: "123", // TODO: replace with dynamic institution_id
+            institution_id: profile?.institution_id || "", // Uses institution from auth context
             category: formData.category,
           })
         );

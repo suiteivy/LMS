@@ -15,10 +15,12 @@ import { BorrowedBooksOverview } from "./BorrowedBooksOverview";
 import { Book, BorrowedBook, UserRoles } from "@/types/types";
 import { BorrowLimitConfiguration } from "./BorrowLimitConfiguration";
 import { LibraryAPI } from "@/services/LibraryService";
+import { useAuth } from "@/contexts/AuthContext";
 
 type LibrarySection = "overview" | "books" | "borrowed" | "config";
 
 const LibraryAction = () => {
+  const { profile } = useAuth();
   const [activeSection, setActiveSection] =
     useState<LibrarySection>("overview");
 
@@ -125,7 +127,7 @@ const LibraryAction = () => {
         author: bookData.author,
         isbn: bookData.isbn,
         total_quantity: bookData.quantity,
-        institution_id: "current-institution-id", // Get from user context
+        institution_id: profile?.institution_id || "", // Uses institution from auth context
       };
 
       const newBook = await LibraryAPI.addBook(backendBookData);
@@ -205,10 +207,10 @@ const LibraryAction = () => {
         prevBorrowedBooks.map((borrowed) =>
           borrowed.id === borrowId
             ? {
-                ...borrowed,
-                status: "returned" as const,
-                returnDate: new Date(),
-              }
+              ...borrowed,
+              status: "returned" as const,
+              returnDate: new Date(),
+            }
             : borrowed
         )
       );
@@ -606,11 +608,10 @@ const LibraryAction = () => {
             {sections.map((section) => (
               <TouchableOpacity
                 key={section.id}
-                className={`mr-4 px-4 py-2 rounded-full border ${
-                  activeSection === section.id
+                className={`mr-4 px-4 py-2 rounded-full border ${activeSection === section.id
                     ? "bg-teal-600 border-teal-600"
                     : "bg-white border-slate-300"
-                }`}
+                  }`}
                 onPress={() => setActiveSection(section.id as LibrarySection)}
                 disabled={loading}
               >
@@ -621,11 +622,10 @@ const LibraryAction = () => {
                     color={activeSection === section.id ? "white" : "#64748B"}
                   />
                   <Text
-                    className={`ml-2 text-sm font-medium ${
-                      activeSection === section.id
+                    className={`ml-2 text-sm font-medium ${activeSection === section.id
                         ? "text-white"
                         : "text-slate-700"
-                    }`}
+                      }`}
                   >
                     {section.title}
                   </Text>

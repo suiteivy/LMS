@@ -42,23 +42,52 @@ This guide will walk you through setting up a Supabase project for the Learning 
 
 ## Database Setup
 
+### Option 1: Quick Setup (Recommended)
+
+Use the consolidated setup scripts in `backend/supabase/setup/` for a streamlined setup:
+
 1. **Access SQL Editor**
    - In the Supabase dashboard, click on "SQL Editor" in the left sidebar
    - Click "New query" to create a new SQL script
 
-2. **Run Schema Creation Scripts**
-   - Copy the contents of each schema file from your project's `backend/supabase/schemas/` directory
-   - Paste into the SQL editor and run each script in the following order:
-     1. `users.sql`
-     2. `institutions.sql`
-     3. `courses.sql`
-     4. `lessons.sql`
-     5. `assignments.sql`
-     6. `submissions.sql`
-     7. `grades.sql`
-     8. `attendance.sql`
-     9. `roles_policy.sql`
-     10. `auth_policy.sql`
+2. **Run Setup Scripts in Order**
+   | Step | File | Description |
+   |------|------|-------------|
+   | 1 | `01_tables.sql` | Creates all database tables |
+   | 2 | `02_rls_policies.sql` | Sets up Row Level Security policies |
+   | 3 | `03_create_admin.sql` | Creates the initial admin user |
+
+   > ⚠️ **Important:** Review and update admin credentials in `03_create_admin.sql` before running!
+
+---
+
+### Option 2: Individual Schema Files
+
+Alternatively, run each schema file from `backend/supabase/schemas/` in the following order:
+
+1. **Core Tables** (run in this order due to foreign key dependencies):
+   1. `institutions.sql`
+   2. `users.sql`
+   3. `courses.sql`
+   4. `lessons.sql`
+   5. `assignment.sql` *(creates the assignments table)*
+   6. `submissions.sql`
+   7. `grades.sql`
+   8. `attendance.sql`
+
+2. **Library Module Tables** (optional, for book borrowing feature):
+   9. `books.sql`
+   10. `borrowed_books.sql`
+
+3. **Security Policies:**
+   11. `roles_policy.sql`
+   12. `auth_policy.sql`
+
+4. **Admin User Setup:**
+   13. `create_admin_user.sql` *(follow instructions in the file)*
+
+5. **Triggers** (run from `backend/supabase/` directory):
+   14. `triggers.sql` *(required for library module)*
 
 ## Authentication Configuration
 

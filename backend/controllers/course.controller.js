@@ -76,59 +76,104 @@ exports.enrollStudentInCourse = async (req, res) => {
   }
 };
 
-// GET COURSES
+// GET COURSES (unfiltered list for institution)
 exports.getCourses = async (req, res) => {
-  const { institution_id, userRole } = req;
+  const { institution_id } = req;
 
   try {
-    let courses;
-    let error;
+    const { data, error } = await supabase
+      .from("courses")
+      .select("*")
+      .eq("institution_id", institution_id);
 
-    if (userRole === "student") {
-      const { data: gradeRows, error: gradeError } = await supabase
-        .from("grades")
-        .select("course_id")
-        .eq("student_id", req.userId);
+    if (error) {
+      return res.status(500).json({ error: error.message });
+    }
 
-      if (gradeError)
-        return res.status(500).json({ error: gradeError.message });
+    return res.json(data);
+  } catch (err) {
+    console.error("getCourses error:", err);
+    res.status(500).json({ error: "Server error" });
+  }
+};
 
-      const courseIds = gradeRows.map((row) => row.course_id);
+// GET FILTERED COURSES BASED ON USER ROLE
+// Mirrors the behavior described in docs/api_endpoints.md
+exports.getFilteredCourses = async (req, res) => {
+  const { institution_id, userRole, userId } = req;
 
-      const { data, error: courseError } = await supabase
-        .from("courses")
-        .select("*")
-        .in("id", courseIds)
-        .eq("institution_id", institution_id);
+  try {
+    if (!institution_id) {
+      return res
+        .status(400)
+        .json({ error: "Missing institution context for user" });
+    }
 
-      courses = data;
-      error = courseError;
-    } else if (userRole === "teacher") {
-      const { data, error: teacherError } = await supabase
-        .from("courses")
-        .select("*")
-        .eq("teacher_id", req.userId)
-        .eq("institution_id", institution_id);
-
-      courses = data;
-      error = teacherError;
-    } else if (userRole === "admin") {
-      const { data, error: adminError } = await supabase
-        .from("courses")
-        .select("*")
-        .eq("institution_id", institution_id);
-
-      courses = data;
-      error = adminError;
-    } else {
+    if (!["admin", "teacher", "student"].includes(userRole)) {
       return res.status(403).json({ error: "Unauthorized role" });
     }
 
-    if (error) return res.status(500).json({ error: error.message });
+    let data;
+    let error;
 
-    res.json(courses);
+    if (userRole === "admin") {
+      // All courses in the institution
+      ({ data, error } = await supabase
+        .from("courses")
+        .select("*")
+        .eq("institution_id", institution_id));
+    } else if (userRole === "teacher") {
+      // Courses where the user is the teacher
+      ({ data, error } = await supabase
+        .from("courses")
+        .select("*")
+        .eq("institution_id", institution_id)
+        .eq("teacher_id", userId));
+    } else if (userRole === "student") {
+      // Courses where the student has attendance records or submissions
+      const { data: attendanceRows, error: attendanceError } = await supabase
+        .from("attendance")
+        .select("course_id")
+        .eq("student_id", userId);
+
+      if (attendanceError) {
+        return res.status(500).json({ error: attendanceError.message });
+      }
+
+      const { data: submissionRows, error: submissionError } = await supabase
+        .from("submissions")
+        .select("course_id")
+        .eq("student_id", userId);
+
+      if (submissionError) {
+        return res.status(500).json({ error: submissionError.message });
+      }
+
+      const courseIds = Array.from(
+        new Set([
+          ...attendanceRows.map((r) => r.course_id),
+          ...submissionRows.map((r) => r.course_id),
+        ])
+      );
+
+      if (courseIds.length === 0) {
+        return res.json([]);
+      }
+
+      ({ data, error } = await supabase
+        .from("courses")
+        .select("*")
+        .eq("institution_id", institution_id)
+        .in("id", courseIds));
+    }
+
+    if (error) {
+      return res.status(500).json({ error: error.message });
+    }
+
+    return res.json(data);
   } catch (err) {
-    console.error("getCourses error:", err);
+    console.error("getFilteredCourses error:", err);
     res.status(500).json({ error: "Server error" });
   }
 };

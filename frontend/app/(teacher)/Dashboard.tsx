@@ -5,11 +5,11 @@ import { useSchool } from '@/contexts/SchoolContext';
 import { useSession } from 'next-auth/react';
 import { Formik, Form, Field, ErrorMessage } from 'formik';
 import * as Yup from 'yup';
-import { fetchTeacherData, createAssignment } from './services/TeacherService'; 
+import { fetchTeacherData, createAssignment } from '@/services/TeacherService';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import ErrorDisplay from '@/components/ui/ErrorDisplay';
 import '@/styles/teacherDashboard.css';
-import { toast } from 'react-hot-toast';
+import { Alert } from 'react-native';
 
 type Assignment = {
   id: string;
@@ -50,15 +50,18 @@ const TeacherDashboard = () => {
   const [classes, setClasses] = useState<Class[]>([]);
   const [activeTab, setActiveTab] = useState('assignments');
 
+  // Safely get the user id from the session (session itself may be null)
+  const userId = (session?.user as { id?: string } | undefined)?.id;
+
   useEffect(() => {
-    if (schoolId && session?.user?.id) {
+    if (schoolId && userId) {
       const loadData = async () => {
         try {
           setLoading(true);
           const [assignmentsData, studentsData, classesData] = await Promise.all([
-            fetchTeacherData(session.user.id, schoolId, 'assignments') as Promise<Assignment[]>,
-            fetchTeacherData(session.user.id, schoolId, 'students') as Promise<Student[]>,
-            fetchTeacherData(session.user.id, schoolId, 'classes') as Promise<Class[]>,
+            fetchTeacherData(userId, schoolId, 'assignments') as Promise<Assignment[]>,
+            fetchTeacherData(userId, schoolId, 'students') as Promise<Student[]>,
+            fetchTeacherData(userId, schoolId, 'classes') as Promise<Class[]>,
           ]);
 
           setAssignments(assignmentsData);
@@ -72,11 +75,11 @@ const TeacherDashboard = () => {
       };
       loadData();
     }
-  }, [schoolId, session]);
+  }, [schoolId, userId]);
 
   const handleCreateAssignment = async (values: any, { resetForm }: any) => {
     try {
-      if (!schoolId || !session?.user?.id) {
+      if (!schoolId || !userId) {
         throw new Error('Missing school ID or user session');
       }
 
@@ -85,17 +88,17 @@ const TeacherDashboard = () => {
         description: values.description,
         dueDate: values.dueDate,
         classId: values.classId,
-        teacherId: session.user.id,
+        teacherId: userId,
         schoolId: schoolId,
       });
 
       setAssignments([...assignments, newAssignment]);
       resetForm();
-      toast.success('Assignment created successfully!');
+      Alert.alert('Success', 'Assignment created successfully!');
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to create assignment';
       setError(errorMessage);
-      toast.error(errorMessage);
+      Alert.alert('Error', errorMessage);
     }
   };
 

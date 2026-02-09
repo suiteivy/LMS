@@ -8,32 +8,33 @@
   "dependencies": {
     "@next-auth/prisma-adapter": "^1.0.7",
     "@prisma/client": "^6.13.0",
-    "@react-navigation/native": "^7.1.16",
-    "@react-navigation/native-stack": "^7.3.23",
+    "@react-navigation/native": "^7.1.6",
+    "@react-navigation/native-stack": "^7.3.10",
     "@types/yup": "^0.29.14",
     "axios": "^1.11.0",
-    "expo": "^53.0.20",
-<<<<<<< HEAD
-=======
-    "expo-router": "^5.1.4",
->>>>>>> e1188a3e21dc70d0c954825436c076e6d93c41f8
+    "expo": "^54.0.33",
+    "expo-constants": "^18.0.13",
+    "expo-linking": "~8.0.11",
+    "expo-router": "~6.0.23",
     "formik": "^2.4.6",
     "gsap": "^3.13.0",
     "nativewind": "^4.1.23",
     "next-auth": "^4.24.11",
     "prisma": "^6.13.0",
-    "react": "^19.1.1",
+    "react": "19.2.4",
+    "react-dom": "19.2.4",
     "react-hot-toast": "^2.5.2",
-    "react-native": "^0.80.2",
-    "react-native-gesture-handler": "~2.24.0",
-    "react-native-reanimated": "~3.17.4",
-    "react-native-safe-area-context": "5.4.0",
-    "react-native-screens": "~4.11.1",
+    "react-native": "0.81.5",
+    "react-native-gesture-handler": "~2.28.0",
+    "react-native-reanimated": "~4.1.1",
+    "react-native-safe-area-context": "~5.6.0",
+    "react-native-screens": "~4.16.0",
+    "react-native-worklets": "0.5.1",
     "yup": "^1.7.0"
   },
   "devDependencies": {
     "@react-native-community/cli": "^13.0.0",
-    "@types/react": "^19.1.9",
+    "@types/react": "~19.1.10",
     "supabase": "^2.34.3"
   }
 }

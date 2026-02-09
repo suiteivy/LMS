@@ -7,16 +7,17 @@ const {
   getCourses,
   getCourseById,
   createCourse,
+  getFilteredCourses,
 } = require("../controllers/course.controller");
 
 // Create a new course
 router.post("/", authMiddleware, createCourse);
 
-// Get all courses for an institution
+// Get all courses for an institution (no role-based filtering)
 router.get("/", authMiddleware, getCourses);
 
 // Get courses filtered by user role and ID
-// router.get("/filtered", authMiddleware, getFilteredCourses);
+router.get("/filtered", authMiddleware, getFilteredCourses);
 
 // Get course by ID with role-based access control
 router.get("/:id", authMiddleware, getCourseById);

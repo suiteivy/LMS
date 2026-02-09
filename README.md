@@ -26,12 +26,42 @@ A cross-platform Learning Management System built using **React Native** for the
 
 ### Supabase Setup
 
-Follow these guides to set up your Supabase project:
+#### 1. Create a Supabase Project
+- Go to [supabase.com](https://supabase.com) and create a new project
+- Note your project URL and anon key from Project Settings → API
 
-1. [Supabase Project Setup](./docs/supabase_project_setup.md)
-2. [Supabase Authentication with Custom Roles](./docs/supabase_auth_setup.md)
+#### 2. Configure Environment Variables
+Create a `.env` file in the `frontend` directory:
+```env
+EXPO_PUBLIC_SUPABASE_URL=your-project-url
+EXPO_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+```
+
+#### 3. Set Up Database Schema
+Run the SQL files in `backend/supabase/schemas/` in this order:
+1. `institutions.sql` - Creates institutions table
+2. `users.sql` - Creates users table with role support
+3. `courses.sql` - Creates courses table
+4. Other schema files as needed
+5. `auth_policy.sql` - Sets up RLS policies
+
+#### 4. Create Admin User
+> ⚠️ **Important**: Always create users through the Supabase Dashboard, not direct SQL inserts!
+
+1. Go to **Authentication → Users** in your Supabase Dashboard
+2. Click **"Add user"** → **"Create new user"**
+3. Enter email, password, and check **"Auto Confirm User"**
+4. Run this SQL to add the user to your app's users table:
+   ```sql
+   INSERT INTO public.users (id, email, full_name, role)
+   SELECT id, email, 'System Administrator', 'admin'
+   FROM auth.users WHERE email = 'your-admin@email.com';
+   ```
+
+See `backend/supabase/schemas/create_admin_user.sql` for detailed instructions.
 
 ### Running the App
+
 
 ```bash
 cd frontend

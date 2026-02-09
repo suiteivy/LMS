@@ -1,55 +1,46 @@
 import { Text, View, TouchableOpacity, StatusBar } from "react-native";
 import { SafeAreaView, SafeAreaProvider } from "react-native-safe-area-context";
-import {
-  GraduationCap,
-  School,
-  UserCheck,
-  UserStar,
-} from "lucide-react-native";
+import { School, ArrowRight } from "lucide-react-native";
 import { router } from "expo-router";
 
 export default function Index() {
   return (
-    // Entire app wrapped inside SafeAreaProvider and SafeAreaView to prevent UI overlap with device notches.
     <SafeAreaProvider>
-      <StatusBar barStyle="dark-content" className="bg-bgLight" />
+      <StatusBar barStyle="dark-content" />
       <SafeAreaView className="flex-1">
-        <View className="flex-1 bg-[#F1FFF8]">
+        <View className="flex-1 bg-[#F1FFF8] justify-between py-12">
           {/* Company Logo */}
           <View className="flex-row items-center justify-center my-8 py-8">
             <View className="bg-primaryColor p-12 rounded-xl">
               <School size={100} color="white" />
             </View>
           </View>
-          {/* Hero Section */}
-          <View className="items-center">
-            <Text className="text-[#2C3E50] font-extrabold text-4xl text-center mb-3">
+
+          {/* Welcome Section */}
+          <View className="items-center px-6">
+            <Text className="text-[#2C3E50] font-extrabold text-4xl text-center mb-4">
               Welcome to Our Learning Hub
             </Text>
-            <Text className="text-[#2C3E50] text-lg font-extralight text-center">
-              {/* Unlock your full potential with our comprehensive courses. */}
-              Get started
+            <Text className="text-[#5D6D7E] text-lg text-center leading-7 mb-2">
+              Your gateway to knowledge and growth. Access courses, track
+              progress, and connect with educators all in one place.
             </Text>
           </View>
-          <View className="flex-row items-center justify-center flex-wrap my-8 py-6 gap-16">
-            <TouchableOpacity onPress={() => router.push("/(auth)/sign")}>
-              <View className="items-center p-4 ">
-                <UserStar size={100} color="#1ABC9C" />
-                <Text>Admin</Text>
-              </View>
+
+          {/* Proceed Button */}
+          <View className="items-center px-8 mb-8">
+            <TouchableOpacity
+              className="bg-[#1ABC9C] w-full py-4 rounded-xl flex-row items-center justify-center shadow-lg"
+              onPress={() => router.push("/(auth)/signIn")}
+            >
+              <Text className="text-white text-xl font-semibold mr-2">
+                Get Started
+              </Text>
+              <ArrowRight size={24} color="white" />
             </TouchableOpacity>
-            <TouchableOpacity onPress={() => router.push("/teacher")}>
-              <View className="items-center p-4 ">
-                <UserCheck size={100} color="#1ABC9C" />
-                <Text>Teacher</Text>
-              </View>
-            </TouchableOpacity>
-            <TouchableOpacity onPress={() => router.push("/(auth)/sign")}>
-              <View className="items-center p-4 ">
-                <GraduationCap size={100} color="#1ABC9C" />
-                <Text>Student</Text>
-              </View>
-            </TouchableOpacity>
+            <Text className="text-[#7F8C8D] text-sm mt-4 text-center">
+              Sign in to access your personalized dashboard
+            </Text>
           </View>
         </View>
       </SafeAreaView>

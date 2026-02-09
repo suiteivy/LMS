@@ -1,50 +1,91 @@
-# Welcome to your Expo app 👋
+# LMS Frontend - Expo React Native App 📱
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+This is the frontend application for the Learning Management System, built with [Expo](https://expo.dev) and React Native.
 
-## Get started
+## Prerequisites
 
-1. Install dependencies
+- Node.js (v14 or later)
+- npm or yarn
+- Expo CLI (installed automatically with npx)
 
-   ```bash
-   npm install
-   ```
+## Quick Start
 
-2. Start the app
-
-   ```bash
-   npx expo start
-   ```
-
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
+### 1. Install Dependencies
 
 ```bash
-npm run reset-project
+npm install
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+### 2. Configure Environment
 
-## Learn more
+Create a `.env` file in this directory with your Supabase credentials:
 
-To learn more about developing your project with Expo, look at the following resources:
+```env
+EXPO_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+EXPO_PUBLIC_SUPABASE_ANON_KEY=your-anon-key-here
+```
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+Get these values from your Supabase project: **Project Settings → API**
 
-## Join the community
+### 3. Start the Development Server
 
-Join our community of developers creating universal apps.
+```bash
+npm start
+```
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+This opens Expo DevTools. You can then:
+- Press `w` to open in web browser
+- Press `a` to open in Android emulator
+- Press `i` to open in iOS simulator
+- Scan QR code with Expo Go app on your phone
+
+## Project Structure
+
+```
+frontend/
+├── app/                    # App screens (file-based routing)
+│   ├── (admin)/           # Admin dashboard and features
+│   ├── (auth)/            # Authentication screens (signIn, signUp)
+│   ├── (student)/         # Student features
+│   ├── (teacher)/         # Teacher features
+│   └── index.tsx          # Entry point
+├── components/            # Reusable UI components
+├── contexts/              # React contexts (Auth, etc.)
+├── hooks/                 # Custom React hooks
+├── libs/                  # External service configurations (Supabase)
+├── services/              # API service functions
+├── types/                 # TypeScript type definitions
+└── utils/                 # Utility functions
+```
+
+## User Roles
+
+The app supports three roles:
+- **Admin**: Full system access, user management, analytics
+- **Teacher**: Course management, grading, attendance
+- **Student**: Course enrollment, assignments, grades
+
+## Troubleshooting
+
+### "Database error querying schema"
+This error occurs when the `public.users` table is not accessible:
+1. Ensure the user exists in BOTH `auth.users` AND `public.users`
+2. Check that RLS policies allow read access, or RLS is disabled
+3. Run: `GRANT SELECT ON public.users TO anon, authenticated;`
+
+### Module not found errors
+Clear the Metro bundler cache:
+```bash
+npx expo start --clear
+```
+
+### Environment variables not loading
+- Ensure `.env` file is in the `frontend` directory
+- Restart the development server after changing `.env`
+- Variables must be prefixed with `EXPO_PUBLIC_`
+
+## Learn More
+
+- [Expo Documentation](https://docs.expo.dev/)
+- [React Native Documentation](https://reactnative.dev/)
+- [Supabase Documentation](https://supabase.com/docs)

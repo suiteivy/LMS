@@ -349,3 +349,92 @@ exports.history = async (req, res) => {
     return res.status(500).json({ error: "Server error" });
   }
 };
+
+/** Admin view: all borrowed books across institution */
+exports.getAllBorrowedBooks = async (req, res) => {
+  try {
+    const { institution_id } = req;
+
+    const { data, error } = await supabase
+      .from("borrowed_books")
+      .select(
+        "id, book_id, user_id, borrowed_at, returned_at, due_date, status, books(title, author, isbn), users(full_name, email)"
+      )
+      .eq("institution_id", institution_id)
+      .order("borrowed_at", { ascending: false });
+
+    if (error) return res.status(500).json({ error: error.message });
+
+    return res.json(data);
+  } catch (e) {
+    console.error("getAllBorrowedBooks error:", e);
+    return res.status(500).json({ error: "Server error" });
+  }
+};
+
+/** Send reminder about a borrow (placeholder for email/SMS integration) */
+exports.sendReminder = async (req, res) => {
+  try {
+    const { institution_id } = req;
+    const { borrowId } = req.params;
+
+    const { data, error } = await supabase
+      .from("borrowed_books")
+      .select(
+        "id, due_date, status, users(email, full_name), books(title, author)"
+      )
+      .eq("id", borrowId)
+      .eq("institution_id", institution_id)
+      .single();
+
+    if (error || !data) {
+      return res
+        .status(404)
+        .json({ error: "Borrow record not found for reminder" });
+    }
+
+    // At this point you could integrate with an email service.
+    // For now we just return a success message.
+    return res.json({
+      message: "Reminder processed (no-op placeholder)",
+      borrowId: data.id,
+    });
+  } catch (e) {
+    console.error("sendReminder error:", e);
+    return res.status(500).json({ error: "Server error" });
+  }
+};
+
+/** Extend due date for a borrow */
+exports.extendDueDate = async (req, res) => {
+  try {
+    const { institution_id } = req;
+    const { borrowId } = req.params;
+    const { new_due_date } = req.body;
+
+    if (!new_due_date) {
+      return res
+        .status(400)
+        .json({ error: "new_due_date (YYYY-MM-DD) is required" });
+    }
+
+    const { data, error } = await supabase
+      .from("borrowed_books")
+      .update({ due_date: new_due_date })
+      .eq("id", borrowId)
+      .eq("institution_id", institution_id)
+      .select()
+      .single();
+
+    if (error || !data) {
+      return res
+        .status(404)
+        .json({ error: "Failed to extend due date for this borrow" });
+    }
+
+    return res.json({ message: "Due date extended", borrow: data });
+  } catch (e) {
+    console.error("extendDueDate error:", e);
+    return res.status(500).json({ error: "Server error" });
+  }
+};
