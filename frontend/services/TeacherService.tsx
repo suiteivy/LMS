@@ -1,7 +1,5 @@
 // frontend/services/teacherService.ts
-import axios from 'axios';
-
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
+import { api } from './api';
 
 type Assignment = {
   id: string;
@@ -32,7 +30,7 @@ export const fetchTeacherData = async (
   type: 'assignments' | 'students' | 'classes'
 ): Promise<Assignment[] | Student[] | Class[]> => {
   try {
-    const response = await axios.get(`${API_BASE_URL}/teachers/${teacherId}/${type}`, {
+    const response = await api.get(`/teachers/${teacherId}/${type}`, {
       params: { schoolId },
       headers: {
         'Content-Type': 'application/json',
@@ -56,7 +54,7 @@ export const createAssignment = async (assignmentData: {
   schoolId: string;
 }): Promise<Assignment> => {
   try {
-    const response = await axios.post(`${API_BASE_URL}/assignments`, assignmentData, {
+    const response = await api.post(`/assignments`, assignmentData, {
       headers: {
         'Content-Type': 'application/json',
         // 'Authorization': `Bearer ${token}`
@@ -77,7 +75,7 @@ export const updateTeacherProfile = async (
   }
 ): Promise<void> => {
   try {
-    await axios.patch(`${API_BASE_URL}/teachers/${teacherId}`, profileData, {
+    await api.patch(`/teachers/${teacherId}`, profileData, {
       headers: {
         'Content-Type': 'application/json',
         // 'Authorization': `Bearer ${token}`

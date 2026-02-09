@@ -18,11 +18,11 @@ const getBaseUrl = (): string => {
   // Platform-specific defaults for development
   if (Platform.OS === "android") {
     // Android emulator uses this special IP to access host machine's localhost
-    return "http://10.0.2.2:4000";
+    return "http://10.0.2.2:4000/api";
   }
 
   // Default for iOS simulator and other platforms
-  return "http://localhost:4000";
+  return "http://localhost:4000/api";
 };
 
 /**
