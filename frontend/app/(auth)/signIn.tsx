@@ -5,6 +5,7 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Modal,
+  Alert,
 } from "react-native";
 import { SafeAreaView, SafeAreaProvider } from "react-native-safe-area-context";
 import { FontAwesome, Ionicons } from "@expo/vector-icons";
@@ -101,9 +102,9 @@ export default function Index() {
       // Fetching user's role and full name from Supabase
       const { data: userData, error: roleError } = await supabase
         .from("users")
-        .select("role, full_name")
+        .select("role, full_name, status")
         .eq("id", data.user.id)
-        .single() as { data: { role: string; full_name: string } | null; error: any };
+        .single() as { data: { role: string; full_name: string; status: string } | null; error: any };
 
       if (roleError) {
         console.error("Role fetch error:", roleError.message);
@@ -116,6 +117,19 @@ export default function Index() {
         console.log("No role found for user");
         setErrorMessage("No role assigned to user.");
         setIsLoading(false);
+        return;
+      }
+
+      // Check for approval status
+      if (userData.status === 'pending') {
+        showMessage("Your account is pending approval. Please contact an administrator.", false);
+        setIsLoading(false);
+        await supabase.auth.signOut(); // Ensure they remain signed out
+        return;
+      } else if (userData.status === 'rejected') {
+        showMessage("Your account has been rejected. Please contact support.", false);
+        setIsLoading(false);
+        await supabase.auth.signOut();
         return;
       }
 
@@ -142,6 +156,33 @@ export default function Index() {
     } catch (error: unknown) {
       console.error("Unexpected error:", error);
       setErrorMessage("An unexpected error occurred: " + (error instanceof Error ? error.message : String(error)));
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleForgotPassword = async () => {
+    if (!formData.email) {
+      Alert.alert("Required", "Please enter your email address to reset your password.");
+      return;
+    }
+
+    if (!validateEmail(formData.email)) {
+      Alert.alert("Invalid Email", "Please enter a valid email address.");
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(formData.email, {
+        redirectTo: 'https://example.com/update-password', // Update with actual deep link if needed
+      });
+
+      if (error) throw error;
+
+      Alert.alert("Success", "Password reset instructions have been sent to your email.");
+    } catch (error: any) {
+      Alert.alert("Error", error.message);
     } finally {
       setIsLoading(false);
     }
@@ -211,7 +252,7 @@ export default function Index() {
             )}
           </View>
 
-          <TouchableOpacity>
+          <TouchableOpacity onPress={handleForgotPassword}>
             <Text className="text-lg mt-2 text-right text-[#34967C]">
               Forgot password?
             </Text>

@@ -11,7 +11,7 @@ interface DashboardHeaderProps {
   onSectionChange?: (section: SectionType) => void;
 }
 
-export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
+const DashboardHeader: React.FC<DashboardHeaderProps> = ({
   onRefresh,
   onLogout,
   activeSection = 'overview',
@@ -125,3 +125,6 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
     </View>
   );
 };
+
+export { DashboardHeader };
+export default DashboardHeader;

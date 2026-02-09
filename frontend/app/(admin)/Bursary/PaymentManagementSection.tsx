@@ -19,7 +19,7 @@ interface PaymentManagementSectionProps {
   onRefresh?: () => void;
 }
 
-export const PaymentManagementSection: React.FC<
+const PaymentManagementSection: React.FC<
   PaymentManagementSectionProps
 > = ({ payments, loading, onPaymentSubmit, onRefresh }) => {
   const [showForm, setShowForm] = useState(false);
@@ -289,3 +289,7 @@ export const PaymentManagementSection: React.FC<
     </View>
   );
 };
+
+
+export { PaymentManagementSection };
+export default PaymentManagementSection;

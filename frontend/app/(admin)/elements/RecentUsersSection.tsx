@@ -12,7 +12,7 @@ interface RecentUsersSectionProps {
   onViewAllPress?: () => void;
 }
 
-export const RecentUsersSection: React.FC<RecentUsersSectionProps> = ({
+const RecentUsersSection: React.FC<RecentUsersSectionProps> = ({
   users = [],
   loading = false,
   maxUsers = 5,
@@ -88,3 +88,6 @@ export const RecentUsersSection: React.FC<RecentUsersSectionProps> = ({
     </View>
   );
 };
+
+export { RecentUsersSection };
+export default RecentUsersSection;

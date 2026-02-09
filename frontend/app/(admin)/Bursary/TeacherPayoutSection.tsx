@@ -85,7 +85,7 @@ const PLACEHOLDER_PAYOUTS: TeacherPayout[] = [
   },
 ];
 
-export const TeacherPayoutSection: React.FC<TeacherPayoutSectionProps> = ({
+const TeacherPayoutSection: React.FC<TeacherPayoutSectionProps> = ({
   payouts,
   loading = false,
   onPayoutProcess,
@@ -424,3 +424,6 @@ export const TeacherPayoutSection: React.FC<TeacherPayoutSectionProps> = ({
     </View>
   );
 };
+
+export { TeacherPayoutSection };
+export default TeacherPayoutSection;

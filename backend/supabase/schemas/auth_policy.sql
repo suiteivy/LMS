@@ -16,14 +16,15 @@ RETURNS TRIGGER AS $$
 DECLARE
   user_role TEXT;
 BEGIN
-  -- Get the current user's role using the helper function (bypasses RLS)
-  SELECT public.get_current_user_role() INTO user_role;
-  
-  -- If the user is not authenticated (during sign-up) or not an admin
-  IF (auth.role() = 'anon' OR user_role IS NULL OR user_role != 'admin') THEN
-    -- Force the role to be 'student' for new sign-ups
+  -- If no role is provided, default to 'student'
+  IF NEW.role IS NULL THEN
     NEW.role := 'student';
   END IF;
+  
+  -- We trust the frontend/user input for the role at this stage because of the requirement to allow
+  -- users to sign up as Teachers/Admins directly.
+  -- The 'users' table already has a CHECK constraint to ensure only valid roles ('admin', 'student', 'teacher') are allowed.
+  
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;

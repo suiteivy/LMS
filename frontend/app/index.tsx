@@ -1,9 +1,33 @@
-import { Text, View, TouchableOpacity, StatusBar } from "react-native";
+import { Text, View, TouchableOpacity, StatusBar, ActivityIndicator } from "react-native";
 import { SafeAreaView, SafeAreaProvider } from "react-native-safe-area-context";
 import { School, ArrowRight } from "lucide-react-native";
 import { router } from "expo-router";
+import { useAuth } from "@/contexts/AuthContext";
+import { useEffect } from "react";
 
 export default function Index() {
+  const { session, loading, profile } = useAuth();
+
+  useEffect(() => {
+    if (!loading && session && profile) {
+      if (profile.role === 'admin') {
+        router.replace("/(admin)");
+      } else if (profile.role === 'teacher') {
+        router.replace("/(teacher)/teacher"); // Adjusted based on file structure
+      } else if (profile.role === 'student') {
+        router.replace("/(student)");
+      }
+    }
+  }, [loading, session, profile]);
+
+  if (loading) {
+    return (
+      <View className="flex-1 justify-center items-center bg-[#F1FFF8]">
+        <ActivityIndicator size="large" color="#1ABC9C" />
+      </View>
+    );
+  }
+
   return (
     <SafeAreaProvider>
       <StatusBar barStyle="dark-content" />

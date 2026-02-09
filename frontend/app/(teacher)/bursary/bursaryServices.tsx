@@ -6,9 +6,14 @@ export interface TeacherPayment {
 }
 
 export const fetchTeacherEarnings = async (teacherId: string): Promise<TeacherPayment[]> => {
-    const response = await fetch(`/api/bursary/teacher/earnings/${teacherId}`);
-    if (!response.ok) {
-      throw new Error('Failed to fetch earnings data');
-    }
-    return response.json();
+  const response = await fetch(`/api/bursary/teacher/earnings/${teacherId}`);
+  if (!response.ok) {
+    throw new Error('Failed to fetch earnings data');
+  }
+  return response.json();
 };
+
+// Placeholder to prevent expo-router warning
+export default function BursaryServices() {
+  return null;
+}

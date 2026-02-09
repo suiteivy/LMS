@@ -8,7 +8,7 @@ interface StatsOverviewProps {
   onStatsPress?: (stat: StatsData) => void;
 }
 
-export const StatsOverview: React.FC<StatsOverviewProps> = ({
+const StatsOverview: React.FC<StatsOverviewProps> = ({
   statsData = [],
   loading = false,
   onStatsPress
@@ -71,3 +71,6 @@ export const StatsOverview: React.FC<StatsOverviewProps> = ({
     </View>
   );
 };
+
+export { StatsOverview };
+export default StatsOverview;

@@ -21,7 +21,7 @@ interface QuickActionsSectionProps {
   actions?: QuickAction[];
 }
 
-export const QuickActionsSection: React.FC<QuickActionsSectionProps> = ({
+const QuickActionsSection: React.FC<QuickActionsSectionProps> = ({
   onActionPress,
   actions,
 }) => {
@@ -138,3 +138,7 @@ export const QuickActionsSection: React.FC<QuickActionsSectionProps> = ({
     </View>
   );
 };
+
+
+export { QuickActionsSection };
+export default QuickActionsSection;

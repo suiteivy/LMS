@@ -12,7 +12,7 @@ import { TextInputProps } from "react-native";
  */
 
 export type UserRole = "admin" | "teacher" | "student";
-export type UserStatus = "active" | "inactive";
+export type UserStatus = "pending" | "approved" | "rejected";
 
 export interface User {
   id: string;

@@ -19,7 +19,7 @@ interface FeeStructureSectionProps {
   onRefresh?: () => void;
 }
 
-export const FeeStructureSection: React.FC<FeeStructureSectionProps> = ({
+const FeeStructureSection: React.FC<FeeStructureSectionProps> = ({
   feeStructures,
   loading,
   onFeeStructureUpdate,
@@ -442,3 +442,7 @@ export const FeeStructureSection: React.FC<FeeStructureSectionProps> = ({
     </View>
   );
 };
+
+
+export { FeeStructureSection };
+export default FeeStructureSection;

@@ -11,7 +11,8 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { LibraryAPI, useLibraryAPI, FrontendBorrowedBook } from "@/services/LibraryService";
+import { LibraryAPI, useLibraryAPI } from "@/services/LibraryService";
+import { FrontendBorrowedBook } from "@/types/types";
 
 // Extended interface to match your original component structure
 interface ExtendedBorrowedBook extends FrontendBorrowedBook {
@@ -33,7 +34,7 @@ interface BorrowedBooksOverviewProps {
   onProcessFine?: (borrowId: string, amount: number) => void;
 }
 
-export const BorrowedBooksOverview: React.FC<BorrowedBooksOverviewProps> = ({
+const BorrowedBooksOverview: React.FC<BorrowedBooksOverviewProps> = ({
   onReturnBook,
   onExtendDueDate,
   onSendReminder,
@@ -70,12 +71,12 @@ export const BorrowedBooksOverview: React.FC<BorrowedBooksOverviewProps> = ({
   // Fetch borrowed books from API
   const fetchBorrowedBooks = useCallback(async () => {
     try {
-      const backendBooks = await executeWithLoading(() => 
+      const backendBooks = await executeWithLoading(() =>
         LibraryAPI.getAllBorrowedBooks()
       );
-      
+
       const transformedBooks = backendBooks.map(transformToExtendedFormat);
-      
+
       // Update status based on due date for books that are still borrowed
       const booksWithUpdatedStatus = transformedBooks.map(book => {
         if (book.status === "borrowed") {
@@ -87,7 +88,7 @@ export const BorrowedBooksOverview: React.FC<BorrowedBooksOverviewProps> = ({
         }
         return book;
       });
-      
+
       setBorrowedBooks(booksWithUpdatedStatus);
     } catch (err) {
       console.error("Failed to fetch borrowed books:", err);
@@ -188,8 +189,7 @@ export const BorrowedBooksOverview: React.FC<BorrowedBooksOverviewProps> = ({
 
     Alert.alert(
       "Confirm Return",
-      `Mark "${selectedBook.bookTitle}" as returned?\n${
-        finalFine > 0 ? `Fine: $${finalFine.toFixed(2)}\n` : ""
+      `Mark "${selectedBook.bookTitle}" as returned?\n${finalFine > 0 ? `Fine: $${finalFine.toFixed(2)}\n` : ""
       }Condition: ${returnCondition}\n${notes ? `Notes: ${notes}` : ""}`,
       [
         { text: "Cancel", style: "cancel" },
@@ -205,17 +205,17 @@ export const BorrowedBooksOverview: React.FC<BorrowedBooksOverviewProps> = ({
                 await executeWithLoading(() =>
                   LibraryAPI.returnBook(selectedBook.id)
                 );
-                
+
                 // Refresh the list
                 await fetchBorrowedBooks();
-                
+
                 Alert.alert(
                   "Success",
                   "Book returned successfully!",
                   [{ text: "OK" }]
                 );
               }
-              
+
               setShowReturnModal(false);
               setSelectedBook(null);
             } catch (err) {
@@ -271,12 +271,12 @@ export const BorrowedBooksOverview: React.FC<BorrowedBooksOverviewProps> = ({
               { text: "Cancel", style: "cancel" },
               {
                 text: "Extend",
-                onPress: async (days) => {
+                onPress: (days?: string) => {
                   const numDays = parseInt(days || "0");
                   if (numDays > 0) {
                     const newDueDate = new Date(book.dueDate);
                     newDueDate.setDate(newDueDate.getDate() + numDays);
-                    await performDueDateExtension(borrowId, newDueDate);
+                    performDueDateExtension(borrowId, newDueDate);
                   }
                 },
               },
@@ -301,10 +301,10 @@ export const BorrowedBooksOverview: React.FC<BorrowedBooksOverviewProps> = ({
         await executeWithLoading(() =>
           LibraryAPI.extendDueDate(borrowId, newDueDateString)
         );
-        
+
         // Refresh the list
         await fetchBorrowedBooks();
-        
+
         Alert.alert(
           "Success",
           "Due date extended successfully!",
@@ -344,7 +344,7 @@ export const BorrowedBooksOverview: React.FC<BorrowedBooksOverviewProps> = ({
                   LibraryAPI.sendReminder(borrowId)
                 );
               }
-              
+
               Alert.alert(
                 "Success",
                 "Email reminder has been sent successfully!",
@@ -503,13 +503,12 @@ export const BorrowedBooksOverview: React.FC<BorrowedBooksOverviewProps> = ({
                 Borrowed: {borrowedBook.borrowDate.toLocaleDateString()}
               </Text>
               <Text
-                className={`text-xs font-medium ${
-                  daysRemaining < 0
-                    ? "text-red-600"
-                    : daysRemaining <= 3
-                      ? "text-orange-600"
-                      : "text-gray-600"
-                }`}
+                className={`text-xs font-medium ${daysRemaining < 0
+                  ? "text-red-600"
+                  : daysRemaining <= 3
+                    ? "text-orange-600"
+                    : "text-gray-600"
+                  }`}
               >
                 Due: {borrowedBook.dueDate.toLocaleDateString()}
                 {borrowedBook.status !== "returned" && (
@@ -652,17 +651,15 @@ export const BorrowedBooksOverview: React.FC<BorrowedBooksOverviewProps> = ({
             {Object.entries(filterCounts).map(([status, count]) => (
               <TouchableOpacity
                 key={status}
-                className={`mr-3 px-4 py-2 rounded-full border ${
-                  filterStatus === status
-                    ? "bg-teal-600 border-teal-600"
-                    : "bg-white border-gray-300"
-                }`}
+                className={`mr-3 px-4 py-2 rounded-full border ${filterStatus === status
+                  ? "bg-teal-600 border-teal-600"
+                  : "bg-white border-gray-300"
+                  }`}
                 onPress={() => setFilterStatus(status as any)}
               >
                 <Text
-                  className={`text-sm font-medium ${
-                    filterStatus === status ? "text-white" : "text-gray-700"
-                  }`}
+                  className={`text-sm font-medium ${filterStatus === status ? "text-white" : "text-gray-700"
+                    }`}
                 >
                   {status.charAt(0).toUpperCase() + status.slice(1)} ({count})
                 </Text>
@@ -744,19 +741,17 @@ export const BorrowedBooksOverview: React.FC<BorrowedBooksOverviewProps> = ({
                   {["good", "fair", "damaged", "lost"].map((condition) => (
                     <TouchableOpacity
                       key={condition}
-                      className={`mr-2 px-4 py-2 rounded-full border ${
-                        returnCondition === condition
-                          ? "bg-teal-600 border-teal-600"
-                          : "bg-white border-gray-300"
-                      }`}
+                      className={`mr-2 px-4 py-2 rounded-full border ${returnCondition === condition
+                        ? "bg-teal-600 border-teal-600"
+                        : "bg-white border-gray-300"
+                        }`}
                       onPress={() => setReturnCondition(condition)}
                     >
                       <Text
-                        className={`text-sm font-medium ${
-                          returnCondition === condition
-                            ? "text-white"
-                            : "text-gray-700"
-                        }`}
+                        className={`text-sm font-medium ${returnCondition === condition
+                          ? "text-white"
+                          : "text-gray-700"
+                          }`}
                       >
                         {condition.charAt(0).toUpperCase() + condition.slice(1)}
                       </Text>
@@ -809,11 +804,10 @@ export const BorrowedBooksOverview: React.FC<BorrowedBooksOverviewProps> = ({
                 </TouchableOpacity>
 
                 <TouchableOpacity
-                  className={`flex-1 py-4 rounded-lg ml-2 ${
-                    loading
-                      ? "bg-gray-400"
-                      : "bg-teal-600 active:bg-teal-700"
-                  }`}
+                  className={`flex-1 py-4 rounded-lg ml-2 ${loading
+                    ? "bg-gray-400"
+                    : "bg-teal-600 active:bg-teal-700"
+                    }`}
                   onPress={confirmReturn}
                   disabled={loading}
                 >
@@ -833,3 +827,6 @@ export const BorrowedBooksOverview: React.FC<BorrowedBooksOverviewProps> = ({
     </View>
   );
 };
+
+export { BorrowedBooksOverview };
+export default BorrowedBooksOverview;

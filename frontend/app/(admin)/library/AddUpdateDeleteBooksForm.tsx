@@ -14,7 +14,7 @@ import { LibraryAPI, useLibraryAPI } from "@/services/LibraryService";
 import { FrontendBook, FrontendBorrowedBook } from "@/types/types";
 import { useAuth } from "@/contexts/AuthContext";
 
-export const AddUpdateDeleteBooksForm: React.FC = () => {
+const AddUpdateDeleteBooksForm: React.FC = () => {
   const { profile } = useAuth();
   const [books, setBooks] = useState<FrontendBook[]>([]);
   const [borrowedBooks, setBorrowedBooks] = useState<FrontendBorrowedBook[]>(
@@ -388,3 +388,7 @@ export const AddUpdateDeleteBooksForm: React.FC = () => {
     </View>
   );
 };
+
+
+export { AddUpdateDeleteBooksForm };
+export default AddUpdateDeleteBooksForm;

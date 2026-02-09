@@ -30,7 +30,7 @@ export interface BorrowLimitConfigurationProps {
   onDeleteRole?: (roleId: string) => void;
 }
 
-export const BorrowLimitConfiguration: React.FC<
+const BorrowLimitConfiguration: React.FC<
   BorrowLimitConfigurationProps
 > = ({ userRoles = [], onUpdateRole, onAddRole, onDeleteRole }) => {
   const [expandedRole, setExpandedRole] = useState<string | null>(null);
@@ -152,14 +152,12 @@ export const BorrowLimitConfiguration: React.FC<
                 {role.name}
               </Text>
               <View
-                className={`px-2 py-1 rounded-full ${
-                  role.isActive ? "bg-teal-100" : "bg-gray-100"
-                }`}
+                className={`px-2 py-1 rounded-full ${role.isActive ? "bg-teal-100" : "bg-gray-100"
+                  }`}
               >
                 <Text
-                  className={`text-xs font-medium ${
-                    role.isActive ? "text-teal-800" : "text-gray-600"
-                  }`}
+                  className={`text-xs font-medium ${role.isActive ? "text-teal-800" : "text-gray-600"
+                    }`}
                 >
                   {role.isActive ? "ACTIVE" : "INACTIVE"}
                 </Text>
@@ -619,3 +617,6 @@ export const BorrowLimitConfiguration: React.FC<
     </View>
   );
 };
+
+export { BorrowLimitConfiguration };
+export default BorrowLimitConfiguration;
