@@ -29,7 +29,7 @@ const FAQItem = ({ question, answer }: FAQItemProps) => {
     );
 };
 
-export default function StudentHelp() {
+export default function TeacherHelp() {
     return (
         <ScrollView className="flex-1 bg-gray-50">
             <View className="p-4 md:p-8 max-w-2xl mx-auto w-full">
@@ -39,15 +39,15 @@ export default function StudentHelp() {
                     <View className="p-4 bg-teal-100 rounded-full mb-4">
                         <LifeBuoy size={40} color="#0d9488" />
                     </View>
-                    <Text className="text-2xl font-bold text-gray-900">How can we help?</Text>
-                    <Text className="text-gray-500 mt-1">Search our help center or contact support.</Text>
+                    <Text className="text-2xl font-bold text-gray-900">Teacher Help Center</Text>
+                    <Text className="text-gray-500 mt-1">Resources to help you manage your classes.</Text>
                 </View>
 
                 {/* Search Bar */}
                 <View className="flex-row items-center bg-white border border-gray-200 rounded-2xl px-4 py-3 mb-8 shadow-sm">
                     <Search size={20} color="#9ca3af" className="mr-2" />
                     <TextInput
-                        placeholder="Search for articles..."
+                        placeholder="Search teacher resources..."
                         className="flex-1 text-gray-700 h-6"
                         placeholderTextColor="#9ca3af"
                     />
@@ -57,32 +57,36 @@ export default function StudentHelp() {
                 <Text className="text-xs font-bold text-gray-400 uppercase tracking-widest ml-1 mb-4">Frequently Asked Questions</Text>
 
                 <FAQItem
-                    question="How do I change my profile photo?"
-                    answer="Go to your Profile page, click the edit icon on your profile picture, and select a new image from your device."
+                    question="How do I grade a submission?"
+                    answer="Navigate to Manage > Grades. Select a student's submission from the list and use the grade interface to assign points and feedback."
                 />
                 <FAQItem
-                    question="Can I reset my password?"
-                    answer="Yes, navigate to Settings > Change Password to update your security credentials."
+                    question="How do I create a new assignment?"
+                    answer="Go to Manage > Assignments and tap the 'Create Assignment' button. Fill in the details including due date and points."
                 />
                 <FAQItem
-                    question="Where is my student ID?"
-                    answer="Your student ID is displayed on the Profile card under the 'Academic Info' section."
+                    question="Can I export my earnings report?"
+                    answer="Yes, in the Earnings tab, you can use the download button to export your monthly payment history as a PDF or CSV."
+                />
+                <FAQItem
+                    question="Where do I find my Teacher ID?"
+                    answer="Your Teacher ID is displayed on the Profile page under the 'Professional Info' section."
                 />
 
                 {/* Contact Options */}
-                <Text className="text-xs font-bold text-gray-400 uppercase tracking-widest ml-1 mt-6 mb-4">Still need help?</Text>
+                <Text className="text-xs font-bold text-gray-400 uppercase tracking-widest ml-1 mt-6 mb-4">Support for Educators</Text>
 
                 <View className="flex-row flex-wrap justify-between">
                     <TouchableOpacity className="w-[48%] bg-white p-5 rounded-2xl border border-gray-100 items-center shadow-sm">
                         <MessageSquare size={24} color="#0d9488" />
-                        <Text className="mt-2 font-bold text-gray-800">Live Chat</Text>
-                        <Text className="text-xs text-gray-400">Wait time: 5m</Text>
+                        <Text className="mt-2 font-bold text-gray-800">Direct Support</Text>
+                        <Text className="text-xs text-gray-400">Response in 1h</Text>
                     </TouchableOpacity>
 
                     <TouchableOpacity className="w-[48%] bg-white p-5 rounded-2xl border border-gray-100 items-center shadow-sm">
                         <Mail size={24} color="#3b82f6" />
-                        <Text className="mt-2 font-bold text-gray-800">Email Us</Text>
-                        <Text className="text-xs text-gray-400">Response in 24h</Text>
+                        <Text className="mt-2 font-bold text-gray-800">Email Admin</Text>
+                        <Text className="text-xs text-gray-400">Response in 12h</Text>
                     </TouchableOpacity>
                 </View>
 
