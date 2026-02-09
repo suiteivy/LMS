@@ -19,6 +19,7 @@ interface AuthContextType {
   signOut: () => Promise<{ error: any }>
   resetPassword: (email: string) => Promise<{ error: any }>
   refreshProfile: () => Promise<UserProfile | null>
+  resetSessionTimer: () => void
 }
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -47,6 +48,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     if (timerRef.current) {
       clearTimeout(timerRef.current)
       timerRef.current = null
+    }
+  }
+
+  const resetSessionTimer = () => {
+    if (session) {
+      startTimeoutTimer()
     }
   }
 
@@ -164,6 +171,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     signOut: authService.signOut,
     resetPassword: authService.resetPassword,
     refreshProfile,
+    resetSessionTimer,
   }
 
   return (

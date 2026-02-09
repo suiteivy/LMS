@@ -6,6 +6,9 @@ import { UserCircle, Settings, ShieldCheck, LogOut, HelpCircle } from "lucide-re
 import StudentProfile from './StudentProfile';
 import StudentSettings from './StudentSettings';
 import StudentHelp from './StudentHelp';
+import TeacherProfile from './TeacherProfile';
+import TeacherSettings from './TeacherSettings';
+import TeacherHelp from './TeacherHelp';
 
 const Drawer = createDrawerNavigator();
 
@@ -42,7 +45,7 @@ export default function GlobalSettingsDrawer({ userRole = 'student' }) {
                 {/* Everyone sees Profile */}
                 <Drawer.Screen
                     name="Profile"
-                    component={StudentProfile}
+                    component={userRole === 'teacher' ? TeacherProfile : StudentProfile}
                     options={{ drawerIcon: ({ color, size }) => <UserCircle size={size} color={color} /> }}
                 />
 
@@ -63,12 +66,12 @@ export default function GlobalSettingsDrawer({ userRole = 'student' }) {
                 <Drawer.Screen
                     name="Settings"
                     options={{ drawerIcon: ({ color, size }) => <Settings size={size} color={color} /> }}
-                    component={StudentSettings}
+                    component={userRole === 'teacher' ? TeacherSettings : StudentSettings}
                 />
 
                 <Drawer.Screen
                     name="Help"
-                    component={StudentHelp}
+                    component={userRole === 'teacher' ? TeacherHelp : StudentHelp}
                     options={{ drawerIcon: ({ color, size }) => <HelpCircle size={size} color={color} /> }}
                 />
 
