@@ -33,13 +33,14 @@ export const useDashboardStats = () => {
 
                 // Fetch Total Teachers
                 try {
-                    const { count, error } = await supabase
+                    const { data, count, error } = await supabase
                         .from('users')
                         .select('*', { count: 'exact', head: true })
                         .eq('role', 'teacher');
                     if (error) {
                         console.error('Error fetching teacher count:', JSON.stringify(error, null, 2));
                     } else {
+
                         teacherCount = count || 0;
                     }
                 } catch (e) {
@@ -61,6 +62,7 @@ export const useDashboardStats = () => {
                         const diag = await supabase.from('courses').select('*').limit(1);
                         console.error('Diagnostic fetch for courses:', JSON.stringify(diag.error, null, 2));
                     } else {
+                        console.log('Fetched course count:', count);
                         courseCount = count || 0;
                     }
                 } catch (e) {
