@@ -1,13 +1,13 @@
+import { Slot } from 'expo-router';
 import { SchoolProvider } from '@/contexts/SchoolContext';
+import { AuthGuard } from '@/components/AuthGuard';
 
-export default function AdminLayout({
-    children,
-}: {
-    children: React.ReactNode
-}) {
+export default function AdminLayout() {
     return (
-        <SchoolProvider>
-            {children}
-        </SchoolProvider>
+        <AuthGuard>
+            <SchoolProvider>
+                <Slot />
+            </SchoolProvider>
+        </AuthGuard>
     );
 }

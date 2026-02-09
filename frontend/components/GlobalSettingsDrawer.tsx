@@ -15,14 +15,14 @@ function CustomDrawerContent(props: any) {
             <View style={{ padding: 10, borderBottomWidth: 1, borderBottomColor: '#eee', marginBottom: 10 }}>
                 <Text style={{ fontWeight: 'bold', fontSize: 18 }}>App Settings</Text>
             </View>
-            
+
             <DrawerItemList {...props} />
 
-            <DrawerItem 
-                label="Logout" 
+            <DrawerItem
+                label="Logout"
                 labelStyle={{ color: '#e74c3c' }}
-                onPress={() => console.log("Logging out...")} 
-                icon={({ size }) => <LogOut size={size} color="#e74c3c" />} 
+                onPress={() => console.log("Logging out...")}
+                icon={({ size }) => <LogOut size={size} color="#e74c3c" />}
             />
         </DrawerContentScrollView>
     );
@@ -40,33 +40,36 @@ export default function GlobalSettingsDrawer({ userRole = 'student' }) {
                 }}
             >
                 {/* Everyone sees Profile */}
-                <Drawer.Screen 
-                  name="Profile" 
-                  component={StudentProfile}
-                  options={{ drawerIcon: ({color, size}) => <UserCircle size={size} color={color} /> }}
+                <Drawer.Screen
+                    name="Profile"
+                    component={StudentProfile}
+                    options={{ drawerIcon: ({ color, size }) => <UserCircle size={size} color={color} /> }}
                 />
 
                 {/* Only Admin sees Admin Panel */}
                 {userRole === 'admin' && (
-                    <Drawer.Screen 
-                        name="AdminPanel" 
-                        options={{ drawerIcon: ({color, size}) => <ShieldCheck size={size} color={color} /> }}
-                        // component={''}
+                    <Drawer.Screen
+                        name="AdminPanel"
+                        options={{ drawerIcon: ({ color, size }) => <ShieldCheck size={size} color={color} /> }}
+                        component={() => (
+                            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+                                <Text>Admin Panel</Text>
+                            </View>
+                        )}
                     />
-                        
                 )}
 
                 {/* Common Settings */}
-                <Drawer.Screen 
-                  name="Settings" 
-                  options={{ drawerIcon: ({color, size}) => <Settings size={size} color={color} /> }}
-                  component={StudentSettings}
+                <Drawer.Screen
+                    name="Settings"
+                    options={{ drawerIcon: ({ color, size }) => <Settings size={size} color={color} /> }}
+                    component={StudentSettings}
                 />
 
-                <Drawer.Screen 
-                  name="Help" 
-                  component={StudentHelp}
-                  options={{ drawerIcon: ({color, size}) => <HelpCircle size={size} color={color} /> }}
+                <Drawer.Screen
+                    name="Help"
+                    component={StudentHelp}
+                    options={{ drawerIcon: ({ color, size }) => <HelpCircle size={size} color={color} /> }}
                 />
 
             </Drawer.Navigator>

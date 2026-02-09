@@ -11,40 +11,70 @@ export const useDashboardStats = () => {
             try {
                 setLoading(true);
 
-                // Fetch Total Students
-                const { count: studentCount, error: studentError } = await supabase
-                    .from('users')
-                    .select('*', { count: 'exact', head: true })
-                    .eq('role', 'student');
+                let studentCount = 0;
+                let teacherCount = 0;
+                let courseCount = 0;
+                let totalRevenue = 0;
 
-                if (studentError) throw studentError;
+                // Fetch Total Students
+                try {
+                    const { count, error } = await supabase
+                        .from('users')
+                        .select('*', { count: 'exact', head: true })
+                        .eq('role', 'student');
+                    if (error) {
+                        console.error('Error fetching student count:', error);
+                    } else {
+                        studentCount = count || 0;
+                    }
+                } catch (e) {
+                    console.error('Exception fetching student count:', e);
+                }
 
                 // Fetch Total Teachers
-                const { count: teacherCount, error: teacherError } = await supabase
-                    .from('users')
-                    .select('*', { count: 'exact', head: true })
-                    .eq('role', 'teacher');
-
-                if (teacherError) throw teacherError;
+                try {
+                    const { count, error } = await supabase
+                        .from('users')
+                        .select('*', { count: 'exact', head: true })
+                        .eq('role', 'teacher');
+                    if (error) {
+                        console.error('Error fetching teacher count:', error);
+                    } else {
+                        teacherCount = count || 0;
+                    }
+                } catch (e) {
+                    console.error('Exception fetching teacher count:', e);
+                }
 
                 // Fetch Active Courses
-                const { count: courseCount, error: courseError } = await supabase
-                    .from('courses')
-                    .select('*', { count: 'exact', head: true });
-
-                if (courseError) throw courseError;
+                try {
+                    const { count, error } = await supabase
+                        .from('courses')
+                        .select('*', { count: 'exact', head: true });
+                    if (error) {
+                        console.error('Error fetching course count:', error);
+                    } else {
+                        courseCount = count || 0;
+                    }
+                } catch (e) {
+                    console.error('Exception fetching course count:', e);
+                }
 
                 // Fetch Revenue (Sum of payments)
-                // Note: For large datasets, this should be an RPC or Edge Function.
-                // Doing client-side sum for now as per current scope.
-                const { data: payments, error: paymentError } = await supabase
-                    .from('payments')
-                    .select('amount')
-                    .returns<{ amount: number }[]>();
+                try {
+                    const { data: payments, error } = await supabase
+                        .from('payments')
+                        .select('amount')
+                        .returns<{ amount: number }[]>();
+                    if (error) {
+                        console.error('Error fetching payments:', error);
+                    } else {
+                        totalRevenue = payments?.reduce((sum, p) => sum + (p.amount || 0), 0) || 0;
+                    }
+                } catch (e) {
+                    console.error('Exception fetching payments:', e);
+                }
 
-                if (paymentError) throw paymentError;
-
-                const totalRevenue = payments?.reduce((sum, p) => sum + (p.amount || 0), 0) || 0;
                 const formattedRevenue = new Intl.NumberFormat('en-US', {
                     style: 'currency',
                     currency: 'USD',
@@ -54,21 +84,21 @@ export const useDashboardStats = () => {
                 const newStats: StatsData[] = [
                     {
                         title: "Total Students",
-                        value: studentCount?.toString() || "0",
+                        value: studentCount.toString(),
                         icon: "people",
                         color: "blue",
-                        trend: { value: "+0%", isPositive: true } // Placeholder trend
+                        trend: { value: "+0%", isPositive: true }
                     },
                     {
                         title: "Active Courses",
-                        value: courseCount?.toString() || "0",
+                        value: courseCount.toString(),
                         icon: "book",
                         color: "green",
                         trend: { value: "+0%", isPositive: true }
                     },
                     {
                         title: "Teachers",
-                        value: teacherCount?.toString() || "0",
+                        value: teacherCount.toString(),
                         icon: "person",
                         color: "purple",
                         trend: { value: "+0%", isPositive: true }

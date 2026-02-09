@@ -1,8 +1,7 @@
-import React, { createContext, useContext, useEffect, useState } from 'react'
+import React, { createContext, useContext, useEffect, useState, useRef } from 'react'
 import { Session, User } from '@supabase/supabase-js'
 import { Database } from '@/types/database'
 import { authService, supabase } from '@/libs/supabase'
-
 
 type UserProfile = Database['public']['Tables']['users']['Row']
 
@@ -42,23 +41,46 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [loading, setLoading] = useState(true)
 
-  // Load user profile from Supabase user table
+  const timerRef = useRef<any>(null)
+
+  const clearTimer = () => {
+    if (timerRef.current) {
+      clearTimeout(timerRef.current)
+      timerRef.current = null
+    }
+  }
+
+  const startTimeoutTimer = () => {
+    clearTimer()
+    // 10 minutes = 10 * 60 * 1000 ms
+    timerRef.current = setTimeout(async () => {
+      console.log('Session timeout reached (10 min), logging out...')
+      await authService.signOut()
+    }, 10 * 60 * 1000)
+  }
+
   const loadUserProfile = async (userId: string): Promise<UserProfile | null> => {
+    console.log('Loading user profile for:', userId)
     try {
-      const { data: profile, error } = await authService.getCurrentUserProfile()
-      if (error) {
+      const { data, error } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', userId)
+        .single<UserProfile>()
+
+      if (error || !data) {
         console.error('Error loading profile:', error)
         return null
       }
-      setProfile(profile)
-      return profile
+      console.log('Profile loaded successfully:', data.role)
+      setProfile(data as UserProfile)
+      return data as UserProfile
     } catch (error) {
       console.error('Error loading profile:', error)
       return null
     }
   }
 
-  // Refresh and return profile
   const refreshProfile = async (): Promise<UserProfile | null> => {
     if (user) {
       return await loadUserProfile(user.id)
@@ -67,34 +89,69 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   }
 
   useEffect(() => {
-    // Initial session check
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session)
-      setUser(session?.user ?? null)
-      if (session?.user) {
-        loadUserProfile(session.user.id)
-      }
-      setLoading(false)
-    })
+    console.log('AuthProvider mounted, initializing auth...')
 
-    // Listen for auth state changes
+    // 1. Initial session check for faster startup
+    supabase.auth.getSession()
+      .then(async ({ data: { session } }) => {
+        console.log('Initial getSession:', session ? 'Session exists' : 'No session')
+        if (session) {
+          setSession(session)
+          setUser(session.user)
+          await loadUserProfile(session.user.id)
+          startTimeoutTimer()
+        }
+        setLoading(false)
+      })
+      .catch(error => {
+        console.error('Error in getSession:', error)
+        setLoading(false)
+      })
+
+    // 2. Listen for auth state changes
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log('Auth event:', event)
-      setSession(session)
-      setUser(session?.user ?? null)
+      console.log('Auth event:', event, session ? 'Session exists' : 'No session')
 
-      if (session?.user) {
-        await loadUserProfile(session.user.id)
-      } else {
-        setProfile(null)
+      try {
+        setSession(session)
+        setUser(session?.user ?? null)
+
+        if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+          startTimeoutTimer()
+          if (session?.user) {
+            loadUserProfile(session.user.id)
+          }
+        } else if (event === 'SIGNED_OUT') {
+          clearTimer()
+          setProfile(null)
+          console.log('User signed out, state cleared')
+        }
+
+        // Handle edge case: auth event without session
+        if (!session && (event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED')) {
+          console.warn('Auth event without session, forcing logout')
+          await authService.signOut()
+        }
+      } catch (error) {
+        console.error('Error in auth listener:', error)
       }
-
-      setLoading(false)
     })
 
-    return () => subscription.unsubscribe()
+    // 3. Watchdog: ensure loading resolves even if events stall
+    const watchdog = setTimeout(() => {
+      if (loading) {
+        console.warn('Watchdog: Loading still true after 10s, forcing false')
+        setLoading(false)
+      }
+    }, 10000)
+
+    return () => {
+      subscription.unsubscribe()
+      clearTimer()
+      clearTimeout(watchdog)
+    }
   }, [])
 
   const value: AuthContextType = {
