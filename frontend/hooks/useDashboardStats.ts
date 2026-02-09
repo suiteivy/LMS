@@ -23,7 +23,7 @@ export const useDashboardStats = () => {
                         .select('*', { count: 'exact', head: true })
                         .eq('role', 'student');
                     if (error) {
-                        console.error('Error fetching student count:', error);
+                        console.error('Error fetching student count:', JSON.stringify(error, null, 2));
                     } else {
                         studentCount = count || 0;
                     }
@@ -38,7 +38,7 @@ export const useDashboardStats = () => {
                         .select('*', { count: 'exact', head: true })
                         .eq('role', 'teacher');
                     if (error) {
-                        console.error('Error fetching teacher count:', error);
+                        console.error('Error fetching teacher count:', JSON.stringify(error, null, 2));
                     } else {
                         teacherCount = count || 0;
                     }
@@ -48,11 +48,18 @@ export const useDashboardStats = () => {
 
                 // Fetch Active Courses
                 try {
+                    // Using .select('id', { count: 'exact' }).limit(0) as a highly compatible way to get counts
                     const { count, error } = await supabase
                         .from('courses')
-                        .select('*', { count: 'exact', head: true });
+                        .select('id', { count: 'exact' })
+                        .limit(0);
+
                     if (error) {
-                        console.error('Error fetching course count:', error);
+                        console.error('Error fetching course count:', JSON.stringify(error, null, 2));
+
+                        // Diagnostic: Try to fetch one row to see if it gives a better error
+                        const diag = await supabase.from('courses').select('*').limit(1);
+                        console.error('Diagnostic fetch for courses:', JSON.stringify(diag.error, null, 2));
                     } else {
                         courseCount = count || 0;
                     }
@@ -67,7 +74,7 @@ export const useDashboardStats = () => {
                         .select('amount')
                         .returns<{ amount: number }[]>();
                     if (error) {
-                        console.error('Error fetching payments:', error);
+                        console.error('Error fetching payments:', JSON.stringify(error, null, 2));
                     } else {
                         totalRevenue = payments?.reduce((sum, p) => sum + (p.amount || 0), 0) || 0;
                     }

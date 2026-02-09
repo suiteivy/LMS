@@ -9,10 +9,28 @@ import StudentHelp from './StudentHelp';
 import TeacherProfile from './TeacherProfile';
 import TeacherSettings from './TeacherSettings';
 import TeacherHelp from './TeacherHelp';
+import { useAuth } from '@/contexts/AuthContext';
+import { router } from 'expo-router';
+import { Alert } from 'react-native';
 
 const Drawer = createDrawerNavigator();
 
 function CustomDrawerContent(props: any) {
+    const { signOut } = useAuth();
+
+    const handleLogout = async () => {
+        try {
+            const { error } = await signOut();
+            if (error) {
+                Alert.alert("Logout Error", error.message || "Failed to sign out");
+            } else {
+                router.replace('/(auth)/signIn');
+            }
+        } catch (error: any) {
+            Alert.alert("Error", error.message || "An unexpected error occurred");
+        }
+    };
+
     return (
         <DrawerContentScrollView {...props}>
             <View style={{ padding: 10, borderBottomWidth: 1, borderBottomColor: '#eee', marginBottom: 10 }}>
@@ -24,7 +42,7 @@ function CustomDrawerContent(props: any) {
             <DrawerItem
                 label="Logout"
                 labelStyle={{ color: '#e74c3c' }}
-                onPress={() => console.log("Logging out...")}
+                onPress={handleLogout}
                 icon={({ size }) => <LogOut size={size} color="#e74c3c" />}
             />
         </DrawerContentScrollView>
