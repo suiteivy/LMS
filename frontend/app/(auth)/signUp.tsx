@@ -106,6 +106,7 @@ export default function App() {
           `Registration failed: ${getAuthErrorMessage(error)}`,
           false
         );
+          console.error('Error message',error)
         return;
       }
 

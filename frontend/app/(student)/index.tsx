@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { View, Text, ScrollView, TouchableOpacity, StatusBar } from 'react-native';
-import { Calendar, Clock, Bell, ArrowRight, BookOpen, Star, GraduationCap } from 'lucide-react-native';
-// import Notifications from '../../components/Notifications';
+import { Calendar, Clock, Bell, ArrowRight, BookOpen, Star, GraduationCap, Book } from 'lucide-react-native';
+import Notifications from '../../components/Notifications';
 
 // Define Interface for the QuickAction props
 interface QuickActionProps {
@@ -138,7 +138,7 @@ export default function Index() {
                   label="Library"
                   color="#0d9488"
                 />
-                <QuickAction icon={Calendar} label="Events" color="#8b5cf6" />
+                <QuickAction icon={Book} label="Courses" color="#8b5cf6" />
                 <QuickAction
                   icon={ArrowRight}
                   label="Assignments"
@@ -151,10 +151,10 @@ export default function Index() {
         </ScrollView>
 
         {/* Notifications Modal rendered outside the ScrollView */}
-        {/* <Notifications
+        <Notifications
           visible={showNotification}
           onClose={() => setShowNotification(false)}
-        /> */}
+        />
       </View>
     </>
   );
