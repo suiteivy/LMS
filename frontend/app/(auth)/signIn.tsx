@@ -143,7 +143,7 @@ export default function Index() {
             router.replace("/(admin)");
             break;
           case "teacher":
-            router.replace("/(teacher)");
+            router.replace("/(teacher)/index");
             break;
           case "student":
             router.replace("/(student)");

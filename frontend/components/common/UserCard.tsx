@@ -80,7 +80,7 @@ export const UserCard: React.FC<UserCardProps> = ({
 
   const renderCompactCard = () => (
     <View className="bg-white rounded-xl p-3 shadow-sm mb-2">
-      <View className="flex-row items-center space-x-3">
+      <View className="flex-row items-center space-x-3 gap-2">
         {renderAvatar()}
         <View className="flex-1">
           <Text className="font-semibold text-gray-900" numberOfLines={1}>

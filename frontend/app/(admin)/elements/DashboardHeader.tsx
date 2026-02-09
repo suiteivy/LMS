@@ -34,7 +34,7 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({
           showsHorizontalScrollIndicator={false}
           className="mb-4"
         >
-          <View className="flex-row space-x-2 px-1">
+          <View className="flex-row space-x-2 px-1 gap-4 ">
             {sections.map((section) => (
               <TouchableOpacity
                 key={section.id}
@@ -73,7 +73,7 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({
       {/* Header Section - Only on Overview */}
       <View className="flex-row justify-between items-center mb-4">
         <Text className="text-2xl font-bold text-gray-800">Admin Dashboard</Text>
-        <View className="flex-row space-x-3">
+        <View className="flex-row space-x-3 gap-2">
           {onRefresh && (
             <TouchableOpacity onPress={onRefresh}>
               <Feather name="refresh-cw" size={24} color="black" />
@@ -93,7 +93,7 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({
         showsHorizontalScrollIndicator={false}
         className="mb-4"
       >
-        <View className="flex-row space-x-2 px-1">
+        <View className="flex-row space-x-2 px-1 gap-4">
           {sections.map((section) => (
             <TouchableOpacity
               key={section.id}

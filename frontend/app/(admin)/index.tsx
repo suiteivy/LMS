@@ -2,7 +2,12 @@ import React, { useState, useEffect, useCallback } from "react";
 import { View, ScrollView, Alert } from "react-native";
 import { supabase } from "@/libs/supabase";
 import { router } from "expo-router";
-import { AdminDashboardProps, FeeStructure, Payment, User } from "@/types/types";
+import {
+  AdminDashboardProps,
+  FeeStructure,
+  Payment,
+  User,
+} from "@/types/types";
 import { Database } from "@/types/database";
 import { DashboardHeader } from "./elements/DashboardHeader";
 import { StatsOverview } from "./elements/StatsOverview";
@@ -13,7 +18,7 @@ import { PaymentManagementSection } from "./Bursary/PaymentManagementSection";
 import { TeacherPayoutSection } from "./Bursary/TeacherPayoutSection";
 import { FeeStructureSection } from "./Bursary/FeeStructureSection";
 import { useDashboardStats } from "@/hooks/useDashboardStats";
-
+import { SafeAreaView, SafeAreaProvider } from "react-native-safe-area-context";
 export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   statsData = [],
   recentUsers = [],
@@ -50,7 +55,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const [refreshing, setRefreshing] = useState(false);
 
   // Fetch real stats using the hook
-  const { stats: fetchedStats, loading: statsHookLoading } = useDashboardStats();
+  const { stats: fetchedStats, loading: statsHookLoading } =
+    useDashboardStats();
   const displayStats = statsData.length > 0 ? statsData : fetchedStats;
   const displayStatsLoading = statsLoading || statsHookLoading;
 
@@ -69,14 +75,17 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
       if (data) {
         // Transform data to match User interface
-        const users = data.map((u) => ({
-          id: u.id,
-          name: u.full_name,
-          email: u.email,
-          role: u.role,
-          status: u.status,
-          joinDate: u.created_at,
-        } as User));
+        const users = data.map(
+          (u) =>
+            ({
+              id: u.id,
+              name: u.full_name,
+              email: u.email,
+              role: u.role,
+              status: u.status,
+              joinDate: u.created_at,
+            }) as User,
+        );
         setLocalUsers(users);
       }
     } catch (error: any) {
@@ -153,7 +162,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       default:
         Alert.alert(
           "Unknown Action",
-          `No screen found for action: ${actionId}`
+          `No screen found for action: ${actionId}`,
         );
     }
   };
@@ -194,7 +203,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   };
 
   const handleFeeStructureUpdate = async (
-    feeStructure: Partial<FeeStructure>
+    feeStructure: Partial<FeeStructure>,
   ) => {
     try {
       const { error } = await supabase
@@ -213,81 +222,86 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
   // Use localUsers if allUsers (prop) is empty, which is likely since this is the top level page
   const displayUsers = allUsers.length > 0 ? allUsers : localUsers;
-  const displayRecentUsers = recentUsers.length > 0 ? recentUsers : localUsers.slice(0, maxRecentUsers);
+  const displayRecentUsers =
+    recentUsers.length > 0 ? recentUsers : localUsers.slice(0, maxRecentUsers);
 
   return (
+    <View style={{ flex: 1 }}>
     <ScrollView
-      className={`flex-1 bg-gray-50 ${className}`}
+      contentContainerStyle={{ flexGrow: 1 }}
       testID={testID}
       showsVerticalScrollIndicator={false}
     >
-      <View className="p-4">
-        <DashboardHeader
-          onRefresh={onRefresh}
-          onLogout={handleLogout}
-          activeSection={activeSection}
-          onSectionChange={setActiveSection}
-        />
+      <SafeAreaView>
+        <View className="p-4">
+          <DashboardHeader
+            onRefresh={onRefresh}
+            onLogout={handleLogout}
+            activeSection={activeSection}
+            onSectionChange={setActiveSection}
+          />
 
-        {activeSection === "overview" && (
-          <>
-            <StatsOverview
-              statsData={displayStats}
-              loading={displayStatsLoading}
-              onStatsPress={onStatsPress}
+          {activeSection === "overview" && (
+            <>
+              <StatsOverview
+                statsData={displayStats}
+                loading={displayStatsLoading}
+                onStatsPress={onStatsPress}
+              />
+
+              {showRecentUsers && (
+                <RecentUsersSection
+                  users={displayRecentUsers}
+                  loading={usersLoading || localUsersLoading}
+                  maxUsers={maxRecentUsers}
+                  onUserPress={onUserPress}
+                  onViewAllPress={onViewAllUsersPress}
+                />
+              )}
+
+              {showUsersTable && (
+                <UsersTableSection
+                  users={displayUsers}
+                  loading={tableLoading || localUsersLoading}
+                  onUserPress={onUserPress}
+                  onApproveUser={handleApproveUser}
+                />
+              )}
+
+              <QuickActionsSection onActionPress={handleQuickActionPress} />
+            </>
+          )}
+
+          {activeSection === "payments" && showPaymentManagement && (
+            <PaymentManagementSection
+              payments={payments}
+              loading={paymentsLoading}
+              onPaymentSubmit={handlePaymentSubmit}
+              onRefresh={onRefresh}
             />
+          )}
 
-            {showRecentUsers && (
-              <RecentUsersSection
-                users={displayRecentUsers}
-                loading={usersLoading || localUsersLoading}
-                maxUsers={maxRecentUsers}
-                onUserPress={onUserPress}
-                onViewAllPress={onViewAllUsersPress}
-              />
-            )}
+          {activeSection === "payouts" && showTeacherPayouts && (
+            <TeacherPayoutSection
+              payouts={teacherPayouts}
+              loading={payoutsLoading}
+              onPayoutProcess={handlePayoutProcess}
+              onRefresh={onRefresh}
+            />
+          )}
 
-            {showUsersTable && (
-              <UsersTableSection
-                users={displayUsers}
-                loading={tableLoading || localUsersLoading}
-                onUserPress={onUserPress}
-                onApproveUser={handleApproveUser}
-              />
-            )}
-
-            <QuickActionsSection onActionPress={handleQuickActionPress} />
-          </>
-        )}
-
-        {activeSection === "payments" && showPaymentManagement && (
-          <PaymentManagementSection
-            payments={payments}
-            loading={paymentsLoading}
-            onPaymentSubmit={handlePaymentSubmit}
-            onRefresh={onRefresh}
-          />
-        )}
-
-        {activeSection === "payouts" && showTeacherPayouts && (
-          <TeacherPayoutSection
-            payouts={teacherPayouts}
-            loading={payoutsLoading}
-            onPayoutProcess={handlePayoutProcess}
-            onRefresh={onRefresh}
-          />
-        )}
-
-        {activeSection === "fees" && showFeeStructure && (
-          <FeeStructureSection
-            feeStructures={feeStructures}
-            loading={feeStructuresLoading}
-            onFeeStructureUpdate={handleFeeStructureUpdate}
-            onRefresh={onRefresh}
-          />
-        )}
-      </View>
+          {activeSection === "fees" && showFeeStructure && (
+            <FeeStructureSection
+              feeStructures={feeStructures}
+              loading={feeStructuresLoading}
+              onFeeStructureUpdate={handleFeeStructureUpdate}
+              onRefresh={onRefresh}
+            />
+          )}
+        </View>
+      </SafeAreaView>
     </ScrollView>
+    </View>
   );
 };
 

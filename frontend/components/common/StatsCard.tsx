@@ -102,7 +102,7 @@ export const StatsCard: React.FC<StatsCardProps> = ({
     <View className={`bg-white rounded-xl p-4 shadow-sm border ${scheme.border} mb-4 ${scheme.bg}`}>
       <View className="flex-row items-center justify-between">
         <View className="flex-1">
-          <View className="flex-row items-center space-x-3 mb-2">
+          <View className="flex-row items-center space-x-3 mb-2 gap-2">
             <View className={`w-10 h-10 ${scheme.icon} rounded-full items-center justify-center`}>
               <Ionicons name={icon as any} size={20} color={scheme.iconColor} />
             </View>
