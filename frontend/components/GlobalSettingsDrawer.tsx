@@ -9,6 +9,7 @@ import StudentHelp from './StudentHelp';
 import TeacherProfile from './TeacherProfile';
 import TeacherSettings from './TeacherSettings';
 import TeacherHelp from './TeacherHelp';
+import AdminProfile from './AdminProfile';
 import { useAuth } from '@/contexts/AuthContext';
 import { router } from 'expo-router';
 import { Alert } from 'react-native';
@@ -63,7 +64,7 @@ export default function GlobalSettingsDrawer({ userRole = 'student' }) {
                 {/* Everyone sees Profile */}
                 <Drawer.Screen
                     name="Profile"
-                    component={userRole === 'teacher' ? TeacherProfile : StudentProfile}
+                    component={userRole === 'admin' ? AdminProfile : (userRole === 'teacher' ? TeacherProfile : StudentProfile)}
                     options={{ drawerIcon: ({ color, size }) => <UserCircle size={size} color={color} /> }}
                 />
 

@@ -90,32 +90,20 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       if (data) {
         // Transform data to match User interface
         const users = data.map((u: any) => {
-          // Determine the specific role ID
-          let roleId = u.id; // Default to UUID
-          if (u.role === 'student' && u.students?.[0]?.id) roleId = u.students[0].id;
-          else if (u.role === 'teacher' && u.teachers?.[0]?.id) roleId = u.teachers[0].id;
-          else if (u.role === 'admin' && u.admins?.[0]?.id) roleId = u.admins[0].id;
-
-          // Or, should we keep `id` as UUID for system actions (approve/delete) and add `displayId`?
-          // The `handleApproveUser` uses `eq("id", userId)`, so `id` MUST be the UUID from `users` table.
-          // I will keep `id` as UUID, but potentially add `displayId` to the interface if needed.
-          // For now, let's just make sure we are aware. The prompt asked to "Checking all users... make sure the new IDs are the ones being used".
-          // This likely means "Displayed" or "Used for business logic".
-          // For AUTH/STATUS updates, we MUST use the UUID `users.id`.
-          // For display, we might want the readable ID. 
-          // Let's add the readable ID to the name or a separate field if the UI supports it.
-          // The `User` interface in `types.ts` has `id`. If I change `id` to the readable one, `handleApproveUser` will fail.
-          // So I will NOT change `id` here to the readable ID to avoid breaking Action buttons.
-          // I will append the readable ID to the name for visibility, or just leave as is since the dashboard might not show IDs yet.
+          // Determine the specific custom readable ID
+          let displayId = u.id; // Default to UUID
+          if (u.role === 'student' && u.students?.[0]?.id) displayId = u.students[0].id;
+          else if (u.role === 'teacher' && u.teachers?.[0]?.id) displayId = u.teachers[0].id;
+          else if (u.role === 'admin' && u.admins?.[0]?.id) displayId = u.admins[0].id;
 
           return {
-            id: u.id, // Keep UUID for actions
+            id: u.id, // Keep UUID for actions (approve/delete)
+            displayId, // Custom ID for UI display (TEA-..., STU-..., ADM-...)
             name: u.full_name,
             email: u.email,
             role: u.role,
             status: u.status,
             joinDate: u.created_at,
-            // We could attach the custom ID if we extended the type, but let's stick to the interface.
           } as User;
         });
         setLocalUsers(users);

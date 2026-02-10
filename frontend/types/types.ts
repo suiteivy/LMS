@@ -16,6 +16,7 @@ export type UserStatus = "pending" | "approved" | "rejected";
 
 export interface User {
   id: string;
+  displayId?: string;
   name: string;
   email: string;
   role: UserRole;

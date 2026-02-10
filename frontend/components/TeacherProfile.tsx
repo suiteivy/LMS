@@ -6,7 +6,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { authService } from "@/libs/supabase";
 
 export default function TeacherProfile() {
-    const { profile, user, refreshProfile } = useAuth();
+    const { profile, user, refreshProfile, displayId } = useAuth();
     const [isEditing, setIsEditing] = useState(false);
     const [name, setName] = useState(profile?.full_name || "");
     const [saving, setSaving] = useState(false);
@@ -139,7 +139,7 @@ export default function TeacherProfile() {
                                         Teacher ID
                                     </Text>
                                     <Text className="text-gray-700 font-medium" numberOfLines={1}>
-                                        {profile.id || "N/A"}
+                                        {displayId || "N/A"}
                                     </Text>
                                 </View>
                                 <View>

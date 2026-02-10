@@ -32,7 +32,10 @@ const UsersTableSection: React.FC<UsersTableSectionProps> = ({
           className="py-2 border-b border-gray-200 flex-row justify-between items-center"
         >
           <TouchableOpacity onPress={() => onUserPress?.(user)} className="flex-1">
-            <Text className="text-sm font-medium">{user.name} - {user.role}</Text>
+            <Text className="text-sm font-medium">
+              {user.name} - {user.role}
+              {user.displayId ? ` (${user.displayId})` : ''}
+            </Text>
             <Text className="text-xs text-gray-500">{user.email}</Text>
             <Text className={`text-xs ${user.status === 'pending' ? 'text-orange-500' : 'text-green-500'}`}>
               Status: {user.status || 'Active'}

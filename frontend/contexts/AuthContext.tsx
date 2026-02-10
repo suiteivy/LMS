@@ -12,6 +12,7 @@ interface AuthContextType {
   studentId: string | null
   teacherId: string | null
   adminId: string | null
+  displayId: string | null
   loading: boolean
   signUp: (email: string, password: string, userData: {
     full_name: string
@@ -46,6 +47,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [studentId, setStudentId] = useState<string | null>(null)
   const [teacherId, setTeacherId] = useState<string | null>(null)
   const [adminId, setAdminId] = useState<string | null>(null)
+  const [displayId, setDisplayId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
 
   const timerRef = useRef<any>(null)
@@ -91,14 +93,23 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
       // 2. Get Role-Specific ID
       if (data.role === 'student') {
-        const { data: stuData } = await supabase.from('students').select('id').eq('user_id', userId).single();
-        if (stuData) setStudentId(stuData.id);
+        const { data: stuData } = await supabase.from('students').select('id').eq('user_id', userId).single() as { data: { id: string } | null };
+        if (stuData) {
+          setStudentId(stuData.id);
+          setDisplayId(stuData.id);
+        }
       } else if (data.role === 'teacher') {
-        const { data: teaData } = await supabase.from('teachers').select('id').eq('user_id', userId).single();
-        if (teaData) setTeacherId(teaData.id);
+        const { data: teaData } = await supabase.from('teachers').select('id').eq('user_id', userId).single() as { data: { id: string } | null };
+        if (teaData) {
+          setTeacherId(teaData.id);
+          setDisplayId(teaData.id);
+        }
       } else if (data.role === 'admin') {
-        const { data: admData } = await supabase.from('admins').select('id').eq('user_id', userId).single();
-        if (admData) setAdminId(admData.id);
+        const { data: admData } = await supabase.from('admins').select('id').eq('user_id', userId).single() as { data: { id: string } | null };
+        if (admData) {
+          setAdminId(admData.id);
+          setDisplayId(admData.id);
+        }
       }
 
       return data as UserProfile
@@ -156,6 +167,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           setStudentId(null)
           setTeacherId(null)
           setAdminId(null)
+          setDisplayId(null)
           console.log('User signed out, state cleared')
         }
 
@@ -191,6 +203,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     studentId,
     teacherId,
     adminId,
+    displayId,
     loading,
     signUp: authService.signUp,
     signIn: authService.signIn,
