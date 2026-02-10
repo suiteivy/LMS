@@ -2,7 +2,7 @@ const express = require("express");
 const cors = require("cors");
 const dotenv = require("dotenv");
 const authRoutes = require("./routes/auth.route");
-const courseRoutes = require("./routes/courses.route");
+const subjectRoutes = require("./routes/subjects.route");
 const institutionRoutes = require("./routes/institution.route");
 const libraryRoutes = require("./routes/library.route");
 // Use the role-protected bursary routes
@@ -40,7 +40,7 @@ app.use((req, res, next) => {
 
 // Routes
 app.use("/api/auth", authRoutes);
-app.use("/api/courses", courseRoutes);
+app.use("/api/subjects", subjectRoutes); // Updated endpoint
 app.use("/api/institutions", institutionRoutes);
 app.use("/api/library", libraryRoutes);
 app.use("/api/bursary", bursaryRoutes);

@@ -50,7 +50,7 @@ export default function TeacherLayout() {
                         }}
                     />
                     <Tabs.Screen
-                        name="Subjects"
+                        name="subjects"
                         options={{
                             title: "Subjects",
                             tabBarIcon: ({ size = 24, color }) => (

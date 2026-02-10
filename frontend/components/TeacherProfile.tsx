@@ -1,10 +1,11 @@
-import { BookOpen, Edit3, GraduationCap, Mail, Save, X, Briefcase, Layers, Users, Calendar, Plus } from "lucide-react-native";
+import { BookOpen, Edit3, Mail, Save, Briefcase, Layers, Users } from "lucide-react-native";
 import React, { useState, useEffect } from "react";
-import { View, Text, Image, TouchableOpacity, TextInput, Alert, ActivityIndicator, FlatList, RefreshControl } from "react-native";
+import { View, Text, Image, TouchableOpacity, TextInput, ActivityIndicator, RefreshControl } from "react-native";
 import { ScrollView } from "react-native-gesture-handler";
 import { useAuth } from "@/contexts/AuthContext";
 import { authService, supabase } from "@/libs/supabase";
 import { Database } from "@/types/database";
+import { showSuccess, showError } from "@/utils/toast";
 
 type Subject = Database['public']['Tables']['subjects']['Row'];
 type Class = Database['public']['Tables']['classes']['Row'];
@@ -85,9 +86,9 @@ export default function TeacherProfile() {
                 totalStudents: studentCount
             });
 
-        } catch (error) {
+        } catch (error: any) {
             console.error("Error fetching teacher data:", error);
-            // Don't show alert on initial load to avoid spamming if offline
+            showError("Error", "Failed to load profile data");
         } finally {
             setLoadingData(false);
             setRefreshing(false);
@@ -102,7 +103,7 @@ export default function TeacherProfile() {
 
     const handleSave = async () => {
         if (!name.trim()) {
-            Alert.alert("Error", "Name cannot be empty");
+            showError("Error", "Name cannot be empty");
             return;
         }
 
@@ -117,9 +118,9 @@ export default function TeacherProfile() {
 
             await refreshProfile();
             setIsEditing(false);
-            Alert.alert("Success", "Profile updated successfully");
+            showSuccess("Success", "Profile updated successfully");
         } catch (error: any) {
-            Alert.alert("Error", "Failed to update profile: " + error.message);
+            showError("Error", "Failed to update profile: " + error.message);
         } finally {
             setSaving(false);
         }
@@ -152,22 +153,22 @@ export default function TeacherProfile() {
     const renderOverview = () => (
         <View className="mt-4">
             {/* Stats Grid */}
-            <View className="flex-row flex-wrap justify-between mb-6">
-                <View className="w-[32%] bg-white p-4 rounded-2xl border border-gray-100 shadow-sm items-center">
+            <View className="flex-row flex-wrap justify-between mb-6 gap-y-4">
+                <View className="w-full md:w-[32%] bg-white p-4 rounded-2xl border border-gray-100 shadow-sm items-center">
                     <View className="p-2 bg-blue-50 rounded-full mb-2">
                         <BookOpen size={20} color="#3b82f6" />
                     </View>
                     <Text className="text-2xl font-bold text-gray-900">{stats.totalSubjects}</Text>
                     <Text className="text-xs text-gray-500 font-medium text-center">Subjects</Text>
                 </View>
-                <View className="w-[32%] bg-white p-4 rounded-2xl border border-gray-100 shadow-sm items-center">
+                <View className="w-full md:w-[32%] bg-white p-4 rounded-2xl border border-gray-100 shadow-sm items-center">
                     <View className="p-2 bg-purple-50 rounded-full mb-2">
                         <Layers size={20} color="#a855f7" />
                     </View>
                     <Text className="text-2xl font-bold text-gray-900">{stats.activeClasses}</Text>
                     <Text className="text-xs text-gray-500 font-medium text-center">Classes</Text>
                 </View>
-                <View className="w-[32%] bg-white p-4 rounded-2xl border border-gray-100 shadow-sm items-center">
+                <View className="w-full md:w-[32%] bg-white p-4 rounded-2xl border border-gray-100 shadow-sm items-center">
                     <View className="p-2 bg-orange-50 rounded-full mb-2">
                         <Users size={20} color="#f97316" />
                     </View>

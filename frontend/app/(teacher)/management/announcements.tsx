@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from "react";
-import { View, Text, ScrollView, TouchableOpacity, StatusBar, TextInput, Modal, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, StatusBar, TextInput, Modal, ActivityIndicator } from 'react-native';
 import { ArrowLeft, Plus, Megaphone, Send, Edit2, Trash2, X, Users, Clock, ChevronDown } from 'lucide-react-native';
 import { router } from "expo-router";
 import { supabase } from "@/libs/supabase";
 import { useAuth } from "@/contexts/AuthContext";
+import { showSuccess, showError } from "@/utils/toast";
 
 interface Announcement {
     id: string;
@@ -84,7 +85,7 @@ export default function AnnouncementsPage() {
 
     const fetchSubjects = async () => {
         if (!teacherId) return;
-        const { data } = await supabase.from('Subjects').select('id, title').eq('teacher_id', teacherId);
+        const { data } = await supabase.from('subjects').select('id, title').eq('teacher_id', teacherId);
         if (data) setSubjects(data);
     };
 
@@ -96,7 +97,7 @@ export default function AnnouncementsPage() {
                 .from('announcements')
                 .select(`
                     *,
-                    Subject:Subjects(title)
+                    Subject:subjects(title)
                 `)
                 .eq('teacher_id', teacherId)
                 .order('created_at', { ascending: false });
@@ -125,14 +126,14 @@ export default function AnnouncementsPage() {
     const handleCreateAnnouncement = async () => {
         if (!teacherId) return;
         if (!title || !message || !selectedSubjectId) {
-            Alert.alert("Missing Fields", "Please fill all fields and select a Subject.");
+            showError("Missing Fields", "Please fill all fields and select a Subject.");
             return;
         }
 
         try {
             const { error } = await supabase.from('announcements').insert({
                 teacher_id: teacherId,
-                Subject_id: selectedSubjectId,
+                subject_id: selectedSubjectId,
                 title,
                 message
             });
@@ -140,13 +141,13 @@ export default function AnnouncementsPage() {
             if (error) throw error;
 
             setShowModal(false);
-            fetchAnnouncements();
+            showSuccess("Success", "Announcement posted!");
             // Reset
             setTitle("");
             setMessage("");
             setSelectedSubjectId("");
         } catch (error) {
-            Alert.alert("Error", "Failed to create announcement");
+            showError("Error", "Failed to create announcement");
             console.error(error);
         }
     };
@@ -156,8 +157,9 @@ export default function AnnouncementsPage() {
             const { error } = await supabase.from('announcements').delete().eq('id', id);
             if (error) throw error;
             setAnnouncements(prev => prev.filter(a => a.id !== id));
+            showSuccess("Success", "Announcement deleted");
         } catch (error) {
-            Alert.alert("Error", "Failed to delete announcement");
+            showError("Error", "Failed to delete announcement");
         }
     };
 

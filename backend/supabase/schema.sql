@@ -103,8 +103,8 @@ create table subjects (
 -- STEP 1: Create the admin user via Supabase Dashboard
 -- -------------------------------------------------------
 -- 1. Go to your Supabase project dashboard
--- 2. Navigate to: Authentication â†’ Users
--- 3. Click "Add user" â†’ "Create new user"
+-- 2. Navigate to: Authentication -> Users
+-- 3. Click "Add user" -> "Create new user"
 -- 4. Enter the following:
 --    - Email: admin@lms.com (or your preferred admin email)
 --    - Password: Admin@123456 (or your preferred password)
@@ -145,7 +145,7 @@ ON CONFLICT (id) DO NOTHING;
 -- ALTERNATIVE: Create additional admin users
 -- ==========================================
 -- To create more admin users, repeat the process:
--- 1. Add user via Dashboard â†’ Authentication â†’ Users
+-- 1. Add user via Dashboard -> Authentication -> Users
 -- 2. Run the INSERT query above with their email
 
 -- ==========================================
@@ -247,9 +247,11 @@ ON users FOR DELETE
 USING (public.get_current_user_role() = 'admin');
 
 -- ==========================================
--- subjects TABLE POLICIES
+-- subjects TABLE POLICIES 
+-- (DEPRECATED: See PART 3 at the bottom for active policies)
 -- ==========================================
-
+-- Old policies commented out to prevent recursion issues during reload
+/*
 -- SELECT: Users can read associated subjects
 CREATE POLICY "Users can read associated subjects"
 ON subjects FOR SELECT
@@ -294,6 +296,7 @@ USING (
   teacher_id = current_user_teacher_id()
   OR public.get_current_user_role() = 'admin'
 );
+*/
 
 -- ==========================================
 -- ASSIGNMENTS TABLE POLICIES
@@ -1016,11 +1019,11 @@ CREATE TRIGGER update_resources_modtime BEFORE UPDATE ON resources FOR EACH ROW 
 
 -- Helper to get current user's role ID
 CREATE OR REPLACE FUNCTION current_user_student_id() RETURNS TEXT AS $$
-    SELECT id FROM students WHERE student_id = current_user_student_id();
+    SELECT id FROM students WHERE user_id = auth.uid();
 $$ LANGUAGE sql STABLE;
 
 CREATE OR REPLACE FUNCTION current_user_teacher_id() RETURNS TEXT AS $$
-    SELECT id FROM teachers WHERE student_id = current_user_student_id();
+    SELECT id FROM teachers WHERE user_id = auth.uid();
 $$ LANGUAGE sql STABLE;
 
 -- Check if user is enrolled in class (Takes TEXT student_id)
@@ -1140,9 +1143,9 @@ CREATE POLICY "View submissions" ON submissions FOR SELECT USING (
   student_id = current_user_student_id() OR
   EXISTS (SELECT 1 FROM users WHERE id = auth.uid() AND role = 'admin') OR
   EXISTS (
-      SELECT 1 FROM assignments a
-      WHERE a.id = submissions.assignment_id
-      AND a.teacher_id = current_user_teacher_id()
+    SELECT 1 FROM assignments a
+    WHERE a.id = submissions.assignment_id
+    AND a.teacher_id = current_user_teacher_id()
   )
 );
 
@@ -1152,9 +1155,9 @@ CREATE POLICY "Student manage own submissions" ON submissions FOR ALL USING (stu
 DROP POLICY IF EXISTS "Teacher grade submissions" ON submissions;
 CREATE POLICY "Teacher grade submissions" ON submissions FOR UPDATE USING (
   EXISTS (
-      SELECT 1 FROM assignments a
-      WHERE a.id = submissions.assignment_id
-      AND a.teacher_id = current_user_teacher_id()
+    SELECT 1 FROM assignments a
+    WHERE a.id = submissions.assignment_id
+    AND a.teacher_id = current_user_teacher_id()
   )
 );
 
@@ -1177,12 +1180,12 @@ DROP POLICY IF EXISTS "View resources" ON resources;
 CREATE POLICY "View resources" ON resources FOR SELECT USING (
   EXISTS (SELECT 1 FROM users WHERE id = auth.uid() AND role = 'admin') OR
   EXISTS (
-      SELECT 1 FROM subjects c
-      WHERE c.id = resources.subject_id
-      AND (
-          c.teacher_id = current_user_teacher_id() OR
-          is_student_in_class(c.class_id, current_user_student_id())
-      )
+    SELECT 1 FROM subjects c
+    WHERE c.id = resources.subject_id
+    AND (
+      c.teacher_id = current_user_teacher_id() OR
+      is_student_in_class(c.class_id, current_user_student_id())
+    )
   )
 );
 
@@ -1190,98 +1193,87 @@ DROP POLICY IF EXISTS "Manage resources" ON resources;
 CREATE POLICY "Manage resources" ON resources FOR ALL USING (
   EXISTS (SELECT 1 FROM users WHERE id = auth.uid() AND role = 'admin') OR
   EXISTS (
-      SELECT 1 FROM subjects c
-      WHERE c.id = resources.subject_id
-      AND c.teacher_id = current_user_teacher_id()
+    SELECT 1 FROM subjects c
+    WHERE c.id = resources.subject_id
+    AND c.teacher_id = current_user_teacher_id()
   )
 );
-- -   C r e a t e   A n n o u n c e m e n t s   T a b l e  
- C R E A T E   T A B L E   I F   N O T   E X I S T S   p u b l i c . a n n o u n c e m e n t s   (  
-         i d   U U I D   P R I M A R Y   K E Y   D E F A U L T   g e n _ r a n d o m _ u u i d ( ) ,  
-         c o u r s e _ i d   U U I D   R E F E R E N C E S   p u b l i c . c o u r s e s ( i d )   O N   D E L E T E   C A S C A D E ,  
-         t e a c h e r _ i d   T E X T   R E F E R E N C E S   p u b l i c . t e a c h e r s ( i d )   O N   D E L E T E   C A S C A D E ,  
-         t i t l e   T E X T   N O T   N U L L ,  
-         m e s s a g e   T E X T   N O T   N U L L ,  
-         c r e a t e d _ a t   T I M E S T A M P   W I T H   T I M E   Z O N E   D E F A U L T   N O W ( ) ,  
-         u p d a t e d _ a t   T I M E S T A M P   W I T H   T I M E   Z O N E   D E F A U L T   N O W ( )  
- ) ;  
-  
- - -   E n a b l e   R L S  
- A L T E R   T A B L E   p u b l i c . a n n o u n c e m e n t s   E N A B L E   R O W   L E V E L   S E C U R I T Y ;  
-  
- - -   P o l i c i e s  
-  
- - -   1 .   T e a c h e r s   c a n   v i e w   t h e i r   o w n   a n n o u n c e m e n t s  
- C R E A T E   P O L I C Y   " T e a c h e r s   c a n   v i e w   o w n   a n n o u n c e m e n t s "    
- O N   p u b l i c . a n n o u n c e m e n t s   F O R   S E L E C T    
- T O   a u t h e n t i c a t e d    
- U S I N G   (  
-         t e a c h e r _ i d   I N   (  
-                 S E L E C T   i d   F R O M   p u b l i c . t e a c h e r s   W H E R E   u s e r _ i d   =   a u t h . u i d ( )  
-         )  
- ) ;  
-  
- - -   2 .   T e a c h e r s   c a n   i n s e r t   a n n o u n c e m e n t s   f o r   t h e m s e l v e s  
- C R E A T E   P O L I C Y   " T e a c h e r s   c a n   i n s e r t   o w n   a n n o u n c e m e n t s "    
- O N   p u b l i c . a n n o u n c e m e n t s   F O R   I N S E R T    
- T O   a u t h e n t i c a t e d    
- W I T H   C H E C K   (  
-         t e a c h e r _ i d   I N   (  
-                 S E L E C T   i d   F R O M   p u b l i c . t e a c h e r s   W H E R E   u s e r _ i d   =   a u t h . u i d ( )  
-         )  
- ) ;  
-  
- - -   3 .   T e a c h e r s   c a n   u p d a t e   o w n   a n n o u n c e m e n t s  
- C R E A T E   P O L I C Y   " T e a c h e r s   c a n   u p d a t e   o w n   a n n o u n c e m e n t s "    
- O N   p u b l i c . a n n o u n c e m e n t s   F O R   U P D A T E    
- T O   a u t h e n t i c a t e d    
- U S I N G   (  
-         t e a c h e r _ i d   I N   (  
-                 S E L E C T   i d   F R O M   p u b l i c . t e a c h e r s   W H E R E   u s e r _ i d   =   a u t h . u i d ( )  
-         )  
- ) ;  
-  
- - -   4 .   T e a c h e r s   c a n   d e l e t e   o w n   a n n o u n c e m e n t s  
- C R E A T E   P O L I C Y   " T e a c h e r s   c a n   d e l e t e   o w n   a n n o u n c e m e n t s "    
- O N   p u b l i c . a n n o u n c e m e n t s   F O R   D E L E T E    
- T O   a u t h e n t i c a t e d    
- U S I N G   (  
-         t e a c h e r _ i d   I N   (  
-                 S E L E C T   i d   F R O M   p u b l i c . t e a c h e r s   W H E R E   u s e r _ i d   =   a u t h . u i d ( )  
-         )  
- ) ;  
-  
- - -   5 .   S t u d e n t s   c a n   v i e w   a n n o u n c e m e n t s   f o r   c o u r s e s   t h e y   a r e   e n r o l l e d   i n  
- C R E A T E   P O L I C Y   " S t u d e n t s   c a n   v i e w   c o u r s e   a n n o u n c e m e n t s "    
- O N   p u b l i c . a n n o u n c e m e n t s   F O R   S E L E C T    
- T O   a u t h e n t i c a t e d    
- U S I N G   (  
-         c o u r s e _ i d   I N   (  
-                 S E L E C T   c l a s s _ i d   F R O M   p u b l i c . e n r o l l m e n t s    
-                 W H E R E   s t u d e n t _ i d   I N   (  
-                         S E L E C T   i d   F R O M   p u b l i c . s t u d e n t s   W H E R E   u s e r _ i d   =   a u t h . u i d ( )  
-                 )  
-         )  
- ) ;  
-  
- - -   A l l o w   a d m i n s   t o   v i e w   a l l   ( o p t i o n a l ,   g o o d   f o r   m a n a g e m e n t )  
- C R E A T E   P O L I C Y   " A d m i n s   c a n   v i e w   a l l   a n n o u n c e m e n t s "  
- O N   p u b l i c . a n n o u n c e m e n t s   F O R   S E L E C T  
- T O   a u t h e n t i c a t e d  
- U S I N G   (  
-     E X I S T S   (  
-         S E L E C T   1   F R O M   p u b l i c . a d m i n s   W H E R E   u s e r _ i d   =   a u t h . u i d ( )  
-     )  
- ) ;  
- c r e a t e   t a b l e   p u b l i c . b o o k   (  
-     i d   b i g i n t   g e n e r a t e d   b y   d e f a u l t   a s   i d e n t i t y   n o t   n u l l ,  
-     b o o k _ i d   u u i d   n u l l   d e f a u l t   g e n _ r a n d o m _ u u i d   ( ) ,  
-     b o o k _ t i t l e   t e x t   n u l l ,  
-     a u t h o r   t e x t   n u l l ,  
-     i s b n   t e x t   n u l l ,  
-     c a t e g o r y   t e x t   n u l l ,  
-     b o r r o w e d _ b y   t e x t   n u l l ,  
-     c r e a t e d _ a t   t i m e s t a m p   w i t h   t i m e   z o n e   n u l l   d e f a u l t   n o w ( ) ,  
-     c o n s t r a i n t   b o o k _ p k e y   p r i m a r y   k e y   ( i d )  
- )   T A B L E S P A C E   p g _ d e f a u l t ;  
- 
+
+-- Create Announcements Table
+CREATE TABLE IF NOT EXISTS public.announcements (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    subject_id UUID REFERENCES public.subjects(id) ON DELETE CASCADE,
+    teacher_id TEXT REFERENCES public.teachers(id) ON DELETE CASCADE,
+    title TEXT NOT NULL,
+    message TEXT NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Enable RLS
+ALTER TABLE public.announcements ENABLE ROW LEVEL SECURITY;
+
+-- Policies
+
+-- 1. Teachers can view their own announcements
+CREATE POLICY "Teachers can view own announcements" 
+ON public.announcements FOR SELECT 
+TO authenticated 
+USING (
+    teacher_id IN (
+        SELECT id FROM public.teachers WHERE user_id = auth.uid()
+    )
+);
+
+-- 2. Teachers can insert announcements for themselves
+CREATE POLICY "Teachers can insert own announcements" 
+ON public.announcements FOR INSERT 
+TO authenticated 
+WITH CHECK (
+    teacher_id IN (
+        SELECT id FROM public.teachers WHERE user_id = auth.uid()
+    )
+);
+
+-- 3. Teachers can update own announcements
+CREATE POLICY "Teachers can update own announcements" 
+ON public.announcements FOR UPDATE 
+TO authenticated 
+USING (
+    teacher_id IN (
+        SELECT id FROM public.teachers WHERE user_id = auth.uid()
+    )
+);
+
+-- 4. Teachers can delete own announcements
+CREATE POLICY "Teachers can delete own announcements" 
+ON public.announcements FOR DELETE 
+TO authenticated 
+USING (
+    teacher_id IN (
+        SELECT id FROM public.teachers WHERE user_id = auth.uid()
+    )
+);
+
+-- 5. Students can view announcements for courses they are enrolled in
+CREATE POLICY "Students can view course announcements" 
+ON public.announcements FOR SELECT 
+TO authenticated 
+USING (
+    subject_id IN (
+        SELECT class_id FROM public.enrollments 
+        WHERE student_id IN (
+            SELECT id FROM public.students WHERE user_id = auth.uid()
+        )
+    )
+);
+
+-- Allow admins to view all (optional, good for management)
+CREATE POLICY "Admins can view all announcements"
+ON public.announcements FOR SELECT
+TO authenticated
+USING (
+    EXISTS (
+        SELECT 1 FROM public.admins WHERE user_id = auth.uid()
+    )
+);
