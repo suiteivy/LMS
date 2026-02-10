@@ -129,7 +129,7 @@ export default function TeacherProfile() {
     if (!profile) {
         return (
             <View className="flex-1 justify-center items-center bg-gray-50">
-                <ActivityIndicator size="large" color="#0d9488" />
+                <ActivityIndicator size="large" color="#FF6B00" />
             </View>
         );
     }
@@ -137,7 +137,7 @@ export default function TeacherProfile() {
     const renderTabButton = (tab: 'overview' | 'subjects' | 'classes', label: string, icon: React.ReactElement) => (
         <TouchableOpacity
             onPress={() => setActiveTab(tab)}
-            className={`flex-row items-center px-4 py-2 rounded-full mr-2 ${activeTab === tab ? 'bg-teal-500' : 'bg-white border border-gray-200'}`}
+            className={`flex-row items-center px-4 py-2 rounded-full mr-2 ${activeTab === tab ? 'bg-teacherOrange' : 'bg-white border border-gray-200'}`}
         >
             {/* Clone icon with appropriate color */}
             {React.cloneElement(icon, {
@@ -181,8 +181,8 @@ export default function TeacherProfile() {
             <View className="flex-row flex-wrap justify-between">
                 <View className="w-full md:w-[48%] bg-white p-5 rounded-2xl border border-gray-100 mb-4 shadow-sm">
                     <View className="flex-row items-center mb-4">
-                        <View className="p-2 bg-teal-50 rounded-lg">
-                            <Briefcase size={20} color="#0d9488" />
+                        <View className="p-2 bg-orange-50 rounded-lg">
+                            <Briefcase size={20} color="#FF6B00" />
                         </View>
                         <Text className="ml-3 font-semibold text-gray-800">Professional Info</Text>
                     </View>
@@ -251,8 +251,8 @@ export default function TeacherProfile() {
             ) : (
                 subjects.map((subject) => (
                     <View key={subject.id} className="bg-white p-4 rounded-2xl border border-gray-100 mb-3 shadow-sm flex-row items-center">
-                        <View className="w-12 h-12 bg-teal-100 rounded-xl items-center justify-center mr-4">
-                            <BookOpen size={24} color="#0d9488" />
+                        <View className="w-12 h-12 bg-orange-100 rounded-xl items-center justify-center mr-4">
+                            <BookOpen size={24} color="#FF6B00" />
                         </View>
                         <View className="flex-1">
                             <Text className="font-bold text-gray-900 text-lg">{subject.title}</Text>
@@ -294,13 +294,13 @@ export default function TeacherProfile() {
         <ScrollView
             className="flex-1 bg-gray-50"
             refreshControl={
-                <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} colors={["#0d9488"]} />
+                <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} colors={["#FF6B00"]} />
             }
         >
             <View className="p-4 md:p-8 max-w-3xl mx-auto w-full">
                 {/* Header section / profile card */}
                 <View className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden mb-6">
-                    <View className="h-32 bg-teal-500 rounded-t-3xl relative">
+                    <View className="h-32 bg-teacherOrange rounded-t-3xl relative">
                         {/* Cover pattern or something could go here */}
                         <View className="absolute bottom-0 w-full h-16 bg-gradient-to-t from-black/20 to-transparent" />
                     </View>
@@ -327,7 +327,7 @@ export default function TeacherProfile() {
                                     ) : isEditing ? (
                                         <Save size={16} color='white' />
                                     ) : (
-                                        <Edit3 size={16} color='#0d9488' />
+                                        <Edit3 size={16} color='#FF6B00' />
                                     )}
                                 </TouchableOpacity>
                             </View>
@@ -365,7 +365,7 @@ export default function TeacherProfile() {
                 {/* Content */}
                 {loadingData && !refreshing ? (
                     <View className="py-10">
-                        <ActivityIndicator size="large" color="#0d9488" />
+                        <ActivityIndicator size="large" color="#FF6B00" />
                     </View>
                 ) : (
                     <>

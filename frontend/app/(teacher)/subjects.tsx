@@ -52,15 +52,15 @@ const SubjectCard = ({ Subject }: SubjectCardProps) => {
             {/* Progress Bar */}
             <View className="h-2 bg-gray-100 rounded-full overflow-hidden">
                 <View
-                    className="h-full bg-teal-500 rounded-full"
+                    className="h-full bg-teacherOrange rounded-full"
                     style={{ width: `${Subject.completion}%` }}
                 />
             </View>
 
             <View className="flex-row justify-end mt-4 gap-4">
                 <TouchableOpacity className="flex-row items-center">
-                    <Edit size={16} color="#0d9488" />
-                    <Text className="text-teal-600 text-xs ml-1 font-medium">Edit</Text>
+                    <Edit size={16} color="#FF6B00" />
+                    <Text className="text-teacherOrange text-xs ml-1 font-medium">Edit</Text>
                 </TouchableOpacity>
                 <TouchableOpacity className="flex-row items-center">
                     <Eye size={16} color="#6B7280" />
@@ -118,7 +118,7 @@ export default function TeacherSubjects() {
     if (loading) {
         return (
             <View className="flex-1 justify-center items-center bg-gray-50">
-                <ActivityIndicator size="large" color="#0d9488" />
+                <ActivityIndicator size="large" color="#FF6B00" />
             </View>
         );
     }
@@ -144,7 +144,7 @@ export default function TeacherSubjects() {
                             {(["all", "active", "draft"] as const).map((tab) => (
                                 <TouchableOpacity
                                     key={tab}
-                                    className={`flex-1 py-2 rounded-lg ${filter === tab ? "bg-teal-600" : ""}`}
+                                    className={`flex-1 py-2 rounded-lg ${filter === tab ? "bg-teacherOrange" : ""}`}
                                     onPress={() => setFilter(tab)}
                                 >
                                     <Text className={`text-center font-semibold text-sm ${filter === tab ? "text-white" : "text-gray-500"}`}>

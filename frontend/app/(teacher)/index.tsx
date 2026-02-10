@@ -54,15 +54,15 @@ export default function TeacherHome() {
 
                         {/* --- 2. Quick Status Cards --- */}
                         <View className="flex-row gap-4 mb-8">
-                            <View className="flex-1 bg-teal-600 p-4 rounded-3xl shadow-sm">
+                            <View className="flex-1 bg-teacherOrange p-4 rounded-3xl shadow-sm">
                                 <Users size={20} color="white" />
                                 <Text className="text-white text-2xl font-bold mt-2">1,247</Text>
-                                <Text className="text-teal-100 text-xs font-medium uppercase italic">
+                                <Text className="text-white text-xs font-medium uppercase italic">
                                     Students
                                 </Text>
                             </View>
                             <View className="flex-1 bg-white p-4 rounded-3xl border border-gray-100 shadow-sm">
-                                <Clock size={20} color="#0d9488" />
+                                <Clock size={20} color="#FF6B00" />
                                 <Text className="text-gray-900 text-2xl font-bold mt-2">
                                     8
                                 </Text>
@@ -78,7 +78,7 @@ export default function TeacherHome() {
                                 Today's Schedule
                             </Text>
                             <TouchableOpacity>
-                                <Text className="text-teal-600 font-semibold">View All</Text>
+                                <Text className="text-teacherOrange font-semibold">View All</Text>
                             </TouchableOpacity>
                         </View>
 
@@ -147,7 +147,7 @@ export default function TeacherHome() {
                                 <QuickAction
                                     icon={GraduationCap}
                                     label="Grades"
-                                    color="#0d9488"
+                                    color="#1a1a1a"
                                 />
                                 <QuickAction
                                     icon={School}

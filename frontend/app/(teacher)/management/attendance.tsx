@@ -26,13 +26,13 @@ interface ClassOption {
 const StudentAttendanceRow = ({ student, onMark }: { student: Student; onMark: (id: string, status: Student["status"]) => void }) => {
     return (
         <View className="bg-white p-3 rounded-xl border border-gray-100 mb-2 flex-row items-center">
-            <View className="w-10 h-10 rounded-full bg-teal-100 items-center justify-center mr-3">
-                <Text className="text-teal-600 font-bold">{student.name.charAt(0)}</Text>
+            <View className="w-10 h-10 rounded-full bg-orange-100 items-center justify-center mr-3">
+                <Text className="text-teacherOrange font-bold">{student.name.charAt(0)}</Text>
             </View>
             <View className="flex-1">
                 <Text className="text-gray-900 font-medium">{student.name}</Text>
                 {student.displayId && (
-                    <Text className="text-teal-600 text-[10px] font-semibold">ID: {student.displayId}</Text>
+                    <Text className="text-teacherOrange text-[10px] font-semibold">ID: {student.displayId}</Text>
                 )}
             </View>
 
@@ -234,7 +234,7 @@ export default function AttendancePage() {
                             {/* Date Picker (Mock Button for now) */}
                             <TouchableOpacity className="flex-1 bg-white rounded-xl px-4 py-3 border border-gray-100 flex-row items-center justify-between">
                                 <View className="flex-row items-center">
-                                    <Calendar size={16} color="#0d9488" />
+                                    <Calendar size={16} color="#FF6B00" />
                                     <Text className="text-gray-700 font-medium ml-2">Today</Text>
                                 </View>
                                 <ChevronDown size={16} color="#6B7280" />
@@ -297,7 +297,7 @@ export default function AttendancePage() {
                         <Text className="text-lg font-bold text-gray-900 mb-3">Students</Text>
 
                         {loading ? (
-                            <ActivityIndicator size="large" color="#0d9488" className="mt-8" />
+                            <ActivityIndicator size="large" color="#FF6B00" className="mt-8" />
                         ) : students.length === 0 ? (
                             <Text className="text-gray-500 text-center mt-8">No students found in this class.</Text>
                         ) : (
@@ -312,7 +312,7 @@ export default function AttendancePage() {
 
                         {/* Submit Button */}
                         <TouchableOpacity
-                            className={`bg-teal-600 py-4 rounded-xl items-center mt-4 mb-6 ${saving ? 'opacity-50' : ''}`}
+                            className={`bg-teacherOrange py-4 rounded-xl items-center mt-4 mb-6 ${saving ? 'opacity-50' : ''}`}
                             onPress={saveAttendance}
                             disabled={saving}
                         >

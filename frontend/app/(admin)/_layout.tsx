@@ -6,14 +6,14 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export default function AdminLayout() {
     const insets = useSafeAreaInsets();
-    
+
     return (
-        <AuthGuard>
+        <AuthGuard allowedRoles={['admin']}>
             <SchoolProvider>
                 {/* Use a subtle background color for the entire admin area */}
                 <View style={{ flex: 1, backgroundColor: '#F8FAFC' }}>
                     <StatusBar barStyle="dark-content" />
-                    
+
                     {/* Header Area with Safe Area Padding */}
                     <View style={{ paddingTop: insets.top }} className="bg-white shadow-sm shadow-gray-100">
                         {/* You could put a persistent School Header here if desired */}

@@ -21,8 +21,8 @@ const AnnouncementCard = ({ announcement, onDelete }: { announcement: Announceme
     return (
         <View className="bg-white p-4 rounded-2xl border border-gray-100 mb-3 shadow-sm">
             <View className="flex-row items-start mb-3">
-                <View className="bg-pink-100 p-2 rounded-xl mr-3">
-                    <Megaphone size={20} color="#ec4899" />
+                <View className="bg-orange-100 p-2 rounded-xl mr-3">
+                    <Megaphone size={20} color="#FF6B00" />
                 </View>
                 <View className="flex-1">
                     <Text className="text-gray-900 font-bold text-base">{announcement.title}</Text>
@@ -185,7 +185,7 @@ export default function AnnouncementsPage() {
                                 </View>
                             </View>
                             <TouchableOpacity
-                                className="flex-row items-center bg-pink-500 px-4 py-2 rounded-xl"
+                                className="flex-row items-center bg-teacherOrange px-4 py-2 rounded-xl"
                                 onPress={() => setShowModal(true)}
                             >
                                 <Plus size={18} color="white" />
@@ -195,7 +195,7 @@ export default function AnnouncementsPage() {
 
                         {/* Announcements List */}
                         {loading ? (
-                            <ActivityIndicator size="large" color="#ec4899" className="mt-8" />
+                            <ActivityIndicator size="large" color="#FF6B00" className="mt-8" />
                         ) : announcements.length === 0 ? (
                             <Text className="text-gray-500 text-center mt-8">No announcements found.</Text>
                         ) : (
@@ -225,7 +225,7 @@ export default function AnnouncementsPage() {
                                 <TouchableOpacity
                                     key={c.id}
                                     onPress={() => setSelectedSubjectId(c.id)}
-                                    className={`mr-2 px-4 py-2 rounded-lg border ${selectedSubjectId === c.id ? 'bg-pink-500 border-pink-500' : 'bg-gray-50 border-gray-200'}`}
+                                    className={`mr-2 px-4 py-2 rounded-lg border ${selectedSubjectId === c.id ? 'bg-teacherOrange border-teacherOrange' : 'bg-gray-50 border-gray-200'}`}
                                 >
                                     <Text className={selectedSubjectId === c.id ? 'text-white' : 'text-gray-700'}>{c.title}</Text>
                                 </TouchableOpacity>
@@ -250,7 +250,7 @@ export default function AnnouncementsPage() {
                         />
 
                         <TouchableOpacity
-                            className="bg-pink-500 py-4 rounded-xl items-center flex-row justify-center"
+                            className="bg-teacherOrange py-4 rounded-xl items-center flex-row justify-center"
                             onPress={handleCreateAnnouncement}
                         >
                             <Send size={18} color="white" />
