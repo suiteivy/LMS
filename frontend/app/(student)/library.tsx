@@ -5,7 +5,7 @@ import { Search, FileText, BookOpen, X, Clock, CheckCircle2, Filter, Bookmark } 
 interface LibraryBook {
     id: string;
     title: string;
-    course_code: string;
+    subject_code: string;
     author: string;
     file_type: "PDF" | "EPUB" | "Physical";
     description: string;
@@ -22,7 +22,7 @@ export default function StudentLibrary() {
         {
             id: '1',
             title: 'Introduction to Quantum Computing',
-            course_code: 'PHY402',
+            subject_code: 'PHY402',
             author: 'Dr. Aris Thorne',
             file_type: 'PDF',
             description: 'Explore the foundations of quantum mechanics applied to computing. This book covers qubits, entanglement, and quantum gates.',
@@ -31,7 +31,7 @@ export default function StudentLibrary() {
         {
             id: '2',
             title: 'Neural Networks and Deep Learning',
-            course_code: 'CS501',
+            subject_code: 'CS501',
             author: 'Michael Nielsen',
             file_type: 'Physical',
             description: 'A deep dive into the mathematical structures that power modern AI and machine learning models.',
@@ -47,7 +47,7 @@ export default function StudentLibrary() {
     return (
         <View className="flex-1 bg-gray-50">
             <StatusBar barStyle="dark-content" />
-            
+
             {/* --- HEADER SECTION --- */}
             <View className="bg-white pt-14 pb-6 px-6 border-b border-gray-100 shadow-sm">
                 <View className="flex-row justify-between items-center mb-6">
@@ -64,8 +64,8 @@ export default function StudentLibrary() {
                 <View className="flex-row gap-2">
                     <View className="flex-1 flex-row items-center bg-gray-100 rounded-2xl px-4 py-2">
                         <Search size={18} color="#9CA3AF" />
-                        <TextInput 
-                            placeholder="Find books or courses..."
+                        <TextInput
+                            placeholder="Find books or subjects..."
                             className="flex-1 ml-2 text-gray-900 text-sm h-10"
                             value={searchQuery}
                             onChangeText={setSearchQuery}
@@ -80,10 +80,10 @@ export default function StudentLibrary() {
             {/* --- BOOK LIST --- */}
             <ScrollView className="flex-1 px-6 pt-4" showsVerticalScrollIndicator={false}>
                 <Text className="text-gray-900 font-bold text-lg mb-4">Recommended for you</Text>
-                
+
                 {materials.map((item) => (
-                    <TouchableOpacity 
-                        key={item.id} 
+                    <TouchableOpacity
+                        key={item.id}
                         activeOpacity={0.7}
                         onPress={() => {
                             setSelectedBook(item);
@@ -96,18 +96,18 @@ export default function StudentLibrary() {
                                 {item.file_type === 'PDF' ? <FileText size={22} color="#ef4444" /> : <BookOpen size={22} color="#0d9488" />}
                             </View>
                             <View className="flex-1">
-                                <Text className="text-[10px] font-bold text-teal-600 uppercase mb-0.5">{item.course_code}</Text>
+                                <Text className="text-[10px] font-bold text-teal-600 uppercase mb-0.5">{item.subject_code}</Text>
                                 <Text className="text-gray-900 font-bold text-base" numberOfLines={1}>{item.title}</Text>
                                 <Text className="text-gray-400 text-xs">{item.author}</Text>
                             </View>
                         </View>
                         <View className="bg-gray-50 p-2 rounded-full">
-                           <Text className="text-teal-600 font-bold text-[10px] px-1">VIEW</Text>
+                            <Text className="text-teal-600 font-bold text-[10px] px-1">VIEW</Text>
                         </View>
                     </TouchableOpacity>
                 ))}
-                
-                <View className="h-20" /> 
+
+                <View className="h-20" />
             </ScrollView>
 
             {/* --- BORROW MODAL --- */}
@@ -116,10 +116,10 @@ export default function StudentLibrary() {
                     <TouchableOpacity className="flex-1" onPress={() => setModalVisible(false)} />
                     <View className="bg-white rounded-t-[50px] p-8">
                         <View className="w-12 h-1.5 bg-gray-200 rounded-full self-center mb-8" />
-                        
+
                         <View className="flex-row justify-between items-start mb-6">
                             <View className="flex-1 pr-4">
-                                <Text className="text-teal-600 font-bold text-xs uppercase tracking-widest">{selectedBook?.course_code}</Text>
+                                <Text className="text-teal-600 font-bold text-xs uppercase tracking-widest">{selectedBook?.subject_code}</Text>
                                 <Text className="text-3xl font-black text-gray-900 mt-2">{selectedBook?.title}</Text>
                                 <Text className="text-gray-500 font-medium mt-1">by {selectedBook?.author}</Text>
                             </View>
@@ -145,7 +145,7 @@ export default function StudentLibrary() {
                             </View>
                         </View>
 
-                        <TouchableOpacity 
+                        <TouchableOpacity
                             className="bg-teal-600 py-5 rounded-[25px] items-center shadow-lg shadow-teal-200"
                             onPress={() => handleBorrow(selectedBook?.title || "")}
                         >

@@ -5,17 +5,12 @@ import { useState, useEffect } from "react";
 import { View, ScrollView, ActivityIndicator, Alert } from "react-native";
 import { supabase } from "@/libs/supabase";
 import { useAuth } from "@/contexts/AuthContext";
-import { supabase } from "@/libs/supabase";
-import { Course } from "@/types/types";
-import { useEffect, useState } from "react";
-import { View, ScrollView, Alert } from "react-native";
 
 export default function Subjects() {
   const { studentId } = useAuth();
-  const [availableSubjects, setAvailableSubjects] = useState<Subject[]>([])
   const [currentView, setCurrentView] = useState<"list" | "details">("list");
   const [selectedSubject, setSelectedSubject] = useState<Subject | null>(null);
-  const [Subjects, setSubjects] = useState<Subject[]>([]);
+  const [subjects, setSubjects] = useState<Subject[]>([]);
   const [loading, setLoading] = useState(true);
   const [enrolling, setEnrolling] = useState(false);
 
@@ -26,26 +21,23 @@ export default function Subjects() {
   const fetchSubjects = async () => {
     try {
       setLoading(true);
-      // Fetch all Subjects
-      const { data: SubjectsData, error: SubjectsError } = await supabase
-        .from("Subjects")
+      // Fetch all subjects
+      const { data: subjectsData, error: subjectsError } = await supabase
+        .from("subjects")
         .select(`
           *,
           teacher:teachers(user:users(full_name)),
           lessons(count)
         `);
 
-      if (SubjectsError) throw SubjectsError;
+      if (subjectsError) throw subjectsError;
 
       // Fetch enrollments for this student to check "isEnrolled"
       let enrolledSubjectIds: string[] = [];
       if (studentId) {
         const { data: enrollData, error: enrollError } = await supabase
           .from("enrollments")
-          .select("class_id") // Wait, enrollments link to classes, not Subjects directly? 
-          // The schema has Subjects linking to classes: Subjects.class_id -> classes.id
-          // And enrollments link students to classes: enrollments.class_id, enrollments.student_id
-          // So if I am enrolled in the class of the Subject, I am enrolled in the Subject.
+          .select("class_id")
           .eq("student_id", studentId);
 
         if (enrollError) {
@@ -56,43 +48,43 @@ export default function Subjects() {
         }
       }
 
-      const formattedSubjects: Subject[] = SubjectsData.map((c: any) => ({
+      const formattedSubjects: Subject[] = subjectsData.map((c: any) => ({
         id: c.id,
-        title: c.name, // 'Subjects' table has 'name', type has 'title'. Adjusting.
+        title: c.title || c.name,
         description: c.description,
         shortDescription: c.description ? c.description.substring(0, 50) + "..." : "",
-        category: c.category || "General", // field might be missing in DB, using fallback
-        level: "beginner", // 'level' not in schema shown, fallback
+        category: c.category || "General",
+        level: "beginner",
         instructor: { name: c.teacher?.user?.full_name || "Unknown Instructor" },
-        price: 0, // 'price' not in schema
-        duration: "TBD", // 'duration' not in schema
-        studentsCount: 0, // Need to count enrollments per Subject/class
+        price: c.fee_amount || 0,
+        duration: "TBD",
+        studentsCount: 0,
         rating: 0,
         reviewsCount: 0,
         image: c.image_url || "https://images.unsplash.com/photo-1509228627152-72ae9ae6848d?w=400",
         tags: [],
         isEnrolled: enrolledSubjectIds.includes(c.class_id),
-        lessons: [], // We can fetch lessons detail when viewing detail
-        class_id: c.class_id // Store class_id for enrollment
+        lessons: [],
+        class_id: c.class_id
       }));
 
       setSubjects(formattedSubjects);
     } catch (error: any) {
-      console.error("Error loading Subjects:", error);
-      Alert.alert("Error", "Failed to load Subjects");
+      console.error("Error loading subjects:", error);
+      Alert.alert("Error", "Failed to load subjects");
     } finally {
       setLoading(false);
     }
   };
 
-  const handleSubjectPress = (Subject: Subject) => {
-    setSelectedSubject(Subject);
+  const handleSubjectPress = (subject: Subject) => {
+    setSelectedSubject(subject);
     setCurrentView("details");
   };
 
   const handleEnroll = async () => {
     if (!studentId || !selectedSubject || !(selectedSubject as any).class_id) {
-      Alert.alert("Error", "Unable to enroll. Missing student or Subject information.");
+      Alert.alert("Error", "Unable to enroll. Missing student or subject information.");
       return;
     }
 
@@ -121,35 +113,20 @@ export default function Subjects() {
     }
   };
 
-  useEffect(() => {
-    const fetchCourseData = async () => {
-      try {
-        const { data, error } = await supabase
-          .from('courses')
-          .select('*')
-
-        console.log('Raw data from Supabase:', data)
-        console.log('Any error?', error)
-
-        if (error) throw error
-
-      } catch (error: any) {
-        console.error('Error fetching course data:', error.message)
-        return;
-      }
-    }
-    fetchCourseData()
-
-  }, [])
-
-  console.log('Available courses now:', availableCourses)
+  if (loading) {
+    return (
+      <View className="flex-1 justify-center items-center bg-[#F1FFF8]">
+        <ActivityIndicator size="large" color="#1ABC9C" />
+      </View>
+    );
+  }
 
   return (
     <View className="flex-1 bg-[#F1FFF8]">
       <ScrollView className="flex-grow px-6 pt-12 pb-6">
         {currentView === "list" ? (
           <SubjectList
-            Subjects={Subjects}
+            Subjects={subjects}
             title="Available Subjects"
             showFilters={true}
             variant="featured"
@@ -167,3 +144,4 @@ export default function Subjects() {
     </View>
   );
 }
+

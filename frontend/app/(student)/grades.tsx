@@ -56,14 +56,14 @@ export default function Grades() {
         try {
             setLoading(true);
             // Fetch submissions that are graded
-            // We need to join with assignments -> Subjects to get Subject details
+            // We need to join with assignments -> subjects to get subject details
             const { data, error } = await supabase
                 .from('submissions')
                 .select(`
                     grade,
                     assignment:assignments(
                         title,
-                        Subject:Subjects(name, id) // Assuming 'name' is the title column
+                        subject:subjects(title, id) 
                     )
                 `)
                 .eq('student_id', studentId)
@@ -71,28 +71,24 @@ export default function Grades() {
 
             if (error) throw error;
 
-            // This logic is a bit simplified. Typically "Grades" are per Subject, not per assignment in this view.
-            // But for now, let's just map available graded items or aggregate them.
-            // If the UI expects "Subject Grade", we should probably calculate average of assignments for that Subject.
-
-            // Group by Subject
-            const SubjectGrades: Record<string, { total: number, count: number, name: string }> = {};
+            // Group by subject
+            const subjectGrades: Record<string, { total: number, count: number, name: string }> = {};
 
             data.forEach((sub: any) => {
-                const SubjectId = sub.assignment?.Subject?.id;
-                const SubjectName = sub.assignment?.Subject?.name;
+                const subjectId = sub.assignment?.subject?.id;
+                const subjectName = sub.assignment?.subject?.title;
                 const score = Number(sub.grade);
 
-                if (SubjectId && !isNaN(score)) {
-                    if (!SubjectGrades[SubjectId]) {
-                        SubjectGrades[SubjectId] = { total: 0, count: 0, name: SubjectName };
+                if (subjectId && !isNaN(score)) {
+                    if (!subjectGrades[subjectId]) {
+                        subjectGrades[subjectId] = { total: 0, count: 0, name: subjectName };
                     }
-                    SubjectGrades[SubjectId].total += score;
-                    SubjectGrades[SubjectId].count += 1;
+                    subjectGrades[subjectId].total += score;
+                    subjectGrades[subjectId].count += 1;
                 }
             });
 
-            const formattedGrades: GradeProps[] = Object.entries(SubjectGrades).map(([id, val]) => {
+            const formattedGrades: GradeProps[] = Object.entries(subjectGrades).map(([id, val]) => {
                 const avg = val.total / val.count;
                 let letter = 'F';
                 if (avg >= 90) letter = 'A';
@@ -102,12 +98,13 @@ export default function Grades() {
 
                 return {
                     SubjectName: val.name,
-                    SubjectCode: "CRS-" + id.substring(0, 4).toUpperCase(), // Mock code
+                    SubjectCode: "SUB-" + id.substring(0, 4).toUpperCase(), // Updated prefix
                     grade: letter,
                     score: Math.round(avg),
                     credits: 3 // Mock credits
                 };
             });
+
 
             setGrades(formattedGrades);
 

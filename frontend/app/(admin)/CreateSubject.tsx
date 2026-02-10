@@ -24,6 +24,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 
 const CreateSubject = () => {
+  const navigation = useNavigation();
   const {
     formData,
     isSubmitting,
@@ -78,10 +79,10 @@ const CreateSubject = () => {
                     className="text-2xl font-bold"
                     style={{ color: "#2C3E50" }}
                   >
-                    Create New Course
+                    Create New Subject
                   </Text>
                   <Text className="text-gray-600 mt-1">
-                    Fill in the details to create your course
+                    Fill in the details to create your subject
                   </Text>
                 </View>
               </View>
@@ -90,188 +91,180 @@ const CreateSubject = () => {
             {/* Basic Information */}
             <FormSection title="Basic Information">
               <FormInput
-                label="Course Title"
+                label="Subject Title"
                 required
                 value={formData.title}
                 onChangeText={(text) => handleInputChange("title", text)}
-                placeholder="Enter course title"
+                placeholder="Enter subject title"
               />
-              {/* Basic Information */}
-              <FormSection title="Basic Information">
-                <FormInput
-                  label="Subject Title"
-                  required
-                  value={formData.title}
-                  onChangeText={(text) => handleInputChange("title", text)}
-                  placeholder="Enter Subject title"
-                />
 
-                <CustomPicker
-                  label="Category"
-                  required
-                  value={formData.category}
-                  options={categoryOptions}
-                  onSelect={(value) => handleInputChange("category", value)}
-                  placeholder="Select category"
-                />
 
-                <CustomPicker
-                  label="Level"
-                  value={formData.level}
-                  options={LEVELS}
-                  onSelect={(value) => handleInputChange("level", value)}
-                />
+              <CustomPicker
+                label="Category"
+                required
+                value={formData.category}
+                options={categoryOptions}
+                onSelect={(value) => handleInputChange("category", value)}
+                placeholder="Select category"
+              />
 
-                <View className="mb-4">
-                  <Text
-                    className="text-sm font-medium mb-2"
-                    style={{ color: "#2C3E50" }}
-                  >
-                    Price *
-                  </Text>
-                  <IconInput
-                    iconName="logo-usd"
-                    value={formData.price}
-                    onChangeText={(text) => handleInputChange("price", text)}
-                    placeholder="0.00"
-                    keyboardType="numeric"
-                  />
-                </View>
+              <CustomPicker
+                label="Level"
+                value={formData.level}
+                options={LEVELS}
+                onSelect={(value) => handleInputChange("level", value)}
+              />
 
-                <FormInput
-                  label="Short Description"
-                  value={formData.shortDescription}
-                  onChangeText={(text) =>
-                    handleInputChange("shortDescription", text)
-                  }
-                  placeholder="Brief description for Subject preview"
-                  maxLength={150}
-                />
-
-                <FormInput
-                  label="Full Description"
-                  required
-                  value={formData.description}
-                  onChangeText={(text) => handleInputChange("description", text)}
-                  placeholder="Detailed Subject description"
-                  multiline
-                  numberOfLines={6}
-                  textAlignVertical="top"
-                  style={{ minHeight: 120 }}
-                />
-              </FormSection>
-
-              {/* Subject Details */}
-              <FormSection title="Subject Details">
-                <View className="mb-4">
-                  <Text
-                    className="text-sm font-medium mb-2"
-                    style={{ color: "#2C3E50" }}
-                  >
-                    Duration (hours)
-                  </Text>
-                  <IconInput
-                    iconName="time"
-                    value={formData.duration}
-                    onChangeText={(text) => handleInputChange("duration", text)}
-                    placeholder="0"
-                    keyboardType="numeric"
-                  />
-                </View>
-
-                <View className="mb-4">
-                  <Text
-                    className="text-sm font-medium mb-2"
-                    style={{ color: "#2C3E50" }}
-                  >
-                    Max Students
-                  </Text>
-                  <IconInput
-                    iconName="people"
-                    value={formData.maxStudents}
-                    onChangeText={(text) => handleInputChange("maxStudents", text)}
-                    placeholder="150"
-                    keyboardType="numeric"
-                  />
-                </View>
-
-                <TagInput
-                  tags={formData.tags}
-                  onAddTag={addTag}
-                  onRemoveTag={removeTag}
-                />
-              </FormSection>
-
-              {/* Learning Outcomes */}
-              <FormSection title="Learning Outcomes">
-                <LearningOutcomes
-                  outcomes={formData.learningOutcomes}
-                  onUpdateOutcome={updateLearningOutcome}
-                  onAddOutcome={addLearningOutcome}
-                  onRemoveOutcome={removeLearningOutcome}
-                />
-              </FormSection>
-
-              {/* Subject Image */}
-              <FormSection title="Subject Image">
-                <ImageUpload
-                  imageUri={formData.SubjectImage}
-                  onImageSelect={(uri) => handleInputChange("SubjectImage", uri)}
-                />
-              </FormSection>
-
-              {/* Settings */}
-              <FormSection title="Subject Settings">
-                <SettingsToggle
-                  icon="globe"
-                  title="Public Subject"
-                  description="Anyone can view and enroll"
-                  value={formData.isPublic}
-                  onValueChange={(value) => handleInputChange("isPublic", value)}
-                />
-
-                <SettingsToggle
-                  icon="chatbubbles"
-                  title="Allow Discussions"
-                  description="Students can discuss Subject content"
-                  value={formData.allowDiscussions}
-                  onValueChange={(value) =>
-                    handleInputChange("allowDiscussions", value)
-                  }
-                />
-
-                <SettingsToggle
-                  icon="ribbon"
-                  title="Certificate"
-                  description="Issue certificate upon completion"
-                  value={formData.certificateEnabled}
-                  onValueChange={(value) =>
-                    handleInputChange("certificateEnabled", value)
-                  }
-                />
-              </FormSection>
-
-              {/* Submit Buttons */}
-              <View className="space-y-4">
-                <TouchableOpacity
-                  className="w-full py-4 border border-gray-200 rounded-lg items-center"
-                  onPress={saveDraft}
+              <View className="mb-4">
+                <Text
+                  className="text-sm font-medium mb-2"
+                  style={{ color: "#2C3E50" }}
                 >
-                  <Text className="text-gray-700 font-medium">Save as Draft</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  onPress={handleSubmit}
-                  disabled={isSubmitting}
-                  className={`w-full py-4 rounded-lg items-center ${isSubmitting ? "opacity-50" : ""
-                    }`}
-                  style={{ backgroundColor: "#1ABC9C" }}
-                >
-                  <Text className="text-white font-medium text-lg">
-                    {isSubmitting ? "Creating Course..." : "Create Course"}
-                  </Text>
-                </TouchableOpacity>
+                  Price *
+                </Text>
+                <IconInput
+                  iconName="logo-usd"
+                  value={formData.price}
+                  onChangeText={(text) => handleInputChange("price", text)}
+                  placeholder="0.00"
+                  keyboardType="numeric"
+                />
               </View>
+
+              <FormInput
+                label="Short Description"
+                value={formData.shortDescription}
+                onChangeText={(text) =>
+                  handleInputChange("shortDescription", text)
+                }
+                placeholder="Brief description for Subject preview"
+                maxLength={150}
+              />
+
+              <FormInput
+                label="Full Description"
+                required
+                value={formData.description}
+                onChangeText={(text) => handleInputChange("description", text)}
+                placeholder="Detailed Subject description"
+                multiline
+                numberOfLines={6}
+                textAlignVertical="top"
+                style={{ minHeight: 120 }}
+              />
+            </FormSection>
+
+            {/* Subject Details */}
+            <FormSection title="Subject Details">
+              <View className="mb-4">
+                <Text
+                  className="text-sm font-medium mb-2"
+                  style={{ color: "#2C3E50" }}
+                >
+                  Duration (hours)
+                </Text>
+                <IconInput
+                  iconName="time"
+                  value={formData.duration}
+                  onChangeText={(text) => handleInputChange("duration", text)}
+                  placeholder="0"
+                  keyboardType="numeric"
+                />
+              </View>
+
+              <View className="mb-4">
+                <Text
+                  className="text-sm font-medium mb-2"
+                  style={{ color: "#2C3E50" }}
+                >
+                  Max Students
+                </Text>
+                <IconInput
+                  iconName="people"
+                  value={formData.maxStudents}
+                  onChangeText={(text) => handleInputChange("maxStudents", text)}
+                  placeholder="150"
+                  keyboardType="numeric"
+                />
+              </View>
+
+              <TagInput
+                tags={formData.tags}
+                onAddTag={addTag}
+                onRemoveTag={removeTag}
+              />
+            </FormSection>
+
+            {/* Learning Outcomes */}
+            <FormSection title="Learning Outcomes">
+              <LearningOutcomes
+                outcomes={formData.learningOutcomes}
+                onUpdateOutcome={updateLearningOutcome}
+                onAddOutcome={addLearningOutcome}
+                onRemoveOutcome={removeLearningOutcome}
+              />
+            </FormSection>
+
+            {/* Subject Image */}
+            <FormSection title="Subject Image">
+              <ImageUpload
+                imageUri={formData.SubjectImage}
+                onImageSelect={(uri) => handleInputChange("SubjectImage", uri)}
+              />
+            </FormSection>
+
+            {/* Settings */}
+            <FormSection title="Subject Settings">
+              <SettingsToggle
+                icon="globe"
+                title="Public Subject"
+                description="Anyone can view and enroll"
+                value={formData.isPublic}
+                onValueChange={(value) => handleInputChange("isPublic", value)}
+              />
+
+              <SettingsToggle
+                icon="chatbubbles"
+                title="Allow Discussions"
+                description="Students can discuss Subject content"
+                value={formData.allowDiscussions}
+                onValueChange={(value) =>
+                  handleInputChange("allowDiscussions", value)
+                }
+              />
+
+              <SettingsToggle
+                icon="ribbon"
+                title="Certificate"
+                description="Issue certificate upon completion"
+                value={formData.certificateEnabled}
+                onValueChange={(value) =>
+                  handleInputChange("certificateEnabled", value)
+                }
+              />
+            </FormSection>
+
+            {/* Submit Buttons */}
+            <View className="space-y-4">
+              <TouchableOpacity
+                className="w-full py-4 border border-gray-200 rounded-lg items-center"
+                onPress={saveDraft}
+              >
+                <Text className="text-gray-700 font-medium">Save as Draft</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={handleSubmit}
+                disabled={isSubmitting}
+                className={`w-full py-4 rounded-lg items-center ${isSubmitting ? "opacity-50" : ""
+                  }`}
+                style={{ backgroundColor: "#1ABC9C" }}
+              >
+                <Text className="text-white font-medium text-lg">
+                  {isSubmitting ? "Creating Subject..." : "Create Subject"}
+                </Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </SafeAreaView>
       </ScrollView>
