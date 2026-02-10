@@ -53,7 +53,7 @@ const StatsOverview: React.FC<StatsOverviewProps> = ({
 
   return (
     <View className="mb-6">
-      <Text className="text-lg font-semibold text-gray-900 mb-4">
+      <Text className="text-xl font-semibold text-gray-900 mb-4">
         Overview
       </Text>
       

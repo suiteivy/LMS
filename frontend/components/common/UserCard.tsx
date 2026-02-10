@@ -71,7 +71,7 @@ export const UserCard: React.FC<UserCardProps> = ({
     
     return (
       <View className="w-10 h-10 rounded-full bg-gray-200 items-center justify-center">
-        <Text className="text-gray-600 font-semibold">
+        <Text className="text-gray-600  font-semibold">
           {user.name.charAt(0).toUpperCase()}
         </Text>
       </View>
@@ -79,11 +79,11 @@ export const UserCard: React.FC<UserCardProps> = ({
   };
 
   const renderCompactCard = () => (
-    <View className="bg-white rounded-xl p-3 shadow-sm mb-2">
+    <View className="bg-white rounded-xl p-3 shadow-sm mb-4">
       <View className="flex-row items-center space-x-3 gap-2">
         {renderAvatar()}
         <View className="flex-1">
-          <Text className="font-semibold text-gray-900" numberOfLines={1}>
+          <Text className="font-semibold text-lg text-gray-900" numberOfLines={1}>
             {user.name}
           </Text>
           <Text className="text-sm text-gray-500" numberOfLines={1}>

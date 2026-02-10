@@ -66,7 +66,7 @@ const RecentUsersSection: React.FC<RecentUsersSectionProps> = ({
   return (
     <View className="mb-6">
       <View className="flex-row items-center justify-between mb-4">
-        <Text className="text-lg font-semibold text-gray-900">
+        <Text className="text-xl font-semibold text-gray-900">
           Recent Users
         </Text>
         
