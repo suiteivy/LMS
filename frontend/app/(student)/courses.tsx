@@ -1,13 +1,15 @@
 import { CourseDetails } from "@/components/CourseDetails";
 import { CourseList } from "@/components/CourseList";
-import { Course } from "@/types/types";
-import { useState, useEffect } from "react";
-import { View, ScrollView, ActivityIndicator, Alert } from "react-native";
-import { supabase } from "@/libs/supabase";
 import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/libs/supabase";
+import { Course } from "@/types/types";
+import { useEffect, useState } from "react";
+import { View, ScrollView, Alert } from "react-native";
 
 export default function Courses() {
-  const { studentId } = useAuth();
+
+  const {studentId} = useAuth() 
+  const [availableCourses, setAvailableCourses] = useState<Course[]>([])
   const [currentView, setCurrentView] = useState<"list" | "details">("list");
   const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
   const [courses, setCourses] = useState<Course[]>([]);
@@ -37,7 +39,8 @@ export default function Courses() {
       if (studentId) {
         const { data: enrollData, error: enrollError } = await supabase
           .from("enrollments")
-          .select("class_id") // Wait, enrollments link to classes, not courses directly? 
+          .select("class_id") 
+          // Wait, enrollments link to classes, not courses directly? 
           // The schema has courses linking to classes: courses.class_id -> classes.id
           // And enrollments link students to classes: enrollments.class_id, enrollments.student_id
           // So if I am enrolled in the class of the course, I am enrolled in the course.
@@ -116,20 +119,35 @@ export default function Courses() {
     }
   };
 
-  if (loading) {
-    return (
-      <View className="flex-1 justify-center items-center bg-[#F1FFF8]">
-        <ActivityIndicator size="large" color="#0d9488" />
-      </View>
-    );
-  }
+  useEffect (() => {
+    const fetchCourseData = async () => {
+      try {
+        const {data, error} = await supabase
+        .from('courses')
+        .select('*')
+
+        console.log('Raw data from Supabase:', data)
+        console.log('Any error?', error)
+        
+        if(error) throw error
+
+      } catch (error: any) {
+        console.error('Error fetching course data:', error.message)
+        return;
+      }
+    }
+    fetchCourseData()
+    
+  }, [])
+
+  console.log('Available courses now:', availableCourses)
 
   return (
     <View className="flex-1 bg-[#F1FFF8]">
       <ScrollView className="flex-grow px-6 pt-12 pb-6">
         {currentView === "list" ? (
           <CourseList
-            courses={courses}
+            courses={availableCourses}
             title="Available Courses"
             showFilters={true}
             variant="featured"

@@ -7,7 +7,7 @@ import { useEffect } from "react";
 
 export default function Index() {
   const { session, loading, profile } = useAuth();
-
+  
   useEffect(() => {
     if (!loading) {
       console.log('Index: Auth state resolved. Session:', !!session, 'Profile role:', profile?.role);

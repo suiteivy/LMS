@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { View, ScrollView, Alert } from "react-native";
+import { View, ScrollView, Alert, TouchableOpacity, Text } from "react-native";
 import { supabase } from "@/libs/supabase";
 import { router } from "expo-router";
 import {
@@ -245,39 +245,54 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const displayRecentUsers =
     recentUsers.length > 0 ? recentUsers : localUsers.slice(0, maxRecentUsers);
 
-  return (
-    <View style={{ flex: 1 }}>
-      <ScrollView
-        contentContainerStyle={{ flexGrow: 1 }}
-        testID={testID}
-        showsVerticalScrollIndicator={false}
-      >
-        <SafeAreaView>
-          <View className="p-4">
-            <DashboardHeader
-              onRefresh={onRefresh}
-              onLogout={handleLogout}
-              activeSection={activeSection}
-              onSectionChange={setActiveSection}
+  // Replace your main return with this refined structure
+return (
+  <View className="flex-1 bg-[#F8FAFC]">
+    <ScrollView 
+      stickyHeaderIndices={[0]} // Makes the header stay at the top while scrolling
+      showsVerticalScrollIndicator={false}
+      contentContainerStyle={{ paddingBottom: 100 }}
+    >
+      {/* --- PRO HEADER --- */}
+      <View className="bg-white/80 backdrop-blur-md px-6 py-4 border-b border-gray-100">
+        <DashboardHeader
+          onRefresh={onRefresh}
+          onLogout={handleLogout}
+          activeSection={activeSection}
+          onSectionChange={setActiveSection}
+          // schoolName={schoolData?.name} // Pass school context data
+        />
+      </View>
+
+      <View className="px-6 mt-4">
+        {activeSection === "overview" && (
+          <>
+            {/* Stats in a 2x2 Bento Grid inside StatsOverview */}
+            <StatsOverview
+              statsData={displayStats}
+              loading={displayStatsLoading}
+              onStatsPress={onStatsPress}
             />
 
-            {activeSection === "overview" && (
-              <>
-                <StatsOverview
-                  statsData={displayStats}
-                  loading={displayStatsLoading}
-                  onStatsPress={onStatsPress}
-                />
+            {/* QUICK ACTIONS: Horizontal Scroll for a cleaner look */}
+            <View className="mt-8">
+               <Text className="text-[12px] font-bold text-gray-400 uppercase tracking-widest mb-4">
+                 Management Tools
+               </Text>
+               <QuickActionsSection onActionPress={handleQuickActionPress} />
+            </View>
 
-                {showRecentUsers && (
-                  <RecentUsersSection
-                    users={displayRecentUsers}
-                    loading={usersLoading || localUsersLoading}
-                    maxUsers={maxRecentUsers}
-                    onUserPress={onUserPress}
-                    onViewAllPress={onViewAllUsersPress}
-                  />
-                )}
+            {/* USER MANAGEMENT CARDS */}
+            <View className="mt-8 bg-white rounded-[32px] p-6 shadow-sm border border-gray-100">
+                <View className="flex-row justify-between items-end mb-6">
+                    <View>
+                        <Text className="text-2xl font-extrabold text-gray-900 tracking-tight">Users</Text>
+                        <Text className="text-gray-400 text-xs font-semibold">Verify and manage accounts</Text>
+                    </View>
+                    <TouchableOpacity onPress={onViewAllUsersPress}>
+                        <Text className="text-teal-600 font-bold text-xs">View All</Text>
+                    </TouchableOpacity>
+                </View>
 
                 {showUsersTable && (
                   <UsersTableSection
@@ -287,42 +302,20 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                     onApproveUser={handleApproveUser}
                   />
                 )}
+            </View>
+          </>
+        )}
 
-                <QuickActionsSection onActionPress={handleQuickActionPress} />
-              </>
-            )}
-
-            {activeSection === "payments" && showPaymentManagement && (
-              <PaymentManagementSection
-                payments={payments}
-                loading={paymentsLoading}
-                onPaymentSubmit={handlePaymentSubmit}
-                onRefresh={onRefresh}
-              />
-            )}
-
-            {activeSection === "payouts" && showTeacherPayouts && (
-              <TeacherPayoutSection
-                payouts={teacherPayouts}
-                loading={payoutsLoading}
-                onPayoutProcess={handlePayoutProcess}
-                onRefresh={onRefresh}
-              />
-            )}
-
-            {activeSection === "fees" && showFeeStructure && (
-              <FeeStructureSection
-                feeStructures={feeStructures}
-                loading={feeStructuresLoading}
-                onFeeStructureUpdate={handleFeeStructureUpdate}
-                onRefresh={onRefresh}
-              />
-            )}
+        {/* --- OTHER SECTIONS (Payments, Fees, etc.) --- */}
+        {activeSection !== "overview" && (
+          <View className="bg-white rounded-[32px] p-6 shadow-sm border border-gray-100 mt-4">
+             {/* Render your specific Management Sections here */}
           </View>
-        </SafeAreaView>
-      </ScrollView>
-    </View>
-  );
+        )}
+      </View>
+    </ScrollView>
+  </View>
+);
 };
 
 export default AdminDashboard;

@@ -49,10 +49,10 @@ export const CourseCard: React.FC<CourseCardProps> = ({
               style={{ color: "#2C3E50" }}
               numberOfLines={2}
             >
-              {course.title}
+              {course?.title}
             </Text>
             <Text className="text-xs text-gray-500 mt-1">
-              {course.instructor.name}
+              {course.instructor?.name || "Unknown Instructor"}
             </Text>
             <View className="flex-row items-center mt-2">
               <View className="flex-row items-center mr-3">
@@ -129,7 +129,7 @@ export const CourseCard: React.FC<CourseCardProps> = ({
           <View className="flex-row items-center mb-3">
             <Ionicons name="person-circle" size={16} color="#6B7280" />
             <Text className="text-sm text-gray-600 ml-1">
-              {course.instructor.name}
+              {course.instructor?.name}
             </Text>
           </View>
 

@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from "react";
-import { View, Text, ScrollView, TouchableOpacity, StatusBar, TextInput, Modal, Alert, ActivityIndicator } from 'react-native';
-import { ArrowLeft, Plus, FileText, Calendar, Clock, Users, Eye, Edit2, Trash2, X, ChevronDown } from 'lucide-react-native';
+import {  View, Text, ScrollView, TouchableOpacity, StatusBar, TextInput, Modal, Alert, ActivityIndicator } from 'react-native';
+import {  ArrowLeft, Plus, FileText, Calendar, Clock, Users, Eye, Edit2, Trash2, X, ChevronDown } from 'lucide-react-native';
 import { router } from "expo-router";
 import { supabase } from "@/libs/supabase";
 import { useAuth } from "@/contexts/AuthContext";
+import DateTimePicker from '@react-native-community/datetimepicker';
 
 interface Assignment {
     id: string;
@@ -93,7 +94,17 @@ export default function AssignmentsPage() {
     const [dueDate, setDueDate] = useState("");
     const [points, setPoints] = useState("");
     const [selectedCourseId, setSelectedCourseId] = useState("");
+    const [dateObject, setDateObject] = useState(new Date())
+    const [showDatePicker, setShowDatePicker] = useState(false)
 
+
+    const onDateChange = (event: any, selectedDate?: Date) => {
+        setShowDatePicker(false)
+        if(selectedDate){
+            setDateObject(selectedDate)
+            setDueDate(selectedDate.toISOString().split('T')[0])
+        }
+    }
 
     useEffect(() => {
         if (teacherId) {
@@ -298,13 +309,25 @@ export default function AssignmentsPage() {
                             value={description}
                             onChangeText={setDescription}
                         />
-                        <TextInput
-                            className="bg-gray-50 rounded-xl px-4 py-3 mb-4 text-gray-900"
-                            placeholder="Due Date (YYYY-MM-DD)"
-                            placeholderTextColor="#9CA3AF"
-                            value={dueDate}
-                            onChangeText={setDueDate}
-                        />
+                        <TouchableOpacity
+                            onPress={() => setShowDatePicker(true)}
+                            className="bg-gray-50 rounded-xl px-4 py-3 mb-4 flex-row justify-between items-center"
+                        >
+                            <Text className={dueDate ? "text-gray-900" : "text-gray-300"}>
+                                {dueDate ? dueDate : "Select due date"}
+                            </Text>
+                            <Calendar size={18} color="#9ca3af" /> 
+                        
+                        </TouchableOpacity>
+                        {showDatePicker && (
+                            <DateTimePicker
+                                value={dateObject}
+                                mode="date"
+                                display="default"
+                                onChange={onDateChange}
+                                minimumDate={new Date()} // Can't set a due date in the past
+                            />
+                        )}
                         <TextInput
                             className="bg-gray-50 rounded-xl px-4 py-3 mb-6 text-gray-900"
                             placeholder="Max Points (e.g., 100)"
