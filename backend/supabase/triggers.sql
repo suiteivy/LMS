@@ -7,10 +7,32 @@ declare
   max_borrow int := 3; -- configurable if needed
   current_borrow_count int;
   overdue_count int;
+  user_inst_id uuid;
+  book_inst_id uuid;
+  user_status text;
 begin
-  -- Check if book is available
-  if (select available_quantity from public.books where id = NEW.book_id) <= 0 then
+  -- Get user info
+  select status, institution_id into user_status, user_inst_id
+  from public.users 
+  where id = NEW.user_id;
+
+  if user_status != 'approved' then
+    raise exception 'User is not approved to borrow books';
+  end if;
+
+  -- Get book info
+  select available_quantity, institution_id into overdue_count, book_inst_id -- reusing overdue_count temporarily for quantity check
+  from public.books 
+  where id = NEW.book_id;
+  
+  -- Check availability
+  if overdue_count <= 0 then
     raise exception 'Book not available';
+  end if;
+
+  -- Check institution match (if book has institution)
+  if book_inst_id is not null and book_inst_id is distinct from user_inst_id then
+    raise exception 'Book belongs to a different institution';
   end if;
 
   /* 
@@ -73,9 +95,13 @@ as $$
 begin
   if (TG_OP = 'UPDATE') then
     if (NEW.returned_at is not null and OLD.returned_at is null) then
+      -- Increment book stock
       update public.books
       set available_quantity = available_quantity + 1
       where id = NEW.book_id;
+      
+      -- Update status to returned
+      NEW.status := 'returned';
     end if;
   end if;
   return NEW;

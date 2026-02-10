@@ -80,6 +80,7 @@ exports.addOrUpdateBook = async (req, res) => {
       title,
       author,
       isbn,
+      category,
       total_quantity,
     } = req.body;
     const institution_id = req.institution_id;
@@ -107,6 +108,7 @@ exports.addOrUpdateBook = async (req, res) => {
             title,
             author,
             isbn,
+            category,
             total_quantity,
             available_quantity: total_quantity,
             institution_id,
@@ -133,6 +135,7 @@ exports.addOrUpdateBook = async (req, res) => {
         title: title ?? existing.title,
         author: author ?? existing.author,
         isbn: isbn ?? existing.isbn,
+        category: category ?? existing.category,
         total_quantity: total_quantity ?? existing.total_quantity,
       };
 
@@ -254,17 +257,17 @@ exports.borrowBook = async (req, res) => {
       .single();
     if (borrowErr) return res.status(500).json({ error: borrowErr.message });
 
-    const { error: decErr } = await supabase.rpc("decrement_book_stock", {
-      p_bookId: bookId,
-    });
-    // If you don't have RPC, do direct update:
-    if (decErr) {
-      await supabase
-        .from("books")
-        .update({ available_quantity: book.available_quantity - 1 })
-        .eq("id", bookId)
-        .eq("institution_id", institution_id);
-    }
+    // 6) Decrement handled by DB trigger now
+    // const { error: decErr } = await supabase.rpc("decrement_book_stock", {
+    //   p_bookId: bookId,
+    // });
+    // if (decErr) {
+    //   await supabase
+    //     .from("books")
+    //     .update({ available_quantity: book.available_quantity - 1 })
+    //     .eq("id", bookId)
+    //     .eq("institution_id", institution_id);
+    // }
 
     return res
       .status(201)
@@ -357,7 +360,7 @@ exports.getAllBorrowedBooks = async (req, res) => {
     const { data, error } = await supabase
       .from("borrowed_books")
       .select(
-        "id, book_id, user_id, borrowed_at, returned_at, due_date, status, books(title, author, isbn), users(full_name, email, students(id))"
+        "id, book_id, user_id, borrowed_at, returned_at, due_date, status, books(title, author, isbn), users(full_name, email)"
       )
       .eq("institution_id", institution_id)
       .order("borrowed_at", { ascending: false });
