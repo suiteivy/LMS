@@ -13,7 +13,9 @@ begin
     raise exception 'Book not available';
   end if;
 
+  /* 
   -- Payment threshold check (>= 50%)
+  -- RE-ENABLE WHEN FEES TABLE IS IMPLEMENTED
   select case 
            when total_fee > 0 then (amount_paid / total_fee) 
            else 1 
@@ -25,6 +27,7 @@ begin
   if unpaid_ratio < 0.5 then
     raise exception 'Payment below required threshold (50 percent)';
   end if;
+  */
 
   -- Check current borrow count (only unreturned)
   select count(*) into current_borrow_count

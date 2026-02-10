@@ -1,10 +1,11 @@
-import React, { useState } from "react";
-import { View, Text, ScrollView, TouchableOpacity, StatusBar } from 'react-native';
-import { Plus, BookOpen, Users, TrendingUp, Edit, Eye } from 'lucide-react-native';
-import { router } from "expo-router";
+import React, { useState, useEffect } from "react";
+import { View, Text, ScrollView, TouchableOpacity, StatusBar, ActivityIndicator } from 'react-native';
+import { Plus, Users, TrendingUp, Edit, Eye } from 'lucide-react-native';
+import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/libs/supabase";
 
 interface Course {
-    id: number;
+    id: string;
     title: string;
     students: number;
     completion: number;
@@ -71,46 +72,56 @@ const CourseCard = ({ course }: CourseCardProps) => {
 };
 
 export default function TeacherCourses() {
+    const { teacherId } = useAuth();
     const [filter, setFilter] = useState<"all" | "active" | "draft">("all");
+    const [courses, setCourses] = useState<Course[]>([]);
+    const [loading, setLoading] = useState(true);
 
-    const courses: Course[] = [
-        {
-            id: 1,
-            title: "Introduction to Mathematics",
-            students: 245,
-            completion: 78,
-            status: "active",
-            lastUpdated: "2 days ago",
-        },
-        {
-            id: 2,
-            title: "Creative Writing Workshop",
-            students: 189,
-            completion: 92,
-            status: "active",
-            lastUpdated: "1 week ago",
-        },
-        {
-            id: 3,
-            title: "Computer Science Basics",
-            students: 312,
-            completion: 65,
-            status: "active",
-            lastUpdated: "3 days ago",
-        },
-        {
-            id: 4,
-            title: "Digital Literacy Fundamentals",
-            students: 156,
-            completion: 45,
-            status: "draft",
-            lastUpdated: "1 day ago",
-        },
-    ];
+    useEffect(() => {
+        if (teacherId) {
+            fetchCourses();
+        }
+    }, [teacherId]);
+
+    const fetchCourses = async () => {
+        if (!teacherId) return;
+        try {
+            setLoading(true);
+            const { data, error } = await supabase
+                .from('courses')
+                .select('*')
+                .eq('teacher_id', teacherId);
+
+            if (error) throw error;
+
+            const mappedCourses: Course[] = data.map((c: any) => ({
+                id: c.id,
+                title: c.name,
+                students: 0, // Need to count enrollments via class link, complicated query. Mock for now.
+                completion: 0, // Mock for now
+                status: "active", // Default, schema has no status column for now but we can assume active
+                lastUpdated: new Date(c.updated_at).toLocaleDateString()
+            }));
+
+            setCourses(mappedCourses);
+        } catch (error) {
+            console.error("Error fetching courses:", error);
+        } finally {
+            setLoading(false);
+        }
+    };
 
     const filteredCourses = filter === "all"
         ? courses
         : courses.filter(c => c.status === filter);
+
+    if (loading) {
+        return (
+            <View className="flex-1 justify-center items-center bg-gray-50">
+                <ActivityIndicator size="large" color="#0d9488" />
+            </View>
+        );
+    }
 
     return (
         <>
@@ -125,13 +136,7 @@ export default function TeacherCourses() {
                         {/* Header */}
                         <View className="flex-row justify-between items-center mb-6">
                             <Text className="text-2xl font-bold text-gray-900">My Courses</Text>
-                            <TouchableOpacity
-                                className="flex-row items-center bg-teal-600 px-4 py-2 rounded-xl active:bg-teal-700"
-                                onPress={() => router.push("/CreateCourse")}
-                            >
-                                <Plus size={18} color="white" />
-                                <Text className="text-white font-semibold ml-1">New</Text>
-                            </TouchableOpacity>
+                            {/* Add button if needed */}
                         </View>
 
                         {/* Filter Tabs */}
@@ -150,9 +155,13 @@ export default function TeacherCourses() {
                         </View>
 
                         {/* Course List */}
-                        {filteredCourses.map((course) => (
-                            <CourseCard key={course.id} course={course} />
-                        ))}
+                        {courses.length === 0 ? (
+                            <Text className="text-gray-500 text-center py-4">No courses found.</Text>
+                        ) : (
+                            filteredCourses.map((course) => (
+                                <CourseCard key={course.id} course={course} />
+                            ))
+                        )}
                     </View>
                 </ScrollView>
             </View>

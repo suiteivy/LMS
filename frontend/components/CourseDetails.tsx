@@ -7,12 +7,14 @@ interface CourseDetailsProps {
   course: Course;
   onEnroll: () => void;
   onBack: () => void;
+  enrolling?: boolean;
 }
 
 export const CourseDetails: React.FC<CourseDetailsProps> = ({
   course,
   onEnroll,
   onBack,
+  enrolling = false,
 }) => {
   const [activeTab, setActiveTab] = useState<
     "overview" | "lessons" | "reviews"
@@ -24,13 +26,12 @@ export const CourseDetails: React.FC<CourseDetailsProps> = ({
   }) => (
     <View className="flex-row items-center p-4 border-b border-gray-100">
       <View
-        className={`w-8 h-8 rounded-full items-center justify-center mr-3 ${
-          lesson.isCompleted
-            ? "bg-[#1ABC9C]"
-            : lesson.isLocked
-              ? "bg-gray-200"
-              : "bg-[#A1EBE5]"
-        }`}
+        className={`w-8 h-8 rounded-full items-center justify-center mr-3 ${lesson.isCompleted
+          ? "bg-[#1ABC9C]"
+          : lesson.isLocked
+            ? "bg-gray-200"
+            : "bg-[#A1EBE5]"
+          }`}
       >
         {lesson.isCompleted ? (
           <Ionicons name="checkmark" size={16} color="white" />
@@ -141,10 +142,11 @@ export const CourseDetails: React.FC<CourseDetailsProps> = ({
 
               <TouchableOpacity
                 onPress={onEnroll}
-                className="px-8 py-3 rounded-lg bg-[#1ABC9C]"
+                disabled={enrolling || course.isEnrolled}
+                className={`px-8 py-3 rounded-lg ${course.isEnrolled ? "bg-gray-400" : "bg-[#1ABC9C]"}`}
               >
                 <Text className="text-white font-bold text-lg">
-                  {course.isEnrolled ? "Continue Learning" : "Enroll Now"}
+                  {enrolling ? "Enrolling..." : course.isEnrolled ? "Enrolled" : "Enroll Now"}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -162,16 +164,14 @@ export const CourseDetails: React.FC<CourseDetailsProps> = ({
               <TouchableOpacity
                 key={tab.key}
                 onPress={() => setActiveTab(tab.key as any)}
-                className={`flex-1 py-4 items-center border-b-2 ${
-                  activeTab === tab.key
-                    ? "border-[#1ABC9C]"
-                    : "border-transparent"
-                }`}
+                className={`flex-1 py-4 items-center border-b-2 ${activeTab === tab.key
+                  ? "border-[#1ABC9C]"
+                  : "border-transparent"
+                  }`}
               >
                 <Text
-                  className={`font-medium ${
-                    activeTab === tab.key ? "text-[#1ABC9C]" : "text-gray-500"
-                  }`}
+                  className={`font-medium ${activeTab === tab.key ? "text-[#1ABC9C]" : "text-gray-500"
+                    }`}
                 >
                   {tab.label}
                 </Text>

@@ -87,9 +87,16 @@ const PaymentManagementSection: React.FC<
       style={{ backgroundColor: "#FFFFFF", borderColor: "#D0E8E6" }}
     >
       <View className="flex-row justify-between items-start mb-2">
-        <Text className="text-lg font-semibold" style={{ color: "#2C3E50" }}>
-          {item.student_name}
-        </Text>
+        <View>
+          <Text className="text-lg font-semibold" style={{ color: "#2C3E50" }}>
+            {item.student_name}
+          </Text>
+          {item.student_display_id && (
+            <Text className="text-xs text-teal-600 font-medium">
+              ID: {item.student_display_id}
+            </Text>
+          )}
+        </View>
         <View
           className={`px-2 py-1 rounded-full ${getStatusColor(item.status)}`}
           style={{
@@ -151,7 +158,7 @@ const PaymentManagementSection: React.FC<
           </View>
         )}
       </View>
-    </View>
+    </View >
   );
 
   return (

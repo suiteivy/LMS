@@ -480,6 +480,11 @@ const BorrowedBooksOverview: React.FC<BorrowedBooksOverviewProps> = ({
               <Text className="text-sm font-medium text-slate-700 mb-1">
                 Borrower: {borrowedBook.borrowerName}
               </Text>
+              {borrowedBook.borrowerDisplayId && (
+                <Text className="text-xs text-teal-600 font-medium mb-1">
+                  ID: {borrowedBook.borrowerDisplayId}
+                </Text>
+              )}
               <Text className="text-xs text-gray-600 mb-1">
                 📧 {borrowedBook.borrowerEmail}
               </Text>

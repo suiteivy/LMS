@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { View, Text, ScrollView, TouchableOpacity, StatusBar } from 'react-native';
-import { Calendar, Clock, Bell, ArrowRight, BookOpen, Users, GraduationCap } from 'lucide-react-native';
+import { Calendar, Clock, Bell, ArrowRight, BookOpen, Users, GraduationCap, School } from 'lucide-react-native';
 
 // Define Interface for the QuickAction props
 interface QuickActionProps {
@@ -149,7 +149,11 @@ export default function TeacherHome() {
                                     label="Grades"
                                     color="#0d9488"
                                 />
-                                <QuickAction icon={Calendar} label="Schedule" color="#8b5cf6" />
+                                <QuickAction
+                                    icon={School}
+                                    label="Classes"
+                                    color="#8b5cf6"
+                                />
                                 <QuickAction
                                     icon={ArrowRight}
                                     label="Assignments"

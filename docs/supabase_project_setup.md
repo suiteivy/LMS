@@ -42,52 +42,23 @@ This guide will walk you through setting up a Supabase project for the Learning 
 
 ## Database Setup
 
-### Option 1: Quick Setup (Recommended)
+### Consolidated Setup
 
-Use the consolidated setup scripts in `backend/supabase/setup/` for a streamlined setup:
+Use the consolidated schema file for specific table structure and policies:
 
 1. **Access SQL Editor**
-   - In the Supabase dashboard, click on "SQL Editor" in the left sidebar
-   - Click "New query" to create a new SQL script
+   - In the Supabase dashboard, click on "SQL Editor".
+   - Click "New query".
 
-2. **Run Setup Scripts in Order**
-   | Step | File | Description |
-   |------|------|-------------|
-   | 1 | `01_tables.sql` | Creates all database tables |
-   | 2 | `02_rls_policies.sql` | Sets up Row Level Security policies |
-   | 3 | `03_create_admin.sql` | Creates the initial admin user |
+2. **Run The Schema Script**
+   - Copy the contents of `backend/supabase/schema.sql`.
+   - Paste it into the editor and run it.
+   - This script creates all tables (`users`, `students`, `teachers`, `admins`, `courses`, etc.) and sets up RLS policies.
 
-   > ⚠️ **Important:** Review and update admin credentials in `03_create_admin.sql` before running!
+3. **Create Admin User**
+   - Use the Supabase Dashboard to create a new user.
+   - Manually insert the user into the `admins` table or use a helper script if available.
 
----
-
-### Option 2: Individual Schema Files
-
-Alternatively, run each schema file from `backend/supabase/schemas/` in the following order:
-
-1. **Core Tables** (run in this order due to foreign key dependencies):
-   1. `institutions.sql`
-   2. `users.sql`
-   3. `courses.sql`
-   4. `lessons.sql`
-   5. `assignment.sql` *(creates the assignments table)*
-   6. `submissions.sql`
-   7. `grades.sql`
-   8. `attendance.sql`
-
-2. **Library Module Tables** (optional, for book borrowing feature):
-   9. `books.sql`
-   10. `borrowed_books.sql`
-
-3. **Security Policies:**
-   11. `roles_policy.sql`
-   12. `auth_policy.sql`
-
-4. **Admin User Setup:**
-   13. `create_admin_user.sql` *(follow instructions in the file)*
-
-5. **Triggers** (run from `backend/supabase/` directory):
-   14. `triggers.sql` *(required for library module)*
 
 ## Authentication Configuration
 

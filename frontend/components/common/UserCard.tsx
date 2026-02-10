@@ -37,7 +37,7 @@ export const UserCard: React.FC<UserCardProps> = ({
   };
 
   const getStatusColor = (status: string) => {
-    return status.toLowerCase() === 'active' 
+    return status.toLowerCase() === 'active'
       ? { bg: 'bg-green-100', text: 'text-green-800' }
       : { bg: 'bg-gray-100', text: 'text-gray-800' };
   };
@@ -62,13 +62,13 @@ export const UserCard: React.FC<UserCardProps> = ({
   const renderAvatar = () => {
     if (user.avatar) {
       return (
-        <Image 
+        <Image
           source={{ uri: user.avatar }}
           className="w-10 h-10 rounded-full"
         />
       );
     }
-    
+
     return (
       <View className="w-10 h-10 rounded-full bg-gray-200 items-center justify-center">
         <Text className="text-gray-600  font-semibold">
@@ -87,7 +87,7 @@ export const UserCard: React.FC<UserCardProps> = ({
             {user.name}
           </Text>
           <Text className="text-sm text-gray-500" numberOfLines={1}>
-            {user.email}
+            {user.email} {user.displayId ? `• ${user.displayId}` : ''}
           </Text>
         </View>
         <View className={`px-2 py-1 rounded-full ${roleColors.bg}`}>
@@ -109,11 +109,11 @@ export const UserCard: React.FC<UserCardProps> = ({
               {user.name}
             </Text>
             <Text className="text-sm text-gray-500" numberOfLines={1}>
-              {user.email}
+              {user.email} {user.displayId ? `• ${user.displayId}` : ''}
             </Text>
           </View>
         </View>
-        
+
         {showActions && (
           <View className="flex-row space-x-2">
             <TouchableOpacity
@@ -133,7 +133,7 @@ export const UserCard: React.FC<UserCardProps> = ({
           </View>
         )}
       </View>
-      
+
       <View className="flex-row items-center justify-between">
         <View className="flex-row space-x-2">
           <View className={`px-2 py-1 rounded-full ${roleColors.bg}`}>
@@ -147,7 +147,7 @@ export const UserCard: React.FC<UserCardProps> = ({
             </Text>
           </View>
         </View>
-        
+
         <Text className="text-xs text-gray-400">
           Joined {new Date(user.joinDate).toLocaleDateString()}
         </Text>
@@ -165,7 +165,7 @@ export const UserCard: React.FC<UserCardProps> = ({
               {user.name}
             </Text>
             <Text className="text-sm text-gray-500 mt-1">
-              {user.email}
+              {user.email} {user.displayId ? `• ${user.displayId}` : ''}
             </Text>
             {user.lastActive && (
               <Text className="text-xs text-gray-400 mt-1">
@@ -174,7 +174,7 @@ export const UserCard: React.FC<UserCardProps> = ({
             )}
           </View>
         </View>
-        
+
         {showActions && (
           <View className="flex-row space-x-2">
             <TouchableOpacity
@@ -194,7 +194,7 @@ export const UserCard: React.FC<UserCardProps> = ({
           </View>
         )}
       </View>
-      
+
       <View className="flex-row items-center justify-between">
         <View className="flex-row space-x-3">
           <View className={`px-3 py-1 rounded-full ${roleColors.bg}`}>
@@ -208,7 +208,7 @@ export const UserCard: React.FC<UserCardProps> = ({
             </Text>
           </View>
         </View>
-        
+
         <Text className="text-sm text-gray-500">
           Joined {new Date(user.joinDate).toLocaleDateString()}
         </Text>

@@ -39,6 +39,99 @@ export interface Database {
         };
         Relationships: [];
       };
+      announcements: {
+        Row: {
+          id: string;
+          course_id: string;
+          teacher_id: string;
+          title: string;
+          message: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          course_id: string;
+          teacher_id: string;
+          title: string;
+          message: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          course_id?: string;
+          teacher_id?: string;
+          title?: string;
+          message?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "announcements_course_id_fkey";
+            columns: ["course_id"];
+            referencedRelation: "courses";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "announcements_teacher_id_fkey";
+            columns: ["teacher_id"];
+            referencedRelation: "teachers";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
+      students: {
+        Row: {
+          id: string;
+          user_id: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "students_user_id_fkey";
+            columns: ["user_id"];
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
+      teachers: {
+        Row: {
+          id: string;
+          user_id: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "teachers_user_id_fkey";
+            columns: ["user_id"];
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
       institutions: {
         Row: {
           id: string;
@@ -147,14 +240,212 @@ export interface Database {
         };
         Relationships: [];
       };
+      classes: {
+        Row: {
+          id: string;
+          name: string;
+          institution_id: string | null;
+          teacher_id: string | null; // Now TEXT (Custom ID)
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          name: string;
+          institution_id?: string | null;
+          teacher_id?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          name?: string;
+          institution_id?: string | null;
+          teacher_id?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "classes_teacher_id_fkey";
+            columns: ["teacher_id"];
+            referencedRelation: "teachers";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
+      enrollments: {
+        Row: {
+          id: string;
+          student_id: string; // Now TEXT (Custom ID)
+          class_id: string;
+          enrolled_at: string;
+        };
+        Insert: {
+          id?: string;
+          student_id: string;
+          class_id: string;
+          enrolled_at?: string;
+        };
+        Update: {
+          id?: string;
+          student_id?: string;
+          class_id?: string;
+          enrolled_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "enrollments_student_id_fkey";
+            columns: ["student_id"];
+            referencedRelation: "students";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
+      assignments: {
+        Row: {
+          id: string;
+          course_id: string;
+          teacher_id: string; // Now TEXT
+          title: string;
+          description: string | null;
+          due_date: string | null;
+          total_points: number;
+          status: "draft" | "active" | "closed";
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          course_id: string;
+          teacher_id: string;
+          title: string;
+          description?: string | null;
+          due_date?: string | null;
+          total_points?: number;
+          status?: "draft" | "active" | "closed";
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          course_id?: string;
+          teacher_id?: string;
+          title?: string;
+          description?: string | null;
+          due_date?: string | null;
+          total_points?: number;
+          status?: "draft" | "active" | "closed";
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      submissions: {
+        Row: {
+          id: string;
+          assignment_id: string;
+          student_id: string; // Now TEXT
+          content: string | null;
+          grade: number | null;
+          feedback: string | null;
+          status: "submitted" | "graded" | "late" | "pending";
+          submitted_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          assignment_id: string;
+          student_id: string;
+          content?: string | null;
+          grade?: number | null;
+          feedback?: string | null;
+          status?: "submitted" | "graded" | "late" | "pending";
+          submitted_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          assignment_id?: string;
+          student_id?: string;
+          content?: string | null;
+          grade?: number | null;
+          feedback?: string | null;
+          status?: "submitted" | "graded" | "late" | "pending";
+          submitted_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      attendance: {
+        Row: {
+          id: string;
+          class_id: string;
+          student_id: string; // Now TEXT
+          date: string;
+          status: "present" | "absent" | "late" | "excused";
+          notes: string | null;
+          recorded_at: string;
+        };
+        Insert: {
+          id?: string;
+          class_id: string;
+          student_id: string;
+          date?: string;
+          status: "present" | "absent" | "late" | "excused";
+          notes?: string | null;
+          recorded_at?: string;
+        };
+        Update: {
+          id?: string;
+          class_id?: string;
+          student_id?: string;
+          date?: string;
+          status?: "present" | "absent" | "late" | "excused";
+          notes?: string | null;
+          recorded_at?: string;
+        };
+        Relationships: [];
+      };
+      resources: {
+        Row: {
+          id: string;
+          course_id: string;
+          title: string;
+          type: "pdf" | "video" | "link" | "other";
+          url: string;
+          size: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          course_id: string;
+          title: string;
+          type?: "pdf" | "video" | "link" | "other";
+          url: string;
+          size?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          course_id?: string;
+          title?: string;
+          type?: "pdf" | "video" | "link" | "other";
+          url?: string;
+          size?: string | null;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
       courses: {
         Row: {
           id: string;
           title: string;
           description: string | null;
           fee_amount: number | null;
-          teacher_id: string | null;
+          teacher_id: string | null; // Now TEXT
           institution_id: string | null;
+          class_id: string | null;
           created_at: string;
         };
         Insert: {
@@ -164,6 +455,7 @@ export interface Database {
           fee_amount?: number | null;
           teacher_id?: string | null;
           institution_id?: string | null;
+          class_id?: string | null;
           created_at?: string;
         };
         Update: {
@@ -173,9 +465,17 @@ export interface Database {
           fee_amount?: number | null;
           teacher_id?: string | null;
           institution_id?: string | null;
+          class_id?: string | null;
           created_at?: string;
         };
-        Relationships: [];
+        Relationships: [
+          {
+            foreignKeyName: "courses_teacher_id_fkey";
+            columns: ["teacher_id"];
+            referencedRelation: "teachers";
+            referencedColumns: ["id"];
+          }
+        ];
       };
     };
     Views: Record<string, never>;

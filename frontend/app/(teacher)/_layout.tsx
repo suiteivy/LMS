@@ -1,5 +1,5 @@
 import { Tabs } from "expo-router";
-import { BookOpen, Building, Users, Settings, LayoutGrid } from "lucide-react-native";
+import { BookOpen, Building, Users, Settings, LayoutGrid, School } from "lucide-react-native";
 import { Platform, View } from "react-native"
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AuthGuard } from "@/components/AuthGuard";
@@ -55,6 +55,15 @@ export default function TeacherLayout() {
                             title: "Courses",
                             tabBarIcon: ({ size = 24, color }) => (
                                 <BookOpen size={size} color={color} strokeWidth={2} />
+                            ),
+                        }}
+                    />
+                    <Tabs.Screen
+                        name="classes"
+                        options={{
+                            title: "Classes",
+                            tabBarIcon: ({ size = 24, color }) => (
+                                <School size={size} color={color} strokeWidth={2} />
                             ),
                         }}
                     />

@@ -1,11 +1,11 @@
-import { BookOpen, Edit3, GraduationCap, Mail, Save, X } from "lucide-react-native";
+import { Edit3, Mail, Save, X, ShieldCheck } from "lucide-react-native";
 import React, { useState, useEffect } from "react";
 import { View, Text, Image, TouchableOpacity, TextInput, Alert, ActivityIndicator } from "react-native";
 import { ScrollView } from "react-native-gesture-handler";
 import { useAuth } from "@/contexts/AuthContext";
 import { authService } from "@/libs/supabase";
 
-export default function StudentProfile() {
+export default function AdminProfile() {
     const { profile, user, refreshProfile, displayId } = useAuth();
     const [isEditing, setIsEditing] = useState(false);
     const [name, setName] = useState(profile?.full_name || "");
@@ -54,7 +54,7 @@ export default function StudentProfile() {
             <View className="p-4 md:p-8 max-w-3xl mx-auto w-full">
                 {/* Header section / profile card */}
                 <View className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
-                    <View className="h-auto bg-teal-500 rounded-t-3xl">
+                    <View className="h-auto bg-[#c0392b] rounded-t-3xl">
                         <View className="px-6 pb-6 flex-row justify-between items-end mt-4">
                             <View className="flex-1 pb-2">
                                 {isEditing ? (
@@ -67,17 +67,17 @@ export default function StudentProfile() {
                                         />
                                     </View>
                                 ) : (
-                                    <Text className="text-2xl font-bold text-gray-900">
-                                        {profile.full_name || "Student"}
+                                    <Text className="text-2xl font-bold text-white">
+                                        {profile.full_name || "Admin"}
                                     </Text>
                                 )}
 
-                                <Text className="text-white font-medium capitalize">
-                                    {profile.role}
+                                <Text className="text-red-100 font-medium capitalize">
+                                    System Administrator
                                 </Text>
-                                <View className="flex-row items-center mt-2 bg-teal-50 self-start px-3 py-1 rounded-full">
-                                    <View className={`w-2 h-2 rounded-full mr-2 ${profile.status === 'approved' ? 'bg-green-500' : 'bg-yellow-500'}`} />
-                                    <Text className={`text-xs font-bold uppercase ${profile.status === 'approved' ? 'text-green-700' : 'text-yellow-700'}`}>
+                                <View className="flex-row items-center mt-2 bg-red-50 self-start px-3 py-1 rounded-full">
+                                    <View className="w-2 h-2 rounded-full mr-2 bg-green-500" />
+                                    <Text className="text-xs font-bold uppercase text-green-700">
                                         {profile.status}
                                     </Text>
                                 </View>
@@ -86,7 +86,7 @@ export default function StudentProfile() {
                             <View className="relative">
                                 <View style={{ elevation: 8, zIndex: 10 }}>
                                     <Image
-                                        source={{ uri: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=200' }}
+                                        source={{ uri: 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&w=200' }}
                                         className="w-24 h-24 rounded-2xl border-4 border-white bg-gray-200"
                                     />
                                     <TouchableOpacity
@@ -101,7 +101,7 @@ export default function StudentProfile() {
                                         ) : isEditing ? (
                                             <Save size={18} color='white' />
                                         ) : (
-                                            <Edit3 size={18} color='#0d9488' />
+                                            <Edit3 size={18} color='#c0392b' />
                                         )}
                                     </TouchableOpacity>
                                     {isEditing && (
@@ -122,29 +122,29 @@ export default function StudentProfile() {
                         </View>
                     </View>
 
-                    <View className="mt-6 flex-row flex-wrap justify-between">
+                    <View className="mt-6 flex-row flex-wrap justify-between p-4">
                         <View className="w-full md:w-[48%] bg-white p-5 rounded-2xl border border-gray-100 mb-4 shadow-sm">
                             <View className="flex-row items-center mb-4">
-                                <View className="p-2 bg-teal-50 rounded-lg">
-                                    <GraduationCap size={20} color="#0d9488" />
+                                <View className="p-2 bg-red-50 rounded-lg">
+                                    <ShieldCheck size={20} color="#c0392b" />
                                 </View>
                                 <Text className="ml-3 font-semibold text-gray-800">
-                                    Academic Info
+                                    Admin Info
                                 </Text>
                             </View>
 
                             <View className="space-y-3">
                                 <View>
                                     <Text className="text-xs text-gray-400 uppercase tracking-wider">
-                                        Student ID
+                                        Admin ID
                                     </Text>
                                     <Text className="text-gray-700 font-medium" numberOfLines={1}>
                                         {displayId || "N/A"}
                                     </Text>
                                 </View>
-                                <View>
-                                    <Text className="text-xs text-gray-400 uppercase tracking-wider">Institution ID</Text>
-                                    <Text className="text-gray-700 font-medium"> {profile.institution_id || "N/A"}</Text>
+                                <View className="mt-2">
+                                    <Text className="text-xs text-gray-400 uppercase tracking-wider">Role Permissions</Text>
+                                    <Text className="text-gray-700 font-medium">Full System Access</Text>
                                 </View>
                             </View>
                         </View>
@@ -166,32 +166,12 @@ export default function StudentProfile() {
                                 </View>
                                 <View className="mt-2">
                                     <Text className="text-xs text-gray-400 uppercase tracking-wider">
-                                        Phone
+                                        System Notify
                                     </Text>
                                     <Text className="text-gray-700 font-medium">
-                                        N/A
+                                        Enabled
                                     </Text>
                                 </View>
-                            </View>
-                        </View>
-
-                        {/* courses section */}
-                        <View className="mt-2 bg-white p-5 rounded-2xl border border-gray-100 shadow-sm">
-                            <View className="flex-row items-center justify-between mb-4">
-                                <View className="flex-row items-center">
-                                    <BookOpen size={20} color="#0d9488" />
-                                    <Text className="ml-3 font-semibold text-gray-800">Registered Courses</Text>
-                                </View>
-                                <Text className="text-teal-600 text-sm font-bold"></Text>
-                            </View>
-
-                            <View className="border-t border-gray-50 pt-2">
-                                {['Advanced React Native', 'UI/UX Design Systems', 'DBMS'].map((course, index) =>
-                                    <View key={index} className="py-3 border-b border-gray-50 last:border-0 flex-row items-center">
-                                        <View className="w-2 h-2 rounded-full bg-teal-400 mr-3" />
-                                        <Text className="text-gray-600">{course}</Text>
-                                    </View>
-                                )}
                             </View>
                         </View>
                     </View>

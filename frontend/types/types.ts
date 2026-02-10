@@ -16,6 +16,7 @@ export type UserStatus = "pending" | "approved" | "rejected";
 
 export interface User {
   id: string;
+  displayId?: string;
   name: string;
   email: string;
   role: UserRole;
@@ -167,6 +168,7 @@ export interface Payment {
   id: string;
   student_id: string;
   student_name: string;
+  student_display_id?: string;
   amount: number;
   payment_date: string;
   payment_method: "cash" | "bank_transfer" | "mobile_money";
@@ -179,6 +181,7 @@ export interface TeacherPayout {
   id: string;
   teacher_id: string;
   teacher_name: string;
+  teacher_display_id?: string;
   amount: number;
   hours_taught: number;
   rate_per_hour: number;
@@ -253,6 +256,7 @@ export interface BorrowedBook {
   isbn: string;
   borrowerId: string;
   borrowerName: string;
+  borrowerDisplayId?: string;
   borrowerEmail: string;
   borrowDate: Date;
   dueDate: Date;
@@ -361,6 +365,7 @@ export interface FrontendBorrowedBook {
   isbn: string;
   borrowerId: string;
   borrowerName: string;
+  borrowerDisplayId?: string;
   borrowerEmail: string;
   borrowDate: Date;
   dueDate: Date;

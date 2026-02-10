@@ -19,7 +19,7 @@ Returns all courses for the user's institution. This endpoint does not apply rol
     "id": "uuid",
     "title": "Course Title",
     "description": "Course Description",
-    "teacher_id": "uuid",
+    "teacher_id": "TEA-YYYY-XXXX",
     "institution_id": "uuid",
     "created_at": "timestamp"
   },
@@ -47,7 +47,7 @@ Returns courses filtered based on the user's role:
     "id": "uuid",
     "title": "Course Title",
     "description": "Course Description",
-    "teacher_id": "uuid",
+    "teacher_id": "TEA-YYYY-XXXX",
     "institution_id": "uuid",
     "created_at": "timestamp"
   },

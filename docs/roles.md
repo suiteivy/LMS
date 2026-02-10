@@ -54,7 +54,15 @@ The LMS supports three primary roles:
 
 ### Database Level
 
-Role-based access control is implemented at the database level using Supabase Row Level Security (RLS) policies. These policies are defined in `backend/supabase/schemas/roles_policy.sql` and ensure that users can only access data appropriate for their role.
+Role-based access control is implemented at the database level using Supabase Row Level Security (RLS) policies.
+
+The system uses a consolidated schema where:
+- `users`: Core authentication and system status (stores UUID).
+- `students`: Stores student-specific profiles (ID format: STU-YYYY-XXXX).
+- `teachers`: Stores teacher-specific profiles (ID format: TEA-YYYY-XXXX).
+- `admins`: Stores admin-specific profiles (ID format: ADM-YYYY-XXXX).
+
+Policies ensure that users can only access data appropriate for their role and ID.
 
 ### Application Level
 
@@ -62,17 +70,14 @@ In addition to database-level security, the application implements role-based UI
 
 ```typescript
 // Example of role-based UI rendering
-const { role } = useAuth();
+const { role, studentId, teacherId } = useAuth();
 
 return (
   <View>
-    {/* Common UI elements for all roles */}
-    <Header />
-    
-    {/* Role-specific UI elements */}
+    {/* Role-specific Dashboard */}
     {role === 'admin' && <AdminDashboard />}
-    {role === 'teacher' && <TeacherDashboard />}
-    {role === 'student' && <StudentDashboard />}
+    {role === 'teacher' && <TeacherDashboard teacherId={teacherId} />}
+    {role === 'student' && <StudentDashboard studentId={studentId} />}
   </View>
 );
 ```
@@ -80,23 +85,25 @@ return (
 ### Authentication Flow
 
 1. **Sign Up**:
-   - New users sign up through the application
-   - By default, new users are assigned the 'student' role
-   - Admin users can later change roles as needed
+   - New users sign up through the application.
+   - By default, new users are assigned the 'student' role.
+   - A trigger automatically creates a corresponding record in the `students` table.
 
 2. **Sign In**:
-   - Users sign in with email/password
-   - The application fetches the user's role from the database
-   - UI and permissions are adjusted based on the role
+   - Users sign in with email/password.
+   - The application fetches the user's role from the `users` table.
+   - It also fetches the specific role ID (e.g., `studentId`) from the respective table.
+   - UI and permissions are adjusted based on the role and ID.
 
 ## Adding New Roles or Permissions
 
 To add new roles or modify permissions:
 
-1. Update the `users` table schema to include the new role in the check constraint
-2. Modify the RLS policies in `roles_policy.sql` to accommodate the new role
-3. Update the TypeScript type definitions in `AuthContext.tsx`
-4. Adjust UI components to handle the new role
+1. Update the `users` table schema check constraint.
+2. Create a new profile table for the role if necessary.
+3. Modify the RLS policies in `backend/supabase/schema.sql`.
+4. Update the `AuthContext.tsx` to fetch the new role's specific ID.
+5. Adjust UI components.
 
 ## Best Practices
 
