@@ -217,7 +217,7 @@ export default function StudentProfile() {
                     </View>
                 </View>
 
-                {/* REGISTERED COURSES */}
+                {/* REGISTERED SUBJECTS */}
                 <View className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden mb-5">
                     <View className="px-5 py-4 border-b border-gray-100">
                         <View className="flex-row items-center justify-between">
@@ -225,7 +225,7 @@ export default function StudentProfile() {
                                 <View className="p-2 bg-teal-50 rounded-lg">
                                     <BookOpen size={20} color="#0d9488" strokeWidth={2.5} />
                                 </View>
-                                <Text className="ml-3 font-semibold text-gray-800">Registered Courses</Text>
+                                <Text className="ml-3 font-semibold text-gray-800">Registered Subjects</Text>
                             </View>
                             <TouchableOpacity
                                 activeOpacity={0.7}
@@ -241,7 +241,7 @@ export default function StudentProfile() {
                             { name: 'Advanced React Native', progress: 68 },
                             { name: 'UI/UX Design Systems', progress: 45 },
                             { name: 'Database Management Systems', progress: 82 }
-                        ].map((course, index) => (
+                        ].map((subject, index) => (
                             <TouchableOpacity
                                 key={index}
                                 className="py-4 border-b border-gray-50 last:border-0 active:bg-gray-50"
@@ -250,17 +250,17 @@ export default function StudentProfile() {
                                 <View className="flex-row items-center justify-between mb-3">
                                     <View className="flex-row items-center flex-1">
                                         <View className="w-2 h-2 rounded-full bg-teal-500 mr-3" />
-                                        <Text className="text-gray-900 font-semibold flex-1">{course.name}</Text>
+                                        <Text className="text-gray-900 font-semibold flex-1">{subject.name}</Text>
                                     </View>
                                     <Text className="text-gray-700 font-bold text-xs ml-2">
-                                        {course.progress}%
+                                        {subject.progress}%
                                     </Text>
                                 </View>
                                 <View className="ml-5">
                                     <View className="h-2 bg-gray-100 rounded-full overflow-hidden">
                                         <View
                                             className="h-full bg-teal-600 rounded-full"
-                                            style={{ width: `${course.progress}%` }}
+                                            style={{ width: `${subject.progress}%` }}
                                         />
                                     </View>
                                 </View>
@@ -290,7 +290,7 @@ export default function StudentProfile() {
                                     <Text className="text-2xl">🏆</Text>
                                 </View>
                                 <View className="flex-1">
-                                    <Text className="text-gray-900 font-bold text-sm mb-1">Course Completion</Text>
+                                    <Text className="text-gray-900 font-bold text-sm mb-1">Subject Completion</Text>
                                     <Text className="text-gray-600 text-xs font-medium mb-2">
                                         Successfully completed React Fundamentals
                                     </Text>

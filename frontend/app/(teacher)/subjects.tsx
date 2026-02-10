@@ -74,7 +74,7 @@ const SubjectCard = ({ Subject }: SubjectCardProps) => {
 export default function TeacherSubjects() {
     const { teacherId } = useAuth();
     const [filter, setFilter] = useState<"all" | "active" | "draft">("all");
-    const [Subjects, setSubjects] = useState<Subject[]>([]);
+    const [subjects, setSubjects] = useState<Subject[]>([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
@@ -88,7 +88,7 @@ export default function TeacherSubjects() {
         try {
             setLoading(true);
             const { data, error } = await supabase
-                .from('Subjects')
+                .from('subjects')
                 .select('*')
                 .eq('teacher_id', teacherId);
 
@@ -112,8 +112,8 @@ export default function TeacherSubjects() {
     };
 
     const filteredSubjects = filter === "all"
-        ? Subjects
-        : Subjects.filter(c => c.status === filter);
+        ? subjects
+        : subjects.filter(c => c.status === filter);
 
     if (loading) {
         return (
@@ -155,7 +155,7 @@ export default function TeacherSubjects() {
                         </View>
 
                         {/* Subject List */}
-                        {Subjects.length === 0 ? (
+                        {subjects.length === 0 ? (
                             <Text className="text-gray-500 text-center py-4">No Subjects found.</Text>
                         ) : (
                             filteredSubjects.map((Subject) => (

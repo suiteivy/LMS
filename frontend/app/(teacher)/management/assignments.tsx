@@ -14,7 +14,7 @@ interface Assignment {
     submissions: number;
     totalStudents: number; // Placeholder or fetched
     status: "active" | "draft" | "closed";
-    Subject_id: string;
+    subject_id: string;
 }
 
 interface SubjectOption {
@@ -93,7 +93,7 @@ export default function AssignmentsPage() {
     const [description, setDescription] = useState("");
     const [dueDate, setDueDate] = useState("");
     const [points, setPoints] = useState("");
-    const [selectedCourseId, setSelectedCourseId] = useState("");
+    const [selectedSubjectId, setSelectedSubjectId] = useState("");
     const [dateObject, setDateObject] = useState(new Date())
     const [showDatePicker, setShowDatePicker] = useState(false)
 
@@ -115,7 +115,7 @@ export default function AssignmentsPage() {
 
     const fetchSubjects = async () => {
         if (!teacherId) return;
-        const { data } = await supabase.from('Subjects').select('id, title').eq('teacher_id', teacherId);
+        const { data } = await supabase.from('subjects').select('id, title').eq('teacher_id', teacherId);
         if (data) setSubjects(data);
     };
 
@@ -129,7 +129,7 @@ export default function AssignmentsPage() {
                 .from('assignments')
                 .select(`
                     *,
-                    Subject:Subjects(title),
+                    subject:subjects(title),
                     submissions(count)
                 `)
                 .eq('teacher_id', teacherId)
@@ -140,8 +140,8 @@ export default function AssignmentsPage() {
             const formatted = (data || []).map((a: any) => ({
                 id: a.id,
                 title: a.title,
-                Subject: a.Subject?.title || "Unknown Subject",
-                Subject_id: a.Subject_id,
+                Subject: a.subject?.title || "Unknown Subject",
+                subject_id: a.subject_id,
                 dueDate: a.due_date ? new Date(a.due_date).toLocaleDateString() : "No Due Date",
                 submissions: a.submissions?.[0]?.count || 0,
                 totalStudents: 0, // Todo: fetch from Subject->class->enrollments
@@ -166,7 +166,7 @@ export default function AssignmentsPage() {
         try {
             const { error } = await supabase.from('assignments').insert({
                 teacher_id: teacherId,
-                Subject_id: selectedSubjectId,
+                subject_id: selectedSubjectId,
                 title,
                 description,
                 due_date: dueDate ? new Date(dueDate).toISOString() : null, // Naive parsing, better to use date picker
