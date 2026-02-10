@@ -17,6 +17,7 @@ export interface Database {
           role: "admin" | "student" | "teacher";
           status: "pending" | "approved" | "rejected";
           institution_id: string | null;
+          phone: string | null;
           created_at: string;
         };
         Insert: {
@@ -26,6 +27,7 @@ export interface Database {
           role: "admin" | "student" | "teacher";
           status?: "pending" | "approved" | "rejected";
           institution_id?: string | null;
+          phone?: string | null;
           created_at?: string;
         };
         Update: {
@@ -35,6 +37,7 @@ export interface Database {
           role?: "admin" | "student" | "teacher";
           status?: "pending" | "approved" | "rejected";
           institution_id?: string | null;
+          phone?: string | null;
           created_at?: string;
         };
         Relationships: [];
@@ -42,7 +45,7 @@ export interface Database {
       announcements: {
         Row: {
           id: string;
-          course_id: string;
+          subject_id: string;
           teacher_id: string;
           title: string;
           message: string;
@@ -51,7 +54,7 @@ export interface Database {
         };
         Insert: {
           id?: string;
-          course_id: string;
+          subject_id: string;
           teacher_id: string;
           title: string;
           message: string;
@@ -60,7 +63,7 @@ export interface Database {
         };
         Update: {
           id?: string;
-          course_id?: string;
+          subject_id?: string;
           teacher_id?: string;
           title?: string;
           message?: string;
@@ -69,9 +72,9 @@ export interface Database {
         };
         Relationships: [
           {
-            foreignKeyName: "announcements_course_id_fkey";
-            columns: ["course_id"];
-            referencedRelation: "courses";
+            foreignKeyName: "announcements_subject_id_fkey";
+            columns: ["subject_id"];
+            referencedRelation: "subjects";
             referencedColumns: ["id"];
           },
           {
@@ -207,7 +210,7 @@ export interface Database {
       fee_structures: {
         Row: {
           id: string;
-          course_id: string;
+          subject_id: string;
           base_fee: number;
           registration_fee: number;
           material_fee: number;
@@ -218,7 +221,7 @@ export interface Database {
         };
         Insert: {
           id?: string;
-          course_id: string;
+          subject_id: string;
           base_fee: number;
           registration_fee: number;
           material_fee: number;
@@ -229,7 +232,7 @@ export interface Database {
         };
         Update: {
           id?: string;
-          course_id?: string;
+          subject_id?: string;
           base_fee?: number;
           registration_fee?: number;
           material_fee?: number;
@@ -305,7 +308,7 @@ export interface Database {
       assignments: {
         Row: {
           id: string;
-          course_id: string;
+          subject_id: string;
           teacher_id: string; // Now TEXT
           title: string;
           description: string | null;
@@ -317,7 +320,7 @@ export interface Database {
         };
         Insert: {
           id?: string;
-          course_id: string;
+          subject_id: string;
           teacher_id: string;
           title: string;
           description?: string | null;
@@ -329,7 +332,7 @@ export interface Database {
         };
         Update: {
           id?: string;
-          course_id?: string;
+          subject_id?: string;
           teacher_id?: string;
           title?: string;
           description?: string | null;
@@ -410,7 +413,7 @@ export interface Database {
       resources: {
         Row: {
           id: string;
-          course_id: string;
+          subject_id: string;
           title: string;
           type: "pdf" | "video" | "link" | "other";
           url: string;
@@ -419,7 +422,7 @@ export interface Database {
         };
         Insert: {
           id?: string;
-          course_id: string;
+          subject_id: string;
           title: string;
           type?: "pdf" | "video" | "link" | "other";
           url: string;
@@ -428,7 +431,7 @@ export interface Database {
         };
         Update: {
           id?: string;
-          course_id?: string;
+          subject_id?: string;
           title?: string;
           type?: "pdf" | "video" | "link" | "other";
           url?: string;
@@ -437,7 +440,7 @@ export interface Database {
         };
         Relationships: [];
       };
-      courses: {
+      subjects: {
         Row: {
           id: string;
           title: string;
@@ -470,7 +473,7 @@ export interface Database {
         };
         Relationships: [
           {
-            foreignKeyName: "courses_teacher_id_fkey";
+            foreignKeyName: "subjects_teacher_id_fkey";
             columns: ["teacher_id"];
             referencedRelation: "teachers";
             referencedColumns: ["id"];

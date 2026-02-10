@@ -57,7 +57,7 @@ export interface StatsData {
   description?: string;
 }
 
-export interface CourseFormData {
+export interface SubjectFormData {
   title: string;
   description: string;
   shortDescription: string;
@@ -71,7 +71,7 @@ export interface CourseFormData {
   tags: string[];
   prerequisites: string;
   learningOutcomes: string[];
-  courseImage: string | null;
+  SubjectImage: string | null;
   isPublic: boolean;
   allowDiscussions: boolean;
   certificateEnabled: boolean;
@@ -129,7 +129,7 @@ export interface LearningOutcomesProps {
   onRemoveOutcome: (index: number) => void;
 }
 
-export interface Course {
+export interface Subject {
   id: string;
   title: string;
   description: string;
@@ -193,8 +193,8 @@ export interface TeacherPayout {
 
 export interface FeeStructure {
   id: string;
-  course_id: string;
-  course_name: string;
+  Subject_id: string;
+  Subject_name: string;
   base_fee: number;
   registration_fee: number;
   material_fee: number;

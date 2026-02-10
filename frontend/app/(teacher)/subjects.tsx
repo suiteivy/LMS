@@ -4,7 +4,7 @@ import { Plus, Users, TrendingUp, Edit, Eye } from 'lucide-react-native';
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/libs/supabase";
 
-interface Course {
+interface Subject {
     id: string;
     title: string;
     students: number;
@@ -13,27 +13,27 @@ interface Course {
     lastUpdated: string;
 }
 
-interface CourseCardProps {
-    course: Course;
+interface SubjectCardProps {
+    Subject: Subject;
 }
 
-const CourseCard = ({ course }: CourseCardProps) => {
-    const isActive = course.status === "active";
+const SubjectCard = ({ Subject }: SubjectCardProps) => {
+    const isActive = Subject.status === "active";
 
     return (
         <View className="bg-white p-4 rounded-2xl border border-gray-100 mb-3 shadow-sm">
             <View className="flex-row justify-between items-start mb-3">
                 <View className="flex-1 pr-2">
                     <Text className="text-gray-900 font-bold text-base" numberOfLines={1}>
-                        {course.title}
+                        {Subject.title}
                     </Text>
                     <Text className="text-gray-400 text-xs mt-1">
-                        Updated {course.lastUpdated}
+                        Updated {Subject.lastUpdated}
                     </Text>
                 </View>
                 <View className={`px-3 py-1 rounded-full ${isActive ? "bg-green-50 border border-green-100" : "bg-gray-50 border border-gray-100"}`}>
                     <Text className={`text-xs font-bold ${isActive ? "text-green-600" : "text-gray-500"}`}>
-                        {course.status.charAt(0).toUpperCase() + course.status.slice(1)}
+                        {Subject.status.charAt(0).toUpperCase() + Subject.status.slice(1)}
                     </Text>
                 </View>
             </View>
@@ -41,11 +41,11 @@ const CourseCard = ({ course }: CourseCardProps) => {
             <View className="flex-row justify-between mb-4">
                 <View className="flex-row items-center">
                     <Users size={14} color="#6B7280" />
-                    <Text className="text-gray-600 text-xs ml-1">{course.students} students</Text>
+                    <Text className="text-gray-600 text-xs ml-1">{Subject.students} students</Text>
                 </View>
                 <View className="flex-row items-center">
                     <TrendingUp size={14} color="#6B7280" />
-                    <Text className="text-gray-600 text-xs ml-1">{course.completion}% completion</Text>
+                    <Text className="text-gray-600 text-xs ml-1">{Subject.completion}% completion</Text>
                 </View>
             </View>
 
@@ -53,7 +53,7 @@ const CourseCard = ({ course }: CourseCardProps) => {
             <View className="h-2 bg-gray-100 rounded-full overflow-hidden">
                 <View
                     className="h-full bg-teal-500 rounded-full"
-                    style={{ width: `${course.completion}%` }}
+                    style={{ width: `${Subject.completion}%` }}
                 />
             </View>
 
@@ -71,30 +71,30 @@ const CourseCard = ({ course }: CourseCardProps) => {
     );
 };
 
-export default function TeacherCourses() {
+export default function TeacherSubjects() {
     const { teacherId } = useAuth();
     const [filter, setFilter] = useState<"all" | "active" | "draft">("all");
-    const [courses, setCourses] = useState<Course[]>([]);
+    const [Subjects, setSubjects] = useState<Subject[]>([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         if (teacherId) {
-            fetchCourses();
+            fetchSubjects();
         }
     }, [teacherId]);
 
-    const fetchCourses = async () => {
+    const fetchSubjects = async () => {
         if (!teacherId) return;
         try {
             setLoading(true);
             const { data, error } = await supabase
-                .from('courses')
+                .from('Subjects')
                 .select('*')
                 .eq('teacher_id', teacherId);
 
             if (error) throw error;
 
-            const mappedCourses: Course[] = data.map((c: any) => ({
+            const mappedSubjects: Subject[] = data.map((c: any) => ({
                 id: c.id,
                 title: c.name,
                 students: 0, // Need to count enrollments via class link, complicated query. Mock for now.
@@ -103,17 +103,17 @@ export default function TeacherCourses() {
                 lastUpdated: new Date(c.updated_at).toLocaleDateString()
             }));
 
-            setCourses(mappedCourses);
+            setSubjects(mappedSubjects);
         } catch (error) {
-            console.error("Error fetching courses:", error);
+            console.error("Error fetching Subjects:", error);
         } finally {
             setLoading(false);
         }
     };
 
-    const filteredCourses = filter === "all"
-        ? courses
-        : courses.filter(c => c.status === filter);
+    const filteredSubjects = filter === "all"
+        ? Subjects
+        : Subjects.filter(c => c.status === filter);
 
     if (loading) {
         return (
@@ -135,7 +135,7 @@ export default function TeacherCourses() {
                     <View className="p-4 md:p-8">
                         {/* Header */}
                         <View className="flex-row justify-between items-center mb-6">
-                            <Text className="text-2xl font-bold text-gray-900">My Courses</Text>
+                            <Text className="text-2xl font-bold text-gray-900">My Subjects</Text>
                             {/* Add button if needed */}
                         </View>
 
@@ -154,12 +154,12 @@ export default function TeacherCourses() {
                             ))}
                         </View>
 
-                        {/* Course List */}
-                        {courses.length === 0 ? (
-                            <Text className="text-gray-500 text-center py-4">No courses found.</Text>
+                        {/* Subject List */}
+                        {Subjects.length === 0 ? (
+                            <Text className="text-gray-500 text-center py-4">No Subjects found.</Text>
                         ) : (
-                            filteredCourses.map((course) => (
-                                <CourseCard key={course.id} course={course} />
+                            filteredSubjects.map((Subject) => (
+                                <SubjectCard key={Subject.id} Subject={Subject} />
                             ))
                         )}
                     </View>

@@ -1,4 +1,4 @@
-# Supabase Authentication Setup with Custom Roles
+﻿# Supabase Authentication Setup with Custom Roles
 
 This document outlines the steps to configure Supabase authentication with custom roles (admin, teacher, student) for the Learning Management System (LMS).
 
@@ -64,8 +64,8 @@ VALUES ('replace-with-uuid', 'ADM-2024-001');
 Test the authentication flow with different roles:
 
 1. **Admin**: Should have access to all features
-2. **Teacher**: Should be able to create courses, assignments, and grade submissions
-3. **Student**: Should be able to view courses, submit assignments, and view grades
+2. **Teacher**: Should be able to create Subjects, assignments, and grade submissions
+3. **Student**: Should be able to view Subjects, submit assignments, and view grades
 
 ## Troubleshooting
 

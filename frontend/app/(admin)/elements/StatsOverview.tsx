@@ -23,7 +23,7 @@ const StatsOverview: React.FC<StatsOverviewProps> = ({
       trend: { value: "+12%", isPositive: true } 
     },
     { 
-      title: "Active Courses", 
+      title: "Active Subjects", 
       value: "56", 
       icon: "book", 
       color: "green", 

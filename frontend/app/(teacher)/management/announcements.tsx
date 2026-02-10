@@ -9,11 +9,11 @@ interface Announcement {
     id: string;
     title: string;
     message: string;
-    course_title: string;
+    Subject_title: string;
     created_at: string;
     readCount: number; // Placeholder
     totalStudents: number; // Placeholder
-    course_id: string;
+    Subject_id: string;
 }
 
 const AnnouncementCard = ({ announcement, onDelete }: { announcement: Announcement; onDelete: (id: string) => void }) => {
@@ -25,7 +25,7 @@ const AnnouncementCard = ({ announcement, onDelete }: { announcement: Announceme
                 </View>
                 <View className="flex-1">
                     <Text className="text-gray-900 font-bold text-base">{announcement.title}</Text>
-                    <Text className="text-gray-400 text-xs">{announcement.course_title}</Text>
+                    <Text className="text-gray-400 text-xs">{announcement.Subject_title}</Text>
                 </View>
             </View>
 
@@ -68,24 +68,24 @@ export default function AnnouncementsPage() {
     const [showModal, setShowModal] = useState(false);
     const [loading, setLoading] = useState(true);
     const [announcements, setAnnouncements] = useState<Announcement[]>([]);
-    const [courses, setCourses] = useState<{ id: string; title: string }[]>([]);
+    const [Subjects, setSubjects] = useState<{ id: string; title: string }[]>([]);
 
     // Form
     const [title, setTitle] = useState("");
     const [message, setMessage] = useState("");
-    const [selectedCourseId, setSelectedCourseId] = useState("");
+    const [selectedSubjectId, setSelectedSubjectId] = useState("");
 
     useEffect(() => {
         if (teacherId) {
             fetchAnnouncements();
-            fetchCourses();
+            fetchSubjects();
         }
     }, [teacherId]);
 
-    const fetchCourses = async () => {
+    const fetchSubjects = async () => {
         if (!teacherId) return;
-        const { data } = await supabase.from('courses').select('id, title').eq('teacher_id', teacherId);
-        if (data) setCourses(data);
+        const { data } = await supabase.from('Subjects').select('id, title').eq('teacher_id', teacherId);
+        if (data) setSubjects(data);
     };
 
     const fetchAnnouncements = async () => {
@@ -96,7 +96,7 @@ export default function AnnouncementsPage() {
                 .from('announcements')
                 .select(`
                     *,
-                    course:courses(title)
+                    Subject:Subjects(title)
                 `)
                 .eq('teacher_id', teacherId)
                 .order('created_at', { ascending: false });
@@ -107,11 +107,11 @@ export default function AnnouncementsPage() {
                 id: a.id,
                 title: a.title,
                 message: a.message,
-                course_title: a.course?.title || "Unknown Course",
+                Subject_title: a.Subject?.title || "Unknown Subject",
                 created_at: a.created_at,
                 readCount: 0,
                 totalStudents: 0,
-                course_id: a.course_id
+                Subject_id: a.Subject_id
             }));
 
             setAnnouncements(formatted);
@@ -124,15 +124,15 @@ export default function AnnouncementsPage() {
 
     const handleCreateAnnouncement = async () => {
         if (!teacherId) return;
-        if (!title || !message || !selectedCourseId) {
-            Alert.alert("Missing Fields", "Please fill all fields and select a course.");
+        if (!title || !message || !selectedSubjectId) {
+            Alert.alert("Missing Fields", "Please fill all fields and select a Subject.");
             return;
         }
 
         try {
             const { error } = await supabase.from('announcements').insert({
                 teacher_id: teacherId,
-                course_id: selectedCourseId,
+                Subject_id: selectedSubjectId,
                 title,
                 message
             });
@@ -144,7 +144,7 @@ export default function AnnouncementsPage() {
             // Reset
             setTitle("");
             setMessage("");
-            setSelectedCourseId("");
+            setSelectedSubjectId("");
         } catch (error) {
             Alert.alert("Error", "Failed to create announcement");
             console.error(error);
@@ -216,16 +216,16 @@ export default function AnnouncementsPage() {
                             </TouchableOpacity>
                         </View>
 
-                        {/* Course Selector */}
-                        <Text className="text-gray-500 text-xs uppercase mb-2 font-semibold">Select Course</Text>
+                        {/* Subject Selector */}
+                        <Text className="text-gray-500 text-xs uppercase mb-2 font-semibold">Select Subject</Text>
                         <ScrollView horizontal className="flex-row mb-4" showsHorizontalScrollIndicator={false}>
-                            {courses.map(c => (
+                            {Subjects.map(c => (
                                 <TouchableOpacity
                                     key={c.id}
-                                    onPress={() => setSelectedCourseId(c.id)}
-                                    className={`mr-2 px-4 py-2 rounded-lg border ${selectedCourseId === c.id ? 'bg-pink-500 border-pink-500' : 'bg-gray-50 border-gray-200'}`}
+                                    onPress={() => setSelectedSubjectId(c.id)}
+                                    className={`mr-2 px-4 py-2 rounded-lg border ${selectedSubjectId === c.id ? 'bg-pink-500 border-pink-500' : 'bg-gray-50 border-gray-200'}`}
                                 >
-                                    <Text className={selectedCourseId === c.id ? 'text-white' : 'text-gray-700'}>{c.title}</Text>
+                                    <Text className={selectedSubjectId === c.id ? 'text-white' : 'text-gray-700'}>{c.title}</Text>
                                 </TouchableOpacity>
                             ))}
                         </ScrollView>

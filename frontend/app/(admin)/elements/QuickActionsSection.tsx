@@ -40,8 +40,8 @@ const QuickActionsSection: React.FC<QuickActionsSectionProps> = ({
       },
     },
     {
-      id: "add-course",
-      title: "Add Course",
+      id: "add-Subject",
+      title: "Add Subject",
       icon: "book-outline",
       color: {
         bg: "bg-white",

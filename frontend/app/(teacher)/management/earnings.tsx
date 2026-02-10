@@ -43,11 +43,11 @@ export default function EarningsPage() {
     const [selectedPeriod, setSelectedPeriod] = useState("This Month");
 
     const payments: Payment[] = [
-        { id: "1", description: "Course: Mathematics", amount: 450, date: "Feb 5, 2026", status: "completed" },
-        { id: "2", description: "Course: Computer Science", amount: 680, date: "Feb 1, 2026", status: "completed" },
-        { id: "3", description: "Course: Writing Workshop", amount: 320, date: "Jan 28, 2026", status: "completed" },
+        { id: "1", description: "Subject: Mathematics", amount: 450, date: "Feb 5, 2026", status: "completed" },
+        { id: "2", description: "Subject: Computer Science", amount: 680, date: "Feb 1, 2026", status: "completed" },
+        { id: "3", description: "Subject: Writing Workshop", amount: 320, date: "Jan 28, 2026", status: "completed" },
         { id: "4", description: "Bonus: High Performance", amount: 150, date: "Jan 25, 2026", status: "completed" },
-        { id: "5", description: "Course: Digital Literacy", amount: 280, date: "Jan 20, 2026", status: "completed" },
+        { id: "5", description: "Subject: Digital Literacy", amount: 280, date: "Jan 20, 2026", status: "completed" },
         { id: "6", description: "Pending: February Payout", amount: 520, date: "Feb 28, 2026", status: "pending" },
     ];
 

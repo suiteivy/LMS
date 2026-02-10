@@ -1,10 +1,10 @@
-<details> <summary>Click to expand full content</summary>
+﻿<details> <summary>Click to expand full content</summary>
 
-# 📚 Learning Management System (LMS)
+# ðŸ“š Learning Management System (LMS)
 
-A cross-platform Learning Management System built using **React Native** for the frontend and **Supabase** for the backend. This app supports role-based access (Admin, Student, Teacher), course management, assignments, attendance tracking, grading, notifications, and more.
+A cross-platform Learning Management System built using **React Native** for the frontend and **Supabase** for the backend. This app supports role-based access (Admin, Student, Teacher), Subject management, assignments, attendance tracking, grading, notifications, and more.
 
-## 🚀 Getting Started
+## ðŸš€ Getting Started
 
 ### Prerequisites
 
@@ -28,7 +28,7 @@ A cross-platform Learning Management System built using **React Native** for the
 
 #### 1. Create a Supabase Project
 - Go to [supabase.com](https://supabase.com) and create a new project
-- Note your project URL and anon key from Project Settings → API
+- Note your project URL and anon key from Project Settings â†’ API
 
 #### 2. Configure Environment Variables
 Create a `.env` file in the `frontend` directory:
@@ -38,16 +38,16 @@ EXPO_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
 ```
 
 #### 3. Set Up Database Schema
-Run the consolidated SQL file `backend/supabase/schema.sql`. This file contains all necessary table definitions (users, students, teachers, admins, courses, etc.) and RLS policies.
+Run the consolidated SQL file `backend/supabase/schema.sql`. This file contains all necessary table definitions (users, students, teachers, admins, Subjects, etc.) and RLS policies.
 
 1. Copy the content of `backend/supabase/schema.sql`
 2. Paste it into the Supabase SQL Editor and run it.
 
 #### 4. Create Admin User
-> ⚠️ **Important**: Always create users through the Supabase Dashboard, not direct SQL inserts!
+> âš ï¸ **Important**: Always create users through the Supabase Dashboard, not direct SQL inserts!
 
-1. Go to **Authentication → Users** in your Supabase Dashboard
-2. Click **"Add user"** → **"Create new user"**
+1. Go to **Authentication â†’ Users** in your Supabase Dashboard
+2. Click **"Add user"** â†’ **"Create new user"**
 3. Enter email, password, and check **"Auto Confirm User"**
 4. Run this SQL to add the user to your app's users table:
    ```sql
@@ -68,51 +68,51 @@ npm start
 
 ---
 
-## 📁 Project Structure
+## ðŸ“ Project Structure
 
 LMS-App/
-├── apps/
-│ ├── mobile/ # React Native frontend app
-│ │ ├── src/
-│ │ │ ├── components/ # Reusable UI components
-│ │ │ ├── screens/ # Page views for each role (Admin, Student, Teacher)
-│ │ │ ├── navigation/ # React Navigation logic
-│ │ │ ├── services/ # API handlers to Supabase
-│ │ │ ├── context/ # Global app context (Auth, User, Theme)
-│ │ │ ├── hooks/ # Custom hooks (e.g., useAuth, useAttendance)
-│ │ │ ├── assets/ # Images, icons, fonts
-│ │ │ └── utils/ # Formatters, validators, helpers
-│ │ └── App.tsx # Main entry point
-│ └── functions/ # Firebase or Supabase triggers (notifications)
-│ └── sendNotification.ts
-├── backend/
-│ ├── supabase/
-│ │ ├── migrations/ # SQL migrations (auth, courses, users, etc.)
-│ │ ├── seed/ # Seed scripts
-│ │ ├── schemas/
-│ │ │ ├── users.sql
-│ │ │ ├── courses.sql
-│ │ │ ├── lessons.sql
-│ │ │ ├── assignments.sql
-│ │ │ ├── submissions.sql
-│ │ │ ├── grades.sql
-│ │ │ ├── attendance.sql
-│ │ │ └── institutions.sql
-│ │ └── roles_policy.sql # Role-based access control policies
-│ └── storage_rules.sql # Supabase storage (files, validations)
-├── docs/
-│ ├── roadmap.md # Weekly breakdown
-│ ├── architecture.md # System design & flow
-│ ├── api_reference.md # API endpoints + Supabase function calls
-│ ├── roles.md # Role-based features & access
-│ ├── onboarding.md # Setup instructions for devs
-│ └── demo_plan.md # Final presentation/demo checklist
-├── tests/
-│ ├── unit/ # Unit tests for utilities/services
-│ ├── integration/ # E2E flow (login, enroll, submit)
-│ └── qa/ # Scripts and scenarios for QA testers
-├── .env.example # Template for environment variables
-├── .gitignore
-├── README.md # Overview, setup, and contribution guide
-├── package.json
-└── LICENSE
+â”œâ”€â”€ apps/
+â”‚ â”œâ”€â”€ mobile/ # React Native frontend app
+â”‚ â”‚ â”œâ”€â”€ src/
+â”‚ â”‚ â”‚ â”œâ”€â”€ components/ # Reusable UI components
+â”‚ â”‚ â”‚ â”œâ”€â”€ screens/ # Page views for each role (Admin, Student, Teacher)
+â”‚ â”‚ â”‚ â”œâ”€â”€ navigation/ # React Navigation logic
+â”‚ â”‚ â”‚ â”œâ”€â”€ services/ # API handlers to Supabase
+â”‚ â”‚ â”‚ â”œâ”€â”€ context/ # Global app context (Auth, User, Theme)
+â”‚ â”‚ â”‚ â”œâ”€â”€ hooks/ # Custom hooks (e.g., useAuth, useAttendance)
+â”‚ â”‚ â”‚ â”œâ”€â”€ assets/ # Images, icons, fonts
+â”‚ â”‚ â”‚ â””â”€â”€ utils/ # Formatters, validators, helpers
+â”‚ â”‚ â””â”€â”€ App.tsx # Main entry point
+â”‚ â””â”€â”€ functions/ # Firebase or Supabase triggers (notifications)
+â”‚ â””â”€â”€ sendNotification.ts
+â”œâ”€â”€ backend/
+â”‚ â”œâ”€â”€ supabase/
+â”‚ â”‚ â”œâ”€â”€ migrations/ # SQL migrations (auth, Subjects, users, etc.)
+â”‚ â”‚ â”œâ”€â”€ seed/ # Seed scripts
+â”‚ â”‚ â”œâ”€â”€ schemas/
+â”‚ â”‚ â”‚ â”œâ”€â”€ users.sql
+â”‚ â”‚ â”‚ â”œâ”€â”€ Subjects.sql
+â”‚ â”‚ â”‚ â”œâ”€â”€ lessons.sql
+â”‚ â”‚ â”‚ â”œâ”€â”€ assignments.sql
+â”‚ â”‚ â”‚ â”œâ”€â”€ submissions.sql
+â”‚ â”‚ â”‚ â”œâ”€â”€ grades.sql
+â”‚ â”‚ â”‚ â”œâ”€â”€ attendance.sql
+â”‚ â”‚ â”‚ â””â”€â”€ institutions.sql
+â”‚ â”‚ â””â”€â”€ roles_policy.sql # Role-based access control policies
+â”‚ â””â”€â”€ storage_rules.sql # Supabase storage (files, validations)
+â”œâ”€â”€ docs/
+â”‚ â”œâ”€â”€ roadmap.md # Weekly breakdown
+â”‚ â”œâ”€â”€ architecture.md # System design & flow
+â”‚ â”œâ”€â”€ api_reference.md # API endpoints + Supabase function calls
+â”‚ â”œâ”€â”€ roles.md # Role-based features & access
+â”‚ â”œâ”€â”€ onboarding.md # Setup instructions for devs
+â”‚ â””â”€â”€ demo_plan.md # Final presentation/demo checklist
+â”œâ”€â”€ tests/
+â”‚ â”œâ”€â”€ unit/ # Unit tests for utilities/services
+â”‚ â”œâ”€â”€ integration/ # E2E flow (login, enroll, submit)
+â”‚ â””â”€â”€ qa/ # Scripts and scenarios for QA testers
+â”œâ”€â”€ .env.example # Template for environment variables
+â”œâ”€â”€ .gitignore
+â”œâ”€â”€ README.md # Overview, setup, and contribution guide
+â”œâ”€â”€ package.json
+â””â”€â”€ LICENSE

@@ -1,16 +1,16 @@
 import React from "react";
 import { View, Text, TouchableOpacity, Image } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { Course } from "@/types/types";
+import { Subject } from "@/types/types";
 
-interface CourseCardProps {
-  course: Course;
+interface SubjectCardProps {
+  Subject: Subject;
   onPress: () => void;
   variant?: "default" | "compact" | "featured";
 }
 
-export const CourseCard: React.FC<CourseCardProps> = ({
-  course,
+export const SubjectCard: React.FC<SubjectCardProps> = ({
+  Subject,
   onPress,
   variant = "default",
 }) => {
@@ -39,7 +39,7 @@ export const CourseCard: React.FC<CourseCardProps> = ({
       >
         <View className="flex-row">
           <Image
-            source={{ uri: course.image }}
+            source={{ uri: Subject.image }}
             className="w-16 h-16 rounded-lg"
             resizeMode="cover"
           />
@@ -49,23 +49,23 @@ export const CourseCard: React.FC<CourseCardProps> = ({
               style={{ color: "#2C3E50" }}
               numberOfLines={2}
             >
-              {course.title}
+              {Subject.title}
             </Text>
             <Text className="text-xs text-gray-500 mt-1">
-              {course.instructor.name}
+              {Subject.instructor.name}
             </Text>
             <View className="flex-row items-center mt-2">
               <View className="flex-row items-center mr-3">
                 <Ionicons name="star" size={12} color="#F39C12" />
                 <Text className="text-xs text-gray-600 ml-1">
-                  {course.rating}
+                  {Subject.rating}
                 </Text>
               </View>
               <Text
                 className="text-xs font-semibold"
                 style={{ color: "#1ABC9C" }}
               >
-                {formatPrice(course.price)}
+                {formatPrice(Subject.price)}
               </Text>
             </View>
           </View>
@@ -82,29 +82,29 @@ export const CourseCard: React.FC<CourseCardProps> = ({
       >
         <View className="relative">
           <Image
-            source={{ uri: course.image }}
+            source={{ uri: Subject.image }}
             className="w-full h-48"
             resizeMode="cover"
           />
           <View className="absolute top-3 left-3">
             <View
               className="px-2 py-1 rounded-full"
-              style={{ backgroundColor: getLevelColor(course.level) }}
+              style={{ backgroundColor: getLevelColor(Subject.level) }}
             >
               <Text className="text-white text-xs font-medium capitalize">
-                {course.level}
+                {Subject.level}
               </Text>
             </View>
           </View>
-          {course.originalPrice && course.originalPrice > course.price && (
+          {Subject.originalPrice && Subject.originalPrice > Subject.price && (
             <View
               className="absolute top-3 right-3 px-2 py-1 rounded-full"
               style={{ backgroundColor: "#E74C3C" }}
             >
               <Text className="text-white text-xs font-bold">
                 {Math.round(
-                  ((course.originalPrice - course.price) /
-                    course.originalPrice) *
+                  ((Subject.originalPrice - Subject.price) /
+                    Subject.originalPrice) *
                     100
                 )}
                 % OFF
@@ -119,17 +119,17 @@ export const CourseCard: React.FC<CourseCardProps> = ({
             style={{ color: "#2C3E50" }}
             numberOfLines={2}
           >
-            {course.title}
+            {Subject.title}
           </Text>
 
           <Text className="text-gray-600 text-sm mb-3" numberOfLines={2}>
-            {course.shortDescription}
+            {Subject.shortDescription}
           </Text>
 
           <View className="flex-row items-center mb-3">
             <Ionicons name="person-circle" size={16} color="#6B7280" />
             <Text className="text-sm text-gray-600 ml-1">
-              {course.instructor.name}
+              {Subject.instructor.name}
             </Text>
           </View>
 
@@ -140,33 +140,33 @@ export const CourseCard: React.FC<CourseCardProps> = ({
                 className="text-sm font-medium ml-1"
                 style={{ color: "#2C3E50" }}
               >
-                {course.rating}
+                {Subject.rating}
               </Text>
               <Text className="text-sm text-gray-500 ml-1">
-                ({course.reviewsCount})
+                ({Subject.reviewsCount})
               </Text>
             </View>
 
             <View className="flex-row items-center">
               <Ionicons name="people" size={16} color="#6B7280" />
               <Text className="text-sm text-gray-600 ml-1">
-                {course.studentsCount}
+                {Subject.studentsCount}
               </Text>
             </View>
           </View>
 
           <View className="flex-row items-center justify-between">
             <View>
-              {course.originalPrice && course.originalPrice > course.price && (
+              {Subject.originalPrice && Subject.originalPrice > Subject.price && (
                 <Text className="text-sm text-gray-400 line-through">
-                  ${course.originalPrice}
+                  ${Subject.originalPrice}
                 </Text>
               )}
               <Text
                 className="text-xl font-bold"
-                style={{ color: course.price === 0 ? "#1ABC9C" : "#2C3E50" }}
+                style={{ color: Subject.price === 0 ? "#1ABC9C" : "#2C3E50" }}
               >
-                {formatPrice(course.price)}
+                {formatPrice(Subject.price)}
               </Text>
             </View>
 
@@ -175,7 +175,7 @@ export const CourseCard: React.FC<CourseCardProps> = ({
               style={{ backgroundColor: "#1ABC9C" }}
             >
               <Text className="text-white font-semibold">
-                {course.isEnrolled ? "Continue" : "Enroll"}
+                {Subject.isEnrolled ? "Continue" : "Enroll"}
               </Text>
             </TouchableOpacity>
           </View>
@@ -189,7 +189,7 @@ export const CourseCard: React.FC<CourseCardProps> = ({
       className="bg-white rounded-xl shadow-sm border border-gray-100 mb-4 overflow-hidden"
     >
       <Image
-        source={{ uri: course.image }}
+        source={{ uri: Subject.image }}
         className="w-full h-40"
         resizeMode="cover"
       />
@@ -204,10 +204,10 @@ export const CourseCard: React.FC<CourseCardProps> = ({
               className="text-xs font-medium capitalize"
               style={{ color: "#2C3E50" }}
             >
-              {course.level}
+              {Subject.level}
             </Text>
           </View>
-          <Text className="text-xs text-gray-500">{course.category}</Text>
+          <Text className="text-xs text-gray-500">{Subject.category}</Text>
         </View>
 
         <Text
@@ -215,28 +215,28 @@ export const CourseCard: React.FC<CourseCardProps> = ({
           style={{ color: "#2C3E50" }}
           numberOfLines={2}
         >
-          {course.title}
+          {Subject.title}
         </Text>
 
         <Text className="text-gray-600 text-sm mb-3" numberOfLines={2}>
-          {course.shortDescription}
+          {Subject.shortDescription}
         </Text>
 
         <View className="flex-row items-center justify-between mb-3">
           <View className="flex-row items-center">
             <Ionicons name="star" size={14} color="#F39C12" />
             <Text className="text-sm ml-1" style={{ color: "#2C3E50" }}>
-              {course.rating}
+              {Subject.rating}
             </Text>
             <Text className="text-sm text-gray-500 ml-1">
-              ({course.reviewsCount})
+              ({Subject.reviewsCount})
             </Text>
           </View>
 
           <View className="flex-row items-center">
             <Ionicons name="time" size={14} color="#6B7280" />
             <Text className="text-sm text-gray-600 ml-1">
-              {course.duration}
+              {Subject.duration}
             </Text>
           </View>
         </View>
@@ -244,13 +244,13 @@ export const CourseCard: React.FC<CourseCardProps> = ({
         <View className="flex-row items-center justify-between">
           <Text
             className="text-lg font-bold"
-            style={{ color: course.price === 0 ? "#1ABC9C" : "#2C3E50" }}
+            style={{ color: Subject.price === 0 ? "#1ABC9C" : "#2C3E50" }}
           >
-            {formatPrice(course.price)}
+            {formatPrice(Subject.price)}
           </Text>
 
           <Text className="text-sm text-gray-500">
-            {course.studentsCount} students
+            {Subject.studentsCount} students
           </Text>
         </View>
       </View>

@@ -101,7 +101,7 @@ export default function ManagementIndex() {
         {
             icon: BookOpen,
             title: "Resources",
-            description: "Upload and manage course materials",
+            description: "Upload and manage Subject materials",
             color: "#eab308",
             bgColor: "#fef9c3",
             route: "/(teacher)/management/resources"

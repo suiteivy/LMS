@@ -1,4 +1,4 @@
-# Supabase Project Setup Guide
+﻿# Supabase Project Setup Guide
 
 This guide will walk you through setting up a Supabase project for the Learning Management System (LMS) application.
 
@@ -24,7 +24,7 @@ This guide will walk you through setting up a Supabase project for the Learning 
 
 1. **Access Project Settings**
    - Once your project is created, go to the project dashboard
-   - Click on the gear icon (⚙️) in the left sidebar to access settings
+   - Click on the gear icon (âš™ï¸) in the left sidebar to access settings
    - Select "API" from the settings menu
 
 2. **Copy Project URL and API Keys**
@@ -53,7 +53,7 @@ Use the consolidated schema file for specific table structure and policies:
 2. **Run The Schema Script**
    - Copy the contents of `backend/supabase/schema.sql`.
    - Paste it into the editor and run it.
-   - This script creates all tables (`users`, `students`, `teachers`, `admins`, `courses`, etc.) and sets up RLS policies.
+   - This script creates all tables (`users`, `students`, `teachers`, `admins`, `Subjects`, etc.) and sets up RLS policies.
 
 3. **Create Admin User**
    - Use the Supabase Dashboard to create a new user.
@@ -76,7 +76,7 @@ Use the consolidated schema file for specific table structure and policies:
 
 1. **Create Storage Buckets**
    - In the Supabase dashboard, click on "Storage" in the left sidebar
-   - Create buckets for different types of files (e.g., "profile-images", "assignments", "course-materials")
+   - Create buckets for different types of files (e.g., "profile-images", "assignments", "Subject-materials")
 
 2. **Configure Storage Permissions**
    - Apply the storage rules from `storage_rules.sql` to secure your buckets

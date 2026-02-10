@@ -8,15 +8,15 @@ import { useAuth } from "@/contexts/AuthContext";
 interface Assignment {
     id: string;
     title: string;
-    course: string;
+    Subject: string;
     dueDate: string;
     submissions: number;
     totalStudents: number; // Placeholder or fetched
     status: "active" | "draft" | "closed";
-    course_id: string;
+    Subject_id: string;
 }
 
-interface CourseOption {
+interface SubjectOption {
     id: string;
     title: string;
 }
@@ -37,7 +37,7 @@ const AssignmentCard = ({ assignment }: { assignment: Assignment }) => {
             <View className="flex-row justify-between items-start mb-3">
                 <View className="flex-1 pr-3">
                     <Text className="text-gray-900 font-bold text-base">{assignment.title}</Text>
-                    <Text className="text-gray-400 text-xs mt-0.5">{assignment.course}</Text>
+                    <Text className="text-gray-400 text-xs mt-0.5">{assignment.Subject}</Text>
                 </View>
                 <View className={`px-2 py-1 rounded-full border ${getStatusStyle(assignment.status)}`}>
                     <Text className={`text-xs font-bold ${getStatusStyle(assignment.status).split(' ')[1]}`}>
@@ -85,40 +85,40 @@ export default function AssignmentsPage() {
     const [filter, setFilter] = useState<"all" | "active" | "draft" | "closed">("all");
     const [assignments, setAssignments] = useState<Assignment[]>([]);
     const [loading, setLoading] = useState(true);
-    const [courses, setCourses] = useState<CourseOption[]>([]);
+    const [Subjects, setSubjects] = useState<SubjectOption[]>([]);
 
     // Form State
     const [title, setTitle] = useState("");
     const [description, setDescription] = useState("");
     const [dueDate, setDueDate] = useState("");
     const [points, setPoints] = useState("");
-    const [selectedCourseId, setSelectedCourseId] = useState("");
+    const [selectedSubjectId, setSelectedSubjectId] = useState("");
 
 
     useEffect(() => {
         if (teacherId) {
             fetchAssignments();
-            fetchCourses();
+            fetchSubjects();
         }
     }, [teacherId]);
 
-    const fetchCourses = async () => {
+    const fetchSubjects = async () => {
         if (!teacherId) return;
-        const { data } = await supabase.from('courses').select('id, title').eq('teacher_id', teacherId);
-        if (data) setCourses(data);
+        const { data } = await supabase.from('Subjects').select('id, title').eq('teacher_id', teacherId);
+        if (data) setSubjects(data);
     };
 
     const fetchAssignments = async () => {
         if (!teacherId) return;
 
         try {
-            // Fetch assignments filtered by courses taught by this teacher
+            // Fetch assignments filtered by Subjects taught by this teacher
             // We can check if teacher_id on assignment matches
             const { data, error } = await supabase
                 .from('assignments')
                 .select(`
                     *,
-                    course:courses(title),
+                    Subject:Subjects(title),
                     submissions(count)
                 `)
                 .eq('teacher_id', teacherId)
@@ -129,11 +129,11 @@ export default function AssignmentsPage() {
             const formatted = (data || []).map((a: any) => ({
                 id: a.id,
                 title: a.title,
-                course: a.course?.title || "Unknown Course",
-                course_id: a.course_id,
+                Subject: a.Subject?.title || "Unknown Subject",
+                Subject_id: a.Subject_id,
                 dueDate: a.due_date ? new Date(a.due_date).toLocaleDateString() : "No Due Date",
                 submissions: a.submissions?.[0]?.count || 0,
-                totalStudents: 0, // Todo: fetch from course->class->enrollments
+                totalStudents: 0, // Todo: fetch from Subject->class->enrollments
                 status: a.status
             }));
 
@@ -147,15 +147,15 @@ export default function AssignmentsPage() {
 
     const createAssignment = async () => {
         if (!teacherId) return;
-        if (!title || !selectedCourseId) {
-            Alert.alert("Missing Fields", "Please fill in title and select a course.");
+        if (!title || !selectedSubjectId) {
+            Alert.alert("Missing Fields", "Please fill in title and select a Subject.");
             return;
         }
 
         try {
             const { error } = await supabase.from('assignments').insert({
                 teacher_id: teacherId,
-                course_id: selectedCourseId,
+                Subject_id: selectedSubjectId,
                 title,
                 description,
                 due_date: dueDate ? new Date(dueDate).toISOString() : null, // Naive parsing, better to use date picker
@@ -172,7 +172,7 @@ export default function AssignmentsPage() {
             setDescription("");
             setDueDate("");
             setPoints("");
-            setSelectedCourseId("");
+            setSelectedSubjectId("");
 
         } catch (error) {
             Alert.alert("Error", "Failed to create assignment");
@@ -267,16 +267,16 @@ export default function AssignmentsPage() {
                             </TouchableOpacity>
                         </View>
 
-                        {/* Course Selector (Simple) */}
-                        <Text className="text-gray-500 text-xs uppercase mb-1 font-semibold">Course</Text>
+                        {/* Subject Selector (Simple) */}
+                        <Text className="text-gray-500 text-xs uppercase mb-1 font-semibold">Subject</Text>
                         <ScrollView horizontal className="flex-row mb-4" showsHorizontalScrollIndicator={false}>
-                            {courses.map(c => (
+                            {Subjects.map(c => (
                                 <TouchableOpacity
                                     key={c.id}
-                                    onPress={() => setSelectedCourseId(c.id)}
-                                    className={`mr-2 px-4 py-2 rounded-lg border ${selectedCourseId === c.id ? 'bg-teal-600 border-teal-600' : 'bg-gray-50 border-gray-200'}`}
+                                    onPress={() => setSelectedSubjectId(c.id)}
+                                    className={`mr-2 px-4 py-2 rounded-lg border ${selectedSubjectId === c.id ? 'bg-teal-600 border-teal-600' : 'bg-gray-50 border-gray-200'}`}
                                 >
-                                    <Text className={selectedCourseId === c.id ? 'text-white' : 'text-gray-700'}>{c.title}</Text>
+                                    <Text className={selectedSubjectId === c.id ? 'text-white' : 'text-gray-700'}>{c.title}</Text>
                                 </TouchableOpacity>
                             ))}
                         </ScrollView>

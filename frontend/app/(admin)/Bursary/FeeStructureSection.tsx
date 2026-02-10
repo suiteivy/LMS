@@ -30,7 +30,7 @@ const FeeStructureSection: React.FC<FeeStructureSectionProps> = ({
     null
   );
   const [formData, setFormData] = useState({
-    course_name: "",
+    Subject_name: "",
     base_fee: "",
     registration_fee: "",
     material_fee: "",
@@ -41,7 +41,7 @@ const FeeStructureSection: React.FC<FeeStructureSectionProps> = ({
 
   const resetForm = () => {
     setFormData({
-      course_name: "",
+      Subject_name: "",
       base_fee: "",
       registration_fee: "",
       material_fee: "",
@@ -55,7 +55,7 @@ const FeeStructureSection: React.FC<FeeStructureSectionProps> = ({
   const openEditForm = (structure: FeeStructure) => {
     setEditingStructure(structure);
     setFormData({
-      course_name: structure.course_name,
+      Subject_name: structure.Subject_name,
       base_fee: structure.base_fee.toString(),
       registration_fee: structure.registration_fee.toString(),
       material_fee: structure.material_fee.toString(),
@@ -67,14 +67,14 @@ const FeeStructureSection: React.FC<FeeStructureSectionProps> = ({
   };
 
   const handleSubmit = () => {
-    if (!formData.course_name || !formData.base_fee) {
+    if (!formData.Subject_name || !formData.base_fee) {
       Alert.alert("Error", "Please fill in all required fields");
       return;
     }
 
     const feeStructureData: Partial<FeeStructure> = {
       ...(editingStructure && { id: editingStructure.id }),
-      course_name: formData.course_name,
+      Subject_name: formData.Subject_name,
       base_fee: parseFloat(formData.base_fee),
       registration_fee: parseFloat(formData.registration_fee) || 0,
       material_fee: parseFloat(formData.material_fee) || 0,
@@ -107,7 +107,7 @@ const FeeStructureSection: React.FC<FeeStructureSectionProps> = ({
     <View className="bg-white rounded-lg p-4 mb-3 shadow-sm border border-gray-100">
       <View className="flex-row justify-between items-start mb-3">
         <Text className="text-lg font-semibold text-gray-900 flex-1">
-          {item.course_name}
+          {item.Subject_name}
         </Text>
         <View className="flex-row items-center space-x-2">
           {item.is_active ? (
@@ -152,7 +152,7 @@ const FeeStructureSection: React.FC<FeeStructureSectionProps> = ({
 
         <View className="flex-row justify-between border-t border-gray-100 pt-2">
           <Text className="text-sm font-medium text-gray-900">
-            Total Course Fee:
+            Total Subject Fee:
           </Text>
           <Text className="text-sm font-bold">
             {formatAmount(
@@ -207,7 +207,7 @@ const FeeStructureSection: React.FC<FeeStructureSectionProps> = ({
       <View className="flex-row space-x-3 mb-4">
         <View className="flex-1 bg-green-50 rounded-lg p-4">
           <Text className="text-sm text-green-600 font-medium">
-            Active Courses
+            Active Subjects
           </Text>
           <Text className="text-2xl font-bold text-green-700">
             {activeFeeStructures.length}
@@ -288,14 +288,14 @@ const FeeStructureSection: React.FC<FeeStructureSectionProps> = ({
             <View className="space-y-4">
               <View>
                 <Text className="text-sm font-medium text-[#2C3E50] mb-2">
-                  Course Name *
+                  Subject Name *
                 </Text>
                 <TextInput
-                  value={formData.course_name}
+                  value={formData.Subject_name}
                   onChangeText={(text) =>
-                    setFormData({ ...formData, course_name: text })
+                    setFormData({ ...formData, Subject_name: text })
                   }
-                  placeholder="Enter course name"
+                  placeholder="Enter Subject name"
                   className="border border-gray-300 rounded-lg px-3 py-3 text-base"
                 />
               </View>
@@ -380,7 +380,7 @@ const FeeStructureSection: React.FC<FeeStructureSectionProps> = ({
 
               <View className="flex-row items-center justify-between py-3">
                 <Text className="text-sm font-medium text-[#2C3E50]">
-                  Active Course
+                  Active Subject
                 </Text>
                 <Switch
                   value={formData.is_active}
@@ -399,7 +399,7 @@ const FeeStructureSection: React.FC<FeeStructureSectionProps> = ({
                   <View className="space-y-1">
                     <View className="flex-row justify-between">
                       <Text className="text-sm text-[#2C3E50]">
-                        Total Course Fee:
+                        Total Subject Fee:
                       </Text>
                       <Text className="text-sm font-medium">
                         {formatAmount(

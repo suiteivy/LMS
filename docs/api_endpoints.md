@@ -1,14 +1,14 @@
-# API Endpoints Documentation
+﻿# API Endpoints Documentation
 
-## Course Endpoints
+## Subject Endpoints
 
-### Get All Courses for Institution
+### Get All Subjects for Institution
 
 ```
-GET /api/courses
+GET /api/Subjects
 ```
 
-Returns all courses for the user's institution. This endpoint does not apply role-based filtering.
+Returns all Subjects for the user's institution. This endpoint does not apply role-based filtering.
 
 **Authentication Required**: Yes
 
@@ -17,8 +17,8 @@ Returns all courses for the user's institution. This endpoint does not apply rol
 [
   {
     "id": "uuid",
-    "title": "Course Title",
-    "description": "Course Description",
+    "title": "Subject Title",
+    "description": "Subject Description",
     "teacher_id": "TEA-YYYY-XXXX",
     "institution_id": "uuid",
     "created_at": "timestamp"
@@ -27,16 +27,16 @@ Returns all courses for the user's institution. This endpoint does not apply rol
 ]
 ```
 
-### Get Filtered Courses Based on User Role
+### Get Filtered Subjects Based on User Role
 
 ```
-GET /api/courses/filtered
+GET /api/Subjects/filtered
 ```
 
-Returns courses filtered based on the user's role:
-- **Admin**: All courses in the institution
-- **Teacher**: Courses where the user is the teacher
-- **Student**: Courses where the student has attendance records or submissions
+Returns Subjects filtered based on the user's role:
+- **Admin**: All Subjects in the institution
+- **Teacher**: Subjects where the user is the teacher
+- **Student**: Subjects where the student has attendance records or submissions
 
 **Authentication Required**: Yes
 
@@ -45,8 +45,8 @@ Returns courses filtered based on the user's role:
 [
   {
     "id": "uuid",
-    "title": "Course Title",
-    "description": "Course Description",
+    "title": "Subject Title",
+    "description": "Subject Description",
     "teacher_id": "TEA-YYYY-XXXX",
     "institution_id": "uuid",
     "created_at": "timestamp"
@@ -55,28 +55,28 @@ Returns courses filtered based on the user's role:
 ]
 ```
 
-### Get Course by ID
+### Get Subject by ID
 
 ```
-GET /api/courses/:id
+GET /api/Subjects/:id
 ```
 
-Returns a specific course by ID with role-based access control:
-- **Admin**: Can access any course in their institution
-- **Teacher**: Can only access courses they teach
-- **Student**: Can only access courses they're enrolled in (via attendance or submissions)
+Returns a specific Subject by ID with role-based access control:
+- **Admin**: Can access any Subject in their institution
+- **Teacher**: Can only access Subjects they teach
+- **Student**: Can only access Subjects they're enrolled in (via attendance or submissions)
 
 **Authentication Required**: Yes
 
 **URL Parameters**:
-- `id`: Course ID (UUID)
+- `id`: Subject ID (UUID)
 
 **Response**:
 ```json
 {
   "id": "uuid",
-  "title": "Course Title",
-  "description": "Course Description",
+  "title": "Subject Title",
+  "description": "Subject Description",
   "teacher_id": "uuid",
   "institution_id": "uuid",
   "created_at": "timestamp"
@@ -84,24 +84,24 @@ Returns a specific course by ID with role-based access control:
 ```
 
 **Error Responses**:
-- `404 Not Found`: Course doesn't exist
-- `403 Forbidden`: User doesn't have access to this course
+- `404 Not Found`: Subject doesn't exist
+- `403 Forbidden`: User doesn't have access to this Subject
 
-### Create Course
+### Create Subject
 
 ```
-POST /api/courses
+POST /api/Subjects
 ```
 
-Creates a new course. Only available to teachers and admins.
+Creates a new Subject. Only available to teachers and admins.
 
 **Authentication Required**: Yes
 
 **Request Body**:
 ```json
 {
-  "title": "Course Title",
-  "description": "Course Description"
+  "title": "Subject Title",
+  "description": "Subject Description"
 }
 ```
 
@@ -109,8 +109,8 @@ Creates a new course. Only available to teachers and admins.
 ```json
 {
   "id": "uuid",
-  "title": "Course Title",
-  "description": "Course Description",
+  "title": "Subject Title",
+  "description": "Subject Description",
   "teacher_id": "uuid",
   "institution_id": "uuid",
   "created_at": "timestamp"
@@ -122,17 +122,17 @@ Creates a new course. Only available to teachers and admins.
 The API endpoints rely on the following Supabase configurations:
 
 1. **Row Level Security (RLS) Policies**:
-   - Courses table has policies for students, teachers, and admins
-   - Students can only view courses they're enrolled in (via attendance or submissions)
-   - Teachers can only view courses they teach
-   - Admins can view all courses in their institution
+   - Subjects table has policies for students, teachers, and admins
+   - Students can only view Subjects they're enrolled in (via attendance or submissions)
+   - Teachers can only view Subjects they teach
+   - Admins can view all Subjects in their institution
 
 2. **Database Indexes**:
-   - `idx_attendance_user_course` on `attendance(user_id, course_id)`
+   - `idx_attendance_user_Subject` on `attendance(user_id, Subject_id)`
    - `idx_submissions_student` on `submissions(student_id)`
-   - `idx_assignments_course` on `assignments(course_id)`
-   - `idx_courses_teacher` on `courses(teacher_id)`
-   - `idx_courses_institution` on `courses(institution_id)`
+   - `idx_assignments_Subject` on `assignments(Subject_id)`
+   - `idx_Subjects_teacher` on `Subjects(teacher_id)`
+   - `idx_Subjects_institution` on `Subjects(institution_id)`
 
 These indexes improve the performance of the filtering queries.
 

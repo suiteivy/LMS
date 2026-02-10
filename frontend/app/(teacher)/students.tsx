@@ -8,7 +8,7 @@ interface Student {
     id: string;
     name: string;
     email: string;
-    course: string;
+    Subject: string;
     grade: string;
     progress: number;
 }
@@ -38,7 +38,7 @@ const StudentCard = ({ student }: StudentCardProps) => {
             <View className="flex-1">
                 <Text className="text-gray-900 font-semibold text-base">{student.name}</Text>
                 <Text className="text-teal-600 text-xs font-medium mb-1">{student.id}</Text>
-                <Text className="text-gray-400 text-xs">{student.course}</Text>
+                <Text className="text-gray-400 text-xs">{student.Subject}</Text>
                 <View className="flex-row items-center mt-1">
                     <TrendingUp size={12} color="#6B7280" />
                     <Text className="text-gray-500 text-xs ml-1">{student.progress}% complete</Text>
@@ -113,7 +113,7 @@ export default function TeacherStudents() {
                     id: enroll.student?.id,
                     name: enroll.student?.user?.full_name || "Unknown",
                     email: enroll.student?.user?.email || "",
-                    course: cls?.name || "Unknown Class",
+                    Subject: cls?.name || "Unknown Class",
                     grade: "A", // Mock
                     progress: 75 // Mock
                 };
@@ -122,7 +122,7 @@ export default function TeacherStudents() {
             // Remove duplicates via Map if a student is in multiple classes?
             // Or show them as separate entries (one per class enrollment)?
             // The UI shows "All Students", typically unique students.
-            // But the 'course' field implies enrollment context.
+            // But the 'Subject' field implies enrollment context.
             // Let's keep them as enrollments for now.
 
             setStudents(mappedStudents);
@@ -136,7 +136,7 @@ export default function TeacherStudents() {
 
     const filteredStudents = students.filter(s =>
         s.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        s.course.toLowerCase().includes(searchQuery.toLowerCase())
+        s.Subject.toLowerCase().includes(searchQuery.toLowerCase())
     );
 
     if (loading) {
@@ -187,7 +187,7 @@ export default function TeacherStudents() {
                             <Search size={20} color="#9CA3AF" />
                             <TextInput
                                 className="flex-1 ml-3 text-gray-900"
-                                placeholder="Search students or courses..."
+                                placeholder="Search students or Subjects..."
                                 placeholderTextColor="#9CA3AF"
                                 value={searchQuery}
                                 onChangeText={setSearchQuery}

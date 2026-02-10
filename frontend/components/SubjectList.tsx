@@ -1,23 +1,23 @@
 import React, { useState } from 'react';
 import { View, Text, ScrollView, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { CourseCard } from './CourseCard';
-import { Course } from '@/types/types';
+import { SubjectCard } from './SubjectCard';
+import { Subject } from '@/types/types';
 
-interface CourseListProps {
-  courses: Course[];
+interface SubjectListProps {
+  Subjects: Subject[];
   title?: string;
   showFilters?: boolean;
   variant?: 'default' | 'compact' | 'featured';
-  onPressCourse: (course: Course) => void;
+  onPressSubject: (Subject: Subject) => void;
 }
 
-export const CourseList: React.FC<CourseListProps> = ({
-  courses,
-  title = "Courses",
+export const SubjectList: React.FC<SubjectListProps> = ({
+  Subjects,
+  title = "Subjects",
   showFilters = false,
   variant = 'default',
-  onPressCourse,
+  onPressSubject,
 }) => {
   const [selectedFilter, setSelectedFilter] = useState<string>('all');
   const [selectedLevel, setSelectedLevel] = useState<string>('all');
@@ -25,9 +25,9 @@ export const CourseList: React.FC<CourseListProps> = ({
   const categories = ['all', 'Literacy', 'Mathematics', 'Science & Technology', 'Creative Arts'];
   const levels = ['all', 'beginner', 'intermediate', 'advanced'];
 
-  const filteredCourses = courses.filter(course => {
-    const categoryMatch = selectedFilter === 'all' || course.category === selectedFilter;
-    const levelMatch = selectedLevel === 'all' || course.level === selectedLevel;
+  const filteredSubjects = Subjects.filter(Subject => {
+    const categoryMatch = selectedFilter === 'all' || Subject.category === selectedFilter;
+    const levelMatch = selectedLevel === 'all' || Subject.level === selectedLevel;
     return categoryMatch && levelMatch;
   });
 
@@ -39,7 +39,7 @@ export const CourseList: React.FC<CourseListProps> = ({
           {title}
         </Text>
         <Text className="text-gray-500">
-          {filteredCourses.length} course{filteredCourses.length !== 1 ? 's' : ''}
+          {filteredSubjects.length} Subject{filteredSubjects.length !== 1 ? 's' : ''}
         </Text>
       </View>
 
@@ -92,21 +92,21 @@ export const CourseList: React.FC<CourseListProps> = ({
         </View>
       )}
 
-      {/* Course Grid */}
+      {/* Subject Grid */}
       <ScrollView showsVerticalScrollIndicator={false}>
-        {filteredCourses.map((course) => (
-          <CourseCard
-            key={course.id}
-            course={course}
-            onPress={() => onPressCourse(course)}
+        {filteredSubjects.map((Subject) => (
+          <SubjectCard
+            key={Subject.id}
+            Subject={Subject}
+            onPress={() => onPressSubject(Subject)}
             variant={variant}
           />
         ))}
-        {filteredCourses.length === 0 && (
+        {filteredSubjects.length === 0 && (
           <View className="items-center py-12">
             <Ionicons name="school" size={48} color="#A1EBE5" />
             <Text className="text-gray-500 mt-4 text-center">
-              No courses found{'\n'}Try adjusting your filters
+              No Subjects found{'\n'}Try adjusting your filters
             </Text>
           </View>
         )}

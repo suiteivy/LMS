@@ -48,7 +48,7 @@ export default function Index() {
             Welcome to Our Learning Hub
           </Text>
           <Text className="text-[#5D6D7E] text-lg text-center leading-7 mb-2">
-            Your gateway to knowledge and growth. Access courses, track
+            Your gateway to knowledge and growth. Access Subjects, track
             progress, and connect with educators all in one place.
           </Text>
         </View>

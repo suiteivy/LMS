@@ -3,7 +3,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import SplashScreen from '../Screens/SplashScreen';
 import LoginScreen from '../app/auth/sign'; 
 import { RootStackParamList } from '../navigation/navigation'; 
-import CreateCourse from '@/Screens/CreateCourse';
+import CreateSubject from '@/Screens/CreateSubject';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -20,7 +20,7 @@ const RootNavigation = () => {
         component={LoginScreen}
         options={{ headerShown: false }}
       />
-      <Stack.Screen name="CreateCourse" component={CreateCourse} />
+      <Stack.Screen name="CreateSubject" component={CreateSubject} />
     </Stack.Navigator>
   );
 };

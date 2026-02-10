@@ -5,7 +5,7 @@ import { router } from "expo-router";
 import { supabase } from "@/libs/supabase";
 import { useAuth } from "@/contexts/AuthContext";
 
-interface CourseAnalytics {
+interface SubjectAnalytics {
     id: string;
     name: string;
     students: number;
@@ -24,16 +24,16 @@ const StatBox = ({ icon: Icon, label, value, color, bgColor }: { icon: any; labe
     </View>
 );
 
-const CourseAnalyticsCard = ({ course }: { course: CourseAnalytics }) => {
+const SubjectAnalyticsCard = ({ Subject }: { Subject: SubjectAnalytics }) => {
     return (
         <View className="bg-white p-4 rounded-2xl border border-gray-100 mb-3">
             <View className="flex-row justify-between items-start mb-3">
                 <View className="flex-1">
-                    <Text className="text-gray-900 font-bold">{course.name}</Text>
-                    <Text className="text-gray-400 text-xs">{course.students} students</Text>
+                    <Text className="text-gray-900 font-bold">{Subject.name}</Text>
+                    <Text className="text-gray-400 text-xs">{Subject.students} students</Text>
                 </View>
                 <View className="bg-teal-50 px-2 py-1 rounded-full">
-                    <Text className="text-teal-600 text-xs font-bold">{course.completionRate}% complete</Text>
+                    <Text className="text-teal-600 text-xs font-bold">{Subject.completionRate}% complete</Text>
                 </View>
             </View>
 
@@ -41,16 +41,16 @@ const CourseAnalyticsCard = ({ course }: { course: CourseAnalytics }) => {
                 <View className="flex-1">
                     <Text className="text-gray-400 text-xs mb-1">Completion</Text>
                     <View className="h-2 bg-gray-100 rounded-full overflow-hidden">
-                        <View className="h-full bg-blue-500 rounded-full" style={{ width: `${course.completionRate}%` }} />
+                        <View className="h-full bg-blue-500 rounded-full" style={{ width: `${Subject.completionRate}%` }} />
                     </View>
-                    <Text className="text-blue-600 text-xs font-bold mt-1">{course.completionRate}%</Text>
+                    <Text className="text-blue-600 text-xs font-bold mt-1">{Subject.completionRate}%</Text>
                 </View>
                 <View className="flex-1">
                     <Text className="text-gray-400 text-xs mb-1">Avg Grade</Text>
                     <View className="h-2 bg-gray-100 rounded-full overflow-hidden">
-                        <View className="h-full bg-green-500 rounded-full" style={{ width: `${course.avgGrade}%` }} />
+                        <View className="h-full bg-green-500 rounded-full" style={{ width: `${Subject.avgGrade}%` }} />
                     </View>
-                    <Text className="text-green-600 text-xs font-bold mt-1">{course.avgGrade}%</Text>
+                    <Text className="text-green-600 text-xs font-bold mt-1">{Subject.avgGrade}%</Text>
                 </View>
             </View>
         </View>
@@ -60,7 +60,7 @@ const CourseAnalyticsCard = ({ course }: { course: CourseAnalytics }) => {
 export default function AnalyticsPage() {
     const { user, teacherId } = useAuth();
     const [selectedPeriod, setSelectedPeriod] = useState("All Time");
-    const [courseAnalytics, setCourseAnalytics] = useState<CourseAnalytics[]>([]);
+    const [SubjectAnalytics, setSubjectAnalytics] = useState<SubjectAnalytics[]>([]);
     const [loading, setLoading] = useState(true);
     const [topPerformers, setTopPerformers] = useState<any[]>([]);
 
@@ -74,23 +74,23 @@ export default function AnalyticsPage() {
         if (!teacherId) return;
         setLoading(true);
         try {
-            // 1. Fetch Courses for this teacher
-            const { data: courses, error: coursesError } = await supabase
-                .from('courses')
+            // 1. Fetch Subjects for this teacher
+            const { data: Subjects, error: SubjectsError } = await supabase
+                .from('Subjects')
                 .select('id, title, class_id')
                 .eq('teacher_id', teacherId);
 
-            if (coursesError) throw coursesError;
+            if (SubjectsError) throw SubjectsError;
 
-            // 2. Fetch Assignments & Students count for each course
-            const analyticsPromises = courses.map(async (course) => {
+            // 2. Fetch Assignments & Students count for each Subject
+            const analyticsPromises = Subjects.map(async (Subject) => {
                 // A. Get Student Count
                 let studentCount = 0;
-                if (course.class_id) {
+                if (Subject.class_id) {
                     const { count } = await supabase
                         .from('enrollments')
                         .select('*', { count: 'exact', head: true })
-                        .eq('class_id', course.class_id);
+                        .eq('class_id', Subject.class_id);
                     studentCount = count || 0;
                 }
 
@@ -98,7 +98,7 @@ export default function AnalyticsPage() {
                 const { data: assignments } = await supabase
                     .from('assignments')
                     .select('id, total_points')
-                    .eq('course_id', course.id);
+                    .eq('Subject_id', Subject.id);
 
                 const assignmentIds = (assignments || []).map(a => a.id);
 
@@ -131,8 +131,8 @@ export default function AnalyticsPage() {
                 }
 
                 return {
-                    id: course.id,
-                    name: course.title,
+                    id: Subject.id,
+                    name: Subject.title,
                     students: studentCount,
                     avgProgress: completionRate, // reusing
                     avgGrade,
@@ -141,7 +141,7 @@ export default function AnalyticsPage() {
             });
 
             const results = await Promise.all(analyticsPromises);
-            setCourseAnalytics(results);
+            setSubjectAnalytics(results);
 
             // Mock Top Performers (Hard to calculate efficiently without heavy query)
             setTopPerformers([
@@ -157,12 +157,12 @@ export default function AnalyticsPage() {
         }
     };
 
-    const totalStudents = courseAnalytics.reduce((acc, c) => acc + c.students, 0);
-    const avgCompletion = courseAnalytics.length > 0
-        ? Math.round(courseAnalytics.reduce((acc, c) => acc + c.completionRate, 0) / courseAnalytics.length)
+    const totalStudents = SubjectAnalytics.reduce((acc, c) => acc + c.students, 0);
+    const avgCompletion = SubjectAnalytics.length > 0
+        ? Math.round(SubjectAnalytics.reduce((acc, c) => acc + c.completionRate, 0) / SubjectAnalytics.length)
         : 0;
-    const avgGradeOverall = courseAnalytics.length > 0
-        ? Math.round(courseAnalytics.reduce((acc, c) => acc + c.avgGrade, 0) / courseAnalytics.length)
+    const avgGradeOverall = SubjectAnalytics.length > 0
+        ? Math.round(SubjectAnalytics.reduce((acc, c) => acc + c.avgGrade, 0) / SubjectAnalytics.length)
         : 0;
 
     return (
@@ -200,7 +200,7 @@ export default function AnalyticsPage() {
                             <StatBox icon={TrendingUp} label="Avg Completion" value={`${avgCompletion}%`} color="#3b82f6" bgColor="#dbeafe" />
                         </View>
                         <View className="flex-row gap-3 mb-6">
-                            <StatBox icon={BookOpen} label="Courses" value={courseAnalytics.length.toString()} color="#8b5cf6" bgColor="#ede9fe" />
+                            <StatBox icon={BookOpen} label="Subjects" value={SubjectAnalytics.length.toString()} color="#8b5cf6" bgColor="#ede9fe" />
                             <StatBox icon={Award} label="Avg Grade" value={`${avgGradeOverall}%`} color="#22c55e" bgColor="#dcfce7" />
                         </View>
 
@@ -217,10 +217,10 @@ export default function AnalyticsPage() {
                                     </View>
                                 </View>
 
-                                {/* Course Breakdown */}
-                                <Text className="text-lg font-bold text-gray-900 mb-3">Course Breakdown</Text>
-                                {courseAnalytics.map((course) => (
-                                    <CourseAnalyticsCard key={course.id} course={course} />
+                                {/* Subject Breakdown */}
+                                <Text className="text-lg font-bold text-gray-900 mb-3">Subject Breakdown</Text>
+                                {SubjectAnalytics.map((Subject) => (
+                                    <SubjectAnalyticsCard key={Subject.id} Subject={Subject} />
                                 ))}
 
                                 {/* Top Performers */}

@@ -7,7 +7,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Database } from "@/types/database";
 
 type Resource = Database['public']['Tables']['resources']['Row'] & {
-    course_title?: string;
+    Subject_title?: string;
 };
 
 const ResourceCard = ({ resource, onDelete }: { resource: Resource; onDelete: (id: string) => void }) => {
@@ -30,7 +30,7 @@ const ResourceCard = ({ resource, onDelete }: { resource: Resource; onDelete: (i
             <View className="flex-1">
                 <Text className="text-gray-900 font-semibold" numberOfLines={1}>{resource.title}</Text>
                 <Text className="text-gray-400 text-xs">
-                    {resource.course_title || "Unknown Course"} • {resource.type.toUpperCase()} {resource.size ? `• ${resource.size}` : ''}
+                    {resource.Subject_title || "Unknown Subject"} • {resource.type.toUpperCase()} {resource.size ? `• ${resource.size}` : ''}
                 </Text>
                 {resource.type === 'link' && (
                     <Text className="text-blue-400 text-[10px]" numberOfLines={1}>{resource.url}</Text>
@@ -53,45 +53,45 @@ export default function ResourcesPage() {
     const [showModal, setShowModal] = useState(false);
     const [loading, setLoading] = useState(true);
     const [resources, setResources] = useState<Resource[]>([]);
-    const [courses, setCourses] = useState<{ id: string; title: string }[]>([]);
+    const [Subjects, setSubjects] = useState<{ id: string; title: string }[]>([]);
 
     // Form
     const [title, setTitle] = useState("");
     const [url, setUrl] = useState("");
     const [type, setType] = useState<"link" | "pdf" | "video" | "other">("link");
-    const [selectedCourseId, setSelectedCourseId] = useState("");
+    const [selectedSubjectId, setSelectedSubjectId] = useState("");
 
 
     useEffect(() => {
         if (teacherId) {
             fetchResources();
-            fetchCourses();
+            fetchSubjects();
         }
     }, [teacherId]);
 
-    const fetchCourses = async () => {
+    const fetchSubjects = async () => {
         if (!teacherId) return;
-        const { data } = await supabase.from('courses').select('id, title').eq('teacher_id', teacherId);
-        if (data) setCourses(data);
+        const { data } = await supabase.from('Subjects').select('id, title').eq('teacher_id', teacherId);
+        if (data) setSubjects(data);
     };
 
     const fetchResources = async () => {
         if (!teacherId) return;
         setLoading(true);
         try {
-            // Fetch resources for courses taught by this teacher
+            // Fetch resources for Subjects taught by this teacher
             // Since we have RLS, we can just select all resources we have access to?
-            // Wait, RLS for Select says: Teacher (own course), Student (enrolled).
+            // Wait, RLS for Select says: Teacher (own Subject), Student (enrolled).
             // So fetching all from 'resources' should work if RLS is correct.
-            // But we might get resources from courses we are enrolled in (if teacher is also student?).
-            // Let's filter by courses we teach to be safe and clean.
+            // But we might get resources from Subjects we are enrolled in (if teacher is also student?).
+            // Let's filter by Subjects we teach to be safe and clean.
 
-            // 1. Get Course IDs
-            const { data: myCourses } = await supabase.from('courses').select('id, title').eq('teacher_id', teacherId);
-            const courseIds = (myCourses || []).map(c => c.id);
-            const courseMap = new Map(myCourses?.map(c => [c.id, c.title]));
+            // 1. Get Subject IDs
+            const { data: mySubjects } = await supabase.from('Subjects').select('id, title').eq('teacher_id', teacherId);
+            const SubjectIds = (mySubjects || []).map(c => c.id);
+            const SubjectMap = new Map(mySubjects?.map(c => [c.id, c.title]));
 
-            if (courseIds.length === 0) {
+            if (SubjectIds.length === 0) {
                 setResources([]);
                 setLoading(false);
                 return;
@@ -101,7 +101,7 @@ export default function ResourcesPage() {
             const { data, error } = await supabase
                 .from('resources')
                 .select('*')
-                .in('course_id', courseIds)
+                .in('Subject_id', SubjectIds)
                 .order('created_at', { ascending: false });
 
             if (error) throw error;
@@ -111,7 +111,7 @@ export default function ResourcesPage() {
 
             const formatted = typedData.map(r => ({
                 ...r,
-                course_title: courseMap.get(r.course_id),
+                Subject_title: SubjectMap.get(r.Subject_id),
                 type: r.type as any
             }));
 
@@ -125,14 +125,14 @@ export default function ResourcesPage() {
     };
 
     const handleAddResource = async () => {
-        if (!user || !selectedCourseId || !title || !url) {
+        if (!user || !selectedSubjectId || !title || !url) {
             Alert.alert("Missing Fields", "Please fill all fields.");
             return;
         }
 
         try {
             const { error } = await supabase.from('resources').insert({
-                course_id: selectedCourseId,
+                Subject_id: selectedSubjectId,
                 title,
                 url,
                 type,
@@ -147,7 +147,7 @@ export default function ResourcesPage() {
             setTitle("");
             setUrl("");
             setType("link");
-            setSelectedCourseId("");
+            setSelectedSubjectId("");
         } catch (error) {
             Alert.alert("Error", "Failed to add resource");
             console.error(error);
@@ -232,16 +232,16 @@ export default function ResourcesPage() {
                             </TouchableOpacity>
                         </View>
 
-                        {/* Course Selector */}
-                        <Text className="text-gray-500 text-xs uppercase mb-2 font-semibold">Course</Text>
+                        {/* Subject Selector */}
+                        <Text className="text-gray-500 text-xs uppercase mb-2 font-semibold">Subject</Text>
                         <ScrollView horizontal className="flex-row mb-4" showsHorizontalScrollIndicator={false}>
-                            {courses.map(c => (
+                            {Subjects.map(c => (
                                 <TouchableOpacity
                                     key={c.id}
-                                    onPress={() => setSelectedCourseId(c.id)}
-                                    className={`mr-2 px-4 py-2 rounded-lg border ${selectedCourseId === c.id ? 'bg-yellow-500 border-yellow-500' : 'bg-gray-50 border-gray-200'}`}
+                                    onPress={() => setSelectedSubjectId(c.id)}
+                                    className={`mr-2 px-4 py-2 rounded-lg border ${selectedSubjectId === c.id ? 'bg-yellow-500 border-yellow-500' : 'bg-gray-50 border-gray-200'}`}
                                 >
-                                    <Text className={selectedCourseId === c.id ? 'text-white' : 'text-gray-700'}>{c.title}</Text>
+                                    <Text className={selectedSubjectId === c.id ? 'text-white' : 'text-gray-700'}>{c.title}</Text>
                                 </TouchableOpacity>
                             ))}
                         </ScrollView>

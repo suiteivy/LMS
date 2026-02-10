@@ -9,7 +9,7 @@ interface StudentGrade {
     id: string; // submission_id
     student_name: string;
     student_display_id?: string;
-    course_title: string;
+    Subject_title: string;
     assignment_title: string;
     score: number | null;
     maxScore: number;
@@ -39,7 +39,7 @@ const GradeRow = ({ student, onGrade }: { student: StudentGrade; onGrade: (stude
                 {student.student_display_id && (
                     <Text className="text-teal-600 text-[10px] font-bold">ID: {student.student_display_id}</Text>
                 )}
-                <Text className="text-gray-400 text-xs">{student.assignment_title} • {student.course_title}</Text>
+                <Text className="text-gray-400 text-xs">{student.assignment_title} • {student.Subject_title}</Text>
             </View>
 
             {/* Score */}
@@ -74,7 +74,7 @@ const GradeRow = ({ student, onGrade }: { student: StudentGrade; onGrade: (stude
 export default function GradesPage() {
     const { user, teacherId } = useAuth();
     const [searchQuery, setSearchQuery] = useState("");
-    const [selectedCourse, setSelectedCourse] = useState("All Courses");
+    const [selectedSubject, setSelectedSubject] = useState("All Subjects");
     const [submissions, setSubmissions] = useState<StudentGrade[]>([]);
     const [loading, setLoading] = useState(true);
     const [gradingModalVisible, setGradingModalVisible] = useState(false);
@@ -93,7 +93,7 @@ export default function GradesPage() {
 
         try {
             // Fetch submissions for assignments created by this teacher
-            // We need to join: submissions -> assignments -> courses
+            // We need to join: submissions -> assignments -> Subjects
             const { data, error } = await supabase
                 .from('submissions')
                 .select(`
@@ -109,7 +109,7 @@ export default function GradesPage() {
                     assignment:assignments!submissions_assignment_id_fkey(
                         title,
                         total_points,
-                        course:courses!assignments_course_id_fkey(title)
+                        Subject:Subjects!assignments_Subject_id_fkey(title)
                     )
                 `)
                 .order('submitted_at', { ascending: false });
@@ -123,7 +123,7 @@ export default function GradesPage() {
                 id: sub.id,
                 student_name: sub.student?.full_name || "Unknown",
                 student_display_id: sub.student?.students?.[0]?.id,
-                course_title: sub.assignment?.course?.title || "Unknown",
+                Subject_title: sub.assignment?.Subject?.title || "Unknown",
                 assignment_title: sub.assignment?.title || "Unknown",
                 score: sub.grade,
                 maxScore: sub.assignment?.total_points || 100,
@@ -244,9 +244,9 @@ export default function GradesPage() {
                             </View>
                         </View>
 
-                        {/* Course Filter */}
+                        {/* Subject Filter */}
                         <TouchableOpacity className="bg-white rounded-xl px-4 py-3 mb-4 border border-gray-100 flex-row items-center justify-between">
-                            <Text className="text-gray-700 font-medium">{selectedCourse}</Text>
+                            <Text className="text-gray-700 font-medium">{selectedSubject}</Text>
                             <ChevronDown size={18} color="#6B7280" />
                         </TouchableOpacity>
 

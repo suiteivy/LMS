@@ -9,11 +9,13 @@ export default function AdminProfile() {
     const { profile, user, refreshProfile, displayId } = useAuth();
     const [isEditing, setIsEditing] = useState(false);
     const [name, setName] = useState(profile?.full_name || "");
+    const [phone, setPhone] = useState(profile?.phone || "");
     const [saving, setSaving] = useState(false);
 
     useEffect(() => {
-        if (profile?.full_name) {
-            setName(profile.full_name);
+        if (profile) {
+            setName(profile.full_name || "");
+            setPhone(profile.phone || "");
         }
     }, [profile]);
 
@@ -26,7 +28,8 @@ export default function AdminProfile() {
         setSaving(true);
         try {
             const { error } = await authService.updateProfile({
-                full_name: name
+                full_name: name,
+                phone: phone
             });
 
             if (error) throw error;
@@ -163,6 +166,24 @@ export default function AdminProfile() {
                                     <Text className="text-gray-700 font-medium">
                                         {profile.email}
                                     </Text>
+                                </View>
+                                <View className="mt-2">
+                                    <Text className="text-xs text-gray-400 uppercase tracking-wider">
+                                        Personal Phone
+                                    </Text>
+                                    {isEditing ? (
+                                        <TextInput
+                                            value={phone}
+                                            onChangeText={setPhone}
+                                            placeholder="Enter phone number"
+                                            keyboardType="phone-pad"
+                                            className="bg-gray-50 text-gray-900 px-3 py-2 rounded-lg border border-gray-200 mt-1"
+                                        />
+                                    ) : (
+                                        <Text className={`text-gray-700 font-medium ${!profile.phone ? 'text-gray-400 italic' : ''}`}>
+                                            {profile.phone || "Not set"}
+                                        </Text>
+                                    )}
                                 </View>
                                 <View className="mt-2">
                                     <Text className="text-xs text-gray-400 uppercase tracking-wider">

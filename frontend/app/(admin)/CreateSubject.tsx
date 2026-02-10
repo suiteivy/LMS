@@ -18,10 +18,10 @@ import {
 import { FormInput } from "@/components/form/FormInput";
 import { FormSection } from "@/components/form/FormSection";
 import { CustomPicker } from "@/components/form/CustomPicker";
-import { useCourseForm } from "@/hooks/useCourseForm";
+import { useSubjectForm } from "@/hooks/useSubjectForm";
 import { CATEGORIES, LEVELS } from "@/hooks/FormOption";
 
-const CreateCourse = () => {
+const CreateSubject = () => {
   const {
     formData,
     isSubmitting,
@@ -33,7 +33,7 @@ const CreateCourse = () => {
     removeLearningOutcome,
     handleSubmit,
     saveDraft,
-  } = useCourseForm();
+  } = useSubjectForm();
 
   const categoryOptions = CATEGORIES.map((cat) => ({ value: cat, label: cat }));
 
@@ -63,10 +63,10 @@ const CreateCourse = () => {
                   className="text-2xl font-bold"
                   style={{ color: "#2C3E50" }}
                 >
-                  Create New Course
+                  Create New Subject
                 </Text>
                 <Text className="text-gray-600 mt-1">
-                  Fill in the details to create your course
+                  Fill in the details to create your Subject
                 </Text>
               </View>
             </View>
@@ -75,11 +75,11 @@ const CreateCourse = () => {
           {/* Basic Information */}
           <FormSection title="Basic Information">
             <FormInput
-              label="Course Title"
+              label="Subject Title"
               required
               value={formData.title}
               onChangeText={(text) => handleInputChange("title", text)}
-              placeholder="Enter course title"
+              placeholder="Enter Subject title"
             />
 
             <CustomPicker
@@ -120,7 +120,7 @@ const CreateCourse = () => {
               onChangeText={(text) =>
                 handleInputChange("shortDescription", text)
               }
-              placeholder="Brief description for course preview"
+              placeholder="Brief description for Subject preview"
               maxLength={150}
             />
 
@@ -129,7 +129,7 @@ const CreateCourse = () => {
               required
               value={formData.description}
               onChangeText={(text) => handleInputChange("description", text)}
-              placeholder="Detailed course description"
+              placeholder="Detailed Subject description"
               multiline
               numberOfLines={6}
               textAlignVertical="top"
@@ -137,8 +137,8 @@ const CreateCourse = () => {
             />
           </FormSection>
 
-          {/* Course Details */}
-          <FormSection title="Course Details">
+          {/* Subject Details */}
+          <FormSection title="Subject Details">
             <View className="mb-4">
               <Text
                 className="text-sm font-medium mb-2"
@@ -188,19 +188,19 @@ const CreateCourse = () => {
             />
           </FormSection>
 
-          {/* Course Image */}
-          <FormSection title="Course Image">
+          {/* Subject Image */}
+          <FormSection title="Subject Image">
             <ImageUpload
-              imageUri={formData.courseImage}
-              onImageSelect={(uri) => handleInputChange("courseImage", uri)}
+              imageUri={formData.SubjectImage}
+              onImageSelect={(uri) => handleInputChange("SubjectImage", uri)}
             />
           </FormSection>
 
           {/* Settings */}
-          <FormSection title="Course Settings">
+          <FormSection title="Subject Settings">
             <SettingsToggle
               icon="globe"
-              title="Public Course"
+              title="Public Subject"
               description="Anyone can view and enroll"
               value={formData.isPublic}
               onValueChange={(value) => handleInputChange("isPublic", value)}
@@ -209,7 +209,7 @@ const CreateCourse = () => {
             <SettingsToggle
               icon="chatbubbles"
               title="Allow Discussions"
-              description="Students can discuss course content"
+              description="Students can discuss Subject content"
               value={formData.allowDiscussions}
               onValueChange={(value) =>
                 handleInputChange("allowDiscussions", value)
@@ -245,7 +245,7 @@ const CreateCourse = () => {
               style={{ backgroundColor: "#1ABC9C" }}
             >
               <Text className="text-white font-medium text-lg">
-                {isSubmitting ? "Creating Course..." : "Create Course"}
+                {isSubmitting ? "Creating Subject..." : "Create Subject"}
               </Text>
             </TouchableOpacity>
           </View>
@@ -255,4 +255,4 @@ const CreateCourse = () => {
   );
 };
 
-export default CreateCourse;
+export default CreateSubject;

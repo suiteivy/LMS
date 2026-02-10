@@ -2,7 +2,7 @@ import React from "react";
 import { View, Text, TouchableOpacity } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
-interface Course {
+interface Subject {
     id: number;
     title: string;
     students: number;
@@ -12,22 +12,22 @@ interface Course {
     lastUpdated: string;
 }
 
-interface CourseCardProps {
-    course: Course;
+interface SubjectCardProps {
+    Subject: Subject;
 }
 
-const CourseCard: React.FC<CourseCardProps> = ({ course }) => {
-    const isActive = course.status === "active";
+const SubjectCard: React.FC<SubjectCardProps> = ({ Subject }) => {
+    const isActive = Subject.status === "active";
 
     return (
         <View className="bg-white rounded-xl p-4 mb-4 shadow-sm">
             <View className="flex-row justify-between items-start mb-3">
                 <View className="flex-1 pr-2">
                     <Text className="text-[#2C3E50] font-bold text-base">
-                        {course.title}
+                        {Subject.title}
                     </Text>
                     <Text className="text-gray-400 text-xs mt-1">
-                        Updated {course.lastUpdated}
+                        Updated {Subject.lastUpdated}
                     </Text>
                 </View>
                 <View
@@ -38,7 +38,7 @@ const CourseCard: React.FC<CourseCardProps> = ({ course }) => {
                         className={`text-xs font-medium ${isActive ? "text-green-600" : "text-gray-500"
                             }`}
                     >
-                        {course.status.charAt(0).toUpperCase() + course.status.slice(1)}
+                        {Subject.status.charAt(0).toUpperCase() + Subject.status.slice(1)}
                     </Text>
                 </View>
             </View>
@@ -47,18 +47,18 @@ const CourseCard: React.FC<CourseCardProps> = ({ course }) => {
                 <View className="flex-row items-center">
                     <Ionicons name="people" size={14} color="#6B7280" />
                     <Text className="text-gray-600 text-xs ml-1">
-                        {course.students} students
+                        {Subject.students} students
                     </Text>
                 </View>
                 <View className="flex-row items-center">
                     <Ionicons name="trending-up" size={14} color="#6B7280" />
                     <Text className="text-gray-600 text-xs ml-1">
-                        {course.completion}% completion
+                        {Subject.completion}% completion
                     </Text>
                 </View>
                 <View className="flex-row items-center">
                     <Ionicons name="cash" size={14} color="#6B7280" />
-                    <Text className="text-gray-600 text-xs ml-1">{course.revenue}</Text>
+                    <Text className="text-gray-600 text-xs ml-1">{Subject.revenue}</Text>
                 </View>
             </View>
 
@@ -66,7 +66,7 @@ const CourseCard: React.FC<CourseCardProps> = ({ course }) => {
             <View className="h-2 bg-gray-200 rounded-full overflow-hidden">
                 <View
                     className="h-full bg-[#1ABC9C] rounded-full"
-                    style={{ width: `${course.completion}%` }}
+                    style={{ width: `${Subject.completion}%` }}
                 />
             </View>
 
@@ -84,5 +84,5 @@ const CourseCard: React.FC<CourseCardProps> = ({ course }) => {
     );
 };
 
-export { CourseCard };
-export default CourseCard;
+export { SubjectCard };
+export default SubjectCard;

@@ -1,11 +1,11 @@
 import { useState } from "react";
 import { Alert } from "react-native";
-import { CourseFormData } from "../types/types";
+import { SubjectFormData } from "../types/types";
 
-//  hook to manage course form state and actions
-export const useCourseForm = () => {
+//  hook to manage Subject form state and actions
+export const useSubjectForm = () => {
   // Initializing form state with its default values
-  const [formData, setFormData] = useState<CourseFormData>({
+  const [formData, setFormData] = useState<SubjectFormData>({
     title: "",
     description: "",
     shortDescription: "",
@@ -19,7 +19,7 @@ export const useCourseForm = () => {
     tags: [],
     prerequisites: "",
     learningOutcomes: [""],
-    courseImage: null,
+    SubjectImage: null,
     isPublic: true,
     allowDiscussions: true,
     certificateEnabled: true,
@@ -29,9 +29,9 @@ export const useCourseForm = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Generic function to update form fields
-  const handleInputChange = <K extends keyof CourseFormData>(
+  const handleInputChange = <K extends keyof SubjectFormData>(
     field: K,
-    value: CourseFormData[K]
+    value: SubjectFormData[K]
   ) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
@@ -88,15 +88,15 @@ export const useCourseForm = () => {
 
     setIsSubmitting(true);
     setTimeout(() => {
-      console.log("Course submitted:", formData);
-      Alert.alert("Success", "Course created successfully!");
+      console.log("Subject submitted:", formData);
+      Alert.alert("Success", "Subject created successfully!");
       setIsSubmitting(false);
     }, 2000);
   };
 
   // Save the current form state as a draft
   const saveDraft = () => {
-    Alert.alert("Draft", "Course saved as draft");
+    Alert.alert("Draft", "Subject saved as draft");
   };
 
   //  all form state and handler functions Returned

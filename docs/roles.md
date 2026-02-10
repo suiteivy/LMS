@@ -1,4 +1,4 @@
-# Role-Based Features and Access Control
+﻿# Role-Based Features and Access Control
 
 This document outlines the different roles in the Learning Management System (LMS) and their associated permissions and features.
 
@@ -7,48 +7,48 @@ This document outlines the different roles in the Learning Management System (LM
 The LMS supports three primary roles:
 
 1. **Admin** - System administrators with full access to all features
-2. **Teacher** - Educators who create and manage courses, assignments, and grades
-3. **Student** - Learners who enroll in courses, submit assignments, and view grades
+2. **Teacher** - Educators who create and manage Subjects, assignments, and grades
+3. **Student** - Learners who enroll in Subjects, submit assignments, and view grades
 
 ## Role Permissions Matrix
 
 | Feature/Action                | Admin | Teacher | Student |
 |------------------------------|:-----:|:-------:|:-------:|
 | **User Management**          |       |         |         |
-| View all users               |   ✅   |    ✅    |    ❌    |
-| Create users                 |   ✅   |    ❌    |    ❌    |
-| Update user roles            |   ✅   |    ❌    |    ❌    |
-| Delete users                 |   ✅   |    ❌    |    ❌    |
-| **Course Management**        |       |         |         |
-| View all courses             |   ✅   |    ✅    |    ❌    |
-| View enrolled courses        |   ✅   |    ✅    |    ✅    |
-| Create courses               |   ✅   |    ✅    |    ❌    |
-| Update any course            |   ✅   |    ❌    |    ❌    |
-| Update own courses           |   ✅   |    ✅    |    ❌    |
-| Delete courses               |   ✅   |    ✅*   |    ❌    |
+| View all users               |   âœ…   |    âœ…    |    âŒ    |
+| Create users                 |   âœ…   |    âŒ    |    âŒ    |
+| Update user roles            |   âœ…   |    âŒ    |    âŒ    |
+| Delete users                 |   âœ…   |    âŒ    |    âŒ    |
+| **Subject Management**        |       |         |         |
+| View all Subjects             |   âœ…   |    âœ…    |    âŒ    |
+| View enrolled Subjects        |   âœ…   |    âœ…    |    âœ…    |
+| Create Subjects               |   âœ…   |    âœ…    |    âŒ    |
+| Update any Subject            |   âœ…   |    âŒ    |    âŒ    |
+| Update own Subjects           |   âœ…   |    âœ…    |    âŒ    |
+| Delete Subjects               |   âœ…   |    âœ…*   |    âŒ    |
 | **Assignment Management**     |       |         |         |
-| View assignments             |   ✅   |    ✅    |    ✅**  |
-| Create assignments           |   ✅   |    ✅    |    ❌    |
-| Update assignments           |   ✅   |    ✅    |    ❌    |
-| Delete assignments           |   ✅   |    ✅    |    ❌    |
+| View assignments             |   âœ…   |    âœ…    |    âœ…**  |
+| Create assignments           |   âœ…   |    âœ…    |    âŒ    |
+| Update assignments           |   âœ…   |    âœ…    |    âŒ    |
+| Delete assignments           |   âœ…   |    âœ…    |    âŒ    |
 | **Submission Management**     |       |         |         |
-| View all submissions         |   ✅   |    ❌    |    ❌    |
-| View course submissions      |   ✅   |    ✅    |    ❌    |
-| View own submissions         |   ✅   |    ✅    |    ✅    |
-| Create submissions           |   ✅   |    ✅    |    ✅    |
-| Grade submissions            |   ✅   |    ✅    |    ❌    |
+| View all submissions         |   âœ…   |    âŒ    |    âŒ    |
+| View Subject submissions      |   âœ…   |    âœ…    |    âŒ    |
+| View own submissions         |   âœ…   |    âœ…    |    âœ…    |
+| Create submissions           |   âœ…   |    âœ…    |    âœ…    |
+| Grade submissions            |   âœ…   |    âœ…    |    âŒ    |
 | **Attendance Management**     |       |         |         |
-| View all attendance records  |   ✅   |    ❌    |    ❌    |
-| View course attendance       |   ✅   |    ✅    |    ❌    |
-| View own attendance          |   ✅   |    ✅    |    ✅    |
-| Mark attendance (manual)     |   ✅   |    ✅    |    ❌    |
-| Log own attendance           |   ✅   |    ✅    |    ✅    |
+| View all attendance records  |   âœ…   |    âŒ    |    âŒ    |
+| View Subject attendance       |   âœ…   |    âœ…    |    âŒ    |
+| View own attendance          |   âœ…   |    âœ…    |    âœ…    |
+| Mark attendance (manual)     |   âœ…   |    âœ…    |    âŒ    |
+| Log own attendance           |   âœ…   |    âœ…    |    âœ…    |
 | **Institution Management**    |       |         |         |
-| View institutions            |   ✅   |    ✅    |    ✅    |
-| Create/Update institutions   |   ✅   |    ❌    |    ❌    |
+| View institutions            |   âœ…   |    âœ…    |    âœ…    |
+| Create/Update institutions   |   âœ…   |    âŒ    |    âŒ    |
 
-\* Teachers can only delete their own courses  
-\** Students can only view assignments for courses they're enrolled in
+\* Teachers can only delete their own Subjects  
+\** Students can only view assignments for Subjects they're enrolled in
 
 ## Implementation Details
 

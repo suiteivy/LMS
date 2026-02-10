@@ -195,7 +195,7 @@ export const ImageUpload: React.FC<ImageUploadProps> = ({
         <View className="items-center">
           <Ionicons name="cloud-upload" size={48} color="#9CA3AF" />
           <Text className="text-gray-600 mt-2 text-center">
-            Upload course thumbnail
+            Upload Subject thumbnail
           </Text>
           <Text className="text-sm text-gray-400 mt-1">PNG, JPG up to 5MB</Text>
           <View

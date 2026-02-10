@@ -13,7 +13,7 @@ export const useDashboardStats = () => {
 
                 let studentCount = 0;
                 let teacherCount = 0;
-                let courseCount = 0;
+                let SubjectCount = 0;
                 let totalRevenue = 0;
 
                 // Fetch Total Students
@@ -47,26 +47,26 @@ export const useDashboardStats = () => {
                     console.error('Exception fetching teacher count:', e);
                 }
 
-                // Fetch Active Courses
+                // Fetch Active Subjects
                 try {
                     // Using .select('id', { count: 'exact' }).limit(0) as a highly compatible way to get counts
                     const { count, error } = await supabase
-                        .from('courses')
+                        .from('Subjects')
                         .select('id', { count: 'exact' })
                         .limit(0);
 
                     if (error) {
-                        console.error('Error fetching course count:', JSON.stringify(error, null, 2));
+                        console.error('Error fetching Subject count:', JSON.stringify(error, null, 2));
 
                         // Diagnostic: Try to fetch one row to see if it gives a better error
-                        const diag = await supabase.from('courses').select('*').limit(1);
-                        console.error('Diagnostic fetch for courses:', JSON.stringify(diag.error, null, 2));
+                        const diag = await supabase.from('Subjects').select('*').limit(1);
+                        console.error('Diagnostic fetch for Subjects:', JSON.stringify(diag.error, null, 2));
                     } else {
-                        console.log('Fetched course count:', count);
-                        courseCount = count || 0;
+                        console.log('Fetched Subject count:', count);
+                        SubjectCount = count || 0;
                     }
                 } catch (e) {
-                    console.error('Exception fetching course count:', e);
+                    console.error('Exception fetching Subject count:', e);
                 }
 
                 // Fetch Revenue (Sum of payments)
@@ -99,8 +99,8 @@ export const useDashboardStats = () => {
                         trend: { value: "+0%", isPositive: true }
                     },
                     {
-                        title: "Active Courses",
-                        value: courseCount.toString(),
+                        title: "Active Subjects",
+                        value: SubjectCount.toString(),
                         icon: "book",
                         color: "green",
                         trend: { value: "+0%", isPositive: true }

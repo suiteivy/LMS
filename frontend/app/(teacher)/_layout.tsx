@@ -50,9 +50,9 @@ export default function TeacherLayout() {
                         }}
                     />
                     <Tabs.Screen
-                        name="courses"
+                        name="Subjects"
                         options={{
-                            title: "Courses",
+                            title: "Subjects",
                             tabBarIcon: ({ size = 24, color }) => (
                                 <BookOpen size={size} color={color} strokeWidth={2} />
                             ),

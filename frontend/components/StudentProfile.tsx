@@ -175,21 +175,21 @@ export default function StudentProfile() {
                             </View>
                         </View>
 
-                        {/* courses section */}
+                        {/* Subjects section */}
                         <View className="mt-2 bg-white p-5 rounded-2xl border border-gray-100 shadow-sm">
                             <View className="flex-row items-center justify-between mb-4">
                                 <View className="flex-row items-center">
                                     <BookOpen size={20} color="#0d9488" />
-                                    <Text className="ml-3 font-semibold text-gray-800">Registered Courses</Text>
+                                    <Text className="ml-3 font-semibold text-gray-800">Registered Subjects</Text>
                                 </View>
                                 <Text className="text-teal-600 text-sm font-bold"></Text>
                             </View>
 
                             <View className="border-t border-gray-50 pt-2">
-                                {['Advanced React Native', 'UI/UX Design Systems', 'DBMS'].map((course, index) =>
+                                {['Advanced React Native', 'UI/UX Design Systems', 'DBMS'].map((Subject, index) =>
                                     <View key={index} className="py-3 border-b border-gray-50 last:border-0 flex-row items-center">
                                         <View className="w-2 h-2 rounded-full bg-teal-400 mr-3" />
-                                        <Text className="text-gray-600">{course}</Text>
+                                        <Text className="text-gray-600">{Subject}</Text>
                                     </View>
                                 )}
                             </View>

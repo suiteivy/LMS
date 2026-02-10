@@ -138,7 +138,7 @@ export default function Index() {
                   label="Library"
                   color="#0d9488"
                 />
-                <QuickAction icon={Book} label="Courses" color="#8b5cf6" />
+                <QuickAction icon={Book} label="Subjects" color="#8b5cf6" />
                 <QuickAction
                   icon={ArrowRight}
                   label="Assignments"

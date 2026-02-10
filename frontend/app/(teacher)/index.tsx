@@ -67,7 +67,7 @@ export default function TeacherHome() {
                                     8
                                 </Text>
                                 <Text className="text-gray-400 text-xs font-medium uppercase italic">
-                                    Active Courses
+                                    Active Subjects
                                 </Text>
                             </View>
                         </View>

@@ -1,59 +1,59 @@
-import { CourseDetails } from "@/components/CourseDetails";
-import { CourseList } from "@/components/CourseList";
-import { Course } from "@/types/types";
+import { SubjectDetails } from "@/components/SubjectDetails";
+import { SubjectList } from "@/components/SubjectList";
+import { Subject } from "@/types/types";
 import { useState, useEffect } from "react";
 import { View, ScrollView, ActivityIndicator, Alert } from "react-native";
 import { supabase } from "@/libs/supabase";
 import { useAuth } from "@/contexts/AuthContext";
 
-export default function Courses() {
+export default function Subjects() {
   const { studentId } = useAuth();
   const [currentView, setCurrentView] = useState<"list" | "details">("list");
-  const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
-  const [courses, setCourses] = useState<Course[]>([]);
+  const [selectedSubject, setSelectedSubject] = useState<Subject | null>(null);
+  const [Subjects, setSubjects] = useState<Subject[]>([]);
   const [loading, setLoading] = useState(true);
   const [enrolling, setEnrolling] = useState(false);
 
   useEffect(() => {
-    fetchCourses();
+    fetchSubjects();
   }, [studentId]);
 
-  const fetchCourses = async () => {
+  const fetchSubjects = async () => {
     try {
       setLoading(true);
-      // Fetch all courses
-      const { data: coursesData, error: coursesError } = await supabase
-        .from("courses")
+      // Fetch all Subjects
+      const { data: SubjectsData, error: SubjectsError } = await supabase
+        .from("Subjects")
         .select(`
           *,
           teacher:teachers(user:users(full_name)),
           lessons(count)
         `);
 
-      if (coursesError) throw coursesError;
+      if (SubjectsError) throw SubjectsError;
 
       // Fetch enrollments for this student to check "isEnrolled"
-      let enrolledCourseIds: string[] = [];
+      let enrolledSubjectIds: string[] = [];
       if (studentId) {
         const { data: enrollData, error: enrollError } = await supabase
           .from("enrollments")
-          .select("class_id") // Wait, enrollments link to classes, not courses directly? 
-          // The schema has courses linking to classes: courses.class_id -> classes.id
+          .select("class_id") // Wait, enrollments link to classes, not Subjects directly? 
+          // The schema has Subjects linking to classes: Subjects.class_id -> classes.id
           // And enrollments link students to classes: enrollments.class_id, enrollments.student_id
-          // So if I am enrolled in the class of the course, I am enrolled in the course.
+          // So if I am enrolled in the class of the Subject, I am enrolled in the Subject.
           .eq("student_id", studentId);
 
         if (enrollError) {
           console.error("Error fetching enrollments:", enrollError);
         }
         if (enrollData) {
-          enrolledCourseIds = enrollData.map((e: any) => e.class_id);
+          enrolledSubjectIds = enrollData.map((e: any) => e.class_id);
         }
       }
 
-      const formattedCourses: Course[] = coursesData.map((c: any) => ({
+      const formattedSubjects: Subject[] = SubjectsData.map((c: any) => ({
         id: c.id,
-        title: c.name, // 'courses' table has 'name', type has 'title'. Adjusting.
+        title: c.name, // 'Subjects' table has 'name', type has 'title'. Adjusting.
         description: c.description,
         shortDescription: c.description ? c.description.substring(0, 50) + "..." : "",
         category: c.category || "General", // field might be missing in DB, using fallback
@@ -61,33 +61,33 @@ export default function Courses() {
         instructor: { name: c.teacher?.user?.full_name || "Unknown Instructor" },
         price: 0, // 'price' not in schema
         duration: "TBD", // 'duration' not in schema
-        studentsCount: 0, // Need to count enrollments per course/class
+        studentsCount: 0, // Need to count enrollments per Subject/class
         rating: 0,
         reviewsCount: 0,
         image: c.image_url || "https://images.unsplash.com/photo-1509228627152-72ae9ae6848d?w=400",
         tags: [],
-        isEnrolled: enrolledCourseIds.includes(c.class_id),
+        isEnrolled: enrolledSubjectIds.includes(c.class_id),
         lessons: [], // We can fetch lessons detail when viewing detail
         class_id: c.class_id // Store class_id for enrollment
       }));
 
-      setCourses(formattedCourses);
+      setSubjects(formattedSubjects);
     } catch (error: any) {
-      console.error("Error loading courses:", error);
-      Alert.alert("Error", "Failed to load courses");
+      console.error("Error loading Subjects:", error);
+      Alert.alert("Error", "Failed to load Subjects");
     } finally {
       setLoading(false);
     }
   };
 
-  const handleCoursePress = (course: Course) => {
-    setSelectedCourse(course);
+  const handleSubjectPress = (Subject: Subject) => {
+    setSelectedSubject(Subject);
     setCurrentView("details");
   };
 
   const handleEnroll = async () => {
-    if (!studentId || !selectedCourse || !(selectedCourse as any).class_id) {
-      Alert.alert("Error", "Unable to enroll. Missing student or course information.");
+    if (!studentId || !selectedSubject || !(selectedSubject as any).class_id) {
+      Alert.alert("Error", "Unable to enroll. Missing student or Subject information.");
       return;
     }
 
@@ -95,22 +95,22 @@ export default function Courses() {
     try {
       const { error } = await supabase.from("enrollments").insert({
         student_id: studentId,
-        class_id: (selectedCourse as any).class_id
+        class_id: (selectedSubject as any).class_id
       });
 
       if (error) throw error;
 
-      Alert.alert("Success", "You have successfully enrolled in this course!");
+      Alert.alert("Success", "You have successfully enrolled in this Subject!");
 
       // Update local state
-      setCourses(prev => prev.map(c =>
-        c.id === selectedCourse.id ? { ...c, isEnrolled: true } : c
+      setSubjects(prev => prev.map(c =>
+        c.id === selectedSubject.id ? { ...c, isEnrolled: true } : c
       ));
-      setSelectedCourse(prev => prev ? { ...prev, isEnrolled: true } : null);
+      setSelectedSubject(prev => prev ? { ...prev, isEnrolled: true } : null);
 
     } catch (error: any) {
       console.error("Enrollment error:", error);
-      Alert.alert("Error", "Failed to enroll in course.");
+      Alert.alert("Error", "Failed to enroll in Subject.");
     } finally {
       setEnrolling(false);
     }
@@ -128,16 +128,16 @@ export default function Courses() {
     <View className="flex-1 bg-[#F1FFF8]">
       <ScrollView className="flex-grow px-6 pt-12 pb-6">
         {currentView === "list" ? (
-          <CourseList
-            courses={courses}
-            title="Available Courses"
+          <SubjectList
+            Subjects={Subjects}
+            title="Available Subjects"
             showFilters={true}
             variant="featured"
-            onPressCourse={handleCoursePress}
+            onPressSubject={handleSubjectPress}
           />
-        ) : selectedCourse ? (
-          <CourseDetails
-            course={selectedCourse}
+        ) : selectedSubject ? (
+          <SubjectDetails
+            Subject={selectedSubject}
             onEnroll={handleEnroll}
             onBack={() => setCurrentView("list")}
             enrolling={enrolling}

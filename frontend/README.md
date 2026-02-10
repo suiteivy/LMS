@@ -1,4 +1,4 @@
-# LMS Frontend - Expo React Native App 📱
+﻿# LMS Frontend - Expo React Native App ðŸ“±
 
 This is the frontend application for the Learning Management System, built with [Expo](https://expo.dev) and React Native.
 
@@ -25,7 +25,7 @@ EXPO_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
 EXPO_PUBLIC_SUPABASE_ANON_KEY=your-anon-key-here
 ```
 
-Get these values from your Supabase project: **Project Settings → API**
+Get these values from your Supabase project: **Project Settings â†’ API**
 
 ### 3. Start the Development Server
 
@@ -43,27 +43,27 @@ This opens Expo DevTools. You can then:
 
 ```
 frontend/
-├── app/                    # App screens (file-based routing)
-│   ├── (admin)/           # Admin dashboard and features
-│   ├── (auth)/            # Authentication screens (signIn, signUp)
-│   ├── (student)/         # Student features
-│   ├── (teacher)/         # Teacher features
-│   └── index.tsx          # Entry point
-├── components/            # Reusable UI components
-├── contexts/              # React contexts (Auth, etc.)
-├── hooks/                 # Custom React hooks
-├── libs/                  # External service configurations (Supabase)
-├── services/              # API service functions
-├── types/                 # TypeScript type definitions
-└── utils/                 # Utility functions
+â”œâ”€â”€ app/                    # App screens (file-based routing)
+â”‚   â”œâ”€â”€ (admin)/           # Admin dashboard and features
+â”‚   â”œâ”€â”€ (auth)/            # Authentication screens (signIn, signUp)
+â”‚   â”œâ”€â”€ (student)/         # Student features
+â”‚   â”œâ”€â”€ (teacher)/         # Teacher features
+â”‚   â””â”€â”€ index.tsx          # Entry point
+â”œâ”€â”€ components/            # Reusable UI components
+â”œâ”€â”€ contexts/              # React contexts (Auth, etc.)
+â”œâ”€â”€ hooks/                 # Custom React hooks
+â”œâ”€â”€ libs/                  # External service configurations (Supabase)
+â”œâ”€â”€ services/              # API service functions
+â”œâ”€â”€ types/                 # TypeScript type definitions
+â””â”€â”€ utils/                 # Utility functions
 ```
 
 ## User Roles
 
 The app supports three roles:
 - **Admin**: Full system access, user management, analytics
-- **Teacher**: Course management, grading, attendance
-- **Student**: Course enrollment, assignments, grades
+- **Teacher**: Subject management, grading, attendance
+- **Student**: Subject enrollment, assignments, grades
 
 ## Troubleshooting
 

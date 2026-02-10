@@ -1,17 +1,17 @@
 import React, { useState } from "react";
 import { View, Text, ScrollView, TouchableOpacity, Image } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { Course, Lesson } from "@/types/types";
+import { Subject, Lesson } from "@/types/types";
 
-interface CourseDetailsProps {
-  course: Course;
+interface SubjectDetailsProps {
+  Subject: Subject;
   onEnroll: () => void;
   onBack: () => void;
   enrolling?: boolean;
 }
 
-export const CourseDetails: React.FC<CourseDetailsProps> = ({
-  course,
+export const SubjectDetails: React.FC<SubjectDetailsProps> = ({
+  Subject,
   onEnroll,
   onBack,
   enrolling = false,
@@ -78,10 +78,10 @@ export const CourseDetails: React.FC<CourseDetailsProps> = ({
       </View>
 
       <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
-        {/* Course Hero */}
+        {/* Subject Hero */}
         <View className="bg-white">
           <Image
-            source={{ uri: course.image }}
+            source={{ uri: Subject.image }}
             className="w-full h-48"
             resizeMode="cover"
           />
@@ -90,39 +90,39 @@ export const CourseDetails: React.FC<CourseDetailsProps> = ({
             <View className="flex-row items-center mb-2">
               <View className="px-3 py-1 rounded-full mr-3 bg-[#A1EBE5]">
                 <Text className="text-sm font-medium text-[#2C3E50]">
-                  {course.level}
+                  {Subject.level}
                 </Text>
               </View>
-              <Text className="text-sm text-gray-500">{course.category}</Text>
+              <Text className="text-sm text-gray-500">{Subject.category}</Text>
             </View>
 
             <Text className="text-2xl font-bold mb-2 text-[#2C3E50]">
-              {course.title}
+              {Subject.title}
             </Text>
-            <Text className="text-gray-600 mb-4">{course.description}</Text>
+            <Text className="text-gray-600 mb-4">{Subject.description}</Text>
 
             {/* Stats Row */}
             <View className="flex-row items-center justify-between mb-6">
               <View className="flex-row items-center">
                 <Ionicons name="star" size={16} color="#F39C12" />
                 <Text className="font-medium ml-1 text-[#2C3E50]">
-                  {course.rating}
+                  {Subject.rating}
                 </Text>
                 <Text className="text-gray-500 ml-1">
-                  ({course.reviewsCount})
+                  ({Subject.reviewsCount})
                 </Text>
               </View>
 
               <View className="flex-row items-center">
                 <Ionicons name="people" size={16} color="#6B7280" />
                 <Text className="text-gray-600 ml-1">
-                  {course.studentsCount}
+                  {Subject.studentsCount}
                 </Text>
               </View>
 
               <View className="flex-row items-center">
                 <Ionicons name="time" size={16} color="#6B7280" />
-                <Text className="text-gray-600 ml-1">{course.duration}</Text>
+                <Text className="text-gray-600 ml-1">{Subject.duration}</Text>
               </View>
             </View>
 
@@ -130,23 +130,23 @@ export const CourseDetails: React.FC<CourseDetailsProps> = ({
             <View className="flex-row items-center justify-between">
               <View>
                 <Text className="text-3xl font-bold text-[#1ABC9C]">
-                  {course.price === 0 ? "Free" : `$${course.price}`}
+                  {Subject.price === 0 ? "Free" : `$${Subject.price}`}
                 </Text>
-                {course.originalPrice &&
-                  course.originalPrice > course.price && (
+                {Subject.originalPrice &&
+                  Subject.originalPrice > Subject.price && (
                     <Text className="text-gray-400 line-through">
-                      ${course.originalPrice}
+                      ${Subject.originalPrice}
                     </Text>
                   )}
               </View>
 
               <TouchableOpacity
                 onPress={onEnroll}
-                disabled={enrolling || course.isEnrolled}
-                className={`px-8 py-3 rounded-lg ${course.isEnrolled ? "bg-gray-400" : "bg-[#1ABC9C]"}`}
+                disabled={enrolling || Subject.isEnrolled}
+                className={`px-8 py-3 rounded-lg ${Subject.isEnrolled ? "bg-gray-400" : "bg-[#1ABC9C]"}`}
               >
                 <Text className="text-white font-bold text-lg">
-                  {enrolling ? "Enrolling..." : course.isEnrolled ? "Enrolled" : "Enroll Now"}
+                  {enrolling ? "Enrolling..." : Subject.isEnrolled ? "Enrolled" : "Enroll Now"}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -186,7 +186,7 @@ export const CourseDetails: React.FC<CourseDetailsProps> = ({
                 <Text className="text-lg font-bold mb-4 text-[#2C3E50]">
                   What You'll Learn
                 </Text>
-                {course.tags.map((tag, index) => (
+                {Subject.tags.map((tag, index) => (
                   <View key={index} className="flex-row items-center mb-2">
                     <Ionicons
                       name="checkmark-circle"
@@ -202,10 +202,10 @@ export const CourseDetails: React.FC<CourseDetailsProps> = ({
             {activeTab === "lessons" && (
               <View>
                 <Text className="text-lg font-bold mb-4 text-[#2C3E50]">
-                  Course Content
+                  Subject Content
                 </Text>
                 <View className="bg-gray-50 rounded-xl overflow-hidden">
-                  {course.lessons.map((lesson, index) => (
+                  {Subject.lessons.map((lesson, index) => (
                     <LessonItem key={lesson.id} lesson={lesson} index={index} />
                   ))}
                 </View>

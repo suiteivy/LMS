@@ -6,14 +6,14 @@ import { supabase } from "@/libs/supabase";
 import { useState, useEffect } from "react";
 
 interface GradeProps {
-    courseName: string;
-    courseCode: string;
+    SubjectName: string;
+    SubjectCode: string;
     grade: string;
     score: number,
     credits: number;
 }
 
-const CourseGrade = ({ courseCode, courseName, grade, score, credits }: GradeProps) => {
+const SubjectGrade = ({ SubjectCode, SubjectName, grade, score, credits }: GradeProps) => {
 
     const getGradeColor = (g: string) => {
         if (g.startsWith('A')) return 'text-green-600 bg-green-50 border-green-100';
@@ -24,8 +24,8 @@ const CourseGrade = ({ courseCode, courseName, grade, score, credits }: GradePro
     return (
         <View className="bg-white p-4 rounded-2xl border border-gray-100 mb-3 shadow-sm flex-row items-center justify-between">
             <View className="flex-1">
-                <Text className="text-xs font-bold text-gray-400 uppercase">{courseCode}</Text>
-                <Text className="text-gray-800 font-semibold text-base" numberOfLines={1}>{courseName}</Text>
+                <Text className="text-xs font-bold text-gray-400 uppercase">{SubjectCode}</Text>
+                <Text className="text-gray-800 font-semibold text-base" numberOfLines={1}>{SubjectName}</Text>
                 <Text className="text-gray-500 text-xs mt-1">{credits} Credits</Text>
             </View>
 
@@ -56,14 +56,14 @@ export default function Grades() {
         try {
             setLoading(true);
             // Fetch submissions that are graded
-            // We need to join with assignments -> courses to get course details
+            // We need to join with assignments -> Subjects to get Subject details
             const { data, error } = await supabase
                 .from('submissions')
                 .select(`
                     grade,
                     assignment:assignments(
                         title,
-                        course:courses(name, id) // Assuming 'name' is the title column
+                        Subject:Subjects(name, id) // Assuming 'name' is the title column
                     )
                 `)
                 .eq('student_id', studentId)
@@ -71,28 +71,28 @@ export default function Grades() {
 
             if (error) throw error;
 
-            // This logic is a bit simplified. Typically "Grades" are per course, not per assignment in this view.
+            // This logic is a bit simplified. Typically "Grades" are per Subject, not per assignment in this view.
             // But for now, let's just map available graded items or aggregate them.
-            // If the UI expects "Course Grade", we should probably calculate average of assignments for that course.
+            // If the UI expects "Subject Grade", we should probably calculate average of assignments for that Subject.
 
-            // Group by course
-            const courseGrades: Record<string, { total: number, count: number, name: string }> = {};
+            // Group by Subject
+            const SubjectGrades: Record<string, { total: number, count: number, name: string }> = {};
 
             data.forEach((sub: any) => {
-                const courseId = sub.assignment?.course?.id;
-                const courseName = sub.assignment?.course?.name;
+                const SubjectId = sub.assignment?.Subject?.id;
+                const SubjectName = sub.assignment?.Subject?.name;
                 const score = Number(sub.grade);
 
-                if (courseId && !isNaN(score)) {
-                    if (!courseGrades[courseId]) {
-                        courseGrades[courseId] = { total: 0, count: 0, name: courseName };
+                if (SubjectId && !isNaN(score)) {
+                    if (!SubjectGrades[SubjectId]) {
+                        SubjectGrades[SubjectId] = { total: 0, count: 0, name: SubjectName };
                     }
-                    courseGrades[courseId].total += score;
-                    courseGrades[courseId].count += 1;
+                    SubjectGrades[SubjectId].total += score;
+                    SubjectGrades[SubjectId].count += 1;
                 }
             });
 
-            const formattedGrades: GradeProps[] = Object.entries(courseGrades).map(([id, val]) => {
+            const formattedGrades: GradeProps[] = Object.entries(SubjectGrades).map(([id, val]) => {
                 const avg = val.total / val.count;
                 let letter = 'F';
                 if (avg >= 90) letter = 'A';
@@ -101,8 +101,8 @@ export default function Grades() {
                 else if (avg >= 60) letter = 'D';
 
                 return {
-                    courseName: val.name,
-                    courseCode: "CRS-" + id.substring(0, 4).toUpperCase(), // Mock code
+                    SubjectName: val.name,
+                    SubjectCode: "CRS-" + id.substring(0, 4).toUpperCase(), // Mock code
                     grade: letter,
                     score: Math.round(avg),
                     credits: 3 // Mock credits
@@ -177,17 +177,17 @@ export default function Grades() {
                         <Award size={20} color="#0d9488" />
                         <Text className="ml-2 font-bold text-gray-800">Current Semester</Text>
                     </View>
-                    <Text className="text-teal-600 text-xs font-bold uppercase">{grades.length} Courses</Text>
+                    <Text className="text-teal-600 text-xs font-bold uppercase">{grades.length} Subjects</Text>
                 </View>
 
                 {grades.length === 0 ? (
                     <Text className="text-gray-500 text-center py-8">No grades available yet.</Text>
                 ) : (
                     grades.map((g, i) => (
-                        <CourseGrade
+                        <SubjectGrade
                             key={i}
-                            courseCode={g.courseCode}
-                            courseName={g.courseName}
+                            SubjectCode={g.SubjectCode}
+                            SubjectName={g.SubjectName}
                             grade={g.grade}
                             score={g.score}
                             credits={g.credits}

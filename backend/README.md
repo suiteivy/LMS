@@ -1,4 +1,4 @@
-# 📘 LMS Backend API Documentation
+﻿# ðŸ“˜ LMS Backend API Documentation
 
 ## Base URL
 
@@ -10,7 +10,7 @@ https://lms-api-wine.vercel.app/api
 
 ## Authentication
 
-### ✅ Register User (`POST /auth/register`)
+### âœ… Register User (`POST /auth/register`)
 
 **Headers:** none  
 **Body (JSON):**
@@ -27,14 +27,14 @@ https://lms-api-wine.vercel.app/api
 
 **Responses:**
 
-- **201** – User created successfully, returns UID
-- **400** – Missing required fields or invalid role
-- **403** – Invalid institution_id
-- **500** – Server error
+- **201** â€“ User created successfully, returns UID
+- **400** â€“ Missing required fields or invalid role
+- **403** â€“ Invalid institution_id
+- **500** â€“ Server error
 
 ---
 
-### 🔐 Login (`POST /auth/login`)
+### ðŸ” Login (`POST /auth/login`)
 
 **Headers:** none  
 **Body (JSON):**
@@ -48,7 +48,7 @@ https://lms-api-wine.vercel.app/api
 
 **Responses:**
 
-- **200** – Success, returns:
+- **200** â€“ Success, returns:
   ```json
   {
     "message": "Login successful",
@@ -62,14 +62,14 @@ https://lms-api-wine.vercel.app/api
     }
   }
   ```
-- **401** – Invalid credentials
-- **500** – Server error
+- **401** â€“ Invalid credentials
+- **500** â€“ Server error
 
 ---
 
 ## Institution Management
 
-### 🔐 Create Institution (`POST /institutions`)
+### ðŸ” Create Institution (`POST /institutions`)
 
 **Headers:**
 
@@ -88,10 +88,10 @@ Authorization: Bearer <JWT>
 
 **Responses:**
 
-- **201** – Institution created
-- **403** – Only `admin` role allowed
-- **400** – Missing name
-- **500** – Error
+- **201** â€“ Institution created
+- **403** â€“ Only `admin` role allowed
+- **400** â€“ Missing name
+- **500** â€“ Error
 
 ### View Institutions (`GET /institutions`)
 
@@ -112,9 +112,9 @@ Authorization: Bearer <JWT>
 
 ---
 
-## Courses
+## Subjects
 
-### 🔐 Create Course (`POST /courses`)
+### ðŸ” Create Subject (`POST /Subjects`)
 
 **Headers:**
 
@@ -135,41 +135,41 @@ Authorization: Bearer <JWT>
 
 **Responses:**
 
-- **201** – Course created under user's `institution_id`
-- **400** – Missing fields
-- **401** – Invalid token
-- **500** – Error
+- **201** â€“ Subject created under user's `institution_id`
+- **400** â€“ Missing fields
+- **401** â€“ Invalid token
+- **500** â€“ Error
 
-### 🔐 List Courses (`GET /courses`) — Get courses based on user role
+### ðŸ” List Subjects (`GET /Subjects`) â€” Get Subjects based on user role
 
 **Behavior:**
 
-- **Admin**: Returns all institution courses.
-- **Teacher**: Returns only courses where they are the instructor.
-- **Student**: Returns only enrolled courses (linked via grades).
+- **Admin**: Returns all institution Subjects.
+- **Teacher**: Returns only Subjects where they are the instructor.
+- **Student**: Returns only enrolled Subjects (linked via grades).
 
 **Example Response:**
 
 ```json
 [
   {
-    "id": "course-123",
+    "id": "Subject-123",
     "name": "Biology 101",
     "teacher_id": "user-456"
   }
 ]
 ```
 
-<!-- get course by id -->
+<!-- get Subject by id -->
 
-#### 🔐 List Courses (`GET /courses/:id`) — Get courses by id based on user role
+#### ðŸ” List Subjects (`GET /Subjects/:id`) â€” Get Subjects by id based on user role
 
 **Example Response:**
 
 ```json
 [
   {
-    "id": "course-123",
+    "id": "Subject-123",
     "name": "Biology 101",
     "teacher_id": "user-456"
   }
@@ -180,9 +180,9 @@ Authorization: Bearer <JWT>
 
 ---
 
-## 📚 LMS Backend API
+## ðŸ“š LMS Backend API
 
-### 🔐 Add Book (`POST /library/books`)
+### ðŸ” Add Book (`POST /library/books`)
 
 **Headers:**
 
@@ -204,11 +204,11 @@ Authorization: Bearer <JWT>
 
 **Responses:**
 
-- **201** – Success, Ok
-- **400** – Missing fields
-- **401** – Invalid token
+- **201** â€“ Success, Ok
+- **400** â€“ Missing fields
+- **401** â€“ Invalid token
 - **403** - Admin only
-- **500** – Error
+- **500** â€“ Error
 
 ### List Books (`GET /library/books`)
 
@@ -235,7 +235,7 @@ Authorization: Bearer <JWT>
 ]
 ```
 
-### 🔐 Borrow Book (`POST /library/borrow/:bookId`)
+### ðŸ” Borrow Book (`POST /library/borrow/:bookId`)
 
 **Headers:**
 
@@ -253,13 +253,13 @@ Authorization: Bearer <JWT>
 
 **Responses:**
 
-- **201** – Borrow record created (stock decremented by trigger)
+- **201** â€“ Borrow record created (stock decremented by trigger)
 
-- **400** – Book unavailable / borrow limit reached / overdue books exist / unpaid fees < 50%
+- **400** â€“ Book unavailable / borrow limit reached / overdue books exist / unpaid fees < 50%
 
-- **401** – Unauthorized
+- **401** â€“ Unauthorized
 
-### 🔐 Return Book (`POST /library/return/:borrowId`)
+### ðŸ” Return Book (`POST /library/return/:borrowId`)
 
 **Headers:**
 
@@ -277,13 +277,13 @@ Authorization: Bearer <JWT>
 
 **Responses:**
 
-- **201** – Book returned successfully (stock incremented by trigger)
+- **201** â€“ Book returned successfully (stock incremented by trigger)
 
-- **400** – Invalid borrow record
+- **400** â€“ Invalid borrow record
 
-- **401** – Unauthorized
+- **401** â€“ Unauthorized
 
-### 🔐 Borrowing History (`GET /library/history:studentId`)
+### ðŸ” Borrowing History (`GET /library/history:studentId`)
 
 **Headers:**
 
@@ -311,41 +311,41 @@ Authorization: Bearer <JWT>
 
 **Responses:**
 
-- **200** – Success
+- **200** â€“ Success
 
-- **400** – Bad request
+- **400** â€“ Bad request
 
-- **401** – Unauthorized
+- **401** â€“ Unauthorized
 
 ---
 
-## 🛡️ Middleware & Security
+## ðŸ›¡ï¸ Middleware & Security
 
 - **Auth Middleware (`authMiddleware`)** verifies JWT and sets `req.user`, `req.userRole`, and `req.institution_id`.
 - **Role Enforcement**:
   - Only `admin` can call `/institutions` (POST).
-  - Course creation can optionally enforce teacher-only access:
+  - Subject creation can optionally enforce teacher-only access:
     ```js
     if (req.userRole !== "teacher") {
       return res
         .status(403)
-        .json({ error: "Only teachers can create courses" });
+        .json({ error: "Only teachers can create Subjects" });
     }
     ```
 
 ---
 
-## 🚀 Sample Flow (using tokens and IDs)
+## ðŸš€ Sample Flow (using tokens and IDs)
 
-1. Admin registers (role = `admin`) → logs in → receives `admin_token`.
-2. Admin calls `POST /institutions` with `admin_token` → receives `institution_id`.
+1. Admin registers (role = `admin`) â†’ logs in â†’ receives `admin_token`.
+2. Admin calls `POST /institutions` with `admin_token` â†’ receives `institution_id`.
 3. Register teacher (role = `teacher`) under that `institution_id`.
-4. Teacher logs in → gets `teacher_token`.
-5. Teacher calls `POST /courses` with `teacher_token`.
+4. Teacher logs in â†’ gets `teacher_token`.
+5. Teacher calls `POST /Subjects` with `teacher_token`.
 
 ---
 
-## 💡 Additional Notes & Best Practices
+## ðŸ’¡ Additional Notes & Best Practices
 
 - All secured endpoints expect `Authorization: Bearer <token>` header.
 - Requests must respect `institution_id` scoping; no cross-institution operations allowed.
@@ -354,7 +354,7 @@ Authorization: Bearer <JWT>
 
 ---
 
-## ✅ Summary Table
+## âœ… Summary Table
 
 | Endpoint              | Protection    | Purpose                 |
 | --------------------- | ------------- | ----------------------- |
@@ -362,7 +362,7 @@ Authorization: Bearer <JWT>
 | `POST /auth/login`    | Public        | Authenticate user       |
 | `GET /institutions`   | Public        | List institutions       |
 | `POST /institutions`  | Admin only    | Create institution      |
-| `GET /courses`        | Authenticated | List courses per school |
-| `POST /courses`       | Authenticated | Teacher creates course  |
+| `GET /Subjects`        | Authenticated | List Subjects per school |
+| `POST /Subjects`       | Authenticated | Teacher creates Subject  |
 
 ---

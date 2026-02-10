@@ -158,8 +158,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       case "add-user":
         router.push("/(admin)/create-user");
         break;
-      case "add-course":
-        router.push("/(admin)/CreateCourse");
+      case "add-Subject":
+        router.push("/(admin)/CreateSubject");
         break;
       case "library":
         router.push("/(admin)/library/LibraryAction");
