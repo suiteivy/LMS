@@ -32,7 +32,7 @@ export const StatsCard: React.FC<StatsCardProps> = ({
       value: 'text-blue-900'
     },
     green: {
-      bg: 'bg-green-50',
+      bg: 'bg-green-100',
       border: 'border-green-200',
       icon: 'bg-green-100',
       iconColor: '#10B981',
@@ -48,7 +48,7 @@ export const StatsCard: React.FC<StatsCardProps> = ({
       value: 'text-purple-900'
     },
     yellow: {
-      bg: 'bg-yellow-50',
+      bg: 'bg-yellow-10',
       border: 'border-yellow-200',
       icon: 'bg-yellow-100',
       iconColor: '#F59E0B',
@@ -107,7 +107,7 @@ export const StatsCard: React.FC<StatsCardProps> = ({
               <Ionicons name={icon as any} size={20} color={scheme.iconColor} />
             </View>
             <View className="flex-1">
-              <Text className={`text-sm font-medium ${scheme.text}`}>
+              <Text className={`text-base font-medium ${scheme.text}`}>
                 {title}
               </Text>
               {description && !isCompact && (

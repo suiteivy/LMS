@@ -105,7 +105,7 @@ export const SubjectCard: React.FC<SubjectCardProps> = ({
                 {Math.round(
                   ((Subject.originalPrice - Subject.price) /
                     Subject.originalPrice) *
-                    100
+                  100
                 )}
                 % OFF
               </Text>

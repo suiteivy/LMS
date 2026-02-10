@@ -5,9 +5,14 @@ import { useState, useEffect } from "react";
 import { View, ScrollView, ActivityIndicator, Alert } from "react-native";
 import { supabase } from "@/libs/supabase";
 import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/libs/supabase";
+import { Course } from "@/types/types";
+import { useEffect, useState } from "react";
+import { View, ScrollView, Alert } from "react-native";
 
 export default function Subjects() {
   const { studentId } = useAuth();
+  const [availableSubjects, setAvailableSubjects] = useState<Subject[]>([])
   const [currentView, setCurrentView] = useState<"list" | "details">("list");
   const [selectedSubject, setSelectedSubject] = useState<Subject | null>(null);
   const [Subjects, setSubjects] = useState<Subject[]>([]);
@@ -116,13 +121,28 @@ export default function Subjects() {
     }
   };
 
-  if (loading) {
-    return (
-      <View className="flex-1 justify-center items-center bg-[#F1FFF8]">
-        <ActivityIndicator size="large" color="#0d9488" />
-      </View>
-    );
-  }
+  useEffect(() => {
+    const fetchCourseData = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('courses')
+          .select('*')
+
+        console.log('Raw data from Supabase:', data)
+        console.log('Any error?', error)
+
+        if (error) throw error
+
+      } catch (error: any) {
+        console.error('Error fetching course data:', error.message)
+        return;
+      }
+    }
+    fetchCourseData()
+
+  }, [])
+
+  console.log('Available courses now:', availableCourses)
 
   return (
     <View className="flex-1 bg-[#F1FFF8]">

@@ -102,26 +102,32 @@ const QuickActionsSection: React.FC<QuickActionsSectionProps> = ({
   const renderAction = (action: QuickAction) => (
     <View key={action.id} className="w-1/2 px-2 mb-4">
       <TouchableOpacity
-        className={`${action.color.bg} rounded-xl p-4 shadow-sm border ${action.color.border} ${action.color.active}`}
-        activeOpacity={0.7}
-        onPress={() => handleActionPress(action.id)}
+      className={`rounded-xl p-4 shadow-sm border ${action.color.bg} ${action.color.border} ${action.color.active}`}
+      activeOpacity={0.7}
+      onPress={() => handleActionPress(action.id)}
       >
-        <View className="items-center">
-          <View
-            className={`w-12 h-12 ${action.color.iconBg} rounded-full items-center justify-center mb-2`}
-          >
-            <Ionicons
-              name={action.icon as any}
-              size={24}
-              color={action.color.iconColor}
-            />
-          </View>
-          <Text
-            className={`${action.color.textColor} font-medium text-sm text-center`}
-          >
-            {action.title}
-          </Text>
+      <View className="items-center">
+        <View
+        className={`w-12 h-12 rounded-full items-center justify-center mb-2`}
+        style={{
+          backgroundColor: action.color.iconBg,
+          borderColor: action.color.border,
+          borderWidth: 1,
+        }}
+        >
+        <Ionicons
+          name={action.icon as any}
+          size={24}
+          color={action.color.iconColor}
+        />
         </View>
+        <Text
+        className={`font-medium text-sm text-center`}
+        style={{ color: action.color.textColor }}
+        >
+        {action.title}
+        </Text>
+      </View>
       </TouchableOpacity>
     </View>
   );
