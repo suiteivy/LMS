@@ -40,7 +40,7 @@ const CourseGrade = ({ courseCode, courseName, grade, score, credits }: GradePro
 }
 
 export default function Grades() {
-    const { studentId } = useAuth();
+    const { studentId, displayId } = useAuth();
     const [grades, setGrades] = useState<GradeProps[]>([]);
     const [loading, setLoading] = useState(true);
     const [stats, setStats] = useState({ gpa: 0, credits: 0, rank: 0 });
@@ -145,6 +145,9 @@ export default function Grades() {
                     <View className="flex-row justify-between items-start">
                         <View>
                             <Text className="text-teal-100 font-medium italic">Cumulative GPA</Text>
+                            {displayId && (
+                                <Text className="text-teal-200 text-[10px] font-bold">Student ID: {displayId}</Text>
+                            )}
                             <Text className="text-white text-5xl font-black mt-1">{stats.gpa}</Text>
                         </View>
                         <View className="bg-white/20 p-3 rounded-2xl">

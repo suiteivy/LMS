@@ -37,6 +37,7 @@ const StudentCard = ({ student }: StudentCardProps) => {
             {/* Info */}
             <View className="flex-1">
                 <Text className="text-gray-900 font-semibold text-base">{student.name}</Text>
+                <Text className="text-teal-600 text-xs font-medium mb-1">{student.id}</Text>
                 <Text className="text-gray-400 text-xs">{student.course}</Text>
                 <View className="flex-row items-center mt-1">
                     <TrendingUp size={12} color="#6B7280" />

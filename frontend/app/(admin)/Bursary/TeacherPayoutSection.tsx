@@ -13,6 +13,7 @@ import {
 interface TeacherPayout {
   id: string;
   teacher_name: string;
+  teacher_display_id?: string;
   amount: number;
   hours_taught: number;
   rate_per_hour: number;
@@ -34,6 +35,7 @@ const PLACEHOLDER_PAYOUTS: TeacherPayout[] = [
   {
     id: '1',
     teacher_name: 'Sarah Johnson',
+    teacher_display_id: 'TEA-2024-001',
     amount: 25000,
     hours_taught: 40,
     rate_per_hour: 625,
@@ -169,33 +171,40 @@ const TeacherPayoutSection: React.FC<TeacherPayoutSectionProps> = ({
       }}
     >
       <View className="flex-row justify-between items-start mb-2">
-        <Text className="text-lg font-semibold text-gray-900">
-          {item.teacher_name}
-        </Text>
+        <View>
+          <Text className="text-lg font-semibold text-gray-900">
+            {item.teacher_name}
+          </Text>
+          {item.teacher_display_id && (
+            <Text className="text-xs text-blue-600 font-medium">
+              ID: {item.teacher_display_id}
+            </Text>
+          )}
+        </View>
         <View className={`px-2 py-1 rounded-full ${getStatusColor(item.status)}`}>
           <Text className="text-xs font-medium capitalize">{item.status}</Text>
         </View>
       </View>
-      
+
       <View className="space-y-2">
         <Text className="text-2xl font-bold text-blue-600 mb-2">
           {formatAmount(item.amount)}
         </Text>
-        
+
         <View className="flex-row justify-between">
           <Text className="text-sm text-gray-600">Hours Taught:</Text>
           <Text className="text-sm font-medium text-gray-900">
             {item.hours_taught} hrs
           </Text>
         </View>
-        
+
         <View className="flex-row justify-between">
           <Text className="text-sm text-gray-600">Rate:</Text>
           <Text className="text-sm text-gray-900">
             {formatAmount(item.rate_per_hour)}/hr
           </Text>
         </View>
-        
+
         <View className="flex-row justify-between">
           <Text className="text-sm text-gray-600">Period:</Text>
           <Text className="text-sm text-gray-900">
@@ -203,7 +212,7 @@ const TeacherPayoutSection: React.FC<TeacherPayoutSectionProps> = ({
             {new Date(item.period_end).toLocaleDateString()}
           </Text>
         </View>
-        
+
         {item.payment_date && (
           <View className="flex-row justify-between">
             <Text className="text-sm text-gray-600">Paid On:</Text>
@@ -231,7 +240,7 @@ const TeacherPayoutSection: React.FC<TeacherPayoutSectionProps> = ({
 
   return (
     <View className="flex-1 bg-gray-50">
-          <Text className="text-2xl font-bold text-gray-800">Teachers Payouts</Text>
+      <Text className="text-2xl font-bold text-gray-800">Teachers Payouts</Text>
       <View className="p-4">
         {/* Summary Cards */}
         <View className="flex-row space-x-3 mb-4">
@@ -246,7 +255,7 @@ const TeacherPayoutSection: React.FC<TeacherPayoutSectionProps> = ({
               {pendingPayouts.length} teacher{pendingPayouts.length !== 1 ? 's' : ''}
             </Text>
           </View>
-          
+
           <View className="flex-1 rounded-lg p-4" style={{ backgroundColor: '#D1F2EB' }}>
             <Text className="text-sm font-medium" style={{ color: '#0C5460' }}>
               Total Paid
@@ -279,7 +288,7 @@ const TeacherPayoutSection: React.FC<TeacherPayoutSectionProps> = ({
               );
             }}
             className="px-4 py-3 rounded-lg mb-4"
-            style={{ 
+            style={{
               backgroundColor: '#1ABC9C',
               shadowColor: '#000',
               shadowOffset: { width: 0, height: 2 },
@@ -348,7 +357,7 @@ const TeacherPayoutSection: React.FC<TeacherPayoutSectionProps> = ({
                 <Text className="text-2xl font-bold text-gray-900 mb-2">
                   {selectedPayout.teacher_name}
                 </Text>
-                
+
                 <View className={`px-3 py-1 rounded-full mb-4 self-start ${getStatusColor(selectedPayout.status)}`}>
                   <Text className="font-medium capitalize">{selectedPayout.status}</Text>
                 </View>
@@ -402,7 +411,7 @@ const TeacherPayoutSection: React.FC<TeacherPayoutSectionProps> = ({
                       setShowDetails(false);
                     }}
                     className="px-4 py-3 rounded-lg mt-6"
-                    style={{ 
+                    style={{
                       backgroundColor: '#3B82F6',
                       shadowColor: '#000',
                       shadowOffset: { width: 0, height: 2 },

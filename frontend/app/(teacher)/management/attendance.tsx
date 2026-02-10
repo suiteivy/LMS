@@ -12,6 +12,7 @@ type StudentRow = Database['public']['Tables']['students']['Row'] & {
 
 interface Student {
     id: string; // student_id (which is a UUID from students table)
+    displayId?: string; // custom ID (e.g. STU-2024-001)
     name: string;
     status: "present" | "absent" | "late" | "unmarked" | "excused";
     enrollment_id: string;
@@ -28,7 +29,12 @@ const StudentAttendanceRow = ({ student, onMark }: { student: Student; onMark: (
             <View className="w-10 h-10 rounded-full bg-teal-100 items-center justify-center mr-3">
                 <Text className="text-teal-600 font-bold">{student.name.charAt(0)}</Text>
             </View>
-            <Text className="flex-1 text-gray-900 font-medium">{student.name}</Text>
+            <View className="flex-1">
+                <Text className="text-gray-900 font-medium">{student.name}</Text>
+                {student.displayId && (
+                    <Text className="text-teal-600 text-[10px] font-semibold">ID: {student.displayId}</Text>
+                )}
+            </View>
 
             <View className="flex-row gap-2">
                 <TouchableOpacity
@@ -124,14 +130,14 @@ export default function AttendancePage() {
 
             // Map students and merge status
             const mappedStudents: Student[] = (enrollmentData || []).map((enroll: any) => {
-                // The type of enroll is complex due to the joins, so we cast to any for mapping simplicity
-                // but we know the structure from the select above.
                 const studentId = enroll.student?.id;
                 const studentName = enroll.student?.user?.full_name || "Unknown";
 
-                const existing = attendanceData?.find((a) => a.student_id === studentId);
+                const existing = attendanceData?.find((a) => a.student_id === enroll.student?.id); // Match on UUID if that's what's in attendance
+
                 return {
                     id: studentId,
+                    displayId: enroll.student?.id, // Assuming the 'id' returned by join is the custom ID (it should be in 'students' table)
                     name: studentName,
                     status: existing ? (existing.status as Student['status']) : "unmarked",
                     enrollment_id: enroll.id

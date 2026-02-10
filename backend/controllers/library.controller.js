@@ -211,9 +211,8 @@ exports.borrowBook = async (req, res) => {
     const overallPct = await getStudentOverallFeePercent(user.id); // 0..1
     if (overallPct < Number(cfg.min_fee_percent_for_borrow)) {
       return res.status(403).json({
-        error: `Insufficient fee payment. Need at least ${
-          Number(cfg.min_fee_percent_for_borrow) * 100
-        }% overall.`,
+        error: `Insufficient fee payment. Need at least ${Number(cfg.min_fee_percent_for_borrow) * 100
+          }% overall.`,
         details: { percent: Math.round(overallPct * 100) },
       });
     }
@@ -358,7 +357,7 @@ exports.getAllBorrowedBooks = async (req, res) => {
     const { data, error } = await supabase
       .from("borrowed_books")
       .select(
-        "id, book_id, user_id, borrowed_at, returned_at, due_date, status, books(title, author, isbn), users(full_name, email)"
+        "id, book_id, user_id, borrowed_at, returned_at, due_date, status, books(title, author, isbn), users(full_name, email, students(id))"
       )
       .eq("institution_id", institution_id)
       .order("borrowed_at", { ascending: false });

@@ -8,6 +8,7 @@ import { useAuth } from "@/contexts/AuthContext";
 interface StudentGrade {
     id: string; // submission_id
     student_name: string;
+    student_display_id?: string;
     course_title: string;
     assignment_title: string;
     score: number | null;
@@ -35,6 +36,9 @@ const GradeRow = ({ student, onGrade }: { student: StudentGrade; onGrade: (stude
             {/* Info */}
             <View className="flex-1">
                 <Text className="text-gray-900 font-semibold">{student.student_name}</Text>
+                {student.student_display_id && (
+                    <Text className="text-teal-600 text-[10px] font-bold">ID: {student.student_display_id}</Text>
+                )}
                 <Text className="text-gray-400 text-xs">{student.assignment_title} • {student.course_title}</Text>
             </View>
 
@@ -98,21 +102,16 @@ export default function GradesPage() {
                     status,
                     submitted_at,
                     feedback,
-                    student:users!submissions_student_id_fkey(full_name),
+                    student:users!submissions_student_id_fkey(
+                        full_name,
+                        students(id)
+                    ),
                     assignment:assignments!submissions_assignment_id_fkey(
                         title,
                         total_points,
                         course:courses!assignments_course_id_fkey(title)
                     )
                 `)
-                // We filter by checking if the assignment's teacher is the current user
-                // However, deep filtering in Supabase JS client on nested relations can be tricky.
-                // A simpler way is to filter on the client or reverse the query.
-                // Let's try to fetch assignments first, then submissions, or just fetch all and filter client side if dataset is small.
-                // Better: Reverse query.
-                // But let's stick to this and filter.
-                // Actually, RLS policies already restrict `submissions` view to "Teacher (assigned)".
-                // So "select *" should only return relevant submissions!
                 .order('submitted_at', { ascending: false });
 
             if (error) {
@@ -123,6 +122,7 @@ export default function GradesPage() {
             const formatted: StudentGrade[] = (data || []).map((sub: any) => ({
                 id: sub.id,
                 student_name: sub.student?.full_name || "Unknown",
+                student_display_id: sub.student?.students?.[0]?.id,
                 course_title: sub.assignment?.course?.title || "Unknown",
                 assignment_title: sub.assignment?.title || "Unknown",
                 score: sub.grade,
