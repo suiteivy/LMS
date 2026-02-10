@@ -1,19 +1,22 @@
-import React, { useState } from "react";
-import { View, Text, ScrollView, TouchableOpacity, StatusBar, TextInput, Modal } from 'react-native';
-import { ArrowLeft, Plus, Megaphone, Send, Edit2, Trash2, X, Users, Clock } from 'lucide-react-native';
+import React, { useState, useEffect } from "react";
+import { View, Text, ScrollView, TouchableOpacity, StatusBar, TextInput, Modal, Alert, ActivityIndicator } from 'react-native';
+import { ArrowLeft, Plus, Megaphone, Send, Edit2, Trash2, X, Users, Clock, ChevronDown } from 'lucide-react-native';
 import { router } from "expo-router";
+import { supabase } from "@/libs/supabase";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface Announcement {
     id: string;
     title: string;
     message: string;
-    course: string;
-    createdAt: string;
-    readCount: number;
-    totalStudents: number;
+    course_title: string;
+    created_at: string;
+    readCount: number; // Placeholder
+    totalStudents: number; // Placeholder
+    course_id: string;
 }
 
-const AnnouncementCard = ({ announcement }: { announcement: Announcement }) => {
+const AnnouncementCard = ({ announcement, onDelete }: { announcement: Announcement; onDelete: (id: string) => void }) => {
     return (
         <View className="bg-white p-4 rounded-2xl border border-gray-100 mb-3 shadow-sm">
             <View className="flex-row items-start mb-3">
@@ -22,7 +25,7 @@ const AnnouncementCard = ({ announcement }: { announcement: Announcement }) => {
                 </View>
                 <View className="flex-1">
                     <Text className="text-gray-900 font-bold text-base">{announcement.title}</Text>
-                    <Text className="text-gray-400 text-xs">{announcement.course}</Text>
+                    <Text className="text-gray-400 text-xs">{announcement.course_title}</Text>
                 </View>
             </View>
 
@@ -33,22 +36,25 @@ const AnnouncementCard = ({ announcement }: { announcement: Announcement }) => {
             <View className="flex-row justify-between items-center">
                 <View className="flex-row items-center">
                     <Clock size={12} color="#9CA3AF" />
-                    <Text className="text-gray-400 text-xs ml-1">{announcement.createdAt}</Text>
+                    <Text className="text-gray-400 text-xs ml-1">{new Date(announcement.created_at).toLocaleDateString()}</Text>
                 </View>
+                {/* 
                 <View className="flex-row items-center">
                     <Users size={12} color="#9CA3AF" />
                     <Text className="text-gray-400 text-xs ml-1">
                         {announcement.readCount}/{announcement.totalStudents} read
                     </Text>
                 </View>
+                */}
             </View>
 
             <View className="flex-row justify-end gap-3 mt-3 pt-3 border-t border-gray-100">
+                {/* Edit functionality to be implemented */}
                 <TouchableOpacity className="flex-row items-center p-2">
                     <Edit2 size={16} color="#6B7280" />
                     <Text className="text-gray-500 text-xs ml-1 font-medium">Edit</Text>
                 </TouchableOpacity>
-                <TouchableOpacity className="flex-row items-center p-2">
+                <TouchableOpacity className="flex-row items-center p-2" onPress={() => onDelete(announcement.id)}>
                     <Trash2 size={16} color="#ef4444" />
                     <Text className="text-red-500 text-xs ml-1 font-medium">Delete</Text>
                 </TouchableOpacity>
@@ -58,37 +64,102 @@ const AnnouncementCard = ({ announcement }: { announcement: Announcement }) => {
 };
 
 export default function AnnouncementsPage() {
+    const { user, teacherId } = useAuth();
     const [showModal, setShowModal] = useState(false);
+    const [loading, setLoading] = useState(true);
+    const [announcements, setAnnouncements] = useState<Announcement[]>([]);
+    const [courses, setCourses] = useState<{ id: string; title: string }[]>([]);
 
-    const announcements: Announcement[] = [
-        {
-            id: "1",
-            title: "Quiz 1 Postponed",
-            message: "Due to the upcoming holiday, Quiz 1 has been rescheduled to February 20th. Please review chapters 3-5 in preparation.",
-            course: "Mathematics",
-            createdAt: "2 hours ago",
-            readCount: 18,
-            totalStudents: 25
-        },
-        {
-            id: "2",
-            title: "Guest Speaker Next Week",
-            message: "We'll have a special guest speaker from Tech Corp discussing career opportunities in software development.",
-            course: "Computer Science",
-            createdAt: "1 day ago",
-            readCount: 25,
-            totalStudents: 30
-        },
-        {
-            id: "3",
-            title: "Essay Submissions Reminder",
-            message: "Please remember to submit your essays by Friday. Late submissions will receive a 10% penalty.",
-            course: "Writing Workshop",
-            createdAt: "3 days ago",
-            readCount: 20,
-            totalStudents: 20
-        },
-    ];
+    // Form
+    const [title, setTitle] = useState("");
+    const [message, setMessage] = useState("");
+    const [selectedCourseId, setSelectedCourseId] = useState("");
+
+    useEffect(() => {
+        if (teacherId) {
+            fetchAnnouncements();
+            fetchCourses();
+        }
+    }, [teacherId]);
+
+    const fetchCourses = async () => {
+        if (!teacherId) return;
+        const { data } = await supabase.from('courses').select('id, title').eq('teacher_id', teacherId);
+        if (data) setCourses(data);
+    };
+
+    const fetchAnnouncements = async () => {
+        if (!teacherId) return;
+        setLoading(true);
+        try {
+            const { data, error } = await supabase
+                .from('announcements')
+                .select(`
+                    *,
+                    course:courses(title)
+                `)
+                .eq('teacher_id', teacherId)
+                .order('created_at', { ascending: false });
+
+            if (error) throw error;
+
+            const formatted = (data || []).map((a: any) => ({
+                id: a.id,
+                title: a.title,
+                message: a.message,
+                course_title: a.course?.title || "Unknown Course",
+                created_at: a.created_at,
+                readCount: 0,
+                totalStudents: 0,
+                course_id: a.course_id
+            }));
+
+            setAnnouncements(formatted);
+        } catch (error) {
+            console.error("Error fetching announcements:", error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleCreateAnnouncement = async () => {
+        if (!teacherId) return;
+        if (!title || !message || !selectedCourseId) {
+            Alert.alert("Missing Fields", "Please fill all fields and select a course.");
+            return;
+        }
+
+        try {
+            const { error } = await supabase.from('announcements').insert({
+                teacher_id: teacherId,
+                course_id: selectedCourseId,
+                title,
+                message
+            });
+
+            if (error) throw error;
+
+            setShowModal(false);
+            fetchAnnouncements();
+            // Reset
+            setTitle("");
+            setMessage("");
+            setSelectedCourseId("");
+        } catch (error) {
+            Alert.alert("Error", "Failed to create announcement");
+            console.error(error);
+        }
+    };
+
+    const deleteAnnouncement = async (id: string) => {
+        try {
+            const { error } = await supabase.from('announcements').delete().eq('id', id);
+            if (error) throw error;
+            setAnnouncements(prev => prev.filter(a => a.id !== id));
+        } catch (error) {
+            Alert.alert("Error", "Failed to delete announcement");
+        }
+    };
 
     return (
         <>
@@ -121,9 +192,15 @@ export default function AnnouncementsPage() {
                         </View>
 
                         {/* Announcements List */}
-                        {announcements.map((announcement) => (
-                            <AnnouncementCard key={announcement.id} announcement={announcement} />
-                        ))}
+                        {loading ? (
+                            <ActivityIndicator size="large" color="#ec4899" className="mt-8" />
+                        ) : announcements.length === 0 ? (
+                            <Text className="text-gray-500 text-center mt-8">No announcements found.</Text>
+                        ) : (
+                            announcements.map((announcement) => (
+                                <AnnouncementCard key={announcement.id} announcement={announcement} onDelete={deleteAnnouncement} />
+                            ))
+                        )}
                     </View>
                 </ScrollView>
             </View>
@@ -139,10 +216,26 @@ export default function AnnouncementsPage() {
                             </TouchableOpacity>
                         </View>
 
+                        {/* Course Selector */}
+                        <Text className="text-gray-500 text-xs uppercase mb-2 font-semibold">Select Course</Text>
+                        <ScrollView horizontal className="flex-row mb-4" showsHorizontalScrollIndicator={false}>
+                            {courses.map(c => (
+                                <TouchableOpacity
+                                    key={c.id}
+                                    onPress={() => setSelectedCourseId(c.id)}
+                                    className={`mr-2 px-4 py-2 rounded-lg border ${selectedCourseId === c.id ? 'bg-pink-500 border-pink-500' : 'bg-gray-50 border-gray-200'}`}
+                                >
+                                    <Text className={selectedCourseId === c.id ? 'text-white' : 'text-gray-700'}>{c.title}</Text>
+                                </TouchableOpacity>
+                            ))}
+                        </ScrollView>
+
                         <TextInput
                             className="bg-gray-50 rounded-xl px-4 py-3 mb-4 text-gray-900"
                             placeholder="Title"
                             placeholderTextColor="#9CA3AF"
+                            value={title}
+                            onChangeText={setTitle}
                         />
                         <TextInput
                             className="bg-gray-50 rounded-xl px-4 py-3 mb-4 text-gray-900 h-32"
@@ -150,15 +243,13 @@ export default function AnnouncementsPage() {
                             placeholderTextColor="#9CA3AF"
                             multiline
                             textAlignVertical="top"
+                            value={message}
+                            onChangeText={setMessage}
                         />
-                        <TouchableOpacity className="bg-gray-50 rounded-xl px-4 py-3 mb-6 flex-row items-center justify-between">
-                            <Text className="text-gray-500">Select Course</Text>
-                            <Text className="text-teal-600 font-medium">All Courses</Text>
-                        </TouchableOpacity>
 
                         <TouchableOpacity
                             className="bg-pink-500 py-4 rounded-xl items-center flex-row justify-center"
-                            onPress={() => setShowModal(false)}
+                            onPress={handleCreateAnnouncement}
                         >
                             <Send size={18} color="white" />
                             <Text className="text-white font-bold text-base ml-2">Post Announcement</Text>

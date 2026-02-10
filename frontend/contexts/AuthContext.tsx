@@ -9,6 +9,9 @@ interface AuthContextType {
   session: Session | null
   user: User | null
   profile: UserProfile | null
+  studentId: string | null
+  teacherId: string | null
+  adminId: string | null
   loading: boolean
   signUp: (email: string, password: string, userData: {
     full_name: string
@@ -40,6 +43,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [session, setSession] = useState<Session | null>(null)
   const [user, setUser] = useState<User | null>(null)
   const [profile, setProfile] = useState<UserProfile | null>(null)
+  const [studentId, setStudentId] = useState<string | null>(null)
+  const [teacherId, setTeacherId] = useState<string | null>(null)
+  const [adminId, setAdminId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
 
   const timerRef = useRef<any>(null)
@@ -69,6 +75,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const loadUserProfile = async (userId: string): Promise<UserProfile | null> => {
     console.log('Loading user profile for:', userId)
     try {
+      // 1. Get Base Profile
       const { data, error } = await supabase
         .from('users')
         .select('*')
@@ -81,6 +88,19 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       }
       console.log('Profile loaded successfully:', data.role)
       setProfile(data as UserProfile)
+
+      // 2. Get Role-Specific ID
+      if (data.role === 'student') {
+        const { data: stuData } = await supabase.from('students').select('id').eq('user_id', userId).single();
+        if (stuData) setStudentId(stuData.id);
+      } else if (data.role === 'teacher') {
+        const { data: teaData } = await supabase.from('teachers').select('id').eq('user_id', userId).single();
+        if (teaData) setTeacherId(teaData.id);
+      } else if (data.role === 'admin') {
+        const { data: admData } = await supabase.from('admins').select('id').eq('user_id', userId).single();
+        if (admData) setAdminId(admData.id);
+      }
+
       return data as UserProfile
     } catch (error) {
       console.error('Error loading profile:', error)
@@ -133,6 +153,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         } else if (event === 'SIGNED_OUT') {
           clearTimer()
           setProfile(null)
+          setStudentId(null)
+          setTeacherId(null)
+          setAdminId(null)
           console.log('User signed out, state cleared')
         }
 
@@ -165,6 +188,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     session,
     user,
     profile,
+    studentId,
+    teacherId,
+    adminId,
     loading,
     signUp: authService.signUp,
     signIn: authService.signIn,

@@ -1,6 +1,8 @@
-import React, { useState } from "react";
-import { View, Text, ScrollView, TouchableOpacity, StatusBar, TextInput } from 'react-native';
+import React, { useState, useEffect } from "react";
+import { View, Text, ScrollView, TouchableOpacity, StatusBar, TextInput, ActivityIndicator } from 'react-native';
 import { Search, Users, TrendingUp, ChevronRight, Filter } from 'lucide-react-native';
+import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/libs/supabase";
 
 interface Student {
     id: string;
@@ -55,21 +57,94 @@ const StudentCard = ({ student }: StudentCardProps) => {
 };
 
 export default function TeacherStudents() {
+    const { teacherId } = useAuth();
     const [searchQuery, setSearchQuery] = useState("");
+    const [students, setStudents] = useState<Student[]>([]);
+    const [loading, setLoading] = useState(true);
 
-    const students: Student[] = [
-        { id: "1", name: "Sarah Johnson", email: "sarah@email.com", course: "Mathematics", grade: "A", progress: 92 },
-        { id: "2", name: "Michael Chen", email: "michael@email.com", course: "Writing Workshop", grade: "A-", progress: 88 },
-        { id: "3", name: "Alice Kamau", email: "alice@email.com", course: "Computer Science", grade: "B+", progress: 75 },
-        { id: "4", name: "James Omondi", email: "james@email.com", course: "Mathematics", grade: "B", progress: 68 },
-        { id: "5", name: "Grace Wanjiku", email: "grace@email.com", course: "Digital Literacy", grade: "A", progress: 95 },
-        { id: "6", name: "Peter Njoroge", email: "peter@email.com", course: "Computer Science", grade: "C+", progress: 55 },
-    ];
+    useEffect(() => {
+        if (teacherId) {
+            fetchStudents();
+        }
+    }, [teacherId]);
+
+    const fetchStudents = async () => {
+        if (!teacherId) return;
+        try {
+            setLoading(true);
+            // 1. Get classes for this teacher
+            const { data: classesData, error: classesError } = await supabase
+                .from('classes')
+                .select('id, name')
+                .eq('teacher_id', teacherId);
+
+            if (classesError) throw classesError;
+
+            const classIds = classesData.map(c => c.id);
+
+            if (classIds.length === 0) {
+                setStudents([]);
+                setLoading(false);
+                return;
+            }
+
+            // 2. Get enrollments for these classes
+            // We need to join with students -> users to get name/email
+            const { data: enrollData, error: enrollError } = await supabase
+                .from('enrollments')
+                .select(`
+                    id,
+                    class_id,
+                    student:students(
+                        id,
+                        user:users(full_name, email)
+                    )
+                `)
+                .in('class_id', classIds);
+
+            if (enrollError) throw enrollError;
+
+            // Map to Student interface
+            // For now, we'll use mock data for grade/progress as we don't have that fully calculated yet
+            const mappedStudents: Student[] = enrollData.map((enroll: any) => {
+                const cls = classesData.find(c => c.id === enroll.class_id);
+                return {
+                    id: enroll.student?.id,
+                    name: enroll.student?.user?.full_name || "Unknown",
+                    email: enroll.student?.user?.email || "",
+                    course: cls?.name || "Unknown Class",
+                    grade: "A", // Mock
+                    progress: 75 // Mock
+                };
+            });
+
+            // Remove duplicates via Map if a student is in multiple classes?
+            // Or show them as separate entries (one per class enrollment)?
+            // The UI shows "All Students", typically unique students.
+            // But the 'course' field implies enrollment context.
+            // Let's keep them as enrollments for now.
+
+            setStudents(mappedStudents);
+
+        } catch (error) {
+            console.error("Error fetching students:", error);
+        } finally {
+            setLoading(false);
+        }
+    };
 
     const filteredStudents = students.filter(s =>
         s.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         s.course.toLowerCase().includes(searchQuery.toLowerCase())
     );
+
+    if (loading) {
+        return (
+            <View className="flex-1 justify-center items-center bg-gray-50">
+                <ActivityIndicator size="large" color="#0d9488" />
+            </View>
+        );
+    }
 
     return (
         <>
@@ -120,9 +195,13 @@ export default function TeacherStudents() {
 
                         {/* Student List */}
                         <Text className="text-lg font-bold text-gray-900 mb-3">All Students</Text>
-                        {filteredStudents.map((student) => (
-                            <StudentCard key={student.id} student={student} />
-                        ))}
+                        {filteredStudents.length === 0 ? (
+                            <Text className="text-gray-500 text-center py-4">No students found.</Text>
+                        ) : (
+                            filteredStudents.map((student, index) => (
+                                <StudentCard key={`${student.id}-${index}`} student={student} />
+                            ))
+                        )}
                     </View>
                 </ScrollView>
             </View>

@@ -21,29 +21,11 @@ EXPO_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
 
 ### 2. Database Schema Setup
 
-Execute the SQL scripts in the following order:
-
-1. Create tables (users, courses, assignments, etc.)
-2. Apply Row Level Security (RLS) policies
-3. Apply authentication policies
+Execute the consolidated schema script:
 
 ```bash
 # Connect to your Supabase project SQL editor and run:
-# 1. Table creation scripts
-source backend/supabase/schemas/users.sql
-source backend/supabase/schemas/institutions.sql
-source backend/supabase/schemas/courses.sql
-source backend/supabase/schemas/lessons.sql
-source backend/supabase/schemas/assignments.sql
-source backend/supabase/schemas/submissions.sql
-source backend/supabase/schemas/grades.sql
-source backend/supabase/schemas/attendance.sql
-
-# 2. RLS policies
-source backend/supabase/schemas/roles_policy.sql
-
-# 3. Auth policies
-source backend/supabase/schemas/auth_policy.sql
+source backend/supabase/schema.sql
 ```
 
 ### 3. Authentication Settings in Supabase Dashboard
@@ -61,13 +43,20 @@ source backend/supabase/schemas/auth_policy.sql
 
 The first admin user needs to be created manually since regular sign-up creates students by default:
 
-1. Sign up a new user through the app (will be created as a student)
-2. In Supabase SQL Editor, run:
+1. Sign up a new user through the app.
+2. In Supabase SQL Editor:
+    a. Update the user's role in the `users` table.
+    b. Insert a corresponding record into the `admins` table.
 
 ```sql
+-- 1. Update user role
 UPDATE users
 SET role = 'admin'
-WHERE email = 'admin@example.com'; -- Replace with the admin email
+WHERE email = 'admin@example.com';
+
+-- 2. Create admin profile (Replace UUID with actual user ID from users table)
+INSERT INTO admins (user_id, id)
+VALUES ('replace-with-uuid', 'ADM-2024-001');
 ```
 
 ### 5. Testing Role-Based Access

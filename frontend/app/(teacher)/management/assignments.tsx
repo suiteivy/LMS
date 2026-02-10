@@ -1,7 +1,9 @@
-import React, { useState } from "react";
-import { View, Text, ScrollView, TouchableOpacity, StatusBar, TextInput, Modal } from 'react-native';
-import { ArrowLeft, Plus, FileText, Calendar, Clock, Users, Eye, Edit2, Trash2, X } from 'lucide-react-native';
+import React, { useState, useEffect } from "react";
+import { View, Text, ScrollView, TouchableOpacity, StatusBar, TextInput, Modal, Alert, ActivityIndicator } from 'react-native';
+import { ArrowLeft, Plus, FileText, Calendar, Clock, Users, Eye, Edit2, Trash2, X, ChevronDown } from 'lucide-react-native';
 import { router } from "expo-router";
+import { supabase } from "@/libs/supabase";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface Assignment {
     id: string;
@@ -9,8 +11,14 @@ interface Assignment {
     course: string;
     dueDate: string;
     submissions: number;
-    totalStudents: number;
+    totalStudents: number; // Placeholder or fetched
     status: "active" | "draft" | "closed";
+    course_id: string;
+}
+
+interface CourseOption {
+    id: string;
+    title: string;
 }
 
 const AssignmentCard = ({ assignment }: { assignment: Assignment }) => {
@@ -20,7 +28,9 @@ const AssignmentCard = ({ assignment }: { assignment: Assignment }) => {
         return "bg-red-50 text-red-600 border-red-100";
     };
 
-    const progressPercent = (assignment.submissions / assignment.totalStudents) * 100;
+    const progressPercent = assignment.totalStudents > 0
+        ? (assignment.submissions / assignment.totalStudents) * 100
+        : 0;
 
     return (
         <View className="bg-white p-4 rounded-2xl border border-gray-100 mb-3 shadow-sm">
@@ -44,7 +54,7 @@ const AssignmentCard = ({ assignment }: { assignment: Assignment }) => {
                 <View className="flex-row items-center">
                     <Users size={14} color="#6B7280" />
                     <Text className="text-gray-500 text-xs ml-1">
-                        {assignment.submissions}/{assignment.totalStudents} submitted
+                        {assignment.submissions} submitted
                     </Text>
                 </View>
             </View>
@@ -70,16 +80,105 @@ const AssignmentCard = ({ assignment }: { assignment: Assignment }) => {
 };
 
 export default function AssignmentsPage() {
+    const { user, teacherId } = useAuth();
     const [showModal, setShowModal] = useState(false);
     const [filter, setFilter] = useState<"all" | "active" | "draft" | "closed">("all");
+    const [assignments, setAssignments] = useState<Assignment[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [courses, setCourses] = useState<CourseOption[]>([]);
 
-    const assignments: Assignment[] = [
-        { id: "1", title: "Quiz 1: Basic Algebra", course: "Mathematics", dueDate: "Feb 15, 2026", submissions: 18, totalStudents: 25, status: "active" },
-        { id: "2", title: "Essay: My Favorite Book", course: "Writing Workshop", dueDate: "Feb 20, 2026", submissions: 12, totalStudents: 20, status: "active" },
-        { id: "3", title: "Lab Report: Variables", course: "Computer Science", dueDate: "Feb 10, 2026", submissions: 30, totalStudents: 30, status: "closed" },
-        { id: "4", title: "Project: Simple Calculator", course: "Computer Science", dueDate: "Mar 1, 2026", submissions: 0, totalStudents: 30, status: "draft" },
-        { id: "5", title: "Reading Comprehension Test", course: "Digital Literacy", dueDate: "Feb 18, 2026", submissions: 8, totalStudents: 15, status: "active" },
-    ];
+    // Form State
+    const [title, setTitle] = useState("");
+    const [description, setDescription] = useState("");
+    const [dueDate, setDueDate] = useState("");
+    const [points, setPoints] = useState("");
+    const [selectedCourseId, setSelectedCourseId] = useState("");
+
+
+    useEffect(() => {
+        if (teacherId) {
+            fetchAssignments();
+            fetchCourses();
+        }
+    }, [teacherId]);
+
+    const fetchCourses = async () => {
+        if (!teacherId) return;
+        const { data } = await supabase.from('courses').select('id, title').eq('teacher_id', teacherId);
+        if (data) setCourses(data);
+    };
+
+    const fetchAssignments = async () => {
+        if (!teacherId) return;
+
+        try {
+            // Fetch assignments filtered by courses taught by this teacher
+            // We can check if teacher_id on assignment matches
+            const { data, error } = await supabase
+                .from('assignments')
+                .select(`
+                    *,
+                    course:courses(title),
+                    submissions(count)
+                `)
+                .eq('teacher_id', teacherId)
+                .order('created_at', { ascending: false });
+
+            if (error) throw error;
+
+            const formatted = (data || []).map((a: any) => ({
+                id: a.id,
+                title: a.title,
+                course: a.course?.title || "Unknown Course",
+                course_id: a.course_id,
+                dueDate: a.due_date ? new Date(a.due_date).toLocaleDateString() : "No Due Date",
+                submissions: a.submissions?.[0]?.count || 0,
+                totalStudents: 0, // Todo: fetch from course->class->enrollments
+                status: a.status
+            }));
+
+            setAssignments(formatted);
+        } catch (error) {
+            console.error(error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const createAssignment = async () => {
+        if (!teacherId) return;
+        if (!title || !selectedCourseId) {
+            Alert.alert("Missing Fields", "Please fill in title and select a course.");
+            return;
+        }
+
+        try {
+            const { error } = await supabase.from('assignments').insert({
+                teacher_id: teacherId,
+                course_id: selectedCourseId,
+                title,
+                description,
+                due_date: dueDate ? new Date(dueDate).toISOString() : null, // Naive parsing, better to use date picker
+                total_points: parseInt(points) || 100,
+                status: 'active'
+            });
+
+            if (error) throw error;
+
+            setShowModal(false);
+            fetchAssignments();
+            // Reset form
+            setTitle("");
+            setDescription("");
+            setDueDate("");
+            setPoints("");
+            setSelectedCourseId("");
+
+        } catch (error) {
+            Alert.alert("Error", "Failed to create assignment");
+            console.error(error);
+        }
+    };
 
     const filteredAssignments = filter === "all"
         ? assignments
@@ -144,9 +243,15 @@ export default function AssignmentsPage() {
                         </View>
 
                         {/* Assignment List */}
-                        {filteredAssignments.map((assignment) => (
-                            <AssignmentCard key={assignment.id} assignment={assignment} />
-                        ))}
+                        {loading ? (
+                            <ActivityIndicator size="large" color="#0d9488" className="mt-8" />
+                        ) : filteredAssignments.length === 0 ? (
+                            <Text className="text-gray-500 text-center mt-8">No assignments found</Text>
+                        ) : (
+                            filteredAssignments.map((assignment) => (
+                                <AssignmentCard key={assignment.id} assignment={assignment} />
+                            ))
+                        )}
                     </View>
                 </ScrollView>
             </View>
@@ -162,10 +267,27 @@ export default function AssignmentsPage() {
                             </TouchableOpacity>
                         </View>
 
+                        {/* Course Selector (Simple) */}
+                        <Text className="text-gray-500 text-xs uppercase mb-1 font-semibold">Course</Text>
+                        <ScrollView horizontal className="flex-row mb-4" showsHorizontalScrollIndicator={false}>
+                            {courses.map(c => (
+                                <TouchableOpacity
+                                    key={c.id}
+                                    onPress={() => setSelectedCourseId(c.id)}
+                                    className={`mr-2 px-4 py-2 rounded-lg border ${selectedCourseId === c.id ? 'bg-teal-600 border-teal-600' : 'bg-gray-50 border-gray-200'}`}
+                                >
+                                    <Text className={selectedCourseId === c.id ? 'text-white' : 'text-gray-700'}>{c.title}</Text>
+                                </TouchableOpacity>
+                            ))}
+                        </ScrollView>
+
+
                         <TextInput
                             className="bg-gray-50 rounded-xl px-4 py-3 mb-4 text-gray-900"
                             placeholder="Assignment Title"
                             placeholderTextColor="#9CA3AF"
+                            value={title}
+                            onChangeText={setTitle}
                         />
                         <TextInput
                             className="bg-gray-50 rounded-xl px-4 py-3 mb-4 text-gray-900 h-24"
@@ -173,22 +295,28 @@ export default function AssignmentsPage() {
                             placeholderTextColor="#9CA3AF"
                             multiline
                             textAlignVertical="top"
+                            value={description}
+                            onChangeText={setDescription}
                         />
                         <TextInput
                             className="bg-gray-50 rounded-xl px-4 py-3 mb-4 text-gray-900"
-                            placeholder="Due Date (e.g., Feb 20, 2026)"
+                            placeholder="Due Date (YYYY-MM-DD)"
                             placeholderTextColor="#9CA3AF"
+                            value={dueDate}
+                            onChangeText={setDueDate}
                         />
                         <TextInput
                             className="bg-gray-50 rounded-xl px-4 py-3 mb-6 text-gray-900"
                             placeholder="Max Points (e.g., 100)"
                             placeholderTextColor="#9CA3AF"
                             keyboardType="numeric"
+                            value={points}
+                            onChangeText={setPoints}
                         />
 
                         <TouchableOpacity
                             className="bg-teal-600 py-4 rounded-xl items-center"
-                            onPress={() => setShowModal(false)}
+                            onPress={createAssignment}
                         >
                             <Text className="text-white font-bold text-base">Create Assignment</Text>
                         </TouchableOpacity>

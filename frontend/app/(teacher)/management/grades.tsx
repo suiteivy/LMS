@@ -1,23 +1,27 @@
-import React, { useState } from "react";
-import { View, Text, ScrollView, TouchableOpacity, StatusBar, TextInput } from 'react-native';
-import { ArrowLeft, Search, Filter, Download, Edit2, ChevronDown, Check } from 'lucide-react-native';
+import React, { useState, useEffect } from "react";
+import { View, Text, ScrollView, TouchableOpacity, StatusBar, TextInput, ActivityIndicator, Modal, Alert } from 'react-native';
+import { ArrowLeft, Search, Filter, Download, Edit2, ChevronDown, Check, X } from 'lucide-react-native';
 import { router } from "expo-router";
+import { supabase } from "@/libs/supabase";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface StudentGrade {
-    id: string;
-    name: string;
-    course: string;
-    assignment: string;
+    id: string; // submission_id
+    student_name: string;
+    course_title: string;
+    assignment_title: string;
     score: number | null;
     maxScore: number;
-    status: "graded" | "pending" | "submitted";
+    status: "graded" | "pending" | "submitted" | "late";
     submittedAt: string;
+    feedback?: string | null;
 }
 
-const GradeRow = ({ student, onGrade }: { student: StudentGrade; onGrade: (id: string) => void }) => {
+const GradeRow = ({ student, onGrade }: { student: StudentGrade; onGrade: (student: StudentGrade) => void }) => {
     const getStatusColor = (status: string) => {
         if (status === "graded") return "bg-green-50 text-green-600";
-        if (status === "pending") return "bg-yellow-50 text-yellow-600";
+        if (status === "pending" || status === "submitted") return "bg-yellow-50 text-yellow-600";
+        if (status === "late") return "bg-red-50 text-red-600";
         return "bg-blue-50 text-blue-600";
     };
 
@@ -25,13 +29,13 @@ const GradeRow = ({ student, onGrade }: { student: StudentGrade; onGrade: (id: s
         <View className="bg-white p-4 rounded-xl border border-gray-100 mb-2 flex-row items-center">
             {/* Avatar */}
             <View className="w-10 h-10 rounded-full bg-teal-100 items-center justify-center mr-3">
-                <Text className="text-teal-600 font-bold">{student.name.charAt(0)}</Text>
+                <Text className="text-teal-600 font-bold">{student.student_name.charAt(0)}</Text>
             </View>
 
             {/* Info */}
             <View className="flex-1">
-                <Text className="text-gray-900 font-semibold">{student.name}</Text>
-                <Text className="text-gray-400 text-xs">{student.assignment}</Text>
+                <Text className="text-gray-900 font-semibold">{student.student_name}</Text>
+                <Text className="text-gray-400 text-xs">{student.assignment_title} • {student.course_title}</Text>
             </View>
 
             {/* Score */}
@@ -51,7 +55,7 @@ const GradeRow = ({ student, onGrade }: { student: StudentGrade; onGrade: (id: s
             {/* Grade Button */}
             <TouchableOpacity
                 className={`p-2 rounded-lg ${student.status === "graded" ? "bg-gray-100" : "bg-teal-600"}`}
-                onPress={() => onGrade(student.id)}
+                onPress={() => onGrade(student)}
             >
                 {student.status === "graded" ? (
                     <Check size={18} color="#6B7280" />
@@ -64,29 +68,133 @@ const GradeRow = ({ student, onGrade }: { student: StudentGrade; onGrade: (id: s
 };
 
 export default function GradesPage() {
+    const { user, teacherId } = useAuth();
     const [searchQuery, setSearchQuery] = useState("");
     const [selectedCourse, setSelectedCourse] = useState("All Courses");
+    const [submissions, setSubmissions] = useState<StudentGrade[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [gradingModalVisible, setGradingModalVisible] = useState(false);
+    const [currentSubmission, setCurrentSubmission] = useState<StudentGrade | null>(null);
+    const [gradeInput, setGradeInput] = useState("");
+    const [feedbackInput, setFeedbackInput] = useState("");
 
-    const students: StudentGrade[] = [
-        { id: "1", name: "Sarah Johnson", course: "Mathematics", assignment: "Quiz 1", score: 85, maxScore: 100, status: "graded", submittedAt: "2 days ago" },
-        { id: "2", name: "Michael Chen", course: "Mathematics", assignment: "Quiz 1", score: null, maxScore: 100, status: "submitted", submittedAt: "1 day ago" },
-        { id: "3", name: "Alice Kamau", course: "Computer Science", assignment: "Project 1", score: null, maxScore: 100, status: "pending", submittedAt: "3 hours ago" },
-        { id: "4", name: "James Omondi", course: "Mathematics", assignment: "Quiz 1", score: 92, maxScore: 100, status: "graded", submittedAt: "3 days ago" },
-        { id: "5", name: "Grace Wanjiku", course: "Writing Workshop", assignment: "Essay 1", score: null, maxScore: 100, status: "submitted", submittedAt: "5 hours ago" },
-        { id: "6", name: "Peter Njoroge", course: "Computer Science", assignment: "Lab 2", score: 78, maxScore: 100, status: "graded", submittedAt: "1 week ago" },
-    ];
+    useEffect(() => {
+        if (teacherId) {
+            fetchSubmissions();
+        }
+    }, [teacherId]);
 
-    const filteredStudents = students.filter(s =>
-        s.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        s.assignment.toLowerCase().includes(searchQuery.toLowerCase())
+    const fetchSubmissions = async () => {
+        if (!teacherId) return;
+
+        try {
+            // Fetch submissions for assignments created by this teacher
+            // We need to join: submissions -> assignments -> courses
+            const { data, error } = await supabase
+                .from('submissions')
+                .select(`
+                    id,
+                    grade,
+                    status,
+                    submitted_at,
+                    feedback,
+                    student:users!submissions_student_id_fkey(full_name),
+                    assignment:assignments!submissions_assignment_id_fkey(
+                        title,
+                        total_points,
+                        course:courses!assignments_course_id_fkey(title)
+                    )
+                `)
+                // We filter by checking if the assignment's teacher is the current user
+                // However, deep filtering in Supabase JS client on nested relations can be tricky.
+                // A simpler way is to filter on the client or reverse the query.
+                // Let's try to fetch assignments first, then submissions, or just fetch all and filter client side if dataset is small.
+                // Better: Reverse query.
+                // But let's stick to this and filter.
+                // Actually, RLS policies already restrict `submissions` view to "Teacher (assigned)".
+                // So "select *" should only return relevant submissions!
+                .order('submitted_at', { ascending: false });
+
+            if (error) {
+                console.error("Supabase Error:", error);
+                throw error;
+            }
+
+            const formatted: StudentGrade[] = (data || []).map((sub: any) => ({
+                id: sub.id,
+                student_name: sub.student?.full_name || "Unknown",
+                course_title: sub.assignment?.course?.title || "Unknown",
+                assignment_title: sub.assignment?.title || "Unknown",
+                score: sub.grade,
+                maxScore: sub.assignment?.total_points || 100,
+                status: sub.status,
+                submittedAt: new Date(sub.submitted_at).toLocaleDateString(),
+                feedback: sub.feedback
+            }));
+
+            setSubmissions(formatted);
+        } catch (error) {
+            console.error("Error fetching grades:", error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleGradeClick = (student: StudentGrade) => {
+        setCurrentSubmission(student);
+        setGradeInput(student.score?.toString() || "");
+        setFeedbackInput(student.feedback || "");
+        setGradingModalVisible(true);
+    };
+
+    const submitGrade = async () => {
+        if (!currentSubmission) return;
+
+        const score = parseFloat(gradeInput);
+        if (isNaN(score)) {
+            Alert.alert("Invalid Score", "Please enter a valid number");
+            return;
+        }
+
+        if (score > currentSubmission.maxScore) {
+            Alert.alert("Invalid Score", `Score cannot be higher than ${currentSubmission.maxScore}`);
+            return;
+        }
+
+        try {
+            const { error } = await supabase
+                .from('submissions')
+                .update({
+                    grade: score,
+                    feedback: feedbackInput,
+                    status: 'graded',
+                    updated_at: new Date().toISOString()
+                })
+                .eq('id', currentSubmission.id);
+
+            if (error) throw error;
+
+            // Update local state
+            setSubmissions(prev => prev.map(s =>
+                s.id === currentSubmission.id
+                    ? { ...s, score: score, feedback: feedbackInput, status: 'graded' }
+                    : s
+            ));
+
+            setGradingModalVisible(false);
+            setCurrentSubmission(null);
+        } catch (error) {
+            console.error("Error updating grade:", error);
+            Alert.alert("Error", "Failed to save grade");
+        }
+    };
+
+    const filteredStudents = submissions.filter(s =>
+        s.student_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        s.assignment_title.toLowerCase().includes(searchQuery.toLowerCase())
     );
 
-    const pendingCount = students.filter(s => s.status !== "graded").length;
-
-    const handleGrade = (id: string) => {
-        console.log("Grade student:", id);
-        // TODO: Open grading modal
-    };
+    const pendingCount = submissions.filter(s => s.status !== "graded").length;
 
     return (
         <>
@@ -119,19 +227,19 @@ export default function GradesPage() {
                             <View className="flex-1 bg-green-500 p-3 rounded-xl">
                                 <Text className="text-green-100 text-xs uppercase">Graded</Text>
                                 <Text className="text-white text-xl font-bold">
-                                    {students.filter(s => s.status === "graded").length}
+                                    {submissions.filter(s => s.status === "graded").length}
                                 </Text>
                             </View>
                             <View className="flex-1 bg-blue-500 p-3 rounded-xl">
                                 <Text className="text-blue-100 text-xs uppercase">Submitted</Text>
                                 <Text className="text-white text-xl font-bold">
-                                    {students.filter(s => s.status === "submitted").length}
+                                    {submissions.filter(s => s.status === "submitted").length}
                                 </Text>
                             </View>
                             <View className="flex-1 bg-yellow-500 p-3 rounded-xl">
                                 <Text className="text-yellow-100 text-xs uppercase">Pending</Text>
                                 <Text className="text-white text-xl font-bold">
-                                    {students.filter(s => s.status === "pending").length}
+                                    {submissions.filter(s => s.status === "pending").length}
                                 </Text>
                             </View>
                         </View>
@@ -159,12 +267,73 @@ export default function GradesPage() {
 
                         {/* Grade List */}
                         <Text className="text-lg font-bold text-gray-900 mb-3">All Submissions</Text>
-                        {filteredStudents.map((student) => (
-                            <GradeRow key={student.id} student={student} onGrade={handleGrade} />
-                        ))}
+
+                        {loading ? (
+                            <ActivityIndicator size="large" color="#0d9488" className="mt-8" />
+                        ) : filteredStudents.length === 0 ? (
+                            <Text className="text-gray-500 text-center mt-8">No submissions found</Text>
+                        ) : (
+                            filteredStudents.map((student) => (
+                                <GradeRow key={student.id} student={student} onGrade={handleGradeClick} />
+                            ))
+                        )}
                     </View>
                 </ScrollView>
             </View>
+
+            {/* Grading Modal */}
+            <Modal visible={gradingModalVisible} animationType="slide" transparent>
+                <View className="flex-1 bg-black/50 justify-end">
+                    <View className="bg-white rounded-t-3xl p-6">
+                        <View className="flex-row justify-between items-center mb-6">
+                            <Text className="text-xl font-bold text-gray-900">Grade Submission</Text>
+                            <TouchableOpacity onPress={() => setGradingModalVisible(false)}>
+                                <X size={24} color="#6B7280" />
+                            </TouchableOpacity>
+                        </View>
+
+                        <View className="mb-4">
+                            <Text className="text-gray-500 text-sm mb-1">Student</Text>
+                            <Text className="text-gray-900 font-semibold">{currentSubmission?.student_name}</Text>
+                        </View>
+
+                        <View className="mb-4">
+                            <Text className="text-gray-500 text-sm mb-1">Assignment</Text>
+                            <Text className="text-gray-900 font-semibold">{currentSubmission?.assignment_title}</Text>
+                        </View>
+
+                        <View className="mb-4">
+                            <Text className="text-gray-500 text-sm mb-1">Score (Max: {currentSubmission?.maxScore})</Text>
+                            <TextInput
+                                className="bg-gray-50 rounded-xl px-4 py-3 text-gray-900"
+                                placeholder="Enter score"
+                                keyboardType="numeric"
+                                value={gradeInput.toString()}
+                                onChangeText={setGradeInput}
+                            />
+                        </View>
+
+                        <View className="mb-6">
+                            <Text className="text-gray-500 text-sm mb-1">Feedback</Text>
+                            <TextInput
+                                className="bg-gray-50 rounded-xl px-4 py-3 text-gray-900 h-24"
+                                placeholder="Enter feedback"
+                                multiline
+                                textAlignVertical="top"
+                                value={feedbackInput}
+                                onChangeText={setFeedbackInput}
+                            />
+                        </View>
+
+                        <TouchableOpacity
+                            className="bg-teal-600 py-4 rounded-xl items-center"
+                            onPress={submitGrade}
+                        >
+                            <Text className="text-white font-bold text-base">Save Grade</Text>
+                        </TouchableOpacity>
+                    </View>
+                </View>
+            </Modal>
         </>
     );
 }

@@ -1,42 +1,46 @@
-import React, { useState } from "react";
-import { View, Text, ScrollView, TouchableOpacity, StatusBar, Modal } from 'react-native';
-import { ArrowLeft, Plus, FileText, Video, File, Image, Download, Trash2, X, Upload, FolderOpen } from 'lucide-react-native';
+import React, { useState, useEffect } from "react";
+import { View, Text, ScrollView, TouchableOpacity, StatusBar, Modal, TextInput, Alert, ActivityIndicator } from 'react-native';
+import { ArrowLeft, Video, File, Image, Download, Trash2, X, Upload, FolderOpen, Link as LinkIcon, FileText } from 'lucide-react-native';
 import { router } from "expo-router";
+import { supabase } from "@/libs/supabase";
+import { useAuth } from "@/contexts/AuthContext";
+import { Database } from "@/types/database";
 
-interface Resource {
-    id: string;
-    name: string;
-    type: "pdf" | "video" | "document" | "image";
-    course: string;
-    size: string;
-    uploadedAt: string;
-}
+type Resource = Database['public']['Tables']['resources']['Row'] & {
+    course_title?: string;
+};
 
-const ResourceCard = ({ resource }: { resource: Resource }) => {
+const ResourceCard = ({ resource, onDelete }: { resource: Resource; onDelete: (id: string) => void }) => {
     const getTypeIcon = (type: string) => {
         if (type === "pdf") return { icon: FileText, color: "#ef4444", bg: "#fee2e2" };
         if (type === "video") return { icon: Video, color: "#8b5cf6", bg: "#ede9fe" };
         if (type === "image") return { icon: Image, color: "#22c55e", bg: "#dcfce7" };
-        return { icon: File, color: "#3b82f6", bg: "#dbeafe" };
+        if (type === "link") return { icon: LinkIcon, color: "#3b82f6", bg: "#dbeafe" };
+        return { icon: File, color: "#9ca3af", bg: "#f3f4f6" };
     };
 
     const typeInfo = getTypeIcon(resource.type);
     const IconComponent = typeInfo.icon;
 
     return (
-        <View className="bg-white p-4 rounded-xl border border-gray-100 mb-2 flex-row items-center">
+        <View className="bg-white p-4 rounded-xl border border-gray-100 mb-2 flex-row items-center shadow-sm">
             <View style={{ backgroundColor: typeInfo.bg }} className="w-10 h-10 rounded-xl items-center justify-center mr-3">
                 <IconComponent size={20} color={typeInfo.color} />
             </View>
             <View className="flex-1">
-                <Text className="text-gray-900 font-semibold" numberOfLines={1}>{resource.name}</Text>
-                <Text className="text-gray-400 text-xs">{resource.course} • {resource.size}</Text>
+                <Text className="text-gray-900 font-semibold" numberOfLines={1}>{resource.title}</Text>
+                <Text className="text-gray-400 text-xs">
+                    {resource.course_title || "Unknown Course"} • {resource.type.toUpperCase()} {resource.size ? `• ${resource.size}` : ''}
+                </Text>
+                {resource.type === 'link' && (
+                    <Text className="text-blue-400 text-[10px]" numberOfLines={1}>{resource.url}</Text>
+                )}
             </View>
             <View className="flex-row gap-2">
-                <TouchableOpacity className="p-2">
+                <TouchableOpacity className="p-2" onPress={() => Alert.alert("Download", `Opening ${resource.url}`)}>
                     <Download size={18} color="#6B7280" />
                 </TouchableOpacity>
-                <TouchableOpacity className="p-2">
+                <TouchableOpacity className="p-2" onPress={() => onDelete(resource.id)}>
                     <Trash2 size={18} color="#ef4444" />
                 </TouchableOpacity>
             </View>
@@ -45,20 +49,120 @@ const ResourceCard = ({ resource }: { resource: Resource }) => {
 };
 
 export default function ResourcesPage() {
+    const { user, teacherId } = useAuth();
     const [showModal, setShowModal] = useState(false);
-    const [selectedCourse, setSelectedCourse] = useState("All Courses");
+    const [loading, setLoading] = useState(true);
+    const [resources, setResources] = useState<Resource[]>([]);
+    const [courses, setCourses] = useState<{ id: string; title: string }[]>([]);
 
-    const resources: Resource[] = [
-        { id: "1", name: "Algebra Fundamentals.pdf", type: "pdf", course: "Mathematics", size: "2.4 MB", uploadedAt: "2 days ago" },
-        { id: "2", name: "Lecture 1 - Introduction.mp4", type: "video", course: "Computer Science", size: "156 MB", uploadedAt: "1 week ago" },
-        { id: "3", name: "Writing Guidelines.docx", type: "document", course: "Writing Workshop", size: "540 KB", uploadedAt: "3 days ago" },
-        { id: "4", name: "Course Syllabus.pdf", type: "pdf", course: "Digital Literacy", size: "890 KB", uploadedAt: "2 weeks ago" },
-        { id: "5", name: "Lab Setup Instructions.pdf", type: "pdf", course: "Computer Science", size: "1.2 MB", uploadedAt: "5 days ago" },
-        { id: "6", name: "Class Photo.jpg", type: "image", course: "Writing Workshop", size: "3.8 MB", uploadedAt: "1 day ago" },
-    ];
+    // Form
+    const [title, setTitle] = useState("");
+    const [url, setUrl] = useState("");
+    const [type, setType] = useState<"link" | "pdf" | "video" | "other">("link");
+    const [selectedCourseId, setSelectedCourseId] = useState("");
 
-    const totalSize = "164.8 MB";
-    const totalFiles = resources.length;
+
+    useEffect(() => {
+        if (teacherId) {
+            fetchResources();
+            fetchCourses();
+        }
+    }, [teacherId]);
+
+    const fetchCourses = async () => {
+        if (!teacherId) return;
+        const { data } = await supabase.from('courses').select('id, title').eq('teacher_id', teacherId);
+        if (data) setCourses(data);
+    };
+
+    const fetchResources = async () => {
+        if (!teacherId) return;
+        setLoading(true);
+        try {
+            // Fetch resources for courses taught by this teacher
+            // Since we have RLS, we can just select all resources we have access to?
+            // Wait, RLS for Select says: Teacher (own course), Student (enrolled).
+            // So fetching all from 'resources' should work if RLS is correct.
+            // But we might get resources from courses we are enrolled in (if teacher is also student?).
+            // Let's filter by courses we teach to be safe and clean.
+
+            // 1. Get Course IDs
+            const { data: myCourses } = await supabase.from('courses').select('id, title').eq('teacher_id', teacherId);
+            const courseIds = (myCourses || []).map(c => c.id);
+            const courseMap = new Map(myCourses?.map(c => [c.id, c.title]));
+
+            if (courseIds.length === 0) {
+                setResources([]);
+                setLoading(false);
+                return;
+            }
+
+            // 2. Fetch Resources
+            const { data, error } = await supabase
+                .from('resources')
+                .select('*')
+                .in('course_id', courseIds)
+                .order('created_at', { ascending: false });
+
+            if (error) throw error;
+
+            // Cast data to ensure TS knows it's a list of Resource rows
+            const typedData = (data || []) as Database['public']['Tables']['resources']['Row'][];
+
+            const formatted = typedData.map(r => ({
+                ...r,
+                course_title: courseMap.get(r.course_id),
+                type: r.type as any
+            }));
+
+            setResources(formatted);
+
+        } catch (error) {
+            console.error(error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleAddResource = async () => {
+        if (!user || !selectedCourseId || !title || !url) {
+            Alert.alert("Missing Fields", "Please fill all fields.");
+            return;
+        }
+
+        try {
+            const { error } = await supabase.from('resources').insert({
+                course_id: selectedCourseId,
+                title,
+                url,
+                type,
+                size: null // Not handling file upload size for links
+            });
+
+            if (error) throw error;
+
+            setShowModal(false);
+            fetchResources();
+            // Reset
+            setTitle("");
+            setUrl("");
+            setType("link");
+            setSelectedCourseId("");
+        } catch (error) {
+            Alert.alert("Error", "Failed to add resource");
+            console.error(error);
+        }
+    };
+
+    const deleteResource = async (id: string) => {
+        try {
+            const { error } = await supabase.from('resources').delete().eq('id', id);
+            if (error) throw error;
+            setResources(prev => prev.filter(r => r.id !== id));
+        } catch (error) {
+            Alert.alert("Error", "Failed to delete resource");
+        }
+    };
 
     return (
         <>
@@ -78,7 +182,7 @@ export default function ResourcesPage() {
                                 </TouchableOpacity>
                                 <View>
                                     <Text className="text-2xl font-bold text-gray-900">Resources</Text>
-                                    <Text className="text-gray-500 text-sm">{totalFiles} files • {totalSize}</Text>
+                                    <Text className="text-gray-500 text-sm">{resources.length} items</Text>
                                 </View>
                             </View>
                             <TouchableOpacity
@@ -86,78 +190,97 @@ export default function ResourcesPage() {
                                 onPress={() => setShowModal(true)}
                             >
                                 <Upload size={18} color="white" />
-                                <Text className="text-white font-semibold ml-1">Upload</Text>
+                                <Text className="text-white font-semibold ml-1">Add</Text>
                             </TouchableOpacity>
                         </View>
 
-                        {/* Storage Info */}
+                        {/* Storage Info (Visual only for now) */}
                         <View className="bg-white p-4 rounded-2xl border border-gray-100 mb-6">
                             <View className="flex-row justify-between items-center mb-3">
                                 <Text className="text-gray-900 font-bold">Storage Used</Text>
-                                <Text className="text-gray-500 text-sm">164.8 MB / 5 GB</Text>
+                                <Text className="text-gray-500 text-sm">Unlimited (Links)</Text>
                             </View>
                             <View className="h-3 bg-gray-100 rounded-full overflow-hidden">
-                                <View className="h-full bg-yellow-500 rounded-full" style={{ width: "3.3%" }} />
+                                <View className="h-full bg-yellow-500 rounded-full" style={{ width: "5%" }} />
                             </View>
                         </View>
 
-                        {/* Quick Filters */}
-                        <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-4">
-                            <TouchableOpacity className="bg-teal-600 px-4 py-2 rounded-full mr-2">
-                                <Text className="text-white font-medium text-sm">All</Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity className="bg-white px-4 py-2 rounded-full mr-2 border border-gray-100">
-                                <Text className="text-gray-600 font-medium text-sm">PDFs</Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity className="bg-white px-4 py-2 rounded-full mr-2 border border-gray-100">
-                                <Text className="text-gray-600 font-medium text-sm">Videos</Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity className="bg-white px-4 py-2 rounded-full mr-2 border border-gray-100">
-                                <Text className="text-gray-600 font-medium text-sm">Documents</Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity className="bg-white px-4 py-2 rounded-full border border-gray-100">
-                                <Text className="text-gray-600 font-medium text-sm">Images</Text>
-                            </TouchableOpacity>
-                        </ScrollView>
-
                         {/* Resources List */}
-                        <Text className="text-lg font-bold text-gray-900 mb-3">All Files</Text>
-                        {resources.map((resource) => (
-                            <ResourceCard key={resource.id} resource={resource} />
-                        ))}
+                        <Text className="text-lg font-bold text-gray-900 mb-3">All Resources</Text>
+
+                        {loading ? (
+                            <ActivityIndicator size="large" color="#eab308" className="mt-8" />
+                        ) : resources.length === 0 ? (
+                            <Text className="text-gray-500 text-center mt-8">No resources found.</Text>
+                        ) : (
+                            resources.map((resource) => (
+                                <ResourceCard key={resource.id} resource={resource} onDelete={deleteResource} />
+                            ))
+                        )}
                     </View>
                 </ScrollView>
             </View>
 
-            {/* Upload Modal */}
+            {/* Add Resource Modal */}
             <Modal visible={showModal} animationType="slide" transparent>
                 <View className="flex-1 bg-black/50 justify-end">
                     <View className="bg-white rounded-t-3xl p-6">
                         <View className="flex-row justify-between items-center mb-6">
-                            <Text className="text-xl font-bold text-gray-900">Upload Resource</Text>
+                            <Text className="text-xl font-bold text-gray-900">Add Resource</Text>
                             <TouchableOpacity onPress={() => setShowModal(false)}>
                                 <X size={24} color="#6B7280" />
                             </TouchableOpacity>
                         </View>
 
-                        <TouchableOpacity className="border-2 border-dashed border-gray-300 rounded-2xl p-8 items-center mb-6">
-                            <View className="bg-yellow-100 p-4 rounded-full mb-3">
-                                <FolderOpen size={32} color="#eab308" />
-                            </View>
-                            <Text className="text-gray-900 font-bold mb-1">Choose File</Text>
-                            <Text className="text-gray-500 text-sm">PDF, Video, or Document</Text>
-                        </TouchableOpacity>
+                        {/* Course Selector */}
+                        <Text className="text-gray-500 text-xs uppercase mb-2 font-semibold">Course</Text>
+                        <ScrollView horizontal className="flex-row mb-4" showsHorizontalScrollIndicator={false}>
+                            {courses.map(c => (
+                                <TouchableOpacity
+                                    key={c.id}
+                                    onPress={() => setSelectedCourseId(c.id)}
+                                    className={`mr-2 px-4 py-2 rounded-lg border ${selectedCourseId === c.id ? 'bg-yellow-500 border-yellow-500' : 'bg-gray-50 border-gray-200'}`}
+                                >
+                                    <Text className={selectedCourseId === c.id ? 'text-white' : 'text-gray-700'}>{c.title}</Text>
+                                </TouchableOpacity>
+                            ))}
+                        </ScrollView>
 
-                        <TouchableOpacity className="bg-gray-50 rounded-xl px-4 py-3 mb-6 flex-row items-center justify-between">
-                            <Text className="text-gray-500">Select Course</Text>
-                            <Text className="text-teal-600 font-medium">Mathematics</Text>
-                        </TouchableOpacity>
+                        {/* Type Selector */}
+                        <Text className="text-gray-500 text-xs uppercase mb-2 font-semibold">Type</Text>
+                        <View className="flex-row mb-4 gap-2">
+                            {(['link', 'video', 'pdf', 'other'] as const).map(t => (
+                                <TouchableOpacity
+                                    key={t}
+                                    onPress={() => setType(t)}
+                                    className={`px-3 py-2 rounded-lg border ${type === t ? 'bg-gray-800 border-gray-800' : 'bg-gray-50 border-gray-200'}`}
+                                >
+                                    <Text className={`capitalize ${type === t ? 'text-white' : 'text-gray-700'}`}>{t}</Text>
+                                </TouchableOpacity>
+                            ))}
+                        </View>
+
+                        <TextInput
+                            className="bg-gray-50 rounded-xl px-4 py-3 mb-4 text-gray-900"
+                            placeholder="Title (e.g., Syllabus)"
+                            placeholderTextColor="#9CA3AF"
+                            value={title}
+                            onChangeText={setTitle}
+                        />
+                        <TextInput
+                            className="bg-gray-50 rounded-xl px-4 py-3 mb-6 text-gray-900"
+                            placeholder="URL / Link"
+                            placeholderTextColor="#9CA3AF"
+                            value={url}
+                            onChangeText={setUrl}
+                            autoCapitalize="none"
+                        />
 
                         <TouchableOpacity
                             className="bg-yellow-500 py-4 rounded-xl items-center"
-                            onPress={() => setShowModal(false)}
+                            onPress={handleAddResource}
                         >
-                            <Text className="text-white font-bold text-base">Upload File</Text>
+                            <Text className="text-white font-bold text-base">Add Resource</Text>
                         </TouchableOpacity>
                     </View>
                 </View>

@@ -38,12 +38,10 @@ EXPO_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
 ```
 
 #### 3. Set Up Database Schema
-Run the SQL files in `backend/supabase/schemas/` in this order:
-1. `institutions.sql` - Creates institutions table
-2. `users.sql` - Creates users table with role support
-3. `courses.sql` - Creates courses table
-4. Other schema files as needed
-5. `auth_policy.sql` - Sets up RLS policies
+Run the consolidated SQL file `backend/supabase/schema.sql`. This file contains all necessary table definitions (users, students, teachers, admins, courses, etc.) and RLS policies.
+
+1. Copy the content of `backend/supabase/schema.sql`
+2. Paste it into the Supabase SQL Editor and run it.
 
 #### 4. Create Admin User
 > ⚠️ **Important**: Always create users through the Supabase Dashboard, not direct SQL inserts!
