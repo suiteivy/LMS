@@ -55,8 +55,8 @@ export default function Index() {
         {/* Proceed Button */}
         <View className="items-center px-8 mb-8">
           <TouchableOpacity
-            className="bg-teacherOrange w-full py-4 rounded-xl flex-row items-center justify-center shadow-lg"
-            onPress={() => router.replace("/(auth)/signIn")}
+            className="bg-orange-500 w-full py-4 rounded-xl flex-row items-center justify-center shadow-lg"
+            onPress={() => router.push("/(auth)/signIn")}
           >
             <Text className="text-white text-xl font-semibold mr-2">
               Get Started

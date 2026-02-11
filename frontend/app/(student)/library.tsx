@@ -90,8 +90,8 @@ export default function StudentLibrary() {
                         <Text className="text-gray-400 text-xs font-bold uppercase tracking-widest">Digital Resource</Text>
                         <Text className="text-3xl font-black text-gray-900">Library</Text>
                     </View>
-                    <TouchableOpacity className="bg-teal-50 p-3 rounded-2xl">
-                        <Bookmark size={22} color="#0d9488" />
+                    <TouchableOpacity className="bg-orange-50 p-3 rounded-2xl">
+                        <Bookmark size={22} color="black" />
                     </TouchableOpacity>
                 </View>
 
@@ -106,8 +106,8 @@ export default function StudentLibrary() {
                             onChangeText={setSearchQuery}
                         />
                     </View>
-                    <TouchableOpacity className="bg-gray-900 p-3 rounded-2xl justify-center">
-                        <Filter size={20} color="white" />
+                    <TouchableOpacity className="bg-gray-100 p-3 rounded-2xl justify-center">
+                        <Filter size={20} color="orange" />
                     </TouchableOpacity>
                 </View>
             </View>
@@ -193,7 +193,7 @@ export default function StudentLibrary() {
                             <View className="flex-1 pr-4">
                                 <Text className="text-teal-600 font-bold text-xs uppercase tracking-widest">{selectedBook?.category}</Text>
                                 <Text className="text-3xl font-black text-gray-900 mt-2">{selectedBook?.title}</Text>
-                                <Text className="text-gray-500 font-medium mt-1">by {selectedBook?.author}</Text>
+                                <Text className="text-orange-500 font-medium mt-1">by {selectedBook?.author}</Text>
                             </View>
                             <TouchableOpacity onPress={() => setModalVisible(false)} className="bg-gray-100 p-3 rounded-full">
                                 <X size={20} color="#6B7280" />
@@ -208,12 +208,12 @@ export default function StudentLibrary() {
 
                         <View className="flex-row justify-between mb-10">
                             <View className="bg-gray-50 p-5 rounded-[30px] flex-1 mr-2 border border-gray-100">
-                                <Clock size={18} color="#0d9488" />
+                                <Clock size={18} color="orange" />
                                 <Text className="text-gray-400 text-[10px] font-bold uppercase mt-3">Duration</Text>
                                 <Text className="text-gray-900 font-bold text-base mt-1">14 Days</Text>
                             </View>
                             <View className="bg-gray-50 p-5 rounded-[30px] flex-1 ml-2 border border-gray-100">
-                                <CheckCircle2 size={18} color="#0d9488" />
+                                <CheckCircle2 size={18} color="orange" />
                                 <Text className="text-gray-400 text-[10px] font-bold uppercase mt-3">Available</Text>
                                 <Text className="text-gray-900 font-bold text-base mt-1">{selectedBook?.available} Copies</Text>
                             </View>

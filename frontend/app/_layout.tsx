@@ -20,6 +20,7 @@ export default function RootLayout() {
             <Stack.Screen name="(admin)" />
             <Stack.Screen name="(student)" />
             <Stack.Screen name="(teacher)" />
+            <Stack.Screen name="(parent)" />
           </Stack>
           <Toast />
         </InactivityWrapper>
