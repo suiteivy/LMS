@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { View, Text, ScrollView, TouchableOpacity, StatusBar } from 'react-native';
 import { Calendar, Clock, Bell, ArrowRight, BookOpen, Users, GraduationCap, School } from 'lucide-react-native';
+import { useAuth } from '@/contexts/AuthContext';
 
 // Define Interface for the QuickAction props
 interface QuickActionProps {
@@ -19,6 +20,7 @@ const QuickAction = ({ icon: Icon, label, color }: QuickActionProps) => (
 );
 
 export default function TeacherHome() {
+    const { profile, displayId } = useAuth();
     const [showNotification, setShowNotification] = useState(false);
 
     return (
@@ -39,7 +41,10 @@ export default function TeacherHome() {
                                     Welcome back,
                                 </Text>
                                 <Text className="text-3xl font-bold text-gray-900">
-                                    Teacher 👋
+                                    {profile?.full_name || 'Teacher'} 👋
+                                </Text>
+                                <Text className="text-sm text-gray-500 font-medium">
+                                    ID: {displayId || 'Loading...'}
                                 </Text>
                             </View>
 

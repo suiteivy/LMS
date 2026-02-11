@@ -75,7 +75,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   }
 
   const loadUserProfile = async (userId: string): Promise<UserProfile | null> => {
-    console.log('Loading user profile for:', userId)
     try {
       // 1. Get Base Profile
       const { data, error } = await supabase
@@ -88,7 +87,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         console.error('Error loading profile:', error)
         return null
       }
-      console.log('Profile loaded successfully:', data.role)
       setProfile(data as UserProfile)
 
       // 2. Get Role-Specific ID
@@ -127,12 +125,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   }
 
   useEffect(() => {
-    console.log('AuthProvider mounted, initializing auth...')
-
     // 1. Initial session check for faster startup
     supabase.auth.getSession()
       .then(async ({ data: { session } }) => {
-        console.log('Initial getSession:', session ? 'Session exists' : 'No session')
         if (session) {
           setSession(session)
           setUser(session.user)
@@ -150,8 +145,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log('Auth event:', event, session ? 'Session exists' : 'No session')
-
       try {
         setSession(session)
         setUser(session?.user ?? null)

@@ -190,31 +190,31 @@ export default function Index() {
 
   return (
     <SafeAreaProvider>
-      <SafeAreaView className="flex-1 p-5 bg-[#F1FFF8] relative">
+      <SafeAreaView className="flex-1 p-5 bg-white relative">
         <View className="flex-row p-5 justify-between mb-5 mt-3">
-          <TouchableOpacity onPress={() => router.push("/")}>
+          <TouchableOpacity onPress={() => router.replace("/")}>
             <Ionicons name="arrow-back" size={25} color="black" />
           </TouchableOpacity>
         </View>
 
         <View className="p-5">
-          <Text className="text-4xl text-[#2C3E50] font-bold">
+          <Text className="text-4xl text-teacherBlack font-bold">
             Welcome Back to
           </Text>
-          <Text className="text-4xl text-[#2C3E50] font-bold">
+          <Text className="text-4xl text-teacherBlack font-bold">
             Your Account
           </Text>
-          <Text className="text-xs text-[#2C3E50]">
+          <Text className="text-xs text-gray-500">
             Enter your email and password to get started.
           </Text>
         </View>
 
         <View className="mt-11 p-5">
           <View>
-            <Text className="text-lg text-[#2C3E50] mb-2">Email</Text>
+            <Text className="text-lg text-teacherBlack mb-2">Email</Text>
             <TextInput
               keyboardType="email-address"
-              className="border border-[#1ABC9C] rounded-lg h-12 px-2.5"
+              className="border border-teacherOrange rounded-lg h-12 px-2.5 text-teacherBlack"
               placeholder="Enter your Email"
               placeholderTextColor="#7E7B7B"
               value={formData.email}
@@ -227,10 +227,10 @@ export default function Index() {
           </View>
 
           <View className="mt-5">
-            <Text className="text-lg text-[#2C3E50] mb-2">Password</Text>
-            <View className="flex-row border border-[#1ABC9C] items-center h-12 rounded-lg px-2.5">
+            <Text className="text-lg text-teacherBlack mb-2">Password</Text>
+            <View className="flex-row border border-teacherOrange items-center h-12 rounded-lg px-2.5">
               <TextInput
-                className="flex-1"
+                className="flex-1 text-teacherBlack"
                 placeholder="Enter your password"
                 secureTextEntry={!showPassword}
                 placeholderTextColor="#7E7B7B"
@@ -253,7 +253,7 @@ export default function Index() {
           </View>
 
           <TouchableOpacity onPress={handleForgotPassword}>
-            <Text className="text-lg mt-2 text-right text-[#34967C]">
+            <Text className="text-lg mt-2 text-right text-teacherOrange">
               Forgot password?
             </Text>
           </TouchableOpacity>
@@ -269,7 +269,7 @@ export default function Index() {
           )}
 
           <TouchableOpacity
-            className="bg-[#2B876E] h-[53px] rounded-lg mt-6 flex justify-center items-center shadow-md"
+            className="bg-teacherOrange h-[53px] rounded-lg mt-6 flex justify-center items-center shadow-md"
             onPress={onSubmit}
             disabled={isLoading}
           >
@@ -282,17 +282,17 @@ export default function Index() {
         </View>
 
         <View className="flex-row items-center gap-2.5 mt-7 px-5">
-          <View className="border-t border-[#2C3E50] flex-1"></View>
-          <Text className="text-lg font-medium text-[#2C3E50]">OR</Text>
-          <View className="border-t border-[#2C3E50] flex-1"></View>
+          <View className="border-t border-gray-200 flex-1"></View>
+          <Text className="text-lg font-medium text-gray-400">OR</Text>
+          <View className="border-t border-gray-200 flex-1"></View>
         </View>
 
         <View className="flex-row absolute bottom-8 left-0 right-0 justify-center">
-          <Text className="text-base text-[#2C3E50]">
+          <Text className="text-base text-gray-600">
             Don&apos;t have an account?{" "}
           </Text>
-          <TouchableOpacity onPress={() => router.push("/(auth)/signUp")}>
-            <Text className="text-base text-[#34967C] font-semibold">
+          <TouchableOpacity onPress={() => router.replace("/(auth)/signUp")}>
+            <Text className="text-base text-teacherOrange font-semibold">
               Sign Up
             </Text>
           </TouchableOpacity>

@@ -8,7 +8,7 @@ import { useNavigation } from "@react-navigation/native";
 import { DrawerNavigationProp } from "@react-navigation/drawer";
 
 export default function StudentProfile() {
-    const { profile, refreshProfile } = useAuth();
+    const { profile, refreshProfile, displayId } = useAuth();
     const navigation = useNavigation<DrawerNavigationProp<any>>();
 
     const [isEditing, setIsEditing] = useState(false);
@@ -171,7 +171,7 @@ export default function StudentProfile() {
                                             Student ID
                                         </Text>
                                         <Text className="text-gray-900 font-semibold">
-                                            {profile.id.substring(0, 12).toUpperCase()}
+                                            {displayId || "N/A"}
                                         </Text>
                                     </View>
                                     <View>

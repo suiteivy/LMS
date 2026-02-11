@@ -58,7 +58,7 @@ export default function App() {
     setTimeout(() => {
       setIsModalVisible(false);
       if (success) {
-        router.push("/(auth)/signIn");
+        router.replace("/(auth)/signIn");
       }
     }, 2000);
   };
@@ -106,7 +106,7 @@ export default function App() {
           `Registration failed: ${getAuthErrorMessage(error)}`,
           false
         );
-          console.error('Error message',error)
+        console.error('Error message', error)
         return;
       }
 
@@ -125,17 +125,17 @@ export default function App() {
   return (
     // Entire app wrapped inside SafeAreaProvider and SafeAreaView to prevent UI overlap with device notches.
     <SafeAreaProvider>
-      <SafeAreaView className="flex-1 bg-[#F1FFF8] font-sans">
+      <SafeAreaView className="flex-1 bg-white font-sans">
         <View className="flex-1 p-10">
           <View className="flex-row justify-between mb-5 mt-3">
-            <TouchableOpacity onPress={() => router.push("/")}>
+            <TouchableOpacity onPress={() => router.replace("/(auth)/signIn")}>
               <Ionicons name="arrow-back" size={25} color="black" />
             </TouchableOpacity>
           </View>
 
           {/* Title */}
-          <Text className="text-4xl text-[#2C3E50] font-bold">Create Your Account</Text>
-          <Text className="text-xs text-[#2C3E50] mt-1">
+          <Text className="text-4xl text-teacherBlack font-bold">Create Your Account</Text>
+          <Text className="text-xs text-gray-500 mt-1">
             Enter your details to create an account.
           </Text>
 
@@ -143,9 +143,9 @@ export default function App() {
           <View className="mt-11 space-y-5">
             {/* Full Name */}
             <View>
-              <Text className="text-lg text-[#2C3E50] mb-2">Full Name</Text>
+              <Text className="text-lg text-teacherBlack mb-2">Full Name</Text>
               <TextInput
-                className="border border-[#1ABC9C] rounded-lg h-12 px-2.5 text-[#2C3E50]"
+                className="border border-teacherOrange rounded-lg h-12 px-2.5 text-teacherBlack"
                 placeholder="Enter your full name"
                 placeholderTextColor="#7E7B7B"
                 value={formData.name}
@@ -160,10 +160,10 @@ export default function App() {
 
             {/* Email */}
             <View>
-              <Text className="text-lg text-[#2C3E50] mb-2">Email</Text>
+              <Text className="text-lg text-teacherBlack mb-2">Email</Text>
               <TextInput
                 keyboardType="email-address"
-                className="border border-[#1ABC9C] rounded-lg h-12 px-2.5 w-full focus:border-[#2B876E] focus:ring-2 focus:ring-[#2B876E]"
+                className="border border-teacherOrange rounded-lg h-12 px-2.5 w-full focus:border-teacherOrange focus:ring-2 focus:ring-teacherOrange text-teacherBlack"
                 placeholder="Enter your email"
                 placeholderTextColor="#7E7B7B"
                 value={formData.email}
@@ -179,11 +179,11 @@ export default function App() {
 
             {/* Password */}
             <View>
-              <Text className="text-lg text-[#2C3E50] mb-2">Password</Text>
-              <View className="flex-row items-center border border-[#1ABC9C] h-12 rounded-lg px-2.5 relative">
+              <Text className="text-lg text-teacherBlack mb-2">Password</Text>
+              <View className="flex-row items-center border border-teacherOrange h-12 rounded-lg px-2.5 relative">
                 <TextInput
                   secureTextEntry={!showPassword}
-                  className="flex-1 text-[#2C3E50]"
+                  className="flex-1 text-teacherBlack"
                   placeholder="Enter your password"
                   placeholderTextColor="#7E7B7B"
                   value={formData.password}
@@ -209,13 +209,13 @@ export default function App() {
 
             {/* Confirm Password */}
             <View>
-              <Text className="text-lg text-[#2C3E50] mb-2">
+              <Text className="text-lg text-teacherBlack mb-2">
                 Confirm Password
               </Text>
-              <View className="flex-row items-center border border-[#1ABC9C] h-12 rounded-lg px-2.5 relative">
+              <View className="flex-row items-center border border-teacherOrange h-12 rounded-lg px-2.5 relative">
                 <TextInput
                   secureTextEntry={!showConfirmPassword}
-                  className="flex-1 text-[#2C3E50]"
+                  className="flex-1 text-teacherBlack"
                   placeholder="Confirm your password"
                   placeholderTextColor="#7E7B7B"
                   value={formData.confirmPassword}
@@ -244,21 +244,21 @@ export default function App() {
 
           {/* Role Selection */}
           <View>
-            <Text className="text-lg mt-4 text-[#2C3E50] mb-2">Select Role</Text>
+            <Text className="text-lg mt-4 text-teacherBlack mb-2">Select Role</Text>
             <View className="flex-row justify-around">
               {roles.map((role) => (
                 <TouchableOpacity
                   key={role.value}
                   className={`py-2 px-4 rounded-full ${formData.role === role.value
-                    ? "bg-[#1ABC9C]"
-                    : "border border-[#1ABC9C]"
+                    ? "bg-teacherOrange border-teacherOrange"
+                    : "border border-teacherOrange"
                     }`}
                   onPress={() => handleInputChange("role", role.value)}
                 >
                   <Text
                     className={`${formData.role === role.value
                       ? "text-white"
-                      : "text-[#1ABC9C]"
+                      : "text-teacherOrange"
                       } font-semibold text-sm`}
                   >
                     {role.label}
@@ -273,7 +273,7 @@ export default function App() {
 
           {/* Create Account Button */}
           <TouchableOpacity
-            className="bg-[#2B876E] p-5 h-[53px] rounded-lg mt-6 flex justify-center items-center w-full shadow-md"
+            className="bg-teacherOrange p-5 h-[53px] rounded-lg mt-6 flex justify-center items-center w-full shadow-md"
             onPress={onSubmit}
             disabled={isLoading}
           >
@@ -288,17 +288,17 @@ export default function App() {
 
           {/* OR Separator */}
           <View className="flex-row items-center gap-2.5 mt-7">
-            <View className="border-t border-[#2C3E50] flex-1"></View>
-            <Text className="text-lg font-medium text-[#2C3E50]">OR</Text>
-            <View className="border-t border-[#2C3E50] flex-1"></View>
+            <View className="border-t border-gray-200 flex-1"></View>
+            <Text className="text-lg font-medium text-gray-400">OR</Text>
+            <View className="border-t border-gray-200 flex-1"></View>
           </View>
         </View>
 
         {/* Bottom Sign In link */}
         <View className="flex-row justify-center mb-8">
-          <Text className="text-lg text-[#2C3E50]">Have an account?</Text>
-          <TouchableOpacity onPress={() => router.push("/(auth)/signIn")}>
-            <Text className="text-lg text-[#2B876E] font-semibold ml-1">
+          <Text className="text-lg text-gray-600">Have an account?</Text>
+          <TouchableOpacity onPress={() => router.replace("/(auth)/signIn")}>
+            <Text className="text-lg text-teacherOrange font-semibold ml-1">
               Sign In
             </Text>
           </TouchableOpacity>

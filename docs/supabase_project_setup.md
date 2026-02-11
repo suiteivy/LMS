@@ -55,7 +55,12 @@ Use the consolidated schema file for specific table structure and policies:
    - Paste it into the editor and run it.
    - This script creates all tables (`users`, `students`, `teachers`, `admins`, `Subjects`, etc.) and sets up RLS policies.
 
-3. **Create Admin User**
+3. **Run The Triggers Script**
+   - Copy the contents of `backend/supabase/triggers.sql`.
+   - Paste it into the editor and run it.
+   - This script sets up essential database triggers for auto-incrementing IDs, stock management, and more.
+
+4. **Create Admin User**
    - Use the Supabase Dashboard to create a new user.
    - Manually insert the user into the `admins` table or use a helper script if available.
 

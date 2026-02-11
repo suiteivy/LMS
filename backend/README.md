@@ -67,6 +67,15 @@ https://lms-api-wine.vercel.app/api
 
 ---
 
+## Database Setup
+
+To set up the database, run the following SQL scripts in the Supabase SQL Editor in order:
+
+1. **Schema**: `backend/supabase/schema.sql` (Creates tables and RLS policies)
+2. **Triggers**: `backend/supabase/triggers.sql` (Adds essential database logic)
+
+---
+
 ## Institution Management
 
 ### ðŸ” Create Institution (`POST /institutions`)

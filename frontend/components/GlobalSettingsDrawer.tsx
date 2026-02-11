@@ -20,7 +20,7 @@ import StudentHelp from './StudentHelp';
 const Drawer = createDrawerNavigator();
 
 function CustomDrawerContent(props: any) {
-  const { signOut, user, loading } = useAuth();
+  const { signOut, user, loading, displayId } = useAuth();
   // ... (rest of the function remains same, just replacing imports and Drawer.Navigator part)
 
   const handleLogout = async () => {
@@ -50,6 +50,7 @@ function CustomDrawerContent(props: any) {
             {user?.user_metadata?.full_name || 'User'}
           </Text>
           <Text className="text-gray-500 text-xs">{user?.email}</Text>
+          <Text className="text-gray-400 text-xs mt-1">ID: {displayId || 'Loading...'}</Text>
         </View>
 
         {/* Navigation items */}

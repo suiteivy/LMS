@@ -25,7 +25,11 @@ Execute the consolidated schema script:
 
 ```bash
 # Connect to your Supabase project SQL editor and run:
+# 1. Main schema
 source backend/supabase/schema.sql
+
+# 2. Database triggers
+source backend/supabase/triggers.sql
 ```
 
 ### 3. Authentication Settings in Supabase Dashboard
