@@ -3,7 +3,7 @@ const supabase = require("../utils/supabaseClient");
 // POST /fees/payment
 exports.recordFeePayment = async (req, res) => {
   try {
-    const { amount, course_id, total_fee } = req.body;
+    const { amount, subject_id, total_fee } = req.body;
     const { studentId } = req.params;
     if (req.userRole !== "admin") {
       return res.status(403).json({ error: "Only admins can record payments" });
@@ -12,15 +12,15 @@ exports.recordFeePayment = async (req, res) => {
     if (!studentId) {
       return res.status(400).json({ error: "Missing studentId" });
     }
-    if (!amount || !course_id) {
-      return res.status(400).json({ error: "Missing amount or course_id" });
+    if (!amount || !subject_id) {
+      return res.status(400).json({ error: "Missing amount or subject_id" });
     }
 
     const { error } = await supabase.from("fees").insert([
       {
         student_id: studentId,
         amount_paid: amount,
-        course_id,
+        subject_id,
         total_fee: total_fee,
       },
     ]);

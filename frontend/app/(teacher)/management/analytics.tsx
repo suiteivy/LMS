@@ -32,8 +32,8 @@ const SubjectAnalyticsCard = ({ Subject }: { Subject: SubjectAnalytics }) => {
                     <Text className="text-gray-900 font-bold">{Subject.name}</Text>
                     <Text className="text-gray-400 text-xs">{Subject.students} students</Text>
                 </View>
-                <View className="bg-teal-50 px-2 py-1 rounded-full">
-                    <Text className="text-teal-600 text-xs font-bold">{Subject.completionRate}% complete</Text>
+                <View className="bg-orange-50 px-2 py-1 rounded-full">
+                    <Text className="text-teacherOrange text-xs font-bold">{Subject.completionRate}% complete</Text>
                 </View>
             </View>
 
@@ -41,16 +41,16 @@ const SubjectAnalyticsCard = ({ Subject }: { Subject: SubjectAnalytics }) => {
                 <View className="flex-1">
                     <Text className="text-gray-400 text-xs mb-1">Completion</Text>
                     <View className="h-2 bg-gray-100 rounded-full overflow-hidden">
-                        <View className="h-full bg-blue-500 rounded-full" style={{ width: `${Subject.completionRate}%` }} />
+                        <View className="h-full bg-teacherOrange rounded-full" style={{ width: `${Subject.completionRate}%` }} />
                     </View>
-                    <Text className="text-blue-600 text-xs font-bold mt-1">{Subject.completionRate}%</Text>
+                    <Text className="text-teacherOrange text-xs font-bold mt-1">{Subject.completionRate}%</Text>
                 </View>
                 <View className="flex-1">
                     <Text className="text-gray-400 text-xs mb-1">Avg Grade</Text>
                     <View className="h-2 bg-gray-100 rounded-full overflow-hidden">
-                        <View className="h-full bg-green-500 rounded-full" style={{ width: `${Subject.avgGrade}%` }} />
+                        <View className="h-full bg-teacherBlack rounded-full" style={{ width: `${Subject.avgGrade}%` }} />
                     </View>
-                    <Text className="text-green-600 text-xs font-bold mt-1">{Subject.avgGrade}%</Text>
+                    <Text className="text-teacherBlack text-xs font-bold mt-1">{Subject.avgGrade}%</Text>
                 </View>
             </View>
         </View>
@@ -76,7 +76,7 @@ export default function AnalyticsPage() {
         try {
             // 1. Fetch Subjects for this teacher
             const { data: Subjects, error: SubjectsError } = await supabase
-                .from('Subjects')
+                .from('subjects') // Fixed: Lowercase 'subjects'
                 .select('id, title, class_id')
                 .eq('teacher_id', teacherId);
 
@@ -98,7 +98,7 @@ export default function AnalyticsPage() {
                 const { data: assignments } = await supabase
                     .from('assignments')
                     .select('id, total_points')
-                    .eq('Subject_id', Subject.id);
+                    .eq('subject_id', Subject.id); // Fixed: Lowercase 'subject_id'
 
                 const assignmentIds = (assignments || []).map(a => a.id);
 
@@ -196,16 +196,16 @@ export default function AnalyticsPage() {
 
                         {/* Overview Stats */}
                         <View className="flex-row gap-3 mb-6">
-                            <StatBox icon={Users} label="Total Students" value={totalStudents.toString()} color="#0d9488" bgColor="#ccfbf1" />
-                            <StatBox icon={TrendingUp} label="Avg Completion" value={`${avgCompletion}%`} color="#3b82f6" bgColor="#dbeafe" />
+                            <StatBox icon={Users} label="Total Students" value={totalStudents.toString()} color="#FF6B00" bgColor="#fff7ed" />
+                            <StatBox icon={TrendingUp} label="Avg Completion" value={`${avgCompletion}%`} color="#1a1a1a" bgColor="#f3f4f6" />
                         </View>
                         <View className="flex-row gap-3 mb-6">
-                            <StatBox icon={BookOpen} label="Subjects" value={SubjectAnalytics.length.toString()} color="#8b5cf6" bgColor="#ede9fe" />
-                            <StatBox icon={Award} label="Avg Grade" value={`${avgGradeOverall}%`} color="#22c55e" bgColor="#dcfce7" />
+                            <StatBox icon={BookOpen} label="Subjects" value={SubjectAnalytics.length.toString()} color="#FF6B00" bgColor="#fff7ed" />
+                            <StatBox icon={Award} label="Avg Grade" value={`${avgGradeOverall}%`} color="#1a1a1a" bgColor="#f3f4f6" />
                         </View>
 
                         {loading ? (
-                            <ActivityIndicator size="large" color="#0d9488" className="mt-8" />
+                            <ActivityIndicator size="large" color="#FF6B00" className="mt-8" />
                         ) : (
                             <>
                                 {/* Performance Chart Placeholder */}
@@ -224,7 +224,7 @@ export default function AnalyticsPage() {
                                 ))}
 
                                 {/* Top Performers */}
-                                <View className="bg-gradient-to-r bg-teal-600 p-4 rounded-2xl mt-4">
+                                <View className="bg-teacherBlack p-4 rounded-2xl mt-4">
                                     <Text className="text-white font-bold mb-3">🏆 Top Performers</Text>
                                     <View className="flex-row justify-between">
                                         {topPerformers.map((student, index) => (
@@ -232,7 +232,7 @@ export default function AnalyticsPage() {
                                                 <View className="w-12 h-12 rounded-full bg-white/20 items-center justify-center mb-1">
                                                     <Text className="text-white font-bold">{student.initials}</Text>
                                                 </View>
-                                                <Text className="text-teal-100 text-xs">{student.name}</Text>
+                                                <Text className="text-gray-300 text-xs">{student.name}</Text>
                                                 <Text className="text-white font-bold text-xs">{student.score}%</Text>
                                             </View>
                                         ))}

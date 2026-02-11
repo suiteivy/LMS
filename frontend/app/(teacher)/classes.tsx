@@ -83,7 +83,7 @@ export default function TeacherClasses() {
                         {/* Loading State */}
                         {loading ? (
                             <View className="items-center justify-center p-8">
-                                <ActivityIndicator size="large" color="#0d9488" />
+                                <ActivityIndicator size="large" color="#FF6B00" />
                             </View>
                         ) : (
                             <View>
@@ -102,8 +102,8 @@ export default function TeacherClasses() {
                                             className="bg-white p-5 rounded-2xl border border-gray-100 mb-3 shadow-sm flex-row items-center"
                                         // onPress={() => router.push(`/(teacher)/classes/${cls.id}`)} // Todo: Detail page
                                         >
-                                            <View className="bg-teal-50 p-3 rounded-xl mr-4">
-                                                <Users size={24} color="#0d9488" />
+                                            <View className="bg-orange-50 p-3 rounded-xl mr-4">
+                                                <Users size={24} color="#FF6B00" />
                                             </View>
 
                                             <View className="flex-1">

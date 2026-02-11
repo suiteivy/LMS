@@ -58,7 +58,7 @@ export default function App() {
     setTimeout(() => {
       setIsModalVisible(false);
       if (success) {
-        router.push("/(auth)/signIn");
+        router.replace("/(auth)/signIn");
       }
     }, 2000);
   };
@@ -106,7 +106,7 @@ export default function App() {
           `Registration failed: ${getAuthErrorMessage(error)}`,
           false
         );
-          console.error('Error message',error)
+        console.error('Error message', error)
         return;
       }
 
@@ -125,10 +125,10 @@ export default function App() {
   return (
     // Entire app wrapped inside SafeAreaProvider and SafeAreaView to prevent UI overlap with device notches.
     <SafeAreaProvider>
-      <SafeAreaView className="flex-1 bg-[#F1FFF8] font-sans">
+      <SafeAreaView className="flex-1 bg-white font-sans">
         <View className="flex-1 p-10">
           <View className="flex-row justify-between mb-5 mt-3">
-            <TouchableOpacity onPress={() => router.push("/")}>
+            <TouchableOpacity onPress={() => router.replace("/(auth)/signIn")}>
               <Ionicons name="arrow-back" size={25} color="black" />
             </TouchableOpacity>
           </View>

@@ -8,7 +8,7 @@ export default function StudentLayout() {
   const insets = useSafeAreaInsets();
 
   return (
-    <AuthGuard>
+    <AuthGuard allowedRoles={['student']}>
       <View style={{ flex: 1, paddingTop: insets.top }} className="bg-white">
         <Tabs
           screenOptions={{

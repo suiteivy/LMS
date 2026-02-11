@@ -29,15 +29,15 @@ const GradeRow = ({ student, onGrade }: { student: StudentGrade; onGrade: (stude
     return (
         <View className="bg-white p-4 rounded-xl border border-gray-100 mb-2 flex-row items-center">
             {/* Avatar */}
-            <View className="w-10 h-10 rounded-full bg-teal-100 items-center justify-center mr-3">
-                <Text className="text-teal-600 font-bold">{student.student_name.charAt(0)}</Text>
+            <View className="w-10 h-10 rounded-full bg-orange-100 items-center justify-center mr-3">
+                <Text className="text-teacherOrange font-bold">{student.student_name.charAt(0)}</Text>
             </View>
 
             {/* Info */}
             <View className="flex-1">
                 <Text className="text-gray-900 font-semibold">{student.student_name}</Text>
                 {student.student_display_id && (
-                    <Text className="text-teal-600 text-[10px] font-bold">ID: {student.student_display_id}</Text>
+                    <Text className="text-teacherOrange text-[10px] font-bold">ID: {student.student_display_id}</Text>
                 )}
                 <Text className="text-gray-400 text-xs">{student.assignment_title} • {student.Subject_title}</Text>
             </View>
@@ -58,7 +58,7 @@ const GradeRow = ({ student, onGrade }: { student: StudentGrade; onGrade: (stude
 
             {/* Grade Button */}
             <TouchableOpacity
-                className={`p-2 rounded-lg ${student.status === "graded" ? "bg-gray-100" : "bg-teal-600"}`}
+                className={`p-2 rounded-lg ${student.status === "graded" ? "bg-gray-100" : "bg-teacherOrange"}`}
                 onPress={() => onGrade(student)}
             >
                 {student.status === "graded" ? (
@@ -269,7 +269,7 @@ export default function GradesPage() {
                         <Text className="text-lg font-bold text-gray-900 mb-3">All Submissions</Text>
 
                         {loading ? (
-                            <ActivityIndicator size="large" color="#0d9488" className="mt-8" />
+                            <ActivityIndicator size="large" color="#FF6B00" className="mt-8" />
                         ) : filteredStudents.length === 0 ? (
                             <Text className="text-gray-500 text-center mt-8">No submissions found</Text>
                         ) : (
@@ -326,7 +326,7 @@ export default function GradesPage() {
                         </View>
 
                         <TouchableOpacity
-                            className="bg-teal-600 py-4 rounded-xl items-center"
+                            className="bg-teacherOrange py-4 rounded-xl items-center"
                             onPress={submitGrade}
                         >
                             <Text className="text-white font-bold text-base">Save Grade</Text>

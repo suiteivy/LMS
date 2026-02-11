@@ -52,8 +52,8 @@ export default function ManagementIndex() {
             icon: GraduationCap,
             title: "Grades",
             description: "View and update student grades",
-            color: "#0d9488",
-            bgColor: "#ccfbf1",
+            color: "#1a1a1a",
+            bgColor: "#f3f4f6", // gray-100
             route: "/(teacher)/management/grades",
             badge: "12 pending"
         },
@@ -134,8 +134,8 @@ export default function ManagementIndex() {
 
                         {/* Quick Stats Row */}
                         <View className="flex-row gap-3 mb-6">
-                            <View className="flex-1 bg-teal-600 p-4 rounded-2xl">
-                                <Text className="text-teal-100 text-xs uppercase">Pending Grades</Text>
+                            <View className="flex-1 bg-teacherOrange p-4 rounded-2xl">
+                                <Text className="text-white text-xs uppercase">Pending Grades</Text>
                                 <Text className="text-white text-2xl font-bold">12</Text>
                             </View>
                             <View className="flex-1 bg-orange-500 p-4 rounded-2xl">

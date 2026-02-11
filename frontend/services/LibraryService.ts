@@ -354,7 +354,7 @@ export class LibraryAPI {
       isbn: backendBorrow.book.isbn || "",
       borrowerId: backendBorrow.student_id,
       borrowerName: backendBorrow.student?.name || "Unknown",
-      borrowerDisplayId: (backendBorrow as any).users?.students?.[0]?.id || (backendBorrow as any).students?.[0]?.id,
+      borrowerDisplayId: undefined, // Student ID is the User ID in this schema
       borrowerEmail: backendBorrow.student?.email || "",
       borrowDate: new Date(backendBorrow.borrowed_at),
       dueDate: new Date(backendBorrow.due_date),

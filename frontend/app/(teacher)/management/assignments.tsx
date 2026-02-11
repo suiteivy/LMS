@@ -14,7 +14,7 @@ interface Assignment {
     submissions: number;
     totalStudents: number; // Placeholder or fetched
     status: "active" | "draft" | "closed";
-    Subject_id: string;
+    subject_id: string;
 }
 
 interface SubjectOption {
@@ -62,7 +62,7 @@ const AssignmentCard = ({ assignment }: { assignment: Assignment }) => {
 
             {/* Progress Bar */}
             <View className="h-2 bg-gray-100 rounded-full overflow-hidden mb-3">
-                <View className="h-full bg-teal-500 rounded-full" style={{ width: `${progressPercent}%` }} />
+                <View className="h-full bg-teacherOrange rounded-full" style={{ width: `${progressPercent}%` }} />
             </View>
 
             {/* Actions */}
@@ -72,8 +72,8 @@ const AssignmentCard = ({ assignment }: { assignment: Assignment }) => {
                     <Text className="text-gray-500 text-xs ml-1 font-medium">View</Text>
                 </TouchableOpacity>
                 <TouchableOpacity className="flex-row items-center p-2">
-                    <Edit2 size={16} color="#0d9488" />
-                    <Text className="text-teal-600 text-xs ml-1 font-medium">Edit</Text>
+                    <Edit2 size={16} color="#FF6B00" />
+                    <Text className="text-teacherOrange text-xs ml-1 font-medium">Edit</Text>
                 </TouchableOpacity>
             </View>
         </View>
@@ -93,7 +93,7 @@ export default function AssignmentsPage() {
     const [description, setDescription] = useState("");
     const [dueDate, setDueDate] = useState("");
     const [points, setPoints] = useState("");
-    const [selectedCourseId, setSelectedCourseId] = useState("");
+    const [selectedSubjectId, setSelectedSubjectId] = useState("");
     const [dateObject, setDateObject] = useState(new Date())
     const [showDatePicker, setShowDatePicker] = useState(false)
 
@@ -115,7 +115,7 @@ export default function AssignmentsPage() {
 
     const fetchSubjects = async () => {
         if (!teacherId) return;
-        const { data } = await supabase.from('Subjects').select('id, title').eq('teacher_id', teacherId);
+        const { data } = await supabase.from('subjects').select('id, title').eq('teacher_id', teacherId);
         if (data) setSubjects(data);
     };
 
@@ -129,7 +129,7 @@ export default function AssignmentsPage() {
                 .from('assignments')
                 .select(`
                     *,
-                    Subject:Subjects(title),
+                    subject:subjects(title),
                     submissions(count)
                 `)
                 .eq('teacher_id', teacherId)
@@ -140,8 +140,8 @@ export default function AssignmentsPage() {
             const formatted = (data || []).map((a: any) => ({
                 id: a.id,
                 title: a.title,
-                Subject: a.Subject?.title || "Unknown Subject",
-                Subject_id: a.Subject_id,
+                Subject: a.subject?.title || "Unknown Subject",
+                subject_id: a.subject_id,
                 dueDate: a.due_date ? new Date(a.due_date).toLocaleDateString() : "No Due Date",
                 submissions: a.submissions?.[0]?.count || 0,
                 totalStudents: 0, // Todo: fetch from Subject->class->enrollments
@@ -166,7 +166,7 @@ export default function AssignmentsPage() {
         try {
             const { error } = await supabase.from('assignments').insert({
                 teacher_id: teacherId,
-                Subject_id: selectedSubjectId,
+                subject_id: selectedSubjectId,
                 title,
                 description,
                 due_date: dueDate ? new Date(dueDate).toISOString() : null, // Naive parsing, better to use date picker
@@ -214,7 +214,7 @@ export default function AssignmentsPage() {
                                 <Text className="text-2xl font-bold text-gray-900">Assignments</Text>
                             </View>
                             <TouchableOpacity
-                                className="flex-row items-center bg-teal-600 px-4 py-2 rounded-xl"
+                                className="flex-row items-center bg-teacherOrange px-4 py-2 rounded-xl"
                                 onPress={() => setShowModal(true)}
                             >
                                 <Plus size={18} color="white" />
@@ -224,8 +224,8 @@ export default function AssignmentsPage() {
 
                         {/* Stats */}
                         <View className="flex-row gap-3 mb-6">
-                            <View className="flex-1 bg-teal-600 p-3 rounded-xl">
-                                <Text className="text-teal-100 text-xs uppercase">Active</Text>
+                            <View className="flex-1 bg-teacherOrange p-3 rounded-xl">
+                                <Text className="text-white text-xs uppercase">Active</Text>
                                 <Text className="text-white text-xl font-bold">
                                     {assignments.filter(a => a.status === "active").length}
                                 </Text>
@@ -243,7 +243,7 @@ export default function AssignmentsPage() {
                             {(["all", "active", "draft", "closed"] as const).map((tab) => (
                                 <TouchableOpacity
                                     key={tab}
-                                    className={`flex-1 py-2 rounded-lg ${filter === tab ? "bg-teal-600" : ""}`}
+                                    className={`flex-1 py-2 rounded-lg ${filter === tab ? "bg-teacherOrange" : ""}`}
                                     onPress={() => setFilter(tab)}
                                 >
                                     <Text className={`text-center font-medium text-xs ${filter === tab ? "text-white" : "text-gray-500"}`}>
@@ -255,7 +255,7 @@ export default function AssignmentsPage() {
 
                         {/* Assignment List */}
                         {loading ? (
-                            <ActivityIndicator size="large" color="#0d9488" className="mt-8" />
+                            <ActivityIndicator size="large" color="#FF6B00" className="mt-8" />
                         ) : filteredAssignments.length === 0 ? (
                             <Text className="text-gray-500 text-center mt-8">No assignments found</Text>
                         ) : (
@@ -285,7 +285,7 @@ export default function AssignmentsPage() {
                                 <TouchableOpacity
                                     key={c.id}
                                     onPress={() => setSelectedSubjectId(c.id)}
-                                    className={`mr-2 px-4 py-2 rounded-lg border ${selectedSubjectId === c.id ? 'bg-teal-600 border-teal-600' : 'bg-gray-50 border-gray-200'}`}
+                                    className={`mr-2 px-4 py-2 rounded-lg border ${selectedSubjectId === c.id ? 'bg-teacherOrange border-teacherOrange' : 'bg-gray-50 border-gray-200'}`}
                                 >
                                     <Text className={selectedSubjectId === c.id ? 'text-white' : 'text-gray-700'}>{c.title}</Text>
                                 </TouchableOpacity>
@@ -338,7 +338,7 @@ export default function AssignmentsPage() {
                         />
 
                         <TouchableOpacity
-                            className="bg-teal-600 py-4 rounded-xl items-center"
+                            className="bg-teacherOrange py-4 rounded-xl items-center"
                             onPress={createAssignment}
                         >
                             <Text className="text-white font-bold text-base">Create Assignment</Text>

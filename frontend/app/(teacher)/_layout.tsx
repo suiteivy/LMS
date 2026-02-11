@@ -8,7 +8,7 @@ export default function TeacherLayout() {
     const insets = useSafeAreaInsets();
 
     return (
-        <AuthGuard>
+        <AuthGuard allowedRoles={['teacher']}>
             <View style={{ flex: 1, paddingTop: insets.top }} className="bg-white">
                 <Tabs
                     screenOptions={{
@@ -31,7 +31,7 @@ export default function TeacherLayout() {
                             shadowOpacity: 0.1,
                             shadowRadius: 3,
                         },
-                        tabBarActiveTintColor: "#1ABC9C",
+                        tabBarActiveTintColor: "#FF6B00",
                         tabBarInactiveTintColor: "#6b7280",
                         tabBarLabelStyle: {
                             fontSize: 11,
@@ -50,7 +50,7 @@ export default function TeacherLayout() {
                         }}
                     />
                     <Tabs.Screen
-                        name="Subjects"
+                        name="subjects"
                         options={{
                             title: "Subjects",
                             tabBarIcon: ({ size = 24, color }) => (

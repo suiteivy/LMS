@@ -66,6 +66,7 @@ create table if not exists public.books (
   title text not null,
   author text,
   isbn text,
+  category text,
   total_quantity int not null default 1,
   available_quantity int not null default 1,
   institution_id uuid references public.institutions(id),
@@ -102,8 +103,8 @@ create table subjects (
 -- STEP 1: Create the admin user via Supabase Dashboard
 -- -------------------------------------------------------
 -- 1. Go to your Supabase project dashboard
--- 2. Navigate to: Authentication â†’ Users
--- 3. Click "Add user" â†’ "Create new user"
+-- 2. Navigate to: Authentication -> Users
+-- 3. Click "Add user" -> "Create new user"
 -- 4. Enter the following:
 --    - Email: admin@lms.com (or your preferred admin email)
 --    - Password: Admin@123456 (or your preferred password)
@@ -144,7 +145,7 @@ ON CONFLICT (id) DO NOTHING;
 -- ALTERNATIVE: Create additional admin users
 -- ==========================================
 -- To create more admin users, repeat the process:
--- 1. Add user via Dashboard â†’ Authentication â†’ Users
+-- 1. Add user via Dashboard -> Authentication -> Users
 -- 2. Run the INSERT query above with their email
 
 -- ==========================================
@@ -246,9 +247,11 @@ ON users FOR DELETE
 USING (public.get_current_user_role() = 'admin');
 
 -- ==========================================
--- subjects TABLE POLICIES
+-- subjects TABLE POLICIES 
+-- (DEPRECATED: See PART 3 at the bottom for active policies)
 -- ==========================================
-
+-- Old policies commented out to prevent recursion issues during reload
+/*
 -- SELECT: Users can read associated subjects
 CREATE POLICY "Users can read associated subjects"
 ON subjects FOR SELECT
@@ -293,6 +296,7 @@ USING (
   teacher_id = current_user_teacher_id()
   OR public.get_current_user_role() = 'admin'
 );
+*/
 
 -- ==========================================
 -- ASSIGNMENTS TABLE POLICIES
@@ -1015,11 +1019,11 @@ CREATE TRIGGER update_resources_modtime BEFORE UPDATE ON resources FOR EACH ROW 
 
 -- Helper to get current user's role ID
 CREATE OR REPLACE FUNCTION current_user_student_id() RETURNS TEXT AS $$
-    SELECT id FROM students WHERE student_id = current_user_student_id();
+    SELECT id FROM students WHERE user_id = auth.uid();
 $$ LANGUAGE sql STABLE;
 
 CREATE OR REPLACE FUNCTION current_user_teacher_id() RETURNS TEXT AS $$
-    SELECT id FROM teachers WHERE student_id = current_user_student_id();
+    SELECT id FROM teachers WHERE user_id = auth.uid();
 $$ LANGUAGE sql STABLE;
 
 -- Check if user is enrolled in class (Takes TEXT student_id)
@@ -1139,9 +1143,9 @@ CREATE POLICY "View submissions" ON submissions FOR SELECT USING (
   student_id = current_user_student_id() OR
   EXISTS (SELECT 1 FROM users WHERE id = auth.uid() AND role = 'admin') OR
   EXISTS (
-      SELECT 1 FROM assignments a
-      WHERE a.id = submissions.assignment_id
-      AND a.teacher_id = current_user_teacher_id()
+    SELECT 1 FROM assignments a
+    WHERE a.id = submissions.assignment_id
+    AND a.teacher_id = current_user_teacher_id()
   )
 );
 
@@ -1151,9 +1155,9 @@ CREATE POLICY "Student manage own submissions" ON submissions FOR ALL USING (stu
 DROP POLICY IF EXISTS "Teacher grade submissions" ON submissions;
 CREATE POLICY "Teacher grade submissions" ON submissions FOR UPDATE USING (
   EXISTS (
-      SELECT 1 FROM assignments a
-      WHERE a.id = submissions.assignment_id
-      AND a.teacher_id = current_user_teacher_id()
+    SELECT 1 FROM assignments a
+    WHERE a.id = submissions.assignment_id
+    AND a.teacher_id = current_user_teacher_id()
   )
 );
 
@@ -1176,12 +1180,12 @@ DROP POLICY IF EXISTS "View resources" ON resources;
 CREATE POLICY "View resources" ON resources FOR SELECT USING (
   EXISTS (SELECT 1 FROM users WHERE id = auth.uid() AND role = 'admin') OR
   EXISTS (
-      SELECT 1 FROM subjects c
-      WHERE c.id = resources.subject_id
-      AND (
-          c.teacher_id = current_user_teacher_id() OR
-          is_student_in_class(c.class_id, current_user_student_id())
-      )
+    SELECT 1 FROM subjects c
+    WHERE c.id = resources.subject_id
+    AND (
+      c.teacher_id = current_user_teacher_id() OR
+      is_student_in_class(c.class_id, current_user_student_id())
+    )
   )
 );
 
@@ -1189,8 +1193,87 @@ DROP POLICY IF EXISTS "Manage resources" ON resources;
 CREATE POLICY "Manage resources" ON resources FOR ALL USING (
   EXISTS (SELECT 1 FROM users WHERE id = auth.uid() AND role = 'admin') OR
   EXISTS (
-      SELECT 1 FROM subjects c
-      WHERE c.id = resources.subject_id
-      AND c.teacher_id = current_user_teacher_id()
+    SELECT 1 FROM subjects c
+    WHERE c.id = resources.subject_id
+    AND c.teacher_id = current_user_teacher_id()
   )
+);
+
+-- Create Announcements Table
+CREATE TABLE IF NOT EXISTS public.announcements (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    subject_id UUID REFERENCES public.subjects(id) ON DELETE CASCADE,
+    teacher_id TEXT REFERENCES public.teachers(id) ON DELETE CASCADE,
+    title TEXT NOT NULL,
+    message TEXT NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Enable RLS
+ALTER TABLE public.announcements ENABLE ROW LEVEL SECURITY;
+
+-- Policies
+
+-- 1. Teachers can view their own announcements
+CREATE POLICY "Teachers can view own announcements" 
+ON public.announcements FOR SELECT 
+TO authenticated 
+USING (
+    teacher_id IN (
+        SELECT id FROM public.teachers WHERE user_id = auth.uid()
+    )
+);
+
+-- 2. Teachers can insert announcements for themselves
+CREATE POLICY "Teachers can insert own announcements" 
+ON public.announcements FOR INSERT 
+TO authenticated 
+WITH CHECK (
+    teacher_id IN (
+        SELECT id FROM public.teachers WHERE user_id = auth.uid()
+    )
+);
+
+-- 3. Teachers can update own announcements
+CREATE POLICY "Teachers can update own announcements" 
+ON public.announcements FOR UPDATE 
+TO authenticated 
+USING (
+    teacher_id IN (
+        SELECT id FROM public.teachers WHERE user_id = auth.uid()
+    )
+);
+
+-- 4. Teachers can delete own announcements
+CREATE POLICY "Teachers can delete own announcements" 
+ON public.announcements FOR DELETE 
+TO authenticated 
+USING (
+    teacher_id IN (
+        SELECT id FROM public.teachers WHERE user_id = auth.uid()
+    )
+);
+
+-- 5. Students can view announcements for courses they are enrolled in
+CREATE POLICY "Students can view course announcements" 
+ON public.announcements FOR SELECT 
+TO authenticated 
+USING (
+    subject_id IN (
+        SELECT class_id FROM public.enrollments 
+        WHERE student_id IN (
+            SELECT id FROM public.students WHERE user_id = auth.uid()
+        )
+    )
+);
+
+-- Allow admins to view all (optional, good for management)
+CREATE POLICY "Admins can view all announcements"
+ON public.announcements FOR SELECT
+TO authenticated
+USING (
+    EXISTS (
+        SELECT 1 FROM public.admins WHERE user_id = auth.uid()
+    )
 );

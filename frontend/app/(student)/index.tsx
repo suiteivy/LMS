@@ -26,8 +26,8 @@ const QuickAction = ({ icon: Icon, label, color, onPress }: QuickActionProps) =>
 );
 
 export default function Index() {
+  const { profile, displayId, loading } = useAuth();
   const [showNotification, setShowNotification] = useState(false);
-  const { profile, loading } = useAuth()
   const router = useRouter()
 
   if (loading) return null;
@@ -51,7 +51,10 @@ export default function Index() {
                   Welcome back,
                 </Text>
                 <Text className="text-3xl font-bold text-gray-900">
-                  Alex Reed 👋
+                  {profile?.full_name || 'Student'} 👋
+                </Text>
+                <Text className="text-sm text-gray-500 font-medium">
+                  ID: {displayId || 'Loading...'}
                 </Text>
               </View>
             </View>

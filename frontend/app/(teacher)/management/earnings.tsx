@@ -20,8 +20,8 @@ const PaymentRow = ({ payment }: { payment: Payment }) => {
 
     return (
         <View className="bg-white p-4 rounded-xl border border-gray-100 mb-2 flex-row items-center">
-            <View className="w-10 h-10 rounded-full bg-green-100 items-center justify-center mr-3">
-                <DollarSign size={18} color="#22c55e" />
+            <View className="w-10 h-10 rounded-full bg-orange-100 items-center justify-center mr-3">
+                <DollarSign size={18} color="#FF6B00" />
             </View>
             <View className="flex-1">
                 <Text className="text-gray-900 font-semibold">{payment.description}</Text>
@@ -78,10 +78,10 @@ export default function EarningsPage() {
                         </View>
 
                         {/* Total Earnings Card */}
-                        <View className="bg-gradient-to-r bg-green-600 p-6 rounded-3xl mb-6">
+                        <View className="bg-teacherOrange p-6 rounded-3xl mb-6">
                             <View className="flex-row justify-between items-start mb-4">
                                 <View>
-                                    <Text className="text-green-100 text-sm">Total Earnings</Text>
+                                    <Text className="text-white text-sm">Total Earnings</Text>
                                     <Text className="text-white text-4xl font-black mt-1">
                                         ${totalEarnings.toLocaleString()}
                                     </Text>
@@ -92,11 +92,11 @@ export default function EarningsPage() {
                             </View>
                             <View className="flex-row">
                                 <View className="flex-1 border-r border-white/20 pr-4">
-                                    <Text className="text-green-100 text-xs">This Month</Text>
+                                    <Text className="text-white text-xs">This Month</Text>
                                     <Text className="text-white font-bold text-lg">$1,130</Text>
                                 </View>
                                 <View className="flex-1 pl-4">
-                                    <Text className="text-green-100 text-xs">Pending</Text>
+                                    <Text className="text-white text-xs">Pending</Text>
                                     <Text className="text-white font-bold text-lg">${pendingAmount}</Text>
                                 </View>
                             </View>
@@ -105,12 +105,12 @@ export default function EarningsPage() {
                         {/* Quick Stats */}
                         <View className="flex-row gap-3 mb-6">
                             <View className="flex-1 bg-white p-4 rounded-2xl border border-gray-100">
-                                <TrendingUp size={20} color="#22c55e" />
+                                <TrendingUp size={20} color="#FF6B00" />
                                 <Text className="text-gray-900 text-xl font-bold mt-2">+18%</Text>
                                 <Text className="text-gray-400 text-xs">vs last month</Text>
                             </View>
                             <View className="flex-1 bg-white p-4 rounded-2xl border border-gray-100">
-                                <Calendar size={20} color="#3b82f6" />
+                                <Calendar size={20} color="#1a1a1a" />
                                 <Text className="text-gray-900 text-xl font-bold mt-2">12</Text>
                                 <Text className="text-gray-400 text-xs">Payments</Text>
                             </View>
@@ -129,13 +129,13 @@ export default function EarningsPage() {
                         ))}
 
                         {/* Payout Info */}
-                        <TouchableOpacity className="bg-blue-50 p-4 rounded-2xl mt-4 flex-row items-center">
+                        <TouchableOpacity className="bg-orange-50 p-4 rounded-2xl mt-4 flex-row items-center">
                             <View className="flex-1">
-                                <Text className="text-blue-800 font-bold">Next Payout</Text>
-                                <Text className="text-blue-600 text-sm">February 28, 2026</Text>
+                                <Text className="text-teacherOrange font-bold">Next Payout</Text>
+                                <Text className="text-teacherOrange text-sm">February 28, 2026</Text>
                             </View>
-                            <Text className="text-blue-800 font-bold text-lg mr-2">${pendingAmount}</Text>
-                            <ChevronRight size={18} color="#3b82f6" />
+                            <Text className="text-teacherOrange font-bold text-lg mr-2">${pendingAmount}</Text>
+                            <ChevronRight size={18} color="#FF6B00" />
                         </TouchableOpacity>
                     </View>
                 </ScrollView>

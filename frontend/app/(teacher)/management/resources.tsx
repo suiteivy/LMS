@@ -71,7 +71,7 @@ export default function ResourcesPage() {
 
     const fetchSubjects = async () => {
         if (!teacherId) return;
-        const { data } = await supabase.from('Subjects').select('id, title').eq('teacher_id', teacherId);
+        const { data } = await supabase.from('subjects').select('id, title').eq('teacher_id', teacherId);
         if (data) setSubjects(data);
     };
 
@@ -87,7 +87,7 @@ export default function ResourcesPage() {
             // Let's filter by Subjects we teach to be safe and clean.
 
             // 1. Get Subject IDs
-            const { data: mySubjects } = await supabase.from('Subjects').select('id, title').eq('teacher_id', teacherId);
+            const { data: mySubjects } = await supabase.from('subjects').select('id, title').eq('teacher_id', teacherId);
             const SubjectIds = (mySubjects || []).map(c => c.id);
             const SubjectMap = new Map(mySubjects?.map(c => [c.id, c.title]));
 
@@ -101,7 +101,7 @@ export default function ResourcesPage() {
             const { data, error } = await supabase
                 .from('resources')
                 .select('*')
-                .in('Subject_id', SubjectIds)
+                .in('subject_id', SubjectIds)
                 .order('created_at', { ascending: false });
 
             if (error) throw error;
@@ -111,7 +111,7 @@ export default function ResourcesPage() {
 
             const formatted = typedData.map(r => ({
                 ...r,
-                Subject_title: SubjectMap.get(r.Subject_id),
+                Subject_title: SubjectMap.get(r.subject_id),
                 type: r.type as any
             }));
 
@@ -132,7 +132,7 @@ export default function ResourcesPage() {
 
         try {
             const { error } = await supabase.from('resources').insert({
-                Subject_id: selectedSubjectId,
+                subject_id: selectedSubjectId,
                 title,
                 url,
                 type,
@@ -186,7 +186,7 @@ export default function ResourcesPage() {
                                 </View>
                             </View>
                             <TouchableOpacity
-                                className="flex-row items-center bg-yellow-500 px-4 py-2 rounded-xl"
+                                className="flex-row items-center bg-teacherOrange px-4 py-2 rounded-xl"
                                 onPress={() => setShowModal(true)}
                             >
                                 <Upload size={18} color="white" />
@@ -201,7 +201,7 @@ export default function ResourcesPage() {
                                 <Text className="text-gray-500 text-sm">Unlimited (Links)</Text>
                             </View>
                             <View className="h-3 bg-gray-100 rounded-full overflow-hidden">
-                                <View className="h-full bg-yellow-500 rounded-full" style={{ width: "5%" }} />
+                                <View className="h-full bg-teacherOrange rounded-full" style={{ width: "5%" }} />
                             </View>
                         </View>
 
@@ -209,7 +209,7 @@ export default function ResourcesPage() {
                         <Text className="text-lg font-bold text-gray-900 mb-3">All Resources</Text>
 
                         {loading ? (
-                            <ActivityIndicator size="large" color="#eab308" className="mt-8" />
+                            <ActivityIndicator size="large" color="#FF6B00" className="mt-8" />
                         ) : resources.length === 0 ? (
                             <Text className="text-gray-500 text-center mt-8">No resources found.</Text>
                         ) : (
@@ -239,7 +239,7 @@ export default function ResourcesPage() {
                                 <TouchableOpacity
                                     key={c.id}
                                     onPress={() => setSelectedSubjectId(c.id)}
-                                    className={`mr-2 px-4 py-2 rounded-lg border ${selectedSubjectId === c.id ? 'bg-yellow-500 border-yellow-500' : 'bg-gray-50 border-gray-200'}`}
+                                    className={`mr-2 px-4 py-2 rounded-lg border ${selectedSubjectId === c.id ? 'bg-teacherOrange border-teacherOrange' : 'bg-gray-50 border-gray-200'}`}
                                 >
                                     <Text className={selectedSubjectId === c.id ? 'text-white' : 'text-gray-700'}>{c.title}</Text>
                                 </TouchableOpacity>
@@ -277,7 +277,7 @@ export default function ResourcesPage() {
                         />
 
                         <TouchableOpacity
-                            className="bg-yellow-500 py-4 rounded-xl items-center"
+                            className="bg-teacherOrange py-4 rounded-xl items-center"
                             onPress={handleAddResource}
                         >
                             <Text className="text-white font-bold text-base">Add Resource</Text>

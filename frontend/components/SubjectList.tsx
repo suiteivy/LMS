@@ -5,15 +5,15 @@ import { SubjectCard } from './SubjectCard';
 import { Subject } from '@/types/types';
 
 interface SubjectListProps {
-  Subjects: Subject[];
+  subjects: Subject[];
   title?: string;
   showFilters?: boolean;
   variant?: 'default' | 'compact' | 'featured';
-  onPressSubject: (Subject: Subject) => void;
+  onPressSubject: (subject: Subject) => void;
 }
 
 export const SubjectList: React.FC<SubjectListProps> = ({
-  Subjects,
+  subjects,
   title = "Subjects",
   showFilters = false,
   variant = 'default',
@@ -25,9 +25,9 @@ export const SubjectList: React.FC<SubjectListProps> = ({
   const categories = ['all', 'Literacy', 'Mathematics', 'Science & Technology', 'Creative Arts'];
   const levels = ['all', 'beginner', 'intermediate', 'advanced'];
 
-  const filteredSubjects = Subjects.filter(Subject => {
-    const categoryMatch = selectedFilter === 'all' || Subject.category === selectedFilter;
-    const levelMatch = selectedLevel === 'all' || Subject.level === selectedLevel;
+  const filteredSubjects = subjects.filter(subject => {
+    const categoryMatch = selectedFilter === 'all' || subject.category === selectedFilter;
+    const levelMatch = selectedLevel === 'all' || subject.level === selectedLevel;
     return categoryMatch && levelMatch;
   });
 
@@ -53,16 +53,14 @@ export const SubjectList: React.FC<SubjectListProps> = ({
               <TouchableOpacity
                 key={category}
                 onPress={() => setSelectedFilter(category)}
-                className={`px-4 py-2 rounded-full mr-2 ${
-                  selectedFilter === category
+                className={`px-4 py-2 rounded-full mr-2 ${selectedFilter === category
                     ? 'bg-teal-500'
                     : 'bg-white border border-gray-200'
-                }`}
+                  }`}
               >
                 <Text
-                  className={`text-sm font-medium capitalize ${
-                    selectedFilter === category ? 'text-white' : 'text-[#2C3E50]'
-                  }`}
+                  className={`text-sm font-medium capitalize ${selectedFilter === category ? 'text-white' : 'text-[#2C3E50]'
+                    }`}
                 >
                   {category}
                 </Text>
@@ -77,11 +75,10 @@ export const SubjectList: React.FC<SubjectListProps> = ({
               <TouchableOpacity
                 key={level}
                 onPress={() => setSelectedLevel(level)}
-                className={`px-4 py-2 rounded-full mr-2 ${
-                  selectedLevel === level
+                className={`px-4 py-2 rounded-full mr-2 ${selectedLevel === level
                     ? 'bg-[#A1EBE5]'
                     : 'bg-white border border-gray-200'
-                }`}
+                  }`}
               >
                 <Text className="text-sm font-medium capitalize text-[#2C3E50]">
                   {level}
@@ -94,11 +91,11 @@ export const SubjectList: React.FC<SubjectListProps> = ({
 
       {/* Subject Grid */}
       <ScrollView showsVerticalScrollIndicator={false}>
-        {filteredSubjects.map((Subject) => (
+        {filteredSubjects.map((subject) => (
           <SubjectCard
-            key={Subject.id}
-            Subject={Subject}
-            onPress={() => onPressSubject(Subject)}
+            key={subject.id}
+            Subject={subject}
+            onPress={() => onPressSubject(subject)}
             variant={variant}
           />
         ))}

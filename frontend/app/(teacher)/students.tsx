@@ -28,8 +28,8 @@ const StudentCard = ({ student }: StudentCardProps) => {
     return (
         <TouchableOpacity className="bg-white p-4 rounded-2xl border border-gray-100 mb-3 shadow-sm flex-row items-center">
             {/* Avatar */}
-            <View className="w-12 h-12 rounded-full bg-teal-100 items-center justify-center mr-3">
-                <Text className="text-teal-600 font-bold text-lg">
+            <View className="w-12 h-12 rounded-full bg-orange-100 items-center justify-center mr-3">
+                <Text className="text-teacherOrange font-bold text-lg">
                     {student.name.charAt(0)}
                 </Text>
             </View>
@@ -37,7 +37,7 @@ const StudentCard = ({ student }: StudentCardProps) => {
             {/* Info */}
             <View className="flex-1">
                 <Text className="text-gray-900 font-semibold text-base">{student.name}</Text>
-                <Text className="text-teal-600 text-xs font-medium mb-1">{student.id}</Text>
+                <Text className="text-teacherOrange text-xs font-medium mb-1">{student.id}</Text>
                 <Text className="text-gray-400 text-xs">{student.Subject}</Text>
                 <View className="flex-row items-center mt-1">
                     <TrendingUp size={12} color="#6B7280" />
@@ -142,7 +142,7 @@ export default function TeacherStudents() {
     if (loading) {
         return (
             <View className="flex-1 justify-center items-center bg-gray-50">
-                <ActivityIndicator size="large" color="#0d9488" />
+                <ActivityIndicator size="large" color="#FF6B00" />
             </View>
         );
     }
@@ -170,13 +170,13 @@ export default function TeacherStudents() {
 
                         {/* Summary Cards */}
                         <View className="flex-row gap-3 mb-6">
-                            <View className="flex-1 bg-teal-600 p-4 rounded-2xl">
+                            <View className="flex-1 bg-teacherOrange p-4 rounded-2xl">
                                 <Users size={18} color="white" />
                                 <Text className="text-white text-xl font-bold mt-2">{students.length}</Text>
-                                <Text className="text-teal-100 text-xs uppercase">Total</Text>
+                                <Text className="text-white text-xs uppercase">Total</Text>
                             </View>
                             <View className="flex-1 bg-white p-4 rounded-2xl border border-gray-100">
-                                <TrendingUp size={18} color="#0d9488" />
+                                <TrendingUp size={18} color="#FF6B00" />
                                 <Text className="text-gray-900 text-xl font-bold mt-2">78%</Text>
                                 <Text className="text-gray-400 text-xs uppercase">Avg Progress</Text>
                             </View>
