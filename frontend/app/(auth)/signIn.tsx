@@ -6,6 +6,7 @@ import {
   ActivityIndicator,
   Modal,
   Alert,
+  ScrollView,
 } from "react-native";
 import { SafeAreaView, SafeAreaProvider } from "react-native-safe-area-context";
 import { FontAwesome, Ionicons } from "@expo/vector-icons";
@@ -193,132 +194,140 @@ export default function Index() {
 
   return (
     <SafeAreaProvider>
-      <SafeAreaView className="flex-1 p-5 bg-white relative">
-        <View className="flex-row p-5 justify-between mb-5 mt-3">
-          <TouchableOpacity onPress={() => router.replace("/")}>
-            <Ionicons name="arrow-back" size={25} color="black" />
-          </TouchableOpacity>
-        </View>
-
-        <View className="p-5">
-          <Text className="text-4xl text-teacherBlack font-bold">
-            Welcome Back to
-          </Text>
-          <Text className="text-4xl text-teacherBlack font-bold">
-            Your Account
-          </Text>
-          <Text className="text-xs text-gray-500">
-            Enter your email and password to get started.
-          </Text>
-        </View>
-
-        <View className="mt-11 p-5">
-          <View>
-            <Text className="text-lg text-teacherBlack mb-2">Email</Text>
-            <TextInput
-              keyboardType="email-address"
-              className="border border-orange-500 rounded-lg h-12 px-2.5"
-              placeholder="Enter your Email"
-              placeholderTextColor="black"
-              value={formData.email}
-              onChangeText={(value) => handleInputChange("email", value)}
-              autoCapitalize="none"
-            />
-            {errors.email && (
-              <Text className="text-red-500 text-sm mt-1">{errors.email}</Text>
-            )}
-          </View>
-
-          <View className="mt-5">
-            <Text className="text-lg text-[#2C3E50] mb-2">Password</Text>
-            <View className="flex-row border border-orange-500 items-center h-12 rounded-lg px-2.5">
-              <TextInput
-                className="flex-1 text-teacherBlack"
-                placeholder="Enter your password"
-                secureTextEntry={!showPassword}
-                placeholderTextColor="#7E7B7B"
-                value={formData.password}
-                onChangeText={(value) => handleInputChange("password", value)}
-              />
-              <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
-                <FontAwesome
-                  name={showPassword ? "eye" : "eye-slash"}
-                  size={24}
-                  color="#7E7B7B"
-                />
-              </TouchableOpacity>
-            </View>
-            {errors.password && (
-              <Text className="text-red-500 text-sm mt-1">
-                {errors.password}
-              </Text>
-            )}
-          </View>
-
-          <TouchableOpacity onPress={handleForgotPassword}>
-            <Text className="text-lg mt-2 text-right text-orange-600">
-              Forgot password?
-            </Text>
-          </TouchableOpacity>
-        </View>
-
-        <View className="px-5">
-          {errorMessage && (
-            <View className="bg-red-50 border border-red-200 rounded-lg p-3 mt-2">
-              <Text className="text-red-600 text-sm text-center">
-                {errorMessage}
-              </Text>
-            </View>
-          )}
-
-          <TouchableOpacity
-            className="bg-orange-500 h-[53px] rounded-lg mt-6 flex justify-center items-center shadow-md"
-            onPress={onSubmit}
-            disabled={isLoading}
+      {/* The outer View handles the gray background for PCs */}
+      <View className="flex-1 bg-gray-50 lg:bg-gray-100 justify-center">
+        <SafeAreaView className="flex-1 w-full max-w-[500px] self-center">
+          <ScrollView
+            contentContainerStyle={{ flexGrow: 1, justifyContent: "flex-start"}}
+            className="bg-white lg:rounded-[40px] lg:border lg:border-gray-200 lg:my-10 lg:shadow-xl"
+            showsVerticalScrollIndicator={false}
           >
-            {isLoading ? (
-              <ActivityIndicator color="white" />
-            ) : (
-              <Text className="text-lg text-white font-semibold">Sign In</Text>
-            )}
-          </TouchableOpacity>
-        </View>
+            <View className="p-8">
+              {/* CENTERED HEADER WITH ABSOLUTE ARROW */}
+              <View className="flex-row items-center justify-center relative h-10 mb-10">
+                <TouchableOpacity
+                  onPress={() => router.replace("/")}
+                  className="absolute left-0 w-10 h-10 items-center justify-center rounded-2xl bg-gray-50 border border-gray-100"
+                  activeOpacity={0.7}
+                >
+                  <Ionicons name="arrow-back" size={20} color="black" />
+                </TouchableOpacity>
 
-        <View className="flex-row items-center gap-2.5 mt-7 px-5">
-          <View className="border-t border-gray-200 flex-1"></View>
-          <Text className="text-lg font-medium text-gray-400">OR</Text>
-          <View className="border-t border-gray-200 flex-1"></View>
-        </View>
+                <Text className="text-gray-400 font-bold uppercase tracking-[3px] text-[10px]">
+                  Auth Portal
+                </Text>
+              </View>
 
-        <View className="flex-row absolute bottom-8 left-0 right-0 justify-center">
-          <Text className="text-base text-gray-600">
-            Don&apos;t have an account?{" "}
-          </Text>
-          <TouchableOpacity onPress={() => router.push("/(auth)/signUp")}>
-            <Text className="text-base text-orange-500 font-semibold">
-              Sign Up
-            </Text>
-          </TouchableOpacity>
-        </View>
+              {/* CENTERED HERO TEXT */}
+              <View className="items-center mb-10">
+                <Text className="text-4xl text-gray-900 font-black tracking-tighter text-center">
+                  Welcome Back
+                </Text>
+                <View className="flex-row items-center">
+                  <Text className="text-4xl text-gray-400 font-light tracking-tighter">
+                    to your account
+                  </Text>
+                  <Text className="text-4xl text-orange-500 font-black">.</Text>
+                </View>
+                <Text className="text-sm text-gray-500 mt-3 text-center leading-5 px-4 font-medium">
+                  Enter your credentials to securely access your student
+                  dashboard.
+                </Text>
+              </View>
 
-        <Modal
-          animationType="fade"
-          transparent={true}
-          visible={isModalVisible}
-          onRequestClose={() => setIsModalVisible(false)}
-        >
-          <View className="flex-1 items-center bg-black bg-opacity-50">
-            <View
-              className={`p-5 rounded-lg shadow-lg mt-20 ${isSuccess ? "bg-green-500" : "bg-red-500"
-                }`}
-            >
-              <Text className="text-white text-lg font-semibold text-center">
-                {message}
-              </Text>
+              {/* FORM FIELDS */}
+              <View className="space-y-6">
+                <View>
+                  <Text className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-2 ml-1">
+                    Email Address
+                  </Text>
+                  <View
+                    className={`h-14 bg-gray-50 border ${errors.email ? "border-red-500" : "border-gray-100"} rounded-2xl px-4 flex-row items-center`}
+                  >
+                    <Ionicons name="mail-outline" size={20} color="#9ca3af" />
+                    <TextInput
+                      keyboardType="email-address"
+                      className="flex-1 ml-3 text-gray-900 font-semibold h-full"
+                      placeholder="name@example.com"
+                      placeholderTextColor="#9ca3af"
+                      value={formData.email}
+                      onChangeText={(value) =>
+                        handleInputChange("email", value)
+                      }
+                      autoCapitalize="none"
+                    />
+                  </View>
+                </View>
+
+                <View>
+                  <Text className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-2 ml-1">
+                    Password
+                  </Text>
+                  <View
+                    className={`h-14 bg-gray-50 border ${errors.password ? "border-red-500" : "border-gray-100"} rounded-2xl px-4 flex-row items-center`}
+                  >
+                    <Ionicons
+                      name="lock-closed-outline"
+                      size={20}
+                      color="#9ca3af"
+                    />
+                    <TextInput
+                      className="flex-1 ml-3 text-gray-900 font-semibold h-full"
+                      placeholder="••••••••"
+                      secureTextEntry={!showPassword}
+                      placeholderTextColor="#9ca3af"
+                      value={formData.password}
+                      onChangeText={(value) =>
+                        handleInputChange("password", value)
+                      }
+                    />
+                    <TouchableOpacity
+                      onPress={() => setShowPassword(!showPassword)}
+                    >
+                      <Ionicons
+                        name={showPassword ? "eye-outline" : "eye-off-outline"}
+                        size={20}
+                        color="#9ca3af"
+                      />
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              </View>
+
+              <TouchableOpacity
+                onPress={handleForgotPassword}
+                className="mt-4 self-end"
+              >
+                <Text className="text-orange-500 font-bold text-sm">
+                  Forgot password?
+                </Text>
+              </TouchableOpacity>
+
+              {/* SIGN IN BUTTON */}
+              <TouchableOpacity
+                className="bg-orange-500 h-14 rounded-2xl mt-10 flex justify-center items-center shadow-lg shadow-orange-200"
+                onPress={onSubmit}
+                disabled={isLoading}
+                activeOpacity={0.8}
+              >
+                {isLoading ? (
+                  <ActivityIndicator color="white" className="p-2"/>
+                ) : (
+                  <Text className="text-white font-bold text-lg p-2 ">Sign In</Text>
+                )}
+              </TouchableOpacity>
+
+              {/* FOOTER */}
+              <View className="flex-row justify-center mt-10">
+                <Text className="text-gray-500">Don't have an account? </Text>
+                <TouchableOpacity onPress={() => router.push("/(auth)/signUp")}>
+                  <Text className="text-orange-500 font-bold">Sign Up</Text>
+                </TouchableOpacity>
+              </View>
             </View>
-          </View>
-        </Modal>
-      </SafeAreaView>
+          </ScrollView>
+        </SafeAreaView>
+      </View>
     </SafeAreaProvider>
   );
 }

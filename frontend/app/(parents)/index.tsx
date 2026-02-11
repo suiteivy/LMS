@@ -52,7 +52,7 @@ function ParentDashboard({ user }: any) {
                 </Text>
               </View>
               <TouchableOpacity
-                onPress={() => router.replace("/")}
+                onPress={() => router.replace("/(auth)/signIn")}
                 className="flex-row items-center bg-red-50 px-3 py-2 rounded-xl border border-red-100 active:bg-red-100"
               >
                 <LogOut size={18} color="#ef4444" strokeWidth={2.5} />
