@@ -9,19 +9,7 @@ import {
   ScrollView,
 } from 'react-native';
 
-// Define the TeacherPayout interface
-interface TeacherPayout {
-  id: string;
-  teacher_name: string;
-  teacher_display_id?: string;
-  amount: number;
-  hours_taught: number;
-  rate_per_hour: number;
-  period_start: string;
-  period_end: string;
-  status: 'pending' | 'processing' | 'paid';
-  payment_date?: string;
-}
+import { TeacherPayout } from '@/types/types';
 
 interface TeacherPayoutSectionProps {
   payouts?: TeacherPayout[];
@@ -34,6 +22,7 @@ interface TeacherPayoutSectionProps {
 const PLACEHOLDER_PAYOUTS: TeacherPayout[] = [
   {
     id: '1',
+    teacher_id: 'TEA-2024-001',
     teacher_name: 'Sarah Johnson',
     teacher_display_id: 'TEA-2024-001',
     amount: 25000,
@@ -45,6 +34,7 @@ const PLACEHOLDER_PAYOUTS: TeacherPayout[] = [
   },
   {
     id: '2',
+    teacher_id: 'TEA-2024-002',
     teacher_name: 'Michael Chen',
     amount: 30000,
     hours_taught: 48,
@@ -55,6 +45,7 @@ const PLACEHOLDER_PAYOUTS: TeacherPayout[] = [
   },
   {
     id: '3',
+    teacher_id: 'TEA-2024-003',
     teacher_name: 'Emma Davis',
     amount: 18750,
     hours_taught: 30,
@@ -66,6 +57,7 @@ const PLACEHOLDER_PAYOUTS: TeacherPayout[] = [
   },
   {
     id: '4',
+    teacher_id: 'TEA-2024-004',
     teacher_name: 'James Wilson',
     amount: 22500,
     hours_taught: 36,
@@ -76,6 +68,7 @@ const PLACEHOLDER_PAYOUTS: TeacherPayout[] = [
   },
   {
     id: '5',
+    teacher_id: 'TEA-2024-005',
     teacher_name: 'Lisa Rodriguez',
     amount: 31250,
     hours_taught: 50,
@@ -176,7 +169,7 @@ const TeacherPayoutSection: React.FC<TeacherPayoutSectionProps> = ({
             {item.teacher_name}
           </Text>
           {item.teacher_display_id && (
-            <Text className="text-xs text-blue-600 font-medium">
+            <Text className="text-xs text-[#FF6B00] font-medium">
               ID: {item.teacher_display_id}
             </Text>
           )}
@@ -187,7 +180,7 @@ const TeacherPayoutSection: React.FC<TeacherPayoutSectionProps> = ({
       </View>
 
       <View className="space-y-2">
-        <Text className="text-2xl font-bold text-blue-600 mb-2">
+        <Text className="text-2xl font-bold text-[#FF6B00] mb-2">
           {formatAmount(item.amount)}
         </Text>
 
@@ -201,7 +194,7 @@ const TeacherPayoutSection: React.FC<TeacherPayoutSectionProps> = ({
         <View className="flex-row justify-between">
           <Text className="text-sm text-gray-600">Rate:</Text>
           <Text className="text-sm text-gray-900">
-            {formatAmount(item.rate_per_hour)}/hr
+            {formatAmount(item.rate_per_hour || 0)}/hr
           </Text>
         </View>
 
@@ -225,7 +218,7 @@ const TeacherPayoutSection: React.FC<TeacherPayoutSectionProps> = ({
 
       {item.status === 'pending' && (
         <View className="mt-3 pt-3 border-t border-gray-100">
-          <Text className="text-blue-600 text-sm font-medium text-center">
+          <Text className="text-[#FF6B00] text-sm font-medium text-center">
             Tap to process payout
           </Text>
         </View>
@@ -287,15 +280,7 @@ const TeacherPayoutSection: React.FC<TeacherPayoutSectionProps> = ({
                 ]
               );
             }}
-            className="px-4 py-3 rounded-lg mb-4"
-            style={{
-              backgroundColor: '#1ABC9C',
-              shadowColor: '#000',
-              shadowOffset: { width: 0, height: 2 },
-              shadowOpacity: 0.15,
-              shadowRadius: 3,
-              elevation: 3,
-            }}
+            className="bg-[#FF6B00] px-4 py-3 rounded-lg mb-4 shadow-sm"
           >
             <Text className="text-white font-semibold text-center text-base">
               Process All Pending Payouts ({formatAmount(totalPending)})
@@ -304,37 +289,39 @@ const TeacherPayoutSection: React.FC<TeacherPayoutSectionProps> = ({
         )}
       </View>
 
-      {loading ? (
-        <View className="flex-1 justify-center items-center">
-          <Text className="text-gray-500 text-lg">Loading payouts...</Text>
-          <Text className="text-gray-400 text-sm mt-2">Please wait...</Text>
-        </View>
-      ) : (
-        <FlatList
-          data={displayPayouts}
-          renderItem={renderPayoutItem}
-          keyExtractor={(item) => item.id}
-          showsVerticalScrollIndicator={false}
-          refreshing={loading}
-          onRefresh={onRefresh}
-          contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 20 }}
-          ListEmptyComponent={
-            <View className="flex-1 justify-center items-center py-20">
-              <Text className="text-gray-500 text-lg">No payouts found</Text>
-              <Text className="text-gray-400 text-sm mt-2 text-center">
-                Teacher payouts will appear here when hours are logged
-              </Text>
-            </View>
-          }
-          ListHeaderComponent={
-            displayPayouts.length > 0 ? (
-              <Text className="text-lg font-semibold text-gray-900 mb-3">
-                All Payouts ({displayPayouts.length})
-              </Text>
-            ) : null
-          }
-        />
-      )}
+      {
+        loading ? (
+          <View className="flex-1 justify-center items-center">
+            <Text className="text-gray-500 text-lg">Loading payouts...</Text>
+            <Text className="text-gray-400 text-sm mt-2">Please wait...</Text>
+          </View>
+        ) : (
+          <FlatList
+            data={displayPayouts}
+            renderItem={renderPayoutItem}
+            keyExtractor={(item) => item.id}
+            showsVerticalScrollIndicator={false}
+            refreshing={loading}
+            onRefresh={onRefresh}
+            contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 20 }}
+            ListEmptyComponent={
+              <View className="flex-1 justify-center items-center py-20">
+                <Text className="text-gray-500 text-lg">No payouts found</Text>
+                <Text className="text-gray-400 text-sm mt-2 text-center">
+                  Teacher payouts will appear here when hours are logged
+                </Text>
+              </View>
+            }
+            ListHeaderComponent={
+              displayPayouts.length > 0 ? (
+                <Text className="text-lg font-semibold text-gray-900 mb-3">
+                  All Payouts ({displayPayouts.length})
+                </Text>
+              ) : null
+            }
+          />
+        )
+      }
 
       {/* Payout Details Modal */}
       <Modal
@@ -377,7 +364,7 @@ const TeacherPayoutSection: React.FC<TeacherPayoutSectionProps> = ({
 
                   <View className="flex-row justify-between py-3 border-b border-gray-100">
                     <Text className="text-gray-600 text-base">Hourly Rate</Text>
-                    <Text className="font-medium text-base">{formatAmount(selectedPayout.rate_per_hour)}</Text>
+                    <Text className="font-medium text-base">{formatAmount(selectedPayout.rate_per_hour || 0)}</Text>
                   </View>
 
                   <View className="flex-row justify-between py-3 border-b border-gray-100">
@@ -412,7 +399,7 @@ const TeacherPayoutSection: React.FC<TeacherPayoutSectionProps> = ({
                     }}
                     className="px-4 py-3 rounded-lg mt-6"
                     style={{
-                      backgroundColor: '#3B82F6',
+                      backgroundColor: '#FF6B00',
                       shadowColor: '#000',
                       shadowOffset: { width: 0, height: 2 },
                       shadowOpacity: 0.15,
@@ -430,7 +417,7 @@ const TeacherPayoutSection: React.FC<TeacherPayoutSectionProps> = ({
           )}
         </View>
       </Modal>
-    </View>
+    </View >
   );
 };
 

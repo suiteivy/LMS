@@ -701,7 +701,13 @@ const BorrowedBooksOverview: React.FC<BorrowedBooksOverviewProps> = ({
             </Text>
           </View>
         ) : (
-          filteredBooks.map(renderBorrowedBookItem)
+          <View className="flex-row flex-wrap gap-4">
+            {filteredBooks.map((book) => (
+              <View key={book.id} className="w-full lg:w-[48%] xl:w-[32%]">
+                {renderBorrowedBookItem(book)}
+              </View>
+            ))}
+          </View>
         )}
       </ScrollView>
 

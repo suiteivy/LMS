@@ -1,25 +1,22 @@
 const express = require("express");
 const router = express.Router();
 const { authMiddleware } = require("../middleware/auth.middleware");
-
-// backend/routes/bursary.routes.js
+const { authorizeRoles } = require("../middleware/authRole");
 const {
-  recordFeePayment,
-  getStudentFeeStatus,
-  getTeacherEarnings,
-  recordTeacherPayment,
+  listBursaries,
+  createBursary,
+  getBursaryDetails,
+  applyForBursary,
+  updateApplicationStatus
 } = require("../controllers/bursary.controller");
 
-// Record payment
-router.post("/fees/payment/:studentId", authMiddleware, recordFeePayment);
+// Bursary Management
+router.get("/", authMiddleware, listBursaries);
+router.post("/", authMiddleware, authorizeRoles(['admin']), createBursary);
+router.get("/:id", authMiddleware, getBursaryDetails);
 
-// Get student's fee status & balance
-router.get("/fees/:studentId", authMiddleware, getStudentFeeStatus);
-
-// Get teacher's earnings
-router.get("/teacher/earnings/:teacherId", authMiddleware, getTeacherEarnings);
-
-// Record teacher payment (admin only - add auth middleware if needed)
-router.post("/teacher/pay", authMiddleware, recordTeacherPayment);
+// Applications
+router.post("/apply", authMiddleware, authorizeRoles(['student']), applyForBursary);
+router.put("/applications/:id", authMiddleware, authorizeRoles(['admin']), updateApplicationStatus);
 
 module.exports = router;

@@ -11,7 +11,7 @@ import { TextInputProps } from "react-native";
  * User-related types
  */
 
-export type UserRole = "admin" | "teacher" | "student";
+export type UserRole = "admin" | "teacher" | "student" | "parent";
 export type UserStatus = "pending" | "approved" | "rejected";
 
 export interface User {
@@ -166,29 +166,53 @@ export interface Lesson {
 // interfaces for bursary features
 export interface Payment {
   id: string;
-  student_id: string;
+  student_id: string; // Refers to custom STU- ID
   student_name: string;
   student_display_id?: string;
   amount: number;
   payment_date: string;
-  payment_method: "cash" | "bank_transfer" | "mobile_money";
+  payment_method: "cash" | "bank_transfer" | "mobile_money" | "card" | "scholarship";
   status: "pending" | "completed" | "failed";
   reference_number?: string;
   notes?: string;
 }
 
+export interface Bursary {
+  id: string;
+  title: string;
+  description: string;
+  amount: number;
+  deadline: string;
+  requirements?: string;
+  status: 'open' | 'closed';
+  created_at: string;
+  updated_at: string;
+}
+
+export interface BursaryApplication {
+  id: string;
+  bursary_id: string;
+  student_id: string; // Refers to custom STU- ID
+  justification: string;
+  status: 'pending' | 'approved' | 'rejected';
+  applied_at: string;
+  reviewed_by?: string; // Refers to custom ADM- ID
+  reviewed_at?: string;
+}
+
 export interface TeacherPayout {
   id: string;
-  teacher_id: string;
+  teacher_id: string; // Refers to custom TEA- ID
   teacher_name: string;
   teacher_display_id?: string;
   amount: number;
-  hours_taught: number;
-  rate_per_hour: number;
+  hours_taught?: number;
+  rate_per_hour?: number;
   period_start: string;
   period_end: string;
-  status: "pending" | "paid" | "processing";
+  status: "pending" | "paid" | "processing" | "failed";
   payment_date?: string;
+  reference_number?: string;
 }
 
 export interface FeeStructure {
@@ -342,15 +366,19 @@ export interface FrontendBook {
 
 export interface BackendBorrowedBook {
   id: string;
-  book: {
+  book_id: string;
+  books: {
     title: string;
     author: string;
     isbn?: string;
   };
   student_id: string;
-  student?: {
-    name: string;
-    email: string;
+  students?: {
+    id: string;
+    users?: {
+      full_name: string;
+      email: string;
+    };
   };
   borrowed_at: string;
   due_date: string;

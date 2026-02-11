@@ -97,21 +97,36 @@ export default function Index() {
         return;
       }
 
-      console.log("User signed in:", data.user.id);
+      console.log("User signed in with UUID:", data.user.id);
 
-      // Fetching user's role and full name from Supabase
+      type UserRow = { role: string; full_name: string; status: string; id: string };
       const { data: userData, error: roleError } = await supabase
         .from("users")
-        .select("role, full_name, status")
+        .select("role, full_name, status, id")
         .eq("id", data.user.id)
-        .single() as { data: { role: string; full_name: string; status: string } | null; error: any };
+        .single() as { data: UserRow | null; error: any };
 
-      if (roleError) {
-        console.error("Role fetch error:", roleError.message);
-        setErrorMessage("Could not fetch user role: " + roleError.message);
+      if (roleError || !userData) {
+        console.error("Role fetch error:", roleError?.message || "No user data");
+        setErrorMessage("Could not fetch user role");
         setIsLoading(false);
         return;
       }
+
+      // Fetch custom ID
+      let customId = "";
+      if (userData.role === 'admin') {
+        const { data: adm } = await supabase.from('admins').select('id').eq('user_id', userData.id).single() as { data: { id: string } | null };
+        customId = adm?.id || "";
+      } else if (userData.role === 'teacher') {
+        const { data: tea } = await supabase.from('teachers').select('id').eq('user_id', userData.id).single() as { data: { id: string } | null };
+        customId = tea?.id || "";
+      } else if (userData.role === 'student') {
+        const { data: stu } = await supabase.from('students').select('id').eq('user_id', userData.id).single() as { data: { id: string } | null };
+        customId = stu?.id || "";
+      }
+
+      console.log(`User profile loaded: ${userData.full_name} (${userData.role}) - Custom ID: ${customId}`);
 
       if (!userData?.role) {
         console.log("No role found for user");

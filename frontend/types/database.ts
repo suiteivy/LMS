@@ -14,31 +14,109 @@ export interface Database {
           id: string;
           full_name: string;
           email: string;
-          role: "admin" | "student" | "teacher";
+          role: "admin" | "student" | "teacher" | "parent";
           status: "pending" | "approved" | "rejected";
           institution_id: string | null;
           phone: string | null;
           created_at: string;
+          updated_at: string;
         };
         Insert: {
           id: string;
           full_name: string;
           email: string;
-          role: "admin" | "student" | "teacher";
+          role: "admin" | "student" | "teacher" | "parent";
           status?: "pending" | "approved" | "rejected";
           institution_id?: string | null;
           phone?: string | null;
           created_at?: string;
+          updated_at?: string;
         };
         Update: {
           id?: string;
           full_name?: string;
           email?: string;
-          role?: "admin" | "student" | "teacher";
+          role?: "admin" | "student" | "teacher" | "parent";
           status?: "pending" | "approved" | "rejected";
           institution_id?: string | null;
           phone?: string | null;
           created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      parents: {
+        Row: {
+          id: string;
+          user_id: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      book: {
+        Row: {
+          id: number;
+          book_id: string | null;
+          book_title: string | null;
+          author: string | null;
+          isbn: string | null;
+          category: string | null;
+          borrower_id: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: number;
+          book_id?: string | null;
+          book_title?: string | null;
+          author?: string | null;
+          isbn?: string | null;
+          category?: string | null;
+          borrower_id?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: number;
+          book_id?: string | null;
+          book_title?: string | null;
+          author?: string | null;
+          isbn?: string | null;
+          category?: string | null;
+          borrower_id?: string | null;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      library: {
+        Row: {
+          id: string;
+          book_id: number | null;
+          category: string | null;
+          quantity: number | null;
+        };
+        Insert: {
+          id?: string;
+          book_id?: number | null;
+          category?: string | null;
+          quantity?: number | null;
+        };
+        Update: {
+          id?: string;
+          book_id?: number | null;
+          category?: string | null;
+          quantity?: number | null;
         };
         Relationships: [];
       };
@@ -439,6 +517,79 @@ export interface Database {
           created_at?: string;
         };
         Relationships: [];
+      };
+      bursaries: {
+        Row: {
+          id: string;
+          title: string;
+          description: string | null;
+          amount: number;
+          requirements: string | null;
+          deadline: string;
+          status: "open" | "closed";
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          title: string;
+          description?: string | null;
+          amount: number;
+          requirements?: string | null;
+          deadline: string;
+          status?: "open" | "closed";
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          title?: string;
+          description?: string | null;
+          amount?: number;
+          requirements?: string | null;
+          deadline?: string;
+          status?: "open" | "closed";
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      bursary_applications: {
+        Row: {
+          id: string;
+          bursary_id: string;
+          student_id: string;
+          status: "pending" | "approved" | "rejected";
+          justification: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          bursary_id: string;
+          student_id: string;
+          status?: "pending" | "approved" | "rejected";
+          justification?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          bursary_id?: string;
+          student_id?: string;
+          status?: "pending" | "approved" | "rejected";
+          justification?: string | null;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "bursary_applications_bursary_id_fkey";
+            columns: ["bursary_id"];
+            referencedRelation: "bursaries";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "bursary_applications_student_id_fkey";
+            columns: ["student_id"];
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          }
+        ];
       };
       subjects: {
         Row: {

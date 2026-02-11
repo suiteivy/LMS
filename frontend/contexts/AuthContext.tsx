@@ -12,11 +12,12 @@ interface AuthContextType {
   studentId: string | null
   teacherId: string | null
   adminId: string | null
+  parentId: string | null
   displayId: string | null
   loading: boolean
   signUp: (email: string, password: string, userData: {
     full_name: string
-    role: 'admin' | 'student' | 'teacher'
+    role: 'admin' | 'student' | 'teacher' | 'parent'
     institution_id?: string
   }) => Promise<{ data: any; error: any }>
   signIn: (email: string, password: string) => Promise<{ data: any; error: any }>
@@ -47,6 +48,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [studentId, setStudentId] = useState<string | null>(null)
   const [teacherId, setTeacherId] = useState<string | null>(null)
   const [adminId, setAdminId] = useState<string | null>(null)
+  const [parentId, setParentId] = useState<string | null>(null)
   const [displayId, setDisplayId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
 
@@ -76,43 +78,67 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const loadUserProfile = async (userId: string): Promise<UserProfile | null> => {
     try {
-      // 1. Get Base Profile
+      // Get Base Profile and Role-Specific IDs in a single query
       const { data, error } = await supabase
         .from('users')
-        .select('*')
+        .select('*, students(id), teachers(id), admins(id), parents(id)')
         .eq('id', userId)
-        .single<UserProfile>()
+        .single()
 
-      if (error || !data) {
-        console.error('Error loading profile:', error)
+      if (error) {
+        console.error('Error loading profile:', {
+          message: error.message,
+          code: error.code,
+          details: error.details,
+          hint: error.hint
+        })
+        setProfile(null)
         return null
       }
-      setProfile(data as UserProfile)
 
-      // 2. Get Role-Specific ID
-      if (data.role === 'student') {
-        const { data: stuData } = await supabase.from('students').select('id').eq('user_id', userId).single() as { data: { id: string } | null };
-        if (stuData) {
-          setStudentId(stuData.id);
-          setDisplayId(stuData.id);
-        }
-      } else if (data.role === 'teacher') {
-        const { data: teaData } = await supabase.from('teachers').select('id').eq('user_id', userId).single() as { data: { id: string } | null };
-        if (teaData) {
-          setTeacherId(teaData.id);
-          setDisplayId(teaData.id);
-        }
-      } else if (data.role === 'admin') {
-        const { data: admData } = await supabase.from('admins').select('id').eq('user_id', userId).single() as { data: { id: string } | null };
-        if (admData) {
-          setAdminId(admData.id);
-          setDisplayId(admData.id);
-        }
+      if (!data) {
+        console.warn('No profile data found for user:', userId)
+        setProfile(null)
+        return null
       }
 
-      return data as UserProfile
-    } catch (error) {
-      console.error('Error loading profile:', error)
+      // Cast to any to access the joined data
+      const userData = data as any;
+      setProfile(userData as UserProfile)
+
+      // Set Role-Specific ID based on role and joined data
+      const getRoleId = (roleData: any) => {
+        if (!roleData) return null;
+        if (Array.isArray(roleData)) return roleData[0]?.id || null;
+        return roleData.id || null;
+      };
+
+      if (userData.role === 'student') {
+        const id = getRoleId(userData.students);
+        setStudentId(id);
+        setDisplayId(id);
+      } else if (userData.role === 'teacher') {
+        const id = getRoleId(userData.teachers);
+        setTeacherId(id);
+        setDisplayId(id);
+      } else if (userData.role === 'admin') {
+        const id = getRoleId(userData.admins);
+        setAdminId(id);
+        setDisplayId(id);
+      } else if (userData.role === 'parent') {
+        const id = getRoleId(userData.parents);
+        setParentId(id);
+        setDisplayId(id);
+      }
+
+      if (!getRoleId((userData as any)[`${userData.role}s`])) {
+        console.warn(`Profile loaded but no matching role ID found for role: ${userData.role}`)
+      }
+
+      return userData as UserProfile
+    } catch (err) {
+      console.error('Unexpected error loading profile:', err)
+      setProfile(null)
       return null
     }
   }
@@ -160,6 +186,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           setStudentId(null)
           setTeacherId(null)
           setAdminId(null)
+          setParentId(null)
           setDisplayId(null)
           console.log('User signed out, state cleared')
         }
@@ -196,6 +223,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     studentId,
     teacherId,
     adminId,
+    parentId,
     displayId,
     loading,
     signUp: authService.signUp,

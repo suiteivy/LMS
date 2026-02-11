@@ -21,6 +21,7 @@
     "@react-navigation/native": "^7.1.8",
     "@supabase/supabase-js": "^2.53.0",
     "axios": "^1.11.0",
+    "date-fns": "^3.6.0",
     "expo": "^54.0.0",
     "expo-blur": "~15.0.8",
     "expo-constants": "^18.0.13",

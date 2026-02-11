@@ -5,8 +5,8 @@ const authRoutes = require("./routes/auth.route");
 const subjectRoutes = require("./routes/subjects.route");
 const institutionRoutes = require("./routes/institution.route");
 const libraryRoutes = require("./routes/library.route");
-// Use the role-protected bursary routes
-const bursaryRoutes = require("./routes/bursary.routes");
+const bursaryRoutes = require("./routes/bursary.route");
+const financeRoutes = require("./routes/finance.route");
 const morgan = require("morgan");
 
 const app = express();
@@ -44,6 +44,7 @@ app.use("/api/subjects", subjectRoutes); // Updated endpoint
 app.use("/api/institutions", institutionRoutes);
 app.use("/api/library", libraryRoutes);
 app.use("/api/bursary", bursaryRoutes);
+app.use("/api/finance", financeRoutes);
 
 // health check
 app.get("/", (req, res) => {

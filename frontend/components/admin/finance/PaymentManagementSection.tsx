@@ -44,8 +44,8 @@ const PaymentManagementSection: React.FC<
   };
 
   const handleSubmit = () => {
-    if (!formData.student_name || !formData.amount) {
-      Alert.alert("Error", "Please fill in all required fields");
+    if (!formData.student_id || !formData.student_name || !formData.amount) {
+      Alert.alert("Error", "Please fill in all required fields including Student ID");
       return;
     }
 
@@ -92,7 +92,7 @@ const PaymentManagementSection: React.FC<
             {item.student_name}
           </Text>
           {item.student_display_id && (
-            <Text className="text-xs text-teal-600 font-medium">
+            <Text className="text-xs text-[#FF6B00] font-medium">
               ID: {item.student_display_id}
             </Text>
           )}
@@ -125,7 +125,7 @@ const PaymentManagementSection: React.FC<
       </View>
 
       <View className="space-y-1">
-        <Text className="text-2xl font-bold mb-2" style={{ color: "#1ABC9C" }}>
+        <Text className="text-2xl font-bold mb-2" style={{ color: "#FF6B00" }}>
           {formatAmount(item.amount)}
         </Text>
 
@@ -183,7 +183,7 @@ const PaymentManagementSection: React.FC<
               </Text>
               <TouchableOpacity
                 onPress={() => setShowForm(true)}
-                className="bg-teal-600 px-4 py-2 rounded-lg shadow-sm"
+                className="bg-[#FF6B00] px-4 py-2 rounded-lg shadow-sm"
               >
                 <Text className="text-white font-semibold">Record Payment</Text>
               </TouchableOpacity>
@@ -213,6 +213,20 @@ const PaymentManagementSection: React.FC<
 
           <ScrollView className="flex-1 p-4">
             <View className="space-y-4">
+              <View>
+                <Text className="text-sm font-medium text-gray-700 mb-2">
+                  Student ID (STU-...) *
+                </Text>
+                <TextInput
+                  value={formData.student_id}
+                  onChangeText={(text) =>
+                    setFormData({ ...formData, student_id: text })
+                  }
+                  placeholder="e.g. STU-2026-000001"
+                  className="border border-gray-300 rounded-lg px-3 py-3 text-base"
+                />
+              </View>
+
               <View>
                 <Text className="text-sm font-medium text-gray-700 mb-2">
                   Student Name *
@@ -292,8 +306,8 @@ const PaymentManagementSection: React.FC<
             </View>
           </ScrollView>
         </View>
-      </Modal>
-    </View>
+      </Modal >
+    </View >
   );
 };
 

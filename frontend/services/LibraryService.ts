@@ -2,6 +2,7 @@ import { useState } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { AxiosError } from "axios";
 import { api } from "./api";
+import { supabase } from "@/libs/supabase";
 import {
   AddBookRequest,
   BackendBook,
@@ -25,7 +26,8 @@ export class LibraryAPI {
    */
   static async getAuthHeaders(): Promise<Record<string, string>> {
     try {
-      const token = await AsyncStorage.getItem("authToken");
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
       if (!token) {
         throw new Error("No authentication token found");
       }
@@ -349,13 +351,13 @@ export class LibraryAPI {
   ): FrontendBorrowedBook {
     return {
       id: backendBorrow.id,
-      bookTitle: backendBorrow.book.title,
-      author: backendBorrow.book.author,
-      isbn: backendBorrow.book.isbn || "",
+      bookTitle: backendBorrow.books?.title || "Unknown Book",
+      author: backendBorrow.books?.author || "Unknown Author",
+      isbn: backendBorrow.books?.isbn || "N/A",
       borrowerId: backendBorrow.student_id,
-      borrowerName: backendBorrow.student?.name || "Unknown",
-      borrowerDisplayId: undefined, // Student ID is the User ID in this schema
-      borrowerEmail: backendBorrow.student?.email || "",
+      borrowerName: backendBorrow.students?.users?.full_name || "Unknown",
+      borrowerDisplayId: backendBorrow.student_id,
+      borrowerEmail: backendBorrow.students?.users?.email || "",
       borrowDate: new Date(backendBorrow.borrowed_at),
       dueDate: new Date(backendBorrow.due_date),
       returnDate: backendBorrow.returned_at

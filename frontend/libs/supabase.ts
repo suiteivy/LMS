@@ -48,7 +48,7 @@ export const authService = {
     password: string,
     userData: {
       full_name: string;
-      role: "admin" | "student" | "teacher";
+      role: "admin" | "student" | "teacher" | "parent";
       institution_id?: string;
     }
   ) => {

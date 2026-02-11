@@ -175,7 +175,7 @@ const FeeStructureSection: React.FC<FeeStructureSectionProps> = ({
 
         <View className="flex-row justify-between">
           <Text className="text-sm text-blue-700">Student Pays:</Text>
-          <Text className="text-sm font-bold text-blue-900">
+          <Text className="text-sm font-bold text-[#FF6B00]">
             {formatAmount(calculateStudentFee(item))}
           </Text>
         </View>
@@ -219,11 +219,11 @@ const FeeStructureSection: React.FC<FeeStructureSectionProps> = ({
           <Text className="text-2xl font-bold text-blue-700">
             {activeFeeStructures.length > 0
               ? Math.round(
-                  activeFeeStructures.reduce(
-                    (sum, fs) => sum + fs.bursary_percentage,
-                    0
-                  ) / activeFeeStructures.length
-                )
+                activeFeeStructures.reduce(
+                  (sum, fs) => sum + fs.bursary_percentage,
+                  0
+                ) / activeFeeStructures.length
+              )
               : 0}
             %
           </Text>
@@ -252,7 +252,7 @@ const FeeStructureSection: React.FC<FeeStructureSectionProps> = ({
                   resetForm();
                   setShowForm(true);
                 }}
-               className="bg-teal-600 px-4 py-2 mt-2 rounded-lg shadow-sm"
+                className="bg-[#FF6B00] px-4 py-2 mt-2 rounded-lg shadow-sm"
               >
                 <Text className="text-white font-semibold">
                   Create First Structure
@@ -404,8 +404,8 @@ const FeeStructureSection: React.FC<FeeStructureSectionProps> = ({
                       <Text className="text-sm font-medium">
                         {formatAmount(
                           (parseFloat(formData.base_fee) || 0) +
-                            (parseFloat(formData.registration_fee) || 0) +
-                            (parseFloat(formData.material_fee) || 0)
+                          (parseFloat(formData.registration_fee) || 0) +
+                          (parseFloat(formData.material_fee) || 0)
                         )}
                       </Text>
                     </View>
@@ -426,9 +426,9 @@ const FeeStructureSection: React.FC<FeeStructureSectionProps> = ({
                           ((parseFloat(formData.base_fee) || 0) +
                             (parseFloat(formData.registration_fee) || 0) +
                             (parseFloat(formData.material_fee) || 0)) *
-                            (1 -
-                              (parseFloat(formData.bursary_percentage) || 0) /
-                                100)
+                          (1 -
+                            (parseFloat(formData.bursary_percentage) || 0) /
+                            100)
                         )}
                       </Text>
                     </View>

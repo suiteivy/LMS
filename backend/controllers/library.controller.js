@@ -4,10 +4,9 @@ const supabase = require("../utils/supabaseClient");
 /** Pull active config, fall back to sane defaults */
 async function getActiveConfig() {
   const { data, error } = await supabase
-    .from("config")
+    .from("library_config")
     .select("min_fee_percent_for_borrow, default_borrow_limit")
     .eq("active", true)
-    .order("effective_from", { ascending: false })
     .limit(1)
     .single();
 
@@ -21,51 +20,48 @@ async function getActiveConfig() {
 }
 
 /** Compute student's overall fee %, based on latest schema */
-async function getStudentOverallFeePercent(studentAuthId) {
-  // fees.student_id references auth.users(id)
+async function getStudentOverallFeePercent(studentCustomId) {
+  // Use the 'fees' view we created in migration
   const { data, error } = await supabase
     .from("fees")
-    .select("total_fee, amount_paid");
+    .select("total_fee, amount_paid")
+    .eq("student_id", studentCustomId)
+    .single();
 
-  if (error) throw error;
+  if (error || !data) return 0;
 
-  const rows = (data || []).filter((r) => r.student_id === studentAuthId);
+  const totalFee = Number(data.total_fee || 0);
+  const totalPaid = Number(data.amount_paid || 0);
 
-  const totalFee = rows.reduce((sum, r) => sum + Number(r.total_fee || 0), 0);
-  const totalPaid = rows.reduce(
-    (sum, r) => sum + Number(r.amount_paid || 0),
-    0
-  );
-
-  if (totalFee <= 0) return 0; // no fees set up -> treat as 0%
+  if (totalFee <= 0) return 1.0; // No fees set -> assume paid (allow borrowing)
   return totalPaid / totalFee; // returns 0..1
 }
 
 /** Check if student has any overdue, unreturned books */
-async function hasOverdueBooks({ userId, institution_id }) {
+async function hasOverdueBooks({ studentId, institution_id }) {
   const { data, error } = await supabase
     .from("borrowed_books")
     .select("id")
-    .eq("user_id", userId)
+    .eq("student_id", studentId)
     .eq("institution_id", institution_id)
     .is("returned_at", null)
-    .lt("due_date", new Date().toISOString().slice(0, 10)); // compare by date
+    .lt("due_date", new Date().toISOString().slice(0, 10));
 
   if (error) throw error;
   return (data || []).length > 0;
 }
 
 /** Count actively borrowed (not yet returned) */
-async function activeBorrowCount({ userId, institution_id }) {
-  const { data, error } = await supabase
+async function activeBorrowCount({ studentId, institution_id }) {
+  const { count, error } = await supabase
     .from("borrowed_books")
     .select("id", { count: "exact", head: true })
-    .eq("user_id", userId)
+    .eq("student_id", studentId)
     .eq("institution_id", institution_id)
     .is("returned_at", null);
 
   if (error) throw error;
-  return data?.length ?? 0; // for safety; supabase-js v2 returns count on `count` prop in older versions
+  return count ?? 0;
 }
 
 /** Admin only: add or update a book */
@@ -187,15 +183,23 @@ exports.listBooks = async (req, res) => {
 exports.borrowBook = async (req, res) => {
   try {
     const { userRole, user, institution_id } = req;
-    const appUserId = req.userId; // equals auth.users.id AND public.users.id in your setup
+    const { bookId, days = 14 } = req.body;
+    const appUserId = req.userId;
     if (!["student"].includes(userRole)) {
       return res.status(403).json({ error: "Students only." });
     }
 
-    const { bookId } = req.params;
-    console.log("Borrowing book:", bookId);
-    const { days = 14 } = req.body;
-    if (!bookId) return res.status(400).json({ error: "bookId is required" });
+    // 0) Get Custom Student ID
+    const { data: stuData, error: stuErr } = await supabase
+      .from("students")
+      .select("id")
+      .eq("user_id", user.id)
+      .single();
+
+    if (stuErr || !stuData) {
+      return res.status(404).json({ error: "Student profile not found." });
+    }
+    const studentId = stuData.id;
 
     // 1) Book must exist in same institution with stock
     const { data: book, error: bookErr } = await supabase
@@ -205,13 +209,13 @@ exports.borrowBook = async (req, res) => {
       .eq("institution_id", institution_id)
       .single();
     if (bookErr || !book)
-      return res.status(404).json({ error: "Book not found: " + bookErr });
+      return res.status(404).json({ error: "Book not found." });
     if (book.available_quantity <= 0)
       return res.status(400).json({ error: "Book out of stock" });
 
     // 2) Fee threshold
     const cfg = await getActiveConfig();
-    const overallPct = await getStudentOverallFeePercent(user.id); // 0..1
+    const overallPct = await getStudentOverallFeePercent(studentId);
     if (overallPct < Number(cfg.min_fee_percent_for_borrow)) {
       return res.status(403).json({
         error: `Insufficient fee payment. Need at least ${Number(cfg.min_fee_percent_for_borrow) * 100
@@ -221,7 +225,7 @@ exports.borrowBook = async (req, res) => {
     }
 
     // 3) No overdue books
-    if (await hasOverdueBooks({ userId: appUserId, institution_id })) {
+    if (await hasOverdueBooks({ studentId, institution_id })) {
       return res
         .status(403)
         .json({ error: "You have overdue books. Return them first." });
@@ -229,7 +233,7 @@ exports.borrowBook = async (req, res) => {
 
     // 4) Borrow count < limit
     const activeCount = await activeBorrowCount({
-      userId: appUserId,
+      studentId,
       institution_id,
     });
     if (activeCount >= Number(cfg.default_borrow_limit)) {
@@ -247,7 +251,7 @@ exports.borrowBook = async (req, res) => {
       .insert([
         {
           book_id: bookId,
-          user_id: appUserId,
+          student_id: studentId,
           institution_id,
           due_date: dueDate.toISOString().slice(0, 10), // date only
           status: "borrowed",
@@ -296,7 +300,10 @@ exports.returnBook = async (req, res) => {
       .is("returned_at", null);
 
     if (userRole !== "admin") {
-      query = query.eq("user_id", appUserId);
+      // For students, we need to ensure they own the borrow record
+      const { data: stuData } = await supabase.from('students').select('id').eq('user_id', appUserId).single();
+      if (!stuData) return res.status(404).json({ error: "Student profile not found" });
+      query = query.eq("student_id", stuData.id);
     }
 
     const { data: row, error: rowErr } = await query
@@ -332,15 +339,26 @@ exports.history = async (req, res) => {
     const { userRole, institution_id } = req;
     const { studentId } = req.params;
 
-    const targetUserId =
-      userRole === "admin" && studentId ? studentId : req.userId;
+    // If studentId param is provided (admin view), use it. 
+    // Otherwise fetch the custom ID for the current user.
+    let finalStudentId = studentId;
+    if (!finalStudentId) {
+      const { data: stuData } = await supabase
+        .from("students")
+        .select("id")
+        .eq("user_id", req.userId)
+        .single();
+      finalStudentId = stuData?.id;
+    }
+
+    if (!finalStudentId) return res.status(404).json({ error: "Student ID not found" });
 
     const { data, error } = await supabase
       .from("borrowed_books")
       .select(
         "id, book_id, borrowed_at, returned_at, due_date, status, books(title, author, isbn)"
       )
-      .eq("user_id", targetUserId)
+      .eq("student_id", finalStudentId)
       .eq("institution_id", institution_id)
       .order("borrowed_at", { ascending: false });
 
@@ -360,7 +378,7 @@ exports.getAllBorrowedBooks = async (req, res) => {
     const { data, error } = await supabase
       .from("borrowed_books")
       .select(
-        "id, book_id, user_id, borrowed_at, returned_at, due_date, status, books(title, author, isbn), users(full_name, email)"
+        "id, book_id, student_id, borrowed_at, returned_at, due_date, status, books(title, author, isbn), students(id, users(full_name, email))"
       )
       .eq("institution_id", institution_id)
       .order("borrowed_at", { ascending: false });
@@ -383,7 +401,7 @@ exports.sendReminder = async (req, res) => {
     const { data, error } = await supabase
       .from("borrowed_books")
       .select(
-        "id, due_date, status, users(email, full_name), books(title, author)"
+        "id, due_date, status, students(users(email, full_name)), books(title, author)"
       )
       .eq("id", borrowId)
       .eq("institution_id", institution_id)

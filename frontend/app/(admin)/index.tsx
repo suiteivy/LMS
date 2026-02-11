@@ -1,78 +1,53 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { View, ScrollView, Alert, TouchableOpacity, Text } from "react-native";
+import { View, Text, ScrollView, TouchableOpacity, StatusBar } from "react-native";
 import { supabase } from "@/libs/supabase";
 import { router } from "expo-router";
 import {
-  AdminDashboardProps,
-  FeeStructure,
-  Payment,
-  User,
-} from "@/types/types";
-import { Database } from "@/types/database";
-import { DashboardHeader } from "./elements/DashboardHeader";
-import { StatsOverview } from "./elements/StatsOverview";
-import { RecentUsersSection } from "./elements/RecentUsersSection";
-import { UsersTableSection } from "./elements/UsersTableSection";
-import { QuickActionsSection } from "./elements/QuickActionsSection";
-import { PaymentManagementSection } from "./Bursary/PaymentManagementSection";
-import { TeacherPayoutSection } from "./Bursary/TeacherPayoutSection";
-import { FeeStructureSection } from "./Bursary/FeeStructureSection";
+  Bell,
+  Users,
+  Wallet,
+  LayoutGrid,
+  Settings,
+  ArrowRight,
+  School,
+  GraduationCap,
+  BookOpen,
+  BarChart3
+} from 'lucide-react-native';
 import { useDashboardStats } from "@/hooks/useDashboardStats";
-import { SafeAreaView, SafeAreaProvider } from "react-native-safe-area-context";
-export const AdminDashboard: React.FC<AdminDashboardProps> = ({
-  statsData = [],
-  recentUsers = [],
-  allUsers = [],
-  payments = [],
-  teacherPayouts = [],
-  feeStructures = [],
-  statsLoading = false,
-  usersLoading = false,
-  tableLoading = false,
-  paymentsLoading = false,
-  payoutsLoading = false,
-  feeStructuresLoading = false,
-  onStatsPress,
-  onUserPress,
-  onViewAllUsersPress,
-  onRefresh: propOnRefresh, // Rename to avoid conflict
-  showRecentUsers = true,
-  showUsersTable = true,
-  showPaymentManagement = true,
-  showTeacherPayouts = true,
-  showFeeStructure = true,
-  maxRecentUsers = 5,
-  className = "",
-  testID,
-}) => {
-  const [activeSection, setActiveSection] = useState<
-    "overview" | "payments" | "payouts" | "fees"
-  >("overview");
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { User } from "@/types/types";
 
-  // Local state for users if not provided via props (which seems to be the case mostly)
-  const [localUsers, setLocalUsers] = useState<User[]>([]);
-  const [localUsersLoading, setLocalUsersLoading] = useState(false);
-  const [refreshing, setRefreshing] = useState(false);
+// Define Interface for the QuickAction props
+interface QuickActionProps {
+  icon: any;
+  label: string;
+  color: string;
+  onPress: () => void;
+}
 
-  // Fetch real stats using the hook
-  const { stats: fetchedStats, loading: statsHookLoading } =
-    useDashboardStats();
-  const displayStats = statsData.length > 0 ? statsData : fetchedStats;
-  const displayStatsLoading = statsLoading || statsHookLoading;
+const QuickAction = ({ icon: Icon, label, color, onPress }: QuickActionProps) => (
+  <TouchableOpacity
+    className="w-full sm:w-[48%] lg:w-[23%] bg-white p-6 rounded-3xl border border-gray-100 shadow-sm items-center mb-4 active:bg-gray-50"
+    onPress={onPress}
+  >
+    <View style={{ backgroundColor: `${color}15` }} className="p-3 rounded-2xl mb-2">
+      <Icon size={24} color={color} />
+    </View>
+    <Text className="text-gray-800 font-bold text-center">{label}</Text>
+  </TouchableOpacity>
+);
 
-  const fetchUsers = useCallback(async () => {
+export default function AdminDashboard() {
+  const insets = useSafeAreaInsets();
+  const { stats, loading: statsLoading } = useDashboardStats();
+  const [recentUsers, setRecentUsers] = useState<User[]>([]);
+  const [loadingUsers, setLoadingUsers] = useState(false);
+
+  // Fetch recent users for the "Recent Activity" horizontal scroll
+  const fetchRecentUsers = useCallback(async () => {
     try {
-      setLocalUsersLoading(true);
-      // We need to fetch users and their role-specific IDs
-      // Since Supabase join syntax with multiple tables can be tricky in one go if they aren't all related to the same thing in the same way (or if using 'users' as base)
-      // accepted approach: fetch users, and if needed, fetch role details.
-      // But here, we can use the 'users' table as the source of truth for the list.
-      // The `id` in the User interface usually expects the `users.id` (UUID) for auth management,
-      // but if we want to display the "Student ID" or "Teacher ID" (e.g. STU-2024-001), we should fetch that.
-      // Let's modify the query to try and fetch related data.
-      // Note: "teachers" table references "users.id".
-      // We can try: select *, students(id), teachers(id), admins(id)
-
+      setLoadingUsers(true);
       const { data, error } = await supabase
         .from("users")
         .select(`
@@ -81,24 +56,21 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             teachers (id),
             admins (id)
         `)
-        .order("created_at", { ascending: false });
+        .order("created_at", { ascending: false })
+        .limit(5);
 
-      if (error) {
-        throw error;
-      }
+      if (error) throw error;
 
       if (data) {
-        // Transform data to match User interface
         const users = data.map((u: any) => {
-          // Determine the specific custom readable ID
-          let displayId = u.id; // Default to UUID
+          let displayId = u.id;
           if (u.role === 'student' && u.students?.[0]?.id) displayId = u.students[0].id;
           else if (u.role === 'teacher' && u.teachers?.[0]?.id) displayId = u.teachers[0].id;
           else if (u.role === 'admin' && u.admins?.[0]?.id) displayId = u.admins[0].id;
 
           return {
-            id: u.id, // Keep UUID for actions (approve/delete)
-            displayId, // Custom ID for UI display (TEA-..., STU-..., ADM-...)
+            id: u.id,
+            displayId,
             name: u.full_name,
             email: u.email,
             role: u.role,
@@ -106,216 +78,174 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             joinDate: u.created_at,
           } as User;
         });
-        setLocalUsers(users);
+        setRecentUsers(users);
       }
     } catch (error: any) {
-      Alert.alert("Error fetching users", error.message);
+      console.error("Error fetching users:", error.message);
     } finally {
-      setLocalUsersLoading(false);
+      setLoadingUsers(false);
     }
   }, []);
 
-  const handleApproveUser = async (userId: string) => {
-    try {
-      const { error } = await supabase
-        .from("users")
-        .update({ status: "approved" as const })
-        .eq("id", userId);
-
-      if (error) throw error;
-
-      Alert.alert("Success", "User approved successfully");
-      fetchUsers(); // Refresh the list
-    } catch (error: any) {
-      Alert.alert("Error approving user", error.message);
-    }
-  };
-
-  const onRefresh = async () => {
-    setRefreshing(true);
-    await fetchUsers();
-    // Also re-fetch stats if needed, but the hook doesn't expose a refetch yet.
-    // For now, simple component remount or prop update works.
-    if (propOnRefresh) await propOnRefresh();
-    setRefreshing(false);
-  };
-
   useEffect(() => {
-    fetchUsers();
-  }, [fetchUsers]);
+    fetchRecentUsers();
+  }, [fetchRecentUsers]);
 
   const handleLogout = async () => {
     const { error } = await supabase.auth.signOut();
     if (error) {
-      Alert.alert("Logout Failed", error.message);
+      alert(error.message);
     } else {
       router.replace("/(auth)/signIn");
     }
   };
 
-  const handleQuickActionPress = (actionId: string) => {
-    switch (actionId) {
-      case "add-user":
-        router.push("/(admin)/create-user");
-        break;
-      case "add-Subject":
-        router.push("/(admin)/CreateSubject");
-        break;
-      case "library":
-        router.push("/(admin)/library/LibraryAction");
-        break;
-      case "analytics":
-        router.push("/(admin)/analytics");
-        break;
-      case "settings":
-        router.push("/(admin)/settings");
-        break;
-      case "payment-management":
-        setActiveSection("payments");
-        break;
-      case "teacher-payouts":
-        setActiveSection("payouts");
-        break;
-      case "fee-structure":
-        setActiveSection("fees");
-        break;
-      default:
-        Alert.alert(
-          "Unknown Action",
-          `No screen found for action: ${actionId}`,
-        );
-    }
-  };
+  return (
+    <>
+      <StatusBar barStyle="dark-content" />
+      <View className="flex-1 bg-gray-50">
+        <ScrollView
+          className="flex-1"
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ paddingBottom: 100 }}
+        >
+          <View className="p-4 md:p-8">
+            {/* --- 1. Header Section --- */}
+            <View className="flex-row justify-between items-center mb-8">
+              <View>
+                <Text className="text-gray-500 text-base font-medium">Welcome back,</Text>
+                <Text className="text-3xl font-bold text-gray-900">Administrator 👋</Text>
+                <Text className="text-sm text-gray-500 font-medium pt-1">School Management System</Text>
+              </View>
 
-  const handlePaymentSubmit = async (paymentData: Omit<Payment, "id">) => {
-    try {
-      const { data, error } = await supabase
-        .from("payments")
-        .insert([paymentData])
-        .select();
-
-      if (error) throw error;
-
-      Alert.alert("Success", "Payment recorded successfully");
-      onRefresh();
-    } catch (error: any) {
-      Alert.alert("Error", `Failed to record payment: ${error.message}`);
-    }
-  };
-
-  const handlePayoutProcess = async (payoutId: string) => {
-    try {
-      const { error } = await supabase
-        .from("teacher_payouts")
-        .update({
-          status: "processing",
-          payment_date: new Date().toISOString(),
-        })
-        .eq("id", payoutId);
-
-      if (error) throw error;
-
-      Alert.alert("Success", "Payout processing initiated");
-      onRefresh();
-    } catch (error: any) {
-      Alert.alert("Error", `Failed to process payout: ${error.message}`);
-    }
-  };
-
-  const handleFeeStructureUpdate = async (
-    feeStructure: Partial<FeeStructure>,
-  ) => {
-    try {
-      const { error } = await supabase
-        .from("fee_structures")
-        .upsert([feeStructure as any])
-        .select();
-
-      if (error) throw error;
-
-      Alert.alert("Success", "Fee structure updated successfully");
-      onRefresh();
-    } catch (error: any) {
-      Alert.alert("Error", `Failed to update fee structure: ${error.message}`);
-    }
-  };
-
-  // Use localUsers if allUsers (prop) is empty, which is likely since this is the top level page
-  const displayUsers = allUsers.length > 0 ? allUsers : localUsers;
-  const displayRecentUsers =
-    recentUsers.length > 0 ? recentUsers : localUsers.slice(0, maxRecentUsers);
-
-  // Replace your main return with this refined structure
-return (
-  <View className="flex-1 bg-[#F8FAFC]">
-    <ScrollView 
-      stickyHeaderIndices={[0]} // Makes the header stay at the top while scrolling
-      showsVerticalScrollIndicator={false}
-      contentContainerStyle={{ paddingBottom: 100 }}
-    >
-      {/* --- PRO HEADER --- */}
-      <View className="bg-white/80 backdrop-blur-md px-6 py-4 border-b border-gray-100">
-        <DashboardHeader
-          onRefresh={onRefresh}
-          onLogout={handleLogout}
-          activeSection={activeSection}
-          onSectionChange={setActiveSection}
-          // schoolName={schoolData?.name} // Pass school context data
-        />
-      </View>
-
-      <View className="px-6 mt-4">
-        {activeSection === "overview" && (
-          <>
-            {/* Stats in a 2x2 Bento Grid inside StatsOverview */}
-            <StatsOverview
-              statsData={displayStats}
-              loading={displayStatsLoading}
-              onStatsPress={onStatsPress}
-            />
-
-            {/* QUICK ACTIONS: Horizontal Scroll for a cleaner look */}
-            <View className="mt-8">
-               <Text className="text-[12px] font-bold text-gray-400 uppercase tracking-widest mb-4">
-                 Management Tools
-               </Text>
-               <QuickActionsSection onActionPress={handleQuickActionPress} />
+              <TouchableOpacity
+                className="relative p-2 bg-white rounded-full border border-gray-100 shadow-sm active:opacity-70"
+                onPress={handleLogout}
+              >
+                <Text>🚪</Text>
+              </TouchableOpacity>
             </View>
 
-            {/* USER MANAGEMENT CARDS */}
-            <View className="mt-8 bg-white rounded-[32px] p-6 shadow-sm border border-gray-100">
-                <View className="flex-row justify-between items-end mb-6">
-                    <View>
-                        <Text className="text-2xl font-extrabold text-gray-900 tracking-tight">Users</Text>
-                        <Text className="text-gray-400 text-xs font-semibold">Verify and manage accounts</Text>
+            {/* --- 2. Quick Status Cards --- */}
+            <View className="flex-row gap-4 mb-8">
+              {statsLoading ? (
+                <Text>Loading stats...</Text>
+              ) : (
+                <>
+                  <View className="flex-1 bg-black p-4 rounded-3xl shadow-sm">
+                    <Users size={20} color="white" />
+                    <Text className="text-white text-2xl font-bold mt-2">
+                      {stats.find(s => s.title === "Total Students")?.value || "0"}
+                    </Text>
+                    <Text className="text-white text-xs font-medium uppercase italic">Total Students</Text>
+                  </View>
+                  <View className="flex-1 bg-white p-4 rounded-3xl border border-gray-100 shadow-sm">
+                    <Wallet size={20} color="#FF6B00" />
+                    <Text className="text-gray-900 text-2xl font-bold mt-2">
+                      {stats.find(s => s.title === "Revenue")?.value || "$0"}
+                    </Text>
+                    <Text className="text-gray-400 text-xs font-medium uppercase italic">Total Revenue</Text>
+                  </View>
+                </>
+              )}
+            </View>
+
+            {/* --- 3. Recent Activity (Horizontal Scroll) --- */}
+            <View className="flex-row justify-between items-end mb-4 ">
+              <Text className="text-xl font-bold text-gray-900">Recent Users</Text>
+              <TouchableOpacity onPress={() => router.push("/(admin)/users")}>
+                <Text className="text-orange-500 font-semibold">View All</Text>
+              </TouchableOpacity>
+            </View>
+
+            <View className="hidden lg:flex flex-row flex-wrap gap-4 mb-6">
+              {loadingUsers ? (
+                <Text className="text-gray-400">Loading users...</Text>
+              ) : recentUsers.map((user) => (
+                <View key={user.id} className="bg-white p-5 rounded-3xl border border-gray-100 shadow-sm w-[31%]">
+                  <View className="flex-row items-center mb-3">
+                    <View className={`p-2 rounded-xl mr-3 ${user.role === 'student' ? 'bg-orange-100' :
+                      user.role === 'teacher' ? 'bg-purple-100' : 'bg-blue-100'
+                      }`}>
+                      {user.role === 'student' ? <GraduationCap size={20} color="#f97316" /> :
+                        user.role === 'teacher' ? <School size={20} color="#8b5cf6" /> :
+                          <Settings size={20} color="#3b82f6" />}
                     </View>
-                    <TouchableOpacity onPress={onViewAllUsersPress}>
-                        <Text className="text-teal-600 font-bold text-xs">View All</Text>
-                    </TouchableOpacity>
+                    <Text className="text-gray-400 font-bold text-[10px] uppercase">
+                      {user.role} • {new Date(user.joinDate).toLocaleDateString()}
+                    </Text>
+                  </View>
+                  <Text className="text-gray-900 font-bold text-lg mb-1" numberOfLines={1}>
+                    {user.name}
+                  </Text>
+                  <Text className="text-gray-500 text-sm">{user.displayId}</Text>
                 </View>
-
-                {showUsersTable && (
-                  <UsersTableSection
-                    users={displayUsers}
-                    loading={tableLoading || localUsersLoading}
-                    onUserPress={onUserPress}
-                    onApproveUser={handleApproveUser}
-                  />
-                )}
+              ))}
             </View>
-          </>
-        )}
 
-        {/* --- OTHER SECTIONS (Payments, Fees, etc.) --- */}
-        {activeSection !== "overview" && (
-          <View className="bg-white rounded-[32px] p-6 shadow-sm border border-gray-100 mt-4">
-             {/* Render your specific Management Sections here */}
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              className="flex-row mb-6 -mx-4 px-4 pb-4 lg:hidden"
+            >
+              {loadingUsers ? (
+                <Text className="ml-4 text-gray-400">Loading users...</Text>
+              ) : recentUsers.map((user) => (
+                <View key={user.id} className="bg-white p-5 rounded-3xl border border-gray-100 shadow-sm mr-4 w-64">
+                  <View className="flex-row items-center mb-3">
+                    <View className={`p-2 rounded-xl mr-3 ${user.role === 'student' ? 'bg-orange-100' :
+                      user.role === 'teacher' ? 'bg-purple-100' : 'bg-blue-100'
+                      }`}>
+                      {user.role === 'student' ? <GraduationCap size={20} color="#f97316" /> :
+                        user.role === 'teacher' ? <School size={20} color="#8b5cf6" /> :
+                          <Settings size={20} color="#3b82f6" />}
+                    </View>
+                    <Text className="text-gray-400 font-bold text-[10px] uppercase">
+                      {user.role} • {new Date(user.joinDate).toLocaleDateString()}
+                    </Text>
+                  </View>
+                  <Text className="text-gray-900 font-bold text-lg mb-1" numberOfLines={1}>
+                    {user.name}
+                  </Text>
+                  <Text className="text-gray-500 text-sm">{user.displayId}</Text>
+                </View>
+              ))}
+            </ScrollView>
+
+            {/* --- 4. Quick Actions Grid --- */}
+            <View className="mt-2">
+              <Text className="text-xl font-bold text-gray-900 mb-4">Quick Actions</Text>
+              <View className="flex-row flex-wrap justify-between">
+                <QuickAction
+                  icon={Users}
+                  label="Pending Approvals"
+                  color="#3b82f6"
+                  onPress={() => router.push("/(admin)/users?filter=pending")}
+                />
+                <QuickAction
+                  icon={BookOpen}
+                  label="Library Inventory"
+                  color="#eab308"
+                  onPress={() => router.push("/(admin)/management/library" as any)}
+                />
+                <QuickAction
+                  icon={Wallet}
+                  label="Process Payouts"
+                  color="#10b981"
+                  onPress={() => router.push("/(admin)/finance" as any)}
+                />
+                <QuickAction
+                  icon={BarChart3}
+                  label="System Analytics"
+                  color="#8b5cf6"
+                  onPress={() => router.push("/(admin)/management/analytics" as any)}
+                />
+              </View>
+            </View>
+
           </View>
-        )}
+        </ScrollView>
       </View>
-    </ScrollView>
-  </View>
-);
-};
-
-export default AdminDashboard;
+    </>
+  );
+}
