@@ -122,7 +122,7 @@ export default function Subjects() {
   }
 
   return (
-    <View className="flex-1 bg-[#F1FFF8]">
+    <View className="flex-1 bg-orange-50">
       <ScrollView className="flex-grow px-6 pt-12 pb-6">
         {currentView === "list" ? (
           <SubjectList

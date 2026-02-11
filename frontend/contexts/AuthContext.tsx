@@ -16,7 +16,7 @@ interface AuthContextType {
   loading: boolean
   signUp: (email: string, password: string, userData: {
     full_name: string
-    role: 'admin' | 'student' | 'teacher'
+    role: 'admin' | 'student' | 'teacher' 
     institution_id?: string
   }) => Promise<{ data: any; error: any }>
   signIn: (email: string, password: string) => Promise<{ data: any; error: any }>

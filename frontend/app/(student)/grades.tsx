@@ -129,7 +129,7 @@ export default function Grades() {
     if (loading) {
         return (
             <View className="flex-1 justify-center items-center bg-[#F1FFF8]">
-                <ActivityIndicator size="large" color="#0d9488" />
+                <ActivityIndicator size="large" color="orange" />
             </View>
         );
     }
@@ -138,12 +138,12 @@ export default function Grades() {
         <ScrollView className="flex-1 bg-gray-50">
             <View className="p-4 md:p-8 max-w-3xl mx-auto w-full">
                 <Text className="text-2xl font-bold text-gray-900 mb-6">Academic Performance</Text>
-                <View className="bg-teal-600 rounded-3xl p-6 mb-8 shadow-lg shadow-teal-200">
+                <View className="bg-orange-500 rounded-3xl p-6 mb-8 shadow-lg shadow-orange-200">
                     <View className="flex-row justify-between items-start">
                         <View>
-                            <Text className="text-teal-100 font-medium italic">Cumulative GPA</Text>
+                            <Text className="text-orange-100 font-medium italic">Cumulative GPA</Text>
                             {displayId && (
-                                <Text className="text-teal-200 text-[10px] font-bold">Student ID: {displayId}</Text>
+                                <Text className="text-orange-200 text-[10px] font-bold">Student ID: {displayId}</Text>
                             )}
                             <Text className="text-white text-5xl font-black mt-1">{stats.gpa}</Text>
                         </View>
@@ -154,15 +154,15 @@ export default function Grades() {
 
                     <View className="flex-row mt-6 pt-6 border-t border-white/10 justify-between">
                         <View className="items-center flex-1">
-                            <Text className="text-teal-100 text-xs uppercase">Rank</Text>
+                            <Text className="text-orange-100 text-xs uppercase">Rank</Text>
                             <Text className="text-white font-bold text-lg">#{stats.rank} / 120</Text>
                         </View>
                         <View className="items-center flex-1 border-x border-white/10">
-                            <Text className="text-teal-100 text-xs uppercase">Credits</Text>
+                            <Text className="text-orange-100 text-xs uppercase">Credits</Text>
                             <Text className="text-white font-bold text-lg">{stats.credits}</Text>
                         </View>
                         <View className="items-center flex-1">
-                            <Text className="text-teal-100 text-xs uppercase">Status</Text>
+                            <Text className="text-orange-100 text-xs uppercase">Status</Text>
                             <Text className="text-white font-bold text-lg">Good Standing</Text>
                         </View>
                     </View>
@@ -171,10 +171,10 @@ export default function Grades() {
                 {/* --- Current Semester Section --- */}
                 <View className="flex-row items-center justify-between mb-4">
                     <View className="flex-row items-center">
-                        <Award size={20} color="#0d9488" />
+                        <Award size={20} color="orange" />
                         <Text className="ml-2 font-bold text-gray-800">Current Semester</Text>
                     </View>
-                    <Text className="text-teal-600 text-xs font-bold uppercase">{grades.length} Subjects</Text>
+                    <Text className="text-orange-600 text-xs font-bold uppercase">{grades.length} Subjects</Text>
                 </View>
 
                 {grades.length === 0 ? (
@@ -193,7 +193,7 @@ export default function Grades() {
                 )}
 
                 {/* --- Past Semesters --- */}
-                <TouchableOpacity className="mt-4 p-4 bg-white rounded-2xl border border-dashed border-gray-300 items-center">
+                <TouchableOpacity className="mt-4 p-4 bg-white rounded-2xl border border-dashed border-orange-300 items-center">
                     <Text className="text-gray-500 font-medium">View Previous Semesters</Text>
                 </TouchableOpacity>
 

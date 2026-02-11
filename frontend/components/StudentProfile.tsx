@@ -42,7 +42,7 @@ export default function StudentProfile() {
     if (!profile) {
         return (
             <View className="flex-1 justify-center items-center bg-gray-50">
-                <ActivityIndicator size="large" color="#0d9488" />
+                <ActivityIndicator size="large" color="orange" />
                 <Text className="text-gray-600 mt-4 font-semibold">Loading profile...</Text>
             </View>
         );
@@ -76,8 +76,8 @@ export default function StudentProfile() {
             >
                 {/* MAIN PROFILE CARD */}
                 <View className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden mb-5">
-                    {/* Header with Teal Background */}
-                    <View className="bg-teal-500 rounded-t-3xl">
+                    {/* Header with orange Background */}
+                    <View className="bg-orange-500 rounded-t-3xl">
                         <View className="px-6 pb-6 flex-row justify-between items-end mt-4">
                             <View className="flex-1 pb-2">
                                 {isEditing ? (
@@ -85,7 +85,7 @@ export default function StudentProfile() {
                                         <TextInput
                                             value={name}
                                             onChangeText={setName}
-                                            className="text-2xl font-bold text-gray-900 bg-white px-3 py-2 rounded-xl mb-2"
+                                            className="text-2xl font-bold text-black bg-white px-3 py-2 rounded-xl mb-2"
                                             placeholder="Enter your name"
                                             autoFocus
                                             placeholderTextColor="#9ca3af"
@@ -105,24 +105,24 @@ export default function StudentProfile() {
                                                 activeOpacity={0.8}
                                             >
                                                 {saving ? (
-                                                    <ActivityIndicator size="small" color="#0d9488" />
+                                                    <ActivityIndicator size="small" color="orange" />
                                                 ) : (
-                                                    <Text className="text-teal-600 font-bold text-sm">Save</Text>
+                                                    <Text className="text-orange-500 font-bold text-sm">Save</Text>
                                                 )}
                                             </TouchableOpacity>
                                         </View>
                                     </View>
                                 ) : (
                                     <>
-                                        <Text className="text-2xl font-bold text-gray-900">
+                                        <Text className="text-2xl font-bold text-white">
                                             {profile.full_name || "Student"}
                                         </Text>
                                         <Text className="text-white font-medium">
                                             {profile.role === 'student' ? 'Software Engineering Student' : profile.role}
                                         </Text>
-                                        <View className="flex-row items-center mt-2 bg-teal-50 self-start px-3 py-1 rounded-full">
-                                            <View className="w-2 h-2 rounded-full bg-teal-500 mr-2" />
-                                            <Text className="text-teal-700 text-xs font-bold uppercase">
+                                        <View className="flex-row items-center mt-2 bg-orange-50 self-start px-3 py-1 rounded-full">
+                                            <View className="w-2 h-2 rounded-full bg-orange-500 mr-2" />
+                                            <Text className="text-gray-900 text-xs font-bold uppercase">
                                                 {profile.status === 'approved' ? 'Active' : 'Pending'}
                                             </Text>
                                         </View>
@@ -143,7 +143,7 @@ export default function StudentProfile() {
                                             activeOpacity={0.8}
                                             className="absolute -bottom-2 -right-2 bg-white p-2 rounded-full shadow-md border border-gray-100"
                                         >
-                                            <Edit3 size={18} color='#0d9488' />
+                                            <Edit3 size={18} color='orange' />
                                         </TouchableOpacity>
                                     )}
                                 </View>
@@ -157,8 +157,8 @@ export default function StudentProfile() {
                             {/* Academic Info Card */}
                             <View className="w-full md:w-[48%] bg-gray-50 p-5 rounded-2xl mb-4">
                                 <View className="flex-row items-center mb-4">
-                                    <View className="p-2 bg-teal-50 rounded-lg">
-                                        <GraduationCap size={20} color="#0d9488" strokeWidth={2.5} />
+                                    <View className="p-2 bg-orange-50 rounded-lg">
+                                        <GraduationCap size={20} color="orange" strokeWidth={2.5} />
                                     </View>
                                     <Text className="ml-3 font-semibold text-gray-800">
                                         Academic Info
@@ -188,8 +188,8 @@ export default function StudentProfile() {
                             {/* Contact Info Card */}
                             <View className="w-full md:w-[48%] bg-gray-50 p-5 rounded-2xl mb-4">
                                 <View className="flex-row items-center mb-4">
-                                    <View className="p-2 bg-teal-50 rounded-lg">
-                                        <Mail size={20} color="#0d9488" strokeWidth={2.5} />
+                                    <View className="p-2 bg-orange-50 rounded-lg">
+                                        <Mail size={20} color="orange" strokeWidth={2.5} />
                                     </View>
                                     <Text className="ml-3 font-semibold text-gray-800">Contact</Text>
                                 </View>
@@ -222,8 +222,8 @@ export default function StudentProfile() {
                     <View className="px-5 py-4 border-b border-gray-100">
                         <View className="flex-row items-center justify-between">
                             <View className="flex-row items-center">
-                                <View className="p-2 bg-teal-50 rounded-lg">
-                                    <BookOpen size={20} color="#0d9488" strokeWidth={2.5} />
+                                <View className="p-2 bg-orange-50 rounded-lg">
+                                    <BookOpen size={20} color="orange" strokeWidth={2.5} />
                                 </View>
                                 <Text className="ml-3 font-semibold text-gray-800">Registered Courses</Text>
                             </View>
@@ -231,7 +231,7 @@ export default function StudentProfile() {
                                 activeOpacity={0.7}
                                 className="active:opacity-70"
                             >
-                                <Text className="text-teal-600 font-bold text-sm">View All</Text>
+                                <Text className="text-orange-600 font-bold text-sm">View All</Text>
                             </TouchableOpacity>
                         </View>
                     </View>
@@ -249,7 +249,7 @@ export default function StudentProfile() {
                             >
                                 <View className="flex-row items-center justify-between mb-3">
                                     <View className="flex-row items-center flex-1">
-                                        <View className="w-2 h-2 rounded-full bg-teal-500 mr-3" />
+                                        <View className="w-2 h-2 rounded-full bg-orange-500 mr-3" />
                                         <Text className="text-gray-900 font-semibold flex-1">{course.name}</Text>
                                     </View>
                                     <Text className="text-gray-700 font-bold text-xs ml-2">
@@ -259,8 +259,8 @@ export default function StudentProfile() {
                                 <View className="ml-5">
                                     <View className="h-2 bg-gray-100 rounded-full overflow-hidden">
                                         <View
-                                            className="h-full bg-teal-600 rounded-full"
-                                            style={{ width: `${course.progress}%` }}
+                                            className="h-full bg-orange-500 rounded-full"
+                                            style={{ width: `${course.progress}%`}}
                                         />
                                     </View>
                                 </View>
@@ -273,8 +273,8 @@ export default function StudentProfile() {
                 <View className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden mb-5">
                     <View className="px-5 py-4 border-b border-gray-100">
                         <View className="flex-row items-center">
-                            <View className="p-2 bg-teal-50 rounded-lg">
-                                <Award size={20} color="#0d9488" strokeWidth={2.5} />
+                            <View className="p-2 bg-orange-50 rounded-lg">
+                                <Award size={20} color="orange" strokeWidth={2.5} />
                             </View>
                             <View className="ml-3">
                                 <Text className="font-semibold text-gray-800">Recent Achievements</Text>
@@ -286,7 +286,7 @@ export default function StudentProfile() {
                     <View className="p-4">
                         <View className="bg-gray-50 p-4 rounded-2xl mb-3">
                             <View className="flex-row items-start">
-                                <View className="w-12 h-12 bg-teal-100 rounded-xl items-center justify-center mr-3">
+                                <View className="w-12 h-12 bg-orange-100 rounded-xl items-center justify-center mr-3">
                                     <Text className="text-2xl">🏆</Text>
                                 </View>
                                 <View className="flex-1">
@@ -301,7 +301,7 @@ export default function StudentProfile() {
 
                         <View className="bg-gray-50 p-4 rounded-2xl">
                             <View className="flex-row items-start">
-                                <View className="w-12 h-12 bg-teal-100 rounded-xl items-center justify-center mr-3">
+                                <View className="w-12 h-12 bg-orange-100 rounded-xl items-center justify-center mr-3">
                                     <Text className="text-2xl">⭐</Text>
                                 </View>
                                 <View className="flex-1">

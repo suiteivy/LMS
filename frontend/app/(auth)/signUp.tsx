@@ -134,8 +134,8 @@ export default function App() {
           </View>
 
           {/* Title */}
-          <Text className="text-4xl text-[#2C3E50] font-bold">Create Your Account</Text>
-          <Text className="text-xs text-[#2C3E50] mt-1">
+          <Text className="text-4xl text-gray-900 font-bold">Create Your Account</Text>
+          <Text className="text-sm text-gray-900 mt-1">
             Enter your details to create an account.
           </Text>
 
@@ -143,9 +143,9 @@ export default function App() {
           <View className="mt-11 space-y-5">
             {/* Full Name */}
             <View>
-              <Text className="text-lg text-[#2C3E50] mb-2">Full Name</Text>
+              <Text className="text-lg text-gray-900 mb-2">Full Name</Text>
               <TextInput
-                className="border border-[#1ABC9C] rounded-lg h-12 px-2.5 text-[#2C3E50]"
+                className="border border-orange-500 rounded-lg h-12 px-2.5 text-orange-500"
                 placeholder="Enter your full name"
                 placeholderTextColor="#7E7B7B"
                 value={formData.name}
@@ -160,10 +160,10 @@ export default function App() {
 
             {/* Email */}
             <View>
-              <Text className="text-lg text-[#2C3E50] mb-2">Email</Text>
+              <Text className="text-lg text-gray-900 mb-2">Email</Text>
               <TextInput
                 keyboardType="email-address"
-                className="border border-[#1ABC9C] rounded-lg h-12 px-2.5 w-full focus:border-[#2B876E] focus:ring-2 focus:ring-[#2B876E]"
+                className="border border-orange-500 rounded-lg h-12 px-2.5 w-full focus:border-[#2B876E] focus:ring-2 focus:ring-[#2B876E]"
                 placeholder="Enter your email"
                 placeholderTextColor="#7E7B7B"
                 value={formData.email}
@@ -179,11 +179,11 @@ export default function App() {
 
             {/* Password */}
             <View>
-              <Text className="text-lg text-[#2C3E50] mb-2">Password</Text>
-              <View className="flex-row items-center border border-[#1ABC9C] h-12 rounded-lg px-2.5 relative">
+              <Text className="text-lg text-gray-900 mb-2">Password</Text>
+              <View className="flex-row items-center border border-orange-500 h-12 rounded-lg px-2.5 relative">
                 <TextInput
                   secureTextEntry={!showPassword}
-                  className="flex-1 text-[#2C3E50]"
+                  className="flex-1 text-orange-500"
                   placeholder="Enter your password"
                   placeholderTextColor="#7E7B7B"
                   value={formData.password}
@@ -209,13 +209,13 @@ export default function App() {
 
             {/* Confirm Password */}
             <View>
-              <Text className="text-lg text-[#2C3E50] mb-2">
+              <Text className="text-lg text-gray-900 mb-2">
                 Confirm Password
               </Text>
-              <View className="flex-row items-center border border-[#1ABC9C] h-12 rounded-lg px-2.5 relative">
+              <View className="flex-row items-center border border-orange-500 h-12 rounded-lg px-2.5 relative">
                 <TextInput
                   secureTextEntry={!showConfirmPassword}
-                  className="flex-1 text-[#2C3E50]"
+                  className="flex-1 text-orange-500"
                   placeholder="Confirm your password"
                   placeholderTextColor="#7E7B7B"
                   value={formData.confirmPassword}
@@ -244,21 +244,21 @@ export default function App() {
 
           {/* Role Selection */}
           <View>
-            <Text className="text-lg mt-4 text-[#2C3E50] mb-2">Select Role</Text>
+            <Text className="text-lg mt-4 text-gray-900 mb-2">Select Role</Text>
             <View className="flex-row justify-around">
               {roles.map((role) => (
                 <TouchableOpacity
                   key={role.value}
                   className={`py-2 px-4 rounded-full ${formData.role === role.value
-                    ? "bg-[#1ABC9C]"
-                    : "border border-[#1ABC9C]"
+                    ? "bg-orange-500"
+                    : "border border-orange-500"
                     }`}
                   onPress={() => handleInputChange("role", role.value)}
                 >
                   <Text
                     className={`${formData.role === role.value
                       ? "text-white"
-                      : "text-[#1ABC9C]"
+                      : "text-orange-500"
                       } font-semibold text-sm`}
                   >
                     {role.label}
@@ -273,7 +273,7 @@ export default function App() {
 
           {/* Create Account Button */}
           <TouchableOpacity
-            className="bg-[#2B876E] p-5 h-[53px] rounded-lg mt-6 flex justify-center items-center w-full shadow-md"
+            className="bg-orange-500 p-5 h-[53px] rounded-lg mt-6 flex justify-center items-center w-full shadow-md"
             onPress={onSubmit}
             disabled={isLoading}
           >
@@ -289,16 +289,16 @@ export default function App() {
           {/* OR Separator */}
           <View className="flex-row items-center gap-2.5 mt-7">
             <View className="border-t border-[#2C3E50] flex-1"></View>
-            <Text className="text-lg font-medium text-[#2C3E50]">OR</Text>
+            <Text className="text-lg font-medium text-gray-900">OR</Text>
             <View className="border-t border-[#2C3E50] flex-1"></View>
           </View>
         </View>
 
         {/* Bottom Sign In link */}
         <View className="flex-row justify-center mb-8">
-          <Text className="text-lg text-[#2C3E50]">Have an account?</Text>
+          <Text className="text-lg text-gray-900">Have an account?</Text>
           <TouchableOpacity onPress={() => router.push("/(auth)/signIn")}>
-            <Text className="text-lg text-[#2B876E] font-semibold ml-1">
+            <Text className="text-lg text-orange-500 font-semibold ml-1">
               Sign In
             </Text>
           </TouchableOpacity>

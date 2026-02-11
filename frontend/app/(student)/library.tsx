@@ -55,8 +55,8 @@ export default function StudentLibrary() {
                         <Text className="text-gray-400 text-xs font-bold uppercase tracking-widest">Digital Resource</Text>
                         <Text className="text-3xl font-black text-gray-900">Library</Text>
                     </View>
-                    <TouchableOpacity className="bg-teal-50 p-3 rounded-2xl">
-                        <Bookmark size={22} color="#0d9488" />
+                    <TouchableOpacity className="bg-orange-50 p-3 rounded-2xl">
+                        <Bookmark size={22} color="black" />
                     </TouchableOpacity>
                 </View>
 
@@ -71,8 +71,8 @@ export default function StudentLibrary() {
                             onChangeText={setSearchQuery}
                         />
                     </View>
-                    <TouchableOpacity className="bg-gray-900 p-3 rounded-2xl justify-center">
-                        <Filter size={20} color="white" />
+                    <TouchableOpacity className="bg-gray-100 p-3 rounded-2xl justify-center">
+                        <Filter size={20} color="orange" />
                     </TouchableOpacity>
                 </View>
             </View>
@@ -92,17 +92,17 @@ export default function StudentLibrary() {
                         className="bg-white p-4 rounded-[25px] border border-gray-100 mb-3 flex-row items-center justify-between"
                     >
                         <View className="flex-row items-center flex-1">
-                            <View className={`p-3 rounded-2xl mr-4 ${item.file_type === 'PDF' ? 'bg-red-50' : 'bg-teal-50'}`}>
-                                {item.file_type === 'PDF' ? <FileText size={22} color="#ef4444" /> : <BookOpen size={22} color="#0d9488" />}
+                            <View className={`p-3 rounded-2xl mr-4 ${item.file_type === 'PDF' ? 'bg-red-50' : 'bg-orange-50'}`}>
+                                {item.file_type === 'PDF' ? <FileText size={22} color="orange" /> : <BookOpen size={22} color="#0d9488" />}
                             </View>
                             <View className="flex-1">
-                                <Text className="text-[10px] font-bold text-teal-600 uppercase mb-0.5">{item.subject_code}</Text>
+                                <Text className="text-[10px] font-bold text-orange-700 uppercase mb-0.5">{item.subject_code}</Text>
                                 <Text className="text-gray-900 font-bold text-base" numberOfLines={1}>{item.title}</Text>
                                 <Text className="text-gray-400 text-xs">{item.author}</Text>
                             </View>
                         </View>
                         <View className="bg-gray-50 p-2 rounded-full">
-                            <Text className="text-teal-600 font-bold text-[10px] px-1">VIEW</Text>
+                            <Text className="text-orange-600 font-bold text-[10px] px-1">VIEW</Text>
                         </View>
                     </TouchableOpacity>
                 ))}
@@ -119,9 +119,9 @@ export default function StudentLibrary() {
 
                         <View className="flex-row justify-between items-start mb-6">
                             <View className="flex-1 pr-4">
-                                <Text className="text-teal-600 font-bold text-xs uppercase tracking-widest">{selectedBook?.subject_code}</Text>
+                                <Text className="text-orange-600 font-bold text-xs uppercase tracking-widest">{selectedBook?.subject_code}</Text>
                                 <Text className="text-3xl font-black text-gray-900 mt-2">{selectedBook?.title}</Text>
-                                <Text className="text-gray-500 font-medium mt-1">by {selectedBook?.author}</Text>
+                                <Text className="text-orange-500 font-medium mt-1">by {selectedBook?.author}</Text>
                             </View>
                             <TouchableOpacity onPress={() => setModalVisible(false)} className="bg-gray-100 p-3 rounded-full">
                                 <X size={20} color="#6B7280" />
@@ -134,19 +134,19 @@ export default function StudentLibrary() {
 
                         <View className="flex-row justify-between mb-10">
                             <View className="bg-gray-50 p-5 rounded-[30px] flex-1 mr-2 border border-gray-100">
-                                <Clock size={18} color="#0d9488" />
+                                <Clock size={18} color="orange" />
                                 <Text className="text-gray-400 text-[10px] font-bold uppercase mt-3">Duration</Text>
                                 <Text className="text-gray-900 font-bold text-base mt-1">14 Days</Text>
                             </View>
                             <View className="bg-gray-50 p-5 rounded-[30px] flex-1 ml-2 border border-gray-100">
-                                <CheckCircle2 size={18} color="#0d9488" />
+                                <CheckCircle2 size={18} color="orange" />
                                 <Text className="text-gray-400 text-[10px] font-bold uppercase mt-3">Available</Text>
                                 <Text className="text-gray-900 font-bold text-base mt-1">{selectedBook?.available_copies} Copies</Text>
                             </View>
                         </View>
 
                         <TouchableOpacity
-                            className="bg-teal-600 py-5 rounded-[25px] items-center shadow-lg shadow-teal-200"
+                            className="bg-orange-500 py-5 rounded-[25px] items-center shadow-lg shadow-gray-600"
                             onPress={() => handleBorrow(selectedBook?.title || "")}
                         >
                             <Text className="text-white font-black text-lg">Borrow Material</Text>

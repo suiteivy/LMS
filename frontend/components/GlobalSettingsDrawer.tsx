@@ -6,7 +6,7 @@ import {
   DrawerItemList,
 } from '@react-navigation/drawer';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { UserCircle, Settings, ShieldCheck, LogOut, HelpCircle } from 'lucide-react-native';
+import { UserCircle, Settings, ShieldCheck, LogOut, HelpCircle, PersonStanding } from 'lucide-react-native';
 import { router } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -14,6 +14,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import StudentProfile from './StudentProfile';
 import StudentSettings from './StudentSettings';
 import StudentHelp from './StudentHelp';
+
 
 const Drawer = createDrawerNavigator();
 

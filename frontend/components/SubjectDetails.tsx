@@ -27,10 +27,10 @@ export const SubjectDetails: React.FC<SubjectDetailsProps> = ({
     <View className="flex-row items-center p-4 border-b border-gray-100">
       <View
         className={`w-8 h-8 rounded-full items-center justify-center mr-3 ${lesson.isCompleted
-          ? "bg-[#1ABC9C]"
+          ? "bg-orange-200"
           : lesson.isLocked
             ? "bg-gray-200"
-            : "bg-[#A1EBE5]"
+            : "bg-orange-50"
           }`}
       >
         {lesson.isCompleted ? (
@@ -59,6 +59,7 @@ export const SubjectDetails: React.FC<SubjectDetailsProps> = ({
             }
             size={14}
             color="#6B7280"
+            // color={'#fff'}
           />
           <Text className="text-sm text-gray-500 ml-1 capitalize">
             {lesson.type} • {lesson.duration}
@@ -69,7 +70,7 @@ export const SubjectDetails: React.FC<SubjectDetailsProps> = ({
   );
 
   return (
-    <View className="flex-1 bg-[#F1FFF8]">
+    <View className="flex-1 bg-orange-200">
       {/* Header */}
       <View className="bg-white px-6 pt-12 pb-4 shadow-sm">
         <TouchableOpacity onPress={onBack} className="mb-4">
@@ -88,7 +89,7 @@ export const SubjectDetails: React.FC<SubjectDetailsProps> = ({
 
           <View className="p-6">
             <View className="flex-row items-center mb-2">
-              <View className="px-3 py-1 rounded-full mr-3 bg-[#A1EBE5]">
+              <View className="px-3 py-1 rounded-full mr-3 bg-orange-100">
                 <Text className="text-sm font-medium text-[#2C3E50]">
                   {Subject.level}
                 </Text>
@@ -129,7 +130,7 @@ export const SubjectDetails: React.FC<SubjectDetailsProps> = ({
             {/* Price & Enroll */}
             <View className="flex-row items-center justify-between">
               <View>
-                <Text className="text-3xl font-bold text-[#1ABC9C]">
+                <Text className="text-3xl font-bold text-black">
                   {Subject.price === 0 ? "Free" : `$${Subject.price}`}
                 </Text>
                 {Subject.originalPrice &&
@@ -143,7 +144,7 @@ export const SubjectDetails: React.FC<SubjectDetailsProps> = ({
               <TouchableOpacity
                 onPress={onEnroll}
                 disabled={enrolling || Subject.isEnrolled}
-                className={`px-8 py-3 rounded-lg ${Subject.isEnrolled ? "bg-gray-400" : "bg-[#1ABC9C]"}`}
+                className={`px-8 py-3 rounded-lg ${Subject.isEnrolled ? "bg-gray-400" : "bg-orange-400"}`}
               >
                 <Text className="text-white font-bold text-lg">
                   {enrolling ? "Enrolling..." : Subject.isEnrolled ? "Enrolled" : "Enroll Now"}

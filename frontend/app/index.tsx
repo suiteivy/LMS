@@ -37,7 +37,7 @@ export default function Index() {
       <View className="flex-1 bg-[#F1FFF8] justify-between py-12">
         {/* Company Logo */}
         <View className="flex-row items-center justify-center my-8 py-8">
-          <View className="bg-primaryColor p-12 rounded-xl">
+          <View className="bg-orange-500 p-12 rounded-3xl">
             <School size={100} color="white" />
           </View>
         </View>
@@ -56,7 +56,7 @@ export default function Index() {
         {/* Proceed Button */}
         <View className="items-center px-8 mb-8">
           <TouchableOpacity
-            className="bg-[#1ABC9C] w-full py-4 rounded-xl flex-row items-center justify-center shadow-lg"
+            className="bg-orange-500 w-full py-4 rounded-xl flex-row items-center justify-center shadow-lg"
             onPress={() => router.push("/(auth)/signIn")}
           >
             <Text className="text-white text-xl font-semibold mr-2">

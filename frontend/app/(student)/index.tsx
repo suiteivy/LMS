@@ -1,17 +1,23 @@
 import React, { useState } from "react";
 import { View, Text, ScrollView, TouchableOpacity, StatusBar } from 'react-native';
-import { Calendar, Clock, Bell, ArrowRight, BookOpen, Star, GraduationCap, Book } from 'lucide-react-native';
+import { Calendar, Clock, ArrowRight, BookOpen, Star, GraduationCap, Book } from 'lucide-react-native';
 import Notifications from '../../components/Notifications';
+import { router, useRouter } from "expo-router";
+import { useAuth } from "@/contexts/AuthContext";
 
 // Define Interface for the QuickAction props
 interface QuickActionProps {
   icon: any;
   label: string;
   color: string;
+  onPress: () => void
 }
 
-const QuickAction = ({ icon: Icon, label, color }: QuickActionProps) => (
-  <TouchableOpacity className="w-[48%] bg-white p-6 rounded-3xl border border-gray-100 shadow-sm items-center mb-4 active:bg-gray-50">
+const QuickAction = ({ icon: Icon, label, color, onPress }: QuickActionProps) => (
+  <TouchableOpacity 
+    onPress={onPress}
+    className="w-[48%] bg-white p-6 rounded-3xl border border-gray-100 shadow-sm items-center mb-4 active:bg-gray-50"
+  >
     <View style={{ backgroundColor: `${color}15` }} className="p-3 rounded-2xl mb-2">
       <Icon size={24} color={color} />
     </View>
@@ -21,9 +27,12 @@ const QuickAction = ({ icon: Icon, label, color }: QuickActionProps) => (
 
 export default function Index() {
   const [showNotification, setShowNotification] = useState(false);
+  const { profile, loading } = useAuth()
+  const router = useRouter()
+
+  if (loading) return null;
 
   return (
-    /* Use a Fragment so we don't add an extra wrapping View that could mess up the Tab layout */
     <>
       <StatusBar barStyle="dark-content" />
 
@@ -45,27 +54,19 @@ export default function Index() {
                   Alex Reed 👋
                 </Text>
               </View>
-
-              <TouchableOpacity
-                className="relative p-2 bg-white rounded-full border border-gray-100 shadow-sm active:opacity-70"
-                onPress={() => setShowNotification(true)}
-              >
-                <Bell size={24} color="#374151" />
-                <View className="absolute top-2 right-2 w-3 h-3 bg-red-500 rounded-full border-2 border-white" />
-              </TouchableOpacity>
             </View>
 
             {/* --- 2. Quick Status Cards --- */}
             <View className="flex-row gap-4 mb-8">
-              <View className="flex-1 bg-teal-600 p-4 rounded-3xl shadow-sm">
+              <View className="flex-1 bg-orange-500 p-4 rounded-3xl shadow-sm">
                 <Star size={20} color="white" />
                 <Text className="text-white text-2xl font-bold mt-2">3.82</Text>
-                <Text className="text-teal-100 text-xs font-medium uppercase italic">
+                <Text className="text-orange-100 text-xs font-medium uppercase italic">
                   GPA
                 </Text>
               </View>
               <View className="flex-1 bg-white p-4 rounded-3xl border border-gray-100 shadow-sm">
-                <Clock size={20} color="#0d9488" />
+                <Clock size={20} color="orange" />
                 <Text className="text-gray-900 text-2xl font-bold mt-2">
                   92%
                 </Text>
@@ -82,7 +83,7 @@ export default function Index() {
                 Today's Schedule
               </Text>
               <TouchableOpacity>
-                <Text className="text-teal-600 font-semibold">View All</Text>
+                <Text className="text-orange-500 font-semibold">View All</Text>
               </TouchableOpacity>
             </View>
 
@@ -137,14 +138,26 @@ export default function Index() {
                   icon={GraduationCap}
                   label="Library"
                   color="#0d9488"
+                  onPress={() => router.push("/(student)/library")}
                 />
-                <QuickAction icon={Book} label="Subjects" color="#8b5cf6" />
+                <QuickAction
+                  icon={Book}
+                  label="Courses"
+                  color="#8b5cf6"
+                  onPress={() => router.push("/(student)/subjects")}
+                />
                 <QuickAction
                   icon={ArrowRight}
                   label="Assignments"
                   color="#f43f5e"
+                  onPress={() => router.push("/(student)/assignments")}
                 />
-                <QuickAction icon={Star} label="Grades" color="#eab308" />
+                <QuickAction
+                  icon={Star}
+                  label="Grades"
+                  color="#eab308"
+                  onPress={() => router.push("/(student)/grades")}
+                />
               </View>
             </View>
           </View>

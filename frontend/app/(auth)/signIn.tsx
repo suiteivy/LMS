@@ -148,6 +148,9 @@ export default function Index() {
           case "student":
             router.replace("/(student)");
             break;
+          case "parent":
+            router.replace("/(parents)");
+            break;
           default:
             setErrorMessage("Unrecognized user role: " + userData.role);
             break;
@@ -214,9 +217,9 @@ export default function Index() {
             <Text className="text-lg text-[#2C3E50] mb-2">Email</Text>
             <TextInput
               keyboardType="email-address"
-              className="border border-[#1ABC9C] rounded-lg h-12 px-2.5"
+              className="border border-orange-500 rounded-lg h-12 px-2.5"
               placeholder="Enter your Email"
-              placeholderTextColor="#7E7B7B"
+              placeholderTextColor="black"
               value={formData.email}
               onChangeText={(value) => handleInputChange("email", value)}
               autoCapitalize="none"
@@ -228,7 +231,7 @@ export default function Index() {
 
           <View className="mt-5">
             <Text className="text-lg text-[#2C3E50] mb-2">Password</Text>
-            <View className="flex-row border border-[#1ABC9C] items-center h-12 rounded-lg px-2.5">
+            <View className="flex-row border border-orange-500 items-center h-12 rounded-lg px-2.5">
               <TextInput
                 className="flex-1"
                 placeholder="Enter your password"
@@ -253,7 +256,7 @@ export default function Index() {
           </View>
 
           <TouchableOpacity onPress={handleForgotPassword}>
-            <Text className="text-lg mt-2 text-right text-[#34967C]">
+            <Text className="text-lg mt-2 text-right text-orange-600">
               Forgot password?
             </Text>
           </TouchableOpacity>
@@ -269,7 +272,7 @@ export default function Index() {
           )}
 
           <TouchableOpacity
-            className="bg-[#2B876E] h-[53px] rounded-lg mt-6 flex justify-center items-center shadow-md"
+            className="bg-orange-500 h-[53px] rounded-lg mt-6 flex justify-center items-center shadow-md"
             onPress={onSubmit}
             disabled={isLoading}
           >
@@ -292,7 +295,7 @@ export default function Index() {
             Don&apos;t have an account?{" "}
           </Text>
           <TouchableOpacity onPress={() => router.push("/(auth)/signUp")}>
-            <Text className="text-base text-[#34967C] font-semibold">
+            <Text className="text-base text-orange-500 font-semibold">
               Sign Up
             </Text>
           </TouchableOpacity>
