@@ -87,6 +87,15 @@ CREATE TABLE parents (
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+CREATE TABLE parent_students (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    parent_id TEXT REFERENCES parents(id) ON DELETE CASCADE,
+    student_id TEXT REFERENCES students(id) ON DELETE CASCADE,
+    relationship TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE(parent_id, student_id)
+);
+
 -- ---------------------------------------------------------
 -- PART 3: ACADEMIC MODULE
 -- ---------------------------------------------------------
@@ -479,6 +488,7 @@ ALTER TABLE admins ENABLE ROW LEVEL SECURITY;
 ALTER TABLE teachers ENABLE ROW LEVEL SECURITY;
 ALTER TABLE students ENABLE ROW LEVEL SECURITY;
 ALTER TABLE parents ENABLE ROW LEVEL SECURITY;
+ALTER TABLE parent_students ENABLE ROW LEVEL SECURITY;
 ALTER TABLE classes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE enrollments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE subjects ENABLE ROW LEVEL SECURITY;
@@ -507,6 +517,7 @@ CREATE POLICY "select_admins" ON admins FOR SELECT USING (true);
 CREATE POLICY "select_teachers" ON teachers FOR SELECT USING (true);
 CREATE POLICY "select_students" ON students FOR SELECT USING (true);
 CREATE POLICY "select_parents" ON parents FOR SELECT USING (true);
+CREATE POLICY "select_parent_students" ON parent_students FOR SELECT USING (true);
 
 -- Use specific commands for management (avoids FOR ALL and SELECT path)
 CREATE POLICY "insert_admins" ON admins FOR INSERT WITH CHECK (get_current_user_role() = 'admin');

@@ -28,8 +28,99 @@ export default function ParentIndex() {
 function ParentDashboard({ user }: any) {
   const [showNotification, setShowNotification] = useState(false);
   const [activeModal, setActiveModal] = useState<string | null>(null);
+  
+  // State for students and selection
+  const [linkedStudents, setLinkedStudents] = useState<any[]>([]);
+  const [selectedStudent, setSelectedStudent] = useState<any>(null);
+  const [loadingStudents, setLoadingStudents] = useState(true);
+
+  // Fetch linked students on mount
+  React.useEffect(() => {
+    async function fetchStudents() {
+      if (!user?.id) return;
+      try {
+        setLoadingStudents(true);
+        // 1. Get Parent ID
+        const { data: parentData, error: parentError } = await (window as any).supabase
+          .from('parents')
+          .select('id')
+          .eq('user_id', user.id)
+          .single();
+
+        if (parentError || !parentData) {
+          console.error('Error fetching parent:', parentError);
+          setLoadingStudents(false);
+          return;
+        }
+
+        // 2. Get Linked Students
+        const { data: links, error: linkError } = await (window as any).supabase
+          .from('parent_students')
+          .select(`
+            student_id,
+            relationship,
+            students:students (
+              id,
+              grade_level,
+              users:users ( full_name )
+            )
+          `)
+          .eq('parent_id', parentData.id);
+
+        if (linkError) {
+          console.error('Error fetching links:', linkError);
+        } else if (links && links.length > 0) {
+            // Flatten the structure for easier use
+            const formattedStudents = links.map((link: any) => ({
+                id: link.students.id,
+                name: link.students.users.full_name,
+                grade: link.students.grade_level,
+                relationship: link.relationship,
+                original_link: link
+            }));
+            setLinkedStudents(formattedStudents);
+            setSelectedStudent(formattedStudents[0]);
+        }
+      } catch (e) {
+        console.error('Unexpected error:', e);
+      } finally {
+        setLoadingStudents(false);
+      }
+    }
+
+    fetchStudents();
+  }, [user?.id]);
+
 
   const closeModal = () => setActiveModal(null);
+
+  if (loadingStudents) {
+      return (
+          <View className="flex-1 justify-center items-center bg-gray-50">
+              <ActivityIndicator size="large" color="#f97316" />
+              <Text className="text-gray-400 mt-2">Loading your children...</Text>
+          </View>
+      );
+  }
+
+  // Fallback if no students linked
+  if (linkedStudents.length === 0) {
+      return (
+          <View className="flex-1 justify-center items-center bg-gray-50 p-8">
+              <User size={60} color="#d1d5db" />
+              <Text className="text-xl font-bold text-gray-800 mt-4 text-center">No Students Linked</Text>
+              <Text className="text-gray-500 text-center mt-2">
+                  We couldn't find any students linked to your account. Please contact the school administration to link your children.
+              </Text>
+              <TouchableOpacity
+                onPress={() => router.replace("/(auth)/signIn")}
+                className="mt-8 bg-orange-500 px-6 py-3 rounded-xl"
+              >
+                <Text className="text-white font-bold">Back to Login</Text>
+              </TouchableOpacity>
+          </View>
+      );
+  }
 
   return (
     <>
@@ -42,13 +133,13 @@ function ParentDashboard({ user }: any) {
         >
           <View className="p-4 md:p-8">
             {/* Header */}
-            <View className="flex-row justify-between items-center mb-8">
+            <View className="flex-row justify-between items-center mb-6">
               <View>
                 <Text className="text-gray-500 text-base font-medium">
                   Parent Portal
                 </Text>
                 <Text className="text-3xl font-bold text-gray-900">
-                  Hello, {user?.full_name?.split(" ")[0] || "Sarah"} 👋
+                  Hello, {user?.full_name?.split(" ")[0]} 👋
                 </Text>
               </View>
               <TouchableOpacity
@@ -62,7 +153,34 @@ function ParentDashboard({ user }: any) {
               </TouchableOpacity>
             </View>
 
-            {/* Child Status Card */}
+            {/* Student Selector (if > 1 student) */}
+            {linkedStudents.length > 1 && (
+                <View className="mb-6">
+                    <Text className="text-gray-500 font-medium mb-2">Select Child</Text>
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                        {linkedStudents.map((stu) => (
+                            <TouchableOpacity
+                                key={stu.id}
+                                onPress={() => setSelectedStudent(stu)}
+                                className={`mr-3 px-4 py-2 rounded-full border ${
+                                    selectedStudent?.id === stu.id 
+                                    ? 'bg-orange-500 border-orange-500' 
+                                    : 'bg-white border-gray-200'
+                                }`}
+                            >
+                                <Text className={`font-semibold ${
+                                    selectedStudent?.id === stu.id ? 'text-white' : 'text-gray-600'
+                                }`}>
+                                    {stu.name}
+                                </Text>
+                            </TouchableOpacity>
+                        ))}
+                    </ScrollView>
+                </View>
+            )}
+
+
+            {/* Child Status Card (Dynamic) */}
             <View className="bg-orange-500 p-6 rounded-3xl shadow-lg mb-8 flex-row items-center">
               <View className="bg-white/20 p-3 rounded-2xl mr-4">
                 <User size={30} color="white" />
@@ -72,8 +190,16 @@ function ParentDashboard({ user }: any) {
                   Currently Viewing
                 </Text>
                 <Text className="text-white text-xl font-bold">
-                  Alex Reed (Grade 11)
+                  {selectedStudent?.name || "Loading..."} 
                 </Text>
+                 <Text className="text-orange-50 text-sm">
+                  {selectedStudent?.grade ? `Grade ${selectedStudent.grade}` : 'Student'}
+                </Text>
+                 {selectedStudent?.relationship && (
+                    <View className="bg-white/10 self-start px-2 py-0.5 rounded-md mt-1">
+                        <Text className="text-white text-[10px] uppercase">{selectedStudent.relationship}</Text>
+                    </View>
+                 )}
               </View>
             </View>
 
@@ -81,14 +207,14 @@ function ParentDashboard({ user }: any) {
             <View className="flex-row gap-4 mb-8">
               <MetricCard
                 icon={TrendingUp}
-                value="A-"
+                value="N/A" 
                 label="Avg Grade"
                 color="#f97316"
               />
               <MetricCard
                 icon={CheckCircle}
-                value="Paid"
-                label="Fees Status"
+                value="Active"
+                label="Status"
                 color="#059669"
               />
             </View>
@@ -104,13 +230,13 @@ function ParentDashboard({ user }: any) {
                 <View className="flex-row items-center">
                   <FileText size={18} color="#4b5563" />
                   <Text className="ml-2 font-bold text-gray-800">
-                    Mid-Term Report Card
+                    System Update
                   </Text>
                 </View>
-                <Text className="text-gray-400 text-xs">2d ago</Text>
+                <Text className="text-gray-400 text-xs">Just now</Text>
               </View>
               <Text className="text-gray-500 text-sm">
-                Mathematics and Science grades have been updated.
+                Welcome to the new Parent Portal. You are viewing data for {selectedStudent?.name}.
               </Text>
             </View>
 
