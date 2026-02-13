@@ -499,6 +499,21 @@ ALTER TABLE resources ENABLE ROW LEVEL SECURITY;
 ALTER TABLE announcements ENABLE ROW LEVEL SECURITY;
 ALTER TABLE library_config ENABLE ROW LEVEL SECURITY;
 ALTER TABLE books ENABLE ROW LEVEL SECURITY;
+
+-- 3.5. Resources & Announcements Policies
+CREATE POLICY "Everyone view resources" ON resources FOR SELECT USING (true);
+CREATE POLICY "Teachers manage own resources" ON resources FOR ALL USING (
+    EXISTS (
+        SELECT 1 FROM subjects s
+        WHERE s.id = resources.subject_id
+        AND s.teacher_id = current_user_teacher_id()
+    )
+    OR get_current_user_role() = 'admin'
+);
+
+CREATE POLICY "Everyone view announcements" ON announcements FOR SELECT USING (true);
+CREATE POLICY "Teachers manage own announcements" ON announcements FOR ALL USING (teacher_id = current_user_teacher_id() OR get_current_user_role() = 'admin');
+
 ALTER TABLE borrowed_books ENABLE ROW LEVEL SECURITY;
 ALTER TABLE book ENABLE ROW LEVEL SECURITY;
 ALTER TABLE library ENABLE ROW LEVEL SECURITY;

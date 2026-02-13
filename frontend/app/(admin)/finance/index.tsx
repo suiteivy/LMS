@@ -137,12 +137,21 @@ export default function FinanceDashboard() {
 
                 {/* Floating Action Button for Bursary Creation */}
                 {activeTab === 'bursaries' && (
-                    <TouchableOpacity
-                        className="absolute bottom-6 right-6 w-14 h-14 bg-[#FF6B00] rounded-full items-center justify-center shadow-lg"
-                        onPress={() => router.push('/(admin)/finance/bursaries/create')}
-                    >
-                        <Ionicons name="add" size={30} color="white" />
-                    </TouchableOpacity>
+                    <View className="absolute bottom-6 right-6 flex-row items-end gap-3">
+                        <TouchableOpacity
+                            className="w-12 h-12 bg-white rounded-full items-center justify-center shadow-lg border border-gray-100"
+                            onPress={() => router.push('/(admin)/finance/bursaries/reports')}
+                        >
+                            <Ionicons name="stats-chart" size={24} color="#FF6B00" />
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                            className="w-14 h-14 bg-[#FF6B00] rounded-full items-center justify-center shadow-lg"
+                            onPress={() => router.push('/(admin)/finance/bursaries/create')}
+                        >
+                            <Ionicons name="add" size={30} color="white" />
+                        </TouchableOpacity>
+                    </View>
                 )}
             </View>
         </View>
