@@ -127,8 +127,8 @@ export default function UserDetailsScreen() {
                 <View className="p-6">
                     <Text className="text-lg font-bold text-gray-900 mb-4">Profile Information</Text>
 
-                    <InfoRow label="User ID (System)" value={user.id} />
-                    <InfoRow label="Role ID" value={roleData?.id || 'N/A'} />
+                    <InfoRow label="User ID" value={roleData?.id || 'N/A'} />
+
                     <InfoRow label="Joined Date" value={format(new Date(user.created_at), 'MMM dd, yyyy')} />
 
                     {user.role === 'student' && roleData && (

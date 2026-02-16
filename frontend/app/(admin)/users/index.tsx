@@ -58,7 +58,7 @@ export default function UsersManagementScreen() {
                         return roleData.id || null;
                     };
 
-                    let displayId = u.id;
+                    let displayId = null;
                     const roleId = getRoleId(u[`${u.role}s`]);
                     if (roleId) displayId = roleId;
 
