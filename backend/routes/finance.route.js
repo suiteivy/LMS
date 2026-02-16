@@ -3,28 +3,35 @@ const router = express.Router();
 const { authMiddleware } = require("../middleware/auth.middleware");
 const { authorizeRoles } = require("../middleware/authRole");
 const {
-    getStudentFees,
-    recordPayment,
-    listAllPayments,
-    getTeacherPayouts,
-    listAllPayouts,
-    processPayout,
+    createFund,
+    getAllFunds,
+    createAllocation,
+    getAllocations,
+    getTransactions,
+    createTransaction,
+    processTransaction,
     getFeeStructures,
     updateFeeStructure
 } = require("../controllers/finance.controller");
 
-// Student Fees
-router.get("/fees/:studentId", authMiddleware, getStudentFees);
-router.get("/payments/all", authMiddleware, authorizeRoles(['admin']), listAllPayments);
-router.post("/payments", authMiddleware, authorizeRoles(['admin']), recordPayment);
+// Funds
+router.get("/funds", authMiddleware, getAllFunds);
+router.post("/funds", authMiddleware, authorizeRoles(['admin']), createFund);
 
-// Teacher Payouts
-router.get("/payouts/:teacherId", authMiddleware, getTeacherPayouts);
-router.get("/payouts/all", authMiddleware, authorizeRoles(['admin']), listAllPayouts);
-router.put("/payouts/:payoutId/process", authMiddleware, authorizeRoles(['admin']), processPayout);
+// Allocations
+router.get("/allocations", authMiddleware, getAllocations);
+router.post("/allocations", authMiddleware, authorizeRoles(['admin']), createAllocation);
+
+// Transactions (Unified Replacement for Payments/Payouts)
+router.get("/transactions", authMiddleware, getTransactions);
+router.post("/transactions", authMiddleware, authorizeRoles(['admin']), createTransaction);
+router.put("/transactions/:id/process", authMiddleware, authorizeRoles(['admin']), processTransaction);
 
 // Fee Structures
 router.get("/fee-structures", authMiddleware, getFeeStructures);
 router.post("/fee-structures", authMiddleware, authorizeRoles(['admin']), updateFeeStructure);
+
+// Helper for Fees
+router.post("/fees/pay", authMiddleware, authorizeRoles(['admin']), recordFeePayment);
 
 module.exports = router;

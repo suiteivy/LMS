@@ -33,50 +33,6 @@ export const validatePassword = (
   };
 };
 
-export const validateSignUpForm = (data: {
-  email: string;
-  password: string;
-  confirmPassword: string;
-  fullName: string;
-  role: string;
-}) => {
-  const errors: Record<string, string> = {};
-
-  if (!data.email) {
-    errors.email = "Email is required";
-  } else if (!validateEmail(data.email)) {
-    errors.email = "Please enter a valid email address";
-  }
-
-  if (!data.password) {
-    errors.password = "Password is required";
-  } else {
-    const passwordValidation = validatePassword(data.password);
-    if (!passwordValidation.valid) {
-      errors.password = passwordValidation.errors[0];
-    }
-  }
-
-  if (!data.confirmPassword) {
-    errors.confirmPassword = "Please confirm your password";
-  } else if (data.password !== data.confirmPassword) {
-    errors.confirmPassword = "Passwords do not match";
-  }
-
-  if (!data.fullName.trim()) {
-    errors.fullName = "Full name is required";
-  }
-
-  if (!data.role) {
-    errors.role = "Please select a role";
-  }
-
-  return {
-    valid: Object.keys(errors).length === 0,
-    errors,
-  };
-};
-
 // errorMessages
 export const getAuthErrorMessage = (error: any): string => {
   if (!error) return "An unknown error occurred";

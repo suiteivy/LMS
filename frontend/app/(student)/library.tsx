@@ -120,26 +120,57 @@ export default function StudentLibrary() {
                     <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={["#0d9488"]} />
                 }
             >
-                {borrowingHistory.filter(b => b.status === 'borrowed').length > 0 && (
+                {borrowingHistory.filter(b => ['borrowed', 'waiting', 'ready_for_pickup', 'overdue'].includes(b.status)).length > 0 && (
                     <View className="mb-6">
                         <View className="flex-row items-center gap-2 mb-4">
                             <History size={18} color="#0d9488" />
-                            <Text className="text-gray-900 font-bold text-lg">Your Active Loans</Text>
+                            <Text className="text-gray-900 font-bold text-lg">Your Activity</Text>
                         </View>
-                        {borrowingHistory.filter(b => b.status === 'borrowed').map((borrow) => (
-                            <View key={borrow.id} className="bg-white p-4 rounded-3xl border border-teal-100 mb-2 flex-row items-center">
-                                <View className="bg-teal-50 p-2 rounded-xl mr-3">
-                                    <BookOpen size={16} color="#0d9488" />
+                        {borrowingHistory.filter(b => ['borrowed', 'waiting', 'ready_for_pickup', 'overdue'].includes(b.status)).map((borrow) => {
+                            let statusColor = "bg-teal-600";
+                            let statusText = "Active";
+                            let statusBg = "bg-teal-50";
+                            let iconColor = "#0d9488";
+
+                            if (borrow.status === 'waiting') {
+                                statusColor = "bg-yellow-500";
+                                statusText = "Requested";
+                                statusBg = "bg-yellow-50";
+                                iconColor = "#eab308";
+                            } else if (borrow.status === 'ready_for_pickup') {
+                                statusColor = "bg-green-600";
+                                statusText = "Ready for Pickup";
+                                statusBg = "bg-green-50";
+                                iconColor = "#16a34a";
+                            } else if (borrow.status === 'overdue') {
+                                statusColor = "bg-red-600";
+                                statusText = "Overdue";
+                                statusBg = "bg-red-50";
+                                iconColor = "#dc2626";
+                            }
+
+                            return (
+                                <View key={borrow.id} className={`bg-white p-4 rounded-3xl border ${borrow.status === 'overdue' ? 'border-red-100' : 'border-gray-100'} mb-2 flex-row items-center shadow-sm`}>
+                                    <View className={`${statusBg} p-2 rounded-xl mr-3`}>
+                                        <BookOpen size={16} color={iconColor} />
+                                    </View>
+                                    <View className="flex-1">
+                                        <Text className="text-gray-900 font-bold text-sm" numberOfLines={1}>{borrow.bookTitle}</Text>
+                                        <Text className="text-gray-400 text-xs">
+                                            {borrow.status === 'waiting'
+                                                ? 'Waiting for approval'
+                                                : borrow.status === 'ready_for_pickup'
+                                                    ? 'Visit library to collect'
+                                                    : `Due: ${new Date(borrow.dueDate).toLocaleDateString()}`
+                                            }
+                                        </Text>
+                                    </View>
+                                    <View className={`${statusColor} px-3 py-1 rounded-full`}>
+                                        <Text className="text-white font-bold text-[10px] uppercase">{statusText}</Text>
+                                    </View>
                                 </View>
-                                <View className="flex-1">
-                                    <Text className="text-gray-900 font-bold text-sm" numberOfLines={1}>{borrow.bookTitle}</Text>
-                                    <Text className="text-gray-400 text-xs">Due: {new Date(borrow.dueDate).toLocaleDateString()}</Text>
-                                </View>
-                                <View className="bg-teal-600 px-3 py-1 rounded-full">
-                                    <Text className="text-white font-bold text-[10px] uppercase">Active</Text>
-                                </View>
-                            </View>
-                        ))}
+                            );
+                        })}
                     </View>
                 )}
 

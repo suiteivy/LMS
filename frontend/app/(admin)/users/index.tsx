@@ -68,7 +68,6 @@ export default function UsersManagementScreen() {
                         name: u.full_name,
                         email: u.email,
                         role: u.role,
-                        status: u.status,
                         joinDate: u.created_at,
                     } as User;
                 });

@@ -42,43 +42,6 @@ export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
 
 // Auth service functions
 export const authService = {
-  // Sign up with email and password
-  signUp: async (
-    email: string,
-    password: string,
-    userData: {
-      full_name: string;
-      role: "admin" | "student" | "teacher" | "parent";
-      institution_id?: string;
-    }
-  ) => {
-    try {
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email,
-        password,
-      });
-
-      if (authError) throw authError;
-
-      if (authData.user) {
-        // Creating user profile in users table
-        const { error: profileError } = await supabase.from("users").insert({
-          id: authData.user.id,
-          email: authData.user.email!,
-          full_name: userData.full_name,
-          role: userData.role,
-          institution_id: userData.institution_id || null,
-        });
-
-        if (profileError) throw profileError;
-      }
-
-      return { data: authData, error: null };
-    } catch (error) {
-      return { data: null, error };
-    }
-  },
-
   // Sign in with email and password
   signIn: async (email: string, password: string) => {
     try {
@@ -138,6 +101,31 @@ export const authService = {
         .from("users")
         .update(updates)
         .eq("id", user.id)
+        .select()
+        .single();
+
+      return { data, error };
+    } catch (error) {
+      return { data: null, error };
+    }
+  },
+
+  // Update role-specific profile (students, teachers, parents table)
+  updateRoleProfile: async (
+    table: "students" | "teachers" | "parents",
+    updates: Record<string, any>
+  ) => {
+    try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (!user) throw new Error("No user found");
+
+      const { data, error } = await supabase
+        .from(table)
+        .update(updates)
+        .eq("user_id", user.id)
         .select()
         .single();
 

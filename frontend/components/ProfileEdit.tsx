@@ -1,10 +1,14 @@
-import { View, Text, Modal, Pressable, TouchableOpacity, KeyboardAvoidingView, Platform, ScrollView, TextInput, ActivityIndicator } from 'react-native'
+import { View, Text, Modal, Pressable, TouchableOpacity, KeyboardAvoidingView, Platform, ScrollView, TextInput, ActivityIndicator, Image, Alert } from 'react-native'
 import { X, Camera, ChevronLeft, CheckCircle2 } from 'lucide-react-native'
 import { useEffect, useState } from 'react'
+import * as ImagePicker from 'expo-image-picker';
+import { supabase } from '@/libs/supabase'; // Adjust path if needed, usually in lib or services
 
 interface EditFormProps {
   visible: boolean
   onClose: () => void
+  currentUser?: any // Pass current user data to pre-fill
+  onUpdate?: () => void // Callback after update
 }
 
 const AuthView = ({ onBack, isVerified, authCode, onAuthChange }: any) => {
@@ -69,11 +73,13 @@ const AuthView = ({ onBack, isVerified, authCode, onAuthChange }: any) => {
   );
 }
 
-export const ProfileEdit = ({ visible, onClose }: EditFormProps) => {
+export const ProfileEdit = ({ visible, onClose, currentUser, onUpdate }: EditFormProps) => {
   const [loading, setLoading] = useState(false)
   const [authCode, setAuthCode] = useState('')
   const [isVerified, setIsVerified] = useState(false)
   const [currentView, setCurrentView] = useState<'profile' | 'auth'>('profile')
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
     if (!visible) {
@@ -81,8 +87,85 @@ export const ProfileEdit = ({ visible, onClose }: EditFormProps) => {
       setLoading(false)
       setIsVerified(false)
       setAuthCode('')
+    } else {
+      // Pre-fill
+      if (currentUser?.avatar_url) setAvatarUrl(currentUser.avatar_url);
     }
-  }, [visible])
+  }, [visible, currentUser])
+
+  const pickImage = async () => {
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 1,
+      });
+
+      if (!result.canceled) {
+        uploadAvatar(result.assets[0].uri);
+      }
+    } catch (error) {
+      Alert.alert('Error', 'Failed to pick image');
+    }
+  };
+
+  const uploadAvatar = async (uri: string) => {
+    try {
+      setUploading(true);
+      // Minimal upload logic - assuming Supabase storage 'avatars' bucket
+      // If not set up, this might fail, so we should allow just passing the URI if local for testing?
+      // But the requirement is "Upload". 
+      // For now, I'll mock the upload if bucket doesn't exist or just handle the file object.
+      // Actually, without `fetch` blob support in RN sometimes tricky.
+
+      const arrayBuffer = await fetch(uri).then(res => res.arrayBuffer());
+      const fileExt = uri.split('.').pop();
+      const fileName = `${Date.now()}.${fileExt}`;
+      const filePath = `${fileName}`;
+
+      // This requires 'avatars' bucket to be public or authorized
+      const { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(filePath, arrayBuffer, {
+          contentType: `image/${fileExt}`,
+          upsert: true
+        });
+
+      if (uploadError) {
+        throw uploadError;
+      }
+
+      const { data } = supabase.storage.from('avatars').getPublicUrl(filePath);
+      setAvatarUrl(data.publicUrl);
+      setUploading(false);
+    } catch (error: any) {
+      Alert.alert("Upload Failed", error.message);
+      setUploading(false);
+    }
+  };
+
+  const handleSave = async () => {
+    if (!currentUser?.id) return;
+    setLoading(true);
+    try {
+      const updates: any = {
+        updated_at: new Date(),
+        avatar_url: avatarUrl
+      };
+
+      const { error } = await supabase.from('users').update(updates).eq('id', currentUser.id);
+      if (error) throw error;
+
+      Alert.alert("Success", "Profile updated");
+      if (onUpdate) onUpdate();
+      onClose();
+    } catch (error: any) {
+      Alert.alert("Error", error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleRequestCode = () => {
     setLoading(true)
@@ -136,7 +219,24 @@ export const ProfileEdit = ({ visible, onClose }: EditFormProps) => {
             <ScrollView className="p-6" showsVerticalScrollIndicator={false}>
               {currentView === "profile" ? (
                 <View>
-                  {/* Identity Section Code Here... */}
+                  {/* Avatar Section */}
+                  <View className="items-center mb-8">
+                    <TouchableOpacity onPress={pickImage} className="relative">
+                      <View className="w-24 h-24 rounded-full bg-gray-100 overflow-hidden items-center justify-center border-4 border-white shadow-sm">
+                        {avatarUrl ? (
+                          <Image source={{ uri: avatarUrl }} className="w-full h-full" />
+                        ) : (
+                          <Text className="text-gray-400 text-2xl font-bold">
+                            {currentUser?.full_name?.charAt(0) || "U"}
+                          </Text>
+                        )}
+                      </View>
+                      <View className="absolute bottom-0 right-0 bg-teal-600 p-2 rounded-full border-2 border-white">
+                        {uploading ? <ActivityIndicator size="small" color="white" /> : <Camera size={14} color="white" />}
+                      </View>
+                    </TouchableOpacity>
+                  </View>
+
                   <View className="mb-8">
                     <Text className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4">
                       Identity
@@ -192,18 +292,22 @@ export const ProfileEdit = ({ visible, onClose }: EditFormProps) => {
               {/* Universal Footer Buttons */}
               <View className="mt-10 mb-10 space-y-3">
                 <TouchableOpacity
-                  disabled={currentView === "auth" && !isVerified}
-                  className={`p-4 rounded-2xl items-center ${
-                    currentView === "auth" && !isVerified
-                      ? "bg-gray-100"
-                      : "bg-teal-600 shadow-md active:opacity-90"
-                  }`}
+                  disabled={(currentView === "auth" && !isVerified) || loading}
+                  onPress={currentView === "profile" ? handleSave : undefined}
+                  className={`p-4 rounded-2xl items-center ${(currentView === "auth" && !isVerified) || loading
+                    ? "bg-gray-100"
+                    : "bg-teal-600 shadow-md active:opacity-90"
+                    }`}
                 >
-                  <Text className={`font-bold text-lg 
-                    ${currentView === "auth" && !isVerified
-                      ? 'text-gray-500' : 'text-white'}`}>
-                    Save Changes
-                  </Text>
+                  {loading ? (
+                    <ActivityIndicator color="white" />
+                  ) : (
+                    <Text className={`font-bold text-lg 
+                        ${currentView === "auth" && !isVerified
+                        ? 'text-gray-500' : 'text-white'}`}>
+                      Save Changes
+                    </Text>
+                  )}
                 </TouchableOpacity>
                 <TouchableOpacity
                   onPress={onClose}

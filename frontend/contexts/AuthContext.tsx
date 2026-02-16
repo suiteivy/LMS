@@ -15,11 +15,6 @@ interface AuthContextType {
   parentId: string | null
   displayId: string | null
   loading: boolean
-  signUp: (email: string, password: string, userData: {
-    full_name: string
-    role: 'admin' | 'student' | 'teacher' | 'parent'
-    institution_id?: string
-  }) => Promise<{ data: any; error: any }>
   signIn: (email: string, password: string) => Promise<{ data: any; error: any }>
   signOut: () => Promise<{ error: any }>
   resetPassword: (email: string) => Promise<{ error: any }>
@@ -226,7 +221,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     parentId,
     displayId,
     loading,
-    signUp: authService.signUp,
     signIn: authService.signIn,
     signOut: authService.signOut,
     resetPassword: authService.resetPassword,

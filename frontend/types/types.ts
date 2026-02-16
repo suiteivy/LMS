@@ -12,7 +12,6 @@ import { TextInputProps } from "react-native";
  */
 
 export type UserRole = "admin" | "teacher" | "student" | "parent";
-export type UserStatus = "pending" | "approved" | "rejected";
 
 export interface User {
   id: string;
@@ -20,7 +19,6 @@ export interface User {
   name: string;
   email: string;
   role: UserRole;
-  status: UserStatus;
   joinDate: string;
   avatar?: string;
   lastActive?: string;
@@ -30,7 +28,6 @@ export interface CreateUserData {
   name: string;
   email: string;
   role: UserRole;
-  status?: UserStatus;
   avatar?: string;
 }
 
@@ -383,7 +380,7 @@ export interface BackendBorrowedBook {
   borrowed_at: string;
   due_date: string;
   returned_at?: string;
-  status: "borrowed" | "overdue" | "returned";
+  status: "borrowed" | "overdue" | "returned" | "waiting" | "ready_for_pickup" | "rejected";
 }
 
 export interface FrontendBorrowedBook {
@@ -398,7 +395,7 @@ export interface FrontendBorrowedBook {
   borrowDate: Date;
   dueDate: Date;
   returnDate?: Date;
-  status: "borrowed" | "overdue" | "returned";
+  status: "borrowed" | "overdue" | "returned" | "waiting" | "ready_for_pickup" | "rejected";
 }
 
 export interface AddBookRequest {
@@ -441,6 +438,18 @@ export interface BorrowedBooksOverviewProps {
   onReturnBook?: (borrowId: string) => void;
   onExtendDueDate?: (borrowId: string, newDueDate: Date) => void;
   onSendReminder?: (borrowId: string) => void;
+}
+
+
+export interface Notification {
+  id: string;
+  user_id: string;
+  title: string;
+  message: string;
+  type: 'info' | 'success' | 'warning' | 'error';
+  is_read: boolean;
+  data?: any;
+  created_at: string;
 }
 
 export type StatsClickHandler = (stat: StatsData) => void;

@@ -44,7 +44,7 @@ const BorrowedBooksOverview: React.FC<BorrowedBooksOverviewProps> = ({
   const [borrowedBooks, setBorrowedBooks] = useState<ExtendedBorrowedBook[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterStatus, setFilterStatus] = useState<
-    "all" | "borrowed" | "overdue" | "returned"
+    "all" | "borrowed" | "overdue" | "returned" | "waiting" | "ready_for_pickup"
   >("all");
   const [showReturnModal, setShowReturnModal] = useState(false);
   const [selectedBook, setSelectedBook] = useState<ExtendedBorrowedBook | null>(null);
@@ -144,6 +144,18 @@ const BorrowedBooksOverview: React.FC<BorrowedBooksOverviewProps> = ({
           border: "border-red-200",
         };
       case "returned":
+        return {
+          bg: "bg-green-100",
+          text: "text-green-800",
+          border: "border-green-200",
+        };
+      case "waiting":
+        return {
+          bg: "bg-yellow-100",
+          text: "text-yellow-800",
+          border: "border-yellow-200",
+        };
+      case "ready_for_pickup":
         return {
           bg: "bg-green-100",
           text: "text-green-800",
@@ -418,6 +430,8 @@ const BorrowedBooksOverview: React.FC<BorrowedBooksOverviewProps> = ({
       all: borrowedBooks.length,
       borrowed: borrowedBooks.filter((book) => book.status === "borrowed")
         .length,
+      waiting: borrowedBooks.filter((book) => book.status === "waiting").length,
+      ready_for_pickup: borrowedBooks.filter((book) => book.status === "ready_for_pickup").length,
       overdue: borrowedBooks.filter((book) => book.status === "overdue").length,
       returned: borrowedBooks.filter((book) => book.status === "returned")
         .length,
@@ -537,37 +551,81 @@ const BorrowedBooksOverview: React.FC<BorrowedBooksOverviewProps> = ({
 
         {borrowedBook.status !== "returned" && (
           <View className="flex-row justify-between">
-            <TouchableOpacity
-              className="bg-teal-600 flex-1 py-2 px-3 rounded-lg mr-2 active:bg-teal-700"
-              onPress={() => handleReturnBook(borrowedBook)}
-            >
-              <Text className="text-white text-center font-medium text-sm">
-                Process Return
-              </Text>
-            </TouchableOpacity>
+            {borrowedBook.status === "waiting" ? (
+              <>
+                <TouchableOpacity
+                  className="bg-red-500 flex-1 py-2 px-3 rounded-lg mr-2 active:bg-red-600"
+                  onPress={() => {
+                    Alert.alert("Reject Request", "Are you sure?", [
+                      { text: "Cancel", style: "cancel" },
+                      {
+                        text: "Reject",
+                        style: "destructive",
+                        onPress: async () => {
+                          await executeWithLoading(() => LibraryAPI.rejectBorrowRequest(borrowedBook.id));
+                          fetchBorrowedBooks();
+                        }
+                      }
+                    ])
+                  }}
+                >
+                  <Text className="text-white text-center font-medium text-sm">Reject</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  className="bg-orange-500 flex-1 py-2 px-3 rounded-lg mr-2 active:bg-orange-600"
+                  onPress={() => {
+                    executeWithLoading(() => LibraryAPI.updateBorrowStatus(borrowedBook.id, 'ready_for_pickup'))
+                      .then(() => fetchBorrowedBooks());
+                  }}
+                >
+                  <Text className="text-white text-center font-medium text-sm">Mark Ready</Text>
+                </TouchableOpacity>
+              </>
+            ) : borrowedBook.status === "ready_for_pickup" ? (
+              <TouchableOpacity
+                className="bg-green-600 flex-1 py-2 px-3 rounded-lg mr-2 active:bg-green-700"
+                onPress={() => {
+                  executeWithLoading(() => LibraryAPI.updateBorrowStatus(borrowedBook.id, 'borrowed'))
+                    .then(() => fetchBorrowedBooks());
+                }}
+              >
+                <Text className="text-white text-center font-medium text-sm">Confirm Pickup</Text>
+              </TouchableOpacity>
+            ) : (
+              <>
+                <TouchableOpacity
+                  className="bg-teal-600 flex-1 py-2 px-3 rounded-lg mr-2 active:bg-teal-700"
+                  onPress={() => handleReturnBook(borrowedBook)}
+                >
+                  <Text className="text-white text-center font-medium text-sm">
+                    Process Return
+                  </Text>
+                </TouchableOpacity>
 
-            <TouchableOpacity
-              className="bg-slate-600 py-2 px-3 rounded-lg mr-2 active:bg-slate-700"
-              onPress={() => handleExtendDueDate(borrowedBook.id, borrowedBook)}
-            >
-              <View className="flex-row items-center">
-                <Ionicons name="calendar-outline" size={14} color="white" />
-                <Text className="text-white text-xs ml-1">Extend</Text>
-              </View>
-            </TouchableOpacity>
+                <TouchableOpacity
+                  className="bg-slate-600 py-2 px-3 rounded-lg mr-2 active:bg-slate-700"
+                  onPress={() => handleExtendDueDate(borrowedBook.id, borrowedBook)}
+                >
+                  <View className="flex-row items-center">
+                    <Ionicons name="calendar-outline" size={14} color="white" />
+                    <Text className="text-white text-xs ml-1">Extend</Text>
+                  </View>
+                </TouchableOpacity>
 
-            <TouchableOpacity
-              className="bg-blue-600 py-2 px-3 rounded-lg mr-2 active:bg-blue-700"
-              onPress={() =>
-                handleSendReminder(
-                  borrowedBook.id,
-                  borrowedBook.borrowerEmail,
-                  borrowedBook.bookTitle
-                )
-              }
-            >
-              <Ionicons name="mail-outline" size={16} color="white" />
-            </TouchableOpacity>
+                <TouchableOpacity
+                  className="bg-blue-600 py-2 px-3 rounded-lg mr-2 active:bg-blue-700"
+                  onPress={() =>
+                    handleSendReminder(
+                      borrowedBook.id,
+                      borrowedBook.borrowerEmail,
+                      borrowedBook.bookTitle
+                    )
+                  }
+                >
+                  <Ionicons name="mail-outline" size={16} color="white" />
+                </TouchableOpacity>
+              </>
+            )}
 
             {fine > 0 && (
               <TouchableOpacity

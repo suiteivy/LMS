@@ -95,6 +95,8 @@ export default function AdminLayout() {
                                 <Tabs.Screen name="management/subjects/create" options={{ href: null }} />
                                 <Tabs.Screen name="subjects/index" options={{ href: null }} />
                                 <Tabs.Screen name="subjects/create" options={{ href: null }} />
+                                <Tabs.Screen name="timetable/index" options={{ href: null }} />
+                                <Tabs.Screen name="finance/funds/index" options={{ href: null }} />
 
                             </Tabs>
                         </View>

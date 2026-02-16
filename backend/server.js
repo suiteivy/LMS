@@ -1,17 +1,20 @@
 const express = require("express");
 const cors = require("cors");
 const dotenv = require("dotenv");
+dotenv.config();
+
 const authRoutes = require("./routes/auth.route");
 const subjectRoutes = require("./routes/subjects.route");
 const institutionRoutes = require("./routes/institution.route");
 const libraryRoutes = require("./routes/library.route");
 const bursaryRoutes = require("./routes/bursary.route");
 const financeRoutes = require("./routes/finance.route");
+const notificationRoutes = require("./routes/notification.route");
 const morgan = require("morgan");
 
 const app = express();
 app.use(express.json());
-dotenv.config();
+// dotenv.config() removed from here
 
 // Middleware
 app.use(cors()); //cors
@@ -45,6 +48,10 @@ app.use("/api/institutions", institutionRoutes);
 app.use("/api/library", libraryRoutes);
 app.use("/api/bursary", bursaryRoutes);
 app.use("/api/finance", financeRoutes);
+app.use("/api/notifications", notificationRoutes);
+app.use("/api/timetable", require("./routes/timetable.route"));
+app.use("/api/funds", require("./routes/finance_funds.route"));
+app.use("/api/attendance", require("./routes/attendance.route"));
 
 // health check
 app.get("/", (req, res) => {
@@ -57,8 +64,16 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: "Internal Server Error" });
 });
 
+process.on('uncaughtException', (err) => {
+  console.error('UNCAUGHT EXCEPTION:', err);
+});
+
+process.on('unhandledRejection', (reason, p) => {
+  console.error('UNHANDLED REJECTION:', reason);
+});
+
 // Start server
-const PORT = process.env.PORT || 4000;
+const PORT = process.env.PORT || 4001;
 app.listen(PORT, () =>
   console.log(`LMS Backend running on http://localhost:${PORT}`)
 );

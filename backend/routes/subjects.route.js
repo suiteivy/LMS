@@ -8,6 +8,7 @@ const {
   getSubjectById,
   createSubject,
   getFilteredSubjects,
+  getSubjectsByClass,
 } = require("../controllers/subject.controller");
 
 // Create a new subject
@@ -18,6 +19,9 @@ router.get("/", authMiddleware, getSubjects);
 
 // Get subjects filtered by user role and ID
 router.get("/filtered", authMiddleware, getFilteredSubjects);
+
+// Get subjects by class ID
+router.get("/class/:classId", authMiddleware, getSubjectsByClass);
 
 // Get subject by ID with role-based access control
 router.get("/:id", authMiddleware, getSubjectById);

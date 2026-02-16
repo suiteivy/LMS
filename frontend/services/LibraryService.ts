@@ -366,6 +366,52 @@ export class LibraryAPI {
       status: backendBorrow.status,
     };
   }
+
+  /**
+   * Update borrow status (waiting -> ready_for_pickup -> borrowed)
+   * @param {string} borrowId
+   * @param {string} status
+   * @returns {Promise<BackendBorrowedBook>}
+   */
+  static async updateBorrowStatus(
+    borrowId: string,
+    status: 'ready_for_pickup' | 'borrowed'
+  ): Promise<BackendBorrowedBook> {
+    try {
+      const headers = await this.getAuthHeaders();
+      const response = await api.put<BackendBorrowedBook>(
+        `/library/status/${borrowId}`,
+        { status },
+        { headers }
+      );
+      return response.data;
+    } catch (error) {
+      console.error("Error updating borrow status:", error);
+      this.handleAPIError(error as AxiosError);
+      throw error;
+    }
+  }
+
+  /**
+   * Reject a borrow request
+   * @param {string} borrowId
+   * @returns {Promise<any>}
+   */
+  static async rejectBorrowRequest(borrowId: string): Promise<any> {
+    try {
+      const headers = await this.getAuthHeaders();
+      const response = await api.post(
+        `/library/reject/${borrowId}`,
+        {},
+        { headers }
+      );
+      return response.data;
+    } catch (error) {
+      console.error("Error rejecting borrow request:", error);
+      this.handleAPIError(error as AxiosError);
+      throw error;
+    }
+  }
 }
 
 /**
@@ -400,3 +446,5 @@ export const useLibraryAPI = () => {
     clearError: (): void => setError(null),
   };
 };
+
+

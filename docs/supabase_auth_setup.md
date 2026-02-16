@@ -12,12 +12,24 @@ This document outlines the steps to configure Supabase authentication with custo
 
 ### 1. Environment Variables
 
-Ensure your `.env` file contains the following variables:
+Ensure your environment files contain the following variables:
 
+**Frontend (`frontend/.env`)**:
 ```
 EXPO_PUBLIC_SUPABASE_URL=your_supabase_project_url
 EXPO_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+EXPO_PUBLIC_API_URL=http://localhost:4000
 ```
+
+**Backend (`backend/.env`)**:
+```
+SUPABASE_URL=your_supabase_project_url
+SUPABASE_ANON_KEY=your_supabase_anon_key
+SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key
+PORT=4000
+```
+
+> ⚠️ The `SUPABASE_SERVICE_ROLE_KEY` is required for admin operations (user enrollment, profile updates). Find it under Project Settings > API > `service_role` key.
 
 ### 2. Database Schema Setup
 
@@ -45,12 +57,10 @@ source backend/supabase/triggers.sql
 
 ### 4. Creating the First Admin User
 
-The first admin user needs to be created manually since regular sign-up creates students by default:
+The first admin user needs to be created manually. After that, use the admin enrollment wizard to create additional users.
 
-1. Sign up a new user through the app.
+1. Sign up a new user through the app or Supabase Dashboard.
 2. In Supabase SQL Editor:
-    a. Update the user's role in the `users` table.
-    b. Insert a corresponding record into the `admins` table.
 
 ```sql
 -- 1. Update user role
@@ -62,6 +72,8 @@ WHERE email = 'admin@example.com';
 INSERT INTO admins (user_id, id)
 VALUES ('replace-with-uuid', 'ADM-2024-001');
 ```
+
+3. After the first admin is created, use the **Admin Enrollment Wizard** (Users > Create User) to enroll students, teachers, parents, and additional admins.
 
 ### 5. Testing Role-Based Access
 
