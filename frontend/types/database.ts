@@ -280,7 +280,7 @@ export interface Database {
           }
         ];
       };
-      enrollments: {
+      class_enrollments: {
         Row: {
           id: string;
           student_id: string; // Now TEXT (Custom ID)

@@ -152,7 +152,7 @@ export default function Index() {
             router.replace("/(student)");
             break;
           case "parent":
-            router.replace("/(parents)");
+            router.replace("/(parent)" as any);
             break;
           default:
             setErrorMessage("Unrecognized user role: " + userData.role);
