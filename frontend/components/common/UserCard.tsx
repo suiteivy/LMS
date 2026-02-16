@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { BaseComponentProps, User } from '@/types/types';
 
 
+
 interface UserCardProps extends BaseComponentProps {
   user: User;
   variant?: 'default' | 'compact' | 'detailed';
@@ -101,9 +102,11 @@ export const UserCard: React.FC<UserCardProps> = ({
 
   const renderDefaultCard = () => (
     <View className="bg-white rounded-xl p-4 shadow-sm mb-3">
-      <View className="flex-row items-start justify-between mb-3">
+      <View className="flex-row items-start justify-between gap-2 mb-3">
         <View className="flex-row items-center space-x-3 flex-1">
+          <View>
           {renderAvatar()}
+          </View>
           <View className="flex-1">
             <Text className="font-semibold text-gray-900" numberOfLines={1}>
               {user.name}
