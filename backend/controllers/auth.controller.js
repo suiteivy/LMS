@@ -99,6 +99,7 @@ exports.enrollUser = async (req, res) => {
     emergency_contact_name,
     emergency_contact_phone,
     class_ids, // array of class UUIDs for student enrollment
+    parent_info, // Optional: { full_name, email, phone, occupation, address }
     // Teacher-specific
     department,
     qualification,
@@ -124,10 +125,10 @@ exports.enrollUser = async (req, res) => {
   }
 
   try {
-    // 1. Generate temporary password
+    // 1. Generate temporary password for primary user
     const tempPassword = generateTempPassword();
 
-    // 2. Create auth user (email auto-confirmed since admin is creating)
+    // 2. Create primary auth user
     const { data: authData, error: authError } =
       await supabase.auth.admin.createUser({
         email,
@@ -139,7 +140,7 @@ exports.enrollUser = async (req, res) => {
     if (authError) throw authError;
     const uid = authData.user.id;
 
-    // 3. Insert into users table (trigger will auto-create role entry)
+    // 3. Insert into users table
     const { error: userInsertError } = await supabase.from("users").insert({
       id: uid,
       email,
@@ -154,11 +155,11 @@ exports.enrollUser = async (req, res) => {
 
     if (userInsertError) throw userInsertError;
 
-    // 4. Small delay to allow trigger to fire and create role entry
+    // Small delay for triggers
     await new Promise(resolve => setTimeout(resolve, 500));
 
-    // 5. Update role-specific table with extra fields
     let customId = null;
+    let parentResult = null;
 
     if (role === 'student') {
       const updateFields = {};
@@ -172,18 +173,70 @@ exports.enrollUser = async (req, res) => {
         await supabase.from('students').update(updateFields).eq('user_id', uid);
       }
 
-      // Get the custom student ID
       const { data: studentData } = await supabase
         .from('students').select('id').eq('user_id', uid).single();
       customId = studentData?.id;
 
-      // Handle class enrollment
+      // Class enrollment
       if (class_ids && class_ids.length > 0 && customId) {
         const enrollmentRows = class_ids.map(classId => ({
           student_id: customId,
           class_id: classId,
         }));
-        await supabase.from('enrollments').insert(enrollmentRows);
+        await supabase.from('class_enrollments').insert(enrollmentRows);
+      }
+
+      // Optional Atomic Parent Creation
+      if (parent_info && parent_info.email && parent_info.full_name) {
+        const parentTempPass = generateTempPassword();
+
+        // Create Parent Auth
+        const { data: pAuthData, error: pAuthError } = await supabase.auth.admin.createUser({
+          email: parent_info.email,
+          password: parentTempPass,
+          email_confirm: true,
+          user_metadata: { full_name: parent_info.full_name },
+        });
+
+        if (!pAuthError) {
+          const pUid = pAuthData.user.id;
+
+          // Create Parent User
+          await supabase.from("users").insert({
+            id: pUid,
+            email: parent_info.email,
+            full_name: parent_info.full_name,
+            role: 'parent',
+            phone: parent_info.phone || null,
+            institution_id: institution_id || null,
+          });
+
+          await new Promise(resolve => setTimeout(resolve, 500));
+
+          // Update Parent role entry
+          await supabase.from('parents').update({
+            occupation: parent_info.occupation || null,
+            address: parent_info.address || null,
+          }).eq('user_id', pUid);
+
+          const { data: pData } = await supabase.from('parents').select('id').eq('user_id', pUid).single();
+
+          if (pData && customId) {
+            // Link parent to student
+            await supabase.from('parent_students').insert({
+              parent_id: pData.id,
+              student_id: customId,
+              relationship: 'guardian'
+            });
+
+            parentResult = {
+              email: parent_info.email,
+              tempPassword: parentTempPass,
+              customId: pData.id,
+              full_name: parent_info.full_name
+            };
+          }
+        }
       }
     }
 
@@ -198,25 +251,18 @@ exports.enrollUser = async (req, res) => {
         await supabase.from('teachers').update(updateFields).eq('user_id', uid);
       }
 
-      // Get the custom teacher ID
       const { data: teacherData } = await supabase
         .from('teachers').select('id').eq('user_id', uid).single();
       customId = teacherData?.id;
 
-      // Assign subjects
       if (subject_ids && subject_ids.length > 0 && customId) {
         for (const subjectId of subject_ids) {
-          await supabase.from('subjects')
-            .update({ teacher_id: customId })
-            .eq('id', subjectId);
+          await supabase.from('subjects').update({ teacher_id: customId }).eq('id', subjectId);
         }
       }
 
-      // Assign as class teacher
       if (class_teacher_id && customId) {
-        await supabase.from('classes')
-          .update({ teacher_id: customId })
-          .eq('id', class_teacher_id);
+        await supabase.from('classes').update({ teacher_id: customId }).eq('id', class_teacher_id);
       }
     }
 
@@ -229,12 +275,10 @@ exports.enrollUser = async (req, res) => {
         await supabase.from('parents').update(updateFields).eq('user_id', uid);
       }
 
-      // Get the custom parent ID
       const { data: parentData } = await supabase
         .from('parents').select('id').eq('user_id', uid).single();
       customId = parentData?.id;
 
-      // Link to students
       if (linked_students && linked_students.length > 0 && customId) {
         const linkRows = linked_students.map(ls => ({
           parent_id: customId,
@@ -251,7 +295,6 @@ exports.enrollUser = async (req, res) => {
       customId = adminData?.id;
     }
 
-    // 6. Return success response
     res.status(201).json({
       message: "User enrolled successfully",
       uid,
@@ -259,6 +302,7 @@ exports.enrollUser = async (req, res) => {
       tempPassword,
       customId,
       role,
+      parentResult // Included if role was student and parent was created
     });
   } catch (err) {
     console.error('Enrollment error:', err);

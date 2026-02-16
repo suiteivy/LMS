@@ -4,18 +4,19 @@ const { authMiddleware } = require("../middleware/auth.middleware");
 const { authorizeRoles } = require("../middleware/authRole");
 const {
     createFund,
-    getAllFunds,
+    getFunds,
     createAllocation,
     getAllocations,
     getTransactions,
     createTransaction,
     processTransaction,
     getFeeStructures,
-    updateFeeStructure
+    updateFeeStructure,
+    recordFeePayment
 } = require("../controllers/finance.controller");
 
 // Funds
-router.get("/funds", authMiddleware, getAllFunds);
+router.get("/funds", authMiddleware, getFunds);
 router.post("/funds", authMiddleware, authorizeRoles(['admin']), createFund);
 
 // Allocations

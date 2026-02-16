@@ -24,12 +24,12 @@ app.use(morgan("dev")); // logging
 
 // handle cors
 app.use((req, res, next) => {
-  res.header("Access-Control-Allow-Origin", [
-    "http://localhost:3000",
-    "https://your-production-url.com",
-    "http://localhost:5173",
-    "*",
-  ]);
+  const origin = req.headers.origin;
+  if (["http://localhost:3000", "http://localhost:5173"].includes(origin)) {
+    res.header("Access-Control-Allow-Origin", origin);
+  } else {
+    res.header("Access-Control-Allow-Origin", "*");
+  }
   res.header(
     "Access-Control-Allow-Headers",
     "Origin, X-Requested-With, Content-Type, Accept, Authorization"

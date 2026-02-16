@@ -13,6 +13,8 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { LibraryAPI, useLibraryAPI } from "@/services/LibraryService";
 import { FrontendBorrowedBook } from "@/types/types";
+import { EmptyState } from "@/components/common/EmptyState";
+import { BookOpen } from "lucide-react-native";
 
 // Extended interface to match your original component structure
 interface ExtendedBorrowedBook extends FrontendBorrowedBook {
@@ -666,8 +668,11 @@ const BorrowedBooksOverview: React.FC<BorrowedBooksOverviewProps> = ({
 
         {/* Error Banner */}
         {error && (
-          <View className="bg-red-100 border border-red-200 rounded-lg p-3 mb-4">
-            <Text className="text-red-800 text-sm">{error}</Text>
+          <View className="bg-red-100 border border-red-200 rounded-lg p-3 mb-4 flex-row justify-between items-center">
+            <Text className="text-red-800 text-sm flex-1">{error}</Text>
+            <TouchableOpacity onPress={() => clearError()}>
+              <Ionicons name="close-circle" size={20} color="#991B1B" />
+            </TouchableOpacity>
           </View>
         )}
 
@@ -745,19 +750,24 @@ const BorrowedBooksOverview: React.FC<BorrowedBooksOverviewProps> = ({
         }
       >
         {filteredBooks.length === 0 ? (
-          <View className="items-center justify-center py-12">
-            <Ionicons name="library-outline" size={64} color="#A1EBE5" />
-            <Text className="text-gray-500 text-center mt-4 text-lg">
-              {searchQuery || filterStatus !== "all"
-                ? "No books match your search criteria."
-                : "No borrowed books found."}
-            </Text>
-            <Text className="text-gray-400 text-center mt-2 text-sm">
-              {searchQuery || filterStatus !== "all"
-                ? "Try adjusting your search or filters."
-                : "Books will appear here when users borrow them."}
-            </Text>
-          </View>
+          <EmptyState
+            title={searchQuery || filterStatus !== "all" ? "No matches found" : "No borrowed books"}
+            message={searchQuery || filterStatus !== "all"
+              ? "Try adjusting your search or filters to find what you're looking for."
+              : "There are currently no books borrowed from the library."
+            }
+            icon={BookOpen}
+            color="#0D9488"
+            actionLabel={searchQuery || filterStatus !== "all" ? "Clear Filters" : "Refresh List"}
+            onAction={() => {
+              if (searchQuery || filterStatus !== "all") {
+                setSearchQuery("");
+                setFilterStatus("all");
+              } else {
+                onRefresh();
+              }
+            }}
+          />
         ) : (
           <View className="flex-row flex-wrap gap-4">
             {filteredBooks.map((book) => (

@@ -18,7 +18,6 @@ export default function RootLayout() {
             }}>
               <Stack.Screen name="index" />
               <Stack.Screen name="(auth)/signIn" />
-              <Stack.Screen name="(auth)/signUp" />
               <Stack.Screen name="(admin)" />
               <Stack.Screen name="(student)" />
               <Stack.Screen name="(teacher)" />

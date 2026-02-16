@@ -235,14 +235,14 @@ const FeeStructureSection: React.FC<FeeStructureSectionProps> = ({
           <Text className="text-gray-500">Loading fee structures...</Text>
         </View>
       ) : (
-        <FlatList
-          data={feeStructures}
-          renderItem={renderFeeStructureItem}
-          keyExtractor={(item) => item.id}
-          showsVerticalScrollIndicator={false}
-          refreshing={loading}
-          onRefresh={onRefresh}
-          ListEmptyComponent={
+        <View className="pb-20">
+          {feeStructures.length > 0 ? (
+            feeStructures.map((item) => (
+              <View key={item.id}>
+                {renderFeeStructureItem({ item })}
+              </View>
+            ))
+          ) : (
             <View className="flex-1 justify-center items-center py-20">
               <Text className="text-gray-500 text-lg">
                 No fee structures created yet
@@ -259,8 +259,8 @@ const FeeStructureSection: React.FC<FeeStructureSectionProps> = ({
                 </Text>
               </TouchableOpacity>
             </View>
-          }
-        />
+          )}
+        </View>
       )}
 
       {/* Fee Structure Form Modal */}

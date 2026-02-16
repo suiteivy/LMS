@@ -6,6 +6,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { User } from '@/types/types'; // Your User type
 import { UserCard } from '@/components/common/UserCard'; // Assuming you have this
 import { useSchool } from '@/contexts/SchoolContext'; // If needed for school context
+import { EmptyState } from '@/components/common/EmptyState';
+import { Users } from 'lucide-react-native';
 
 export default function UsersManagementScreen() {
     const router = useRouter();
@@ -164,10 +166,15 @@ export default function UsersManagementScreen() {
                         </View>
                     )}
                     ListEmptyComponent={
-                        <View className="items-center py-20">
-                            <Ionicons name="people-outline" size={48} color="#9CA3AF" />
-                            <Text className="text-gray-500 mt-4">No users found</Text>
-                        </View>
+                        <EmptyState
+                            title="No users found"
+                            message={searchQuery
+                                ? `No users match "${searchQuery}" in the ${activeFilter} category.`
+                                : `There are no users registered under the ${activeFilter} role yet.`
+                            }
+                            icon={Users}
+                            color="#6366f1"
+                        />
                     }
                 />
             )}

@@ -4,7 +4,7 @@ const { hasPaidAtLeastHalf } = require("../utils/feeUtils");
 // CREATE SUBJECT
 exports.createSubject = async (req, res) => {
   try {
-    const { title, description, fee_amount, teacher_id, fee_config, materials } = req.body;
+    const { title, description, fee_amount, teacher_id, fee_config, materials, metadata } = req.body;
     let teacherId;
     const institution_id = req.institution_id;
 
@@ -15,11 +15,6 @@ exports.createSubject = async (req, res) => {
     }
 
     if (req.userRole === "teacher") {
-      // Need to find this teacher's record ID? Or use User ID as teacher_id?
-      // Schema: subjects.teacher_id -> teachers.id (or text/uuid?)
-      // Check database.ts: teacher_id is TEXT?
-      // Usually it's Teacher ID (UUID).
-      // Let's resolve Teacher ID from User ID.
       const { data: teacher } = await supabase.from('teachers').select('id').eq('user_id', req.userId).single();
       if (!teacher) return res.status(403).json({ error: "Teacher profile not found" });
       teacherId = teacher.id;
@@ -40,7 +35,8 @@ exports.createSubject = async (req, res) => {
         teacher_id: teacherId,
         institution_id,
         fee_config: fee_config || {},
-        materials: materials || []
+        materials: materials || [],
+        metadata: metadata || {}
       },
     ]).select().single();
 
@@ -109,7 +105,10 @@ exports.getSubjects = async (req, res) => {
   try {
     const { data, error } = await supabase
       .from("subjects")
-      .select("*") // Includes fee_config, materials
+      .select(`
+        *,
+        teacher:teachers(user:users(full_name))
+      `)
       .eq("institution_id", institution_id)
       .order('title');
 

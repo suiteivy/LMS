@@ -296,30 +296,27 @@ const TeacherPayoutSection: React.FC<TeacherPayoutSectionProps> = ({
             <Text className="text-gray-400 text-sm mt-2">Please wait...</Text>
           </View>
         ) : (
-          <FlatList
-            data={displayPayouts}
-            renderItem={renderPayoutItem}
-            keyExtractor={(item) => item.id}
-            showsVerticalScrollIndicator={false}
-            refreshing={loading}
-            onRefresh={onRefresh}
-            contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 20 }}
-            ListEmptyComponent={
+          <View className="px-4 pb-20">
+            {displayPayouts.length > 0 ? (
+              <>
+                <Text className="text-lg font-semibold text-gray-900 mb-3">
+                  All Payouts ({displayPayouts.length})
+                </Text>
+                {displayPayouts.map((item) => (
+                  <View key={item.id}>
+                    {renderPayoutItem({ item })}
+                  </View>
+                ))}
+              </>
+            ) : (
               <View className="flex-1 justify-center items-center py-20">
                 <Text className="text-gray-500 text-lg">No payouts found</Text>
                 <Text className="text-gray-400 text-sm mt-2 text-center">
                   Teacher payouts will appear here when hours are logged
                 </Text>
               </View>
-            }
-            ListHeaderComponent={
-              displayPayouts.length > 0 ? (
-                <Text className="text-lg font-semibold text-gray-900 mb-3">
-                  All Payouts ({displayPayouts.length})
-                </Text>
-              ) : null
-            }
-          />
+            )}
+          </View>
         )
       }
 

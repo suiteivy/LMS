@@ -71,14 +71,14 @@ export class FinanceService {
     }
 
     static async processPayout(payoutId: string) {
-        const headers = await this.getAuthHeaders();
+        const headers = await FinanceService.getAuthHeaders();
         const response = await api.put(`/finance/transactions/${payoutId}/process`, {}, { headers });
         return response.data;
     }
 
     static async getFeeStructures() {
         // Now fetched from subjects
-        const headers = await this.getAuthHeaders();
+        const headers = await FinanceService.getAuthHeaders();
         // We added getFeeStructures to finance controller (planned)
         // Or if we didn't yet, we need to.
         const response = await api.get('/finance/fee-structures', { headers });

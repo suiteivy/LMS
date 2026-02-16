@@ -43,7 +43,7 @@ export type StatsColor =
   | "gray";
 
 export interface StatsData {
-  title: string;
+  label: string;
   value: string;
   icon: string;
   color: StatsColor;
@@ -375,7 +375,13 @@ export interface BackendBorrowedBook {
     users?: {
       full_name: string;
       email: string;
+      phone?: string;
     };
+  };
+  users?: {
+    full_name: string;
+    email: string;
+    phone?: string;
   };
   borrowed_at: string;
   due_date: string;
@@ -392,6 +398,7 @@ export interface FrontendBorrowedBook {
   borrowerName: string;
   borrowerDisplayId?: string;
   borrowerEmail: string;
+  borrowerPhone?: string;
   borrowDate: Date;
   dueDate: Date;
   returnDate?: Date;

@@ -1,9 +1,15 @@
 import { useState } from "react";
 import { Alert } from "react-native";
 import { SubjectFormData } from "../types/types";
+import { SubjectAPI } from "../services/SubjectService";
+import { useAuth } from "../contexts/AuthContext";
+import { useRouter } from "expo-router";
 
-//  hook to manage Subject form state and actions
+// hook to manage Subject form state and actions
 export const useSubjectForm = () => {
+  const { profile } = useAuth();
+  const router = useRouter();
+
   // Initializing form state with its default values
   const [formData, setFormData] = useState<SubjectFormData>({
     title: "",
@@ -76,27 +82,58 @@ export const useSubjectForm = () => {
   const validateForm = () => {
     const { title, description, category, price } = formData;
     if (!title || !description || !category || !price) {
-      Alert.alert("Error", "Please fill in all required fields");
+      Alert.alert("Error", "Please fill in all required fields (Title, Description, Category, Price)");
       return false;
     }
     return true;
   };
 
-  // Handle form submission with a simulated async delay
+  // Handle form submission with real API call
   const handleSubmit = async () => {
     if (!validateForm()) return;
 
     setIsSubmitting(true);
-    setTimeout(() => {
-      console.log("Subject submitted:", formData);
+    try {
+      const metadata = {
+        shortDescription: formData.shortDescription,
+        category: formData.category,
+        level: formData.level,
+        language: formData.language,
+        duration: formData.duration,
+        maxStudents: formData.maxStudents,
+        startDate: formData.startDate,
+        tags: formData.tags,
+        prerequisites: formData.prerequisites,
+        learningOutcomes: formData.learningOutcomes,
+        image: formData.SubjectImage,
+        isPublic: formData.isPublic,
+        allowDiscussions: formData.allowDiscussions,
+        certificateEnabled: formData.certificateEnabled,
+      };
+
+      await SubjectAPI.createSubject({
+        title: formData.title,
+        description: formData.description,
+        fee_amount: parseFloat(formData.price) || 0,
+        institution_id: profile?.institution_id || "",
+        // @ts-ignore - Validated by backend
+        metadata: metadata
+      });
+
       Alert.alert("Success", "Subject created successfully!");
+      router.back();
+    } catch (err: any) {
+      console.error("Submit failed:", err);
+      // Global interceptor handles the toast, but we might want a specific error here
+    } finally {
       setIsSubmitting(false);
-    }, 2000);
+    }
   };
 
   // Save the current form state as a draft
   const saveDraft = () => {
-    Alert.alert("Draft", "Subject saved as draft");
+    Alert.alert("Draft", "Subject saved as draft (locally)");
+    // Here you could save to AsyncStorage
   };
 
   //  all form state and handler functions Returned

@@ -1,7 +1,4 @@
-import axios from 'axios';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-
-const API_URL = process.env.EXPO_PUBLIC_API_URL + '/api/timetable';
+import { api } from "./api";
 
 // Types
 export interface TimetableEntry {
@@ -36,70 +33,59 @@ export interface CreateTimetableDto {
     room_number?: string;
 }
 
-const getAuthHeader = async () => {
-    const token = await AsyncStorage.getItem('token');
-    return { Authorization: `Bearer ${token}` };
-};
-
 export const TimetableAPI = {
     // Admin: Create entry
-    createEntry: async (data: CreateTimetableDto) => {
-        const headers = await getAuthHeader();
+    createEntry: async (data: CreateTimetableDto): Promise<TimetableEntry> => {
         try {
-            const response = await axios.post(`${API_URL}`, data, { headers });
+            const response = await api.post("/timetable", data);
             return response.data;
-        } catch (error: any) {
-            console.error("Create timetable error", error.response?.data || error.message);
-            throw error.response?.data || { error: 'Failed to create timetable entry' };
+        } catch (error) {
+            console.error("Create timetable error", error);
+            throw error;
         }
     },
 
     // Get Class Timetable
-    getClassTimetable: async (classId: string) => {
-        const headers = await getAuthHeader();
+    getClassTimetable: async (classId: string): Promise<TimetableEntry[]> => {
         try {
-            const response = await axios.get(`${API_URL}/class/${classId}`, { headers });
+            const response = await api.get(`/timetable/class/${classId}`);
             return response.data;
-        } catch (error: any) {
-            console.error("Get class timetable error", error.response?.data || error.message);
-            throw error.response?.data || { error: 'Failed to fetch timetable' };
+        } catch (error) {
+            console.error("Get class timetable error", error);
+            throw error;
         }
     },
 
     // Get Teacher Timetable
-    getTeacherTimetable: async (teacherId?: string) => {
-        const headers = await getAuthHeader();
+    getTeacherTimetable: async (teacherId?: string): Promise<TimetableEntry[]> => {
         try {
-            const url = teacherId ? `${API_URL}/teacher/${teacherId}` : `${API_URL}/teacher`;
-            const response = await axios.get(url, { headers });
+            const url = teacherId ? `/timetable/teacher/${teacherId}` : `/timetable/teacher`;
+            const response = await api.get(url);
             return response.data;
-        } catch (error: any) {
-            console.error("Get teacher timetable error", error.response?.data || error.message);
-            throw error.response?.data || { error: 'Failed to fetch timetable' };
+        } catch (error) {
+            console.error("Get teacher timetable error", error);
+            throw error;
         }
     },
 
     // Update Entry
-    updateEntry: async (id: string, data: Partial<CreateTimetableDto>) => {
-        const headers = await getAuthHeader();
+    updateEntry: async (id: string, data: Partial<CreateTimetableDto>): Promise<TimetableEntry> => {
         try {
-            const response = await axios.put(`${API_URL}/${id}`, data, { headers });
+            const response = await api.put(`/timetable/${id}`, data);
             return response.data;
-        } catch (error: any) {
-            console.error("Update timetable error", error.response?.data || error.message);
-            throw error.response?.data || { error: 'Failed to update entry' };
+        } catch (error) {
+            console.error("Update timetable error", error);
+            throw error;
         }
     },
 
     // Delete Entry
-    deleteEntry: async (id: string) => {
-        const headers = await getAuthHeader();
+    deleteEntry: async (id: string): Promise<void> => {
         try {
-            const response = await axios.delete(`${API_URL}/${id}`, { headers });
-            return response.data;
-        } catch (error: any) {
-            console.error("Delete timetable error", error.response?.data || error.message);
-            throw error.response?.data || { error: 'Failed to delete entry' };
+            await api.delete(`/timetable/${id}`);
+        } catch (error) {
+            console.error("Delete timetable error", error);
+            throw error;
         }
     }
 };

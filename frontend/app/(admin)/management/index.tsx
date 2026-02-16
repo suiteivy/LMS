@@ -16,6 +16,7 @@ import {
     Shield
 } from 'lucide-react-native';
 import { router } from "expo-router";
+import { useDashboardStats } from "@/hooks/useDashboardStats";
 
 interface FeatureCardProps {
     icon: any;
@@ -57,6 +58,11 @@ const FeatureCard = ({ icon: Icon, title, description, color, bgColor, route, ba
 );
 
 export default function AdminManagement() {
+    const { stats, loading } = useDashboardStats();
+
+    // Map stats to our display row
+    const getStatValue = (label: string) => stats.find(s => s.label === label)?.value || "0";
+
     const features: FeatureCardProps[] = [
         {
             icon: BarChart3,
@@ -124,19 +130,22 @@ export default function AdminManagement() {
                             Central control for all system features
                         </Text>
 
-                        {/* Quick Stats Row - Placeholder for Admin Stats */}
+                        {/* Quick Stats Row */}
                         <View className="flex-row gap-3 mb-6">
-                            <View className="flex-1 bg-gray-900 p-4 rounded-2xl">
-                                <Text className="text-gray-400 text-xs uppercase">System Status</Text>
-                                <Text className="text-white text-lg font-bold">Online</Text>
+                            <View className="flex-1 bg-gray-900 p-4 rounded-2xl shadow-sm">
+                                <Text className="text-gray-400 text-[10px] font-bold uppercase tracking-wider">System Status</Text>
+                                <View className="flex-row items-center mt-1">
+                                    <View className="w-2 h-2 rounded-full bg-green-500 mr-2" />
+                                    <Text className="text-white text-lg font-bold">Healthy</Text>
+                                </View>
                             </View>
-                            <View className="flex-1 bg-blue-600 p-4 rounded-2xl">
-                                <Text className="text-blue-100 text-xs uppercase">Active Users</Text>
-                                <Text className="text-white text-2xl font-bold">1,205</Text>
+                            <View className="flex-1 bg-blue-600 p-4 rounded-2xl shadow-sm">
+                                <Text className="text-blue-100 text-[10px] font-bold uppercase tracking-wider">Total Students</Text>
+                                <Text className="text-white text-2xl font-black mt-1">{loading ? "..." : getStatValue("Total Students")}</Text>
                             </View>
-                            <View className="flex-1 bg-orange-500 p-4 rounded-2xl">
-                                <Text className="text-orange-100 text-xs uppercase">Pending Tasks</Text>
-                                <Text className="text-white text-2xl font-bold">8</Text>
+                            <View className="flex-1 bg-orange-500 p-4 rounded-2xl shadow-sm">
+                                <Text className="text-orange-100 text-[10px] font-bold uppercase tracking-wider">Teachers</Text>
+                                <Text className="text-white text-2xl font-black mt-1">{loading ? "..." : getStatValue("Teachers")}</Text>
                             </View>
                         </View>
 

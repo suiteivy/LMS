@@ -38,6 +38,15 @@ interface FormData {
     occupation: string;
     parent_address: string;
     linked_students: { student_id: string; relationship: string; name?: string }[];
+    // Atomic Parent Creation (while enrolling student)
+    create_parent: boolean;
+    parent_info: {
+        full_name: string;
+        email: string;
+        phone: string;
+        occupation: string;
+        address: string;
+    };
 }
 
 const initialFormData: FormData = {
@@ -50,6 +59,14 @@ const initialFormData: FormData = {
     subject_ids: [], class_teacher_id: '',
     occupation: '', parent_address: '',
     linked_students: [],
+    create_parent: false,
+    parent_info: {
+        full_name: '',
+        email: '',
+        phone: '',
+        occupation: '',
+        address: '',
+    },
 };
 
 // ---------- Component ----------
@@ -131,14 +148,16 @@ export default function CreateUserScreen() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     ...form,
-                    role: form.role,
+                    parent_info: form.create_parent ? form.parent_info : undefined,
                 }),
             });
+
             const data = await response.json();
             if (!response.ok) throw new Error(data.error || 'Enrollment failed');
             setResult(data);
             setStep(4);
         } catch (err: any) {
+            console.error("Enrollment error:", err);
             Alert.alert('Error', err.message);
         } finally {
             setLoading(false);
@@ -315,7 +334,6 @@ export default function CreateUserScreen() {
 
     const renderStudentDetails = () => (
         <View>
-            <Text className="text-lg font-bold text-gray-900 mb-4">📚 Student Details</Text>
             {renderPicker('Grade Level', GRADE_OPTIONS, form.grade_level, v => updateForm('grade_level', v))}
             {renderInput('Academic Year', 'academic_year', '2026')}
             {renderInput('Parent/Guardian Contact', 'parent_contact', 'Phone number')}
@@ -333,6 +351,65 @@ export default function CreateUserScreen() {
                 'class_ids',
                 (c: any) => `${c.name} (${c.grade_level || 'N/A'})`
             )}
+
+            {/* Atomic Parent Creation Toggle */}
+            <View className="bg-blue-50 rounded-2xl p-5 mb-4 border border-blue-100">
+                <View className="flex-row items-center justify-between mb-4">
+                    <View className="flex-1 mr-3">
+                        <Text className="text-blue-900 font-bold text-base">Create Parent Account</Text>
+                        <Text className="text-blue-700 text-xs">Simultaneously register and link a guardian</Text>
+                    </View>
+                    <TouchableOpacity
+                        onPress={() => updateForm('create_parent', !form.create_parent)}
+                        className={`w-12 h-6 rounded-full px-1 justify-center ${form.create_parent ? 'bg-blue-600 items-end' : 'bg-gray-300 items-start'}`}
+                    >
+                        <View className="w-4 h-4 rounded-full bg-white shadow-sm" />
+                    </TouchableOpacity>
+                </View>
+
+                {form.create_parent && (
+                    <View className="pt-2">
+                        <View className="mb-4">
+                            <Text className="text-sm font-semibold text-blue-800 mb-1.5">Parent Full Name *</Text>
+                            <TextInput
+                                className="bg-white border border-blue-100 rounded-xl px-4 py-3 text-gray-900"
+                                placeholder="Guardian's name"
+                                value={form.parent_info.full_name}
+                                onChangeText={v => setForm(f => ({ ...f, parent_info: { ...f.parent_info, full_name: v } }))}
+                            />
+                        </View>
+                        <View className="mb-4">
+                            <Text className="text-sm font-semibold text-blue-800 mb-1.5">Parent Email *</Text>
+                            <TextInput
+                                className="bg-white border border-blue-100 rounded-xl px-4 py-3 text-gray-900"
+                                placeholder="parent@example.com"
+                                keyboardType="email-address"
+                                value={form.parent_info.email}
+                                onChangeText={v => setForm(f => ({ ...f, parent_info: { ...f.parent_info, email: v } }))}
+                            />
+                        </View>
+                        <View className="mb-4">
+                            <Text className="text-sm font-semibold text-blue-800 mb-1.5">Parent Phone</Text>
+                            <TextInput
+                                className="bg-white border border-blue-100 rounded-xl px-4 py-3 text-gray-900"
+                                placeholder="+254..."
+                                keyboardType="phone-pad"
+                                value={form.parent_info.phone}
+                                onChangeText={v => setForm(f => ({ ...f, parent_info: { ...f.parent_info, phone: v } }))}
+                            />
+                        </View>
+                        <View className="mb-2">
+                            <Text className="text-sm font-semibold text-blue-800 mb-1.5">Parent Occupation</Text>
+                            <TextInput
+                                className="bg-white border border-blue-100 rounded-xl px-4 py-3 text-gray-900"
+                                placeholder="e.g. Doctor"
+                                value={form.parent_info.occupation}
+                                onChangeText={v => setForm(f => ({ ...f, parent_info: { ...f.parent_info, occupation: v } }))}
+                            />
+                        </View>
+                    </View>
+                )}
+            </View>
         </View>
     );
 
@@ -512,6 +589,16 @@ export default function CreateUserScreen() {
                 </View>
             )}
 
+            {form.role === 'student' && form.create_parent && (
+                <View className="bg-blue-50 rounded-2xl border border-blue-100 p-4 mb-4">
+                    <Text className="text-sm font-bold text-blue-400 uppercase tracking-wide mb-2">Parent to be Created</Text>
+                    {renderReviewRow('Parent Name', form.parent_info.full_name)}
+                    {renderReviewRow('Parent Email', form.parent_info.email)}
+                    {renderReviewRow('Parent Phone', form.parent_info.phone)}
+                    {renderReviewRow('Occupation', form.parent_info.occupation)}
+                </View>
+            )}
+
             {form.role === 'teacher' && (
                 <View className="bg-white rounded-2xl border border-gray-100 p-4 mb-4">
                     <Text className="text-sm font-bold text-gray-400 uppercase tracking-wide mb-2">Teacher Details</Text>
@@ -556,9 +643,17 @@ export default function CreateUserScreen() {
             <Text className="text-2xl font-bold text-gray-900 mb-2">User Enrolled!</Text>
             <Text className="text-gray-500 text-center mb-8">The user has been successfully created</Text>
 
-            <View className="bg-white rounded-2xl border border-gray-100 p-5 w-full mb-6">
+            <View className="bg-white rounded-2xl border border-gray-100 p-5 w-full mb-6 relative overflow-hidden">
+                {/* Primary Student Credentials */}
+                <View className="mb-2 flex-row items-center">
+                    <View className="w-6 h-6 rounded-full bg-orange-100 items-center justify-center mr-2">
+                        <Ionicons name="school" size={12} color="#FF6B00" />
+                    </View>
+                    <Text className="font-bold text-gray-900">{form.role?.toUpperCase()} CREDENTIALS</Text>
+                </View>
+
                 <View className="flex-row justify-between items-center py-2 border-b border-gray-50">
-                    <Text className="text-gray-500">Custom ID</Text>
+                    <Text className="text-gray-500">ID</Text>
                     <Text className="font-bold text-gray-900">{result?.customId || 'N/A'}</Text>
                 </View>
                 <View className="flex-row justify-between items-center py-2 border-b border-gray-50">
@@ -574,6 +669,35 @@ export default function CreateUserScreen() {
                         </TouchableOpacity>
                     </View>
                 </View>
+
+                {/* Optional Parent Credentials */}
+                {result?.parentResult && (
+                    <View className="mt-6 pt-6 border-t-2 border-dotted border-gray-100">
+                        <View className="mb-2 flex-row items-center">
+                            <View className="w-6 h-6 rounded-full bg-blue-100 items-center justify-center mr-2">
+                                <Ionicons name="heart" size={12} color="#3B82F6" />
+                            </View>
+                            <Text className="font-bold text-gray-900">PARENT CREDENTIALS</Text>
+                        </View>
+                        <View className="flex-row justify-between items-center py-2 border-b border-gray-50">
+                            <Text className="text-gray-500">ID</Text>
+                            <Text className="font-bold text-gray-900">{result.parentResult.customId}</Text>
+                        </View>
+                        <View className="flex-row justify-between items-center py-2 border-b border-gray-50">
+                            <Text className="text-gray-500">Email</Text>
+                            <Text className="font-bold text-gray-900">{result.parentResult.email}</Text>
+                        </View>
+                        <View className="flex-row justify-between items-center py-2">
+                            <Text className="text-gray-500">Temp Password</Text>
+                            <View className="flex-row items-center">
+                                <Text className="font-mono font-bold text-lg text-blue-600 mr-2">{result.parentResult.tempPassword}</Text>
+                                <TouchableOpacity onPress={() => copyToClipboard(result.parentResult.tempPassword)}>
+                                    <Ionicons name="copy-outline" size={20} color="#6B7280" />
+                                </TouchableOpacity>
+                            </View>
+                        </View>
+                    </View>
+                )}
             </View>
 
             <View className="bg-orange-50 rounded-xl p-4 w-full mb-6">

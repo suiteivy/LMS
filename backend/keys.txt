@@ -1,0 +1,1 @@
+createTimetableEntry, getClassTimetable, getTeacherTimetable, updateTimetableEntry, deleteTimetableEntry

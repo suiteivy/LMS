@@ -39,6 +39,6 @@ router.delete(
 router.get("/class/:class_id", authMiddleware, getClassTimetable);
 
 // View: Teacher timetable
-router.get("/teacher/:teacher_id?", authMiddleware, getTeacherTimetable);
+router.get("/teacher{/:teacher_id}", authMiddleware, getTeacherTimetable);
 
 module.exports = router;

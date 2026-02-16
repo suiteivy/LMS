@@ -31,6 +31,14 @@ const AddUpdateDeleteBooksForm: React.FC = () => {
     quantity: "",
   });
 
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const filteredBooks = books.filter(book =>
+    book.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    book.author.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    book.isbn.includes(searchQuery)
+  );
+
   const { loading, error, executeWithLoading, clearError } = useLibraryAPI();
 
   // Fetch library + borrowed books
@@ -226,18 +234,36 @@ const AddUpdateDeleteBooksForm: React.FC = () => {
         </View>
       )}
 
+      {/* Search Bar */}
+      <View className="px-4 py-2">
+        <View className="flex-row items-center bg-white border border-teal-100 rounded-xl px-4 py-2 shadow-sm">
+          <Ionicons name="search" size={20} color="#9CA3AF" />
+          <TextInput
+            className="flex-1 ml-2 text-slate-800"
+            placeholder="Search books by title, author, or ISBN..."
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+          />
+          {searchQuery.length > 0 && (
+            <TouchableOpacity onPress={() => setSearchQuery("")}>
+              <Ionicons name="close-circle" size={18} color="#9CA3AF" />
+            </TouchableOpacity>
+          )}
+        </View>
+      </View>
+
       {/* Books List */}
       <ScrollView className="flex-1 p-4">
         <Text className="text-lg font-semibold mb-3">Library Books</Text>
-        {books.length === 0 ? (
+        {filteredBooks.length === 0 ? (
           <View className="items-center justify-center py-6">
             <Ionicons name="book-outline" size={48} color="#A1EBE5" />
             <Text className="text-gray-500 text-center mt-4">
-              No books added yet.
+              {books.length === 0 ? "No books added yet." : "No books match your search."}
             </Text>
           </View>
         ) : (
-          books.map((book) => renderBookItem(book))
+          filteredBooks.map((book) => renderBookItem(book))
         )}
 
         {/* Borrowed Books */}

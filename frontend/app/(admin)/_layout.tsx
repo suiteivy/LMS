@@ -3,7 +3,7 @@ import { SchoolProvider } from '@/contexts/SchoolContext';
 import { AuthGuard } from '@/components/AuthGuard';
 import { View, Platform } from 'react-native';
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { House, Users, Wallet, Settings, LayoutGrid } from "lucide-react-native";
+import { Building, Users, Wallet, Settings, LayoutGrid } from "lucide-react-native";
 
 export default function AdminLayout() {
     const insets = useSafeAreaInsets();
@@ -44,7 +44,7 @@ export default function AdminLayout() {
                                     options={{
                                         title: "Home",
                                         tabBarIcon: ({ size, color }) => (
-                                            <House size={size} color={color} strokeWidth={2} />
+                                            <Building size={size} color={color} strokeWidth={2} />
                                         ),
                                     }}
                                 />

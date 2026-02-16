@@ -13,7 +13,8 @@ import {
   School,
   GraduationCap,
   BookOpen,
-  BarChart3
+  BarChart3,
+  LogOut
 } from 'lucide-react-native';
 import { useDashboardStats } from "@/hooks/useDashboardStats";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -123,29 +124,29 @@ export default function AdminDashboard() {
                 className="relative p-2 bg-white rounded-full border border-gray-100 shadow-sm active:opacity-70"
                 onPress={handleLogout}
               >
-                <Text>🚪</Text>
+                <LogOut size={24} color="#374151" />
               </TouchableOpacity>
             </View>
 
             {/* --- 2. Quick Status Cards --- */}
             <View className="flex-row gap-4 mb-8">
               {statsLoading ? (
-                <Text>Loading stats...</Text>
+                <View className="flex-1 bg-gray-200 h-24 rounded-3xl animate-pulse" />
               ) : (
                 <>
-                  <View className="flex-1 bg-black p-4 rounded-3xl shadow-sm">
+                  <View className="flex-1 bg-gray-900 p-5 rounded-3xl shadow-sm">
                     <Users size={20} color="white" />
-                    <Text className="text-white text-2xl font-bold mt-2">
-                      {stats.find(s => s.title === "Total Students")?.value || "0"}
+                    <Text className="text-white text-2xl font-black mt-2">
+                      {stats.find(s => s.label === "Total Students")?.value || "0"}
                     </Text>
-                    <Text className="text-white text-xs font-medium uppercase italic">Total Students</Text>
+                    <Text className="text-gray-400 text-[10px] font-bold uppercase tracking-wider mt-1">Total Students</Text>
                   </View>
-                  <View className="flex-1 bg-white p-4 rounded-3xl border border-gray-100 shadow-sm">
-                    <Wallet size={20} color="#FF6B00" />
-                    <Text className="text-gray-900 text-2xl font-bold mt-2">
-                      {stats.find(s => s.title === "Revenue")?.value || "$0"}
+                  <View className="flex-1 bg-white p-5 rounded-3xl border border-gray-100 shadow-sm">
+                    <Wallet size={20} color="#0D9488" />
+                    <Text className="text-gray-900 text-2xl font-black mt-2">
+                      {stats.find(s => s.label === "Revenue")?.value || "$0"}
                     </Text>
-                    <Text className="text-gray-400 text-xs font-medium uppercase italic">Total Revenue</Text>
+                    <Text className="text-gray-400 text-[10px] font-bold uppercase tracking-wider mt-1">Total Revenue</Text>
                   </View>
                 </>
               )}
