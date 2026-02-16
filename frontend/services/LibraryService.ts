@@ -1,5 +1,4 @@
 import { useState } from "react";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { AxiosError } from "axios";
 import { api } from "./api";
 import { supabase } from "@/libs/supabase";
@@ -47,14 +46,13 @@ export class LibraryAPI {
    */
   static async addBook(bookData: AddBookRequest): Promise<BackendBook> {
     try {
-      const headers = await this.getAuthHeaders();
+      const headers = await LibraryAPI.getAuthHeaders();
       const response = await api.post<BackendBook>("/library/books", bookData, {
         headers,
       });
       return response.data;
     } catch (error) {
       console.error("Error adding book:", error);
-      this.handleAPIError(error as AxiosError);
       throw error;
     }
   }
@@ -65,14 +63,13 @@ export class LibraryAPI {
    */
   static async getBooks(): Promise<BackendBook[]> {
     try {
-      const headers = await this.getAuthHeaders();
+      const headers = await LibraryAPI.getAuthHeaders();
       const response = await api.get<BackendBook[]>("/library/books", {
         headers,
       });
       return response.data;
     } catch (error) {
       console.error("Error fetching books:", error);
-      this.handleAPIError(error as AxiosError);
       throw error;
     }
   }
@@ -88,7 +85,7 @@ export class LibraryAPI {
     updateData: UpdateBookRequest
   ): Promise<BackendBook> {
     try {
-      const headers = await this.getAuthHeaders();
+      const headers = await LibraryAPI.getAuthHeaders();
       const response = await api.put<BackendBook>(
         `/library/books/${bookId}`,
         updateData,
@@ -99,7 +96,6 @@ export class LibraryAPI {
       return response.data;
     } catch (error) {
       console.error("Error updating book:", error);
-      this.handleAPIError(error as AxiosError);
       throw error;
     }
   }
@@ -111,13 +107,12 @@ export class LibraryAPI {
    */
   static async deleteBook(bookId: string): Promise<void> {
     try {
-      const headers = await this.getAuthHeaders();
+      const headers = await LibraryAPI.getAuthHeaders();
       await api.delete(`/library/books/${bookId}`, {
         headers,
       });
     } catch (error) {
       console.error("Error deleting book:", error);
-      this.handleAPIError(error as AxiosError);
       throw error;
     }
   }
@@ -133,7 +128,7 @@ export class LibraryAPI {
     dueDate: string
   ): Promise<BackendBorrowedBook> {
     try {
-      const headers = await this.getAuthHeaders();
+      const headers = await LibraryAPI.getAuthHeaders();
       const response = await api.post<BackendBorrowedBook>(
         `/library/borrow/${bookId}`,
         {
@@ -146,7 +141,6 @@ export class LibraryAPI {
       return response.data;
     } catch (error) {
       console.error("Error borrowing book:", error);
-      this.handleAPIError(error as AxiosError);
       throw error;
     }
   }
@@ -162,7 +156,7 @@ export class LibraryAPI {
     returnedAt: string = new Date().toISOString()
   ): Promise<BackendBorrowedBook> {
     try {
-      const headers = await this.getAuthHeaders();
+      const headers = await LibraryAPI.getAuthHeaders();
       const response = await api.post<BackendBorrowedBook>(
         `/library/return/${borrowId}`,
         {
@@ -175,7 +169,6 @@ export class LibraryAPI {
       return response.data;
     } catch (error) {
       console.error("Error returning book:", error);
-      this.handleAPIError(error as AxiosError);
       throw error;
     }
   }
@@ -189,7 +182,7 @@ export class LibraryAPI {
     studentId: string
   ): Promise<BackendBorrowedBook[]> {
     try {
-      const headers = await this.getAuthHeaders();
+      const headers = await LibraryAPI.getAuthHeaders();
       const response = await api.get<BackendBorrowedBook[]>(
         `/library/history/${studentId}`,
         {
@@ -199,7 +192,6 @@ export class LibraryAPI {
       return response.data;
     } catch (error) {
       console.error("Error fetching borrowing history:", error);
-      this.handleAPIError(error as AxiosError);
       throw error;
     }
   }
@@ -210,7 +202,7 @@ export class LibraryAPI {
    */
   static async getAllBorrowedBooks(): Promise<BackendBorrowedBook[]> {
     try {
-      const headers = await this.getAuthHeaders();
+      const headers = await LibraryAPI.getAuthHeaders();
       const response = await api.get<BackendBorrowedBook[]>(
         "/library/borrowed",
         {
@@ -220,7 +212,6 @@ export class LibraryAPI {
       return response.data;
     } catch (error) {
       console.error("Error fetching borrowed books:", error);
-      this.handleAPIError(error as AxiosError);
       throw error;
     }
   }
@@ -232,7 +223,7 @@ export class LibraryAPI {
    */
   static async sendReminder(borrowId: string): Promise<{ message: string }> {
     try {
-      const headers = await this.getAuthHeaders();
+      const headers = await LibraryAPI.getAuthHeaders();
       const response = await api.post<{ message: string }>(
         `/library/reminder/${borrowId}`,
         {},
@@ -243,7 +234,6 @@ export class LibraryAPI {
       return response.data;
     } catch (error) {
       console.error("Error sending reminder:", error);
-      this.handleAPIError(error as AxiosError);
       throw error;
     }
   }
@@ -259,7 +249,7 @@ export class LibraryAPI {
     newDueDate: string
   ): Promise<BackendBorrowedBook> {
     try {
-      const headers = await this.getAuthHeaders();
+      const headers = await LibraryAPI.getAuthHeaders();
       const response = await api.put<BackendBorrowedBook>(
         `/library/extend/${borrowId}`,
         {
@@ -272,53 +262,51 @@ export class LibraryAPI {
       return response.data;
     } catch (error) {
       console.error("Error extending due date:", error);
-      this.handleAPIError(error as AxiosError);
       throw error;
     }
   }
 
   /**
-   * Handle API errors with user-friendly messages
-   * @param {AxiosError} error
+   * Reject a borrow request
+   * @param {string} borrowId
+   * @returns {Promise<any>}
    */
-  static handleAPIError(error: AxiosError): void {
-    if (error.response) {
-      const { status, data } = error.response;
-      const errorData = data as any;
+  static async rejectBorrowRequest(borrowId: string): Promise<any> {
+    try {
+      const headers = await LibraryAPI.getAuthHeaders();
+      const response = await api.post(
+        `/library/reject/${borrowId}`,
+        {},
+        { headers }
+      );
+      return response.data;
+    } catch (error) {
+      console.error("Error rejecting borrow request:", error);
+      throw error;
+    }
+  }
 
-      switch (status) {
-        case 400:
-          console.error(
-            "Bad Request:",
-            errorData?.message || "Invalid request data"
-          );
-          break;
-        case 401:
-          console.error("Unauthorized:", "Please login again");
-          // Could trigger logout here
-          break;
-        case 403:
-          console.error(
-            "Forbidden:",
-            "You do not have permission for this action"
-          );
-          break;
-        case 404:
-          console.error("Not Found:", "Resource not found");
-          break;
-        case 500:
-          console.error("Server Error:", "Something went wrong on the server");
-          break;
-        default:
-          console.error(
-            "API Error:",
-            errorData?.message || "Unknown error occurred"
-          );
-      }
-    } else if (error.request) {
-      console.error("Network Error:", "No response received from server");
-    } else {
-      console.error("Error:", error.message);
+  /**
+   * Update borrow status (waiting -> ready_for_pickup -> borrowed)
+   * @param {string} borrowId
+   * @param {string} status
+   * @returns {Promise<BackendBorrowedBook>}
+   */
+  static async updateBorrowStatus(
+    borrowId: string,
+    status: 'ready_for_pickup' | 'borrowed'
+  ): Promise<BackendBorrowedBook> {
+    try {
+      const headers = await this.getAuthHeaders();
+      const response = await api.put<BackendBorrowedBook>(
+        `/library/status/${borrowId}`,
+        { status },
+        { headers }
+      );
+      return response.data;
+    } catch (error) {
+      console.error("Error updating borrow status:", error);
+      throw error;
     }
   }
 
@@ -355,9 +343,10 @@ export class LibraryAPI {
       author: backendBorrow.books?.author || "Unknown Author",
       isbn: backendBorrow.books?.isbn || "N/A",
       borrowerId: backendBorrow.student_id,
-      borrowerName: backendBorrow.students?.users?.full_name || "Unknown",
+      borrowerName: backendBorrow.students?.users?.full_name || backendBorrow.users?.full_name || "Unknown",
       borrowerDisplayId: backendBorrow.student_id,
-      borrowerEmail: backendBorrow.students?.users?.email || "",
+      borrowerEmail: backendBorrow.students?.users?.email || backendBorrow.users?.email || "",
+      borrowerPhone: backendBorrow.students?.users?.phone || backendBorrow.users?.phone || undefined,
       borrowDate: new Date(backendBorrow.borrowed_at),
       dueDate: new Date(backendBorrow.due_date),
       returnDate: backendBorrow.returned_at
@@ -378,8 +367,8 @@ export const useLibraryAPI = () => {
   const executeWithLoading = async <T>(
     apiCall: () => Promise<T>
   ): Promise<T> => {
-    setLoading(true);
     setError(null);
+    setLoading(true);
     try {
       const result = await apiCall();
       return result;

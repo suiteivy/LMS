@@ -117,6 +117,93 @@ Creates a new Subject. Only available to teachers and admins.
 }
 ```
 
+## Auth / User Management Endpoints
+
+### Login
+
+```
+POST /api/auth/login
+```
+
+Authenticates a user with email and password.
+
+**Request Body**:
+```json
+{
+  "email": "user@example.com",
+  "password": "password123"
+}
+```
+
+### Enroll User (Admin Only)
+
+```
+POST /api/auth/enroll-user
+```
+
+Creates a new user with a specific role. Generates a temporary password and custom ID. Only accessible by admins.
+
+**Request Body**:
+```json
+{
+  "full_name": "John Doe",
+  "email": "john@example.com",
+  "role": "student",
+  "institution_id": "uuid",
+  "phone": "+254 7XX XXX XXX",
+  "gender": "male",
+  "date_of_birth": "2000-01-15",
+  "address": "123 Main St",
+  "grade_level": "Form 3",
+  "academic_year": "2026"
+}
+```
+
+**Response**:
+```json
+{
+  "message": "User enrolled successfully",
+  "uid": "uuid",
+  "email": "john@example.com",
+  "tempPassword": "Lms@Ab1234",
+  "customId": "STU-2026-000001",
+  "role": "student"
+}
+```
+
+### Admin Update User
+
+```
+PUT /api/auth/admin-update-user/:id
+```
+
+Updates any user's profile and role-specific details. Admin-only endpoint.
+
+**URL Parameters**:
+- `id`: User UUID
+
+**Request Body** (all fields optional):
+```json
+{
+  "full_name": "Jane Doe",
+  "email": "jane@example.com",
+  "phone": "+254 7XX XXX XXX",
+  "gender": "female",
+  "date_of_birth": "1995-06-20",
+  "address": "456 Oak Ave",
+  "grade_level": "Form 4",
+  "department": "Mathematics",
+  "qualification": "M.Ed"
+}
+```
+
+**Response**:
+```json
+{
+  "message": "User updated successfully"
+}
+```
+
 ## Supabase Configuration
 
 The API endpoints rely on the following Supabase configurations:

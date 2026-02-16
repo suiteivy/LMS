@@ -14,25 +14,25 @@ export class BursaryService {
     }
 
     static async createBursary(bursaryData: any) {
-        const headers = await this.getAuthHeaders();
+        const headers = await BursaryService.getAuthHeaders();
         const response = await api.post('/bursary', bursaryData, { headers });
         return response.data;
     }
 
     static async getBursaryDetails(id: string) {
-        const headers = await this.getAuthHeaders();
+        const headers = await BursaryService.getAuthHeaders();
         const response = await api.get(`/bursary/${id}`, { headers });
         return response.data;
     }
 
     static async applyForBursary(bursaryId: string) {
-        const headers = await this.getAuthHeaders();
+        const headers = await BursaryService.getAuthHeaders();
         const response = await api.post('/bursary/apply', { bursary_id: bursaryId }, { headers });
         return response.data;
     }
 
     static async updateApplicationStatus(applicationId: string, status: 'approved' | 'rejected') {
-        const headers = await this.getAuthHeaders();
+        const headers = await BursaryService.getAuthHeaders();
         const response = await api.put(`/bursary/applications/${applicationId}`, { status }, { headers });
         return response.data;
     }

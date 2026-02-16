@@ -18,6 +18,10 @@ export interface Database {
           status: "pending" | "approved" | "rejected";
           institution_id: string | null;
           phone: string | null;
+          gender: "male" | "female" | "other" | null;
+          date_of_birth: string | null;
+          address: string | null;
+          avatar_url: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -29,6 +33,10 @@ export interface Database {
           status?: "pending" | "approved" | "rejected";
           institution_id?: string | null;
           phone?: string | null;
+          gender?: "male" | "female" | "other" | null;
+          date_of_birth?: string | null;
+          address?: string | null;
+          avatar_url?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -40,6 +48,10 @@ export interface Database {
           status?: "pending" | "approved" | "rejected";
           institution_id?: string | null;
           phone?: string | null;
+          gender?: "male" | "female" | "other" | null;
+          date_of_birth?: string | null;
+          address?: string | null;
+          avatar_url?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -49,74 +61,26 @@ export interface Database {
         Row: {
           id: string;
           user_id: string;
+          occupation: string | null;
+          address: string | null;
           created_at: string;
           updated_at: string;
         };
         Insert: {
           id?: string;
           user_id: string;
+          occupation?: string | null;
+          address?: string | null;
           created_at?: string;
           updated_at?: string;
         };
         Update: {
           id?: string;
           user_id?: string;
+          occupation?: string | null;
+          address?: string | null;
           created_at?: string;
           updated_at?: string;
-        };
-        Relationships: [];
-      };
-      book: {
-        Row: {
-          id: number;
-          book_id: string | null;
-          book_title: string | null;
-          author: string | null;
-          isbn: string | null;
-          category: string | null;
-          borrower_id: string | null;
-          created_at: string;
-        };
-        Insert: {
-          id?: number;
-          book_id?: string | null;
-          book_title?: string | null;
-          author?: string | null;
-          isbn?: string | null;
-          category?: string | null;
-          borrower_id?: string | null;
-          created_at?: string;
-        };
-        Update: {
-          id?: number;
-          book_id?: string | null;
-          book_title?: string | null;
-          author?: string | null;
-          isbn?: string | null;
-          category?: string | null;
-          borrower_id?: string | null;
-          created_at?: string;
-        };
-        Relationships: [];
-      };
-      library: {
-        Row: {
-          id: string;
-          book_id: number | null;
-          category: string | null;
-          quantity: number | null;
-        };
-        Insert: {
-          id?: string;
-          book_id?: number | null;
-          category?: string | null;
-          quantity?: number | null;
-        };
-        Update: {
-          id?: string;
-          book_id?: number | null;
-          category?: string | null;
-          quantity?: number | null;
         };
         Relationships: [];
       };
@@ -167,17 +131,38 @@ export interface Database {
         Row: {
           id: string;
           user_id: string;
+          grade_level: string | null;
+          parent_contact: string | null;
+          admission_date: string | null;
+          academic_year: string | null;
+          emergency_contact_name: string | null;
+          emergency_contact_phone: string | null;
           created_at: string;
+          updated_at: string;
         };
         Insert: {
           id?: string;
           user_id: string;
+          grade_level?: string | null;
+          parent_contact?: string | null;
+          admission_date?: string | null;
+          academic_year?: string | null;
+          emergency_contact_name?: string | null;
+          emergency_contact_phone?: string | null;
           created_at?: string;
+          updated_at?: string;
         };
         Update: {
           id?: string;
           user_id?: string;
+          grade_level?: string | null;
+          parent_contact?: string | null;
+          admission_date?: string | null;
+          academic_year?: string | null;
+          emergency_contact_name?: string | null;
+          emergency_contact_phone?: string | null;
           created_at?: string;
+          updated_at?: string;
         };
         Relationships: [
           {
@@ -192,17 +177,35 @@ export interface Database {
         Row: {
           id: string;
           user_id: string;
+          department: string | null;
+          qualification: string | null;
+          specialization: string | null;
+          position: "teacher" | "head_of_department" | "assistant" | "class_teacher" | "dean" | null;
+          hire_date: string | null;
           created_at: string;
+          updated_at: string;
         };
         Insert: {
           id?: string;
           user_id: string;
+          department?: string | null;
+          qualification?: string | null;
+          specialization?: string | null;
+          position?: "teacher" | "head_of_department" | "assistant" | "class_teacher" | "dean" | null;
+          hire_date?: string | null;
           created_at?: string;
+          updated_at?: string;
         };
         Update: {
           id?: string;
           user_id?: string;
+          department?: string | null;
+          qualification?: string | null;
+          specialization?: string | null;
+          position?: "teacher" | "head_of_department" | "assistant" | "class_teacher" | "dean" | null;
+          hire_date?: string | null;
           created_at?: string;
+          updated_at?: string;
         };
         Relationships: [
           {
@@ -217,107 +220,29 @@ export interface Database {
         Row: {
           id: string;
           name: string;
+          location: string | null;
+          phone: string | null;
+          email: string | null;
+          type: "primary" | "secondary" | "tertiary" | "vocational" | null;
+          principal_name: string | null;
         };
         Insert: {
           id?: string;
           name: string;
+          location?: string | null;
+          phone?: string | null;
+          email?: string | null;
+          type?: "primary" | "secondary" | "tertiary" | "vocational" | null;
+          principal_name?: string | null;
         };
         Update: {
           id?: string;
           name?: string;
-        };
-        Relationships: [];
-      };
-      payments: {
-        Row: {
-          id: string;
-          student_id: string;
-          amount: number;
-          payment_date: string;
-          payment_method: string;
-          status: string;
-          reference_number?: string | null;
-          notes?: string | null;
-        };
-        Insert: {
-          id?: string;
-          student_id: string;
-          amount: number;
-          payment_date: string;
-          payment_method: string;
-          status: string;
-          reference_number?: string | null;
-          notes?: string | null;
-        };
-        Update: {
-          id?: string;
-          student_id?: string;
-          amount?: number;
-          payment_date?: string;
-          payment_method?: string;
-          status?: string;
-          reference_number?: string | null;
-          notes?: string | null;
-        };
-        Relationships: [];
-      };
-      teacher_payouts: {
-        Row: {
-          id: string;
-          teacher_id: string;
-          amount: number;
-          status: string;
-          payment_date: string | null;
-        };
-        Insert: {
-          id?: string;
-          teacher_id: string;
-          amount: number;
-          status: string;
-          payment_date?: string | null;
-        };
-        Update: {
-          id?: string;
-          teacher_id?: string;
-          amount?: number;
-          status?: string;
-          payment_date?: string | null;
-        };
-        Relationships: [];
-      };
-      fee_structures: {
-        Row: {
-          id: string;
-          subject_id: string;
-          base_fee: number;
-          registration_fee: number;
-          material_fee: number;
-          teacher_rate: number;
-          bursary_percentage: number;
-          effective_date: string;
-          is_active: boolean;
-        };
-        Insert: {
-          id?: string;
-          subject_id: string;
-          base_fee: number;
-          registration_fee: number;
-          material_fee: number;
-          teacher_rate: number;
-          bursary_percentage: number;
-          effective_date: string;
-          is_active: boolean;
-        };
-        Update: {
-          id?: string;
-          subject_id?: string;
-          base_fee?: number;
-          registration_fee?: number;
-          material_fee?: number;
-          teacher_rate?: number;
-          bursary_percentage?: number;
-          effective_date?: string;
-          is_active?: boolean;
+          location?: string | null;
+          phone?: string | null;
+          email?: string | null;
+          type?: "primary" | "secondary" | "tertiary" | "vocational" | null;
+          principal_name?: string | null;
         };
         Relationships: [];
       };
@@ -355,7 +280,7 @@ export interface Database {
           }
         ];
       };
-      enrollments: {
+      class_enrollments: {
         Row: {
           id: string;
           student_id: string; // Now TEXT (Custom ID)
@@ -458,66 +383,6 @@ export interface Database {
         };
         Relationships: [];
       };
-      attendance: {
-        Row: {
-          id: string;
-          class_id: string;
-          student_id: string; // Now TEXT
-          date: string;
-          status: "present" | "absent" | "late" | "excused";
-          notes: string | null;
-          recorded_at: string;
-        };
-        Insert: {
-          id?: string;
-          class_id: string;
-          student_id: string;
-          date?: string;
-          status: "present" | "absent" | "late" | "excused";
-          notes?: string | null;
-          recorded_at?: string;
-        };
-        Update: {
-          id?: string;
-          class_id?: string;
-          student_id?: string;
-          date?: string;
-          status?: "present" | "absent" | "late" | "excused";
-          notes?: string | null;
-          recorded_at?: string;
-        };
-        Relationships: [];
-      };
-      resources: {
-        Row: {
-          id: string;
-          subject_id: string;
-          title: string;
-          type: "pdf" | "video" | "link" | "other";
-          url: string;
-          size: string | null;
-          created_at: string;
-        };
-        Insert: {
-          id?: string;
-          subject_id: string;
-          title: string;
-          type?: "pdf" | "video" | "link" | "other";
-          url: string;
-          size?: string | null;
-          created_at?: string;
-        };
-        Update: {
-          id?: string;
-          subject_id?: string;
-          title?: string;
-          type?: "pdf" | "video" | "link" | "other";
-          url?: string;
-          size?: string | null;
-          created_at?: string;
-        };
-        Relationships: [];
-      };
       bursaries: {
         Row: {
           id: string;
@@ -600,6 +465,8 @@ export interface Database {
           teacher_id: string | null; // Now TEXT
           institution_id: string | null;
           class_id: string | null;
+          fee_config: Json | null;
+          materials: Json | null;
           created_at: string;
         };
         Insert: {
@@ -610,6 +477,8 @@ export interface Database {
           teacher_id?: string | null;
           institution_id?: string | null;
           class_id?: string | null;
+          fee_config?: Json | null;
+          materials?: Json | null;
           created_at?: string;
         };
         Update: {
@@ -620,11 +489,379 @@ export interface Database {
           teacher_id?: string | null;
           institution_id?: string | null;
           class_id?: string | null;
+          fee_config?: Json | null;
+          materials?: Json | null;
           created_at?: string;
         };
         Relationships: [
           {
             foreignKeyName: "subjects_teacher_id_fkey";
+            columns: ["teacher_id"];
+            referencedRelation: "teachers";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
+      enrollments: {
+        Row: {
+          id: string;
+          student_id: string;
+          subject_id: string;
+          status: "enrolled" | "completed" | "dropped";
+          grade: string | null;
+          enrollment_date: string;
+        };
+        Insert: {
+          id?: string;
+          student_id: string;
+          subject_id: string;
+          status?: "enrolled" | "completed" | "dropped";
+          grade?: string | null;
+          enrollment_date?: string;
+        };
+        Update: {
+          id?: string;
+          student_id?: string;
+          subject_id?: string;
+          status?: "enrolled" | "completed" | "dropped";
+          grade?: string | null;
+          enrollment_date?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "enrollments_student_id_fkey";
+            columns: ["student_id"];
+            referencedRelation: "students";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "enrollments_subject_id_fkey";
+            columns: ["subject_id"];
+            referencedRelation: "subjects";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
+      financial_transactions: {
+        Row: {
+          id: string;
+          institution_id: string | null;
+          user_id: string | null;
+          type: "fee_payment" | "salary_payout" | "expense" | "grant" | "other";
+          direction: "inflow" | "outflow";
+          amount: number;
+          date: string | null;
+          method: string | null;
+          status: string | null;
+          reference_id: string | null;
+          meta: Json | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          institution_id?: string | null;
+          user_id?: string | null;
+          type: "fee_payment" | "salary_payout" | "expense" | "grant" | "other";
+          direction: "inflow" | "outflow";
+          amount: number;
+          date?: string | null;
+          method?: string | null;
+          status?: string | null;
+          reference_id?: string | null;
+          meta?: Json | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          institution_id?: string | null;
+          user_id?: string | null;
+          type?: "fee_payment" | "salary_payout" | "expense" | "grant" | "other";
+          direction?: "inflow" | "outflow";
+          amount?: number;
+          date?: string | null;
+          method?: string | null;
+          status?: string | null;
+          reference_id?: string | null;
+          meta?: Json | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "financial_transactions_user_id_fkey";
+            columns: ["user_id"];
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
+      library_items: {
+        Row: {
+          id: string;
+          title: string;
+          author: string | null;
+          isbn: string | null;
+          category: string | null;
+          total_quantity: number | null;
+          available_quantity: number | null;
+          cover_url: string | null;
+          location: string | null;
+          institution_id: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          title: string;
+          author?: string | null;
+          isbn?: string | null;
+          category?: string | null;
+          total_quantity?: number | null;
+          available_quantity?: number | null;
+          cover_url?: string | null;
+          location?: string | null;
+          institution_id?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          title?: string;
+          author?: string | null;
+          isbn?: string | null;
+          category?: string | null;
+          total_quantity?: number | null;
+          available_quantity?: number | null;
+          cover_url?: string | null;
+          location?: string | null;
+          institution_id?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      library_loans: {
+        Row: {
+          id: string;
+          item_id: string | null;
+          user_id: string | null;
+          borrow_date: string | null;
+          due_date: string | null;
+          return_date: string | null;
+          status: "borrowed" | "returned" | "overdue" | "lost" | null;
+          notes: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          item_id?: string | null;
+          user_id?: string | null;
+          borrow_date?: string | null;
+          due_date?: string | null;
+          return_date?: string | null;
+          status?: "borrowed" | "returned" | "overdue" | "lost" | null;
+          notes?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          item_id?: string | null;
+          user_id?: string | null;
+          borrow_date?: string | null;
+          due_date?: string | null;
+          return_date?: string | null;
+          status?: "borrowed" | "returned" | "overdue" | "lost" | null;
+          notes?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "library_loans_item_id_fkey";
+            columns: ["item_id"];
+            referencedRelation: "library_items";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "library_loans_user_id_fkey";
+            columns: ["user_id"];
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
+      timetables: {
+        Row: {
+          id: string;
+          class_id: string;
+          subject_id: string;
+          day_of_week: "Monday" | "Tuesday" | "Wednesday" | "Thursday" | "Friday" | "Saturday" | "Sunday";
+          start_time: string;
+          end_time: string;
+          room_number: string | null;
+          institution_id: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          class_id: string;
+          subject_id: string;
+          day_of_week: "Monday" | "Tuesday" | "Wednesday" | "Thursday" | "Friday" | "Saturday" | "Sunday";
+          start_time: string;
+          end_time: string;
+          room_number?: string | null;
+          institution_id?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          class_id?: string;
+          subject_id?: string;
+          day_of_week?: "Monday" | "Tuesday" | "Wednesday" | "Thursday" | "Friday" | "Saturday" | "Sunday";
+          start_time?: string;
+          end_time?: string;
+          room_number?: string | null;
+          institution_id?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "timetables_class_id_fkey";
+            columns: ["class_id"];
+            referencedRelation: "classes";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "timetables_subject_id_fkey";
+            columns: ["subject_id"];
+            referencedRelation: "subjects";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
+      funds: {
+        Row: {
+          id: string;
+          name: string;
+          description: string | null;
+          total_amount: number;
+          allocated_amount: number;
+          institution_id: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          name: string;
+          description?: string | null;
+          total_amount?: number;
+          allocated_amount?: number;
+          institution_id?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          name?: string;
+          description?: string | null;
+          total_amount?: number;
+          allocated_amount?: number;
+          institution_id?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      fund_allocations: {
+        Row: {
+          id: string;
+          fund_id: string;
+          title: string;
+          description: string | null;
+          amount: number;
+          category: string | null;
+          allocation_date: string | null;
+          status: "planned" | "active" | "closed" | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          fund_id: string;
+          title: string;
+          description?: string | null;
+          amount: number;
+          category?: string | null;
+          allocation_date?: string | null;
+          status?: "planned" | "active" | "closed" | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          fund_id?: string;
+          title?: string;
+          description?: string | null;
+          amount?: number;
+          category?: string | null;
+          allocation_date?: string | null;
+          status?: "planned" | "active" | "closed" | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "fund_allocations_fund_id_fkey";
+            columns: ["fund_id"];
+            referencedRelation: "funds";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
+      teacher_attendance: {
+        Row: {
+          id: string;
+          teacher_id: string;
+          date: string;
+          status: "present" | "absent" | "late" | "excused";
+          check_in_time: string | null;
+          check_out_time: string | null;
+          notes: string | null;
+          institution_id: string | null;
+          recorded_at: string;
+        };
+        Insert: {
+          id?: string;
+          teacher_id: string;
+          date?: string;
+          status: "present" | "absent" | "late" | "excused";
+          check_in_time?: string | null;
+          check_out_time?: string | null;
+          notes?: string | null;
+          institution_id?: string | null;
+          recorded_at?: string;
+        };
+        Update: {
+          id?: string;
+          teacher_id?: string;
+          date?: string;
+          status?: "present" | "absent" | "late" | "excused";
+          check_in_time?: string | null;
+          check_out_time?: string | null;
+          notes?: string | null;
+          institution_id?: string | null;
+          recorded_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "teacher_attendance_teacher_id_fkey";
             columns: ["teacher_id"];
             referencedRelation: "teachers";
             referencedColumns: ["id"];

@@ -1,9 +1,8 @@
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import SplashScreen from '../Screens/SplashScreen';
-import LoginScreen from '../app/auth/sign'; 
-import { RootStackParamList } from '../navigation/navigation'; 
-import CreateSubject from '@/Screens/CreateSubject';
+import LoginScreen from '../app/(auth)/signIn';
+import { RootStackParamList } from '../navigation/navigation';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -20,7 +19,6 @@ const RootNavigation = () => {
         component={LoginScreen}
         options={{ headerShown: false }}
       />
-      <Stack.Screen name="CreateSubject" component={CreateSubject} />
     </Stack.Navigator>
   );
 };

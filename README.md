@@ -1,118 +1,24 @@
-﻿<details> <summary>Click to expand full content</summary>
+﻿# 📚 Learning Management System (LMS)
 
-# ðŸ“š Learning Management System (LMS)
+A comprehensive, role-based mobile application for managing educational institutions. Built with **React Native (Expo)** and **Supabase**.
 
-A cross-platform Learning Management System built using **React Native** for the frontend and **Supabase** for the backend. This app supports role-based access (Admin, Student, Teacher), Subject management, assignments, attendance tracking, grading, notifications, and more.
+## 🚀 Quick Links
+- [**Getting Started**](docs/getting_started.md) - Setup and installation guide.
+- [**Architecture**](docs/architecture.md) - High-level system design.
+- [**API Reference**](docs/api_endpoints.md) - Backend API documentation.
+- [**Roles & Permissions**](docs/roles.md) - detailed role capabilities.
 
-## ðŸš€ Getting Started
+## ✨ Key Features
+- **Multi-Role Support**: Custom interfaces for Students, Teachers, Admins, and Parents.
+- **Real-time Analytics**: Live dashboard updates for administrators.
+- **Library Management**: Full inventory tracking with borrowing/returning logic.
+- **Finance Module**: Fee payments, bursaries, and teacher payouts.
+- **Academic Tools**: Grading, Attendance, and Subject Management.
 
-### Prerequisites
+## 🛠️ Tech Stack
+- **Frontend**: React Native, Expo Router, NativeWind
+- **Backend**: Supabase (PostgreSQL, Auth, Edge Functions)
+- **Tools**: TypeScript, Lucide Icons
 
-- Node.js (v14 or later)
-- Expo CLI
-- Supabase account
-
-### Installation
-
-1. Clone the repository
-2. Install dependencies:
-   ```bash
-   cd frontend
-   npm install
-   ```
-3. Set up environment variables:
-   - Copy `.env.example` to `.env`
-   - Update with your Supabase credentials
-
-### Supabase Setup
-
-#### 1. Create a Supabase Project
-- Go to [supabase.com](https://supabase.com) and create a new project
-- Note your project URL and anon key from Project Settings â†’ API
-
-#### 2. Configure Environment Variables
-Create a `.env` file in the `frontend` directory:
-```env
-EXPO_PUBLIC_SUPABASE_URL=your-project-url
-EXPO_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
-```
-
-#### 3. Set Up Database Schema
-Run the consolidated SQL file `backend/supabase/schema.sql`. This file contains all necessary table definitions (users, students, teachers, admins, Subjects, etc.) and RLS policies.
-
-1. Copy the content of `backend/supabase/schema.sql`
-2. Paste it into the Supabase SQL Editor and run it.
-
-#### 4. Create Admin User
-> âš ï¸ **Important**: Always create users through the Supabase Dashboard, not direct SQL inserts!
-
-1. Go to **Authentication â†’ Users** in your Supabase Dashboard
-2. Click **"Add user"** â†’ **"Create new user"**
-3. Enter email, password, and check **"Auto Confirm User"**
-4. Run this SQL to add the user to your app's users table:
-   ```sql
-   INSERT INTO public.users (id, email, full_name, role)
-   SELECT id, email, 'System Administrator', 'admin'
-   FROM auth.users WHERE email = 'your-admin@email.com';
-   ```
-
-See `backend/supabase/schemas/create_admin_user.sql` for detailed instructions.
-
-### Running the App
-
-
-```bash
-cd frontend
-npm start
-```
-
----
-
-## ðŸ“ Project Structure
-
-LMS-App/
-â”œâ”€â”€ apps/
-â”‚ â”œâ”€â”€ mobile/ # React Native frontend app
-â”‚ â”‚ â”œâ”€â”€ src/
-â”‚ â”‚ â”‚ â”œâ”€â”€ components/ # Reusable UI components
-â”‚ â”‚ â”‚ â”œâ”€â”€ screens/ # Page views for each role (Admin, Student, Teacher)
-â”‚ â”‚ â”‚ â”œâ”€â”€ navigation/ # React Navigation logic
-â”‚ â”‚ â”‚ â”œâ”€â”€ services/ # API handlers to Supabase
-â”‚ â”‚ â”‚ â”œâ”€â”€ context/ # Global app context (Auth, User, Theme)
-â”‚ â”‚ â”‚ â”œâ”€â”€ hooks/ # Custom hooks (e.g., useAuth, useAttendance)
-â”‚ â”‚ â”‚ â”œâ”€â”€ assets/ # Images, icons, fonts
-â”‚ â”‚ â”‚ â””â”€â”€ utils/ # Formatters, validators, helpers
-â”‚ â”‚ â””â”€â”€ App.tsx # Main entry point
-â”‚ â””â”€â”€ functions/ # Firebase or Supabase triggers (notifications)
-â”‚ â””â”€â”€ sendNotification.ts
-â”œâ”€â”€ backend/
-â”‚ â”œâ”€â”€ supabase/
-â”‚ â”‚ â”œâ”€â”€ migrations/ # SQL migrations (auth, Subjects, users, etc.)
-â”‚ â”‚ â”œâ”€â”€ seed/ # Seed scripts
-â”‚ â”‚ â”œâ”€â”€ schemas/
-â”‚ â”‚ â”‚ â”œâ”€â”€ users.sql
-â”‚ â”‚ â”‚ â”œâ”€â”€ Subjects.sql
-â”‚ â”‚ â”‚ â”œâ”€â”€ lessons.sql
-â”‚ â”‚ â”‚ â”œâ”€â”€ assignments.sql
-â”‚ â”‚ â”‚ â”œâ”€â”€ submissions.sql
-â”‚ â”‚ â”‚ â”œâ”€â”€ grades.sql
-â”‚ â”‚ â”‚ â”œâ”€â”€ attendance.sql
-â”‚ â”‚ â”‚ â””â”€â”€ institutions.sql
-â”‚ â”‚ â””â”€â”€ roles_policy.sql # Role-based access control policies
-â”‚ â””â”€â”€ storage_rules.sql # Supabase storage (files, validations)
-â”œâ”€â”€ docs/
-â”‚ â”œâ”€â”€ roadmap.md # Weekly breakdown
-â”‚ â”œâ”€â”€ architecture.md # System design & flow
-â”‚ â”œâ”€â”€ api_reference.md # API endpoints + Supabase function calls
-â”‚ â”œâ”€â”€ roles.md # Role-based features & access
-â”‚ â”œâ”€â”€ onboarding.md # Setup instructions for devs
-â”‚ â””â”€â”€ demo_plan.md # Final presentation/demo checklist
-â”œâ”€â”€ tests/
-â”‚ â”œâ”€â”€ unit/ # Unit tests for utilities/services
-â”‚ â”œâ”€â”€ integration/ # E2E flow (login, enroll, submit)
-â”‚ â””â”€â”€ qa/ # Scripts and scenarios for QA testers
-â”œâ”€â”€ .env.example # Template for environment variables
-â”œâ”€â”€ .gitignore
-â”œâ”€â”€ README.md # Overview, setup, and contribution guide
-â”œâ”€â”€ package.json
-â””â”€â”€ LICENSE
+## 🤝 Contribution
+Please read our [Architecture Guide](docs/architecture.md) before contributing. Ensure all new features include proper RLS policies and Type definitions.

@@ -1,4 +1,4 @@
-import { CreateUserData, User, UserRole, UserStatus } from "@/types/types";
+import { CreateUserData, User, UserRole } from "@/types/types";
 
 /*
  * Creates a User object with proper defaults
@@ -9,7 +9,6 @@ export const createUser = (data: CreateUserData): User => {
     name: data.name,
     email: data.email,
     role: data.role,
-    status: data.status || "active",
     joinDate: new Date().toISOString(),
     avatar: data.avatar,
     lastActive: new Date().toISOString(),
@@ -32,31 +31,26 @@ export const createSampleUsers = (): User[] => {
       name: "John Doe",
       email: "john.doe@example.com",
       role: "student",
-      status: "active",
     },
     {
       name: "Jane Smith",
       email: "jane.smith@example.com",
       role: "teacher",
-      status: "active",
     },
     {
       name: "Admin User",
       email: "admin@example.com",
       role: "admin",
-      status: "active",
     },
     {
       name: "Bob Johnson",
       email: "bob.johnson@example.com",
       role: "student",
-      status: "inactive",
     },
     {
       name: "Alice Brown",
       email: "alice.brown@example.com",
       role: "teacher",
-      status: "active",
     },
   ];
 
@@ -68,16 +62,12 @@ export const createSampleUsers = (): User[] => {
  */
 export const convertToUsers = (rawData: any[]): User[] => {
   return rawData.map((item, index) => {
-    // Handle case where item is a string (like UserStatus)
+    // Handle case where item is a string
     if (typeof item === "string") {
       return createUser({
         name: `User ${index + 1}`,
         email: `user${index + 1}@example.com`,
         role: "student",
-        status:
-          item === "active" || item === "inactive"
-            ? (item as UserStatus)
-            : "active",
       });
     }
 
@@ -87,7 +77,6 @@ export const convertToUsers = (rawData: any[]): User[] => {
       name: item.name || `User ${index + 1}`,
       email: item.email || `user${index + 1}@example.com`,
       role: item.role || "student",
-      status: item.status || "active",
       joinDate: item.joinDate || new Date().toISOString(),
       avatar: item.avatar,
       lastActive: item.lastActive || new Date().toISOString(),
@@ -103,34 +92,19 @@ export const filterUsersByRole = (users: User[], role: UserRole): User[] => {
 };
 
 /**
- * Filters users by status
- */
-export const filterUsersByStatus = (
-  users: User[],
-  status: UserStatus
-): User[] => {
-  return users.filter((user) => user.status === status);
-};
-
-/**
  * Gets user statistics
  */
 export const getUserStats = (users: User[]) => {
   const total = users.length;
-  const active = users.filter((u) => u.status === "active").length;
-  const inactive = users.filter((u) => u.status === "inactive").length;
   const students = users.filter((u) => u.role === "student").length;
   const teachers = users.filter((u) => u.role === "teacher").length;
   const admins = users.filter((u) => u.role === "admin").length;
 
   return {
     total,
-    active,
-    inactive,
     students,
     teachers,
     admins,
-    activePercentage: total > 0 ? Math.round((active / total) * 100) : 0,
   };
 };
 

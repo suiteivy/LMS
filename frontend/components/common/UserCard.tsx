@@ -37,14 +37,7 @@ export const UserCard: React.FC<UserCardProps> = ({
     }
   };
 
-  const getStatusColor = (status: string) => {
-    return status.toLowerCase() === 'active'
-      ? { bg: 'bg-green-100', text: 'text-green-800' }
-      : { bg: 'bg-gray-100', text: 'text-gray-800' };
-  };
-
   const roleColors = getRoleColor(user.role);
-  const statusColors = getStatusColor(user.status);
 
   const handlePress = () => {
     onPress?.(user);
@@ -138,17 +131,10 @@ export const UserCard: React.FC<UserCardProps> = ({
       </View>
 
       <View className="flex-row items-center justify-between">
-        <View className="flex-row space-x-2">
-          <View className={`px-2 py-1 rounded-full ${roleColors.bg}`}>
-            <Text className={`text-xs font-medium capitalize ${roleColors.text}`}>
-              {user.role}
-            </Text>
-          </View>
-          <View className={`px-2 py-1 rounded-full ${statusColors.bg}`}>
-            <Text className={`text-xs font-medium capitalize ${statusColors.text}`}>
-              {user.status}
-            </Text>
-          </View>
+        <View className={`px-2 py-1 rounded-full ${roleColors.bg}`}>
+          <Text className={`text-xs font-medium capitalize ${roleColors.text}`}>
+            {user.role}
+          </Text>
         </View>
 
         <Text className="text-xs text-gray-400">
@@ -199,17 +185,10 @@ export const UserCard: React.FC<UserCardProps> = ({
       </View>
 
       <View className="flex-row items-center justify-between">
-        <View className="flex-row space-x-3">
-          <View className={`px-3 py-1 rounded-full ${roleColors.bg}`}>
-            <Text className={`text-sm font-medium capitalize ${roleColors.text}`}>
-              {user.role}
-            </Text>
-          </View>
-          <View className={`px-3 py-1 rounded-full ${statusColors.bg}`}>
-            <Text className={`text-sm font-medium capitalize ${statusColors.text}`}>
-              {user.status}
-            </Text>
-          </View>
+        <View className={`px-3 py-1 rounded-full ${roleColors.bg}`}>
+          <Text className={`text-sm font-medium capitalize ${roleColors.text}`}>
+            {user.role}
+          </Text>
         </View>
 
         <Text className="text-sm text-gray-500">

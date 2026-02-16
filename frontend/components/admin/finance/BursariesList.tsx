@@ -76,18 +76,18 @@ export function BursariesList() {
 
     return (
         <View className="pb-20">
-            <FlatList
-                data={bursaries}
-                renderItem={renderItem}
-                keyExtractor={item => item.id}
-                ListEmptyComponent={
-                    <View className="items-center py-10">
-                        <Text className="text-gray-500">No bursaries found</Text>
-                        <Text className="text-gray-400 text-sm mt-2">Create one to get started</Text>
-                    </View>
-                }
-                scrollEnabled={false}
-            />
+            {bursaries.length > 0 ? (
+                bursaries.map((item) => (
+                    <React.Fragment key={item.id}>
+                        {renderItem({ item })}
+                    </React.Fragment>
+                ))
+            ) : (
+                <View className="items-center py-10">
+                    <Text className="text-gray-500">No bursaries found</Text>
+                    <Text className="text-gray-400 text-sm mt-2">Create one to get started</Text>
+                </View>
+            )}
         </View>
     );
 }

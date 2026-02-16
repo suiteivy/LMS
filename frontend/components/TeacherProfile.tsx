@@ -15,6 +15,9 @@ export default function TeacherProfile() {
     const [isEditing, setIsEditing] = useState(false);
     const [name, setName] = useState(profile?.full_name || "");
     const [phone, setPhone] = useState(profile?.phone || "");
+    const [gender, setGender] = useState(profile?.gender || "");
+    const [dob, setDob] = useState(profile?.date_of_birth || "");
+    const [address, setAddress] = useState(profile?.address || "");
     const [saving, setSaving] = useState(false);
     const [loadingData, setLoadingData] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
@@ -32,6 +35,9 @@ export default function TeacherProfile() {
         if (profile) {
             setName(profile.full_name || "");
             setPhone(profile.phone || "");
+            setGender(profile.gender || "");
+            setDob(profile.date_of_birth || "");
+            setAddress(profile.address || "");
         }
     }, [profile]);
 
@@ -111,7 +117,10 @@ export default function TeacherProfile() {
         try {
             const { error } = await authService.updateProfile({
                 full_name: name,
-                phone: phone
+                phone: phone || null,
+                gender: (gender as any) || null,
+                date_of_birth: dob || null,
+                address: address || null,
             });
 
             if (error) throw error;
@@ -237,6 +246,32 @@ export default function TeacherProfile() {
                     </View>
                 </View>
             </View>
+
+            {/* Editable Personal Details (edit mode only) */}
+            {isEditing && (
+                <View className="bg-orange-50 p-5 rounded-2xl border border-orange-200 mb-4">
+                    <Text className="font-bold text-gray-800 mb-3">✏️ Edit Personal Details</Text>
+                    <View className="mb-3">
+                        <Text className="text-xs text-gray-500 uppercase font-semibold mb-1">Gender</Text>
+                        <View className="flex-row gap-2">
+                            {['male', 'female', 'other'].map(g => (
+                                <TouchableOpacity key={g} onPress={() => setGender(g)}
+                                    className={`px-4 py-2 rounded-full border ${gender === g ? 'bg-teacherOrange border-teacherOrange' : 'bg-white border-gray-200'}`}>
+                                    <Text className={`text-sm font-medium capitalize ${gender === g ? 'text-white' : 'text-gray-700'}`}>{g}</Text>
+                                </TouchableOpacity>
+                            ))}
+                        </View>
+                    </View>
+                    <View className="mb-3">
+                        <Text className="text-xs text-gray-500 uppercase font-semibold mb-1">Date of Birth</Text>
+                        <TextInput value={dob} onChangeText={setDob} placeholder="YYYY-MM-DD" placeholderTextColor="#9CA3AF" className="bg-white border border-gray-200 rounded-xl px-4 py-3 text-gray-900" />
+                    </View>
+                    <View className="mb-1">
+                        <Text className="text-xs text-gray-500 uppercase font-semibold mb-1">Address</Text>
+                        <TextInput value={address} onChangeText={setAddress} placeholder="Enter address" placeholderTextColor="#9CA3AF" className="bg-white border border-gray-200 rounded-xl px-4 py-3 text-gray-900" />
+                    </View>
+                </View>
+            )}
 
         </View>
     );

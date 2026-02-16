@@ -3,6 +3,7 @@ import { View, Text, ScrollView, TouchableOpacity, StatusBar } from "react-nativ
 import { supabase } from "@/libs/supabase";
 import { router } from "expo-router";
 import {
+  UserPlus,
   Bell,
   Users,
   Wallet,
@@ -12,7 +13,8 @@ import {
   School,
   GraduationCap,
   BookOpen,
-  BarChart3
+  BarChart3,
+  LogOut
 } from 'lucide-react-native';
 import { useDashboardStats } from "@/hooks/useDashboardStats";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -51,11 +53,11 @@ export default function AdminDashboard() {
       const { data, error } = await supabase
         .from("users")
         .select(`
-            *,
-            students (id),
-            teachers (id),
-            admins (id)
-        `)
+  *,
+  students(id),
+  teachers(id),
+  admins(id)
+    `)
         .order("created_at", { ascending: false })
         .limit(5);
 
@@ -122,29 +124,29 @@ export default function AdminDashboard() {
                 className="relative p-2 bg-white rounded-full border border-gray-100 shadow-sm active:opacity-70"
                 onPress={handleLogout}
               >
-                <Text>🚪</Text>
+                <LogOut size={24} color="#374151" />
               </TouchableOpacity>
             </View>
 
             {/* --- 2. Quick Status Cards --- */}
             <View className="flex-row gap-4 mb-8">
               {statsLoading ? (
-                <Text>Loading stats...</Text>
+                <View className="flex-1 bg-gray-200 h-24 rounded-3xl animate-pulse" />
               ) : (
                 <>
-                  <View className="flex-1 bg-black p-4 rounded-3xl shadow-sm">
+                  <View className="flex-1 bg-gray-900 p-5 rounded-3xl shadow-sm">
                     <Users size={20} color="white" />
-                    <Text className="text-white text-2xl font-bold mt-2">
-                      {stats.find(s => s.title === "Total Students")?.value || "0"}
+                    <Text className="text-white text-2xl font-black mt-2">
+                      {stats.find(s => s.label === "Total Students")?.value || "0"}
                     </Text>
-                    <Text className="text-white text-xs font-medium uppercase italic">Total Students</Text>
+                    <Text className="text-gray-400 text-[10px] font-bold uppercase tracking-wider mt-1">Total Students</Text>
                   </View>
-                  <View className="flex-1 bg-white p-4 rounded-3xl border border-gray-100 shadow-sm">
-                    <Wallet size={20} color="#FF6B00" />
-                    <Text className="text-gray-900 text-2xl font-bold mt-2">
-                      {stats.find(s => s.title === "Revenue")?.value || "$0"}
+                  <View className="flex-1 bg-white p-5 rounded-3xl border border-gray-100 shadow-sm">
+                    <Wallet size={20} color="#0D9488" />
+                    <Text className="text-gray-900 text-2xl font-black mt-2">
+                      {stats.find(s => s.label === "Revenue")?.value || "$0"}
                     </Text>
-                    <Text className="text-gray-400 text-xs font-medium uppercase italic">Total Revenue</Text>
+                    <Text className="text-gray-400 text-[10px] font-bold uppercase tracking-wider mt-1">Total Revenue</Text>
                   </View>
                 </>
               )}
@@ -164,9 +166,9 @@ export default function AdminDashboard() {
               ) : recentUsers.map((user) => (
                 <View key={user.id} className="bg-white p-5 rounded-3xl border border-gray-100 shadow-sm w-[31%]">
                   <View className="flex-row items-center mb-3">
-                    <View className={`p-2 rounded-xl mr-3 ${user.role === 'student' ? 'bg-orange-100' :
+                    <View className={`p - 2 rounded - xl mr - 3 ${user.role === 'student' ? 'bg-orange-100' :
                       user.role === 'teacher' ? 'bg-purple-100' : 'bg-blue-100'
-                      }`}>
+                      } `}>
                       {user.role === 'student' ? <GraduationCap size={20} color="#f97316" /> :
                         user.role === 'teacher' ? <School size={20} color="#8b5cf6" /> :
                           <Settings size={20} color="#3b82f6" />}
@@ -193,9 +195,9 @@ export default function AdminDashboard() {
               ) : recentUsers.map((user) => (
                 <View key={user.id} className="bg-white p-5 rounded-3xl border border-gray-100 shadow-sm mr-4 w-64">
                   <View className="flex-row items-center mb-3">
-                    <View className={`p-2 rounded-xl mr-3 ${user.role === 'student' ? 'bg-orange-100' :
+                    <View className={`p - 2 rounded - xl mr - 3 ${user.role === 'student' ? 'bg-orange-100' :
                       user.role === 'teacher' ? 'bg-purple-100' : 'bg-blue-100'
-                      }`}>
+                      } `}>
                       {user.role === 'student' ? <GraduationCap size={20} color="#f97316" /> :
                         user.role === 'teacher' ? <School size={20} color="#8b5cf6" /> :
                           <Settings size={20} color="#3b82f6" />}
@@ -217,10 +219,10 @@ export default function AdminDashboard() {
               <Text className="text-xl font-bold text-gray-900 mb-4">Quick Actions</Text>
               <View className="flex-row flex-wrap justify-between">
                 <QuickAction
-                  icon={Users}
-                  label="Pending Approvals"
+                  icon={UserPlus}
+                  label="Enroll User"
                   color="#3b82f6"
-                  onPress={() => router.push("/(admin)/users?filter=pending")}
+                  onPress={() => router.push("/(admin)/users/create")}
                 />
                 <QuickAction
                   icon={BookOpen}

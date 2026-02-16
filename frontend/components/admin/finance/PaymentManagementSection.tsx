@@ -11,6 +11,9 @@ import {
 } from "react-native";
 import { Picker } from "@react-native-picker/picker";
 import { Payment } from "@/types/types";
+import { Ionicons } from "@expo/vector-icons";
+import { EmptyState } from "@/components/common/EmptyState";
+import { Receipt } from "lucide-react-native";
 
 interface PaymentManagementSectionProps {
   payments: Payment[];
@@ -31,6 +34,13 @@ const PaymentManagementSection: React.FC<
     reference_number: "",
     notes: "",
   });
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const filteredPayments = payments.filter((p) =>
+    p.student_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    p.student_display_id?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    p.reference_number?.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   const resetForm = () => {
     setFormData({
@@ -163,33 +173,52 @@ const PaymentManagementSection: React.FC<
 
   return (
     <View className="flex-1">
-      <Text className="text-2xl font-bold text-gray-800">Student Payments Record</Text>
+      <View className="flex-row justify-between items-center mb-4">
+        <Text className="text-2xl font-bold text-gray-800">Student Payments</Text>
+        <TouchableOpacity
+          onPress={() => setShowForm(true)}
+          className="bg-black px-4 py-2 rounded-lg"
+        >
+          <Text className="text-white font-medium">Record Payment</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Search Bar */}
+      <View className="flex-row items-center bg-gray-100 rounded-xl px-4 py-3 mb-6">
+        <Ionicons name="search" size={20} color="#9CA3AF" />
+        <TextInput
+          className="flex-1 ml-2 text-gray-900 font-medium"
+          placeholder="Search by student name, ID or reference..."
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+        />
+      </View>
       {loading ? (
         <View className="flex-1 justify-center items-center">
           <Text className="text-gray-500">Loading payments...</Text>
         </View>
       ) : (
-        <FlatList
-          data={payments}
-          renderItem={renderPaymentItem}
-          keyExtractor={(item) => item.id}
-          showsVerticalScrollIndicator={false}
-          refreshing={loading}
-          onRefresh={onRefresh}
-          ListEmptyComponent={
-            <View className="flex-1 justify-center items-center py-20">
-              <Text className="text-gray-500 text-lg">
-                No payments recorded yet
-              </Text>
-              <TouchableOpacity
-                onPress={() => setShowForm(true)}
-                className="bg-[#FF6B00] px-4 py-2 rounded-lg shadow-sm"
-              >
-                <Text className="text-white font-semibold">Record Payment</Text>
-              </TouchableOpacity>
-            </View>
-          }
-        />
+        <View className="pb-20">
+          {filteredPayments.length > 0 ? (
+            filteredPayments.map((item) => (
+              <View key={item.id}>
+                {renderPaymentItem({ item })}
+              </View>
+            ))
+          ) : (
+            <EmptyState
+              title={searchQuery ? "No matching payments" : "No payments recorded"}
+              message={searchQuery
+                ? `We couldn't find any payments matching "${searchQuery}"`
+                : "No payments have been recorded in the system yet."
+              }
+              icon={Receipt}
+              color="#FF6B00"
+              actionLabel={searchQuery ? "Clear Search" : "Record Payment"}
+              onAction={() => searchQuery ? setSearchQuery("") : setShowForm(true)}
+            />
+          )}
+        </View>
       )}
 
       {/* Payment Form Modal */}
