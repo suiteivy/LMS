@@ -51,9 +51,33 @@ export default function UserDetailsScreen() {
     const [occupation, setOccupation] = useState('');
     const [parentAddress, setParentAddress] = useState('');
 
+    // Relationship fields
+    const [classId, setClassId] = useState<string | null>(null);
+    const [subjectIds, setSubjectIds] = useState<string[]>([]);
+    const [linkedStudents, setLinkedStudents] = useState<string[]>([]); // Array of STU- IDs
+
+    // Lookup data
+    const [classes, setClasses] = useState<any[]>([]);
+    const [students, setStudents] = useState<any[]>([]); // For parent linking
+    const [allSubjects, setAllSubjects] = useState<any[]>([]); // For teacher/student
+
     useEffect(() => {
-        if (id) fetchUserDetails();
+        if (id) {
+            fetchUserDetails();
+            loadLookupData();
+        }
     }, [id]);
+
+    const loadLookupData = async () => {
+        const [classRes, subjectRes, studentRes] = await Promise.all([
+            supabase.from('classes').select('id, name').order('name'),
+            supabase.from('subjects').select('id, title').order('title'),
+            supabase.from('students').select('id, user_id, users:user_id(full_name)').order('id'),
+        ]);
+        if (classRes.data) setClasses(classRes.data);
+        if (subjectRes.data) setAllSubjects(subjectRes.data);
+        if (studentRes.data) setStudents(studentRes.data);
+    };
 
     const fetchUserDetails = async () => {
         try {
@@ -67,10 +91,10 @@ export default function UserDetailsScreen() {
 
             let roleQuery = null;
             const role = typedUser?.role;
-            if (role === 'student') roleQuery = supabase.from('students').select('*').eq('user_id', id as string).single();
+            if (role === 'student') roleQuery = supabase.from('students').select('*, enrollments(class_id)').eq('user_id', id as string).single();
             else if (role === 'teacher') roleQuery = supabase.from('teachers').select('*').eq('user_id', id as string).single();
             else if (role === 'admin') roleQuery = supabase.from('admins').select('*').eq('user_id', id as string).single();
-            else if (role === 'parent') roleQuery = supabase.from('parents').select('*').eq('user_id', id as string).single();
+            else if (role === 'parent') roleQuery = supabase.from('parents').select('*, parent_students(student_id)').eq('user_id', id as string).single();
 
             if (roleQuery) {
                 const { data: rData, error: rError } = await roleQuery;
@@ -78,6 +102,12 @@ export default function UserDetailsScreen() {
                     const normalizedData = Array.isArray(rData) ? rData[0] : rData;
                     setRoleData(normalizedData);
                     populateRoleFields(role, normalizedData);
+
+                    // Fetch current subjects if teacher
+                    if (role === 'teacher') {
+                        const { data: subData } = await supabase.from('subjects').select('id').eq('teacher_id', normalizedData.id);
+                        if (subData) setSubjectIds(subData.map(s => s.id));
+                    }
                 }
             }
         } catch (error: any) {
@@ -113,7 +143,43 @@ export default function UserDetailsScreen() {
         } else if (role === 'parent') {
             setOccupation(rd.occupation || '');
             setParentAddress(rd.address || '');
+            setLinkedStudents(rd.parent_students?.map((ps: any) => ps.student_id) || []);
         }
+
+        if (role === 'student') {
+            setClassId(rd.enrollments?.[0]?.class_id || null);
+        }
+    };
+
+    const handleDelete = async () => {
+        Alert.alert(
+            'Confirm Delete',
+            'Are you sure you want to permanently delete this user? This action cannot be undone.',
+            [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                    text: 'Delete',
+                    style: 'destructive',
+                    onPress: async () => {
+                        try {
+                            setLoading(true);
+                            const response = await fetch(`${API_URL}/api/auth/delete-user/${id}`, {
+                                method: 'DELETE',
+                            });
+                            if (!response.ok) {
+                                const data = await response.json();
+                                throw new Error(data.error || 'Failed to delete user');
+                            }
+                            Alert.alert('Success', 'User deleted successfully');
+                            router.replace('/(admin)/users');
+                        } catch (err: any) {
+                            Alert.alert('Error', err.message);
+                            setLoading(false);
+                        }
+                    }
+                }
+            ]
+        );
     };
 
     const handleCancel = () => {
@@ -154,6 +220,13 @@ export default function UserDetailsScreen() {
             } else if (user?.role === 'parent') {
                 body.occupation = occupation || undefined;
                 body.parent_address = parentAddress || undefined;
+                body.linked_students = linkedStudents;
+            }
+
+            if (user?.role === 'student') {
+                body.class_id = classId;
+            } else if (user?.role === 'teacher') {
+                body.subject_ids = subjectIds;
             }
 
             const response = await fetch(`${API_URL}/api/auth/admin-update-user/${id}`, {
@@ -298,6 +371,19 @@ export default function UserDetailsScreen() {
                     )}
                 </View>
 
+                {/* Delete Button (Danger Zone) */}
+                {!isEditing && (
+                    <View className="px-6 pt-4">
+                        <TouchableOpacity
+                            onPress={handleDelete}
+                            className="flex-row items-center justify-center bg-red-50 py-3 rounded-xl border border-red-200"
+                        >
+                            <Ionicons name="trash-outline" size={18} color="#EF4444" />
+                            <Text className="text-red-600 font-bold ml-2">Delete User</Text>
+                        </TouchableOpacity>
+                    </View>
+                )}
+
                 {/* Basic Info */}
                 <View className="mx-6 mt-4 bg-white rounded-2xl border border-gray-100 p-4">
                     <Text className="text-sm font-bold text-gray-400 uppercase tracking-wide mb-2">Profile Information</Text>
@@ -316,12 +402,30 @@ export default function UserDetailsScreen() {
                 {user.role === 'student' && roleData && (
                     <View className="mx-6 mt-4 bg-white rounded-2xl border border-gray-100 p-4">
                         <Text className="text-sm font-bold text-green-600 uppercase tracking-wide mb-2">📚 Student Details</Text>
-                        {renderField('Grade Level', gradeLevel, setGradeLevel)}
-                        {renderField('Academic Year', academicYear, setAcademicYear, { placeholder: '2026' })}
-                        {renderField('Parent Contact', parentContact, setParentContact)}
                         {renderField('Admission Date', admissionDate, setAdmissionDate, { placeholder: 'YYYY-MM-DD' })}
                         {renderField('Emergency Name', emergencyName, setEmergencyName)}
                         {renderField('Emergency Phone', emergencyPhone, setEmergencyPhone)}
+
+                        {/* Class Assignment */}
+                        <View className="mt-4 pt-4 border-t border-gray-100">
+                            <Text className="text-gray-500 font-medium text-sm mb-3">Enrolled Class</Text>
+                            <View className="flex-row flex-wrap gap-2">
+                                {classes.map(c => (
+                                    <TouchableOpacity
+                                        key={c.id}
+                                        onPress={() => isEditing && setClassId(classId === c.id ? null : c.id)}
+                                        disabled={!isEditing}
+                                        className={`px-3 py-2 rounded-lg border ${classId === c.id ? 'bg-green-50 border-green-200' : 'bg-gray-50 border-gray-100'} ${!isEditing && classId !== c.id ? 'hidden' : ''}`}
+                                    >
+                                        <Text className={`text-xs font-semibold ${classId === c.id ? 'text-green-700' : 'text-gray-600'}`}>
+                                            {c.name}
+                                        </Text>
+                                    </TouchableOpacity>
+                                ))}
+                                {isEditing && classes.length === 0 && <Text className="text-gray-400 italic text-xs">No classes available</Text>}
+                                {!isEditing && !classId && <Text className="text-gray-400 italic text-xs">Not enrolled in any class</Text>}
+                            </View>
+                        </View>
                     </View>
                 )}
 
@@ -329,11 +433,36 @@ export default function UserDetailsScreen() {
                 {user.role === 'teacher' && roleData && (
                     <View className="mx-6 mt-4 bg-white rounded-2xl border border-gray-100 p-4">
                         <Text className="text-sm font-bold text-blue-600 uppercase tracking-wide mb-2">👨‍🏫 Teacher Details</Text>
-                        {renderField('Department', department, setDepartment)}
-                        {renderField('Qualification', qualification, setQualification)}
                         {renderField('Specialization', specialization, setSpecialization)}
                         {renderField('Position', position, setPosition)}
                         {renderField('Hire Date', hireDate, setHireDate, { placeholder: 'YYYY-MM-DD' })}
+
+                        {/* Subject Assignments */}
+                        <View className="mt-4 pt-4 border-t border-gray-100">
+                            <Text className="text-gray-500 font-medium text-sm mb-3">Assigned Subjects</Text>
+                            <View className="flex-row flex-wrap gap-2">
+                                {allSubjects.map(s => {
+                                    const isSelected = subjectIds.includes(s.id);
+                                    return (
+                                        <TouchableOpacity
+                                            key={s.id}
+                                            onPress={() => {
+                                                if (!isEditing) return;
+                                                setSubjectIds(isSelected ? subjectIds.filter(id => id !== s.id) : [...subjectIds, s.id]);
+                                            }}
+                                            disabled={!isEditing}
+                                            className={`px-3 py-2 rounded-lg border ${isSelected ? 'bg-blue-50 border-blue-200' : 'bg-gray-50 border-gray-100'} ${!isEditing && !isSelected ? 'hidden' : ''}`}
+                                        >
+                                            <Text className={`text-xs font-semibold ${isSelected ? 'text-blue-700' : 'text-gray-600'}`}>
+                                                {s.title}
+                                            </Text>
+                                        </TouchableOpacity>
+                                    );
+                                })}
+                                {isEditing && allSubjects.length === 0 && <Text className="text-gray-400 italic text-xs">No subjects available</Text>}
+                                {!isEditing && subjectIds.length === 0 && <Text className="text-gray-400 italic text-xs">No subjects assigned</Text>}
+                            </View>
+                        </View>
                     </View>
                 )}
 
@@ -343,6 +472,34 @@ export default function UserDetailsScreen() {
                         <Text className="text-sm font-bold text-yellow-600 uppercase tracking-wide mb-2">👨‍👩‍👧 Parent Details</Text>
                         {renderField('Occupation', occupation, setOccupation)}
                         {renderField('Address', parentAddress, setParentAddress)}
+
+                        {/* Linked Students */}
+                        <View className="mt-4 pt-4 border-t border-gray-100">
+                            <Text className="text-gray-500 font-medium text-sm mb-3">Linked Children (Students)</Text>
+                            <View className="flex-row flex-wrap gap-2">
+                                {students.map(s => {
+                                    const isSelected = linkedStudents.includes(s.id);
+                                    return (
+                                        <TouchableOpacity
+                                            key={s.id}
+                                            onPress={() => {
+                                                if (!isEditing) return;
+                                                setLinkedStudents(isSelected ? linkedStudents.filter(id => id !== s.id) : [...linkedStudents, s.id]);
+                                            }}
+                                            disabled={!isEditing}
+                                            className={`px-3 py-2 rounded-lg border ${isSelected ? 'bg-yellow-50 border-yellow-200' : 'bg-gray-50 border-gray-100'} ${!isEditing && !isSelected ? 'hidden' : ''}`}
+                                        >
+                                            <Text className={`text-xs font-semibold ${isSelected ? 'text-yellow-700' : 'text-gray-600'}`}>
+                                                {s.users?.full_name || s.id}
+                                            </Text>
+                                            {isSelected && isEditing && <Text className="text-[8px] text-yellow-600">{s.id}</Text>}
+                                        </TouchableOpacity>
+                                    );
+                                })}
+                                {isEditing && students.length === 0 && <Text className="text-gray-400 italic text-xs">No students available</Text>}
+                                {!isEditing && linkedStudents.length === 0 && <Text className="text-gray-400 italic text-xs">No children linked</Text>}
+                            </View>
+                        </View>
                     </View>
                 )}
 

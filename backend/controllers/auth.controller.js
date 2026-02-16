@@ -145,7 +145,6 @@ exports.enrollUser = async (req, res) => {
       email,
       full_name,
       role,
-      status: 'approved',
       phone: phone || null,
       gender: gender || null,
       date_of_birth: date_of_birth || null,
@@ -299,6 +298,9 @@ exports.adminUpdateUser = async (req, res) => {
     occupation,
     parent_address,
     avatar_url,
+    linked_students, // For parents: Array of custom student IDs
+    class_id,        // For students: UUID of class
+    subject_ids,     // For students/teachers: Array of UUIDs
   } = req.body;
 
   if (!id) {
@@ -344,6 +346,29 @@ exports.adminUpdateUser = async (req, res) => {
         updates.updated_at = new Date().toISOString();
         await supabase.from('students').update(updates).eq('user_id', id);
       }
+
+      // Update class enrollment
+      if (class_id !== undefined) {
+        // Resolve custom student ID
+        const { data: studentData } = await supabase.from('students').select('id').eq('user_id', id).single();
+        const customStudentId = studentData?.id;
+
+        if (customStudentId) {
+          if (class_id === null) {
+            await supabase.from('enrollments').delete().eq('student_id', customStudentId);
+          } else {
+            // Check if already enrolled in a class
+            const { data: existing } = await supabase.from('enrollments')
+              .select('id').eq('student_id', customStudentId).maybeSingle();
+
+            if (existing) {
+              await supabase.from('enrollments').update({ class_id }).eq('student_id', customStudentId);
+            } else {
+              await supabase.from('enrollments').insert({ student_id: customStudentId, class_id });
+            }
+          }
+        }
+      }
     }
 
     if (role === 'teacher') {
@@ -358,6 +383,21 @@ exports.adminUpdateUser = async (req, res) => {
         updates.updated_at = new Date().toISOString();
         await supabase.from('teachers').update(updates).eq('user_id', id);
       }
+
+      // Update subject assignments
+      if (subject_ids !== undefined) {
+        const { data: teacherData } = await supabase.from('teachers').select('id').eq('user_id', id).single();
+        const customTeacherId = teacherData?.id;
+
+        if (customTeacherId) {
+          // Reset old subjects
+          await supabase.from('subjects').update({ teacher_id: null }).eq('teacher_id', customTeacherId);
+          // Assign new ones
+          if (subject_ids && subject_ids.length > 0) {
+            await supabase.from('subjects').update({ teacher_id: customTeacherId }).in('id', subject_ids);
+          }
+        }
+      }
     }
 
     if (role === 'parent') {
@@ -369,11 +409,61 @@ exports.adminUpdateUser = async (req, res) => {
         updates.updated_at = new Date().toISOString();
         await supabase.from('parents').update(updates).eq('user_id', id);
       }
+
+      // Update linked students
+      if (linked_students !== undefined) {
+        const { data: parentData } = await supabase.from('parents').select('id').eq('user_id', id).single();
+        const customParentId = parentData?.id;
+
+        if (customParentId) {
+          // Simple sync: delete all and re-insert
+          await supabase.from('parent_students').delete().eq('parent_id', customParentId);
+          if (linked_students && linked_students.length > 0) {
+            const inserts = linked_students.map(sid => ({ parent_id: customParentId, student_id: sid }));
+            await supabase.from('parent_students').insert(inserts);
+          }
+        }
+      }
     }
 
     res.status(200).json({ message: "User updated successfully" });
   } catch (err) {
     console.error('Admin update error:', err);
     res.status(500).json({ error: err.message });
+  }
+};
+
+// DELETE USER (Admin only)
+exports.deleteUser = async (req, res) => {
+  const { id } = req.params;
+
+  if (!id) {
+    return res.status(400).json({ error: "User ID is required" });
+  }
+
+  try {
+    // 1. Delete from Supabase Auth (requires service role key)
+    const { error: authError } = await supabase.auth.admin.deleteUser(id);
+
+    if (authError) {
+      console.error('Auth deletion error:', authError);
+      // If auth user not found, we might still want to try deleting from public.users
+      if (authError.status !== 404) {
+        return res.status(500).json({ error: authError.message });
+      }
+    }
+
+    // 2. Delete from public.users (Cascades to admins, teachers, students, parents)
+    const { error: dbError } = await supabase.from('users').delete().eq('id', id);
+
+    if (dbError) {
+      console.error('DB deletion error:', dbError);
+      return res.status(500).json({ error: dbError.message });
+    }
+
+    res.status(200).json({ message: "User deleted successfully" });
+  } catch (err) {
+    console.error('deleteUser error:', err);
+    res.status(500).json({ error: "Server error during deletion" });
   }
 };

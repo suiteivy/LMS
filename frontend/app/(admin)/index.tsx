@@ -3,6 +3,7 @@ import { View, Text, ScrollView, TouchableOpacity, StatusBar } from "react-nativ
 import { supabase } from "@/libs/supabase";
 import { router } from "expo-router";
 import {
+  UserPlus,
   Bell,
   Users,
   Wallet,
@@ -51,11 +52,11 @@ export default function AdminDashboard() {
       const { data, error } = await supabase
         .from("users")
         .select(`
-            *,
-            students (id),
-            teachers (id),
-            admins (id)
-        `)
+  *,
+  students(id),
+  teachers(id),
+  admins(id)
+    `)
         .order("created_at", { ascending: false })
         .limit(5);
 
@@ -164,9 +165,9 @@ export default function AdminDashboard() {
               ) : recentUsers.map((user) => (
                 <View key={user.id} className="bg-white p-5 rounded-3xl border border-gray-100 shadow-sm w-[31%]">
                   <View className="flex-row items-center mb-3">
-                    <View className={`p-2 rounded-xl mr-3 ${user.role === 'student' ? 'bg-orange-100' :
+                    <View className={`p - 2 rounded - xl mr - 3 ${user.role === 'student' ? 'bg-orange-100' :
                       user.role === 'teacher' ? 'bg-purple-100' : 'bg-blue-100'
-                      }`}>
+                      } `}>
                       {user.role === 'student' ? <GraduationCap size={20} color="#f97316" /> :
                         user.role === 'teacher' ? <School size={20} color="#8b5cf6" /> :
                           <Settings size={20} color="#3b82f6" />}
@@ -193,9 +194,9 @@ export default function AdminDashboard() {
               ) : recentUsers.map((user) => (
                 <View key={user.id} className="bg-white p-5 rounded-3xl border border-gray-100 shadow-sm mr-4 w-64">
                   <View className="flex-row items-center mb-3">
-                    <View className={`p-2 rounded-xl mr-3 ${user.role === 'student' ? 'bg-orange-100' :
+                    <View className={`p - 2 rounded - xl mr - 3 ${user.role === 'student' ? 'bg-orange-100' :
                       user.role === 'teacher' ? 'bg-purple-100' : 'bg-blue-100'
-                      }`}>
+                      } `}>
                       {user.role === 'student' ? <GraduationCap size={20} color="#f97316" /> :
                         user.role === 'teacher' ? <School size={20} color="#8b5cf6" /> :
                           <Settings size={20} color="#3b82f6" />}
@@ -217,10 +218,10 @@ export default function AdminDashboard() {
               <Text className="text-xl font-bold text-gray-900 mb-4">Quick Actions</Text>
               <View className="flex-row flex-wrap justify-between">
                 <QuickAction
-                  icon={Users}
-                  label="Pending Approvals"
+                  icon={UserPlus}
+                  label="Enroll User"
                   color="#3b82f6"
-                  onPress={() => router.push("/(admin)/users?filter=pending")}
+                  onPress={() => router.push("/(admin)/users/create")}
                 />
                 <QuickAction
                   icon={BookOpen}

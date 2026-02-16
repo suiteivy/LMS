@@ -100,10 +100,15 @@ export default function Index() {
 
       console.log("User signed in with UUID:", data.user.id);
 
-      type UserRow = { role: string; full_name: string; status: string; id: string };
+      interface UserRow {
+        role: string;
+        full_name: string;
+        id: string;
+        institution_id: string;
+      }
       const { data: userData, error: roleError } = await supabase
         .from("users")
-        .select("role, full_name, status, id")
+        .select("role, full_name, id, institution_id")
         .eq("id", data.user.id)
         .single() as { data: UserRow | null; error: any };
 
