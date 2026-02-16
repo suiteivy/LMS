@@ -2,7 +2,7 @@ import { SubjectDetails } from "@/components/SubjectDetails";
 import { SubjectList } from "@/components/SubjectList";
 import { Subject } from "@/types/types";
 import { useState, useEffect } from "react";
-import { View, ScrollView, ActivityIndicator, Alert } from "react-native";
+import { View, ScrollView, ActivityIndicator, Alert, Text } from "react-native";
 import { supabase } from "@/libs/supabase";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -115,8 +115,9 @@ export default function Subjects() {
 
   if (loading) {
     return (
-      <View className="flex-1 justify-center items-center bg-[#F1FFF8]">
-        <ActivityIndicator size="large" color="#1ABC9C" />
+      <View className="flex-1 justify-center items-center bg-[#fff]">
+        <ActivityIndicator size="large" color="#fb6900" />
+        <Text>Loading subjects</Text>
       </View>
     );
   }
@@ -126,7 +127,7 @@ export default function Subjects() {
       <ScrollView className="flex-grow px-6 pt-12 pb-6">
         {currentView === "list" ? (
           <SubjectList
-            Subjects={subjects}
+            subjects={subjects}
             title="Available Subjects"
             showFilters={true}
             variant="featured"

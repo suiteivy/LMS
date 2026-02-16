@@ -343,18 +343,18 @@ const LibraryAction = () => {
                 <View className="bg-white rounded-xl p-4 shadow-sm">
                   <View className="flex-row items-center justify-between">
                     <View>
-                      <Text className="text-2xl font-bold text-teal-600">
+                      <Text className="text-2xl font-bold text-orange-500">
                         {stats.totalBooks}
                       </Text>
                       <Text className="text-sm text-slate-600">
                         Total Books
                       </Text>
                     </View>
-                    <View className="w-10 h-10 bg-teal-100 rounded-full items-center justify-center">
+                    <View className="w-10 h-10 bg-orange-100 rounded-full items-center justify-center">
                       <Ionicons
                         name="library-outline"
                         size={20}
-                        color="#128C7E"
+                        color="#fd6900"
                       />
                     </View>
                   </View>
@@ -374,7 +374,7 @@ const LibraryAction = () => {
                       <Ionicons
                         name="checkmark-circle-outline"
                         size={20}
-                        color="#1ABC9C"
+                        color="#fd6900"
                       />
                     </View>
                   </View>
@@ -394,7 +394,7 @@ const LibraryAction = () => {
                       <Ionicons
                         name="checkmark-circle-outline"
                         size={20}
-                        color="#1ABC9C"
+                        color="#fd6900"
                       />
                     </View>
                   </View>
@@ -410,8 +410,8 @@ const LibraryAction = () => {
                       </Text>
                       <Text className="text-sm text-slate-600">Borrowed</Text>
                     </View>
-                    <View className="w-10 h-10 bg-slate-100 rounded-full items-center justify-center">
-                      <Ionicons name="book-outline" size={20} color="#2C3E50" />
+                    <View className="w-10 h-10 bg-orange-100 rounded-full items-center justify-center">
+                      <Ionicons name="book-outline" size={20} color="#fd6900" />
                     </View>
                   </View>
                 </View>
@@ -421,7 +421,7 @@ const LibraryAction = () => {
                 <View className="bg-white rounded-xl p-4 shadow-sm">
                   <View className="flex-row items-center justify-between">
                     <View>
-                      <Text className="text-2xl font-bold text-red-600">
+                      <Text className="text-2xl font-bold text-red-500">
                         {stats.overdueBooks}
                       </Text>
                       <Text className="text-sm text-slate-600">Overdue</Text>
@@ -447,15 +447,15 @@ const LibraryAction = () => {
 
             <View className="space-y-3">
               <TouchableOpacity
-                className="bg-white rounded-xl p-4 shadow-sm border border-teal-200 active:bg-teal-50"
+                className="bg-white rounded-xl p-4 shadow-sm border border-orange-200 active:bg-teal-50"
                 onPress={() => setActiveSection("books")}
               >
                 <View className="flex-row items-center">
-                  <View className="w-10 h-10 bg-teal-100 rounded-full items-center justify-center mr-3">
+                  <View className="w-10 h-10 bg-orange-100 rounded-full items-center justify-center mr-3">
                     <Ionicons
                       name="library-outline"
                       size={20}
-                      color="#128C7E"
+                      color="#fd6900"
                     />
                   </View>
                   <View className="flex-1">
@@ -466,7 +466,7 @@ const LibraryAction = () => {
                       Add, edit, or delete books
                     </Text>
                   </View>
-                  <Ionicons name="chevron-forward" size={16} color="#64748B" />
+                  <Ionicons name="chevron-forward" size={16} color="#fd6900" />
                 </View>
               </TouchableOpacity>
 
@@ -475,8 +475,8 @@ const LibraryAction = () => {
                 onPress={() => setActiveSection("borrowed")}
               >
                 <View className="flex-row items-center">
-                  <View className="w-10 h-10 bg-slate-100 rounded-full items-center justify-center mr-3">
-                    <Ionicons name="book-outline" size={20} color="#2C3E50" />
+                  <View className="w-10 h-10 bg-orange-100 rounded-full items-center justify-center mr-3">
+                    <Ionicons name="book-outline" size={20} color="#fd6900" />
                   </View>
                   <View className="flex-1">
                     <Text className="font-semibold text-slate-800">
@@ -486,7 +486,7 @@ const LibraryAction = () => {
                       Track returns and manage loans
                     </Text>
                   </View>
-                  <Ionicons name="chevron-forward" size={16} color="#64748B" />
+                  <Ionicons name="chevron-forward" size={16} color="#fd6900" />
                 </View>
               </TouchableOpacity>
 
@@ -499,7 +499,7 @@ const LibraryAction = () => {
                     <Ionicons
                       name="settings-outline"
                       size={20}
-                      color="#1ABC9C"
+                      color="#fd6900"
                     />
                   </View>
                   <View className="flex-1">
@@ -510,7 +510,7 @@ const LibraryAction = () => {
                       Set limits and policies
                     </Text>
                   </View>
-                  <Ionicons name="chevron-forward" size={16} color="#64748B" />
+                  <Ionicons name="chevron-forward" size={16} color="#fd6900" />
                 </View>
               </TouchableOpacity>
             </View>
@@ -523,8 +523,8 @@ const LibraryAction = () => {
             </Text>
             <View className="space-y-3">
               <View className="flex-row items-center">
-                <View className="w-8 h-8 bg-teal-100 rounded-full items-center justify-center mr-3">
-                  <Ionicons name="add-outline" size={14} color="#128C7E" />
+                <View className="w-8 h-8 bg-orange-100 rounded-full items-center justify-center mr-3">
+                  <Ionicons name="add-outline" size={14} color="#fd6900" />
                 </View>
                 <View className="flex-1">
                   <Text className="text-sm text-slate-800">
@@ -609,7 +609,7 @@ const LibraryAction = () => {
               <TouchableOpacity
                 key={section.id}
                 className={`mr-4 px-4 py-2 rounded-full border ${activeSection === section.id
-                    ? "bg-teal-600 border-teal-600"
+                    ? "bg-orange-500 border-orange-500"
                     : "bg-white border-slate-300"
                   }`}
                 onPress={() => setActiveSection(section.id as LibrarySection)}

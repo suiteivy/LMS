@@ -384,6 +384,8 @@ const FeeStructureSection: React.FC<FeeStructureSectionProps> = ({
                 </Text>
                 <Switch
                   value={formData.is_active}
+                  trackColor={{false: "#e5e7eb", true: "#fed7aa"}}
+                  activeThumbColor="#f97316"
                   onValueChange={(value) =>
                     setFormData({ ...formData, is_active: value })
                   }

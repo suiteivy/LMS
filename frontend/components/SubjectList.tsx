@@ -54,12 +54,13 @@ export const SubjectList: React.FC<SubjectListProps> = ({
                 key={category}
                 onPress={() => setSelectedFilter(category)}
                 className={`px-4 py-2 rounded-full mr-2 ${selectedFilter === category
-                    ? 'bg-teal-500'
+                    ? 'bg-orange-500'
                     : 'bg-white border border-gray-200'
                   }`}
               >
                 <Text
-                  className={`text-sm font-medium capitalize ${selectedFilter === category ? 'text-white' : 'text-[#2C3E50]'
+                  className={`text-sm font-medium capitalize 
+                  ${selectedFilter === category ? 'text-white' : 'text-[#2C3E50]'
                     }`}
                 >
                   {category}
@@ -75,12 +76,15 @@ export const SubjectList: React.FC<SubjectListProps> = ({
               <TouchableOpacity
                 key={level}
                 onPress={() => setSelectedLevel(level)}
-                className={`px-4 py-2 rounded-full mr-2 ${selectedLevel === level
-                    ? 'bg-[#A1EBE5]'
+                className={`px-4 py-2 rounded-full mr-2 
+                  ${selectedLevel === level
+                    ? 'bg-orange-500'
                     : 'bg-white border border-gray-200'
                   }`}
               >
-                <Text className="text-sm font-medium capitalize text-[#2C3E50]">
+                <Text className={`text-sm font-medium capitalize 
+                  ${selectedFilter === level ? 'text-white' : 'text-[#2C3E50]'
+                    }`}>
                   {level}
                 </Text>
               </TouchableOpacity>
@@ -101,7 +105,7 @@ export const SubjectList: React.FC<SubjectListProps> = ({
         ))}
         {filteredSubjects.length === 0 && (
           <View className="items-center py-12">
-            <Ionicons name="school" size={48} color="#A1EBE5" />
+            <Ionicons name="school" size={48} color="orange" />
             <Text className="text-gray-500 mt-4 text-center">
               No Subjects found{'\n'}Try adjusting your filters
             </Text>

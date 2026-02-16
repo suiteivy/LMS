@@ -100,15 +100,23 @@ export default function Index() {
 
       console.log("User signed in with UUID:", data.user.id);
 
-      type UserRow = { role: string; full_name: string; status: string; id: string };
-      const { data: userData, error: roleError } = await supabase
+      type UserRow = {
+        role: string;
+        full_name: string;
+        status: string;
+        id: string;
+      };
+      const { data: userData, error: roleError } = (await supabase
         .from("users")
         .select("role, full_name, status, id")
         .eq("id", data.user.id)
-        .single() as { data: UserRow | null; error: any };
+        .single()) as { data: UserRow | null; error: any };
 
       if (roleError || !userData) {
-        console.error("Role fetch error:", roleError?.message || "No user data");
+        console.error(
+          "Role fetch error:",
+          roleError?.message || "No user data",
+        );
         setErrorMessage("Could not fetch user role");
         setIsLoading(false);
         return;
@@ -116,18 +124,32 @@ export default function Index() {
 
       // Fetch custom ID
       let customId = "";
-      if (userData.role === 'admin') {
-        const { data: adm } = await supabase.from('admins').select('id').eq('user_id', userData.id).single() as { data: { id: string } | null };
+      if (userData.role === "admin") {
+        const { data: adm } = (await supabase
+          .from("admins")
+          .select("id")
+          .eq("user_id", userData.id)
+          .single()) as { data: { id: string } | null };
         customId = adm?.id || "";
-      } else if (userData.role === 'teacher') {
-        const { data: tea } = await supabase.from('teachers').select('id').eq('user_id', userData.id).single() as { data: { id: string } | null };
+      } else if (userData.role === "teacher") {
+        const { data: tea } = (await supabase
+          .from("teachers")
+          .select("id")
+          .eq("user_id", userData.id)
+          .single()) as { data: { id: string } | null };
         customId = tea?.id || "";
-      } else if (userData.role === 'student') {
-        const { data: stu } = await supabase.from('students').select('id').eq('user_id', userData.id).single() as { data: { id: string } | null };
+      } else if (userData.role === "student") {
+        const { data: stu } = (await supabase
+          .from("students")
+          .select("id")
+          .eq("user_id", userData.id)
+          .single()) as { data: { id: string } | null };
         customId = stu?.id || "";
       }
 
-      console.log(`User profile loaded: ${userData.full_name} (${userData.role}) - Custom ID: ${customId}`);
+      console.log(
+        `User profile loaded: ${userData.full_name} (${userData.role}) - Custom ID: ${customId}`,
+      );
 
       if (!userData?.role) {
         console.log("No role found for user");
@@ -137,13 +159,19 @@ export default function Index() {
       }
 
       // Check for approval status
-      if (userData.status === 'pending') {
-        showMessage("Your account is pending approval. Please contact an administrator.", false);
+      if (userData.status === "pending") {
+        showMessage(
+          "Your account is pending approval. Please contact an administrator.",
+          false,
+        );
         setIsLoading(false);
         await supabase.auth.signOut(); // Ensure they remain signed out
         return;
-      } else if (userData.status === 'rejected') {
-        showMessage("Your account has been rejected. Please contact support.", false);
+      } else if (userData.status === "rejected") {
+        showMessage(
+          "Your account has been rejected. Please contact support.",
+          false,
+        );
         setIsLoading(false);
         await supabase.auth.signOut();
         return;
@@ -174,7 +202,10 @@ export default function Index() {
       }, 2000);
     } catch (error: unknown) {
       console.error("Unexpected error:", error);
-      setErrorMessage("An unexpected error occurred: " + (error instanceof Error ? error.message : String(error)));
+      setErrorMessage(
+        "An unexpected error occurred: " +
+          (error instanceof Error ? error.message : String(error)),
+      );
     } finally {
       setIsLoading(false);
     }
@@ -182,7 +213,10 @@ export default function Index() {
 
   const handleForgotPassword = async () => {
     if (!formData.email) {
-      Alert.alert("Required", "Please enter your email address to reset your password.");
+      Alert.alert(
+        "Required",
+        "Please enter your email address to reset your password.",
+      );
       return;
     }
 
@@ -193,13 +227,19 @@ export default function Index() {
 
     setIsLoading(true);
     try {
-      const { error } = await supabase.auth.resetPasswordForEmail(formData.email, {
-        redirectTo: 'https://example.com/update-password', // Update with actual deep link if needed
-      });
+      const { error } = await supabase.auth.resetPasswordForEmail(
+        formData.email,
+        {
+          redirectTo: "https://example.com/update-password", // Update with actual deep link if needed
+        },
+      );
 
       if (error) throw error;
 
-      Alert.alert("Success", "Password reset instructions have been sent to your email.");
+      Alert.alert(
+        "Success",
+        "Password reset instructions have been sent to your email.",
+      );
     } catch (error: any) {
       Alert.alert("Error", error.message);
     } finally {
@@ -213,7 +253,10 @@ export default function Index() {
       <View className="flex-1 bg-gray-50 lg:bg-gray-100 justify-center">
         <SafeAreaView className="flex-1 w-full max-w-[500px] self-center">
           <ScrollView
-            contentContainerStyle={{ flexGrow: 1, justifyContent: "flex-start"}}
+            contentContainerStyle={{
+              flexGrow: 1,
+              justifyContent: "flex-start",
+            }}
             className="bg-white lg:rounded-[40px] lg:border lg:border-gray-200 lg:my-10 lg:shadow-xl"
             showsVerticalScrollIndicator={false}
           >
@@ -251,6 +294,14 @@ export default function Index() {
               </View>
 
               {/* FORM FIELDS */}
+              {errorMessage && (
+                <View className="bg-red-50 border border-red-100 p-4 rounded-2xl mb-6 flex-row items-center">
+                  <Ionicons name="alert-circle" size={20} color="#ef4444" />
+                  <Text className="text-red-600 ml-2 font-semibold flex-1">
+                    {errorMessage}
+                  </Text>
+                </View>
+              )}
               <View className="space-y-6">
                 <View>
                   <Text className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-2 ml-1">
@@ -272,6 +323,11 @@ export default function Index() {
                       autoCapitalize="none"
                     />
                   </View>
+                  {errors.email && (
+                    <Text className="text-red-500 text-xs mt-1 ml-1 font-bold italic">
+                      {errors.email}
+                    </Text>
+                  )}
                 </View>
 
                 <View>
@@ -306,6 +362,11 @@ export default function Index() {
                       />
                     </TouchableOpacity>
                   </View>
+                  {errors.password && (
+                    <Text className="text-red-500 text-xs mt-1 ml-1 font-bold italic">
+                      {errors.password}
+                    </Text>
+                  )}
                 </View>
               </View>
 
@@ -326,9 +387,11 @@ export default function Index() {
                 activeOpacity={0.8}
               >
                 {isLoading ? (
-                  <ActivityIndicator color="white" className="p-2"/>
+                  <ActivityIndicator color="white" className="p-2" />
                 ) : (
-                  <Text className="text-white font-bold text-lg p-2 ">Sign In</Text>
+                  <Text className="text-white font-bold text-lg p-2 ">
+                    Sign In
+                  </Text>
                 )}
               </TouchableOpacity>
 

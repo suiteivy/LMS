@@ -166,12 +166,12 @@ export const SubjectDetails: React.FC<SubjectDetailsProps> = ({
                 key={tab.key}
                 onPress={() => setActiveTab(tab.key as any)}
                 className={`flex-1 py-4 items-center border-b-2 ${activeTab === tab.key
-                  ? "border-[#1ABC9C]"
+                  ? "border-[#fd6900] bg-orange-300"
                   : "border-transparent"
                   }`}
               >
                 <Text
-                  className={`font-medium ${activeTab === tab.key ? "text-[#1ABC9C]" : "text-gray-500"
+                  className={`font-medium ${activeTab === tab.key ? "text-white" : "text-gray-500"
                     }`}
                 >
                   {tab.label}
@@ -219,7 +219,7 @@ export const SubjectDetails: React.FC<SubjectDetailsProps> = ({
                   Student Reviews
                 </Text>
                 <View className="items-center py-8">
-                  <Ionicons name="chatbubbles" size={48} color="#A1EBE5" />
+                  <Ionicons name="chatbubbles" size={48} color="#fb6900" />
                   <Text className="text-gray-500 mt-4">No reviews yet</Text>
                 </View>
               </View>

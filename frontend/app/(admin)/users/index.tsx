@@ -6,6 +6,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { User } from '@/types/types'; // Your User type
 import { UserCard } from '@/components/common/UserCard'; // Assuming you have this
 import { useSchool } from '@/contexts/SchoolContext'; // If needed for school context
+import { ArrowLeft } from 'lucide-react-native';
 
 export default function UsersManagementScreen() {
     const router = useRouter();

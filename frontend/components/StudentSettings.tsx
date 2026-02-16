@@ -24,7 +24,7 @@ export default function StudentSettings() {
         >
             <View className="flex-row items-center flex-1">
                 <View className="p-2 bg-gray-50 rounded-lg mr-3">
-                    <Icon size={20} color="#4b5563" />
+                    <Icon size={20} color="orange" />
                 </View>
                 <Text className="text-gray-700 font-medium text-base">{title}</Text>
             </View>
@@ -55,8 +55,8 @@ export default function StudentSettings() {
                         <Switch 
                             value={notifications}
                             onValueChange={setNotifications}
-                            trackColor={{false: "#e5e7eb", true: "#0d9488"}}
-                            thumbColor="#ffffff"
+                            trackColor={{false: "#e5e7eb", true: "#fed7aa"}}
+                            activeThumbColor="#f97316"
                         />
                     </SettingRow>
                 </View>

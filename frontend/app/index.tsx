@@ -25,7 +25,7 @@ export default function Index() {
   if (loading) {
     return (
       <View className="flex-1 justify-center items-center bg-gray-50">
-        <ActivityIndicator size="large" color="#FF6B00" />
+        <ActivityIndicator size="large" color="#FF6900" />
       </View>
     );
   }
@@ -66,8 +66,17 @@ export default function Index() {
           <Text className="text-gray-400 text-sm mt-4 text-center">
             Sign in to access your personalized dashboard
           </Text>
-        </View>
+          <TouchableOpacity
+            onPress={() => router.replace("/(auth)/Trial")}
+            className="mt-6" // Adds some spacing from the previous text
+          >
+            <Text className="text-orange-500 font-bold text-base underline">
+              Trial Account
+            </Text>
+          </TouchableOpacity>
       </View>
+        </View>
+        
     </SafeAreaView>
   );
 }

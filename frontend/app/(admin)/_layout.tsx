@@ -3,7 +3,7 @@ import { SchoolProvider } from '@/contexts/SchoolContext';
 import { AuthGuard } from '@/components/AuthGuard';
 import { View, Platform } from 'react-native';
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { House, Users, Wallet, Settings, LayoutGrid } from "lucide-react-native";
+import { House, Users, Wallet, Settings, LayoutGrid, Monitor } from "lucide-react-native";
 
 export default function AdminLayout() {
     const insets = useSafeAreaInsets();
@@ -76,7 +76,7 @@ export default function AdminLayout() {
                                     }}
                                 />
                                 <Tabs.Screen
-                                    name="settings/index"
+                                    name="settings/settings"
                                     options={{
                                         title: "Settings",
                                         tabBarIcon: ({ size, color }) => (
@@ -84,6 +84,7 @@ export default function AdminLayout() {
                                         ),
                                     }}
                                 />
+
                                 {/* Hide internal routes from tabs */}
                                 <Tabs.Screen name="users/[id]" options={{ href: null }} />
                                 <Tabs.Screen name="users/create" options={{ href: null }} />

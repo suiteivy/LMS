@@ -1,28 +1,26 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, TouchableOpacity, ActivityIndicator, Alert, Platform } from 'react-native';
 import {
   createDrawerNavigator,
   DrawerContentScrollView,
   DrawerItemList,
 } from '@react-navigation/drawer';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { UserCircle, Settings, ShieldCheck, LogOut, HelpCircle, PersonStanding } from 'lucide-react-native';
+import { UserCircle, Settings, ShieldCheck, LogOut, HelpCircle, Menu } from 'lucide-react-native';
 import { router } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
 
 // Screens
 import StudentProfile from './StudentProfile';
 import TeacherProfile from './TeacherProfile';
-import AdminProfile from './AdminProfile'; // Imported AdminProfile
+import AdminProfile from './AdminProfile';
 import StudentSettings from './StudentSettings';
 import StudentHelp from './StudentHelp';
-
 
 const Drawer = createDrawerNavigator();
 
 function CustomDrawerContent(props: any) {
   const { signOut, user, loading, displayId } = useAuth();
-  // ... (rest of the function remains same, just replacing imports and Drawer.Navigator part)
 
   const handleLogout = async () => {
     try {
@@ -40,9 +38,8 @@ function CustomDrawerContent(props: any) {
   return (
     <View style={{ flex: 1 }}>
       <DrawerContentScrollView {...props}>
-        {/* Profile header */}
         <View className="px-4 py-8 border-b border-gray-100 mb-2">
-          <View className={`w-12 h-12 rounded-full items-center justify-center mb-3 ${props.userRole === 'teacher' ? 'bg-teacherOrange' : 'bg-teal-600'}`}>
+          <View className={`w-12 h-12 rounded-full items-center justify-center mb-3 ${props.userRole === 'teacher' ? 'bg-blue-500' : 'bg-orange-500'}`}>
             <Text className="text-white font-bold text-lg">
               {user?.user_metadata?.full_name?.charAt(0) || 'U'}
             </Text>
@@ -53,23 +50,15 @@ function CustomDrawerContent(props: any) {
           <Text className="text-gray-500 text-xs">{user?.email}</Text>
           <Text className="text-gray-400 text-xs mt-1">ID: {displayId || 'Loading...'}</Text>
         </View>
-
-        {/* Navigation items */}
         <DrawerItemList {...props} />
       </DrawerContentScrollView>
 
-      {/* Logout footer */}
       <View className="p-5 border-t border-gray-100 pb-10 bg-white">
         <TouchableOpacity
           onPress={handleLogout}
           disabled={loading}
           className="flex-row items-center p-3 rounded-xl active:bg-red-50"
         >
-          {loading ? (
-            <ActivityIndicator size="small" color="#ef4444" />
-          ) : (
-            <LogOut size={22} color="#ef4444" />
-          )}
           <Text className="ml-3 font-semibold text-red-500">Logout</Text>
         </TouchableOpacity>
       </View>
@@ -88,38 +77,61 @@ export default function GlobalSettingsDrawer({ userRole = 'student' }: { userRol
     <GestureHandlerRootView style={{ flex: 1 }}>
       <Drawer.Navigator
         drawerContent={(props) => <CustomDrawerContent {...props} userRole={userRole} />}
-        screenOptions={{
-          headerShown: false,
-          drawerActiveTintColor: userRole === 'teacher' ? '#FF6B00' : '#128C7E',
+        screenOptions={({ navigation }) => ({
+          headerShown: true,
+          headerLeft: () => (
+            <TouchableOpacity 
+              onPress={() => navigation.openDrawer()}
+              className="ml-4 p-2"
+            >
+              <Menu size={24} color="#000" />
+            </TouchableOpacity>
+          ),
+          headerStyle: {
+            backgroundColor: '#ffffff',
+            elevation: 0,
+            shadowOpacity: 0,
+            borderBottomWidth: 1,
+            borderBottomColor: '#e5e7eb',
+          },
+          headerTitleStyle: {
+            fontWeight: 'bold',
+            fontSize: 18,
+            color: '#000',
+          },
+          headerTitleAlign: 'center',
+          drawerActiveTintColor: userRole === 'teacher' ? 'orange' : 'orange',
           drawerStyle: { width: 280 },
-        }}
+        })}
       >
-        <Drawer.Screen
-          name="Profile"
-          component={getProfileComponent()}
-          options={{
-            drawerIcon: ({ color, size }) => <UserCircle size={size} color={color} />,
-          }}
-        />
 
         {userRole === 'admin' && (
           <Drawer.Screen
             name="AdminPanel"
             options={{
+              title: 'Admin Panel',
               drawerIcon: ({ color, size }) => <ShieldCheck size={size} color={color} />,
             }}
             component={() => (
-              <View className="flex-1 items-center justify-center">
-                <Text>Admin Panel</Text>
-              </View>
+              <View className="flex-1 items-center justify-center"><Text>Admin Panel</Text></View>
             )}
           />
         )}
+        
+        <Drawer.Screen
+          name="Profile"
+          component={getProfileComponent()}
+          options={{
+            title: 'My Profile',
+            drawerIcon: ({ color, size }) => <UserCircle size={size} color={color} />,
+          }}
+        />
 
         <Drawer.Screen
           name="Settings"
           component={StudentSettings}
           options={{
+            title: 'Settings',
             drawerIcon: ({ color, size }) => <Settings size={size} color={color} />,
           }}
         />
@@ -128,6 +140,7 @@ export default function GlobalSettingsDrawer({ userRole = 'student' }: { userRol
           name="Help"
           component={StudentHelp}
           options={{
+            title: 'Help & Support',
             drawerIcon: ({ color, size }) => <HelpCircle size={size} color={color} />,
           }}
         />
@@ -135,4 +148,3 @@ export default function GlobalSettingsDrawer({ userRole = 'student' }: { userRol
     </GestureHandlerRootView>
   );
 }
-

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { View, Text, ScrollView, TouchableOpacity, StatusBar, Modal, TextInput, Alert, ActivityIndicator } from 'react-native';
-import { ArrowLeft, Video, File, Image, Download, Trash2, X, Upload, FolderOpen, Link as LinkIcon, FileText } from 'lucide-react-native';
+import { ArrowLeft, Video, File, Image, Download, Trash2, X, Upload, FolderOpen, Link as LinkIcon, FileText, Copy } from 'lucide-react-native';
 import { router } from "expo-router";
 import { supabase } from "@/libs/supabase";
 import { useAuth } from "@/contexts/AuthContext";
@@ -54,6 +54,7 @@ export default function ResourcesPage() {
     const [loading, setLoading] = useState(true);
     const [resources, setResources] = useState<Resource[]>([]);
     const [Subjects, setSubjects] = useState<{ id: string; title: string }[]>([]);
+    const [selectedDocument, setSelectedDocument] = useState()
 
     // Form
     const [title, setTitle] = useState("");
@@ -164,6 +165,7 @@ export default function ResourcesPage() {
         }
     };
 
+        
     return (
         <>
             <StatusBar barStyle="dark-content" />
@@ -275,6 +277,8 @@ export default function ResourcesPage() {
                             onChangeText={setUrl}
                             autoCapitalize="none"
                         />
+
+
 
                         <TouchableOpacity
                             className="bg-teacherOrange py-4 rounded-xl items-center"

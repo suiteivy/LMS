@@ -73,7 +73,7 @@ export default function StudentLibrary() {
     if (loading && !refreshing) {
         return (
             <View className="flex-1 bg-white justify-center items-center">
-                <ActivityIndicator size="large" color="#0d9488" />
+                <ActivityIndicator size="large" color="#ff6900" />
                 <Text className="mt-4 text-gray-500 font-medium">Opening Library...</Text>
             </View>
         );
@@ -127,7 +127,7 @@ export default function StudentLibrary() {
                             <Text className="text-gray-900 font-bold text-lg">Your Active Loans</Text>
                         </View>
                         {borrowingHistory.filter(b => b.status === 'borrowed').map((borrow) => (
-                            <View key={borrow.id} className="bg-white p-4 rounded-3xl border border-teal-100 mb-2 flex-row items-center">
+                            <View key={borrow.id} className="bg-white p-4 rounded-3xl border border-orange-100 mb-2 flex-row items-center">
                                 <View className="bg-teal-50 p-2 rounded-xl mr-3">
                                     <BookOpen size={16} color="#0d9488" />
                                 </View>
@@ -161,17 +161,17 @@ export default function StudentLibrary() {
                             className="bg-white p-4 rounded-[25px] border border-gray-100 mb-3 flex-row items-center justify-between"
                         >
                             <View className="flex-row items-center flex-1">
-                                <View className={`p-3 rounded-2xl mr-4 ${item.quantity > 0 ? 'bg-teal-50' : 'bg-gray-50'}`}>
+                                <View className={`p-3 rounded-2xl mr-4 ${item.quantity > 0 ? 'bg-orange-50' : 'bg-gray-50'}`}>
                                     <BookOpen size={22} color={item.quantity > 0 ? "#0d9488" : "#9CA3AF"} />
                                 </View>
                                 <View className="flex-1">
-                                    <Text className="text-[10px] font-bold text-teal-600 uppercase mb-0.5">{item.category}</Text>
+                                    <Text className="text-[10px] font-bold text-orange-600 uppercase mb-0.5">{item.category}</Text>
                                     <Text className="text-gray-900 font-bold text-base" numberOfLines={1}>{item.title}</Text>
                                     <Text className="text-gray-400 text-xs">{item.author}</Text>
                                 </View>
                             </View>
                             <View className={`p-2 rounded-full ${item.available > 0 ? 'bg-teal-50' : 'bg-red-50'}`}>
-                                <Text className={`font-bold text-[10px] px-1 ${item.available > 0 ? 'text-teal-600' : 'text-red-500'}`}>
+                                <Text className={`font-bold text-[10px] px-1 ${item.available > 0 ? 'text-orange-600' : 'text-red-500'}`}>
                                     {item.available > 0 ? `${item.available} LEFT` : 'OUT'}
                                 </Text>
                             </View>
@@ -191,7 +191,7 @@ export default function StudentLibrary() {
 
                         <View className="flex-row justify-between items-start mb-6">
                             <View className="flex-1 pr-4">
-                                <Text className="text-teal-600 font-bold text-xs uppercase tracking-widest">{selectedBook?.category}</Text>
+                                <Text className="text-orange-600 font-bold text-xs uppercase tracking-widest">{selectedBook?.category}</Text>
                                 <Text className="text-3xl font-black text-gray-900 mt-2">{selectedBook?.title}</Text>
                                 <Text className="text-orange-500 font-medium mt-1">by {selectedBook?.author}</Text>
                             </View>

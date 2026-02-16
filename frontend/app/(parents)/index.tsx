@@ -377,7 +377,7 @@ const AttendanceContent = () => (
       <View className="items-center bg-blue-50 p-4 rounded-3xl flex-1 mr-2"><Text className="text-2xl font-black text-blue-600">92%</Text><Text className="text-blue-400 text-xs">Present</Text></View>
       <View className="items-center bg-red-50 p-4 rounded-3xl flex-1 ml-2"><Text className="text-2xl font-black text-red-600">3</Text><Text className="text-red-400 text-xs">Absences</Text></View>
     </View>
-    <Text className="font-bold text-gray-800 mb-2 text-center text-gray-400 italic">No recent absences to report.</Text>
+    <Text className="font-bold text-gray-800 mb-2 text-center italic">No recent absences to report.</Text>
   </View>
 );
 

@@ -3,7 +3,8 @@ import { View, Text, ScrollView, ActivityIndicator, TouchableOpacity, Alert, Ima
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { supabase } from '@/libs/supabase';
 import { Ionicons } from '@expo/vector-icons';
-import { format } from 'date-fns';
+import { format } from "date-fns";
+import { ArrowLeft } from 'lucide-react-native';
 
 export default function UserDetailsScreen() {
     const { id: idParam } = useLocalSearchParams();
@@ -64,7 +65,10 @@ export default function UserDetailsScreen() {
 
             if (error) throw error;
 
+            setLoading(true)
             Alert.alert('Success', `User status updated to ${newStatus}`);
+            router.replace("/(admin)/users")
+
             fetchUserDetails(); // Refresh
         } catch (error: any) {
             Alert.alert('Error', error.message);
@@ -98,6 +102,12 @@ export default function UserDetailsScreen() {
             <ScrollView className="flex-1">
                 {/* Profile Header */}
                 <View className="items-center py-8 bg-gray-50 border-b border-gray-100">
+                    <TouchableOpacity
+                        className='p-2 -ml-2 mr-2 rounded-full active:bg-gray-200'
+                        onPress={() => router.push('/(admin)/users')}
+                    >
+                        <ArrowLeft  size={24} color="#111827" />
+                    </TouchableOpacity>
                     <View className="w-24 h-24 bg-gray-200 rounded-full items-center justify-center mb-4 overflow-hidden border-4 border-white shadow-sm">
                         {/* Placeholder for avatar, or use initials */}
                         <Text className="text-3xl font-bold text-gray-500">{getInitials(user.full_name)}</Text>

@@ -12,7 +12,7 @@ const AuthView = ({ onBack, isVerified, authCode, onAuthChange }: any) => {
     <View>
       <TouchableOpacity onPress={onBack} className="flex-row items-center mb-6">
         <ChevronLeft size={20} color="#0d9488" />
-        <Text className="text-teal-600 font-bold ml-1">Back to Profile</Text>
+        <Text className="text-orange-600 font-bold ml-1">Back to Profile</Text>
       </TouchableOpacity>
 
       <Text className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4">
@@ -24,7 +24,7 @@ const AuthView = ({ onBack, isVerified, authCode, onAuthChange }: any) => {
           <Text className="text-sm font-semibold text-gray-700 mb-2">Enter Authentication code</Text>
           <View className="relative">
             <TextInput
-              className={`bg-gray-50 p-4 rounded-2xl border ${isVerified ? 'border-teal-500' : 'border-gray-100'} text-gray-900`}
+              className={`bg-gray-50 p-4 rounded-2xl border ${isVerified ? 'border-orange-500' : 'border-gray-100'} text-gray-900`}
               placeholder="Enter 6-digit code (123456)"
               placeholderTextColor="#9ca3af"
               keyboardType="number-pad"
@@ -159,21 +159,21 @@ export const ProfileEdit = ({ visible, onClose }: EditFormProps) => {
                     <Text className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4">
                       Security
                     </Text>
-                    <View className="bg-teal-50/50 p-5 rounded-2xl mb-6 border border-teal-100">
-                      <Text className="text-teal-800 text-sm leading-5">
+                    <View className="bg-orange-50/50 p-5 rounded-2xl mb-6 border border-orange-100">
+                      <Text className="text-gray-900 text-sm leading-5">
                         To change your password, we will send a 6-digit code to
                         your email.
                       </Text>
                     </View>
                     <TouchableOpacity
                       disabled={loading}
-                      className="bg-white border-2 border-teal-600 p-4 rounded-2xl items-center"
+                      className="bg-white border-2 border-orange-500 p-4 rounded-2xl items-center"
                       onPress={handleRequestCode}
                     >
                       {loading ? (
-                        <ActivityIndicator color="#0d9488" />
+                        <ActivityIndicator color="#ff6900" />
                       ) : (
-                        <Text className="text-teal-600 font-bold text-base">
+                        <Text className="text-orange-500 font-bold text-base">
                           Request Verification Code
                         </Text>
                       )}
@@ -196,7 +196,7 @@ export const ProfileEdit = ({ visible, onClose }: EditFormProps) => {
                   className={`p-4 rounded-2xl items-center ${
                     currentView === "auth" && !isVerified
                       ? "bg-gray-100"
-                      : "bg-teal-600 shadow-md active:opacity-90"
+                      : "bg-orange-500 shadow-md active:opacity-90"
                   }`}
                 >
                   <Text className={`font-bold text-lg 
