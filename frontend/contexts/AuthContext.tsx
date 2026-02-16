@@ -15,19 +15,19 @@ interface AuthContextType {
   parentId: string | null
   displayId: string | null
   loading: boolean
-  signUp: (email: string, password: string, userData: {
-    full_name: string
-    role: 'admin' | 'student' | 'teacher' | 'parent'
-    institution_id?: string
-  }) => Promise<{ data: any; error: any }>
   signIn: (email: string, password: string) => Promise<{ data: any; error: any }>
   signOut: () => Promise<{ error: any }>
+  logout: () => Promise<void>
   resetPassword: (email: string) => Promise<{ error: any }>
   refreshProfile: () => Promise<UserProfile | null>
   resetSessionTimer: () => void
 }
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined)
+
+export const logout = async () => {
+  await authService.signOut();
+};
 
 export const useAuth = () => {
   const context = useContext(AuthContext)
@@ -226,9 +226,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     parentId,
     displayId,
     loading,
-    signUp: authService.signUp,
     signIn: authService.signIn,
     signOut: authService.signOut,
+    logout: logout,
     resetPassword: authService.resetPassword,
     refreshProfile,
     resetSessionTimer,

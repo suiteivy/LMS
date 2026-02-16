@@ -1,9 +1,10 @@
 import React, { useState } from "react";
 import { View, Text, ScrollView, TouchableOpacity, StatusBar } from 'react-native';
-import { Calendar, Clock, ArrowRight, BookOpen, Star, GraduationCap, Book } from 'lucide-react-native';
+import { Calendar, Clock, ArrowRight, BookOpen, Star, GraduationCap, Book, Bell } from 'lucide-react-native';
 import Notifications from '../../components/Notifications';
 import { router, useRouter } from "expo-router";
 import { useAuth } from "@/contexts/AuthContext";
+import { useNotifications } from "@/contexts/NotificationContext";
 
 // Define Interface for the QuickAction props
 interface QuickActionProps {
@@ -14,7 +15,7 @@ interface QuickActionProps {
 }
 
 const QuickAction = ({ icon: Icon, label, color, onPress }: QuickActionProps) => (
-  <TouchableOpacity 
+  <TouchableOpacity
     onPress={onPress}
     className="w-[48%] bg-white p-6 rounded-3xl border border-gray-100 shadow-sm items-center mb-4 active:bg-gray-50"
   >
@@ -27,6 +28,7 @@ const QuickAction = ({ icon: Icon, label, color, onPress }: QuickActionProps) =>
 
 export default function Index() {
   const { profile, displayId, loading } = useAuth();
+  const { unreadCount } = useNotifications();
   const [showNotification, setShowNotification] = useState(false);
   const router = useRouter()
 
@@ -57,6 +59,16 @@ export default function Index() {
                   ID: {displayId || 'Loading...'}
                 </Text>
               </View>
+
+              <TouchableOpacity
+                onPress={() => setShowNotification(true)}
+                className="bg-white p-3 rounded-full border border-gray-100 shadow-sm relative"
+              >
+                <Bell size={24} color="#374151" />
+                {unreadCount > 0 && (
+                  <View className="absolute top-0 right-0 bg-red-500 w-3 h-3 rounded-full border-2 border-white" />
+                )}
+              </TouchableOpacity>
             </View>
 
             {/* --- 2. Quick Status Cards --- */}

@@ -29,16 +29,30 @@ This guide will walk you through setting up a Supabase project for the Learning 
 
 2. **Copy Project URL and API Keys**
    - Under "Project URL", copy the URL (e.g., `https://abcdefghijklm.supabase.co`)
-   - Under "Project API keys", copy the "anon" public key
-   - These will be used in your `.env` file
+   - Under "Project API keys", copy:
+     - The **anon** (public) key
+     - The **service_role** (secret) key — used by the backend for admin operations
+   - These will be used in your `.env` files
 
-3. **Update Environment Variables**
-   - Open the `.env` file in your project
-   - Update the following variables with your copied values:
+3. **Update Frontend Environment Variables**
+   - Open `frontend/.env`
+   - Update the following:
      ```
      EXPO_PUBLIC_SUPABASE_URL=your_copied_project_url
      EXPO_PUBLIC_SUPABASE_ANON_KEY=your_copied_anon_key
+     EXPO_PUBLIC_API_URL=http://localhost:4000
      ```
+
+4. **Update Backend Environment Variables**
+   - Open `backend/.env`
+   - Update the following:
+     ```
+     SUPABASE_URL=your_copied_project_url
+     SUPABASE_ANON_KEY=your_copied_anon_key
+     SUPABASE_SERVICE_ROLE_KEY=your_copied_service_role_key
+     PORT=4000
+     ```
+   > ⚠️ **Important**: The `SUPABASE_SERVICE_ROLE_KEY` is required for admin operations like enrolling users and updating user profiles. Never expose this key in client-side code.
 
 ## Database Setup
 
@@ -61,8 +75,8 @@ Use the consolidated schema file for specific table structure and policies:
    - This script sets up essential database triggers for auto-incrementing IDs, stock management, and more.
 
 4. **Create Admin User**
-   - Use the Supabase Dashboard to create a new user.
-   - Manually insert the user into the `admins` table or use a helper script if available.
+   - Use the admin enrollment wizard in the app (after creating the first admin manually)
+   - Or use the Supabase Dashboard to create a user and manually insert into the `admins` table
 
 
 ## Authentication Configuration

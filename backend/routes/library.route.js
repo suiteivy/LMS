@@ -10,6 +10,8 @@ const {
   getAllBorrowedBooks,
   sendReminder,
   extendDueDate,
+  updateBorrowStatus,
+  rejectBorrowRequest,
 } = require("../controllers/library.controller");
 const { authMiddleware } = require("../middleware/auth.middleware");
 const { authorizeRoles } = require("../middleware/authRole");
@@ -29,7 +31,7 @@ router.get("/books", authMiddleware, listBooks);
 
 // Student: borrow
 router.post(
-  "/borrow/:bookId",
+  "/borrow",
   authMiddleware,
   authorizeRoles(["student"]),
   borrowBook
@@ -44,7 +46,8 @@ router.post(
 );
 
 // History: admin can pass :studentId, student sees own if omitted
-router.get("/history/:studentId?", authMiddleware, history);
+router.get("/history", authMiddleware, history);
+router.get("/history/:studentId", authMiddleware, history);
 
 // Admin/librarian: get all borrowed books (for overview)
 router.get(
@@ -68,6 +71,22 @@ router.put(
   authMiddleware,
   authorizeRoles(["admin"]),
   extendDueDate
+);
+
+// Admin/librarian: update borrow status
+router.put(
+  "/status/:borrowId",
+  authMiddleware,
+  authorizeRoles(["admin"]),
+  updateBorrowStatus
+);
+
+// Admin/librarian: reject a borrow request
+router.post(
+  "/reject/:borrowId",
+  authMiddleware,
+  authorizeRoles(["admin"]),
+  rejectBorrowRequest
 );
 
 module.exports = router;

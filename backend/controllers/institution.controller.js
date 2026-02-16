@@ -28,3 +28,23 @@ exports.getInstitutions = async (req, res) => {
   if (error) return res.status(500).json({ error: error.message });
   res.json(data);
 };
+
+exports.getClasses = async (req, res) => {
+  try {
+    // Assuming middleware attaches institution_id
+    const { institution_id } = req;
+    // If no institution_id in req (e.g. superadmin?), maybe fetch all? 
+    // But typically we want for specific institution.
+
+    let query = supabase.from("classes").select("*");
+    if (institution_id) {
+      query = query.eq("institution_id", institution_id);
+    }
+
+    const { data, error } = await query;
+    if (error) throw error;
+    res.json(data);
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+};

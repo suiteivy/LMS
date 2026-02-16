@@ -100,17 +100,17 @@ export default function Index() {
 
       console.log("User signed in with UUID:", data.user.id);
 
-      type UserRow = {
+      interface UserRow {
         role: string;
         full_name: string;
-        status: string;
         id: string;
-      };
-      const { data: userData, error: roleError } = (await supabase
+        institution_id: string;
+      }
+      const { data: userData, error: roleError } = await supabase
         .from("users")
-        .select("role, full_name, status, id")
+        .select("role, full_name, id, institution_id")
         .eq("id", data.user.id)
-        .single()) as { data: UserRow | null; error: any };
+        .single() as { data: UserRow | null; error: any };
 
       if (roleError || !userData) {
         console.error(
@@ -158,25 +158,6 @@ export default function Index() {
         return;
       }
 
-      // Check for approval status
-      if (userData.status === "pending") {
-        showMessage(
-          "Your account is pending approval. Please contact an administrator.",
-          false,
-        );
-        setIsLoading(false);
-        await supabase.auth.signOut(); // Ensure they remain signed out
-        return;
-      } else if (userData.status === "rejected") {
-        showMessage(
-          "Your account has been rejected. Please contact support.",
-          false,
-        );
-        setIsLoading(false);
-        await supabase.auth.signOut();
-        return;
-      }
-
       const name = userData.full_name || "there";
       showMessage(`👋 Welcome back, ${name}!`, true);
 
@@ -193,7 +174,7 @@ export default function Index() {
             router.replace("/(student)");
             break;
           case "parent":
-            router.replace("/(parents)");
+            router.replace("/(parent)" as any);
             break;
           default:
             setErrorMessage("Unrecognized user role: " + userData.role);
@@ -253,10 +234,7 @@ export default function Index() {
       <View className="flex-1 bg-gray-50 lg:bg-gray-100 justify-center">
         <SafeAreaView className="flex-1 w-full max-w-[500px] self-center">
           <ScrollView
-            contentContainerStyle={{
-              flexGrow: 1,
-              justifyContent: "flex-start",
-            }}
+            contentContainerStyle={{ flexGrow: 1, justifyContent: "flex-start" }}
             className="bg-white lg:rounded-[40px] lg:border lg:border-gray-200 lg:my-10 lg:shadow-xl"
             showsVerticalScrollIndicator={false}
           >
@@ -395,13 +373,6 @@ export default function Index() {
                 )}
               </TouchableOpacity>
 
-              {/* FOOTER */}
-              <View className="flex-row justify-center mt-10">
-                <Text className="text-gray-500">Don't have an account? </Text>
-                <TouchableOpacity onPress={() => router.push("/(auth)/signUp")}>
-                  <Text className="text-orange-500 font-bold">Sign Up</Text>
-                </TouchableOpacity>
-              </View>
             </View>
           </ScrollView>
         </SafeAreaView>

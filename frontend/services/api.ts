@@ -1,5 +1,6 @@
 import { Platform } from "react-native";
-import axios, { AxiosInstance } from "axios";
+import axios, { AxiosInstance, AxiosError } from "axios";
+import { showError } from "../utils/toast";
 
 /**
  * To Do:
@@ -18,11 +19,11 @@ const getBaseUrl = (): string => {
   // Platform-specific defaults for development
   if (Platform.OS === "android") {
     // Android emulator uses this special IP to access host machine's localhost
-    return "http://10.0.2.2:4000/api";
+    return "http://10.0.2.2:4001/api";
   }
 
   // Default for iOS simulator and other platforms
-  return "http://localhost:4000/api";
+  return "http://localhost:4001/api";
 };
 
 /**
@@ -33,10 +34,58 @@ const getBaseUrl = (): string => {
  */
 export const api: AxiosInstance = axios.create({
   baseURL: getBaseUrl(),
-  timeout: 10000, // Added: 10 second timeout to prevent hanging requests
+  timeout: 10000,
   headers: {
     "Content-Type": "application/json",
-    // Added common headers that might be needed
     Accept: "application/json",
   },
 });
+
+// Response Interceptor for Global Error Handling
+api.interceptors.response.use(
+  (response) => response,
+  (error: AxiosError) => {
+    let title = "Error";
+    let message = "An unexpected error occurred";
+
+    if (error.response) {
+      const status = error.response.status;
+      const data = error.response.data as any;
+      message = data?.error || data?.message || message;
+
+      switch (status) {
+        case 400:
+          title = "Invalid Request";
+          break;
+        case 401:
+          title = "Unauthorized";
+          message = "Please sign in again.";
+          break;
+        case 403:
+          title = "Permission Denied";
+          message = "You don't have access to this resource.";
+          break;
+        case 404:
+          title = "Not Found";
+          message = "The requested resource was not found.";
+          break;
+        case 500:
+          title = "Server Error";
+          message = "Something went wrong on our end.";
+          break;
+      }
+    } else if (error.request) {
+      title = "Network Error";
+      message = "Could not connect to the server. Please check your internet.";
+    } else {
+      message = error.message;
+    }
+
+    // Only show toast if it's not a "cancelled" request or specific silences
+    if (error.message !== 'canceled') {
+      showError(title, message);
+    }
+
+    return Promise.reject(error);
+  }
+);

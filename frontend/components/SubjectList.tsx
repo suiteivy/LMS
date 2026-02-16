@@ -3,6 +3,8 @@ import { View, Text, ScrollView, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { SubjectCard } from './SubjectCard';
 import { Subject } from '@/types/types';
+import { EmptyState } from '@/components/common/EmptyState';
+import { BookOpen } from 'lucide-react-native';
 
 interface SubjectListProps {
   subjects: Subject[];
@@ -54,8 +56,13 @@ export const SubjectList: React.FC<SubjectListProps> = ({
                 key={category}
                 onPress={() => setSelectedFilter(category)}
                 className={`px-4 py-2 rounded-full mr-2 ${selectedFilter === category
+<<<<<<< HEAD
                     ? 'bg-orange-500'
                     : 'bg-white border border-gray-200'
+=======
+                  ? 'bg-teal-500'
+                  : 'bg-white border border-gray-200'
+>>>>>>> 10094d0dbae412cbf5513a83d4d4825af887a959
                   }`}
               >
                 <Text
@@ -76,10 +83,16 @@ export const SubjectList: React.FC<SubjectListProps> = ({
               <TouchableOpacity
                 key={level}
                 onPress={() => setSelectedLevel(level)}
+<<<<<<< HEAD
                 className={`px-4 py-2 rounded-full mr-2 
                   ${selectedLevel === level
                     ? 'bg-orange-500'
                     : 'bg-white border border-gray-200'
+=======
+                className={`px-4 py-2 rounded-full mr-2 ${selectedLevel === level
+                  ? 'bg-[#A1EBE5]'
+                  : 'bg-white border border-gray-200'
+>>>>>>> 10094d0dbae412cbf5513a83d4d4825af887a959
                   }`}
               >
                 <Text className={`text-sm font-medium capitalize 
@@ -95,13 +108,22 @@ export const SubjectList: React.FC<SubjectListProps> = ({
 
       {/* Subject Grid */}
       <ScrollView showsVerticalScrollIndicator={false}>
-        {filteredSubjects.map((subject) => (
-          <SubjectCard
-            key={subject.id}
-            Subject={subject}
-            onPress={() => onPressSubject(subject)}
-            variant={variant}
+        {filteredSubjects.length > 0 ? (
+          filteredSubjects.map((subject) => (
+            <SubjectCard
+              key={subject.id}
+              Subject={subject}
+              onPress={() => onPressSubject(subject)}
+              variant={variant}
+            />
+          ))
+        ) : (
+          <EmptyState
+            title="No Subjects found"
+            message="Try adjusting your filters or search query."
+            icon={BookOpen}
           />
+<<<<<<< HEAD
         ))}
         {filteredSubjects.length === 0 && (
           <View className="items-center py-12">
@@ -110,6 +132,8 @@ export const SubjectList: React.FC<SubjectListProps> = ({
               No Subjects found{'\n'}Try adjusting your filters
             </Text>
           </View>
+=======
+>>>>>>> 10094d0dbae412cbf5513a83d4d4825af887a959
         )}
       </ScrollView>
     </View>

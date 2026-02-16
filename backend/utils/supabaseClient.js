@@ -3,9 +3,35 @@ const dotenv = require("dotenv");
 
 dotenv.config();
 
-const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_ANON_KEY
-);
+let supabaseInstance = null;
 
-module.exports = supabase;
+function getClient() {
+    if (!supabaseInstance) {
+        const supabaseUrl = process.env.SUPABASE_URL || process.env.EXPO_PUBLIC_SUPABASE_URL;
+        let supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+        if (!supabaseKey) {
+            console.warn("WARNING: SUPABASE_SERVICE_ROLE_KEY not found. Using ANON key.");
+            supabaseKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
+        }
+
+        if (!supabaseUrl || !supabaseKey) {
+            console.error("ERROR: Supabase URL or Key missing during initialization.");
+        }
+        supabaseInstance = createClient(supabaseUrl, supabaseKey);
+    }
+    return supabaseInstance;
+}
+
+const supabaseProxy = new Proxy({}, {
+    get: function (target, prop) {
+        const client = getClient();
+        const value = client[prop];
+        if (typeof value === 'function') {
+            return value.bind(client);
+        }
+        return value;
+    }
+});
+
+module.exports = supabaseProxy;

@@ -1,7 +1,8 @@
 import React, { useState } from "react";
 import { View, Text, ScrollView, TouchableOpacity, StatusBar } from 'react-native';
 import { Calendar, Clock, Bell, ArrowRight, BookOpen, Users, GraduationCap, School } from 'lucide-react-native';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth,logout } from '@/contexts/AuthContext';
+
 
 // Define Interface for the QuickAction props
 interface QuickActionProps {
@@ -20,7 +21,7 @@ const QuickAction = ({ icon: Icon, label, color }: QuickActionProps) => (
 );
 
 export default function TeacherHome() {
-    const { profile, displayId } = useAuth();
+    const { profile, displayId, logout } = useAuth();
     const [showNotification, setShowNotification] = useState(false);
 
     return (
@@ -47,6 +48,8 @@ export default function TeacherHome() {
                                     ID: {displayId || 'Loading...'}
                                 </Text>
                             </View>
+                            <View className="">
+                            
 
                             <TouchableOpacity
                                 className="relative p-2 bg-white rounded-full border border-gray-100 shadow-sm active:opacity-70"
@@ -55,6 +58,26 @@ export default function TeacherHome() {
                                 <Bell size={24} color="#374151" />
                                 <View className="absolute top-2 right-2 w-3 h-3 bg-red-500 rounded-full border-2 border-white" />
                             </TouchableOpacity>
+
+                            {/* Logout Button */}
+                            <TouchableOpacity
+                                className="mt-3 p-2 bg-red-500 rounded-full border border-red-600 shadow-sm active:opacity-70 items-center justify-center"
+                                onPress={async () => {
+                                    // Use the logout function from AuthContext
+                                    if (typeof window !== 'undefined') {
+                                        await logout();
+                                        sessionStorage.clear();
+                                        window.location.reload();
+                                    }
+                                }}
+                            >
+                                <View className="flex-row items-center">
+                                    <ArrowRight size={20} color="white" style={{ transform: [{ rotate: '180deg' }] }} />
+                                    
+                                </View>
+                            </TouchableOpacity>
+                            </View>
+
                         </View>
 
                         {/* --- 2. Quick Status Cards --- */}
