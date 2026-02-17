@@ -19,7 +19,7 @@ interface AuthContextType {
   loading: boolean
   signIn: (email: string, password: string) => Promise<{ data: any; error: any }>
   signOut: () => Promise<{ error: any }>
-  logout: () => Promise<void>
+  logout: () => Promise<{ error: any }>
   resetPassword: (email: string) => Promise<{ error: any }>
   refreshProfile: () => Promise<UserProfile | null>
   resetSessionTimer: () => void
@@ -27,9 +27,7 @@ interface AuthContextType {
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
-export const logout = async () => {
-  await authService.signOut();
-};
+
 
 export const useAuth = () => {
   const context = useContext(AuthContext)
@@ -58,6 +56,20 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const appState = useRef(AppState.currentState);
   const lastActive = useRef(Date.now());
 
+  const isManualLogout = useRef(false);
+
+  const handleLogout = async () => {
+    isManualLogout.current = true
+    try {
+      return await authService.signOut()
+    } finally {
+      // Reset after a short delay to allow the event listener to fire
+      setTimeout(() => {
+        isManualLogout.current = false
+      }, 1000)
+    }
+  }
+
   const clearTimer = () => {
     if (timerRef.current) {
       clearTimeout(timerRef.current)
@@ -76,7 +88,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     // 10 minutes = 10 * 60 * 1000 ms
     timerRef.current = setTimeout(async () => {
       console.log('Session timeout reached (10 min), logging out...')
-      await authService.signOut()
+      await handleLogout()
     }, 10 * 60 * 1000)
   }
 
@@ -195,12 +207,42 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           setAdminId(null)
           setParentId(null)
           setDisplayId(null)
-          console.log('User signed out, state cleared')
+
+          if (!isManualLogout.current) {
+            console.log('User signed out unexpectedly, showing toast')
+            Toast.show({
+              type: 'error',
+              text1: 'Session Expired',
+              text2: 'Please sign in again.',
+              position: 'bottom',
+              visibilityTime: 4000,
+            });
+          } else {
+            console.log('User signed out manually')
+          }
+
+          // Reset just in case, though timeout in handleLogout also handles it
+          isManualLogout.current = false;
         }
 
         // Handle edge case: auth event without session
         if (!session && (event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED')) {
           console.warn('Auth event without session, forcing logout')
+          // This creates a recursive call potential if we aren't careful, 
+          // but handleLogout sets isManualLogout=true so it won't toast loop.
+          // However, if it's an "unexpected" token refresh fail, maybe we WANT a toast?
+          // The prompt specifically asked about "Invalid Refresh Token".
+          // If we call signOut() here, it emits signed_out. 
+          // If we want a toast here, we should NOT set isManualLogout if we want the toast to appear in the SIGNED_OUT handler above.
+          // BUT, we are calling signOut() which is async.
+
+          // Let's decide: if it's a forced system logout due to error, we probably want the toast.
+          // So we should NOT set isManualLogout = true here.
+          // But `authService.signOut` just calls supabase.auth.signOut().
+          // If we call `authService.signOut()` directly here, `isManualLogout` remains false.
+          // The SIGNED_OUT event will fire.
+          // The check `!isManualLogout.current` will be true.
+          // Toast will show. Correct.
           await authService.signOut()
         }
       } catch (error) {
@@ -229,12 +271,25 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         // If backgrounded for more than 10 mins
         if (diff > 10 * 60 * 1000 && currentSession) {
           console.log('Inactive for more than 10 mins in background, logging out');
+          // This is a "system" logout due to inactivity, but we might want a specific message.
+          // The code originally had a specific toast here.
+          // If we call handleLogout(), it suppresses the generic "Session Expired" toast 
+          // (because isManualLogout=true) and we can show a specific one if we want.
+          // OR we can just let the generic one happen.
+          // The original code had:
+          // await authService.signOut();
+          // Toast.show(...)
+
+          // Let's keep the explicit inactivity toast by using handleLogout (suppress generic) + explicit toast.
+          isManualLogout.current = true; // suppress generic
           await authService.signOut();
           Toast.show({
             type: 'info',
             text1: 'Session Expired',
             text2: 'Logged out due to inactivity.'
           });
+          setTimeout(() => { isManualLogout.current = false; }, 1000);
+
         } else {
           // Reset timer if we came back within 10 mins
           resetSessionTimer();
@@ -267,8 +322,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     displayId,
     loading,
     signIn: authService.signIn,
-    signOut: authService.signOut,
-    logout: logout,
+    signOut: handleLogout,
+    logout: handleLogout,
     resetPassword: authService.resetPassword,
     refreshProfile,
     resetSessionTimer,
