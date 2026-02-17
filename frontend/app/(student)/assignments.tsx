@@ -355,7 +355,7 @@ export default function StudentsAssignments() {
                 className="bg-orange-500 py-4 rounded-2xl items-center shadow-lg shadow-orange-200"
                 activeOpacity={0.8}
                 onPress={handleUpload}
-              >
+                >
                 <Text className="text-white font-black text-lg">
                   Finalize Submission
                 </Text>
