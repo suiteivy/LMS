@@ -973,6 +973,46 @@ export interface Database {
           }
         ];
       };
+      notifications: {
+        Row: {
+          id: string;
+          user_id: string;
+          title: string;
+          message: string;
+          type: "info" | "success" | "warning" | "error";
+          is_read: boolean;
+          data: Json | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          title: string;
+          message: string;
+          type: "info" | "success" | "warning" | "error";
+          is_read?: boolean;
+          data?: Json | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          title?: string;
+          message?: string;
+          type?: "info" | "success" | "warning" | "error";
+          is_read?: boolean;
+          data?: Json | null;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "notifications_user_id_fkey";
+            columns: ["user_id"];
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;

@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { AxiosError } from "axios";
 import { api } from "./api";
-import { supabase } from "@/libs/supabase";
 import {
   AddBookRequest,
   BackendBook,
@@ -20,36 +19,13 @@ import {
  */
 export class LibraryAPI {
   /**
-   * Get authorization header with JWT token
-   * @returns {Promise<Record<string, string>>}
-   */
-  static async getAuthHeaders(): Promise<Record<string, string>> {
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const token = session?.access_token;
-      if (!token) {
-        throw new Error("No authentication token found");
-      }
-      return {
-        Authorization: `Bearer ${token}`,
-      };
-    } catch (error) {
-      console.error("Error getting auth headers:", error);
-      throw error;
-    }
-  }
-
-  /**
    * Add a new book to the library
    * @param {AddBookRequest} bookData
    * @returns {Promise<BackendBook>}
    */
   static async addBook(bookData: AddBookRequest): Promise<BackendBook> {
     try {
-      const headers = await LibraryAPI.getAuthHeaders();
-      const response = await api.post<BackendBook>("/library/books", bookData, {
-        headers,
-      });
+      const response = await api.post<BackendBook>("/library/books", bookData);
       return response.data;
     } catch (error) {
       console.error("Error adding book:", error);
@@ -63,10 +39,7 @@ export class LibraryAPI {
    */
   static async getBooks(): Promise<BackendBook[]> {
     try {
-      const headers = await LibraryAPI.getAuthHeaders();
-      const response = await api.get<BackendBook[]>("/library/books", {
-        headers,
-      });
+      const response = await api.get<BackendBook[]>("/library/books");
       return response.data;
     } catch (error) {
       console.error("Error fetching books:", error);
@@ -85,13 +58,9 @@ export class LibraryAPI {
     updateData: UpdateBookRequest
   ): Promise<BackendBook> {
     try {
-      const headers = await LibraryAPI.getAuthHeaders();
       const response = await api.put<BackendBook>(
         `/library/books/${bookId}`,
-        updateData,
-        {
-          headers,
-        }
+        updateData
       );
       return response.data;
     } catch (error) {
@@ -107,10 +76,7 @@ export class LibraryAPI {
    */
   static async deleteBook(bookId: string): Promise<void> {
     try {
-      const headers = await LibraryAPI.getAuthHeaders();
-      await api.delete(`/library/books/${bookId}`, {
-        headers,
-      });
+      await api.delete(`/library/books/${bookId}`);
     } catch (error) {
       console.error("Error deleting book:", error);
       throw error;
@@ -122,15 +88,11 @@ export class LibraryAPI {
     days: number = 14
   ): Promise<BackendBorrowedBook> {
     try {
-      const headers = await LibraryAPI.getAuthHeaders();
       const response = await api.post<BackendBorrowedBook>(
         "/library/borrow",
         {
           bookId,
           days,
-        },
-        {
-          headers,
         }
       );
       return response.data;
@@ -151,15 +113,11 @@ export class LibraryAPI {
     returnedAt: string = new Date().toISOString()
   ): Promise<BackendBorrowedBook> {
     try {
-      const headers = await LibraryAPI.getAuthHeaders();
       const response = await api.post<BackendBorrowedBook>(
         `/library/return/${borrowId}`,
         {
           returned_at: returnedAt,
-        } as ReturnBookRequest,
-        {
-          headers,
-        }
+        } as ReturnBookRequest
       );
       return response.data;
     } catch (error) {
@@ -177,12 +135,8 @@ export class LibraryAPI {
     studentId: string
   ): Promise<BackendBorrowedBook[]> {
     try {
-      const headers = await LibraryAPI.getAuthHeaders();
       const response = await api.get<BackendBorrowedBook[]>(
-        `/library/history/${studentId}`,
-        {
-          headers,
-        }
+        `/library/history/${studentId}`
       );
       return response.data;
     } catch (error) {
@@ -197,12 +151,8 @@ export class LibraryAPI {
    */
   static async getAllBorrowedBooks(): Promise<BackendBorrowedBook[]> {
     try {
-      const headers = await LibraryAPI.getAuthHeaders();
       const response = await api.get<BackendBorrowedBook[]>(
-        "/library/borrowed",
-        {
-          headers,
-        }
+        "/library/borrowed"
       );
       return response.data;
     } catch (error) {
@@ -218,13 +168,9 @@ export class LibraryAPI {
    */
   static async sendReminder(borrowId: string): Promise<{ message: string }> {
     try {
-      const headers = await LibraryAPI.getAuthHeaders();
       const response = await api.post<{ message: string }>(
         `/library/reminder/${borrowId}`,
-        {},
-        {
-          headers,
-        }
+        {}
       );
       return response.data;
     } catch (error) {
@@ -244,15 +190,11 @@ export class LibraryAPI {
     newDueDate: string
   ): Promise<BackendBorrowedBook> {
     try {
-      const headers = await LibraryAPI.getAuthHeaders();
       const response = await api.put<BackendBorrowedBook>(
         `/library/extend/${borrowId}`,
         {
           new_due_date: newDueDate,
-        } as ExtendDueDateRequest,
-        {
-          headers,
-        }
+        } as ExtendDueDateRequest
       );
       return response.data;
     } catch (error) {
@@ -268,11 +210,9 @@ export class LibraryAPI {
    */
   static async rejectBorrowRequest(borrowId: string): Promise<any> {
     try {
-      const headers = await LibraryAPI.getAuthHeaders();
       const response = await api.post(
         `/library/reject/${borrowId}`,
-        {},
-        { headers }
+        {}
       );
       return response.data;
     } catch (error) {
@@ -292,11 +232,9 @@ export class LibraryAPI {
     status: 'ready_for_pickup' | 'borrowed'
   ): Promise<BackendBorrowedBook> {
     try {
-      const headers = await this.getAuthHeaders();
       const response = await api.put<BackendBorrowedBook>(
         `/library/status/${borrowId}`,
-        { status },
-        { headers }
+        { status }
       );
       return response.data;
     } catch (error) {

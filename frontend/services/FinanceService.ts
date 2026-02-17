@@ -1,33 +1,17 @@
 import { api } from "./api";
-import { supabase } from "@/libs/supabase";
+import { Payment, TeacherPayout, FeeStructure } from "@/types/types";
 
 export class FinanceService {
-    static async getAuthHeaders() {
-        const { data: { session } } = await supabase.auth.getSession();
-        return { Authorization: `Bearer ${session?.access_token}` };
-    }
-
-    static async getPayments(studentId?: string) {
-        const headers = await this.getAuthHeaders();
+    static async getPayments(studentId?: string): Promise<Payment[]> {
         // Use unified transactions endpoint
-        const params: any = { type: 'fee_payment' };
-        if (studentId && studentId !== 'all') {
-            // If studentId is 'all', backend filters by role anyway.
-            // If passing specific studentId, need strict filter?
-            // Backend takes 'distinct_user_id' for admin filtering.
-            // But 'studentId' here is likely 'all' or specific.
-            // If specific, assume it's User ID (UUID) or resolve it?
-            // Existing usage passes 'all'.
-        }
-
         let url = '/finance/transactions?type=fee_payment';
+
+        // Correctly pass distinct_user_id if a specific student is requested (and not 'all')
         if (studentId && studentId !== 'all') {
-            // If we really need filtering by specific student (rare in current usage)
-            // we'd append &distinct_user_id=...
-            // But let's assume 'all' for now as per usage.
+            url += `&distinct_user_id=${studentId}`;
         }
 
-        const response = await api.get(url, { headers });
+        const response = await api.get(url);
 
         // Map FinancialTransaction -> Payment
         return response.data.map((tx: any) => ({
@@ -45,15 +29,16 @@ export class FinanceService {
     }
 
     static async recordPayment(paymentData: any) {
-        const headers = await this.getAuthHeaders();
         // Calls new recordFeePayment endpoint
-        const response = await api.post('/finance/fees/pay', paymentData, { headers });
+        const response = await api.post('/finance/fees/pay', paymentData);
         return response.data;
     }
 
-    static async getTeacherPayouts(teacherId: string) {
-        const headers = await this.getAuthHeaders();
-        const response = await api.get('/finance/transactions?type=salary_payout', { headers });
+    static async getTeacherPayouts(teacherId: string): Promise<TeacherPayout[]> {
+        let url = '/finance/transactions?type=salary_payout';
+        // Logic for filtering by teacherId could be added here similar to getPayments if needed
+
+        const response = await api.get(url);
 
         // Map FinancialTransaction -> TeacherPayout
         return response.data.map((tx: any) => ({
@@ -71,23 +56,18 @@ export class FinanceService {
     }
 
     static async processPayout(payoutId: string) {
-        const headers = await FinanceService.getAuthHeaders();
-        const response = await api.put(`/finance/transactions/${payoutId}/process`, {}, { headers });
+        const response = await api.put(`/finance/transactions/${payoutId}/process`, {});
         return response.data;
     }
 
-    static async getFeeStructures() {
+    static async getFeeStructures(): Promise<FeeStructure[]> {
         // Now fetched from subjects
-        const headers = await FinanceService.getAuthHeaders();
-        // We added getFeeStructures to finance controller (planned)
-        // Or if we didn't yet, we need to.
-        const response = await api.get('/finance/fee-structures', { headers });
+        const response = await api.get('/finance/fee-structures');
         return response.data;
     }
 
     static async updateFeeStructure(feeData: any) {
-        const headers = await this.getAuthHeaders();
-        const response = await api.post('/finance/fee-structures', feeData, { headers });
+        const response = await api.post('/finance/fee-structures', feeData);
         return response.data;
     }
 }

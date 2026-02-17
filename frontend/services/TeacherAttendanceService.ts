@@ -1,8 +1,4 @@
-import axios from 'axios';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { api } from './api';
-
-const API_URL = process.env.EXPO_PUBLIC_API_URL + '/api/attendance/teachers';
 
 export interface TeacherAttendance {
     id: string;
