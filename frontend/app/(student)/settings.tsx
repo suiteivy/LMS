@@ -1,5 +1,5 @@
 import { View } from "react-native";
-import GlobalSettingsDrawer from "../../components/GlobalSettingsDrawer";
+import GlobalSettingsDrawer, { GlobalSettingsContent } from "../../components/GlobalSettingsDrawer";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -10,7 +10,7 @@ export default function Settings() {
     return (
         <GestureHandlerRootView style={{ flex: 1 }}>
             <View style={{ flex: 1 }}>
-                <GlobalSettingsDrawer userRole={userRole} />
+                <GlobalSettingsContent userRole={userRole} />
             </View>
         </GestureHandlerRootView>
     )

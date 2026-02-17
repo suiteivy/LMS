@@ -20,13 +20,26 @@ import { useDashboardStats } from "@/hooks/useDashboardStats";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { User } from "@/types/types";
 
-// Define Interface for the QuickAction props
 interface QuickActionProps {
   icon: any;
   label: string;
   color: string;
   onPress: () => void;
 }
+
+// Cast icons to any to avoid nativewind interop issues
+const IconUserPlus = UserPlus as any;
+const IconBell = Bell as any;
+const IconUsers = Users as any;
+const IconWallet = Wallet as any;
+const IconLayoutGrid = LayoutGrid as any;
+const IconSettings = Settings as any;
+const IconArrowRight = ArrowRight as any;
+const IconSchool = School as any;
+const IconGraduationCap = GraduationCap as any;
+const IconBookOpen = BookOpen as any;
+const IconBarChart3 = BarChart3 as any;
+const IconLogOut = LogOut as any;
 
 const QuickAction = ({ icon: Icon, label, color, onPress }: QuickActionProps) => (
   <TouchableOpacity
@@ -41,7 +54,7 @@ const QuickAction = ({ icon: Icon, label, color, onPress }: QuickActionProps) =>
 );
 
 // --- DEBUG COMPONENT ---
-const DebugSessionInfo = () => {
+const DebugSessionInfo = ({ onClose }: { onClose: () => void }) => {
   const [debugInfo, setDebugInfo] = useState<any>({ status: 'Loading...', token: '...' });
 
   const checkSession = async () => {
@@ -62,12 +75,31 @@ const DebugSessionInfo = () => {
   }, []);
 
   return (
-    <View>
-      <Text className="text-xs text-red-700 font-mono">Status: {debugInfo.status}</Text>
-      <Text className="text-xs text-red-700 font-mono">User: {debugInfo.user}</Text>
-      <Text className="text-xs text-red-700 font-mono">Token: {debugInfo.token}</Text>
-      <TouchableOpacity onPress={checkSession} className="bg-red-100 p-2 rounded mt-2 items-center">
-        <Text className="text-red-800 text-xs font-bold">Refresh Session Info</Text>
+    <View className="bg-white p-6 rounded-3xl m-4 border border-red-100 shadow-lg">
+      <View className="flex-row justify-between items-center mb-4">
+        <Text className="text-red-800 font-bold text-lg">Technical Diagnostics</Text>
+        <TouchableOpacity onPress={onClose} className="bg-gray-100 p-2 rounded-full">
+          <Text className="text-gray-600 font-bold">✕</Text>
+        </TouchableOpacity>
+      </View>
+
+      <View className="bg-gray-50 p-4 rounded-xl space-y-2">
+        <View className="flex-row justify-between">
+          <Text className="text-xs text-gray-500 font-medium">Status:</Text>
+          <Text className="text-xs text-gray-900 font-mono">{debugInfo.status}</Text>
+        </View>
+        <View className="flex-row justify-between">
+          <Text className="text-xs text-gray-500 font-medium">User:</Text>
+          <Text className="text-xs text-gray-900 font-mono">{debugInfo.user}</Text>
+        </View>
+        <View>
+          <Text className="text-xs text-gray-500 font-medium mb-1">Token:</Text>
+          <Text className="text-[10px] text-gray-400 font-mono" numberOfLines={2}>{debugInfo.token}</Text>
+        </View>
+      </View>
+
+      <TouchableOpacity onPress={checkSession} className="bg-red-50 p-3 rounded-xl mt-4 items-center active:bg-red-100">
+        <Text className="text-red-600 text-xs font-bold uppercase tracking-wider">Refresh Session Info</Text>
       </TouchableOpacity>
     </View>
   );
@@ -78,6 +110,7 @@ export default function AdminDashboard() {
   const { stats, loading: statsLoading } = useDashboardStats();
   const [recentUsers, setRecentUsers] = useState<User[]>([]);
   const [loadingUsers, setLoadingUsers] = useState(false);
+  const [showDebug, setShowDebug] = useState(false);
 
   // Fetch recent users for the "Recent Activity" horizontal scroll
   const fetchRecentUsers = useCallback(async () => {
@@ -136,158 +169,208 @@ export default function AdminDashboard() {
   };
 
   return (
-    <>
+    <View className="flex-1 bg-gray-50/50">
       <StatusBar barStyle="dark-content" />
-      <View className="flex-1 bg-gray-50">
-        <ScrollView
-          className="flex-1"
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={{ paddingBottom: 100 }}
-        >
-          <View className="p-4 md:p-8">
-            {/* --- 1. Header Section --- */}
-            <View className="flex-row justify-between items-center mb-8">
-              <View>
-                <Text className="text-gray-500 text-base font-medium">Welcome back,</Text>
-                <Text className="text-3xl font-bold text-gray-900">Administrator 👋</Text>
-                <Text className="text-sm text-gray-500 font-medium pt-1">School Management System</Text>
-              </View>
+
+      {/* Diagnostics Modal */}
+      {showDebug && (
+        <View className="absolute inset-0 z-50 bg-black/20 justify-center backdrop-blur-sm p-4">
+          <DebugSessionInfo onClose={() => setShowDebug(false)} />
+        </View>
+      )}
+
+      <ScrollView
+        className="flex-1"
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: 100 }}
+      >
+        <View className="p-6 pt-2">
+          {/* --- 1. Header Section --- */}
+          <View className="flex-row justify-between items-start mb-8">
+            <View>
+              <Text className="text-gray-500 text-base font-medium mb-1">Welcome back,</Text>
+              <Text className="text-3xl font-bold text-gray-900 tracking-tight">Administrator 👋</Text>
 
               <TouchableOpacity
-                className="relative p-2 bg-white rounded-full border border-gray-100 shadow-sm active:opacity-70"
-                onPress={handleLogout}
+                onLongPress={() => setShowDebug(true)}
+                delayLongPress={2000}
+                className="flex-row items-center mt-2 group"
               >
-                <LogOut size={24} color="#374151" />
-              </TouchableOpacity>
-            </View>
-
-            {/* --- DEBUG SECTION --- */}
-            <View className="bg-red-50 p-4 rounded-xl border border-red-200 mb-6">
-              <Text className="text-red-800 font-bold mb-2">Technical Diagnostics</Text>
-              <DebugSessionInfo />
-            </View>
-
-
-            {/* --- 2. Quick Status Cards --- */}
-            <View className="flex-row gap-4 mb-8">
-              {statsLoading ? (
-                <View className="flex-1 bg-gray-200 h-24 rounded-3xl animate-pulse" />
-              ) : (
-                <>
-                  <View className="flex-1 bg-gray-900 p-5 rounded-3xl shadow-sm">
-                    <Users size={20} color="white" />
-                    <Text className="text-white text-2xl font-black mt-2">
-                      {stats.find(s => s.label === "Total Students")?.value || "0"}
-                    </Text>
-                    <Text className="text-gray-400 text-[10px] font-bold uppercase tracking-wider mt-1">Total Students</Text>
-                  </View>
-                  <View className="flex-1 bg-white p-5 rounded-3xl border border-gray-100 shadow-sm">
-                    <Wallet size={20} color="#0D9488" />
-                    <Text className="text-gray-900 text-2xl font-black mt-2">
-                      {stats.find(s => s.label === "Revenue")?.value || "$0"}
-                    </Text>
-                    <Text className="text-gray-400 text-[10px] font-bold uppercase tracking-wider mt-1">Total Revenue</Text>
-                  </View>
-                </>
-              )}
-            </View>
-
-            {/* --- 3. Recent Activity (Horizontal Scroll) --- */}
-            <View className="flex-row justify-between items-end mb-4 ">
-              <Text className="text-xl font-bold text-gray-900">Recent Users</Text>
-              <TouchableOpacity onPress={() => router.push("/(admin)/users")}>
-                <Text className="text-orange-500 font-semibold">View All</Text>
-              </TouchableOpacity>
-            </View>
-
-            <View className="hidden lg:flex flex-row flex-wrap gap-4 mb-6">
-              {loadingUsers ? (
-                <Text className="text-gray-400">Loading users...</Text>
-              ) : recentUsers.map((user) => (
-                <View key={user.id} className="bg-white p-5 rounded-3xl border border-gray-100 shadow-sm w-[31%]">
-                  <View className="flex-row items-center mb-3">
-                    <View className={`p - 2 rounded - xl mr - 3 ${user.role === 'student' ? 'bg-orange-100' :
-                      user.role === 'teacher' ? 'bg-purple-100' : 'bg-blue-100'
-                      } `}>
-                      {user.role === 'student' ? <GraduationCap size={20} color="#f97316" /> :
-                        user.role === 'teacher' ? <School size={20} color="#8b5cf6" /> :
-                          <Settings size={20} color="#3b82f6" />}
-                    </View>
-                    <Text className="text-gray-400 font-bold text-[10px] uppercase">
-                      {user.role} • {new Date(user.joinDate).toLocaleDateString()}
-                    </Text>
-                  </View>
-                  <Text className="text-gray-900 font-bold text-lg mb-1" numberOfLines={1}>
-                    {user.name}
-                  </Text>
-                  <Text className="text-gray-500 text-sm">{user.displayId}</Text>
+                <View className="h-1.5 w-1.5 rounded-full bg-blue-500 mr-2" />
+                <Text className="text-sm text-gray-500 font-medium">School Management System</Text>
+                <View className="ml-1 px-1.5 py-0.5 bg-gray-100 rounded text-[10px] text-gray-400 opacity-0 group-active:opacity-100">
+                  <Text className="text-[10px] text-gray-400">v1.0</Text>
                 </View>
-              ))}
+              </TouchableOpacity>
+              <Text className="text-[10px] text-gray-300 ml-3.5 mt-0.5">Long press for diagnostics</Text>
             </View>
 
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              className="flex-row mb-6 -mx-4 px-4 pb-4 lg:hidden"
+            <TouchableOpacity
+              className="p-3 bg-white rounded-2xl border border-gray-100 shadow-sm active:bg-gray-50"
+              onPress={handleLogout}
             >
-              {loadingUsers ? (
-                <Text className="ml-4 text-gray-400">Loading users...</Text>
-              ) : recentUsers.map((user) => (
-                <View key={user.id} className="bg-white p-5 rounded-3xl border border-gray-100 shadow-sm mr-4 w-64">
-                  <View className="flex-row items-center mb-3">
-                    <View className={`p - 2 rounded - xl mr - 3 ${user.role === 'student' ? 'bg-orange-100' :
-                      user.role === 'teacher' ? 'bg-purple-100' : 'bg-blue-100'
-                      } `}>
-                      {user.role === 'student' ? <GraduationCap size={20} color="#f97316" /> :
-                        user.role === 'teacher' ? <School size={20} color="#8b5cf6" /> :
-                          <Settings size={20} color="#3b82f6" />}
-                    </View>
-                    <Text className="text-gray-400 font-bold text-[10px] uppercase">
-                      {user.role} • {new Date(user.joinDate).toLocaleDateString()}
-                    </Text>
-                  </View>
-                  <Text className="text-gray-900 font-bold text-lg mb-1" numberOfLines={1}>
-                    {user.name}
-                  </Text>
-                  <Text className="text-gray-500 text-sm">{user.displayId}</Text>
-                </View>
-              ))}
-            </ScrollView>
+              <IconLogOut size={22} color="#374151" />
+            </TouchableOpacity>
+          </View>
 
-            {/* --- 4. Quick Actions Grid --- */}
-            <View className="mt-2">
-              <Text className="text-xl font-bold text-gray-900 mb-4">Quick Actions</Text>
-              <View className="flex-row flex-wrap justify-between">
-                <QuickAction
-                  icon={UserPlus}
-                  label="Enroll User"
-                  color="#3b82f6"
-                  onPress={() => router.push("/(admin)/users/create")}
-                />
-                <QuickAction
-                  icon={BookOpen}
-                  label="Library Inventory"
-                  color="#eab308"
-                  onPress={() => router.push("/(admin)/management/library" as any)}
-                />
-                <QuickAction
-                  icon={Wallet}
-                  label="Process Payouts"
-                  color="#10b981"
-                  onPress={() => router.push("/(admin)/finance" as any)}
-                />
-                <QuickAction
-                  icon={BarChart3}
-                  label="System Analytics"
-                  color="#8b5cf6"
-                  onPress={() => router.push("/(admin)/management/analytics" as any)}
-                />
-              </View>
+          {/* --- 2. Quick Status Cards --- */}
+          <View className="flex-row gap-4 mb-8">
+            {statsLoading ? (
+              <>
+                <View className="flex-1 bg-gray-200 h-32 rounded-3xl animate-pulse" />
+                <View className="flex-1 bg-gray-200 h-32 rounded-3xl animate-pulse" />
+              </>
+            ) : (
+              <>
+                <View className="flex-1 bg-gray-900 p-6 rounded-3xl shadow-lg shadow-gray-200">
+                  <View className="bg-white/10 w-10 h-10 rounded-2xl items-center justify-center mb-4">
+                    <IconUsers size={20} color="white" />
+                  </View>
+                  <Text className="text-white text-3xl font-black mb-1">
+                    {stats.find(s => s.label === "Total Students")?.value || "0"}
+                  </Text>
+                  <Text className="text-gray-400 text-xs font-bold uppercase tracking-wider">Total Students</Text>
+                </View>
+
+                <View className="flex-1 bg-white p-6 rounded-3xl border border-gray-100 shadow-sm">
+                  <View className="bg-teal-50 w-10 h-10 rounded-2xl items-center justify-center mb-4">
+                    <IconWallet size={20} color="#0D9488" />
+                  </View>
+                  <View>
+                    <Text className="text-gray-900 text-3xl font-black mb-1">
+                      {stats.find(s => s.label === "Revenue")?.value || "KES 0"}
+                    </Text>
+                    {stats.find(s => s.label === "Revenue")?.subValue && (
+                      <Text className="text-gray-400 text-xs font-medium mb-1">
+                        {stats.find(s => s.label === "Revenue")?.subValue}
+                      </Text>
+                    )}
+                  </View>
+                  <Text className="text-gray-400 text-xs font-bold uppercase tracking-wider">Total Revenue</Text>
+                </View>
+              </>
+            )}
+          </View>
+
+          {/* --- 3. Quick Actions Grid --- */}
+          <View className="mb-10">
+            <Text className="text-lg font-bold text-gray-900 mb-4 px-1">Quick Actions</Text>
+            <View className="flex-row flex-wrap gap-4">
+              <QuickAction
+                icon={IconUserPlus}
+                label="Enroll User"
+                color="#3b82f6"
+                onPress={() => router.push("/(admin)/users/create")}
+              />
+              <QuickAction
+                icon={IconBookOpen}
+                label="Library"
+                color="#eab308"
+                onPress={() => router.push("/(admin)/management/library" as any)}
+              />
+              <QuickAction
+                icon={IconWallet}
+                label="Finance"
+                color="#10b981"
+                onPress={() => router.push("/(admin)/finance" as any)}
+              />
+              <QuickAction
+                icon={IconBarChart3}
+                label="Analytics"
+                color="#8b5cf6"
+                onPress={() => router.push("/(admin)/management/analytics" as any)}
+              />
+            </View>
+          </View>
+
+          {/* --- 4. Recent Activity --- */}
+          <View>
+            <View className="flex-row justify-between items-end mb-5 px-1">
+              <Text className="text-lg font-bold text-gray-900">Recent Users</Text>
+              <TouchableOpacity onPress={() => router.push("/(admin)/users")}>
+                <Text className="text-blue-600 font-semibold text-sm">View All</Text>
+              </TouchableOpacity>
             </View>
 
+            {loadingUsers ? (
+              <View className="h-40 items-center justify-center">
+                <Text className="text-gray-400">Loading users...</Text>
+              </View>
+            ) : recentUsers.length === 0 ? (
+              <View className="bg-white p-8 rounded-3xl border border-dashed border-gray-200 items-center justify-center mb-6">
+                <View className="w-12 h-12 bg-gray-50 rounded-full items-center justify-center mb-3">
+                  <IconUsers size={24} color="#9ca3af" />
+                </View>
+                <Text className="text-gray-500 font-medium">No recent activity detected</Text>
+                <Text className="text-gray-400 text-xs mt-1 text-center">New users will appear here once they join the platform.</Text>
+              </View>
+            ) : (
+              <>
+                {/* Desktop View */}
+                <View className="hidden lg:flex flex-row flex-wrap gap-4">
+                  {recentUsers.map((user) => (
+                    <View key={user.id} className="bg-white p-5 rounded-3xl border border-gray-100 shadow-sm flex-1 min-w-[30%]">
+                      <View className="flex-row items-center justify-between mb-4">
+                        <View className={`h-10 w-10 rounded-2xl items-center justify-center ${user.role === 'student' ? 'bg-orange-50' :
+                          user.role === 'teacher' ? 'bg-purple-50' : 'bg-blue-50'
+                          }`}>
+                          {user.role === 'student' ? <IconGraduationCap size={20} color="#f97316" /> :
+                            user.role === 'teacher' ? <IconSchool size={20} color="#8b5cf6" /> :
+                              <IconSettings size={20} color="#3b82f6" />}
+                        </View>
+                        <View className="bg-gray-50 px-2 py-1 rounded-lg">
+                          <Text className="text-gray-400 font-medium text-[10px]">
+                            {new Date(user.joinDate).toLocaleDateString()}
+                          </Text>
+                        </View>
+                      </View>
+                      <Text className="text-gray-900 font-bold text-base mb-1" numberOfLines={1}>
+                        {user.name}
+                      </Text>
+                      <Text className="text-gray-500 text-xs mb-1 font-medium">{user.role.toUpperCase()}</Text>
+                      <Text className="text-gray-400 text-[10px]">{user.displayId}</Text>
+                    </View>
+                  ))}
+                </View>
+
+                {/* Mobile View */}
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  className="flex-row -mx-6 px-6 lg:hidden"
+                  contentContainerStyle={{ paddingRight: 24 }}
+                >
+                  {loadingUsers ? (
+                    <Text className="text-gray-400">Loading users...</Text>
+                  ) : recentUsers.map((user) => (
+                    <View key={user.id} className="bg-white p-5 rounded-3xl border border-gray-100 shadow-sm mr-4 w-72">
+                      <View className="flex-row items-center justify-between mb-4">
+                        <View className={`h-10 w-10 rounded-2xl items-center justify-center ${user.role === 'student' ? 'bg-orange-50' :
+                          user.role === 'teacher' ? 'bg-purple-50' : 'bg-blue-50'
+                          }`}>
+                          {user.role === 'student' ? <IconGraduationCap size={20} color="#f97316" /> :
+                            user.role === 'teacher' ? <IconSchool size={20} color="#8b5cf6" /> :
+                              <IconSettings size={20} color="#3b82f6" />}
+                        </View>
+                        <View className="bg-gray-50 px-2 py-1 rounded-lg">
+                          <Text className="text-gray-400 font-medium text-[10px]">
+                            {new Date(user.joinDate).toLocaleDateString()}
+                          </Text>
+                        </View>
+                      </View>
+                      <Text className="text-gray-900 font-bold text-base mb-1" numberOfLines={1}>
+                        {user.name}
+                      </Text>
+                      <Text className="text-gray-500 text-xs mb-1 font-medium">{user.role.toUpperCase()}</Text>
+                      <Text className="text-gray-400 text-[10px]">{user.displayId}</Text>
+                    </View>
+                  ))}
+                </ScrollView>
+              </>
+            )}
           </View>
-        </ScrollView>
-      </View>
-    </>
+        </View>
+      </ScrollView>
+    </View>
   );
 }

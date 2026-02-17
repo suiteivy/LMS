@@ -5,8 +5,8 @@ import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { NotificationProvider } from "@/contexts/NotificationContext";
 import Toast from "react-native-toast-message";
 import { SafeAreaProvider } from "react-native-safe-area-context";
-import { InactivityWrapper } from "@/components/InactivityWrapper";
 import { View, ActivityIndicator } from "react-native";
+import { toastConfig } from "@/components/CustomToast";
 
 export default function RootLayout() {
   return (
@@ -21,23 +21,31 @@ export default function RootLayout() {
 }
 
 function AuthHandler() {
-  const { loading } = useAuth();
+  const { loading, resetSessionTimer, session } = useAuth();
+
+  // Handle user interaction for inactivity timer
+  const handleInteraction = React.useCallback(() => {
+    if (session) {
+      resetSessionTimer();
+    }
+    return false;
+  }, [resetSessionTimer, session]);
 
   return (
-    <View style={{ flex: 1 }}>
-      <InactivityWrapper>
-        <Stack screenOptions={{
+    <>
+      <Stack
+        screenOptions={{
           headerShown: false,
-        }}>
-          <Stack.Screen name="index" />
-          <Stack.Screen name="(auth)/signIn" />
-          <Stack.Screen name="(admin)" />
-          <Stack.Screen name="(student)" />
-          <Stack.Screen name="(teacher)" />
-          <Stack.Screen name="(parent)" />
-        </Stack>
-        <Toast />
-      </InactivityWrapper>
+        }}
+      >
+        <Stack.Screen name="index" />
+        <Stack.Screen name="(auth)/signIn" />
+        <Stack.Screen name="(admin)" />
+        <Stack.Screen name="(student)" />
+        <Stack.Screen name="(teacher)" />
+        <Stack.Screen name="(parent)" />
+      </Stack>
+      <Toast config={toastConfig} />
 
       {loading && (
         <View style={{
@@ -54,6 +62,6 @@ function AuthHandler() {
           <ActivityIndicator size="large" color="#f97316" />
         </View>
       )}
-    </View>
+    </>
   );
 }

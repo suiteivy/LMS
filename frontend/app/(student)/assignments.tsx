@@ -3,9 +3,17 @@ import { supabase } from "@/libs/supabase"
 import { Activity, Calendar, CheckCircle2, ChevronRight, Clock, Download, X } from "lucide-react-native"
 import React, { useEffect, useState } from "react"
 import { TouchableOpacity, View, Text, ScrollView, ActivityIndicator, Modal, Linking, Alert } from "react-native"
-import { useRouter } from 'expo-router'
 import * as DocumentPicker from 'expo-document-picker'
 import { decode } from 'base64-arraybuffer'
+
+// Cast icons to any to avoid nativewind interop issues
+const IconActivity = Activity as any;
+const IconCalendar = Calendar as any;
+const IconCheckCircle2 = CheckCircle2 as any;
+const IconChevronRight = ChevronRight as any;
+const IconClock = Clock as any;
+const IconDownload = Download as any;
+const IconX = X as any;
 
 interface Assignments {
   id: string
@@ -19,7 +27,6 @@ interface Assignments {
 }
 
 export default function StudentsAssignments() {
-  const router = useRouter()
   const { user } = useAuth()
   const [loading, setLoading] = useState(false)
   const [filter, setFilter] = useState<"pending" | "completed" | "overdue">('pending')
@@ -193,13 +200,13 @@ export default function StudentsAssignments() {
           </View>
         </View>
 
-        <ScrollView className="p-4 flex-1 items-center">
+        <ScrollView className="p-4 flex-1">
           {loading ? (
             <ActivityIndicator color="orange" className="mt-10" />
           ) : displayList.length === 0 ? (
             <View className="flex-1 flex-col p-3 gap-2">
               <View className="flex-1 items-center">
-                <CheckCircle2 size={48} color="orange" />
+                <IconCheckCircle2 size={48} color="orange" />
               </View>
               <View className="flex-1 items-center">
                 <Text>Nothing to see, Whoo!! All Caught up!</Text>
@@ -220,9 +227,9 @@ export default function StudentsAssignments() {
                   className={`p-3 rounded-xl mr-4 ${item?.status === "pending" ? "bg-amber-50" : "bg-teal-50"}`}
                 >
                   {item?.status === "pending" ? (
-                    <Clock size={20} color="#f59e0b" />
+                    <IconClock size={20} color="#f59e0b" />
                   ) : (
-                    <CheckCircle2 size={20} color="#0d9488" />
+                    <IconCheckCircle2 size={20} color="#0d9488" />
                   )}
                 </View>
 
@@ -234,14 +241,14 @@ export default function StudentsAssignments() {
                     {item.title}
                   </Text>
                   <View className="flex-row items-center">
-                    <Calendar size={12} color="#9CA3AF" />
+                    <IconCalendar size={12} color="#9CA3AF" />
                     <Text className="text-gray-400 text-[10px] ml-1">
                       Due: {item.due_date}
                     </Text>
                   </View>
                 </View>
 
-                <ChevronRight size={18} color="#D1D5DB" />
+                <IconChevronRight size={18} color="#D1D5DB" />
               </TouchableOpacity>
             ))
           )}
@@ -270,7 +277,7 @@ export default function StudentsAssignments() {
                 onPress={() => setSelectedAssignment(null)}
                 className="bg-white/20 p-2 rounded-2xl"
               >
-                <X size={20} color="white" />
+                <IconX size={20} color="white" />
               </TouchableOpacity>
             </View>
 
@@ -278,7 +285,7 @@ export default function StudentsAssignments() {
               {/* 2. TEACHER'S CONTENT (DOWNLOADABLE) */}
               <View className="mb-8">
                 <View className="flex-row items-center mb-4">
-                  <Activity size={18} color="#f97316" strokeWidth={2.5} />
+                  <IconActivity size={18} color="#f97316" strokeWidth={2.5} />
                   <Text className="ml-2 font-bold text-gray-800">
                     Learning Materials
                   </Text>
@@ -289,7 +296,7 @@ export default function StudentsAssignments() {
                   onPress={() => selectedAssignment?.resource_path && handleDownload(selectedAssignment.resource_path)}
                 >
                   <View className="bg-white p-3 rounded-xl shadow-sm mr-4">
-                    <Download size={20} color="#f97316" />
+                    <IconDownload size={20} color="#f97316" />
                   </View>
                   <View className="flex-1">
                     <Text className="text-gray-900 font-bold text-sm">
@@ -305,7 +312,7 @@ export default function StudentsAssignments() {
               {/* 3. UPLOAD WINDOW (SUBMISSION ZONE) */}
               <View>
                 <View className="flex-row items-center mb-4">
-                  <CheckCircle2 size={18} color="#0d9488" strokeWidth={2.5} />
+                  <IconCheckCircle2 size={18} color="#0d9488" strokeWidth={2.5} />
                   <Text className="ml-2 font-bold text-gray-800">
                     Your Submission
                   </Text>
@@ -322,7 +329,7 @@ export default function StudentsAssignments() {
                   ) : (
                     <>
                       <View className="bg-white p-4 rounded-full shadow-sm mb-3">
-                        <Calendar size={24} color="#9ca3af" />
+                        <IconCalendar size={24} color="#9ca3af" />
                       </View>
                       <Text className="text-gray-900 font-bold text-sm">
                         Click to upload files
@@ -338,7 +345,7 @@ export default function StudentsAssignments() {
               {/* 4. FOOTER INFO */}
               <View className="mt-8 flex-row items-center justify-between bg-gray-50 p-4 rounded-2xl">
                 <View className="flex-row items-center">
-                  <Clock size={14} color="#6b7280" />
+                  <IconClock size={14} color="#6b7280" />
                   <Text className="ml-2 text-gray-500 text-xs font-bold">
                     Due: {selectedAssignment?.due_date}
                   </Text>
@@ -355,7 +362,7 @@ export default function StudentsAssignments() {
                 className="bg-orange-500 py-4 rounded-2xl items-center shadow-lg shadow-orange-200"
                 activeOpacity={0.8}
                 onPress={handleUpload}
-                >
+              >
                 <Text className="text-white font-black text-lg">
                   Finalize Submission
                 </Text>

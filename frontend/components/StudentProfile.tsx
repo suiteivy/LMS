@@ -27,13 +27,10 @@ import {
 } from "lucide-react-native";
 import { useAuth } from "@/contexts/AuthContext";
 import { authService, supabase } from "@/libs/supabase";
-import { useNavigation } from "@react-navigation/native";
-import { DrawerNavigationProp } from "@react-navigation/drawer";
-import { useLocalSearchParams } from "expo-router";
+import { useLocalSearchParams, router } from "expo-router";
 
 export default function StudentProfile() {
   const { profile, refreshProfile, displayId, user } = useAuth();
-  const navigation = useNavigation<DrawerNavigationProp<any>>();
 
   // Initial State from Common
   const [isEditing, setIsEditing] = useState(false);
@@ -135,7 +132,7 @@ export default function StudentProfile() {
       <View className="bg-gray-200 pt-2 pb-2 px-6 shadow-lg">
         <View className="flex-row justify-between items-center">
           <TouchableOpacity
-            onPress={() => navigation.openDrawer()}
+            onPress={() => router.back()}
             className="w-10 h-10 rounded-xl items-center justify-center active:bg-white/30"
             activeOpacity={0.7}
           >

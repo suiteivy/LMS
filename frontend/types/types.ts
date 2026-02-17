@@ -51,6 +51,7 @@ export interface StatsData {
     value: string;
     isPositive: boolean;
   };
+  subValue?: string;
   description?: string;
 }
 

@@ -16,6 +16,10 @@ import { validateEmail, getAuthErrorMessage } from "@/utils/validation";
 import { supabase } from "@/libs/supabase";
 import { router } from "expo-router";
 
+// Cast icons to any to avoid nativewind interop issues
+const IconFontAwesome = FontAwesome as any;
+const IconIonicons = Ionicons as any;
+
 interface FormData {
   email: string;
   password: string;
@@ -246,7 +250,7 @@ export default function Index() {
                   className="absolute left-0 w-10 h-10 items-center justify-center rounded-2xl bg-gray-50 border border-gray-100"
                   activeOpacity={0.7}
                 >
-                  <Ionicons name="arrow-back" size={20} color="black" />
+                  <IconIonicons name="arrow-back" size={20} color="black" />
                 </TouchableOpacity>
 
                 <Text className="text-gray-400 font-bold uppercase tracking-[3px] text-[10px]">
@@ -274,7 +278,7 @@ export default function Index() {
               {/* FORM FIELDS */}
               {errorMessage && (
                 <View className="bg-red-50 border border-red-100 p-4 rounded-2xl mb-6 flex-row items-center">
-                  <Ionicons name="alert-circle" size={20} color="#ef4444" />
+                  <IconIonicons name="alert-circle" size={20} color="#ef4444" />
                   <Text className="text-red-600 ml-2 font-semibold flex-1">
                     {errorMessage}
                   </Text>
@@ -288,7 +292,7 @@ export default function Index() {
                   <View
                     className={`h-14 bg-gray-50 border ${errors.email ? "border-red-500" : "border-gray-100"} rounded-2xl px-4 flex-row items-center`}
                   >
-                    <Ionicons name="mail-outline" size={20} color="#9ca3af" />
+                    <IconIonicons name="mail-outline" size={20} color="#9ca3af" />
                     <TextInput
                       keyboardType="email-address"
                       className="flex-1 ml-3 text-gray-900 font-semibold h-full"
@@ -315,7 +319,7 @@ export default function Index() {
                   <View
                     className={`h-14 bg-gray-50 border ${errors.password ? "border-red-500" : "border-gray-100"} rounded-2xl px-4 flex-row items-center`}
                   >
-                    <Ionicons
+                    <IconIonicons
                       name="lock-closed-outline"
                       size={20}
                       color="#9ca3af"
@@ -333,7 +337,7 @@ export default function Index() {
                     <TouchableOpacity
                       onPress={() => setShowPassword(!showPassword)}
                     >
-                      <Ionicons
+                      <IconIonicons
                         name={showPassword ? "eye-outline" : "eye-off-outline"}
                         size={20}
                         color="#9ca3af"

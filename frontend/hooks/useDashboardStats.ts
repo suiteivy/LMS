@@ -63,7 +63,16 @@ export const useDashboardStats = () => {
                 setRevenueData(breakdown);
             }
 
-            const formattedRevenue = new Intl.NumberFormat('en-US', {
+            const exchangeRate = 129; // Fixed rate for now: 1 USD = 129 KES
+            const totalRevenueKES = totalRevenue * exchangeRate;
+
+            const formattedRevenueKES = new Intl.NumberFormat('en-KE', {
+                style: 'currency',
+                currency: 'KES',
+                maximumFractionDigits: 0,
+            }).format(totalRevenueKES);
+
+            const formattedRevenueUSD = new Intl.NumberFormat('en-US', {
                 style: 'currency',
                 currency: 'USD',
                 maximumFractionDigits: 0,
@@ -92,7 +101,8 @@ export const useDashboardStats = () => {
                 },
                 {
                     label: "Revenue",
-                    value: `$${totalRevenue.toLocaleString()}`,
+                    value: formattedRevenueKES,
+                    subValue: formattedRevenueUSD,
                     icon: "wallet",
                     color: "yellow",
                     trend: { value: "8%", isPositive: true },
