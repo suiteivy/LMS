@@ -73,7 +73,7 @@ function CustomDrawerContent(props: any) {
   );
 }
 
-export default function GlobalSettingsDrawer({ userRole = 'student' }: { userRole?: 'student' | 'teacher' | 'admin' }) {
+export default function GlobalSettingsDrawer({ userRole = 'student' }: { userRole?: 'student' | 'teacher' | 'admin' | 'parent' }) {
   const getProfileComponent = () => {
     if (userRole === 'admin') return AdminProfile;
     if (userRole === 'teacher') return TeacherProfile;
