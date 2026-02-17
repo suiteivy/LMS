@@ -38,7 +38,7 @@ export default function Subjects() {
       if (studentId) {
         const { data: enrollData, error: enrollError } = await supabase
           .from("enrollments")
-          .select("class_id")
+          .select("subject_id")
           .eq("student_id", studentId);
 
         if (enrollError) {

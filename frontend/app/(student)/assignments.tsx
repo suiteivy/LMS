@@ -37,48 +37,49 @@ export default function StudentsAssignments() {
     return false;
   }) ?? [];
 
+  const fetchStudentsAssignments = async () => {
+    if (!user?.id) return
+    setLoading(true)
+
+    try {
+      const { data, error } = await supabase
+        .from("assignments")
+        .select(
+          `
+        *,
+        course:subjects(title),
+        submissions(*)
+    `,
+        )
+      // .eq("submissions.student_id", user?.id);
+
+      if (error) throw error
+
+      //check for submissions
+      if (data) {
+        const formatted: Assignments[] = data.map((a: any) => {
+          const isSubmitted = a.submissions && a.submissions.length > 0
+
+          return {
+            id: a.id,
+            title: a.title,
+            course: { title: a.course?.title || "General" },
+            due_date: new Date(a.due_date).toLocaleDateString(),
+            total_points: a.total_points,
+            status: a.submissions?.length > 0 ? 'completed' : 'pending',
+            submissions: a.submissions?.[0] || null
+          }
+        })
+        setAssignments(formatted)
+      }
+      setLoading(false)
+    } catch (error: any) {
+      console.error("error fetching assignments", error.message);
+    }
+  }
+
   // fetch assignments from db
   useEffect(() => {
-    const fetchStudentsAssignments = async () => {
-      if (!user?.id) return
-      setLoading(true)
-
-      try {
-        const { data, error } = await supabase
-          .from("assignments")
-          .select(
-            `
-          *,
-          course:subjects(title),
-          submissions(*)
-      `,
-          )
-        // .eq("submissions.student_id", user?.id);
-
-        if (error) throw error
-
-        //check for submissions
-        if (data) {
-          const formatted: Assignments[] = data.map((a: any) => {
-            const isSubmitted = a.submissions && a.submissions.length > 0
-
-            return {
-              id: a.id,
-              title: a.title,
-              course: { title: a.course?.title || "General" },
-              due_date: new Date(a.due_date).toLocaleDateString(),
-              total_points: a.total_points,
-              status: a.submissions?.length > 0 ? 'completed' : 'pending',
-              submissions: a.submissions?.[0] || null
-            }
-          })
-          setAssignments(formatted)
-        }
-        setLoading(false)
-      } catch (error: any) {
-        console.error("error fetching assignments", error.message);
-      }
-    }
     fetchStudentsAssignments()
   }, [user?.id])
 
@@ -87,7 +88,7 @@ export default function StudentsAssignments() {
     try {
       //TODO: 1. Construct the Public URL for your Supabase Storage bucket
       // Replace 'your-project-id' and 'bucket-name' with your actual Supabase details
-      const publicUrl = `https://[your-project-id].supabase.co/storage/v1/object/public/[bucket-name]/${fileName}`;
+      const publicUrl = `https://yqvtsjxgvtzshabkmegm.supabase.co/storage/v1/object/public/assignments/${fileName}`;
 
       const supported = await Linking.canOpenURL(publicUrl)
 
@@ -127,7 +128,7 @@ export default function StudentsAssignments() {
 
       // 3. Uploading to supabase storage
       const { data, error } = await supabase.storage
-        .from('assigments')
+        .from('assignments')
         .upload(filePath, arraybuffer, {
           contentType: file.mimeType,
           upsert: true
@@ -149,7 +150,7 @@ export default function StudentsAssignments() {
 
       Alert.alert('Success', "Assignment submitted successfully!")
       setSelectedAssignment(null)
-      // refreshAssignments()
+      fetchStudentsAssignments()
 
     } catch (error: any) {
       Alert.alert("Upload Error", error.message)
@@ -314,9 +315,7 @@ export default function StudentsAssignments() {
                 <TouchableOpacity
                   disabled={isUploading}
                   className="border-2 border-dashed border-gray-200 bg-gray-50 rounded-3xl p-10 items-center justify-center"
-                  onPress={() => {
-                    /* Logic: Use DocumentPicker.getDocumentAsync() */
-                  }}
+                  onPress={handleUpload}
                 >
                   {isUploading ? (
                     <ActivityIndicator color="#f97316" />
@@ -355,6 +354,7 @@ export default function StudentsAssignments() {
               <TouchableOpacity
                 className="bg-orange-500 py-4 rounded-2xl items-center shadow-lg shadow-orange-200"
                 activeOpacity={0.8}
+                onPress={handleUpload}
               >
                 <Text className="text-white font-black text-lg">
                   Finalize Submission

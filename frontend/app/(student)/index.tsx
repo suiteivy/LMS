@@ -97,7 +97,7 @@ export default function Index() {
               <Text className="text-xl font-bold text-gray-900">
                 Today's Schedule
               </Text>
-              <TouchableOpacity>
+              <TouchableOpacity onPress={() => router.push("/(student)/assignments")}>
                 <Text className="text-orange-500 font-semibold">View All</Text>
               </TouchableOpacity>
             </View>
