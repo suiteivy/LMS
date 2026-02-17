@@ -1,4 +1,4 @@
-// controllers/libraryController.js
+// controllers/library.controller.js
 const supabase = require("../utils/supabaseClient");
 
 /** Pull active config, fall back to sane defaults */
@@ -22,15 +22,14 @@ async function getActiveConfig() {
 /** Compute student's overall fee %, based on new schema */
 async function getStudentOverallFeePercent(userId) {
   // 1. Get enrolled subjects to calculate total fee due
-  // Assuming 'enrollments' table exists and links student (user_id?) or student_id to subjects.
-  // We need to know if enrollments uses student_id or user_id. 
-  // Code in subject.controller used 'grades' (likely enrollments in reality).
-  // Let's assume we can fetch subjects via enrollments. 
-  // Getting student_id first.
   const { data: student } = await supabase.from('students').select('id, user_id').eq('user_id', userId).single();
   if (!student) return 0; // Not a student
 
-  // Fetch enrollments (table 'enrollments', cols: student_id, subject_id)
+  // Fetch enrollments (table 'enrollments' or 'class_enrollments')
+  // The migration '20260216190000_optimize_schema.sql' didn't rename enrollments, 
+  // but conversation 003f49c6 hinted at 'class_enrollments'. 
+  // Let's stick to what's in the standard subject logic or check current usage.
+  // subject.controller uses 'enrollments'.
   const { data: enrollments, error: enrErr } = await supabase
     .from('enrollments')
     .select('subject_id, subjects(fee_amount)')
@@ -76,7 +75,7 @@ async function hasOverdueBooks({ userId }) {
     .eq("user_id", userId)
     .is("return_date", null)
     .lt("due_date", new Date().toISOString().slice(0, 10))
-    .neq("status", "returned"); // Ensure status is not returned
+    .neq("status", "returned");
 
   if (error) throw error;
   return (data || []).length > 0;
@@ -89,7 +88,7 @@ async function activeBorrowCount({ userId }) {
     .select("id", { count: "exact", head: true })
     .eq("user_id", userId)
     .is("return_date", null)
-    .eq("status", "borrowed"); // Only count active 'borrowed' status, not 'waiting'
+    .eq("status", "borrowed");
 
   if (error) throw error;
   return count ?? 0;
@@ -103,7 +102,6 @@ exports.addOrUpdateBook = async (req, res) => {
     }
 
     const {
-      id, // optional for update
       title,
       author,
       isbn,
@@ -112,6 +110,7 @@ exports.addOrUpdateBook = async (req, res) => {
       cover_url,
       location
     } = req.body;
+    const id = req.body.id || req.params.bookId;
     const institution_id = req.institution_id;
 
     if (!title || total_quantity == null) {
@@ -173,7 +172,8 @@ exports.addOrUpdateBook = async (req, res) => {
         total_quantity: newTotal,
         available_quantity: newAvailable,
         cover_url: cover_url ?? existing.cover_url,
-        location: location ?? existing.location
+        location: location ?? existing.location,
+        updated_at: new Date().toISOString()
       };
 
       const { data, error } = await supabase
@@ -221,9 +221,9 @@ exports.listBooks = async (req, res) => {
 /** Borrow a book (student) */
 exports.borrowBook = async (req, res) => {
   try {
-    const { userRole, user, institution_id } = req;
+    const { userRole, institution_id } = req;
     const { bookId, days = 14 } = req.body;
-    const appUserId = req.userId; // This is the user.id
+    const appUserId = req.userId; // This is the user.id (UUID)
 
     if (!["student"].includes(userRole)) {
       return res.status(403).json({ error: "Students only." });
@@ -261,7 +261,6 @@ exports.borrowBook = async (req, res) => {
       return res.status(403).json({ error: `Borrow limit reached (${cfg.default_borrow_limit}).` });
     }
 
-    // 5) Create loan request (waiting)
     const dueDate = new Date();
     dueDate.setDate(dueDate.getDate() + Number(days));
 
@@ -271,20 +270,9 @@ exports.borrowBook = async (req, res) => {
         {
           item_id: bookId,
           user_id: appUserId,
-          status: "borrowed", // Direct borrow for now, or 'waiting' if approval needed. Let's stick to 'borrowed' based on logic flow for stock deduction
-          // Wait, previous code used 'waiting'.
-          // If 'waiting', we don't deduct stock yet usually? Or reserve it?
-          // Let's use 'borrowed' to simplify and match stock deduction logic if we want to deduct now.
-          // But wait, previous logic had 'updateBorrowStatus'.
-          // I'll stick to 'waiting' if that was the flow.
-          // Yet, the logic checked stock.
-          // I will use 'waiting' and NOT deduct stock yet? Or deduct?
-          // To be safe and simple: Use 'borrowed' immediately for MVP, or 'waiting' if requested.
-          // The previous code had `status: "waiting"`.
-          // I will use 'waiting'.
-          status: 'waiting',
+          status: 'borrowed', // Assuming direct borrow for simplicity, or 'waiting' if req approval
           borrow_date: new Date().toISOString(),
-          due_date: dueDate.toISOString().slice(0, 10)
+          due_date: dueDate.toISOString().slice(0, 10),
         },
       ])
       .select()
@@ -292,7 +280,12 @@ exports.borrowBook = async (req, res) => {
 
     if (loanErr) return res.status(500).json({ error: loanErr.message });
 
-    return res.status(201).json({ message: "Requested", borrow: loan, due_date: dueDate });
+    // Decrement stock immediately if status is 'borrowed'
+    await supabase.from('library_items')
+      .update({ available_quantity: item.available_quantity - 1 })
+      .eq('id', bookId);
+
+    return res.status(201).json({ message: "Borrowed successfully", borrow: loan, due_date: dueDate });
   } catch (e) {
     console.error("borrowBook error:", e);
     return res.status(500).json({ error: "Server error: " + e.message });
@@ -304,19 +297,14 @@ exports.returnBook = async (req, res) => {
   try {
     const { userRole } = req;
     const appUserId = req.userId;
-    const { bookId } = req.params; // Using borrowId actually? URL usually /return/:id
-    // Previous code said `req.params` had `bookId` but used it as borrow ID in query?
-    // Code: `.eq("book_id", bookId)`. So it returned by Book ID? That's ambiguous if multiple copies borrowed.
-    // It did `.limit(1)`.
-    // I should probably expect `borrowId` (loan ID).
-    // But sticking to previous API signature: `bookId` param.
+    const { borrowId } = req.params;
 
-    if (!bookId) return res.status(400).json({ error: "bookId is required" });
+    if (!borrowId) return res.status(400).json({ error: "borrowId is required" });
 
     let query = supabase
       .from("library_loans")
       .select("*")
-      .eq("item_id", bookId) // assuming param is Item ID
+      .eq("id", borrowId)
       .is("return_date", null);
 
     if (userRole !== "admin") {
@@ -335,8 +323,6 @@ exports.returnBook = async (req, res) => {
     if (updErr) return res.status(500).json({ error: updErr.message });
 
     // Increment stock
-    // We need to fetch item to increment? Or use RPC?
-    // Manual increment
     const { data: item } = await supabase.from('library_items').select('available_quantity').eq('id', loan.item_id).single();
     if (item) {
       await supabase.from('library_items').update({ available_quantity: item.available_quantity + 1 }).eq('id', loan.item_id);
@@ -352,16 +338,8 @@ exports.returnBook = async (req, res) => {
 /** Borrowing history */
 exports.history = async (req, res) => {
   try {
-    const { institution_id } = req;
-    const { studentId } = req.params; // If admin viewing specific student
-
-    let targetUserId = req.userId;
-
-    if (studentId) {
-      // Admin viewing specific student. convert studentId -> user_id
-      const { data: stu } = await supabase.from('students').select('user_id').eq('id', studentId).single();
-      if (stu) targetUserId = stu.user_id;
-    }
+    const { studentId } = req.params; // If admin viewing specific student (UUID)
+    let targetUserId = studentId || req.userId;
 
     const { data, error } = await supabase
       .from("library_loans")
@@ -379,7 +357,6 @@ exports.history = async (req, res) => {
 /** Admin view: all loans */
 exports.getAllBorrowedBooks = async (req, res) => {
   try {
-    // loans joined with items and users
     const { data, error } = await supabase
       .from("library_loans")
       .select("*, library_items(title, author), users(full_name, email)")
@@ -401,10 +378,12 @@ exports.updateBorrowStatus = async (req, res) => {
 
     if (!["admin", "teacher"].includes(userRole)) return res.status(403).json({ error: "Unauthorized" });
 
-    const { data: loan, error: fetchErr } = await supabase.from("library_loans").select("*, library_items(title)").eq("id", borrowId).single();
+    const { data: loan, error: fetchErr } = await supabase.from("library_loans").select("*, library_items(available_quantity)").eq("id", borrowId).single();
     if (fetchErr || !loan) return res.status(404).json({ error: "Loan not found" });
 
-    const updates = { status };
+    const updates = { status, updated_at: new Date().toISOString() };
+
+    // If transitioning to borrowed, set date and handle stock if not already handled
     if (status === 'borrowed' && loan.status !== 'borrowed') {
       const days = 14;
       const dueDate = new Date();
@@ -412,10 +391,16 @@ exports.updateBorrowStatus = async (req, res) => {
       updates.due_date = dueDate.toISOString().slice(0, 10);
       updates.borrow_date = new Date().toISOString();
 
-      // Decrement stock
+      if (loan.library_items?.available_quantity > 0) {
+        await supabase.from('library_items')
+          .update({ available_quantity: loan.library_items.available_quantity - 1 })
+          .eq('id', loan.item_id);
+      }
+    } else if (status === 'returned' && loan.status !== 'returned') {
+      updates.return_date = new Date().toISOString();
       const { data: item } = await supabase.from('library_items').select('available_quantity').eq('id', loan.item_id).single();
       if (item) {
-        await supabase.from('library_items').update({ available_quantity: item.available_quantity - 1 }).eq('id', loan.item_id);
+        await supabase.from('library_items').update({ available_quantity: item.available_quantity + 1 }).eq('id', loan.item_id);
       }
     }
 
@@ -428,6 +413,32 @@ exports.updateBorrowStatus = async (req, res) => {
   }
 };
 
-exports.rejectBorrowRequest = exports.updateBorrowStatus; // Reuse or simplify logic
+/** Delete a book (Admin only) */
+exports.deleteBook = async (req, res) => {
+  try {
+    if (req.userRole !== "admin") {
+      return res.status(403).json({ error: "Admin only." });
+    }
+
+    const { bookId } = req.params;
+    const institution_id = req.institution_id;
+
+    if (!bookId) return res.status(400).json({ error: "bookId is required" });
+
+    const { error } = await supabase
+      .from("library_items")
+      .delete()
+      .eq("id", bookId)
+      .eq("institution_id", institution_id);
+
+    if (error) return res.status(500).json({ error: error.message });
+    return res.json({ message: "Book deleted" });
+  } catch (e) {
+    console.error("deleteBook error:", e);
+    return res.status(500).json({ error: "Server error" });
+  }
+};
+
+exports.rejectBorrowRequest = exports.updateBorrowStatus;
 exports.sendReminder = async (req, res) => { res.json({ message: "Reminder sent" }) };
 exports.extendDueDate = async (req, res) => { res.json({ message: "Extended" }) };

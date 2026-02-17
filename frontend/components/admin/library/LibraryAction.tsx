@@ -4,15 +4,19 @@ import {
   Text,
   TouchableOpacity,
   ScrollView,
-  SafeAreaView,
   Alert,
   ActivityIndicator,
   RefreshControl,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { AddUpdateDeleteBooksForm } from "./AddUpdateDeleteBooksForm";
 import { BorrowedBooksOverview } from "./BorrowedBooksOverview";
-import { Book, BorrowedBook, UserRoles } from "@/types/types";
+import {
+  FrontendBook,
+  FrontendBorrowedBook,
+  UserRoles, // Keep UserRoles as it's used in state
+} from "@/types/types";
 import { BorrowLimitConfiguration } from "./BorrowLimitConfiguration";
 import { LibraryAPI } from "@/services/LibraryService";
 import { useAuth } from "@/contexts/AuthContext";
@@ -25,8 +29,8 @@ const LibraryAction = () => {
     useState<LibrarySection>("overview");
 
   // State management
-  const [books, setBooks] = useState<Book[]>([]);
-  const [borrowedBooks, setBorrowedBooks] = useState<BorrowedBook[]>([]);
+  const [books, setBooks] = useState<FrontendBook[]>([]);
+  const [borrowedBooks, setBorrowedBooks] = useState<FrontendBorrowedBook[]>([]);
   const [userRoles, setUserRoles] = useState<UserRoles[]>([]);
 
   // Loading states
@@ -117,7 +121,7 @@ const LibraryAction = () => {
   };
 
   // Handler functions integrated with API
-  const handleAddBook = async (bookData: Omit<Book, "id">) => {
+  const handleAddBook = async (bookData: Omit<FrontendBook, "id">) => {
     try {
       setLoading(true);
 
@@ -142,7 +146,7 @@ const LibraryAction = () => {
     }
   };
 
-  const handleUpdateBook = async (id: string, updatedData: Partial<Book>) => {
+  const handleUpdateBook = async (id: string, updatedData: Partial<FrontendBook>) => {
     try {
       setLoading(true);
 
@@ -196,7 +200,11 @@ const LibraryAction = () => {
     );
   };
 
-  const handleReturnBook = async (borrowId: string) => {
+  const handleReturnBook = async (
+    borrowId: string,
+    fineAmount?: number,
+    condition?: string
+  ) => {
     try {
       setLoading(true);
 
@@ -209,24 +217,14 @@ const LibraryAction = () => {
             ? {
               ...borrowed,
               status: "returned" as const,
-              returnDate: new Date(),
+              returnDate: new Date().toISOString() as any,
             }
             : borrowed
         )
       );
 
-      // Update book availability
-      const borrowedBook = borrowedBooks.find((b) => b.id === borrowId);
-      if (borrowedBook) {
-        const book = books.find((b) => b.title === borrowedBook.bookTitle);
-        if (book) {
-          setBooks((prevBooks) =>
-            prevBooks.map((b) =>
-              b.id === book.id ? { ...b, available: b.available + 1 } : b
-            )
-          );
-        }
-      }
+      // Refresh books because returning one increases availability
+      loadBooks();
 
       showSuccess("Success", "Book returned successfully!");
     } catch (error) {
@@ -547,10 +545,18 @@ const LibraryAction = () => {
       case "overview":
         return renderOverview();
       case "books":
-        return <AddUpdateDeleteBooksForm />;
+        return (
+          <AddUpdateDeleteBooksForm
+            books={books}
+            onAddBook={handleAddBook}
+            onUpdateBook={handleUpdateBook}
+            onDeleteBook={handleDeleteBook}
+          />
+        );
       case "borrowed":
         return (
           <BorrowedBooksOverview
+            borrowedBooks={borrowedBooks}
             onReturnBook={handleReturnBook}
             onExtendDueDate={handleExtendDueDate}
             onSendReminder={handleSendReminder}
@@ -609,8 +615,8 @@ const LibraryAction = () => {
               <TouchableOpacity
                 key={section.id}
                 className={`mr-4 px-4 py-2 rounded-full border ${activeSection === section.id
-                    ? "bg-orange-500 border-orange-500"
-                    : "bg-white border-slate-300"
+                  ? "bg-orange-500 border-orange-500"
+                  : "bg-white border-slate-300"
                   }`}
                 onPress={() => setActiveSection(section.id as LibrarySection)}
                 disabled={loading}
@@ -623,8 +629,8 @@ const LibraryAction = () => {
                   />
                   <Text
                     className={`ml-2 text-sm font-medium ${activeSection === section.id
-                        ? "text-white"
-                        : "text-slate-700"
+                      ? "text-white"
+                      : "text-slate-700"
                       }`}
                   >
                     {section.title}

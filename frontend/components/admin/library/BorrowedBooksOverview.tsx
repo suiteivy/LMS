@@ -26,6 +26,7 @@ interface ExtendedBorrowedBook extends FrontendBorrowedBook {
 
 interface BorrowedBooksOverviewProps {
   // Optional props to allow parent components to override default behavior
+  borrowedBooks?: FrontendBorrowedBook[];
   onReturnBook?: (
     borrowId: string,
     fineAmount?: number,
@@ -37,13 +38,15 @@ interface BorrowedBooksOverviewProps {
 }
 
 const BorrowedBooksOverview: React.FC<BorrowedBooksOverviewProps> = ({
+  borrowedBooks: propsBorrowedBooks,
   onReturnBook,
   onExtendDueDate,
   onSendReminder,
   onProcessFine,
 }) => {
   // State management
-  const [borrowedBooks, setBorrowedBooks] = useState<ExtendedBorrowedBook[]>([]);
+  const [localBorrowedBooks, setLocalBorrowedBooks] = useState<ExtendedBorrowedBook[]>([]);
+  const borrowedBooks = (propsBorrowedBooks?.map(b => (b as ExtendedBorrowedBook)) || localBorrowedBooks);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterStatus, setFilterStatus] = useState<
     "all" | "borrowed" | "overdue" | "returned" | "waiting" | "ready_for_pickup"
@@ -91,7 +94,7 @@ const BorrowedBooksOverview: React.FC<BorrowedBooksOverviewProps> = ({
         return book;
       });
 
-      setBorrowedBooks(booksWithUpdatedStatus);
+      setLocalBorrowedBooks(booksWithUpdatedStatus);
     } catch (err) {
       console.error("Failed to fetch borrowed books:", err);
       Alert.alert(
@@ -104,8 +107,10 @@ const BorrowedBooksOverview: React.FC<BorrowedBooksOverviewProps> = ({
 
   // Initial load
   useEffect(() => {
-    fetchBorrowedBooks();
-  }, [fetchBorrowedBooks]);
+    if (!propsBorrowedBooks) {
+      fetchBorrowedBooks();
+    }
+  }, [fetchBorrowedBooks, propsBorrowedBooks]);
 
   // Refresh handler
   const onRefresh = useCallback(async () => {

@@ -7,7 +7,7 @@ async function authMiddleware(req, res, next) {
       ? authHeader.split(" ")[1]
       : null;
 
-    console.log("Auth middleware called with token:", token ? "[REDACTED]" : "null");
+    // console.log("Auth middleware called with token:", token ? "[REDACTED]" : "null");
 
     if (!token) {
       return res.status(401).json({ error: "No token provided" });
@@ -30,7 +30,7 @@ async function authMiddleware(req, res, next) {
       .eq("id", user.id)
       .single();
 
-    console.log("User profile:", profile, profileError);
+    // console.log("User profile:", profile, profileError);
 
     if (profileError || !profile) {
       return res.status(403).json({ error: "Unauthorized" });

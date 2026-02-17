@@ -5,17 +5,24 @@ import {
   DrawerContentScrollView,
   DrawerItemList,
 } from '@react-navigation/drawer';
-import { GestureHandlerRootView } from 'react-native-gesture-handler';
+
 import { UserCircle, Settings, ShieldCheck, LogOut, HelpCircle, Menu } from 'lucide-react-native';
 import { router } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
 
 // Screens
-import StudentProfile from './StudentProfile';
-import TeacherProfile from './TeacherProfile';
-import AdminProfile from './AdminProfile';
-import StudentSettings from './StudentSettings';
-import StudentHelp from './StudentHelp';
+import StudentProfile from '@/components/StudentProfile';
+import TeacherProfile from '@/components/TeacherProfile';
+import AdminProfile from '@/components/AdminProfile';
+import AdminSettings from '@/components/AdminSettings';
+import StudentSettings from '@/components/StudentSettings';
+import StudentHelp from '@/components/StudentHelp';
+
+const AdminPanel = () => (
+  <View className="flex-1 items-center justify-center">
+    <Text className="text-gray-500 font-medium text-lg">Admin Overview</Text>
+  </View>
+);
 
 const Drawer = createDrawerNavigator();
 
@@ -74,77 +81,73 @@ export default function GlobalSettingsDrawer({ userRole = 'student' }: { userRol
   };
 
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
-      <Drawer.Navigator
-        drawerContent={(props) => <CustomDrawerContent {...props} userRole={userRole} />}
-        screenOptions={({ navigation }) => ({
-          headerShown: true,
-          headerLeft: () => (
-            <TouchableOpacity 
-              onPress={() => navigation.openDrawer()}
-              className="ml-4 p-2"
-            >
-              <Menu size={24} color="#000" />
-            </TouchableOpacity>
-          ),
-          headerStyle: {
-            backgroundColor: '#ffffff',
-            elevation: 0,
-            shadowOpacity: 0,
-            borderBottomWidth: 1,
-            borderBottomColor: '#e5e7eb',
-          },
-          headerTitleStyle: {
-            fontWeight: 'bold',
-            fontSize: 18,
-            color: '#000',
-          },
-          headerTitleAlign: 'center',
-          drawerActiveTintColor: userRole === 'teacher' ? 'orange' : 'orange',
-          drawerStyle: { width: 280 },
-        })}
-      >
+    <Drawer.Navigator
+      drawerContent={(props) => <CustomDrawerContent {...props} userRole={userRole} />}
+      screenOptions={({ navigation }) => ({
+        headerShown: true,
+        headerLeft: () => (
+          <TouchableOpacity
+            onPress={() => navigation.openDrawer()}
+            className="ml-4 p-2"
+          >
+            <Menu size={24} color="#000" />
+          </TouchableOpacity>
+        ),
+        headerStyle: {
+          backgroundColor: '#ffffff',
+          elevation: 0,
+          shadowOpacity: 0,
+          borderBottomWidth: 1,
+          borderBottomColor: '#e5e7eb',
+        },
+        headerTitleStyle: {
+          fontWeight: 'bold',
+          fontSize: 18,
+          color: '#000',
+        },
+        headerTitleAlign: 'center',
+        drawerActiveTintColor: userRole === 'teacher' ? 'orange' : 'orange',
+        drawerStyle: { width: 280 },
+      })}
+    >
 
-        {userRole === 'admin' && (
-          <Drawer.Screen
-            name="AdminPanel"
-            options={{
-              title: 'Admin Panel',
-              drawerIcon: ({ color, size }) => <ShieldCheck size={size} color={color} />,
-            }}
-            component={() => (
-              <View className="flex-1 items-center justify-center"><Text>Admin Panel</Text></View>
-            )}
-          />
-        )}
-        
+      {userRole === 'admin' && (
         <Drawer.Screen
-          name="Profile"
-          component={getProfileComponent()}
+          name="AdminPanel"
           options={{
-            title: 'My Profile',
-            drawerIcon: ({ color, size }) => <UserCircle size={size} color={color} />,
+            title: 'Admin Overview',
+            drawerIcon: ({ color, size }) => <ShieldCheck size={size} color={color} />,
           }}
+          component={AdminPanel}
         />
+      )}
 
-        <Drawer.Screen
-          name="Settings"
-          component={StudentSettings}
-          options={{
-            title: 'Settings',
-            drawerIcon: ({ color, size }) => <Settings size={size} color={color} />,
-          }}
-        />
+      <Drawer.Screen
+        name="Profile"
+        component={getProfileComponent()}
+        options={{
+          title: 'My Profile',
+          drawerIcon: ({ color, size }) => <UserCircle size={size} color={color} />,
+        }}
+      />
 
-        <Drawer.Screen
-          name="Help"
-          component={StudentHelp}
-          options={{
-            title: 'Help & Support',
-            drawerIcon: ({ color, size }) => <HelpCircle size={size} color={color} />,
-          }}
-        />
-      </Drawer.Navigator>
-    </GestureHandlerRootView>
+      <Drawer.Screen
+        name="Settings"
+        component={userRole === 'admin' ? AdminSettings : StudentSettings}
+        options={{
+          title: 'Settings',
+          drawerIcon: ({ color, size }) => <Settings size={size} color={color} />,
+        }}
+      />
+
+      <Drawer.Screen
+        name="Help"
+        component={StudentHelp}
+        options={{
+          title: 'Help & Support',
+          drawerIcon: ({ color, size }) => <HelpCircle size={size} color={color} />,
+        }}
+      />
+    </Drawer.Navigator>
   );
 }

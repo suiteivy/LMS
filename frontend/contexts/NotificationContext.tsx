@@ -29,16 +29,26 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
         }
     };
 
+    const lastToken = React.useRef<string | null>(null);
+
     useEffect(() => {
-        if (session) {
-            fetchNotifications();
-            // Simple polling every 60 seconds
-            const interval = setInterval(fetchNotifications, 60000);
+        const currentToken = session?.access_token || null;
+
+        if (currentToken) {
+            if (lastToken.current !== currentToken) {
+                lastToken.current = currentToken;
+                fetchNotifications();
+            }
+            // Simple polling every 60 seconds - only if token exists
+            const interval = setInterval(() => {
+                if (session?.access_token) fetchNotifications();
+            }, 60000);
             return () => clearInterval(interval);
         } else {
+            lastToken.current = null;
             setNotifications([]);
         }
-    }, [session]);
+    }, [session?.access_token]);
 
     const markAsRead = async (id: string) => {
         try {

@@ -292,21 +292,11 @@ export const ProfileEdit = ({ visible, onClose, currentUser, onUpdate }: EditFor
               {/* Universal Footer Buttons */}
               <View className="mt-10 mb-10 space-y-3">
                 <TouchableOpacity
-<<<<<<< HEAD
-                  disabled={currentView === "auth" && !isVerified}
-                  className={`p-4 rounded-2xl items-center ${
-                    currentView === "auth" && !isVerified
-                      ? "bg-gray-100"
-                      : "bg-orange-500 shadow-md active:opacity-90"
-                  }`}
-=======
                   disabled={(currentView === "auth" && !isVerified) || loading}
                   onPress={currentView === "profile" ? handleSave : undefined}
                   className={`p-4 rounded-2xl items-center ${(currentView === "auth" && !isVerified) || loading
                     ? "bg-gray-100"
-                    : "bg-teal-600 shadow-md active:opacity-90"
-                    }`}
->>>>>>> 10094d0dbae412cbf5513a83d4d4825af887a959
+                    : "bg-orange-500 shadow-md active:opacity-90"}`}
                 >
                   {loading ? (
                     <ActivityIndicator color="white" />

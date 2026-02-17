@@ -94,7 +94,7 @@ export default function AdminManagement() {
             description: "Configure system access levels",
             color: "#ec4899",
             bgColor: "#fce7f3",
-            route: "#"
+            route: "#" // Future feature
         },
         {
             icon: FileText,
@@ -102,7 +102,15 @@ export default function AdminManagement() {
             description: "View activity logs and generate reports",
             color: "#64748b",
             bgColor: "#f1f5f9",
-            route: "#"
+            route: "/(admin)/finance/bursaries/reports" as any
+        },
+        {
+            icon: CalendarCheck,
+            title: "Attendance Management",
+            description: "View and manage staff attendance",
+            color: "#10b981",
+            bgColor: "#d1fae5",
+            route: "/(admin)/attendance/teachers/index" as any
         }
     ];
 

@@ -2,6 +2,8 @@ import { Platform } from "react-native";
 import axios, { AxiosInstance, AxiosError } from "axios";
 import { showError } from "../utils/toast";
 
+import { supabase } from "@/libs/supabase";
+
 /**
  * To Do:
  * Determine the appropriate base URL for API calls based on environment and platform
@@ -32,14 +34,38 @@ const getBaseUrl = (): string => {
  * Automatically handles different environments (production/development)
  * and platforms (iOS/Android)
  */
+const baseURL = getBaseUrl();
+// console.log("API Base URL:", baseURL);
+
 export const api: AxiosInstance = axios.create({
-  baseURL: getBaseUrl(),
+  baseURL: baseURL,
   timeout: 10000,
   headers: {
     "Content-Type": "application/json",
     Accept: "application/json",
   },
 });
+
+// Request Interceptor: Inject Auth Token
+api.interceptors.request.use(
+  async (config) => {
+    try {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      if (session?.access_token) {
+        config.headers.Authorization = `Bearer ${session.access_token}`;
+      }
+    } catch (error) {
+      console.error("Error fetching session for API request:", error);
+    }
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
 
 // Response Interceptor for Global Error Handling
 api.interceptors.response.use(
@@ -86,6 +112,13 @@ api.interceptors.response.use(
       showError(title, message);
     }
 
-    return Promise.reject(error);
+    // Return a structured error object instead of just rejecting with AxiosError
+    // to help frontend components handle errors without crashing
+    return Promise.reject({
+      ...error,
+      message,
+      title,
+      safeData: null // UI can check this if they want to avoid crashes
+    });
   }
 );

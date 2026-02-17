@@ -11,12 +11,18 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { LibraryAPI, useLibraryAPI } from "@/services/LibraryService";
-import { FrontendBook, FrontendBorrowedBook } from "@/types/types";
+import { AddUpdateDeleteBooksFormProps, FrontendBook, FrontendBorrowedBook } from "@/types/types";
 import { useAuth } from "@/contexts/AuthContext";
 
-const AddUpdateDeleteBooksForm: React.FC = () => {
+const AddUpdateDeleteBooksForm: React.FC<AddUpdateDeleteBooksFormProps> = ({
+  books: propsBooks,
+  onAddBook,
+  onUpdateBook,
+  onDeleteBook,
+}) => {
   const { profile } = useAuth();
-  const [books, setBooks] = useState<FrontendBook[]>([]);
+  const [localBooks, setLocalBooks] = useState<FrontendBook[]>([]);
+  const books = propsBooks || localBooks;
   const [borrowedBooks, setBorrowedBooks] = useState<FrontendBorrowedBook[]>(
     []
   );
@@ -43,14 +49,16 @@ const AddUpdateDeleteBooksForm: React.FC = () => {
 
   // Fetch library + borrowed books
   useEffect(() => {
-    fetchBooks();
+    if (!propsBooks) {
+      fetchBooks();
+    }
     fetchBorrowedBooks();
-  }, []);
+  }, [propsBooks]);
 
   const fetchBooks = async () => {
     try {
       const backendBooks = await executeWithLoading(LibraryAPI.getBooks);
-      setBooks(backendBooks.map(LibraryAPI.transformBookData));
+      setLocalBooks(backendBooks.map(LibraryAPI.transformBookData));
     } catch (err) {
       console.error("Failed to fetch books:", err);
     }
@@ -88,32 +96,54 @@ const AddUpdateDeleteBooksForm: React.FC = () => {
 
     try {
       if (editingBook) {
-        const backendBook = await executeWithLoading(() =>
-          LibraryAPI.updateBook(editingBook.id, {
+        if (onUpdateBook) {
+          onUpdateBook(editingBook.id, {
             title: formData.title,
             author: formData.author,
             isbn: formData.isbn,
-            total_quantity: parseInt(formData.quantity) || 1,
+            quantity: parseInt(formData.quantity) || 1,
             category: formData.category,
-          })
-        );
-        const updatedBook = LibraryAPI.transformBookData(backendBook);
-        setBooks((prev) =>
-          prev.map((b) => (b.id === editingBook.id ? updatedBook : b))
-        );
+          });
+        } else {
+          const backendBook = await executeWithLoading(() =>
+            LibraryAPI.updateBook(editingBook.id, {
+              title: formData.title,
+              author: formData.author,
+              isbn: formData.isbn,
+              total_quantity: parseInt(formData.quantity) || 1,
+              category: formData.category,
+            })
+          );
+          const updatedBook = LibraryAPI.transformBookData(backendBook);
+          setLocalBooks((prev: any) =>
+            prev.map((b: any) => (b.id === editingBook.id ? updatedBook : b))
+          );
+        }
       } else {
-        const backendBook = await executeWithLoading(() =>
-          LibraryAPI.addBook({
+        if (onAddBook) {
+          onAddBook({
             title: formData.title,
             author: formData.author,
             isbn: formData.isbn,
-            total_quantity: parseInt(formData.quantity) || 1,
-            institution_id: profile?.institution_id || "", // Uses institution from auth context
+            quantity: parseInt(formData.quantity) || 1,
             category: formData.category,
-          })
-        );
-        const newBook = LibraryAPI.transformBookData(backendBook);
-        setBooks((prev) => [...prev, newBook]);
+            available: parseInt(formData.quantity) || 1,
+            institutionId: profile?.institution_id || "",
+          });
+        } else {
+          const backendBook = await executeWithLoading(() =>
+            LibraryAPI.addBook({
+              title: formData.title,
+              author: formData.author,
+              isbn: formData.isbn,
+              total_quantity: parseInt(formData.quantity) || 1,
+              institution_id: profile?.institution_id || "",
+              category: formData.category,
+            })
+          );
+          const newBook = LibraryAPI.transformBookData(backendBook);
+          setLocalBooks((prev: any) => [...prev, newBook]);
+        }
       }
 
       resetForm();
@@ -143,8 +173,12 @@ const AddUpdateDeleteBooksForm: React.FC = () => {
         style: "destructive",
         onPress: async () => {
           try {
-            await executeWithLoading(() => LibraryAPI.deleteBook(book.id));
-            setBooks((prev) => prev.filter((b) => b.id !== book.id));
+            if (onDeleteBook) {
+              onDeleteBook(book.id);
+            } else {
+              await executeWithLoading(() => LibraryAPI.deleteBook(book.id));
+              setLocalBooks((prev: any) => prev.filter((b: any) => b.id !== book.id));
+            }
           } catch (err) {
             console.error("Delete failed:", err);
           }

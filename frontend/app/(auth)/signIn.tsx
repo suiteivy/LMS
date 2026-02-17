@@ -147,9 +147,9 @@ export default function Index() {
         customId = stu?.id || "";
       }
 
-      console.log(
-        `User profile loaded: ${userData.full_name} (${userData.role}) - Custom ID: ${customId}`,
-      );
+      // console.log(
+      //   `User profile loaded: ${userData.full_name} (${userData.role}) - Custom ID: ${customId}`,
+      // );
 
       if (!userData?.role) {
         console.log("No role found for user");
@@ -185,7 +185,7 @@ export default function Index() {
       console.error("Unexpected error:", error);
       setErrorMessage(
         "An unexpected error occurred: " +
-          (error instanceof Error ? error.message : String(error)),
+        (error instanceof Error ? error.message : String(error)),
       );
     } finally {
       setIsLoading(false);

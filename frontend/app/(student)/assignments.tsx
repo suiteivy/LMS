@@ -7,14 +7,14 @@ import { useRouter } from 'expo-router'
 import * as DocumentPicker from 'expo-document-picker'
 import { decode } from 'base64-arraybuffer'
 
-interface Assignments{
+interface Assignments {
   id: string
   title: string
-  course: {title: string}
+  course: { title: string }
   due_date: string
   total_points: number
   status: "pending" | "completed" | "overdue"
-  submissions?: {status: string} | null
+  submissions?: { status: string } | null
   resource_path?: string | ''
 }
 
@@ -28,59 +28,59 @@ export default function StudentsAssignments() {
   const [modalVisible, setModalVisible] = useState(false)
   const [isUploading, setIsUploading] = useState(false)
 
-  
-  
+
+
   const displayList = assignments?.filter(a => {
     if (filter === 'pending') return a.status === 'pending';
     if (filter === 'completed') return a.status === 'completed';
     if (filter === 'overdue') return a.status === 'overdue';
     return false;
-  }) ?? []; 
+  }) ?? [];
 
   // fetch assignments from db
-  useEffect(() => { 
+  useEffect(() => {
     const fetchStudentsAssignments = async () => {
-      if(!user?.id) return
+      if (!user?.id) return
       setLoading(true)
 
-    try {
-      const { data, error } = await supabase
-        .from("assignments")
-        .select(
-        `
+      try {
+        const { data, error } = await supabase
+          .from("assignments")
+          .select(
+            `
           *,
           course:subjects(title),
           submissions(*)
       `,
-        )
+          )
         // .eq("submissions.student_id", user?.id);
 
-      if(error) throw error
+        if (error) throw error
 
-      //check for submissions
-      if(data){
-        const formatted: Assignments[] = data.map((a: any) => {
-          const isSubmitted = a.submissions && a.submissions.length > 0
+        //check for submissions
+        if (data) {
+          const formatted: Assignments[] = data.map((a: any) => {
+            const isSubmitted = a.submissions && a.submissions.length > 0
 
-          return {
-            id: a.id,
-            title: a.title,
-            course: {title: a.course?.title || "General"},
-            due_date: new Date(a.due_date).toLocaleDateString(),
-            total_points: a.total_points,
-            status: a.submissions?.length > 0 ? 'completed' : 'pending',
-            submissions: a.submissions?.[0] || null
-          }
-        })
-        setAssignments(formatted)
-      }
-      setLoading(false)
-      } catch(error: any) {
+            return {
+              id: a.id,
+              title: a.title,
+              course: { title: a.course?.title || "General" },
+              due_date: new Date(a.due_date).toLocaleDateString(),
+              total_points: a.total_points,
+              status: a.submissions?.length > 0 ? 'completed' : 'pending',
+              submissions: a.submissions?.[0] || null
+            }
+          })
+          setAssignments(formatted)
+        }
+        setLoading(false)
+      } catch (error: any) {
         console.error("error fetching assignments", error.message);
       }
     }
     fetchStudentsAssignments()
-  },[user?.id])
+  }, [user?.id])
 
   // Downloading content uploaded by teacher
   const handleDownload = async (fileName: string) => {
@@ -91,7 +91,7 @@ export default function StudentsAssignments() {
 
       const supported = await Linking.canOpenURL(publicUrl)
 
-      if(supported) {
+      if (supported) {
         await Linking.openURL(publicUrl)
       } else {
         Alert.alert('Error', "Don't know how to open this URL: " + publicUrl)
@@ -104,7 +104,7 @@ export default function StudentsAssignments() {
 
   // Handling uploading content/submissions
   const handleUpload = async () => {
-    if(!selectedAssignment || !user) return
+    if (!selectedAssignment || !user) return
 
     try {
       const result = await DocumentPicker.getDocumentAsync({
@@ -112,44 +112,44 @@ export default function StudentsAssignments() {
         copyToCacheDirectory: true,
       })
 
-      if(result.canceled) return
+      if (result.canceled) return
       setIsUploading(true)
       const file = result.assets[0]
 
-    // 2. Prepare file data for Supabase
-    // On Web, we can use the file object directly; on mobile, we fetch the URI
-    const response = await fetch(file.uri)
-    const blob = await response.blob()
-    const arraybuffer = await new Response(blob).arrayBuffer()
+      // 2. Prepare file data for Supabase
+      // On Web, we can use the file object directly; on mobile, we fetch the URI
+      const response = await fetch(file.uri)
+      const blob = await response.blob()
+      const arraybuffer = await new Response(blob).arrayBuffer()
 
-    const fileName = `${selectedAssignment.id}/${user.id}_${file.name}`
-    const filePath = `submissions/${fileName}`
+      const fileName = `${selectedAssignment.id}/${user.id}_${file.name}`
+      const filePath = `submissions/${fileName}`
 
-    // 3. Uploading to supabase storage
-    const { data, error } = await supabase.storage
-    .from('assigments')
-    .upload(filePath, arraybuffer, {
-      contentType: file.mimeType,
-      upsert: true
-    })
+      // 3. Uploading to supabase storage
+      const { data, error } = await supabase.storage
+        .from('assigments')
+        .upload(filePath, arraybuffer, {
+          contentType: file.mimeType,
+          upsert: true
+        })
 
-    if (error) throw error
+      if (error) throw error
 
-    const { error: dbError } = await supabase
-    .from('submissions')
-    .insert({
-      assignment_id: selectedAssignment.id,
-      student_id: user.id,
-      file_url: filePath,
-      status: 'completed',
-      submitted_at: new Date().toISOString()
-    })
+      const { error: dbError } = await supabase
+        .from('submissions')
+        .insert({
+          assignment_id: selectedAssignment.id,
+          student_id: user.id,
+          content: filePath,
+          status: 'submitted',
+          submitted_at: new Date().toISOString()
+        })
 
-    if(dbError) throw dbError
+      if (dbError) throw dbError
 
-    Alert.alert('Success', "Assignment submitted successfully!")
-    setSelectedAssignment(null)
-    // refreshAssignments()
+      Alert.alert('Success', "Assignment submitted successfully!")
+      setSelectedAssignment(null)
+      // refreshAssignments()
 
     } catch (error: any) {
       Alert.alert("Upload Error", error.message)
@@ -159,7 +159,7 @@ export default function StudentsAssignments() {
   }
 
 
-  
+
   return (
     <>
       <View className="flex-1 bg-gray-50">
@@ -200,7 +200,7 @@ export default function StudentsAssignments() {
               <View className="flex-1 items-center">
                 <CheckCircle2 size={48} color="orange" />
               </View>
-              <View className="flex-1 items-center"> 
+              <View className="flex-1 items-center">
                 <Text>Nothing to see, Whoo!! All Caught up!</Text>
               </View>
             </View>
@@ -285,7 +285,7 @@ export default function StudentsAssignments() {
 
                 <TouchableOpacity
                   className="flex-row items-center bg-orange-50 border border-orange-100 p-4 rounded-2xl"
-                  onPress={() => handleDownload(selectedAssignment?.resource_path)}
+                  onPress={() => selectedAssignment?.resource_path && handleDownload(selectedAssignment.resource_path)}
                 >
                   <View className="bg-white p-3 rounded-xl shadow-sm mr-4">
                     <Download size={20} color="#f97316" />

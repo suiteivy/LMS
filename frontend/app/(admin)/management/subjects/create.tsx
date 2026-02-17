@@ -21,10 +21,10 @@ import { CustomPicker } from "@/components/form/CustomPicker";
 import { useSubjectForm } from "@/hooks/useSubjectForm";
 import { CATEGORIES, LEVELS } from "@/hooks/FormOption";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useNavigation } from "@react-navigation/native";
+import { useRouter } from "expo-router";
 
 const CreateSubject = () => {
-    const navigation = useNavigation();
+    const router = useRouter();
     const {
         formData,
         isSubmitting,
@@ -55,7 +55,7 @@ const CreateSubject = () => {
                     <View className="px-6 py-8">
                         {/* Back Button */}
                         <TouchableOpacity
-                            onPress={() => navigation.goBack()}
+                            onPress={() => router.back()}
                             className="mb-4 flex-row items-center"
                             accessibilityLabel="Go back"
                         >

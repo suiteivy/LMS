@@ -10,7 +10,7 @@ interface StatsCardProps extends StatsData, BaseComponentProps {
 }
 
 export const StatsCard: React.FC<StatsCardProps> = ({
-  title,
+  label,
   value,
   icon,
   color,
@@ -78,7 +78,7 @@ export const StatsCard: React.FC<StatsCardProps> = ({
 
   if (loading) {
     return (
-      <View 
+      <View
         className={`bg-white rounded-xl p-4 shadow-sm border border-gray-200 mb-4 ${className}`}
         testID={testID}
       >
@@ -108,7 +108,7 @@ export const StatsCard: React.FC<StatsCardProps> = ({
             </View>
             <View className="flex-1">
               <Text className={`text-base font-medium ${scheme.text}`}>
-                {title}
+                {label}
               </Text>
               {description && !isCompact && (
                 <Text className="text-xs text-gray-500 mt-1">
@@ -117,22 +117,21 @@ export const StatsCard: React.FC<StatsCardProps> = ({
               )}
             </View>
           </View>
-          
+
           <View className="flex-row items-end justify-between">
             <Text className={`text-2xl font-bold ${scheme.value}`}>
               {value}
             </Text>
-            
+
             {trend && !isCompact && (
               <View className="flex-row items-center">
-                <Ionicons 
-                  name={trend.isPositive ? "trending-up" : "trending-down"} 
-                  size={16} 
-                  color={trend.isPositive ? "#10B981" : "#EF4444"} 
+                <Ionicons
+                  name={trend.isPositive ? "trending-up" : "trending-down"}
+                  size={16}
+                  color={trend.isPositive ? "#10B981" : "#EF4444"}
                 />
-                <Text className={`text-sm font-medium ml-1 ${
-                  trend.isPositive ? 'text-green-600' : 'text-red-600'
-                }`}>
+                <Text className={`text-sm font-medium ml-1 ${trend.isPositive ? 'text-green-600' : 'text-red-600'
+                  }`}>
                   {trend.value}
                 </Text>
               </View>
@@ -145,7 +144,7 @@ export const StatsCard: React.FC<StatsCardProps> = ({
 
   if (onPress) {
     return (
-      <TouchableOpacity 
+      <TouchableOpacity
         onPress={onPress}
         activeOpacity={0.7}
         className={className}

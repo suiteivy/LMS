@@ -825,6 +825,83 @@ export interface Database {
           }
         ];
       };
+      attendance: {
+        Row: {
+          id: string;
+          student_id: string;
+          class_id: string;
+          date: string;
+          status: "present" | "absent" | "late" | "excused";
+          recorded_at: string;
+        };
+        Insert: {
+          id?: string;
+          student_id: string;
+          class_id: string;
+          date: string;
+          status: "present" | "absent" | "late" | "excused";
+          recorded_at?: string;
+        };
+        Update: {
+          id?: string;
+          student_id?: string;
+          class_id?: string;
+          date?: string;
+          status?: "present" | "absent" | "late" | "excused";
+          recorded_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "attendance_student_id_fkey";
+            columns: ["student_id"];
+            referencedRelation: "students";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "attendance_class_id_fkey";
+            columns: ["class_id"];
+            referencedRelation: "classes";
+            referencedColumns: ["id"];
+          }
+        ];
+      },
+      resources: {
+        Row: {
+          id: string;
+          subject_id: string;
+          title: string;
+          url: string;
+          type: "link" | "video" | "pdf" | "image" | "other";
+          size: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          subject_id: string;
+          title: string;
+          url: string;
+          type: "link" | "video" | "pdf" | "image" | "other";
+          size?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          subject_id?: string;
+          title?: string;
+          url?: string;
+          type?: "link" | "video" | "pdf" | "image" | "other";
+          size?: string | null;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "resources_subject_id_fkey";
+            columns: ["subject_id"];
+            referencedRelation: "subjects";
+            referencedColumns: ["id"];
+          }
+        ];
+      },
       teacher_attendance: {
         Row: {
           id: string;

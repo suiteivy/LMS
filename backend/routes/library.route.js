@@ -8,22 +8,38 @@ const {
   returnBook,
   history,
   getAllBorrowedBooks,
-  sendReminder,
   extendDueDate,
   updateBorrowStatus,
   rejectBorrowRequest,
+  sendReminder,
+  deleteBook,
 } = require("../controllers/library.controller");
 const { authMiddleware } = require("../middleware/auth.middleware");
 const { authorizeRoles } = require("../middleware/authRole");
 
 const router = express.Router();
 
-// Admin: add/update book
 router.post(
   "/books",
   authMiddleware,
   authorizeRoles(["admin"]),
   addOrUpdateBook
+);
+
+// Admin: update book
+router.put(
+  "/books/:bookId",
+  authMiddleware,
+  authorizeRoles(["admin"]),
+  addOrUpdateBook
+);
+
+// Admin: delete book
+router.delete(
+  "/books/:bookId",
+  authMiddleware,
+  authorizeRoles(["admin"]),
+  deleteBook
 );
 
 // Anyone (scoped by institution): list books
@@ -39,7 +55,7 @@ router.post(
 
 // Student/Admin: return
 router.post(
-  "/return/:bookId",
+  "/return/:borrowId",
   authMiddleware,
   authorizeRoles(["student", "admin"]),
   returnBook

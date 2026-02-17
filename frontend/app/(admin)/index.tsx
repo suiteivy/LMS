@@ -40,6 +40,39 @@ const QuickAction = ({ icon: Icon, label, color, onPress }: QuickActionProps) =>
   </TouchableOpacity>
 );
 
+// --- DEBUG COMPONENT ---
+const DebugSessionInfo = () => {
+  const [debugInfo, setDebugInfo] = useState<any>({ status: 'Loading...', token: '...' });
+
+  const checkSession = async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      setDebugInfo({
+        status: session ? 'Active' : 'No Session',
+        token: session?.access_token ? `${session.access_token.substring(0, 15)}...` : 'None',
+        user: session?.user?.email || 'None'
+      });
+    } catch (e: any) {
+      setDebugInfo({ status: 'Error', error: e.message });
+    }
+  };
+
+  useEffect(() => {
+    checkSession();
+  }, []);
+
+  return (
+    <View>
+      <Text className="text-xs text-red-700 font-mono">Status: {debugInfo.status}</Text>
+      <Text className="text-xs text-red-700 font-mono">User: {debugInfo.user}</Text>
+      <Text className="text-xs text-red-700 font-mono">Token: {debugInfo.token}</Text>
+      <TouchableOpacity onPress={checkSession} className="bg-red-100 p-2 rounded mt-2 items-center">
+        <Text className="text-red-800 text-xs font-bold">Refresh Session Info</Text>
+      </TouchableOpacity>
+    </View>
+  );
+};
+
 export default function AdminDashboard() {
   const insets = useSafeAreaInsets();
   const { stats, loading: statsLoading } = useDashboardStats();
@@ -127,6 +160,13 @@ export default function AdminDashboard() {
                 <LogOut size={24} color="#374151" />
               </TouchableOpacity>
             </View>
+
+            {/* --- DEBUG SECTION --- */}
+            <View className="bg-red-50 p-4 rounded-xl border border-red-200 mb-6">
+              <Text className="text-red-800 font-bold mb-2">Technical Diagnostics</Text>
+              <DebugSessionInfo />
+            </View>
+
 
             {/* --- 2. Quick Status Cards --- */}
             <View className="flex-row gap-4 mb-8">

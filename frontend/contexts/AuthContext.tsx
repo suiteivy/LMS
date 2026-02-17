@@ -1,7 +1,9 @@
 import React, { createContext, useContext, useEffect, useState, useRef } from 'react'
 import { Session, User } from '@supabase/supabase-js'
+import { AppState, AppStateStatus } from 'react-native'
 import { Database } from '@/types/database'
 import { authService, supabase } from '@/libs/supabase'
+import Toast from 'react-native-toast-message'
 
 type UserProfile = Database['public']['Tables']['users']['Row']
 
@@ -53,6 +55,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [loading, setLoading] = useState(true)
 
   const timerRef = useRef<any>(null)
+  const appState = useRef(AppState.currentState);
+  const lastActive = useRef(Date.now());
 
   const clearTimer = () => {
     if (timerRef.current) {
@@ -76,8 +80,19 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }, 10 * 60 * 1000)
   }
 
+  const lastLoadedUserId = useRef<string | null>(null);
+  const loadingUserId = useRef<string | null>(null);
+
   const loadUserProfile = async (userId: string): Promise<UserProfile | null> => {
+    // Prevent redundant loads for the same user if we already have a profile
+    // OR if we are already loading this specific user
+    if ((lastLoadedUserId.current === userId && profile && !loading) || loadingUserId.current === userId) {
+      return profile;
+    }
+
+    loadingUserId.current = userId;
     try {
+      setLoading(true);
       // Get Base Profile and Role-Specific IDs in a single query
       const { data, error } = await supabase
         .from('users')
@@ -86,27 +101,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         .single()
 
       if (error) {
-        console.error('Error loading profile:', {
-          message: error.message,
-          code: error.code,
-          details: error.details,
-          hint: error.hint
-        })
+        console.error('Error loading profile:', error)
         setProfile(null)
+        lastLoadedUserId.current = null;
         return null
       }
 
-      if (!data) {
-        console.warn('No profile data found for user:', userId)
-        setProfile(null)
-        return null
-      }
-
-      // Cast to any to access the joined data
       const userData = data as any;
       setProfile(userData as UserProfile)
+      lastLoadedUserId.current = userId;
 
-      // Set Role-Specific ID based on role and joined data
       const getRoleId = (roleData: any) => {
         if (!roleData) return null;
         if (Array.isArray(roleData)) return roleData[0]?.id || null;
@@ -131,15 +135,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         setDisplayId(id);
       }
 
-      if (!getRoleId((userData as any)[`${userData.role}s`])) {
-        console.warn(`Profile loaded but no matching role ID found for role: ${userData.role}`)
-      }
-
       return userData as UserProfile
     } catch (err) {
       console.error('Unexpected error loading profile:', err)
       setProfile(null)
+      lastLoadedUserId.current = null;
       return null
+    } finally {
+      setLoading(false);
+      loadingUserId.current = null;
     }
   }
 
@@ -151,21 +155,24 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   }
 
   useEffect(() => {
-    // 1. Initial session check for faster startup
-    supabase.auth.getSession()
-      .then(async ({ data: { session } }) => {
-        if (session) {
-          setSession(session)
-          setUser(session.user)
-          await loadUserProfile(session.user.id)
+    // Consolidate initialization into a single start method
+    const initializeAuth = async () => {
+      try {
+        const { data: { session: initialSession } } = await supabase.auth.getSession();
+        if (initialSession) {
+          setSession(initialSession)
+          setUser(initialSession.user)
+          await loadUserProfile(initialSession.user.id)
           startTimeoutTimer()
         }
+      } catch (error) {
+        console.error('Error in initializeAuth:', error)
+      } finally {
         setLoading(false)
-      })
-      .catch(error => {
-        console.error('Error in getSession:', error)
-        setLoading(false)
-      })
+      }
+    };
+
+    initializeAuth();
 
     // 2. Listen for auth state changes
     const {
@@ -209,14 +216,47 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       }
     }, 10000)
 
+
+    const appStateSubscription = AppState.addEventListener('change', async (nextAppState: AppStateStatus) => {
+      if (
+        appState.current.match(/inactive|background/) &&
+        nextAppState === 'active'
+      ) {
+        // App has come to the foreground
+        const now = Date.now();
+        const diff = now - lastActive.current;
+        const { data: { session: currentSession } } = await supabase.auth.getSession();
+        // If backgrounded for more than 10 mins
+        if (diff > 10 * 60 * 1000 && currentSession) {
+          console.log('Inactive for more than 10 mins in background, logging out');
+          await authService.signOut();
+          Toast.show({
+            type: 'info',
+            text1: 'Session Expired',
+            text2: 'Logged out due to inactivity.'
+          });
+        } else {
+          // Reset timer if we came back within 10 mins
+          resetSessionTimer();
+        }
+      }
+
+      if (nextAppState.match(/inactive|background/)) {
+        lastActive.current = Date.now();
+      }
+
+      appState.current = nextAppState;
+    });
+
     return () => {
       subscription.unsubscribe()
+      appStateSubscription.remove()
       clearTimer()
       clearTimeout(watchdog)
     }
-  }, [])
+  }, []) // Fix syntax error extra bracket
 
-  const value: AuthContextType = {
+  const value = React.useMemo(() => ({
     session,
     user,
     profile,
@@ -232,7 +272,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     resetPassword: authService.resetPassword,
     refreshProfile,
     resetSessionTimer,
-  }
+  }), [session, user, profile, studentId, teacherId, adminId, parentId, displayId, loading]);
 
   return (
     <AuthContext.Provider value={value}>

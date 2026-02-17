@@ -263,9 +263,9 @@ export interface Book {
 
 // Props accepted by this component
 export interface AddUpdateDeleteBooksFormProps {
-  books?: Book[]; // all library books
-  onAddBook?: (book: Omit<Book, "id">) => void; // handler to add a book
-  onUpdateBook?: (id: string, book: Partial<Book>) => void; // handler to update
+  books?: FrontendBook[]; // all library books
+  onAddBook?: (book: Omit<FrontendBook, "id">) => void; // handler to add a book
+  onUpdateBook?: (id: string, book: Partial<FrontendBook>) => void; // handler to update
   onDeleteBook?: (id: string) => void; // handler to delete
 }
 
@@ -282,7 +282,8 @@ export interface BorrowedBook {
   borrowDate: Date;
   dueDate: Date;
   returnDate?: Date;
-  status: "borrowed" | "overdue" | "returned";
+  borrowerPhone?: string;
+  status: "borrowed" | "overdue" | "returned" | "waiting" | "ready_for_pickup" | "rejected";
 }
 
 // export interface BorrowedBooks {
@@ -441,8 +442,12 @@ export interface APIError {
 
 // Props for the BorrowedBooksOverview component
 export interface BorrowedBooksOverviewProps {
-  borrowedBooks?: BorrowedBook[];
-  onReturnBook?: (borrowId: string) => void;
+  borrowedBooks?: FrontendBorrowedBook[];
+  onReturnBook?: (
+    borrowId: string,
+    fineAmount?: number,
+    condition?: string
+  ) => void;
   onExtendDueDate?: (borrowId: string, newDueDate: Date) => void;
   onSendReminder?: (borrowId: string) => void;
 }

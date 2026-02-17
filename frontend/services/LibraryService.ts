@@ -117,23 +117,18 @@ export class LibraryAPI {
     }
   }
 
-  /**
-   * Borrow a book
-   * @param {string} bookId
-   * @param {string} dueDate
-   * @returns {Promise<BackendBorrowedBook>}
-   */
   static async borrowBook(
     bookId: string,
-    dueDate: string
+    days: number = 14
   ): Promise<BackendBorrowedBook> {
     try {
       const headers = await LibraryAPI.getAuthHeaders();
       const response = await api.post<BackendBorrowedBook>(
-        `/library/borrow/${bookId}`,
+        "/library/borrow",
         {
-          due_date: dueDate,
-        } as BorrowBookRequest,
+          bookId,
+          days,
+        },
         {
           headers,
         }
@@ -335,22 +330,22 @@ export class LibraryAPI {
    * @returns {FrontendBorrowedBook}
    */
   static transformBorrowedBookData(
-    backendBorrow: BackendBorrowedBook
+    backendBorrow: any // Using any to avoid strict type mismatch during migration
   ): FrontendBorrowedBook {
     return {
       id: backendBorrow.id,
-      bookTitle: backendBorrow.books?.title || "Unknown Book",
-      author: backendBorrow.books?.author || "Unknown Author",
-      isbn: backendBorrow.books?.isbn || "N/A",
-      borrowerId: backendBorrow.student_id,
-      borrowerName: backendBorrow.students?.users?.full_name || backendBorrow.users?.full_name || "Unknown",
-      borrowerDisplayId: backendBorrow.student_id,
-      borrowerEmail: backendBorrow.students?.users?.email || backendBorrow.users?.email || "",
-      borrowerPhone: backendBorrow.students?.users?.phone || backendBorrow.users?.phone || undefined,
-      borrowDate: new Date(backendBorrow.borrowed_at),
+      bookTitle: backendBorrow.library_items?.title || "Unknown Book",
+      author: backendBorrow.library_items?.author || "Unknown Author",
+      isbn: backendBorrow.library_items?.isbn || "N/A",
+      borrowerId: backendBorrow.user_id,
+      borrowerName: backendBorrow.users?.full_name || "Unknown",
+      borrowerDisplayId: backendBorrow.user_id,
+      borrowerEmail: backendBorrow.users?.email || "",
+      borrowerPhone: backendBorrow.users?.phone || undefined,
+      borrowDate: new Date(backendBorrow.borrow_date || backendBorrow.created_at),
       dueDate: new Date(backendBorrow.due_date),
-      returnDate: backendBorrow.returned_at
-        ? new Date(backendBorrow.returned_at)
+      returnDate: backendBorrow.return_date
+        ? new Date(backendBorrow.return_date)
         : undefined,
       status: backendBorrow.status,
     };
