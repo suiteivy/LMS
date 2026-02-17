@@ -112,7 +112,14 @@ export const SubjectList: React.FC<SubjectListProps> = ({
             message="Try adjusting your filters or search query."
             icon={BookOpen}
           />
-
+        )}
+        {filteredSubjects.length === 0 && (
+          <View className="items-center py-12">
+            <Ionicons name="school" size={48} color="orange" />
+            <Text className="text-gray-500 mt-4 text-center">
+              No Subjects found{'\n'}Try adjusting your filters
+            </Text>
+          </View>
         )}
       </ScrollView>
     </View>
