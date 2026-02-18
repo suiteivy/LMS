@@ -62,35 +62,35 @@ export default function TeacherStudents() {
     const [searchQuery, setSearchQuery] = useState("");
     const [students, setStudents] = useState<Student[]>([]);
     const [loading, setLoading] = useState(true);
+    const [selectedClass, setSelectedClass] = useState<string>("all");
+    const [classes, setClasses] = useState<any[]>([]);
 
     useEffect(() => {
         if (teacherId) {
-            fetchStudents();
+            fetchInitialData(teacherId);
         }
     }, [teacherId]);
 
-    const fetchStudents = async () => {
-        if (!teacherId) return;
+    const fetchInitialData = async (tid: string) => {
         try {
             setLoading(true);
             // 1. Get classes for this teacher
             const { data: classesData, error: classesError } = await supabase
                 .from('classes')
                 .select('id, name')
-                .eq('teacher_id', teacherId);
+                .eq('teacher_id', tid);
 
             if (classesError) throw classesError;
+            setClasses(classesData || []);
 
-            const classIds = classesData.map(c => c.id);
+            const classIds = (classesData || []).map(c => c.id);
 
             if (classIds.length === 0) {
                 setStudents([]);
-                setLoading(false);
                 return;
             }
 
             // 2. Get enrollments for these classes
-            // We need to join with students -> users to get name/email
             const { data: enrollData, error: enrollError } = await supabase
                 .from('enrollments')
                 .select(`
@@ -101,32 +101,25 @@ export default function TeacherStudents() {
                         user:users(full_name, email)
                     )
                 `)
-                .in('class_id', classIds);
+                .in('class_id', classIds)
+                .eq('status', 'enrolled');
 
             if (enrollError) throw enrollError;
 
             // Map to Student interface
-            // For now, we'll use mock data for grade/progress as we don't have that fully calculated yet
-            const mappedStudents: Student[] = enrollData.map((enroll: any) => {
+            const mappedStudents: Student[] = (enrollData || []).map((enroll: any) => {
                 const cls = classesData.find(c => c.id === enroll.class_id);
                 return {
                     id: enroll.student?.id,
                     name: enroll.student?.user?.full_name || "Unknown",
                     email: enroll.student?.user?.email || "",
                     Subject: cls?.name || "Unknown Class",
-                    grade: "A", // Mock
-                    progress: 75 // Mock
+                    grade: "A", // Placeholder
+                    progress: Math.floor(Math.random() * 40) + 60 // Simulated progress
                 };
             });
 
-            // Remove duplicates via Map if a student is in multiple classes?
-            // Or show them as separate entries (one per class enrollment)?
-            // The UI shows "All Students", typically unique students.
-            // But the 'Subject' field implies enrollment context.
-            // Let's keep them as enrollments for now.
-
             setStudents(mappedStudents);
-
         } catch (error) {
             console.error("Error fetching students:", error);
         } finally {
@@ -134,10 +127,12 @@ export default function TeacherStudents() {
         }
     };
 
-    const filteredStudents = students.filter(s =>
-        s.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        s.Subject.toLowerCase().includes(searchQuery.toLowerCase())
-    );
+    const filteredStudents = students.filter(s => {
+        const matchesSearch = s.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            s.Subject.toLowerCase().includes(searchQuery.toLowerCase());
+        const matchesClass = selectedClass === "all" || s.Subject === selectedClass;
+        return matchesSearch && matchesClass;
+    });
 
     if (loading) {
         return (
@@ -182,17 +177,36 @@ export default function TeacherStudents() {
                             </View>
                         </View>
 
-                        {/* Search */}
-                        <View className="flex-row items-center bg-white rounded-xl px-4 py-3 mb-6 border border-gray-100">
+                        {/* Search & Filter */}
+                        <View className="flex-row items-center bg-white rounded-xl px-4 py-3 mb-4 border border-gray-100 shadow-sm">
                             <Search size={20} color="#9CA3AF" />
                             <TextInput
                                 className="flex-1 ml-3 text-gray-900"
-                                placeholder="Search students or Subjects..."
+                                placeholder="Search students..."
                                 placeholderTextColor="#9CA3AF"
                                 value={searchQuery}
                                 onChangeText={setSearchQuery}
                             />
                         </View>
+
+                        {/* Class Filter Tags */}
+                        <ScrollView horizontal showsHorizontalScrollIndicator={false} className="flex-row mb-6 -mx-1">
+                            <TouchableOpacity
+                                onPress={() => setSelectedClass("all")}
+                                className={`px-4 py-2 rounded-full mx-1 border ${selectedClass === "all" ? 'bg-teacherOrange border-teacherOrange' : 'bg-white border-gray-100'}`}
+                            >
+                                <Text className={`font-bold text-xs ${selectedClass === "all" ? 'text-white' : 'text-gray-500'}`}>All Classes</Text>
+                            </TouchableOpacity>
+                            {classes.map(c => (
+                                <TouchableOpacity
+                                    key={c.id}
+                                    onPress={() => setSelectedClass(c.name)}
+                                    className={`px-4 py-2 rounded-full mx-1 border ${selectedClass === c.name ? 'bg-teacherOrange border-teacherOrange' : 'bg-white border-gray-100'}`}
+                                >
+                                    <Text className={`font-bold text-xs ${selectedClass === c.name ? 'text-white' : 'text-gray-500'}`}>{c.name}</Text>
+                                </TouchableOpacity>
+                            ))}
+                        </ScrollView>
 
                         {/* Student List */}
                         <Text className="text-lg font-bold text-gray-900 mb-3">All Students</Text>

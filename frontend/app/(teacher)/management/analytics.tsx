@@ -2,10 +2,10 @@ import React, { useState, useEffect } from "react";
 import { View, Text, ScrollView, TouchableOpacity, StatusBar, ActivityIndicator } from 'react-native';
 import { ArrowLeft, TrendingUp, Users, BookOpen, Clock, Award, ChevronDown, Download } from 'lucide-react-native';
 import { router } from "expo-router";
-import { supabase } from "@/libs/supabase";
 import { useAuth } from "@/contexts/AuthContext";
+import { TeacherAPI } from "@/services/TeacherService";
 
-interface SubjectAnalytics {
+interface ISubjectAnalytics {
     id: string;
     name: string;
     students: number;
@@ -24,7 +24,7 @@ const StatBox = ({ icon: Icon, label, value, color, bgColor }: { icon: any; labe
     </View>
 );
 
-const SubjectAnalyticsCard = ({ Subject }: { Subject: SubjectAnalytics }) => {
+const SubjectAnalyticsCard = ({ Subject }: { Subject: ISubjectAnalytics }) => {
     return (
         <View className="bg-white p-4 rounded-2xl border border-gray-100 mb-3">
             <View className="flex-row justify-between items-start mb-3">
@@ -58,98 +58,28 @@ const SubjectAnalyticsCard = ({ Subject }: { Subject: SubjectAnalytics }) => {
 };
 
 export default function AnalyticsPage() {
-    const { user, teacherId } = useAuth();
+    const { teacherId } = useAuth();
     const [selectedPeriod, setSelectedPeriod] = useState("All Time");
-    const [SubjectAnalytics, setSubjectAnalytics] = useState<SubjectAnalytics[]>([]);
+    const [SubjectAnalytics, setSubjectAnalytics] = useState<ISubjectAnalytics[]>([]);
     const [loading, setLoading] = useState(true);
     const [topPerformers, setTopPerformers] = useState<any[]>([]);
 
     useEffect(() => {
-        if (teacherId) {
-            fetchAnalytics();
-        }
-    }, [teacherId]);
+        fetchAnalytics();
+    }, []);
 
     const fetchAnalytics = async () => {
-        if (!teacherId) return;
         setLoading(true);
         try {
-            // 1. Fetch Subjects for this teacher
-            const { data: Subjects, error: SubjectsError } = await supabase
-                .from('subjects') // Fixed: Lowercase 'subjects'
-                .select('id, title, class_id')
-                .eq('teacher_id', teacherId);
+            const data = await TeacherAPI.getAnalytics();
+            setSubjectAnalytics(data);
 
-            if (SubjectsError) throw SubjectsError;
-
-            // 2. Fetch Assignments & Students count for each Subject
-            const analyticsPromises = Subjects.map(async (Subject) => {
-                // A. Get Student Count
-                let studentCount = 0;
-                if (Subject.class_id) {
-                    const { count } = await supabase
-                        .from('enrollments')
-                        .select('*', { count: 'exact', head: true })
-                        .eq('class_id', Subject.class_id);
-                    studentCount = count || 0;
-                }
-
-                // B. Get Assignments
-                const { data: assignments } = await supabase
-                    .from('assignments')
-                    .select('id, total_points')
-                    .eq('subject_id', Subject.id); // Fixed: Lowercase 'subject_id'
-
-                const assignmentIds = (assignments || []).map(a => a.id);
-
-                // C. Get Submissions
-                let avgGrade = 0;
-                let completionRate = 0;
-                let totalSubmissions = 0;
-
-                if (assignmentIds.length > 0) {
-                    const { data: submissions } = await supabase
-                        .from('submissions')
-                        .select('grade, status')
-                        .in('assignment_id', assignmentIds);
-
-                    if (submissions && submissions.length > 0) {
-                        // Avg Grade calculation
-                        const gradedSubs = submissions.filter(s => s.grade !== null);
-                        if (gradedSubs.length > 0) {
-                            const totalScore = gradedSubs.reduce((sum, s) => sum + (s.grade || 0), 0);
-                            avgGrade = Math.round(totalScore / gradedSubs.length);
-                        }
-
-                        // Completion Rate
-                        totalSubmissions = submissions.length;
-                        const expectedSubmissions = assignmentIds.length * studentCount;
-                        if (expectedSubmissions > 0) {
-                            completionRate = Math.round((totalSubmissions / expectedSubmissions) * 100);
-                        }
-                    }
-                }
-
-                return {
-                    id: Subject.id,
-                    name: Subject.title,
-                    students: studentCount,
-                    avgProgress: completionRate, // reusing
-                    avgGrade,
-                    completionRate
-                };
-            });
-
-            const results = await Promise.all(analyticsPromises);
-            setSubjectAnalytics(results);
-
-            // Mock Top Performers (Hard to calculate efficiently without heavy query)
+            // Mock Top Performers for now as we don't have a specific endpoint or logic yet
             setTopPerformers([
                 { name: "Sarah J.", initials: "SJ", score: 98 },
                 { name: "Michael C.", initials: "MC", score: 95 },
                 { name: "Grace W.", initials: "GW", score: 94 },
             ]);
-
         } catch (error) {
             console.error("Error fetching analytics:", error);
         } finally {

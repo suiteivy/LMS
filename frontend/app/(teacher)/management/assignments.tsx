@@ -40,9 +40,9 @@ const AssignmentCard = ({ assignment }: { assignment: Assignment }) => {
                     <Text className="text-gray-900 font-bold text-base">{assignment.title}</Text>
                     <Text className="text-gray-400 text-xs mt-0.5">{assignment.Subject}</Text>
                 </View>
-                <View className={`px-2 py-1 rounded-full border ${getStatusStyle(assignment.status)}`}>
-                    <Text className={`text-xs font-bold ${getStatusStyle(assignment.status).split(' ')[1]}`}>
-                        {assignment.status.charAt(0).toUpperCase() + assignment.status.slice(1)}
+                <View className={`px-2 py-1 rounded-full border ${getStatusStyle(assignment.status || 'active')}`}>
+                    <Text className={`text-xs font-bold ${getStatusStyle(assignment.status || 'active').split(' ')[1]}`}>
+                        {(assignment.status || 'active').charAt(0).toUpperCase() + (assignment.status || 'active').slice(1)}
                     </Text>
                 </View>
             </View>
@@ -144,8 +144,8 @@ export default function AssignmentsPage() {
                 subject_id: a.subject_id,
                 dueDate: a.due_date ? new Date(a.due_date).toLocaleDateString() : "No Due Date",
                 submissions: a.submissions?.[0]?.count || 0,
-                totalStudents: 0, // Todo: fetch from Subject->class->enrollments
-                status: a.status
+                totalStudents: 0,
+                status: a.status || 'active'
             }));
 
             setAssignments(formatted);

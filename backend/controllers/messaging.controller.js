@@ -5,7 +5,7 @@ const supabase = require("../utils/supabaseClient");
  */
 exports.sendMessage = async (req, res) => {
     try {
-        const { userId: sender_id } = req;
+        const { userId: sender_id, institution_id } = req;
         const { receiver_id, subject, content } = req.body;
 
         if (!receiver_id || !content) {
@@ -18,7 +18,8 @@ exports.sendMessage = async (req, res) => {
                 sender_id,
                 receiver_id,
                 subject,
-                content
+                content,
+                institution_id
             })
             .select()
             .single();
@@ -39,7 +40,7 @@ exports.sendMessage = async (req, res) => {
  */
 exports.getMessages = async (req, res) => {
     try {
-        const { userId } = req;
+        const { userId, institution_id } = req;
         const { type = 'inbox' } = req.query; // 'inbox' or 'sent'
 
         let query = supabase
@@ -49,6 +50,7 @@ exports.getMessages = async (req, res) => {
                 sender:sender_id ( id, full_name, avatar_url ),
                 receiver:receiver_id ( id, full_name, avatar_url )
             `)
+            .eq("institution_id", institution_id)
             .order("created_at", { ascending: false });
 
         if (type === 'sent') {

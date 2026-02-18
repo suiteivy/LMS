@@ -3,6 +3,7 @@ import { View, Text, TextInput, TouchableOpacity, Alert, KeyboardAvoidingView, P
 import { Stack, useRouter } from 'expo-router';
 import { supabase } from '@/libs/supabase';
 import { Mail, ArrowLeft } from 'lucide-react-native';
+import { FullScreenLoader } from '@/components/common/FullScreenLoader';
 
 export default function ForgotPassword() {
     const router = useRouter();
@@ -87,6 +88,7 @@ export default function ForgotPassword() {
                     </TouchableOpacity>
                 </View>
             </View>
-        </KeyboardAvoidingView>
+            <FullScreenLoader visible={loading} message="Sending Reset Link..." />
+        </KeyboardAvoidingView >
     );
 }

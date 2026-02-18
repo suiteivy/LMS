@@ -10,17 +10,13 @@ const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || "";
 
 const storageAdapter = {
   getItem: async (key: string) => {
-    // console.log("[SupabaseStorage] getItem:", key);
     if (Platform.OS === "web") {
       if (typeof window === "undefined") return null;
-      const val = window.localStorage.getItem(key);
-      // console.log("[SupabaseStorage] getItem (Web):", key, val ? "Found" : "Null");
-      return val;
+      return window.localStorage.getItem(key);
     }
     return AsyncStorage.getItem(key);
   },
   setItem: async (key: string, value: string) => {
-    // console.log("[SupabaseStorage] setItem:", key);
     if (Platform.OS === "web") {
       if (typeof window === "undefined") return;
       return window.localStorage.setItem(key, value);

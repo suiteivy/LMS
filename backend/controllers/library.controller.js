@@ -20,7 +20,7 @@ async function getActiveConfig() {
 }
 
 /** Compute student's overall fee % */
-async function getStudentOverallFeePercent(userId) {
+async function getStudentOverallFeePercent(userId, institution_id) {
   // 1. Get enrolled subjects to calculate total fee due
   const { data: student } = await supabase.from('students').select('id, user_id').eq('user_id', userId).single();
   if (!student) return 0; // Not a student
@@ -49,6 +49,7 @@ async function getStudentOverallFeePercent(userId) {
     .from('financial_transactions')
     .select('amount')
     .eq('user_id', userId)
+    .eq('institution_id', institution_id)
     .eq('type', 'fee_payment')
     .eq('direction', 'inflow');
 
@@ -204,11 +205,6 @@ exports.listBooks = async (req, res) => {
     const includeUnavailable = (req.query.includeUnavailable || "").toString().toLowerCase() === "true";
     console.log(`[Library] listBooks for institution: ${institution_id}`);
 
-    if (!institution_id) {
-      console.warn(`[Library] listBooks aborted: No institution_id`);
-      return res.json([]);
-    }
-
     let query = supabase
       .from("books") // Changed from library_items
       .select("*")
@@ -256,7 +252,7 @@ exports.borrowBook = async (req, res) => {
 
     // 2) Fee threshold
     const cfg = await getActiveConfig();
-    const overallPct = await getStudentOverallFeePercent(appUserId);
+    const overallPct = await getStudentOverallFeePercent(appUserId, institution_id);
     if (overallPct < Number(cfg.min_fee_percent_for_borrow)) {
       return res.status(403).json({
         error: `Insufficient fee payment. Need at least ${Number(cfg.min_fee_percent_for_borrow) * 100}% overall.`,

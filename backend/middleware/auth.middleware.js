@@ -19,7 +19,8 @@ async function authMiddleware(req, res, next) {
     } = await supabase.auth.getUser(token);
 
     if (error || !user) {
-      console.error("Supabase auth error:", error);
+      // Reduced logging for standard auth failures to minimize noise
+      // console.error("Supabase auth error:", error);
       return res.status(401).json({ error: "Invalid token" });
     }
 
@@ -47,10 +48,6 @@ async function authMiddleware(req, res, next) {
     req.institution_id = profile.institution_id;
     req.userId = profile.id || user.id;
     req.userRole = profile.role;
-
-    if (!req.institution_id) {
-      console.warn(`[AuthMiddleware] User ${req.userId} (Role: ${req.userRole}) has NO institution_id. Some features may fail.`);
-    }
 
     next();
   } catch (err) {

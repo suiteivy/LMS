@@ -161,14 +161,6 @@ export default function AdminDashboard() {
     fetchRecentUsers();
   }, [fetchRecentUsers]);
 
-  const handleLogout = async () => {
-    const { error } = await supabase.auth.signOut();
-    if (error) {
-      alert(error.message);
-    } else {
-      router.replace("/(auth)/signIn");
-    }
-  };
 
   return (
     <View className="flex-1 bg-gray-50/50">
@@ -188,20 +180,11 @@ export default function AdminDashboard() {
       >
         <View className="p-6 pt-2">
           {/* --- 1. Header Section --- */}
-          <View className="flex-row justify-between items-start mb-8">
-            <View>
-              <Text className="text-gray-500 text-base font-medium mb-1">Welcome back,</Text>
-              <Text className="text-3xl font-bold text-gray-900 tracking-tight">
-                {profile?.full_name?.split(" ")[0] || "Administrator"} 👋
-              </Text>
-            </View>
-
-            <TouchableOpacity
-              className="p-3 bg-white rounded-2xl border border-gray-100 shadow-sm active:bg-gray-50"
-              onPress={handleLogout}
-            >
-              <IconLogOut size={22} color="#374151" />
-            </TouchableOpacity>
+          <View className="mb-8">
+            <Text className="text-gray-500 text-base font-medium mb-1">Welcome back,</Text>
+            <Text className="text-3xl font-bold text-gray-900 tracking-tight">
+              {profile?.full_name?.split(" ")[0] || "Administrator"} 👋
+            </Text>
           </View>
 
           <TouchableOpacity
@@ -215,7 +198,6 @@ export default function AdminDashboard() {
               <Text className="text-[10px] text-gray-400">v1.0</Text>
             </View>
           </TouchableOpacity>
-
 
           {/* --- 2. Quick Status Cards --- */}
           {statsLoading ? (
@@ -256,7 +238,8 @@ export default function AdminDashboard() {
                 <Text className="text-gray-400 text-xs font-bold uppercase tracking-wider">Total Revenue</Text>
               </View>
             </View>
-          )}
+          )
+          }
 
           {/* --- 3. Quick Actions Grid --- */}
           <View className="mb-10">
@@ -376,7 +359,7 @@ export default function AdminDashboard() {
             )}
           </View>
         </View>
-      </ScrollView>
-    </View>
+      </ScrollView >
+    </View >
   );
 }

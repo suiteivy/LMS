@@ -74,13 +74,19 @@ export default function AttendancePage() {
 
     const fetchTeacherSubjects = async () => {
         try {
-            const data = await SubjectAPI.getFilteredSubjects(); // Assuming this returns subjects for the teacher
-            if (data && data.length > 0) {
+            setLoading(true);
+            const data = await SubjectAPI.getFilteredSubjects();
+            if (data && Array.isArray(data) && data.length > 0) {
                 setSubjects(data);
                 setSelectedSubjectId(data[0].id);
+            } else if (data && Array.isArray(data)) {
+                console.log("No subjects found for this teacher");
             }
         } catch (error) {
             console.error("Fetch subjects error:", error);
+            Alert.alert("Error", "Could not fetch subjects. Please ensure you are assigned to subjects.");
+        } finally {
+            setLoading(false);
         }
     };
 

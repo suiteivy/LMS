@@ -28,9 +28,10 @@ const GradeRow = ({ student, onGrade }: { student: StudentGrade; onGrade: (stude
 
     return (
         <View className="bg-white p-4 rounded-xl border border-gray-100 mb-2 flex-row items-center">
-            {/* Avatar */}
             <View className="w-10 h-10 rounded-full bg-orange-100 items-center justify-center mr-3">
-                <Text className="text-teacherOrange font-bold">{student.student_name.charAt(0)}</Text>
+                <Text className="text-teacherOrange font-bold">
+                    {(student.student_name || "U").charAt(0)}
+                </Text>
             </View>
 
             {/* Info */}
@@ -49,9 +50,9 @@ const GradeRow = ({ student, onGrade }: { student: StudentGrade; onGrade: (stude
                 ) : (
                     <Text className="text-gray-400 text-sm">--/{student.maxScore}</Text>
                 )}
-                <View className={`px-2 py-0.5 rounded-full mt-1 ${getStatusColor(student.status)}`}>
-                    <Text className={`text-xs font-medium ${getStatusColor(student.status).split(' ')[1]}`}>
-                        {student.status.charAt(0).toUpperCase() + student.status.slice(1)}
+                <View className={`px-2 py-0.5 rounded-full mt-1 ${getStatusColor(student.status || 'pending')}`}>
+                    <Text className={`text-xs font-medium ${getStatusColor(student.status || 'pending').split(' ')[1]}`}>
+                        {(student.status || 'pending').charAt(0).toUpperCase() + (student.status || 'pending').slice(1)}
                     </Text>
                 </View>
             </View>
@@ -102,14 +103,14 @@ export default function GradesPage() {
                     status,
                     submitted_at,
                     feedback,
-                    student:users!submissions_student_id_fkey(
-                        full_name,
-                        students(id)
+                    student:students(
+                        id,
+                        user:users(full_name)
                     ),
-                    assignment:assignments!submissions_assignment_id_fkey(
+                    assignment:assignments(
                         title,
                         total_points,
-                        Subject:Subjects!assignments_Subject_id_fkey(title)
+                        subject:subjects(title)
                     )
                 `)
                 .order('submitted_at', { ascending: false });
@@ -121,14 +122,14 @@ export default function GradesPage() {
 
             const formatted: StudentGrade[] = (data || []).map((sub: any) => ({
                 id: sub.id,
-                student_name: sub.student?.full_name || "Unknown",
-                student_display_id: sub.student?.students?.[0]?.id,
-                Subject_title: sub.assignment?.Subject?.title || "Unknown",
-                assignment_title: sub.assignment?.title || "Unknown",
+                student_name: sub.student?.user?.full_name || "Unknown",
+                student_display_id: sub.student?.id,
+                Subject_title: sub.assignment?.subject?.title || "Unknown",
+                assignment_title: sub.assignment?.title || "Unknown Assignment",
                 score: sub.grade,
                 maxScore: sub.assignment?.total_points || 100,
-                status: sub.status,
-                submittedAt: new Date(sub.submitted_at).toLocaleDateString(),
+                status: sub.status || 'pending',
+                submittedAt: sub.submitted_at ? new Date(sub.submitted_at).toLocaleDateString() : "N/A",
                 feedback: sub.feedback
             }));
 

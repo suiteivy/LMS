@@ -8,6 +8,7 @@ import {
     BarChart3,
     Wallet,
     BookOpen,
+    MessageSquare,
     ChevronRight,
     ArrowLeft
 } from 'lucide-react-native';
@@ -105,6 +106,14 @@ export default function ManagementIndex() {
             color: "#eab308",
             bgColor: "#fef9c3",
             route: "/(teacher)/management/resources"
+        },
+        {
+            icon: MessageSquare,
+            title: "Messages",
+            description: "Chat with students and parents",
+            color: "#0891b2",
+            bgColor: "#ecfeff",
+            route: "/(teacher)/management/messages"
         }
     ];
 

@@ -1,9 +1,9 @@
-import React, { useState } from "react";
-import { View, Text, ScrollView, TouchableOpacity, StatusBar } from 'react-native';
-import { Calendar, Clock, Bell, ArrowRight, BookOpen, Users, GraduationCap, School, MessageSquare } from 'lucide-react-native';
+import React, { useState, useEffect } from "react";
+import { View, Text, ScrollView, TouchableOpacity, StatusBar, ActivityIndicator, RefreshControl } from 'react-native';
+import { Calendar, Clock, Bell, ArrowRight, BookOpen, Users, GraduationCap, School, MessageSquare, LogOut } from 'lucide-react-native';
 import { router } from "expo-router";
 import { useAuth } from '@/contexts/AuthContext';
-
+import { TeacherAPI } from "@/services/TeacherService";
 
 // Define Interface for the QuickAction props
 interface QuickActionProps {
@@ -27,7 +27,33 @@ const QuickAction = ({ icon: Icon, label, color, onPress }: QuickActionProps) =>
 
 export default function TeacherHome() {
     const { profile, displayId, logout } = useAuth();
-    const [showNotification, setShowNotification] = useState(false);
+    const [stats, setStats] = useState<any>(null);
+    const [schedule, setSchedule] = useState<any[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [refreshing, setRefreshing] = useState(false);
+
+    const fetchDashboardData = async () => {
+        try {
+            const data = await TeacherAPI.getDashboardStats();
+            setStats(data.stats);
+            setSchedule(data.schedule);
+        } catch (error) {
+            console.error("Error fetching dashboard data:", error);
+        } finally {
+            setLoading(false);
+            setRefreshing(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchDashboardData();
+    }, []);
+
+    const onRefresh = () => {
+        setRefreshing(true);
+        fetchDashboardData();
+    };
+
 
     return (
         <>
@@ -38,6 +64,9 @@ export default function TeacherHome() {
                     className="flex-1"
                     showsVerticalScrollIndicator={false}
                     contentContainerStyle={{ paddingBottom: 100 }}
+                    refreshControl={
+                        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={["#FF6B00"]} tintColor="#FF6B00" />
+                    }
                 >
                     <View className="p-4 md:p-8">
                         {/* --- 1. Header Section --- */}
@@ -47,39 +76,31 @@ export default function TeacherHome() {
                                     Welcome back,
                                 </Text>
                                 <Text className="text-3xl font-bold text-gray-900">
-                                    {profile?.full_name || 'Teacher'} 👋
+                                    {profile?.full_name?.split(" ")[0] || 'Teacher'} 👋
                                 </Text>
                                 <Text className="text-sm text-gray-500 font-medium">
                                     ID: {displayId || 'Loading...'}
                                 </Text>
                             </View>
-                            <View className="">
-
-
+                            <View className="flex-row items-center gap-3">
                                 <TouchableOpacity
-                                    className="relative p-2 bg-white rounded-full border border-gray-100 shadow-sm active:opacity-70"
-                                    onPress={() => setShowNotification(true)}
+                                    className="relative p-3 bg-white rounded-2xl border border-gray-100 shadow-sm active:bg-gray-50"
+                                    onPress={() => router.push("/(teacher)/management/notifications" as any)}
                                 >
-                                    <Bell size={24} color="#374151" />
-                                    <View className="absolute top-2 right-2 w-3 h-3 bg-red-500 rounded-full border-2 border-white" />
+                                    <Bell size={22} color="#374151" />
+                                    {stats?.unreadNotifications > 0 && (
+                                        <View className="absolute top-3 right-3 w-4 h-4 bg-red-500 rounded-full border-2 border-white items-center justify-center">
+                                            <Text className="text-white text-[8px] font-bold">{stats.unreadNotifications}</Text>
+                                        </View>
+                                    )}
                                 </TouchableOpacity>
 
                                 {/* Logout Button */}
                                 <TouchableOpacity
-                                    className="mt-3 p-2 bg-red-500 rounded-full border border-red-600 shadow-sm active:opacity-70 items-center justify-center"
-                                    onPress={async () => {
-                                        // Use the logout function from AuthContext
-                                        if (typeof window !== 'undefined') {
-                                            await logout();
-                                            sessionStorage.clear();
-                                            window.location.reload();
-                                        }
-                                    }}
+                                    className="p-3 bg-white rounded-2xl border border-gray-100 shadow-sm active:bg-gray-50"
+                                    onPress={() => logout()}
                                 >
-                                    <View className="flex-row items-center">
-                                        <ArrowRight size={20} color="white" style={{ transform: [{ rotate: '180deg' }] }} />
-
-                                    </View>
+                                    <LogOut size={22} color="#374151" />
                                 </TouchableOpacity>
                             </View>
 
@@ -87,19 +108,23 @@ export default function TeacherHome() {
 
                         {/* --- 2. Quick Status Cards --- */}
                         <View className="flex-row gap-4 mb-8">
-                            <View className="flex-1 bg-teacherOrange p-4 rounded-3xl shadow-sm">
-                                <Users size={20} color="white" />
-                                <Text className="text-white text-2xl font-bold mt-2">1,247</Text>
-                                <Text className="text-white text-xs font-medium uppercase italic">
+                            <View className="flex-1 bg-teacherOrange p-6 rounded-3xl shadow-lg shadow-orange-200">
+                                <View className="bg-white/20 w-10 h-10 rounded-2xl items-center justify-center mb-3">
+                                    <Users size={20} color="white" />
+                                </View>
+                                <Text className="text-white text-3xl font-black">{stats?.studentsCount || 0}</Text>
+                                <Text className="text-white/80 text-xs font-bold uppercase tracking-wider">
                                     Students
                                 </Text>
                             </View>
-                            <View className="flex-1 bg-white p-4 rounded-3xl border border-gray-100 shadow-sm">
-                                <Clock size={20} color="#FF6B00" />
-                                <Text className="text-gray-900 text-2xl font-bold mt-2">
-                                    8
+                            <View className="flex-1 bg-white p-6 rounded-3xl border border-gray-100 shadow-sm">
+                                <View className="bg-orange-50 w-10 h-10 rounded-2xl items-center justify-center mb-3">
+                                    <Clock size={20} color="#FF6B00" />
+                                </View>
+                                <Text className="text-gray-900 text-3xl font-black">
+                                    {stats?.subjectsCount || 0}
                                 </Text>
-                                <Text className="text-gray-400 text-xs font-medium uppercase italic">
+                                <Text className="text-gray-400 text-xs font-bold uppercase tracking-wider">
                                     Active Subjects
                                 </Text>
                             </View>
@@ -110,66 +135,44 @@ export default function TeacherHome() {
                             <Text className="text-xl font-bold text-gray-900">
                                 Today's Schedule
                             </Text>
-                            <TouchableOpacity>
+                            <TouchableOpacity onPress={() => router.push("/(teacher)/management/timetable" as any)}>
                                 <Text className="text-teacherOrange font-semibold">View All</Text>
                             </TouchableOpacity>
                         </View>
 
-                        <ScrollView
-                            horizontal
-                            showsHorizontalScrollIndicator={false}
-                            className="flex-row mb-6 -mx-4 px-4 pb-4"
-                        >
-                            {/* Card 1 */}
-                            <View className="bg-white p-5 rounded-3xl border border-gray-100 shadow-sm mr-4 w-64">
-                                <View className="flex-row items-center mb-3">
-                                    <View className="bg-orange-100 p-2 rounded-xl mr-3">
-                                        <BookOpen size={20} color="#f97316" />
-                                    </View>
-                                    <Text className="text-gray-400 font-bold text-[10px] uppercase">
-                                        MATH101 • 09:00 AM
-                                    </Text>
-                                </View>
-                                <Text className="text-gray-900 font-bold text-lg mb-1">
-                                    Introduction to Mathematics
-                                </Text>
-                                <Text className="text-gray-500 text-sm">
-                                    Lecture Hall A, Room 201
-                                </Text>
+                        {loading ? (
+                            <ActivityIndicator size="small" color="#FF6B00" className="my-8" />
+                        ) : schedule.length === 0 ? (
+                            <View className="bg-white p-8 rounded-3xl border border-dashed border-gray-200 items-center justify-center mb-6">
+                                <Calendar size={32} color="#D1D5DB" />
+                                <Text className="text-gray-400 mt-2 font-medium">No classes today</Text>
                             </View>
-
-                            {/* Card 2 */}
-                            <View className="bg-white p-5 rounded-3xl border border-gray-100 shadow-sm mr-4 w-64">
-                                <View className="flex-row items-center mb-3">
-                                    <View className="bg-blue-100 p-2 rounded-xl mr-3">
-                                        <BookOpen size={20} color="#3b82f6" />
+                        ) : (
+                            <ScrollView
+                                horizontal
+                                showsHorizontalScrollIndicator={false}
+                                className="flex-row mb-6 -mx-4 px-4 pb-4"
+                            >
+                                {schedule.map((item: any) => (
+                                    <View key={item.id} className="bg-white p-5 rounded-3xl border border-gray-100 shadow-sm mr-4 w-64">
+                                        <View className="flex-row items-center mb-3">
+                                            <View className="bg-orange-50 p-2 rounded-xl mr-3">
+                                                <BookOpen size={18} color="#FF6B00" />
+                                            </View>
+                                            <Text className="text-gray-400 font-bold text-[10px] uppercase tracking-wider">
+                                                {item.start_time} - {item.end_time}
+                                            </Text>
+                                        </View>
+                                        <Text className="text-gray-900 font-bold text-lg mb-1" numberOfLines={1}>
+                                            {item.subjects?.title}
+                                        </Text>
+                                        <Text className="text-gray-500 text-sm">
+                                            {item.classes?.name} {item.room_number ? `• Room ${item.room_number}` : ''}
+                                        </Text>
                                     </View>
-                                    <Text className="text-gray-400 font-bold text-[10px] uppercase">
-                                        CS302 • 11:30 AM
-                                    </Text>
-                                </View>
-                                <Text className="text-gray-900 font-bold text-lg mb-1">
-                                    Computer Science Basics
-                                </Text>
-                                <Text className="text-gray-500 text-sm">Virtual Lab 1</Text>
-                            </View>
-
-                            {/* Card 3 */}
-                            <View className="bg-white p-5 rounded-3xl border border-gray-100 shadow-sm mr-4 w-64">
-                                <View className="flex-row items-center mb-3">
-                                    <View className="bg-purple-100 p-2 rounded-xl mr-3">
-                                        <BookOpen size={20} color="#8b5cf6" />
-                                    </View>
-                                    <Text className="text-gray-400 font-bold text-[10px] uppercase">
-                                        ENG201 • 02:00 PM
-                                    </Text>
-                                </View>
-                                <Text className="text-gray-900 font-bold text-lg mb-1">
-                                    Creative Writing Workshop
-                                </Text>
-                                <Text className="text-gray-500 text-sm">Building B, Room 105</Text>
-                            </View>
-                        </ScrollView>
+                                ))}
+                            </ScrollView>
+                        )}
 
                         {/* --- 4. Quick Actions Grid --- */}
                         <View className="mt-2">
@@ -181,7 +184,7 @@ export default function TeacherHome() {
                                     icon={GraduationCap}
                                     label="Grades"
                                     color="#1a1a1a"
-                                    onPress={() => router.push("/(teacher)/management/exam-results" as any)}
+                                    onPress={() => router.push("/(teacher)/management/grades" as any)}
                                 />
                                 <QuickAction
                                     icon={School}
@@ -193,12 +196,13 @@ export default function TeacherHome() {
                                     icon={ArrowRight}
                                     label="Assignments"
                                     color="#f43f5e"
+                                    onPress={() => router.push("/(teacher)/management/assignments" as any)}
                                 />
                                 <QuickAction
                                     icon={MessageSquare}
                                     label="Messages"
                                     color="#0891b2"
-                                    onPress={() => router.push("/(teacher)/messages" as any)}
+                                    onPress={() => router.push("/(teacher)/management/messages" as any)}
                                 />
                             </View>
                         </View>

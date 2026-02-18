@@ -1,19 +1,41 @@
 import { Tabs } from "expo-router";
 import { SchoolProvider } from '@/contexts/SchoolContext';
 import { AuthGuard } from '@/components/AuthGuard';
-import { View, Platform } from 'react-native';
+import { View, Platform, TouchableOpacity } from 'react-native';
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Users, Wallet, Settings, LayoutGrid, House } from "lucide-react-native";
+import { Users, Wallet, Settings, LayoutGrid, House, LogOut } from "lucide-react-native";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function AdminLayout() {
     const insets = useSafeAreaInsets();
+    const { signOut } = useAuth();
 
     return (
         <AuthGuard allowedRoles={['admin']}>
             <SchoolProvider>
                 <Tabs
                     screenOptions={{
-                        headerShown: false,
+                        headerShown: true,
+                        headerRight: () => (
+                            <TouchableOpacity
+                                onPress={() => signOut()}
+                                style={{ marginRight: 15, padding: 8 }}
+                                className="active:opacity-60"
+                            >
+                                <LogOut size={20} color="#FF6B00" />
+                            </TouchableOpacity>
+                        ),
+                        headerStyle: {
+                            backgroundColor: '#ffffff',
+                            elevation: 0,
+                            shadowOpacity: 0,
+                            borderBottomWidth: 1,
+                            borderBottomColor: '#f3f4f6',
+                        },
+                        headerTitleStyle: {
+                            fontWeight: 'bold',
+                            color: '#111827',
+                        },
                         tabBarStyle: {
                             backgroundColor: "#ffffff",
                             borderTopWidth: 1,

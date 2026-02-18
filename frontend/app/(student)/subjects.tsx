@@ -6,6 +6,8 @@ import { View, ScrollView, ActivityIndicator, Alert, Text } from "react-native";
 import { supabase } from "@/libs/supabase";
 import { useAuth } from "@/contexts/AuthContext";
 import { SubjectAPI } from "@/services/SubjectService";
+import { FullScreenLoader } from "@/components/common/FullScreenLoader";
+
 // Import your demo data
 import demoData from "@/constants/demoData";
 
@@ -159,6 +161,7 @@ export default function Subjects() {
           />
         ) : null}
       </ScrollView>
-    </View>
+      <FullScreenLoader visible={enrolling} message="Enrolling in Subject..." />
+    </View >
   );
 }
