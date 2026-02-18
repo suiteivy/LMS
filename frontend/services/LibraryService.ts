@@ -25,8 +25,8 @@ export class LibraryAPI {
    */
   static async addBook(bookData: AddBookRequest): Promise<BackendBook> {
     try {
-      const response = await api.post<BackendBook>("/library/books", bookData);
-      return response.data;
+      const response = await api.post<{ message: string; book: BackendBook }>("/library/books", bookData);
+      return response.data.book;
     } catch (error) {
       console.error("Error adding book:", error);
       throw error;
@@ -58,11 +58,11 @@ export class LibraryAPI {
     updateData: UpdateBookRequest
   ): Promise<BackendBook> {
     try {
-      const response = await api.put<BackendBook>(
+      const response = await api.put<{ message: string; book: BackendBook }>(
         `/library/books/${bookId}`,
         updateData
       );
-      return response.data;
+      return response.data.book;
     } catch (error) {
       console.error("Error updating book:", error);
       throw error;
@@ -88,14 +88,14 @@ export class LibraryAPI {
     days: number = 14
   ): Promise<BackendBorrowedBook> {
     try {
-      const response = await api.post<BackendBorrowedBook>(
+      const response = await api.post<{ message: string; borrow: BackendBorrowedBook; due_date: string }>(
         "/library/borrow",
         {
           bookId,
           days,
         }
       );
-      return response.data;
+      return response.data.borrow;
     } catch (error) {
       console.error("Error borrowing book:", error);
       throw error;
@@ -106,20 +106,19 @@ export class LibraryAPI {
    * Return a borrowed book
    * @param {string} borrowId
    * @param {string} returnedAt
-   * @returns {Promise<BackendBorrowedBook>}
+   * @returns {Promise<void>}
    */
   static async returnBook(
     borrowId: string,
     returnedAt: string = new Date().toISOString()
-  ): Promise<BackendBorrowedBook> {
+  ): Promise<void> {
     try {
-      const response = await api.post<BackendBorrowedBook>(
+      await api.post(
         `/library/return/${borrowId}`,
         {
           returned_at: returnedAt,
         } as ReturnBookRequest
       );
-      return response.data;
     } catch (error) {
       console.error("Error returning book:", error);
       throw error;
@@ -188,9 +187,9 @@ export class LibraryAPI {
   static async extendDueDate(
     borrowId: string,
     newDueDate: string
-  ): Promise<BackendBorrowedBook> {
+  ): Promise<any> {
     try {
-      const response = await api.put<BackendBorrowedBook>(
+      const response = await api.put(
         `/library/extend/${borrowId}`,
         {
           new_due_date: newDueDate,
@@ -232,11 +231,11 @@ export class LibraryAPI {
     status: 'ready_for_pickup' | 'borrowed'
   ): Promise<BackendBorrowedBook> {
     try {
-      const response = await api.put<BackendBorrowedBook>(
+      const response = await api.put<{ message: string; borrow: BackendBorrowedBook }>(
         `/library/status/${borrowId}`,
         { status }
       );
-      return response.data;
+      return response.data.borrow;
     } catch (error) {
       console.error("Error updating borrow status:", error);
       throw error;
@@ -268,22 +267,31 @@ export class LibraryAPI {
    * @returns {FrontendBorrowedBook}
    */
   static transformBorrowedBookData(
-    backendBorrow: any // Using any to avoid strict type mismatch during migration
+    backendBorrow: BackendBorrowedBook
   ): FrontendBorrowedBook {
     return {
       id: backendBorrow.id,
-      bookTitle: backendBorrow.library_items?.title || "Unknown Book",
-      author: backendBorrow.library_items?.author || "Unknown Author",
-      isbn: backendBorrow.library_items?.isbn || "N/A",
-      borrowerId: backendBorrow.user_id,
-      borrowerName: backendBorrow.users?.full_name || "Unknown",
-      borrowerDisplayId: backendBorrow.user_id,
-      borrowerEmail: backendBorrow.users?.email || "",
-      borrowerPhone: backendBorrow.users?.phone || undefined,
-      borrowDate: new Date(backendBorrow.borrow_date || backendBorrow.created_at),
+      bookTitle: backendBorrow.books?.title || "Unknown Book",
+      author: backendBorrow.books?.author || "Unknown Author",
+      isbn: backendBorrow.books?.isbn || "N/A",
+
+      // Use student_id if nested user info not available
+      borrowerId: backendBorrow.students?.users?.email || backendBorrow.student_id,
+      borrowerName: backendBorrow.students?.users?.full_name ||
+        backendBorrow.users?.full_name ||
+        "Unknown",
+      borrowerDisplayId: backendBorrow.student_id,
+      borrowerEmail: backendBorrow.students?.users?.email ||
+        backendBorrow.users?.email ||
+        "",
+      borrowerPhone: backendBorrow.students?.users?.phone ||
+        backendBorrow.users?.phone ||
+        undefined,
+
+      borrowDate: new Date(backendBorrow.borrowed_at || (backendBorrow as any).created_at),
       dueDate: new Date(backendBorrow.due_date),
-      returnDate: backendBorrow.return_date
-        ? new Date(backendBorrow.return_date)
+      returnDate: backendBorrow.returned_at
+        ? new Date(backendBorrow.returned_at)
         : undefined,
       status: backendBorrow.status,
     };

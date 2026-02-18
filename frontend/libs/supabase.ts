@@ -4,36 +4,41 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Platform } from "react-native";
 import { Database } from "@/types/database";
 
-// Storage adapter for React Native
-const asyncStorageAdapter = {
-  getItem: (key: string) => AsyncStorage.getItem(key),
-  setItem: (key: string, value: string) => AsyncStorage.setItem(key, value),
-  removeItem: (key: string) => AsyncStorage.removeItem(key),
-};
-
-// Safe localStorage adapter for Web
-const safeLocalStorage = {
-  getItem: (key: string) => {
-    if (typeof window !== "undefined" && window.localStorage)
-      return window.localStorage.getItem(key);
-    return null;
-  },
-  setItem: (key: string, value: string) => {
-    if (typeof window !== "undefined" && window.localStorage)
-      return window.localStorage.setItem(key, value);
-  },
-  removeItem: (key: string) => {
-    if (typeof window !== "undefined" && window.localStorage)
-      return window.localStorage.removeItem(key);
-  },
-};
 
 const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL || "";
 const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || "";
 
+const storageAdapter = {
+  getItem: async (key: string) => {
+    // console.log("[SupabaseStorage] getItem:", key);
+    if (Platform.OS === "web") {
+      if (typeof window === "undefined") return null;
+      const val = window.localStorage.getItem(key);
+      // console.log("[SupabaseStorage] getItem (Web):", key, val ? "Found" : "Null");
+      return val;
+    }
+    return AsyncStorage.getItem(key);
+  },
+  setItem: async (key: string, value: string) => {
+    // console.log("[SupabaseStorage] setItem:", key);
+    if (Platform.OS === "web") {
+      if (typeof window === "undefined") return;
+      return window.localStorage.setItem(key, value);
+    }
+    return AsyncStorage.setItem(key, value);
+  },
+  removeItem: async (key: string) => {
+    if (Platform.OS === "web") {
+      if (typeof window === "undefined") return;
+      return window.localStorage.removeItem(key);
+    }
+    return AsyncStorage.removeItem(key);
+  },
+};
+
 export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
   auth: {
-    storage: Platform.OS === "web" ? safeLocalStorage : asyncStorageAdapter,
+    storage: storageAdapter,
     autoRefreshToken: true,
     persistSession: true,
     detectSessionInUrl: false,

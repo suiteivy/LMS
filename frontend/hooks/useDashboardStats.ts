@@ -84,14 +84,12 @@ export const useDashboardStats = () => {
                     value: studentCount.toString(),
                     icon: "users",
                     color: "blue",
-                    trend: { value: "12%", isPositive: true },
                 },
                 {
                     label: "Teachers",
                     value: teacherCount.toString(),
                     icon: "school",
                     color: "green",
-                    trend: { value: "5%", isPositive: true },
                 },
                 {
                     label: "Subjects",
@@ -105,7 +103,6 @@ export const useDashboardStats = () => {
                     subValue: formattedRevenueUSD,
                     icon: "wallet",
                     color: "yellow",
-                    trend: { value: "8%", isPositive: true },
                 },
             ];
             setStats(statsData);

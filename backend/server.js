@@ -24,18 +24,13 @@ app.use(morgan("dev")); // logging
 
 // handle cors
 app.use((req, res, next) => {
-  const origin = req.headers.origin;
-  if (["http://localhost:3000", "http://localhost:5173"].includes(origin)) {
-    res.header("Access-Control-Allow-Origin", origin);
-  } else {
-    res.header("Access-Control-Allow-Origin", "*");
-  }
+  res.header("Access-Control-Allow-Origin", "*");
   res.header(
     "Access-Control-Allow-Headers",
     "Origin, X-Requested-With, Content-Type, Accept, Authorization"
   );
   if (req.method === "OPTIONS") {
-    res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE");
+    res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, PATCH, OPTIONS");
     return res.status(200).json({});
   }
   next();

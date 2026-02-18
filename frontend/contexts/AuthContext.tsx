@@ -15,7 +15,6 @@ interface AuthContextType {
   teacherId: string | null
   adminId: string | null
   parentId: string | null
-  bursarId: string | null
   displayId: string | null
   loading: boolean
   signIn: (email: string, password: string) => Promise<{ data: any; error: any }>
@@ -50,7 +49,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [teacherId, setTeacherId] = useState<string | null>(null)
   const [adminId, setAdminId] = useState<string | null>(null)
   const [parentId, setParentId] = useState<string | null>(null)
-  const [bursarId, setBursarId] = useState<string | null>(null)
   const [displayId, setDisplayId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
 
@@ -59,11 +57,22 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const lastActive = useRef(Date.now());
 
   const isManualLogout = useRef(false);
+  const currentSessionRef = useRef<Session | null>(null);
 
   const handleLogout = async () => {
     isManualLogout.current = true
     try {
-      return await authService.signOut()
+      const { error } = await authService.signOut();
+      if (!error) {
+        // Success toast is handled in components/caller or here - existing code does it here
+        Toast.show({
+          type: 'success',
+          text1: 'Logged Out',
+          text2: 'You have been logged out successfully.',
+          position: 'bottom',
+        });
+      }
+      return { error };
     } finally {
       // Reset after a short delay to allow the event listener to fire
       setTimeout(() => {
@@ -110,7 +119,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       // Get Base Profile and Role-Specific IDs in a single query
       const { data, error } = await supabase
         .from('users')
-        .select('*, students(id), teachers(id), admins(id), parents(id), bursars(id)')
+        .select('*, students(id), teachers(id), admins(id), parents(id)')
         .eq('id', userId)
         .single()
 
@@ -147,15 +156,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         const id = getRoleId(userData.parents);
         setParentId(id);
         setDisplayId(id);
-      } else if (userData.role === 'bursary') {
-        const id = getRoleId(userData.bursars);
-        setBursarId(id);
-        setDisplayId(id);
       }
 
       return userData as UserProfile
     } catch (err) {
-      console.error('Unexpected error loading profile:', err)
+      // console.error('Unexpected error loading profile:', err)
       setProfile(null)
       lastLoadedUserId.current = null;
       return null
@@ -176,17 +181,40 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     // Consolidate initialization into a single start method
     const initializeAuth = async () => {
       try {
-        const { data: { session: initialSession } } = await supabase.auth.getSession();
-        if (initialSession) {
-          setSession(initialSession)
-          setUser(initialSession.user)
-          await loadUserProfile(initialSession.user.id)
-          startTimeoutTimer()
+        console.log("AuthContext: initializeAuth started");
+
+        // Use getUser() to validate the session token on the server
+        // This prevents restoring invalid/expired sessions from storage
+        const { data: { user: validatedUser }, error } = await supabase.auth.getUser();
+
+        if (error) {
+          // console.log("AuthContext: Session invalid or expired", error.message);
+        }
+
+        if (validatedUser) {
+          // If user is valid, get the session object (it must exist)
+          const { data: { session: validSession } } = await supabase.auth.getSession();
+
+          if (validSession) {
+            console.log("AuthContext: Valid session restored for user", validatedUser.id);
+            setSession(validSession)
+            currentSessionRef.current = validSession; // Mark as having a valid session
+            setUser(validatedUser)
+            await loadUserProfile(validatedUser.id)
+            startTimeoutTimer()
+          }
+        } else {
+          console.log("AuthContext: No valid session found on initialization");
+          // Ensure we clear state if any junk exists
+          setSession(null);
+          currentSessionRef.current = null;
+          setUser(null);
         }
       } catch (error) {
         console.error('Error in initializeAuth:', error)
       } finally {
         setLoading(false)
+        console.log("AuthContext: Loading set to false");
       }
     };
 
@@ -197,10 +225,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
       try {
+        // console.log("AuthStateChange:", event);
         setSession(session)
+        // Note: we don't strictly update currentSessionRef here for every event immediately
+        // because we want 'SIGNED_OUT' to check if we HAD a session.
+        // But for 'SIGNED_IN', we must update it.
+
         setUser(session?.user ?? null)
 
         if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+          currentSessionRef.current = session;
           startTimeoutTimer()
           if (session?.user) {
             loadUserProfile(session.user.id)
@@ -214,7 +248,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           setParentId(null)
           setDisplayId(null)
 
-          if (!isManualLogout.current) {
+          // Only show "Unexpected Logout" if we actually THOUGHT we had a session
+          // and it wasn't a manual logout.
+          if (!isManualLogout.current && currentSessionRef.current) {
             console.log('User signed out unexpectedly, showing toast')
             Toast.show({
               type: 'error',
@@ -224,15 +260,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
               visibilityTime: 4000,
             });
           } else {
-            console.log('User signed out manually')
-            Toast.show({
-              type: 'success',
-              text1: 'Logged Out',
-              text2: 'You have been logged out successfully.',
-              position: 'bottom',
-              visibilityTime: 2000,
-            });
+            // console.log('Silent logout (Manual or Initial Load failure)')
           }
+          currentSessionRef.current = null;
 
           // Reset just in case, though timeout in handleLogout also handles it
           isManualLogout.current = false;
@@ -332,7 +362,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     teacherId,
     adminId,
     parentId,
-    bursarId,
     displayId,
     loading,
     signIn: authService.signIn,

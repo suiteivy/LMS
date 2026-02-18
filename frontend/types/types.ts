@@ -366,12 +366,14 @@ export interface FrontendBook {
 export interface BackendBorrowedBook {
   id: string;
   book_id: string;
+  // Refactored to match 'books' table relation
   books: {
     title: string;
     author: string;
     isbn?: string;
   };
   student_id: string;
+  // New backend structure: students -> users
   students?: {
     id: string;
     users?: {
@@ -380,14 +382,15 @@ export interface BackendBorrowedBook {
       phone?: string;
     };
   };
+  // Fallback if direct relation still exists or for older records
   users?: {
     full_name: string;
     email: string;
     phone?: string;
   };
-  borrowed_at: string;
+  borrowed_at: string; // Changed from borrow_date
   due_date: string;
-  returned_at?: string;
+  returned_at?: string; // Changed from return_date
   status: "borrowed" | "overdue" | "returned" | "waiting" | "ready_for_pickup" | "rejected";
 }
 
