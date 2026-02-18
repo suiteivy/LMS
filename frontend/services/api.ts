@@ -24,8 +24,8 @@ const getBaseUrl = (): string => {
     return "http://10.0.2.2:4001/api";
   }
 
-  // Default for iOS simulator and other platforms
-  return "http://192.168.100.72:4001/api";
+  // Default for web, iOS simulator, and other local platforms
+  return "http://localhost:4001/api";
 };
 
 /**
@@ -40,7 +40,7 @@ console.log("Loaded EXPO_PUBLIC_URL:", process.env.EXPO_PUBLIC_URL);
 
 export const api: AxiosInstance = axios.create({
   baseURL: baseURL,
-  timeout: 10000,
+  timeout: 30000, // Increased to 30s for complex dashboard queries
   headers: {
     "Content-Type": "application/json",
     Accept: "application/json",
@@ -110,8 +110,13 @@ api.interceptors.response.use(
           break;
       }
     } else if (error.request) {
-      title = "Network Error";
-      message = "Could not connect to the server. Please check your internet connection.";
+      if (error.code === 'ECONNABORTED') {
+        title = "Timeout Error";
+        message = "The request took too long to respond. Please try again.";
+      } else {
+        title = "Network Error";
+        message = `Could not connect to the server at ${baseURL}. Please ensure the backend is running.`;
+      }
     } else {
       message = error.message;
     }

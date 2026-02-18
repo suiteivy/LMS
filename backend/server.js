@@ -10,6 +10,8 @@ const libraryRoutes = require("./routes/library.route");
 const bursaryRoutes = require("./routes/bursary.route");
 const financeRoutes = require("./routes/finance.route");
 const notificationRoutes = require("./routes/notification.route");
+const settingsRoutes = require("./routes/settings.route");
+const settingsController = require("./controllers/settings.controller");
 const morgan = require("morgan");
 
 const app = express();
@@ -62,6 +64,7 @@ app.use("/api/parent", require("./routes/parent.route.js"));
 app.use("/api/messages", require("./routes/messaging.route.js"));
 app.use("/api/resources", require("./routes/resources.route.js"));
 app.use("/api/teacher", require("./routes/teacher.route.js"));
+app.use("/api/settings", settingsRoutes);
 
 // health check
 app.get("/", (req, res) => {
@@ -86,9 +89,11 @@ process.on('unhandledRejection', (reason, p) => {
 
 // Start server
 const PORT = process.env.PORT || 4001;
-const server = app.listen(PORT, () =>
-  console.log(`LMS Backend running on http://localhost:${PORT}`)
-);
+const server = app.listen(PORT, () => {
+  console.log(`LMS Backend running on http://localhost:${PORT}`);
+  // Initialize dynamic currency rates check
+  settingsController.checkAndAutoUpdateRates();
+});
 
 // DEBUG: Keep process alive and log exit
 setInterval(() => { }, 10000); // 10s keep-alive

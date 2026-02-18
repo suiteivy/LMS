@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { View, Text, ScrollView, TouchableOpacity, StatusBar, ActivityIndicator, RefreshControl } from 'react-native';
-import { Calendar, Clock, Bell, ArrowRight, BookOpen, Users, GraduationCap, School, MessageSquare } from 'lucide-react-native';
+import { Calendar, Clock, Bell, ArrowRight, BookOpen, Users, GraduationCap, School, MessageSquare, LogOut } from 'lucide-react-native';
 import { router } from "expo-router";
 import { useAuth } from '@/contexts/AuthContext';
 import { TeacherAPI } from "@/services/TeacherService";
@@ -98,15 +98,9 @@ export default function TeacherHome() {
                                 {/* Logout Button */}
                                 <TouchableOpacity
                                     className="p-3 bg-white rounded-2xl border border-gray-100 shadow-sm active:bg-gray-50"
-                                    onPress={async () => {
-                                        await logout();
-                                        if (typeof window !== 'undefined') {
-                                            sessionStorage.clear();
-                                            window.location.reload();
-                                        }
-                                    }}
+                                    onPress={() => logout()}
                                 >
-                                    <ArrowRight size={22} color="#374151" style={{ transform: [{ rotate: '180deg' }] }} />
+                                    <LogOut size={22} color="#374151" />
                                 </TouchableOpacity>
                             </View>
 

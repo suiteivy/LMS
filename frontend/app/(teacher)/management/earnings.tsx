@@ -4,6 +4,7 @@ import { ArrowLeft, Wallet, TrendingUp, Calendar, Download, ChevronDown, DollarS
 import { router } from "expo-router";
 import { TeacherAPI } from "@/services/TeacherService";
 import { format } from 'date-fns';
+import { useCurrency } from "@/contexts/CurrencyContext";
 
 interface Payment {
     id: string;
@@ -14,6 +15,8 @@ interface Payment {
 }
 
 const PaymentRow = ({ payment }: { payment: Payment }) => {
+    const { convertUSDToKES, formatKES, formatUSD } = useCurrency();
+
     const getStatusStyle = (status: string) => {
         if (status === "completed" || status === "paid") return "bg-green-50 text-green-600";
         if (status === "pending" || status === "processing") return "bg-yellow-50 text-yellow-600";
@@ -30,7 +33,8 @@ const PaymentRow = ({ payment }: { payment: Payment }) => {
                 <Text className="text-gray-400 text-xs">{payment.date}</Text>
             </View>
             <View className="items-end">
-                <Text className="text-gray-900 font-bold">${payment.amount.toLocaleString()}</Text>
+                <Text className="text-gray-900 font-bold">{formatKES(convertUSDToKES(payment.amount))}</Text>
+                <Text className="text-gray-400 text-[10px]">{formatUSD(payment.amount)}</Text>
                 <View className={`px-2 py-0.5 rounded-full mt-1 ${getStatusStyle(payment.status)}`}>
                     <Text className={`text-xs font-medium ${getStatusStyle(payment.status).split(' ')[1]}`}>
                         {payment.status.charAt(0).toUpperCase() + payment.status.slice(1)}
@@ -45,6 +49,7 @@ export default function EarningsPage() {
     const [selectedPeriod, setSelectedPeriod] = useState("This Month");
     const [payments, setPayments] = useState<Payment[]>([]);
     const [loading, setLoading] = useState(true);
+    const { convertUSDToKES, formatKES, formatUSD } = useCurrency();
 
     useEffect(() => {
         fetchEarnings();
@@ -106,7 +111,10 @@ export default function EarningsPage() {
                                         <View>
                                             <Text className="text-white text-sm">Total Earnings</Text>
                                             <Text className="text-white text-4xl font-black mt-1">
-                                                ${totalEarnings.toLocaleString()}
+                                                {formatKES(convertUSDToKES(totalEarnings))}
+                                            </Text>
+                                            <Text className="text-white/80 text-xs font-medium">
+                                                ≈ {formatUSD(totalEarnings)}
                                             </Text>
                                         </View>
                                         <View className="bg-white/20 p-3 rounded-2xl">
@@ -116,11 +124,11 @@ export default function EarningsPage() {
                                     <View className="flex-row">
                                         <View className="flex-1 border-r border-white/20 pr-4">
                                             <Text className="text-white text-xs">Total Paid</Text>
-                                            <Text className="text-white font-bold text-lg">${totalEarnings}</Text>
+                                            <Text className="text-white font-bold text-lg">{formatKES(convertUSDToKES(totalEarnings))}</Text>
                                         </View>
                                         <View className="flex-1 pl-4">
                                             <Text className="text-white text-xs">Pending</Text>
-                                            <Text className="text-white font-bold text-lg">${pendingAmount}</Text>
+                                            <Text className="text-white font-bold text-lg">{formatKES(convertUSDToKES(pendingAmount))}</Text>
                                         </View>
                                     </View>
                                 </View>
@@ -163,7 +171,10 @@ export default function EarningsPage() {
                                         <Text className="text-teacherOrange font-bold">Payout Status</Text>
                                         <Text className="text-teacherOrange text-sm">Check admin for next scheduled date</Text>
                                     </View>
-                                    <Text className="text-teacherOrange font-bold text-lg mr-2">${pendingAmount}</Text>
+                                    <View className="items-end mr-2">
+                                        <Text className="text-teacherOrange font-bold text-lg">{formatKES(convertUSDToKES(pendingAmount))}</Text>
+                                        <Text className="text-teacherOrange/70 text-[10px]">{formatUSD(pendingAmount)}</Text>
+                                    </View>
                                     <ChevronRight size={18} color="#FF6B00" />
                                 </TouchableOpacity>
                             </>

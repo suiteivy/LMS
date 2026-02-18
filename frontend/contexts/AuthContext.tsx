@@ -17,6 +17,8 @@ interface AuthContextType {
   parentId: string | null
   displayId: string | null
   loading: boolean
+  isInitializing: boolean
+  isProfileLoading: boolean
   signIn: (email: string, password: string) => Promise<{ data: any; error: any }>
   signOut: () => Promise<{ error: any }>
   logout: () => Promise<{ error: any }>
@@ -50,7 +52,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [adminId, setAdminId] = useState<string | null>(null)
   const [parentId, setParentId] = useState<string | null>(null)
   const [displayId, setDisplayId] = useState<string | null>(null)
-  const [loading, setLoading] = useState(true)
+  const [isInitializing, setIsInitializing] = useState(true)
+  const [isProfileLoading, setIsProfileLoading] = useState(false)
+  const [loading, setLoading] = useState(true) // Legacy support for profile loading
 
   const timerRef = useRef<any>(null)
   const appState = useRef(AppState.currentState);
@@ -96,11 +100,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const startTimeoutTimer = () => {
     clearTimer()
-    // 10 minutes = 10 * 60 * 1000 ms
+    // 60 minutes = 60 * 60 * 1000 ms
     timerRef.current = setTimeout(async () => {
-      console.log('Session timeout reached (10 min), logging out...')
+      console.log('Session timeout reached (60 min), logging out...')
       await handleLogout()
-    }, 10 * 60 * 1000)
+    }, 60 * 60 * 1000)
   }
 
   const lastLoadedUserId = useRef<string | null>(null);
@@ -115,6 +119,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
     loadingUserId.current = userId;
     try {
+      setIsProfileLoading(true);
+      // Keep legacy loading for components that depend on it during profile fetch
       setLoading(true);
       // Get Base Profile and Role-Specific IDs in a single query
       const { data, error } = await supabase
@@ -165,6 +171,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       lastLoadedUserId.current = null;
       return null
     } finally {
+      setIsProfileLoading(false);
       setLoading(false);
       loadingUserId.current = null;
     }
@@ -211,6 +218,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       } catch (error) {
         console.error('Error in initializeAuth:', error)
       } finally {
+        setIsInitializing(false)
         setLoading(false)
       }
     };
@@ -288,10 +296,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
     // 3. Watchdog: ensure loading resolves even if events stall
     const watchdog = setTimeout(() => {
+      if (isInitializing) {
+        setIsInitializing(false)
+      }
       if (loading) {
         setLoading(false)
       }
-    }, 3000)
+    }, 10000)
 
 
     const appStateSubscription = AppState.addEventListener('change', async (nextAppState: AppStateStatus) => {
@@ -303,8 +314,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         const now = Date.now();
         const diff = now - lastActive.current;
         const { data: { session: currentSession } } = await supabase.auth.getSession();
-        // If backgrounded for more than 10 mins
-        if (diff > 10 * 60 * 1000 && currentSession) {
+        // If backgrounded for more than 60 mins
+        if (diff > 60 * 60 * 1000 && currentSession) {
           // This is a "system" logout due to inactivity, but we might want a specific message.
           // The code originally had a specific toast here.
           // If we call handleLogout(), it suppresses the generic "Session Expired" toast 
@@ -355,13 +366,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     parentId,
     displayId,
     loading,
+    isInitializing,
+    isProfileLoading,
     signIn: authService.signIn,
     signOut: handleLogout,
     logout: handleLogout,
     resetPassword: authService.resetPassword,
     refreshProfile,
     resetSessionTimer,
-  }), [session, user, profile, studentId, teacherId, adminId, parentId, displayId, loading]);
+  }), [session, user, profile, studentId, teacherId, adminId, parentId, displayId, loading, isInitializing, isProfileLoading]);
 
   return (
     <AuthContext.Provider value={value}>

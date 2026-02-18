@@ -1,8 +1,10 @@
 const supabase = require("../utils/supabaseClient");
 
 exports.getDashboardStats = async (req, res) => {
+    const startTime = Date.now();
     try {
         const { userId, userRole, institution_id } = req;
+        console.log(`[TeacherDashboard] Fetching stats for user: ${userId}, institution: ${institution_id}`);
 
         if (userRole !== 'teacher') {
             return res.status(403).json({ error: "Unauthorized" });
@@ -13,70 +15,102 @@ exports.getDashboardStats = async (req, res) => {
             .from('teachers')
             .select('id')
             .eq('user_id', userId)
+            .eq('institution_id', institution_id)
             .single();
 
-        if (tError || !teacher) return res.status(404).json({ error: "Teacher profile not found" });
+        if (tError || !teacher) {
+            console.error("[TeacherDashboard] Teacher profile not found:", tError);
+            return res.status(404).json({ error: "Teacher profile not found" });
+        }
         const teacherId = teacher.id;
 
-        // 2. Get Subjects Count
-        const { count: subjectsCount, error: sError } = await supabase
+        // Fetch subjects first as others depend on it
+        const { data: mySubjects, error: msError } = await supabase
             .from('subjects')
-            .select('*', { count: 'exact', head: true })
-            .eq('teacher_id', teacherId);
+            .select('id')
+            .eq('teacher_id', teacherId)
+            .eq('institution_id', institution_id);
 
-        // 3. Get Distinct Students Count
-        // We fetch all subjects first
-        const { data: mySubjects } = await supabase.from('subjects').select('id').eq('teacher_id', teacherId);
+        if (msError) throw msError;
         const subjectIds = (mySubjects || []).map(s => s.id);
 
-        let studentsCount = 0;
-        if (subjectIds.length > 0) {
-            const { data: enrollments, error: eError } = await supabase
-                .from('enrollments')
-                .select('student_id')
-                .in('subject_id', subjectIds)
-                .eq('status', 'enrolled');
+        // Prepare concurrent queries
+        const queries = [
+            // Count subjects
+            supabase
+                .from('subjects')
+                .select('*', { count: 'exact', head: true })
+                .eq('teacher_id', teacherId)
+                .eq('institution_id', institution_id),
 
-            if (enrollments) {
-                // Distinct student IDs
-                const uniqueStudents = new Set(enrollments.map(e => e.student_id));
-                studentsCount = uniqueStudents.size;
-            }
+            // Count unread notifications
+            supabase
+                .from('notifications')
+                .select('*', { count: 'exact', head: true })
+                .eq('user_id', userId)
+                .eq('is_read', false),
+        ];
+
+        // Only add dependent queries if we have subjects
+        if (subjectIds.length > 0) {
+            // Distinct students from enrollments
+            queries.push(
+                supabase
+                    .from('enrollments')
+                    .select('student_id')
+                    .in('subject_id', subjectIds)
+                    .eq('status', 'enrolled')
+            );
+
+            // Today's schedule
+            const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+            const today = days[new Date().getDay()];
+            queries.push(
+                supabase
+                    .from('timetables')
+                    .select(`
+                        *,
+                        subjects(title),
+                        classes(name)
+                    `)
+                    .eq('day_of_week', today)
+                    .in('subject_id', subjectIds)
+                    .order('start_time')
+            );
         }
 
-        // 4. Get Today's Schedule
-        const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-        const today = days[new Date().getDay()];
+        const results = await Promise.all(queries);
 
-        const { data: schedule, error: schError } = await supabase
-            .from('timetables')
-            .select(`
-                *,
-                subjects(title),
-                classes(name)
-            `)
-            .eq('day_of_week', today)
-            .in('subject_id', subjectIds)
-            .order('start_time');
+        const subjectsCountResult = results[0];
+        const notificationsResult = results[1];
+        let studentsCount = 0;
+        let schedule = [];
 
-        // 5. Unread Notifications
-        const { count: unreadNotifications, error: nError } = await supabase
-            .from('notifications')
-            .select('*', { count: 'exact', head: true })
-            .eq('user_id', userId)
-            .eq('is_read', false);
+        if (subjectIds.length > 0) {
+            const enrollmentsResult = results[2];
+            const scheduleResult = results[3];
+
+            if (enrollmentsResult.data) {
+                const uniqueStudents = new Set(enrollmentsResult.data.map(e => e.student_id));
+                studentsCount = uniqueStudents.size;
+            }
+            schedule = scheduleResult.data || [];
+        }
+
+        const duration = Date.now() - startTime;
+        console.log(`[TeacherDashboard] Success in ${duration}ms`);
 
         res.json({
             stats: {
                 studentsCount,
-                subjectsCount: subjectsCount || 0,
-                unreadNotifications: unreadNotifications || 0
+                subjectsCount: subjectsCountResult.count || 0,
+                unreadNotifications: notificationsResult.count || 0
             },
-            schedule: schedule || []
+            schedule
         });
 
     } catch (err) {
-        console.error("[TeacherDashboard] Error:", err);
+        console.error("[TeacherDashboard] Error after", Date.now() - startTime, "ms:", err);
         res.status(500).json({ error: err.message });
     }
 };
