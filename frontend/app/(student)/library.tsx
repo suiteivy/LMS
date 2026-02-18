@@ -3,10 +3,12 @@ import { View, Text, ScrollView, TouchableOpacity, TextInput, Modal, Alert, Stat
 import { Search, FileText, BookOpen, X, Clock, CheckCircle2, Filter, Bookmark, History } from 'lucide-react-native';
 import { LibraryAPI } from '@/services/LibraryService';
 import { useAuth } from '@/contexts/AuthContext';
-import { BackendBook, BackendBorrowedBook, FrontendBook, FrontendBorrowedBook } from '@/types/types';
+import { FrontendBook, FrontendBorrowedBook } from '@/types/types';
+// Import your demo data
+import demoData from "@/constants/demoData";
 
 export default function StudentLibrary() {
-    const { studentId, displayId } = useAuth();
+    const { studentId } = useAuth();
     const [searchQuery, setSearchQuery] = useState("");
     const [selectedBook, setSelectedBook] = useState<FrontendBook | null>(null);
     const [modalVisible, setModalVisible] = useState(false);
@@ -24,11 +26,22 @@ export default function StudentLibrary() {
                 studentId ? LibraryAPI.getBorrowingHistory(studentId) : Promise.resolve([])
             ]);
 
-            setBooks(booksData.map(LibraryAPI.transformBookData));
-            setBorrowingHistory(historyData.map(LibraryAPI.transformBorrowedBookData));
+            // LOGIC: If real data is empty, use demo data
+            const finalBooks = booksData.length > 0 
+                ? booksData.map(LibraryAPI.transformBookData) 
+                : demoData.MOCK_LIBRARY.catalog;
+
+            const finalHistory = historyData.length > 0 
+                ? historyData.map(LibraryAPI.transformBorrowedBookData) 
+                : demoData.MOCK_LIBRARY.activity;
+
+            setBooks(finalBooks);
+            setBorrowingHistory(finalHistory);
         } catch (error) {
-            console.error("Error loading library data:", error);
-            Alert.alert("Error", "Failed to load library catalog.");
+            console.error("Error loading library data, falling back to demo:", error);
+            // Fallback to demo data on error for the demo session
+            setBooks(demoData.MOCK_LIBRARY.catalog);
+            setBorrowingHistory(demoData.MOCK_LIBRARY.activity);
         } finally {
             setLoading(false);
             setRefreshing(false);
@@ -45,18 +58,42 @@ export default function StudentLibrary() {
     };
 
     const handleBorrow = async (book: FrontendBook) => {
-        if (!studentId) return;
+        // INTERACTIVE DEMO LOGIC
+        setActionLoading(true);
+        
+        // If there's no studentId (Demo Mode) or if we want to simulate it for the session
+        if (!studentId) {
+            setTimeout(() => {
+                const newBorrow: FrontendBorrowedBook = {
+                    id: Math.random().toString(),
+                    bookTitle: book.title,
+                    status: 'waiting', // Appears as 'Requested' in your UI
+                    dueDate: new Date(Date.now() + 1209600000).toISOString() as any, // 14 days from now
+                    borrowDate: new Date().toISOString() as any,
+                    author: '',
+                    isbn: '',
+                    borrowerId: '',
+                    borrowerName: '',
+                    borrowerEmail: ''
+                };
 
+                setBorrowingHistory(prev => [newBorrow, ...prev]);
+                Alert.alert("Demo Session", `Borrow request for "${book.title}" sent successfully!`);
+                setModalVisible(false);
+                setActionLoading(false);
+            }, 1000);
+            return;
+        }
+
+        // REAL BACKEND LOGIC
         try {
-            setActionLoading(true);
-            // Default 14 days for now
             const dueDate = new Date();
             dueDate.setDate(dueDate.getDate() + 14);
 
-            await LibraryAPI.borrowBook(book.id, dueDate.toISOString());
+            await LibraryAPI.borrowBook(book.id, dueDate.toISOString() as any);
             Alert.alert("Success", `You have successfully borrowed "${book.title}".`);
             setModalVisible(false);
-            loadData(); // Refresh to update quantities and history
+            loadData();
         } catch (error: any) {
             const message = error.response?.data?.error || "Failed to borrow book.";
             Alert.alert("Borrowing Failed", message);
@@ -117,7 +154,7 @@ export default function StudentLibrary() {
                 className="flex-1 px-6 pt-4"
                 showsVerticalScrollIndicator={false}
                 refreshControl={
-                    <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={["#0d9488"]} />
+                    <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={["#ff6900"]} />
                 }
             >
                 {borrowingHistory.filter(b => ['borrowed', 'waiting', 'ready_for_pickup', 'overdue'].includes(b.status)).length > 0 && (
@@ -192,8 +229,8 @@ export default function StudentLibrary() {
                             className="bg-white p-4 rounded-[25px] border border-gray-100 mb-3 flex-row items-center justify-between"
                         >
                             <View className="flex-row items-center flex-1">
-                                <View className={`p-3 rounded-2xl mr-4 ${item.quantity > 0 ? 'bg-orange-50' : 'bg-gray-50'}`}>
-                                    <BookOpen size={22} color={item.quantity > 0 ? "#0d9488" : "#9CA3AF"} />
+                                <View className={`p-3 rounded-2xl mr-4 ${item.available > 0 ? 'bg-orange-50' : 'bg-gray-50'}`}>
+                                    <BookOpen size={22} color={item.available > 0 ? "#ff6900" : "#9CA3AF"} />
                                 </View>
                                 <View className="flex-1">
                                     <Text className="text-[10px] font-bold text-orange-600 uppercase mb-0.5">{item.category}</Text>
@@ -201,7 +238,7 @@ export default function StudentLibrary() {
                                     <Text className="text-gray-400 text-xs">{item.author}</Text>
                                 </View>
                             </View>
-                            <View className={`p-2 rounded-full ${item.available > 0 ? 'bg-teal-50' : 'bg-red-50'}`}>
+                            <View className={`p-2 rounded-full ${item.available > 0 ? 'bg-orange-50' : 'bg-red-50'}`}>
                                 <Text className={`font-bold text-[10px] px-1 ${item.available > 0 ? 'text-orange-600' : 'text-red-500'}`}>
                                     {item.available > 0 ? `${item.available} LEFT` : 'OUT'}
                                 </Text>
@@ -231,20 +268,14 @@ export default function StudentLibrary() {
                             </TouchableOpacity>
                         </View>
 
-                        {selectedBook?.isbn && (
-                            <View className="bg-gray-50 px-4 py-2 rounded-xl self-start mb-6">
-                                <Text className="text-gray-400 text-xs font-bold uppercase tracking-tighter">ISBN: {selectedBook.isbn}</Text>
-                            </View>
-                        )}
-
                         <View className="flex-row justify-between mb-10">
                             <View className="bg-gray-50 p-5 rounded-[30px] flex-1 mr-2 border border-gray-100">
-                                <Clock size={18} color="orange" />
+                                <Clock size={18} color="#ff6900" />
                                 <Text className="text-gray-400 text-[10px] font-bold uppercase mt-3">Duration</Text>
                                 <Text className="text-gray-900 font-bold text-base mt-1">14 Days</Text>
                             </View>
                             <View className="bg-gray-50 p-5 rounded-[30px] flex-1 ml-2 border border-gray-100">
-                                <CheckCircle2 size={18} color="orange" />
+                                <CheckCircle2 size={18} color="#ff6900" />
                                 <Text className="text-gray-400 text-[10px] font-bold uppercase mt-3">Available</Text>
                                 <Text className="text-gray-900 font-bold text-base mt-1">{selectedBook?.available} Copies</Text>
                             </View>

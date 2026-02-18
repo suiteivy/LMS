@@ -1,10 +1,11 @@
 import React, { useState } from "react";
 import { View, Text, ScrollView, TouchableOpacity, StatusBar } from 'react-native';
-import { Calendar, Clock, ArrowRight, BookOpen, Star, GraduationCap, Book, Bell, MessageSquare, Wallet } from 'lucide-react-native';
+import { Clock, ArrowRight, BookOpen, Star, GraduationCap, Book, Bell, MessageSquare, Wallet } from 'lucide-react-native';
 import Notifications from '../../components/Notifications';
-import { router, useRouter } from "expo-router";
+import { useRouter } from "expo-router";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNotifications } from "@/contexts/NotificationContext";
+import demoData from "@/constants/demoData";
 
 // Define Interface for the QuickAction props
 interface QuickActionProps {
@@ -30,9 +31,15 @@ export default function Index() {
   const { profile, displayId, loading } = useAuth();
   const { unreadCount } = useNotifications();
   const [showNotification, setShowNotification] = useState(false);
-  const router = useRouter()
+  const router = useRouter();
 
-  if (loading) return null;
+  // If we are loading, we don't return null because we want the demo data to show immediately if no user is found
+  if (loading && !demoData.GUEST_USER) return null;
+
+  // --- DEMO LOGIC ---
+  // If profile exists, use it. Otherwise, use GUEST_USER from demoData
+  const activeUser = profile || demoData.GUEST_USER;
+  const activeDisplayId = displayId || demoData.GUEST_USER.displayId;
 
   return (
     <>
@@ -42,7 +49,6 @@ export default function Index() {
         <ScrollView
           className="flex-1"
           showsVerticalScrollIndicator={false}
-          // contentContainerStyle handles the internal padding correctly
           contentContainerStyle={{ paddingBottom: 100 }}
         >
           <View className="p-4 md:p-8">
@@ -53,10 +59,10 @@ export default function Index() {
                   Welcome back,
                 </Text>
                 <Text className="text-3xl font-bold text-gray-900">
-                  {profile?.full_name || 'Student'} 👋
+                  {activeUser?.full_name || 'Student'} 👋
                 </Text>
                 <Text className="text-sm text-gray-500 font-medium">
-                  ID: {displayId || 'Loading...'}
+                  ID: {activeDisplayId}
                 </Text>
               </View>
 
@@ -65,7 +71,7 @@ export default function Index() {
                 className="bg-white p-3 rounded-full border border-gray-100 shadow-sm relative"
               >
                 <Bell size={24} color="#374151" />
-                {unreadCount > 0 && (
+                {(unreadCount > 0 || !profile) && (
                   <View className="absolute top-0 right-0 bg-red-500 w-3 h-3 rounded-full border-2 border-white" />
                 )}
               </TouchableOpacity>
@@ -75,15 +81,17 @@ export default function Index() {
             <View className="flex-row gap-4 mb-8">
               <View className="flex-1 bg-orange-500 p-4 rounded-3xl shadow-sm">
                 <Star size={20} color="white" />
-                <Text className="text-white text-2xl font-bold mt-2">3.82</Text>
+                <Text className="text-white text-2xl font-bold mt-2">
+                    {activeUser?.gpa || "3.82"}
+                </Text>
                 <Text className="text-orange-100 text-xs font-medium uppercase italic">
                   GPA
                 </Text>
               </View>
               <View className="flex-1 bg-white p-4 rounded-3xl border border-gray-100 shadow-sm">
-                <Clock size={20} color="orange" />
+                <Clock size={20} color="#f97316" />
                 <Text className="text-gray-900 text-2xl font-bold mt-2">
-                  92%
+                  {activeUser?.attendance || "92%"}
                 </Text>
                 <Text className="text-gray-400 text-xs font-medium uppercase italic">
                   Attendance
@@ -92,12 +100,11 @@ export default function Index() {
             </View>
 
             {/* --- 3. Upcoming Schedule --- */}
-            {/* Tightened header: removed pb-8, kept mb-4 */}
             <View className="flex-row justify-between items-end mb-4 ">
               <Text className="text-xl font-bold text-gray-900">
                 Today's Schedule
               </Text>
-              <TouchableOpacity onPress={() => router.push("/(student)/assignments")}>
+              <TouchableOpacity onPress={() => router.push("/(student)/assignments" as any)}>
                 <Text className="text-orange-500 font-semibold">View All</Text>
               </TouchableOpacity>
             </View>
@@ -143,7 +150,6 @@ export default function Index() {
             </ScrollView>
 
             {/* --- 4. Quick Actions Grid --- */}
-            {/* Removed pt-2 and mt-5, replaced with a clean mt-2 */}
             <View className="mt-2">
               <Text className="text-xl font-bold text-gray-900 mb-4">
                 Resources
@@ -190,7 +196,6 @@ export default function Index() {
           </View>
         </ScrollView>
 
-        {/* Notifications Modal rendered outside the ScrollView */}
         <Notifications
           visible={showNotification}
           onClose={() => setShowNotification(false)}
