@@ -1,5 +1,5 @@
-import { Stack } from "expo-router";
 import "../styles/global.css";
+import { Stack } from "expo-router";
 import React from "react";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { NotificationProvider } from "@/contexts/NotificationContext";
@@ -23,7 +23,7 @@ export default function RootLayout() {
 function AuthHandler() {
   const { loading, resetSessionTimer, session } = useAuth();
 
-  // Handle user interaction for inactivity timer
+  // Must be before any early returns
   const handleInteraction = React.useCallback(() => {
     if (session) {
       resetSessionTimer();
@@ -31,20 +31,18 @@ function AuthHandler() {
     return false;
   }, [resetSessionTimer, session]);
 
+  if (loading) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#ffffff' }}>
+        <ActivityIndicator size="large" color="#ff6900" />
+      </View>
+    );
+  }
+
   return (
     <>
-      <View className="flex-1" onStartShouldSetResponder={() => {
-        if (session) {
-          // console.log("User interaction detected, resetting timer");
-          resetSessionTimer();
-        }
-        return false; // Let the touch pass through
-      }}>
-        <Stack
-          screenOptions={{
-            headerShown: false,
-          }}
-        >
+      <View className="flex-1" onStartShouldSetResponder={handleInteraction}>
+        <Stack screenOptions={{ headerShown: false }}>
           <Stack.Screen name="index" />
           <Stack.Screen name="(auth)/signIn" />
           <Stack.Screen name="(admin)" />
@@ -55,22 +53,6 @@ function AuthHandler() {
         </Stack>
       </View>
       <Toast config={toastConfig} />
-
-      {loading && (
-        <View style={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          backgroundColor: '#ffffff',
-          justifyContent: 'center',
-          alignItems: 'center',
-          zIndex: 9999
-        }}>
-          <ActivityIndicator size="large" color="#f97316" />
-        </View>
-      )}
     </>
   );
 }

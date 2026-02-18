@@ -25,7 +25,7 @@ const getBaseUrl = (): string => {
   }
 
   // Default for iOS simulator and other platforms
-  return "http://localhost:4001/api";
+  return "http://192.168.100.72:4001/api";
 };
 
 /**

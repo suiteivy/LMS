@@ -180,6 +180,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   useEffect(() => {
     // Consolidate initialization into a single start method
     const initializeAuth = async () => {
+      console.log('SUPABASE URL:', process.env.EXPO_PUBLIC_SUPABASE_URL?.slice(0, 30))
+      console.log('SUPABASE KEY exists:', !!process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY)
       try {
         console.log("AuthContext: initializeAuth started");
 
@@ -299,7 +301,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         console.warn('Watchdog: Loading still true after 10s, forcing false')
         setLoading(false)
       }
-    }, 10000)
+    }, 3000)
 
 
     const appStateSubscription = AppState.addEventListener('change', async (nextAppState: AppStateStatus) => {
