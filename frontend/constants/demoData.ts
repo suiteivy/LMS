@@ -117,3 +117,14 @@ export const MOCK_SUBJECTS = [
   },
   // ... more subjects
 ];
+
+
+
+export default {
+  GUEST_USER,
+  MOCK_ASSIGNMENTS,
+  MOCK_LIBRARY,
+  MOCK_SUBJECTS,
+  MOCK_MESSAGES,
+  MOCK_FINANCE,
+};

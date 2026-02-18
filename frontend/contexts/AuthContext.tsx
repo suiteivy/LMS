@@ -302,7 +302,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       if (loading) {
         setLoading(false)
       }
-    }, 10000)
+    }, 3000)
 
 
     const appStateSubscription = AppState.addEventListener('change', async (nextAppState: AppStateStatus) => {

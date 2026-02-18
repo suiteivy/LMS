@@ -1,6 +1,5 @@
 import "../styles/global.css";
 import { Stack, useRouter, useSegments } from "expo-router";
-import "../styles/global.css";
 import React from "react";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { CurrencyProvider } from "@/contexts/CurrencyContext";
@@ -77,6 +76,22 @@ function AuthHandler() {
         </Stack>
       </View>
       <Toast config={toastConfig} />
+
+      {loading && (
+        <View style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: '#ffffff',
+          justifyContent: 'center',
+          alignItems: 'center',
+          zIndex: 9999
+        }}>
+          <ActivityIndicator size="large" color="#ff6900" />
+        </View>
+      )}
     </>
   );
 }
