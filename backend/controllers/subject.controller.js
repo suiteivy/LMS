@@ -75,6 +75,9 @@ exports.enrollStudentInSubject = async (req, res) => {
     }
 
     // 3. Enroll (Insert into enrollments)
+    // 3. Enroll (Insert into enrollments)
+    console.log(`[Enrollment] Attempting to enroll student ${student_id} in subject ${subject_id}`);
+
     const { error } = await supabase
       .from("enrollments")
       .insert([{
@@ -85,16 +88,21 @@ exports.enrollStudentInSubject = async (req, res) => {
       }]);
 
     if (error) {
+      console.error("[Enrollment] Insert error:", error);
       if (error.code === '23505') { // Unique violation
         return res.status(400).json({ error: "Already enrolled" });
+      }
+      if (error.code === '23503') { // Foreign key violation
+        return res.status(400).json({ error: "Invalid student or subject ID (Reference violation)" });
       }
       throw error;
     }
 
+    console.log("[Enrollment] Success");
     res.status(200).json({ message: "Enrolled successfully" });
   } catch (err) {
     console.error("enrollStudentInSubject error:", err);
-    res.status(500).json({ error: "Server error" });
+    res.status(500).json({ error: "Server error: " + (err.message || err) });
   }
 };
 

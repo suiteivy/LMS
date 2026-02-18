@@ -56,7 +56,10 @@ api.interceptors.request.use(
       } = await supabase.auth.getSession();
 
       if (session?.access_token) {
+        // console.log("Attaching auth token to request:", config.url);
         config.headers.Authorization = `Bearer ${session.access_token}`;
+      } else {
+        console.warn("No active session found for request:", config.url);
       }
     } catch (error) {
       console.error("Error fetching session for API request:", error);

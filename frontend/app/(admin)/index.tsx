@@ -229,7 +229,7 @@ export default function AdminDashboard() {
                 <View className="bg-white/10 w-10 h-10 rounded-2xl items-center justify-center mb-4">
                   <IconUsers size={20} color="white" />
                 </View>
-                <Text className="text-white text-3xl font-black mb-1">
+                <Text className="text-white text-2xl font-black mb-1">
                   {stats.find(s => s.label === "Total Students")?.value || "0"}
                 </Text>
                 <Text className="text-gray-400 text-xs font-bold uppercase tracking-wider">Total Students</Text>
@@ -240,7 +240,11 @@ export default function AdminDashboard() {
                   <IconWallet size={20} color="#0D9488" />
                 </View>
                 <View>
-                  <Text className="text-gray-900 text-3xl font-black mb-1">
+                  <Text
+                    className="text-gray-900 text-2xl font-black mb-1"
+                    numberOfLines={1}
+                    adjustsFontSizeToFit
+                  >
                     {stats.find(s => s.label === "Revenue")?.value || "KES 0"}
                   </Text>
                   {stats.find(s => s.label === "Revenue")?.subValue && (

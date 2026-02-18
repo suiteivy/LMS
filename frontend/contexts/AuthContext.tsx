@@ -170,17 +170,29 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     // Consolidate initialization into a single start method
     const initializeAuth = async () => {
       try {
-        const { data: { session: initialSession } } = await supabase.auth.getSession();
+        console.log("AuthContext: initializeAuth started");
+        const { data: { session: initialSession }, error } = await supabase.auth.getSession();
+
+        if (error) {
+          console.error("AuthContext: getSession error", error);
+        }
+
         if (initialSession) {
+          console.log("AuthContext: Session restored for user", initialSession.user.id);
           setSession(initialSession)
           setUser(initialSession.user)
           await loadUserProfile(initialSession.user.id)
           startTimeoutTimer()
+        } else {
+          console.log("AuthContext: No session found on initialization");
+          // Optionally show a toast if this is unexpected on web
+          // Toast.show({ type: 'info', text1: 'Auth Debug', text2: 'No session found' });
         }
       } catch (error) {
         console.error('Error in initializeAuth:', error)
       } finally {
         setLoading(false)
+        console.log("AuthContext: Loading set to false");
       }
     };
 
