@@ -180,6 +180,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   useEffect(() => {
     // Consolidate initialization into a single start method
     const initializeAuth = async () => {
+      console.log('SUPABASE URL:', process.env.EXPO_PUBLIC_SUPABASE_URL?.slice(0, 30))
+      console.log('SUPABASE KEY exists:', !!process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY)
       try {
         // Use getUser() to validate the session token on the server
         // This prevents restoring invalid/expired sessions from storage
@@ -289,7 +291,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       if (loading) {
         setLoading(false)
       }
-    }, 10000)
+    }, 3000)
 
 
     const appStateSubscription = AppState.addEventListener('change', async (nextAppState: AppStateStatus) => {
