@@ -15,6 +15,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { validateEmail, getAuthErrorMessage } from "@/utils/validation";
 import { supabase } from "@/libs/supabase";
 import { router } from "expo-router";
+import { FullScreenLoader } from "@/components/common/FullScreenLoader";
 
 // Cast icons to any to avoid nativewind interop issues
 const IconFontAwesome = FontAwesome as any;
@@ -334,19 +335,17 @@ export default function Index() {
                 disabled={isLoading}
                 activeOpacity={0.8}
               >
-                {isLoading ? (
-                  <ActivityIndicator color="white" className="p-2" />
-                ) : (
-                  <Text className="text-white font-bold text-lg p-2 ">
-                    Sign In
-                  </Text>
-                )}
+                <Text className="text-white font-bold text-lg p-2 ">
+                  Sign In
+                </Text>
               </TouchableOpacity>
 
             </View>
           </ScrollView>
         </SafeAreaView>
       </View>
+
+      <FullScreenLoader visible={isLoading} message="Signing in..." />
     </SafeAreaProvider>
   );
 }

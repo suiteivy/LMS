@@ -60,7 +60,10 @@ exports.createAllocation = async (req, res) => {
         }
 
         // 1. Check fund balance (logic check)
-        const { data: fund } = await supabase.from('funds').select('total_amount, allocated_amount').eq('id', fund_id).single();
+        const { data: fund } = await supabase.from('funds').select('total_amount, allocated_amount')
+            .eq('id', fund_id)
+            .eq('institution_id', institution_id)
+            .single();
         if (!fund) return res.status(404).json({ error: "Fund not found" });
 
         // Simple check: current allocated + new amount <= total? 
@@ -104,8 +107,9 @@ exports.getAllocations = async (req, res) => {
         const { fund_id } = req.params;
         const { data, error } = await supabase
             .from("fund_allocations")
-            .select("*")
+            .select("*, funds!inner(institution_id)")
             .eq("fund_id", fund_id)
+            .eq("funds.institution_id", req.institution_id)
             .order("allocation_date", { ascending: false });
 
         if (error) throw error;
@@ -124,11 +128,6 @@ exports.getTransactions = async (req, res) => {
         const { institution_id, userRole, userId } = req;
         const { type, distinct_user_id } = req.query; // optional filters
         console.log(`[Finance] getTransactions: Role=${userRole}, Type=${type}`);
-
-        if (!institution_id) {
-            console.warn(`[Finance] getTransactions aborted: No institution_id`);
-            return res.json([]);
-        }
 
         let query = supabase
             .from("financial_transactions")
@@ -166,7 +165,6 @@ exports.processTransaction = async (req, res) => {
         const { userRole, institution_id } = req;
 
         if (userRole !== 'admin' && userRole !== 'bursary') return res.status(403).json({ error: "Unauthorized" });
-        if (!institution_id) return res.status(400).json({ error: "No institution_id found" });
 
         const { data, error } = await supabase
             .from("financial_transactions")
@@ -189,9 +187,7 @@ exports.processTransaction = async (req, res) => {
  */
 exports.createTransaction = async (req, res) => {
     try {
-        const { institution_id, userRole } = req;
         if (userRole !== "admin" && userRole !== "bursary") return res.status(403).json({ error: "Unauthorized" });
-        if (!institution_id) return res.status(400).json({ error: "No institution_id found" });
 
         const { user_id, type, direction, amount, date, method, status, reference_id, meta } = req.body;
 
@@ -225,11 +221,7 @@ exports.createTransaction = async (req, res) => {
  */
 exports.recordFeePayment = async (req, res) => {
     try {
-        const { institution_id, userRole } = req;
-        // Admin records payment, OR student initiates generic payment? 
-        // Usually admin/bursar records it.
         if (userRole !== "admin" && userRole !== "bursary") return res.status(403).json({ error: "Unauthorized" });
-        if (!institution_id) return res.status(400).json({ error: "No institution_id found" });
 
         const { student_id, amount, method, reference_number, notes } = req.body;
 
@@ -264,11 +256,6 @@ exports.recordFeePayment = async (req, res) => {
 exports.getFeeStructures = async (req, res) => {
     try {
         const { institution_id } = req;
-
-        if (!institution_id) {
-            console.warn(`[Finance] getFeeStructures aborted: No institution_id`);
-            return res.json([]);
-        }
 
         const { data, error } = await supabase
             .from("fee_structures")

@@ -6,6 +6,7 @@ import {
 import { Stack, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '@/libs/supabase';
+import { api } from '@/services/api';
 
 // ---------- Types ----------
 type Role = 'student' | 'teacher' | 'parent' | 'admin';
@@ -142,18 +143,12 @@ export default function CreateUserScreen() {
         }
         setLoading(true);
         try {
-            const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:4000';
-            const response = await fetch(`${API_URL}/api/auth/enroll-user`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    ...form,
-                    parent_info: form.create_parent ? form.parent_info : undefined,
-                }),
+            const response = await api.post('/auth/enroll-user', {
+                ...form,
+                parent_info: form.create_parent ? form.parent_info : undefined,
             });
 
-            const data = await response.json();
-            if (!response.ok) throw new Error(data.error || 'Enrollment failed');
+            const data = response.data;
             setResult(data);
             setStep(4);
         } catch (err: any) {

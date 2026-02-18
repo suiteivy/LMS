@@ -1,4 +1,4 @@
-import { Stack } from "expo-router";
+import { Stack, useRouter, useSegments } from "expo-router";
 import "../styles/global.css";
 import React from "react";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
@@ -22,6 +22,23 @@ export default function RootLayout() {
 
 function AuthHandler() {
   const { loading, resetSessionTimer, session } = useAuth();
+  const segments = useSegments();
+  const router = useRouter();
+
+  React.useEffect(() => {
+    if (loading) return;
+
+    const inAuthGroup = segments.some(s => s === "(auth)");
+    const isRoot = segments.length <= 1; // Simplify root check
+
+    if (!session && !inAuthGroup && !isRoot) {
+      // User is not signed in and trying to access a protected route
+      router.replace("/(auth)/signIn");
+    } else if (session && inAuthGroup) {
+      // User is signed in and trying to access auth pages
+      router.replace("/");
+    }
+  }, [session, loading, segments, router]); // Added router to deps
 
   // Handle user interaction for inactivity timer
   const handleInteraction = React.useCallback(() => {

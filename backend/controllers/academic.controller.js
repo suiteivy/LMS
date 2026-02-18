@@ -28,9 +28,10 @@ exports.updateMaterials = async (req, res) => {
 exports.createAssignment = async (req, res) => {
     try {
         const { subject_id, teacher_id, title, description, due_date } = req.body;
+        const { institution_id } = req;
         const { data, error } = await supabase
             .from("assignments")
-            .insert([{ subject_id, teacher_id, title, description, due_date }])
+            .insert([{ subject_id, teacher_id, title, description, due_date, institution_id }])
             .select()
             .single();
 
@@ -44,7 +45,8 @@ exports.createAssignment = async (req, res) => {
 exports.getAssignments = async (req, res) => {
     try {
         const { subject_id } = req.query;
-        let query = supabase.from("assignments").select("*");
+        const { institution_id } = req;
+        let query = supabase.from("assignments").select("*").eq("institution_id", institution_id);
         if (subject_id) query = query.eq("subject_id", subject_id);
 
         const { data, error } = await query;
@@ -61,9 +63,10 @@ exports.getAssignments = async (req, res) => {
 exports.submitAssignment = async (req, res) => {
     try {
         const { assignment_id, student_id, file_url, content } = req.body;
+        const { institution_id } = req;
         const { data, error } = await supabase
             .from("submissions")
-            .insert([{ assignment_id, student_id, file_url, content, status: 'submitted' }])
+            .insert([{ assignment_id, student_id, file_url, content, status: 'submitted', institution_id }])
             .select()
             .single();
 
@@ -99,9 +102,10 @@ exports.gradeSubmission = async (req, res) => {
 exports.createAnnouncement = async (req, res) => {
     try {
         const { subject_id, teacher_id, title, message } = req.body;
+        const { institution_id } = req;
         const { data, error } = await supabase
             .from("announcements")
-            .insert([{ subject_id, teacher_id, title, message }])
+            .insert([{ subject_id, teacher_id, title, message, institution_id }])
             .select()
             .single();
 
@@ -115,7 +119,10 @@ exports.createAnnouncement = async (req, res) => {
 exports.getAnnouncements = async (req, res) => {
     try {
         const { subject_id } = req.query;
-        let query = supabase.from("announcements").select("*, teacher:teachers(user:users(full_name))");
+        const { institution_id } = req;
+        let query = supabase.from("announcements")
+            .select("*, teacher:teachers(user:users(full_name))")
+            .eq("institution_id", institution_id);
         if (subject_id) query = query.eq("subject_id", subject_id);
 
         const { data, error } = await query;

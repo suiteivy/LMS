@@ -156,18 +156,20 @@ exports.getFilteredSubjects = async (req, res) => {
         .select("*")
         .eq("institution_id", institution_id));
     } else if (userRole === "teacher") {
-      // Subjects where the user is the teacher
-      // Resolve teacher ID from User ID?
-      // Or subjects table uses User ID? Migration says teacher_id.
-      // Usually logic needs to match schema.
-      const { data: teacher } = await supabase.from('teachers').select('id').eq('user_id', userId).single();
-      const teacherId = teacher ? teacher.id : null;
+      const { data: teacher, error: tError } = await supabase.from('teachers').select('id').eq('user_id', userId).single();
+
+      if (tError || !teacher) {
+        console.warn(`[SubjectController] Teacher profile not found for user ${userId}`);
+        return res.status(404).json({ error: "Teacher profile not found" });
+      }
+
+      const teacherId = teacher.id;
 
       ({ data, error } = await supabase
         .from("subjects")
         .select("*")
         .eq("institution_id", institution_id)
-        .eq("teacher_id", teacherId)); // Empty if teacher not found?
+        .eq("teacher_id", teacherId));
     } else if (userRole === "student") {
       // Subjects where student is enrolled
       const { data: student } = await supabase.from('students').select('id').eq('user_id', userId).single();

@@ -1,11 +1,13 @@
 const supabase = require("../utils/supabaseClient");
 
-/**
- * Get internal helper to create notifications without HTTP request context.
- * Useful for calling from other controllers.
- */
 exports.createNotificationInternal = async ({ userId, title, message, type = 'info', data = {} }) => {
     try {
+        // We need to fetch the user's institution_id if not provided
+        // But usually it's better to pass it in.
+        // For now, I'll fetch it to ensure correctness since internal calls might miss it.
+        const { data: user } = await supabase.from('users').select('institution_id').eq('id', userId).single();
+        const instId = user?.institution_id;
+
         const { error } = await supabase
             .from("notifications")
             .insert({
@@ -14,6 +16,7 @@ exports.createNotificationInternal = async ({ userId, title, message, type = 'in
                 message,
                 type,
                 data,
+                institution_id: instId
             });
 
         if (error) {
@@ -32,12 +35,13 @@ exports.createNotificationInternal = async ({ userId, title, message, type = 'in
  */
 exports.getUserNotifications = async (req, res) => {
     try {
-        const { userId } = req;
+        const { userId, institution_id } = req;
         // Fetch unread first, then read, limit to 20 or so
         const { data, error } = await supabase
             .from("notifications")
             .select("*")
             .eq("user_id", userId)
+            .eq("institution_id", institution_id)
             .order("created_at", { ascending: false })
             .limit(50);
 

@@ -1,21 +1,23 @@
-import React, { useState } from "react";
-import { View, Text, ScrollView, TouchableOpacity, StatusBar } from 'react-native';
+import React, { useState, useEffect } from "react";
+import { View, Text, ScrollView, TouchableOpacity, StatusBar, ActivityIndicator } from 'react-native';
 import { ArrowLeft, Wallet, TrendingUp, Calendar, Download, ChevronDown, DollarSign, ChevronRight } from 'lucide-react-native';
 import { router } from "expo-router";
+import { TeacherAPI } from "@/services/TeacherService";
+import { format } from 'date-fns';
 
 interface Payment {
     id: string;
     description: string;
     amount: number;
     date: string;
-    status: "completed" | "pending" | "processing";
+    status: "completed" | "pending" | "processing" | "paid" | "failed";
 }
 
 const PaymentRow = ({ payment }: { payment: Payment }) => {
     const getStatusStyle = (status: string) => {
-        if (status === "completed") return "bg-green-50 text-green-600";
-        if (status === "pending") return "bg-yellow-50 text-yellow-600";
-        return "bg-blue-50 text-blue-600";
+        if (status === "completed" || status === "paid") return "bg-green-50 text-green-600";
+        if (status === "pending" || status === "processing") return "bg-yellow-50 text-yellow-600";
+        return "bg-red-50 text-red-600";
     };
 
     return (
@@ -41,15 +43,32 @@ const PaymentRow = ({ payment }: { payment: Payment }) => {
 
 export default function EarningsPage() {
     const [selectedPeriod, setSelectedPeriod] = useState("This Month");
+    const [payments, setPayments] = useState<Payment[]>([]);
+    const [loading, setLoading] = useState(true);
 
-    const payments: Payment[] = [
-        { id: "1", description: "Subject: Mathematics", amount: 450, date: "Feb 5, 2026", status: "completed" },
-        { id: "2", description: "Subject: Computer Science", amount: 680, date: "Feb 1, 2026", status: "completed" },
-        { id: "3", description: "Subject: Writing Workshop", amount: 320, date: "Jan 28, 2026", status: "completed" },
-        { id: "4", description: "Bonus: High Performance", amount: 150, date: "Jan 25, 2026", status: "completed" },
-        { id: "5", description: "Subject: Digital Literacy", amount: 280, date: "Jan 20, 2026", status: "completed" },
-        { id: "6", description: "Pending: February Payout", amount: 520, date: "Feb 28, 2026", status: "pending" },
-    ];
+    useEffect(() => {
+        fetchEarnings();
+    }, []);
+
+    const fetchEarnings = async () => {
+        try {
+            setLoading(true);
+            const data = await TeacherAPI.getEarnings();
+            // Map backend payouts to UI Payment interface
+            const mapped: Payment[] = data.map((p: any) => ({
+                id: p.id,
+                description: p.reference_number || "Salary Payout",
+                amount: p.amount,
+                date: format(new Date(p.created_at), 'MMM d, yyyy'),
+                status: p.status === 'paid' ? 'completed' : p.status
+            }));
+            setPayments(mapped);
+        } catch (error) {
+            console.error("Error fetching earnings:", error);
+        } finally {
+            setLoading(false);
+        }
+    };
 
     const totalEarnings = payments.filter(p => p.status === "completed").reduce((acc, p) => acc + p.amount, 0);
     const pendingAmount = payments.filter(p => p.status === "pending").reduce((acc, p) => acc + p.amount, 0);
@@ -77,66 +96,78 @@ export default function EarningsPage() {
                             </TouchableOpacity>
                         </View>
 
-                        {/* Total Earnings Card */}
-                        <View className="bg-teacherOrange p-6 rounded-3xl mb-6">
-                            <View className="flex-row justify-between items-start mb-4">
-                                <View>
-                                    <Text className="text-white text-sm">Total Earnings</Text>
-                                    <Text className="text-white text-4xl font-black mt-1">
-                                        ${totalEarnings.toLocaleString()}
-                                    </Text>
+                        {loading ? (
+                            <ActivityIndicator size="large" color="#FF6B00" className="mt-20" />
+                        ) : (
+                            <>
+                                {/* Total Earnings Card */}
+                                <View className="bg-teacherOrange p-6 rounded-3xl mb-6">
+                                    <View className="flex-row justify-between items-start mb-4">
+                                        <View>
+                                            <Text className="text-white text-sm">Total Earnings</Text>
+                                            <Text className="text-white text-4xl font-black mt-1">
+                                                ${totalEarnings.toLocaleString()}
+                                            </Text>
+                                        </View>
+                                        <View className="bg-white/20 p-3 rounded-2xl">
+                                            <Wallet size={28} color="white" />
+                                        </View>
+                                    </View>
+                                    <View className="flex-row">
+                                        <View className="flex-1 border-r border-white/20 pr-4">
+                                            <Text className="text-white text-xs">Total Paid</Text>
+                                            <Text className="text-white font-bold text-lg">${totalEarnings}</Text>
+                                        </View>
+                                        <View className="flex-1 pl-4">
+                                            <Text className="text-white text-xs">Pending</Text>
+                                            <Text className="text-white font-bold text-lg">${pendingAmount}</Text>
+                                        </View>
+                                    </View>
                                 </View>
-                                <View className="bg-white/20 p-3 rounded-2xl">
-                                    <Wallet size={28} color="white" />
+
+                                {/* Quick Stats */}
+                                <View className="flex-row gap-3 mb-6">
+                                    <View className="flex-1 bg-white p-4 rounded-2xl border border-gray-100">
+                                        <TrendingUp size={20} color="#FF6B00" />
+                                        <Text className="text-gray-900 text-xl font-bold mt-2">Payouts</Text>
+                                        <Text className="text-gray-400 text-xs">{payments.length} total</Text>
+                                    </View>
+                                    <View className="flex-1 bg-white p-4 rounded-2xl border border-gray-100">
+                                        <Calendar size={20} color="#1a1a1a" />
+                                        <Text className="text-gray-900 text-xl font-bold mt-2">{payments.filter(p => p.status === 'completed').length}</Text>
+                                        <Text className="text-gray-400 text-xs">Successful</Text>
+                                    </View>
                                 </View>
-                            </View>
-                            <View className="flex-row">
-                                <View className="flex-1 border-r border-white/20 pr-4">
-                                    <Text className="text-white text-xs">This Month</Text>
-                                    <Text className="text-white font-bold text-lg">$1,130</Text>
-                                </View>
-                                <View className="flex-1 pl-4">
-                                    <Text className="text-white text-xs">Pending</Text>
-                                    <Text className="text-white font-bold text-lg">${pendingAmount}</Text>
-                                </View>
-                            </View>
-                        </View>
 
-                        {/* Quick Stats */}
-                        <View className="flex-row gap-3 mb-6">
-                            <View className="flex-1 bg-white p-4 rounded-2xl border border-gray-100">
-                                <TrendingUp size={20} color="#FF6B00" />
-                                <Text className="text-gray-900 text-xl font-bold mt-2">+18%</Text>
-                                <Text className="text-gray-400 text-xs">vs last month</Text>
-                            </View>
-                            <View className="flex-1 bg-white p-4 rounded-2xl border border-gray-100">
-                                <Calendar size={20} color="#1a1a1a" />
-                                <Text className="text-gray-900 text-xl font-bold mt-2">12</Text>
-                                <Text className="text-gray-400 text-xs">Payments</Text>
-                            </View>
-                        </View>
+                                {/* Period Selector */}
+                                <TouchableOpacity className="bg-white rounded-xl px-4 py-3 mb-4 border border-gray-100 flex-row items-center justify-between">
+                                    <Text className="text-gray-700 font-medium">{selectedPeriod}</Text>
+                                    <ChevronDown size={16} color="#6B7280" />
+                                </TouchableOpacity>
 
-                        {/* Period Selector */}
-                        <TouchableOpacity className="bg-white rounded-xl px-4 py-3 mb-4 border border-gray-100 flex-row items-center justify-between">
-                            <Text className="text-gray-700 font-medium">{selectedPeriod}</Text>
-                            <ChevronDown size={16} color="#6B7280" />
-                        </TouchableOpacity>
+                                {/* Payment History */}
+                                <Text className="text-lg font-bold text-gray-900 mb-3">Payment History</Text>
+                                {payments.length === 0 ? (
+                                    <View className="py-10 items-center">
+                                        <Text className="text-gray-400">No payout history found</Text>
+                                    </View>
+                                ) : (
+                                    payments.map((payment) => (
+                                        <PaymentRow key={payment.id} payment={payment} />
+                                    ))
+                                )}
 
-                        {/* Payment History */}
-                        <Text className="text-lg font-bold text-gray-900 mb-3">Payment History</Text>
-                        {payments.map((payment) => (
-                            <PaymentRow key={payment.id} payment={payment} />
-                        ))}
-
-                        {/* Payout Info */}
-                        <TouchableOpacity className="bg-orange-50 p-4 rounded-2xl mt-4 flex-row items-center">
-                            <View className="flex-1">
-                                <Text className="text-teacherOrange font-bold">Next Payout</Text>
-                                <Text className="text-teacherOrange text-sm">February 28, 2026</Text>
-                            </View>
-                            <Text className="text-teacherOrange font-bold text-lg mr-2">${pendingAmount}</Text>
-                            <ChevronRight size={18} color="#FF6B00" />
-                        </TouchableOpacity>
+                                {/* Payout Info */}
+                                <TouchableOpacity className="bg-orange-50 p-4 rounded-2xl mt-4 flex-row items-center">
+                                    <View className="flex-1">
+                                        <Text className="text-teacherOrange font-bold">Payout Status</Text>
+                                        <Text className="text-teacherOrange text-sm">Check admin for next scheduled date</Text>
+                                    </View>
+                                    <Text className="text-teacherOrange font-bold text-lg mr-2">${pendingAmount}</Text>
+                                    <ChevronRight size={18} color="#FF6B00" />
+                                </TouchableOpacity>
+                            </>
+                        )}
                     </View>
                 </ScrollView>
             </View>

@@ -11,9 +11,10 @@ exports.getStudentAttendance = async (req, res) => {
 
         // 1. Get all students enrolled in this subject (or class)
         let query = supabase
-            .from("enrollments")
-            .select("student_id, students!inner(id, users!inner(full_name, avatar_url))")
-            .eq("subject_id", subject_id);
+            .from("students")
+            .select("id, users!inner(full_name, avatar_url), enrollments!inner(subject_id)")
+            .eq("institution_id", req.institution_id)
+            .eq("enrollments.subject_id", subject_id);
 
         if (class_id) {
             // Further filter if class_id provided
@@ -102,7 +103,8 @@ exports.getTeacherAttendance = async (req, res) => {
         // 1. Get all teachers
         const { data: teachers, error: tError } = await supabase
             .from("teachers")
-            .select("id, users!inner(full_name, avatar_url)");
+            .select("id, users!inner(full_name, avatar_url)")
+            .eq("institution_id", req.institution_id);
 
         if (tError) throw tError;
 
@@ -150,11 +152,12 @@ exports.getTeacherAttendance = async (req, res) => {
 exports.markTeacherAttendance = async (req, res) => {
     try {
         const { teacher_id, date, status, notes } = req.body;
+        const { institution_id } = req;
 
         // Upsert
         const { data, error } = await supabase
             .from("teacher_attendance")
-            .upsert({ teacher_id, date, status, notes }, { onConflict: "teacher_id, date" })
+            .upsert({ teacher_id, date, status, notes, institution_id }, { onConflict: "teacher_id, date" })
             .select();
 
         if (error) throw error;

@@ -23,10 +23,65 @@ exports.createInstitution = async (req, res) => {
 };
 
 exports.getInstitutions = async (req, res) => {
-  const { data, error } = await supabase.from("institutions").select("*");
+  const { data, error } = await supabase.from("institutions").select("*").order('name');
 
   if (error) return res.status(500).json({ error: error.message });
   res.json(data);
+};
+
+exports.getInstitutionDetails = async (req, res) => {
+  try {
+    const { institution_id } = req;
+    if (!institution_id) return res.json(null); // Return null instead of error
+
+    const { data, error } = await supabase
+      .from("institutions")
+      .select("*")
+      .eq("id", institution_id)
+      .single();
+
+    if (error) {
+      if (error.code === 'PGRST116') return res.json(null); // Not found
+      throw error;
+    }
+    res.json(data);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+exports.updateInstitution = async (req, res) => {
+  try {
+    const { institution_id, userRole } = req;
+    if (userRole !== 'admin') return res.status(403).json({ error: "Unauthorized" });
+
+    // Allow specifying an ID in params if super-admin, but usually scoped to current user's institution
+    const targetId = req.params.id || institution_id;
+    if (!targetId) return res.status(400).json({ error: "Target institution ID required" });
+
+    const { name, location, phone, email, type, principal_name } = req.body;
+
+    // We allow name to be NOT NULL, but others are nullable.
+    const updates = {};
+    if (name !== undefined) updates.name = name;
+    if (location !== undefined) updates.location = location;
+    if (phone !== undefined) updates.phone = phone;
+    if (email !== undefined) updates.email = email;
+    if (type !== undefined) updates.type = type;
+    if (principal_name !== undefined) updates.principal_name = principal_name;
+
+    const { data, error } = await supabase
+      .from("institutions")
+      .update(updates)
+      .eq("id", targetId)
+      .select()
+      .single();
+
+    if (error) throw error;
+    res.json({ message: "Institution updated", institution: data });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 };
 
 exports.getClasses = async (req, res) => {

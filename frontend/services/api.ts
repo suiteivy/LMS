@@ -90,6 +90,8 @@ api.interceptors.response.use(
         case 401:
           title = "Unauthorized";
           message = "Please sign in again.";
+          // Trigger global sign-out to clear state and redirect
+          supabase.auth.signOut().catch(e => console.error("Error signing out after 401:", e));
           break;
         case 403:
           title = "Permission Denied";

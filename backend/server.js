@@ -60,6 +60,8 @@ app.use("/api/academic", require("./routes/academic.route.js"));
 app.use("/api/exams", require("./routes/exams.route.js"));
 app.use("/api/parent", require("./routes/parent.route.js"));
 app.use("/api/messages", require("./routes/messaging.route.js"));
+app.use("/api/resources", require("./routes/resources.route.js"));
+app.use("/api/teacher", require("./routes/teacher.route.js"));
 
 // health check
 app.get("/", (req, res) => {

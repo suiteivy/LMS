@@ -2,9 +2,10 @@ import React, { useState, useEffect } from "react";
 import { View, Text, ScrollView, TouchableOpacity, StatusBar, Modal, TextInput, Alert, ActivityIndicator } from 'react-native';
 import { ArrowLeft, Video, File, Image, Download, Trash2, X, Upload, FolderOpen, Link as LinkIcon, FileText, Copy } from 'lucide-react-native';
 import { router } from "expo-router";
-import { supabase } from "@/libs/supabase";
 import { useAuth } from "@/contexts/AuthContext";
 import { Database } from "@/types/database";
+import { ResourceAPI } from "@/services/ResourceService";
+import { SubjectAPI } from "@/services/SubjectService";
 
 type Resource = Database['public']['Tables']['resources']['Row'] & {
     Subject_title?: string;
@@ -19,7 +20,7 @@ const ResourceCard = ({ resource, onDelete }: { resource: Resource; onDelete: (i
         return { icon: File, color: "#9ca3af", bg: "#f3f4f6" };
     };
 
-    const typeInfo = getTypeIcon(resource.type);
+    const typeInfo = getTypeIcon(resource.type || 'file');
     const IconComponent = typeInfo.icon;
 
     return (
@@ -30,7 +31,7 @@ const ResourceCard = ({ resource, onDelete }: { resource: Resource; onDelete: (i
             <View className="flex-1">
                 <Text className="text-gray-900 font-semibold" numberOfLines={1}>{resource.title}</Text>
                 <Text className="text-gray-400 text-xs">
-                    {resource.Subject_title || "Unknown Subject"} • {resource.type.toUpperCase()} {resource.size ? `• ${resource.size}` : ''}
+                    {resource.Subject_title || "Unknown Subject"} • {resource.type?.toUpperCase()} {resource.size ? `• ${resource.size}` : ''}
                 </Text>
                 {resource.type === 'link' && (
                     <Text className="text-blue-400 text-[10px]" numberOfLines={1}>{resource.url}</Text>
@@ -54,7 +55,6 @@ export default function ResourcesPage() {
     const [loading, setLoading] = useState(true);
     const [resources, setResources] = useState<Resource[]>([]);
     const [Subjects, setSubjects] = useState<{ id: string; title: string }[]>([]);
-    const [selectedDocument, setSelectedDocument] = useState()
 
     // Form
     const [title, setTitle] = useState("");
@@ -67,80 +67,48 @@ export default function ResourcesPage() {
         if (teacherId) {
             fetchResources();
             fetchSubjects();
+        } else {
+            // If not teacherId yet, maybe wait or auth loaded?
         }
     }, [teacherId]);
 
     const fetchSubjects = async () => {
-        if (!teacherId) return;
-        const { data } = await supabase.from('subjects').select('id, title').eq('teacher_id', teacherId);
-        if (data) setSubjects(data);
+        try {
+            // Use API
+            const data = await SubjectAPI.getFilteredSubjects();
+            if (data) setSubjects(data);
+        } catch (error) {
+            console.error("Fetch subjects error:", error);
+        }
     };
 
     const fetchResources = async () => {
-        if (!teacherId) return;
         setLoading(true);
         try {
-            // Fetch resources for Subjects taught by this teacher
-            // Since we have RLS, we can just select all resources we have access to?
-            // Wait, RLS for Select says: Teacher (own Subject), Student (enrolled).
-            // So fetching all from 'resources' should work if RLS is correct.
-            // But we might get resources from Subjects we are enrolled in (if teacher is also student?).
-            // Let's filter by Subjects we teach to be safe and clean.
-
-            // 1. Get Subject IDs
-            const { data: mySubjects } = await supabase.from('subjects').select('id, title').eq('teacher_id', teacherId);
-            const SubjectIds = (mySubjects || []).map(c => c.id);
-            const SubjectMap = new Map(mySubjects?.map(c => [c.id, c.title]));
-
-            if (SubjectIds.length === 0) {
-                setResources([]);
-                setLoading(false);
-                return;
-            }
-
-            // 2. Fetch Resources
-            const { data, error } = await supabase
-                .from('resources')
-                .select('*')
-                .in('subject_id', SubjectIds)
-                .order('created_at', { ascending: false });
-
-            if (error) throw error;
-
-            // Cast data to ensure TS knows it's a list of Resource rows
-            const typedData = (data || []) as Database['public']['Tables']['resources']['Row'][];
-
-            const formatted = typedData.map(r => ({
-                ...r,
-                Subject_title: SubjectMap.get(r.subject_id),
-                type: r.type as any
-            }));
-
-            setResources(formatted);
-
+            const data = await ResourceAPI.getResources();
+            setResources(data);
         } catch (error) {
             console.error(error);
+            // Alert.alert("Error", "Failed to load resources");
         } finally {
             setLoading(false);
         }
     };
 
     const handleAddResource = async () => {
-        if (!user || !selectedSubjectId || !title || !url) {
+        if (!selectedSubjectId || !title || !url) {
             Alert.alert("Missing Fields", "Please fill all fields.");
             return;
         }
 
         try {
-            const { error } = await supabase.from('resources').insert({
+            await ResourceAPI.createResource({
                 subject_id: selectedSubjectId,
                 title,
                 url,
                 type,
-                size: null // Not handling file upload size for links
+                size: null
             });
-
-            if (error) throw error;
 
             setShowModal(false);
             fetchResources();
@@ -157,15 +125,14 @@ export default function ResourcesPage() {
 
     const deleteResource = async (id: string) => {
         try {
-            const { error } = await supabase.from('resources').delete().eq('id', id);
-            if (error) throw error;
+            await ResourceAPI.deleteResource(id);
             setResources(prev => prev.filter(r => r.id !== id));
         } catch (error) {
             Alert.alert("Error", "Failed to delete resource");
         }
     };
 
-        
+
     return (
         <>
             <StatusBar barStyle="dark-content" />
@@ -277,8 +244,6 @@ export default function ResourcesPage() {
                             onChangeText={setUrl}
                             autoCapitalize="none"
                         />
-
-
 
                         <TouchableOpacity
                             className="bg-teacherOrange py-4 rounded-xl items-center"

@@ -144,6 +144,7 @@ exports.enrollUser = async (req, res) => {
     const uid = authData.user.id;
 
     // 3. Insert into users table
+    const targetInstitutionId = institution_id || req.institution_id;
     const { error: userInsertError } = await supabase.from("users").insert({
       id: uid,
       email,
@@ -153,7 +154,7 @@ exports.enrollUser = async (req, res) => {
       gender: gender || null,
       date_of_birth: date_of_birth || null,
       address: address || null,
-      institution_id: institution_id || null,
+      institution_id: targetInstitutionId,
     });
 
     if (userInsertError) throw userInsertError;
@@ -211,7 +212,7 @@ exports.enrollUser = async (req, res) => {
             full_name: parent_info.full_name,
             role: 'parent',
             phone: parent_info.phone || null,
-            institution_id: institution_id || null,
+            institution_id: targetInstitutionId,
           });
 
           await new Promise(resolve => setTimeout(resolve, 500));
@@ -370,7 +371,7 @@ exports.adminUpdateUser = async (req, res) => {
     if (gender !== undefined) userUpdates.gender = gender || null;
     if (date_of_birth !== undefined) userUpdates.date_of_birth = date_of_birth || null;
     if (address !== undefined) userUpdates.address = address || null;
-    if (institution_id !== undefined) userUpdates.institution_id = institution_id || null;
+    if (institution_id !== undefined) userUpdates.institution_id = institution_id || req.institution_id;
     if (avatar_url !== undefined) userUpdates.avatar_url = avatar_url || null;
 
     if (Object.keys(userUpdates).length > 0) {

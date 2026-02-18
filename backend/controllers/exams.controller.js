@@ -24,7 +24,8 @@ exports.createExam = async (req, res) => {
 exports.getExams = async (req, res) => {
     try {
         const { subject_id } = req.query;
-        let query = supabase.from("exams").select("*");
+        const { institution_id } = req;
+        let query = supabase.from("exams").select("*").eq("institution_id", institution_id);
         if (subject_id) query = query.eq("subject_id", subject_id);
 
         const { data, error } = await query;
@@ -41,10 +42,11 @@ exports.getExams = async (req, res) => {
 exports.recordExamResult = async (req, res) => {
     try {
         const { exam_id, student_id, score, feedback, graded_by } = req.body;
+        const { institution_id } = req;
 
         const { data, error } = await supabase
             .from("exam_results")
-            .upsert({ exam_id, student_id, score, feedback, graded_by }, { onConflict: "exam_id, student_id" })
+            .upsert({ exam_id, student_id, score, feedback, graded_by, institution_id }, { onConflict: "exam_id, student_id" })
             .select();
 
         if (error) throw error;
@@ -57,7 +59,10 @@ exports.recordExamResult = async (req, res) => {
 exports.getExamResults = async (req, res) => {
     try {
         const { exam_id, student_id } = req.query;
-        let query = supabase.from("exam_results").select("*, student:students(user:users(full_name))");
+        const { institution_id } = req;
+        let query = supabase.from("exam_results")
+            .select("*, student:students(user:users(full_name))")
+            .eq("institution_id", institution_id);
 
         if (exam_id) query = query.eq("exam_id", exam_id);
         if (student_id) query = query.eq("student_id", student_id);
