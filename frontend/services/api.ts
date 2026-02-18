@@ -35,7 +35,8 @@ const getBaseUrl = (): string => {
  * and platforms (iOS/Android)
  */
 const baseURL = getBaseUrl();
-// console.log("API Base URL:", baseURL);
+console.log("API Base URL:", baseURL);
+console.log("Loaded EXPO_PUBLIC_URL:", process.env.EXPO_PUBLIC_URL);
 
 export const api: AxiosInstance = axios.create({
   baseURL: baseURL,
@@ -97,15 +98,23 @@ api.interceptors.response.use(
           break;
         case 500:
           title = "Server Error";
-          message = "Something went wrong on our end.";
+          // Only overwrite if no specific message came from backend
+          if (!data?.error && !data?.message) {
+            message = "Something went wrong on our end.";
+          }
           break;
       }
     } else if (error.request) {
       title = "Network Error";
-      message = "Could not connect to the server. Please check your internet.";
+      message = "Could not connect to the server. Please check your internet connection.";
     } else {
       message = error.message;
     }
+
+    // Enhanced Logging
+    const url = error.config?.url;
+    const method = error.config?.method?.toUpperCase();
+    console.error(`[API Error] ${method} ${url} (${error.response?.status || 'Network'}):`, message);
 
     // Only show toast if it's not a "cancelled" request or specific silences
     if (error.message !== 'canceled') {

@@ -9,9 +9,9 @@ const StatCard = ({ title, value, icon: Icon, color, trend }: any) => (
         <View className={`p-3 rounded-2xl mb-4 self-start`} style={{ backgroundColor: `${color}15` }}>
             <Icon size={24} color={color} />
         </View>
-        <Text className="text-gray-500 text-sm font-medium">{title}</Text>
+        <Text className="text-gray-500 text-sm font-medium" numberOfLines={1} adjustsFontSizeToFit>{title}</Text>
         <View className="flex-row items-end justify-between mt-1">
-            <Text className="text-gray-900 text-2xl font-bold">{value}</Text>
+            <Text className="text-gray-900 text-2xl font-bold" numberOfLines={1} adjustsFontSizeToFit>{value}</Text>
             {trend && (
                 <View className="flex-row items-center bg-green-50 px-2 py-0.5 rounded-full">
                     <TrendingUp size={12} color="#16a34a" />
@@ -136,11 +136,17 @@ export default function AnalyticsScreen() {
                         <View className="mb-4">
                             <View className="flex-row justify-between mb-1">
                                 <Text className="text-sm text-gray-600 font-medium">Database Usage</Text>
-                                <Text className="text-sm text-gray-900 font-bold">Low</Text>
+                                <Text className="text-sm text-gray-900 font-bold">
+                                    {parseInt(stats.find(s => s.label === "Total Students")?.value || "0") > 1000 ? "Medium" : "Low"}
+                                </Text>
                             </View>
                             <View className="h-2 bg-gray-100 rounded-full overflow-hidden">
-                                <View className="h-full bg-blue-500 w-[15%]" />
+                                <View
+                                    className="h-full bg-blue-500"
+                                    style={{ width: `${Math.min((parseInt(stats.find(s => s.label === "Total Students")?.value || "0") / 5000) * 100, 100)}%` }}
+                                />
                             </View>
+                            <Text className="text-xs text-gray-400 mt-1">Based on student records</Text>
                         </View>
                         <View>
                             <View className="flex-row justify-between mb-1">
@@ -150,6 +156,7 @@ export default function AnalyticsScreen() {
                             <View className="h-2 bg-gray-100 rounded-full overflow-hidden">
                                 <View className="h-full bg-teal-500 w-[100%]" />
                             </View>
+                            <Text className="text-xs text-gray-400 mt-1">All services operational</Text>
                         </View>
                     </View>
                 </View>

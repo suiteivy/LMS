@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, Alert, ScrollView } from 'react-native';
 import { router } from 'expo-router';
-import { UserCircle, Settings, ShieldCheck, LogOut, HelpCircle, ChevronRight, X } from 'lucide-react-native';
+import { UserCircle, Settings, ShieldCheck, LogOut, HelpCircle, ChevronRight } from 'lucide-react-native';
 import { useAuth } from '@/contexts/AuthContext';
 
 // Screens
@@ -9,6 +9,7 @@ import StudentProfile from '@/components/StudentProfile';
 import TeacherProfile from '@/components/TeacherProfile';
 import AdminProfile from '@/components/AdminProfile';
 import AdminSettings from '@/components/AdminSettings';
+import AdminOverview from '@/components/AdminOverview';
 import StudentSettings from '@/components/StudentSettings';
 import StudentHelp from '@/components/StudentHelp';
 
@@ -32,8 +33,8 @@ const MenuItem = ({ icon, label, onPress, danger }: MenuItemProps) => (
   </TouchableOpacity>
 );
 
-function SettingsMenu({ userRole }: { userRole: string }) {
-  const { signOut, user, loading, displayId } = useAuth();
+function SettingsMenu({ userRole, onNavigate }: { userRole: string, onNavigate: (screen: 'profile' | 'settings' | 'help' | 'overview') => void }) {
+  const { signOut, user, profile, loading, displayId } = useAuth();
 
   const handleLogout = async () => {
     try {
@@ -55,12 +56,12 @@ function SettingsMenu({ userRole }: { userRole: string }) {
         <View className="flex-row items-center mb-4">
           <View className={`w-14 h-14 rounded-full items-center justify-center mr-4 ${userRole === 'teacher' ? 'bg-blue-500' : userRole === 'admin' ? 'bg-purple-500' : 'bg-orange-500'}`}>
             <Text className="text-white font-bold text-xl">
-              {user?.user_metadata?.full_name?.charAt(0) || 'U'}
+              {profile?.full_name?.charAt(0) || user?.user_metadata?.full_name?.charAt(0) || 'U'}
             </Text>
           </View>
           <View className="flex-1">
             <Text className="font-bold text-gray-800 text-lg">
-              {user?.user_metadata?.full_name || 'User'}
+              {profile?.full_name || user?.user_metadata?.full_name || 'User'}
             </Text>
             <Text className="text-gray-500 text-sm">{user?.email}</Text>
             <Text className="text-gray-400 text-xs mt-1">ID: {displayId || 'Loading...'}</Text>
@@ -74,24 +75,29 @@ function SettingsMenu({ userRole }: { userRole: string }) {
           <MenuItem
             icon={<ShieldCheck size={22} color="#8b5cf6" />}
             label="Admin Overview"
-            onPress={() => {}}
+            onPress={() => onNavigate('overview')}
           />
         )}
         <MenuItem
           icon={<UserCircle size={22} color="#f97316" />}
           label="My Profile"
-          onPress={() => {}}
+          onPress={() => onNavigate('profile')}
         />
-        <MenuItem
-          icon={<Settings size={22} color="#6b7280" />}
-          label="Settings"
-          onPress={() => {}}
-        />
-        <MenuItem
-          icon={<HelpCircle size={22} color="#3b82f6" />}
-          label="Help & Support"
-          onPress={() => {}}
-        />
+
+        {userRole !== 'admin' && (
+          <>
+            <MenuItem
+              icon={<Settings size={22} color="#6b7280" />}
+              label="Settings"
+              onPress={() => onNavigate('settings')}
+            />
+            <MenuItem
+              icon={<HelpCircle size={22} color="#3b82f6" />}
+              label="Help & Support"
+              onPress={() => onNavigate('help')}
+            />
+          </>
+        )}
       </ScrollView>
 
       {/* Logout */}
@@ -110,10 +116,16 @@ function SettingsMenu({ userRole }: { userRole: string }) {
 }
 
 export function GlobalSettingsContent({ userRole = 'student' }: { userRole?: 'student' | 'teacher' | 'admin' | 'parent' }) {
-  const [activeScreen, setActiveScreen] = useState<'menu' | 'profile' | 'settings' | 'help'>('menu');
+  const [activeScreen, setActiveScreen] = useState<'menu' | 'profile' | 'settings' | 'help' | 'overview'>('menu');
+
+  const handleNavigate = (screen: 'profile' | 'settings' | 'help' | 'overview') => {
+    setActiveScreen(screen);
+  };
 
   const renderContent = () => {
     switch (activeScreen) {
+      case 'overview':
+        return <AdminOverview />;
       case 'profile':
         if (userRole === 'admin') return <AdminProfile />;
         if (userRole === 'teacher') return <TeacherProfile />;
@@ -124,12 +136,13 @@ export function GlobalSettingsContent({ userRole = 'student' }: { userRole?: 'st
       case 'help':
         return <StudentHelp />;
       default:
-        return <SettingsMenu userRole={userRole} />;
+        return <SettingsMenu userRole={userRole} onNavigate={handleNavigate} />;
     }
   };
 
   const getTitle = () => {
     switch (activeScreen) {
+      case 'overview': return 'Admin Overview';
       case 'profile': return 'My Profile';
       case 'settings': return 'Settings';
       case 'help': return 'Help & Support';
@@ -157,7 +170,7 @@ export function GlobalSettingsContent({ userRole = 'student' }: { userRole?: 'st
   );
 }
 
-// Default export for backward compatibility (won't be used directly in new code)
+// Default export for backward compatibility
 export default function GlobalSettingsDrawer({ userRole = 'student' }: { userRole?: 'student' | 'teacher' | 'admin' | 'parent' }) {
   return <GlobalSettingsContent userRole={userRole} />;
 }

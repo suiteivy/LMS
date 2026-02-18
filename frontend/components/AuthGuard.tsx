@@ -42,5 +42,5 @@ export const AuthGuard: React.FC<AuthGuardProps> = ({
     )
   }
 
-  return <>{children}</>
+  return <View style={{ flex: 1 }}>{children}</View>
 }

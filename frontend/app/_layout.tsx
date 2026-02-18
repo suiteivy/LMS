@@ -33,18 +33,27 @@ function AuthHandler() {
 
   return (
     <>
-      <Stack
-        screenOptions={{
-          headerShown: false,
-        }}
-      >
-        <Stack.Screen name="index" />
-        <Stack.Screen name="(auth)/signIn" />
-        <Stack.Screen name="(admin)" />
-        <Stack.Screen name="(student)" />
-        <Stack.Screen name="(teacher)" />
-        <Stack.Screen name="(parent)" />
-      </Stack>
+      <View className="flex-1" onStartShouldSetResponder={() => {
+        if (session) {
+          // console.log("User interaction detected, resetting timer");
+          resetSessionTimer();
+        }
+        return false; // Let the touch pass through
+      }}>
+        <Stack
+          screenOptions={{
+            headerShown: false,
+          }}
+        >
+          <Stack.Screen name="index" />
+          <Stack.Screen name="(auth)/signIn" />
+          <Stack.Screen name="(admin)" />
+          <Stack.Screen name="(student)" />
+          <Stack.Screen name="(teacher)" />
+          <Stack.Screen name="(parent)" />
+          <Stack.Screen name="(auth)/forgot-password" />
+        </Stack>
+      </View>
       <Toast config={toastConfig} />
 
       {loading && (

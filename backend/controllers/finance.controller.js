@@ -7,7 +7,7 @@ const supabase = require("../utils/supabaseClient");
 exports.createFund = async (req, res) => {
     try {
         const { userRole, institution_id } = req;
-        if (userRole !== "admin") return res.status(403).json({ error: "Admin only" });
+        if (userRole !== "admin" && userRole !== "bursary") return res.status(403).json({ error: "Unauthorized" });
 
         const { name, description, total_amount } = req.body;
         if (!name) return res.status(400).json({ error: "Fund name is required" });
@@ -52,7 +52,7 @@ exports.getFunds = async (req, res) => {
 exports.createAllocation = async (req, res) => {
     try {
         const { userRole, institution_id } = req;
-        if (userRole !== "admin") return res.status(403).json({ error: "Admin only" });
+        if (userRole !== "admin" && userRole !== "bursary") return res.status(403).json({ error: "Unauthorized" });
 
         const { fund_id, title, description, amount, category, status } = req.body;
         if (!fund_id || !title || !amount) {
@@ -123,6 +123,12 @@ exports.getTransactions = async (req, res) => {
     try {
         const { institution_id, userRole, userId } = req;
         const { type, distinct_user_id } = req.query; // optional filters
+        console.log(`[Finance] getTransactions: Role=${userRole}, Type=${type}`);
+
+        if (!institution_id) {
+            console.warn(`[Finance] getTransactions aborted: No institution_id`);
+            return res.json([]);
+        }
 
         let query = supabase
             .from("financial_transactions")
@@ -159,7 +165,8 @@ exports.processTransaction = async (req, res) => {
         const { id } = req.params;
         const { userRole, institution_id } = req;
 
-        if (userRole !== 'admin') return res.status(403).json({ error: "Admin only" });
+        if (userRole !== 'admin' && userRole !== 'bursary') return res.status(403).json({ error: "Unauthorized" });
+        if (!institution_id) return res.status(400).json({ error: "No institution_id found" });
 
         const { data, error } = await supabase
             .from("financial_transactions")
@@ -183,7 +190,8 @@ exports.processTransaction = async (req, res) => {
 exports.createTransaction = async (req, res) => {
     try {
         const { institution_id, userRole } = req;
-        if (userRole !== "admin") return res.status(403).json({ error: "Admin only" });
+        if (userRole !== "admin" && userRole !== "bursary") return res.status(403).json({ error: "Unauthorized" });
+        if (!institution_id) return res.status(400).json({ error: "No institution_id found" });
 
         const { user_id, type, direction, amount, date, method, status, reference_id, meta } = req.body;
 
@@ -220,7 +228,8 @@ exports.recordFeePayment = async (req, res) => {
         const { institution_id, userRole } = req;
         // Admin records payment, OR student initiates generic payment? 
         // Usually admin/bursar records it.
-        if (userRole !== "admin") return res.status(403).json({ error: "Admin only" });
+        if (userRole !== "admin" && userRole !== "bursary") return res.status(403).json({ error: "Unauthorized" });
+        if (!institution_id) return res.status(400).json({ error: "No institution_id found" });
 
         const { student_id, amount, method, reference_number, notes } = req.body;
 
@@ -250,33 +259,24 @@ exports.recordFeePayment = async (req, res) => {
 };
 
 /**
- * Get Fee Structures (Mapped from Subjects)
+ * Get Fee Structures
  */
 exports.getFeeStructures = async (req, res) => {
     try {
         const { institution_id } = req;
-        const { data: subjects, error } = await supabase
-            .from("subjects")
-            .select("id, title, fee_amount, fee_config")
+
+        if (!institution_id) {
+            console.warn(`[Finance] getFeeStructures aborted: No institution_id`);
+            return res.json([]);
+        }
+
+        const { data, error } = await supabase
+            .from("fee_structures")
+            .select("*")
             .eq("institution_id", institution_id);
 
         if (error) throw error;
-
-        // Map to FeeStructure interface
-        const structures = subjects.map(sub => ({
-            id: sub.id, // Use subject ID as structure ID
-            Subject_id: sub.id,
-            Subject_name: sub.title,
-            base_fee: Number(sub.fee_amount || 0),
-            registration_fee: sub.fee_config?.registration_fee || 0,
-            material_fee: sub.fee_config?.material_fee || 0,
-            teacher_rate: sub.fee_config?.teacher_rate || 0,
-            bursary_percentage: sub.fee_config?.bursary_percentage || 0,
-            effective_date: sub.fee_config?.effective_date || new Date().toISOString(),
-            is_active: true // default
-        }));
-
-        res.json(structures);
+        res.json(data);
     } catch (err) {
         console.error("Get fee structures error:", err);
         res.status(500).json({ error: err.message });
@@ -284,31 +284,18 @@ exports.getFeeStructures = async (req, res) => {
 };
 
 /**
- * Update Fee Structure (Updates Subject)
+ * Update Fee Structure
  */
 exports.updateFeeStructure = async (req, res) => {
     try {
         const { userRole, institution_id } = req;
-        if (userRole !== 'admin') return res.status(403).json({ error: "Admin only" });
+        if (userRole !== 'admin' && userRole !== 'bursary') return res.status(403).json({ error: "Unauthorized" });
 
-        const { id, base_fee, registration_fee, material_fee, teacher_rate, bursary_percentage, effective_date } = req.body;
-        // id is structure ID (which is subject ID)
-
-        // Update fee_amount and fee_config
-        const updatePayload = {
-            fee_amount: Number(base_fee),
-            fee_config: {
-                registration_fee,
-                material_fee,
-                teacher_rate,
-                bursary_percentage,
-                effective_date
-            }
-        };
+        const { id, title, description, amount, academic_year, term, is_active } = req.body;
 
         const { data, error } = await supabase
-            .from("subjects")
-            .update(updatePayload)
+            .from("fee_structures")
+            .update({ title, description, amount, academic_year, term, is_active })
             .eq("id", id)
             .eq("institution_id", institution_id)
             .select()
@@ -318,6 +305,29 @@ exports.updateFeeStructure = async (req, res) => {
         res.json(data);
     } catch (err) {
         console.error("Update fee structure error:", err);
+        res.status(500).json({ error: err.message });
+    }
+};
+
+/**
+ * Create Fee Structure
+ */
+exports.createFeeStructure = async (req, res) => {
+    try {
+        const { userRole, institution_id } = req;
+        if (userRole !== 'admin' && userRole !== 'bursary') return res.status(403).json({ error: "Unauthorized" });
+
+        const { title, description, amount, academic_year, term } = req.body;
+
+        const { data, error } = await supabase
+            .from("fee_structures")
+            .insert([{ institution_id, title, description, amount, academic_year, term, is_active: true }])
+            .select()
+            .single();
+
+        if (error) throw error;
+        res.status(201).json(data);
+    } catch (err) {
         res.status(500).json({ error: err.message });
     }
 };

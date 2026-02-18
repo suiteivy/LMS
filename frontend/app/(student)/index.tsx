@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { View, Text, ScrollView, TouchableOpacity, StatusBar } from 'react-native';
-import { Calendar, Clock, ArrowRight, BookOpen, Star, GraduationCap, Book, Bell } from 'lucide-react-native';
+import { Calendar, Clock, ArrowRight, BookOpen, Star, GraduationCap, Book, Bell, MessageSquare, Wallet } from 'lucide-react-native';
 import Notifications from '../../components/Notifications';
 import { router, useRouter } from "expo-router";
 import { useAuth } from "@/contexts/AuthContext";
@@ -153,25 +153,37 @@ export default function Index() {
                   icon={GraduationCap}
                   label="Library"
                   color="#0d9488"
-                  onPress={() => router.push("/(student)/library")}
+                  onPress={() => router.push("/(student)/library" as any)}
                 />
                 <QuickAction
                   icon={Book}
                   label="Courses"
                   color="#8b5cf6"
-                  onPress={() => router.push("/(student)/subjects")}
+                  onPress={() => router.push("/(student)/subjects" as any)}
                 />
                 <QuickAction
                   icon={ArrowRight}
                   label="Assignments"
                   color="#f43f5e"
-                  onPress={() => router.push("/(student)/assignments")}
+                  onPress={() => router.push("/(student)/assignments" as any)}
                 />
                 <QuickAction
                   icon={Star}
                   label="Grades"
                   color="#eab308"
-                  onPress={() => router.push("/(student)/grades")}
+                  onPress={() => router.push("/(student)/grades" as any)}
+                />
+                <QuickAction
+                  icon={Wallet}
+                  label="Finance"
+                  color="#FF6B00"
+                  onPress={() => router.push("/(student)/finance" as any)}
+                />
+                <QuickAction
+                  icon={MessageSquare}
+                  label="Messages"
+                  color="#0891b2"
+                  onPress={() => router.push("/(student)/messages" as any)}
                 />
               </View>
             </View>

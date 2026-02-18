@@ -124,6 +124,7 @@ export default function AdminLayout() {
                     <Tabs.Screen name="subjects/create" options={{ href: null }} />
                     <Tabs.Screen name="timetable/index" options={{ href: null }} />
                     <Tabs.Screen name="finance/funds/index" options={{ href: null }} />
+                    <Tabs.Screen name="management/roles/index" options={{ href: null }} />
 
                     {/* Additional unwanted routes from user feedback */}
                     <Tabs.Screen name="settings/index" options={{ href: null }} />

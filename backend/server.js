@@ -41,6 +41,15 @@ app.use((req, res, next) => {
   next();
 });
 
+// Request Logging Middleware
+app.use((req, res, next) => {
+  console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
+  if (req.body && Object.keys(req.body).length > 0) {
+    console.log("Body:", JSON.stringify(req.body, null, 2));
+  }
+  next();
+});
+
 // Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/subjects", subjectRoutes); // Updated endpoint
@@ -52,6 +61,10 @@ app.use("/api/notifications", notificationRoutes);
 app.use("/api/timetable", require("./routes/timetable.route"));
 app.use("/api/funds", require("./routes/finance_funds.route"));
 app.use("/api/attendance", require("./routes/attendance.route"));
+app.use("/api/academic", require("./routes/academic.route.js"));
+app.use("/api/exams", require("./routes/exams.route.js"));
+app.use("/api/parent", require("./routes/parent.route.js"));
+app.use("/api/messages", require("./routes/messaging.route.js"));
 
 // health check
 app.get("/", (req, res) => {
@@ -60,8 +73,10 @@ app.get("/", (req, res) => {
 
 // error handling
 app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(500).json({ error: "Internal Server Error" });
+  console.error(`[Error] ${req.method} ${req.url}`);
+  console.error("Error Details:", err.message);
+  console.error("Stack:", err.stack);
+  res.status(500).json({ error: "Internal Server Error", message: err.message });
 });
 
 process.on('uncaughtException', (err) => {
@@ -74,6 +89,20 @@ process.on('unhandledRejection', (reason, p) => {
 
 // Start server
 const PORT = process.env.PORT || 4001;
-app.listen(PORT, () =>
+const server = app.listen(PORT, () =>
   console.log(`LMS Backend running on http://localhost:${PORT}`)
 );
+
+// DEBUG: Keep process alive and log exit
+setInterval(() => { }, 10000); // 10s keep-alive
+
+process.on('exit', (code) => {
+  console.log(`[DEBUG] Process exiting with code: ${code}`);
+});
+
+process.on('SIGTERM', () => {
+  console.log('[DEBUG] SIGTERM received');
+  server.close(() => {
+    console.log('[DEBUG] Server closed');
+  });
+});

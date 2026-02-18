@@ -60,6 +60,9 @@ exports.login = async (req, res) => {
     } else if (userData.role === 'parent') {
       const { data } = await supabase.from('parents').select('id').eq('user_id', user.id).single();
       customId = data?.id;
+    } else if (userData.role === 'bursary') {
+      const { data } = await supabase.from('bursars').select('id').eq('user_id', user.id).single();
+      customId = data?.id;
     }
 
     res.status(200).json({
@@ -120,7 +123,7 @@ exports.enrollUser = async (req, res) => {
     });
   }
 
-  if (!['admin', 'student', 'teacher', 'parent'].includes(role)) {
+  if (!['admin', 'student', 'teacher', 'parent', 'bursary'].includes(role)) {
     return res.status(400).json({ error: "Invalid role" });
   }
 
@@ -295,6 +298,12 @@ exports.enrollUser = async (req, res) => {
       customId = adminData?.id;
     }
 
+    if (role === 'bursary') {
+      const { data: bursarData } = await supabase
+        .from('bursars').select('id').eq('user_id', uid).single();
+      customId = bursarData?.id;
+    }
+
     res.status(201).json({
       message: "User enrolled successfully",
       uid,
@@ -343,6 +352,7 @@ exports.adminUpdateUser = async (req, res) => {
     parent_address,
     avatar_url,
     linked_students, // For parents: Array of custom student IDs
+    linked_parents,  // For students: Array of custom parent IDs [NEW]
     class_id,        // For students: UUID of class
     subject_ids,     // For students/teachers: Array of UUIDs
   } = req.body;
@@ -410,6 +420,26 @@ exports.adminUpdateUser = async (req, res) => {
             } else {
               await supabase.from('enrollments').insert({ student_id: customStudentId, class_id });
             }
+          }
+        }
+      }
+
+      // Link Parents (New Feature)
+      if (linked_parents !== undefined) {
+        const { data: studentData } = await supabase.from('students').select('id').eq('user_id', id).single();
+        const customStudentId = studentData?.id;
+
+        if (customStudentId) {
+          // Delete existing links for this student? 
+          // Be careful not to delete links to other students for the same parent. 
+          // `parent_students` is (parent_id, student_id).
+          // We want to set the parents for THIS student.
+          // So we delete where student_id = customStudentId.
+          await supabase.from('parent_students').delete().eq('student_id', customStudentId);
+
+          if (linked_parents && linked_parents.length > 0) {
+            const inserts = linked_parents.map(pid => ({ parent_id: pid, student_id: customStudentId, relationship: 'guardian' }));
+            await supabase.from('parent_students').insert(inserts);
           }
         }
       }
@@ -509,5 +539,33 @@ exports.deleteUser = async (req, res) => {
   } catch (err) {
     console.error('deleteUser error:', err);
     res.status(500).json({ error: "Server error during deletion" });
+  }
+};
+
+/**
+ * Search users by name or role
+ */
+exports.searchUsers = async (req, res) => {
+  try {
+    const { q, role } = req.query;
+    let query = supabase
+      .from("users")
+      .select("id, full_name, email, role, avatar_url");
+
+    if (q) {
+      query = query.ilike("full_name", `%${q}%`);
+    }
+
+    if (role) {
+      query = query.eq("role", role);
+    }
+
+    const { data, error } = await query.limit(10);
+
+    if (error) throw error;
+    res.json(data);
+  } catch (err) {
+    console.error("searchUsers error:", err);
+    res.status(500).json({ error: "Server error" });
   }
 };

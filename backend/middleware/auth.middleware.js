@@ -48,6 +48,10 @@ async function authMiddleware(req, res, next) {
     req.userId = profile.id || user.id;
     req.userRole = profile.role;
 
+    if (!req.institution_id) {
+      console.warn(`[AuthMiddleware] User ${req.userId} (Role: ${req.userRole}) has NO institution_id. Some features may fail.`);
+    }
+
     next();
   } catch (err) {
     console.error("authMiddleware unexpected error:", err);

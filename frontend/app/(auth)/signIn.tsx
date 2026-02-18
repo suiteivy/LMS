@@ -196,41 +196,7 @@ export default function Index() {
     }
   };
 
-  const handleForgotPassword = async () => {
-    if (!formData.email) {
-      Alert.alert(
-        "Required",
-        "Please enter your email address to reset your password.",
-      );
-      return;
-    }
 
-    if (!validateEmail(formData.email)) {
-      Alert.alert("Invalid Email", "Please enter a valid email address.");
-      return;
-    }
-
-    setIsLoading(true);
-    try {
-      const { error } = await supabase.auth.resetPasswordForEmail(
-        formData.email,
-        {
-          redirectTo: "https://example.com/update-password", // Update with actual deep link if needed
-        },
-      );
-
-      if (error) throw error;
-
-      Alert.alert(
-        "Success",
-        "Password reset instructions have been sent to your email.",
-      );
-    } catch (error: any) {
-      Alert.alert("Error", error.message);
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   return (
     <SafeAreaProvider>
@@ -353,7 +319,7 @@ export default function Index() {
               </View>
 
               <TouchableOpacity
-                onPress={handleForgotPassword}
+                onPress={() => router.push("/forgot-password" as any)}
                 className="mt-4 self-end"
               >
                 <Text className="text-orange-500 font-bold text-sm">

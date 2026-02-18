@@ -10,8 +10,6 @@ async function hasPaidAtLeastHalf(studentId, subjectId) {
 
   if (subjectError) throw subjectError;
 
-  if (subjectError) throw subjectError;
-
   // Get student's user_id from students table
   const { data: student, error: stuError } = await supabase
     .from('students')

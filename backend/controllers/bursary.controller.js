@@ -4,6 +4,13 @@ const supabase = require("../utils/supabaseClient");
 exports.listBursaries = async (req, res) => {
   try {
     const { institution_id } = req;
+    console.log(`[Bursary] listBursaries for institution: ${institution_id}`);
+
+    if (!institution_id) {
+      console.warn(`[Bursary] listBursaries aborted: No institution_id`);
+      return res.json([]);
+    }
+
     const { data, error } = await supabase
       .from("bursaries")
       .select(`
@@ -32,8 +39,8 @@ exports.createBursary = async (req, res) => {
     const { title, description, amount, deadline } = req.body;
     const { institution_id } = req;
 
-    if (req.userRole !== "admin") {
-      return res.status(403).json({ error: "Admin only" });
+    if (req.userRole !== "admin" && req.userRole !== "bursary") {
+      return res.status(403).json({ error: "Unauthorized" });
     }
 
     const { data, error } = await supabase
@@ -117,8 +124,8 @@ exports.updateApplicationStatus = async (req, res) => {
     const { status } = req.body; // approved, rejected
     const { institution_id } = req;
 
-    if (req.userRole !== "admin") {
-      return res.status(403).json({ error: "Admin only" });
+    if (req.userRole !== "admin" && req.userRole !== "bursary") {
+      return res.status(403).json({ error: "Unauthorized" });
     }
 
     const { data, error } = await supabase

@@ -94,7 +94,7 @@ export default function AdminManagement() {
             description: "Configure system access levels",
             color: "#ec4899",
             bgColor: "#fce7f3",
-            route: "#" // Future feature
+            route: "/(admin)/management/roles" as any
         },
         {
             icon: FileText,
@@ -110,7 +110,7 @@ export default function AdminManagement() {
             description: "View and manage staff attendance",
             color: "#10b981",
             bgColor: "#d1fae5",
-            route: "/(admin)/attendance/teachers/index" as any
+            route: "/(admin)/attendance/teachers" as any
         }
     ];
 

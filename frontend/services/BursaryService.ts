@@ -2,38 +2,28 @@ import { api } from "./api";
 import { supabase } from "@/libs/supabase";
 
 export class BursaryService {
-    static async getAuthHeaders() {
-        const { data: { session } } = await supabase.auth.getSession();
-        return { Authorization: `Bearer ${session?.access_token}` };
-    }
-
     static async getBursaries() {
-        const headers = await this.getAuthHeaders();
-        const response = await api.get('/bursary', { headers });
+        const response = await api.get('/bursary');
         return response.data;
     }
 
     static async createBursary(bursaryData: any) {
-        const headers = await BursaryService.getAuthHeaders();
-        const response = await api.post('/bursary', bursaryData, { headers });
+        const response = await api.post('/bursary', bursaryData);
         return response.data;
     }
 
     static async getBursaryDetails(id: string) {
-        const headers = await BursaryService.getAuthHeaders();
-        const response = await api.get(`/bursary/${id}`, { headers });
+        const response = await api.get(`/bursary/${id}`);
         return response.data;
     }
 
     static async applyForBursary(bursaryId: string) {
-        const headers = await BursaryService.getAuthHeaders();
-        const response = await api.post('/bursary/apply', { bursary_id: bursaryId }, { headers });
+        const response = await api.post('/bursary/apply', { bursary_id: bursaryId });
         return response.data;
     }
 
     static async updateApplicationStatus(applicationId: string, status: 'approved' | 'rejected') {
-        const headers = await BursaryService.getAuthHeaders();
-        const response = await api.put(`/bursary/applications/${applicationId}`, { status }, { headers });
+        const response = await api.put(`/bursary/applications/${applicationId}`, { status });
         return response.data;
     }
 }

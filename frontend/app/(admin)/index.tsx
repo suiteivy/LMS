@@ -17,6 +17,7 @@ import {
   LogOut
 } from 'lucide-react-native';
 import { useDashboardStats } from "@/hooks/useDashboardStats";
+import { useAuth } from "@/contexts/AuthContext";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { User } from "@/types/types";
 
@@ -107,6 +108,7 @@ const DebugSessionInfo = ({ onClose }: { onClose: () => void }) => {
 
 export default function AdminDashboard() {
   const insets = useSafeAreaInsets();
+  const { profile } = useAuth();
   const { stats, loading: statsLoading } = useDashboardStats();
   const [recentUsers, setRecentUsers] = useState<User[]>([]);
   const [loadingUsers, setLoadingUsers] = useState(false);
@@ -189,20 +191,9 @@ export default function AdminDashboard() {
           <View className="flex-row justify-between items-start mb-8">
             <View>
               <Text className="text-gray-500 text-base font-medium mb-1">Welcome back,</Text>
-              <Text className="text-3xl font-bold text-gray-900 tracking-tight">Administrator 👋</Text>
-
-              <TouchableOpacity
-                onLongPress={() => setShowDebug(true)}
-                delayLongPress={2000}
-                className="flex-row items-center mt-2 group"
-              >
-                <View className="h-1.5 w-1.5 rounded-full bg-blue-500 mr-2" />
-                <Text className="text-sm text-gray-500 font-medium">School Management System</Text>
-                <View className="ml-1 px-1.5 py-0.5 bg-gray-100 rounded text-[10px] text-gray-400 opacity-0 group-active:opacity-100">
-                  <Text className="text-[10px] text-gray-400">v1.0</Text>
-                </View>
-              </TouchableOpacity>
-              <Text className="text-[10px] text-gray-300 ml-3.5 mt-0.5">Long press for diagnostics</Text>
+              <Text className="text-3xl font-bold text-gray-900 tracking-tight">
+                {profile?.full_name?.split(" ")[0] || "Administrator"} 👋
+              </Text>
             </View>
 
             <TouchableOpacity
@@ -213,44 +204,55 @@ export default function AdminDashboard() {
             </TouchableOpacity>
           </View>
 
-          {/* --- 2. Quick Status Cards --- */}
-          <View className="flex-row gap-4 mb-8">
-            {statsLoading ? (
-              <>
-                <View className="flex-1 bg-gray-200 h-32 rounded-3xl animate-pulse" />
-                <View className="flex-1 bg-gray-200 h-32 rounded-3xl animate-pulse" />
-              </>
-            ) : (
-              <>
-                <View className="flex-1 bg-gray-900 p-6 rounded-3xl shadow-lg shadow-gray-200">
-                  <View className="bg-white/10 w-10 h-10 rounded-2xl items-center justify-center mb-4">
-                    <IconUsers size={20} color="white" />
-                  </View>
-                  <Text className="text-white text-3xl font-black mb-1">
-                    {stats.find(s => s.label === "Total Students")?.value || "0"}
-                  </Text>
-                  <Text className="text-gray-400 text-xs font-bold uppercase tracking-wider">Total Students</Text>
-                </View>
+          <TouchableOpacity
+            onLongPress={() => setShowDebug(true)}
+            delayLongPress={2000}
+            className="flex-row items-center mt-2 group mb-6"
+          >
+            <View className="h-1.5 w-1.5 rounded-full bg-blue-500 mr-2" />
+            <Text className="text-sm text-gray-500 font-medium">School Management System</Text>
+            <View className="ml-1 px-1.5 py-0.5 bg-gray-100 rounded text-[10px] text-gray-400 opacity-0 group-active:opacity-100">
+              <Text className="text-[10px] text-gray-400">v1.0</Text>
+            </View>
+          </TouchableOpacity>
 
-                <View className="flex-1 bg-white p-6 rounded-3xl border border-gray-100 shadow-sm">
-                  <View className="bg-teal-50 w-10 h-10 rounded-2xl items-center justify-center mb-4">
-                    <IconWallet size={20} color="#0D9488" />
-                  </View>
-                  <View>
-                    <Text className="text-gray-900 text-3xl font-black mb-1">
-                      {stats.find(s => s.label === "Revenue")?.value || "KES 0"}
-                    </Text>
-                    {stats.find(s => s.label === "Revenue")?.subValue && (
-                      <Text className="text-gray-400 text-xs font-medium mb-1">
-                        {stats.find(s => s.label === "Revenue")?.subValue}
-                      </Text>
-                    )}
-                  </View>
-                  <Text className="text-gray-400 text-xs font-bold uppercase tracking-wider">Total Revenue</Text>
+
+          {/* --- 2. Quick Status Cards --- */}
+          {statsLoading ? (
+            <View className="flex-row mb-8">
+              <View className="flex-1 bg-gray-200 h-32 rounded-3xl animate-pulse mr-2" />
+              <View className="flex-1 bg-gray-200 h-32 rounded-3xl animate-pulse ml-2" />
+            </View>
+          ) : (
+            <View className="flex-row mb-8">
+              <View className="flex-1 bg-gray-900 p-6 rounded-3xl shadow-lg shadow-gray-200 mr-2">
+                <View className="bg-white/10 w-10 h-10 rounded-2xl items-center justify-center mb-4">
+                  <IconUsers size={20} color="white" />
                 </View>
-              </>
-            )}
-          </View>
+                <Text className="text-white text-3xl font-black mb-1">
+                  {stats.find(s => s.label === "Total Students")?.value || "0"}
+                </Text>
+                <Text className="text-gray-400 text-xs font-bold uppercase tracking-wider">Total Students</Text>
+              </View>
+
+              <View className="flex-1 bg-white p-6 rounded-3xl border border-gray-100 shadow-sm ml-2">
+                <View className="bg-teal-50 w-10 h-10 rounded-2xl items-center justify-center mb-4">
+                  <IconWallet size={20} color="#0D9488" />
+                </View>
+                <View>
+                  <Text className="text-gray-900 text-3xl font-black mb-1">
+                    {stats.find(s => s.label === "Revenue")?.value || "KES 0"}
+                  </Text>
+                  {stats.find(s => s.label === "Revenue")?.subValue && (
+                    <Text className="text-gray-400 text-xs font-medium mb-1">
+                      {stats.find(s => s.label === "Revenue")?.subValue}
+                    </Text>
+                  )}
+                </View>
+                <Text className="text-gray-400 text-xs font-bold uppercase tracking-wider">Total Revenue</Text>
+              </View>
+            </View>
+          )}
 
           {/* --- 3. Quick Actions Grid --- */}
           <View className="mb-10">

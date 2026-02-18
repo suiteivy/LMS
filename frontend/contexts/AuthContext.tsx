@@ -15,6 +15,7 @@ interface AuthContextType {
   teacherId: string | null
   adminId: string | null
   parentId: string | null
+  bursarId: string | null
   displayId: string | null
   loading: boolean
   signIn: (email: string, password: string) => Promise<{ data: any; error: any }>
@@ -49,6 +50,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [teacherId, setTeacherId] = useState<string | null>(null)
   const [adminId, setAdminId] = useState<string | null>(null)
   const [parentId, setParentId] = useState<string | null>(null)
+  const [bursarId, setBursarId] = useState<string | null>(null)
   const [displayId, setDisplayId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
 
@@ -108,7 +110,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       // Get Base Profile and Role-Specific IDs in a single query
       const { data, error } = await supabase
         .from('users')
-        .select('*, students(id), teachers(id), admins(id), parents(id)')
+        .select('*, students(id), teachers(id), admins(id), parents(id), bursars(id)')
         .eq('id', userId)
         .single()
 
@@ -144,6 +146,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       } else if (userData.role === 'parent') {
         const id = getRoleId(userData.parents);
         setParentId(id);
+        setDisplayId(id);
+      } else if (userData.role === 'bursary') {
+        const id = getRoleId(userData.bursars);
+        setBursarId(id);
         setDisplayId(id);
       }
 
@@ -219,6 +225,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             });
           } else {
             console.log('User signed out manually')
+            Toast.show({
+              type: 'success',
+              text1: 'Logged Out',
+              text2: 'You have been logged out successfully.',
+              position: 'bottom',
+              visibilityTime: 2000,
+            });
           }
 
           // Reset just in case, though timeout in handleLogout also handles it
@@ -319,6 +332,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     teacherId,
     adminId,
     parentId,
+    bursarId,
     displayId,
     loading,
     signIn: authService.signIn,

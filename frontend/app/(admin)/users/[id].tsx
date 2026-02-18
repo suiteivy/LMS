@@ -55,10 +55,12 @@ export default function UserDetailsScreen() {
     const [classId, setClassId] = useState<string | null>(null);
     const [subjectIds, setSubjectIds] = useState<string[]>([]);
     const [linkedStudents, setLinkedStudents] = useState<string[]>([]); // Array of STU- IDs
+    const [linkedParents, setLinkedParents] = useState<string[]>([]); // Array of PAR- IDs
 
     // Lookup data
     const [classes, setClasses] = useState<any[]>([]);
     const [students, setStudents] = useState<any[]>([]); // For parent linking
+    const [allParents, setAllParents] = useState<any[]>([]); // For student linking
     const [allSubjects, setAllSubjects] = useState<any[]>([]); // For teacher/student
 
     useEffect(() => {
@@ -69,14 +71,16 @@ export default function UserDetailsScreen() {
     }, [id]);
 
     const loadLookupData = async () => {
-        const [classRes, subjectRes, studentRes] = await Promise.all([
+        const [classRes, subjectRes, studentRes, parentRes] = await Promise.all([
             supabase.from('classes').select('id, name').order('name'),
             supabase.from('subjects').select('id, title').order('title'),
             supabase.from('students').select('id, user_id, users:user_id(full_name)').order('id'),
+            supabase.from('parents').select('id, user_id, users:user_id(full_name)').order('id'),
         ]);
         if (classRes.data) setClasses(classRes.data);
         if (subjectRes.data) setAllSubjects(subjectRes.data);
         if (studentRes.data) setStudents(studentRes.data);
+        if (parentRes.data) setAllParents(parentRes.data);
     };
 
     const fetchUserDetails = async () => {
@@ -91,7 +95,7 @@ export default function UserDetailsScreen() {
 
             let roleQuery = null;
             const role = typedUser?.role;
-            if (role === 'student') roleQuery = supabase.from('students').select('*, enrollments(class_id)').eq('user_id', id as string).single();
+            if (role === 'student') roleQuery = supabase.from('students').select('*, enrollments(class_id), parent_students(parent_id)').eq('user_id', id as string).single();
             else if (role === 'teacher') roleQuery = supabase.from('teachers').select('*').eq('user_id', id as string).single();
             else if (role === 'admin') roleQuery = supabase.from('admins').select('*').eq('user_id', id as string).single();
             else if (role === 'parent') roleQuery = supabase.from('parents').select('*, parent_students(student_id)').eq('user_id', id as string).single();
@@ -148,6 +152,7 @@ export default function UserDetailsScreen() {
 
         if (role === 'student') {
             setClassId(rd.enrollments?.[0]?.class_id || null);
+            setLinkedParents(rd.parent_students?.map((ps: any) => ps.parent_id) || []);
         }
     };
 
@@ -225,6 +230,7 @@ export default function UserDetailsScreen() {
 
             if (user?.role === 'student') {
                 body.class_id = classId;
+                body.linked_parents = linkedParents;
             } else if (user?.role === 'teacher') {
                 body.subject_ids = subjectIds;
             }
@@ -424,6 +430,34 @@ export default function UserDetailsScreen() {
                                 ))}
                                 {isEditing && classes.length === 0 && <Text className="text-gray-400 italic text-xs">No classes available</Text>}
                                 {!isEditing && !classId && <Text className="text-gray-400 italic text-xs">Not enrolled in any class</Text>}
+                            </View>
+                        </View>
+
+                        {/* Linked Parents */}
+                        <View className="mt-4 pt-4 border-t border-gray-100">
+                            <Text className="text-gray-500 font-medium text-sm mb-3">Linked Parents</Text>
+                            <View className="flex-row flex-wrap gap-2">
+                                {allParents.map(p => {
+                                    const isSelected = linkedParents.includes(p.id);
+                                    return (
+                                        <TouchableOpacity
+                                            key={p.id}
+                                            onPress={() => {
+                                                if (!isEditing) return;
+                                                setLinkedParents(isSelected ? linkedParents.filter(id => id !== p.id) : [...linkedParents, p.id]);
+                                            }}
+                                            disabled={!isEditing}
+                                            className={`px-3 py-2 rounded-lg border ${isSelected ? 'bg-green-50 border-green-200' : 'bg-gray-50 border-gray-100'} ${!isEditing && !isSelected ? 'hidden' : ''}`}
+                                        >
+                                            <Text className={`text-xs font-semibold ${isSelected ? 'text-green-700' : 'text-gray-600'}`}>
+                                                {p.users?.full_name || p.id}
+                                            </Text>
+                                            {isSelected && isEditing && <Text className="text-[8px] text-green-600">{p.id}</Text>}
+                                        </TouchableOpacity>
+                                    );
+                                })}
+                                {isEditing && allParents.length === 0 && <Text className="text-gray-400 italic text-xs">No parents available</Text>}
+                                {!isEditing && linkedParents.length === 0 && <Text className="text-gray-400 italic text-xs">No parents linked</Text>}
                             </View>
                         </View>
                     </View>

@@ -110,6 +110,7 @@ exports.addOrUpdateBook = async (req, res) => {
       cover_url,
       location
     } = req.body;
+    console.log(`[Library] addOrUpdateBook: ${title}, ID: ${req.body.id || req.params.bookId}`);
     const id = req.body.id || req.params.bookId;
     const institution_id = req.institution_id;
 
@@ -198,6 +199,12 @@ exports.listBooks = async (req, res) => {
   try {
     const { institution_id } = req;
     const includeUnavailable = (req.query.includeUnavailable || "").toString().toLowerCase() === "true";
+    console.log(`[Library] listBooks for institution: ${institution_id}`);
+
+    if (!institution_id) {
+      console.warn(`[Library] listBooks aborted: No institution_id`);
+      return res.json([]);
+    }
 
     let query = supabase
       .from("library_items")
@@ -357,6 +364,7 @@ exports.history = async (req, res) => {
 /** Admin view: all loans */
 exports.getAllBorrowedBooks = async (req, res) => {
   try {
+    console.log(`[Library] getAllBorrowedBooks triggered`);
     const { data, error } = await supabase
       .from("library_loans")
       .select("*, library_items(title, author), users(full_name, email)")

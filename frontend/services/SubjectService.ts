@@ -27,6 +27,17 @@ export const SubjectAPI = {
         }
     },
 
+    // Get subjects filtered by current user (teacher)
+    getFilteredSubjects: async (): Promise<SubjectData[]> => {
+        try {
+            const response = await api.get("/subjects/mine"); // Assuming /subjects/mine or filtered by teacher
+            return response.data;
+        } catch (error) {
+            console.error("Get filtered subjects error", error);
+            throw error;
+        }
+    },
+
     // Get subjects by class
     getSubjectsByClass: async (classId: string): Promise<SubjectData[]> => {
         try {

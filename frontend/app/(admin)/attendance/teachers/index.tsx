@@ -63,8 +63,8 @@ export default function TeacherAttendancePage() {
                     <TouchableOpacity onPress={() => router.back()} className="mr-4 bg-gray-50 p-2 rounded-full">
                         <ChevronLeft size={24} color="#374151" />
                     </TouchableOpacity>
-                    <View>
-                        <Text className="text-2xl font-bold text-gray-900">Teacher Attendance</Text>
+                    <View className="flex-1">
+                        <Text className="text-2xl font-bold text-gray-900" numberOfLines={1} adjustsFontSizeToFit>Teacher Attendance</Text>
                         <Text className="text-sm text-gray-500">Monitor teacher check-ins</Text>
                     </View>
                 </View>
@@ -92,8 +92,8 @@ export default function TeacherAttendancePage() {
                 <ScrollView className="p-6">
                     {attendance.map(item => (
                         <View key={item.teacher_id} className="bg-white p-4 rounded-xl border border-gray-100 mb-3 flex-row justify-between items-center shadow-sm">
-                            <View className="flex-row items-center flex-1">
-                                <View className="w-10 h-10 rounded-full bg-gray-200 mr-3 overflow-hidden">
+                            <View className="flex-row items-center flex-1 mr-2">
+                                <View className="w-10 h-10 rounded-full bg-gray-200 mr-3 overflow-hidden flex-shrink-0">
                                     {/* Avatar or Initials */}
                                     {item.teachers?.users?.avatar_url ? (
                                         <Image source={{ uri: item.teachers.users.avatar_url }} className="w-full h-full" />
@@ -103,19 +103,21 @@ export default function TeacherAttendancePage() {
                                         </View>
                                     )}
                                 </View>
-                                <View>
-                                    <Text className="text-base font-bold text-gray-800">{item.teachers?.users?.full_name || "Unknown Teacher"}</Text>
+                                <View className="flex-1">
+                                    <Text className="text-base font-bold text-gray-800" numberOfLines={1} ellipsizeMode="tail">
+                                        {item.teachers?.users?.full_name || "Unknown Teacher"}
+                                    </Text>
                                     <View className="flex-row items-center mt-1">
                                         <View className={`w-2 h-2 rounded-full mr-2 ${item.status === 'present' ? 'bg-green-500' :
-                                                item.status === 'absent' ? 'bg-red-500' :
-                                                    item.status === 'late' ? 'bg-yellow-500' : 'bg-gray-300'
+                                            item.status === 'absent' ? 'bg-red-500' :
+                                                item.status === 'late' ? 'bg-yellow-500' : 'bg-gray-300'
                                             }`} />
                                         <Text className="text-xs text-gray-500 capitalize">{item.status}</Text>
                                     </View>
                                 </View>
                             </View>
 
-                            <View className="flex-row space-x-2">
+                            <View className="flex-row space-x-2 flex-shrink-0">
                                 <TouchableOpacity
                                     onPress={() => handleMark(item.teacher_id, 'present')}
                                     className={`p-2 rounded-lg border ${item.status === 'present' ? 'bg-green-100 border-green-500' : 'border-gray-200'}`}

@@ -29,7 +29,28 @@ export default function SubjectsIndex() {
                 .order('title');
 
             if (error) throw error;
-            setSubjects((data as unknown as Subject[]) || []);
+            if (error) throw error;
+
+            // Map raw data to Subject interface to ensure no undefined crashes
+            const safeSubjects = (data || []).map((item: any) => ({
+                ...item,
+                instructor: item.instructor || { name: 'Unknown Instructor' },
+                lessons: item.lessons || [],
+                tags: item.tags || [],
+                isEnrolled: item.isEnrolled || false,
+                rating: item.rating || 0,
+                reviewsCount: item.reviewsCount || 0,
+                studentsCount: item.studentsCount || 0,
+                price: item.price || 0,
+                level: item.level || 'beginner',
+                image: item.image || 'https://via.placeholder.com/300',
+                description: item.description || '',
+                shortDescription: item.shortDescription || '',
+                category: item.category || 'General',
+                duration: item.duration || '0 weeks'
+            })) as Subject[];
+
+            setSubjects(safeSubjects);
         } catch (error) {
             console.error('Error fetching subjects:', error);
         } finally {

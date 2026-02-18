@@ -61,13 +61,17 @@ export class FinanceService {
     }
 
     static async getFeeStructures(): Promise<FeeStructure[]> {
-        // Now fetched from subjects
         const response = await api.get('/finance/fee-structures');
         return response.data;
     }
 
-    static async updateFeeStructure(feeData: any) {
+    static async createFeeStructure(feeData: any) {
         const response = await api.post('/finance/fee-structures', feeData);
+        return response.data;
+    }
+
+    static async updateFeeStructure(id: string, feeData: any) {
+        const response = await api.put(`/finance/fee-structures/${id}`, feeData);
         return response.data;
     }
 }
