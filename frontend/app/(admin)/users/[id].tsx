@@ -537,11 +537,59 @@ export default function UserDetailsScreen() {
                     </View>
                 )}
 
+                {/* Permissions Info */}
+                <View className="mx-6 mt-4 bg-white rounded-2xl border border-gray-100 p-4">
+                    <Text className="text-sm font-bold text-gray-400 uppercase tracking-wide mb-2">Role Permissions</Text>
+                    <View className="gap-2">
+                        {getPermissionsForRole(user.role).map((perm, index) => (
+                            <View key={index} className="flex-row items-center">
+                                <Ionicons name="checkmark-circle" size={16} color="#10B981" />
+                                <Text className="ml-2 text-gray-700 text-sm">{perm}</Text>
+                            </View>
+                        ))}
+                    </View>
+                </View>
+
                 {/* Spacer */}
                 <View className="h-8" />
             </ScrollView>
         </View>
     );
+}
+
+const getPermissionsForRole = (role: string) => {
+    switch (role) {
+        case 'admin':
+            return [
+                'Full System Access',
+                'Manage Users & Roles',
+                'Configure Settings',
+                'View All Data'
+            ];
+        case 'teacher':
+            return [
+                'Manage Assigned Subjects',
+                'Record Attendance',
+                'Grade Assessments',
+                'View Assigned Classes'
+            ];
+        case 'student':
+            return [
+                'Enroll in Subjects',
+                'View Personal Grades',
+                'Access Library Resources',
+                'View Timetable'
+            ];
+        case 'parent':
+            return [
+                'View Linked Children',
+                'Monitor Attendance',
+                'View Fee Statements',
+                'Communicate with Teachers'
+            ];
+        default:
+            return ['Basic Access'];
+    }
 }
 
 const paramsToColor = (role: string) => {
