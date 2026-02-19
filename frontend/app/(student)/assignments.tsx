@@ -18,16 +18,17 @@ const IconX = X as any;
 interface Assignments {
   id: string
   title: string
-  course: { title: string }
+  subject: { title: string }
   due_date: string
   total_points: number
   status: "pending" | "completed" | "overdue"
   submissions?: { status: string } | null
-  resource_path?: string | ''
+  attachment_url?: string | null
+  attachment_name?: string | null
 }
 
 export default function StudentsAssignments() {
-  const { user } = useAuth()
+  const { user, studentId } = useAuth()
   const [loading, setLoading] = useState(false)
   const [filter, setFilter] = useState<"pending" | "completed" | "overdue">('pending')
   const [assignments, setAssignments] = useState<Assignments[]>([])
@@ -35,84 +36,101 @@ export default function StudentsAssignments() {
   const [modalVisible, setModalVisible] = useState(false)
   const [isUploading, setIsUploading] = useState(false)
 
-
-
-  const displayList = assignments?.filter(a => {
-    if (filter === 'pending') return a.status === 'pending';
-    if (filter === 'completed') return a.status === 'completed';
-    if (filter === 'overdue') return a.status === 'overdue';
-    return false;
-  }) ?? [];
-
   const fetchStudentsAssignments = async () => {
-    if (!user?.id) return
+    if (!studentId) return
     setLoading(true)
 
     try {
+      // 1. Get subjects the student is enrolled in
+      const { data: enrollmentData, error: enrollError } = await supabase
+        .from('enrollments')
+        .select('subject_id')
+        .eq('student_id', studentId);
+
+      if (enrollError) throw enrollError;
+
+      const subjectIds = enrollmentData?.map(e => e.subject_id) || [];
+
+      if (subjectIds.length === 0) {
+        setAssignments([]);
+        setLoading(false);
+        return;
+      }
+
+      // 2. Fetch assignments for those subjects
       const { data, error } = await supabase
         .from("assignments")
-        .select(
-          `
-        *,
-        course:subjects(title),
-        submissions(*)
-    `,
-        )
-      // .eq("submissions.student_id", user?.id);
+        .select(`
+          *,
+          subject:subjects(title),
+          submissions(*)
+        `)
+        .in('subject_id', subjectIds);
 
       if (error) throw error
 
-      //check for submissions
       if (data) {
         const formatted: Assignments[] = data.map((a: any) => {
-          const isSubmitted = a.submissions && a.submissions.length > 0
+          // Filter submissions for THIS student only
+          const mySubmissions = a.submissions?.filter((s: any) => s.student_id === studentId) || [];
+          const isSubmitted = mySubmissions.length > 0;
+          const dueDate = new Date(a.due_date);
+          const now = new Date();
+          const isOverdue = !isSubmitted && dueDate < now;
 
           return {
             id: a.id,
             title: a.title,
-            course: { title: a.course?.title || "General" },
-            due_date: new Date(a.due_date).toLocaleDateString(),
+            subject: { title: a.subject?.title || "General" },
+            due_date: dueDate.toLocaleDateString(),
             total_points: a.total_points,
-            status: a.submissions?.length > 0 ? 'completed' : 'pending',
-            submissions: a.submissions?.[0] || null
+            status: isSubmitted ? 'completed' : (isOverdue ? 'overdue' : 'pending'),
+            submissions: mySubmissions[0] || null,
+            attachment_url: a.attachment_url,
+            attachment_name: a.attachment_name
           }
         })
         setAssignments(formatted)
       }
-      setLoading(false)
     } catch (error: any) {
       console.error("error fetching assignments", error.message);
+      Alert.alert("Error", "Failed to load assignments.");
+    } finally {
+      setLoading(false)
     }
   }
 
   // fetch assignments from db
   useEffect(() => {
     fetchStudentsAssignments()
-  }, [user?.id])
+  }, [studentId])
 
   // Downloading content uploaded by teacher
-  const handleDownload = async (fileName: string) => {
+  const handleDownload = async (url: string) => {
     try {
-      //TODO: 1. Construct the Public URL for your Supabase Storage bucket
-      // Replace 'your-project-id' and 'bucket-name' with your actual Supabase details
-      const publicUrl = `https://yqvtsjxgvtzshabkmegm.supabase.co/storage/v1/object/public/assignments/${fileName}`;
+      if (!url) return;
 
-      const supported = await Linking.canOpenURL(publicUrl)
+      // If it's a relative path, construct the full URL
+      const fullUrl = url.startsWith('http')
+        ? url
+        : `${process.env.EXPO_PUBLIC_SUPABASE_URL}/storage/v1/object/public/assignments/${url}`;
+
+      const supported = await Linking.canOpenURL(fullUrl)
 
       if (supported) {
-        await Linking.openURL(publicUrl)
+        await Linking.openURL(fullUrl)
       } else {
-        Alert.alert('Error', "Don't know how to open this URL: " + publicUrl)
+        Alert.alert('Error', "Cannot open this file URL.")
       }
 
     } catch (error) {
-      Alert.alert("Download Failed, Could not open the file.")
+      Alert.alert("Error", "Could not open the file.")
     }
   }
 
   // Handling uploading content/submissions
   const handleUpload = async () => {
-    if (!selectedAssignment || !user) return
+    if (!selectedAssignment || !studentId) return
 
     try {
       const result = await DocumentPicker.getDocumentAsync({
@@ -124,13 +142,11 @@ export default function StudentsAssignments() {
       setIsUploading(true)
       const file = result.assets[0]
 
-      // 2. Prepare file data for Supabase
-      // On Web, we can use the file object directly; on mobile, we fetch the URI
       const response = await fetch(file.uri)
       const blob = await response.blob()
       const arraybuffer = await new Response(blob).arrayBuffer()
 
-      const fileName = `${selectedAssignment.id}/${user.id}_${file.name}`
+      const fileName = `${selectedAssignment.id}/${studentId}_${file.name}`
       const filePath = `submissions/${fileName}`
 
       // 3. Uploading to supabase storage
@@ -147,11 +163,11 @@ export default function StudentsAssignments() {
         .from('submissions')
         .insert({
           assignment_id: selectedAssignment.id,
-          student_id: user.id,
-          content: filePath,
+          student_id: studentId,
+          file_url: filePath, // Using file_url as confirmed in schema earlier
           status: 'submitted',
           submitted_at: new Date().toISOString()
-        })
+        } as any)
 
       if (dbError) throw dbError
 
@@ -166,7 +182,11 @@ export default function StudentsAssignments() {
     }
   }
 
-
+  const displayList = assignments?.filter(a => {
+    if (filter === 'pending') return a.status === 'pending' || a.status === 'overdue';
+    if (filter === 'completed') return a.status === 'completed';
+    return false;
+  }) ?? [];
 
   return (
     <>
@@ -204,46 +224,45 @@ export default function StudentsAssignments() {
           {loading ? (
             <ActivityIndicator color="orange" className="mt-10" />
           ) : displayList.length === 0 ? (
-            <View className="flex-1 flex-col p-3 gap-2">
-              <View className="flex-1 items-center">
-                <IconCheckCircle2 size={48} color="orange" />
-              </View>
-              <View className="flex-1 items-center">
-                <Text>Nothing to see, Whoo!! All Caught up!</Text>
-              </View>
+            <View className="flex-1 items-center justify-center mt-20">
+              <IconCheckCircle2 size={48} color="#D1D5DB" />
+              <Text className="text-gray-400 mt-4 font-medium text-center px-10">
+                {filter === 'pending' ? "All caught up! No pending assignments." : "No completed assignments yet."}
+              </Text>
             </View>
           ) : (
             displayList.map((item) => (
               <TouchableOpacity
                 key={item.id}
                 className="bg-white p-4 rounded-2xl border border-gray-100 mb-3 flex-row items-center shadow-sm"
-                // onPress={() => router.push(`/(student)/assignments/${item.id}`)}
                 onPress={() => {
                   setSelectedAssignment(item);
                   setModalVisible(true);
                 }}
               >
                 <View
-                  className={`p-3 rounded-xl mr-4 ${item?.status === "pending" ? "bg-amber-50" : "bg-teal-50"}`}
+                  className={`p-3 rounded-xl mr-4 ${item.status === "completed" ? "bg-teal-50" : (item.status === 'overdue' ? "bg-red-50" : "bg-amber-50")}`}
                 >
-                  {item?.status === "pending" ? (
-                    <IconClock size={20} color="#f59e0b" />
-                  ) : (
+                  {item.status === "completed" ? (
                     <IconCheckCircle2 size={20} color="#0d9488" />
+                  ) : item.status === 'overdue' ? (
+                    <IconClock size={20} color="#ef4444" />
+                  ) : (
+                    <IconClock size={20} color="#f59e0b" />
                   )}
                 </View>
 
                 <View className="flex-1">
                   <Text className="text-gray-400 text-[10px] font-bold uppercase">
-                    {item.course?.title}
+                    {item.subject?.title}
                   </Text>
                   <Text className="text-gray-900 font-bold text-sm mb-1">
                     {item.title}
                   </Text>
                   <View className="flex-row items-center">
                     <IconCalendar size={12} color="#9CA3AF" />
-                    <Text className="text-gray-400 text-[10px] ml-1">
-                      Due: {item.due_date}
+                    <Text className={`text-[10px] ml-1 ${item.status === 'overdue' ? 'text-red-500 font-bold' : 'text-gray-400'}`}>
+                      Due: {item.due_date} {item.status === 'overdue' && '(Overdue)'}
                     </Text>
                   </View>
                 </View>
@@ -262,12 +281,12 @@ export default function StudentsAssignments() {
         onRequestClose={() => setSelectedAssignment(null)}
       >
         <View className="flex-1 justify-center items-center bg-black/60 px-4 ">
-          <View className="bg-white w-full max-w-[550px] overflow-hidden shadow-2xl rounded-xl">
+          <View className="bg-white w-full max-w-[550px] overflow-hidden shadow-2xl rounded-3xl">
             {/* 1. HEADER & STATUS */}
-            <View className="bg-orange-500 p-8 flex-row justify-between items-start ">
+            <View className="bg-orange-500 p-6 flex-row justify-between items-start ">
               <View className="flex-1">
                 <Text className="text-white/70 text-[10px] font-black uppercase tracking-[2px] mb-1">
-                  {selectedAssignment?.course?.title}
+                  {selectedAssignment?.subject?.title}
                 </Text>
                 <Text className="text-white text-2xl font-black leading-7">
                   {selectedAssignment?.title}
@@ -281,7 +300,7 @@ export default function StudentsAssignments() {
               </TouchableOpacity>
             </View>
 
-            <ScrollView className="p-8 max-h-[70vh]">
+            <ScrollView className="p-6 max-h-[70vh]">
               {/* 2. TEACHER'S CONTENT (DOWNLOADABLE) */}
               <View className="mb-8">
                 <View className="flex-row items-center mb-4">
@@ -291,22 +310,26 @@ export default function StudentsAssignments() {
                   </Text>
                 </View>
 
-                <TouchableOpacity
-                  className="flex-row items-center bg-orange-50 border border-orange-100 p-4 rounded-2xl"
-                  onPress={() => selectedAssignment?.resource_path && handleDownload(selectedAssignment.resource_path)}
-                >
-                  <View className="bg-white p-3 rounded-xl shadow-sm mr-4">
-                    <IconDownload size={20} color="#f97316" />
-                  </View>
-                  <View className="flex-1">
-                    <Text className="text-gray-900 font-bold text-sm">
-                      Assignment_Resources.zip
-                    </Text>
-                    <Text className="text-orange-600/60 text-[10px] font-bold">
-                      PDF, Assets • 12.4 MB
-                    </Text>
-                  </View>
-                </TouchableOpacity>
+                {selectedAssignment?.attachment_url ? (
+                  <TouchableOpacity
+                    className="flex-row items-center bg-orange-50 border border-orange-100 p-4 rounded-2xl"
+                    onPress={() => handleDownload(selectedAssignment.attachment_url!)}
+                  >
+                    <View className="bg-white p-3 rounded-xl shadow-sm mr-4">
+                      <IconDownload size={20} color="#f97316" />
+                    </View>
+                    <View className="flex-1">
+                      <Text className="text-gray-900 font-bold text-sm">
+                        {selectedAssignment.attachment_name || "Attachment"}
+                      </Text>
+                      <Text className="text-orange-600/60 text-[10px] font-bold">
+                        Click to download
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+                ) : (
+                  <Text className="text-gray-400 italic text-sm ml-6">No materials attached.</Text>
+                )}
               </View>
 
               {/* 3. UPLOAD WINDOW (SUBMISSION ZONE) */}
@@ -318,28 +341,39 @@ export default function StudentsAssignments() {
                   </Text>
                 </View>
 
-                {/* Dotted Upload Box */}
-                <TouchableOpacity
-                  disabled={isUploading}
-                  className="border-2 border-dashed border-gray-200 bg-gray-50 rounded-3xl p-10 items-center justify-center"
-                  onPress={handleUpload}
-                >
-                  {isUploading ? (
-                    <ActivityIndicator color="#f97316" />
-                  ) : (
-                    <>
-                      <View className="bg-white p-4 rounded-full shadow-sm mb-3">
-                        <IconCalendar size={24} color="#9ca3af" />
-                      </View>
-                      <Text className="text-gray-900 font-bold text-sm">
-                        Click to upload files
-                      </Text>
-                      <Text className="text-gray-400 text-xs mt-1">
-                        PDF, ZIP, or DOC (Max 50MB)
-                      </Text>
-                    </>
-                  )}
-                </TouchableOpacity>
+                {selectedAssignment?.status === 'completed' ? (
+                  <View className="bg-teal-50 border border-teal-100 p-6 rounded-3xl flex-row items-center">
+                    <View className="bg-white p-4 rounded-full shadow-sm mr-4">
+                      <IconCheckCircle2 size={24} color="#0d9488" />
+                    </View>
+                    <View>
+                      <Text className="text-teal-900 font-bold text-sm">Submitted</Text>
+                      <Text className="text-teal-600/70 text-xs">Nice work! Your assignment is in.</Text>
+                    </View>
+                  </View>
+                ) : (
+                  <TouchableOpacity
+                    disabled={isUploading}
+                    className="border-2 border-dashed border-gray-200 bg-gray-50 rounded-3xl p-10 items-center justify-center"
+                    onPress={handleUpload}
+                  >
+                    {isUploading ? (
+                      <ActivityIndicator color="#f97316" />
+                    ) : (
+                      <>
+                        <View className="bg-white p-4 rounded-full shadow-sm mb-3">
+                          <IconDownload size={24} color="#9ca3af" />
+                        </View>
+                        <Text className="text-gray-900 font-bold text-sm">
+                          Click to upload submission
+                        </Text>
+                        <Text className="text-gray-400 text-xs mt-1">
+                          Files, Docs, or Images (Max 50MB)
+                        </Text>
+                      </>
+                    )}
+                  </TouchableOpacity>
+                )}
               </View>
 
               {/* 4. FOOTER INFO */}
@@ -355,19 +389,6 @@ export default function StudentsAssignments() {
                 </Text>
               </View>
             </ScrollView>
-
-            {/* SUBMIT BUTTON */}
-            <View className="p-8 pt-0">
-              <TouchableOpacity
-                className="bg-orange-500 py-4 rounded-2xl items-center shadow-lg shadow-orange-200"
-                activeOpacity={0.8}
-                onPress={handleUpload}
-              >
-                <Text className="text-white font-black text-lg">
-                  Finalize Submission
-                </Text>
-              </TouchableOpacity>
-            </View>
           </View>
         </View>
       </Modal>

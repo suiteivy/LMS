@@ -12,6 +12,7 @@ interface SubjectListProps {
   showFilters?: boolean;
   variant?: 'default' | 'compact' | 'featured';
   onPressSubject: (subject: Subject) => void;
+  kesRate?: number;
 }
 
 export const SubjectList: React.FC<SubjectListProps> = ({
@@ -20,6 +21,7 @@ export const SubjectList: React.FC<SubjectListProps> = ({
   showFilters = false,
   variant = 'default',
   onPressSubject,
+  kesRate = 129,
 }) => {
   const [selectedFilter, setSelectedFilter] = useState<string>('all');
   const [selectedLevel, setSelectedLevel] = useState<string>('all');
@@ -104,6 +106,7 @@ export const SubjectList: React.FC<SubjectListProps> = ({
               Subject={subject}
               onPress={() => onPressSubject(subject)}
               variant={variant}
+              kesRate={kesRate}
             />
           ))
         ) : (

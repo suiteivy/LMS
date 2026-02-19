@@ -40,16 +40,26 @@ const SubjectGrade = ({ SubjectCode, SubjectName, grade, score, credits }: Grade
 }
 
 export default function Grades() {
-    const { studentId, displayId } = useAuth();
+    const { studentId, displayId, user } = useAuth();
     const [grades, setGrades] = useState<GradeProps[]>([]);
     const [loading, setLoading] = useState(true);
-    const [stats, setStats] = useState({ gpa: 0, credits: 0, rank: 0 });
+    const [stats, setStats] = useState({ gpa: 0, credits: 0, rank: 0, totalMarks: 0, avgMark: 0 });
 
     useEffect(() => {
-        if (studentId) {
+        if (studentId || user?.id) {
             fetchGrades();
         }
-    }, [studentId]);
+    }, [studentId, user?.id]);
+
+    const getPerformanceStatus = (gpa: number) => {
+        if (gpa >= 4.0) return { label: "Exceptional Excellence", color: "text-emerald-400" };
+        if (gpa >= 3.7) return { label: "High Distinction", color: "text-emerald-300" };
+        if (gpa >= 3.3) return { label: "Commendable Growth", color: "text-blue-300" };
+        if (gpa >= 3.0) return { label: "Good Standing", color: "text-blue-200" };
+        if (gpa >= 2.5) return { label: "Steady Progress", color: "text-yellow-200" };
+        if (gpa >= 2.0) return { label: "Room to Improve", color: "text-orange-200" };
+        return { label: "Academic Support Needed", color: "text-red-200" };
+    };
 
     const fetchGrades = async () => {
         if (!studentId) return;
@@ -63,7 +73,7 @@ export default function Grades() {
                     grade,
                     assignment:assignments(
                         title,
-                        subject:subjects(title, id) 
+                        subject:subjects(title, id, credits) 
                     )
                 `)
                 .eq('student_id', studentId)
@@ -71,9 +81,28 @@ export default function Grades() {
 
             if (error) throw error;
 
-            // Group by subject
-            const subjectGrades: Record<string, { total: number, count: number, name: string }> = {};
+            // Also fetch finalized grades from enrollments (custom ID)
+            const { data: enrollmentGrades } = await supabase
+                .from('enrollments')
+                .select(`
+                    grade,
+                    subjects(id, title, credits)
+                `)
+                .eq('student_id', studentId);
 
+            // Fetch from NEW dedicated grades table (User UUID)
+            const { data: reportGrades } = await supabase
+                .from('grades')
+                .select(`
+                    total_grade,
+                    subjects:subject_id(id, title, credits)
+                `)
+                .eq('student_id', user?.id || '');
+
+            // Group by subject
+            const subjectGrades: Record<string, { total: number, count: number, name: string, credits: number, finalGrade?: string, manualScore?: number }> = {};
+
+            // Add raw score data from submissions
             data.forEach((sub: any) => {
                 const subjectId = sub.assignment?.subject?.id;
                 const subjectName = sub.assignment?.subject?.title;
@@ -81,30 +110,59 @@ export default function Grades() {
 
                 if (subjectId && !isNaN(score)) {
                     if (!subjectGrades[subjectId]) {
-                        subjectGrades[subjectId] = { total: 0, count: 0, name: subjectName };
+                        subjectGrades[subjectId] = { total: 0, count: 0, name: subjectName, credits: sub.assignment?.subject?.credits || 3 };
                     }
                     subjectGrades[subjectId].total += score;
                     subjectGrades[subjectId].count += 1;
                 }
             });
 
+            // Add final grade data from enrollments (takes precedence for the letter)
+            enrollmentGrades?.forEach((eg: any) => {
+                const subId = eg.subjects?.id;
+                if (subId) {
+                    if (!subjectGrades[subId]) {
+                        subjectGrades[subId] = { total: 0, count: 0, name: eg.subjects.title, credits: eg.subjects.credits || 3 };
+                    }
+                    subjectGrades[subId].finalGrade = eg.grade;
+                }
+            });
+
+            // Add report grades from 'grades' table (takes precedence for final score calculation)
+            reportGrades?.forEach((rg: any) => {
+                const subId = rg.subjects?.id;
+                if (subId) {
+                    if (!subjectGrades[subId]) {
+                        subjectGrades[subId] = { total: 0, count: 0, name: rg.subjects.title, credits: rg.subjects.credits || 3 };
+                    }
+                    subjectGrades[subId].manualScore = Number(rg.total_grade);
+                }
+            });
+
             const formattedGrades: GradeProps[] = Object.entries(subjectGrades).map(([id, val]) => {
-                const avg = val.total / val.count;
-                let letter = 'F';
-                if (avg >= 90) letter = 'A';
-                else if (avg >= 80) letter = 'B';
-                else if (avg >= 70) letter = 'C';
-                else if (avg >= 60) letter = 'D';
+                // Manual score from grades table takes precedence, then average of submissions
+                const score = val.manualScore ?? (val.count > 0 ? (val.total / val.count) : 0);
+
+                let letter = val.finalGrade || 'N/A';
+
+                // If no final grade, calculate from score
+                if (letter === 'N/A' || letter === null) {
+                    if (score >= 90) letter = 'A';
+                    else if (score >= 80) letter = 'B';
+                    else if (score >= 70) letter = 'C';
+                    else if (score >= 60) letter = 'D';
+                    else if (score > 0) letter = 'F';
+                    else letter = 'N/A';
+                }
 
                 return {
                     SubjectName: val.name,
-                    SubjectCode: "SUB-" + id.substring(0, 4).toUpperCase(), // Updated prefix
+                    SubjectCode: "SUB-" + id.substring(0, 4).toUpperCase(),
                     grade: letter,
-                    score: Math.round(avg),
-                    credits: 3 // Mock credits
+                    score: Math.round(score),
+                    credits: val.credits
                 };
             });
-
 
             setGrades(formattedGrades);
 
@@ -115,8 +173,10 @@ export default function Grades() {
 
             setStats({
                 gpa: Number(gpa),
-                credits: formattedGrades.length * 3,
-                rank: 12 // Mock rank
+                credits: formattedGrades.reduce((acc, curr) => acc + curr.credits, 0),
+                rank: 12, // Mock rank
+                totalMarks: totalScore,
+                avgMark: Number(avgScore.toFixed(2))
             });
 
         } catch (error) {
@@ -163,7 +223,45 @@ export default function Grades() {
                         </View>
                         <View className="items-center flex-1">
                             <Text className="text-orange-100 text-xs uppercase">Status</Text>
-                            <Text className="text-white font-bold text-lg">Good Standing</Text>
+                            <Text className={`font-bold text-lg ${getPerformanceStatus(stats.gpa).color}`}>
+                                {getPerformanceStatus(stats.gpa).label}
+                            </Text>
+                        </View>
+                    </View>
+                </View>
+
+                {/* --- Averages Section --- */}
+                <View className="bg-white rounded-2xl p-6 mb-8 border border-gray-100 shadow-sm">
+                    <Text className="text-gray-400 text-xs font-bold uppercase mb-4 tracking-wider">Academic Averages</Text>
+
+                    <View className="flex-row items-center border-b border-gray-50 pb-4 mb-4">
+                        <View className="flex-1">
+                            <Text className="text-gray-500 text-sm">Total Marks</Text>
+                            <Text className="text-gray-900 font-bold text-xl">{stats.totalMarks.toLocaleString()}</Text>
+                        </View>
+                        <View className="flex-1 border-l border-gray-50 pl-4">
+                            <Text className="text-gray-500 text-sm">Average Mark</Text>
+                            <Text className="text-gray-900 font-bold text-xl">{stats.avgMark}%</Text>
+                        </View>
+                    </View>
+
+                    <View className="flex-row items-center">
+                        <View className="flex-1">
+                            <Text className="text-gray-500 text-sm">Average Grade</Text>
+                            <View className="flex-row items-baseline">
+                                <Text className="text-gray-900 font-black text-2xl">
+                                    {(() => {
+                                        const avg = stats.avgMark;
+                                        if (avg >= 90) return 'A';
+                                        if (avg >= 80) return 'B';
+                                        if (avg >= 70) return 'C';
+                                        if (avg >= 60) return 'D';
+                                        if (avg > 0) return 'F';
+                                        return 'N/A';
+                                    })()}
+                                </Text>
+                                <Text className="text-gray-400 text-xs ml-2 font-medium">Weighted Average</Text>
+                            </View>
                         </View>
                     </View>
                 </View>

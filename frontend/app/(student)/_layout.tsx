@@ -132,6 +132,32 @@ export default function StudentLayout() {
             },
           }}
         />
+
+        {/* Hidden Routes */}
+        <Tabs.Screen
+          name="finance"
+          options={{
+            href: null,
+          }}
+        />
+        <Tabs.Screen
+          name="messages"
+          options={{
+            href: null,
+          }}
+        />
+        <Tabs.Screen
+          name="attendance"
+          options={{
+            href: null,
+          }}
+        />
+        <Tabs.Screen
+          name="timetable"
+          options={{
+            href: null,
+          }}
+        />
       </Tabs>
     </AuthGuard>
   );

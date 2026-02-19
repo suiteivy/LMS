@@ -8,6 +8,7 @@ interface SubjectDetailsProps {
   onEnroll: () => void;
   onBack: () => void;
   enrolling?: boolean;
+  kesRate?: number;
 }
 
 export const SubjectDetails: React.FC<SubjectDetailsProps> = ({
@@ -15,6 +16,7 @@ export const SubjectDetails: React.FC<SubjectDetailsProps> = ({
   onEnroll,
   onBack,
   enrolling = false,
+  kesRate = 129,
 }) => {
   const [activeTab, setActiveTab] = useState<
     "overview" | "lessons" | "reviews"
@@ -59,7 +61,7 @@ export const SubjectDetails: React.FC<SubjectDetailsProps> = ({
             }
             size={14}
             color="#6B7280"
-            // color={'#fff'}
+          // color={'#fff'}
           />
           <Text className="text-sm text-gray-500 ml-1 capitalize">
             {lesson.type} • {lesson.duration}
@@ -131,11 +133,16 @@ export const SubjectDetails: React.FC<SubjectDetailsProps> = ({
             <View className="flex-row items-center justify-between">
               <View>
                 <Text className="text-3xl font-bold text-black">
-                  {Subject.price === 0 ? "Free" : `$${Subject.price}`}
+                  {Subject.price === 0 ? "Free" : `${Math.round(Subject.price * kesRate).toLocaleString()} KSh`}
                 </Text>
+                {Subject.price > 0 && (
+                  <Text className="text-sm font-semibold text-gray-500 mt-[-4px]">
+                    ${Subject.price} USD
+                  </Text>
+                )}
                 {Subject.originalPrice &&
                   Subject.originalPrice > Subject.price && (
-                    <Text className="text-gray-400 line-through">
+                    <Text className="text-gray-400 line-through text-xs mt-1">
                       ${Subject.originalPrice}
                     </Text>
                   )}

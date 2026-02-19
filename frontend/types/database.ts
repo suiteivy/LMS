@@ -495,6 +495,7 @@ export interface Database {
           class_id: string | null;
           fee_config: Json | null;
           materials: Json | null;
+          credits: number | null;
           created_at: string;
         };
         Insert: {

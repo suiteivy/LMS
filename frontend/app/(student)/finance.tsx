@@ -2,33 +2,52 @@ import React, { useState, useEffect } from "react";
 import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, Alert } from "react-native";
 import { router } from "expo-router";
 import { ChevronLeft, Wallet, Receipt, ArrowUpRight, ArrowDownLeft, Info } from "lucide-react-native";
-import { ParentService } from "@/services/ParentService";
+import { StudentService } from "@/services/StudentService";
 import { formatCurrency } from "@/utils/currency";
 import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/libs/supabase";
 
 export default function StudentFinancePage() {
     const { studentId } = useAuth();
     const [loading, setLoading] = useState(true);
     const [financeData, setFinanceData] = useState<any>(null);
+    const [kesRate, setKesRate] = useState<number>(129); // Default fallback
 
     useEffect(() => {
-        if (studentId) {
-            fetchData();
-        }
-    }, [studentId]);
+        fetchData();
+    }, []);
 
     const fetchData = async () => {
         try {
             setLoading(true);
-            // Reuse ParentService logic as it fetches by studentId
-            const data = await ParentService.getStudentFinance(studentId as string);
+            const data = await StudentService.getFinance();
             setFinanceData(data);
+
+            // Fetch Exchange Rate
+            const { data: exchangeData } = await (supabase
+                .from('system_settings')
+                .select('value')
+                .eq('key', 'exchange_rates')
+                .single() as any);
+
+            if (exchangeData && exchangeData.value && exchangeData.value.KES) {
+                setKesRate(exchangeData.value.KES);
+            }
         } catch (error) {
             console.error(error);
             Alert.alert("Error", "Failed to load financial records");
         } finally {
             setLoading(false);
         }
+    };
+
+    const formatKES = (usdAmount: number) => {
+        const ksh = Math.round(usdAmount * kesRate);
+        return `${ksh.toLocaleString()} KSh`;
+    };
+
+    const formatUSD = (usdAmount: number) => {
+        return `$${usdAmount.toFixed(2)} USD`;
     };
 
     if (loading) {
@@ -54,18 +73,27 @@ export default function StudentFinancePage() {
                 {/* Balance Card */}
                 <View className="bg-slate-900 p-6 rounded-[2.5rem] mb-6">
                     <Text className="text-slate-400 text-xs font-bold uppercase mb-2">My Outstanding Balance</Text>
-                    <Text className="text-white text-4xl font-black mb-6">
-                        {formatCurrency(financeData?.balance || 0)}
-                    </Text>
+                    <View className="mb-6">
+                        <Text className="text-white text-4xl font-black">
+                            {formatKES(financeData?.balance || 0)}
+                        </Text>
+                        {financeData?.balance > 0 && (
+                            <Text className="text-slate-400 text-sm font-medium mt-1">
+                                {formatUSD(financeData?.balance)}
+                            </Text>
+                        )}
+                    </View>
 
                     <View className="flex-row gap-3">
                         <View className="flex-1 bg-slate-800 p-4 rounded-3xl">
                             <Text className="text-slate-500 text-[10px] font-bold uppercase mb-1">Total Fees</Text>
-                            <Text className="text-white font-bold">{formatCurrency(financeData?.total_fees || 0)}</Text>
+                            <Text className="text-white font-bold">{formatKES(financeData?.total_fees || 0)}</Text>
+                            <Text className="text-slate-500 text-[8px]">{formatUSD(financeData?.total_fees || 0)}</Text>
                         </View>
                         <View className="flex-1 bg-slate-800 p-4 rounded-3xl">
                             <Text className="text-slate-500 text-[10px] font-bold uppercase mb-1">Paid Amount</Text>
-                            <Text className="text-emerald-400 font-bold">{formatCurrency(financeData?.paid_amount || 0)}</Text>
+                            <Text className="text-emerald-400 font-bold">{formatKES(financeData?.paid_amount || 0)}</Text>
+                            <Text className="text-slate-500 text-[8px]">{formatUSD(financeData?.paid_amount || 0)}</Text>
                         </View>
                     </View>
                 </View>
@@ -75,7 +103,7 @@ export default function StudentFinancePage() {
                     <Info size={20} color={financeData?.balance > 0 ? "#D97706" : "#059669"} />
                     <Text className={`ml-3 font-medium ${financeData?.balance > 0 ? 'text-amber-800' : 'text-emerald-800'}`}>
                         {financeData?.balance > 0
-                            ? `Balance of ${formatCurrency(financeData?.balance)} is due for this term.`
+                            ? `Balance of ${formatKES(financeData?.balance)} (${formatUSD(financeData?.balance)}) is due for this term.`
                             : "Your fees for this term are fully cleared. Great job!"}
                     </Text>
                 </View>
@@ -96,9 +124,14 @@ export default function StudentFinancePage() {
                                 <Text className="text-gray-900 font-bold">{tx.type.split('_').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')}</Text>
                                 <Text className="text-gray-400 text-xs">{new Date(tx.date).toLocaleDateString()}</Text>
                             </View>
-                            <Text className={`font-black ${tx.direction === 'inflow' ? 'text-emerald-600' : 'text-gray-900'}`}>
-                                {tx.direction === 'inflow' ? '+' : '-'}{formatCurrency(tx.amount)}
-                            </Text>
+                            <View className="items-end">
+                                <Text className={`font-black ${tx.direction === 'inflow' ? 'text-emerald-600' : 'text-gray-900'}`}>
+                                    {tx.direction === 'inflow' ? '+' : '-'}{formatKES(tx.amount)}
+                                </Text>
+                                <Text className="text-[10px] text-gray-400">
+                                    {formatUSD(tx.amount)}
+                                </Text>
+                            </View>
                         </View>
                     ))
                 ) : (

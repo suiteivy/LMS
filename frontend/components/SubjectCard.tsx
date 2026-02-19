@@ -7,12 +7,14 @@ interface SubjectCardProps {
   Subject: Subject;
   onPress: () => void;
   variant?: "default" | "compact" | "featured";
+  kesRate?: number;
 }
 
 export const SubjectCard: React.FC<SubjectCardProps> = ({
   Subject,
   onPress,
   variant = "default",
+  kesRate = 129,
 }) => {
   const getLevelColor = (level: string) => {
     switch (level) {
@@ -29,6 +31,12 @@ export const SubjectCard: React.FC<SubjectCardProps> = ({
 
   const formatPrice = (price: number) => {
     return price === 0 ? "Free" : `$${price}`;
+  };
+
+  const formatKsh = (price: number) => {
+    if (price === 0) return "";
+    const ksh = Math.round(price * kesRate);
+    return `${ksh.toLocaleString()} KSh`;
   };
 
   if (variant === "compact") {
@@ -61,12 +69,19 @@ export const SubjectCard: React.FC<SubjectCardProps> = ({
                   {Subject.rating}
                 </Text>
               </View>
-              <Text
-                className="text-xs font-semibold"
-                style={{ color: "#1ABC9C" }}
-              >
-                {formatPrice(Subject.price)}
-              </Text>
+              <View>
+                <Text
+                  className="text-xs font-semibold"
+                  style={{ color: "#1ABC9C" }}
+                >
+                  {Subject.price === 0 ? "Free" : `${Math.round(Subject.price * kesRate).toLocaleString()} KSh`}
+                </Text>
+                {Subject.price > 0 && (
+                  <Text className="text-[10px] text-gray-400">
+                    ${Subject.price} USD
+                  </Text>
+                )}
+              </View>
             </View>
           </View>
         </View>
@@ -166,8 +181,13 @@ export const SubjectCard: React.FC<SubjectCardProps> = ({
                 className="text-xl font-bold"
                 style={{ color: Subject.price === 0 ? "#1ABC9C" : "#2C3E50" }}
               >
-                {formatPrice(Subject.price)}
+                {Subject.price === 0 ? "Free" : `${Math.round(Subject.price * kesRate).toLocaleString()} KSh`}
               </Text>
+              {Subject.price > 0 && (
+                <Text className="text-sm text-gray-500">
+                  ${Subject.price} USD
+                </Text>
+              )}
             </View>
 
             <TouchableOpacity
@@ -242,12 +262,19 @@ export const SubjectCard: React.FC<SubjectCardProps> = ({
         </View>
 
         <View className="flex-row items-center justify-between">
-          <Text
-            className="text-lg font-bold"
-            style={{ color: Subject.price === 0 ? "#1ABC9C" : "#2C3E50" }}
-          >
-            {formatPrice(Subject.price)}
-          </Text>
+          <View>
+            <Text
+              className="text-lg font-bold"
+              style={{ color: Subject.price === 0 ? "#1ABC9C" : "#2C3E50" }}
+            >
+              {Subject.price === 0 ? "Free" : `${Math.round(Subject.price * kesRate).toLocaleString()} KSh`}
+            </Text>
+            {Subject.price > 0 && (
+              <Text className="text-xs text-gray-500">
+                ${Subject.price} USD
+              </Text>
+            )}
+          </View>
 
           <Text className="text-sm text-gray-500">
             {Subject.studentsCount} students
