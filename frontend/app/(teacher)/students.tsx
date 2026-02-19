@@ -98,6 +98,7 @@ export default function TeacherStudents() {
                 .select(`
                     id,
                     subject_id,
+                    grade,
                     student:students(
                         id,
                         user:users(full_name, email)
@@ -116,8 +117,8 @@ export default function TeacherStudents() {
                     name: enroll.student?.user?.full_name || "Unknown",
                     email: enroll.student?.user?.email || "",
                     Subject: sub?.title || "Unknown Subject",
-                    grade: "A", // Placeholder
-                    progress: Math.floor(Math.random() * 40) + 60 // Simulated progress
+                    grade: enroll.grade || "N/A",
+                    progress: Math.floor(Math.random() * 30) + 70 // Still simulated for now as it needs per-student assignment check
                 };
             });
 

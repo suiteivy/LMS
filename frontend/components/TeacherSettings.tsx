@@ -24,7 +24,7 @@ export default function TeacherSettings() {
         >
             <View className="flex-row items-center flex-1">
                 <View className="p-2 bg-gray-50 rounded-lg mr-3">
-                    <Icon size={20} color="#4b5563" />
+                    <Icon size={20} color="#FF6B00" />
                 </View>
                 <Text className="text-gray-700 font-medium text-base">{title}</Text>
             </View>
@@ -55,7 +55,7 @@ export default function TeacherSettings() {
                         <Switch
                             value={notifications}
                             onValueChange={setNotifications}
-                            trackColor={{ false: "#e5e7eb", true: "#0d9488" }}
+                            trackColor={{ false: "#e5e7eb", true: "#fed7aa" }}
                             thumbColor="#ffffff"
                         />
                     </SettingRow>
@@ -63,7 +63,7 @@ export default function TeacherSettings() {
                         <Switch
                             value={submissionAlerts}
                             onValueChange={setSubmissionAlerts}
-                            trackColor={{ false: "#e5e7eb", true: "#0d9488" }}
+                            trackColor={{ false: "#e5e7eb", true: "#fed7aa" }}
                             thumbColor="#ffffff"
                         />
                     </SettingRow>

@@ -3,6 +3,7 @@ import { View, Text, ScrollView, TouchableOpacity, StatusBar, ActivityIndicator 
 import { Plus, Users, TrendingUp, Edit, Eye } from 'lucide-react-native';
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/libs/supabase";
+import { TeacherAPI } from "@/services/TeacherService";
 
 interface Subject {
     id: string;
@@ -84,23 +85,17 @@ export default function TeacherSubjects() {
     }, [teacherId]);
 
     const fetchSubjects = async () => {
-        if (!teacherId) return;
         try {
             setLoading(true);
-            const { data, error } = await supabase
-                .from('subjects')
-                .select('*')
-                .eq('teacher_id', teacherId);
+            const data = await TeacherAPI.getAnalytics();
 
-            if (error) throw error;
-
-            const mappedSubjects: Subject[] = data.map((c: any) => ({
-                id: c.id,
-                title: c.name,
-                students: 0, // Need to count enrollments via class link, complicated query. Mock for now.
-                completion: 0, // Mock for now
+            const mappedSubjects: Subject[] = (data || []).map((s: any) => ({
+                id: s.id,
+                title: s.name || "Untitled Subject",
+                students: s.students || 0,
+                completion: s.completionRate || 0,
                 status: "active", // Default, schema has no status column for now but we can assume active
-                lastUpdated: new Date(c.updated_at).toLocaleDateString()
+                lastUpdated: "Recently" // Analytics don't have updated_at directly, but we can default or add if needed
             }));
 
             setSubjects(mappedSubjects);

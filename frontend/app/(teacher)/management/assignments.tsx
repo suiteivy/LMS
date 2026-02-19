@@ -25,7 +25,7 @@ interface SubjectOption {
     title: string;
 }
 
-const AssignmentCard = ({ assignment }: { assignment: Assignment }) => {
+const AssignmentCard = ({ assignment, onEdit, onView }: { assignment: Assignment; onEdit: (a: Assignment) => void; onView: (a: Assignment) => void }) => {
     const getStatusStyle = (status: string) => {
         if (status === "active") return "bg-green-50 text-green-600 border-green-100";
         if (status === "draft") return "bg-gray-50 text-gray-600 border-gray-200";
@@ -58,7 +58,7 @@ const AssignmentCard = ({ assignment }: { assignment: Assignment }) => {
                 <View className="flex-row items-center">
                     <Users size={14} color="#6B7280" />
                     <Text className="text-gray-500 text-xs ml-1">
-                        {assignment.submissions} submitted
+                        {assignment.submissions} / {assignment.totalStudents} submitted
                     </Text>
                 </View>
                 {assignment.attachment_name && (
@@ -78,11 +78,11 @@ const AssignmentCard = ({ assignment }: { assignment: Assignment }) => {
 
             {/* Actions */}
             <View className="flex-row justify-end gap-3">
-                <TouchableOpacity className="flex-row items-center p-2">
+                <TouchableOpacity className="flex-row items-center p-2" onPress={() => onView(assignment)}>
                     <Eye size={16} color="#6B7280" />
                     <Text className="text-gray-500 text-xs ml-1 font-medium">View</Text>
                 </TouchableOpacity>
-                <TouchableOpacity className="flex-row items-center p-2">
+                <TouchableOpacity className="flex-row items-center p-2" onPress={() => onEdit(assignment)}>
                     <Edit2 size={16} color="#FF6B00" />
                     <Text className="text-teacherOrange text-xs ml-1 font-medium">Edit</Text>
                 </TouchableOpacity>
@@ -99,6 +99,8 @@ export default function AssignmentsPage() {
     const [loading, setLoading] = useState(true);
     const [Subjects, setSubjects] = useState<SubjectOption[]>([]);
 
+    const [editingAssignment, setEditingAssignment] = useState<Assignment | null>(null);
+
     // Form State
     const [title, setTitle] = useState("");
     const [description, setDescription] = useState("");
@@ -109,7 +111,6 @@ export default function AssignmentsPage() {
     const [showDatePicker, setShowDatePicker] = useState(false)
     const [selectedFile, setSelectedFile] = useState<any>(null);
     const [uploading, setUploading] = useState(false);
-
 
     const onDateChange = (event: any, selectedDate?: Date) => {
         setShowDatePicker(false)
@@ -136,19 +137,40 @@ export default function AssignmentsPage() {
         if (!teacherId) return;
 
         try {
-            // Fetch assignments filtered by Subjects taught by this teacher
-            // We can check if teacher_id on assignment matches
+            setLoading(true);
+            // 1. Fetch assignments
             const { data, error } = await supabase
                 .from('assignments')
                 .select(`
                     *,
-                    subject:subjects(title),
+                    subject:subjects(title, id),
                     submissions(count)
                 `)
                 .eq('teacher_id', teacherId)
                 .order('created_at', { ascending: false });
 
             if (error) throw error;
+
+            // 2. Fetch enrollment counts for all subjects of this teacher
+            const { data: enrollCounts } = await supabase
+                .from('enrollments')
+                .select('subject_id', { count: 'exact' })
+                .eq('status', 'enrolled');
+
+            // Note: Direct count per subject is faster with a RPC or separate queries if needed,
+            // but for now we'll do a simple mapping if the dataset is small or fetch counts specifically.
+            // Better: get counts per subject_id
+            const subjectIds = (data || []).map((a: any) => a.subject_id);
+            const { data: countsData } = await supabase
+                .from('enrollments')
+                .select('subject_id')
+                .in('subject_id', subjectIds)
+                .eq('status', 'enrolled');
+
+            const countsMap: Record<string, number> = {};
+            (countsData || []).forEach((e: any) => {
+                countsMap[e.subject_id] = (countsMap[e.subject_id] || 0) + 1;
+            });
 
             const formatted = (data || []).map((a: any) => ({
                 id: a.id,
@@ -157,10 +179,12 @@ export default function AssignmentsPage() {
                 subject_id: a.subject_id,
                 dueDate: a.due_date ? new Date(a.due_date).toLocaleDateString() : "No Due Date",
                 submissions: a.submissions?.[0]?.count || 0,
-                totalStudents: 0,
+                totalStudents: countsMap[a.subject_id] || 0,
                 status: a.status || 'active',
                 attachment_url: a.attachment_url,
-                attachment_name: a.attachment_name
+                attachment_name: a.attachment_name,
+                description: a.description || "",
+                points: a.total_points || 100
             }));
 
             setAssignments(formatted);
@@ -169,6 +193,28 @@ export default function AssignmentsPage() {
         } finally {
             setLoading(false);
         }
+    };
+
+    const handleEdit = (a: Assignment) => {
+        setEditingAssignment(a);
+        setTitle(a.title);
+        setDescription((a as any).description);
+        setPoints((a as any).points?.toString() || "100");
+        setSelectedSubjectId(a.subject_id);
+        const d = a.dueDate !== "No Due Date" ? new Date(a.dueDate) : new Date();
+        setDateObject(d);
+        setDueDate(a.dueDate !== "No Due Date" ? d.toISOString().split('T')[0] : "");
+        setShowModal(true);
+    };
+
+    const resetForm = () => {
+        setTitle("");
+        setDescription("");
+        setDueDate("");
+        setPoints("");
+        setSelectedSubjectId("");
+        setSelectedFile(null);
+        setEditingAssignment(null);
     };
 
     const pickDocument = async () => {
@@ -189,7 +235,7 @@ export default function AssignmentsPage() {
         }
     };
 
-    const createAssignment = async () => {
+    const saveAssignment = async () => {
         if (!teacherId) return;
         if (!title || !selectedSubjectId) {
             Alert.alert("Missing Fields", "Please fill in title and select a Subject.");
@@ -197,8 +243,8 @@ export default function AssignmentsPage() {
         }
 
         setUploading(true);
-        let attachmentUrl = null;
-        let attachmentName = null;
+        let attachmentUrl = editingAssignment?.attachment_url || null;
+        let attachmentName = editingAssignment?.attachment_name || null;
 
         try {
             // 1. Upload File if selected
@@ -221,33 +267,42 @@ export default function AssignmentsPage() {
                 attachmentName = selectedFile.name;
             }
 
-            // 2. Create Assignment Record
-            const { error } = await supabase.from('assignments').insert({
-                teacher_id: teacherId,
-                subject_id: selectedSubjectId,
-                title,
-                description,
-                due_date: dueDate ? new Date(dueDate).toISOString() : null, // Naive parsing, better to use date picker
-                total_points: parseInt(points) || 100,
-                status: 'active',
-                attachment_url: attachmentUrl,
-                attachment_name: attachmentName
-            });
-
-            if (error) throw error;
+            if (editingAssignment) {
+                // Update
+                const { error } = await supabase.from('assignments')
+                    .update({
+                        subject_id: selectedSubjectId,
+                        title,
+                        description,
+                        due_date: dueDate ? new Date(dueDate).toISOString() : null,
+                        total_points: parseInt(points) || 100,
+                        attachment_url: attachmentUrl,
+                        attachment_name: attachmentName
+                    })
+                    .eq('id', editingAssignment.id);
+                if (error) throw error;
+            } else {
+                // Create
+                const { error } = await supabase.from('assignments').insert({
+                    teacher_id: teacherId,
+                    subject_id: selectedSubjectId,
+                    title,
+                    description,
+                    due_date: dueDate ? new Date(dueDate).toISOString() : null,
+                    total_points: parseInt(points) || 100,
+                    status: 'active',
+                    attachment_url: attachmentUrl,
+                    attachment_name: attachmentName
+                });
+                if (error) throw error;
+            }
 
             setShowModal(false);
             fetchAssignments();
-            // Reset form
-            setTitle("");
-            setDescription("");
-            setDueDate("");
-            setPoints("");
-            setSelectedSubjectId("");
-            setSelectedFile(null);
+            resetForm();
 
         } catch (error: any) {
-            Alert.alert("Error", error.message || "Failed to create assignment");
+            Alert.alert("Error", error.message || "Failed to save assignment");
             console.error(error);
         } finally {
             setUploading(false);
@@ -323,26 +378,33 @@ export default function AssignmentsPage() {
                             <Text className="text-gray-500 text-center mt-8">No assignments found</Text>
                         ) : (
                             filteredAssignments.map((assignment) => (
-                                <AssignmentCard key={assignment.id} assignment={assignment} />
+                                <AssignmentCard
+                                    key={assignment.id}
+                                    assignment={assignment}
+                                    onEdit={handleEdit}
+                                    onView={(a) => router.push({ pathname: "/(teacher)/management/submissions", params: { assignmentId: a.id } } as any)}
+                                />
                             ))
                         )}
                     </View>
                 </ScrollView>
             </View>
 
-            {/* Create Assignment Modal */}
+            {/* Create/Edit Assignment Modal */}
             <Modal visible={showModal} animationType="slide" transparent>
                 <View className="flex-1 bg-black/50 justify-end">
                     <View className="bg-white rounded-t-3xl p-6 h-[80%]">
                         <ScrollView showsVerticalScrollIndicator={false}>
                             <View className="flex-row justify-between items-center mb-6">
-                                <Text className="text-xl font-bold text-gray-900">Create Assignment</Text>
-                                <TouchableOpacity onPress={() => setShowModal(false)}>
+                                <Text className="text-xl font-bold text-gray-900">
+                                    {editingAssignment ? "Edit Assignment" : "Create Assignment"}
+                                </Text>
+                                <TouchableOpacity onPress={() => { setShowModal(false); resetForm(); }}>
                                     <X size={24} color="#6B7280" />
                                 </TouchableOpacity>
                             </View>
 
-                            {/* Subject Selector (Simple) */}
+                            {/* ... (rest of form) ... */}
                             <Text className="text-gray-500 text-xs uppercase mb-1 font-semibold">Subject</Text>
                             <ScrollView horizontal className="flex-row mb-4" showsHorizontalScrollIndicator={false}>
                                 {Subjects.map(c => (
@@ -355,7 +417,6 @@ export default function AssignmentsPage() {
                                     </TouchableOpacity>
                                 ))}
                             </ScrollView>
-
 
                             <TextInput
                                 className="bg-gray-50 rounded-xl px-4 py-3 mb-4 text-gray-900"
@@ -402,7 +463,7 @@ export default function AssignmentsPage() {
                                     mode="date"
                                     display="default"
                                     onChange={onDateChange}
-                                    minimumDate={new Date()} // Can't set a due date in the past
+                                    minimumDate={new Date()}
                                 />
                             )}
 
@@ -428,17 +489,18 @@ export default function AssignmentsPage() {
 
                             <TouchableOpacity
                                 className={`bg-teacherOrange py-4 rounded-xl items-center ${uploading ? 'opacity-70' : ''}`}
-                                onPress={createAssignment}
+                                onPress={saveAssignment}
                                 disabled={uploading}
                             >
                                 {uploading ? (
                                     <ActivityIndicator color="white" />
                                 ) : (
-                                    <Text className="text-white font-bold text-base">Create Assignment</Text>
+                                    <Text className="text-white font-bold text-base">
+                                        {editingAssignment ? "Update Assignment" : "Create Assignment"}
+                                    </Text>
                                 )}
                             </TouchableOpacity>
 
-                            {/* Spacing for keyboard/scroll */}
                             <View className="h-20" />
                         </ScrollView>
                     </View>

@@ -59,7 +59,7 @@ api.interceptors.request.use(
         // console.log("Attaching auth token to request:", config.url);
         config.headers.Authorization = `Bearer ${session.access_token}`;
       } else {
-        console.warn("No active session found for request:", config.url);
+        console.warn(`[API] No active session found for: ${config.url}. (Initializing: ${supabase.auth.getSession() ? 'pending' : 'no'})`);
       }
     } catch (error) {
       console.error("Error fetching session for API request:", error);

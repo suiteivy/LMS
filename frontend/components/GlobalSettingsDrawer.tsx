@@ -3,6 +3,7 @@ import { View, Text, TouchableOpacity, Alert, ScrollView } from 'react-native';
 import { router } from 'expo-router';
 import { UserCircle, Settings, ShieldCheck, LogOut, HelpCircle, ChevronRight } from 'lucide-react-native';
 import { useAuth } from '@/contexts/AuthContext';
+import { useFocusEffect } from '@react-navigation/native';
 
 // Screens
 import StudentProfile from '@/components/StudentProfile';
@@ -11,6 +12,7 @@ import AdminProfile from '@/components/AdminProfile';
 import AdminSettings from '@/components/AdminSettings';
 import AdminOverview from '@/components/AdminOverview';
 import StudentSettings from '@/components/StudentSettings';
+import TeacherSettings from '@/components/TeacherSettings';
 import StudentHelp from '@/components/StudentHelp';
 
 type MenuItemProps = {
@@ -84,22 +86,18 @@ function SettingsMenu({ userRole, onNavigate }: { userRole: string, onNavigate: 
           onPress={() => isTrial ? Alert.alert("Demo Mode", "Profile editing is disabled in demo mode.") : onNavigate('profile')}
         />
 
-        {userRole !== 'admin' && (
-          <>
-            {!isTrial && (
-              <MenuItem
-                icon={<Settings size={22} color="#6b7280" />}
-                label="Settings"
-                onPress={() => onNavigate('settings')}
-              />
-            )}
-            <MenuItem
-              icon={<HelpCircle size={22} color="#3b82f6" />}
-              label="Help & Support"
-              onPress={() => onNavigate('help')}
-            />
-          </>
+        {(!isTrial || userRole === 'admin') && (
+          <MenuItem
+            icon={<Settings size={22} color="#6b7280" />}
+            label="Settings"
+            onPress={() => onNavigate('settings')}
+          />
         )}
+        <MenuItem
+          icon={<HelpCircle size={22} color="#3b82f6" />}
+          label="Help & Support"
+          onPress={() => onNavigate('help')}
+        />
       </ScrollView>
 
       {/* Logout */}
@@ -120,6 +118,17 @@ function SettingsMenu({ userRole, onNavigate }: { userRole: string, onNavigate: 
 export function GlobalSettingsContent({ userRole = 'student' }: { userRole?: 'student' | 'teacher' | 'admin' | 'parent' }) {
   const [activeScreen, setActiveScreen] = useState<'menu' | 'profile' | 'settings' | 'help' | 'overview'>('menu');
 
+  // Reset to menu when screen gains focus (prevents becoming "stuck" in sub-screens on tab switch)
+  useFocusEffect(
+    React.useCallback(() => {
+      // Logic runs when screen is focused
+      return () => {
+        // Optional Cleanup: Logic runs when screen is blurred
+        setActiveScreen('menu');
+      };
+    }, [])
+  );
+
   const handleNavigate = (screen: 'profile' | 'settings' | 'help' | 'overview') => {
     setActiveScreen(screen);
   };
@@ -134,6 +143,7 @@ export function GlobalSettingsContent({ userRole = 'student' }: { userRole?: 'st
         return <StudentProfile />;
       case 'settings':
         if (userRole === 'admin') return <AdminSettings />;
+        if (userRole === 'teacher') return <TeacherSettings />;
         return <StudentSettings />;
       case 'help':
         return <StudentHelp />;

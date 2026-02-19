@@ -82,20 +82,36 @@ export default function GradesPage() {
     const [currentSubmission, setCurrentSubmission] = useState<StudentGrade | null>(null);
     const [gradeInput, setGradeInput] = useState("");
     const [feedbackInput, setFeedbackInput] = useState("");
+    const [subjects, setSubjects] = useState<any[]>([]);
+
+    useEffect(() => {
+        if (teacherId) {
+            fetchSubjects();
+        }
+    }, [teacherId]);
 
     useEffect(() => {
         if (teacherId) {
             fetchSubmissions();
         }
-    }, [teacherId]);
+    }, [teacherId, selectedSubject]);
+
+    const fetchSubjects = async () => {
+        if (!teacherId) return;
+        const { data } = await supabase
+            .from('subjects')
+            .select('id, title')
+            .eq('teacher_id', teacherId);
+        if (data) setSubjects(data);
+    };
 
     const fetchSubmissions = async () => {
         if (!teacherId) return;
 
         try {
+            setLoading(true);
             // Fetch submissions for assignments created by this teacher
-            // We need to join: submissions -> assignments -> Subjects
-            const { data, error } = await supabase
+            let query = supabase
                 .from('submissions')
                 .select(`
                     id,
@@ -107,13 +123,23 @@ export default function GradesPage() {
                         id,
                         user:users(full_name)
                     ),
-                    assignment:assignments(
+                    assignment:assignments!inner(
                         title,
                         total_points,
-                        subject:subjects(title)
+                        teacher_id,
+                        subject:subjects!inner(
+                            id,
+                            title
+                        )
                     )
                 `)
-                .order('submitted_at', { ascending: false });
+                .eq('assignment.teacher_id', teacherId);
+
+            if (selectedSubject !== "All Subjects") {
+                query = query.eq('assignment.subject.title', selectedSubject);
+            }
+
+            const { data, error } = await query.order('submitted_at', { ascending: false });
 
             if (error) {
                 console.error("Supabase Error:", error);
@@ -246,10 +272,23 @@ export default function GradesPage() {
                         </View>
 
                         {/* Subject Filter */}
-                        <TouchableOpacity className="bg-white rounded-xl px-4 py-3 mb-4 border border-gray-100 flex-row items-center justify-between">
-                            <Text className="text-gray-700 font-medium">{selectedSubject}</Text>
-                            <ChevronDown size={18} color="#6B7280" />
-                        </TouchableOpacity>
+                        <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-4">
+                            <TouchableOpacity
+                                className={`px-4 py-2 rounded-xl mr-2 border ${selectedSubject === "All Subjects" ? "bg-teacherOrange border-teacherOrange" : "bg-white border-gray-100"}`}
+                                onPress={() => setSelectedSubject("All Subjects")}
+                            >
+                                <Text className={`font-medium ${selectedSubject === "All Subjects" ? "text-white" : "text-gray-700"}`}>All Subjects</Text>
+                            </TouchableOpacity>
+                            {subjects.map((sub) => (
+                                <TouchableOpacity
+                                    key={sub.id}
+                                    className={`px-4 py-2 rounded-xl mr-2 border ${selectedSubject === sub.title ? "bg-teacherOrange border-teacherOrange" : "bg-white border-gray-100"}`}
+                                    onPress={() => setSelectedSubject(sub.title)}
+                                >
+                                    <Text className={`font-medium ${selectedSubject === sub.title ? "text-white" : "text-gray-700"}`}>{sub.title}</Text>
+                                </TouchableOpacity>
+                            ))}
+                        </ScrollView>
 
                         {/* Search */}
                         <View className="flex-row items-center bg-white rounded-xl px-4 py-3 mb-4 border border-gray-100">

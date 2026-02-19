@@ -10,6 +10,7 @@ async function authMiddleware(req, res, next) {
     // console.log("Auth middleware called with token:", token ? "[REDACTED]" : "null");
 
     if (!token) {
+      console.warn("[AuthMiddleware] No token provided for:", req.url);
       return res.status(401).json({ error: "No token provided" });
     }
 
@@ -19,8 +20,7 @@ async function authMiddleware(req, res, next) {
     } = await supabase.auth.getUser(token);
 
     if (error || !user) {
-      // Reduced logging for standard auth failures to minimize noise
-      // console.error("Supabase auth error:", error);
+      console.error(`[AuthMiddleware] Supabase auth error for ${req.url}:`, error?.message || "Invalid user");
       return res.status(401).json({ error: "Invalid token" });
     }
 

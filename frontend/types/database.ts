@@ -373,7 +373,22 @@ export interface Database {
           created_at?: string;
           updated_at?: string;
         };
-        Relationships: [];
+        Relationships: [
+          {
+            foreignKeyName: "assignments_subject_id_fkey";
+            columns: ["subject_id"];
+            isOneToOne: false;
+            referencedRelation: "subjects";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "assignments_teacher_id_fkey";
+            columns: ["teacher_id"];
+            isOneToOne: false;
+            referencedRelation: "teachers";
+            referencedColumns: ["id"];
+          },
+        ];
       };
       submissions: {
         Row: {
@@ -409,7 +424,22 @@ export interface Database {
           submitted_at?: string;
           updated_at?: string;
         };
-        Relationships: [];
+        Relationships: [
+          {
+            foreignKeyName: "submissions_assignment_id_fkey";
+            columns: ["assignment_id"];
+            isOneToOne: false;
+            referencedRelation: "assignments";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "submissions_student_id_fkey";
+            columns: ["student_id"];
+            isOneToOne: false;
+            referencedRelation: "students";
+            referencedColumns: ["id"];
+          },
+        ];
       };
       bursaries: {
         Row: {
@@ -560,15 +590,17 @@ export interface Database {
           {
             foreignKeyName: "enrollments_student_id_fkey";
             columns: ["student_id"];
+            isOneToOne: false;
             referencedRelation: "students";
             referencedColumns: ["id"];
           },
           {
             foreignKeyName: "enrollments_subject_id_fkey";
             columns: ["subject_id"];
+            isOneToOne: false;
             referencedRelation: "subjects";
             referencedColumns: ["id"];
-          }
+          },
         ];
       };
       financial_transactions: {
