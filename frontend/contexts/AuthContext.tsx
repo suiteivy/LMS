@@ -1,8 +1,8 @@
-import React, { createContext, useContext, useEffect, useState, useRef } from 'react'
-import { Session, User } from '@supabase/supabase-js'
-import { AppState, AppStateStatus } from 'react-native'
-import { Database } from '@/types/database'
 import { authService, supabase } from '@/libs/supabase'
+import { Database } from '@/types/database'
+import { Session, User } from '@supabase/supabase-js'
+import React, { createContext, useContext, useEffect, useRef, useState } from 'react'
+import { AppState, AppStateStatus } from 'react-native'
 import Toast from 'react-native-toast-message'
 
 type UserProfile = Database['public']['Tables']['users']['Row']
@@ -62,6 +62,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const isManualLogout = useRef(false);
   const currentSessionRef = useRef<Session | null>(null);
+  const isInitializedRef = useRef(false); // Prevents onAuthStateChange from double-triggering during init
 
   const handleLogout = async () => {
     isManualLogout.current = true
@@ -120,8 +121,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     loadingUserId.current = userId;
     try {
       setIsProfileLoading(true);
-      // Keep legacy loading for components that depend on it during profile fetch
-      setLoading(true);
+      // Do NOT reset loading here — it causes flash-of-spinner on auth events.
       // Get Base Profile and Role-Specific IDs in a single query
       const { data, error } = await supabase
         .from('users')
@@ -223,7 +223,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       }
     };
 
-    initializeAuth();
+    initializeAuth().then(() => {
+      isInitializedRef.current = true;
+    });
 
     // 2. Listen for auth state changes
     const {
@@ -241,7 +243,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
           currentSessionRef.current = session;
           startTimeoutTimer()
-          if (session?.user) {
+          // Skip profile load during initialization — initializeAuth() handles it.
+          // This prevents a double-load when Supabase fires SIGNED_IN on session restore.
+          if (session?.user && isInitializedRef.current) {
             loadUserProfile(session.user.id)
           }
         } else if (event === 'SIGNED_OUT') {
