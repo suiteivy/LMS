@@ -1,15 +1,22 @@
-import React, { useState, useEffect } from 'react';
-import {
-    View, Text, ScrollView, ActivityIndicator, TouchableOpacity,
-    Alert, TextInput, Platform
-} from 'react-native';
-import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
+import { UserCard } from '@/components/common/UserCard';
 import { supabase } from '@/libs/supabase';
 import { Database } from '@/types/database';
+import { User } from '@/types/types';
 import { Ionicons } from '@expo/vector-icons';
+import { format } from 'date-fns';
+import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
+import React, { useEffect, useState } from 'react';
+import {
+    ActivityIndicator,
+    Alert,
+    ScrollView,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View
+} from 'react-native';
 
 type UserRow = Database['public']['Tables']['users']['Row'];
-import { format } from 'date-fns';
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:4000';
 
@@ -46,6 +53,17 @@ export default function UserDetailsScreen() {
     const [specialization, setSpecialization] = useState('');
     const [position, setPosition] = useState('');
     const [hireDate, setHireDate] = useState('');
+
+    // Mapping for UserCard
+    const mappedUser: User | null = user ? {
+        id: user.id,
+        name: user.full_name,
+        email: user.email,
+        role: user.role,
+        joinDate: user.created_at,
+        displayId: roleData?.id || undefined,
+        avatar: user.avatar_url || undefined
+    } : null;
 
     // Editable fields — parent
     const [occupation, setOccupation] = useState('');
@@ -324,24 +342,22 @@ export default function UserDetailsScreen() {
 
     return (
         <View className="flex-1 bg-gray-50">
-            <Stack.Screen options={{ title: 'User Details', headerBackTitle: 'Back' }} />
+            <Stack.Screen options={{ headerShown: false }} />
 
             <ScrollView className="flex-1" keyboardShouldPersistTaps="handled">
-                {/* Profile Header */}
-                <View className="items-center py-8 bg-white border-b border-gray-100">
-                    <View className="w-24 h-24 bg-gray-200 rounded-full items-center justify-center mb-4 overflow-hidden border-4 border-white shadow-sm">
-                        <Text className="text-3xl font-bold text-gray-500">{getInitials(user.full_name)}</Text>
-                    </View>
-                    <Text className="text-2xl font-bold text-gray-900">{user.full_name}</Text>
-                    <Text className="text-gray-500 text-sm mb-2">{user.email}</Text>
-
-                    <View className="flex-row items-center gap-2 mt-2">
-                        <View className={`px-3 py-1 rounded-full ${paramsToColor(user.role)}`}>
-                            <Text className={`text-xs font-bold uppercase ${paramsToTextColor(user.role)}`}>
-                                {user.role}
-                            </Text>
-                        </View>
-                    </View>
+                {/* UserCard as Header */}
+                <View className="pt-12 px-4 bg-white border-b border-gray-100 pb-0">
+                    {mappedUser && (
+                        <UserCard 
+                            user={mappedUser}
+                            variant="detailed"
+                            showBackButton={true}
+                            onBackPress={() => router.back()}
+                            showActions={!isEditing}
+                            onEditPress={() => setIsEditing(true)}
+                            onDeletePress={handleDelete}
+                        />
+                    )}
                 </View>
 
                 {/* Edit Toggle Button */}
@@ -421,9 +437,16 @@ export default function UserDetailsScreen() {
                                         key={c.id}
                                         onPress={() => isEditing && setClassId(classId === c.id ? null : c.id)}
                                         disabled={!isEditing}
-                                        className={`px-3 py-2 rounded-lg border ${classId === c.id ? 'bg-green-50 border-green-200' : 'bg-gray-50 border-gray-100'} ${!isEditing && classId !== c.id ? 'hidden' : ''}`}
+                                        className="px-3 py-2 rounded-lg border"
+                                        style={[
+                                            classId === c.id ? { backgroundColor: '#f0fdf4', borderColor: '#bbf7d0' } : { backgroundColor: '#f9fafb', borderColor: '#f3f4f6' },
+                                            !isEditing && classId !== c.id ? { display: 'none' } : {}
+                                        ]}
                                     >
-                                        <Text className={`text-xs font-semibold ${classId === c.id ? 'text-green-700' : 'text-gray-600'}`}>
+                                        <Text 
+                                            className="text-xs font-semibold"
+                                            style={{ color: classId === c.id ? '#15803d' : '#4b5563' }}
+                                        >
                                             {c.name}
                                         </Text>
                                     </TouchableOpacity>
@@ -447,9 +470,16 @@ export default function UserDetailsScreen() {
                                                 setLinkedParents(isSelected ? linkedParents.filter(id => id !== p.id) : [...linkedParents, p.id]);
                                             }}
                                             disabled={!isEditing}
-                                            className={`px-3 py-2 rounded-lg border ${isSelected ? 'bg-green-50 border-green-200' : 'bg-gray-50 border-gray-100'} ${!isEditing && !isSelected ? 'hidden' : ''}`}
+                                            className="px-3 py-2 rounded-lg border"
+                                            style={[
+                                                isSelected ? { backgroundColor: '#f0fdf4', borderColor: '#bbf7d0' } : { backgroundColor: '#f9fafb', borderColor: '#f3f4f6' },
+                                                !isEditing && !isSelected ? { display: 'none' } : {}
+                                            ]}
                                         >
-                                            <Text className={`text-xs font-semibold ${isSelected ? 'text-green-700' : 'text-gray-600'}`}>
+                                            <Text 
+                                                className="text-xs font-semibold"
+                                                style={{ color: isSelected ? '#15803d' : '#4b5563' }}
+                                            >
                                                 {p.users?.full_name || p.id}
                                             </Text>
                                             {isSelected && isEditing && <Text className="text-[8px] text-green-600">{p.id}</Text>}
@@ -485,9 +515,16 @@ export default function UserDetailsScreen() {
                                                 setSubjectIds(isSelected ? subjectIds.filter(id => id !== s.id) : [...subjectIds, s.id]);
                                             }}
                                             disabled={!isEditing}
-                                            className={`px-3 py-2 rounded-lg border ${isSelected ? 'bg-blue-50 border-blue-200' : 'bg-gray-50 border-gray-100'} ${!isEditing && !isSelected ? 'hidden' : ''}`}
+                                            className="px-3 py-2 rounded-lg border"
+                                            style={[
+                                                isSelected ? { backgroundColor: '#eff6ff', borderColor: '#bfdbfe' } : { backgroundColor: '#f9fafb', borderColor: '#f3f4f6' },
+                                                !isEditing && !isSelected ? { display: 'none' } : {}
+                                            ]}
                                         >
-                                            <Text className={`text-xs font-semibold ${isSelected ? 'text-blue-700' : 'text-gray-600'}`}>
+                                            <Text 
+                                                className="text-xs font-semibold"
+                                                style={{ color: isSelected ? '#1d4ed8' : '#4b5563' }}
+                                            >
                                                 {s.title}
                                             </Text>
                                         </TouchableOpacity>
@@ -521,9 +558,16 @@ export default function UserDetailsScreen() {
                                                 setLinkedStudents(isSelected ? linkedStudents.filter(id => id !== s.id) : [...linkedStudents, s.id]);
                                             }}
                                             disabled={!isEditing}
-                                            className={`px-3 py-2 rounded-lg border ${isSelected ? 'bg-yellow-50 border-yellow-200' : 'bg-gray-50 border-gray-100'} ${!isEditing && !isSelected ? 'hidden' : ''}`}
+                                            className="px-3 py-2 rounded-lg border"
+                                            style={[
+                                                isSelected ? { backgroundColor: '#fefce8', borderColor: '#fef08a' } : { backgroundColor: '#f9fafb', borderColor: '#f3f4f6' },
+                                                !isEditing && !isSelected ? { display: 'none' } : {}
+                                            ]}
                                         >
-                                            <Text className={`text-xs font-semibold ${isSelected ? 'text-yellow-700' : 'text-gray-600'}`}>
+                                            <Text 
+                                                className="text-xs font-semibold"
+                                                style={{ color: isSelected ? '#a16207' : '#4b5563' }}
+                                            >
                                                 {s.users?.full_name || s.id}
                                             </Text>
                                             {isSelected && isEditing && <Text className="text-[8px] text-yellow-600">{s.id}</Text>}

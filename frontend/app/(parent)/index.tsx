@@ -1,14 +1,17 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, StatusBar, Modal } from 'react-native';
-import {
-  User, TrendingUp, CheckCircle, FileText, CreditCard,
-  Calendar, MessageSquare, X,
-  LogOut
-} from 'lucide-react-native';
 import { useAuth } from '@/contexts/AuthContext';
-import Notifications from '../../components/Notifications';
 import { router } from 'expo-router';
-import { ParentService } from '@/services/ParentService';
+import {
+  Calendar,
+  CheckCircle,
+  CreditCard,
+  FileText,
+  LogOut,
+  MessageSquare,
+  TrendingUp,
+  UserCircle
+} from 'lucide-react-native';
+import React, { useEffect, useState } from 'react';
+import { ActivityIndicator, ScrollView, StatusBar, Text, TouchableOpacity, View } from 'react-native';
 
 export default function ParentIndex() {
   const { profile, loading, logout } = useAuth();
@@ -24,57 +27,38 @@ export default function ParentIndex() {
   return <ParentDashboard user={profile} logout={logout} />;
 }
 
+// ── Dummy data ────────────────────────────────────────────────────────────────
+const DUMMY_STUDENTS = [
+  { id: "s1", name: "Ethan Kamau", grade_level: "9" },
+  { id: "s2", name: "Aisha Kamau", grade_level: "6" },
+];
+
+const DUMMY_STUDENT_DATA: Record<string, any> = {
+  s1: {
+    performance: { average_grade: "A-" },
+    attendance: { overall_percentage: 92 },
+  },
+  s2: {
+    performance: { average_grade: "B+" },
+    attendance: { overall_percentage: 87 },
+  },
+};
+// ─────────────────────────────────────────────────────────────────────────────
+
 function ParentDashboard({ user, logout }: any) {
   const [showNotification, setShowNotification] = useState(false);
   const [activeModal, setActiveModal] = useState<string | null>(null);
 
-  const [linkedStudents, setLinkedStudents] = useState<any[]>([]);
-  const [selectedStudent, setSelectedStudent] = useState<any>(null);
-  const [loadingStudents, setLoadingStudents] = useState(true);
-  const [studentData, setStudentData] = useState<any>({
-    attendance: null,
-    performance: null,
-    finance: null
-  });
-
-  useEffect(() => {
-    fetchStudents();
-  }, [user?.id]);
+  const [linkedStudents, setLinkedStudents] = useState<any[]>(DUMMY_STUDENTS);
+  const [selectedStudent, setSelectedStudent] = useState<any>(DUMMY_STUDENTS[0]);
+  const [loadingStudents, setLoadingStudents] = useState(false);
+  const [studentData, setStudentData] = useState<any>(DUMMY_STUDENT_DATA[DUMMY_STUDENTS[0].id]);
 
   useEffect(() => {
     if (selectedStudent) {
-      fetchStudentDetails(selectedStudent.id);
+      setStudentData(DUMMY_STUDENT_DATA[selectedStudent.id] || {});
     }
   }, [selectedStudent]);
-
-  const fetchStudents = async () => {
-    if (!user?.id) return;
-    try {
-      setLoadingStudents(true);
-      const students = await ParentService.getLinkedStudents();
-      if (students && students.length > 0) {
-        setLinkedStudents(students);
-        setSelectedStudent(students[0]);
-      }
-    } catch (error) {
-      console.error("Fetch students error:", error);
-    } finally {
-      setLoadingStudents(false);
-    }
-  };
-
-  const fetchStudentDetails = async (studentId: string) => {
-    try {
-      const [performance, attendance, finance] = await Promise.all([
-        ParentService.getStudentPerformance(studentId),
-        ParentService.getStudentAttendance(studentId),
-        ParentService.getStudentFinance(studentId)
-      ]);
-      setStudentData({ performance, attendance, finance });
-    } catch (error) {
-      console.error("Fetch student details error:", error);
-    }
-  };
 
   const closeModal = () => setActiveModal(null);
 
@@ -90,7 +74,7 @@ function ParentDashboard({ user, logout }: any) {
   if (linkedStudents.length === 0) {
     return (
       <View className="flex-1 justify-center items-center bg-gray-50 p-8">
-        <User size={60} color="#d1d5db" />
+        <UserCircle size={60} color="#d1d5db" />
         <Text className="text-xl font-bold text-gray-800 mt-4 text-center">No Students Linked</Text>
         <TouchableOpacity
           onPress={() => router.replace("/(auth)/signIn")}
@@ -144,7 +128,7 @@ function ParentDashboard({ user, logout }: any) {
 
             <View className="bg-orange-500 p-6 rounded-3xl shadow-lg mb-8 flex-row items-center">
               <View className="bg-white/20 p-3 rounded-2xl mr-4">
-                <User size={30} color="white" />
+                <UserCircle size={30} color="white" />
               </View>
               <View>
                 <Text className="text-orange-100 text-xs font-bold uppercase tracking-wider">Currently Viewing</Text>
@@ -179,25 +163,25 @@ function ParentDashboard({ user, logout }: any) {
                 icon={CreditCard}
                 label="Fees & Billing"
                 color="#2563eb"
-                onPress={() => router.push({ pathname: "/(parent)/finance" as any, params: { studentId: selectedStudent.id } })}
+                onPress={() => router.navigate({ pathname: "/(parent)/finance" as any, params: { studentId: selectedStudent.id } })}
               />
               <QuickAction
                 icon={Calendar}
                 label="Attendance"
                 color="#7c3aed"
-                onPress={() => router.push({ pathname: "/(parent)/attendance" as any, params: { studentId: selectedStudent.id } })}
+                onPress={() => router.navigate({ pathname: "/(parent)/attendance" as any, params: { studentId: selectedStudent.id } })}
               />
               <QuickAction
                 icon={MessageSquare}
                 label="Messages"
                 color="#0891b2"
-                onPress={() => router.push("/(parent)/messages" as any)}
+                onPress={() => router.navigate("/(parent)/messages" as any)}
               />
               <QuickAction
                 icon={FileText}
                 label="Academic Records"
                 color="#ea580c"
-                onPress={() => router.push({ pathname: "/(parent)/grades" as any, params: { studentId: selectedStudent.id } })}
+                onPress={() => router.navigate({ pathname: "/(parent)/grades" as any, params: { studentId: selectedStudent.id } })}
               />
             </View>
 

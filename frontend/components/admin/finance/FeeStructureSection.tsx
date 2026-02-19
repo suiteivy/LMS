@@ -1,15 +1,14 @@
 import { FeeStructure } from "@/types/types";
 import React, { useState } from "react";
 import {
-  View,
+  Alert,
+  Modal,
+  ScrollView,
+  Switch,
   Text,
   TextInput,
   TouchableOpacity,
-  FlatList,
-  Alert,
-  Modal,
-  Switch,
-  ScrollView,
+  View
 } from "react-native";
 
 interface FeeStructureSectionProps {
@@ -104,8 +103,8 @@ const FeeStructureSection: React.FC<FeeStructureSectionProps> = ({
   };
 
   const renderFeeStructureItem = ({ item }: { item: FeeStructure }) => (
-    <View className="bg-white rounded-lg p-4 mb-3 shadow-sm border border-gray-100">
-      <View className="flex-row justify-between items-start mb-3">
+    <View className="bg-white rounded-3xl p-6 mb-6 shadow-xl shadow-slate-200/50 border border-slate-100">
+      <View className="flex-row justify-between items-start mb-5">
         <Text className="text-lg font-semibold text-gray-900 flex-1">
           {item.Subject_name}
         </Text>
@@ -121,8 +120,8 @@ const FeeStructureSection: React.FC<FeeStructureSectionProps> = ({
               </Text>
             </View>
           )}
-          <TouchableOpacity onPress={() => openEditForm(item)} className="p-1">
-            <Text className="text-blue-600 text-sm">Edit</Text>
+          <TouchableOpacity onPress={() => openEditForm(item)} className="p-1 px-4 bg-slate-900 rounded-xl">
+            <Text className="text-white text-xs font-black uppercase tracking-widest">Edit</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -154,7 +153,7 @@ const FeeStructureSection: React.FC<FeeStructureSectionProps> = ({
           <Text className="text-sm font-medium text-gray-900">
             Total Subject Fee:
           </Text>
-          <Text className="text-sm font-bold">
+          <Text className="text-sm font-bold text-slate-900">
             {formatAmount(
               item.base_fee + item.registration_fee + item.material_fee
             )}
@@ -163,19 +162,21 @@ const FeeStructureSection: React.FC<FeeStructureSectionProps> = ({
       </View>
 
       {/* Bursary Information */}
-      <View className="bg-blue-50 rounded-lg p-3 mb-3">
-        <View className="flex-row justify-between mb-2">
-          <Text className="text-sm font-medium text-blue-800">
+      <View className="bg-[#111827] rounded-3xl p-6 mb-5 border border-slate-800">
+        <View className="flex-row justify-between mb-3">
+          <Text className="text-sm font-semibold text-slate-400">
             Bursary Coverage:
           </Text>
-          <Text className="text-sm font-bold text-blue-800">
-            {item.bursary_percentage}%
-          </Text>
+          <View className="bg-orange-500/10 px-3 py-1 rounded-full">
+            <Text className="text-sm font-black text-orange-500">
+              {item.bursary_percentage}%
+            </Text>
+          </View>
         </View>
 
-        <View className="flex-row justify-between">
-          <Text className="text-sm text-blue-700">Student Pays:</Text>
-          <Text className="text-sm font-bold text-[#FF6B00]">
+        <View className="flex-row justify-between items-center border-t border-slate-800 pt-4 mt-2">
+          <Text className="text-sm text-slate-400 font-medium">Student Pays:</Text>
+          <Text className="text-2xl font-black text-white">
             {formatAmount(calculateStudentFee(item))}
           </Text>
         </View>

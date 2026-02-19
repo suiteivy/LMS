@@ -1,8 +1,8 @@
-import React, { useState } from "react";
-import { View, Text, ScrollView, ActivityIndicator, TouchableOpacity, RefreshControl } from "react-native";
 import { useDashboardStats } from "@/hooks/useDashboardStats";
-import { Users, BookOpen, GraduationCap, DollarSign, TrendingUp, Calendar, ArrowLeft, BarChart3 } from "lucide-react-native";
 import { router } from "expo-router";
+import { ArrowLeft, BarChart3, BookOpen, DollarSign, GraduationCap, TrendingUp, Users } from "lucide-react-native";
+import React, { useState } from "react";
+import { ActivityIndicator, RefreshControl, ScrollView, Text, TouchableOpacity, View } from "react-native";
 
 const StatCard = ({ title, value, icon: Icon, color, trend }: any) => (
     <View className="bg-white p-5 rounded-3xl border border-gray-100 shadow-sm flex-1 min-w-[160px] m-1">
@@ -71,9 +71,9 @@ export default function AnalyticsScreen() {
                 <View className="flex-row items-center mb-6">
                     <TouchableOpacity
                         onPress={() => router.back()}
-                        className="p-2 bg-white rounded-xl shadow-sm border border-gray-100 mr-4"
+                        className="p-3 bg-white rounded-2xl shadow-sm border border-slate-100 mr-4"
                     >
-                        <ArrowLeft size={20} color="#374151" />
+                        <ArrowLeft size={20} color="#f97316" />
                     </TouchableOpacity>
                     <View>
                         <Text className="text-2xl font-extrabold text-gray-900">Analytics</Text>
@@ -115,7 +115,7 @@ export default function AnalyticsScreen() {
                                     </View>
                                     <View
                                         style={{ height: `${Math.max(height, 5)}%` }}
-                                        className="w-8 bg-teal-600 rounded-t-lg opacity-80"
+                                        className="w-8 bg-[#f97316] rounded-t-xl opacity-90 shadow-sm shadow-[#f97316]/20"
                                     />
                                     <Text className="text-gray-400 text-[10px] mt-2 font-medium">{data.day}</Text>
                                 </View>
