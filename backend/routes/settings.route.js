@@ -2,13 +2,13 @@
 const express = require("express");
 const router = express.Router();
 const settingsController = require("../controllers/settings.controller");
-const { verifyToken } = require("../middleware/auth.middleware");
+const { authMiddleware } = require("../middleware/auth.middleware");
 
 // Public-ish (Authenticated) read
-router.get("/currency", verifyToken, settingsController.getCurrencyRates);
+router.get("/currency", authMiddleware, settingsController.getCurrencyRates);
 
 // Admin only (Trigger update)
-router.post("/currency/update", verifyToken, (req, res, next) => {
+router.post("/currency/update", authMiddleware, (req, res, next) => {
     if (req.userRole !== 'admin') return res.status(403).json({ error: "Unauthorized" });
     next();
 }, settingsController.updateCurrencyRates);

@@ -91,8 +91,10 @@ api.interceptors.response.use(
           title = "Unauthorized";
           message = "Please sign in again.";
           // Trigger global sign-out to clear state and redirect
-          supabase.auth.signOut().catch(e => console.error("Error signing out after 401:", e));
-          break;
+          // We do NOT show a toast here to avoid spam/race conditions during logout.
+          // AuthContext's onAuthStateChange will handle the UI.
+          supabase.auth.signOut().catch(e => console.warn("SignOut error:", e));
+          return Promise.reject({ ...error, isAuthError: true });
         case 403:
           title = "Permission Denied";
           message = "You don't have access to this resource.";
@@ -126,8 +128,8 @@ api.interceptors.response.use(
     const method = error.config?.method?.toUpperCase();
     console.error(`[API Error] ${method} ${url} (${error.response?.status || 'Network'}):`, message);
 
-    // Only show toast if it's not a "cancelled" request or specific silences
-    if (error.message !== 'canceled') {
+    // Only show toast if it's not a "cancelled" request and NOT a 401 (handled by AuthContext)
+    if (error.message !== 'canceled' && error.response?.status !== 401) {
       showError(title, message);
     }
 

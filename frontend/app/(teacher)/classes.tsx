@@ -43,8 +43,8 @@ export default function TeacherClasses() {
             const classesWithCounts = await Promise.all(typedData.map(async (cls) => {
                 const { count } = await supabase
                     .from('enrollments')
-                    .select('*', { count: 'exact', head: true })
-                    .eq('class_id', cls.id);
+                    .select('id, subjects!inner(class_id)', { count: 'exact', head: true })
+                    .eq('subjects.class_id', cls.id);
 
                 return {
                     ...cls,

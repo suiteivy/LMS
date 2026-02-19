@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from "react";
 import { View, Text, ScrollView, TouchableOpacity, StatusBar, TextInput, Modal, Alert, ActivityIndicator } from 'react-native';
-import { ArrowLeft, Plus, FileText, Calendar, Clock, Users, Eye, Edit2, Trash2, X, ChevronDown } from 'lucide-react-native';
+import { ArrowLeft, Plus, FileText, Calendar, Clock, Users, Eye, Edit2, Trash2, X, ChevronDown, Paperclip, Upload } from 'lucide-react-native';
 import { router } from "expo-router";
 import { supabase } from "@/libs/supabase";
 import { useAuth } from "@/contexts/AuthContext";
 import DateTimePicker from '@react-native-community/datetimepicker';
+import * as DocumentPicker from 'expo-document-picker';
 
 interface Assignment {
     id: string;
@@ -15,6 +16,8 @@ interface Assignment {
     totalStudents: number; // Placeholder or fetched
     status: "active" | "draft" | "closed";
     subject_id: string;
+    attachment_url?: string;
+    attachment_name?: string;
 }
 
 interface SubjectOption {
@@ -58,6 +61,14 @@ const AssignmentCard = ({ assignment }: { assignment: Assignment }) => {
                         {assignment.submissions} submitted
                     </Text>
                 </View>
+                {assignment.attachment_name && (
+                    <View className="flex-row items-center ml-4">
+                        <Paperclip size={14} color="#6B7280" />
+                        <Text className="text-gray-500 text-xs ml-1 max-w-[100px]" numberOfLines={1}>
+                            {assignment.attachment_name}
+                        </Text>
+                    </View>
+                )}
             </View>
 
             {/* Progress Bar */}
@@ -96,6 +107,8 @@ export default function AssignmentsPage() {
     const [selectedSubjectId, setSelectedSubjectId] = useState("");
     const [dateObject, setDateObject] = useState(new Date())
     const [showDatePicker, setShowDatePicker] = useState(false)
+    const [selectedFile, setSelectedFile] = useState<any>(null);
+    const [uploading, setUploading] = useState(false);
 
 
     const onDateChange = (event: any, selectedDate?: Date) => {
@@ -145,7 +158,9 @@ export default function AssignmentsPage() {
                 dueDate: a.due_date ? new Date(a.due_date).toLocaleDateString() : "No Due Date",
                 submissions: a.submissions?.[0]?.count || 0,
                 totalStudents: 0,
-                status: a.status || 'active'
+                status: a.status || 'active',
+                attachment_url: a.attachment_url,
+                attachment_name: a.attachment_name
             }));
 
             setAssignments(formatted);
@@ -156,6 +171,24 @@ export default function AssignmentsPage() {
         }
     };
 
+    const pickDocument = async () => {
+        try {
+            const result = await DocumentPicker.getDocumentAsync({
+                type: '*/*', // Allow all file types
+                copyToCacheDirectory: true,
+            });
+
+            if (result.canceled) return;
+
+            if (result.assets && result.assets.length > 0) {
+                setSelectedFile(result.assets[0]);
+            }
+        } catch (err) {
+            console.error("Error picking document:", err);
+            Alert.alert("Error", "Failed to pick document");
+        }
+    };
+
     const createAssignment = async () => {
         if (!teacherId) return;
         if (!title || !selectedSubjectId) {
@@ -163,7 +196,32 @@ export default function AssignmentsPage() {
             return;
         }
 
+        setUploading(true);
+        let attachmentUrl = null;
+        let attachmentName = null;
+
         try {
+            // 1. Upload File if selected
+            if (selectedFile) {
+                const fileExt = selectedFile.name.split('.').pop();
+                const filePath = `${teacherId}/${Date.now()}.${fileExt}`;
+                const fileBody = await fetch(selectedFile.uri).then(res => res.blob());
+
+                const { data: uploadData, error: uploadError } = await supabase.storage
+                    .from('course_materials')
+                    .upload(filePath, fileBody);
+
+                if (uploadError) throw uploadError;
+
+                const { data: urlData } = supabase.storage
+                    .from('course_materials')
+                    .getPublicUrl(filePath);
+
+                attachmentUrl = urlData.publicUrl;
+                attachmentName = selectedFile.name;
+            }
+
+            // 2. Create Assignment Record
             const { error } = await supabase.from('assignments').insert({
                 teacher_id: teacherId,
                 subject_id: selectedSubjectId,
@@ -171,7 +229,9 @@ export default function AssignmentsPage() {
                 description,
                 due_date: dueDate ? new Date(dueDate).toISOString() : null, // Naive parsing, better to use date picker
                 total_points: parseInt(points) || 100,
-                status: 'active'
+                status: 'active',
+                attachment_url: attachmentUrl,
+                attachment_name: attachmentName
             });
 
             if (error) throw error;
@@ -184,10 +244,13 @@ export default function AssignmentsPage() {
             setDueDate("");
             setPoints("");
             setSelectedSubjectId("");
+            setSelectedFile(null);
 
-        } catch (error) {
-            Alert.alert("Error", "Failed to create assignment");
+        } catch (error: any) {
+            Alert.alert("Error", error.message || "Failed to create assignment");
             console.error(error);
+        } finally {
+            setUploading(false);
         }
     };
 
@@ -270,79 +333,114 @@ export default function AssignmentsPage() {
             {/* Create Assignment Modal */}
             <Modal visible={showModal} animationType="slide" transparent>
                 <View className="flex-1 bg-black/50 justify-end">
-                    <View className="bg-white rounded-t-3xl p-6">
-                        <View className="flex-row justify-between items-center mb-6">
-                            <Text className="text-xl font-bold text-gray-900">Create Assignment</Text>
-                            <TouchableOpacity onPress={() => setShowModal(false)}>
-                                <X size={24} color="#6B7280" />
-                            </TouchableOpacity>
-                        </View>
-
-                        {/* Subject Selector (Simple) */}
-                        <Text className="text-gray-500 text-xs uppercase mb-1 font-semibold">Subject</Text>
-                        <ScrollView horizontal className="flex-row mb-4" showsHorizontalScrollIndicator={false}>
-                            {Subjects.map(c => (
-                                <TouchableOpacity
-                                    key={c.id}
-                                    onPress={() => setSelectedSubjectId(c.id)}
-                                    className={`mr-2 px-4 py-2 rounded-lg border ${selectedSubjectId === c.id ? 'bg-teacherOrange border-teacherOrange' : 'bg-gray-50 border-gray-200'}`}
-                                >
-                                    <Text className={selectedSubjectId === c.id ? 'text-white' : 'text-gray-700'}>{c.title}</Text>
+                    <View className="bg-white rounded-t-3xl p-6 h-[80%]">
+                        <ScrollView showsVerticalScrollIndicator={false}>
+                            <View className="flex-row justify-between items-center mb-6">
+                                <Text className="text-xl font-bold text-gray-900">Create Assignment</Text>
+                                <TouchableOpacity onPress={() => setShowModal(false)}>
+                                    <X size={24} color="#6B7280" />
                                 </TouchableOpacity>
-                            ))}
-                        </ScrollView>
+                            </View>
+
+                            {/* Subject Selector (Simple) */}
+                            <Text className="text-gray-500 text-xs uppercase mb-1 font-semibold">Subject</Text>
+                            <ScrollView horizontal className="flex-row mb-4" showsHorizontalScrollIndicator={false}>
+                                {Subjects.map(c => (
+                                    <TouchableOpacity
+                                        key={c.id}
+                                        onPress={() => setSelectedSubjectId(c.id)}
+                                        className={`mr-2 px-4 py-2 rounded-lg border ${selectedSubjectId === c.id ? 'bg-teacherOrange border-teacherOrange' : 'bg-gray-50 border-gray-200'}`}
+                                    >
+                                        <Text className={selectedSubjectId === c.id ? 'text-white' : 'text-gray-700'}>{c.title}</Text>
+                                    </TouchableOpacity>
+                                ))}
+                            </ScrollView>
 
 
-                        <TextInput
-                            className="bg-gray-50 rounded-xl px-4 py-3 mb-4 text-gray-900"
-                            placeholder="Assignment Title"
-                            placeholderTextColor="#9CA3AF"
-                            value={title}
-                            onChangeText={setTitle}
-                        />
-                        <TextInput
-                            className="bg-gray-50 rounded-xl px-4 py-3 mb-4 text-gray-900 h-24"
-                            placeholder="Description"
-                            placeholderTextColor="#9CA3AF"
-                            multiline
-                            textAlignVertical="top"
-                            value={description}
-                            onChangeText={setDescription}
-                        />
-                        <TouchableOpacity
-                            onPress={() => setShowDatePicker(true)}
-                            className="bg-gray-50 rounded-xl px-4 py-3 mb-4 flex-row justify-between items-center"
-                        >
-                            <Text className={dueDate ? "text-gray-900" : "text-gray-300"}>
-                                {dueDate ? dueDate : "Select due date"}
-                            </Text>
-                            <Calendar size={18} color="#9ca3af" />
-
-                        </TouchableOpacity>
-                        {showDatePicker && (
-                            <DateTimePicker
-                                value={dateObject}
-                                mode="date"
-                                display="default"
-                                onChange={onDateChange}
-                                minimumDate={new Date()} // Can't set a due date in the past
+                            <TextInput
+                                className="bg-gray-50 rounded-xl px-4 py-3 mb-4 text-gray-900"
+                                placeholder="Assignment Title"
+                                placeholderTextColor="#9CA3AF"
+                                value={title}
+                                onChangeText={setTitle}
                             />
-                        )}
-                        <TextInput
-                            className="bg-gray-50 rounded-xl px-4 py-3 mb-6 text-gray-900"
-                            placeholder="Max Points (e.g., 100)"
-                            placeholderTextColor="#9CA3AF"
-                            keyboardType="numeric"
-                            value={points}
-                            onChangeText={setPoints}
-                        />
+                            <TextInput
+                                className="bg-gray-50 rounded-xl px-4 py-3 mb-4 text-gray-900 h-24"
+                                placeholder="Description"
+                                placeholderTextColor="#9CA3AF"
+                                multiline
+                                textAlignVertical="top"
+                                value={description}
+                                onChangeText={setDescription}
+                            />
 
-                        <TouchableOpacity
-                            className="bg-teacherOrange py-4 rounded-xl items-center"
-                            onPress={createAssignment}
-                        >
-                            <Text className="text-white font-bold text-base">Create Assignment</Text>
-                        </TouchableOpacity>
+                            {/* Due Date & Points */}
+                            <View className="flex-row gap-4 mb-4">
+                                <TouchableOpacity
+                                    onPress={() => setShowDatePicker(true)}
+                                    className="flex-1 bg-gray-50 rounded-xl px-4 py-3 flex-row justify-between items-center"
+                                >
+                                    <Text className={dueDate ? "text-gray-900" : "text-gray-300"}>
+                                        {dueDate ? dueDate : "Select due date"}
+                                    </Text>
+                                    <Calendar size={18} color="#9ca3af" />
+                                </TouchableOpacity>
+
+                                <TextInput
+                                    className="flex-1 bg-gray-50 rounded-xl px-4 py-3 text-gray-900"
+                                    placeholder="Max Points"
+                                    placeholderTextColor="#9CA3AF"
+                                    keyboardType="numeric"
+                                    value={points}
+                                    onChangeText={setPoints}
+                                />
+                            </View>
+
+                            {showDatePicker && (
+                                <DateTimePicker
+                                    value={dateObject}
+                                    mode="date"
+                                    display="default"
+                                    onChange={onDateChange}
+                                    minimumDate={new Date()} // Can't set a due date in the past
+                                />
+                            )}
+
+                            {/* File Upload Section */}
+                            <TouchableOpacity
+                                onPress={pickDocument}
+                                className={`flex-row items-center justify-center border-dashed border-2 rounded-xl p-4 mb-6 ${selectedFile ? 'border-green-500 bg-green-50' : 'border-gray-300 bg-gray-50'}`}
+                            >
+                                {selectedFile ? (
+                                    <View className="items-center">
+                                        <FileText size={24} color="#10B981" />
+                                        <Text className="text-green-700 font-medium mt-2">{selectedFile.name}</Text>
+                                        <Text className="text-green-500 text-xs">Tap to change file</Text>
+                                    </View>
+                                ) : (
+                                    <View className="items-center">
+                                        <Upload size={24} color="#9CA3AF" />
+                                        <Text className="text-gray-500 font-medium mt-2">Upload Document/Image</Text>
+                                        <Text className="text-gray-400 text-xs">Tap to select a file</Text>
+                                    </View>
+                                )}
+                            </TouchableOpacity>
+
+                            <TouchableOpacity
+                                className={`bg-teacherOrange py-4 rounded-xl items-center ${uploading ? 'opacity-70' : ''}`}
+                                onPress={createAssignment}
+                                disabled={uploading}
+                            >
+                                {uploading ? (
+                                    <ActivityIndicator color="white" />
+                                ) : (
+                                    <Text className="text-white font-bold text-base">Create Assignment</Text>
+                                )}
+                            </TouchableOpacity>
+
+                            {/* Spacing for keyboard/scroll */}
+                            <View className="h-20" />
+                        </ScrollView>
                     </View>
                 </View>
             </Modal>

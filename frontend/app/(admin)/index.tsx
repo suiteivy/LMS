@@ -158,8 +158,9 @@ export default function AdminDashboard() {
   }, []);
 
   useEffect(() => {
+    if (!profile) return; // Wait for profile (which implies session)
     fetchRecentUsers();
-  }, [fetchRecentUsers]);
+  }, [fetchRecentUsers, profile]);
 
 
   return (

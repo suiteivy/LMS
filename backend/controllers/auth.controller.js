@@ -570,3 +570,29 @@ exports.searchUsers = async (req, res) => {
     res.status(500).json({ error: "Server error" });
   }
 };
+
+/**
+ * Handle logout to clean up trial sessions
+ */
+exports.logout = async (req, res) => {
+  try {
+    const user = req.user;
+    if (user) {
+      // Clean up trial session for this user if it exists
+      const { error } = await supabase
+        .from('trial_sessions')
+        .delete()
+        .eq('demo_user_id', user.id);
+
+      if (error) {
+        console.warn("Error cleaning up trial session:", error);
+      } else {
+        console.log(`Trial session cleaned up for user ${user.id}`);
+      }
+    }
+    res.status(200).json({ message: "Logged out successfully" });
+  } catch (err) {
+    console.error("Logout error:", err);
+    res.status(500).json({ error: "Logout error" });
+  }
+};

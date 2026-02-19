@@ -34,7 +34,7 @@ const MenuItem = ({ icon, label, onPress, danger }: MenuItemProps) => (
 );
 
 function SettingsMenu({ userRole, onNavigate }: { userRole: string, onNavigate: (screen: 'profile' | 'settings' | 'help' | 'overview') => void }) {
-  const { signOut, user, profile, loading, displayId } = useAuth();
+  const { signOut, user, profile, loading, displayId, isTrial } = useAuth();
 
   const handleLogout = async () => {
     try {
@@ -79,18 +79,20 @@ function SettingsMenu({ userRole, onNavigate }: { userRole: string, onNavigate: 
           />
         )}
         <MenuItem
-          icon={<UserCircle size={22} color="#f97316" />}
-          label="My Profile"
-          onPress={() => onNavigate('profile')}
+          icon={<UserCircle size={22} color={isTrial ? "#9ca3af" : "#f97316"} />}
+          label={isTrial ? "My Profile (Restricted)" : "My Profile"}
+          onPress={() => isTrial ? Alert.alert("Demo Mode", "Profile editing is disabled in demo mode.") : onNavigate('profile')}
         />
 
         {userRole !== 'admin' && (
           <>
-            <MenuItem
-              icon={<Settings size={22} color="#6b7280" />}
-              label="Settings"
-              onPress={() => onNavigate('settings')}
-            />
+            {!isTrial && (
+              <MenuItem
+                icon={<Settings size={22} color="#6b7280" />}
+                label="Settings"
+                onPress={() => onNavigate('settings')}
+              />
+            )}
             <MenuItem
               icon={<HelpCircle size={22} color="#3b82f6" />}
               label="Help & Support"

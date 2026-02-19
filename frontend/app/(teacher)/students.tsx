@@ -57,13 +57,15 @@ const StudentCard = ({ student }: StudentCardProps) => {
     );
 };
 
+// ... (imports remain similar)
+
 export default function TeacherStudents() {
     const { teacherId } = useAuth();
     const [searchQuery, setSearchQuery] = useState("");
     const [students, setStudents] = useState<Student[]>([]);
     const [loading, setLoading] = useState(true);
-    const [selectedClass, setSelectedClass] = useState<string>("all");
-    const [classes, setClasses] = useState<any[]>([]);
+    const [selectedSubject, setSelectedSubject] = useState<string>("all");
+    const [subjects, setSubjects] = useState<any[]>([]);
 
     useEffect(() => {
         if (teacherId) {
@@ -74,46 +76,46 @@ export default function TeacherStudents() {
     const fetchInitialData = async (tid: string) => {
         try {
             setLoading(true);
-            // 1. Get classes for this teacher
-            const { data: classesData, error: classesError } = await supabase
-                .from('classes')
-                .select('id, name')
+            // 1. Get subjects for this teacher
+            const { data: subjectsData, error: subjectsError } = await supabase
+                .from('subjects')
+                .select('id, title')
                 .eq('teacher_id', tid);
 
-            if (classesError) throw classesError;
-            setClasses(classesData || []);
+            if (subjectsError) throw subjectsError;
+            setSubjects(subjectsData || []);
 
-            const classIds = (classesData || []).map(c => c.id);
+            const subjectIds = (subjectsData || []).map(s => s.id);
 
-            if (classIds.length === 0) {
+            if (subjectIds.length === 0) {
                 setStudents([]);
                 return;
             }
 
-            // 2. Get enrollments for these classes
+            // 2. Get enrollments for these subjects
             const { data: enrollData, error: enrollError } = await supabase
                 .from('enrollments')
                 .select(`
                     id,
-                    class_id,
+                    subject_id,
                     student:students(
                         id,
                         user:users(full_name, email)
                     )
                 `)
-                .in('class_id', classIds)
+                .in('subject_id', subjectIds)
                 .eq('status', 'enrolled');
 
             if (enrollError) throw enrollError;
 
             // Map to Student interface
             const mappedStudents: Student[] = (enrollData || []).map((enroll: any) => {
-                const cls = classesData.find(c => c.id === enroll.class_id);
+                const sub = subjectsData.find(s => s.id === enroll.subject_id);
                 return {
                     id: enroll.student?.id,
                     name: enroll.student?.user?.full_name || "Unknown",
                     email: enroll.student?.user?.email || "",
-                    Subject: cls?.name || "Unknown Class",
+                    Subject: sub?.title || "Unknown Subject",
                     grade: "A", // Placeholder
                     progress: Math.floor(Math.random() * 40) + 60 // Simulated progress
                 };
@@ -130,8 +132,8 @@ export default function TeacherStudents() {
     const filteredStudents = students.filter(s => {
         const matchesSearch = s.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
             s.Subject.toLowerCase().includes(searchQuery.toLowerCase());
-        const matchesClass = selectedClass === "all" || s.Subject === selectedClass;
-        return matchesSearch && matchesClass;
+        const matchesSubject = selectedSubject === "all" || s.Subject === selectedSubject;
+        return matchesSearch && matchesSubject;
     });
 
     if (loading) {
@@ -189,21 +191,21 @@ export default function TeacherStudents() {
                             />
                         </View>
 
-                        {/* Class Filter Tags */}
+                        {/* Subject Filter Tags */}
                         <ScrollView horizontal showsHorizontalScrollIndicator={false} className="flex-row mb-6 -mx-1">
                             <TouchableOpacity
-                                onPress={() => setSelectedClass("all")}
-                                className={`px-4 py-2 rounded-full mx-1 border ${selectedClass === "all" ? 'bg-teacherOrange border-teacherOrange' : 'bg-white border-gray-100'}`}
+                                onPress={() => setSelectedSubject("all")}
+                                className={`px-4 py-2 rounded-full mx-1 border ${selectedSubject === "all" ? 'bg-teacherOrange border-teacherOrange' : 'bg-white border-gray-100'}`}
                             >
-                                <Text className={`font-bold text-xs ${selectedClass === "all" ? 'text-white' : 'text-gray-500'}`}>All Classes</Text>
+                                <Text className={`font-bold text-xs ${selectedSubject === "all" ? 'text-white' : 'text-gray-500'}`}>All Subjects</Text>
                             </TouchableOpacity>
-                            {classes.map(c => (
+                            {subjects.map(s => (
                                 <TouchableOpacity
-                                    key={c.id}
-                                    onPress={() => setSelectedClass(c.name)}
-                                    className={`px-4 py-2 rounded-full mx-1 border ${selectedClass === c.name ? 'bg-teacherOrange border-teacherOrange' : 'bg-white border-gray-100'}`}
+                                    key={s.id}
+                                    onPress={() => setSelectedSubject(s.title)}
+                                    className={`px-4 py-2 rounded-full mx-1 border ${selectedSubject === s.title ? 'bg-teacherOrange border-teacherOrange' : 'bg-white border-gray-100'}`}
                                 >
-                                    <Text className={`font-bold text-xs ${selectedClass === c.name ? 'text-white' : 'text-gray-500'}`}>{c.name}</Text>
+                                    <Text className={`font-bold text-xs ${selectedSubject === s.title ? 'text-white' : 'text-gray-500'}`}>{s.title}</Text>
                                 </TouchableOpacity>
                             ))}
                         </ScrollView>

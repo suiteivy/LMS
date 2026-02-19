@@ -26,13 +26,15 @@ const QuickAction = ({ icon: Icon, label, color, onPress }: QuickActionProps) =>
 );
 
 export default function TeacherHome() {
-    const { profile, displayId, logout } = useAuth();
+    const { profile, displayId, logout, isInitializing, session } = useAuth();
     const [stats, setStats] = useState<any>(null);
     const [schedule, setSchedule] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
 
     const fetchDashboardData = async () => {
+        if (isInitializing || !session) return;
+
         try {
             const data = await TeacherAPI.getDashboardStats();
             setStats(data.stats);
@@ -46,8 +48,10 @@ export default function TeacherHome() {
     };
 
     useEffect(() => {
-        fetchDashboardData();
-    }, []);
+        if (!isInitializing && session) {
+            fetchDashboardData();
+        }
+    }, [isInitializing, session]);
 
     const onRefresh = () => {
         setRefreshing(true);

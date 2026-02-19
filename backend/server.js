@@ -65,6 +65,7 @@ app.use("/api/messages", require("./routes/messaging.route.js"));
 app.use("/api/resources", require("./routes/resources.route.js"));
 app.use("/api/teacher", require("./routes/teacher.route.js"));
 app.use("/api/settings", settingsRoutes);
+app.use("/api/trials", require("./routes/trial.route"));
 
 // health check
 app.get("/", (req, res) => {

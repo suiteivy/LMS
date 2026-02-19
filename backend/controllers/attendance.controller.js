@@ -34,12 +34,12 @@ exports.getStudentAttendance = async (req, res) => {
         if (aError) throw aError;
 
         // Merge logic
-        const result = enrollments.map(e => {
-            const record = attendance?.find(a => a.student_id === e.student_id);
+        const result = enrollments.map(s => {
+            const record = attendance?.find(a => a.student_id === s.id);
             return {
-                student_id: e.student_id,
-                name: e.students.users.full_name,
-                avatar_url: e.students.users.avatar_url,
+                student_id: s.id,
+                name: s.users.full_name,
+                avatar_url: s.users.avatar_url,
                 status: record ? record.status : "pending",
                 id: record ? record.id : null,
                 notes: record ? record.notes : ""

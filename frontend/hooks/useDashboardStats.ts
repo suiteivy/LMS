@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/libs/supabase';
 import { StatsData } from '@/types/types';
+import { useAuth } from '@/contexts/AuthContext';
 
 export const useDashboardStats = () => {
     const [stats, setStats] = useState<StatsData[]>([]);
@@ -113,7 +114,11 @@ export const useDashboardStats = () => {
         }
     };
 
+    const { isInitializing, session } = useAuth(); // Import useAuth to check session status
+
     useEffect(() => {
+        if (isInitializing || !session) return;
+
         fetchStats();
 
         // Real-time subscriptions
@@ -149,7 +154,7 @@ export const useDashboardStats = () => {
             supabase.removeChannel(subjectChannel);
             supabase.removeChannel(transactionChannel);
         };
-    }, []);
+    }, [isInitializing, session]);
 
     return { stats, loading, revenueData, refresh: fetchStats };
 };

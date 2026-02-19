@@ -20,35 +20,35 @@ export default function Index() {
 
   // Lottie-style Loop
 
-useEffect(() => {
-  const anim = Animated.loop(
-    Animated.sequence([
-      Animated.timing(scrollAnimation, {
-        toValue: 1,
-        duration: 1200,
-        useNativeDriver: true,
-      }),
-      Animated.timing(scrollAnimation, {
-        toValue: 0,
-        duration: 0,
-        useNativeDriver: true,
-      }),
-    ])
-  );
-  anim.start();
-  return () => anim.stop();
-}, []);
+  useEffect(() => {
+    const anim = Animated.loop(
+      Animated.sequence([
+        Animated.timing(scrollAnimation, {
+          toValue: 1,
+          duration: 1200,
+          useNativeDriver: true,
+        }),
+        Animated.timing(scrollAnimation, {
+          toValue: 0,
+          duration: 0,
+          useNativeDriver: true,
+        }),
+      ])
+    );
+    anim.start();
+    return () => anim.stop();
+  }, []);
 
-// Replace arrowContainerOpacity with inHero state
-const handleScroll = Animated.event(
-  [{ nativeEvent: { contentOffset: { y: scrollY } } }],
-  {
-    useNativeDriver: false,
-    listener: (e: any) => {
-      setInHero(e.nativeEvent.contentOffset.y < 80);
+  // Replace arrowContainerOpacity with inHero state
+  const handleScroll = Animated.event(
+    [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+    {
+      useNativeDriver: false,
+      listener: (e: any) => {
+        setInHero(e.nativeEvent.contentOffset.y < 80);
+      },
     },
-  },
-);
+  );
 
   // Fade out arrows as user scrolls down
   const arrowContainerOpacity = scrollY.interpolate({
@@ -267,9 +267,9 @@ const handleScroll = Animated.event(
             <Text className="text-orange-700 text-base text-center">
               Get started with all core modules at no cost.
             </Text>
-            <TouchableOpacity 
+            <TouchableOpacity
               className="bg-orange-500 px-6 py-3 rounded-xl flex-row items-center justify-center shadow-md mr-4"
-              onPress={() => router.push("/(auth)/Trial")}
+              onPress={() => router.push('/trial' as any)}
             >
               <Text className="text-white font-bold">Free Trial Demo</Text>
             </TouchableOpacity>
@@ -345,7 +345,7 @@ const handleScroll = Animated.event(
 }
 
 const PricingBrick = ({ title, price, features, isPopular = false }: any) => (
-  <View 
+  <View
     className={`bg-white rounded-2xl shadow-lg mb-8 overflow-hidden border ${isPopular ? 'border-green-500 scale-105 z-10' : 'border-gray-100'}`}
     style={{ width: Platform.OS === 'web' ? 280 : '100%', minHeight: 400 }}
   >
@@ -361,7 +361,7 @@ const PricingBrick = ({ title, price, features, isPopular = false }: any) => (
         <Text className="text-5xl font-black text-gray-800">{price}</Text>
         <Text className="text-gray-400 text-xs ml-1">/yr</Text>
       </View>
-      
+
       <View className="w-full gap-y-3 mb-8">
         {features.map((feat: string, i: number) => (
           <View key={i} className="flex-row items-center">
@@ -371,9 +371,9 @@ const PricingBrick = ({ title, price, features, isPopular = false }: any) => (
         ))}
       </View>
 
-      <TouchableOpacity 
+      <TouchableOpacity
         className={`w-full py-4 rounded-xl items-center mt-auto ${isPopular ? 'bg-green-500' : 'bg-orange-500'}`}
-        onPress={() => router.push('/(auth)/Trial')}
+        onPress={() => router.push('/trial' as any)}
       >
         <Text className="text-white font-bold uppercase">Get Started</Text>
       </TouchableOpacity>

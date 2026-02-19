@@ -4,6 +4,7 @@ import { AppState, AppStateStatus } from 'react-native'
 import { Database } from '@/types/database'
 import { authService, supabase } from '@/libs/supabase'
 import Toast from 'react-native-toast-message'
+import AsyncStorage from '@react-native-async-storage/async-storage'
 
 type UserProfile = Database['public']['Tables']['users']['Row']
 
@@ -25,6 +26,8 @@ interface AuthContextType {
   resetPassword: (email: string) => Promise<{ error: any }>
   refreshProfile: () => Promise<UserProfile | null>
   resetSessionTimer: () => void
+  startTrial: (role: string) => Promise<{ data: any; error: any }>
+  isTrial: boolean
 }
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -55,6 +58,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [isInitializing, setIsInitializing] = useState(true)
   const [isProfileLoading, setIsProfileLoading] = useState(false)
   const [loading, setLoading] = useState(true) // Legacy support for profile loading
+  const [isTrial, setIsTrial] = useState(false)
 
   const timerRef = useRef<any>(null)
   const appState = useRef(AppState.currentState);
@@ -63,18 +67,34 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const isManualLogout = useRef(false);
   const currentSessionRef = useRef<Session | null>(null);
 
+  // NEW: Track trial status in a ref to access it during logout events
+  const isTrialRef = useRef(false);
+  useEffect(() => { isTrialRef.current = isTrial; }, [isTrial]);
+
   const handleLogout = async () => {
     isManualLogout.current = true
     try {
+      // Clear trial expiry mechanism
+      AsyncStorage.removeItem('trial_expiry').catch(e => console.warn('Failed to clear expiry', e));
+
       const { error } = await authService.signOut();
       if (!error) {
-        // Success toast is handled in components/caller or here - existing code does it here
-        Toast.show({
-          type: 'success',
-          text1: 'Logged Out',
-          text2: 'You have been logged out successfully.',
-          position: 'bottom',
-        });
+        // Custom Toast for Trial vs Normal
+        if (isTrialRef.current) {
+          Toast.show({
+            type: 'info',
+            text1: 'Session ended',
+            text2: 'Demo session ended.',
+            position: 'bottom',
+          });
+        } else {
+          Toast.show({
+            type: 'success',
+            text1: 'Logged Out',
+            text2: 'You have been logged out successfully.',
+            position: 'bottom',
+          });
+        }
       }
       return { error };
     } finally {
@@ -83,6 +103,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         isManualLogout.current = false
       }, 1000)
     }
+  }
+
+  const handleStartTrial = async (role: string) => {
+    const result = await authService.startTrialSession(role);
+    if (!result.error && result.data) {
+      // Set 15 minute expiry for the banner
+      const expiry = Date.now() + 15 * 60 * 1000;
+      await AsyncStorage.setItem('trial_expiry', expiry.toString());
+    }
+    return result;
   }
 
   const clearTimer = () => {
@@ -206,6 +236,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             setSession(validSession)
             currentSessionRef.current = validSession; // Mark as having a valid session
             setUser(validatedUser)
+            // Check if trial
+            const isTrialUser = validatedUser.email?.startsWith('demo.') || false;
+            setIsTrial(isTrialUser);
             await loadUserProfile(validatedUser.id)
             startTimeoutTimer()
           }
@@ -214,6 +247,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           setSession(null);
           currentSessionRef.current = null;
           setUser(null);
+
+          // Check if we have a persisted trial state for the redirect logic
+          const persistedTrial = await AsyncStorage.getItem('is_demo_mode');
+          setIsTrial(persistedTrial === 'true');
         }
       } catch (error) {
         console.error('Error in initializeAuth:', error)
@@ -242,6 +279,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           currentSessionRef.current = session;
           startTimeoutTimer()
           if (session?.user) {
+            const isTrialUser = session.user.email?.startsWith('demo.') || false;
+            setIsTrial(isTrialUser);
+            if (isTrialUser) {
+              AsyncStorage.setItem('is_demo_mode', 'true');
+            } else {
+              AsyncStorage.removeItem('is_demo_mode');
+            }
             loadUserProfile(session.user.id)
           }
         } else if (event === 'SIGNED_OUT') {
@@ -251,43 +295,51 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           setTeacherId(null)
           setAdminId(null)
           setParentId(null)
+          setAdminId(null)
+          setParentId(null)
           setDisplayId(null)
+
+          // CRITICAL: Do NOT clear isTrial state here. 
+          // We keep it true if it was true, so AuthHandler knows to redirect to /trial.
+          // setIsTrial(false) <= REMOVED
+          // We also don't clear AsyncStorage 'is_demo_mode' here, 
+          // we only clear it when a NEW non-demo user signs in.
 
           // Only show "Unexpected Logout" if we actually THOUGHT we had a session
           // and it wasn't a manual logout.
           if (!isManualLogout.current && currentSessionRef.current) {
-            Toast.show({
-              type: 'error',
-              text1: 'Session Expired',
-              text2: 'Please sign in again.',
-              position: 'bottom',
-              visibilityTime: 4000,
-            });
+            const wasTrial = isTrialRef.current;
+
+            // For trial users, we might get here if the token expires naturally.
+            // We want to be sure we show the correct "Demo Ended" message.
+            if (wasTrial) {
+              Toast.show({
+                type: 'info',
+                text1: 'Session ended',
+                text2: 'Demo session time limit reached.',
+                position: 'bottom',
+                visibilityTime: 4000,
+              });
+            } else {
+              Toast.show({
+                type: 'info',
+                text1: 'Session Expired',
+                text2: 'Please sign in again.',
+                position: 'bottom',
+                visibilityTime: 4000,
+              });
+            }
           }
           currentSessionRef.current = null;
 
-          // Reset just in case, though timeout in handleLogout also handles it
-          isManualLogout.current = false;
+          // Reset just in case
+          setTimeout(() => { isManualLogout.current = false; }, 500);
         }
 
         // Handle edge case: auth event without session
         if (!session && (event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED')) {
-          // This creates a recursive call potential if we aren't careful, 
-          // but handleLogout sets isManualLogout=true so it won't toast loop.
-          // However, if it's an "unexpected" token refresh fail, maybe we WANT a toast?
-          // The prompt specifically asked about "Invalid Refresh Token".
-          // If we call signOut() here, it emits signed_out. 
-          // If we want a toast here, we should NOT set isManualLogout if we want the toast to appear in the SIGNED_OUT handler above.
-          // BUT, we are calling signOut() which is async.
-
-          // Let's decide: if it's a forced system logout due to error, we probably want the toast.
-          // So we should NOT set isManualLogout = true here.
-          // But `authService.signOut` just calls supabase.auth.signOut().
-          // If we call `authService.signOut()` directly here, `isManualLogout` remains false.
-          // The SIGNED_OUT event will fire.
-          // The check `!isManualLogout.current` will be true.
-          // Toast will show. Correct.
-          await authService.signOut()
+          // Suppress console error for this specific expected flow
+          await authService.signOut();
         }
       } catch (error) {
         console.error('Error in auth listener:', error)
@@ -374,7 +426,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     resetPassword: authService.resetPassword,
     refreshProfile,
     resetSessionTimer,
-  }), [session, user, profile, studentId, teacherId, adminId, parentId, displayId, loading, isInitializing, isProfileLoading]);
+    startTrial: handleStartTrial,
+    isTrial,
+  }), [session, user, profile, studentId, teacherId, adminId, parentId, displayId, loading, isInitializing, isProfileLoading, isTrial]);
 
   return (
     <AuthContext.Provider value={value}>

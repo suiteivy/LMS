@@ -3,9 +3,11 @@ import { BookOpen, Building, Users, Settings, LayoutGrid, School } from "lucide-
 import { Platform, View } from "react-native"
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AuthGuard } from "@/components/AuthGuard";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function TeacherLayout() {
     const insets = useSafeAreaInsets();
+    const { isTrial } = useAuth();
 
     return (
         <AuthGuard allowedRoles={['teacher']}>
@@ -117,6 +119,7 @@ export default function TeacherLayout() {
                     name="settings"
                     options={{
                         title: "Settings",
+                        href: isTrial ? null : "/(teacher)/settings", // Hide from tab bar if trial
                         tabBarIcon: ({ size = 24, color }) => {
                             const Icon = Settings as any
                             return (

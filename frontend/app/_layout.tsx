@@ -8,6 +8,7 @@ import Toast from "react-native-toast-message";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { View, ActivityIndicator } from "react-native";
 import { toastConfig } from "@/components/CustomToast";
+import TrialBanner from "@/components/TrialBanner";
 
 export default function RootLayout() {
   return (
@@ -15,6 +16,7 @@ export default function RootLayout() {
       <AuthProvider>
         <CurrencyProvider>
           <NotificationProvider>
+            <TrialBanner />
             <AuthHandler />
           </NotificationProvider>
         </CurrencyProvider>
@@ -24,7 +26,7 @@ export default function RootLayout() {
 }
 
 function AuthHandler() {
-  const { loading, isInitializing, resetSessionTimer, session } = useAuth();
+  const { loading, isInitializing, resetSessionTimer, session, isTrial } = useAuth();
   const segments = useSegments();
   const router = useRouter();
 
@@ -37,14 +39,19 @@ function AuthHandler() {
 
     if (!session && !inAuthGroup && !isRoot) {
       // User is not signed in and trying to access a protected route
-      console.log("[AuthHandler] Redirecting to sign-in (No session)");
-      router.replace("/(auth)/signIn");
+      if (isTrial) {
+        console.log("[AuthHandler] Redirecting to trial selection (Trial session ended)");
+        router.replace("/(auth)/trial");
+      } else {
+        console.log("[AuthHandler] Redirecting to sign-in (No session)");
+        router.replace("/(auth)/signIn");
+      }
     } else if (session && inAuthGroup) {
       // User is signed in and trying to access auth pages
       console.log("[AuthHandler] Redirecting to home (Session active)");
       router.replace("/");
     }
-  }, [session, isInitializing, segments]);
+  }, [session, isInitializing, segments, isTrial]);
 
   // Handle user interaction for inactivity timer
   const handleInteraction = React.useCallback(() => {
@@ -73,6 +80,7 @@ function AuthHandler() {
           <Stack.Screen name="(teacher)" />
           <Stack.Screen name="(parent)" />
           <Stack.Screen name="(auth)/forgot-password" />
+          <Stack.Screen name="(auth)/trial" options={{ headerShown: false }} />
         </Stack>
       </View>
       <Toast config={toastConfig} />

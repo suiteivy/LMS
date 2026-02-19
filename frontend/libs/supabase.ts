@@ -59,6 +59,23 @@ export const authService = {
   // Sign out
   signOut: async () => {
     try {
+      // 1. Try to notify backend to clean up trial session
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.access_token) {
+        try {
+          await fetch(`${process.env.EXPO_PUBLIC_URL}/auth/logout`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${session.access_token}`
+            }
+          });
+        } catch (e) {
+          console.warn("Backend logout failed", e);
+          // Continue to local sign out anyway
+        }
+      }
+
       const { error } = await supabase.auth.signOut();
       return { error };
     } catch (error) {
@@ -158,6 +175,37 @@ export const authService = {
       return { exists: !!data, error };
     } catch (error) {
       return { exists: false, error };
+    }
+  },
+
+  // Start a trial session
+  startTrialSession: async (role: string) => {
+    try {
+      const response = await fetch(`${process.env.EXPO_PUBLIC_URL}/trials/start`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ role }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        return { data: null, error: data.error || "Failed to start trial" };
+      }
+
+      // Manually set the session in Supabase client
+      const { data: sessionData, error: sessionError } = await supabase.auth.setSession({
+        access_token: data.token,
+        refresh_token: data.refreshToken,
+      });
+
+      if (sessionError) return { data: null, error: sessionError };
+
+      return { data, error: null };
+    } catch (error: any) {
+      return { data: null, error: error.message || "Network error" };
     }
   },
 };

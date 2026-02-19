@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { SettingsService, ExchangeRates } from '@/services/SettingsService';
+import { useAuth } from './AuthContext';
 
 interface CurrencyContextType {
     rates: ExchangeRates;
@@ -13,11 +14,15 @@ interface CurrencyContextType {
 const CurrencyContext = createContext<CurrencyContextType | undefined>(undefined);
 
 export const CurrencyProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+    const { session } = useAuth();
     const [rates, setRates] = useState<ExchangeRates>({ KES: 130.0, last_updated: null });
     const [loading, setLoading] = useState(true);
 
     const fetchRates = async () => {
         try {
+            // Only fetch if we have a valid session to avoid 401s
+            if (!session) return;
+
             setLoading(true);
             const data = await SettingsService.getCurrencyRates();
             setRates(data);
@@ -29,8 +34,10 @@ export const CurrencyProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     };
 
     useEffect(() => {
-        fetchRates();
-    }, []);
+        if (session) {
+            fetchRates();
+        }
+    }, [session]);
 
     const convertUSDToKES = (amount: number) => {
         return amount * rates.KES;
@@ -53,7 +60,9 @@ export const CurrencyProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     };
 
     const refreshRates = async () => {
-        await fetchRates();
+        if (session) {
+            await fetchRates();
+        }
     };
 
     return (
