@@ -1,10 +1,10 @@
-import { Tabs } from "expo-router";
-import { SchoolProvider } from '@/contexts/SchoolContext';
 import { AuthGuard } from '@/components/AuthGuard';
-import { View, Platform, TouchableOpacity } from 'react-native';
-import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Users, Wallet, Settings, LayoutGrid, House, LogOut } from "lucide-react-native";
 import { useAuth } from "@/contexts/AuthContext";
+import { SchoolProvider } from '@/contexts/SchoolContext';
+import { Tabs } from "expo-router";
+import { House, LayoutGrid, LogOut, Settings, Users, Wallet } from "lucide-react-native";
+import { Platform, TouchableOpacity, View } from 'react-native';
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export default function AdminLayout() {
     const insets = useSafeAreaInsets();
@@ -19,8 +19,7 @@ export default function AdminLayout() {
                         headerRight: () => (
                             <TouchableOpacity
                                 onPress={() => signOut()}
-                                style={{ marginRight: 15, padding: 8 }}
-                                className="active:opacity-60"
+                                style={{ marginRight: 15, padding: 8, opacity: 1 }}
                             >
                                 <LogOut size={20} color="#FF6B00" />
                             </TouchableOpacity>
@@ -58,7 +57,6 @@ export default function AdminLayout() {
                         },
                         sceneStyle: {
                             backgroundColor: "#f9fafb",
-                            paddingTop: insets.top || 0,
                         },
                     }}
                 >

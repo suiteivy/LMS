@@ -1,8 +1,8 @@
-import React, { createContext, useContext, useEffect, useState, useRef } from 'react'
-import { Session, User } from '@supabase/supabase-js'
-import { AppState, AppStateStatus } from 'react-native'
-import { Database } from '@/types/database'
 import { authService, supabase } from '@/libs/supabase'
+import { Database } from '@/types/database'
+import { Session, User } from '@supabase/supabase-js'
+import React, { createContext, useContext, useEffect, useRef, useState } from 'react'
+import { AppState, AppStateStatus } from 'react-native'
 import Toast from 'react-native-toast-message'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 
@@ -150,8 +150,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     loadingUserId.current = userId;
     try {
       setIsProfileLoading(true);
-      // Keep legacy loading for components that depend on it during profile fetch
-      setLoading(true);
+      // Do NOT reset loading here — it causes flash-of-spinner on auth events.
       // Get Base Profile and Role-Specific IDs in a single query
       const { data, error } = await supabase
         .from('users')
@@ -260,7 +259,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       }
     };
 
-    initializeAuth();
+    initializeAuth().then(() => {
+      isInitializedRef.current = true;
+    });
 
     // 2. Listen for auth state changes
     const {

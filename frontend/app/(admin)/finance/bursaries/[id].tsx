@@ -1,10 +1,9 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, ActivityIndicator, TouchableOpacity, Alert, FlatList } from 'react-native';
-import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { BursaryService } from '@/services/BursaryService';
 import { formatCurrency } from '@/utils/currency';
 import { format } from 'date-fns';
-import { Ionicons } from '@expo/vector-icons';
+import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
+import React, { useEffect, useState } from 'react';
+import { ActivityIndicator, Alert, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 
 export default function BursaryDetailsScreen() {
     const { id } = useLocalSearchParams<{ id: string }>();
@@ -64,8 +63,14 @@ export default function BursaryDetailsScreen() {
                                 <Text className="text-2xl font-bold text-gray-900">{bursary.title}</Text>
                                 <Text className="text-3xl font-extrabold text-[#FF6B00] mt-2">{formatCurrency(bursary.amount)}</Text>
                             </View>
-                            <View className={`px-3 py-1 rounded-full ${bursary.status === 'open' ? 'bg-green-100' : 'bg-red-100'}`}>
-                                <Text className={`text-xs font-bold uppercase ${bursary.status === 'open' ? 'text-green-700' : 'text-red-700'}`}>
+                            <View 
+                                className="px-3 py-1 rounded-full"
+                                style={{ backgroundColor: bursary.status === 'open' ? '#dcfce7' : '#fee2e2' }}
+                            >
+                                <Text 
+                                    className="text-xs font-bold uppercase"
+                                    style={{ color: bursary.status === 'open' ? '#15803d' : '#b91c1c' }}
+                                >
                                     {bursary.status}
                                 </Text>
                             </View>
@@ -101,12 +106,22 @@ export default function BursaryDetailsScreen() {
                                     <Text className="text-base font-bold text-gray-900">{app.student?.user?.full_name}</Text>
                                     <Text className="text-xs text-gray-500">{app.student?.user?.email}</Text>
                                 </View>
-                                <View className={`px-2 py-1 rounded h-6 w-20 items-center justify-center ${app.status === 'approved' ? 'bg-green-100' :
-                                    app.status === 'rejected' ? 'bg-red-100' : 'bg-yellow-100'
-                                    }`}>
-                                    <Text className={`text-[10px] font-bold uppercase ${app.status === 'approved' ? 'text-green-800' :
-                                        app.status === 'rejected' ? 'text-red-800' : 'text-yellow-800'
-                                        }`}>{app.status}</Text>
+                                <View 
+                                    className="px-2 py-1 rounded h-6 w-20 items-center justify-center"
+                                    style={{ 
+                                        backgroundColor: app.status === 'approved' ? '#dcfce7' : 
+                                                         app.status === 'rejected' ? '#fee2e2' : '#fef9c3' 
+                                    }}
+                                >
+                                    <Text 
+                                        className="text-[10px] font-bold uppercase"
+                                        style={{ 
+                                            color: app.status === 'approved' ? '#166534' : 
+                                                   app.status === 'rejected' ? '#991b1b' : '#854d0e' 
+                                        }}
+                                    >
+                                        {app.status}
+                                    </Text>
                                 </View>
                             </View>
 

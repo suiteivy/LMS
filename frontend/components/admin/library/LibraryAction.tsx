@@ -1,25 +1,59 @@
-import React, { useState, useEffect } from "react";
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  ScrollView,
-  Alert,
-  ActivityIndicator,
-  RefreshControl,
-} from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { Ionicons } from "@expo/vector-icons";
-import { AddUpdateDeleteBooksForm } from "./AddUpdateDeleteBooksForm";
-import { BorrowedBooksOverview } from "./BorrowedBooksOverview";
+import { useAuth } from "@/contexts/AuthContext";
+import { LibraryAPI } from "@/services/LibraryService";
 import {
   FrontendBook,
   FrontendBorrowedBook,
   UserRoles, // Keep UserRoles as it's used in state
 } from "@/types/types";
+import { Ionicons } from "@expo/vector-icons";
+import React, { useEffect, useState } from "react";
+import {
+  ActivityIndicator,
+  Alert,
+  RefreshControl,
+  ScrollView,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { AddUpdateDeleteBooksForm } from "./AddUpdateDeleteBooksForm";
+import { BorrowedBooksOverview } from "./BorrowedBooksOverview";
 import { BorrowLimitConfiguration } from "./BorrowLimitConfiguration";
-import { LibraryAPI } from "@/services/LibraryService";
-import { useAuth } from "@/contexts/AuthContext";
+
+const DEMO_BOOKS: FrontendBook[] = [
+  { id: "1", title: "Advanced Calculus", author: "G.B. Thomas", isbn: "978-0201163209", category: "Mathematics", quantity: 5, available: 3, institutionId: "INST001" },
+  { id: "2", title: "Introduction to Algorithms", author: "Cormen, Leiserson", isbn: "978-0262033848", category: "Computer Science", quantity: 3, available: 0, institutionId: "INST001" },
+  { id: "3", title: "Physics for Scientists", author: "Paul Tipler", isbn: "978-1429201247", category: "Physics", quantity: 8, available: 7, institutionId: "INST001" },
+  { id: "4", title: "Mechanical Engineering", author: "R.K. Rajput", isbn: "978-8131804414", category: "Engineering", quantity: 4, available: 4, institutionId: "INST001" },
+];
+
+const DEMO_BORROWED: FrontendBorrowedBook[] = [
+  { 
+    id: "101", 
+    bookTitle: "Introduction to Algorithms", 
+    author: "Cormen, Leiserson",
+    isbn: "978-0262033848",
+    borrowerName: "John Doe", 
+    borrowerId: "STU001", 
+    borrowerEmail: "john@example.com",
+    borrowDate: new Date("2024-02-01"), 
+    dueDate: new Date("2024-02-15"), 
+    status: "overdue" 
+  },
+  { 
+    id: "102", 
+    bookTitle: "Advanced Calculus", 
+    author: "G.B. Thomas",
+    isbn: "978-0201163209",
+    borrowerName: "Jane Smith", 
+    borrowerId: "STU005", 
+    borrowerEmail: "jane@example.com",
+    borrowDate: new Date("2024-02-10"), 
+    dueDate: new Date("2024-02-24"), 
+    status: "borrowed" 
+  },
+];
 
 type LibrarySection = "overview" | "books" | "borrowed" | "config";
 
@@ -83,7 +117,7 @@ const LibraryAction = () => {
     try {
       const booksData = await LibraryAPI.getBooks();
       const transformedBooks = booksData.map(LibraryAPI.transformBookData);
-      setBooks(transformedBooks);
+      setBooks(transformedBooks.length > 0 ? transformedBooks : DEMO_BOOKS);
     } catch (error) {
       console.error("Error loading books:", error);
       throw error;
@@ -99,7 +133,7 @@ const LibraryAction = () => {
       const transformedBorrowedBooks = borrowedData.map(
         LibraryAPI.transformBorrowedBookData
       );
-      setBorrowedBooks(transformedBorrowedBooks);
+      setBorrowedBooks(transformedBorrowedBooks.length > 0 ? transformedBorrowedBooks : DEMO_BORROWED);
     } catch (error) {
       console.error("Error loading borrowed books:", error);
       throw error;
@@ -363,16 +397,16 @@ const LibraryAction = () => {
                 <View className="bg-white rounded-xl p-4 shadow-sm">
                   <View className="flex-row items-center justify-between">
                     <View>
-                      <Text className="text-2xl font-bold text-mint-600">
+                      <Text className="text-2xl font-bold text-green-600">
                         {stats.availableBooks}
                       </Text>
                       <Text className="text-sm text-slate-600">Available</Text>
                     </View>
-                    <View className="w-10 h-10 bg-mint-100 rounded-full items-center justify-center">
+                    <View className="w-10 h-10 bg-green-50 rounded-full items-center justify-center">
                       <Ionicons
                         name="checkmark-circle-outline"
                         size={20}
-                        color="#fd6900"
+                        color="#16a34a"
                       />
                     </View>
                   </View>
@@ -383,16 +417,16 @@ const LibraryAction = () => {
                 <View className="bg-white rounded-xl p-4 shadow-sm">
                   <View className="flex-row items-center justify-between">
                     <View>
-                      <Text className="text-2xl font-bold text-mint-600">
+                      <Text className="text-2xl font-bold text-green-600">
                         {stats.returnedBooks}
                       </Text>
                       <Text className="text-sm text-slate-600">Returned</Text>
                     </View>
-                    <View className="w-10 h-10 bg-mint-100 rounded-full items-center justify-center">
+                    <View className="w-10 h-10 bg-green-50 rounded-full items-center justify-center">
                       <Ionicons
-                        name="checkmark-circle-outline"
+                        name="checkmark-done-circle-outline"
                         size={20}
-                        color="#fd6900"
+                        color="#16a34a"
                       />
                     </View>
                   </View>

@@ -1,9 +1,54 @@
-import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, Alert, TextInput, Platform, Image } from "react-native";
-import { useState, useEffect } from "react";
-import { useRouter } from "expo-router";
-import { ChevronLeft, Calendar as CalendarIcon, Check, X, Clock } from "lucide-react-native";
-import { TeacherAttendanceAPI, TeacherAttendance } from "@/services/TeacherAttendanceService";
+import { TeacherAttendance, TeacherAttendanceAPI } from "@/services/TeacherAttendanceService";
 import DateTimePicker from '@react-native-community/datetimepicker';
+import { useRouter } from "expo-router";
+import { Calendar as CalendarIcon, Check, ChevronLeft, Clock, X } from "lucide-react-native";
+import { useEffect, useState } from "react";
+import { ActivityIndicator, Alert, Image, ScrollView, Text, TouchableOpacity, View } from "react-native";
+
+const DEMO_ATTENDANCE: TeacherAttendance[] = [
+    { 
+        id: "ATT1",
+        teacher_id: "T1", 
+        status: "present", 
+        date: new Date().toISOString(), 
+        notes: "",
+        teachers: { 
+            id: "T1",
+            users: { 
+                full_name: "Isaac Newton", 
+                avatar_url: undefined 
+            } 
+        } 
+    },
+    { 
+        id: "ATT2",
+        teacher_id: "T2", 
+        status: "absent", 
+        date: new Date().toISOString(), 
+        notes: "On medical leave",
+        teachers: { 
+            id: "T2",
+            users: { 
+                full_name: "Marie Curie", 
+                avatar_url: undefined 
+            } 
+        } 
+    },
+    { 
+        id: "ATT3",
+        teacher_id: "T3", 
+        status: "late", 
+        date: new Date().toISOString(), 
+        notes: "Arrived at 8:15 AM",
+        teachers: { 
+            id: "T3",
+            users: { 
+                full_name: "Albert Einstein", 
+                avatar_url: undefined 
+            } 
+        } 
+    },
+];
 
 export default function TeacherAttendancePage() {
     const router = useRouter();
@@ -21,7 +66,7 @@ export default function TeacherAttendancePage() {
         try {
             const dateStr = date.toISOString().split('T')[0];
             const data = await TeacherAttendanceAPI.getAttendance(dateStr);
-            setAttendance(data);
+            setAttendance(data.length > 0 ? data : DEMO_ATTENDANCE);
         } catch (error: any) {
             console.error(error);
             Alert.alert("Error", "Failed to load attendance");
@@ -58,22 +103,20 @@ export default function TeacherAttendancePage() {
 
     return (
         <View className="flex-1 bg-gray-50">
-            <View className="bg-white px-6 pt-14 pb-4 border-b border-gray-100 flex-row items-center justify-between shadow-sm">
-                <View className="flex-row items-center">
-                    <TouchableOpacity onPress={() => router.back()} className="mr-4 bg-gray-50 p-2 rounded-full">
-                        <ChevronLeft size={24} color="#374151" />
-                    </TouchableOpacity>
-                    <View className="flex-1">
-                        <Text className="text-2xl font-bold text-gray-900" numberOfLines={1} adjustsFontSizeToFit>Teacher Attendance</Text>
-                        <Text className="text-sm text-gray-500">Monitor teacher check-ins</Text>
-                    </View>
+            <View className="bg-white px-6 pt-10 pb-4 border-b border-slate-100 flex-row items-center justify-between shadow-sm">
+                <TouchableOpacity onPress={() => router.back()} className="mr-4 bg-slate-50 p-2.5 rounded-2xl border border-slate-100">
+                    <ChevronLeft size={24} color="#f97316" />
+                </TouchableOpacity>
+                <View className="flex-1">
+                    <Text className="text-2xl font-black text-slate-900" numberOfLines={1} adjustsFontSizeToFit>Attendance</Text>
+                    <Text className="text-xs text-slate-500 font-medium">Teacher Check-ins</Text>
                 </View>
                 <TouchableOpacity
-                    className="bg-gray-100 p-2 rounded-lg flex-row items-center"
+                    className="bg-orange-50 px-4 py-2.5 rounded-2xl flex-row items-center border border-orange-100"
                     onPress={() => setShowDatePicker(true)}
                 >
-                    <CalendarIcon size={20} color="#4b5563" className="mr-2" />
-                    <Text className="text-gray-700 font-medium">{date.toLocaleDateString()}</Text>
+                    <CalendarIcon size={18} color="#f97316" className="mr-2" />
+                    <Text className="text-[#f97316] font-bold text-xs">{date.toLocaleDateString()}</Text>
                 </TouchableOpacity>
             </View>
 
@@ -87,7 +130,9 @@ export default function TeacherAttendancePage() {
             )}
 
             {loading ? (
-                <ActivityIndicator size="large" color="#0d9488" className="mt-10" />
+                <View className="flex-1 items-center justify-center p-12">
+                    <ActivityIndicator size="large" color="#f97316" />
+                </View>
             ) : (
                 <ScrollView className="p-6">
                     {attendance.map(item => (

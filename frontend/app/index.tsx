@@ -1,12 +1,12 @@
-import { Text, View, TouchableOpacity, StatusBar, ActivityIndicator, ScrollView, TextInput, KeyboardAvoidingView, Platform, Animated } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { School, ArrowRight, BookOpen, Library, CreditCard, BarChart2, Users, Settings, BadgeCheck, ChevronDown, Check } from "lucide-react-native";
-import { router } from "expo-router";
 import { useAuth } from "@/contexts/AuthContext";
-import React, { useEffect, useState, useRef } from "react";
+import { router } from "expo-router";
+import { BadgeCheck, BarChart2, BookOpen, Check, ChevronDown, CreditCard, Library, School, Settings, Users } from "lucide-react-native";
+import React, { useEffect, useRef, useState } from "react";
+import { ActivityIndicator, Animated, KeyboardAvoidingView, Platform, ScrollView, StatusBar, Text, TouchableOpacity, View } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function Index() {
-  const { session, loading, profile } = useAuth();
+  const { session, loading, isInitializing, profile } = useAuth();
   const [form, setForm] = useState({ name: '', email: '', message: '' });
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
@@ -57,13 +57,21 @@ export default function Index() {
     extrapolate: 'clamp',
   });
 
+  const [isNavReady, setIsNavReady] = useState(false);
+
   useEffect(() => {
-    if (!loading && session && profile) {
-      if (profile.role === 'admin') router.replace("/(admin)");
-      else if (profile.role === 'teacher') router.replace("/(teacher)");
-      else if (profile.role === 'student') router.replace("/(student)");
+    const timer = setTimeout(() => setIsNavReady(true), 1);
+    return () => clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
+    if (isNavReady && !isInitializing && session && profile) {
+      if (profile.role === 'admin') router.replace('/(admin)');
+      else if (profile.role === 'teacher') router.replace('/(teacher)');
+      else if (profile.role === 'student') router.replace('/(student)');
+      else if (profile.role === 'parent') router.replace('/(parent)');
     }
-  }, [loading, session, profile]);
+  }, [isNavReady, isInitializing, session, profile]);
 
   const handleInput = (key: string, value: string) => setForm(f => ({ ...f, [key]: value }));
 

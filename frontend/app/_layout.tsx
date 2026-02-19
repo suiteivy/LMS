@@ -1,13 +1,13 @@
-import "../styles/global.css";
-import { Stack, useRouter, useSegments } from "expo-router";
-import React from "react";
+import { toastConfig } from "@/components/CustomToast";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { CurrencyProvider } from "@/contexts/CurrencyContext";
 import { NotificationProvider } from "@/contexts/NotificationContext";
-import Toast from "react-native-toast-message";
+import { Stack, useRouter, useSegments } from "expo-router";
+import React from "react";
+import { ActivityIndicator, View } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
-import { View, ActivityIndicator } from "react-native";
-import { toastConfig } from "@/components/CustomToast";
+import Toast from "react-native-toast-message";
+import "../styles/global.css";
 import TrialBanner from "@/components/TrialBanner";
 
 export default function RootLayout() {
@@ -30,9 +30,17 @@ function AuthHandler() {
   const segments = useSegments();
   const router = useRouter();
 
+  const [isNavigationReady, setIsNavigationReady] = React.useState(false);
+
   React.useEffect(() => {
-    // Only redirect if we are CERTAIN initialization is done
-    if (isInitializing) return;
+    // Small delay to ensure NavigationContainer is fully mounted
+    const timer = setTimeout(() => setIsNavigationReady(true), 1);
+    return () => clearTimeout(timer);
+  }, []);
+
+  React.useEffect(() => {
+    // Only redirect if we are CERTAIN initialization is done AND navigation is ready
+    if (isInitializing || !isNavigationReady) return;
 
     const inAuthGroup = segments.some(s => s === "(auth)");
     const isRoot = segments.length <= 1;
@@ -51,7 +59,7 @@ function AuthHandler() {
       console.log("[AuthHandler] Redirecting to home (Session active)");
       router.replace("/");
     }
-  }, [session, isInitializing, segments, isTrial]);
+  }, [session, isInitializing, isNavigationReady, segments, isTrial]);
 
   // Handle user interaction for inactivity timer
   const handleInteraction = React.useCallback(() => {
@@ -71,7 +79,7 @@ function AuthHandler() {
 
   return (
     <>
-      <View className="flex-1" onStartShouldSetResponder={handleInteraction}>
+      <View style={{ flex: 1 }} onStartShouldSetResponder={handleInteraction}>
         <Stack screenOptions={{ headerShown: false }}>
           <Stack.Screen name="index" />
           <Stack.Screen name="(auth)/signIn" />

@@ -1,25 +1,25 @@
-import React, { useState, useEffect, useCallback } from "react";
-import { View, Text, ScrollView, TouchableOpacity, StatusBar } from "react-native";
+import { useAuth } from "@/contexts/AuthContext";
+import { useDashboardStats } from "@/hooks/useDashboardStats";
 import { supabase } from "@/libs/supabase";
+import { User } from "@/types/types";
 import { router } from "expo-router";
 import {
-  UserPlus,
-  Bell,
-  Users,
-  Wallet,
-  LayoutGrid,
-  Settings,
   ArrowRight,
-  School,
-  GraduationCap,
-  BookOpen,
   BarChart3,
-  LogOut
+  Bell,
+  BookOpen,
+  GraduationCap,
+  LayoutGrid,
+  LogOut,
+  School,
+  Settings,
+  UserPlus,
+  Users,
+  Wallet
 } from 'lucide-react-native';
-import { useDashboardStats } from "@/hooks/useDashboardStats";
-import { useAuth } from "@/contexts/AuthContext";
+import React, { useCallback, useEffect, useState } from "react";
+import { ScrollView, StatusBar, Text, TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { User } from "@/types/types";
 
 interface QuickActionProps {
   icon: any;
@@ -44,13 +44,28 @@ const IconLogOut = LogOut as any;
 
 const QuickAction = ({ icon: Icon, label, color, onPress }: QuickActionProps) => (
   <TouchableOpacity
-    className="w-full sm:w-[48%] lg:w-[23%] bg-white p-6 rounded-3xl border border-gray-100 shadow-sm items-center mb-4 active:bg-gray-50"
+    style={{
+      width: "48%",
+      backgroundColor: "white",
+      padding: 20,
+      borderRadius: 24,
+      borderWidth: 1,
+      borderColor: "#f3f4f6",
+      marginBottom: 16,
+      alignItems: "center",
+      shadowColor: "#000",
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.05,
+      shadowRadius: 3,
+      elevation: 2
+    }}
     onPress={onPress}
+    activeOpacity={0.7}
   >
-    <View style={{ backgroundColor: `${color}15` }} className="p-3 rounded-2xl mb-2">
-      <Icon size={24} color={color} />
+    <View style={{ backgroundColor: "#fff7ed", padding: 12, borderRadius: 16, marginBottom: 8 }}>
+      <Icon size={24} color="#f97316" />
     </View>
-    <Text className="text-gray-800 font-bold text-center">{label}</Text>
+    <Text style={{ color: "#111827", fontWeight: "700", fontSize: 13, textAlign: "center" }}>{label}</Text>
   </TouchableOpacity>
 );
 
@@ -76,11 +91,11 @@ const DebugSessionInfo = ({ onClose }: { onClose: () => void }) => {
   }, []);
 
   return (
-    <View className="bg-white p-6 rounded-3xl m-4 border border-red-100 shadow-lg">
-      <View className="flex-row justify-between items-center mb-4">
-        <Text className="text-red-800 font-bold text-lg">Technical Diagnostics</Text>
-        <TouchableOpacity onPress={onClose} className="bg-gray-100 p-2 rounded-full">
-          <Text className="text-gray-600 font-bold">✕</Text>
+    <View style={{ backgroundColor: "white", padding: 24, borderRadius: 24, margin: 16, borderWidth: 1, borderColor: "#fee2e2", shadowColor: "#000", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 3, elevation: 8 }}>
+      <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+        <Text style={{ color: "#991b1b", fontWeight: "700", fontSize: 18 }}>Technical Diagnostics</Text>
+        <TouchableOpacity onPress={onClose} style={{ backgroundColor: "#f3f4f6", padding: 8, borderRadius: 999 }}>
+          <Text style={{ color: "#4b5563", fontWeight: "700" }}>✕</Text>
         </TouchableOpacity>
       </View>
 
@@ -99,8 +114,12 @@ const DebugSessionInfo = ({ onClose }: { onClose: () => void }) => {
         </View>
       </View>
 
-      <TouchableOpacity onPress={checkSession} className="bg-red-50 p-3 rounded-xl mt-4 items-center active:bg-red-100">
-        <Text className="text-red-600 text-xs font-bold uppercase tracking-wider">Refresh Session Info</Text>
+      <TouchableOpacity 
+        onPress={checkSession} 
+        style={{ backgroundColor: "#fef2f2", padding: 12, borderRadius: 12, marginTop: 16, alignItems: "center" }}
+        activeOpacity={0.6}
+      >
+        <Text style={{ color: "#dc2626", fontSize: 12, fontWeight: "700", textTransform: "uppercase", letterSpacing: 1 }}>Refresh Session Info</Text>
       </TouchableOpacity>
     </View>
   );
@@ -164,28 +183,34 @@ export default function AdminDashboard() {
 
 
   return (
-    <View className="flex-1 bg-gray-50/50">
+    <View style={{ flex: 1, backgroundColor: "#f9fafb" }}>
       <StatusBar barStyle="dark-content" />
 
       {/* Diagnostics Modal */}
       {showDebug && (
-        <View className="absolute inset-0 z-50 bg-black/20 justify-center backdrop-blur-sm p-4">
+        <View className="absolute inset-0 z-50 bg-black/40 justify-center p-4">
           <DebugSessionInfo onClose={() => setShowDebug(false)} />
         </View>
       )}
 
       <ScrollView
-        className="flex-1"
+        style={{ flex: 1 }}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 100 }}
+        contentContainerStyle={{ paddingBottom: 100, padding: 24, paddingTop: 8 }}
       >
-        <View className="p-6 pt-2">
+        <View>
           {/* --- 1. Header Section --- */}
-          <View className="mb-8">
-            <Text className="text-gray-500 text-base font-medium mb-1">Welcome back,</Text>
-            <Text className="text-3xl font-bold text-gray-900 tracking-tight">
-              {profile?.full_name?.split(" ")[0] || "Administrator"} 👋
-            </Text>
+          <View className="mb-2 flex-row justify-between">
+            <View>
+              <Text className="text-gray-500 text-base font-medium mb-1">Welcome back,</Text>
+              <Text className="text-3xl font-bold text-gray-900 tracking-tight">
+                {profile?.full_name?.split(" ")[0] || "Administrator"} 👋
+              </Text>
+            </View>
+            <View className="flex-row items-center mt-2 group mb-2">
+              <View className="h-1.5 w-1.5 rounded-full bg-blue-500 mr-2" />
+              <Text className="text-sm text-gray-500 font-medium">School Management System</Text>
+            </View>
           </View>
 
           <TouchableOpacity
@@ -193,8 +218,7 @@ export default function AdminDashboard() {
             delayLongPress={2000}
             className="flex-row items-center mt-2 group mb-6"
           >
-            <View className="h-1.5 w-1.5 rounded-full bg-blue-500 mr-2" />
-            <Text className="text-sm text-gray-500 font-medium">School Management System</Text>
+
             <View className="ml-1 px-1.5 py-0.5 bg-gray-100 rounded text-[10px] text-gray-400 opacity-0 group-active:opacity-100">
               <Text className="text-[10px] text-gray-400">v1.0</Text>
             </View>
@@ -207,78 +231,82 @@ export default function AdminDashboard() {
               <View className="flex-1 bg-gray-200 h-32 rounded-3xl animate-pulse ml-2" />
             </View>
           ) : (
-            <View className="flex-row mb-8">
-              <View className="flex-1 bg-gray-900 p-6 rounded-3xl shadow-lg shadow-gray-200 mr-2">
-                <View className="bg-white/10 w-10 h-10 rounded-2xl items-center justify-center mb-4">
-                  <IconUsers size={20} color="white" />
+            <View className="flex-row mb-10">
+              <View style={{ flex: 1, backgroundColor: "#111827", padding: 20, borderRadius: 24, marginRight: 6, shadowColor: "#000", shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.15, shadowRadius: 10, elevation: 8, minHeight: 140, justifyContent: 'space-between' }}>
+                <View>
+                  <View style={{ backgroundColor: "rgba(255, 255, 255, 0.1)", width: 42, height: 42, borderRadius: 12, alignItems: "center", justifyContent: "center", marginBottom: 16 }}>
+                    <IconUsers size={22} color="white" />
+                  </View>
+                  <Text style={{ color: "white", fontSize: 26, fontWeight: "900", letterSpacing: -0.5 }}>
+                    {stats.find(s => s.label === "Total Students")?.value || "0"}
+                  </Text>
                 </View>
-                <Text className="text-white text-2xl font-black mb-1">
-                  {stats.find(s => s.label === "Total Students")?.value || "0"}
-                </Text>
-                <Text className="text-gray-400 text-xs font-bold uppercase tracking-wider">Total Students</Text>
+                <Text style={{ color: "rgba(255, 255, 255, 0.5)", fontSize: 10, fontWeight: "800", textTransform: "uppercase", letterSpacing: 1.2 }}>Total Students</Text>
               </View>
 
-              <View className="flex-1 bg-white p-6 rounded-3xl border border-gray-100 shadow-sm ml-2">
-                <View className="bg-teal-50 w-10 h-10 rounded-2xl items-center justify-center mb-4">
-                  <IconWallet size={20} color="#0D9488" />
-                </View>
+              <View style={{ flex: 1, backgroundColor: "#f97316", padding: 20, borderRadius: 24, marginLeft: 6, shadowColor: "#f97316", shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.25, shadowRadius: 10, elevation: 12, minHeight: 140, justifyContent: 'space-between' }}>
                 <View>
-                  <Text
-                    className="text-gray-900 text-2xl font-black mb-1"
-                    numberOfLines={1}
-                    adjustsFontSizeToFit
-                  >
-                    {stats.find(s => s.label === "Revenue")?.value || "KES 0"}
-                  </Text>
-                  {stats.find(s => s.label === "Revenue")?.subValue && (
-                    <Text className="text-gray-400 text-xs font-medium mb-1">
-                      {stats.find(s => s.label === "Revenue")?.subValue}
+                  <View style={{ backgroundColor: "rgba(255, 255, 255, 0.2)", width: 42, height: 42, borderRadius: 12, alignItems: "center", justifyContent: "center", marginBottom: 16 }}>
+                    <IconWallet size={22} color="white" />
+                  </View>
+                  <View>
+                    <Text
+                      style={{ color: "white", fontSize: 22, fontWeight: "900", letterSpacing: -1 }}
+                      numberOfLines={1}
+                      adjustsFontSizeToFit
+                    >
+                      {stats.find(s => s.label === "Revenue")?.value || "KES 0"}
                     </Text>
-                  )}
+                    {stats.find(s => s.label === "Revenue")?.subValue && (
+                      <Text style={{ color: "rgba(255, 255, 255, 0.8)", fontSize: 12, fontWeight: "600", marginTop: 2 }}>
+                        {stats.find(s => s.label === "Revenue")?.subValue}
+                      </Text>
+                    )}
+                  </View>
                 </View>
-                <Text className="text-gray-400 text-xs font-bold uppercase tracking-wider">Total Revenue</Text>
+                <Text style={{ color: "rgba(255, 255, 255, 0.85)", fontSize: 10, fontWeight: "800", textTransform: "uppercase", letterSpacing: 1.2 }}>Total Revenue</Text>
               </View>
             </View>
           )
           }
 
           {/* --- 3. Quick Actions Grid --- */}
-          <View className="mb-10">
-            <Text className="text-lg font-bold text-gray-900 mb-4 px-1">Quick Actions</Text>
-            <View className="flex-row flex-wrap gap-4">
+          <View style={{ marginBottom: 40 }}>
+            <Text style={{ fontSize: 18, fontWeight: "700", color: "#111827", marginBottom: 16, paddingHorizontal: 4 }}>Quick Actions</Text>
+            <View style={{ flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between" }}>
               <QuickAction
                 icon={IconUserPlus}
                 label="Enroll User"
-                color="#3b82f6"
+                color="#f97316"
                 onPress={() => router.push("/(admin)/users/create")}
               />
               <QuickAction
                 icon={IconBookOpen}
                 label="Library"
-                color="#eab308"
-                onPress={() => router.push("/(admin)/management/library" as any)}
+                color="#f97316"
+                onPress={() => router.navigate("/(admin)/management/library" as any)}
               />
               <QuickAction
                 icon={IconWallet}
                 label="Finance"
-                color="#10b981"
-                onPress={() => router.push("/(admin)/finance" as any)}
+                color="#f97316"
+                onPress={() => router.navigate("/(admin)/finance" as any)}
               />
               <QuickAction
                 icon={IconBarChart3}
                 label="Analytics"
-                color="#8b5cf6"
-                onPress={() => router.push("/(admin)/management/analytics" as any)}
+                color="#f97316"
+                onPress={() => router.navigate("/(admin)/management/analytics" as any)}
               />
             </View>
           </View>
 
           {/* --- 4. Recent Activity --- */}
           <View>
-            <View className="flex-row justify-between items-end mb-5 px-1">
-              <Text className="text-lg font-bold text-gray-900">Recent Users</Text>
-              <TouchableOpacity onPress={() => router.push("/(admin)/users")}>
-                <Text className="text-blue-600 font-semibold text-sm">View All</Text>
+            <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-end", marginBottom: 20, paddingHorizontal: 4 }}>
+              <Text style={{ fontSize: 18, fontWeight: "700", color: "#111827" }}>Recent Users</Text>
+              <TouchableOpacity onPress={() => router.navigate("/(admin)/users")}>
+                <Text style={{ color: "#f97316", fontWeight: "600", fontSize: 14 }}>View All</Text>
               </TouchableOpacity>
             </View>
 
@@ -299,26 +327,24 @@ export default function AdminDashboard() {
                 {/* Desktop View */}
                 <View className="hidden lg:flex flex-row flex-wrap gap-4">
                   {recentUsers.map((user) => (
-                    <View key={user.id} className="bg-white p-5 rounded-3xl border border-gray-100 shadow-sm flex-1 min-w-[30%]">
-                      <View className="flex-row items-center justify-between mb-4">
-                        <View className={`h-10 w-10 rounded-2xl items-center justify-center ${user.role === 'student' ? 'bg-orange-50' :
-                          user.role === 'teacher' ? 'bg-purple-50' : 'bg-blue-50'
-                          }`}>
+                    <View key={user.id} style={{ backgroundColor: "white", padding: 20, borderRadius: 24, borderWidth: 1, borderColor: "#f3f4f6", flex: 1, minWidth: "30%" }}>
+                      <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+                        <View style={{ height: 40, width: 40, borderRadius: 12, alignItems: "center", justifyContent: "center", backgroundColor: user.role === 'student' ? '#fff7ed' : user.role === 'teacher' ? '#f3e8ff' : '#eff6ff' }}>
                           {user.role === 'student' ? <IconGraduationCap size={20} color="#f97316" /> :
                             user.role === 'teacher' ? <IconSchool size={20} color="#8b5cf6" /> :
                               <IconSettings size={20} color="#3b82f6" />}
                         </View>
-                        <View className="bg-gray-50 px-2 py-1 rounded-lg">
-                          <Text className="text-gray-400 font-medium text-[10px]">
+                        <View style={{ backgroundColor: "#f9fafb", paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 }}>
+                          <Text style={{ color: "#9ca3af", fontWeight: "500", fontSize: 10 }}>
                             {new Date(user.joinDate).toLocaleDateString()}
                           </Text>
                         </View>
                       </View>
-                      <Text className="text-gray-900 font-bold text-base mb-1" numberOfLines={1}>
+                      <Text style={{ color: "#111827", fontWeight: "700", fontSize: 16, marginBottom: 4 }} numberOfLines={1}>
                         {user.name}
                       </Text>
-                      <Text className="text-gray-500 text-xs mb-1 font-medium">{user.role.toUpperCase()}</Text>
-                      <Text className="text-gray-400 text-[10px]">{user.displayId}</Text>
+                      <Text style={{ color: "#6b7280", fontSize: 12, marginBottom: 4, fontWeight: "500" }}>{user.role.toUpperCase()}</Text>
+                      <Text style={{ color: "#9ca3af", fontSize: 10 }}>{user.displayId}</Text>
                     </View>
                   ))}
                 </View>
@@ -333,26 +359,24 @@ export default function AdminDashboard() {
                   {loadingUsers ? (
                     <Text className="text-gray-400">Loading users...</Text>
                   ) : recentUsers.map((user) => (
-                    <View key={user.id} className="bg-white p-5 rounded-3xl border border-gray-100 shadow-sm mr-4 w-72">
-                      <View className="flex-row items-center justify-between mb-4">
-                        <View className={`h-10 w-10 rounded-2xl items-center justify-center ${user.role === 'student' ? 'bg-orange-50' :
-                          user.role === 'teacher' ? 'bg-purple-50' : 'bg-blue-50'
-                          }`}>
+                    <View key={user.id} style={{ backgroundColor: "white", padding: 20, borderRadius: 24, borderWidth: 1, borderColor: "#f3f4f6", marginRight: 16, width: 288 }}>
+                      <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+                        <View style={{ height: 40, width: 40, borderRadius: 12, alignItems: "center", justifyContent: "center", backgroundColor: user.role === 'student' ? '#fff7ed' : user.role === 'teacher' ? '#f3e8ff' : '#eff6ff' }}>
                           {user.role === 'student' ? <IconGraduationCap size={20} color="#f97316" /> :
                             user.role === 'teacher' ? <IconSchool size={20} color="#8b5cf6" /> :
                               <IconSettings size={20} color="#3b82f6" />}
                         </View>
-                        <View className="bg-gray-50 px-2 py-1 rounded-lg">
-                          <Text className="text-gray-400 font-medium text-[10px]">
+                        <View style={{ backgroundColor: "#f9fafb", paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 }}>
+                          <Text style={{ color: "#9ca3af", fontWeight: "500", fontSize: 10 }}>
                             {new Date(user.joinDate).toLocaleDateString()}
                           </Text>
                         </View>
                       </View>
-                      <Text className="text-gray-900 font-bold text-base mb-1" numberOfLines={1}>
+                      <Text style={{ color: "#111827", fontWeight: "700", fontSize: 16, marginBottom: 4 }} numberOfLines={1}>
                         {user.name}
                       </Text>
-                      <Text className="text-gray-500 text-xs mb-1 font-medium">{user.role.toUpperCase()}</Text>
-                      <Text className="text-gray-400 text-[10px]">{user.displayId}</Text>
+                      <Text style={{ color: "#6b7280", fontSize: 12, marginBottom: 4, fontWeight: "500" }}>{user.role.toUpperCase()}</Text>
+                      <Text style={{ color: "#9ca3af", fontSize: 10 }}>{user.displayId}</Text>
                     </View>
                   ))}
                 </ScrollView>
