@@ -259,9 +259,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       }
     };
 
-    initializeAuth().then(() => {
-      isInitializedRef.current = true;
-    });
+    initializeAuth();
 
     // 2. Listen for auth state changes
     const {
