@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from "react";
-import { View, Text, ScrollView, TouchableOpacity, StatusBar, TextInput, Modal, Alert, ActivityIndicator } from 'react-native';
-import { ArrowLeft, Plus, FileText, Calendar, Clock, Users, Eye, Edit2, Trash2, X, ChevronDown, Check } from 'lucide-react-native';
-import { router } from "expo-router";
+import { UnifiedHeader } from "@/components/common/UnifiedHeader";
 import { useAuth } from "@/contexts/AuthContext";
 import { ExamService } from "@/services/ExamService";
 import { SubjectAPI } from "@/services/SubjectService";
+import { router } from "expo-router";
+import { Calendar, ChevronRight, FileText, Plus, X } from 'lucide-react-native';
+import React, { useEffect, useState } from "react";
+import { ActivityIndicator, Alert, Modal, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 interface Exam {
     id: string;
@@ -73,100 +74,144 @@ export default function ExamsPage() {
     };
 
     return (
-        <View className="flex-1 bg-gray-50">
-            <StatusBar barStyle="dark-content" />
-            <ScrollView className="flex-1 p-4" contentContainerStyle={{ paddingBottom: 100 }}>
-                {/* Header */}
-                <View className="flex-row items-center justify-between mb-6">
-                    <View className="flex-row items-center">
-                        <TouchableOpacity onPress={() => router.back()} className="mr-3">
-                            <ArrowLeft size={24} color="#374151" />
-                        </TouchableOpacity>
-                        <Text className="text-2xl font-bold text-gray-900">Exams</Text>
-                    </View>
-                    <TouchableOpacity
-                        onPress={() => setShowCreateModal(true)}
-                        className="bg-teacherOrange p-2 rounded-xl"
-                    >
-                        <Plus size={24} color="white" />
-                    </TouchableOpacity>
-                </View>
-
-                {loading ? (
-                    <ActivityIndicator size="large" color="#FF6B00" />
-                ) : exams.length === 0 ? (
-                    <Text className="text-gray-500 text-center mt-10">No exams scheduled yet.</Text>
-                ) : (
-                    exams.map((exam) => (
-                        <View key={exam.id} className="bg-white p-4 rounded-2xl border border-gray-100 mb-3 shadow-sm">
-                            <Text className="text-lg font-bold text-gray-900">{exam.title}</Text>
-                            <Text className="text-gray-500 text-sm mb-2">{exam.subject_title}</Text>
-                            <View className="flex-row items-center">
-                                <Calendar size={14} color="#6B7280" />
-                                <Text className="text-gray-500 text-xs ml-1">{new Date(exam.date).toLocaleDateString()}</Text>
-                                <View className="mx-2 w-1 h-1 bg-gray-300 rounded-full" />
-                                <Text className="text-gray-500 text-xs">{exam.max_score} Points</Text>
-                            </View>
-                            <TouchableOpacity
-                                onPress={() => router.push(`/management/exam-results?examId=${exam.id}`)}
-                                className="mt-4 bg-gray-50 py-2 rounded-xl items-center"
-                            >
-                                <Text className="text-teacherOrange font-bold">Manage Results</Text>
-                            </TouchableOpacity>
+        <View className="flex-1 bg-gray-50 dark:bg-black">
+            <UnifiedHeader
+                title="Academic"
+                subtitle="Exams"
+                role="Teacher"
+                onBack={() => router.back()}
+            />
+            <ScrollView className="flex-1" showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
+                <View className="p-4 md:p-8">
+                    {/* Header Row */}
+                    <View className="flex-row justify-between items-center mb-6 px-2">
+                        <View>
+                            <Text className="text-gray-400 dark:text-gray-500 font-bold text-[10px] uppercase tracking-wider">
+                                {exams.length} scheduled exams
+                            </Text>
                         </View>
-                    ))
-                )}
+                        <TouchableOpacity
+                            className="flex-row items-center bg-[#FF6900] px-5 py-2.5 rounded-2xl shadow-lg active:bg-orange-600"
+                            onPress={() => setShowCreateModal(true)}
+                        >
+                            <Plus size={18} color="white" />
+                            <Text className="text-white font-bold text-xs ml-2 uppercase tracking-widest">Schedule</Text>
+                        </TouchableOpacity>
+                    </View>
+
+                    {loading ? (
+                        <ActivityIndicator size="large" color="#FF6900" className="mt-8" />
+                    ) : exams.length === 0 ? (
+                        <View className="bg-white dark:bg-[#1a1a1a] p-12 rounded-[40px] items-center border border-gray-100 dark:border-gray-800 border-dashed">
+                            <FileText size={48} color="#E5E7EB" style={{ opacity: 0.3 }} />
+                            <Text className="text-gray-400 dark:text-gray-500 font-bold text-center mt-6 tracking-tight">No exams scheduled yet.</Text>
+                        </View>
+                    ) : (
+                        exams.map((exam) => (
+                            <View key={exam.id} className="bg-white dark:bg-[#1a1a1a] p-5 rounded-3xl border border-gray-100 dark:border-gray-800 mb-4 shadow-sm">
+                                <View className="flex-row justify-between items-start mb-4">
+                                    <View className="flex-1">
+                                        <Text className="text-gray-900 dark:text-white font-bold text-lg leading-tight">{exam.title}</Text>
+                                        <Text className="text-[#FF6900] text-xs font-bold mt-1 uppercase tracking-wider">{exam.subject_title}</Text>
+                                    </View>
+                                    <View className="bg-gray-50 dark:bg-[#242424] px-3 py-1 rounded-full border border-gray-100 dark:border-gray-800">
+                                        <Text className="text-gray-400 dark:text-gray-500 text-[10px] font-bold uppercase tracking-widest">{exam.results_count} results</Text>
+                                    </View>
+                                </View>
+
+                                <View className="flex-row items-center mb-6 gap-4">
+                                    <View className="flex-row items-center">
+                                        <Calendar size={14} color="#6B7280" />
+                                        <Text className="text-gray-500 dark:text-gray-400 text-xs font-bold ml-1.5">{new Date(exam.date).toLocaleDateString()}</Text>
+                                    </View>
+                                    <View className="flex-row items-center">
+                                        <View className="w-1.5 h-1.5 bg-gray-300 dark:bg-gray-700 rounded-full mr-2" />
+                                        <Text className="text-gray-500 dark:text-gray-400 text-xs font-bold">{exam.max_score} Points</Text>
+                                    </View>
+                                </View>
+
+                                <TouchableOpacity
+                                    onPress={() => router.push(`/management/exam-results?examId=${exam.id}`)}
+                                    className="flex-row items-center justify-between bg-gray-900 p-4 rounded-2xl active:bg-gray-800"
+                                >
+                                    <Text className="text-white font-bold text-sm ml-2">Manage Student Results</Text>
+                                    <ChevronRight size={18} color="white" />
+                                </TouchableOpacity>
+                            </View>
+                        ))
+                    )}
+                </View>
             </ScrollView>
 
             {/* Create Modal */}
-            <Modal visible={showCreateModal} animationType="slide">
-                <View className="flex-1 bg-white p-6">
-                    <View className="flex-row justify-between items-center mb-6">
-                        <Text className="text-2xl font-bold">New Exam</Text>
-                        <TouchableOpacity onPress={() => setShowCreateModal(false)}>
-                            <X size={24} color="#374151" />
+            <Modal visible={showCreateModal} animationType="slide" transparent>
+                <View className="flex-1 bg-black/50 justify-end">
+                    <View className="bg-white dark:bg-[#121212] rounded-t-[40px] p-8 pb-12 border-t border-gray-100 dark:border-gray-800">
+                        <View className="flex-row justify-between items-center mb-8">
+                            <Text className="text-2xl font-bold text-gray-900 dark:text-white tracking-tight">Schedule Exam</Text>
+                            <TouchableOpacity
+                                className="w-10 h-10 bg-gray-50 dark:bg-[#1a1a1a] rounded-full items-center justify-center"
+                                onPress={() => setShowCreateModal(false)}
+                            >
+                                <X size={20} color="#6B7280" />
+                            </TouchableOpacity>
+                        </View>
+
+                        <Text className="text-gray-500 dark:text-gray-400 text-[10px] font-bold uppercase tracking-wider ml-2 mb-2">Subject</Text>
+                        <ScrollView horizontal className="flex-row mb-6" showsHorizontalScrollIndicator={false}>
+                            {subjects.map(s => (
+                                <TouchableOpacity
+                                    key={s.id}
+                                    onPress={() => setSelectedSubjectId(s.id)}
+                                    className={`mr-3 px-6 py-3 rounded-2xl border ${selectedSubjectId === s.id ? 'bg-[#FF6900] border-[#FF6900] shadow-sm' : 'bg-gray-50 dark:bg-[#1a1a1a] border-gray-100 dark:border-gray-800'}`}
+                                >
+                                    <Text className={`font-bold text-xs ${selectedSubjectId === s.id ? 'text-white' : 'text-gray-500 dark:text-gray-400'}`}>{s.title}</Text>
+                                </TouchableOpacity>
+                            ))}
+                        </ScrollView>
+
+                        <View className="mb-6">
+                            <Text className="text-gray-500 dark:text-gray-400 text-[10px] font-bold uppercase tracking-wider ml-2 mb-2">Exam Title</Text>
+                            <TextInput
+                                className="bg-gray-50 dark:bg-[#1a1a1a] rounded-2xl px-6 py-4 text-gray-900 dark:text-white font-bold border border-gray-100 dark:border-gray-800"
+                                placeholder="e.g. Mid-term Assessment"
+                                placeholderTextColor="#9CA3AF"
+                                value={title}
+                                onChangeText={setTitle}
+                            />
+                        </View>
+
+                        <View className="flex-row gap-4 mb-8">
+                            <View className="flex-1">
+                                <Text className="text-gray-500 dark:text-gray-400 text-[10px] font-bold uppercase tracking-wider ml-2 mb-2">Date (YYYY-MM-DD)</Text>
+                                <TextInput
+                                    className="bg-gray-50 dark:bg-[#1a1a1a] rounded-2xl px-6 py-4 text-gray-900 dark:text-white font-bold border border-gray-100 dark:border-gray-800"
+                                    placeholder="2024-06-15"
+                                    placeholderTextColor="#9CA3AF"
+                                    value={date}
+                                    onChangeText={setDate}
+                                />
+                            </View>
+                            <View className="flex-1">
+                                <Text className="text-gray-500 dark:text-gray-400 text-[10px] font-bold uppercase tracking-wider ml-2 mb-2">Max Score</Text>
+                                <TextInput
+                                    className="bg-gray-50 dark:bg-[#1a1a1a] rounded-2xl px-6 py-4 text-gray-900 dark:text-white font-bold border border-gray-100 dark:border-gray-800"
+                                    placeholder="100"
+                                    placeholderTextColor="#9CA3AF"
+                                    keyboardType="numeric"
+                                    value={maxScore}
+                                    onChangeText={setMaxScore}
+                                />
+                            </View>
+                        </View>
+
+                        <TouchableOpacity
+                            onPress={handleCreateExam}
+                            className="bg-[#FF6900] py-5 rounded-2xl items-center shadow-lg active:bg-orange-600"
+                        >
+                            <Text className="text-white font-bold text-lg">Create Exam</Text>
                         </TouchableOpacity>
                     </View>
-
-                    <Text className="text-gray-500 mb-1">Subject</Text>
-                    <ScrollView horizontal className="mb-4">
-                        {subjects.map(s => (
-                            <TouchableOpacity
-                                key={s.id}
-                                onPress={() => setSelectedSubjectId(s.id)}
-                                className={`mr-2 px-4 py-2 rounded-xl border ${selectedSubjectId === s.id ? 'bg-teacherOrange border-teacherOrange' : 'bg-gray-100 border-gray-200'}`}
-                            >
-                                <Text className={selectedSubjectId === s.id ? 'text-white' : 'text-gray-700'}>{s.title}</Text>
-                            </TouchableOpacity>
-                        ))}
-                    </ScrollView>
-
-                    <TextInput
-                        placeholder="Exam Title"
-                        className="bg-gray-100 p-4 rounded-xl mb-4"
-                        value={title}
-                        onChangeText={setTitle}
-                    />
-                    <TextInput
-                        placeholder="Date (YYYY-MM-DD)"
-                        className="bg-gray-100 p-4 rounded-xl mb-4"
-                        value={date}
-                        onChangeText={setDate}
-                    />
-                    <TextInput
-                        placeholder="Max Score"
-                        className="bg-gray-100 p-4 rounded-xl mb-6"
-                        keyboardType="numeric"
-                        value={maxScore}
-                        onChangeText={setMaxScore}
-                    />
-
-                    <TouchableOpacity
-                        onPress={handleCreateExam}
-                        className="bg-teacherOrange py-4 rounded-xl items-center"
-                    >
-                        <Text className="text-white font-bold text-lg">Create Exam</Text>
-                    </TouchableOpacity>
                 </View>
             </Modal>
         </View>

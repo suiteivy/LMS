@@ -1,27 +1,29 @@
+import { AuthGuard } from "@/components/AuthGuard";
+import { useTheme } from "@/contexts/ThemeContext";
 import { Tabs } from "expo-router";
-import { BookOpen, Building, Glasses, PenBox, Settings, Star } from "lucide-react-native";
+import { BookOpen, Building, CreditCard, Glasses, MessageSquare, PenBox, Settings, Star } from "lucide-react-native";
 import { Platform, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { AuthGuard } from "@/components/AuthGuard";
 
 export default function StudentLayout() {
   const insets = useSafeAreaInsets();
+  const { isDark } = useTheme();
 
   return (
     <AuthGuard allowedRoles={['student']}>
       <Tabs
         screenOptions={{
           headerShown: false,
-          tabBarActiveTintColor: "orange",
-          tabBarInactiveTintColor: "#6b7280",
+          tabBarActiveTintColor: "#FF6900", // Standard Cloudora Orange
+          tabBarInactiveTintColor: isDark ? "#9ca3af" : "#6b7280",
           tabBarLabelStyle: {
             fontSize: 11,
             fontWeight: "600",
           },
           tabBarStyle: {
-            backgroundColor: "#ffffff",
+            backgroundColor: isDark ? '#121212' : "#ffffff",
             borderTopWidth: 1,
-            borderTopColor: "#e5e7eb",
+            borderTopColor: isDark ? '#1f2937' : "#e5e7eb",
             // Handle different device heights dynamically
             minHeight: Platform.OS === "ios" ? 64 + insets.bottom : 70,
             paddingBottom: insets.bottom > 0 ? insets.bottom : 12,
@@ -34,8 +36,7 @@ export default function StudentLayout() {
             shadowRadius: 3,
           },
           sceneStyle: {
-            backgroundColor: "#ffffff",
-            paddingTop: insets.top,
+            backgroundColor: isDark ? '#000000' : "#ffffff",
           },
         }}
       >
@@ -117,6 +118,36 @@ export default function StudentLayout() {
           }}
         />
 
+        <Tabs.Screen
+          name="finance"
+          options={{
+            title: "Finances",
+            tabBarIcon: ({ size, color }) => {
+              const Icon = CreditCard as any
+              return (
+                <View>
+                  <Icon size={size} color={color} strokeWidth={2} />
+                </View>
+              )
+            },
+          }}
+        />
+
+        <Tabs.Screen
+          name="messages"
+          options={{
+            title: "Messages",
+            tabBarIcon: ({ size, color }) => {
+              const Icon = MessageSquare as any
+              return (
+                <View>
+                  <Icon size={size} color={color} strokeWidth={2} />
+                </View>
+              )
+            },
+          }}
+        />
+
         {/* 4. User Configuration */}
         <Tabs.Screen
           name="settings"
@@ -133,19 +164,7 @@ export default function StudentLayout() {
           }}
         />
 
-        {/* Hidden Routes */}
-        <Tabs.Screen
-          name="finance"
-          options={{
-            href: null,
-          }}
-        />
-        <Tabs.Screen
-          name="messages"
-          options={{
-            href: null,
-          }}
-        />
+        {/* Hidden Routes — only routes not already declared as tabs above */}
         <Tabs.Screen
           name="attendance"
           options={{

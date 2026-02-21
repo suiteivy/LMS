@@ -15,8 +15,15 @@
 
 2.  **Install dependencies**
     ```bash
+    # Install frontend dependencies
     cd frontend
     npm install
+    cd ..
+
+    # Install backend dependencies
+    cd backend
+    npm install
+    cd ..
     ```
 
 3.  **Environment Setup**
@@ -31,9 +38,16 @@
     - Seed initial data if available.
 
 5.  **Run the App**
+
+    **Option A: Start Frontend and Backend Concurrently (Recommended)**
+    From the root directory:
     ```bash
-    npx expo start
+    npm run dev
     ```
+
+    **Option B: Start Manually**
+    - **Backend**: `cd backend && npm run dev`
+    - **Frontend**: `cd frontend && npx expo start`
 
 ## Troubleshooting
 - **Missing dependencies**: Run `npm install` again.

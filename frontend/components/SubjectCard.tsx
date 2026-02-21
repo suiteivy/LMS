@@ -1,7 +1,8 @@
-import React from "react";
-import { View, Text, TouchableOpacity, Image } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
+import { useTheme } from "@/contexts/ThemeContext";
 import { Subject } from "@/types/types";
+import { Ionicons } from "@expo/vector-icons";
+import React from "react";
+import { Image, Text, TouchableOpacity, View } from "react-native";
 
 interface SubjectCardProps {
   Subject: Subject;
@@ -16,73 +17,66 @@ export const SubjectCard: React.FC<SubjectCardProps> = ({
   variant = "default",
   kesRate = 129,
 }) => {
-  const getLevelColor = (level: string) => {
-    switch (level) {
-      case "beginner":
-        return "#1ABC9C";
-      case "intermediate":
-        return "#F39C12";
-      case "advanced":
-        return "#E74C3C";
-      default:
-        return "#1ABC9C";
-    }
+  const { isDark } = useTheme();
+
+  const t = {
+    surface:       isDark ? '#1a1a1a' : '#ffffff',
+    border:        isDark ? '#1f2937' : '#f3f4f6',
+    textPrimary:   isDark ? '#ffffff' : '#111827',
+    textSecondary: isDark ? '#9ca3af' : '#6b7280',
+    textMuted:     isDark ? '#6b7280' : '#9ca3af',
+    divider:       isDark ? '#1f2937' : '#f9fafb',
+    ratingBg:      isDark ? 'rgba(249,115,22,0.15)' : '#fff7ed',
+    instructorBg:  isDark ? '#1f2937' : '#f3f4f6',
+    instructorBorder: isDark ? 'rgba(249,115,22,0.2)' : '#fff7ed',
+    levelBg:       isDark ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.9)',
+    levelText:     isDark ? '#ffffff' : '#111827',
   };
 
-  const formatPrice = (price: number) => {
-    return price === 0 ? "Free" : `$${price}`;
-  };
-
-  const formatKsh = (price: number) => {
-    if (price === 0) return "";
-    const ksh = Math.round(price * kesRate);
-    return `${ksh.toLocaleString()} KSh`;
+  const shadow = {
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: isDark ? 0 : 0.05,
+    shadowRadius: 10,
+    elevation: isDark ? 0 : 2,
   };
 
   if (variant === "compact") {
     return (
       <TouchableOpacity
         onPress={onPress}
-        className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 mb-3"
+        activeOpacity={0.7}
+        style={{
+          backgroundColor: t.surface,
+          borderRadius: 18,
+          padding: 12,
+          borderWidth: 1,
+          borderColor: t.border,
+          marginBottom: 10,
+          flexDirection: 'row',
+          ...shadow,
+        }}
       >
-        <View className="flex-row">
-          <Image
-            source={{ uri: Subject.image }}
-            className="w-16 h-16 rounded-lg"
-            resizeMode="cover"
-          />
-          <View className="flex-1 ml-3">
-            <Text
-              className="font-semibold text-sm"
-              style={{ color: "#2C3E50" }}
-              numberOfLines={2}
-            >
-              {Subject.title}
+        <Image
+          source={{ uri: Subject.image }}
+          style={{ width: 64, height: 64, borderRadius: 12, backgroundColor: '#e5e7eb' }}
+          resizeMode="cover"
+        />
+        <View style={{ flex: 1, marginLeft: 12, justifyContent: 'center' }}>
+          <Text style={{ fontSize: 10, fontWeight: '700', color: '#f97316', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 3 }}>
+            {Subject.category}
+          </Text>
+          <Text style={{ fontWeight: '700', fontSize: 14, color: t.textPrimary, marginBottom: 4 }} numberOfLines={1}>
+            {Subject.title}
+          </Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <Ionicons name="star" size={11} color="#f97316" />
+            <Text style={{ fontSize: 11, color: t.textPrimary, fontWeight: '600', marginLeft: 3 }}>{Subject.rating}</Text>
+            <Text style={{ fontSize: 11, color: t.textMuted, marginLeft: 3 }}>({Subject.reviewsCount})</Text>
+            <View style={{ width: 3, height: 3, borderRadius: 99, backgroundColor: t.textMuted, marginHorizontal: 6 }} />
+            <Text style={{ fontSize: 11, fontWeight: '700', color: '#f97316' }}>
+              {Subject.price === 0 ? "FREE" : `${Math.round(Subject.price * kesRate).toLocaleString()} KSh`}
             </Text>
-            <Text className="text-xs text-gray-500 mt-1">
-              {Subject.instructor.name}
-            </Text>
-            <View className="flex-row items-center mt-2">
-              <View className="flex-row items-center mr-3">
-                <Ionicons name="star" size={12} color="#F39C12" />
-                <Text className="text-xs text-gray-600 ml-1">
-                  {Subject.rating}
-                </Text>
-              </View>
-              <View>
-                <Text
-                  className="text-xs font-semibold"
-                  style={{ color: "#1ABC9C" }}
-                >
-                  {Subject.price === 0 ? "Free" : `${Math.round(Subject.price * kesRate).toLocaleString()} KSh`}
-                </Text>
-                {Subject.price > 0 && (
-                  <Text className="text-[10px] text-gray-400">
-                    ${Subject.price} USD
-                  </Text>
-                )}
-              </View>
-            </View>
           </View>
         </View>
       </TouchableOpacity>
@@ -93,109 +87,70 @@ export const SubjectCard: React.FC<SubjectCardProps> = ({
     return (
       <TouchableOpacity
         onPress={onPress}
-        className="bg-white rounded-2xl shadow-sm border border-gray-100 mb-6 overflow-hidden"
+        activeOpacity={0.9}
+        style={{
+          backgroundColor: t.surface,
+          borderRadius: 24,
+          marginBottom: 24,
+          overflow: 'hidden',
+          borderWidth: 1,
+          borderColor: t.border,
+          ...shadow,
+        }}
       >
-        <View className="relative">
-          <Image
-            source={{ uri: Subject.image }}
-            className="w-full h-48"
-            resizeMode="cover"
-          />
-          <View className="absolute top-3 left-3">
-            <View
-              className="px-2 py-1 rounded-full"
-              style={{ backgroundColor: getLevelColor(Subject.level) }}
-            >
-              <Text className="text-white text-xs font-medium capitalize">
-                {Subject.level}
-              </Text>
+        <View style={{ position: 'relative' }}>
+          <Image source={{ uri: Subject.image }} style={{ width: '100%', height: 180 }} resizeMode="cover" />
+          <View style={{ position: 'absolute', top: 12, left: 12, flexDirection: 'row', gap: 6 }}>
+            <View style={{ backgroundColor: t.levelBg, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 99 }}>
+              <Text style={{ color: t.levelText, fontSize: 9, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1 }}>{Subject.level}</Text>
+            </View>
+            <View style={{ backgroundColor: '#f97316', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 99 }}>
+              <Text style={{ color: '#ffffff', fontSize: 9, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1 }}>{Subject.category}</Text>
             </View>
           </View>
           {Subject.originalPrice && Subject.originalPrice > Subject.price && (
-            <View
-              className="absolute top-3 right-3 px-2 py-1 rounded-full"
-              style={{ backgroundColor: "#E74C3C" }}
-            >
-              <Text className="text-white text-xs font-bold">
-                {Math.round(
-                  ((Subject.originalPrice - Subject.price) /
-                    Subject.originalPrice) *
-                  100
-                )}
-                % OFF
+            <View style={{ position: 'absolute', top: 12, right: 12, backgroundColor: '#111827', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 99 }}>
+              <Text style={{ color: '#ffffff', fontSize: 9, fontWeight: '700', fontStyle: 'italic' }}>
+                {Math.round(((Subject.originalPrice - Subject.price) / Subject.originalPrice) * 100)}% OFF
               </Text>
             </View>
           )}
         </View>
 
-        <View className="p-4">
-          <Text
-            className="font-bold text-lg mb-2"
-            style={{ color: "#2C3E50" }}
-            numberOfLines={2}
-          >
+        <View style={{ padding: 16 }}>
+          <Text style={{ fontWeight: '700', fontSize: 18, color: t.textPrimary, marginBottom: 6 }} numberOfLines={2}>
             {Subject.title}
           </Text>
-
-          <Text className="text-gray-600 text-sm mb-3" numberOfLines={2}>
+          <Text style={{ color: t.textSecondary, fontSize: 13, marginBottom: 12, lineHeight: 20 }} numberOfLines={2}>
             {Subject.shortDescription}
           </Text>
 
-          <View className="flex-row items-center mb-3">
-            <Ionicons name="person-circle" size={16} color="#6B7280" />
-            <Text className="text-sm text-gray-600 ml-1">
-              {Subject.instructor.name}
-            </Text>
-          </View>
-
-          <View className="flex-row items-center justify-between mb-4">
-            <View className="flex-row items-center">
-              <Ionicons name="star" size={16} color="#F39C12" />
-              <Text
-                className="text-sm font-medium ml-1"
-                style={{ color: "#2C3E50" }}
-              >
-                {Subject.rating}
-              </Text>
-              <Text className="text-sm text-gray-500 ml-1">
-                ({Subject.reviewsCount})
-              </Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <View style={{ width: 28, height: 28, borderRadius: 99, backgroundColor: t.instructorBg, alignItems: 'center', justifyContent: 'center', marginRight: 8, borderWidth: 1, borderColor: t.instructorBorder }}>
+                <Ionicons name="person" size={13} color="#f97316" />
+              </View>
+              <Text style={{ fontSize: 13, fontWeight: '600', color: t.textPrimary }}>{Subject.instructor.name}</Text>
             </View>
-
-            <View className="flex-row items-center">
-              <Ionicons name="people" size={16} color="#6B7280" />
-              <Text className="text-sm text-gray-600 ml-1">
-                {Subject.studentsCount}
-              </Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: t.ratingBg, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 99 }}>
+              <Ionicons name="star" size={13} color="#f97316" />
+              <Text style={{ fontSize: 13, fontWeight: '700', color: t.textPrimary, marginLeft: 4 }}>{Subject.rating}</Text>
             </View>
           </View>
 
-          <View className="flex-row items-center justify-between">
+          <View style={{ borderTopWidth: 1, borderTopColor: t.divider, paddingTop: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
             <View>
-              {Subject.originalPrice && Subject.originalPrice > Subject.price && (
-                <Text className="text-sm text-gray-400 line-through">
-                  ${Subject.originalPrice}
-                </Text>
-              )}
-              <Text
-                className="text-xl font-bold"
-                style={{ color: Subject.price === 0 ? "#1ABC9C" : "#2C3E50" }}
-              >
-                {Subject.price === 0 ? "Free" : `${Math.round(Subject.price * kesRate).toLocaleString()} KSh`}
+              <Text style={{ fontSize: 9, fontWeight: '600', color: t.textMuted, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 2 }}>Total Fee</Text>
+              <Text style={{ fontSize: 18, fontWeight: '700', color: t.textPrimary }}>
+                {Subject.price === 0 ? "FREE" : `${Math.round(Subject.price * kesRate).toLocaleString()} KSh`}
               </Text>
-              {Subject.price > 0 && (
-                <Text className="text-sm text-gray-500">
-                  ${Subject.price} USD
-                </Text>
-              )}
             </View>
-
             <TouchableOpacity
-              className="px-6 py-2 rounded-lg"
-              style={{ backgroundColor: "#1ABC9C" }}
+              onPress={onPress}
+              style={{ paddingHorizontal: 20, paddingVertical: 10, borderRadius: 14, backgroundColor: Subject.isEnrolled ? '#111827' : '#f97316' }}
             >
-              <Text className="text-white font-semibold">
-                {Subject.isEnrolled ? "Continue" : "Enroll"}
+              <Text style={{ color: '#ffffff', fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1, fontSize: 11 }}>
+                {Subject.isEnrolled ? "CONTINUE" : "ENROLL"}
               </Text>
             </TouchableOpacity>
           </View>
@@ -203,82 +158,60 @@ export const SubjectCard: React.FC<SubjectCardProps> = ({
       </TouchableOpacity>
     );
   }
+
+  // Default variant — smaller
   return (
     <TouchableOpacity
       onPress={onPress}
-      className="bg-white rounded-xl shadow-sm border border-gray-100 mb-4 overflow-hidden"
+      activeOpacity={0.8}
+      style={{
+        backgroundColor: t.surface,
+        borderRadius: 20,
+        borderWidth: 1,
+        borderColor: t.border,
+        marginBottom: 16,
+        overflow: 'hidden',
+        ...shadow,
+      }}
     >
-      <Image
-        source={{ uri: Subject.image }}
-        className="w-full h-40"
-        resizeMode="cover"
-      />
+      <View style={{ position: 'relative' }}>
+        <Image source={{ uri: Subject.image }} style={{ width: '100%', height: 130 }} resizeMode="cover" />
+        <View style={{ position: 'absolute', bottom: 10, left: 10, backgroundColor: t.levelBg, paddingHorizontal: 10, paddingVertical: 3, borderRadius: 99 }}>
+          <Text style={{ fontSize: 9, fontWeight: '700', color: '#f97316', textTransform: 'uppercase', letterSpacing: 1 }}>{Subject.level}</Text>
+        </View>
+      </View>
 
-      <View className="p-4">
-        <View className="flex-row items-center justify-between mb-2">
-          <View
-            className="px-2 py-1 rounded-full"
-            style={{ backgroundColor: "#A1EBE5" }}
-          >
-            <Text
-              className="text-xs font-medium capitalize"
-              style={{ color: "#2C3E50" }}
-            >
-              {Subject.level}
-            </Text>
+      <View style={{ padding: 14 }}>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+          <Text style={{ fontSize: 9, fontWeight: '600', color: t.textMuted, textTransform: 'uppercase', letterSpacing: 1 }}>{Subject.category}</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <Ionicons name="people" size={12} color="#f97316" />
+            <Text style={{ fontSize: 11, fontWeight: '700', color: t.textPrimary, marginLeft: 4 }}>{Subject.studentsCount}</Text>
           </View>
-          <Text className="text-xs text-gray-500">{Subject.category}</Text>
         </View>
 
-        <Text
-          className="font-bold text-base mb-2"
-          style={{ color: "#2C3E50" }}
-          numberOfLines={2}
-        >
+        <Text style={{ fontWeight: '700', fontSize: 15, color: t.textPrimary, marginBottom: 6 }} numberOfLines={2}>
           {Subject.title}
         </Text>
 
-        <Text className="text-gray-600 text-sm mb-3" numberOfLines={2}>
-          {Subject.shortDescription}
-        </Text>
-
-        <View className="flex-row items-center justify-between mb-3">
-          <View className="flex-row items-center">
-            <Ionicons name="star" size={14} color="#F39C12" />
-            <Text className="text-sm ml-1" style={{ color: "#2C3E50" }}>
-              {Subject.rating}
-            </Text>
-            <Text className="text-sm text-gray-500 ml-1">
-              ({Subject.reviewsCount})
-            </Text>
-          </View>
-
-          <View className="flex-row items-center">
-            <Ionicons name="time" size={14} color="#6B7280" />
-            <Text className="text-sm text-gray-600 ml-1">
-              {Subject.duration}
-            </Text>
-          </View>
+        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 10 }}>
+          <Ionicons name="time-outline" size={12} color={t.textMuted} />
+          <Text style={{ fontSize: 11, color: t.textSecondary, marginLeft: 4 }}>{Subject.duration}</Text>
+          <View style={{ width: 3, height: 3, borderRadius: 99, backgroundColor: t.textMuted, marginHorizontal: 6 }} />
+          <Ionicons name="star" size={12} color="#f97316" />
+          <Text style={{ fontSize: 11, fontWeight: '700', color: t.textPrimary, marginLeft: 4 }}>{Subject.rating}</Text>
         </View>
 
-        <View className="flex-row items-center justify-between">
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderTopWidth: 1, borderTopColor: t.divider, paddingTop: 10 }}>
           <View>
-            <Text
-              className="text-lg font-bold"
-              style={{ color: Subject.price === 0 ? "#1ABC9C" : "#2C3E50" }}
-            >
-              {Subject.price === 0 ? "Free" : `${Math.round(Subject.price * kesRate).toLocaleString()} KSh`}
+            <Text style={{ fontSize: 9, fontWeight: '600', color: t.textMuted, textTransform: 'uppercase', marginBottom: 1 }}>Price</Text>
+            <Text style={{ fontSize: 15, fontWeight: '700', color: t.textPrimary }}>
+              {Subject.price === 0 ? "FREE" : `${Math.round(Subject.price * kesRate).toLocaleString()} KSh`}
             </Text>
-            {Subject.price > 0 && (
-              <Text className="text-xs text-gray-500">
-                ${Subject.price} USD
-              </Text>
-            )}
           </View>
-
-          <Text className="text-sm text-gray-500">
-            {Subject.studentsCount} students
-          </Text>
+          <View style={{ backgroundColor: '#f97316', width: 36, height: 36, borderRadius: 12, alignItems: 'center', justifyContent: 'center' }}>
+            <Ionicons name="chevron-forward" size={18} color="white" />
+          </View>
         </View>
       </View>
     </TouchableOpacity>

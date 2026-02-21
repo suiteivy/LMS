@@ -1,19 +1,19 @@
+import { EmptyState } from "@/components/common/EmptyState";
+import { useTheme } from "@/contexts/ThemeContext";
+import { Payment } from "@/types/types";
+import { Ionicons } from "@expo/vector-icons";
+import { Picker } from "@react-native-picker/picker";
+import { Receipt } from "lucide-react-native";
 import React, { useState } from "react";
 import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  FlatList,
   Alert,
   Modal,
   ScrollView,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
 } from "react-native";
-import { Picker } from "@react-native-picker/picker";
-import { Payment } from "@/types/types";
-import { Ionicons } from "@expo/vector-icons";
-import { EmptyState } from "@/components/common/EmptyState";
-import { Receipt } from "lucide-react-native";
 
 interface PaymentManagementSectionProps {
   payments: Payment[];
@@ -25,6 +25,7 @@ interface PaymentManagementSectionProps {
 const PaymentManagementSection: React.FC<
   PaymentManagementSectionProps
 > = ({ payments, loading, onPaymentSubmit, onRefresh }) => {
+  const { isDark } = useTheme();
   const [showForm, setShowForm] = useState(false);
   const [formData, setFormData] = useState({
     student_id: "",
@@ -81,24 +82,24 @@ const PaymentManagementSection: React.FC<
   const getStatusColor = (status: Payment["status"]) => {
     switch (status) {
       case "completed":
-        return "bg-green-100 text-green-800";
+        return "bg-green-100 dark:bg-green-950/30 text-green-800 dark:text-green-400";
       case "pending":
-        return "bg-yellow-100 text-yellow-800";
+        return "bg-yellow-100 dark:bg-yellow-950/30 text-yellow-800 dark:text-yellow-400";
       case "failed":
-        return "bg-red-100 text-red-800";
+        return "bg-red-100 dark:bg-red-950/30 text-red-800 dark:text-red-400";
       default:
-        return "bg-gray-100 text-gray-800";
+        return "bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200";
     }
   };
 
   const renderPaymentItem = ({ item }: { item: Payment }) => (
     <View
-      className="bg-white rounded-lg p-4 mb-3 shadow-sm border border-gray-100"
-      style={{ backgroundColor: "#FFFFFF", borderColor: "#D0E8E6" }}
+      className="bg-white dark:bg-[#1a1a1a] rounded-lg p-4 mb-3 shadow-sm border border-gray-100 dark:border-gray-800"
+      style={{ backgroundColor: isDark ? "#1a1a1a" : "#FFFFFF", borderColor: isDark ? "#333" : "#D0E8E6" }}
     >
       <View className="flex-row justify-between items-start mb-2">
         <View>
-          <Text className="text-lg font-semibold" style={{ color: "#2C3E50" }}>
+          <Text className="text-lg font-semibold" style={{ color: isDark ? "#fff" : "#2C3E50" }}>
             {item.student_name}
           </Text>
           {item.student_display_id && (
@@ -123,10 +124,10 @@ const PaymentManagementSection: React.FC<
             style={{
               color:
                 item.status === "completed"
-                  ? "#128C7E"
+                  ? (isDark ? "#2DD4BF" : "#128C7E")
                   : item.status === "pending"
-                    ? "#16A085"
-                    : "#2C3E50",
+                    ? (isDark ? "#4FD1C5" : "#16A085")
+                    : (isDark ? "#fff" : "#2C3E50"),
             }}
           >
             {item.status}
@@ -140,31 +141,31 @@ const PaymentManagementSection: React.FC<
         </Text>
 
         <View className="flex-row justify-between">
-          <Text className="text-sm text-gray-600">Method:</Text>
-          <Text className="text-sm font-medium text-gray-900 capitalize">
+          <Text className="text-sm text-gray-600 dark:text-gray-400">Method:</Text>
+          <Text className="text-sm font-medium text-gray-900 dark:text-gray-100 capitalize">
             {item.payment_method.replace("_", " ")}
           </Text>
         </View>
 
         <View className="flex-row justify-between">
-          <Text className="text-sm text-gray-600">Date:</Text>
-          <Text className="text-sm text-gray-900">
+          <Text className="text-sm text-gray-600 dark:text-gray-400">Date:</Text>
+          <Text className="text-sm text-gray-900 dark:text-gray-200">
             {new Date(item.payment_date).toLocaleDateString()}
           </Text>
         </View>
 
         {item.reference_number && (
           <View className="flex-row justify-between">
-            <Text className="text-sm text-gray-600">Reference:</Text>
-            <Text className="text-sm text-gray-900">
+            <Text className="text-sm text-gray-600 dark:text-gray-400">Reference:</Text>
+            <Text className="text-sm text-gray-900 dark:text-gray-200">
               {item.reference_number}
             </Text>
           </View>
         )}
 
         {item.notes && (
-          <View className="mt-2 p-2 bg-gray-50 rounded">
-            <Text className="text-sm text-gray-700">{item.notes}</Text>
+          <View className="mt-2 p-2 bg-gray-50 dark:bg-gray-800/50 rounded">
+            <Text className="text-sm text-gray-700 dark:text-gray-300">{item.notes}</Text>
           </View>
         )}
       </View>
@@ -174,28 +175,29 @@ const PaymentManagementSection: React.FC<
   return (
     <View className="flex-1">
       <View className="flex-row justify-between items-center mb-4">
-        <Text className="text-2xl font-bold text-gray-800">Student Payments</Text>
+        <Text className="text-2xl font-bold text-gray-800 dark:text-white">Student Payments</Text>
         <TouchableOpacity
           onPress={() => setShowForm(true)}
-          className="bg-black px-4 py-2 rounded-lg"
+          className="bg-black dark:shadow-md dark:shadow-white/10 dark:bg-orange-500 px-4 py-2 rounded-lg"
         >
-          <Text className="text-white font-medium">Record Payment</Text>
+          <Text className="text-white dark:text-white font-medium">Record Payment</Text>
         </TouchableOpacity>
       </View>
 
       {/* Search Bar */}
-      <View className="flex-row items-center bg-gray-100 rounded-xl px-4 py-3 mb-6">
-        <Ionicons name="search" size={20} color="#9CA3AF" />
+      <View className="flex-row items-center bg-gray-100 dark:bg-gray-800 rounded-xl px-4 py-3 mb-6">
+        <Ionicons name="search" size={20} color={isDark ? "#9CA3AF" : "#6B7280"} />
         <TextInput
-          className="flex-1 ml-2 text-gray-900 font-medium"
+          className="flex-1 ml-2 text-gray-900 dark:text-white font-medium"
           placeholder="Search by student name, ID or reference..."
+          placeholderTextColor={isDark ? "#6B7280" : "#9CA3AF"}
           value={searchQuery}
           onChangeText={setSearchQuery}
         />
       </View>
       {loading ? (
         <View className="flex-1 justify-center items-center">
-          <Text className="text-gray-500">Loading payments...</Text>
+          <Text className="text-gray-500 dark:text-gray-400">Loading payments...</Text>
         </View>
       ) : (
         <View className="pb-20">
@@ -227,14 +229,14 @@ const PaymentManagementSection: React.FC<
         animationType="slide"
         presentationStyle="pageSheet"
       >
-        <View className="flex-1 bg-white">
-          <View className="flex-row justify-between items-center p-4 border-b border-gray-200">
+        <View className="flex-1 bg-white dark:bg-[#121212]">
+          <View className="flex-row justify-between items-center p-4 border-b border-gray-200 dark:border-gray-800">
             <TouchableOpacity onPress={() => setShowForm(false)}>
-              <Text className="text-blue-600 text-lg">Cancel</Text>
+              <Text className="text-blue-600 dark:text-blue-400 text-lg">Cancel</Text>
             </TouchableOpacity>
-            <Text className="text-lg font-semibold">Record Payment</Text>
+            <Text className="text-lg font-semibold text-gray-900 dark:text-white">Record Payment</Text>
             <TouchableOpacity onPress={handleSubmit}>
-              <Text className=" text-sm border border-[#10B981] px-3 py-2 rounded-full font-semibold">
+              <Text className=" text-sm border border-[#10B981] dark:border-green-500 px-3 py-2 rounded-full font-semibold text-[#10B981] dark:text-green-500">
                 Save
               </Text>
             </TouchableOpacity>
@@ -243,7 +245,7 @@ const PaymentManagementSection: React.FC<
           <ScrollView className="flex-1 p-4">
             <View className="space-y-4">
               <View>
-                <Text className="text-sm font-medium text-gray-700 mb-2">
+                <Text className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Student ID (STU-...) *
                 </Text>
                 <TextInput
@@ -252,12 +254,13 @@ const PaymentManagementSection: React.FC<
                     setFormData({ ...formData, student_id: text })
                   }
                   placeholder="e.g. STU-2026-000001"
-                  className="border border-gray-300 rounded-lg px-3 py-3 text-base"
+                  placeholderTextColor={isDark ? "#6B7280" : "#9CA3AF"}
+                  className="border border-gray-300 dark:border-gray-700 rounded-lg px-3 py-3 text-base text-gray-900 dark:text-white bg-white dark:bg-[#1a1a1a]"
                 />
               </View>
 
               <View>
-                <Text className="text-sm font-medium text-gray-700 mb-2">
+                <Text className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Student Name *
                 </Text>
                 <TextInput
@@ -266,12 +269,13 @@ const PaymentManagementSection: React.FC<
                     setFormData({ ...formData, student_name: text })
                   }
                   placeholder="Enter student name"
-                  className="border border-gray-300 rounded-lg px-3 py-3 text-base"
+                  placeholderTextColor={isDark ? "#6B7280" : "#9CA3AF"}
+                  className="border border-gray-300 dark:border-gray-700 rounded-lg px-3 py-3 text-base text-gray-900 dark:text-white bg-white dark:bg-[#1a1a1a]"
                 />
               </View>
 
               <View>
-                <Text className="text-sm font-medium text-gray-700 mb-2">
+                <Text className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Amount (KES) *
                 </Text>
                 <TextInput
@@ -280,31 +284,34 @@ const PaymentManagementSection: React.FC<
                     setFormData({ ...formData, amount: text })
                   }
                   placeholder="0.00"
+                  placeholderTextColor={isDark ? "#6B7280" : "#9CA3AF"}
                   keyboardType="numeric"
-                  className="border border-gray-300 rounded-lg px-3 py-3 text-base"
+                  className="border border-gray-300 dark:border-gray-700 rounded-lg px-3 py-3 text-base text-gray-900 dark:text-white bg-white dark:bg-[#1a1a1a]"
                 />
               </View>
 
               <View>
-                <Text className="text-sm font-medium text-gray-700 mb-2">
+                <Text className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Payment Method
                 </Text>
-                <View className="border border-gray-300 rounded-lg bg-white">
+                <View className="border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-[#1a1a1a]">
                   <Picker
                     selectedValue={formData.payment_method}
                     onValueChange={(value) =>
                       setFormData({ ...formData, payment_method: value })
                     }
+                    dropdownIconColor={isDark ? "#fff" : "#000"}
+                    style={{ color: isDark ? "#fff" : "#000" }}
                   >
-                    <Picker.Item label="Cash" value="cash" />
-                    <Picker.Item label="Bank Transfer" value="bank_transfer" />
-                    <Picker.Item label="Mobile Money" value="mobile_money" />
+                    <Picker.Item label="Cash" value="cash" color={isDark ? "#fff" : "#000"} />
+                    <Picker.Item label="Bank Transfer" value="bank_transfer" color={isDark ? "#fff" : "#000"} />
+                    <Picker.Item label="Mobile Money" value="mobile_money" color={isDark ? "#fff" : "#000"} />
                   </Picker>
                 </View>
               </View>
 
               <View>
-                <Text className="text-sm font-medium text-gray-700 mb-2">
+                <Text className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Reference Number
                 </Text>
                 <TextInput
@@ -313,12 +320,13 @@ const PaymentManagementSection: React.FC<
                     setFormData({ ...formData, reference_number: text })
                   }
                   placeholder="Transaction reference (optional)"
-                  className="border border-gray-300 rounded-lg px-3 py-3 text-base"
+                  placeholderTextColor={isDark ? "#6B7280" : "#9CA3AF"}
+                  className="border border-gray-300 dark:border-gray-700 rounded-lg px-3 py-3 text-base text-gray-900 dark:text-white bg-white dark:bg-[#1a1a1a]"
                 />
               </View>
 
               <View>
-                <Text className="text-sm font-medium text-gray-700 mb-2">
+                <Text className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Notes
                 </Text>
                 <TextInput
@@ -327,9 +335,10 @@ const PaymentManagementSection: React.FC<
                     setFormData({ ...formData, notes: text })
                   }
                   placeholder="Additional notes (optional)"
+                  placeholderTextColor={isDark ? "#6B7280" : "#9CA3AF"}
                   multiline
                   numberOfLines={3}
-                  className="border border-gray-300 rounded-lg px-3 py-3 text-base"
+                  className="border border-gray-300 dark:border-gray-700 rounded-lg px-3 py-3 text-base text-gray-900 dark:text-white bg-white dark:bg-[#1a1a1a]"
                 />
               </View>
             </View>

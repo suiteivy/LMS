@@ -1,12 +1,14 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, FlatList, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
+import { useTheme } from '@/contexts/ThemeContext';
 import { supabase } from '@/libs/supabase';
 import { Payment } from '@/types/types';
-import { Ionicons } from '@expo/vector-icons';
 import { formatCurrency } from '@/utils/currency'; // Assuming this utility exists or I should create it
+import { Ionicons } from '@expo/vector-icons';
 import { format } from 'date-fns';
+import React, { useEffect, useState } from 'react';
+import { ActivityIndicator, FlatList, Text, View } from 'react-native';
 
 export function PaymentsList() {
+    const { isDark } = useTheme();
     const [payments, setPayments] = useState<Payment[]>([]);
     const [loading, setLoading] = useState(true);
 
@@ -49,19 +51,19 @@ export function PaymentsList() {
 
     const getStatusColor = (status: string) => {
         switch (status) {
-            case 'completed': return 'text-green-600 bg-green-100';
-            case 'pending': return 'text-yellow-600 bg-yellow-100';
-            case 'failed': return 'text-red-600 bg-red-100';
-            default: return 'text-gray-600 bg-gray-100';
+            case 'completed': return isDark ? 'text-green-400 bg-green-950/30' : 'text-green-600 bg-green-100';
+            case 'pending': return isDark ? 'text-yellow-400 bg-yellow-950/30' : 'text-yellow-600 bg-yellow-100';
+            case 'failed': return isDark ? 'text-red-400 bg-red-950/30' : 'text-red-600 bg-red-100';
+            default: return isDark ? 'text-gray-400 bg-gray-800' : 'text-gray-600 bg-gray-100';
         }
     }
 
     const renderItem = ({ item }: { item: Payment }) => (
-        <View className="bg-white p-4 rounded-xl mb-3 shadow-sm border border-gray-100">
+        <View className="bg-white dark:bg-[#1a1a1a] p-4 rounded-xl mb-3 shadow-sm border border-gray-100 dark:border-gray-800">
             <View className="flex-row justify-between items-start mb-2">
                 <View>
-                    <Text className="text-lg font-bold text-gray-900">{formatCurrency(item.amount)}</Text>
-                    <Text className="text-gray-600 font-medium">{item.student_name}</Text>
+                    <Text className="text-lg font-bold text-gray-900 dark:text-white">{formatCurrency(item.amount)}</Text>
+                    <Text className="text-gray-600 dark:text-gray-300 font-medium">{item.student_name}</Text>
                 </View>
                 <View className={`px-2 py-1 rounded-full ${getStatusColor(item.status).split(' ')[1]}`}>
                     <Text className={`text-xs font-bold capitalize ${getStatusColor(item.status).split(' ')[0]}`}>
@@ -73,25 +75,25 @@ export function PaymentsList() {
             <View className="flex-row justify-between items-center mt-2">
                 <View className="flex-row items-center">
                     <Ionicons name="calendar-outline" size={14} color="#6B7280" />
-                    <Text className="text-gray-500 text-xs ml-1">
+                    <Text className="text-gray-500 dark:text-gray-400 text-xs ml-1">
                         {format(new Date(item.payment_date), 'MMM dd, yyyy')}
                     </Text>
                 </View>
                 <View className="flex-row items-center">
                     <Ionicons name="card-outline" size={14} color="#6B7280" />
-                    <Text className="text-gray-500 text-xs ml-1 capitalize">
+                    <Text className="text-gray-500 dark:text-gray-400 text-xs ml-1 capitalize">
                         {item.payment_method.replace('_', ' ')}
                     </Text>
                 </View>
             </View>
             {item.reference_number && (
-                <Text className="text-gray-400 text-xs mt-2">Ref: {item.reference_number}</Text>
+                <Text className="text-gray-400 dark:text-gray-500 text-xs mt-2">Ref: {item.reference_number}</Text>
             )}
         </View>
     );
 
     if (loading) {
-        return <ActivityIndicator size="large" color="#000" className="mt-10" />;
+        return <ActivityIndicator size="large" color={isDark ? "#FF6900" : "#000"} className="mt-10" />;
     }
 
     return (
@@ -102,7 +104,7 @@ export function PaymentsList() {
                 keyExtractor={item => item.id}
                 ListEmptyComponent={
                     <View className="items-center py-10">
-                        <Text className="text-gray-500">No payments found</Text>
+                        <Text className="text-gray-500 dark:text-gray-400">No payments found</Text>
                     </View>
                 }
                 scrollEnabled={false} // Since parent is ScrollView

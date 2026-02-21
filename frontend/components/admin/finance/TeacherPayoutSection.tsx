@@ -1,12 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import { useTheme } from '@/contexts/ThemeContext';
+import React, { useEffect, useState } from 'react';
 import {
-  View,
-  Text,
-  TouchableOpacity,
-  FlatList,
   Alert,
   Modal,
   ScrollView,
+  Text,
+  TouchableOpacity,
+  View
 } from 'react-native';
 
 import { TeacherPayout } from '@/types/types';
@@ -86,6 +86,7 @@ const TeacherPayoutSection: React.FC<TeacherPayoutSectionProps> = ({
   onPayoutProcess,
   onRefresh,
 }) => {
+  const { isDark } = useTheme();
   const [selectedPayout, setSelectedPayout] = useState<TeacherPayout | null>(null);
   const [showDetails, setShowDetails] = useState(false);
   const [displayPayouts, setDisplayPayouts] = useState<TeacherPayout[]>([]);
@@ -110,13 +111,13 @@ const TeacherPayoutSection: React.FC<TeacherPayoutSectionProps> = ({
   const getStatusColor = (status: TeacherPayout['status']) => {
     switch (status) {
       case 'paid':
-        return 'bg-green-100 text-green-800';
+        return 'bg-green-100 dark:bg-green-950/30 text-green-800 dark:text-green-400';
       case 'processing':
-        return 'bg-blue-100 text-blue-800';
+        return 'bg-blue-100 dark:bg-blue-950/30 text-blue-800 dark:text-blue-400';
       case 'pending':
-        return 'bg-yellow-100 text-yellow-800';
+        return 'bg-yellow-100 dark:bg-yellow-950/30 text-yellow-800 dark:text-yellow-400';
       default:
-        return 'bg-gray-100 text-gray-800';
+        return 'bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200';
     }
   };
 
@@ -154,7 +155,7 @@ const TeacherPayoutSection: React.FC<TeacherPayoutSectionProps> = ({
   const renderPayoutItem = ({ item }: { item: TeacherPayout }) => (
     <TouchableOpacity
       onPress={() => handlePayoutAction(item)}
-      className="bg-white rounded-lg p-4 mb-3 shadow-sm border border-gray-100"
+      className="bg-white dark:bg-[#1a1a1a] rounded-lg p-4 mb-3 shadow-sm border border-gray-100 dark:border-gray-800"
       style={{
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
@@ -165,7 +166,7 @@ const TeacherPayoutSection: React.FC<TeacherPayoutSectionProps> = ({
     >
       <View className="flex-row justify-between items-start mb-2">
         <View>
-          <Text className="text-lg font-semibold text-gray-900">
+          <Text className="text-lg font-semibold text-gray-900 dark:text-white">
             {item.teacher_name}
           </Text>
           {item.teacher_display_id && (
@@ -185,22 +186,22 @@ const TeacherPayoutSection: React.FC<TeacherPayoutSectionProps> = ({
         </Text>
 
         <View className="flex-row justify-between">
-          <Text className="text-sm text-gray-600">Hours Taught:</Text>
-          <Text className="text-sm font-medium text-gray-900">
+          <Text className="text-sm text-gray-600 dark:text-gray-400">Hours Taught:</Text>
+          <Text className="text-sm font-medium text-gray-900 dark:text-gray-100">
             {item.hours_taught} hrs
           </Text>
         </View>
 
         <View className="flex-row justify-between">
-          <Text className="text-sm text-gray-600">Rate:</Text>
-          <Text className="text-sm text-gray-900">
+          <Text className="text-sm text-gray-600 dark:text-gray-400">Rate:</Text>
+          <Text className="text-sm text-gray-900 dark:text-gray-200">
             {formatAmount(item.rate_per_hour || 0)}/hr
           </Text>
         </View>
 
         <View className="flex-row justify-between">
-          <Text className="text-sm text-gray-600">Period:</Text>
-          <Text className="text-sm text-gray-900">
+          <Text className="text-sm text-gray-600 dark:text-gray-400">Period:</Text>
+          <Text className="text-sm text-gray-900 dark:text-gray-200">
             {new Date(item.period_start).toLocaleDateString()} - {' '}
             {new Date(item.period_end).toLocaleDateString()}
           </Text>
@@ -208,8 +209,8 @@ const TeacherPayoutSection: React.FC<TeacherPayoutSectionProps> = ({
 
         {item.payment_date && (
           <View className="flex-row justify-between">
-            <Text className="text-sm text-gray-600">Paid On:</Text>
-            <Text className="text-sm text-gray-900">
+            <Text className="text-sm text-gray-600 dark:text-gray-400">Paid On:</Text>
+            <Text className="text-sm text-gray-900 dark:text-gray-200">
               {new Date(item.payment_date).toLocaleDateString()}
             </Text>
           </View>
@@ -217,7 +218,7 @@ const TeacherPayoutSection: React.FC<TeacherPayoutSectionProps> = ({
       </View>
 
       {item.status === 'pending' && (
-        <View className="mt-3 pt-3 border-t border-gray-100">
+        <View className="mt-3 pt-3 border-t border-gray-100 dark:border-gray-800">
           <Text className="text-[#FF6B00] text-sm font-medium text-center">
             Tap to process payout
           </Text>
@@ -232,31 +233,31 @@ const TeacherPayoutSection: React.FC<TeacherPayoutSectionProps> = ({
   const totalPaid = calculateTotalPaid();
 
   return (
-    <View className="flex-1 bg-gray-50">
-      <Text className="text-2xl font-bold text-gray-800">Teachers Payouts</Text>
+    <View className="flex-1 bg-gray-50 dark:bg-black">
+      <Text className="text-2xl font-bold text-gray-800 dark:text-white mb-2 ml-4 mt-2">Teachers Payouts</Text>
       <View className="p-4">
         {/* Summary Cards */}
         <View className="flex-row space-x-3 mb-4">
-          <View className="flex-1 rounded-lg p-4" style={{ backgroundColor: '#FFF3CD' }}>
-            <Text className="text-sm font-medium" style={{ color: '#856404' }}>
+          <View className="flex-1 rounded-lg p-4" style={{ backgroundColor: isDark ? '#451a03' : '#FFF3CD' }}>
+            <Text className="text-sm font-medium" style={{ color: isDark ? '#fdba74' : '#856404' }}>
               Total Pending
             </Text>
-            <Text className="text-2xl font-bold" style={{ color: '#B45309' }}>
+            <Text className="text-2xl font-bold" style={{ color: isDark ? '#fb923c' : '#B45309' }}>
               {formatAmount(totalPending)}
             </Text>
-            <Text className="text-sm" style={{ color: '#856404' }}>
+            <Text className="text-sm" style={{ color: isDark ? '#fdba74' : '#856404' }}>
               {pendingPayouts.length} teacher{pendingPayouts.length !== 1 ? 's' : ''}
             </Text>
           </View>
 
-          <View className="flex-1 rounded-lg p-4" style={{ backgroundColor: '#D1F2EB' }}>
-            <Text className="text-sm font-medium" style={{ color: '#0C5460' }}>
+          <View className="flex-1 rounded-lg p-4" style={{ backgroundColor: isDark ? '#064e3b' : '#D1F2EB' }}>
+            <Text className="text-sm font-medium" style={{ color: isDark ? '#6ee7b7' : '#0C5460' }}>
               Total Paid
             </Text>
-            <Text className="text-2xl font-bold" style={{ color: '#16A085' }}>
+            <Text className="text-2xl font-bold" style={{ color: isDark ? '#34d399' : '#16A085' }}>
               {formatAmount(totalPaid)}
             </Text>
-            <Text className="text-sm" style={{ color: '#0C5460' }}>
+            <Text className="text-sm" style={{ color: isDark ? '#6ee7b7' : '#0C5460' }}>
               {paidPayouts.length} completed
             </Text>
           </View>
@@ -280,7 +281,7 @@ const TeacherPayoutSection: React.FC<TeacherPayoutSectionProps> = ({
                 ]
               );
             }}
-            className="bg-[#FF6B00] px-4 py-3 rounded-lg mb-4 shadow-sm"
+            className="bg-[#FF6B00] px-4 py-3 rounded-lg mb-4 shadow-sm dark:shadow-md dark:shadow-orange-950/20"
           >
             <Text className="text-white font-semibold text-center text-base">
               Process All Pending Payouts ({formatAmount(totalPending)})
@@ -292,14 +293,14 @@ const TeacherPayoutSection: React.FC<TeacherPayoutSectionProps> = ({
       {
         loading ? (
           <View className="flex-1 justify-center items-center">
-            <Text className="text-gray-500 text-lg">Loading payouts...</Text>
-            <Text className="text-gray-400 text-sm mt-2">Please wait...</Text>
+            <Text className="text-gray-500 dark:text-gray-400 text-lg">Loading payouts...</Text>
+            <Text className="text-gray-400 dark:text-gray-500 text-sm mt-2">Please wait...</Text>
           </View>
         ) : (
           <View className="px-4 pb-20">
             {displayPayouts.length > 0 ? (
               <>
-                <Text className="text-lg font-semibold text-gray-900 mb-3">
+                <Text className="text-lg font-semibold text-gray-900 dark:text-white mb-3">
                   All Payouts ({displayPayouts.length})
                 </Text>
                 {displayPayouts.map((item) => (
@@ -310,8 +311,8 @@ const TeacherPayoutSection: React.FC<TeacherPayoutSectionProps> = ({
               </>
             ) : (
               <View className="flex-1 justify-center items-center py-20">
-                <Text className="text-gray-500 text-lg">No payouts found</Text>
-                <Text className="text-gray-400 text-sm mt-2 text-center">
+                <Text className="text-gray-500 dark:text-gray-400 text-lg">No payouts found</Text>
+                <Text className="text-gray-400 dark:text-gray-500 text-sm mt-2 text-center">
                   Teacher payouts will appear here when hours are logged
                 </Text>
               </View>
@@ -326,19 +327,19 @@ const TeacherPayoutSection: React.FC<TeacherPayoutSectionProps> = ({
         animationType="slide"
         presentationStyle="pageSheet"
       >
-        <View className="flex-1 bg-white">
-          <View className="flex-row justify-between items-center p-4 border-b border-gray-200">
+        <View className="flex-1 bg-white dark:bg-[#121212]">
+          <View className="flex-row justify-between items-center p-4 border-b border-gray-200 dark:border-gray-800">
             <TouchableOpacity onPress={() => setShowDetails(false)}>
-              <Text className="text-blue-600 text-lg font-medium">Close</Text>
+              <Text className="text-blue-600 dark:text-blue-400 text-lg font-medium">Close</Text>
             </TouchableOpacity>
-            <Text className="text-lg font-semibold">Payout Details</Text>
+            <Text className="text-lg font-semibold text-gray-900 dark:text-white">Payout Details</Text>
             <View className="w-12" />
           </View>
 
           {selectedPayout && (
             <ScrollView className="flex-1 p-4">
-              <View className="bg-white rounded-lg border border-gray-200 p-4 mb-4">
-                <Text className="text-2xl font-bold text-gray-900 mb-2">
+              <View className="bg-white dark:bg-[#1a1a1a] rounded-lg border border-gray-200 dark:border-gray-800 p-4 mb-4">
+                <Text className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
                   {selectedPayout.teacher_name}
                 </Text>
 
@@ -347,41 +348,41 @@ const TeacherPayoutSection: React.FC<TeacherPayoutSectionProps> = ({
                 </View>
 
                 <View className="space-y-3">
-                  <View className="flex-row justify-between py-3 border-b border-gray-100">
-                    <Text className="text-gray-600 text-base">Amount</Text>
-                    <Text className="text-xl font-bold text-blue-600">
+                  <View className="flex-row justify-between py-3 border-b border-gray-100 dark:border-gray-800">
+                    <Text className="text-gray-600 dark:text-gray-400 text-base">Amount</Text>
+                    <Text className="text-xl font-bold text-blue-600 dark:text-blue-400">
                       {formatAmount(selectedPayout.amount)}
                     </Text>
                   </View>
 
-                  <View className="flex-row justify-between py-3 border-b border-gray-100">
-                    <Text className="text-gray-600 text-base">Hours Taught</Text>
-                    <Text className="font-medium text-base">{selectedPayout.hours_taught} hours</Text>
+                  <View className="flex-row justify-between py-3 border-b border-gray-100 dark:border-gray-800">
+                    <Text className="text-gray-600 dark:text-gray-400 text-base">Hours Taught</Text>
+                    <Text className="font-medium text-base dark:text-gray-200">{selectedPayout.hours_taught} hours</Text>
                   </View>
 
-                  <View className="flex-row justify-between py-3 border-b border-gray-100">
-                    <Text className="text-gray-600 text-base">Hourly Rate</Text>
-                    <Text className="font-medium text-base">{formatAmount(selectedPayout.rate_per_hour || 0)}</Text>
+                  <View className="flex-row justify-between py-3 border-b border-gray-100 dark:border-gray-800">
+                    <Text className="text-gray-600 dark:text-gray-400 text-base">Hourly Rate</Text>
+                    <Text className="font-medium text-base dark:text-gray-200">{formatAmount(selectedPayout.rate_per_hour || 0)}</Text>
                   </View>
 
-                  <View className="flex-row justify-between py-3 border-b border-gray-100">
-                    <Text className="text-gray-600 text-base">Period Start</Text>
-                    <Text className="font-medium text-base">
+                  <View className="flex-row justify-between py-3 border-b border-gray-100 dark:border-gray-800">
+                    <Text className="text-gray-600 dark:text-gray-400 text-base">Period Start</Text>
+                    <Text className="font-medium text-base dark:text-gray-200">
                       {new Date(selectedPayout.period_start).toLocaleDateString()}
                     </Text>
                   </View>
 
-                  <View className="flex-row justify-between py-3 border-b border-gray-100">
-                    <Text className="text-gray-600 text-base">Period End</Text>
-                    <Text className="font-medium text-base">
+                  <View className="flex-row justify-between py-3 border-b border-gray-100 dark:border-gray-800">
+                    <Text className="text-gray-600 dark:text-gray-400 text-base">Period End</Text>
+                    <Text className="font-medium text-base dark:text-gray-200">
                       {new Date(selectedPayout.period_end).toLocaleDateString()}
                     </Text>
                   </View>
 
                   {selectedPayout.payment_date && (
-                    <View className="flex-row justify-between py-3 border-b border-gray-100">
-                      <Text className="text-gray-600 text-base">Payment Date</Text>
-                      <Text className="font-medium text-base">
+                    <View className="flex-row justify-between py-3 border-b border-gray-100 dark:border-gray-800">
+                      <Text className="text-gray-600 dark:text-gray-400 text-base">Payment Date</Text>
+                      <Text className="font-medium text-base dark:text-gray-200">
                         {new Date(selectedPayout.payment_date).toLocaleDateString()}
                       </Text>
                     </View>

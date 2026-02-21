@@ -1,44 +1,36 @@
 import { AuthGuard } from '@/components/AuthGuard';
-import { useAuth } from "@/contexts/AuthContext";
 import { SchoolProvider } from '@/contexts/SchoolContext';
+import { useTheme } from '@/contexts/ThemeContext';
 import { Tabs } from "expo-router";
-import { House, LayoutGrid, LogOut, Settings, Users, Wallet } from "lucide-react-native";
-import { Platform, TouchableOpacity, View } from 'react-native';
+import { House, LayoutGrid, Settings, Users, Wallet } from "lucide-react-native";
+import { Platform, View } from 'react-native';
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export default function AdminLayout() {
     const insets = useSafeAreaInsets();
-    const { signOut } = useAuth();
+    const { isDark } = useTheme();
 
     return (
         <AuthGuard allowedRoles={['admin']}>
             <SchoolProvider>
                 <Tabs
                     screenOptions={{
-                        headerShown: true,
-                        headerRight: () => (
-                            <TouchableOpacity
-                                onPress={() => signOut()}
-                                style={{ marginRight: 15, padding: 8, opacity: 1 }}
-                            >
-                                <LogOut size={20} color="#FF6B00" />
-                            </TouchableOpacity>
-                        ),
+                        headerShown: false,
                         headerStyle: {
-                            backgroundColor: '#ffffff',
+                            backgroundColor: isDark ? '#121212' : '#ffffff',
                             elevation: 0,
                             shadowOpacity: 0,
                             borderBottomWidth: 1,
-                            borderBottomColor: '#f3f4f6',
+                            borderBottomColor: isDark ? '#1f2937' : '#f3f4f6',
                         },
                         headerTitleStyle: {
                             fontWeight: 'bold',
-                            color: '#111827',
+                            color: isDark ? '#f9fafb' : '#111827',
                         },
                         tabBarStyle: {
-                            backgroundColor: "#ffffff",
+                            backgroundColor: isDark ? '#121212' : "#ffffff",
                             borderTopWidth: 1,
-                            borderTopColor: "#e5e7eb",
+                            borderTopColor: isDark ? '#1f2937' : "#e5e7eb",
                             minHeight: Platform.OS === "ios" ? 64 + (insets.bottom || 0) : 70,
                             paddingBottom: (insets.bottom || 0) > 0 ? insets.bottom : 12,
                             paddingTop: 8,
@@ -49,14 +41,14 @@ export default function AdminLayout() {
                             shadowRadius: 3,
                         },
                         tabBarActiveTintColor: "#FF6B00", // Teacher Orange
-                        tabBarInactiveTintColor: "#6b7280",
+                        tabBarInactiveTintColor: isDark ? "#9ca3af" : "#6b7280",
                         tabBarLabelStyle: {
                             fontSize: 11,
                             fontWeight: "600",
                             marginTop: 0,
                         },
                         sceneStyle: {
-                            backgroundColor: "#f9fafb",
+                            backgroundColor: isDark ? '#000000' : "#f9fafb",
                         },
                     }}
                 >

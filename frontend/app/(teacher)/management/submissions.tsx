@@ -1,15 +1,16 @@
-import React, { useState, useEffect } from "react";
-import { View, Text, ScrollView, TouchableOpacity, StatusBar, TextInput, ActivityIndicator, Modal, Alert } from 'react-native';
-import { ArrowLeft, Search, Filter, Download, Edit2, ChevronDown, Check, X, FileText, User } from 'lucide-react-native';
-import { router, useLocalSearchParams } from "expo-router";
-import { supabase } from "@/libs/supabase";
+import { UnifiedHeader } from "@/components/common/UnifiedHeader";
 import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/libs/supabase";
 import { Database } from "@/types/database";
+import { router, useLocalSearchParams } from "expo-router";
+import { Check, Edit2, FileText, User, X } from 'lucide-react-native';
+import React, { useEffect, useState } from "react";
+import { ActivityIndicator, Alert, Modal, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 type TypedSubmission = Database['public']['Tables']['submissions']['Row'];
 
 interface SubmissionEntry {
-    id: string | null; // null if not submitted
+    id: string | null;
     student_id: string;
     student_name: string;
     status: "graded" | "pending" | "submitted" | "late" | "missing";
@@ -43,7 +44,6 @@ interface JoinedEnrollment {
 export default function SubmissionsPage() {
     const { assignmentId } = useLocalSearchParams<{ assignmentId: string }>();
     const { teacherId } = useAuth();
-
     const [loading, setLoading] = useState(true);
     const [assignment, setAssignment] = useState<JoinedAssignment | null>(null);
     const [submissions, setSubmissions] = useState<SubmissionEntry[]>([]);
@@ -61,7 +61,6 @@ export default function SubmissionsPage() {
     const fetchData = async () => {
         try {
             setLoading(true);
-            // 1. Fetch Assignment Details
             const { data: assignmentData, error: assignmentError } = await supabase
                 .from('assignments')
                 .select('*, subject:subjects(title, id)')
@@ -72,22 +71,14 @@ export default function SubmissionsPage() {
             const typedAssignment = assignmentData as unknown as JoinedAssignment;
             setAssignment(typedAssignment);
 
-            // 2. Fetch all students enrolled in this subject
             const { data: enrollmentData, error: enrollError } = await supabase
                 .from('enrollments')
-                .select(`
-                    student_id,
-                    student:students(
-                        id,
-                        user:users(full_name)
-                    )
-                `)
+                .select(`student_id, student:students(id, user:users(full_name))`)
                 .eq('subject_id', typedAssignment.subject_id)
                 .eq('status', 'enrolled');
 
             if (enrollError) throw enrollError;
 
-            // 3. Fetch all submissions for this assignment
             const { data: submissionData, error: subError } = await supabase
                 .from('submissions')
                 .select('*')
@@ -95,7 +86,6 @@ export default function SubmissionsPage() {
 
             if (subError) throw subError;
 
-            // 4. Merge
             const typedEnrollments = (enrollmentData || []) as unknown as JoinedEnrollment[];
             const typedSubmissions = (submissionData || []) as TypedSubmission[];
 
@@ -134,15 +124,9 @@ export default function SubmissionsPage() {
 
     const submitGrade = async () => {
         if (!currentEntry || !currentEntry.id) return;
-
         const score = parseFloat(gradeInput);
-        if (isNaN(score)) {
-            Alert.alert("Invalid Score", "Please enter a valid number");
-            return;
-        }
-
-        if (score > (assignment?.total_points || 100)) {
-            Alert.alert("Invalid Score", `Score cannot be higher than ${assignment?.total_points || 100}`);
+        if (isNaN(score) || score > (assignment?.total_points || 100)) {
+            Alert.alert("Invalid Score", `Max points: ${assignment?.total_points || 100}`);
             return;
         }
 
@@ -159,18 +143,14 @@ export default function SubmissionsPage() {
 
             if (error) throw error;
 
-            // Update local state
             setSubmissions(prev => prev.map(s =>
                 s.id === currentEntry.id
                     ? { ...s, score: score, feedback: feedbackInput, status: 'graded' }
                     : s
             ));
-
             setGradingModalVisible(false);
-            setCurrentEntry(null);
         } catch (error) {
             console.error("Error updating grade:", error);
-            Alert.alert("Error", "Failed to save grade");
         }
     };
 
@@ -185,118 +165,132 @@ export default function SubmissionsPage() {
         const style = colors[status] || colors.missing;
         return (
             <View className={`px-2 py-0.5 rounded-full border ${style.split(' ')[0]} ${style.split(' ')[2]}`}>
-                <Text className={`text-[10px] font-bold ${style.split(' ')[1]}`}>
-                    {status.toUpperCase()}
+                <Text className={`text-[8px] font-bold uppercase tracking-widest ${style.split(' ')[1]}`}>
+                    {status}
                 </Text>
             </View>
         );
     };
 
-    if (loading) {
-        return (
-            <View className="flex-1 bg-white items-center justify-center">
-                <ActivityIndicator size="large" color="#FF6B00" />
-            </View>
-        );
-    }
-
     return (
         <View className="flex-1 bg-gray-50">
-            <StatusBar barStyle="dark-content" />
-
-            {/* Header */}
-            <View className="bg-white px-4 pt-4 pb-6 border-b border-gray-100">
-                <TouchableOpacity className="mb-4 p-2 -ml-2" onPress={() => router.back()}>
-                    <ArrowLeft size={24} color="#374151" />
-                </TouchableOpacity>
-                <Text className="text-gray-400 text-xs font-bold uppercase mb-1">{assignment?.subject?.title}</Text>
-                <Text className="text-2xl font-bold text-gray-900">{assignment?.title}</Text>
-                <View className="flex-row items-center mt-2">
-                    <View className="flex-row items-center mr-4">
-                        <FileText size={14} color="#6B7280" />
-                        <Text className="text-gray-500 text-xs ml-1">Max Score: {assignment?.total_points}</Text>
-                    </View>
-                    <View className="flex-row items-center">
-                        <User size={14} color="#6B7280" />
-                        <Text className="text-gray-500 text-xs ml-1">{submissions.length} Students</Text>
-                    </View>
+            <UnifiedHeader
+                title="Review"
+                subtitle="Submissions"
+                role="Teacher"
+                onBack={() => router.back()}
+            />
+            {loading ? (
+                <View className="flex-1 items-center justify-center">
+                    <ActivityIndicator size="large" color="#FF6900" />
                 </View>
-            </View>
+            ) : (
+                <ScrollView className="flex-1" showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
+                    <View className="p-4 md:p-8">
+                        {/* Assignment Info Header */}
+                        <View className="bg-gray-900 p-8 rounded-[40px] mb-8 shadow-xl">
+                            <Text className="text-white/60 text-[10px] font-bold uppercase tracking-[3px] mb-2">{assignment?.subject?.title}</Text>
+                            <Text className="text-white text-2xl font-bold tracking-tight mb-6">{assignment?.title}</Text>
 
-            <ScrollView className="flex-1 p-4">
-                <Text className="text-lg font-bold text-gray-900 mb-4">Student Submissions</Text>
-
-                {submissions.map((entry) => (
-                    <View key={entry.student_id} className="bg-white p-4 rounded-2xl border border-gray-100 mb-2 flex-row items-center">
-                        <View className="w-10 h-10 rounded-full bg-orange-100 items-center justify-center mr-3">
-                            <Text className="text-teacherOrange font-bold">{entry.student_name.charAt(0)}</Text>
-                        </View>
-
-                        <View className="flex-1">
-                            <Text className="text-gray-900 font-semibold">{entry.student_name}</Text>
-                            <View className="flex-row items-center mt-1">
-                                <StatusBadge status={entry.status} />
-                                {entry.submittedAt && (
-                                    <Text className="text-gray-400 text-[10px] ml-2">Sub: {entry.submittedAt}</Text>
-                                )}
+                            <View className="flex-row gap-6">
+                                <View className="flex-row items-center">
+                                    <View className="bg-white/10 p-1.5 rounded-lg mr-2">
+                                        <FileText size={14} color="white" />
+                                    </View>
+                                    <Text className="text-white/80 text-xs font-bold">Max: {assignment?.total_points}</Text>
+                                </View>
+                                <View className="flex-row items-center">
+                                    <View className="bg-white/10 p-1.5 rounded-lg mr-2">
+                                        <User size={14} color="white" />
+                                    </View>
+                                    <Text className="text-white/80 text-xs font-bold">{submissions.length} Students</Text>
+                                </View>
                             </View>
                         </View>
 
-                        <View className="items-end mr-3">
-                            {entry.score !== null ? (
-                                <Text className="text-gray-900 font-bold">{entry.score}/{assignment?.total_points}</Text>
-                            ) : (
-                                <Text className="text-gray-400 text-sm">--/{assignment?.total_points}</Text>
-                            )}
-                        </View>
+                        <Text className="text-xl font-bold text-gray-900 mb-6 px-2 tracking-tight">Student Submissions</Text>
 
-                        <TouchableOpacity
-                            className={`p-2 rounded-lg ${entry.status === "missing" ? "bg-gray-100" : "bg-teacherOrange"}`}
-                            onPress={() => handleGradeClick(entry)}
-                            disabled={entry.status === 'missing'}
-                        >
-                            {entry.status === "graded" ? (
-                                <Check size={18} color="white" />
-                            ) : (
-                                <Edit2 size={18} color={entry.status === "missing" ? "#D1D5DB" : "white"} />
-                            )}
-                        </TouchableOpacity>
+                        {submissions.map((entry) => (
+                            <View key={entry.student_id} className="bg-white p-5 rounded-3xl border border-gray-100 mb-4 flex-row items-center shadow-sm">
+                                <View className="w-12 h-12 rounded-2xl bg-orange-100 items-center justify-center mr-4">
+                                    <Text className="text-[#FF6900] font-bold text-xl">{entry.student_name.charAt(0)}</Text>
+                                </View>
+
+                                <View className="flex-1">
+                                    <Text className="text-gray-900 font-bold text-base">{entry.student_name}</Text>
+                                    <View className="flex-row items-center mt-1.5">
+                                        <StatusBadge status={entry.status} />
+                                        {entry.submittedAt && (
+                                            <Text className="text-gray-400 text-[10px] font-bold ml-3 uppercase tracking-wider">{entry.submittedAt}</Text>
+                                        )}
+                                    </View>
+                                </View>
+
+                                <View className="items-end mr-4">
+                                    <View className="flex-row items-baseline">
+                                        <Text className="text-gray-900 font-bold text-lg">{entry.score !== null ? entry.score : "--"}</Text>
+                                        <Text className="text-gray-400 text-xs font-bold">/{assignment?.total_points}</Text>
+                                    </View>
+                                </View>
+
+                                <TouchableOpacity
+                                    className={`w-10 h-10 rounded-xl items-center justify-center ${entry.status === "missing" ? "bg-gray-100" : "bg-[#FF6900] shadow-sm active:bg-orange-600"}`}
+                                    onPress={() => handleGradeClick(entry)}
+                                    disabled={entry.status === 'missing'}
+                                >
+                                    {entry.status === "graded" ? (
+                                        <Check size={18} color="white" />
+                                    ) : (
+                                        <Edit2 size={18} color={entry.status === "missing" ? "#D1D5DB" : "white"} />
+                                    )}
+                                </TouchableOpacity>
+                            </View>
+                        ))}
                     </View>
-                ))}
-            </ScrollView>
+                </ScrollView>
+            )}
 
             {/* Grading Modal */}
             <Modal visible={gradingModalVisible} animationType="slide" transparent>
                 <View className="flex-1 bg-black/50 justify-end">
-                    <View className="bg-white rounded-t-3xl p-6">
-                        <View className="flex-row justify-between items-center mb-6">
-                            <Text className="text-xl font-bold text-gray-900">Grade Submission</Text>
-                            <TouchableOpacity onPress={() => setGradingModalVisible(false)}>
-                                <X size={24} color="#6B7280" />
+                    <View className="bg-white rounded-t-[40px] p-8 pb-12">
+                        <View className="flex-row justify-between items-center mb-8">
+                            <Text className="text-2xl font-bold text-gray-900 tracking-tight">Review Work</Text>
+                            <TouchableOpacity
+                                className="w-10 h-10 bg-gray-50 rounded-full items-center justify-center"
+                                onPress={() => setGradingModalVisible(false)}
+                            >
+                                <X size={20} color="#6B7280" />
                             </TouchableOpacity>
                         </View>
 
-                        <View className="mb-4">
-                            <Text className="text-gray-500 text-sm mb-1">Student</Text>
-                            <Text className="text-gray-900 font-semibold">{currentEntry?.student_name}</Text>
+                        <View className="mb-6 bg-gray-50 p-6 rounded-3xl border border-gray-100">
+                            <View className="mb-4">
+                                <Text className="text-gray-400 text-[10px] font-bold uppercase tracking-wider mb-1">Student</Text>
+                                <Text className="text-gray-900 font-bold text-lg">{currentEntry?.student_name}</Text>
+                            </View>
+                            <View>
+                                <Text className="text-gray-400 text-[10px] font-bold uppercase tracking-wider mb-1">Status</Text>
+                                <Text className="text-[#FF6900] font-bold text-base uppercase tracking-widest">{currentEntry?.status}</Text>
+                            </View>
                         </View>
 
-                        <View className="mb-4">
-                            <Text className="text-gray-500 text-sm mb-1">Score (Max: {assignment?.total_points})</Text>
+                        <View className="mb-6">
+                            <Text className="text-gray-500 text-sm font-bold mb-2 ml-2">Grade (Max: {assignment?.total_points})</Text>
                             <TextInput
-                                className="bg-gray-50 rounded-xl px-4 py-3 text-gray-900"
-                                placeholder="Enter score"
+                                className="bg-gray-50 rounded-2xl px-6 py-4 text-gray-900 font-bold text-lg border border-gray-100"
+                                placeholder="0.0"
                                 keyboardType="numeric"
-                                value={gradeInput.toString()}
+                                value={gradeInput}
                                 onChangeText={setGradeInput}
                             />
                         </View>
 
-                        <View className="mb-6">
-                            <Text className="text-gray-500 text-sm mb-1">Feedback</Text>
+                        <View className="mb-8">
+                            <Text className="text-gray-500 text-sm font-bold mb-2 ml-2">Feedback</Text>
                             <TextInput
-                                className="bg-gray-50 rounded-xl px-4 py-3 text-gray-900 h-24"
-                                placeholder="Enter feedback"
+                                className="bg-gray-50 rounded-2xl px-6 py-4 text-gray-900 h-32 border border-gray-100"
+                                placeholder="Write feedback here..."
                                 multiline
                                 textAlignVertical="top"
                                 value={feedbackInput}
@@ -305,10 +299,10 @@ export default function SubmissionsPage() {
                         </View>
 
                         <TouchableOpacity
-                            className="bg-teacherOrange py-4 rounded-xl items-center"
+                            className="bg-[#FF6900] py-5 rounded-2xl items-center shadow-lg active:bg-orange-600"
                             onPress={submitGrade}
                         >
-                            <Text className="text-white font-bold text-base">Save Grade</Text>
+                            <Text className="text-white font-bold text-lg">Submit Review</Text>
                         </TouchableOpacity>
                     </View>
                 </View>

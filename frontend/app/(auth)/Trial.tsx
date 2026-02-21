@@ -5,13 +5,13 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
-import { useAuth } from "@/contexts/AuthContext";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import {
   ArrowLeft, BookOpen, Check, GraduationCap, LayoutDashboard,
   Play, Settings, Sparkles, Users, X
 } from "lucide-react-native";
+import { useAuth } from "@/contexts/AuthContext";
 
 const { height, width } = Dimensions.get('window');
 

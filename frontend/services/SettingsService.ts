@@ -15,7 +15,7 @@ export interface UserPreferences {
 export const SettingsService = {
     getCurrencyRates: async (): Promise<ExchangeRates> => {
         try {
-            const response = await api.get('/settings/currency');
+            const response = await api.get('/settings/currency', { skipErrorToast: true });
             return response.data;
         } catch (error) {
             console.error('Error fetching currency rates:', error);

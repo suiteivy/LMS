@@ -1,4 +1,6 @@
-import { CheckCircle2, MessageCircle, Plus, Search, Send, UserCircle, X } from "lucide-react-native";
+import { UnifiedHeader } from "@/components/common/UnifiedHeader";
+import { router } from "expo-router";
+import { CheckCircle2, ChevronRight, Mail, MessageCircle, Plus, Search, Send, UserCircle } from "lucide-react-native";
 import React, { useState } from "react";
 import { ScrollView, Text, TextInput, TouchableOpacity, View } from "react-native";
 
@@ -51,7 +53,6 @@ const DUMMY_SENT = [
     created_at: "2026-02-15T12:00:00Z",
   },
 ];
-// ────────────────────────────────────────────────────────────────────────────
 
 const formatTime = (dateStr: string) => {
   const d = new Date(dateStr);
@@ -105,187 +106,185 @@ export default function ParentMessagingPage() {
   const messages = activeTab === "inbox" ? inbox : sent;
   const unreadCount = inbox.filter((m) => !m.is_read).length;
 
-  // ── View Message screen ──────────────────────────────────────────────────
-  if (screen === "view" && viewItem) {
-    const other = activeTab === "inbox" ? viewItem.sender : viewItem.receiver;
-    return (
-      <View className="flex-1 bg-gray-50">
-        <View className="bg-white px-6 pt-12 pb-6 border-b border-gray-100 flex-row items-center">
-          <TouchableOpacity onPress={() => { setViewItem(null); setScreen("list"); }} className="bg-gray-100 p-2 rounded-full mr-4">
-            <X size={20} color="#374151" />
-          </TouchableOpacity>
-          <View className="flex-1">
-            <Text className="text-gray-900 font-bold text-base" numberOfLines={1}>{viewItem.subject}</Text>
-            <Text className="text-gray-400 text-xs capitalize">{activeTab === "inbox" ? "From" : "To"}: {other?.full_name}</Text>
+  return (
+    <View className="flex-1 bg-gray-50 dark:bg-black">
+      <UnifiedHeader
+        title="Intelligence"
+        subtitle="Secure Inbox"
+        role="Parent"
+        showNotification={false}
+        onBack={screen !== "list" ? () => { setScreen("list"); setViewItem(null); } : () => router.back()}
+      />
+
+      {screen === "view" && viewItem ? (
+        <View className="flex-1">
+          <View className="p-8 bg-white dark:bg-[#1a1a1a] border-b border-gray-50 dark:border-gray-800 flex-row items-center mb-4">
+            <View className="w-14 h-14 rounded-2xl bg-orange-50 dark:bg-orange-950/20 items-center justify-center mr-4">
+              <Mail size={24} color="#FF6900" />
+            </View>
+            <View className="flex-1">
+              <Text className="text-gray-900 dark:text-white font-bold text-lg tracking-tight">{viewItem.subject}</Text>
+              <Text className="text-gray-400 dark:text-gray-500 text-[10px] font-bold uppercase tracking-widest mt-1">
+                {activeTab === "inbox" ? `Sender: ${viewItem.sender.full_name}` : `Recipient: ${viewItem.receiver.full_name}`}
+              </Text>
+            </View>
           </View>
+          <ScrollView className="flex-1 p-8">
+            <Text className="text-gray-600 dark:text-gray-400 font-medium text-base leading-7">{viewItem.content}</Text>
+          </ScrollView>
         </View>
-        <ScrollView className="flex-1 p-6">
-          <Text className="text-gray-700 leading-7 text-base">{viewItem.content}</Text>
-        </ScrollView>
-      </View>
-    );
-  }
+      ) : screen === "compose" ? (
+        <View className="flex-1">
+          <ScrollView className="flex-1 p-8" keyboardShouldPersistTaps="handled">
+            <Text className="text-gray-900 dark:text-white font-bold text-3xl tracking-tighter mb-8">Drafting...</Text>
 
-  // ── Compose screen ───────────────────────────────────────────────────────
-  if (screen === "compose") {
-    return (
-      <View className="flex-1 bg-white">
-        <View className="bg-white px-6 pt-12 pb-6 border-b border-gray-100 flex-row items-center justify-between">
-          <Text className="text-2xl font-bold text-gray-900">New Message</Text>
-          <TouchableOpacity onPress={() => { setScreen("list"); setSelectedReceiver(null); setMessageContent(""); setSearchQuery(""); }} className="bg-gray-100 p-2 rounded-full">
-            <X size={20} color="#374151" />
-          </TouchableOpacity>
-        </View>
-
-        <ScrollView className="flex-1 px-6 pt-6" keyboardShouldPersistTaps="handled">
-          {/* Recipient picker */}
-          {!selectedReceiver ? (
-            <View>
-              <Text className="text-gray-500 font-semibold mb-3 text-sm uppercase tracking-wide">To</Text>
-              <View className="flex-row items-center bg-gray-100 px-4 py-3 rounded-2xl mb-4">
-                <Search size={18} color="#9CA3AF" />
-                <TextInput
-                  className="flex-1 ml-3 text-gray-900"
-                  placeholder="Search teacher or admin..."
-                  value={searchQuery}
-                  onChangeText={setSearchQuery}
-                />
+            {!selectedReceiver ? (
+              <View className="bg-white dark:bg-[#1a1a1a] p-6 rounded-[32px] border border-gray-50 dark:border-gray-800 shadow-sm mb-8">
+                <View className="flex-row items-center bg-gray-50 dark:bg-gray-800 px-4 py-3 rounded-2xl mb-4 border border-gray-100 dark:border-gray-700">
+                  <Search size={18} color="#9CA3AF" />
+                  <TextInput
+                    className="flex-1 ml-3 text-gray-900 dark:text-white font-bold text-xs uppercase tracking-widest"
+                    placeholder="Search stakeholders..."
+                    placeholderTextColor="#9CA3AF"
+                    value={searchQuery}
+                    onChangeText={setSearchQuery}
+                  />
+                </View>
+                {filteredContacts.map((item) => (
+                  <TouchableOpacity
+                    key={item.id}
+                    className="flex-row items-center p-4 mb-2 bg-gray-50/50 dark:bg-gray-800/50 rounded-2xl border border-gray-100 dark:border-gray-800"
+                    onPress={() => { setSelectedReceiver(item); setSearchQuery(""); }}
+                  >
+                    <View className="bg-white dark:bg-gray-900 p-2 rounded-xl border border-gray-100 dark:border-gray-800 mr-3">
+                      <UserCircle size={20} color="#FF6900" />
+                    </View>
+                    <View>
+                      <Text className="text-gray-900 dark:text-white font-bold text-sm">{item.full_name}</Text>
+                      <Text className="text-gray-400 dark:text-gray-500 text-[8px] font-bold uppercase tracking-widest">{item.role}</Text>
+                    </View>
+                  </TouchableOpacity>
+                ))}
               </View>
-              {filteredContacts.map((item) => (
+            ) : (
+              <View className="bg-gray-900 dark:bg-[#1a1a1a] p-8 rounded-[40px] mb-8 shadow-xl">
+                <View className="flex-row items-center justify-between mb-8">
+                  <View className="flex-row items-center">
+                    <View className="bg-white/10 dark:bg-black/20 p-4 rounded-3xl">
+                      <UserCircle size={24} color="white" />
+                    </View>
+                    <View className="ml-4">
+                      <Text className="text-white font-bold text-lg tracking-tight">{selectedReceiver.full_name}</Text>
+                      <Text className="text-[#FF6900] text-[10px] font-bold uppercase tracking-widest mt-0.5">{selectedReceiver.role}</Text>
+                    </View>
+                  </View>
+                  <TouchableOpacity onPress={() => setSelectedReceiver(null)} className="bg-white/10 dark:bg-black/20 px-4 py-2 rounded-xl">
+                    <Text className="text-white text-[10px] font-bold uppercase">Change</Text>
+                  </TouchableOpacity>
+                </View>
+
+                <View className="bg-white dark:bg-gray-900 rounded-[32px] p-6 shadow-inner" style={{ minHeight: 250 }}>
+                  <TextInput
+                    className="text-gray-900 dark:text-white text-base font-medium"
+                    placeholder="Compose secure transmission..."
+                    placeholderTextColor="#9CA3AF"
+                    multiline
+                    textAlignVertical="top"
+                    value={messageContent}
+                    onChangeText={setMessageContent}
+                    style={{ flex: 1 }}
+                  />
+                </View>
+
                 <TouchableOpacity
-                  key={item.id}
-                  className="flex-row items-center p-3 mb-2 bg-gray-50 rounded-2xl"
-                  onPress={() => { setSelectedReceiver(item); setSearchQuery(""); }}
+                  className="mt-8 py-5 rounded-[32px] flex-row justify-center items-center shadow-2xl active:bg-orange-600"
+                  style={{ backgroundColor: !messageContent.trim() ? "#374151" : "#FF6900" }}
+                  onPress={handleSendMessage}
+                  disabled={!messageContent.trim()}
                 >
-                  <View className="bg-gray-200 p-2 rounded-xl mr-3">
-                    <UserCircle size={20} color="#6B7280" />
-                  </View>
-                  <View>
-                    <Text className="text-gray-900 font-bold">{item.full_name}</Text>
-                    <Text className="text-gray-400 text-xs capitalize">{item.role}</Text>
-                  </View>
+                  <Text className="text-white font-bold text-lg tracking-tight mr-3">Send Securely</Text>
+                  <Send size={20} color="white" />
+                </TouchableOpacity>
+              </View>
+            )}
+          </ScrollView>
+        </View>
+      ) : (
+        <View className="flex-1">
+          <View className="px-8 pt-8">
+            <View className="flex-row items-center justify-between mb-8 px-2">
+              <Text className="text-gray-900 dark:text-white font-bold text-3xl tracking-tighter">Communications</Text>
+              <TouchableOpacity
+                onPress={() => setScreen("compose")}
+                className="bg-gray-900 dark:bg-[#FF6900] w-12 h-12 rounded-2xl items-center justify-center shadow-lg active:bg-gray-800"
+              >
+                <Plus size={24} color="white" />
+              </TouchableOpacity>
+            </View>
+
+            <View className="flex-row bg-white dark:bg-[#1a1a1a] p-1.5 rounded-[24px] border border-gray-100 dark:border-gray-800 shadow-sm mb-10">
+              {(["inbox", "sent"] as const).map((tab) => (
+                <TouchableOpacity
+                  key={tab}
+                  className={`flex-1 py-3.5 rounded-2xl items-center ${activeTab === tab ? 'bg-[#FF6900]' : ''}`}
+                  onPress={() => setActiveTab(tab)}
+                >
+                  <Text className={`text-xs font-bold uppercase tracking-widest ${activeTab === tab ? 'text-white' : 'text-gray-400 dark:text-gray-500'}`}>
+                    {tab === "inbox" && unreadCount > 0 ? `Inbox (${unreadCount})` : tab}
+                  </Text>
                 </TouchableOpacity>
               ))}
             </View>
-          ) : (
-            <View>
-              <View className="flex-row items-center bg-orange-50 p-4 rounded-2xl mb-6 border border-orange-100">
-                <View className="bg-orange-200 p-2 rounded-xl mr-3">
-                  <UserCircle size={20} color="#FF6B00" />
-                </View>
-                <View className="flex-1">
-                  <Text className="text-gray-900 font-bold">{selectedReceiver.full_name}</Text>
-                  <Text className="text-orange-600 text-xs capitalize">{selectedReceiver.role}</Text>
-                </View>
-                <TouchableOpacity onPress={() => setSelectedReceiver(null)}>
-                  <Text className="text-gray-400 font-semibold">Change</Text>
-                </TouchableOpacity>
-              </View>
+          </View>
 
-              <Text className="text-gray-500 font-semibold mb-3 text-sm uppercase tracking-wide">Message</Text>
-              <TextInput
-                className="bg-gray-50 p-5 rounded-3xl text-gray-900 text-base border border-gray-100"
-                placeholder="Type your message here..."
-                multiline
-                numberOfLines={8}
-                textAlignVertical="top"
-                value={messageContent}
-                onChangeText={setMessageContent}
-                style={{ minHeight: 180 }}
-              />
-
-              <TouchableOpacity
-                className="mt-6 py-4 rounded-2xl flex-row justify-center items-center"
-                style={{ backgroundColor: !messageContent.trim() ? "#e5e7eb" : "#FF6B00" }}
-                onPress={handleSendMessage}
-                disabled={!messageContent.trim()}
-              >
-                <Text className={`font-bold text-lg mr-2 ${!messageContent.trim() ? "text-gray-400" : "text-white"}`}>Send Message</Text>
-                <Send size={20} color={!messageContent.trim() ? "#9CA3AF" : "white"} />
-              </TouchableOpacity>
+          {sentSuccess && (
+            <View className="mx-8 mb-6 bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900 p-4 rounded-2xl flex-row items-center">
+              <CheckCircle2 size={18} color="#10B981" />
+              <Text className="text-emerald-700 dark:text-emerald-400 font-bold text-xs uppercase tracking-widest ml-3">Transmission Successful</Text>
             </View>
           )}
-        </ScrollView>
-      </View>
-    );
-  }
 
-  // ── Message list screen (default) ────────────────────────────────────────
-  return (
-    <View className="flex-1 bg-gray-50">
-      <View className="bg-white px-6 pt-12 pb-6 border-b border-gray-100">
-        <View className="flex-row items-center justify-between mb-6">
-          <Text className="text-2xl font-bold text-gray-900">Messages</Text>
-          <TouchableOpacity onPress={() => setScreen("compose")} className="bg-[#FF6B00] p-3 rounded-full">
-            <Plus size={22} color="white" />
-          </TouchableOpacity>
-        </View>
-
-        <View className="flex-row bg-gray-100 p-1 rounded-2xl">
-          {(["inbox", "sent"] as const).map((tab) => (
-            <TouchableOpacity
-              key={tab}
-              className="flex-1 py-3 rounded-xl items-center"
-              style={activeTab === tab ? { backgroundColor: "#ffffff", shadowColor: "#000", shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 2, elevation: 2 } : {}}
-              onPress={() => setActiveTab(tab)}
-            >
-              <Text 
-                className="font-bold capitalize"
-                style={{ color: activeTab === tab ? "#FF6B00" : "#6b7280" }}
-              >
-                {tab === "inbox" && unreadCount > 0 ? `Inbox (${unreadCount})` : tab.charAt(0).toUpperCase() + tab.slice(1)}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-      </View>
-
-      {sentSuccess && (
-        <View className="mx-6 mt-4 bg-emerald-50 border border-emerald-200 p-4 rounded-2xl flex-row items-center">
-          <CheckCircle2 size={18} color="#10B981" />
-          <Text className="text-emerald-700 font-semibold ml-2">Message sent successfully!</Text>
+          <ScrollView className="flex-1 px-8" showsVerticalScrollIndicator={false}>
+            {messages.length === 0 ? (
+              <View className="items-center py-20 bg-white dark:bg-[#1a1a1a] rounded-[48px] border border-dashed border-gray-100 dark:border-gray-800">
+                <MessageCircle size={64} color="#E5E7EB" style={{ opacity: 0.2 }} />
+                <Text className="text-gray-400 dark:text-gray-500 font-bold mt-4 uppercase tracking-widest text-xs">No Secure Threads</Text>
+              </View>
+            ) : (
+              messages.map((item: any) => {
+                const other = activeTab === "inbox" ? item.sender : item.receiver;
+                const unread = !item.is_read && activeTab === "inbox";
+                return (
+                  <TouchableOpacity
+                    key={item.id}
+                    activeOpacity={0.7}
+                    className={`flex-row items-center p-6 mb-4 rounded-[32px] border shadow-sm ${unread ? 'border-orange-100 bg-orange-50/20 dark:border-orange-900/30 dark:bg-orange-950/10' : 'bg-white dark:bg-[#1a1a1a] border-gray-50 dark:border-gray-800'}`}
+                    onPress={() => {
+                      if (unread) markRead(item.id);
+                      setViewItem(item);
+                      setScreen("view");
+                    }}
+                  >
+                    <View className={`w-14 h-14 rounded-2xl items-center justify-center mr-4 ${unread ? 'bg-orange-100 dark:bg-orange-900/40' : 'bg-gray-50 dark:bg-gray-800'}`}>
+                      <UserCircle size={24} color={unread ? "#FF6900" : "#9CA3AF"} />
+                    </View>
+                    <View className="flex-1">
+                      <View className="flex-row justify-between items-center mb-1">
+                        <Text className="text-gray-900 dark:text-white font-bold text-base tracking-tight" numberOfLines={1}>{other?.full_name}</Text>
+                        <Text className="text-gray-400 dark:text-gray-500 text-[10px] font-bold uppercase tracking-widest">{formatTime(item.created_at)}</Text>
+                      </View>
+                      <Text className="text-gray-700 dark:text-gray-400 text-xs font-bold tracking-tight mb-0.5" numberOfLines={1}>{item.subject}</Text>
+                      <Text className="text-gray-400 dark:text-gray-500 text-[10px] font-medium" numberOfLines={1}>{item.content}</Text>
+                    </View>
+                    {unread ? <View className="w-2 h-2 rounded-full bg-[#FF6900] ml-3" /> : <ChevronRight size={14} color="#E5E7EB" className="ml-2" />}
+                  </TouchableOpacity>
+                );
+              })
+            )}
+            <View className="h-24" />
+          </ScrollView>
         </View>
       )}
-
-      <ScrollView className="flex-1 px-6 pt-4">
-        {messages.length === 0 ? (
-          <View className="items-center py-20">
-            <MessageCircle size={64} color="#E5E7EB" />
-            <Text className="text-gray-400 mt-4 text-lg">No messages yet</Text>
-          </View>
-        ) : (
-          messages.map((item: any) => {
-            const other = activeTab === "inbox" ? item.sender : item.receiver;
-            const unread = !item.is_read && activeTab === "inbox";
-            return (
-              <TouchableOpacity
-                key={item.id}
-                className="flex-row items-center p-4 mb-3 rounded-3xl border"
-                style={unread ? { borderColor: "#fed7aa", backgroundColor: "#fff7ed" } : { backgroundColor: "#ffffff", borderColor: "#f3f4f6" }}
-                onPress={() => {
-                  if (unread) markRead(item.id);
-                  setViewItem(item);
-                  setScreen("view");
-                }}
-              >
-                <View className="bg-gray-100 p-3 rounded-2xl mr-4">
-                  <UserCircle size={24} color="#6B7280" />
-                </View>
-                <View className="flex-1">
-                  <View className="flex-row justify-between items-center mb-1">
-                    <Text className="text-gray-900 font-bold" numberOfLines={1}>{other?.full_name}</Text>
-                    <Text className="text-gray-400 text-xs">{formatTime(item.created_at)}</Text>
-                  </View>
-                  <Text className="text-gray-700 text-sm font-semibold" numberOfLines={1}>{item.subject}</Text>
-                  <Text className="text-gray-400 text-xs" numberOfLines={1}>{item.content}</Text>
-                </View>
-                {unread && <View className="w-2.5 h-2.5 rounded-full bg-orange-500 ml-2" />}
-              </TouchableOpacity>
-            );
-          })
-        )}
-        <View className="h-24" />
-      </ScrollView>
     </View>
   );
 }

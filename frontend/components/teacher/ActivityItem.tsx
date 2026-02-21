@@ -1,6 +1,6 @@
-import React from "react";
-import { View, Text } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import React from "react";
+import { Text, View } from "react-native";
 
 type ActivityType = "enrollment" | "completion" | "question" | "review";
 
@@ -28,7 +28,7 @@ const ActivityItem: React.FC<ActivityItemProps> = ({ activity }) => {
     const config = activityConfig[activity.type];
 
     return (
-        <View className="flex-row items-center p-4 border-b border-gray-100">
+        <View className="flex-row items-center p-4 border-b border-gray-100 dark:border-gray-800">
             <View
                 className="w-10 h-10 rounded-full items-center justify-center mr-3"
                 style={{ backgroundColor: config.bgColor }}
@@ -36,8 +36,8 @@ const ActivityItem: React.FC<ActivityItemProps> = ({ activity }) => {
                 <Ionicons name={config.icon} size={20} color={config.color} />
             </View>
             <View className="flex-1">
-                <Text className="text-[#2C3E50] text-sm">{activity.message}</Text>
-                <Text className="text-gray-400 text-xs mt-1">{activity.time}</Text>
+                <Text className="text-gray-900 dark:text-white text-sm">{activity.message}</Text>
+                <Text className="text-gray-400 dark:text-gray-500 text-xs mt-1">{activity.time}</Text>
             </View>
         </View>
     );

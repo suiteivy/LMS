@@ -1,113 +1,185 @@
+import { AppLoading } from "@/components/AppLoading";
 import { toastConfig } from "@/components/CustomToast";
+import Notifications from "@/components/Notifications";
+import TrialBanner from "@/components/TrialBanner";
+import { DebugOverlay } from "@/components/common/DebugOverlay";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { CurrencyProvider } from "@/contexts/CurrencyContext";
-import { NotificationProvider } from "@/contexts/NotificationContext";
+import { NotificationProvider, useNotifications } from "@/contexts/NotificationContext";
+import { ThemeProvider, useTheme } from "@/contexts/ThemeContext";
+import { logger } from "@/services/LoggingService";
 import { Stack, useRouter, useSegments } from "expo-router";
+import { StatusBar } from "expo-status-bar";
 import React from "react";
-import { ActivityIndicator, View } from "react-native";
+import { LogBox, Platform, View } from "react-native";
+import 'react-native-gesture-handler';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import Toast from "react-native-toast-message";
 import "../styles/global.css";
-import TrialBanner from "@/components/TrialBanner";
 
+declare const global: typeof globalThis & {
+  ErrorUtils?: {
+    getGlobalHandler: () => (error: Error, isFatal: boolean) => void;
+    setGlobalHandler: (handler: (error: Error, isFatal: boolean) => void) => void;
+  };
+};
+
+if (global.ErrorUtils) {
+  const _originalHandler = global.ErrorUtils.getGlobalHandler();
+  global.ErrorUtils.setGlobalHandler((error: Error, isFatal: boolean) => {
+    if (isFatal) {
+      logger.fatal(`Fatal Error: ${error?.message}`, error?.stack);
+    } else {
+      logger.error(`Non-Fatal Error: ${error?.message}`, error?.stack);
+    }
+    if (!isFatal && error?.message?.includes("Couldn't find a navigation context")) {
+      return;
+    }
+    _originalHandler(error, isFatal);
+  });
+}
+
+const _origConsoleError = console.error.bind(console);
+console.error = (...args: unknown[]) => {
+  const first = args[0];
+  const msg = first instanceof Error ? first.message : String(first ?? '');
+  if (msg.includes("Couldn't find a navigation context")) return;
+  _origConsoleError(...args);
+};
+
+LogBox.ignoreLogs(["Couldn't find a navigation context"]);
+
+// Material Dark color scale
+// Background:  #121212
+// Surface:     #1e1e1e
+// Cards:       #242424
+// Borders:     #2c2c2c
+
+// ─── Root ────────────────────────────────────────────────────────────────────
 export default function RootLayout() {
   return (
-    <SafeAreaProvider>
-      <AuthProvider>
-        <CurrencyProvider>
-          <NotificationProvider>
-            <TrialBanner />
-            <AuthHandler />
-          </NotificationProvider>
-        </CurrencyProvider>
-      </AuthProvider>
-    </SafeAreaProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <SafeAreaProvider>
+        <ThemeProvider>
+          <AuthProvider>
+            <CurrencyProvider>
+              <NotificationProvider>
+                <AppShell />
+              </NotificationProvider>
+            </CurrencyProvider>
+          </AuthProvider>
+        </ThemeProvider>
+      </SafeAreaProvider>
+    </GestureHandlerRootView>
   );
 }
 
+// ─── AppShell ────────────────────────────────────────────────────────────────
+function AppShell() {
+  const { isDark, theme } = useTheme();
+
+  React.useEffect(() => {
+    logger.info(`Theme changed. Mode: ${theme}, isDark: ${isDark}`);
+  }, [theme, isDark]);
+
+  return (
+    <>
+      {Platform.OS === 'android' ? (
+        <StatusBar
+          style={isDark ? "light" : "dark"}
+          backgroundColor={isDark ? '#121212' : '#ffffff'}
+          translucent={false}
+        />
+      ) : (
+        <StatusBar style={isDark ? "light" : "dark"} />
+      )}
+      <TrialBanner />
+      <AuthHandler />
+    </>
+  );
+}
+
+// ─── GlobalNotifications ─────────────────────────────────────────────────────
+function GlobalNotifications() {
+  const { showNotifications, setShowNotifications } = useNotifications();
+  return (
+    <Notifications
+      visible={showNotifications}
+      onClose={() => setShowNotifications(false)}
+    />
+  );
+}
+
+// ─── AuthHandler ─────────────────────────────────────────────────────────────
 function AuthHandler() {
-  const { loading, isInitializing, resetSessionTimer, session, isTrial } = useAuth();
+  const { loading, isInitializing, resetSessionTimer, session } = useAuth();
+  const { isDark } = useTheme();
   const segments = useSegments();
   const router = useRouter();
-
   const [isNavigationReady, setIsNavigationReady] = React.useState(false);
 
   React.useEffect(() => {
-    // Small delay to ensure NavigationContainer is fully mounted
-    const timer = setTimeout(() => setIsNavigationReady(true), 1);
-    return () => clearTimeout(timer);
-  }, []);
+    if (!isNavigationReady) {
+      const timer = setTimeout(() => setIsNavigationReady(true), 1);
+      return () => clearTimeout(timer);
+    }
+  }, [isNavigationReady]);
 
   React.useEffect(() => {
-    // Only redirect if we are CERTAIN initialization is done AND navigation is ready
     if (isInitializing || !isNavigationReady) return;
 
     const inAuthGroup = segments.some(s => s === "(auth)");
     const isRoot = segments.length <= 1;
+    const currentPath = `/${segments.join('/')}`;
 
-    if (!session && !inAuthGroup && !isRoot) {
-      // User is not signed in and trying to access a protected route
-      if (isTrial) {
-        console.log("[AuthHandler] Redirecting to trial selection (Trial session ended)");
-        router.replace("/(auth)/trial");
-      } else {
-        console.log("[AuthHandler] Redirecting to sign-in (No session)");
-        router.replace("/(auth)/signIn");
-      }
-    } else if (session && inAuthGroup) {
-      // User is signed in and trying to access auth pages
-      console.log("[AuthHandler] Redirecting to home (Session active)");
+    if (!session && !inAuthGroup && !isRoot && currentPath !== '/') {
+      router.replace("/");
+    } else if (session && inAuthGroup && currentPath !== '/') {
       router.replace("/");
     }
-  }, [session, isInitializing, isNavigationReady, segments, isTrial]);
+  }, [session, isInitializing, isNavigationReady, segments.join('|')]);
 
-  // Handle user interaction for inactivity timer
   const handleInteraction = React.useCallback(() => {
-    if (session) {
-      resetSessionTimer();
-    }
+    if (session) resetSessionTimer();
     return false;
   }, [resetSessionTimer, session]);
 
-  if (isInitializing) {
-    return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#ffffff' }}>
-        <ActivityIndicator size="large" color="#ff6900" />
-      </View>
-    );
-  }
+  const isLoadingOverlayVisible =
+    isInitializing || (loading && !segments.some(s => s === "(auth)"));
 
   return (
-    <>
-      <View style={{ flex: 1 }} onStartShouldSetResponder={handleInteraction}>
-        <Stack screenOptions={{ headerShown: false }}>
-          <Stack.Screen name="index" />
-          <Stack.Screen name="(auth)/signIn" />
-          <Stack.Screen name="(admin)" />
-          <Stack.Screen name="(student)" />
-          <Stack.Screen name="(teacher)" />
-          <Stack.Screen name="(parent)" />
-          <Stack.Screen name="(auth)/forgot-password" />
-          <Stack.Screen name="(auth)/trial" options={{ headerShown: false }} />
-        </Stack>
-      </View>
+    <View
+      style={{ flex: 1, backgroundColor: isDark ? '#121212' : '#ffffff' }}
+      onStartShouldSetResponder={handleInteraction}
+    >
+      <Stack screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="index" />
+        <Stack.Screen name="(auth)/signIn" />
+        <Stack.Screen name="(admin)" />
+        <Stack.Screen name="(student)" />
+        <Stack.Screen name="(teacher)" />
+        <Stack.Screen name="(parent)" />
+        <Stack.Screen name="(auth)/forgot-password" />
+        <Stack.Screen name="(auth)/Trial" />
+      </Stack>
+
+      <DebugOverlay />
+      <GlobalNotifications />
       <Toast config={toastConfig} />
 
-      {loading && (
-        <View style={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          backgroundColor: '#ffffff',
-          justifyContent: 'center',
-          alignItems: 'center',
-          zIndex: 9999
-        }}>
-          <ActivityIndicator size="large" color="#ff6900" />
+      {isLoadingOverlayVisible && (
+        <View
+          style={{
+            position: 'absolute',
+            top: 0, left: 0, right: 0, bottom: 0,
+            zIndex: 100000,
+            backgroundColor: isDark ? '#121212' : '#ffffff',
+          }}
+        >
+          <AppLoading />
         </View>
       )}
-    </>
+    </View>
   );
 }

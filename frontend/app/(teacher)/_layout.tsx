@@ -1,23 +1,24 @@
-import { Tabs } from "expo-router";
-import { BookOpen, Building, Users, Settings, LayoutGrid, School } from "lucide-react-native";
-import { Platform, View } from "react-native"
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AuthGuard } from "@/components/AuthGuard";
 import { useAuth } from "@/contexts/AuthContext";
+import { useTheme } from "@/contexts/ThemeContext";
+import { Tabs } from "expo-router";
+import { BookOpen, Building, LayoutGrid, School, Settings, Users } from "lucide-react-native";
+import { Platform, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export default function TeacherLayout() {
     const insets = useSafeAreaInsets();
     const { isTrial } = useAuth();
-
+    const { isDark } = useTheme();
     return (
         <AuthGuard allowedRoles={['teacher']}>
             <Tabs
                 screenOptions={{
                     headerShown: false,
                     tabBarStyle: {
-                        backgroundColor: "#ffffff",
+                        backgroundColor: isDark ? '#121212' : "#ffffff",
                         borderTopWidth: 1,
-                        borderTopColor: "#e5e7eb",
+                        borderTopColor: isDark ? '#1f2937' : "#e5e7eb",
 
                         // DYNAMIC HEIGHT: Base height (usually 50-60) + the device's bottom inset
                         minHeight: Platform.OS === "ios" ? 64 + insets.bottom : 70,
@@ -33,15 +34,14 @@ export default function TeacherLayout() {
                         shadowRadius: 3,
                     },
                     tabBarActiveTintColor: "#FF6B00",
-                    tabBarInactiveTintColor: "#6b7280",
+                    tabBarInactiveTintColor: isDark ? "#9ca3af" : "#6b7280",
                     tabBarLabelStyle: {
                         fontSize: 11,
                         fontWeight: "600",
                         marginTop: 0,
                     },
                     sceneStyle: {
-                        backgroundColor: "#ffffff",
-                        paddingTop: insets.top,
+                        backgroundColor: isDark ? '#000000' : "#ffffff",
                     },
                 }}
             >

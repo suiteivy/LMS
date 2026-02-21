@@ -1,6 +1,6 @@
-import React from "react";
-import { View, Text } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import React from "react";
+import { Text, View } from "react-native";
 
 type EventType = "live" | "deadline" | "meeting";
 
@@ -27,7 +27,7 @@ const EventItem: React.FC<EventItemProps> = ({ event }) => {
     const config = eventConfig[event.type];
 
     return (
-        <View className="flex-row items-center py-3 border-b border-gray-100 last:border-b-0">
+        <View className="flex-row items-center py-3 border-b border-gray-100 dark:border-gray-800 last:border-b-0">
             <View
                 className="w-10 h-10 rounded-full items-center justify-center mr-3"
                 style={{ backgroundColor: config.bgColor }}
@@ -35,8 +35,8 @@ const EventItem: React.FC<EventItemProps> = ({ event }) => {
                 <Ionicons name={config.icon} size={20} color={config.color} />
             </View>
             <View className="flex-1">
-                <Text className="text-[#2C3E50] text-sm font-medium">{event.title}</Text>
-                <Text className="text-gray-400 text-xs mt-1">{event.date}</Text>
+                <Text className="text-gray-900 dark:text-white text-sm font-medium">{event.title}</Text>
+                <Text className="text-gray-400 dark:text-gray-500 text-xs mt-1">{event.date}</Text>
             </View>
         </View>
     );

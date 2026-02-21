@@ -1,4 +1,5 @@
 import { AuthGuard } from "@/components/AuthGuard";
+import { useTheme } from "@/contexts/ThemeContext";
 import { Tabs } from "expo-router";
 import { Bell, CalendarCheck, CreditCard, GraduationCap, LayoutDashboard, MessageSquare, Settings } from "lucide-react-native";
 import { Platform, View } from "react-native";
@@ -6,6 +7,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export default function ParentLayout() {
   const insets = useSafeAreaInsets();
+  const { isDark } = useTheme();
 
   return (
     <AuthGuard allowedRoles={['parent']}>
@@ -13,9 +15,9 @@ export default function ParentLayout() {
         screenOptions={{
           headerShown: false,
           tabBarStyle: {
-            backgroundColor: "#ffffff",
+            backgroundColor: isDark ? '#121212' : "#ffffff",
             borderTopWidth: 1,
-            borderTopColor: "#e5e7eb",
+            borderTopColor: isDark ? '#1f2937' : "#e5e7eb",
             minHeight: Platform.OS === "ios" ? 64 + insets.bottom : 70,
             paddingBottom: insets.bottom > 0 ? insets.bottom : 12,
             paddingTop: 8,
@@ -26,13 +28,13 @@ export default function ParentLayout() {
             shadowRadius: 3,
           },
           tabBarActiveTintColor: "#ff6900",
-          tabBarInactiveTintColor: "#6b7280",
+          tabBarInactiveTintColor: isDark ? "#9ca3af" : "#6b7280",
           tabBarLabelStyle: {
             fontSize: 10,
             fontWeight: "600",
           },
           sceneStyle: {
-            backgroundColor: "#ffffff",
+            backgroundColor: isDark ? '#000000' : "#ffffff",
             paddingTop: insets.top,
           },
         }}

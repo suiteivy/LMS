@@ -1,6 +1,6 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { Notification } from '../types/types';
+import React, { createContext, ReactNode, useContext, useEffect, useState } from 'react';
 import { NotificationAPI } from '../services/NotificationService';
+import { Notification } from '../types/types';
 import { useAuth } from './AuthContext';
 
 interface NotificationContextType {
@@ -10,6 +10,8 @@ interface NotificationContextType {
     refreshNotifications: () => Promise<void>;
     markAsRead: (id: string) => Promise<void>;
     markAllAsRead: () => Promise<void>;
+    showNotifications: boolean;
+    setShowNotifications: (show: boolean) => void;
 }
 
 const NotificationContext = createContext<NotificationContextType | undefined>(undefined);
@@ -18,6 +20,7 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
     const { session } = useAuth();
     const [notifications, setNotifications] = useState<Notification[]>([]);
     const [loading, setLoading] = useState(false);
+    const [showNotifications, setShowNotifications] = useState(false);
 
     const fetchNotifications = async () => {
         if (!session) return;
@@ -80,7 +83,9 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
             loading,
             refreshNotifications: fetchNotifications,
             markAsRead,
-            markAllAsRead
+            markAllAsRead,
+            showNotifications,
+            setShowNotifications
         }}>
             {children}
         </NotificationContext.Provider>

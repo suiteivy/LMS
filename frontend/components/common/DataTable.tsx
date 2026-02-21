@@ -1,7 +1,7 @@
-import React, { useState, useMemo } from 'react';
-import { View, Text, TouchableOpacity, ScrollView } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
 import { BaseComponentProps, TableColumn, TableData } from '@/types/types';
+import { Ionicons } from '@expo/vector-icons';
+import React, { useMemo, useState } from 'react';
+import { ScrollView, Text, TouchableOpacity, View } from 'react-native';
 
 
 interface DataTableProps extends BaseComponentProps {
@@ -50,10 +50,10 @@ export const DataTable: React.FC<DataTableProps> = ({
     return [...data].sort((a, b) => {
       const aValue = a[sortState.column!];
       const bValue = b[sortState.column!];
-      
+
       // Handling different data types
       let comparison = 0;
-      
+
       if (typeof aValue === 'string' && typeof bValue === 'string') {
         comparison = aValue.localeCompare(bValue);
       } else if (typeof aValue === 'number' && typeof bValue === 'number') {
@@ -62,14 +62,14 @@ export const DataTable: React.FC<DataTableProps> = ({
         // Convert to string and compare
         comparison = String(aValue).localeCompare(String(bValue));
       }
-      
+
       return sortState.order === 'asc' ? comparison : -comparison;
     });
   }, [data, sortState]);
 
   const handleSort = (columnKey: string) => {
     if (!sortable) return;
-    
+
     const column = columns.find(col => col.key === columnKey);
     if (!column?.sortable) return;
 
@@ -88,7 +88,7 @@ export const DataTable: React.FC<DataTableProps> = ({
 
   const getSortIcon = (columnKey: string) => {
     if (!sortable) return null;
-    
+
     const column = columns.find(col => col.key === columnKey);
     if (!column?.sortable) return null;
 
@@ -99,29 +99,26 @@ export const DataTable: React.FC<DataTableProps> = ({
         return <Ionicons name="chevron-down" size={16} color="#6B7280" />;
       }
     }
-    
+
     return <Ionicons name="chevron-expand" size={16} color="#D1D5DB" />;
   };
 
   const renderTableHeader = () => (
-    <View className="flex-row bg-gray-50 border-b border-gray-200">
+    <View className="flex-row bg-gray-50 dark:bg-gray-900/50 border-b border-gray-200 dark:border-gray-800">
       {columns.map((column, index) => (
         <TouchableOpacity
           key={column.key}
-          className={`p-3 flex-row items-center justify-between ${
-            column.width || 'flex-1'
-          } ${index === 0 ? 'pl-4' : ''} ${
-            index === columns.length - 1 ? 'pr-4' : ''
-          }`}
+          className={`p-3 flex-row items-center justify-between ${column.width || 'flex-1'
+            } ${index === 0 ? 'pl-4' : ''} ${index === columns.length - 1 ? 'pr-4' : ''
+            }`}
           onPress={() => handleSort(column.key)}
           disabled={!sortable || !column.sortable}
           activeOpacity={sortable && column.sortable ? 0.7 : 1}
         >
-          <Text 
-            className={`font-semibold text-gray-700 text-sm ${
-              column.align === 'center' ? 'text-center' : 
+          <Text
+            className={`font-semibold text-gray-700 dark:text-gray-300 text-sm ${column.align === 'center' ? 'text-center' :
               column.align === 'right' ? 'text-right' : 'text-left'
-            }`}
+              }`}
           >
             {column.title}
           </Text>
@@ -134,9 +131,8 @@ export const DataTable: React.FC<DataTableProps> = ({
   const renderTableRow = (row: TableData, index: number) => (
     <TouchableOpacity
       key={row.id || index}
-      className={`flex-row border-b border-gray-100 ${
-        striped && index % 2 === 1 ? 'bg-gray-25' : 'bg-white'
-      } ${onRowPress ? 'active:bg-gray-100' : ''}`}
+      className={`flex-row border-b border-gray-100 dark:border-gray-800 ${striped && index % 2 === 1 ? 'bg-gray-50/50 dark:bg-gray-800/20' : 'bg-white dark:bg-[#1a1a1a]'
+        } ${onRowPress ? 'active:bg-gray-100 dark:active:bg-gray-800' : ''}`}
       onPress={() => onRowPress?.(row)}
       disabled={!onRowPress}
       activeOpacity={onRowPress ? 0.7 : 1}
@@ -144,21 +140,18 @@ export const DataTable: React.FC<DataTableProps> = ({
       {columns.map((column, colIndex) => (
         <View
           key={column.key}
-          className={`p-3 ${column.width || 'flex-1'} ${
-            colIndex === 0 ? 'pl-4' : ''
-          } ${colIndex === columns.length - 1 ? 'pr-4' : ''} ${
-            column.align === 'center' ? 'items-center' : 
-            column.align === 'right' ? 'items-end' : 'items-start'
-          }`}
+          className={`p-3 ${column.width || 'flex-1'} ${colIndex === 0 ? 'pl-4' : ''
+            } ${colIndex === columns.length - 1 ? 'pr-4' : ''} ${column.align === 'center' ? 'items-center' :
+              column.align === 'right' ? 'items-end' : 'items-start'
+            }`}
         >
           {column.render ? (
             column.render(row[column.key], row)
           ) : (
-            <Text 
-              className={`text-gray-900 text-sm ${
-                column.align === 'center' ? 'text-center' : 
+            <Text
+              className={`text-gray-900 dark:text-white text-sm ${column.align === 'center' ? 'text-center' :
                 column.align === 'right' ? 'text-right' : 'text-left'
-              }`}
+                }`}
               numberOfLines={2}
             >
               {row[column.key] || '-'}
@@ -170,18 +163,17 @@ export const DataTable: React.FC<DataTableProps> = ({
   );
 
   const renderLoadingState = () => (
-    <View className="bg-white">
+    <View className="bg-white dark:bg-[#1a1a1a]">
       {[...Array(5)].map((_, index) => (
-        <View key={index} className="flex-row border-b border-gray-100 p-3">
+        <View key={index} className="flex-row border-b border-gray-100 dark:border-gray-800 p-3">
           {columns.map((column, colIndex) => (
             <View
               key={column.key}
-              className={`${column.width || 'flex-1'} ${
-                colIndex === 0 ? 'pl-4' : ''
-              } ${colIndex === columns.length - 1 ? 'pr-4' : ''}`}
+              className={`${column.width || 'flex-1'} ${colIndex === 0 ? 'pl-4' : ''
+                } ${colIndex === columns.length - 1 ? 'pr-4' : ''}`}
             >
               <View className="animate-pulse">
-                <View className="h-4 bg-gray-200 rounded w-3/4"></View>
+                <View className="h-4 bg-gray-200 dark:bg-gray-800 rounded w-3/4"></View>
               </View>
             </View>
           ))}
@@ -191,18 +183,18 @@ export const DataTable: React.FC<DataTableProps> = ({
   );
 
   const renderEmptyState = () => (
-    <View className="bg-white p-8">
+    <View className="bg-white dark:bg-[#1a1a1a] p-8">
       <View className="items-center">
         <Ionicons name={emptyIcon as any} size={48} color="#9CA3AF" />
-        <Text className="text-gray-500 mt-2 text-center">{emptyMessage}</Text>
+        <Text className="text-gray-500 dark:text-gray-400 mt-2 text-center">{emptyMessage}</Text>
       </View>
     </View>
   );
 
   const tableContent = (
-    <View className={`bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden ${className}`}>
+    <View className={`bg-white dark:bg-[#1a1a1a] rounded-xl shadow-sm border border-gray-200 dark:border-gray-800 overflow-hidden ${className}`}>
       {renderTableHeader()}
-      
+
       {loading ? (
         renderLoadingState()
       ) : sortedData.length > 0 ? (
@@ -218,7 +210,7 @@ export const DataTable: React.FC<DataTableProps> = ({
   if (maxHeight) {
     return (
       <View testID={testID} style={{ maxHeight }}>
-        <ScrollView 
+        <ScrollView
           showsVerticalScrollIndicator={true}
           nestedScrollEnabled={true}
         >

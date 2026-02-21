@@ -1,5 +1,6 @@
+import { useTheme } from '@/contexts/ThemeContext';
 import React from 'react';
-import { View, Text, TouchableOpacity, ScrollView } from 'react-native';
+import { ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import Feather from 'react-native-vector-icons/Feather';
 
 type SectionType = 'overview' | 'payments' | 'payouts' | 'fees';
@@ -17,6 +18,7 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({
   activeSection = 'overview',
   onSectionChange,
 }) => {
+  const { isDark } = useTheme();
   const sections = [
     { id: 'overview', label: 'Dashboard', icon: '📊' },
     { id: 'payments', label: 'Payments', icon: '💰' },
@@ -29,8 +31,8 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({
     return (
       <View className="mb-4">
         {/* Navigation Tabs Only */}
-        <ScrollView 
-          horizontal 
+        <ScrollView
+          horizontal
           showsHorizontalScrollIndicator={false}
           className="mb-4"
         >
@@ -39,13 +41,12 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({
               <TouchableOpacity
                 key={section.id}
                 onPress={() => onSectionChange?.(section.id as SectionType)}
-                className={`px-4 py-3 rounded-lg shadow-sm min-w-[120px] items-center ${
-                  activeSection === section.id ? 'shadow-md' : ''
-                }`}
+                className={`px-4 py-3 rounded-lg shadow-sm min-w-[120px] items-center ${activeSection === section.id ? 'shadow-md' : ''
+                  }`}
                 style={{
-                  backgroundColor: activeSection === section.id ? '#1ABC9C' : '#FFFFFF',
+                  backgroundColor: activeSection === section.id ? '#1ABC9C' : (isDark ? '#1a1a1a' : '#FFFFFF'),
                   borderWidth: 1,
-                  borderColor: activeSection === section.id ? '#16A085' : '#D0E8E6',
+                  borderColor: activeSection === section.id ? '#16A085' : (isDark ? '#333' : '#D0E8E6'),
                 }}
               >
                 <Text className="text-lg mb-1">
@@ -54,7 +55,7 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({
                 <Text
                   className="text-sm font-medium text-center"
                   style={{
-                    color: activeSection === section.id ? '#FFFFFF' : '#2C3E50'
+                    color: activeSection === section.id ? '#FFFFFF' : (isDark ? '#F9FAFB' : '#2C3E50')
                   }}
                 >
                   {section.label}
@@ -72,11 +73,11 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({
     <View className="mb-6">
       {/* Header Section - Only on Overview */}
       <View className="flex-row justify-between items-center mb-4">
-        <Text className="text-2xl font-bold text-gray-800">Admin Dashboard</Text>
+        <Text className="text-2xl font-bold text-gray-900 dark:text-white">Admin Dashboard</Text>
         <View className="flex-row space-x-3 gap-2">
           {onRefresh && (
             <TouchableOpacity onPress={onRefresh}>
-              <Feather name="refresh-cw" size={24} color="black" />
+              <Feather name="refresh-cw" size={24} color={isDark ? "white" : "black"} />
             </TouchableOpacity>
           )}
           {onLogout && (
@@ -88,8 +89,8 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({
       </View>
 
       {/* Navigation Tabs */}
-      <ScrollView 
-        horizontal 
+      <ScrollView
+        horizontal
         showsHorizontalScrollIndicator={false}
         className="mb-4"
       >
@@ -98,13 +99,12 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({
             <TouchableOpacity
               key={section.id}
               onPress={() => onSectionChange?.(section.id as SectionType)}
-              className={`px-4 py-3 rounded-lg shadow-sm min-w-[120px] items-center ${
-                activeSection === section.id ? 'shadow-md' : ''
-              }`}
+              className={`px-4 py-3 rounded-lg shadow-sm min-w-[120px] items-center ${activeSection === section.id ? 'shadow-md' : ''
+                }`}
               style={{
-                backgroundColor: activeSection === section.id ? '#1ABC9C' : '#FFFFFF',
+                backgroundColor: activeSection === section.id ? '#1ABC9C' : (isDark ? '#1a1a1a' : '#FFFFFF'),
                 borderWidth: 1,
-                borderColor: activeSection === section.id ? '#16A085' : '#D0E8E6',
+                borderColor: activeSection === section.id ? '#16A085' : (isDark ? '#333' : '#D0E8E6'),
               }}
             >
               <Text className="text-lg mb-1">
@@ -113,7 +113,7 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({
               <Text
                 className="text-sm font-medium text-center"
                 style={{
-                  color: activeSection === section.id ? '#FFFFFF' : '#2C3E50'
+                  color: activeSection === section.id ? '#FFFFFF' : (isDark ? '#F9FAFB' : '#2C3E50')
                 }}
               >
                 {section.label}

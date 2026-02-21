@@ -1,6 +1,6 @@
+import { Info, LucideIcon } from 'lucide-react-native';
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import { LucideIcon, Info } from 'lucide-react-native';
+import { Text, TouchableOpacity, View } from 'react-native';
 
 interface EmptyStateProps {
     title: string;
@@ -20,67 +20,26 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
     onAction
 }) => {
     return (
-        <View style={styles.container}>
-            <View style={[styles.iconContainer, { backgroundColor: `${color}15` }]}>
+        <View className="flex-1 items-center justify-center p-10 mt-10">
+            <View
+                className="w-20 h-20 rounded-full items-center justify-center mb-4"
+                style={{ backgroundColor: `${color}15` }}
+            >
                 <Icon size={48} color={color} strokeWidth={1.5} />
             </View>
-            <Text style={styles.title}>{title}</Text>
-            {message && <Text style={styles.message}>{message}</Text>}
+            <Text className="text-lg font-bold text-gray-900 dark:text-white text-center mb-2">{title}</Text>
+            {message && <Text className="text-sm text-gray-600 dark:text-gray-300 text-center leading-5">{message}</Text>}
             {actionLabel && onAction && (
                 <TouchableOpacity
                     onPress={onAction}
-                    style={[styles.actionButton, { backgroundColor: color }]}
+                    className="mt-6 px-6 py-3 rounded-xl shadow-sm"
+                    style={{ backgroundColor: color }}
                 >
-                    <Text style={styles.actionText}>{actionLabel}</Text>
+                    <Text className="text-white text-[15px] font-bold">{actionLabel}</Text>
                 </TouchableOpacity>
             )}
         </View>
     );
 };
 
-const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: 40,
-        marginTop: 40,
-    },
-    iconContainer: {
-        width: 80,
-        height: 80,
-        borderRadius: 40,
-        alignItems: 'center',
-        justifyContent: 'center',
-        marginBottom: 16,
-    },
-    title: {
-        fontSize: 18,
-        fontWeight: '700',
-        color: '#1e293b',
-        textAlign: 'center',
-        marginBottom: 8,
-    },
-    message: {
-        fontSize: 14,
-        color: '#64748b',
-        textAlign: 'center',
-        lineHeight: 20,
-    },
-    actionButton: {
-        marginTop: 24,
-        paddingHorizontal: 24,
-        paddingVertical: 12,
-        borderRadius: 12,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
-        elevation: 2,
-    },
-    actionText: {
-        color: '#ffffff',
-        fontSize: 15,
-        fontWeight: '600',
-    },
-});
+

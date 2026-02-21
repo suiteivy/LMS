@@ -20,32 +20,8 @@ app.use(express.json());
 
 // Middleware
 app.use(cors()); //cors
-app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(morgan("dev")); // logging
-
-// handle cors
-app.use((req, res, next) => {
-  res.header("Access-Control-Allow-Origin", "*");
-  res.header(
-    "Access-Control-Allow-Headers",
-    "Origin, X-Requested-With, Content-Type, Accept, Authorization"
-  );
-  if (req.method === "OPTIONS") {
-    res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, PATCH, OPTIONS");
-    return res.status(200).json({});
-  }
-  next();
-});
-
-// Request Logging Middleware
-app.use((req, res, next) => {
-  console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
-  if (req.body && Object.keys(req.body).length > 0) {
-    console.log("Body:", JSON.stringify(req.body, null, 2));
-  }
-  next();
-});
 
 // Routes
 app.use("/api/auth", authRoutes);

@@ -1,6 +1,8 @@
-import { ArrowDownLeft, ArrowUpRight, Info } from "lucide-react-native";
+import { UnifiedHeader } from "@/components/common/UnifiedHeader";
+import { router } from "expo-router";
+import { ArrowDownLeft, ArrowUpRight, CreditCard, Info, Wallet } from "lucide-react-native";
 import React from "react";
-import { ScrollView, Text, View } from "react-native";
+import { ScrollView, Text, TouchableOpacity, View } from "react-native";
 
 const DUMMY_FINANCE = {
   balance: 8500,
@@ -26,70 +28,95 @@ export default function StudentFinancePage() {
   const paidPct = Math.round((paid_amount / total_fees) * 100);
 
   return (
-    <View className="flex-1 bg-gray-50">
-      {/* Header */}
-      <View className="bg-white px-6 pt-12 pb-6 border-b border-gray-100">
-        <Text className="text-2xl font-bold text-gray-900">Financial Records</Text>
-        <Text className="text-gray-500 text-sm mt-1">Ethan Kamau — Term 1, 2026 · Demo Data</Text>
-      </View>
+    <View className="flex-1 bg-gray-50 dark:bg-black">
+      <UnifiedHeader
+        title="Intelligence"
+        subtitle="Compliance"
+        role="Parent"
+        onBack={() => router.back()}
+        showNotification={false}
+      />
 
-      <ScrollView className="flex-1 px-6 pt-6" showsVerticalScrollIndicator={false}>
-        {/* Balance Card */}
-        <View className="bg-orange-500 p-6 rounded-[2.5rem] mb-4">
-          <Text className="text-white text-xs font-bold uppercase mb-2">Outstanding Balance</Text>
-          <Text className="text-white text-4xl font-black mb-6">{formatCurrency(balance)}</Text>
-
-          <View className="flex-row gap-3">
-            <View className="flex-1 bg-slate-800 p-4 rounded-3xl">
-              <Text className="text-white text-[10px] font-bold uppercase mb-1">Total Fees</Text>
-              <Text className="text-white font-bold">{formatCurrency(total_fees)}</Text>
+      <ScrollView
+        className="flex-1"
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: 150 }}
+      >
+        <View className="p-4 md:p-8">
+          {/* Balance Hero */}
+          <View className="bg-gray-900 p-8 rounded-[48px] shadow-2xl mb-8">
+            <View className="flex-row justify-between items-center mb-8">
+              <View>
+                <Text className="text-white/40 text-[10px] font-bold uppercase tracking-[3px] mb-2">Portfolio Balance</Text>
+                <Text className="text-white text-5xl font-black tracking-tighter">{formatCurrency(balance)}</Text>
+                <View className="bg-[#FF6900]/20 self-start px-3 py-1 rounded-full mt-2">
+                  <Text className="text-[#FF6900] text-[10px] font-bold tracking-widest uppercase">{paidPct}% Liquidated</Text>
+                </View>
+              </View>
+              <View className="w-16 h-16 rounded-full bg-white/5 items-center justify-center border border-white/10">
+                <Wallet size={32} color="white" />
+              </View>
             </View>
-            <View className="flex-1 bg-slate-800 p-4 rounded-3xl">
-              <Text className="text-white text-[10px] font-bold uppercase mb-1">Paid Amount</Text>
-              <Text className="text-emerald-400 font-bold">{formatCurrency(paid_amount)}</Text>
+
+            {/* Progress Visual */}
+            <View className="bg-white/5 p-6 rounded-[32px] border border-white/5 mb-8">
+              <View className="flex-row justify-between mb-3 px-1">
+                <Text className="text-white/40 text-[8px] font-bold uppercase tracking-widest">Fee Progress</Text>
+                <Text className="text-emerald-400 text-[8px] font-bold uppercase tracking-widest">Active Standing</Text>
+              </View>
+              <View className="bg-white/10 rounded-full h-2 overflow-hidden">
+                <View style={{ width: `${paidPct}%` }} className="bg-[#FF6900] h-2 rounded-full" />
+              </View>
+            </View>
+
+            <View className="flex-row gap-4 pt-8 border-t border-white/10">
+              <View className="flex-1">
+                <Text className="text-white/30 text-[8px] font-bold uppercase tracking-widest mb-1">Total Obligation</Text>
+                <Text className="text-white font-bold text-base">{formatCurrency(total_fees)}</Text>
+              </View>
+              <View className="flex-1 border-l border-white/10 pl-4">
+                <Text className="text-white/30 text-[8px] font-bold uppercase tracking-widest mb-1">Total Clear</Text>
+                <Text className="text-emerald-400 font-bold text-base">{formatCurrency(paid_amount)}</Text>
+              </View>
             </View>
           </View>
-        </View>
 
-        {/* Progress Bar */}
-        <View className="bg-white p-5 rounded-3xl mb-4 border border-gray-100">
-          <View className="flex-row justify-between mb-2">
-            <Text className="text-gray-600 font-semibold text-sm">Payment Progress</Text>
-            <Text className="text-gray-900 font-bold text-sm">{paidPct}%</Text>
-          </View>
-          <View className="bg-gray-100 rounded-full h-3 overflow-hidden">
-            <View style={{ width: `${paidPct}%` }} className="bg-emerald-500 h-3 rounded-full" />
-          </View>
-          <Text className="text-gray-400 text-xs mt-2">{formatCurrency(balance)} remaining to clear</Text>
-        </View>
-
-        {/* Status Indicator */}
-        <View className="mb-6 p-4 rounded-3xl flex-row items-center bg-amber-50 border border-amber-100">
-          <Info size={20} color="#D97706" />
-          <Text className="ml-3 font-medium text-amber-800 flex-1">
-            Payment of {formatCurrency(balance)} is due by March 1st, 2026. Contact the bursar for a payment plan.
-          </Text>
-        </View>
-
-        {/* Transactions */}
-        <Text className="text-lg font-bold text-gray-900 mb-4 ml-2">Transaction History</Text>
-        {transactions.map((tx) => (
-          <View key={tx.id} className="bg-white p-4 rounded-3xl mb-3 flex-row items-center border border-gray-100 shadow-sm">
-            <View className={`p-3 rounded-2xl mr-4 ${tx.direction === "inflow" ? "bg-emerald-50" : "bg-rose-50"}`}>
-              {tx.direction === "inflow"
-                ? <ArrowDownLeft size={20} color="#10B981" />
-                : <ArrowUpRight size={20} color="#F43F5E" />}
+          {/* Status Feedback */}
+          <View className="p-6 rounded-[32px] mb-8 flex-row items-center border border-orange-100 dark:border-orange-900 bg-orange-50 dark:bg-orange-950/30">
+            <View className="w-10 h-10 rounded-2xl items-center justify-center bg-white shadow-sm">
+              <Info size={20} color="#FF6900" />
             </View>
-            <View className="flex-1">
-              <Text className="text-gray-900 font-bold">{tx.type}</Text>
-              <Text className="text-gray-400 text-xs">{new Date(tx.date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</Text>
-            </View>
-            <Text className={`font-black ${tx.direction === "inflow" ? "text-emerald-600" : "text-gray-900"}`}>
-              {tx.direction === "inflow" ? "+" : "-"}{formatCurrency(tx.amount)}
+            <Text className="flex-1 ml-4 text-sm font-medium leading-tight text-gray-900 dark:text-gray-100">
+              Your balance of {formatCurrency(balance)} is due by March 1st. Tap for payment options.
             </Text>
           </View>
-        ))}
-        <View className="h-20" />
+
+          {/* Transaction Ledger */}
+          <View className="px-2 flex-row justify-between items-center mb-6">
+            <Text className="text-gray-900 dark:text-white font-bold text-xl tracking-tight">Financial Statements</Text>
+            <TouchableOpacity className="flex-row items-center bg-white dark:bg-[#1a1a1a] px-4 py-2 rounded-xl border border-gray-100 dark:border-gray-800 shadow-sm">
+              <CreditCard size={14} color="#FF6900" />
+              <Text className="text-gray-900 dark:text-white text-[10px] font-bold uppercase tracking-widest ml-2">Pay Now</Text>
+            </TouchableOpacity>
+          </View>
+
+          {transactions.map((tx) => (
+            <View key={tx.id} className="bg-white dark:bg-[#1a1a1a] p-5 rounded-[32px] mb-4 flex-row items-center border border-gray-50 dark:border-gray-800 shadow-sm">
+              <View className={`w-12 h-12 rounded-2xl items-center justify-center mr-4 ${tx.direction === "inflow" ? "bg-green-50" : "bg-red-50"}`}>
+                {tx.direction === "inflow"
+                  ? <ArrowDownLeft size={20} color="#10B981" />
+                  : <ArrowUpRight size={20} color="#F43F5E" />}
+              </View>
+              <View className="flex-1">
+                <Text className="text-gray-900 dark:text-white font-bold text-sm tracking-tight">{tx.type}</Text>
+                <Text className="text-gray-400 text-[10px] font-bold uppercase tracking-widest mt-1">{new Date(tx.date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</Text>
+              </View>
+              <Text className={`font-bold text-base ${tx.direction === "inflow" ? "text-green-600" : "text-gray-900 dark:text-white"}`}>
+                {tx.direction === "inflow" ? "+" : "-"}{formatCurrency(tx.amount).replace("KES ", "")}
+              </Text>
+            </View>
+          ))}
+        </View>
       </ScrollView>
     </View>
   );

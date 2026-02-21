@@ -1,11 +1,12 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, TextInput, Modal, Alert, StatusBar, RefreshControl, ActivityIndicator } from 'react-native';
-import { Search, FileText, BookOpen, X, Clock, CheckCircle2, Filter, Bookmark, History } from 'lucide-react-native';
-import { LibraryAPI } from '@/services/LibraryService';
-import { useAuth } from '@/contexts/AuthContext';
-import { FrontendBook, FrontendBorrowedBook } from '@/types/types';
-// Import your demo data
+import { UnifiedHeader } from "@/components/common/UnifiedHeader";
 import demoData from "@/constants/demoData";
+import { useAuth } from '@/contexts/AuthContext';
+import { LibraryAPI } from '@/services/LibraryService';
+import { FrontendBook, FrontendBorrowedBook } from '@/types/types';
+import { router } from "expo-router";
+import { BookOpen, CheckCircle2, Clock, Filter, Search, X } from 'lucide-react-native';
+import React, { useCallback, useEffect, useState } from 'react';
+import { ActivityIndicator, Alert, Modal, RefreshControl, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 export default function StudentLibrary() {
     const { studentId } = useAuth();
@@ -26,7 +27,6 @@ export default function StudentLibrary() {
                 studentId ? LibraryAPI.getBorrowingHistory(studentId) : Promise.resolve([])
             ]);
 
-            // LOGIC: If real data is empty, use demo data
             const finalBooks = booksData.length > 0
                 ? booksData.map(LibraryAPI.transformBookData)
                 : demoData.MOCK_LIBRARY.catalog;
@@ -35,13 +35,12 @@ export default function StudentLibrary() {
                 ? historyData.map(LibraryAPI.transformBorrowedBookData)
                 : demoData.MOCK_LIBRARY.activity;
 
-            setBooks(finalBooks);
-            setBorrowingHistory(finalHistory);
+            setBooks(finalBooks as any);
+            setBorrowingHistory(finalHistory as any);
         } catch (error) {
-            console.error("Error loading library data, falling back to demo:", error);
-            // Fallback to demo data on error for the demo session
-            setBooks(demoData.MOCK_LIBRARY.catalog);
-            setBorrowingHistory(demoData.MOCK_LIBRARY.activity);
+            console.error("Error loading library data:", error);
+            setBooks(demoData.MOCK_LIBRARY.catalog as any);
+            setBorrowingHistory(demoData.MOCK_LIBRARY.activity as any);
         } finally {
             setLoading(false);
             setRefreshing(false);
@@ -58,45 +57,33 @@ export default function StudentLibrary() {
     };
 
     const handleBorrow = async (book: FrontendBook) => {
-        // INTERACTIVE DEMO LOGIC
         setActionLoading(true);
-
-        // If there's no studentId (Demo Mode) or if we want to simulate it for the session
         if (!studentId) {
             setTimeout(() => {
-                const newBorrow: FrontendBorrowedBook = {
+                const newBorrow: any = {
                     id: Math.random().toString(),
                     bookTitle: book.title,
-                    status: 'waiting', // Appears as 'Requested' in your UI
-                    dueDate: new Date(Date.now() + 1209600000).toISOString() as any, // 14 days from now
+                    status: 'waiting',
+                    dueDate: new Date(Date.now() + 1209600000).toISOString() as any,
                     borrowDate: new Date().toISOString() as any,
-                    author: '',
-                    isbn: '',
-                    borrowerId: '',
-                    borrowerName: '',
-                    borrowerEmail: ''
                 };
-
                 setBorrowingHistory(prev => [newBorrow, ...prev]);
-                Alert.alert("Demo Session", `Borrow request for "${book.title}" sent successfully!`);
+                Alert.alert("Request Sent", `Successfully requested "${book.title}".`);
                 setModalVisible(false);
                 setActionLoading(false);
             }, 1000);
             return;
         }
 
-        // REAL BACKEND LOGIC
         try {
             const dueDate = new Date();
             dueDate.setDate(dueDate.getDate() + 14);
-
             await LibraryAPI.borrowBook(book.id, dueDate.toISOString() as any);
             Alert.alert("Success", `You have successfully borrowed "${book.title}".`);
             setModalVisible(false);
             loadData();
         } catch (error: any) {
-            const message = error.response?.data?.error || "Failed to borrow book.";
-            Alert.alert("Borrowing Failed", message);
+            Alert.alert("Borrowing Failed", error.response?.data?.error || "Failed to borrow book.");
         } finally {
             setActionLoading(false);
         }
@@ -107,233 +94,143 @@ export default function StudentLibrary() {
         book.author.toLowerCase().includes(searchQuery.toLowerCase())
     );
 
-    if (loading && !refreshing) {
-        return (
-            <View className="flex-1 bg-white justify-center items-center">
-                <ActivityIndicator size="large" color="#ff6900" />
-                <Text className="mt-4 text-gray-500 font-medium">Opening Library...</Text>
-            </View>
-        );
-    }
-
     return (
-        <View className="flex-1 bg-gray-50">
-            <StatusBar barStyle="dark-content" />
+        <View className="flex-1 bg-gray-50 dark:bg-black">
+            <UnifiedHeader
+                title="Resources"
+                subtitle="Library"
+                role="Student"
+                onBack={() => router.back()}
+            />
 
-            {/* --- HEADER SECTION --- */}
-            <View className="bg-white pt-14 pb-6 px-6 border-b border-gray-100 shadow-sm">
-                <View className="flex-row justify-between items-center mb-6">
-                    <View>
-                        <Text className="text-gray-400 text-xs font-bold uppercase tracking-widest">Digital Resource</Text>
-                        <Text className="text-3xl font-black text-gray-900">Library</Text>
-                    </View>
-                    <TouchableOpacity className="bg-orange-50 p-3 rounded-2xl">
-                        <Bookmark size={22} color="black" />
-                    </TouchableOpacity>
-                </View>
-
-                {/* Search Bar */}
-                <View className="flex-row gap-2">
-                    <View className="flex-1 flex-row items-center bg-gray-100 rounded-2xl px-4 py-2">
+            <View className="p-4 md:p-8">
+                {/* Search Header */}
+                <View className="flex-row gap-3 mb-8">
+                    <View className="flex-1 flex-row items-center bg-white dark:bg-[#1a1a1a] px-5 py-3.5 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm">
                         <Search size={18} color="#9CA3AF" />
                         <TextInput
-                            placeholder="Find books or authors..."
-                            className="flex-1 ml-2 text-gray-900 text-sm h-10"
+                            placeholder="Find publications..."
+                            placeholderTextColor="#9CA3AF"
+                            className="flex-1 ml-3 text-gray-900 dark:text-white font-bold text-xs uppercase tracking-widest"
                             value={searchQuery}
                             onChangeText={setSearchQuery}
                         />
                     </View>
-                    <TouchableOpacity className="bg-gray-100 p-3 rounded-2xl justify-center">
-                        <Filter size={20} color="orange" />
+                    <TouchableOpacity className="w-14 h-14 bg-white dark:bg-[#1a1a1a] rounded-2xl items-center justify-center border border-gray-100 dark:border-gray-800 shadow-sm active:bg-gray-50">
+                        <Filter size={20} color="#FF6900" />
                     </TouchableOpacity>
                 </View>
-            </View>
 
-            {/* --- BOOK LIST --- */}
-            <ScrollView
-                className="flex-1 px-6 pt-4"
-                showsVerticalScrollIndicator={false}
-                refreshControl={
-                    <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={["#ff6900"]} />
-                }
-            >
-                {borrowingHistory.filter(b => ['borrowed', 'waiting', 'ready_for_pickup', 'overdue'].includes(b.status)).length > 0 && (
-                    <View className="mb-6">
-                        <View className="flex-row items-center gap-2 mb-4">
-                            <History size={18} color="#0d9488" />
-                            <Text className="text-gray-900 font-bold text-lg">Your Activity</Text>
+                {loading ? (
+                    <ActivityIndicator size="large" color="#FF6900" className="mt-8" />
+                ) : (
+                    <ScrollView
+                        className="flex-1"
+                        showsVerticalScrollIndicator={false}
+                        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={["#FF6900"]} />}
+                        contentContainerStyle={{ paddingBottom: 200 }}
+                    >
+                        {/* Borrowing History */}
+                        {borrowingHistory.filter(b => ['borrowed', 'waiting', 'ready_for_pickup', 'overdue'].includes(b.status)).length > 0 && (
+                            <>
+                                <View className="px-2 mb-4">
+                                    <Text className="text-gray-400 dark:text-gray-500 font-bold text-[10px] uppercase tracking-[3px]">Active Borrowing</Text>
+                                </View>
+                                {borrowingHistory.filter(b => ['borrowed', 'waiting', 'ready_for_pickup', 'overdue'].includes(b.status)).map((borrow) => (
+                                    <View key={borrow.id} className="bg-white dark:bg-[#1a1a1a] p-5 rounded-3xl border border-gray-100 dark:border-gray-800 mb-3 flex-row items-center shadow-sm">
+                                        <View className="w-12 h-12 rounded-2xl bg-orange-50 dark:bg-orange-950/20 items-center justify-center mr-4">
+                                            <BookOpen size={20} color="#FF6900" />
+                                        </View>
+                                        <View className="flex-1">
+                                            <Text className="text-gray-900 dark:text-white font-bold text-base tracking-tight" numberOfLines={1}>{borrow.bookTitle}</Text>
+                                            <Text className="text-gray-400 dark:text-gray-500 text-[10px] font-bold uppercase tracking-widest mt-1">
+                                                {borrow.status === 'waiting' ? 'Requested' : borrow.status === 'ready_for_pickup' ? 'Ready for Pickup' : `Due ${new Date(borrow.dueDate).toLocaleDateString()}`}
+                                            </Text>
+                                        </View>
+                                        <View className={`px-3 py-1 rounded-full ${borrow.status === 'overdue' ? 'bg-red-50 dark:bg-red-950/20 border-red-100 dark:border-red-900' : 'bg-orange-50 dark:bg-orange-950/20 border-orange-100 dark:border-orange-900'} border`}>
+                                            <Text className={`font-bold text-[8px] uppercase tracking-widest ${borrow.status === 'overdue' ? 'text-red-600' : 'text-[#FF6900]'}`}>{borrow.status}</Text>
+                                        </View>
+                                    </View>
+                                ))}
+                                <View className="h-6" />
+                            </>
+                        )}
+
+                        {/* Catalog */}
+                        <View className="px-2 mb-4">
+                            <Text className="text-gray-400 dark:text-gray-500 font-bold text-[10px] uppercase tracking-[3px]">Digital Catalog</Text>
                         </View>
-                        {borrowingHistory.filter(b => ['borrowed', 'waiting', 'ready_for_pickup', 'overdue'].includes(b.status)).map((borrow) => {
-                            let statusColor = "bg-teal-600";
-                            let statusText = "Active";
-                            let statusBg = "bg-teal-50";
-                            let iconColor = "#0d9488";
-
-                            if (borrow.status === 'waiting') {
-                                statusColor = "bg-yellow-500";
-                                statusText = "Requested";
-                                statusBg = "bg-yellow-50";
-                                iconColor = "#eab308";
-                            } else if (borrow.status === 'ready_for_pickup') {
-                                statusColor = "bg-green-600";
-                                statusText = "Ready for Pickup";
-                                statusBg = "bg-green-50";
-                                iconColor = "#16a34a";
-                            } else if (borrow.status === 'overdue') {
-                                statusColor = "bg-red-600";
-                                statusText = "Overdue";
-                                statusBg = "bg-red-50";
-                                iconColor = "#dc2626";
-                            }
-
-                            return (
-                                <View key={borrow.id} className={`bg-white p-4 rounded-3xl border ${borrow.status === 'overdue' ? 'border-red-100' : 'border-gray-100'} mb-2 flex-row items-center shadow-sm`}>
-                                    <View className={`${statusBg} p-2 rounded-xl mr-3`}>
-                                        <BookOpen size={16} color={iconColor} />
+                        {filteredBooks.length === 0 ? (
+                            <View className="bg-white dark:bg-[#1a1a1a] p-12 rounded-[40px] items-center border border-gray-100 dark:border-gray-800 border-dashed mt-4">
+                                <Search size={48} color="#E5E7EB" style={{ opacity: 0.3 }} />
+                                <Text className="text-gray-400 dark:text-gray-500 font-bold text-center mt-6">No matches found</Text>
+                            </View>
+                        ) : (
+                            filteredBooks.map((item) => (
+                                <TouchableOpacity
+                                    key={item.id}
+                                    activeOpacity={0.7}
+                                    onPress={() => {
+                                        setSelectedBook(item);
+                                        setModalVisible(true);
+                                    }}
+                                    className="bg-white dark:bg-[#1a1a1a] p-5 rounded-[32px] border border-gray-50 dark:border-gray-800 mb-4 flex-row items-center shadow-sm active:bg-gray-50 dark:active:bg-gray-900"
+                                >
+                                    <View className={`p-4 rounded-2xl mr-4 ${item.available > 0 ? 'bg-orange-50 dark:bg-orange-950/20' : 'bg-gray-50 dark:bg-gray-800'}`}>
+                                        <BookOpen size={22} color={item.available > 0 ? "#FF6900" : "#9CA3AF"} />
                                     </View>
                                     <View className="flex-1">
-                                        <Text className="text-gray-900 font-bold text-sm" numberOfLines={1}>{borrow.bookTitle}</Text>
-                                        <Text className="text-gray-400 text-xs">
-                                            {borrow.status === 'waiting'
-                                                ? 'Waiting for approval'
-                                                : borrow.status === 'ready_for_pickup'
-                                                    ? 'Visit library to collect'
-                                                    : `Due: ${new Date(borrow.dueDate).toLocaleDateString()}`
-                                            }
+                                        <Text className="text-[#FF6900] text-[8px] font-bold uppercase tracking-[2px] mb-1">{item.category}</Text>
+                                        <Text className="text-gray-900 dark:text-white font-bold text-base leading-tight" numberOfLines={1}>{item.title}</Text>
+                                        <Text className="text-gray-400 dark:text-gray-500 text-xs font-medium">{item.author}</Text>
+                                    </View>
+                                    <View className={`px-2 py-0.5 rounded-full ${item.available > 0 ? 'bg-orange-500' : 'bg-gray-100 dark:bg-gray-800'}`}>
+                                        <Text className={`font-bold text-[8px] uppercase tracking-widest ${item.available > 0 ? 'text-white' : 'text-gray-400 dark:text-gray-500'}`}>
+                                            {item.available > 0 ? `${item.available} Left` : 'N/A'}
                                         </Text>
                                     </View>
-                                    <View className={`${statusColor} px-3 py-1 rounded-full`}>
-                                        <Text className="text-white font-bold text-[10px] uppercase">{statusText}</Text>
-                                    </View>
-                                </View>
-                            );
-                        })}
-                    </View>
+                                </TouchableOpacity>
+                            ))
+                        )}
+                    </ScrollView>
                 )}
+            </View>
 
-                <Text className="text-gray-900 font-bold text-lg mb-4">Available Catalog</Text>
-
-                {filteredBooks.length === 0 ? (
-                    <View className="py-20 items-center">
-                        <Text className="text-gray-400 font-medium italic">No books found matching your search.</Text>
-                    </View>
-                ) : (
-                    filteredBooks.map((item) => (
-                        <TouchableOpacity
-                            key={item.id}
-                            activeOpacity={0.7}
-                            onPress={() => {
-                                setSelectedBook(item);
-                                setModalVisible(true);
-                            }}
-                            className="bg-white p-4 rounded-[25px] border border-gray-100 mb-3 flex-row items-center justify-between"
-                        >
-                            <View className="flex-row items-center flex-1">
-                                <View className={`p-3 rounded-2xl mr-4 ${item.available > 0 ? 'bg-orange-50' : 'bg-gray-50'}`}>
-                                    <BookOpen size={22} color={item.available > 0 ? "#ff6900" : "#9CA3AF"} />
-                                </View>
-                                <View className="flex-1">
-                                    <Text className="text-[10px] font-bold text-orange-600 uppercase mb-0.5">{item.category}</Text>
-                                    <Text className="text-gray-900 font-bold text-base" numberOfLines={1}>{item.title}</Text>
-                                    <Text className="text-gray-400 text-xs">{item.author}</Text>
-                                </View>
-                            </View>
-                            <View className={`p-2 rounded-full ${item.available > 0 ? 'bg-orange-50' : 'bg-red-50'}`}>
-                                <Text className={`font-bold text-[10px] px-1 ${item.available > 0 ? 'text-orange-600' : 'text-red-500'}`}>
-                                    {item.available > 0 ? `${item.available} LEFT` : 'OUT'}
-                                </Text>
-                            </View>
-                        </TouchableOpacity>
-                    ))
-                )}
-
-                <View className="h-20" />
-            </ScrollView>
-
-            {/* --- BORROW MODAL --- */}
             <Modal animationType="slide" transparent visible={modalVisible}>
                 <View className="flex-1 bg-black/60 justify-end">
-                    <TouchableOpacity className="flex-1" onPress={() => setModalVisible(false)} />
-                    <View className="bg-white rounded-t-[50px] p-8">
-                        <View className="w-12 h-1.5 bg-gray-200 rounded-full self-center mb-8" />
-
-                        <View className="flex-row justify-between items-start mb-4">
-                            <View className="flex-1 pr-4">
-                                <Text className="text-orange-600 font-bold text-xs uppercase tracking-widest">{selectedBook?.category}</Text>
-                                <Text className="text-3xl font-black text-gray-900 mt-2">{selectedBook?.title}</Text>
-                                <Text className="text-orange-500 font-medium mt-1">by {selectedBook?.author}</Text>
+                    <View className="bg-white dark:bg-[#121212] rounded-t-[50px] p-8 pb-12 border-t border-gray-100 dark:border-gray-800">
+                        <View className="flex-row justify-between items-start mb-8">
+                            <View className="flex-1 pr-6">
+                                <Text className="text-[#FF6900] font-bold text-[10px] uppercase tracking-[3px] mb-2">{selectedBook?.category}</Text>
+                                <Text className="text-3xl font-bold text-gray-900 dark:text-white tracking-tight leading-tight">{selectedBook?.title}</Text>
+                                <Text className="text-gray-400 dark:text-gray-500 font-bold text-sm mt-2">by {selectedBook?.author}</Text>
                             </View>
-                            <TouchableOpacity onPress={() => setModalVisible(false)} className="bg-gray-100 p-3 rounded-full">
+                            <TouchableOpacity onPress={() => setModalVisible(false)} className="w-10 h-10 bg-gray-50 dark:bg-gray-800 rounded-full items-center justify-center">
                                 <X size={20} color="#6B7280" />
                             </TouchableOpacity>
                         </View>
 
-                        {/* Book details info */}
-                        {(selectedBook?.publisher || selectedBook?.publicationYear || selectedBook?.edition || selectedBook?.language || selectedBook?.pageCount) && (
-                            <View className="flex-row flex-wrap gap-2 mb-4">
-                                {selectedBook?.publisher && (
-                                    <View className="bg-gray-50 px-3 py-1.5 rounded-xl">
-                                        <Text className="text-gray-400 text-[9px] font-bold uppercase">Publisher</Text>
-                                        <Text className="text-gray-700 text-xs font-medium">{selectedBook.publisher}</Text>
-                                    </View>
-                                )}
-                                {selectedBook?.publicationYear && (
-                                    <View className="bg-gray-50 px-3 py-1.5 rounded-xl">
-                                        <Text className="text-gray-400 text-[9px] font-bold uppercase">Year</Text>
-                                        <Text className="text-gray-700 text-xs font-medium">{selectedBook.publicationYear}</Text>
-                                    </View>
-                                )}
-                                {selectedBook?.edition && (
-                                    <View className="bg-gray-50 px-3 py-1.5 rounded-xl">
-                                        <Text className="text-gray-400 text-[9px] font-bold uppercase">Edition</Text>
-                                        <Text className="text-gray-700 text-xs font-medium">{selectedBook.edition}</Text>
-                                    </View>
-                                )}
-                                {selectedBook?.language && (
-                                    <View className="bg-gray-50 px-3 py-1.5 rounded-xl">
-                                        <Text className="text-gray-400 text-[9px] font-bold uppercase">Language</Text>
-                                        <Text className="text-gray-700 text-xs font-medium">{selectedBook.language}</Text>
-                                    </View>
-                                )}
-                                {selectedBook?.pageCount && (
-                                    <View className="bg-gray-50 px-3 py-1.5 rounded-xl">
-                                        <Text className="text-gray-400 text-[9px] font-bold uppercase">Pages</Text>
-                                        <Text className="text-gray-700 text-xs font-medium">{selectedBook.pageCount}</Text>
-                                    </View>
-                                )}
+                        <View className="flex-row gap-4 mb-10">
+                            <View className="flex-1 bg-gray-50 dark:bg-gray-800 p-6 rounded-[32px] border border-gray-100 dark:border-gray-700 items-center justify-center">
+                                <Clock size={20} color="#FF6900" />
+                                <Text className="text-gray-400 dark:text-gray-500 text-[8px] font-bold uppercase tracking-widest mt-3">Period</Text>
+                                <Text className="text-gray-900 dark:text-white font-bold text-base mt-1">14 Days</Text>
                             </View>
-                        )}
-
-                        {/* Description */}
-                        {selectedBook?.description && (
-                            <View className="mb-4">
-                                <Text className="text-gray-600 text-sm leading-5" numberOfLines={3}>{selectedBook.description}</Text>
-                            </View>
-                        )}
-
-                        <View className="flex-row justify-between mb-10">
-                            <View className="bg-gray-50 p-5 rounded-[30px] flex-1 mr-2 border border-gray-100">
-                                <Clock size={18} color="#ff6900" />
-                                <Text className="text-gray-400 text-[10px] font-bold uppercase mt-3">Duration</Text>
-                                <Text className="text-gray-900 font-bold text-base mt-1">14 Days</Text>
-                            </View>
-                            <View className="bg-gray-50 p-5 rounded-[30px] flex-1 ml-2 border border-gray-100">
-                                <CheckCircle2 size={18} color="#ff6900" />
-                                <Text className="text-gray-400 text-[10px] font-bold uppercase mt-3">Available</Text>
-                                <Text className="text-gray-900 font-bold text-base mt-1">{selectedBook?.available} Copies</Text>
+                            <View className="flex-1 bg-gray-50 dark:bg-gray-800 p-6 rounded-[32px] border border-gray-100 dark:border-gray-700 items-center justify-center">
+                                <CheckCircle2 size={20} color="#FF6900" />
+                                <Text className="text-gray-400 dark:text-gray-500 text-[8px] font-bold uppercase tracking-widest mt-3">Stock</Text>
+                                <Text className="text-gray-900 dark:text-white font-bold text-base mt-1">{selectedBook?.available} Items</Text>
                             </View>
                         </View>
 
                         <TouchableOpacity
                             disabled={actionLoading || (selectedBook?.available ?? 0) <= 0}
-                            className={`py-5 rounded-[25px] items-center shadow-lg ${actionLoading || (selectedBook?.available ?? 0) <= 0 ? 'bg-gray-300 shadow-none' : 'bg-teal-600 shadow-teal-200'}`}
+                            className={`py-5 rounded-2xl items-center shadow-lg active:bg-gray-800 ${actionLoading || (selectedBook?.available ?? 0) <= 0 ? 'bg-gray-300 shadow-none' : 'bg-gray-900'}`}
                             onPress={() => selectedBook && handleBorrow(selectedBook)}
                         >
-                            {actionLoading ? (
-                                <ActivityIndicator color="white" />
-                            ) : (
-                                <Text className="text-white font-black text-lg">
-                                    {(selectedBook?.available ?? 0) > 0 ? "Borrow Material" : "Out of Stock"}
+                            {actionLoading ? <ActivityIndicator color="white" /> : (
+                                <Text className="text-white font-bold text-lg">
+                                    {(selectedBook?.available ?? 0) > 0 ? "Reserve Publication" : "Currently Unavailable"}
                                 </Text>
                             )}
                         </TouchableOpacity>

@@ -1,7 +1,8 @@
-import React, { useState } from "react";
-import { View, Text, ScrollView, TouchableOpacity, Image } from "react-native";
+import { useTheme } from "@/contexts/ThemeContext";
+import { Lesson, Subject } from "@/types/types";
 import { Ionicons } from "@expo/vector-icons";
-import { Subject, Lesson } from "@/types/types";
+import React, { useState } from "react";
+import { Image, ScrollView, Text, TouchableOpacity, View } from "react-native";
 
 interface SubjectDetailsProps {
   Subject: Subject;
@@ -18,217 +19,225 @@ export const SubjectDetails: React.FC<SubjectDetailsProps> = ({
   enrolling = false,
   kesRate = 129,
 }) => {
-  const [activeTab, setActiveTab] = useState<
-    "overview" | "lessons" | "reviews"
-  >("overview");
+  const { isDark } = useTheme();
+  const [activeTab, setActiveTab] = useState<"overview" | "lessons" | "reviews">("overview");
 
-  const LessonItem: React.FC<{ lesson: Lesson; index: number }> = ({
-    lesson,
-    index,
-  }) => (
-    <View className="flex-row items-center p-4 border-b border-gray-100">
-      <View
-        className={`w-8 h-8 rounded-full items-center justify-center mr-3 ${lesson.isCompleted
-          ? "bg-orange-200"
+  const t = {
+    bg:            isDark ? '#000000' : '#ffffff',
+    surface:       isDark ? '#1a1a1a' : '#ffffff',
+    surfaceAlt:    isDark ? '#111827' : '#f9fafb',
+    border:        isDark ? '#1f2937' : '#f3f4f6',
+    textPrimary:   isDark ? '#ffffff' : '#111827',
+    textSecondary: isDark ? '#9ca3af' : '#6b7280',
+    textMuted:     isDark ? '#6b7280' : '#9ca3af',
+    tabBg:         isDark ? '#111827' : '#f3f4f6',
+    tabActive:     isDark ? '#1f2937' : '#ffffff',
+    detailsBg:     isDark ? '#111827' : '#f9fafb',
+    divider:       isDark ? '#1f2937' : '#f3f4f6',
+    tagBg:         isDark ? '#1f2937' : '#f9fafb',
+    tagBorder:     isDark ? '#374151' : '#f3f4f6',
+  };
+
+  const LessonItem = ({ lesson, index }: { lesson: Lesson; index: number }) => (
+    <View style={{
+      flexDirection: 'row',
+      alignItems: 'center',
+      padding: 16,
+      backgroundColor: t.surface,
+      borderRadius: 18,
+      marginBottom: 10,
+      borderWidth: 1,
+      borderColor: t.border,
+    }}>
+      <View style={{
+        width: 40,
+        height: 40,
+        borderRadius: 14,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginRight: 14,
+        backgroundColor: lesson.isCompleted ? '#f97316' : lesson.isLocked ? (isDark ? '#1f2937' : '#f3f4f6') : (isDark ? '#ffffff' : '#111827'),
+      }}>
+        {lesson.isCompleted
+          ? <Ionicons name="checkmark" size={18} color="white" />
           : lesson.isLocked
-            ? "bg-gray-200"
-            : "bg-orange-50"
-          }`}
-      >
-        {lesson.isCompleted ? (
-          <Ionicons name="checkmark" size={16} color="white" />
-        ) : lesson.isLocked ? (
-          <Ionicons name="lock-closed" size={14} color="#6B7280" />
-        ) : (
-          <Text className="text-xs font-bold text-[#2C3E50]">{index + 1}</Text>
-        )}
+            ? <Ionicons name="lock-closed" size={16} color={isDark ? '#6b7280' : '#999'} />
+            : <Text style={{ color: isDark ? '#111827' : 'white', fontWeight: '700', fontSize: 14 }}>{index + 1}</Text>
+        }
       </View>
 
-      <View className="flex-1">
-        <Text
-          className={`font-medium ${lesson.isLocked ? "text-gray-400" : "text-[#2C3E50]"}`}
-        >
+      <View style={{ flex: 1 }}>
+        <Text style={{ fontWeight: '700', fontSize: 15, color: lesson.isLocked ? t.textMuted : t.textPrimary }}>
           {lesson.title}
         </Text>
-        <View className="flex-row items-center mt-1">
+        <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
           <Ionicons
-            name={
-              lesson.type === "video"
-                ? "play-circle"
-                : lesson.type === "quiz"
-                  ? "help-circle"
-                  : "document-text"
-            }
-            size={14}
-            color="#6B7280"
-          // color={'#fff'}
+            name={lesson.type === 'video' ? 'play-circle' : lesson.type === 'quiz' ? 'help-circle' : 'document-text'}
+            size={13}
+            color={lesson.isLocked ? t.textMuted : '#f97316'}
           />
-          <Text className="text-sm text-gray-500 ml-1 capitalize">
+          <Text style={{ fontSize: 10, fontWeight: '600', color: t.textMuted, marginLeft: 4, textTransform: 'uppercase', letterSpacing: 1 }}>
             {lesson.type} • {lesson.duration}
           </Text>
         </View>
       </View>
+
+      {!lesson.isLocked && (
+        <View style={{ backgroundColor: isDark ? 'rgba(249,115,22,0.15)' : '#fff7ed', padding: 8, borderRadius: 10 }}>
+          <Ionicons name="play" size={13} color="#f97316" />
+        </View>
+      )}
     </View>
   );
 
   return (
-    <View className="flex-1 bg-orange-200">
-      {/* Header */}
-      <View className="bg-white px-6 pt-12 pb-4 shadow-sm">
-        <TouchableOpacity onPress={onBack} className="mb-4">
-          <Ionicons name="arrow-back" size={24} color="#2C3E50" />
+    <View style={{ flex: 1, backgroundColor: t.bg }}>
+      {/* Floating nav */}
+      <View style={{ position: 'absolute', top: 0, left: 0, right: 0, zIndex: 50, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 24, paddingTop: 48, paddingBottom: 16 }}>
+        <TouchableOpacity
+          onPress={onBack}
+          style={{ backgroundColor: 'rgba(255,255,255,0.9)', padding: 12, borderRadius: 16, shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 8, elevation: 4 }}
+        >
+          <Ionicons name="chevron-back" size={24} color="#111827" />
         </TouchableOpacity>
+        <View style={{ backgroundColor: 'rgba(255,255,255,0.9)', padding: 12, borderRadius: 16, shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 8, elevation: 4 }}>
+          <Ionicons name="share-social-outline" size={24} color="#111827" />
+        </View>
       </View>
 
-      <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
-        {/* Subject Hero */}
-        <View className="bg-white">
-          <Image
-            source={{ uri: Subject.image }}
-            className="w-full h-48"
-            resizeMode="cover"
-          />
-
-          <View className="p-6">
-            <View className="flex-row items-center mb-2">
-              <View className="px-3 py-1 rounded-full mr-3 bg-orange-100">
-                <Text className="text-sm font-medium text-[#2C3E50]">
-                  {Subject.level}
-                </Text>
+      <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
+        {/* Hero */}
+        <View style={{ position: 'relative' }}>
+          <Image source={{ uri: Subject.image }} style={{ width: '100%', height: 360 }} resizeMode="cover" />
+          <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 280, backgroundColor: 'transparent', background: 'linear-gradient(to top, black, transparent)' }} />          {/* Gradient overlay via nested views */}
+          <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 200, backgroundColor: 'rgba(0,0,0,0.6)' }} />
+          <View style={{ position: 'absolute', bottom: 40, left: 24, right: 24 }}>
+            <View style={{ flexDirection: 'row', gap: 8, marginBottom: 12 }}>
+              <View style={{ backgroundColor: '#f97316', paddingHorizontal: 12, paddingVertical: 5, borderRadius: 99 }}>
+                <Text style={{ color: '#ffffff', fontSize: 9, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 2 }}>{Subject.category}</Text>
               </View>
-              <Text className="text-sm text-gray-500">{Subject.category}</Text>
-            </View>
-
-            <Text className="text-2xl font-bold mb-2 text-[#2C3E50]">
-              {Subject.title}
-            </Text>
-            <Text className="text-gray-600 mb-4">{Subject.description}</Text>
-
-            {/* Stats Row */}
-            <View className="flex-row items-center justify-between mb-6">
-              <View className="flex-row items-center">
-                <Ionicons name="star" size={16} color="#F39C12" />
-                <Text className="font-medium ml-1 text-[#2C3E50]">
-                  {Subject.rating}
-                </Text>
-                <Text className="text-gray-500 ml-1">
-                  ({Subject.reviewsCount})
-                </Text>
-              </View>
-
-              <View className="flex-row items-center">
-                <Ionicons name="people" size={16} color="#6B7280" />
-                <Text className="text-gray-600 ml-1">
-                  {Subject.studentsCount}
-                </Text>
-              </View>
-
-              <View className="flex-row items-center">
-                <Ionicons name="time" size={16} color="#6B7280" />
-                <Text className="text-gray-600 ml-1">{Subject.duration}</Text>
+              <View style={{ backgroundColor: 'rgba(255,255,255,0.2)', paddingHorizontal: 12, paddingVertical: 5, borderRadius: 99 }}>
+                <Text style={{ color: '#ffffff', fontSize: 9, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 2 }}>{Subject.level}</Text>
               </View>
             </View>
-
-            {/* Price & Enroll */}
-            <View className="flex-row items-center justify-between">
-              <View>
-                <Text className="text-3xl font-bold text-black">
-                  {Subject.price === 0 ? "Free" : `${Math.round(Subject.price * kesRate).toLocaleString()} KSh`}
-                </Text>
-                {Subject.price > 0 && (
-                  <Text className="text-sm font-semibold text-gray-500 mt-[-4px]">
-                    ${Subject.price} USD
-                  </Text>
-                )}
-                {Subject.originalPrice &&
-                  Subject.originalPrice > Subject.price && (
-                    <Text className="text-gray-400 line-through text-xs mt-1">
-                      ${Subject.originalPrice}
-                    </Text>
-                  )}
+            <Text style={{ fontSize: 32, fontWeight: '700', color: '#ffffff', lineHeight: 40, marginBottom: 12 }}>{Subject.title}</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.2)', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 10, marginRight: 12 }}>
+                <Ionicons name="star" size={15} color="#f97316" />
+                <Text style={{ color: '#ffffff', fontWeight: '700', marginLeft: 5 }}>{Subject.rating}</Text>
               </View>
-
-              <TouchableOpacity
-                onPress={onEnroll}
-                disabled={enrolling || Subject.isEnrolled}
-                className={`px-8 py-3 rounded-lg ${Subject.isEnrolled ? "bg-gray-400" : "bg-orange-400"}`}
-              >
-                <Text className="text-white font-bold text-lg">
-                  {enrolling ? "Enrolling..." : Subject.isEnrolled ? "Enrolled" : "Enroll Now"}
-                </Text>
-              </TouchableOpacity>
+              <Text style={{ color: 'rgba(255,255,255,0.8)', fontWeight: '600', fontSize: 13 }}>
+                Join {Subject.studentsCount}+ other learners
+              </Text>
             </View>
           </View>
         </View>
 
-        {/* Tabs */}
-        <View className="bg-white mt-2">
-          <View className="flex-row border-b border-gray-100">
-            {[
-              { key: "overview", label: "Overview" },
-              { key: "lessons", label: "Lessons" },
-              { key: "reviews", label: "Reviews" },
-            ].map((tab) => (
+        {/* Content */}
+        <View style={{ backgroundColor: t.bg, marginTop: -24, borderTopLeftRadius: 32, borderTopRightRadius: 32, paddingHorizontal: 24, paddingTop: 32, paddingBottom: 160 }}>
+          {/* Price + Enroll */}
+          <View style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            marginBottom: 28,
+            backgroundColor: t.detailsBg,
+            padding: 20,
+            borderRadius: 24,
+            borderWidth: 1,
+            borderColor: t.border,
+          }}>
+            <View>
+              <Text style={{ fontSize: 9, fontWeight: '600', color: t.textMuted, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 4 }}>Tuition Fee</Text>
+              <Text style={{ fontSize: 26, fontWeight: '700', color: t.textPrimary }}>
+                {Subject.price === 0 ? "FREE" : `${Math.round(Subject.price * kesRate).toLocaleString()} KSh`}
+              </Text>
+            </View>
+            <TouchableOpacity
+              onPress={onEnroll}
+              disabled={enrolling || Subject.isEnrolled}
+              style={{
+                paddingHorizontal: 24,
+                paddingVertical: 16,
+                borderRadius: 18,
+                backgroundColor: Subject.isEnrolled ? (isDark ? '#374151' : '#111827') : '#f97316',
+                shadowColor: Subject.isEnrolled ? '#000' : '#f97316',
+                shadowOpacity: 0.25,
+                shadowRadius: 12,
+                elevation: 4,
+              }}
+            >
+              <Text style={{ color: '#ffffff', fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1, fontSize: 11 }}>
+                {enrolling ? "PROCESSING..." : Subject.isEnrolled ? "CONTINUE" : "ENROLL NOW"}
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Tabs */}
+          <View style={{ flexDirection: 'row', marginBottom: 24, backgroundColor: t.tabBg, padding: 5, borderRadius: 18 }}>
+            {["overview", "lessons", "reviews"].map((tab) => (
               <TouchableOpacity
-                key={tab.key}
-                onPress={() => setActiveTab(tab.key as any)}
-                className={`flex-1 py-4 items-center border-b-2 ${activeTab === tab.key
-                  ? "border-[#fd6900] bg-orange-300"
-                  : "border-transparent"
-                  }`}
+                key={tab}
+                onPress={() => setActiveTab(tab as any)}
+                style={{
+                  flex: 1,
+                  paddingVertical: 12,
+                  alignItems: 'center',
+                  borderRadius: 14,
+                  backgroundColor: activeTab === tab ? t.tabActive : 'transparent',
+                  shadowColor: activeTab === tab ? '#000' : 'transparent',
+                  shadowOpacity: activeTab === tab ? 0.06 : 0,
+                  shadowRadius: 4,
+                  elevation: activeTab === tab && !isDark ? 1 : 0,
+                }}
               >
-                <Text
-                  className={`font-medium ${activeTab === tab.key ? "text-white" : "text-gray-500"
-                    }`}
-                >
-                  {tab.label}
+                <Text style={{ fontSize: 10, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1, color: activeTab === tab ? t.textPrimary : t.textMuted }}>
+                  {tab}
                 </Text>
               </TouchableOpacity>
             ))}
           </View>
 
-          {/* Tab Content */}
-          <View className="p-6">
+          {/* Tab content */}
+          <View style={{ minHeight: 300 }}>
             {activeTab === "overview" && (
               <View>
-                <Text className="text-lg font-bold mb-4 text-[#2C3E50]">
-                  What You'll Learn
-                </Text>
-                {Subject.tags.map((tag, index) => (
-                  <View key={index} className="flex-row items-center mb-2">
-                    <Ionicons
-                      name="checkmark-circle"
-                      size={16}
-                      color="#1ABC9C"
-                    />
-                    <Text className="ml-2 text-gray-700">{tag}</Text>
-                  </View>
-                ))}
-              </View>
-            )}
+                <Text style={{ fontSize: 10, fontWeight: '700', color: t.textPrimary, textTransform: 'uppercase', letterSpacing: 2, marginBottom: 16 }}>Course Description</Text>
+                <Text style={{ color: t.textSecondary, fontSize: 16, lineHeight: 26, marginBottom: 32 }}>{Subject.description}</Text>
 
-            {activeTab === "lessons" && (
-              <View>
-                <Text className="text-lg font-bold mb-4 text-[#2C3E50]">
-                  Subject Content
-                </Text>
-                <View className="bg-gray-50 rounded-xl overflow-hidden">
-                  {Subject.lessons.map((lesson, index) => (
-                    <LessonItem key={lesson.id} lesson={lesson} index={index} />
+                <Text style={{ fontSize: 10, fontWeight: '700', color: t.textPrimary, textTransform: 'uppercase', letterSpacing: 2, marginBottom: 16 }}>Curriculum Highlights</Text>
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
+                  {Subject.tags.map((tag, index) => (
+                    <View key={index} style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: t.tagBg, paddingHorizontal: 14, paddingVertical: 10, borderRadius: 12, borderWidth: 1, borderColor: t.tagBorder }}>
+                      <Ionicons name="checkmark-circle" size={16} color="#f97316" />
+                      <Text style={{ marginLeft: 8, fontWeight: '600', color: t.textPrimary, fontSize: 13 }}>{tag}</Text>
+                    </View>
                   ))}
                 </View>
               </View>
             )}
 
-            {activeTab === "reviews" && (
+            {activeTab === "lessons" && (
               <View>
-                <Text className="text-lg font-bold mb-4 text-[#2C3E50]">
-                  Student Reviews
-                </Text>
-                <View className="items-center py-8">
-                  <Ionicons name="chatbubbles" size={48} color="#fb6900" />
-                  <Text className="text-gray-500 mt-4">No reviews yet</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+                  <Text style={{ fontSize: 10, fontWeight: '700', color: t.textPrimary, textTransform: 'uppercase', letterSpacing: 2 }}>Subject Modules</Text>
+                  <Text style={{ fontSize: 10, fontWeight: '600', color: '#f97316', textTransform: 'uppercase', letterSpacing: 1 }}>{Subject.lessons.length} LESSONS</Text>
                 </View>
+                {Subject.lessons.map((lesson, index) => (
+                  <LessonItem key={lesson.id} lesson={lesson} index={index} />
+                ))}
+              </View>
+            )}
+
+            {activeTab === "reviews" && (
+              <View style={{ alignItems: 'center', justifyContent: 'center', paddingVertical: 64, backgroundColor: t.surfaceAlt, borderRadius: 32 }}>
+                <View style={{ width: 72, height: 72, backgroundColor: t.surface, borderRadius: 99, alignItems: 'center', justifyContent: 'center', marginBottom: 20, shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 12, elevation: 3 }}>
+                  <Ionicons name="chatbubbles" size={30} color="#f97316" />
+                </View>
+                <Text style={{ fontSize: 18, fontWeight: '700', color: t.textPrimary, marginBottom: 8 }}>No Reviews Yet</Text>
+                <Text style={{ color: t.textSecondary, fontWeight: '500', textAlign: 'center', paddingHorizontal: 40, lineHeight: 20 }}>
+                  Be the first to share your learning experience with others.
+                </Text>
               </View>
             )}
           </View>

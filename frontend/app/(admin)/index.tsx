@@ -1,4 +1,6 @@
+import { UnifiedHeader } from "@/components/common/UnifiedHeader";
 import { useAuth } from "@/contexts/AuthContext";
+import { useTheme } from "@/contexts/ThemeContext";
 import { useDashboardStats } from "@/hooks/useDashboardStats";
 import { supabase } from "@/libs/supabase";
 import { User } from "@/types/types";
@@ -18,17 +20,14 @@ import {
   Wallet
 } from 'lucide-react-native';
 import React, { useCallback, useEffect, useState } from "react";
-import { ScrollView, StatusBar, Text, TouchableOpacity, View } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { ActivityIndicator, ScrollView, Text, TouchableOpacity, View } from "react-native";
 
 interface QuickActionProps {
   icon: any;
   label: string;
-  color: string;
   onPress: () => void;
 }
 
-// Cast icons to any to avoid nativewind interop issues
 const IconUserPlus = UserPlus as any;
 const IconBell = Bell as any;
 const IconUsers = Users as any;
@@ -42,34 +41,19 @@ const IconBookOpen = BookOpen as any;
 const IconBarChart3 = BarChart3 as any;
 const IconLogOut = LogOut as any;
 
-const QuickAction = ({ icon: Icon, label, color, onPress }: QuickActionProps) => (
+const QuickAction = ({ icon: Icon, label, onPress }: QuickActionProps) => (
   <TouchableOpacity
-    style={{
-      width: "48%",
-      backgroundColor: "white",
-      padding: 20,
-      borderRadius: 24,
-      borderWidth: 1,
-      borderColor: "#f3f4f6",
-      marginBottom: 16,
-      alignItems: "center",
-      shadowColor: "#000",
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.05,
-      shadowRadius: 3,
-      elevation: 2
-    }}
+    className="w-[48%] bg-white dark:bg-[#1a1a1a] p-5 rounded-3xl border border-gray-100 dark:border-gray-800 mb-4 items-center shadow-sm active:opacity-70"
     onPress={onPress}
     activeOpacity={0.7}
   >
-    <View style={{ backgroundColor: "#fff7ed", padding: 12, borderRadius: 16, marginBottom: 8 }}>
-      <Icon size={24} color="#f97316" />
+    <View className="bg-orange-50 dark:bg-orange-950/30 p-3 rounded-2xl mb-2">
+      <Icon size={24} color="#FF6B00" />
     </View>
-    <Text style={{ color: "#111827", fontWeight: "700", fontSize: 13, textAlign: "center" }}>{label}</Text>
+    <Text className="text-gray-900 dark:text-gray-200 font-bold text-[13px] text-center">{label}</Text>
   </TouchableOpacity>
 );
 
-// --- DEBUG COMPONENT ---
 const DebugSessionInfo = ({ onClose }: { onClose: () => void }) => {
   const [debugInfo, setDebugInfo] = useState<any>({ status: 'Loading...', token: '...' });
 
@@ -86,65 +70,55 @@ const DebugSessionInfo = ({ onClose }: { onClose: () => void }) => {
     }
   };
 
-  useEffect(() => {
-    checkSession();
-  }, []);
+  useEffect(() => { checkSession(); }, []);
 
   return (
-    <View style={{ backgroundColor: "white", padding: 24, borderRadius: 24, margin: 16, borderWidth: 1, borderColor: "#fee2e2", shadowColor: "#000", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 3, elevation: 8 }}>
-      <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-        <Text style={{ color: "#991b1b", fontWeight: "700", fontSize: 18 }}>Technical Diagnostics</Text>
-        <TouchableOpacity onPress={onClose} style={{ backgroundColor: "#f3f4f6", padding: 8, borderRadius: 999 }}>
-          <Text style={{ color: "#4b5563", fontWeight: "700" }}>✕</Text>
+    <View className="bg-white dark:bg-[#1a1a1a] p-6 rounded-3xl m-4 border border-red-100 dark:border-red-900/30 shadow-lg">
+      <View className="flex-row justify-between items-center mb-4">
+        <Text className="text-red-800 dark:text-red-400 font-bold text-lg">Technical Diagnostics</Text>
+        <TouchableOpacity onPress={onClose} className="bg-gray-100 dark:bg-gray-800 p-2 rounded-full">
+          <Text className="text-gray-600 dark:text-gray-400 font-bold">✕</Text>
         </TouchableOpacity>
       </View>
-
-      <View className="bg-gray-50 p-4 rounded-xl space-y-2">
+      <View className="bg-gray-50 dark:bg-gray-900 p-4 rounded-xl space-y-2">
         <View className="flex-row justify-between">
           <Text className="text-xs text-gray-500 font-medium">Status:</Text>
-          <Text className="text-xs text-gray-900 font-mono">{debugInfo.status}</Text>
+          <Text className="text-xs text-gray-900 dark:text-white font-mono">{debugInfo.status}</Text>
         </View>
         <View className="flex-row justify-between">
           <Text className="text-xs text-gray-500 font-medium">User:</Text>
-          <Text className="text-xs text-gray-900 font-mono">{debugInfo.user}</Text>
+          <Text className="text-xs text-gray-900 dark:text-white font-mono">{debugInfo.user}</Text>
         </View>
         <View>
           <Text className="text-xs text-gray-500 font-medium mb-1">Token:</Text>
-          <Text className="text-[10px] text-gray-400 font-mono" numberOfLines={2}>{debugInfo.token}</Text>
+          <Text className="text-[10px] text-gray-400 dark:text-gray-500 font-mono" numberOfLines={2}>{debugInfo.token}</Text>
         </View>
       </View>
-
-      <TouchableOpacity 
-        onPress={checkSession} 
-        style={{ backgroundColor: "#fef2f2", padding: 12, borderRadius: 12, marginTop: 16, alignItems: "center" }}
+      <TouchableOpacity
+        onPress={checkSession}
+        className="bg-red-50 dark:bg-red-950/20 p-3 rounded-xl mt-4 items-center"
         activeOpacity={0.6}
       >
-        <Text style={{ color: "#dc2626", fontSize: 12, fontWeight: "700", textTransform: "uppercase", letterSpacing: 1 }}>Refresh Session Info</Text>
+        <Text className="text-red-600 text-xs font-bold uppercase tracking-widest">Refresh Session Info</Text>
       </TouchableOpacity>
     </View>
   );
 };
 
 export default function AdminDashboard() {
-  const insets = useSafeAreaInsets();
   const { profile } = useAuth();
   const { stats, loading: statsLoading } = useDashboardStats();
+  const { isDark } = useTheme();
   const [recentUsers, setRecentUsers] = useState<User[]>([]);
   const [loadingUsers, setLoadingUsers] = useState(false);
   const [showDebug, setShowDebug] = useState(false);
 
-  // Fetch recent users for the "Recent Activity" horizontal scroll
   const fetchRecentUsers = useCallback(async () => {
     try {
       setLoadingUsers(true);
       const { data, error } = await supabase
         .from("users")
-        .select(`
-  *,
-  students(id),
-  teachers(id),
-  admins(id)
-    `)
+        .select(`*, students(id), teachers(id), admins(id)`)
         .order("created_at", { ascending: false })
         .limit(5);
 
@@ -156,15 +130,14 @@ export default function AdminDashboard() {
           if (u.role === 'student' && u.students?.[0]?.id) displayId = u.students[0].id;
           else if (u.role === 'teacher' && u.teachers?.[0]?.id) displayId = u.teachers[0].id;
           else if (u.role === 'admin' && u.admins?.[0]?.id) displayId = u.admins[0].id;
-
           return {
             id: u.id,
             displayId,
-            name: u.full_name,
-            email: u.email,
+            name: u.full_name || 'Unknown User',
+            email: u.email || 'No Email',
             role: u.role,
             status: u.status,
-            joinDate: u.created_at,
+            joinDate: u.created_at || new Date().toISOString(),
           } as User;
         });
         setRecentUsers(users);
@@ -177,16 +150,28 @@ export default function AdminDashboard() {
   }, []);
 
   useEffect(() => {
-    if (!profile) return; // Wait for profile (which implies session)
+    if (!profile) return;
     fetchRecentUsers();
   }, [fetchRecentUsers, profile]);
 
+  // Theme-aware color tokens
+  const cardBg = isDark ? '#121212' : '#111827';
+  const surfaceBg = isDark ? '#1a1a1a' : '#ffffff';
+  const surfaceBorder = isDark ? '#1f2937' : '#f3f4f6';
+  const textPrimary = isDark ? '#f9fafb' : '#111827';
+  const textMuted = isDark ? '#6b7280' : '#6b7280';
+  const textSubtle = isDark ? '#9ca3af' : '#9ca3af';
+  const badgeBg = isDark ? '#1f2937' : '#f9fafb';
 
   return (
-    <View style={{ flex: 1, backgroundColor: "#f9fafb" }}>
-      <StatusBar barStyle="dark-content" />
+    <View className="flex-1 bg-white dark:bg-black">
+      <UnifiedHeader
+        title="Welcome back,"
+        subtitle={profile?.full_name?.split(" ")[0] || "Administrator"}
+        role="Admin"
+        showNotification={true}
+      />
 
-      {/* Diagnostics Modal */}
       {showDebug && (
         <View className="absolute inset-0 z-50 bg-black/40 justify-center p-4">
           <DebugSessionInfo onClose={() => setShowDebug(false)} />
@@ -196,187 +181,146 @@ export default function AdminDashboard() {
       <ScrollView
         style={{ flex: 1 }}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 100, padding: 24, paddingTop: 8 }}
+        contentContainerStyle={{ paddingBottom: 100, padding: 24, paddingTop: 10 }}
       >
         <View>
-          {/* --- 1. Header Section --- */}
-          <View className="mb-2 flex-row justify-between">
-            <View>
-              <Text className="text-gray-500 text-base font-medium mb-1">Welcome back,</Text>
-              <Text className="text-3xl font-bold text-gray-900 tracking-tight">
-                {profile?.full_name?.split(" ")[0] || "Administrator"} 👋
-              </Text>
-            </View>
-            <View className="flex-row items-center mt-2 group mb-2">
-              <View className="h-1.5 w-1.5 rounded-full bg-blue-500 mr-2" />
-              <Text className="text-sm text-gray-500 font-medium">School Management System</Text>
-            </View>
-          </View>
-
-          <TouchableOpacity
-            onLongPress={() => setShowDebug(true)}
-            delayLongPress={2000}
-            className="flex-row items-center mt-2 group mb-6"
-          >
-
-            <View className="ml-1 px-1.5 py-0.5 bg-gray-100 rounded text-[10px] text-gray-400 opacity-0 group-active:opacity-100">
-              <Text className="text-[10px] text-gray-400">v1.0</Text>
-            </View>
-          </TouchableOpacity>
-
-          {/* --- 2. Quick Status Cards --- */}
+          {/* Stat Cards */}
           {statsLoading ? (
             <View className="flex-row mb-8">
-              <View className="flex-1 bg-gray-200 h-32 rounded-3xl animate-pulse mr-2" />
-              <View className="flex-1 bg-gray-200 h-32 rounded-3xl animate-pulse ml-2" />
+              <View className="flex-1 bg-gray-200 dark:bg-gray-800 h-32 rounded-3xl mr-2" />
+              <View className="flex-1 bg-gray-200 dark:bg-gray-800 h-32 rounded-3xl ml-2" />
             </View>
           ) : (
             <View className="flex-row mb-10">
-              <View style={{ flex: 1, backgroundColor: "#111827", padding: 20, borderRadius: 24, marginRight: 6, shadowColor: "#000", shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.15, shadowRadius: 10, elevation: 8, minHeight: 140, justifyContent: 'space-between' }}>
+              {/* Students Card */}
+              <View style={{
+                flex: 1, backgroundColor: cardBg,
+                padding: 20, borderRadius: 24, marginRight: 6,
+                shadowColor: "#000", shadowOffset: { width: 0, height: 8 },
+                shadowOpacity: 0.15, shadowRadius: 10, elevation: 8,
+                minHeight: 140, justifyContent: 'space-between',
+                borderWidth: isDark ? 1 : 0, borderColor: '#1f2937',
+              }}>
                 <View>
-                  <View style={{ backgroundColor: "rgba(255, 255, 255, 0.1)", width: 42, height: 42, borderRadius: 12, alignItems: "center", justifyContent: "center", marginBottom: 16 }}>
+                  <View style={{ backgroundColor: "rgba(255,255,255,0.1)", width: 42, height: 42, borderRadius: 12, alignItems: "center", justifyContent: "center", marginBottom: 16 }}>
                     <IconUsers size={22} color="white" />
                   </View>
-                  <Text style={{ color: "white", fontSize: 26, fontWeight: "900", letterSpacing: -0.5 }}>
+                  <Text style={{ color: "white", fontSize: 26, fontWeight: "700", letterSpacing: -0.5 }}>
                     {stats.find(s => s.label === "Total Students")?.value || "0"}
                   </Text>
                 </View>
-                <Text style={{ color: "rgba(255, 255, 255, 0.5)", fontSize: 10, fontWeight: "800", textTransform: "uppercase", letterSpacing: 1.2 }}>Total Students</Text>
+                <Text style={{ color: "rgba(255,255,255,0.5)", fontSize: 10, fontWeight: "600", textTransform: "uppercase", letterSpacing: 1.2 }}>
+                  Total Students
+                </Text>
               </View>
 
-              <View style={{ flex: 1, backgroundColor: "#f97316", padding: 20, borderRadius: 24, marginLeft: 6, shadowColor: "#f97316", shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.25, shadowRadius: 10, elevation: 12, minHeight: 140, justifyContent: 'space-between' }}>
+              {/* Revenue Card — always orange, no dark variant needed */}
+              <View style={{
+                flex: 1, backgroundColor: "#FF6B00",
+                padding: 20, borderRadius: 24, marginLeft: 6,
+                shadowColor: "#FF6B00", shadowOffset: { width: 0, height: 8 },
+                shadowOpacity: 0.25, shadowRadius: 10, elevation: 12,
+                minHeight: 140, justifyContent: 'space-between',
+              }}>
                 <View>
-                  <View style={{ backgroundColor: "rgba(255, 255, 255, 0.2)", width: 42, height: 42, borderRadius: 12, alignItems: "center", justifyContent: "center", marginBottom: 16 }}>
+                  <View style={{ backgroundColor: "rgba(255,255,255,0.2)", width: 42, height: 42, borderRadius: 12, alignItems: "center", justifyContent: "center", marginBottom: 16 }}>
                     <IconWallet size={22} color="white" />
                   </View>
-                  <View>
-                    <Text
-                      style={{ color: "white", fontSize: 22, fontWeight: "900", letterSpacing: -1 }}
-                      numberOfLines={1}
-                      adjustsFontSizeToFit
-                    >
-                      {stats.find(s => s.label === "Revenue")?.value || "KES 0"}
+                  <Text style={{ color: "white", fontSize: 22, fontWeight: "700", letterSpacing: -1 }} numberOfLines={1} adjustsFontSizeToFit>
+                    {stats.find(s => s.label === "Revenue")?.value || "KES 0"}
+                  </Text>
+                  {stats.find(s => s.label === "Revenue")?.subValue && (
+                    <Text style={{ color: "rgba(255,255,255,0.8)", fontSize: 12, fontWeight: "500", marginTop: 2 }}>
+                      {stats.find(s => s.label === "Revenue")?.subValue}
                     </Text>
-                    {stats.find(s => s.label === "Revenue")?.subValue && (
-                      <Text style={{ color: "rgba(255, 255, 255, 0.8)", fontSize: 12, fontWeight: "600", marginTop: 2 }}>
-                        {stats.find(s => s.label === "Revenue")?.subValue}
-                      </Text>
-                    )}
-                  </View>
+                  )}
                 </View>
-                <Text style={{ color: "rgba(255, 255, 255, 0.85)", fontSize: 10, fontWeight: "800", textTransform: "uppercase", letterSpacing: 1.2 }}>Total Revenue</Text>
+                <Text style={{ color: "rgba(255,255,255,0.85)", fontSize: 10, fontWeight: "600", textTransform: "uppercase", letterSpacing: 1.2 }}>
+                  Total Revenue
+                </Text>
               </View>
             </View>
-          )
-          }
+          )}
 
-          {/* --- 3. Quick Actions Grid --- */}
-          <View style={{ marginBottom: 40 }}>
-            <Text style={{ fontSize: 18, fontWeight: "700", color: "#111827", marginBottom: 16, paddingHorizontal: 4 }}>Quick Actions</Text>
+          {/* Quick Actions */}
+          <View className="mb-10">
+            <Text className="text-lg font-bold text-gray-900 dark:text-white mb-4 px-1">Quick Actions</Text>
             <View style={{ flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between" }}>
-              <QuickAction
-                icon={IconUserPlus}
-                label="Enroll User"
-                color="#f97316"
-                onPress={() => router.push("/(admin)/users/create")}
-              />
-              <QuickAction
-                icon={IconBookOpen}
-                label="Library"
-                color="#f97316"
-                onPress={() => router.navigate("/(admin)/management/library" as any)}
-              />
-              <QuickAction
-                icon={IconWallet}
-                label="Finance"
-                color="#f97316"
-                onPress={() => router.navigate("/(admin)/finance" as any)}
-              />
-              <QuickAction
-                icon={IconBarChart3}
-                label="Analytics"
-                color="#f97316"
-                onPress={() => router.navigate("/(admin)/management/analytics" as any)}
-              />
+              <QuickAction icon={IconUserPlus} label="Enroll User" onPress={() => router.push("/(admin)/users/create")} />
+              <QuickAction icon={IconBookOpen} label="Library" onPress={() => router.navigate("/(admin)/management/library" as any)} />
+              <QuickAction icon={IconWallet} label="Finance" onPress={() => router.navigate("/(admin)/finance" as any)} />
+              <QuickAction icon={IconBarChart3} label="Analytics" onPress={() => router.navigate("/(admin)/management/analytics" as any)} />
             </View>
           </View>
 
-          {/* --- 4. Recent Activity --- */}
+          {/* Recent Users */}
           <View>
-            <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-end", marginBottom: 20, paddingHorizontal: 4 }}>
-              <Text style={{ fontSize: 18, fontWeight: "700", color: "#111827" }}>Recent Users</Text>
+            <View className="flex-row justify-between items-end mb-5 px-1">
+              <Text className="text-lg font-bold text-gray-900 dark:text-white">Recent Users</Text>
               <TouchableOpacity onPress={() => router.navigate("/(admin)/users")}>
-                <Text style={{ color: "#f97316", fontWeight: "600", fontSize: 14 }}>View All</Text>
+                <Text className="text-orange-500 font-bold text-sm">View All</Text>
               </TouchableOpacity>
             </View>
 
             {loadingUsers ? (
               <View className="h-40 items-center justify-center">
-                <Text className="text-gray-400">Loading users...</Text>
+                <ActivityIndicator color="#FF6900" />
               </View>
             ) : recentUsers.length === 0 ? (
-              <View className="bg-white p-8 rounded-3xl border border-dashed border-gray-200 items-center justify-center mb-6">
-                <View className="w-12 h-12 bg-gray-50 rounded-full items-center justify-center mb-3">
+              <View className="bg-white dark:bg-[#121212] p-8 rounded-3xl border border-dashed border-gray-200 dark:border-gray-800 items-center justify-center mb-6">
+                <View className="w-12 h-12 bg-gray-50 dark:bg-gray-800 rounded-full items-center justify-center mb-3">
                   <IconUsers size={24} color="#9ca3af" />
                 </View>
-                <Text className="text-gray-500 font-medium">No recent activity detected</Text>
-                <Text className="text-gray-400 text-xs mt-1 text-center">New users will appear here once they join the platform.</Text>
+                <Text className="text-gray-500 dark:text-gray-400 font-medium">No recent activity detected</Text>
+                <Text className="text-gray-400 dark:text-gray-500 text-xs mt-1 text-center">New users will appear here once they join.</Text>
               </View>
             ) : (
               <>
-                {/* Desktop View */}
+                {/* Desktop */}
                 <View className="hidden lg:flex flex-row flex-wrap gap-4">
                   {recentUsers.map((user) => (
-                    <View key={user.id} style={{ backgroundColor: "white", padding: 20, borderRadius: 24, borderWidth: 1, borderColor: "#f3f4f6", flex: 1, minWidth: "30%" }}>
+                    <View key={user.id} style={{ backgroundColor: surfaceBg, padding: 20, borderRadius: 24, borderWidth: 1, borderColor: surfaceBorder, flex: 1, minWidth: "30%" }}>
                       <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
-                        <View style={{ height: 40, width: 40, borderRadius: 12, alignItems: "center", justifyContent: "center", backgroundColor: user.role === 'student' ? '#fff7ed' : user.role === 'teacher' ? '#f3e8ff' : '#eff6ff' }}>
-                          {user.role === 'student' ? <IconGraduationCap size={20} color="#f97316" /> :
+                        <View style={{
+                          height: 40, width: 40, borderRadius: 12, alignItems: "center", justifyContent: "center",
+                          backgroundColor: user.role === 'student' ? (isDark ? '#431407' : '#fff7ed') : user.role === 'teacher' ? (isDark ? '#2e1065' : '#f3e8ff') : (isDark ? '#172554' : '#eff6ff')
+                        }}>
+                          {user.role === 'student' ? <IconGraduationCap size={20} color="#FF6B00" /> :
                             user.role === 'teacher' ? <IconSchool size={20} color="#8b5cf6" /> :
                               <IconSettings size={20} color="#3b82f6" />}
                         </View>
-                        <View style={{ backgroundColor: "#f9fafb", paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 }}>
-                          <Text style={{ color: "#9ca3af", fontWeight: "500", fontSize: 10 }}>
-                            {new Date(user.joinDate).toLocaleDateString()}
+                        <View style={{ backgroundColor: badgeBg, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 }}>
+                          <Text style={{ color: textSubtle, fontWeight: "500", fontSize: 10 }}>
+                            {user.joinDate ? new Date(user.joinDate).toLocaleDateString() : 'N/A'}
                           </Text>
                         </View>
                       </View>
-                      <Text style={{ color: "#111827", fontWeight: "700", fontSize: 16, marginBottom: 4 }} numberOfLines={1}>
-                        {user.name}
-                      </Text>
-                      <Text style={{ color: "#6b7280", fontSize: 12, marginBottom: 4, fontWeight: "500" }}>{user.role.toUpperCase()}</Text>
-                      <Text style={{ color: "#9ca3af", fontSize: 10 }}>{user.displayId}</Text>
+                      <Text style={{ color: textPrimary, fontWeight: "700", fontSize: 16, marginBottom: 4 }} numberOfLines={1}>{user.name}</Text>
+                      <Text style={{ color: textMuted, fontSize: 12, marginBottom: 4, fontWeight: "500" }}>{user.role.toUpperCase()}</Text>
+                      <Text style={{ color: textSubtle, fontSize: 10 }}>{user.displayId}</Text>
                     </View>
                   ))}
                 </View>
 
-                {/* Mobile View */}
-                <ScrollView
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                  className="flex-row -mx-6 px-6 lg:hidden"
-                  contentContainerStyle={{ paddingRight: 24 }}
-                >
-                  {loadingUsers ? (
-                    <Text className="text-gray-400">Loading users...</Text>
-                  ) : recentUsers.map((user) => (
-                    <View key={user.id} style={{ backgroundColor: "white", padding: 20, borderRadius: 24, borderWidth: 1, borderColor: "#f3f4f6", marginRight: 16, width: 288 }}>
-                      <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
-                        <View style={{ height: 40, width: 40, borderRadius: 12, alignItems: "center", justifyContent: "center", backgroundColor: user.role === 'student' ? '#fff7ed' : user.role === 'teacher' ? '#f3e8ff' : '#eff6ff' }}>
-                          {user.role === 'student' ? <IconGraduationCap size={20} color="#f97316" /> :
+                {/* Mobile */}
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} className="flex-row -mx-6 px-6 lg:hidden" contentContainerStyle={{ paddingRight: 24 }}>
+                  {recentUsers.map((user) => (
+                    <View key={user.id} className="bg-white dark:bg-[#1a1a1a] p-5 rounded-3xl border border-gray-100 dark:border-gray-800 mr-4 w-72">
+                      <View className="flex-row items-center justify-between mb-4">
+                        <View className={`h-10 w-10 rounded-xl items-center justify-center ${user.role === 'student' ? 'bg-orange-50 dark:bg-orange-950/30' : user.role === 'teacher' ? 'bg-purple-50 dark:bg-purple-950/30' : 'bg-blue-50 dark:bg-blue-950/30'}`}>
+                          {user.role === 'student' ? <IconGraduationCap size={20} color="#FF6B00" /> :
                             user.role === 'teacher' ? <IconSchool size={20} color="#8b5cf6" /> :
                               <IconSettings size={20} color="#3b82f6" />}
                         </View>
-                        <View style={{ backgroundColor: "#f9fafb", paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 }}>
-                          <Text style={{ color: "#9ca3af", fontWeight: "500", fontSize: 10 }}>
-                            {new Date(user.joinDate).toLocaleDateString()}
+                        <View className="bg-gray-50 dark:bg-gray-800 px-2 py-1 rounded-lg">
+                          <Text className="text-gray-400 dark:text-gray-500 font-bold text-[10px]">
+                            {user.joinDate ? new Date(user.joinDate).toLocaleDateString() : 'N/A'}
                           </Text>
                         </View>
                       </View>
-                      <Text style={{ color: "#111827", fontWeight: "700", fontSize: 16, marginBottom: 4 }} numberOfLines={1}>
-                        {user.name}
-                      </Text>
-                      <Text style={{ color: "#6b7280", fontSize: 12, marginBottom: 4, fontWeight: "500" }}>{user.role.toUpperCase()}</Text>
-                      <Text style={{ color: "#9ca3af", fontSize: 10 }}>{user.displayId}</Text>
+                      <Text className="text-gray-900 dark:text-white font-bold text-base mb-1" numberOfLines={1}>{user.name}</Text>
+                      <Text className="text-gray-600 dark:text-gray-300 text-xs font-bold uppercase tracking-wider mb-1">{user.role}</Text>
+                      <Text className="text-gray-400 dark:text-gray-500 text-[10px] font-mono">{user.displayId}</Text>
                     </View>
                   ))}
                 </ScrollView>
@@ -384,7 +328,7 @@ export default function AdminDashboard() {
             )}
           </View>
         </View>
-      </ScrollView >
-    </View >
+      </ScrollView>
+    </View>
   );
 }

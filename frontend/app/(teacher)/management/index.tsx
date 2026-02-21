@@ -1,18 +1,17 @@
-import React from "react";
-import { View, Text, ScrollView, TouchableOpacity, StatusBar } from 'react-native';
-import {
-    GraduationCap,
-    ClipboardList,
-    CalendarCheck,
-    Megaphone,
-    BarChart3,
-    Wallet,
-    BookOpen,
-    MessageSquare,
-    ChevronRight,
-    ArrowLeft
-} from 'lucide-react-native';
+import { UnifiedHeader } from "@/components/common/UnifiedHeader";
 import { router } from "expo-router";
+import {
+    BarChart3,
+    BookOpen,
+    CalendarCheck,
+    ChevronRight,
+    ClipboardList,
+    GraduationCap,
+    Megaphone,
+    MessageSquare,
+    Wallet
+} from 'lucide-react-native';
+import { ScrollView, Text, TouchableOpacity, View } from 'react-native';
 
 interface FeatureCardProps {
     icon: any;
@@ -24,52 +23,53 @@ interface FeatureCardProps {
     badge?: string;
 }
 
-const FeatureCard = ({ icon: Icon, title, description, color, bgColor, route, badge }: FeatureCardProps) => (
-    <TouchableOpacity
-        className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm mb-3 flex-row items-center active:bg-gray-50"
-        onPress={() => router.push(route as any)}
-    >
-        <View style={{ backgroundColor: bgColor }} className="p-3 rounded-xl mr-4">
-            <Icon size={24} color={color} />
-        </View>
-        <View className="flex-1">
-            <View className="flex-row items-center">
-                <Text className="text-gray-900 font-bold text-base">{title}</Text>
-                {badge && (
-                    <View className="ml-2 bg-red-500 px-2 py-0.5 rounded-full">
-                        <Text className="text-white text-xs font-bold">{badge}</Text>
-                    </View>
-                )}
+const FeatureCard = ({ icon: Icon, title, description, color, bgColor, route, badge }: FeatureCardProps) => {
+    return (
+        <TouchableOpacity
+            className="bg-white dark:bg-[#1a1a1a] p-5 rounded-[32px] border border-gray-100 dark:border-gray-800 shadow-sm mb-4 flex-row items-center active:bg-gray-50"
+            onPress={() => router.push(route as any)}
+        >
+            <View style={{ backgroundColor: bgColor }} className="p-3.5 rounded-2xl mr-4 shadow-sm dark:opacity-90">
+                <Icon size={24} color={color} />
             </View>
-            <Text className="text-gray-500 text-sm mt-0.5">{description}</Text>
-        </View>
-        <ChevronRight size={20} color="#9CA3AF" />
-    </TouchableOpacity>
-);
+            <View className="flex-1">
+                <View className="flex-row items-center">
+                    <Text className="text-gray-900 dark:text-gray-100 font-bold text-base tracking-tight">{title}</Text>
+                    {badge && (
+                        <View className="ml-2 bg-[#FF6900] px-2 py-0.5 rounded-full">
+                            <Text className="text-white text-[8px] font-bold uppercase">{badge}</Text>
+                        </View>
+                    )}
+                </View>
+                <Text className="text-gray-400 text-xs font-medium mt-0.5">{description}</Text>
+            </View>
+            <ChevronRight size={18} color="#D1D5DB" />
+        </TouchableOpacity>
+    );
+};
 
 export default function ManagementIndex() {
     const features: FeatureCardProps[] = [
         {
             icon: GraduationCap,
-            title: "Grades",
-            description: "View and update student grades",
-            color: "#1a1a1a",
-            bgColor: "#f3f4f6", // gray-100
+            title: "Performance",
+            description: "Grades and assessment tracking",
+            color: "#FF6900",
+            bgColor: "#f3f4f6",
             route: "/(teacher)/management/grades",
-            badge: "12 pending"
+            badge: "Action Required"
         },
         {
             icon: ClipboardList,
-            title: "Assignments",
-            description: "Create assignments and view submissions",
+            title: "Coursework",
+            description: "Assignments and submissions",
             color: "#f97316",
             bgColor: "#ffedd5",
-            route: "/(teacher)/management/assignments",
-            badge: "5 new"
+            route: "/(teacher)/management/assignments"
         },
         {
             icon: CalendarCheck,
-            title: "Attendance",
+            title: "Registrar",
             description: "Mark and track student attendance",
             color: "#8b5cf6",
             bgColor: "#ede9fe",
@@ -77,23 +77,23 @@ export default function ManagementIndex() {
         },
         {
             icon: Megaphone,
-            title: "Announcements",
-            description: "Post updates to your students",
+            title: "Broadcasting",
+            description: "Post updates to your classes",
             color: "#ec4899",
             bgColor: "#fce7f3",
             route: "/(teacher)/management/announcements"
         },
         {
             icon: BarChart3,
-            title: "Analytics",
-            description: "Track performance and insights",
+            title: "Insights",
+            description: "Track performance and statistics",
             color: "#3b82f6",
             bgColor: "#dbeafe",
             route: "/(teacher)/management/analytics"
         },
         {
             icon: Wallet,
-            title: "Earnings",
+            title: "Finance",
             description: "View payment history and earnings",
             color: "#22c55e",
             bgColor: "#dcfce7",
@@ -101,7 +101,7 @@ export default function ManagementIndex() {
         },
         {
             icon: BookOpen,
-            title: "Resources",
+            title: "Academic Vault",
             description: "Upload and manage Subject materials",
             color: "#eab308",
             bgColor: "#fef9c3",
@@ -109,7 +109,7 @@ export default function ManagementIndex() {
         },
         {
             icon: MessageSquare,
-            title: "Messages",
+            title: "Direct Connect",
             description: "Chat with students and parents",
             color: "#0891b2",
             bgColor: "#ecfeff",
@@ -118,53 +118,46 @@ export default function ManagementIndex() {
     ];
 
     return (
-        <>
-            <StatusBar barStyle="dark-content" />
-            <View className="flex-1 bg-gray-50">
-                <ScrollView
-                    className="flex-1"
-                    showsVerticalScrollIndicator={false}
-                    contentContainerStyle={{ paddingBottom: 100 }}
-                >
-                    <View className="p-4 md:p-8">
-                        {/* Header */}
-                        <View className="flex-row items-center mb-2">
-                            <TouchableOpacity
-                                className="p-2 mr-2"
-                                onPress={() => router.back()}
-                            >
-                                <ArrowLeft size={24} color="#374151" />
-                            </TouchableOpacity>
-                            <Text className="text-2xl font-bold text-gray-900">Management</Text>
-                        </View>
-                        <Text className="text-gray-500 mb-6 ml-10">
-                            Access all your teaching tools
-                        </Text>
-
-                        {/* Quick Stats Row */}
-                        <View className="flex-row gap-3 mb-6">
-                            <View className="flex-1 bg-teacherOrange p-4 rounded-2xl">
-                                <Text className="text-white text-xs uppercase">Pending Grades</Text>
-                                <Text className="text-white text-2xl font-bold">12</Text>
-                            </View>
-                            <View className="flex-1 bg-orange-500 p-4 rounded-2xl">
-                                <Text className="text-orange-100 text-xs uppercase">Submissions</Text>
-                                <Text className="text-white text-2xl font-bold">28</Text>
-                            </View>
-                            <View className="flex-1 bg-purple-600 p-4 rounded-2xl">
-                                <Text className="text-purple-100 text-xs uppercase">Today</Text>
-                                <Text className="text-white text-2xl font-bold">3</Text>
-                            </View>
-                        </View>
-
-                        {/* Feature Cards */}
-                        <Text className="text-lg font-bold text-gray-900 mb-3">Tools & Features</Text>
-                        {features.map((feature, index) => (
-                            <FeatureCard key={index} {...feature} />
-                        ))}
+        <View className="flex-1 bg-gray-50 dark:bg-black">
+            <UnifiedHeader
+                title="Intelligence"
+                subtitle="Management"
+                role="Teacher"
+                onBack={() => router.back()}
+            />
+            <ScrollView
+                className="flex-1"
+                showsVerticalScrollIndicator={false}
+                contentContainerStyle={{ paddingBottom: 100 }}
+            >
+                <View className="p-4 md:p-8">
+                    {/* Header Text */}
+                    <View className="mb-8 px-2">
+                        <Text className="text-gray-400 dark:text-gray-500 font-bold text-[10px] uppercase tracking-[3px] mb-2">Faculty Hub</Text>
+                        <Text className="text-gray-900 dark:text-white font-bold text-3xl tracking-tight">Academic Tools</Text>
                     </View>
-                </ScrollView>
-            </View>
-        </>
+
+                    {/* Quick Stats Row */}
+                    <View className="flex-row gap-4 mb-8">
+                        <View className="flex-1 bg-gray-900 dark:bg-[#1a1a1a] p-6 rounded-[32px] shadow-lg border border-transparent dark:border-gray-800">
+                            <Text className="text-white/40 dark:text-gray-500 text-[8px] font-bold uppercase tracking-widest">Pending</Text>
+                            <Text className="text-white text-3xl font-bold mt-1">12</Text>
+                        </View>
+                        <View className="flex-1 bg-white dark:bg-[#1a1a1a] p-6 rounded-[32px] border border-gray-100 dark:border-gray-800 shadow-sm">
+                            <Text className="text-gray-400 dark:text-gray-500 text-[8px] font-bold uppercase tracking-widest">Submitted</Text>
+                            <Text className="text-gray-900 dark:text-white text-3xl font-bold mt-1">28</Text>
+                        </View>
+                    </View>
+
+                    {/* Feature Cards */}
+                    <View className="px-2 mb-4">
+                        <Text className="text-gray-400 font-bold text-[10px] uppercase tracking-widest">Management Suite</Text>
+                    </View>
+                    {features.map((feature, index) => (
+                        <FeatureCard key={index} {...feature} />
+                    ))}
+                </View>
+            </ScrollView>
+        </View>
     );
 }

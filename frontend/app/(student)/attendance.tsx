@@ -1,11 +1,12 @@
-import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
-import React, { useEffect, useState } from 'react';
+import { UnifiedHeader } from "@/components/common/UnifiedHeader";
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/libs/supabase';
-import { Stack, useRouter } from 'expo-router';
-import { Calendar, Clock, CheckCircle, XCircle, AlertCircle } from 'lucide-react-native';
+import { router } from 'expo-router';
+import { AlertCircle, Calendar, CheckCircle, Clock, XCircle } from 'lucide-react-native';
+import React, { useEffect, useState } from 'react';
+import { ActivityIndicator, ScrollView, Text, View } from 'react-native';
 
-const AttendancePage = () => {
+export default function AttendancePage() {
     const { studentId } = useAuth();
     const [attendance, setAttendance] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
@@ -17,7 +18,6 @@ const AttendancePage = () => {
         total: 0,
         percentage: 100
     });
-    const router = useRouter();
 
     useEffect(() => {
         if (studentId) {
@@ -30,15 +30,11 @@ const AttendancePage = () => {
             setLoading(true);
             const { data, error } = await supabase
                 .from('attendance')
-                .select(`
-                    *,
-                    classes ( name )
-                `)
+                .select(`*, classes ( name )`)
                 .eq('student_id', studentId!)
                 .order('date', { ascending: false });
 
             if (error) throw error;
-
             setAttendance(data || []);
             calculateStats(data || []);
         } catch (error) {
@@ -54,112 +50,104 @@ const AttendancePage = () => {
         const absent = data.filter(r => r.status === 'absent').length;
         const late = data.filter(r => r.status === 'late').length;
         const excused = data.filter(r => r.status === 'excused').length;
-
-        // Calculate percentage (Present + Late count as "attended" generally, or maybe just Present)
-        // Usually: (Present + Late) / Total
         const effectivePresent = present + late;
         const percentage = total > 0 ? Math.round((effectivePresent / total) * 100) : 100;
-
         setStats({ present, absent, late, excused, total, percentage });
     };
 
-    const getStatusColor = (status: string) => {
+    const getStatusStyles = (status: string) => {
         switch (status) {
-            case 'present': return 'text-green-600';
-            case 'absent': return 'text-red-600';
-            case 'late': return 'text-orange-600';
-            case 'excused': return 'text-blue-600';
-            default: return 'text-gray-600';
+            case 'present': return { text: 'text-green-600', bg: 'bg-green-50', icon: <CheckCircle size={18} color="#16a34a" /> };
+            case 'absent': return { text: 'text-red-600', bg: 'bg-red-50', icon: <XCircle size={18} color="#dc2626" /> };
+            case 'late': return { text: 'text-orange-600', bg: 'bg-orange-50', icon: <Clock size={18} color="#ea580c" /> };
+            case 'excused': return { text: 'text-blue-600', bg: 'bg-blue-50', icon: <AlertCircle size={18} color="#2563eb" /> };
+            default: return { text: 'text-gray-600', bg: 'bg-gray-50', icon: <AlertCircle size={18} color="#4b5563" /> };
         }
     };
-
-    const getStatusIcon = (status: string) => {
-        switch (status) {
-            case 'present': return <CheckCircle size={20} color="#16a34a" />;
-            case 'absent': return <XCircle size={20} color="#dc2626" />;
-            case 'late': return <Clock size={20} color="#ea580c" />;
-            case 'excused': return <AlertCircle size={20} color="#2563eb" />;
-            default: return <AlertCircle size={20} color="#4b5563" />;
-        }
-    };
-
-    if (loading) {
-        return (
-            <View className="flex-1 justify-center items-center bg-gray-50">
-                <ActivityIndicator size="large" color="#FF6B00" />
-            </View>
-        );
-    }
 
     return (
-        <View className="flex-1 bg-gray-50">
-            <Stack.Screen options={{ title: 'My Attendance', headerBackTitle: 'Back' }} />
+        <View className="flex-1 bg-gray-50 dark:bg-black">
+            <UnifiedHeader
+                title="Intelligence"
+                subtitle="Attendance"
+                role="Student"
+                onBack={() => router.back()}
+            />
 
-            <ScrollView className="flex-1 p-4">
-                {/* Stats Cards */}
-                <View className="flex-row justify-between mb-6">
-                    <View className="bg-white p-4 rounded-xl shadow-sm flex-1 mr-2 items-center">
-                        <Text className="text-3xl font-bold text-gray-900">{stats.percentage}%</Text>
-                        <Text className="text-xs text-gray-500 uppercase font-bold mt-1">Attendance Rate</Text>
+            <View className="p-4 md:p-8">
+                {/* Score Hero */}
+                <View className="bg-gray-900 p-8 rounded-[40px] shadow-xl mb-8 flex-row items-center">
+                    <View className="flex-1">
+                        <Text className="text-white/40 text-[10px] font-bold uppercase tracking-[3px] mb-2">Performance Rate</Text>
+                        <Text className="text-white text-5xl font-black tracking-tighter">{stats.percentage}%</Text>
+                        <Text className="text-gray-400 text-sm font-medium mt-2">from {stats.total} sessions recorded</Text>
                     </View>
-                    <View className="bg-white p-4 rounded-xl shadow-sm flex-1 ml-2 items-center">
-                        <Text className="text-3xl font-bold text-gray-900">{stats.total}</Text>
-                        <Text className="text-xs text-gray-500 uppercase font-bold mt-1">Total Classes</Text>
+                    <View className="w-16 h-16 rounded-full bg-[#FF6900] items-center justify-center shadow-lg">
+                        <Calendar size={32} color="white" />
                     </View>
                 </View>
 
-                <View className="flex-row justify-between mb-6">
-                    <View className="items-center">
-                        <Text className="text-green-600 font-bold text-lg">{stats.present}</Text>
-                        <Text className="text-xs text-gray-500">Present</Text>
+                {/* Mini Stats Grid */}
+                <View className="flex-row flex-wrap gap-3 mb-10 px-2">
+                    <View className="w-[47%] bg-white dark:bg-[#1a1a1a] p-5 rounded-[32px] border border-gray-100 dark:border-gray-800 shadow-sm items-center">
+                        <Text className="text-green-600 text-2xl font-bold">{stats.present}</Text>
+                        <Text className="text-gray-400 text-[8px] font-bold uppercase tracking-widest mt-1">Present</Text>
                     </View>
-                    <View className="items-center">
-                        <Text className="text-red-600 font-bold text-lg">{stats.absent}</Text>
-                        <Text className="text-xs text-gray-500">Absent</Text>
+                    <View className="w-[47%] bg-white dark:bg-[#1a1a1a] p-5 rounded-[32px] border border-gray-100 dark:border-gray-800 shadow-sm items-center">
+                        <Text className="text-red-600 text-2xl font-bold">{stats.absent}</Text>
+                        <Text className="text-gray-400 text-[8px] font-bold uppercase tracking-widest mt-1">Absent</Text>
                     </View>
-                    <View className="items-center">
-                        <Text className="text-orange-600 font-bold text-lg">{stats.late}</Text>
-                        <Text className="text-xs text-gray-500">Late</Text>
+                    <View className="w-[47%] bg-white dark:bg-[#1a1a1a] p-5 rounded-[32px] border border-gray-100 dark:border-gray-800 shadow-sm items-center">
+                        <Text className="text-orange-600 text-2xl font-bold">{stats.late}</Text>
+                        <Text className="text-gray-400 text-[8px] font-bold uppercase tracking-widest mt-1">Late</Text>
                     </View>
-                    <View className="items-center">
-                        <Text className="text-blue-600 font-bold text-lg">{stats.excused}</Text>
-                        <Text className="text-xs text-gray-500">Excused</Text>
+                    <View className="w-[47%] bg-white dark:bg-[#1a1a1a] p-5 rounded-[32px] border border-gray-100 dark:border-gray-800 shadow-sm items-center">
+                        <Text className="text-blue-600 text-2xl font-bold">{stats.excused}</Text>
+                        <Text className="text-gray-400 text-[8px] font-bold uppercase tracking-widest mt-1">Excused</Text>
                     </View>
                 </View>
 
-                {/* History List */}
-                <Text className="text-lg font-bold text-gray-900 mb-3">Attendance History</Text>
+                {/* Detailed Logs */}
+                <View className="px-2 mb-4">
+                    <Text className="text-gray-400 font-bold text-[10px] uppercase tracking-[3px]">Session Logs</Text>
+                </View>
 
-                {attendance.length === 0 ? (
-                    <View className="bg-white p-8 rounded-xl items-center justify-center">
-                        <Text className="text-gray-400">No attendance records found.</Text>
-                    </View>
+                {loading ? (
+                    <ActivityIndicator size="large" color="#FF6900" className="mt-8" />
                 ) : (
-                    attendance.map((record) => (
-                        <View key={record.id} className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm mb-3 flex-row justify-between items-center">
-                            <View className="flex-1">
-                                <Text className="font-bold text-gray-900 text-base">{record.classes?.name || 'Class'}</Text>
-                                <View className="flex-row items-center mt-1">
-                                    <Calendar size={14} color="#9ca3af" />
-                                    <Text className="text-gray-500 text-xs ml-1">{new Date(record.date).toLocaleDateString()}</Text>
-                                </View>
+                    <ScrollView className="flex-1" showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 200 }}>
+                        {attendance.length === 0 ? (
+                            <View className="bg-white dark:bg-[#1a1a1a] p-12 rounded-[40px] items-center border border-gray-100 dark:border-gray-700 border-dashed mt-4">
+                                <Calendar size={48} color="#E5E7EB" />
+                                <Text className="text-gray-400 font-bold text-center mt-6">No records found</Text>
                             </View>
-                            <View className="flex-row items-center">
-                                <View className={`mr-2 px-2 py-1 rounded-full bg-gray-100`}>
-                                    <Text className={`text-xs font-bold capitalize ${getStatusColor(record.status)}`}>
-                                        {record.status}
-                                    </Text>
-                                </View>
-                                {getStatusIcon(record.status)}
-                            </View>
-                        </View>
-                    ))
+                        ) : (
+                            attendance.map((record) => {
+                                const styles = getStatusStyles(record.status);
+                                return (
+                                    <View key={record.id} className="bg-white dark:bg-[#1a1a1a] p-5 rounded-[32px] border border-gray-50 dark:border-gray-800 mb-4 flex-row justify-between items-center shadow-sm">
+                                        <View className="flex-1">
+                                            <Text className="font-bold text-gray-900 dark:text-white text-base tracking-tight mb-1">{record.classes?.name || 'Academic Session'}</Text>
+                                            <View className="flex-row items-center">
+                                                <Calendar size={12} color="#9CA3AF" />
+                                                <Text className="text-gray-400 text-[10px] font-bold uppercase tracking-widest ml-1.5">{new Date(record.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</Text>
+                                            </View>
+                                        </View>
+                                        <View className="flex-row items-center">
+                                            <View className={`${styles.bg} px-3 py-1.5 rounded-full mr-3 border border-black/5`}>
+                                                <Text className={`${styles.text} text-[8px] font-black uppercase tracking-widest`}>{record.status}</Text>
+                                            </View>
+                                            <View className="w-10 h-10 rounded-2xl bg-gray-50 dark:bg-gray-800 items-center justify-center border border-gray-100 dark:border-gray-700">
+                                                {styles.icon}
+                                            </View>
+                                        </View>
+                                    </View>
+                                );
+                            })
+                        )}
+                    </ScrollView>
                 )}
-
-                <View className="h-10" />
-            </ScrollView>
+            </View>
         </View>
     );
-};
-
-export default AttendancePage;
+}

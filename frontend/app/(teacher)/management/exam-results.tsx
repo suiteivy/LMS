@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from "react";
-import { View, Text, ScrollView, TouchableOpacity, TextInput, ActivityIndicator, Alert } from "react-native";
-import { useLocalSearchParams, router } from "expo-router";
-import { ChevronLeft, Save, Search, User } from "lucide-react-native";
+import { UnifiedHeader } from "@/components/common/UnifiedHeader";
 import { ExamService } from "@/services/ExamService";
-import { TeacherAttendanceAPI } from "@/services/TeacherAttendanceService"; // We can reuse student fetching logic
-import { SubjectAPI } from "@/services/SubjectService";
+import { TeacherAttendanceAPI } from "@/services/TeacherAttendanceService";
+import { showError, showSuccess } from "@/utils/toast";
+import { router, useLocalSearchParams } from "expo-router";
+import { Save, Search, User } from "lucide-react-native";
+import React, { useEffect, useState } from "react";
+import { ActivityIndicator, ScrollView, Text, TextInput, TouchableOpacity, View } from "react-native";
 
 interface StudentScore {
     student_id: string;
@@ -30,26 +31,19 @@ export default function ExamResultsPage() {
     const fetchInitialData = async () => {
         try {
             setLoading(true);
-            // 1. Fetch Exam Details (we'll need a getExamById method in service, or filter from list)
             const exams = await ExamService.getExams();
             const currentExam = exams.find((e: any) => e.id === examId);
             setExam(currentExam);
 
             if (!currentExam) {
-                Alert.alert("Error", "Exam not found");
+                showError("Error", "Exam not found");
                 router.back();
                 return;
             }
 
-            // 2. Fetch Students for the subject
-            // We can reuse the logic from attendance or subjects
-            // For now, let's assume we have a way to get students for a subject
             const studentList = await TeacherAttendanceAPI.getStudentAttendance(new Date().toISOString().split('T')[0], currentExam.subject_id);
-
-            // 3. Fetch Existing Results
             const existingResults = await ExamService.getExamResults(examId as string);
 
-            // 4. Merge
             const initialScores = studentList.map((s: any) => {
                 const existing = existingResults.find((r: any) => r.student_id === s.student_id);
                 return {
@@ -63,7 +57,7 @@ export default function ExamResultsPage() {
             setStudentScores(initialScores);
         } catch (error) {
             console.error(error);
-            Alert.alert("Error", "Failed to load data");
+            showError("Error", "Failed to load data");
         } finally {
             setLoading(false);
         }
@@ -88,10 +82,10 @@ export default function ExamResultsPage() {
                 }));
 
             await Promise.all(promises);
-            Alert.alert("Success", "Exam results saved successfully");
+            showSuccess("Success", "Exam results saved successfully");
         } catch (error) {
             console.error(error);
-            Alert.alert("Error", "Failed to save results");
+            showError("Error", "Failed to save results");
         } finally {
             setSaving(false);
         }
@@ -101,89 +95,85 @@ export default function ExamResultsPage() {
         s.student_name.toLowerCase().includes(searchQuery.toLowerCase())
     );
 
-    if (loading) {
-        return (
-            <View className="flex-1 justify-center items-center bg-gray-50">
-                <ActivityIndicator size="large" color="#FF6B00" />
-            </View>
-        );
-    }
-
     return (
         <View className="flex-1 bg-gray-50">
-            {/* Header */}
-            <View className="bg-white px-6 pt-12 pb-6 border-b border-gray-100">
-                <View className="flex-row items-center justify-between">
-                    <TouchableOpacity onPress={() => router.back()} className="bg-gray-100 p-2 rounded-full">
-                        <ChevronLeft size={24} color="#374151" />
-                    </TouchableOpacity>
-                    <View className="items-center">
-                        <Text className="text-xl font-bold text-gray-900">{exam?.title}</Text>
-                        <Text className="text-gray-500 text-xs">Max Score: {exam?.max_score}</Text>
+            <UnifiedHeader
+                title={exam?.title || "Exam Results"}
+                subtitle={exam ? `Max: ${exam.max_score}` : "Grading"}
+                role="Teacher"
+                onBack={() => router.back()}
+            />
+
+            <View className="p-4 md:p-8">
+                {/* Actions Row */}
+                <View className="flex-row items-center gap-3 mb-6">
+                    <View className="flex-1 flex-row items-center bg-white px-5 py-3.5 rounded-2xl border border-gray-100 shadow-sm">
+                        <Search size={18} color="#9CA3AF" />
+                        <TextInput
+                            className="flex-1 ml-3 text-gray-900 font-bold text-xs uppercase tracking-widest"
+                            placeholder="Find student..."
+                            placeholderTextColor="#9CA3AF"
+                            value={searchQuery}
+                            onChangeText={setSearchQuery}
+                        />
                     </View>
                     <TouchableOpacity
                         onPress={handleSaveResults}
                         disabled={saving}
-                        className={`p-2 rounded-full ${saving ? 'bg-gray-100' : 'bg-[#FF6B00]'}`}
+                        className={`w-14 h-14 rounded-2xl items-center justify-center shadow-lg ${saving ? 'bg-gray-100' : 'bg-[#FF6900]'}`}
                     >
-                        <Save size={24} color={saving ? "#9CA3AF" : "white"} />
+                        {saving ? <ActivityIndicator size="small" color="#9CA3AF" /> : <Save size={24} color="white" />}
                     </TouchableOpacity>
                 </View>
 
-                {/* Search */}
-                <View className="mt-6 flex-row items-center bg-gray-100 px-4 py-3 rounded-2xl">
-                    <Search size={20} color="#9CA3AF" />
-                    <TextInput
-                        className="flex-1 ml-3 text-gray-900 font-medium"
-                        placeholder="Search student..."
-                        value={searchQuery}
-                        onChangeText={setSearchQuery}
-                    />
-                </View>
-            </View>
+                {loading ? (
+                    <ActivityIndicator size="large" color="#FF6900" className="mt-8" />
+                ) : (
+                    <ScrollView className="flex-1" showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 200 }}>
+                        {filteredStudents.map((student) => (
+                            <View key={student.student_id} className="bg-white p-5 rounded-[32px] mb-4 border border-gray-50 shadow-sm">
+                                <View className="flex-row items-center mb-5">
+                                    <View className="bg-orange-50 p-2.5 rounded-2xl mr-4 border border-orange-100">
+                                        <User size={20} color="#FF6900" />
+                                    </View>
+                                    <Text className="text-gray-900 font-bold text-lg tracking-tight">{student.student_name}</Text>
+                                </View>
 
-            <ScrollView className="flex-1 px-6 pt-4">
-                {filteredStudents.map((student) => (
-                    <View key={student.student_id} className="bg-white p-4 rounded-3xl mb-4 border border-gray-100 shadow-sm">
-                        <View className="flex-row items-center mb-4">
-                            <View className="bg-gray-100 p-2 rounded-2xl mr-3">
-                                <User size={24} color="#6B7280" />
+                                <View className="flex-row gap-4">
+                                    <View className="w-24">
+                                        <Text className="text-gray-400 text-[8px] font-bold uppercase tracking-[2px] ml-1 mb-2">Points</Text>
+                                        <TextInput
+                                            className="bg-gray-50 p-4 rounded-2xl font-bold text-gray-900 text-center border border-gray-100"
+                                            placeholder="0"
+                                            placeholderTextColor="#D1D5DB"
+                                            keyboardType="numeric"
+                                            value={student.score}
+                                            onChangeText={(val) => handleUpdateScore(student.student_id, 'score', val)}
+                                        />
+                                    </View>
+                                    <View className="flex-1">
+                                        <Text className="text-gray-400 text-[8px] font-bold uppercase tracking-[2px] ml-1 mb-2">Faculty Feedback</Text>
+                                        <TextInput
+                                            className="bg-gray-50 p-4 rounded-2xl text-gray-900 font-medium border border-gray-100"
+                                            placeholder="Excellent work..."
+                                            placeholderTextColor="#D1D5DB"
+                                            value={student.feedback}
+                                            onChangeText={(val) => handleUpdateScore(student.student_id, 'feedback', val)}
+                                        />
+                                    </View>
+                                </View>
                             </View>
-                            <Text className="text-lg font-bold text-gray-900">{student.student_name}</Text>
-                        </View>
+                        ))}
 
-                        <View className="flex-row gap-4">
-                            <View className="flex-1">
-                                <Text className="text-gray-500 text-xs font-bold uppercase mb-1 ml-1">Score</Text>
-                                <TextInput
-                                    className="bg-gray-50 p-3 rounded-2xl font-bold text-gray-900"
-                                    placeholder="0"
-                                    keyboardType="numeric"
-                                    value={student.score}
-                                    onChangeText={(val) => handleUpdateScore(student.student_id, 'score', val)}
-                                />
+                        {filteredStudents.length === 0 && (
+                            <View className="bg-white p-12 rounded-[40px] items-center border border-gray-100 border-dashed mt-8">
+                                <User size={48} color="#E5E7EB" />
+                                <Text className="text-gray-400 font-bold text-center mt-6">No matches found</Text>
                             </View>
-                            <View className="flex-[2]">
-                                <Text className="text-gray-500 text-xs font-bold uppercase mb-1 ml-1">Feedback</Text>
-                                <TextInput
-                                    className="bg-gray-50 p-3 rounded-2xl text-gray-900"
-                                    placeholder="Good progress"
-                                    value={student.feedback}
-                                    onChangeText={(val) => handleUpdateScore(student.student_id, 'feedback', val)}
-                                />
-                            </View>
-                        </View>
-                    </View>
-                ))}
-
-                {filteredStudents.length === 0 && (
-                    <View className="items-center py-20">
-                        <Text className="text-gray-400">No students found</Text>
-                    </View>
+                        )}
+                    </ScrollView>
                 )}
-
-                <View className="h-20" />
-            </ScrollView>
+            </View>
         </View>
     );
 }

@@ -1,5 +1,6 @@
+import { AppLoading } from "@/components/AppLoading";
 import { useAuth } from "@/contexts/AuthContext";
-import { router } from "expo-router";
+import { router, usePathname } from "expo-router";
 import {
   BadgeCheck, BarChart2, BookOpen, Check, ChevronDown, CreditCard, Crown, Library,
   School, Settings, Sparkles, Star, Users, Zap
@@ -16,7 +17,9 @@ const { width: SCREEN_WIDTH } = Dimensions.get("window");
 export default function Index() {
   const { session, loading, isInitializing, profile } = useAuth();
   const formRef = useRef<View>(null);
+  const trialRef = useRef<View>(null);
   const scrollRef = useRef<ScrollView>(null);
+  const pathname = usePathname();
 
   // Section refs for smooth scrolling
   const featuresRef = useRef<View>(null);

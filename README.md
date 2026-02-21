@@ -17,7 +17,7 @@ A comprehensive, role-based mobile application for managing educational institut
 
 ## 🛠️ Tech Stack
 - **Frontend**: React Native, Expo Router, NativeWind
-- **Backend**: Supabase (PostgreSQL, Auth, Edge Functions)
+- **Backend**: Express.js (on Node.js), Supabase (PostgreSQL, Auth, Edge Functions)
 - **Tools**: TypeScript, Lucide Icons
 
 ## 🤝 Contribution

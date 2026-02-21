@@ -1,13 +1,14 @@
-import React, { useState, useEffect } from "react";
-import { View, Text, ScrollView, TouchableOpacity, StatusBar, ActivityIndicator, Alert } from 'react-native';
-import { ArrowLeft, Calendar, Check, X, Clock, Users, ChevronDown, ChevronRight, MinusCircle } from 'lucide-react-native';
-import { router } from "expo-router";
+import { UnifiedHeader } from "@/components/common/UnifiedHeader";
 import { useAuth } from "@/contexts/AuthContext";
-import { TeacherAttendanceAPI } from "@/services/TeacherAttendanceService";
 import { SubjectAPI } from "@/services/SubjectService";
+import { TeacherAttendanceAPI } from "@/services/TeacherAttendanceService";
+import { router } from "expo-router";
+import { Calendar, Check, ChevronDown, Clock, X } from 'lucide-react-native';
+import React, { useEffect, useState } from "react";
+import { ActivityIndicator, Alert, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 
 interface Student {
-    student_id: string; // student_id
+    student_id: string;
     name: string;
     avatar_url?: string;
     status: "present" | "absent" | "late" | "pending" | "excused";
@@ -20,29 +21,30 @@ interface SubjectOption {
 
 const StudentAttendanceRow = ({ student, onMark }: { student: Student; onMark: (id: string, status: Student["status"]) => void }) => {
     return (
-        <View className="bg-white p-3 rounded-xl border border-gray-100 mb-2 flex-row items-center">
-            <View className="w-10 h-10 rounded-full bg-orange-100 items-center justify-center mr-3">
-                <Text className="text-teacherOrange font-bold">{student.name.charAt(0)}</Text>
+        <View className="bg-white dark:bg-[#1a1a1a] p-4 rounded-3xl border border-gray-100 dark:border-gray-800 mb-3 flex-row items-center shadow-sm">
+            <View className="w-12 h-12 rounded-2xl bg-orange-100 dark:bg-orange-950/30 items-center justify-center mr-4">
+                <Text className="text-[#FF6900] font-bold text-lg">{student.name.charAt(0)}</Text>
             </View>
             <View className="flex-1">
-                <Text className="text-gray-900 font-medium">{student.name}</Text>
+                <Text className="text-gray-900 dark:text-gray-100 font-bold text-base">{student.name}</Text>
+                <Text className="text-gray-400 dark:text-gray-500 text-xs mt-0.5">ID: {student.student_id.substring(0, 8)}</Text>
             </View>
 
             <View className="flex-row gap-2">
                 <TouchableOpacity
-                    className={`w-9 h-9 rounded-lg items-center justify-center ${student.status === "present" ? "bg-green-500" : "bg-gray-100"}`}
+                    className={`w-10 h-10 rounded-xl items-center justify-center ${student.status === "present" ? "bg-green-500 shadow-sm" : "bg-gray-50 dark:bg-[#242424] border border-gray-100 dark:border-gray-800"}`}
                     onPress={() => onMark(student.student_id, "present")}
                 >
                     <Check size={18} color={student.status === "present" ? "white" : "#9CA3AF"} />
                 </TouchableOpacity>
                 <TouchableOpacity
-                    className={`w-9 h-9 rounded-lg items-center justify-center ${student.status === "absent" ? "bg-red-500" : "bg-gray-100"}`}
+                    className={`w-10 h-10 rounded-xl items-center justify-center ${student.status === "absent" ? "bg-red-500 shadow-sm" : "bg-gray-50 dark:bg-[#242424] border border-gray-100 dark:border-gray-800"}`}
                     onPress={() => onMark(student.student_id, "absent")}
                 >
                     <X size={18} color={student.status === "absent" ? "white" : "#9CA3AF"} />
                 </TouchableOpacity>
                 <TouchableOpacity
-                    className={`w-9 h-9 rounded-lg items-center justify-center ${student.status === "late" ? "bg-yellow-500" : "bg-gray-100"}`}
+                    className={`w-10 h-10 rounded-xl items-center justify-center ${student.status === "late" ? "bg-yellow-500 shadow-sm" : "bg-gray-50 dark:bg-[#242424] border border-gray-100 dark:border-gray-800"}`}
                     onPress={() => onMark(student.student_id, "late")}
                 >
                     <Clock size={16} color={student.status === "late" ? "white" : "#9CA3AF"} />
@@ -79,12 +81,9 @@ export default function AttendancePage() {
             if (data && Array.isArray(data) && data.length > 0) {
                 setSubjects(data);
                 setSelectedSubjectId(data[0].id);
-            } else if (data && Array.isArray(data)) {
-                console.log("No subjects found for this teacher");
             }
         } catch (error) {
             console.error("Fetch subjects error:", error);
-            Alert.alert("Error", "Could not fetch subjects. Please ensure you are assigned to subjects.");
         } finally {
             setLoading(false);
         }
@@ -136,74 +135,84 @@ export default function AttendancePage() {
     const selectedSubjectName = subjects.find(s => s.id === selectedSubjectId)?.title || "Select Subject";
 
     return (
-        <>
-            <StatusBar barStyle="dark-content" />
-            <View className="flex-1 bg-gray-50">
-                <ScrollView className="flex-1" showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
-                    <View className="p-4">
-                        <View className="flex-row items-center mb-6">
-                            <TouchableOpacity className="p-2 mr-2" onPress={() => router.back()}>
-                                <ArrowLeft size={24} color="#374151" />
-                            </TouchableOpacity>
-                            <View className="flex-1">
-                                <Text className="text-2xl font-bold text-gray-900" numberOfLines={1} adjustsFontSizeToFit>Student Attendance</Text>
-                                <Text className="text-gray-500 text-sm">{selectedDate.toDateString()}</Text>
-                            </View>
+        <View className="flex-1 bg-gray-50 dark:bg-black">
+            <UnifiedHeader
+                title="Management"
+                subtitle="Attendance"
+                role="Teacher"
+                onBack={() => router.back()}
+            />
+            <ScrollView className="flex-1" showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
+                <View className="p-4 md:p-8">
+                    {/* Date and Summary */}
+                    <View className="flex-row justify-between items-center mb-6 px-2">
+                        <View className="flex-row items-center border border-gray-100 dark:border-gray-800 bg-white dark:bg-[#1a1a1a] px-4 py-2 rounded-2xl shadow-sm">
+                            <Calendar size={14} color="#FF6900" />
+                            <Text className="text-gray-700 dark:text-gray-200 font-bold text-xs ml-2">{selectedDate.toDateString()}</Text>
                         </View>
-
-                        {/* Subject Selection */}
-                        <View className="mb-6 relative z-10">
-                            <TouchableOpacity
-                                className="bg-white rounded-xl px-4 py-3 border border-gray-100 flex-row items-center justify-between"
-                                onPress={() => setShowSubjectDropdown(!showSubjectDropdown)}
-                            >
-                                <Text className="text-gray-700 font-medium">{selectedSubjectName}</Text>
-                                <ChevronDown size={16} color="#6B7280" />
-                            </TouchableOpacity>
-
-                            {showSubjectDropdown && (
-                                <View className="absolute top-12 left-0 right-0 bg-white border border-gray-100 rounded-xl shadow-lg z-20">
-                                    {subjects.map(sub => (
-                                        <TouchableOpacity
-                                            key={sub.id}
-                                            className="px-4 py-3 border-b border-gray-50 last:border-0"
-                                            onPress={() => {
-                                                setSelectedSubjectId(sub.id);
-                                                setShowSubjectDropdown(false);
-                                            }}
-                                        >
-                                            <Text className="text-gray-900">{sub.title}</Text>
-                                        </TouchableOpacity>
-                                    ))}
-                                </View>
-                            )}
+                        <View>
+                            <Text className="text-gray-400 dark:text-gray-500 font-bold text-[10px] uppercase tracking-wider">{students.length} students total</Text>
                         </View>
+                    </View>
 
-                        {/* Student List */}
-                        {loading ? (
-                            <ActivityIndicator size="large" color="#FF6B00" className="mt-8" />
-                        ) : students.length === 0 ? (
-                            <Text className="text-gray-500 text-center mt-8">No students found for this subject.</Text>
-                        ) : (
-                            students.map((student) => (
-                                <StudentAttendanceRow
-                                    key={student.student_id}
-                                    student={student}
-                                    onMark={handleMarkAttendance}
-                                />
-                            ))
-                        )}
-
+                    {/* Subject Selection */}
+                    <View className="mb-8 relative z-10">
                         <TouchableOpacity
-                            className={`bg-teacherOrange py-4 rounded-xl items-center mt-6 ${saving ? 'opacity-50' : ''}`}
+                            className="bg-white dark:bg-[#1a1a1a] rounded-3xl px-6 py-4 border border-gray-100 dark:border-gray-800 flex-row items-center justify-between shadow-sm active:bg-gray-50 dark:active:bg-gray-900"
+                            onPress={() => setShowSubjectDropdown(!showSubjectDropdown)}
+                        >
+                            <Text className="text-gray-900 dark:text-gray-100 font-bold text-sm tracking-tight">{selectedSubjectName}</Text>
+                            <ChevronDown size={18} color="#6B7280" />
+                        </TouchableOpacity>
+
+                        {showSubjectDropdown && (
+                            <View className="absolute top-16 left-0 right-0 bg-white dark:bg-[#1a1a1a] border border-gray-100 dark:border-gray-800 rounded-[32px] shadow-2xl z-20 overflow-hidden">
+                                {subjects.map(sub => (
+                                    <TouchableOpacity
+                                        key={sub.id}
+                                        className="px-6 py-4 border-b border-gray-50 dark:border-gray-900 active:bg-gray-50 dark:active:bg-gray-900"
+                                        onPress={() => {
+                                            setSelectedSubjectId(sub.id);
+                                            setShowSubjectDropdown(false);
+                                        }}
+                                    >
+                                        <Text className="text-gray-900 dark:text-gray-100 font-bold text-sm">{sub.title}</Text>
+                                    </TouchableOpacity>
+                                ))}
+                            </View>
+                        )}
+                    </View>
+
+                    {/* Student List */}
+                    <Text className="text-xl font-bold text-gray-900 dark:text-white mb-4 px-2 tracking-tight">Student List</Text>
+
+                    {loading ? (
+                        <ActivityIndicator size="large" color="#FF6900" className="mt-8" />
+                    ) : students.length === 0 ? (
+                        <View className="bg-white dark:bg-[#1a1a1a] p-12 rounded-[40px] items-center border border-gray-100 dark:border-gray-800 border-dashed">
+                            <Text className="text-gray-400 dark:text-gray-500 font-bold text-center tracking-tight">No students found for this subject.</Text>
+                        </View>
+                    ) : (
+                        students.map((student) => (
+                            <StudentAttendanceRow
+                                key={student.student_id}
+                                student={student}
+                                onMark={handleMarkAttendance}
+                            />
+                        ))
+                    )}
+
+                    {!loading && students.length > 0 && (
+                        <TouchableOpacity
+                            className={`bg-[#FF6900] py-5 rounded-2xl items-center mt-8 shadow-lg active:bg-orange-600 ${saving ? 'opacity-50' : ''}`}
                             onPress={saveAttendance}
                             disabled={saving}
                         >
-                            {saving ? <ActivityIndicator color="white" /> : <Text className="text-white font-bold text-base">Save All Attendance</Text>}
+                            {saving ? <ActivityIndicator color="white" /> : <Text className="text-white font-bold text-lg">Save Attendance</Text>}
                         </TouchableOpacity>
-                    </View>
-                </ScrollView>
-            </View>
-        </>
+                    )}
+                </View>
+            </ScrollView>
+        </View>
     );
 }

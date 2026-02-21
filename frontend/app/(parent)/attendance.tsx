@@ -1,6 +1,8 @@
-import { Calendar as CalendarIcon, CheckCircle2, Clock, XCircle } from "lucide-react-native";
+import { UnifiedHeader } from "@/components/common/UnifiedHeader";
+import { router } from "expo-router";
+import { Calendar as CalendarIcon, CheckCircle2, Clock, Search, XCircle } from "lucide-react-native";
 import React from "react";
-import { ScrollView, Text, View } from "react-native";
+import { ScrollView, Text, TouchableOpacity, View } from "react-native";
 
 const DUMMY_ATTENDANCE = [
   { id: "1", date: "2026-02-18", status: "present", subject: "Mathematics" },
@@ -30,65 +32,84 @@ const getStatusConfig = (status: string) => {
 
 const formatDate = (dateStr: string) => {
   const d = new Date(dateStr);
-  return d.toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" });
+  return d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
 };
 
 export default function StudentAttendancePage() {
   return (
-    <View className="flex-1 bg-gray-50">
-      {/* Header */}
-      <View className="bg-white px-6 pt-12 pb-6 border-b border-gray-100">
-        <Text className="text-2xl font-bold text-gray-900">Attendance History</Text>
-        <Text className="text-gray-500 text-sm mt-1">Ethan Kamau — Term 1, 2026 · Demo Data</Text>
-      </View>
+    <View className="flex-1 bg-gray-50 dark:bg-black">
+      <UnifiedHeader
+        title="Intelligence"
+        subtitle="Compliance"
+        role="Parent"
+        onBack={() => router.back()}
+        showNotification={false}
+      />
 
-      <ScrollView className="flex-1 px-6 pt-6" showsVerticalScrollIndicator={false}>
-        {/* Overall Rate Banner */}
-        <View className="bg-orange-500 p-6 rounded-3xl mb-6 flex-row items-center justify-between">
-          <View>
-            <Text className="text-blue-100 text-xs font-bold uppercase mb-1">Overall Rate</Text>
-            <Text className="text-white text-4xl font-black">{STATS.pct}</Text>
-            <Text className="text-blue-200 text-xs mt-1">{STATS.total} school days recorded</Text>
-          </View>
-          <CalendarIcon size={48} color="rgba(255,255,255,0.3)" />
-        </View>
-
-        {/* Stats Row */}
-        <View className="flex-row gap-3 mb-8">
-          <View className="flex-1 bg-white p-5 rounded-[2.5rem] border border-gray-100 items-center shadow-sm">
-            <Text className="text-gray-400 text-[10px] font-bold uppercase mb-2">Present</Text>
-            <Text className="text-emerald-500 text-3xl font-black">{STATS.present}</Text>
-          </View>
-          <View className="flex-1 bg-white p-5 rounded-[2.5rem] border border-gray-100 items-center shadow-sm">
-            <Text className="text-gray-400 text-[10px] font-bold uppercase mb-2">Absent</Text>
-            <Text className="text-rose-500 text-3xl font-black">{STATS.absent}</Text>
-          </View>
-          <View className="flex-1 bg-white p-5 rounded-[2.5rem] border border-gray-100 items-center shadow-sm">
-            <Text className="text-gray-400 text-[10px] font-bold uppercase mb-2">Late</Text>
-            <Text className="text-amber-500 text-3xl font-black">{STATS.late}</Text>
-          </View>
-        </View>
-
-        {/* History */}
-        <Text className="text-lg font-bold text-gray-900 mb-4 ml-2">Recent Records</Text>
-        {DUMMY_ATTENDANCE.map((item) => {
-          const config = getStatusConfig(item.status);
-          return (
-            <View key={item.id} className="bg-white p-4 rounded-3xl mb-3 flex-row items-center border border-gray-100 shadow-sm">
-              <View className={`p-3 rounded-2xl mr-4 ${config.bg}`}>
-                {config.icon}
+      <ScrollView
+        className="flex-1"
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: 150 }}
+      >
+        <View className="p-4 md:p-8">
+          {/* Attendance Hero */}
+          <View className="bg-gray-900 p-8 rounded-[48px] shadow-2xl mb-8">
+            <View className="flex-row justify-between items-center mb-10">
+              <View>
+                <Text className="text-white/40 text-[10px] font-bold uppercase tracking-[3px] mb-2">Academic Presence</Text>
+                <Text className="text-white text-6xl font-black tracking-tighter">{STATS.pct}</Text>
+                <Text className="text-[#FF6900] text-xs font-bold mt-2 uppercase tracking-widest">{STATS.total} Sessions Tracked</Text>
               </View>
-              <View className="flex-1">
-                <View className="flex-row justify-between items-center mb-1">
-                  <Text className="text-gray-900 font-bold">{formatDate(item.date)}</Text>
-                  <Text className={`font-black uppercase text-[10px] ${config.text}`}>{config.label}</Text>
-                </View>
-                <Text className="text-gray-400 text-sm">Subject: {item.subject}</Text>
+              <View className="w-16 h-16 rounded-full bg-[#FF6900] items-center justify-center shadow-lg">
+                <CalendarIcon size={32} color="white" />
               </View>
             </View>
-          );
-        })}
-        <View className="h-20" />
+
+            {/* Stats Grid */}
+            <View className="flex-row justify-between pt-8 border-t border-white/10">
+              <View className="items-center">
+                <Text className="text-white/30 text-[8px] font-bold uppercase tracking-widest">Present</Text>
+                <Text className="text-emerald-400 font-bold text-xl mt-1">{STATS.present}</Text>
+              </View>
+              <View className="items-center border-x border-white/10 px-10">
+                <Text className="text-white/30 text-[8px] font-bold uppercase tracking-widest">Absent</Text>
+                <Text className="text-rose-400 font-bold text-xl mt-1">{STATS.absent}</Text>
+              </View>
+              <View className="items-center">
+                <Text className="text-white/30 text-[8px] font-bold uppercase tracking-widest">Late</Text>
+                <Text className="text-amber-400 font-bold text-xl mt-1">{STATS.late}</Text>
+              </View>
+            </View>
+          </View>
+
+          {/* History Section */}
+          <View className="px-2 flex-row justify-between items-center mb-6">
+            <Text className="text-gray-900 dark:text-white font-bold text-xl tracking-tight">Daily Log Entry</Text>
+            <TouchableOpacity className="bg-white dark:bg-[#1a1a1a] p-2 rounded-xl border border-gray-100 dark:border-gray-800 shadow-sm">
+              <Search size={16} color="#FF6900" />
+            </TouchableOpacity>
+          </View>
+
+          {DUMMY_ATTENDANCE.map((item) => {
+            const config = getStatusConfig(item.status);
+            return (
+              <View key={item.id} className="bg-white dark:bg-[#1a1a1a] p-5 rounded-[32px] mb-4 flex-row items-center border border-gray-50 dark:border-gray-800 shadow-sm">
+                <View className={`w-12 h-12 rounded-2xl items-center justify-center mr-4 ${config.bg}`}>
+                  {config.icon}
+                </View>
+                <View className="flex-1">
+                  <View className="flex-row justify-between items-center mb-1">
+                    <Text className="text-gray-900 dark:text-white font-bold text-sm tracking-tight">{formatDate(item.date)}</Text>
+                    <View className={`${config.bg} px-2 py-0.5 rounded-full`}>
+                      <Text className={`font-black uppercase text-[8px] tracking-widest ${config.text}`}>{config.label}</Text>
+                    </View>
+                  </View>
+                  <Text className="text-gray-400 text-[10px] font-bold uppercase tracking-widest">Unit: {item.subject}</Text>
+                </View>
+              </View>
+            );
+          })}
+        </View>
       </ScrollView>
     </View>
   );

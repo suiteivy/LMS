@@ -1,56 +1,61 @@
-import React, { useState, useEffect } from "react";
-import { View, Text, ScrollView, TouchableOpacity, StatusBar, ActivityIndicator } from 'react-native';
-import { ArrowLeft, TrendingUp, Users, BookOpen, Clock, Award, ChevronDown, Download } from 'lucide-react-native';
-import { router } from "expo-router";
+import { UnifiedHeader } from "@/components/common/UnifiedHeader";
 import { useAuth } from "@/contexts/AuthContext";
 import { TeacherAPI } from "@/services/TeacherService";
+import { router } from "expo-router";
+import { Award, BookOpen, ChevronRight, Download, TrendingUp, Users } from 'lucide-react-native';
+import React, { useEffect, useState } from "react";
+import { ActivityIndicator, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 
 interface ISubjectAnalytics {
     id: string;
     name: string;
     students: number;
-    avgProgress: number; // Mapping to completion rate for now
+    avgProgress: number;
     avgGrade: number;
     completionRate: number;
 }
 
 const StatBox = ({ icon: Icon, label, value, color, bgColor }: { icon: any; label: string; value: string; color: string; bgColor: string }) => (
-    <View className="flex-1 bg-white p-4 rounded-2xl border border-gray-100">
-        <View style={{ backgroundColor: bgColor }} className="w-10 h-10 rounded-xl items-center justify-center mb-2">
+    <View className="flex-1 bg-white dark:bg-[#1a1a1a] p-5 rounded-3xl border border-gray-100 dark:border-gray-800 shadow-sm">
+        <View style={{ backgroundColor: bgColor }} className="w-12 h-12 rounded-2xl items-center justify-center mb-4 dark:opacity-90">
             <Icon size={20} color={color} />
         </View>
-        <Text className="text-gray-900 text-2xl font-bold">{value}</Text>
-        <Text className="text-gray-400 text-xs uppercase">{label}</Text>
+        <Text className="text-gray-900 dark:text-white text-2xl font-bold">{value}</Text>
+        <Text className="text-gray-400 dark:text-gray-500 text-[10px] font-bold uppercase tracking-wider">{label}</Text>
     </View>
 );
 
 const SubjectAnalyticsCard = ({ Subject }: { Subject: ISubjectAnalytics }) => {
     return (
-        <View className="bg-white p-4 rounded-2xl border border-gray-100 mb-3">
-            <View className="flex-row justify-between items-start mb-3">
+        <View className="bg-white dark:bg-[#1a1a1a] p-5 rounded-3xl border border-gray-100 dark:border-gray-800 mb-4 shadow-sm">
+            <View className="flex-row justify-between items-start mb-4">
                 <View className="flex-1">
-                    <Text className="text-gray-900 font-bold">{Subject.name}</Text>
-                    <Text className="text-gray-400 text-xs">{Subject.students} students</Text>
+                    <Text className="text-gray-900 dark:text-white font-bold text-lg">{Subject.name}</Text>
+                    <Text className="text-gray-400 dark:text-gray-500 text-xs mt-1 font-medium">{Subject.students} students</Text>
                 </View>
-                <View className="bg-orange-50 px-2 py-1 rounded-full">
-                    <Text className="text-teacherOrange text-xs font-bold">{Subject.completionRate}% complete</Text>
+                <View className="bg-orange-50 dark:bg-orange-950/20 px-3 py-1 rounded-full border border-orange-100 dark:border-orange-900">
+                    <Text className="text-[#FF6900] text-[10px] font-bold uppercase tracking-wider">{Subject.completionRate}% complete</Text>
                 </View>
             </View>
 
-            <View className="flex-row gap-3">
+            <View className="flex-row gap-4">
                 <View className="flex-1">
-                    <Text className="text-gray-400 text-xs mb-1">Completion</Text>
-                    <View className="h-2 bg-gray-100 rounded-full overflow-hidden">
-                        <View className="h-full bg-teacherOrange rounded-full" style={{ width: `${Subject.completionRate}%` }} />
+                    <View className="flex-row justify-between items-center mb-2">
+                        <Text className="text-gray-500 dark:text-gray-400 text-[10px] font-bold uppercase tracking-wider">Completion</Text>
+                        <Text className="text-[#FF6900] text-xs font-bold">{Subject.completionRate}%</Text>
                     </View>
-                    <Text className="text-teacherOrange text-xs font-bold mt-1">{Subject.completionRate}%</Text>
+                    <View className="h-2 bg-gray-100 dark:bg-[#242424] rounded-full overflow-hidden">
+                        <View className="h-full bg-[#FF6900] rounded-full" style={{ width: `${Subject.completionRate}%` }} />
+                    </View>
                 </View>
                 <View className="flex-1">
-                    <Text className="text-gray-400 text-xs mb-1">Avg Grade</Text>
-                    <View className="h-2 bg-gray-100 rounded-full overflow-hidden">
-                        <View className="h-full bg-teacherBlack rounded-full" style={{ width: `${Subject.avgGrade}%` }} />
+                    <View className="flex-row justify-between items-center mb-2">
+                        <Text className="text-gray-500 dark:text-gray-400 text-[10px] font-bold uppercase tracking-wider">Avg Grade</Text>
+                        <Text className="text-gray-900 dark:text-gray-100 text-xs font-bold">{Subject.avgGrade}%</Text>
                     </View>
-                    <Text className="text-teacherBlack text-xs font-bold mt-1">{Subject.avgGrade}%</Text>
+                    <View className="h-2 bg-gray-100 dark:bg-[#242424] rounded-full overflow-hidden">
+                        <View className="h-full bg-gray-900 dark:bg-gray-100 rounded-full" style={{ width: `${Subject.avgGrade}%` }} />
+                    </View>
                 </View>
             </View>
         </View>
@@ -58,7 +63,7 @@ const SubjectAnalyticsCard = ({ Subject }: { Subject: ISubjectAnalytics }) => {
 };
 
 export default function AnalyticsPage() {
-    const { teacherId } = useAuth();
+    const { profile, teacherId } = useAuth();
     const [selectedPeriod, setSelectedPeriod] = useState("All Time");
     const [SubjectAnalytics, setSubjectAnalytics] = useState<ISubjectAnalytics[]>([]);
     const [loading, setLoading] = useState(true);
@@ -74,7 +79,6 @@ export default function AnalyticsPage() {
             const data = await TeacherAPI.getAnalytics();
             setSubjectAnalytics(data);
 
-            // Mock Top Performers for now as we don't have a specific endpoint or logic yet
             setTopPerformers([
                 { name: "Sarah J.", initials: "SJ", score: 98 },
                 { name: "Michael C.", initials: "MC", score: 95 },
@@ -96,83 +100,83 @@ export default function AnalyticsPage() {
         : 0;
 
     return (
-        <>
-            <StatusBar barStyle="dark-content" />
-            <View className="flex-1 bg-gray-50">
-                <ScrollView
-                    className="flex-1"
-                    showsVerticalScrollIndicator={false}
-                    contentContainerStyle={{ paddingBottom: 100 }}
-                >
-                    <View className="p-4">
-                        {/* Header */}
-                        <View className="flex-row items-center justify-between mb-6">
-                            <View className="flex-row items-center">
-                                <TouchableOpacity className="p-2 mr-2" onPress={() => router.back()}>
-                                    <ArrowLeft size={24} color="#374151" />
-                                </TouchableOpacity>
-                                <Text className="text-2xl font-bold text-gray-900">Analytics</Text>
-                            </View>
-                            <TouchableOpacity className="p-2 bg-white rounded-xl border border-gray-100">
-                                <Download size={20} color="#6B7280" />
-                            </TouchableOpacity>
-                        </View>
-
-                        {/* Period Selector */}
-                        <TouchableOpacity className="bg-white rounded-xl px-4 py-3 mb-6 border border-gray-100 flex-row items-center justify-between">
-                            <Text className="text-gray-700 font-medium">{selectedPeriod}</Text>
-                            <ChevronDown size={16} color="#6B7280" />
+        <View className="flex-1 bg-gray-50 dark:bg-black">
+            <UnifiedHeader
+                title="Management"
+                subtitle="Analytics"
+                role="Teacher"
+                onBack={() => router.back()}
+            />
+            <ScrollView
+                className="flex-1"
+                showsVerticalScrollIndicator={false}
+                contentContainerStyle={{ paddingBottom: 100 }}
+            >
+                <View className="p-4 md:p-8">
+                    {/* Period Selector & Download */}
+                    <View className="flex-row gap-3 mb-6">
+                        <TouchableOpacity className="flex-1 bg-white dark:bg-[#1a1a1a] rounded-3xl px-6 py-4 border border-gray-100 dark:border-gray-800 flex-row items-center justify-between shadow-sm active:bg-gray-50 dark:active:bg-gray-900">
+                            <Text className="text-gray-700 dark:text-gray-200 font-bold text-sm">{selectedPeriod}</Text>
+                            <TrendingUp size={16} color="#6B7280" />
                         </TouchableOpacity>
-
-                        {/* Overview Stats */}
-                        <View className="flex-row gap-3 mb-6">
-                            <StatBox icon={Users} label="Total Students" value={totalStudents.toString()} color="#FF6B00" bgColor="#fff7ed" />
-                            <StatBox icon={TrendingUp} label="Avg Completion" value={`${avgCompletion}%`} color="#1a1a1a" bgColor="#f3f4f6" />
-                        </View>
-                        <View className="flex-row gap-3 mb-6">
-                            <StatBox icon={BookOpen} label="Subjects" value={SubjectAnalytics.length.toString()} color="#FF6B00" bgColor="#fff7ed" />
-                            <StatBox icon={Award} label="Avg Grade" value={`${avgGradeOverall}%`} color="#1a1a1a" bgColor="#f3f4f6" />
-                        </View>
-
-                        {loading ? (
-                            <ActivityIndicator size="large" color="#FF6B00" className="mt-8" />
-                        ) : (
-                            <>
-                                {/* Performance Chart Placeholder */}
-                                <View className="bg-white p-4 rounded-2xl border border-gray-100 mb-6">
-                                    <Text className="text-gray-900 font-bold mb-4">Performance Trend</Text>
-                                    <View className="h-40 bg-gray-50 rounded-xl items-center justify-center">
-                                        <TrendingUp size={48} color="#e5e7eb" />
-                                        <Text className="text-gray-400 text-sm mt-2">Chart coming soon</Text>
-                                    </View>
-                                </View>
-
-                                {/* Subject Breakdown */}
-                                <Text className="text-lg font-bold text-gray-900 mb-3">Subject Breakdown</Text>
-                                {SubjectAnalytics.map((Subject) => (
-                                    <SubjectAnalyticsCard key={Subject.id} Subject={Subject} />
-                                ))}
-
-                                {/* Top Performers */}
-                                <View className="bg-teacherBlack p-4 rounded-2xl mt-4">
-                                    <Text className="text-white font-bold mb-3">🏆 Top Performers</Text>
-                                    <View className="flex-row justify-between">
-                                        {topPerformers.map((student, index) => (
-                                            <View key={index} className="items-center">
-                                                <View className="w-12 h-12 rounded-full bg-white/20 items-center justify-center mb-1">
-                                                    <Text className="text-white font-bold">{student.initials}</Text>
-                                                </View>
-                                                <Text className="text-gray-300 text-xs">{student.name}</Text>
-                                                <Text className="text-white font-bold text-xs">{student.score}%</Text>
-                                            </View>
-                                        ))}
-                                    </View>
-                                </View>
-                            </>
-                        )}
+                        <TouchableOpacity className="w-14 bg-white dark:bg-[#1a1a1a] rounded-3xl items-center justify-center border border-gray-100 dark:border-gray-800 shadow-sm active:bg-gray-50 dark:active:bg-gray-900">
+                            <Download size={20} color="#FF6900" />
+                        </TouchableOpacity>
                     </View>
-                </ScrollView>
-            </View>
-        </>
+
+                    {/* Overview Stats */}
+                    <View className="flex-row gap-4 mb-4">
+                        <StatBox icon={Users} label="Students" value={totalStudents.toString()} color="#FF6900" bgColor="#fff7ed" />
+                        <StatBox icon={TrendingUp} label="Completion" value={`${avgCompletion}%`} color="#111827" bgColor="#f3f4f6" />
+                    </View>
+                    <View className="flex-row gap-4 mb-8">
+                        <StatBox icon={BookOpen} label="Subjects" value={SubjectAnalytics.length.toString()} color="#FF6900" bgColor="#fff7ed" />
+                        <StatBox icon={Award} label="Avg Grade" value={`${avgGradeOverall}%`} color="#111827" bgColor="#f3f4f6" />
+                    </View>
+
+                    {loading ? (
+                        <ActivityIndicator size="large" color="#FF6900" className="mt-8" />
+                    ) : (
+                        <>
+                            {/* Performance Chart Placeholder */}
+                            <View className="bg-white dark:bg-[#1a1a1a] p-6 rounded-[40px] border border-gray-100 dark:border-gray-800 mb-8 shadow-sm">
+                                <Text className="text-gray-900 dark:text-white font-bold text-lg mb-6 tracking-tight">Performance Trend</Text>
+                                <View className="h-48 bg-gray-50 dark:bg-[#242424] rounded-3xl items-center justify-center border border-gray-100 dark:border-gray-800 border-dashed">
+                                    <TrendingUp size={48} color="#e5e7eb" style={{ opacity: 0.3 }} />
+                                    <Text className="text-gray-400 dark:text-gray-500 font-bold mt-4 tracking-tight">Analytics Coming Soon</Text>
+                                </View>
+                            </View>
+
+                            {/* Subject Breakdown */}
+                            <Text className="text-xl font-bold text-gray-900 dark:text-white mb-4 px-2 tracking-tight">Subject Breakdown</Text>
+                            {SubjectAnalytics.map((Subject) => (
+                                <SubjectAnalyticsCard key={Subject.id} Subject={Subject} />
+                            ))}
+
+                            {/* Top Performers */}
+                            <View className="bg-gray-900 p-8 rounded-[40px] mt-6 shadow-xl">
+                                <View className="flex-row justify-between items-center mb-6">
+                                    <Text className="text-white font-bold text-lg tracking-tight">🏆 Top Performers</Text>
+                                    <TouchableOpacity>
+                                        <ChevronRight size={20} color="white" />
+                                    </TouchableOpacity>
+                                </View>
+                                <View className="flex-row justify-between">
+                                    {topPerformers.map((student, index) => (
+                                        <View key={index} className="items-center">
+                                            <View className="w-14 h-14 rounded-full bg-white/10 items-center justify-center mb-3 border border-white/10">
+                                                <Text className="text-white font-bold text-lg">{student.initials}</Text>
+                                            </View>
+                                            <Text className="text-white/60 text-[10px] font-bold uppercase tracking-wider mb-1">{student.name}</Text>
+                                            <Text className="text-white font-bold text-base">{student.score}%</Text>
+                                        </View>
+                                    ))}
+                                </View>
+                            </View>
+                        </>
+                    )}
+                </View>
+            </ScrollView>
+        </View>
     );
 }

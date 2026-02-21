@@ -1,10 +1,11 @@
 import { authService, supabase } from '@/libs/supabase'
 import { Database } from '@/types/database'
+import AsyncStorage from '@react-native-async-storage/async-storage'
 import { Session, User } from '@supabase/supabase-js'
+import { router } from 'expo-router'
 import React, { createContext, useContext, useEffect, useRef, useState } from 'react'
 import { AppState, AppStateStatus } from 'react-native'
 import Toast from 'react-native-toast-message'
-import AsyncStorage from '@react-native-async-storage/async-storage'
 
 type UserProfile = Database['public']['Tables']['users']['Row']
 
@@ -50,11 +51,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [session, setSession] = useState<Session | null>(null)
   const [user, setUser] = useState<User | null>(null)
   const [profile, setProfile] = useState<UserProfile | null>(null)
-  const [studentId, setStudentId] = useState<string | null>(null)
-  const [teacherId, setTeacherId] = useState<string | null>(null)
-  const [adminId, setAdminId] = useState<string | null>(null)
-  const [parentId, setParentId] = useState<string | null>(null)
-  const [displayId, setDisplayId] = useState<string | null>(null)
+
+  // Consolidate role-specific IDs to reduce state-cascade re-renders
+  const [roleInfo, setRoleInfo] = useState({
+    studentId: null as string | null,
+    teacherId: null as string | null,
+    adminId: null as string | null,
+    parentId: null as string | null,
+    displayId: null as string | null
+  })
+
   const [isInitializing, setIsInitializing] = useState(true)
   const [isProfileLoading, setIsProfileLoading] = useState(false)
   const [loading, setLoading] = useState(true) // Legacy support for profile loading
@@ -130,11 +136,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const startTimeoutTimer = () => {
     clearTimer()
-    // 60 minutes = 60 * 60 * 1000 ms
+    // Increased to 24 hours for development (24 * 60 * 60 * 1000 ms)
     timerRef.current = setTimeout(async () => {
-      console.log('Session timeout reached (60 min), logging out...')
+      console.log('Session timeout reached (24 hours), logging out...')
       await handleLogout()
-    }, 60 * 60 * 1000)
+    }, 24 * 60 * 60 * 1000)
   }
 
   const lastLoadedUserId = useRef<string | null>(null);
@@ -177,20 +183,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
       if (userData.role === 'student') {
         const id = getRoleId(userData.students);
-        setStudentId(id);
-        setDisplayId(id);
+        setRoleInfo(prev => ({ ...prev, studentId: id, displayId: id }));
       } else if (userData.role === 'teacher') {
         const id = getRoleId(userData.teachers);
-        setTeacherId(id);
-        setDisplayId(id);
+        setRoleInfo(prev => ({ ...prev, teacherId: id, displayId: id }));
       } else if (userData.role === 'admin') {
         const id = getRoleId(userData.admins);
-        setAdminId(id);
-        setDisplayId(id);
+        setRoleInfo(prev => ({ ...prev, adminId: id, displayId: id }));
       } else if (userData.role === 'parent') {
         const id = getRoleId(userData.parents);
-        setParentId(id);
-        setDisplayId(id);
+        setRoleInfo(prev => ({ ...prev, parentId: id, displayId: id }));
       }
 
       return userData as UserProfile
@@ -290,13 +292,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         } else if (event === 'SIGNED_OUT') {
           clearTimer()
           setProfile(null)
-          setStudentId(null)
-          setTeacherId(null)
-          setAdminId(null)
-          setParentId(null)
-          setAdminId(null)
-          setParentId(null)
-          setDisplayId(null)
+          setRoleInfo({
+            studentId: null,
+            teacherId: null,
+            adminId: null,
+            parentId: null,
+            displayId: null
+          })
 
           // CRITICAL: Do NOT clear isTrial state here. 
           // We keep it true if it was true, so AuthHandler knows to redirect to /trial.
@@ -365,8 +367,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         const now = Date.now();
         const diff = now - lastActive.current;
         const { data: { session: currentSession } } = await supabase.auth.getSession();
-        // If backgrounded for more than 60 mins
-        if (diff > 60 * 60 * 1000 && currentSession) {
+        // If backgrounded for more than 24 hours
+        if (diff > 24 * 60 * 60 * 1000 && currentSession) {
           // This is a "system" logout due to inactivity, but we might want a specific message.
           // The code originally had a specific toast here.
           // If we call handleLogout(), it suppresses the generic "Session Expired" toast 
@@ -384,6 +386,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             text1: 'Session Expired',
             text2: 'Logged out due to inactivity.'
           });
+          router.push('/(auth)/signIn')
           setTimeout(() => { isManualLogout.current = false; }, 1000);
 
         } else {
@@ -411,11 +414,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     session,
     user,
     profile,
-    studentId,
-    teacherId,
-    adminId,
-    parentId,
-    displayId,
+    studentId: roleInfo.studentId,
+    teacherId: roleInfo.teacherId,
+    adminId: roleInfo.adminId,
+    parentId: roleInfo.parentId,
+    displayId: roleInfo.displayId,
     loading,
     isInitializing,
     isProfileLoading,
@@ -427,7 +430,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     resetSessionTimer,
     startTrial: handleStartTrial,
     isTrial,
-  }), [session, user, profile, studentId, teacherId, adminId, parentId, displayId, loading, isInitializing, isProfileLoading, isTrial]);
+  }), [session, user, profile, roleInfo, loading, isInitializing, isProfileLoading, isTrial]);
 
   return (
     <AuthContext.Provider value={value}>
