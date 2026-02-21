@@ -6,11 +6,22 @@ const supabase = require("../utils/supabaseClient");
 exports.createExam = async (req, res) => {
     try {
         const { institution_id } = req;
-        const { subject_id, teacher_id, title, description, date, max_score } = req.body;
+        const { subject_id, teacher_id, title, description, date, max_score, weight, term, is_published } = req.body;
 
         const { data, error } = await supabase
             .from("exams")
-            .insert([{ institution_id, subject_id, teacher_id, title, description, date, max_score }])
+            .insert([{
+                institution_id,
+                subject_id,
+                teacher_id,
+                title,
+                description,
+                date,
+                max_score,
+                weight: weight || 0,
+                term,
+                is_published: is_published !== undefined ? is_published : true
+            }])
             .select()
             .single();
 

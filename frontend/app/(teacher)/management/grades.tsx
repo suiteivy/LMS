@@ -85,6 +85,10 @@ export default function GradesPage() {
     const [gradeInput, setGradeInput] = useState("");
     const [feedbackInput, setFeedbackInput] = useState("");
     const [subjects, setSubjects] = useState<any[]>([]);
+    const [assignments, setAssignments] = useState<any[]>([]);
+    const [selectedAssignmentId, setSelectedAssignmentId] = useState<string>("All Assignments");
+    const [isPublished, setIsPublished] = useState(true);
+    const [updatingVisibility, setUpdatingVisibility] = useState(false);
 
     useEffect(() => {
         if (teacherId) {
@@ -95,8 +99,14 @@ export default function GradesPage() {
     useEffect(() => {
         if (teacherId) {
             fetchSubmissions();
+            if (selectedSubject !== "All Subjects") {
+                fetchAssignmentsForSubject();
+            } else {
+                setAssignments([]);
+                setSelectedAssignmentId("All Assignments");
+            }
         }
-    }, [teacherId, selectedSubject]);
+    }, [teacherId, selectedSubject, selectedAssignmentId]);
 
     const fetchSubjects = async () => {
         if (!teacherId) return;
@@ -105,6 +115,24 @@ export default function GradesPage() {
             .select('id, title')
             .eq('teacher_id', teacherId);
         if (data) setSubjects(data);
+    };
+
+    const fetchAssignmentsForSubject = async () => {
+        const subject = subjects.find(s => s.title === selectedSubject);
+        if (!subject) return;
+
+        const { data } = await supabase
+            .from('assignments')
+            .select('id, title, is_published')
+            .eq('subject_id', subject.id);
+
+        if (data) {
+            setAssignments(data);
+            if (selectedAssignmentId !== "All Assignments") {
+                const current = data.find(a => a.id === selectedAssignmentId);
+                if (current) setIsPublished(current.is_published);
+            }
+        }
     };
 
     const fetchSubmissions = async () => {
@@ -138,6 +166,10 @@ export default function GradesPage() {
 
             if (selectedSubject !== "All Subjects") {
                 query = query.eq('assignment.subject.title', selectedSubject);
+            }
+
+            if (selectedAssignmentId !== "All Assignments") {
+                query = query.eq('assignment_id', selectedAssignmentId);
             }
 
             const { data, error } = await query.order('submitted_at', { ascending: false });
@@ -213,6 +245,27 @@ export default function GradesPage() {
         }
     };
 
+    const togglePublication = async () => {
+        if (selectedAssignmentId === "All Assignments") return;
+
+        try {
+            setUpdatingVisibility(true);
+            const { error } = await supabase
+                .from('assignments')
+                .update({ is_published: !isPublished })
+                .eq('id', selectedAssignmentId);
+
+            if (error) throw error;
+            setIsPublished(!isPublished);
+            Alert.alert("Success", `Assignment grades are now ${!isPublished ? "visible" : "hidden"} to students.`);
+        } catch (error) {
+            console.error("Error updating visibility:", error);
+            Alert.alert("Error", "Failed to update visibility");
+        } finally {
+            setUpdatingVisibility(false);
+        }
+    };
+
     const filteredStudents = submissions.filter(s =>
         s.student_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         s.assignment_title.toLowerCase().includes(searchQuery.toLowerCase())
@@ -226,7 +279,7 @@ export default function GradesPage() {
                 title="Management"
                 subtitle="Grade Book"
                 role="Teacher"
-                onBack={() => router.back()}
+                onBack={() => router.push("/(teacher)/management")}
             />
             <ScrollView
                 className="flex-1"
@@ -274,12 +327,64 @@ export default function GradesPage() {
                             <TouchableOpacity
                                 key={sub.id}
                                 className={`px-5 py-2.5 rounded-2xl mx-1 border ${selectedSubject === sub.title ? "bg-[#FF6900] border-[#FF6900]" : "bg-white dark:bg-[#1a1a1a] border-gray-100 dark:border-gray-800 shadow-sm"}`}
-                                onPress={() => setSelectedSubject(sub.title)}
+                                onPress={() => {
+                                    setSelectedSubject(sub.title);
+                                    setSelectedAssignmentId("All Assignments");
+                                }}
                             >
                                 <Text className={`font-bold text-xs ${selectedSubject === sub.title ? "text-white" : "text-gray-500 dark:text-gray-400"}`}>{sub.title}</Text>
                             </TouchableOpacity>
                         ))}
                     </ScrollView>
+
+                    {/* Assignment Filter & Toggle */}
+                    {selectedSubject !== "All Subjects" && assignments.length > 0 && (
+                        <View className="mb-6">
+                            <Text className="text-gray-500 dark:text-gray-400 text-[10px] font-bold uppercase tracking-wider ml-1 mb-2">Select Assignment</Text>
+                            <ScrollView horizontal showsHorizontalScrollIndicator={false} className="-mx-1 mb-4">
+                                <TouchableOpacity
+                                    className={`px-5 py-2.5 rounded-2xl mx-1 border ${selectedAssignmentId === "All Assignments" ? "bg-gray-900 border-gray-900" : "bg-white dark:bg-[#1a1a1a] border-gray-100 dark:border-gray-800 shadow-sm"}`}
+                                    onPress={() => setSelectedAssignmentId("All Assignments")}
+                                >
+                                    <Text className={`font-bold text-xs ${selectedAssignmentId === "All Assignments" ? "text-white" : "text-gray-500 dark:text-gray-400"}`}>All Assignments</Text>
+                                </TouchableOpacity>
+                                {assignments.map((asgn) => (
+                                    <TouchableOpacity
+                                        key={asgn.id}
+                                        className={`px-5 py-2.5 rounded-2xl mx-1 border ${selectedAssignmentId === asgn.id ? "bg-gray-900 border-gray-900" : "bg-white dark:bg-[#1a1a1a] border-gray-100 dark:border-gray-800 shadow-sm"}`}
+                                        onPress={() => {
+                                            setSelectedAssignmentId(asgn.id);
+                                            setIsPublished(asgn.is_published);
+                                        }}
+                                    >
+                                        <Text className={`font-bold text-xs ${selectedAssignmentId === asgn.id ? "text-white" : "text-gray-500 dark:text-gray-400"}`}>{asgn.title}</Text>
+                                    </TouchableOpacity>
+                                ))}
+                            </ScrollView>
+
+                            {selectedAssignmentId !== "All Assignments" && (
+                                <View className="bg-white dark:bg-[#1a1a1a] p-4 rounded-3xl border border-gray-100 dark:border-gray-800 flex-row justify-between items-center">
+                                    <View>
+                                        <Text className="text-gray-900 dark:text-white font-bold text-sm">Student Visibility</Text>
+                                        <Text className="text-gray-400 dark:text-gray-500 text-xs">Students can see their marks for this work</Text>
+                                    </View>
+                                    <TouchableOpacity
+                                        onPress={togglePublication}
+                                        disabled={updatingVisibility}
+                                        className={`px-4 py-2 rounded-xl border ${isPublished ? "bg-green-50 border-green-100" : "bg-red-50 border-red-100"}`}
+                                    >
+                                        {updatingVisibility ? (
+                                            <ActivityIndicator size="small" color={isPublished ? "#059669" : "#DC2626"} />
+                                        ) : (
+                                            <Text className={`font-bold text-xs uppercase tracking-wider ${isPublished ? "text-green-600" : "text-red-600"}`}>
+                                                {isPublished ? "Published" : "Hidden"}
+                                            </Text>
+                                        )}
+                                    </TouchableOpacity>
+                                </View>
+                            )}
+                        </View>
+                    )}
 
                     {/* Search */}
                     <View className="flex-row items-center bg-white dark:bg-[#1a1a1a] rounded-2xl px-4 py-3 mb-6 border border-gray-100 dark:border-gray-800 shadow-sm">

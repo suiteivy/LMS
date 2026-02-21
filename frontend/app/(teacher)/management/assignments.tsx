@@ -19,6 +19,8 @@ interface Assignment {
     subject_id: string;
     attachment_url?: string;
     attachment_name?: string;
+    weight: number;
+    term: string;
 }
 
 interface SubjectOption {
@@ -109,6 +111,8 @@ export default function AssignmentsPage() {
     const [showDatePicker, setShowDatePicker] = useState(false)
     const [selectedFile, setSelectedFile] = useState<any>(null);
     const [uploading, setUploading] = useState(false);
+    const [weight, setWeight] = useState("0");
+    const [term, setTerm] = useState("");
 
     const onDateChange = (event: any, selectedDate?: Date) => {
         setShowDatePicker(false)
@@ -167,7 +171,9 @@ export default function AssignmentsPage() {
                 attachment_url: a.attachment_url,
                 attachment_name: a.attachment_name,
                 description: a.description || "",
-                points: a.total_points || 100
+                points: a.total_points || 100,
+                weight: a.weight || 0,
+                term: a.term || ""
             }));
 
             setAssignments(formatted);
@@ -187,6 +193,8 @@ export default function AssignmentsPage() {
         const d = a.dueDate !== "No Due Date" ? new Date(a.dueDate) : new Date();
         setDateObject(d);
         setDueDate(a.dueDate !== "No Due Date" ? d.toISOString().split('T')[0] : "");
+        setWeight(a.weight?.toString() || "0");
+        setTerm(a.term || "");
         setShowModal(true);
     };
 
@@ -198,6 +206,8 @@ export default function AssignmentsPage() {
         setSelectedSubjectId("");
         setSelectedFile(null);
         setEditingAssignment(null);
+        setWeight("0");
+        setTerm("");
     };
 
     const pickDocument = async () => {
@@ -252,7 +262,9 @@ export default function AssignmentsPage() {
                         due_date: dueDate ? new Date(dueDate).toISOString() : null,
                         total_points: parseInt(points) || 100,
                         attachment_url: attachmentUrl,
-                        attachment_name: attachmentName
+                        attachment_name: attachmentName,
+                        weight: parseFloat(weight) || 0,
+                        term: term
                     })
                     .eq('id', editingAssignment.id);
                 if (error) throw error;
@@ -266,7 +278,9 @@ export default function AssignmentsPage() {
                     total_points: parseInt(points) || 100,
                     status: 'active',
                     attachment_url: attachmentUrl,
-                    attachment_name: attachmentName
+                    attachment_name: attachmentName,
+                    weight: parseFloat(weight) || 0,
+                    term: term
                 });
                 if (error) throw error;
             }
@@ -291,7 +305,7 @@ export default function AssignmentsPage() {
                 title="Management"
                 subtitle="Assignments"
                 role="Teacher"
-                onBack={() => router.back()}
+                onBack={() => router.push("/(teacher)/management")}
             />
             <ScrollView
                 className="flex-1"
@@ -446,6 +460,31 @@ export default function AssignmentsPage() {
                                         keyboardType="numeric"
                                         value={points}
                                         onChangeText={setPoints}
+                                    />
+                                </View>
+                            </View>
+
+                            <View className="flex-row gap-4 mb-8">
+                                <View className="flex-1">
+                                    <Text className="text-gray-500 dark:text-gray-400 text-[10px] font-bold uppercase tracking-wider ml-2 mb-2">Weight (%)</Text>
+                                    <TextInput
+                                        className="bg-gray-50 dark:bg-[#1a1a1a] rounded-2xl px-6 py-4 text-gray-900 dark:text-white font-bold border border-gray-100 dark:border-gray-800"
+                                        placeholder="0"
+                                        placeholderTextColor="#9CA3AF"
+                                        keyboardType="numeric"
+                                        value={weight}
+                                        onChangeText={setWeight}
+                                    />
+                                </View>
+
+                                <View className="flex-1">
+                                    <Text className="text-gray-500 dark:text-gray-400 text-[10px] font-bold uppercase tracking-wider ml-2 mb-2">Term / Semester</Text>
+                                    <TextInput
+                                        className="bg-gray-50 dark:bg-[#1a1a1a] rounded-2xl px-6 py-4 text-gray-900 dark:text-white font-bold border border-gray-100 dark:border-gray-800"
+                                        placeholder="Semester 1"
+                                        placeholderTextColor="#9CA3AF"
+                                        value={term}
+                                        onChangeText={setTerm}
                                     />
                                 </View>
                             </View>

@@ -127,16 +127,32 @@ function AuthHandler() {
   }, [isNavigationReady]);
 
   React.useEffect(() => {
+    // 1. Wait for everything to be ready
     if (isInitializing || !isNavigationReady) return;
 
     const inAuthGroup = segments.some(s => s === "(auth)");
-    const isRoot = segments.length <= 1;
     const currentPath = `/${segments.join('/')}`;
+    const isRoot = currentPath === '/' || currentPath === '/index' || currentPath === '/(auth)';
 
-    if (!session && !inAuthGroup && !isRoot && currentPath !== '/') {
-      router.replace("/");
-    } else if (session && inAuthGroup && currentPath !== '/') {
-      router.replace("/");
+    // Debug logging for routing issues
+    // console.log("[AuthHandler] State:", { hasSession: !!session, inAuthGroup, isRoot, currentPath });
+
+    if (!session) {
+      // NOT LOGGED IN
+      // If we are not in auth group and not at root, we should probably go to root.
+      // BUT: Only if we aren't already there.
+      if (!inAuthGroup && !isRoot) {
+        // Special case: if we just loaded and isInitializing just flipped to false,
+        // we might be in a race with the router. 
+        // Let's only redirect if we aren't in a transient state.
+        router.replace("/");
+      }
+    } else {
+      // LOGGED IN
+      // If we are in the auth group, we should go to root (which will then redirect to dashboard)
+      if (inAuthGroup) {
+        router.replace("/");
+      }
     }
   }, [session, isInitializing, isNavigationReady, segments.join('|')]);
 
@@ -150,7 +166,7 @@ function AuthHandler() {
 
   return (
     <View
-      style={{ flex: 1, backgroundColor: isDark ? '#121212' : '#ffffff' }}
+      style={{ flex: 1, backgroundColor: isDark ? '#0F0B2E' : '#ffffff' }}
       onStartShouldSetResponder={handleInteraction}
     >
       <Stack screenOptions={{ headerShown: false }}>

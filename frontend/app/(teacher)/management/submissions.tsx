@@ -178,7 +178,7 @@ export default function SubmissionsPage() {
                 title="Review"
                 subtitle="Submissions"
                 role="Teacher"
-                onBack={() => router.back()}
+                onBack={() => router.push("/(teacher)/management")}
             />
             {loading ? (
                 <View className="flex-1 items-center justify-center">

@@ -202,6 +202,9 @@ CREATE TABLE assignments (
     due_date TIMESTAMPTZ,
     total_points INTEGER DEFAULT 100,
     status TEXT CHECK (status IN ('draft', 'active', 'closed')) DEFAULT 'active',
+    is_published BOOLEAN DEFAULT false,
+    weight NUMERIC DEFAULT 0,
+    term TEXT,
     institution_id UUID REFERENCES institutions(id),
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
@@ -272,6 +275,9 @@ CREATE TABLE exams (
     description TEXT,
     date DATE NOT NULL,
     max_score NUMERIC DEFAULT 100,
+    is_published BOOLEAN DEFAULT false,
+    weight NUMERIC DEFAULT 0,
+    term TEXT,
     institution_id UUID REFERENCES institutions(id),
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()

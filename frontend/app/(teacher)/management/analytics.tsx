@@ -103,9 +103,9 @@ export default function AnalyticsPage() {
         <View className="flex-1 bg-gray-50 dark:bg-black">
             <UnifiedHeader
                 title="Management"
-                subtitle="Analytics"
+                subtitle="Analytics & Insights"
                 role="Teacher"
-                onBack={() => router.back()}
+                onBack={() => router.push("/(teacher)/management")}
             />
             <ScrollView
                 className="flex-1"

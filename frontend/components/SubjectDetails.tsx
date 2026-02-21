@@ -23,19 +23,19 @@ export const SubjectDetails: React.FC<SubjectDetailsProps> = ({
   const [activeTab, setActiveTab] = useState<"overview" | "lessons" | "reviews">("overview");
 
   const t = {
-    bg:            isDark ? '#000000' : '#ffffff',
-    surface:       isDark ? '#1a1a1a' : '#ffffff',
-    surfaceAlt:    isDark ? '#111827' : '#f9fafb',
-    border:        isDark ? '#1f2937' : '#f3f4f6',
-    textPrimary:   isDark ? '#ffffff' : '#111827',
+    bg: isDark ? '#000000' : '#ffffff',
+    surface: isDark ? '#1a1a1a' : '#ffffff',
+    surfaceAlt: isDark ? '#111827' : '#f9fafb',
+    border: isDark ? '#1f2937' : '#f3f4f6',
+    textPrimary: isDark ? '#ffffff' : '#111827',
     textSecondary: isDark ? '#9ca3af' : '#6b7280',
-    textMuted:     isDark ? '#6b7280' : '#9ca3af',
-    tabBg:         isDark ? '#111827' : '#f3f4f6',
-    tabActive:     isDark ? '#1f2937' : '#ffffff',
-    detailsBg:     isDark ? '#111827' : '#f9fafb',
-    divider:       isDark ? '#1f2937' : '#f3f4f6',
-    tagBg:         isDark ? '#1f2937' : '#f9fafb',
-    tagBorder:     isDark ? '#374151' : '#f3f4f6',
+    textMuted: isDark ? '#6b7280' : '#9ca3af',
+    tabBg: isDark ? '#111827' : '#f3f4f6',
+    tabActive: isDark ? '#1f2937' : '#ffffff',
+    detailsBg: isDark ? '#111827' : '#f9fafb',
+    divider: isDark ? '#1f2937' : '#f3f4f6',
+    tagBg: isDark ? '#1f2937' : '#f9fafb',
+    tagBorder: isDark ? '#374151' : '#f3f4f6',
   };
 
   const LessonItem = ({ lesson, index }: { lesson: Lesson; index: number }) => (
@@ -109,7 +109,7 @@ export const SubjectDetails: React.FC<SubjectDetailsProps> = ({
         {/* Hero */}
         <View style={{ position: 'relative' }}>
           <Image source={{ uri: Subject.image }} style={{ width: '100%', height: 360 }} resizeMode="cover" />
-          <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 280, backgroundColor: 'transparent', background: 'linear-gradient(to top, black, transparent)' }} />          {/* Gradient overlay via nested views */}
+          <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 280, backgroundColor: 'transparent' }} />
           <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 200, backgroundColor: 'rgba(0,0,0,0.6)' }} />
           <View style={{ position: 'absolute', bottom: 40, left: 24, right: 24 }}>
             <View style={{ flexDirection: 'row', gap: 8, marginBottom: 12 }}>

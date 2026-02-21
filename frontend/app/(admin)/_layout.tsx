@@ -28,27 +28,21 @@ export default function AdminLayout() {
                             color: isDark ? '#f9fafb' : '#111827',
                         },
                         tabBarStyle: {
-                            backgroundColor: isDark ? '#121212' : "#ffffff",
+                            backgroundColor: isDark ? '#0F0B2E' : "#ffffff",
                             borderTopWidth: 1,
-                            borderTopColor: isDark ? '#1f2937' : "#e5e7eb",
-                            minHeight: Platform.OS === "ios" ? 64 + (insets.bottom || 0) : 70,
-                            paddingBottom: (insets.bottom || 0) > 0 ? insets.bottom : 12,
-                            paddingTop: 8,
-                            elevation: 8,
-                            shadowColor: "#000",
-                            shadowOffset: { width: 0, height: -4 },
-                            shadowOpacity: 0.1,
-                            shadowRadius: 3,
+                            borderTopColor: isDark ? '#1f2937' : '#f3f4f6',
+                            height: 64,
+                            paddingBottom: 10,
                         },
-                        tabBarActiveTintColor: "#FF6B00", // Teacher Orange
-                        tabBarInactiveTintColor: isDark ? "#9ca3af" : "#6b7280",
+                        tabBarActiveTintColor: "#FF6B00",
+                        tabBarInactiveTintColor: isDark ? "#94a3b8" : "#64748b",
                         tabBarLabelStyle: {
                             fontSize: 11,
                             fontWeight: "600",
                             marginTop: 0,
                         },
                         sceneStyle: {
-                            backgroundColor: isDark ? '#000000' : "#f9fafb",
+                            backgroundColor: isDark ? '#0F0B2E' : "#f9fafb",
                         },
                     }}
                 >

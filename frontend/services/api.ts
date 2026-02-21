@@ -33,8 +33,8 @@ const getBaseUrl = (): string => {
   // even when testing on a real phone or a different emulator.
   const debuggerHost = Constants.expoConfig?.hostUri;
   if (debuggerHost) {
-      const ip = debuggerHost.split(':')[0];
-      return `http://${ip}:4001/api`;
+    const ip = debuggerHost.split(':')[0];
+    return `http://${ip}:4001/api`;
   }
 
   // Platform-specific defaults for development (Fallbacks)
@@ -127,7 +127,10 @@ api.interceptors.response.use(
           break;
         case 404:
           title = "Not Found";
-          message = "The requested resource was not found.";
+          // Only use default if no specific message came from backend
+          if (!data?.error && !data?.message) {
+            message = "The requested resource was not found.";
+          }
           break;
         case 500:
           title = "Server Error";

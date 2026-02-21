@@ -14,6 +14,8 @@ interface Exam {
     date: string;
     max_score: number;
     results_count: number;
+    weight: number;
+    term: string;
 }
 
 export default function ExamsPage() {
@@ -29,6 +31,8 @@ export default function ExamsPage() {
     const [date, setDate] = useState("");
     const [maxScore, setMaxScore] = useState("100");
     const [selectedSubjectId, setSelectedSubjectId] = useState("");
+    const [weight, setWeight] = useState("0");
+    const [term, setTerm] = useState("");
 
     useEffect(() => {
         fetchExams();
@@ -64,7 +68,9 @@ export default function ExamsPage() {
                 date,
                 max_score: parseInt(maxScore),
                 subject_id: selectedSubjectId,
-                teacher_id: teacherId
+                teacher_id: teacherId,
+                weight: parseFloat(weight) || 0,
+                term: term
             });
             setShowCreateModal(false);
             fetchExams();
@@ -79,7 +85,7 @@ export default function ExamsPage() {
                 title="Academic"
                 subtitle="Exams"
                 role="Teacher"
-                onBack={() => router.back()}
+                onBack={() => router.push("/(teacher)/management")}
             />
             <ScrollView className="flex-1" showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
                 <View className="p-4 md:p-8">
@@ -181,7 +187,7 @@ export default function ExamsPage() {
                             />
                         </View>
 
-                        <View className="flex-row gap-4 mb-8">
+                        <View className="flex-row gap-4 mb-6">
                             <View className="flex-1">
                                 <Text className="text-gray-500 dark:text-gray-400 text-[10px] font-bold uppercase tracking-wider ml-2 mb-2">Date (YYYY-MM-DD)</Text>
                                 <TextInput
@@ -201,6 +207,30 @@ export default function ExamsPage() {
                                     keyboardType="numeric"
                                     value={maxScore}
                                     onChangeText={setMaxScore}
+                                />
+                            </View>
+                        </View>
+
+                        <View className="flex-row gap-4 mb-8">
+                            <View className="flex-1">
+                                <Text className="text-gray-500 dark:text-gray-400 text-[10px] font-bold uppercase tracking-wider ml-2 mb-2">Weight (%)</Text>
+                                <TextInput
+                                    className="bg-gray-50 dark:bg-[#1a1a1a] rounded-2xl px-6 py-4 text-gray-900 dark:text-white font-bold border border-gray-100 dark:border-gray-800"
+                                    placeholder="0"
+                                    placeholderTextColor="#9CA3AF"
+                                    keyboardType="numeric"
+                                    value={weight}
+                                    onChangeText={setWeight}
+                                />
+                            </View>
+                            <View className="flex-1">
+                                <Text className="text-gray-500 dark:text-gray-400 text-[10px] font-bold uppercase tracking-wider ml-2 mb-2">Term / Semester</Text>
+                                <TextInput
+                                    className="bg-gray-50 dark:bg-[#1a1a1a] rounded-2xl px-6 py-4 text-gray-900 dark:text-white font-bold border border-gray-100 dark:border-gray-800"
+                                    placeholder="Semester 1"
+                                    placeholderTextColor="#9CA3AF"
+                                    value={term}
+                                    onChangeText={setTerm}
                                 />
                             </View>
                         </View>

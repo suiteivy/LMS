@@ -8,7 +8,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export default function TeacherLayout() {
     const insets = useSafeAreaInsets();
-    const { isTrial } = useAuth();
+    const { isDemo } = useAuth();
     const { isDark } = useTheme();
     return (
         <AuthGuard allowedRoles={['teacher']}>
@@ -16,7 +16,7 @@ export default function TeacherLayout() {
                 screenOptions={{
                     headerShown: false,
                     tabBarStyle: {
-                        backgroundColor: isDark ? '#121212' : "#ffffff",
+                        backgroundColor: isDark ? '#0F0B2E' : "#ffffff",
                         borderTopWidth: 1,
                         borderTopColor: isDark ? '#1f2937' : "#e5e7eb",
 
@@ -41,7 +41,7 @@ export default function TeacherLayout() {
                         marginTop: 0,
                     },
                     sceneStyle: {
-                        backgroundColor: isDark ? '#000000' : "#ffffff",
+                        backgroundColor: isDark ? '#0F0B2E' : "#ffffff",
                     },
                 }}
             >
@@ -119,7 +119,7 @@ export default function TeacherLayout() {
                     name="settings"
                     options={{
                         title: "Settings",
-                        href: isTrial ? null : "/(teacher)/settings", // Hide from tab bar if trial
+                        href: isDemo ? null : "/(teacher)/settings", // Hide from tab bar if trial
                         tabBarIcon: ({ size = 24, color }) => {
                             const Icon = Settings as any
                             return (

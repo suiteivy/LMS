@@ -142,13 +142,18 @@ export default function Index() {
   }, []);
 
   useEffect(() => {
-    if (isNavReady && !isInitializing && session && profile) {
+    // Only auto-redirect to dashboard if we are actually ON the landing page.
+    // This prevents stealing the navigation if the user is refreshing a deep page
+    // and AuthHandler transiently lands them here.
+    const isActuallyOnLanding = pathname === '/' || pathname === '/index';
+
+    if (isActuallyOnLanding && isNavReady && !isInitializing && session && profile) {
       if (profile.role === 'admin') router.replace('/(admin)');
       else if (profile.role === 'teacher') router.replace('/(teacher)');
       else if (profile.role === 'student') router.replace('/(student)');
       else if (profile.role === 'parent') router.replace('/(parent)');
     }
-  }, [isNavReady, isInitializing, session, profile]);
+  }, [isNavReady, isInitializing, session, profile, pathname]);
 
   if (loading) {
     return (

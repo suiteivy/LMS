@@ -27,11 +27,21 @@ exports.updateMaterials = async (req, res) => {
  */
 exports.createAssignment = async (req, res) => {
     try {
-        const { subject_id, teacher_id, title, description, due_date } = req.body;
+        const { subject_id, teacher_id, title, description, due_date, weight, term, is_published } = req.body;
         const { institution_id } = req;
         const { data, error } = await supabase
             .from("assignments")
-            .insert([{ subject_id, teacher_id, title, description, due_date, institution_id }])
+            .insert([{
+                subject_id,
+                teacher_id,
+                title,
+                description,
+                due_date,
+                institution_id,
+                weight: weight || 0,
+                term,
+                is_published: is_published !== undefined ? is_published : true
+            }])
             .select()
             .single();
 

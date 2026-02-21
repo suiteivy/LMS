@@ -346,6 +346,9 @@ export interface Database {
           due_date: string | null;
           total_points: number;
           status: "draft" | "active" | "closed";
+          is_published: boolean;
+          weight: number;
+          term: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -358,6 +361,9 @@ export interface Database {
           due_date?: string | null;
           total_points?: number;
           status?: "draft" | "active" | "closed";
+          is_published?: boolean;
+          weight?: number;
+          term?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -370,6 +376,9 @@ export interface Database {
           due_date?: string | null;
           total_points?: number;
           status?: "draft" | "active" | "closed";
+          is_published?: boolean;
+          weight?: number;
+          term?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -1042,6 +1051,122 @@ export interface Database {
             foreignKeyName: "notifications_user_id_fkey";
             columns: ["user_id"];
             referencedRelation: "users";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
+      exams: {
+        Row: {
+          id: string;
+          subject_id: string;
+          teacher_id: string;
+          title: string;
+          description: string | null;
+          date: string;
+          max_score: number;
+          is_published: boolean;
+          weight: number;
+          term: string | null;
+          institution_id: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          subject_id: string;
+          teacher_id: string;
+          title: string;
+          description?: string | null;
+          date: string;
+          max_score?: number;
+          is_published?: boolean;
+          weight?: number;
+          term?: string | null;
+          institution_id?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          subject_id?: string;
+          teacher_id?: string;
+          title?: string;
+          description?: string | null;
+          date?: string;
+          max_score?: number;
+          is_published?: boolean;
+          weight?: number;
+          term?: string | null;
+          institution_id?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "exams_subject_id_fkey";
+            columns: ["subject_id"];
+            referencedRelation: "subjects";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "exams_teacher_id_fkey";
+            columns: ["teacher_id"];
+            referencedRelation: "teachers";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
+      exam_results: {
+        Row: {
+          id: string;
+          exam_id: string;
+          student_id: string;
+          score: number | null;
+          feedback: string | null;
+          graded_by: string | null;
+          institution_id: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          exam_id: string;
+          student_id: string;
+          score?: number | null;
+          feedback?: string | null;
+          graded_by?: string | null;
+          institution_id?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          exam_id?: string;
+          student_id?: string;
+          score?: number | null;
+          feedback?: string | null;
+          graded_by?: string | null;
+          institution_id?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "exam_results_exam_id_fkey";
+            columns: ["exam_id"];
+            referencedRelation: "exams";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "exam_results_student_id_fkey";
+            columns: ["student_id"];
+            referencedRelation: "students";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "exam_results_graded_by_fkey";
+            columns: ["graded_by"];
+            referencedRelation: "teachers";
             referencedColumns: ["id"];
           }
         ];

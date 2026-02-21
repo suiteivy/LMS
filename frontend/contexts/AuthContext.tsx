@@ -93,6 +93,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             text2: 'Demo session ended.',
             position: 'bottom',
           });
+          // EXPLICIT REDIRECT for Demo users
+          router.replace('/(auth)/demo');
         } else {
           Toast.show({
             type: 'success',
@@ -218,33 +220,46 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   useEffect(() => {
     // Consolidate initialization into a single start method
     const initializeAuth = async () => {
-      console.log('SUPABASE URL:', process.env.EXPO_PUBLIC_SUPABASE_URL?.slice(0, 30))
-      console.log('SUPABASE KEY exists:', !!process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY)
+      // console.log('SUPABASE URL:', process.env.EXPO_PUBLIC_URL?.slice(0, 30))
       try {
-        // Use getUser() to validate the session token on the server
-        // This prevents restoring invalid/expired sessions from storage
-        const { data: { user: validatedUser }, error } = await supabase.auth.getUser();
+        // 1. First get the session. This is the fastest way to get a local token.
+        const { data: { session: initialSession }, error: sessionError } = await supabase.auth.getSession();
 
-        if (error) {
-          // console.log("AuthContext: Session invalid or expired", error.message);
+        if (sessionError) {
+          // console.log("AuthContext: Error getting initial session", sessionError.message);
         }
 
-        if (validatedUser) {
-          // If user is valid, get the session object (it must exist)
-          const { data: { session: validSession } } = await supabase.auth.getSession();
+        if (initialSession) {
+          // 2. Validate the session with getUser() to ensure it hasn't been revoked/invalidated on server
+          const { data: { user: validatedUser }, error: userError } = await supabase.auth.getUser();
 
-          if (validSession) {
-            setSession(validSession)
-            currentSessionRef.current = validSession; // Mark as having a valid session
-            setUser(validatedUser)
-            // Check if trial
+          if (userError || !validatedUser) {
+            // If getUser fails, the local session is likely stale or invalid
+            // console.log("AuthContext: Session invalid or expired after validation", userError?.message);
+            setSession(null);
+            currentSessionRef.current = null;
+            setUser(null);
+
+            // Re-check demo mode status from storage if no user
+            const persistedTrial = await AsyncStorage.getItem('is_demo_mode');
+            setIsDemo(persistedTrial === 'true');
+          } else {
+            // Session is valid
+            setSession(initialSession);
+            currentSessionRef.current = initialSession;
+            setUser(validatedUser);
+
             const isDemoUser = validatedUser.email?.startsWith('demo.') || false;
             setIsDemo(isDemoUser);
-            await loadUserProfile(validatedUser.id)
-            startTimeoutTimer()
+            if (isDemoUser) {
+              await AsyncStorage.setItem('is_demo_mode', 'true');
+            }
+
+            await loadUserProfile(validatedUser.id);
+            startTimeoutTimer();
           }
         } else {
-          // Ensure we clear state if any junk exists
+          // No session found
           setSession(null);
           currentSessionRef.current = null;
           setUser(null);

@@ -4,7 +4,8 @@ import { supabase } from "@/libs/supabase";
 import { router } from "expo-router";
 import { Award, BarChart3, Star, TrendingUp } from "lucide-react-native";
 import { useEffect, useState } from "react";
-import { ActivityIndicator, ScrollView, Text, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, Alert, ScrollView, Text, TouchableOpacity, View } from "react-native";
+import { GradeDetailModal } from "@/components/common/GradeDetailModal";
 
 interface GradeProps {
     SubjectName: string;
@@ -12,9 +13,10 @@ interface GradeProps {
     grade: string;
     score: number,
     credits: number;
+    onPress: () => void;
 }
 
-const SubjectGrade = ({ SubjectCode, SubjectName, grade, score, credits }: GradeProps) => {
+const SubjectGrade = ({ SubjectCode, SubjectName, grade, score, credits, onPress }: GradeProps) => {
     const getGradeColor = (g: string) => {
         if (g.startsWith('A')) return { text: 'text-green-600 dark:text-green-400', bg: 'bg-green-50 dark:bg-green-950/20' };
         if (g.startsWith('B')) return { text: 'text-blue-600 dark:text-blue-400', bg: 'bg-blue-50 dark:bg-blue-950/20' };
@@ -23,7 +25,10 @@ const SubjectGrade = ({ SubjectCode, SubjectName, grade, score, credits }: Grade
     }
     const styles = getGradeColor(grade);
     return (
-        <View className="bg-white dark:bg-[#1a1a1a] p-5 rounded-[32px] border border-gray-50 dark:border-gray-800 mb-4 shadow-sm flex-row items-center active:bg-gray-50 dark:active:bg-gray-900">
+        <TouchableOpacity
+            onPress={onPress}
+            className="bg-white dark:bg-[#1a1a1a] p-5 rounded-[32px] border border-gray-50 dark:border-gray-800 mb-4 shadow-sm flex-row items-center active:bg-gray-50 dark:active:bg-gray-900"
+        >
             <View className={`w-12 h-12 rounded-2xl items-center justify-center mr-4 ${styles.bg}`}>
                 <Text className={`font-black text-xl ${styles.text}`}>{grade === 'N/A' ? '?' : grade}</Text>
             </View>
@@ -36,7 +41,7 @@ const SubjectGrade = ({ SubjectCode, SubjectName, grade, score, credits }: Grade
                 <Text className="text-gray-900 dark:text-gray-100 font-bold text-base">{score}%</Text>
                 <Text className="text-gray-400 dark:text-gray-500 text-[8px] font-bold uppercase tracking-widest">Weightage</Text>
             </View>
-        </View>
+        </TouchableOpacity>
     )
 }
 
@@ -45,6 +50,14 @@ export default function Grades() {
     const [grades, setGrades] = useState<GradeProps[]>([]);
     const [loading, setLoading] = useState(true);
     const [stats, setStats] = useState({ gpa: 0, credits: 0, rank: 0, totalMarks: 0, avgMark: 0 });
+    const [showModal, setShowModal] = useState(false);
+    const [fetchingDetails, setFetchingDetails] = useState(false);
+    const [selectedDetails, setSelectedDetails] = useState({
+        subjectName: "",
+        lecturerName: "",
+        examMark: 0,
+        testScores: [] as any[]
+    });
 
     useEffect(() => {
         if (studentId || user?.id) {
@@ -64,7 +77,12 @@ export default function Grades() {
         if (!studentId) return;
         try {
             setLoading(true);
-            const { data } = await supabase.from('submissions').select(`grade, assignment:assignments(title, subject:subjects(title, id, credits))`).eq('student_id', studentId).eq('status', 'graded');
+            const { data } = await supabase
+                .from('submissions')
+                .select(`grade, assignment:assignments!inner(title, is_published, subject:subjects(title, id, credits))`)
+                .eq('student_id', studentId)
+                .eq('status', 'graded')
+                .eq('assignment.is_published', true);
             const { data: enrollmentGrades } = await supabase.from('enrollments').select(`grade, subjects(id, title, credits)`).eq('student_id', studentId);
             const { data: reportGrades } = await supabase.from('grades').select(`total_grade, subjects:subject_id(id, title, credits)`).eq('student_id', user?.id || '');
 
@@ -127,6 +145,67 @@ export default function Grades() {
             console.error(error);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const fetchSubjectDetails = async (subject: any) => {
+        if (!studentId) return;
+        try {
+            setFetchingDetails(true);
+
+            // 1. Fetch lecturer/subject info
+            const { data: subjectData } = await supabase
+                .from('subjects')
+                .select('*, teacher:teachers(user:users(full_name))')
+                .eq('title', subject.SubjectName)
+                .single();
+
+            if (!subjectData) throw new Error("Subject not found");
+
+            // 2. Fetch submissions for published assignments
+            const { data: submissions } = await supabase
+                .from('submissions')
+                .select('grade, assignment:assignments!inner(id, title, total_points, weight, is_published)')
+                .eq('student_id', studentId)
+                .eq('assignment.subject_id', subjectData.id)
+                .eq('assignment.is_published', true)
+                .eq('status', 'graded');
+
+            // 3. Fetch exam results for published exams
+            const { data: examResults } = await supabase
+                .from('exam_results')
+                .select('score, exam:exams!inner(id, title, max_score, weight, is_published)')
+                .eq('student_id', studentId)
+                .eq('exam.subject_id', subjectData.id)
+                .eq('exam.is_published', true);
+
+            const testScores = [
+                ...(submissions?.map((s: any) => ({
+                    title: s.assignment.title,
+                    mark: s.grade,
+                    maxMark: s.assignment.total_points,
+                    weight: s.assignment.weight
+                })) || []),
+                ...(examResults?.map((er: any) => ({
+                    title: er.exam.title,
+                    mark: er.score,
+                    maxMark: er.exam.max_score,
+                    weight: er.exam.weight
+                })) || [])
+            ];
+
+            setSelectedDetails({
+                subjectName: subject.SubjectName,
+                lecturerName: subjectData?.teacher?.user?.full_name || "Assigned Faculty",
+                examMark: subject.score,
+                testScores
+            });
+            setShowModal(true);
+        } catch (error) {
+            console.error("Error fetching subject details:", error);
+            Alert.alert("Error", "Failed to fetch grade breakdown");
+        } finally {
+            setFetchingDetails(false);
         }
     };
 
@@ -230,11 +309,24 @@ export default function Grades() {
                                 grade={g.grade}
                                 score={g.score}
                                 credits={g.credits}
+                                onPress={() => fetchSubjectDetails(g)}
                             />
                         ))
                     )}
                 </View>
             </ScrollView>
+
+            <GradeDetailModal
+                visible={showModal}
+                onClose={() => setShowModal(false)}
+                {...selectedDetails}
+            />
+
+            {fetchingDetails && (
+                <View className="absolute inset-0 bg-black/20 justify-center items-center">
+                    <ActivityIndicator size="large" color="#FF6900" />
+                </View>
+            )}
         </View>
     )
 }

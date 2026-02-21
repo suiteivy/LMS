@@ -109,7 +109,7 @@ export default function MessagingPage() {
                 title="Communications"
                 subtitle="Messaging"
                 role="Teacher"
-                onBack={() => router.back()}
+                onBack={() => router.push("/(teacher)/management")}
             />
 
             <View className="px-4 md:px-8 mt-6">

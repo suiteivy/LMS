@@ -52,11 +52,11 @@ export const AuthGuard: React.FC<AuthGuardProps> = ({
   // destroys the navigation context for anything inside 'children'.
   if (isInitializing && !hasBeenInitialized.current) {
     return (
-      <View 
-        style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F1FFF8' }}
+      <View
+        style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#0F0B2E' }}
       >
-        <ActivityIndicator size="large" color="#1ABC9C" />
-        <Text className="mt-2 text-[#2C3E50]">Verifying access...</Text>
+        <ActivityIndicator size="large" color="#FF6B00" />
+        <Text style={{ marginTop: 8, color: 'rgba(255,255,255,0.7)' }}>Verifying access...</Text>
       </View>
     )
   }
@@ -67,23 +67,23 @@ export const AuthGuard: React.FC<AuthGuardProps> = ({
     <View style={{ flex: 1 }}>
       {children}
       {isInitializing && hasBeenInitialized.current && (
-        <View 
+        <View
           style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(255, 255, 255, 0.3)' }}
         >
-           <ActivityIndicator size="small" color="#1ABC9C" />
+          <ActivityIndicator size="small" color="#1ABC9C" />
         </View>
       )}
 
       {/* Logout Blocker: instantly hide content when session is gone */}
       {isLoggedOut && (
-        <View 
-          style={{ 
-            position: 'absolute', 
-            top: 0, 
-            left: 0, 
-            right: 0, 
-            bottom: 0, 
-            backgroundColor: 'white', 
+        <View
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'white',
             zIndex: 9999,
           }}
         />

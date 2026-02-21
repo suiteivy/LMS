@@ -14,19 +14,19 @@ export default function StudentLayout() {
       <Tabs
         screenOptions={{
           headerShown: false,
-          tabBarActiveTintColor: "#FF6900", // Standard Cloudora Orange
-          tabBarInactiveTintColor: isDark ? "#9ca3af" : "#6b7280",
+          tabBarActiveTintColor: "#FF6B00", // Standard Cloudora Orange
+          tabBarInactiveTintColor: isDark ? "#94a3b8" : "#64748b",
           tabBarLabelStyle: {
             fontSize: 11,
             fontWeight: "600",
           },
           tabBarStyle: {
-            backgroundColor: isDark ? '#121212' : "#ffffff",
+            backgroundColor: isDark ? '#0F0B2E' : "#ffffff",
             borderTopWidth: 1,
             borderTopColor: isDark ? '#1f2937' : "#e5e7eb",
             // Handle different device heights dynamically
-            minHeight: Platform.OS === "ios" ? 64 + insets.bottom : 70,
-            paddingBottom: insets.bottom > 0 ? insets.bottom : 12,
+            height: 60,
+            paddingBottom: 8,
             paddingTop: 8,
             // Shadow/Elevation
             elevation: 8,
@@ -36,7 +36,7 @@ export default function StudentLayout() {
             shadowRadius: 3,
           },
           sceneStyle: {
-            backgroundColor: isDark ? '#000000' : "#ffffff",
+            backgroundColor: isDark ? '#0F0B2E' : "#ffffff",
           },
         }}
       >

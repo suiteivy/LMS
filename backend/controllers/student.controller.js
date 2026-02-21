@@ -49,26 +49,36 @@ exports.getMyTimetable = async (req, res) => {
     try {
         const { userId, institution_id } = req;
 
-        // 1. Get student's class_id
-        const { data: student } = await supabase
+        // 1. Get student's internal ID
+        const { data: student, error: studentError } = await supabase
             .from('students')
-            .select('class_id')
+            .select('id')
             .eq('user_id', userId)
             .single();
 
-        if (!student || !student.class_id) {
+        if (studentError || !student) {
+            return res.status(404).json({ error: "Student profile not found" });
+        }
+
+        // 2. Get student's class_id from enrollments
+        const { data: enrollment, error: enrollError } = await supabase
+            .from('class_enrollments')
+            .select('class_id')
+            .eq('student_id', student.id)
+            .maybeSingle();
+
+        if (enrollError || !enrollment) {
             return res.status(404).json({ error: "Student not assigned to a class" });
         }
 
-        // 2. Fetch timetable for that class
-        // Reusing the logic/query structure from timetable.controller.js for consistency
+        // 3. Fetch timetable for that class
         const { data, error } = await supabase
             .from("timetables")
             .select(`
                 id, day_of_week, start_time, end_time, room_number,
                 subjects ( title, teacher_id, teachers(users(full_name)) )
             `)
-            .eq("class_id", student.class_id)
+            .eq("class_id", enrollment.class_id)
             .eq("institution_id", institution_id)
             .order("start_time", { ascending: true });
 

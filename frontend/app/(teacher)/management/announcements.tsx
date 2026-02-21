@@ -155,9 +155,9 @@ export default function AnnouncementsPage() {
         <View className="flex-1 bg-gray-50 dark:bg-black">
             <UnifiedHeader
                 title="Management"
-                subtitle="Announcements"
+                subtitle="Live Broadcast"
                 role="Teacher"
-                onBack={() => router.back()}
+                onBack={() => router.push("/(teacher)/management")}
             />
             <ScrollView
                 className="flex-1"

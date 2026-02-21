@@ -80,10 +80,10 @@ export default function EarningsPage() {
     return (
         <View className="flex-1 bg-gray-50 dark:bg-black">
             <UnifiedHeader
-                title="Finance"
-                subtitle="Earnings"
+                title="Management"
+                subtitle="Earnings & Payouts"
                 role="Teacher"
-                onBack={() => router.back()}
+                onBack={() => router.push("/(teacher)/management")}
             />
             <ScrollView
                 className="flex-1"
