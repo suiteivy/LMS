@@ -1,7 +1,7 @@
 import { AppLoading } from "@/components/AppLoading";
 import { toastConfig } from "@/components/CustomToast";
 import Notifications from "@/components/Notifications";
-import TrialBanner from "@/components/TrialBanner";
+import DemoBanner from "@/components/DemoBanner";
 import { DebugOverlay } from "@/components/common/DebugOverlay";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { CurrencyProvider } from "@/contexts/CurrencyContext";
@@ -94,7 +94,7 @@ function AppShell() {
       ) : (
         <StatusBar style={isDark ? "light" : "dark"} />
       )}
-      <TrialBanner />
+      <DemoBanner />
       <AuthHandler />
     </>
   );
@@ -161,7 +161,7 @@ function AuthHandler() {
         <Stack.Screen name="(teacher)" />
         <Stack.Screen name="(parent)" />
         <Stack.Screen name="(auth)/forgot-password" />
-        <Stack.Screen name="(auth)/Trial" />
+        <Stack.Screen name="(auth)/demo" />
       </Stack>
 
       <DebugOverlay />

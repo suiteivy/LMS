@@ -27,8 +27,8 @@ interface AuthContextType {
   resetPassword: (email: string) => Promise<{ error: any }>
   refreshProfile: () => Promise<UserProfile | null>
   resetSessionTimer: () => void
-  startTrial: (role: string) => Promise<{ data: any; error: any }>
-  isTrial: boolean
+  startDemo: (role: string) => Promise<{ data: any; error: any }>
+  isDemo: boolean
 }
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -64,7 +64,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [isInitializing, setIsInitializing] = useState(true)
   const [isProfileLoading, setIsProfileLoading] = useState(false)
   const [loading, setLoading] = useState(true) // Legacy support for profile loading
-  const [isTrial, setIsTrial] = useState(false)
+  const [isDemo, setIsDemo] = useState(false)
 
   const timerRef = useRef<any>(null)
   const appState = useRef(AppState.currentState);
@@ -74,19 +74,19 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const currentSessionRef = useRef<Session | null>(null);
 
   // NEW: Track trial status in a ref to access it during logout events
-  const isTrialRef = useRef(false);
-  useEffect(() => { isTrialRef.current = isTrial; }, [isTrial]);
+  const isDemoRef = useRef(false);
+  useEffect(() => { isDemoRef.current = isDemo; }, [isDemo]);
 
   const handleLogout = async () => {
     isManualLogout.current = true
     try {
       // Clear trial expiry mechanism
-      AsyncStorage.removeItem('trial_expiry').catch(e => console.warn('Failed to clear expiry', e));
+      AsyncStorage.removeItem('demo_expiry').catch(e => console.warn('Failed to clear expiry', e));
 
       const { error } = await authService.signOut();
       if (!error) {
         // Custom Toast for Trial vs Normal
-        if (isTrialRef.current) {
+        if (isDemoRef.current) {
           Toast.show({
             type: 'info',
             text1: 'Session ended',
@@ -111,12 +111,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   }
 
-  const handleStartTrial = async (role: string) => {
-    const result = await authService.startTrialSession(role);
+  const handleStartDemo = async (role: string) => {
+    const result = await authService.startDemoSession(role);
     if (!result.error && result.data) {
       // Set 15 minute expiry for the banner
       const expiry = Date.now() + 15 * 60 * 1000;
-      await AsyncStorage.setItem('trial_expiry', expiry.toString());
+      await AsyncStorage.setItem('demo_expiry', expiry.toString());
     }
     return result;
   }
@@ -238,8 +238,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             currentSessionRef.current = validSession; // Mark as having a valid session
             setUser(validatedUser)
             // Check if trial
-            const isTrialUser = validatedUser.email?.startsWith('demo.') || false;
-            setIsTrial(isTrialUser);
+            const isDemoUser = validatedUser.email?.startsWith('demo.') || false;
+            setIsDemo(isDemoUser);
             await loadUserProfile(validatedUser.id)
             startTimeoutTimer()
           }
@@ -251,7 +251,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
           // Check if we have a persisted trial state for the redirect logic
           const persistedTrial = await AsyncStorage.getItem('is_demo_mode');
-          setIsTrial(persistedTrial === 'true');
+          setIsDemo(persistedTrial === 'true');
         }
       } catch (error) {
         console.error('Error in initializeAuth:', error)
@@ -280,9 +280,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           currentSessionRef.current = session;
           startTimeoutTimer()
           if (session?.user) {
-            const isTrialUser = session.user.email?.startsWith('demo.') || false;
-            setIsTrial(isTrialUser);
-            if (isTrialUser) {
+            const isDemoUser = session.user.email?.startsWith('demo.') || false;
+            setIsDemo(isDemoUser);
+            if (isDemoUser) {
               AsyncStorage.setItem('is_demo_mode', 'true');
             } else {
               AsyncStorage.removeItem('is_demo_mode');
@@ -300,8 +300,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             displayId: null
           })
 
-          // CRITICAL: Do NOT clear isTrial state here. 
-          // We keep it true if it was true, so AuthHandler knows to redirect to /trial.
+          // CRITICAL: Do NOT clear isDemo state here. 
+          // We keep it true if it was true, so AuthHandler knows to redirect to /demo.
           // setIsTrial(false) <= REMOVED
           // We also don't clear AsyncStorage 'is_demo_mode' here, 
           // we only clear it when a NEW non-demo user signs in.
@@ -309,11 +309,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           // Only show "Unexpected Logout" if we actually THOUGHT we had a session
           // and it wasn't a manual logout.
           if (!isManualLogout.current && currentSessionRef.current) {
-            const wasTrial = isTrialRef.current;
+            const wasDemo = isDemoRef.current;
 
             // For trial users, we might get here if the token expires naturally.
             // We want to be sure we show the correct "Demo Ended" message.
-            if (wasTrial) {
+            if (wasDemo) {
               Toast.show({
                 type: 'info',
                 text1: 'Session ended',
@@ -428,9 +428,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     resetPassword: authService.resetPassword,
     refreshProfile,
     resetSessionTimer,
-    startTrial: handleStartTrial,
-    isTrial,
-  }), [session, user, profile, roleInfo, loading, isInitializing, isProfileLoading, isTrial]);
+    startDemo: handleStartDemo,
+    isDemo,
+  }), [session, user, profile, roleInfo, loading, isInitializing, isProfileLoading, isDemo]);
 
   return (
     <AuthContext.Provider value={value}>

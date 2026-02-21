@@ -373,7 +373,7 @@ export default function Index() {
                     backgroundColor: "rgba(255,255,255,0.05)",
                     flexDirection: "row", alignItems: "center",
                   }}
-                  onPress={() => router.push('/trial' as any)}
+                  onPress={() => router.push('/demo' as any)}
                 >
                   <Text style={{ color: "rgba(255,255,255,0.9)", fontWeight: "700", fontSize: 15 }}>
                     Try Demo
@@ -523,7 +523,7 @@ export default function Index() {
                 shadowColor: "#FF6B00", shadowOffset: { width: 0, height: 6 },
                 shadowOpacity: 0.35, shadowRadius: 16, elevation: 6,
               }}
-              onPress={() => router.push('/trial' as any)}
+              onPress={() => router.push('/demo' as any)}
             >
               <Sparkles size={16} color="white" />
               <Text style={{ color: "white", fontWeight: "800", marginLeft: 8, fontSize: 15 }}>
@@ -872,7 +872,7 @@ const PricingCard = ({
             shadowOpacity: isPro ? 0.4 : 0.2,
             shadowRadius: 12, elevation: 4,
           }}
-          onPress={() => router.push('/trial' as any)}
+          onPress={() => router.push('/demo' as any)}
         >
           <Text style={{ color: "white", fontWeight: "800", fontSize: 14, textTransform: "uppercase", letterSpacing: 1 }}>
             {ctaLabel}

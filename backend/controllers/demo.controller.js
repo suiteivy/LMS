@@ -19,7 +19,7 @@ const DEMO_EMAILS = {
     admin: 'demo.admin@lms.com'
 };
 
-exports.startTrial = async (req, res) => {
+exports.startDemo = async (req, res) => {
     const { role } = req.body;
 
     if (!role || !DEMO_EMAILS[role]) {
@@ -88,7 +88,7 @@ exports.startTrial = async (req, res) => {
 
         // 4. Return existing session data
         res.status(200).json({
-            message: "Trial started successfully",
+            message: "Demo started successfully",
             token: session.access_token,
             refreshToken: session.refresh_token,
             user: {
@@ -97,12 +97,12 @@ exports.startTrial = async (req, res) => {
                 ...userData,
                 customId
             },
-            isTrial: true,
+            isDemo: true,
             expiresIn: 15 * 60 // 15 minutes in seconds
         });
 
     } catch (err) {
-        console.error('Start trial error:', err);
+        console.error('Start demo error:', err);
         res.status(500).json({ error: 'Internal server error' });
     }
 };

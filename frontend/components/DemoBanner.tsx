@@ -6,26 +6,26 @@ import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-export default function TrialBanner() {
-    const { isTrial, logout } = useAuth();
+export default function DemoBanner() {
+    const { isDemo, logout } = useAuth();
     const [expiryTime, setExpiryTime] = useState<number | null>(null);
     const [timeLeft, setTimeLeft] = useState(0); // Initialize to 0, will be set by effects
     const router = useRouter();
 
     useEffect(() => {
-        if (!isTrial) return;
+        if (!isDemo) return;
 
         const loadTimer = async () => {
             try {
                 let expiry = null;
-                const expiryStr = await AsyncStorage.getItem('trial_expiry');
+                const expiryStr = await AsyncStorage.getItem('demo_expiry');
 
                 if (expiryStr) {
                     expiry = parseInt(expiryStr, 10);
                 } else {
                     // Fallback: Set 15m and save
                     expiry = Date.now() + 15 * 60 * 1000;
-                    await AsyncStorage.setItem('trial_expiry', expiry.toString());
+                    await AsyncStorage.setItem('demo_expiry', expiry.toString());
                 }
 
                 setExpiryTime(expiry);
@@ -40,7 +40,7 @@ export default function TrialBanner() {
         };
 
         loadTimer();
-    }, [isTrial]);
+    }, [isDemo]);
 
     useEffect(() => {
         if (!expiryTime) return;
@@ -68,7 +68,7 @@ export default function TrialBanner() {
             [{
                 text: "OK", onPress: async () => {
                     await logout();
-                    router.replace('/(auth)/trial');
+                    router.replace('/(auth)/demo');
                 }
             }]
         );
@@ -83,7 +83,7 @@ export default function TrialBanner() {
                 {
                     text: "End Session", style: "destructive", onPress: async () => {
                         await logout();
-                        router.replace('/(auth)/trial');
+                        router.replace('/(auth)/demo');
                     }
                 }
             ]
@@ -92,7 +92,7 @@ export default function TrialBanner() {
 
     // Hide banner if not a trial OR if not logged in (session is null)
     const { session } = useAuth();
-    if (!isTrial || !session) return null;
+    if (!isDemo || !session) return null;
 
     const minutes = Math.floor(timeLeft / 60);
     const seconds = timeLeft % 60;

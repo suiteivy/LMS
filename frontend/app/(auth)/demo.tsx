@@ -71,9 +71,9 @@ const ROLES: RoleData[] = [
   }
 ];
 
-export default function Trial() {
+export default function Demo() {
   const [isLoading, setIsLoading] = useState(false);
-  const { startTrial } = useAuth();
+  const { startDemo } = useAuth();
 
   // Animations
   const fadeIn = useRef(new Animated.Value(0)).current;
@@ -101,7 +101,7 @@ export default function Trial() {
   const modalScale = useRef(new Animated.Value(0.9)).current;
   const modalOpacity = useRef(new Animated.Value(0)).current;
 
-  const openTrialModal = (role: RoleData) => {
+  const openDemoModal = (role: RoleData) => {
     setSelectedRoleData(role);
     setModalVisible(true);
     modalScale.setValue(0.9);
@@ -119,14 +119,14 @@ export default function Trial() {
     ]).start(() => setModalVisible(false));
   };
 
-  const handleTrialLogin = async () => {
+  const handleDemoLogin = async () => {
     if (!selectedRoleData) return;
 
     setIsLoading(true);
     setModalVisible(false);
 
     try {
-      const { error } = await startTrial(selectedRoleData.id);
+      const { error } = await startDemo(selectedRoleData.id);
 
       if (error) {
         Alert.alert("Demo Access Failed", "Could not start the demo session. Please try again.");
@@ -256,7 +256,7 @@ export default function Trial() {
                   }}
                 >
                   <Pressable
-                    onPress={() => openTrialModal(role)}
+                    onPress={() => openDemoModal(role)}
                     style={({ pressed }) => ({
                       borderRadius: 22,
                       overflow: "hidden",
@@ -467,7 +467,7 @@ export default function Trial() {
 
               {/* CTA */}
               <TouchableOpacity
-                onPress={handleTrialLogin}
+                onPress={handleDemoLogin}
                 activeOpacity={0.85}
                 style={{
                   backgroundColor: selectedRoleData?.color || "#FF6B00",

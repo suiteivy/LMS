@@ -133,10 +133,10 @@ export default function SignIn() {
 
       setTimeout(() => {
         switch (userData.role) {
-          case "admin":   router.replace("/(admin)"); break;
+          case "admin": router.replace("/(admin)"); break;
           case "teacher": router.replace("/(teacher)"); break;
           case "student": router.replace("/(student)"); break;
-          case "parent":  router.replace("/(parent)" as any); break;
+          case "parent": router.replace("/(parent)" as any); break;
           default: setErrorMessage("Unrecognized user role: " + userData.role); break;
         }
       }, 2000);
@@ -273,7 +273,7 @@ export default function SignIn() {
                 {/* Demo CTA */}
                 <TouchableOpacity
                   style={{ height: 52, borderRadius: 14, borderWidth: 1.5, borderColor: "#f3f4f6", backgroundColor: "#f9fafb", justifyContent: "center", alignItems: "center", flexDirection: "row" }}
-                  onPress={() => router.push('/trial' as any)}
+                  onPress={() => router.push('/demo' as any)}
                   activeOpacity={0.8}
                 >
                   <Sparkles size={16} color="#FF6B00" />

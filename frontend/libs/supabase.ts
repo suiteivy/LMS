@@ -178,10 +178,10 @@ export const authService = {
     }
   },
 
-  // Start a trial session
-  startTrialSession: async (role: string) => {
+  // Start a demo session
+  startDemoSession: async (role: string) => {
     try {
-      const response = await fetch(`${process.env.EXPO_PUBLIC_URL}/trials/start`, {
+      const response = await fetch(`${process.env.EXPO_PUBLIC_URL}/demo/start`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -192,7 +192,7 @@ export const authService = {
       const data = await response.json();
 
       if (!response.ok) {
-        return { data: null, error: data.error || "Failed to start trial" };
+        return { data: null, error: data.error || "Failed to start demo" };
       }
 
       // Manually set the session in Supabase client
