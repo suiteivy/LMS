@@ -347,6 +347,13 @@ export interface BackendBook {
   total_quantity: number;
   available_quantity: number;
   category?: string;
+  publisher?: string;
+  publication_year?: number;
+  edition?: string;
+  description?: string;
+  call_number?: string;
+  language?: string;
+  page_count?: number;
   institution_id: string;
   created_at: string;
 }
@@ -359,6 +366,13 @@ export interface FrontendBook {
   category: string;
   quantity: number;
   available: number;
+  publisher?: string;
+  publicationYear?: number;
+  edition?: string;
+  description?: string;
+  callNumber?: string;
+  language?: string;
+  pageCount?: number;
   institutionId: string;
   createdAt?: string;
 }
@@ -417,6 +431,13 @@ export interface AddBookRequest {
   total_quantity: number;
   institution_id: string;
   category?: string;
+  publisher?: string;
+  publication_year?: number;
+  edition?: string;
+  description?: string;
+  call_number?: string;
+  language?: string;
+  page_count?: number;
 }
 
 export interface UpdateBookRequest {

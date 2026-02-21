@@ -150,6 +150,7 @@ export default function AdminLayout() {
                     <Tabs.Screen name="settings/index" options={{ href: null }} />
                     <Tabs.Screen name="attendance/teachers/index" options={{ href: null }} />
                     <Tabs.Screen name="finance/bursaries/reports" options={{ href: null }} />
+                    <Tabs.Screen name="classes/index" options={{ href: null }} />
 
                 </Tabs>
             </SchoolProvider>

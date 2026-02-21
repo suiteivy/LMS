@@ -2,7 +2,7 @@ const express = require("express");
 const router = express.Router();
 const { authMiddleware } = require("../middleware/auth.middleware");
 const { authorizeRoles } = require("../middleware/authRole");
-const { getMyFinance } = require("../controllers/student.controller");
+const { getMyFinance, getMyTimetable, getMyAnnouncements } = require("../controllers/student.controller");
 
 // All routes require authentication
 router.use(authMiddleware);
@@ -11,6 +11,9 @@ router.use(authMiddleware);
 router.get("/me/finance", authorizeRoles(['student']), getMyFinance);
 
 // Get My Timetable (Student only)
-router.get("/me/timetable", authorizeRoles(['student']), require("../controllers/student.controller").getMyTimetable);
+router.get("/me/timetable", authorizeRoles(['student']), getMyTimetable);
+
+// Get My Announcements (Student only)
+router.get("/me/announcements", authorizeRoles(['student']), getMyAnnouncements);
 
 module.exports = router;

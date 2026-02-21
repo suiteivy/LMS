@@ -11,4 +11,9 @@ export class StudentService {
         const response = await api.get('/student/me/timetable');
         return response.data;
     }
+
+    static async getAnnouncements() {
+        const response = await api.get('/student/me/announcements');
+        return response.data;
+    }
 }

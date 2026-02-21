@@ -158,6 +158,12 @@ export default function StudentLayout() {
             href: null,
           }}
         />
+        <Tabs.Screen
+          name="announcements"
+          options={{
+            href: null,
+          }}
+        />
       </Tabs>
     </AuthGuard>
   );

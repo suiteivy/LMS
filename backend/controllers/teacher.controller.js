@@ -213,3 +213,100 @@ exports.getEarnings = async (req, res) => {
     }
 };
 
+/**
+ * Get student performance data for teacher's subjects
+ * Shows grades and submissions per student per subject
+ */
+exports.getStudentPerformance = async (req, res) => {
+    try {
+        const { userId, userRole, institution_id } = req;
+        if (userRole !== 'teacher') return res.status(403).json({ error: "Unauthorized" });
+
+        // 1. Get teacher ID
+        const { data: teacher } = await supabase.from('teachers').select('id').eq('user_id', userId).single();
+        if (!teacher) return res.status(404).json({ error: "Teacher profile not found" });
+
+        // 2. Get subjects taught by this teacher
+        const { data: subjects } = await supabase
+            .from('subjects')
+            .select('id, title, class_id, classes(name)')
+            .eq('teacher_id', teacher.id)
+            .eq('institution_id', institution_id);
+
+        if (!subjects || subjects.length === 0) {
+            return res.json({ subjects: [], students: [] });
+        }
+
+        const subjectIds = subjects.map(s => s.id);
+
+        // 3. Get enrollments for those subjects
+        const { data: enrollments } = await supabase
+            .from('enrollments')
+            .select(`
+                id, student_id, subject_id,
+                students ( id, user_id, grade_level, users(full_name, email, avatar_url) )
+            `)
+            .in('subject_id', subjectIds);
+
+        // 4. Get submissions/grades for those students in those subjects
+        const studentIds = [...new Set((enrollments || []).map(e => e.student_id).filter(Boolean))];
+
+        let submissions = [];
+        if (studentIds.length > 0) {
+            const { data: subs } = await supabase
+                .from('submissions')
+                .select(`
+                    id, student_id, assignment_id, grade, status, submitted_at, feedback,
+                    assignments ( title, subject_id, total_marks )
+                `)
+                .in('student_id', studentIds);
+            submissions = subs || [];
+        }
+
+        // 5. Build response grouped by subject
+        const performance = subjects.map(subject => {
+            const subjectEnrollments = (enrollments || []).filter(e => e.subject_id === subject.id);
+            const students = subjectEnrollments.map(enrollment => {
+                const studentSubs = submissions.filter(
+                    s => s.student_id === enrollment.student_id && s.assignments?.subject_id === subject.id
+                );
+                const gradedSubs = studentSubs.filter(s => s.grade !== null && s.grade !== undefined);
+                const avgGrade = gradedSubs.length > 0
+                    ? gradedSubs.reduce((sum, s) => sum + Number(s.grade), 0) / gradedSubs.length
+                    : null;
+
+                return {
+                    student_id: enrollment.student_id,
+                    full_name: enrollment.students?.users?.full_name || 'Unknown',
+                    email: enrollment.students?.users?.email || '',
+                    avatar_url: enrollment.students?.users?.avatar_url || null,
+                    grade_level: enrollment.students?.grade_level || null,
+                    submissions_count: studentSubs.length,
+                    graded_count: gradedSubs.length,
+                    average_grade: avgGrade !== null ? Math.round(avgGrade * 100) / 100 : null,
+                    submissions: studentSubs.map(s => ({
+                        id: s.id,
+                        assignment_title: s.assignments?.title || 'Unknown',
+                        total_marks: s.assignments?.total_marks || 0,
+                        grade: s.grade,
+                        status: s.status,
+                        submitted_at: s.submitted_at,
+                        feedback: s.feedback,
+                    })),
+                };
+            });
+
+            return {
+                subject_id: subject.id,
+                subject_title: subject.title,
+                class_name: subject.classes?.name || 'N/A',
+                students,
+            };
+        });
+
+        res.json(performance);
+    } catch (err) {
+        console.error("[TeacherStudentPerformance] Error:", err);
+        res.status(500).json({ error: err.message });
+    }
+};

@@ -256,6 +256,13 @@ export class LibraryAPI {
       category: backendBook.category || "General",
       quantity: backendBook.total_quantity,
       available: backendBook.available_quantity,
+      publisher: backendBook.publisher,
+      publicationYear: backendBook.publication_year,
+      edition: backendBook.edition,
+      description: backendBook.description,
+      callNumber: backendBook.call_number,
+      language: backendBook.language,
+      pageCount: backendBook.page_count,
       institutionId: backendBook.institution_id,
       createdAt: backendBook.created_at,
     };

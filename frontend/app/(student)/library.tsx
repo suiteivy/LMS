@@ -27,12 +27,12 @@ export default function StudentLibrary() {
             ]);
 
             // LOGIC: If real data is empty, use demo data
-            const finalBooks = booksData.length > 0 
-                ? booksData.map(LibraryAPI.transformBookData) 
+            const finalBooks = booksData.length > 0
+                ? booksData.map(LibraryAPI.transformBookData)
                 : demoData.MOCK_LIBRARY.catalog;
 
-            const finalHistory = historyData.length > 0 
-                ? historyData.map(LibraryAPI.transformBorrowedBookData) 
+            const finalHistory = historyData.length > 0
+                ? historyData.map(LibraryAPI.transformBorrowedBookData)
                 : demoData.MOCK_LIBRARY.activity;
 
             setBooks(finalBooks);
@@ -60,7 +60,7 @@ export default function StudentLibrary() {
     const handleBorrow = async (book: FrontendBook) => {
         // INTERACTIVE DEMO LOGIC
         setActionLoading(true);
-        
+
         // If there's no studentId (Demo Mode) or if we want to simulate it for the session
         if (!studentId) {
             setTimeout(() => {
@@ -257,7 +257,7 @@ export default function StudentLibrary() {
                     <View className="bg-white rounded-t-[50px] p-8">
                         <View className="w-12 h-1.5 bg-gray-200 rounded-full self-center mb-8" />
 
-                        <View className="flex-row justify-between items-start mb-6">
+                        <View className="flex-row justify-between items-start mb-4">
                             <View className="flex-1 pr-4">
                                 <Text className="text-orange-600 font-bold text-xs uppercase tracking-widest">{selectedBook?.category}</Text>
                                 <Text className="text-3xl font-black text-gray-900 mt-2">{selectedBook?.title}</Text>
@@ -267,6 +267,49 @@ export default function StudentLibrary() {
                                 <X size={20} color="#6B7280" />
                             </TouchableOpacity>
                         </View>
+
+                        {/* Book details info */}
+                        {(selectedBook?.publisher || selectedBook?.publicationYear || selectedBook?.edition || selectedBook?.language || selectedBook?.pageCount) && (
+                            <View className="flex-row flex-wrap gap-2 mb-4">
+                                {selectedBook?.publisher && (
+                                    <View className="bg-gray-50 px-3 py-1.5 rounded-xl">
+                                        <Text className="text-gray-400 text-[9px] font-bold uppercase">Publisher</Text>
+                                        <Text className="text-gray-700 text-xs font-medium">{selectedBook.publisher}</Text>
+                                    </View>
+                                )}
+                                {selectedBook?.publicationYear && (
+                                    <View className="bg-gray-50 px-3 py-1.5 rounded-xl">
+                                        <Text className="text-gray-400 text-[9px] font-bold uppercase">Year</Text>
+                                        <Text className="text-gray-700 text-xs font-medium">{selectedBook.publicationYear}</Text>
+                                    </View>
+                                )}
+                                {selectedBook?.edition && (
+                                    <View className="bg-gray-50 px-3 py-1.5 rounded-xl">
+                                        <Text className="text-gray-400 text-[9px] font-bold uppercase">Edition</Text>
+                                        <Text className="text-gray-700 text-xs font-medium">{selectedBook.edition}</Text>
+                                    </View>
+                                )}
+                                {selectedBook?.language && (
+                                    <View className="bg-gray-50 px-3 py-1.5 rounded-xl">
+                                        <Text className="text-gray-400 text-[9px] font-bold uppercase">Language</Text>
+                                        <Text className="text-gray-700 text-xs font-medium">{selectedBook.language}</Text>
+                                    </View>
+                                )}
+                                {selectedBook?.pageCount && (
+                                    <View className="bg-gray-50 px-3 py-1.5 rounded-xl">
+                                        <Text className="text-gray-400 text-[9px] font-bold uppercase">Pages</Text>
+                                        <Text className="text-gray-700 text-xs font-medium">{selectedBook.pageCount}</Text>
+                                    </View>
+                                )}
+                            </View>
+                        )}
+
+                        {/* Description */}
+                        {selectedBook?.description && (
+                            <View className="mb-4">
+                                <Text className="text-gray-600 text-sm leading-5" numberOfLines={3}>{selectedBook.description}</Text>
+                            </View>
+                        )}
 
                         <View className="flex-row justify-between mb-10">
                             <View className="bg-gray-50 p-5 rounded-[30px] flex-1 mr-2 border border-gray-100">
@@ -297,6 +340,7 @@ export default function StudentLibrary() {
                     </View>
                 </View>
             </Modal>
+
         </View>
     );
 }

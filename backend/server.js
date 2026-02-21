@@ -67,6 +67,7 @@ app.use("/api/teacher", require("./routes/teacher.route.js"));
 app.use("/api/settings", settingsRoutes);
 app.use("/api/trials", require("./routes/trial.route"));
 app.use("/api/student", require("./routes/student.route"));
+app.use("/api/classes", require("./routes/class.route"));
 
 // health check
 app.get("/", (req, res) => {

@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, Alert, KeyboardAvoidingView, Platform, ActivityIndicator } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
-import { supabase } from '@/libs/supabase';
 import { Mail, ArrowLeft } from 'lucide-react-native';
 import { FullScreenLoader } from '@/components/common/FullScreenLoader';
+import { SettingsService } from '@/services/SettingsService';
 
 export default function ForgotPassword() {
     const router = useRouter();
@@ -18,19 +18,20 @@ export default function ForgotPassword() {
 
         setLoading(true);
         try {
-            const { error } = await supabase.auth.resetPasswordForEmail(email, {
-                redirectTo: 'https://example.com/update-password', // Replace with your deep link or web URL
-            });
-
-            if (error) throw error;
+            await SettingsService.forgotPassword(email);
 
             Alert.alert(
                 'Check your email',
-                'We have sent a password reset link to your email address.',
+                'If an account with that email exists, we have sent a password reset link.',
                 [{ text: 'OK', onPress: () => router.back() }]
             );
         } catch (error: any) {
-            Alert.alert('Error', error.message);
+            // Still show success message to prevent email enumeration
+            Alert.alert(
+                'Check your email',
+                'If an account with that email exists, we have sent a password reset link.',
+                [{ text: 'OK', onPress: () => router.back() }]
+            );
         } finally {
             setLoading(false);
         }

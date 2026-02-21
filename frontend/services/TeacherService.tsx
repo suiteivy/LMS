@@ -112,5 +112,15 @@ export const TeacherAPI = {
       console.error('Error updating teacher profile:', error);
       throw new Error('Failed to update teacher profile');
     }
-  }
+  },
+
+  getStudentPerformance: async (): Promise<any> => {
+    try {
+      const response = await api.get("/teacher/students/performance");
+      return response.data;
+    } catch (error) {
+      console.error("Get student performance error", error);
+      throw error;
+    }
+  },
 };

@@ -13,7 +13,8 @@ import {
     Users,
     Settings,
     FileText,
-    Shield
+    Shield,
+    School
 } from 'lucide-react-native';
 import { router } from "expo-router";
 import { useDashboardStats } from "@/hooks/useDashboardStats";
@@ -87,6 +88,14 @@ export default function AdminManagement() {
             color: "#8b5cf6",
             bgColor: "#ede9fe",
             route: "/(admin)/management/subjects" as any
+        },
+        {
+            icon: School,
+            title: "Class Management",
+            description: "Create classes, enroll students, auto-assign",
+            color: "#FF6B00",
+            bgColor: "#FFF7ED",
+            route: "/(admin)/classes" as any
         },
         {
             icon: Shield,

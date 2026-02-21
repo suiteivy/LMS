@@ -79,3 +79,56 @@ exports.getMyTimetable = async (req, res) => {
         res.status(500).json({ error: err.message });
     }
 };
+
+/**
+ * Get Announcements for authenticated student
+ * Fetches announcements from subjects/classes the student is enrolled in
+ */
+exports.getMyAnnouncements = async (req, res) => {
+    try {
+        const { userId, institution_id } = req;
+
+        // 1. Get student profile
+        const { data: student } = await supabase
+            .from('students')
+            .select('id, class_id')
+            .eq('user_id', userId)
+            .single();
+
+        if (!student) return res.status(404).json({ error: "Student profile not found" });
+
+        // 2. Get subject IDs from enrollments
+        const { data: enrollments } = await supabase
+            .from('enrollments')
+            .select('subject_id')
+            .eq('student_id', student.id);
+
+        const subjectIds = enrollments?.map(e => e.subject_id).filter(Boolean) || [];
+
+        // 3. Fetch announcements (resources of type 'announcement') for those subjects
+        let query = supabase
+            .from('resources')
+            .select(`
+                id, title, description, created_at, updated_at,
+                subjects ( id, title, teacher_id, teachers(users(full_name)) )
+            `)
+            .eq('type', 'announcement')
+            .eq('institution_id', institution_id)
+            .order('created_at', { ascending: false });
+
+        if (subjectIds.length > 0) {
+            query = query.in('subject_id', subjectIds);
+        } else {
+            // No enrollments, return empty
+            return res.json([]);
+        }
+
+        const { data, error } = await query;
+        if (error) throw error;
+
+        res.json(data || []);
+    } catch (err) {
+        console.error("Get my announcements error:", err);
+        res.status(500).json({ error: err.message });
+    }
+};

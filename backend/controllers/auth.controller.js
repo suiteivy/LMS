@@ -596,3 +596,129 @@ exports.logout = async (req, res) => {
     res.status(500).json({ error: "Logout error" });
   }
 };
+
+/**
+ * Change password for authenticated user
+ * Requires current_password and new_password in body
+ */
+exports.changePassword = async (req, res) => {
+  try {
+    const { current_password, new_password } = req.body;
+    const userId = req.userId;
+
+    if (!current_password || !new_password) {
+      return res.status(400).json({ error: "Current password and new password are required" });
+    }
+
+    if (new_password.length < 6) {
+      return res.status(400).json({ error: "New password must be at least 6 characters" });
+    }
+
+    // Verify current password by attempting sign-in
+    const { data: userData } = await supabase.from('users').select('email').eq('id', userId).single();
+    if (!userData) return res.status(404).json({ error: "User not found" });
+
+    const { createClient } = require("@supabase/supabase-js");
+    const scopedClient = createClient(
+      process.env.SUPABASE_URL || process.env.EXPO_PUBLIC_SUPABASE_URL,
+      process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY,
+      { auth: { persistSession: false } }
+    );
+
+    const { error: signInError } = await scopedClient.auth.signInWithPassword({
+      email: userData.email,
+      password: current_password,
+    });
+
+    if (signInError) {
+      return res.status(401).json({ error: "Current password is incorrect" });
+    }
+
+    // Update password via admin API
+    const { error: updateError } = await supabase.auth.admin.updateUserById(userId, {
+      password: new_password,
+    });
+
+    if (updateError) throw updateError;
+
+    res.status(200).json({ message: "Password changed successfully" });
+  } catch (err) {
+    console.error("changePassword error:", err);
+    res.status(500).json({ error: err.message || "Failed to change password" });
+  }
+};
+
+/**
+ * Send password reset email (public endpoint)
+ */
+exports.forgotPassword = async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({ error: "Email is required" });
+    }
+
+    const { createClient } = require("@supabase/supabase-js");
+    const scopedClient = createClient(
+      process.env.SUPABASE_URL || process.env.EXPO_PUBLIC_SUPABASE_URL,
+      process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY,
+      { auth: { persistSession: false } }
+    );
+
+    const { error } = await scopedClient.auth.resetPasswordForEmail(email, {
+      redirectTo: process.env.PASSWORD_RESET_REDIRECT_URL || undefined,
+    });
+
+    if (error) throw error;
+
+    // Always return success to not leak whether email exists
+    res.status(200).json({ message: "If an account with that email exists, a reset link has been sent." });
+  } catch (err) {
+    console.error("forgotPassword error:", err);
+    // Still return 200 to not leak info
+    res.status(200).json({ message: "If an account with that email exists, a reset link has been sent." });
+  }
+};
+
+/**
+ * Reset password using access token from reset email
+ */
+exports.resetPassword = async (req, res) => {
+  try {
+    const { access_token, new_password } = req.body;
+
+    if (!access_token || !new_password) {
+      return res.status(400).json({ error: "Access token and new password are required" });
+    }
+
+    if (new_password.length < 6) {
+      return res.status(400).json({ error: "Password must be at least 6 characters" });
+    }
+
+    // Get user from the access token
+    const { createClient } = require("@supabase/supabase-js");
+    const scopedClient = createClient(
+      process.env.SUPABASE_URL || process.env.EXPO_PUBLIC_SUPABASE_URL,
+      process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY,
+      { auth: { persistSession: false } }
+    );
+
+    const { data: { user }, error: getUserError } = await scopedClient.auth.getUser(access_token);
+    if (getUserError || !user) {
+      return res.status(401).json({ error: "Invalid or expired reset token" });
+    }
+
+    // Update password via admin API
+    const { error: updateError } = await supabase.auth.admin.updateUserById(user.id, {
+      password: new_password,
+    });
+
+    if (updateError) throw updateError;
+
+    res.status(200).json({ message: "Password reset successfully" });
+  } catch (err) {
+    console.error("resetPassword error:", err);
+    res.status(500).json({ error: err.message || "Failed to reset password" });
+  }
+};

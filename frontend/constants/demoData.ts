@@ -63,14 +63,26 @@ export const MOCK_LIBRARY = {
     {
       id: "borrow-1",
       bookTitle: "Pragmatic Programmer",
-      status: "ready_for_pickup",
-      dueDate: "2026-03-01",
+      author: "Andrew Hunt",
+      isbn: "978-0-135957-05-2",
+      borrowerId: "guest-uuid-12345",
+      borrowerName: "Alex Rivera",
+      borrowerEmail: "alex.demo@university.edu",
+      status: "ready_for_pickup" as const,
+      borrowDate: new Date("2026-02-15") as any,
+      dueDate: "2026-03-01" as any,
     },
     {
       id: "borrow-2",
       bookTitle: "Understanding SQL",
-      status: "borrowed",
-      dueDate: "2026-02-25",
+      author: "Martin Gruber",
+      isbn: "978-0-782121-85-6",
+      borrowerId: "guest-uuid-12345",
+      borrowerName: "Alex Rivera",
+      borrowerEmail: "alex.demo@university.edu",
+      status: "borrowed" as const,
+      borrowDate: new Date("2026-02-10") as any,
+      dueDate: "2026-02-25" as any,
     }
   ],
   catalog: [
@@ -79,16 +91,20 @@ export const MOCK_LIBRARY = {
       title: "Fullstack React Native",
       author: "Newline.co",
       category: "Programming",
+      quantity: 8,
       available: 5,
-      isbn: "978-1-234567-89-0"
+      isbn: "978-1-234567-89-0",
+      institutionId: "demo-institution"
     },
     {
       id: "book-2",
       title: "Design Patterns",
       author: "Erich Gamma",
       category: "Software Engineering",
+      quantity: 3,
       available: 0,
-      isbn: "978-0-201633-61-0"
+      isbn: "978-0-201633-61-0",
+      institutionId: "demo-institution"
     }
   ]
 };
