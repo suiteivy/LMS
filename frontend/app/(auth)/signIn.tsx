@@ -7,15 +7,23 @@ import {
   Modal,
   Alert,
   ScrollView,
+  Animated,
+  Dimensions,
+  Platform,
 } from "react-native";
 import { SafeAreaView, SafeAreaProvider } from "react-native-safe-area-context";
 import { FontAwesome, Ionicons } from "@expo/vector-icons";
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { validateEmail, getAuthErrorMessage } from "@/utils/validation";
 import { supabase } from "@/libs/supabase";
 import { router } from "expo-router";
 import { FullScreenLoader } from "@/components/common/FullScreenLoader";
+import {
+  ArrowLeft, Eye, EyeOff, Lock, Mail, School, Sparkles, Zap
+} from "lucide-react-native";
+
+const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
 // Cast icons to any to avoid nativewind interop issues
 const IconFontAwesome = FontAwesome as any;
@@ -41,6 +49,58 @@ export default function Index() {
 
   const [errors, setErrors] = useState<Record<string, string>>({});
   const { signIn } = useAuth();
+
+  // Animations
+  const fadeIn = useRef(new Animated.Value(0)).current;
+  const slideUp = useRef(new Animated.Value(30)).current;
+  const formFade = useRef(new Animated.Value(0)).current;
+  const formSlide = useRef(new Animated.Value(20)).current;
+  const orb1 = useRef(new Animated.Value(0)).current;
+  const orb2 = useRef(new Animated.Value(0)).current;
+  const btnPulse = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    // Header animation
+    Animated.parallel([
+      Animated.timing(fadeIn, { toValue: 1, duration: 700, useNativeDriver: true }),
+      Animated.timing(slideUp, { toValue: 0, duration: 600, useNativeDriver: true }),
+    ]).start();
+
+    // Form staggered reveal
+    Animated.parallel([
+      Animated.timing(formFade, { toValue: 1, duration: 800, delay: 300, useNativeDriver: true }),
+      Animated.timing(formSlide, { toValue: 0, duration: 600, delay: 300, useNativeDriver: true }),
+    ]).start();
+
+    // Floating orbs
+    const animOrb = (val: Animated.Value, dur: number) =>
+      Animated.loop(Animated.sequence([
+        Animated.timing(val, { toValue: 1, duration: dur, useNativeDriver: true }),
+        Animated.timing(val, { toValue: 0, duration: dur, useNativeDriver: true }),
+      ]));
+    const o1 = animOrb(orb1, 4500);
+    const o2 = animOrb(orb2, 3800);
+    o1.start(); o2.start();
+
+    return () => { o1.stop(); o2.stop(); };
+  }, []);
+
+  // Button pulse when not loading
+  useEffect(() => {
+    if (!isLoading) {
+      const pulse = Animated.loop(Animated.sequence([
+        Animated.timing(btnPulse, { toValue: 1.02, duration: 2000, useNativeDriver: true }),
+        Animated.timing(btnPulse, { toValue: 1, duration: 2000, useNativeDriver: true }),
+      ]));
+      pulse.start();
+      return () => pulse.stop();
+    }
+  }, [isLoading]);
+
+  const orb1Y = orb1.interpolate({ inputRange: [0, 1], outputRange: [0, -25] });
+  const orb1X = orb1.interpolate({ inputRange: [0, 1], outputRange: [0, 15] });
+  const orb2Y = orb2.interpolate({ inputRange: [0, 1], outputRange: [0, 20] });
+  const orb2X = orb2.interpolate({ inputRange: [0, 1], outputRange: [0, -12] });
 
   const showMessage = (msg: string, success: boolean) => {
     setMessage(msg);
@@ -152,10 +212,6 @@ export default function Index() {
         customId = stu?.id || "";
       }
 
-      // console.log(
-      //   `User profile loaded: ${userData.full_name} (${userData.role}) - Custom ID: ${customId}`,
-      // );
-
       if (!userData?.role) {
         console.log("No role found for user");
         setErrorMessage("No role assigned to user.");
@@ -197,149 +253,376 @@ export default function Index() {
     }
   };
 
-
+  const [emailFocused, setEmailFocused] = useState(false);
+  const [passwordFocused, setPasswordFocused] = useState(false);
 
   return (
     <SafeAreaProvider>
-      {/* The outer View handles the gray background for PCs */}
-      <View className="flex-1 bg-gray-50 lg:bg-gray-100 justify-center">
-        <SafeAreaView className="flex-1 w-full max-w-[500px] self-center">
+      <View style={{ flex: 1, backgroundColor: "#0F0B2E" }}>
+        {/* Decorative background elements */}
+        <View style={{
+          position: "absolute", top: 0, left: 0, right: 0, bottom: 0,
+          overflow: "hidden",
+        }}>
+          {/* Gradient blobs */}
+          <View style={{
+            position: "absolute", top: "-5%", right: "-15%",
+            width: 300, height: 300, borderRadius: 150,
+            backgroundColor: "rgba(255,107,0,0.06)",
+          }} />
+          <View style={{
+            position: "absolute", bottom: "10%", left: "-20%",
+            width: 350, height: 350, borderRadius: 175,
+            backgroundColor: "rgba(139,92,246,0.06)",
+          }} />
+
+          {/* Floating orbs */}
+          <Animated.View style={{
+            position: "absolute", top: "12%", left: "8%",
+            width: 60, height: 60, borderRadius: 30,
+            backgroundColor: "rgba(255,107,0,0.1)",
+            transform: [{ translateY: orb1Y }, { translateX: orb1X }],
+          }} />
+          <Animated.View style={{
+            position: "absolute", bottom: "20%", right: "10%",
+            width: 45, height: 45, borderRadius: 23,
+            backgroundColor: "rgba(139,92,246,0.12)",
+            transform: [{ translateY: orb2Y }, { translateX: orb2X }],
+          }} />
+        </View>
+
+        <SafeAreaView style={{
+          flex: 1, width: "100%", maxWidth: 480,
+          alignSelf: "center",
+        }}>
           <ScrollView
-            contentContainerStyle={{ flexGrow: 1, justifyContent: "flex-start" }}
-            className="bg-white lg:rounded-[40px] lg:border lg:border-gray-200 lg:my-10 lg:shadow-xl"
+            contentContainerStyle={{ flexGrow: 1, justifyContent: "center" }}
             showsVerticalScrollIndicator={false}
+            style={{ flex: 1 }}
           >
-            <View className="p-8">
-              {/* CENTERED HEADER WITH ABSOLUTE ARROW */}
-              <View className="flex-row items-center justify-center relative h-10 mb-10">
-                <TouchableOpacity
-                  onPress={() => router.replace("/")}
-                  className="absolute left-0 w-10 h-10 items-center justify-center rounded-2xl bg-gray-50 border border-gray-100"
-                  activeOpacity={0.7}
-                >
-                  <IconIonicons name="arrow-back" size={20} color="black" />
-                </TouchableOpacity>
+            <View style={{ padding: 28 }}>
 
-                <Text className="text-gray-400 font-bold uppercase tracking-[3px] text-[10px]">
-                  Auth Portal
-                </Text>
-              </View>
+              {/* ═══════════ HEADER ═══════════ */}
+              <Animated.View style={{
+                opacity: fadeIn,
+                transform: [{ translateY: slideUp }],
+              }}>
+                {/* Back button + badge row */}
+                <View style={{
+                  flexDirection: "row", alignItems: "center",
+                  justifyContent: "space-between",
+                  marginBottom: 40,
+                }}>
+                  <TouchableOpacity
+                    onPress={() => router.replace("/")}
+                    style={{
+                      width: 44, height: 44, borderRadius: 14,
+                      backgroundColor: "rgba(255,255,255,0.06)",
+                      borderWidth: 1, borderColor: "rgba(255,255,255,0.1)",
+                      justifyContent: "center", alignItems: "center",
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <ArrowLeft size={20} color="rgba(255,255,255,0.7)" />
+                  </TouchableOpacity>
 
-              {/* CENTERED HERO TEXT */}
-              <View className="items-center mb-10">
-                <Text className="text-4xl text-gray-900 font-black tracking-tighter text-center">
-                  Welcome Back
-                </Text>
-                <View className="flex-row items-center">
-                  <Text className="text-4xl text-gray-400 font-light tracking-tighter">
-                    to your account
-                  </Text>
-                  <Text className="text-4xl text-orange-500 font-black">.</Text>
+                  <View style={{
+                    flexDirection: "row", alignItems: "center",
+                    backgroundColor: "rgba(255,107,0,0.1)",
+                    paddingHorizontal: 12, paddingVertical: 5,
+                    borderRadius: 12,
+                    borderWidth: 1, borderColor: "rgba(255,107,0,0.2)",
+                  }}>
+                    <Lock size={12} color="#FF8C40" />
+                    <Text style={{
+                      color: "#FF8C40", fontWeight: "800", fontSize: 10,
+                      textTransform: "uppercase", letterSpacing: 1.5, marginLeft: 5,
+                    }}>
+                      Secure Login
+                    </Text>
+                  </View>
                 </View>
-                <Text className="text-sm text-gray-500 mt-3 text-center leading-5 px-4 font-medium">
-                  Enter your credentials to securely access your student
-                  dashboard.
-                </Text>
-              </View>
 
-              {/* FORM FIELDS */}
-              {errorMessage && (
-                <View className="bg-red-50 border border-red-100 p-4 rounded-2xl mb-6 flex-row items-center">
-                  <IconIonicons name="alert-circle" size={20} color="#ef4444" />
-                  <Text className="text-red-600 ml-2 font-semibold flex-1">
-                    {errorMessage}
+                {/* Logo */}
+                <View style={{ alignItems: "center", marginBottom: 28 }}>
+                  <View style={{
+                    width: 72, height: 72, borderRadius: 20,
+                    backgroundColor: "rgba(255,107,0,0.12)",
+                    borderWidth: 1, borderColor: "rgba(255,107,0,0.25)",
+                    justifyContent: "center", alignItems: "center",
+                    marginBottom: 24,
+                  }}>
+                    <View style={{
+                      width: 50, height: 50, borderRadius: 14,
+                      backgroundColor: "#FF6B00",
+                      justifyContent: "center", alignItems: "center",
+                    }}>
+                      <School size={28} color="white" />
+                    </View>
+                  </View>
+
+                  {/* Headline */}
+                  <Text style={{
+                    color: "white", fontSize: 32, fontWeight: "900",
+                    textAlign: "center", letterSpacing: -0.5,
+                  }}>
+                    Welcome Back
+                  </Text>
+                  <View style={{ flexDirection: "row", alignItems: "center" }}>
+                    <Text style={{
+                      color: "rgba(255,255,255,0.4)", fontSize: 32,
+                      fontWeight: "300", letterSpacing: -0.5,
+                    }}>
+                      to your account
+                    </Text>
+                    <Text style={{
+                      color: "#FF6B00", fontSize: 32, fontWeight: "900",
+                    }}>.</Text>
+                  </View>
+                  <Text style={{
+                    color: "rgba(255,255,255,0.4)", fontSize: 14,
+                    marginTop: 12, textAlign: "center",
+                    lineHeight: 20, paddingHorizontal: 16, fontWeight: "500",
+                  }}>
+                    Enter your credentials to securely access your dashboard.
                   </Text>
                 </View>
-              )}
-              <View className="space-y-6">
-                <View>
-                  <Text className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-2 ml-1">
+              </Animated.View>
+
+              {/* ═══════════ FORM ═══════════ */}
+              <Animated.View style={{
+                opacity: formFade,
+                transform: [{ translateY: formSlide }],
+              }}>
+                {/* Error message */}
+                {errorMessage && (
+                  <View style={{
+                    backgroundColor: "rgba(239,68,68,0.1)",
+                    borderWidth: 1, borderColor: "rgba(239,68,68,0.25)",
+                    borderRadius: 16, padding: 14,
+                    marginBottom: 20, flexDirection: "row", alignItems: "center",
+                  }}>
+                    <View style={{
+                      width: 28, height: 28, borderRadius: 8,
+                      backgroundColor: "rgba(239,68,68,0.15)",
+                      justifyContent: "center", alignItems: "center",
+                      marginRight: 10,
+                    }}>
+                      <IconIonicons name="alert-circle" size={16} color="#EF4444" />
+                    </View>
+                    <Text style={{
+                      color: "#FCA5A5", fontWeight: "600", flex: 1, fontSize: 13,
+                    }}>
+                      {errorMessage}
+                    </Text>
+                  </View>
+                )}
+
+                {/* Email field */}
+                <View style={{ marginBottom: 18 }}>
+                  <Text style={{
+                    color: "rgba(255,255,255,0.4)", fontWeight: "800",
+                    fontSize: 11, textTransform: "uppercase",
+                    letterSpacing: 1.5, marginBottom: 8, marginLeft: 4,
+                  }}>
                     Email Address
                   </Text>
-                  <View
-                    className={`h-14 bg-gray-50 border ${errors.email ? "border-red-500" : "border-gray-100"} rounded-2xl px-4 flex-row items-center`}
-                  >
-                    <IconIonicons name="mail-outline" size={20} color="#9ca3af" />
+                  <View style={{
+                    height: 56,
+                    backgroundColor: emailFocused ? "rgba(255,255,255,0.06)" : "rgba(255,255,255,0.03)",
+                    borderWidth: 1.5,
+                    borderColor: errors.email
+                      ? "rgba(239,68,68,0.5)"
+                      : emailFocused
+                        ? "rgba(255,107,0,0.4)"
+                        : "rgba(255,255,255,0.08)",
+                    borderRadius: 16,
+                    paddingHorizontal: 16,
+                    flexDirection: "row",
+                    alignItems: "center",
+                  }}>
+                    <View style={{
+                      width: 36, height: 36, borderRadius: 10,
+                      backgroundColor: emailFocused ? "rgba(255,107,0,0.12)" : "rgba(255,255,255,0.04)",
+                      justifyContent: "center", alignItems: "center",
+                      marginRight: 12,
+                    }}>
+                      <Mail size={17} color={emailFocused ? "#FF8C40" : "rgba(255,255,255,0.3)"} />
+                    </View>
                     <TextInput
                       keyboardType="email-address"
-                      className="flex-1 ml-3 text-gray-900 font-semibold h-full"
+                      style={{
+                        flex: 1, color: "white", fontWeight: "600",
+                        fontSize: 15, height: "100%",
+                      }}
                       placeholder="name@example.com"
-                      placeholderTextColor="#9ca3af"
+                      placeholderTextColor="rgba(255,255,255,0.25)"
                       value={formData.email}
-                      onChangeText={(value) =>
-                        handleInputChange("email", value)
-                      }
+                      onChangeText={(value) => handleInputChange("email", value)}
                       autoCapitalize="none"
+                      onFocus={() => setEmailFocused(true)}
+                      onBlur={() => setEmailFocused(false)}
                     />
                   </View>
                   {errors.email && (
-                    <Text className="text-red-500 text-xs mt-1 ml-1 font-bold italic">
+                    <Text style={{
+                      color: "#FCA5A5", fontSize: 12,
+                      marginTop: 4, marginLeft: 4, fontWeight: "600",
+                    }}>
                       {errors.email}
                     </Text>
                   )}
                 </View>
 
-                <View>
-                  <Text className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-2 ml-1">
+                {/* Password field */}
+                <View style={{ marginBottom: 12 }}>
+                  <Text style={{
+                    color: "rgba(255,255,255,0.4)", fontWeight: "800",
+                    fontSize: 11, textTransform: "uppercase",
+                    letterSpacing: 1.5, marginBottom: 8, marginLeft: 4,
+                  }}>
                     Password
                   </Text>
-                  <View
-                    className={`h-14 bg-gray-50 border ${errors.password ? "border-red-500" : "border-gray-100"} rounded-2xl px-4 flex-row items-center`}
-                  >
-                    <IconIonicons
-                      name="lock-closed-outline"
-                      size={20}
-                      color="#9ca3af"
-                    />
+                  <View style={{
+                    height: 56,
+                    backgroundColor: passwordFocused ? "rgba(255,255,255,0.06)" : "rgba(255,255,255,0.03)",
+                    borderWidth: 1.5,
+                    borderColor: errors.password
+                      ? "rgba(239,68,68,0.5)"
+                      : passwordFocused
+                        ? "rgba(255,107,0,0.4)"
+                        : "rgba(255,255,255,0.08)",
+                    borderRadius: 16,
+                    paddingHorizontal: 16,
+                    flexDirection: "row",
+                    alignItems: "center",
+                  }}>
+                    <View style={{
+                      width: 36, height: 36, borderRadius: 10,
+                      backgroundColor: passwordFocused ? "rgba(255,107,0,0.12)" : "rgba(255,255,255,0.04)",
+                      justifyContent: "center", alignItems: "center",
+                      marginRight: 12,
+                    }}>
+                      <Lock size={17} color={passwordFocused ? "#FF8C40" : "rgba(255,255,255,0.3)"} />
+                    </View>
                     <TextInput
-                      className="flex-1 ml-3 text-gray-900 font-semibold h-full"
+                      style={{
+                        flex: 1, color: "white", fontWeight: "600",
+                        fontSize: 15, height: "100%",
+                      }}
                       placeholder="••••••••"
                       secureTextEntry={!showPassword}
-                      placeholderTextColor="#9ca3af"
+                      placeholderTextColor="rgba(255,255,255,0.25)"
                       value={formData.password}
-                      onChangeText={(value) =>
-                        handleInputChange("password", value)
-                      }
+                      onChangeText={(value) => handleInputChange("password", value)}
+                      onFocus={() => setPasswordFocused(true)}
+                      onBlur={() => setPasswordFocused(false)}
                     />
                     <TouchableOpacity
                       onPress={() => setShowPassword(!showPassword)}
+                      style={{
+                        width: 36, height: 36, borderRadius: 10,
+                        backgroundColor: "rgba(255,255,255,0.04)",
+                        justifyContent: "center", alignItems: "center",
+                      }}
                     >
-                      <IconIonicons
-                        name={showPassword ? "eye-outline" : "eye-off-outline"}
-                        size={20}
-                        color="#9ca3af"
-                      />
+                      {showPassword
+                        ? <Eye size={17} color="rgba(255,255,255,0.4)" />
+                        : <EyeOff size={17} color="rgba(255,255,255,0.4)" />
+                      }
                     </TouchableOpacity>
                   </View>
                   {errors.password && (
-                    <Text className="text-red-500 text-xs mt-1 ml-1 font-bold italic">
+                    <Text style={{
+                      color: "#FCA5A5", fontSize: 12,
+                      marginTop: 4, marginLeft: 4, fontWeight: "600",
+                    }}>
                       {errors.password}
                     </Text>
                   )}
                 </View>
-              </View>
 
-              <TouchableOpacity
-                onPress={() => router.push("/forgot-password" as any)}
-                className="mt-4 self-end"
-              >
-                <Text className="text-orange-500 font-bold text-sm">
-                  Forgot password?
-                </Text>
-              </TouchableOpacity>
+                {/* Forgot password */}
+                <TouchableOpacity
+                  onPress={() => router.push("/forgot-password" as any)}
+                  style={{ alignSelf: "flex-end", marginTop: 4, marginBottom: 28 }}
+                >
+                  <Text style={{
+                    color: "#FF8C40", fontWeight: "700", fontSize: 13,
+                  }}>
+                    Forgot password?
+                  </Text>
+                </TouchableOpacity>
 
-              {/* SIGN IN BUTTON */}
-              <TouchableOpacity
-                className="bg-orange-500 h-14 rounded-2xl mt-10 flex justify-center items-center shadow-lg shadow-orange-200"
-                onPress={onSubmit}
-                disabled={isLoading}
-                activeOpacity={0.8}
-              >
-                <Text className="text-white font-bold text-lg p-2 ">
-                  Sign In
-                </Text>
-              </TouchableOpacity>
+                {/* Sign In Button */}
+                <Animated.View style={{ transform: [{ scale: btnPulse }] }}>
+                  <TouchableOpacity
+                    style={{
+                      height: 56, borderRadius: 16,
+                      backgroundColor: isLoading ? "rgba(255,107,0,0.6)" : "#FF6B00",
+                      justifyContent: "center", alignItems: "center",
+                      flexDirection: "row",
+                      shadowColor: "#FF6B00",
+                      shadowOffset: { width: 0, height: 8 },
+                      shadowOpacity: 0.35,
+                      shadowRadius: 20,
+                      elevation: 8,
+                    }}
+                    onPress={onSubmit}
+                    disabled={isLoading}
+                    activeOpacity={0.85}
+                  >
+                    {isLoading ? (
+                      <ActivityIndicator size="small" color="white" />
+                    ) : (
+                      <>
+                        <Zap size={18} color="white" />
+                        <Text style={{
+                          color: "white", fontWeight: "800", fontSize: 16, marginLeft: 8,
+                        }}>
+                          Sign In
+                        </Text>
+                      </>
+                    )}
+                  </TouchableOpacity>
+                </Animated.View>
 
+                {/* Divider */}
+                <View style={{
+                  flexDirection: "row", alignItems: "center",
+                  marginVertical: 28,
+                }}>
+                  <View style={{ flex: 1, height: 1, backgroundColor: "rgba(255,255,255,0.06)" }} />
+                  <Text style={{
+                    color: "rgba(255,255,255,0.25)", fontSize: 12,
+                    fontWeight: "600", marginHorizontal: 16,
+                  }}>
+                    OR
+                  </Text>
+                  <View style={{ flex: 1, height: 1, backgroundColor: "rgba(255,255,255,0.06)" }} />
+                </View>
+
+                {/* Demo CTA */}
+                <TouchableOpacity
+                  style={{
+                    height: 52, borderRadius: 14,
+                    borderWidth: 1.5, borderColor: "rgba(255,255,255,0.1)",
+                    backgroundColor: "rgba(255,255,255,0.03)",
+                    justifyContent: "center", alignItems: "center",
+                    flexDirection: "row",
+                  }}
+                  onPress={() => router.push('/trial' as any)}
+                  activeOpacity={0.8}
+                >
+                  <Sparkles size={16} color="#FF8C40" />
+                  <Text style={{
+                    color: "rgba(255,255,255,0.7)", fontWeight: "700",
+                    fontSize: 14, marginLeft: 8,
+                  }}>
+                    Try Interactive Demo
+                  </Text>
+                </TouchableOpacity>
+              </Animated.View>
             </View>
           </ScrollView>
         </SafeAreaView>

@@ -1,13 +1,19 @@
-import React, { useState } from "react";
-import { Text, View, TouchableOpacity, ActivityIndicator, Alert, ImageBackground, Dimensions, Modal, TextInput, ScrollView, Platform } from "react-native";
+import React, { useEffect, useRef, useState } from "react";
+import {
+  Text, View, TouchableOpacity, ActivityIndicator, Alert,
+  Dimensions, Modal, ScrollView, Platform, Animated, Pressable
+} from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { useAuth } from "@/contexts/AuthContext";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
+import {
+  ArrowLeft, BookOpen, Check, GraduationCap, LayoutDashboard,
+  Play, Settings, Sparkles, Users, X
+} from "lucide-react-native";
 
 const { height, width } = Dimensions.get('window');
-const CARD_HEIGHT = height * 0.22; // Responsive height
 
 type RoleType = 'student' | 'teacher' | 'parent' | 'admin';
 
@@ -15,63 +21,53 @@ interface RoleData {
   id: RoleType;
   title: string;
   subtitle: string;
-  icon: keyof typeof Ionicons.glyphMap;
+  description: string;
+  icon: React.ReactNode;
   color: string;
-  bgColor: string; // Tailwind class
-  borderColor: string; // Tailwind class
-  shadowColor: string; // Tailwind class
-  image: string;
+  colorLight: string;
   features: string[];
 }
 
 const ROLES: RoleData[] = [
   {
     id: 'student',
-    title: "Student Module",
+    title: "Student",
     subtitle: "Assignments, grades & library",
-    icon: "school",
-    color: "#f97316", // Orange-500
-    bgColor: "bg-orange-500",
-    borderColor: "border-orange-200",
-    shadowColor: "shadow-orange-200",
-    image: 'https://images.unsplash.com/photo-1523240795612-9a054b0db644?auto=format&fit=crop&q=80&w=800',
-    features: ["View Assignments", "Check Grades", "Access Library", "Submit Work"]
-  },
-  {
-    id: 'parent',
-    title: "Parent Module",
-    subtitle: "Monitor progress & attendance",
-    icon: "people",
-    color: "#3b82f6", // Blue-500
-    bgColor: "bg-blue-500",
-    borderColor: "border-blue-200",
-    shadowColor: "shadow-blue-200",
-    image: 'https://images.unsplash.com/photo-1544717305-2782549b5136?auto=format&fit=crop&q=80&w=800',
-    features: ["Track Progress", "Attendance Reports", "Teacher Chat", "Fee Payments"]
+    description: "Experience the student journey — submit assignments, check grades, browse the digital library, and track your progress.",
+    icon: <GraduationCap size={26} color="#FF8C40" />,
+    color: "#FF6B00",
+    colorLight: "rgba(255,107,0,0.12)",
+    features: ["View Assignments", "Check Grades", "Access Library", "Submit Work", "Track Progress"]
   },
   {
     id: 'teacher',
-    title: "Teacher Module",
+    title: "Teacher",
     subtitle: "Class management & grading",
-    icon: "easel",
-    color: "#10b981", // Emerald-500
-    bgColor: "bg-emerald-500",
-    borderColor: "border-emerald-200",
-    shadowColor: "shadow-emerald-200",
-    image: 'https://images.unsplash.com/photo-1524178232363-1fb2b075b655?auto=format&fit=crop&q=80&w=800',
-    features: ["Manage Classes", "Grade Students", "Lesson Planning", "Analytics"]
+    description: "Take command of the classroom — manage students, grade assignments, create lesson plans, and view real-time analytics.",
+    icon: <BookOpen size={26} color="#34D399" />,
+    color: "#10B981",
+    colorLight: "rgba(16,185,129,0.12)",
+    features: ["Manage Classes", "Grade Students", "Lesson Planning", "Analytics", "Attendance"]
+  },
+  {
+    id: 'parent',
+    title: "Parent",
+    subtitle: "Monitor progress & attendance",
+    description: "Stay connected with your child's education — track progress, view attendance reports, communicate with teachers, and manage fees.",
+    icon: <Users size={26} color="#60A5FA" />,
+    color: "#3B82F6",
+    colorLight: "rgba(59,130,246,0.12)",
+    features: ["Track Progress", "Attendance Reports", "Teacher Chat", "Fee Payments", "Notifications"]
   },
   {
     id: 'admin',
-    title: "Admin Module",
+    title: "Admin",
     subtitle: "System control & analytics",
-    icon: "settings",
-    color: "#6b7280", // Gray-500
-    bgColor: "bg-gray-600",
-    borderColor: "border-gray-200",
-    shadowColor: "shadow-gray-200",
-    image: 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&q=80&w=800',
-    features: ["User Management", "System Settings", "Financial Reports", "Audit Logs"]
+    description: "Full administrative control — manage users, configure settings, generate financial reports, and monitor system-wide analytics.",
+    icon: <Settings size={26} color="#A78BFA" />,
+    color: "#8B5CF6",
+    colorLight: "rgba(139,92,246,0.12)",
+    features: ["User Management", "System Settings", "Financial Reports", "Audit Logs", "Dashboard"]
   }
 ];
 
@@ -79,13 +75,48 @@ export default function Trial() {
   const [isLoading, setIsLoading] = useState(false);
   const { startTrial } = useAuth();
 
+  // Animations
+  const fadeIn = useRef(new Animated.Value(0)).current;
+  const slideUp = useRef(new Animated.Value(40)).current;
+  const cardAnims = useRef(ROLES.map(() => new Animated.Value(0))).current;
+
+  useEffect(() => {
+    // Header fade in
+    Animated.parallel([
+      Animated.timing(fadeIn, { toValue: 1, duration: 600, useNativeDriver: true }),
+      Animated.timing(slideUp, { toValue: 0, duration: 500, useNativeDriver: true }),
+    ]).start();
+
+    // Staggered card animations
+    Animated.stagger(120,
+      cardAnims.map(anim =>
+        Animated.spring(anim, { toValue: 1, friction: 8, tension: 40, useNativeDriver: true })
+      )
+    ).start();
+  }, []);
+
   // Modal state
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedRoleData, setSelectedRoleData] = useState<RoleData | null>(null);
+  const modalScale = useRef(new Animated.Value(0.9)).current;
+  const modalOpacity = useRef(new Animated.Value(0)).current;
 
   const openTrialModal = (role: RoleData) => {
     setSelectedRoleData(role);
     setModalVisible(true);
+    modalScale.setValue(0.9);
+    modalOpacity.setValue(0);
+    Animated.parallel([
+      Animated.spring(modalScale, { toValue: 1, friction: 8, tension: 65, useNativeDriver: true }),
+      Animated.timing(modalOpacity, { toValue: 1, duration: 250, useNativeDriver: true }),
+    ]).start();
+  };
+
+  const closeModal = () => {
+    Animated.parallel([
+      Animated.timing(modalScale, { toValue: 0.9, duration: 150, useNativeDriver: true }),
+      Animated.timing(modalOpacity, { toValue: 0, duration: 150, useNativeDriver: true }),
+    ]).start(() => setModalVisible(false));
   };
 
   const handleTrialLogin = async () => {
@@ -98,12 +129,11 @@ export default function Trial() {
       const { error } = await startTrial(selectedRoleData.id);
 
       if (error) {
-        Alert.alert("Trial Access Failed", "Could not start the demo session. Please try again.");
-        setIsLoading(false); // Reset if failed, otherwise duplicate UI effect
+        Alert.alert("Demo Access Failed", "Could not start the demo session. Please try again.");
+        setIsLoading(false);
         return;
       }
 
-      // Route based on role
       const routes: Record<RoleType, string> = {
         admin: '/(admin)',
         teacher: '/(teacher)',
@@ -120,136 +150,353 @@ export default function Trial() {
     }
   };
 
-  const renderCard = (role: RoleData) => (
-    <TouchableOpacity
-      key={role.id}
-      onPress={() => openTrialModal(role)}
-      activeOpacity={0.9}
-      style={{ height: CARD_HEIGHT }}
-      className={`rounded-2xl overflow-hidden shadow-sm mb-5 border ${role.borderColor} bg-white`}
-    >
-      <ImageBackground
-        source={{ uri: role.image }}
-        className="flex-1 justify-end"
-        imageStyle={{ borderRadius: 16 }}
-      >
-        {/* Gradient Overlay for Text Readability */}
-        <View className="absolute inset-0 bg-black/40" />
-        <View className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent" />
+  return (
+    <SafeAreaView style={{ flex: 1, backgroundColor: "#0F0B2E" }}>
+      <StatusBar style="light" />
 
-        <View className="p-5 flex-row items-end justify-between">
-          <View className="flex-1 mr-4">
-            <View className={`self-start px-2 py-1 rounded-md mb-2 bg-white/20 backdrop-blur-md`}>
-              <Text className="text-white text-[10px] font-bold uppercase tracking-wider">Interactive Demo</Text>
-            </View>
-            <Text className="text-white font-extrabold text-2xl leading-tight shadow-md">{role.title}</Text>
-            <Text className="text-gray-200 text-sm mt-1 font-medium leading-5">{role.subtitle}</Text>
-          </View>
-
-          <View className={`${role.bgColor} p-3 rounded-full shadow-lg border border-white/20`}>
-            <Ionicons name={role.icon} size={24} color="white" />
+      {/* Full-screen loading overlay */}
+      {isLoading && (
+        <View style={{
+          position: "absolute", top: 0, left: 0, right: 0, bottom: 0,
+          zIndex: 200, backgroundColor: "rgba(15,11,46,0.85)",
+          justifyContent: "center", alignItems: "center",
+        }}>
+          <View style={{
+            backgroundColor: "rgba(255,255,255,0.08)",
+            borderWidth: 1, borderColor: "rgba(255,255,255,0.12)",
+            borderRadius: 24, padding: 32, alignItems: "center",
+          }}>
+            <ActivityIndicator size="large" color="#FF6B00" />
+            <Text style={{
+              color: "white", fontWeight: "700", marginTop: 16, fontSize: 15,
+            }}>
+              Preparing Environment...
+            </Text>
+            <Text style={{
+              color: "rgba(255,255,255,0.4)", fontSize: 12, marginTop: 4,
+            }}>
+              Setting up your demo dashboard
+            </Text>
           </View>
         </View>
-      </ImageBackground>
-    </TouchableOpacity>
-  );
+      )}
 
-  return (
-    <SafeAreaView className="flex-1 bg-gray-50">
-      <StatusBar style="dark" />
-      <ScrollView contentContainerStyle={{ paddingBottom: 40 }} showsVerticalScrollIndicator={false}>
-        <View className="px-6 pt-2 pb-6">
-          {/* Header */}
-          <View className="flex-row items-center justify-between mb-8 mt-2">
-            <TouchableOpacity
-              onPress={() => router.push('/')}
-              className="w-10 h-10 bg-white rounded-full items-center justify-center shadow-sm border border-gray-100"
-            >
-              <Ionicons name="arrow-back" size={20} color="#374151" />
-            </TouchableOpacity>
+      <ScrollView
+        contentContainerStyle={{ paddingBottom: 60 }}
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={{ paddingHorizontal: 24, paddingTop: 8, paddingBottom: 24 }}>
+          {/* ═══════════════════ HEADER ═══════════════════ */}
+          <Animated.View style={{
+            opacity: fadeIn,
+            transform: [{ translateY: slideUp }],
+          }}>
+            <View style={{
+              flexDirection: "row", alignItems: "center",
+              justifyContent: "space-between", marginBottom: 32, marginTop: 8,
+            }}>
+              <TouchableOpacity
+                onPress={() => router.push('/')}
+                style={{
+                  width: 44, height: 44, borderRadius: 14,
+                  backgroundColor: "rgba(255,255,255,0.06)",
+                  borderWidth: 1, borderColor: "rgba(255,255,255,0.1)",
+                  justifyContent: "center", alignItems: "center",
+                }}
+              >
+                <ArrowLeft size={20} color="rgba(255,255,255,0.7)" />
+              </TouchableOpacity>
 
-            <View className="items-end">
-              <Text className="text-orange-600 font-bold uppercase tracking-widest text-xs">Playground</Text>
-              <Text className="text-gray-900 font-black text-xl">Select Persona</Text>
-            </View>
-          </View>
-
-          {/* Loading State */}
-          {isLoading && (
-            <View className="absolute inset-0 z-50 bg-white/50 items-center justify-center h-full">
-              <View className="bg-white p-6 rounded-2xl shadow-xl items-center">
-                <ActivityIndicator size="large" color="#f97316" />
-                <Text className="text-gray-600 font-bold mt-4">Preparing Environment...</Text>
+              <View style={{ alignItems: "flex-end" }}>
+                <View style={{
+                  flexDirection: "row", alignItems: "center",
+                  backgroundColor: "rgba(255,107,0,0.12)",
+                  borderRadius: 12, paddingHorizontal: 10, paddingVertical: 4,
+                  marginBottom: 4,
+                }}>
+                  <Sparkles size={12} color="#FF8C40" />
+                  <Text style={{
+                    color: "#FF8C40", fontWeight: "800", fontSize: 10,
+                    textTransform: "uppercase", letterSpacing: 1.5, marginLeft: 4,
+                  }}>
+                    Playground
+                  </Text>
+                </View>
+                <Text style={{
+                  color: "white", fontWeight: "900", fontSize: 22,
+                }}>
+                  Select Persona
+                </Text>
               </View>
             </View>
-          )}
 
-          {/* Cards Grid */}
-          <View>
-            {ROLES.map(renderCard)}
+            {/* Subtitle */}
+            <Text style={{
+              color: "rgba(255,255,255,0.45)", fontSize: 14,
+              textAlign: "center", marginBottom: 28, lineHeight: 20,
+            }}>
+              Choose a role to explore the platform. Each module showcases
+              real features in a safe demo environment.
+            </Text>
+          </Animated.View>
+
+          {/* ═══════════════════ ROLE CARDS ═══════════════════ */}
+          <View style={{ gap: 16 }}>
+            {ROLES.map((role, index) => {
+              const cardScale = cardAnims[index].interpolate({
+                inputRange: [0, 1],
+                outputRange: [0.85, 1],
+              });
+              return (
+                <Animated.View
+                  key={role.id}
+                  style={{
+                    opacity: cardAnims[index],
+                    transform: [{ scale: cardScale }],
+                  }}
+                >
+                  <Pressable
+                    onPress={() => openTrialModal(role)}
+                    style={({ pressed }) => ({
+                      borderRadius: 22,
+                      overflow: "hidden",
+                      borderWidth: 1,
+                      borderColor: pressed ? role.color : "rgba(255,255,255,0.08)",
+                      backgroundColor: pressed ? `${role.color}08` : "rgba(255,255,255,0.03)",
+                      transform: [{ scale: pressed ? 0.97 : 1 }],
+                    })}
+                  >
+                    <View style={{ padding: 22 }}>
+                      {/* Card top row */}
+                      <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 14 }}>
+                        <View style={{
+                          width: 52, height: 52, borderRadius: 16,
+                          backgroundColor: role.colorLight,
+                          borderWidth: 1, borderColor: `${role.color}30`,
+                          justifyContent: "center", alignItems: "center",
+                        }}>
+                          {role.icon}
+                        </View>
+                        <View style={{ flex: 1, marginLeft: 16 }}>
+                          <Text style={{
+                            color: "white", fontWeight: "800", fontSize: 19,
+                          }}>
+                            {role.title}
+                          </Text>
+                          <Text style={{
+                            color: "rgba(255,255,255,0.45)", fontSize: 13, marginTop: 2,
+                          }}>
+                            {role.subtitle}
+                          </Text>
+                        </View>
+                        <View style={{
+                          width: 36, height: 36, borderRadius: 12,
+                          backgroundColor: `${role.color}18`,
+                          justifyContent: "center", alignItems: "center",
+                        }}>
+                          <Play size={16} color={role.color} fill={role.color} />
+                        </View>
+                      </View>
+
+                      {/* Feature pills */}
+                      <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6 }}>
+                        {role.features.slice(0, 4).map((feat, i) => (
+                          <View key={i} style={{
+                            backgroundColor: "rgba(255,255,255,0.05)",
+                            borderRadius: 8,
+                            paddingHorizontal: 10, paddingVertical: 5,
+                            borderWidth: 1, borderColor: "rgba(255,255,255,0.06)",
+                          }}>
+                            <Text style={{
+                              color: "rgba(255,255,255,0.5)", fontSize: 11, fontWeight: "600",
+                            }}>
+                              {feat}
+                            </Text>
+                          </View>
+                        ))}
+                      </View>
+                    </View>
+                  </Pressable>
+                </Animated.View>
+              );
+            })}
+          </View>
+
+          {/* ═══════════════════ INFO FOOTER ═══════════════════ */}
+          <View style={{
+            marginTop: 32, alignItems: "center",
+            backgroundColor: "rgba(255,255,255,0.03)",
+            borderRadius: 16, padding: 20,
+            borderWidth: 1, borderColor: "rgba(255,255,255,0.06)",
+          }}>
+            <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 8 }}>
+              <LayoutDashboard size={16} color="rgba(255,255,255,0.4)" />
+              <Text style={{
+                color: "rgba(255,255,255,0.5)", fontWeight: "700",
+                fontSize: 12, textTransform: "uppercase",
+                letterSpacing: 1, marginLeft: 6,
+              }}>
+                What to expect
+              </Text>
+            </View>
+            <Text style={{
+              color: "rgba(255,255,255,0.35)", fontSize: 12,
+              textAlign: "center", lineHeight: 18,
+            }}>
+              15-minute interactive session • Pre-populated data{"\n"}
+              Real features, no signup required • Data resets periodically
+            </Text>
           </View>
         </View>
       </ScrollView>
 
-      {/* Modal */}
-      <Modal visible={modalVisible} animationType="slide" transparent={true} statusBarTranslucent>
-        <View className="flex-1 justify-end sm:justify-center bg-black/60">
-          <TouchableOpacity
-            className="absolute inset-0"
-            onPress={() => setModalVisible(false)}
-          />
+      {/* ═══════════════════ ROLE DETAIL MODAL ═══════════════════ */}
+      <Modal visible={modalVisible} animationType="none" transparent={true} statusBarTranslucent>
+        <View style={{
+          flex: 1, justifyContent: "flex-end",
+          backgroundColor: "transparent",
+        }}>
+          {/* Backdrop */}
+          <Animated.View style={{
+            position: "absolute", top: 0, left: 0, right: 0, bottom: 0,
+            backgroundColor: "rgba(0,0,0,0.7)",
+            opacity: modalOpacity,
+          }}>
+            <TouchableOpacity
+              style={{ flex: 1 }}
+              onPress={closeModal}
+              activeOpacity={1}
+            />
+          </Animated.View>
 
-          <View className="bg-white w-full sm:w-[90%] sm:self-center sm:rounded-3xl rounded-t-3xl overflow-hidden shadow-2xl max-h-[85%]">
-            {/* Header Accent */}
+          {/* Modal Content */}
+          <Animated.View style={{
+            opacity: modalOpacity,
+            transform: [{ scale: modalScale }],
+            backgroundColor: "#1A1640",
+            borderTopLeftRadius: 28,
+            borderTopRightRadius: 28,
+            borderWidth: 1,
+            borderColor: "rgba(255,255,255,0.08)",
+            borderBottomWidth: 0,
+            maxHeight: height * 0.82,
+            overflow: "hidden",
+            ...(Platform.OS === "web" ? {
+              alignSelf: "center" as const,
+              width: Math.min(width * 0.92, 480),
+              borderRadius: 28,
+              marginBottom: 20,
+            } : {}),
+          }}>
+            {/* Modal Header */}
             {selectedRoleData && (
-              <View className={`${selectedRoleData.bgColor} py-4 px-6 flex-row items-center justify-between`}>
-                <View className="flex-row items-center">
-                  <Ionicons name={selectedRoleData.icon} size={20} color="white" />
-                  <Text className="text-white font-bold text-sm uppercase tracking-widest ml-2">
+              <View style={{
+                paddingVertical: 16, paddingHorizontal: 24,
+                flexDirection: "row", alignItems: "center", justifyContent: "space-between",
+                borderBottomWidth: 1, borderBottomColor: "rgba(255,255,255,0.06)",
+              }}>
+                <View style={{ flexDirection: "row", alignItems: "center" }}>
+                  <View style={{
+                    width: 36, height: 36, borderRadius: 10,
+                    backgroundColor: selectedRoleData.colorLight,
+                    justifyContent: "center", alignItems: "center",
+                    marginRight: 12,
+                  }}>
+                    {React.cloneElement(selectedRoleData.icon as React.ReactElement, { size: 18 } as any)}
+                  </View>
+                  <Text style={{
+                    color: selectedRoleData.color, fontWeight: "800",
+                    fontSize: 13, textTransform: "uppercase", letterSpacing: 1.5,
+                  }}>
                     {selectedRoleData.id} Experience
                   </Text>
                 </View>
-                <TouchableOpacity onPress={() => setModalVisible(false)} className="bg-black/20 p-1 rounded-full">
-                  <Ionicons name="close" size={20} color="white" />
+                <TouchableOpacity
+                  onPress={closeModal}
+                  style={{
+                    width: 32, height: 32, borderRadius: 10,
+                    backgroundColor: "rgba(255,255,255,0.06)",
+                    justifyContent: "center", alignItems: "center",
+                  }}
+                >
+                  <X size={16} color="rgba(255,255,255,0.5)" />
                 </TouchableOpacity>
               </View>
             )}
 
-            <ScrollView className="p-6">
-              <Text className="text-3xl font-black text-gray-900 mb-2">Personalize Trial</Text>
-              <Text className="text-gray-500 mb-6 text-base">
-                Instantly generate a custom {selectedRoleData?.id} dashboard tailored for you.
+            <ScrollView style={{ paddingHorizontal: 24, paddingTop: 20 }} contentContainerStyle={{ paddingBottom: 30 }}>
+              {/* Title & Description */}
+              <Text style={{
+                color: "white", fontSize: 28, fontWeight: "900",
+                marginBottom: 8,
+              }}>
+                Explore as {selectedRoleData?.title}
+              </Text>
+              <Text style={{
+                color: "rgba(255,255,255,0.5)", fontSize: 14,
+                lineHeight: 21, marginBottom: 24,
+              }}>
+                {selectedRoleData?.description}
               </Text>
 
-              {/* Feature List */}
-              <View className="flex-row flex-wrap mb-8 gap-2">
+              {/* Feature list */}
+              <View style={{ gap: 10, marginBottom: 28 }}>
                 {selectedRoleData?.features.map((feature, index) => (
-                  <View key={index} className="flex-row items-center bg-gray-50 px-3 py-2 rounded-lg border border-gray-100">
-                    <Ionicons name="checkmark-circle" size={16} color={selectedRoleData.color} />
-                    <Text className="text-gray-700 text-sm font-semibold ml-2">{feature}</Text>
+                  <View key={index} style={{
+                    flexDirection: "row", alignItems: "center",
+                    backgroundColor: "rgba(255,255,255,0.04)",
+                    borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12,
+                    borderWidth: 1, borderColor: "rgba(255,255,255,0.06)",
+                  }}>
+                    <View style={{
+                      width: 24, height: 24, borderRadius: 7,
+                      backgroundColor: `${selectedRoleData.color}18`,
+                      justifyContent: "center", alignItems: "center",
+                      marginRight: 12,
+                    }}>
+                      <Check size={13} color={selectedRoleData.color} strokeWidth={3} />
+                    </View>
+                    <Text style={{
+                      color: "rgba(255,255,255,0.8)", fontSize: 14, fontWeight: "600",
+                    }}>
+                      {feature}
+                    </Text>
                   </View>
                 ))}
               </View>
 
-              <View className="space-y-4">
-                <Text className="text-gray-600 text-center mb-4">
-                  Ready to explore? Click below to instantly access the demo environment.
+              {/* CTA */}
+              <TouchableOpacity
+                onPress={handleTrialLogin}
+                activeOpacity={0.85}
+                style={{
+                  backgroundColor: selectedRoleData?.color || "#FF6B00",
+                  paddingVertical: 18, borderRadius: 16,
+                  alignItems: "center", flexDirection: "row",
+                  justifyContent: "center",
+                  shadowColor: selectedRoleData?.color || "#FF6B00",
+                  shadowOffset: { width: 0, height: 8 },
+                  shadowOpacity: 0.35, shadowRadius: 20,
+                  elevation: 8,
+                }}
+              >
+                <Play size={18} color="white" fill="white" />
+                <Text style={{
+                  color: "white", fontWeight: "800", fontSize: 16, marginLeft: 8,
+                }}>
+                  Launch Demo
                 </Text>
+              </TouchableOpacity>
 
-                <TouchableOpacity
-                  onPress={handleTrialLogin}
-                  activeOpacity={0.8}
-                  className={`${selectedRoleData?.bgColor || 'bg-gray-800'} py-5 rounded-xl items-center shadow-lg shadow-gray-200 mt-2`}
-                >
-                  <Text className="text-white font-bold text-lg">Launch Demo</Text>
-                </TouchableOpacity>
-
-                <Text className="text-center text-gray-400 text-xs mt-4 mb-2">
-                  By starting, you agree to enter a public demo environment. Data is reset periodically.
-                </Text>
-              </View>
+              <Text style={{
+                color: "rgba(255,255,255,0.25)", fontSize: 11,
+                textAlign: "center", marginTop: 16, lineHeight: 16,
+              }}>
+                By starting, you agree to enter a public demo environment.{"\n"}
+                Data is reset periodically.
+              </Text>
             </ScrollView>
-          </View>
+          </Animated.View>
         </View>
       </Modal>
     </SafeAreaView>
