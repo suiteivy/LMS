@@ -317,7 +317,7 @@ export default function CreateUserScreen() {
     const renderPersonalInfo = () => (
         <View className="p-6">
             <Text className="text-2xl font-bold text-gray-900 mb-2">Personal Information</Text>
-            <Text className="text-gray-500 mb-6">Enter the user's basic details</Text>
+            <Text className="text-gray-500 mb-6">Enter the user&#39;s basic details</Text>
             {renderInput('Full Name *', 'full_name', 'e.g. John Doe')}
             {renderInput('Email *', 'email', 'e.g. john@school.com', { keyboardType: 'email-address' })}
             {renderInput('Phone', 'phone', '+254 7XX XXX XXX', { keyboardType: 'phone-pad' })}

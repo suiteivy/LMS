@@ -126,6 +126,7 @@ export default function AdminLayout() {
                     <Tabs.Screen name="management/library/index" options={{ href: null }} />
                     <Tabs.Screen name="management/subjects/index" options={{ href: null }} />
                     <Tabs.Screen name="management/subjects/create" options={{ href: null }} />
+                    <Tabs.Screen name="management/subjects/details" options={{ href: null }} />
                     <Tabs.Screen name="subjects/index" options={{ href: null }} />
                     <Tabs.Screen name="subjects/create" options={{ href: null }} />
                     <Tabs.Screen name="timetable/index" options={{ href: null }} />

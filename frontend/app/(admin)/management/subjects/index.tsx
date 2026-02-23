@@ -5,7 +5,7 @@ import { Subject } from '@/types/types';
 import { Ionicons } from '@expo/vector-icons';
 import { router, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Text, TextInput, TouchableOpacity, View,ScrollView } from 'react-native';
 import { SubjectList } from '@/components/SubjectList';
 
 export default function SubjectsIndex() {
@@ -42,7 +42,7 @@ export default function SubjectsIndex() {
                 studentsCount: item.studentsCount || 0,
                 price: item.price || 0,
                 level: item.level || 'beginner',
-                image: item.image || 'https://via.placeholder.com/300',
+                image: item.image || `https://placehold.co/600x400?text=${encodeURIComponent(item.title)}`,
                 description: item.description || '',
                 shortDescription: item.shortDescription || '',
                 category: item.category || 'General',
@@ -57,7 +57,11 @@ export default function SubjectsIndex() {
     };
 
     const handleSubjectPress = (subject: Subject) => {
-        console.log('Pressed subject:', subject.title);
+        // Navigate to the details page in the management/subjects folder, passing the subject id as a param
+        router.push({
+            pathname: '/(admin)/management/subjects/details',
+            params: { id: subject.id }
+        });
     };
 
     if (loading) {
@@ -69,6 +73,7 @@ export default function SubjectsIndex() {
     }
 
     return (
+        <ScrollView style={{ flex: 1, backgroundColor: isDark ? '#121212' : '#f9fafb' }}>
         <View style={{ flex: 1, backgroundColor: isDark ? '#121212' : '#f9fafb' }}>
             <UnifiedHeader
                 title="Management"
@@ -111,5 +116,7 @@ export default function SubjectsIndex() {
                 showFilters={true}
             />
         </View>
+    </ScrollView>
     );
+
 }
