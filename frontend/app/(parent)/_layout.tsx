@@ -1,114 +1,79 @@
 import { AuthGuard } from "@/components/AuthGuard";
+import { WebSidebar, NavItem } from "@/components/layouts/WebSideBar";
 import { useTheme } from "@/contexts/ThemeContext";
-import { Tabs } from "expo-router";
+import { Slot, Tabs } from "expo-router";
 import { Bell, CalendarCheck, CreditCard, GraduationCap, LayoutDashboard, MessageSquare, Settings } from "lucide-react-native";
 import { Platform, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-export default function ParentLayout() {
-  const insets = useSafeAreaInsets();
-  const { isDark } = useTheme();
+const NAV_ITEMS: NavItem[] = [
+    { name: "index",         title: "Home",      icon: LayoutDashboard, route: "/(parent)" },
+    { name: "grades",        title: "Grades",    icon: GraduationCap,   route: "/(parent)/grades" },
+    { name: "attendance",    title: "Attendance",icon: CalendarCheck,   route: "/(parent)/attendance" },
+    { name: "finance",       title: "Fees",      icon: CreditCard,      route: "/(parent)/finance" },
+    { name: "messages",      title: "Chat",      icon: MessageSquare,   route: "/(parent)/messages" },
+    { name: "announcements", title: "Updates",   icon: Bell,            route: "/(parent)/announcements" },
+    { name: "settings",      title: "Settings",  icon: Settings,        route: "/(parent)/settings" },
+];
 
-  return (
-    <AuthGuard allowedRoles={['parent']}>
-      <Tabs
-        screenOptions={{
-          headerShown: false,
-          tabBarStyle: {
-            backgroundColor: isDark ? '#0F0B2E' : "#ffffff",
-            borderTopWidth: 1,
-            borderTopColor: isDark ? '#1f2937' : "#e5e7eb",
-            height: 60,
-            paddingBottom: 8,
-            elevation: 8,
-            shadowColor: "#000",
-            shadowOffset: { width: 0, height: -4 },
-            shadowOpacity: 0.1,
-            shadowRadius: 3,
-          },
-          tabBarActiveTintColor: "#FF6B00",
-          tabBarInactiveTintColor: isDark ? "#94a3b8" : "#64748b",
-          tabBarLabelStyle: {
-            fontSize: 10,
-            fontWeight: "600",
-          },
-          sceneStyle: {
-            backgroundColor: isDark ? '#000000' : "#ffffff",
-            paddingTop: insets.top,
-          },
-        }}
-      >
-        <Tabs.Screen
-          name="index"
-          options={{
-            title: "Home",
-            tabBarIcon: ({ size, color }) => {
-              const Icon = LayoutDashboard as any;
-              return <View><Icon size={size} color={color} strokeWidth={2} /></View>;
-            },
-          }}
-        />
-        <Tabs.Screen
-          name="grades"
-          options={{
-            title: "Grades",
-            tabBarIcon: ({ size, color }) => {
-              const Icon = GraduationCap as any;
-              return <View><Icon size={size} color={color} strokeWidth={2} /></View>;
-            },
-          }}
-        />
-        <Tabs.Screen
-          name="attendance"
-          options={{
-            title: "Attendance",
-            tabBarIcon: ({ size, color }) => {
-              const Icon = CalendarCheck as any;
-              return <View><Icon size={size} color={color} strokeWidth={2} /></View>;
-            },
-          }}
-        />
-        <Tabs.Screen
-          name="finance"
-          options={{
-            title: "Fees",
-            tabBarIcon: ({ size, color }) => {
-              const Icon = CreditCard as any;
-              return <View><Icon size={size} color={color} strokeWidth={2} /></View>;
-            },
-          }}
-        />
-        <Tabs.Screen
-          name="messages"
-          options={{
-            title: "Chat",
-            tabBarIcon: ({ size, color }) => {
-              const Icon = MessageSquare as any;
-              return <View><Icon size={size} color={color} strokeWidth={2} /></View>;
-            },
-          }}
-        />
-        <Tabs.Screen
-          name="announcements"
-          options={{
-            title: "Updates",
-            tabBarIcon: ({ size, color }) => {
-              const Icon = Bell as any;
-              return <View><Icon size={size} color={color} strokeWidth={2} /></View>;
-            },
-          }}
-        />
-        <Tabs.Screen
-          name="settings"
-          options={{
-            title: "Settings",
-            tabBarIcon: ({ size, color }) => {
-              const Icon = Settings as any;
-              return <View><Icon size={size} color={color} strokeWidth={2} /></View>;
-            },
-          }}
-        />
-      </Tabs>
-    </AuthGuard>
-  );
+function ParentTabs() {
+    const insets = useSafeAreaInsets();
+    const { isDark } = useTheme();
+
+    return (
+        <Tabs
+            screenOptions={{
+                headerShown: false,
+                tabBarStyle: {
+                    backgroundColor: isDark ? '#0F0B2E' : "#ffffff",
+                    borderTopWidth: 1,
+                    borderTopColor: isDark ? '#1f2937' : "#e5e7eb",
+                    height: 60,
+                    paddingBottom: 8,
+                    elevation: 8,
+                    shadowColor: "#000",
+                    shadowOffset: { width: 0, height: -4 },
+                    shadowOpacity: 0.1,
+                    shadowRadius: 3,
+                },
+                tabBarActiveTintColor: "#FF6B00",
+                tabBarInactiveTintColor: isDark ? "#94a3b8" : "#64748b",
+                tabBarLabelStyle: { fontSize: 10, fontWeight: "600" },
+                sceneStyle: {
+                    backgroundColor: isDark ? '#000000' : "#ffffff",
+                    paddingTop: insets.top,
+                },
+            }}
+        >
+            {NAV_ITEMS.map((item) => (
+                <Tabs.Screen
+                    key={item.name}
+                    name={item.name}
+                    options={{
+                        title: item.title,
+                        tabBarIcon: ({ size, color }) => {
+                            const Icon = item.icon as any;
+                            return <View><Icon size={size} color={color} strokeWidth={2} /></View>;
+                        },
+                    }}
+                />
+            ))}
+        </Tabs>
+    );
+}
+
+function ParentSidebar() {
+    return (
+        <WebSidebar items={NAV_ITEMS} basePath="(parent)" role="Parent">
+            <Slot />
+        </WebSidebar>
+    );
+}
+
+export default function ParentLayout() {
+    return (
+        <AuthGuard allowedRoles={['parent']}>
+            {Platform.OS === 'web' ? <ParentSidebar /> : <ParentTabs />}
+        </AuthGuard>
+    );
 }

@@ -161,8 +161,7 @@ function AuthHandler() {
     return false;
   }, [resetSessionTimer, session]);
 
-  const isLoadingOverlayVisible =
-    isInitializing || (loading && !segments.some(s => s === "(auth)"));
+  const isLoadingOverlayVisible = isInitializing || loading
 
   return (
     <View

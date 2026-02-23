@@ -112,7 +112,7 @@ export const UserCard: React.FC<UserCardProps> = ({
   };
 
   const renderCompactCard = () => (
-    <View className="bg-white dark:bg-[#1a1a1a] rounded-2xl p-4 shadow-sm border border-gray-100 dark:border-gray-800 mb-4">
+    <View className="bg-white dark:bg-[#1e1e1e] rounded-2xl p-4 shadow-sm border border-gray-100 dark:border-[#2c2c2c] mb-4">
       <View className="flex-row items-center gap-4">
         {renderAvatar(12)}
         <View className="flex-1">
@@ -133,7 +133,7 @@ export const UserCard: React.FC<UserCardProps> = ({
   );
 
   const renderDefaultCard = () => (
-    <View className="bg-white dark:bg-[#1a1a1a] rounded-[24px] shadow-sm border border-gray-50 dark:border-gray-800 mb-3 overflow-hidden">
+    <View className="bg-white dark:bg-[#1e1e1e] rounded-[24px] shadow-sm border border-gray-50 dark:border-[#2c2c2c] mb-3 overflow-hidden">
       <View className="p-5">
         <View className="flex-row items-center justify-between">
           {/* Left: Avatar + Info */}
@@ -171,7 +171,7 @@ export const UserCard: React.FC<UserCardProps> = ({
               <View className="flex-row gap-1.5">
                 <TouchableOpacity
                   onPress={handleEditPress}
-                  className="w-9 h-9 rounded-xl bg-gray-50 dark:bg-[#1a1a1a] border border-gray-100 dark:border-gray-800 items-center justify-center"
+                  className="w-9 h-9 rounded-xl bg-gray-50 dark:bg-[#1e1e1e] border border-gray-100 dark:border-[#2c2c2c] items-center justify-center"
                   activeOpacity={0.7}
                 >
                   <Ionicons name="pencil" size={16} color="#9CA3AF" />
@@ -192,7 +192,7 @@ export const UserCard: React.FC<UserCardProps> = ({
   );
 
   const renderDetailedCard = () => (
-    <View className="bg-white dark:bg-[#1a1a1a] rounded-[24px] shadow-md border border-gray-50 dark:border-gray-800 mb-4 overflow-hidden">
+    <View className="bg-white dark:bg-[#1e1e1e] rounded-[24px] shadow-md border border-gray-50 dark:border-[#2c2c2c] mb-4 overflow-hidden">
       <View className="p-6">
         <View className="flex-row items-center justify-between">
           {/* Left: Enhanced Avatar + Detailed Info */}
@@ -239,7 +239,7 @@ export const UserCard: React.FC<UserCardProps> = ({
               <View className="flex-col gap-1.5">
                 <TouchableOpacity
                   onPress={handleEditPress}
-                  className="w-10 h-10 rounded-2xl bg-gray-50 dark:bg-[#1a1a1a] border border-gray-100 dark:border-gray-800 items-center justify-center"
+                  className="w-10 h-10 rounded-2xl bg-gray-50 dark:bg-[#1e1e1e] border border-gray-100 dark:border-[#2c2c2c] items-center justify-center"
                   activeOpacity={0.7}
                 >
                   <Ionicons name="pencil" size={18} color="#9CA3AF" />

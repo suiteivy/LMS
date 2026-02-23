@@ -8,45 +8,42 @@ import { Ionicons } from '@expo/vector-icons';
 import { Href, router, useLocalSearchParams } from 'expo-router';
 import { Users } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, FlatList, Platform, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import {
+    ActivityIndicator, Alert, FlatList, Platform,
+    ScrollView, Text, TextInput, TouchableOpacity, View
+} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
 export default function UsersManagementScreen() {
     const params = useLocalSearchParams();
+    const { isDark } = useTheme();
+    const insets = useSafeAreaInsets();
+
     const [users, setUsers] = useState<User[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
     const [activeFilter, setActiveFilter] = useState<'all' | 'student' | 'teacher' | 'admin'>('all');
-    const { isDark } = useTheme();
-    // Check if we need to open create modal immediately (optional feature based on params)
-    useEffect(() => {
-        if (params.action === 'create') {
-            // Logic to open create modal or navigate to create screen
-            // For now, let's just log or set a state
-            // console.log("Create action triggered");
-        }
-    }, [params]);
-    useEffect(() => {
-        fetchUsers();
-    }, [activeFilter]);
+
+    // Theme shorthands
+    const bg = isDark ? '#121212' : '#ffffff';
+    const card = isDark ? '#1e1e1e' : '#ffffff';
+    const border = isDark ? '#2c2c2c' : '#f3f4f6';
+    const textPrimary = isDark ? '#f9fafb' : '#111827';
+    const textSecondary = isDark ? '#94a3b8' : '#6b7280';
+    const inputBg = isDark ? '#1e1e1e' : '#f9fafb';
+    const inputBorder = isDark ? '#2c2c2c' : '#f3f4f6';
+
+    useEffect(() => { fetchUsers(); }, [activeFilter]);
+
     const fetchUsers = async () => {
         try {
             setLoading(true);
             let query = supabase
                 .from('users')
-                .select(`
-                    id, 
-                    full_name, 
-                    email, 
-                    role, 
-                    created_at,
-                    students (id),
-                    teachers (id),
-                    admins (id),
-                    parents (id)
-                `)
+                .select(`id, full_name, email, role, created_at, students(id), teachers(id), admins(id), parents(id)`)
                 .order('created_at', { ascending: false });
-            if (activeFilter !== 'all') {
-                query = query.eq('role', activeFilter);
-            }
+            if (activeFilter !== 'all') query = query.eq('role', activeFilter);
+
             const { data, error } = await query;
             if (error) throw error;
             if (data) {
@@ -57,29 +54,14 @@ export default function UsersManagementScreen() {
                             if (Array.isArray(roleData)) return roleData[0]?.id || null;
                             return roleData?.id || null;
                         };
-
                         let displayId = null;
-                        // Use explicit checks instead of dynamic string construction
-                        // This is safer and prevents crashes if 'role' is unexpected
                         if (u.role === 'student') displayId = getRoleId(u.students);
                         else if (u.role === 'teacher') displayId = getRoleId(u.teachers);
                         else if (u.role === 'admin') displayId = getRoleId(u.admins);
                         else if (u.role === 'parent') displayId = getRoleId(u.parents);
-
-                        return {
-                            id: u.id,
-                            displayId,
-                            name: u.full_name || 'Unknown User',
-                            email: u.email || 'No Email',
-                            role: u.role || 'user',
-                            joinDate: u.created_at || new Date().toISOString()
-                        } as User;
-                    } catch (err) {
-                        console.warn('Error formatting user:', u.id, err);
-                        return null;
-                    }
+                        return { id: u.id, displayId, name: u.full_name || 'Unknown User', email: u.email || 'No Email', role: u.role || 'user', joinDate: u.created_at || new Date().toISOString() } as User;
+                    } catch { return null; }
                 }).filter((u): u is User => u !== null);
-
                 setUsers(formattedUsers);
             }
         } catch (error: any) {
@@ -88,22 +70,21 @@ export default function UsersManagementScreen() {
             setLoading(false);
         }
     };
-    const handleSearch = (text: string) => {
-        setSearchQuery(text);
-        // Simple client-side filtering for now since list won't be massive initially
-        // Ideally should debounce and search on server
-    };
+
+    // Sanitize search input — no dangerous chars
+    const DANGEROUS_CHARS = /['"`;\\<>{}()\[\]|&$#%^*+=~]/g;
+    const handleSearch = (text: string) => setSearchQuery(text.replace(DANGEROUS_CHARS, ''));
+
     const filteredUsers = users.filter(user =>
         (user.name?.toLowerCase().includes(searchQuery.toLowerCase()) ?? false) ||
         (user.email?.toLowerCase().includes(searchQuery.toLowerCase()) ?? false) ||
         (user.displayId?.toLowerCase().includes(searchQuery.toLowerCase()) ?? false)
     );
-    const handleUserPress = (user: User) => {
-        // Navigate to user details
-        router.push(`/(admin)/users/${user.id}` as Href);
-    };
+
+    const FILTERS = ['all', 'student', 'teacher', 'admin'] as const;
+
     return (
-        <View className="flex-1 bg-white dark:bg-black">
+        <View style={{ flex: 1, backgroundColor: bg }}>
             <UnifiedHeader
                 title="Management"
                 subtitle="User Statistics"
@@ -111,93 +92,75 @@ export default function UsersManagementScreen() {
                 onBack={() => router.back()}
             />
 
-            {/* Sub-header with Search & Filters */}
-            <View className="px-6 py-4 border-b border-gray-50">
-                {/* Search Bar & Add Button */}
-                <View className="flex-row items-center gap-3 mb-6 ">
-                    <View style={{
-                        flex: 1, flexDirection: 'row', alignItems: 'center',
-                        backgroundColor: isDark ? '#242424' : '#f9fafb',
-                        borderRadius: 16, paddingHorizontal: 16, paddingVertical: 12,
-                        borderWidth: 1, borderColor: isDark ? '#2c2c2c' : '#f3f4f6',
-                    }}>
-                        <Ionicons name="search" size={20} color={isDark ? "#9CA3AF" : "#6B7280"} />
+            {/* Search & Filters */}
+            <View style={{ paddingHorizontal: 24, paddingTop: 16, paddingBottom: 12, borderBottomWidth: 1, borderBottomColor: border }}>
+                {/* Search row */}
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 16 }}>
+                    <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: inputBg, borderRadius: 16, paddingHorizontal: 16, paddingVertical: 12, borderWidth: 1, borderColor: inputBorder }}>
+                        <Ionicons name="search" size={20} color={textSecondary} />
                         <TextInput
-                            style={{ flex: 1, marginLeft: 8, color: isDark ? '#f1f1f1' : '#111827', fontWeight: '600', fontSize: 13 }}
+                            style={{ flex: 1, marginLeft: 8, color: textPrimary, fontWeight: '600', fontSize: 13 }}
                             placeholder="Search by name, email, or ID..."
-                            placeholderTextColor="#9CA3AF"
+                            placeholderTextColor={textSecondary}
                             value={searchQuery}
                             onChangeText={handleSearch}
                         />
+                        {searchQuery.length > 0 && (
+                            <TouchableOpacity onPress={() => setSearchQuery('')}>
+                                <Ionicons name="close-circle" size={18} color={textSecondary} />
+                            </TouchableOpacity>
+                        )}
                     </View>
                     <TouchableOpacity
                         onPress={() => router.push('/(admin)/users/create')}
-                        className="w-12 h-12 bg-[#FF6900] rounded-2xl items-center justify-center shadow-lg shadow-orange-100"
+                        style={{ width: 48, height: 48, backgroundColor: '#FF6900', borderRadius: 16, alignItems: 'center', justifyContent: 'center', shadowColor: '#FF6900', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 6 }}
                     >
                         <Ionicons name="add" size={28} color="white" />
                     </TouchableOpacity>
                 </View>
 
-                {/* Filter Tabs */}
-                <ScrollView
-                    horizontal
-                    showsHorizontalScrollIndicator={false}
-                    className="flex-row"
-                    contentContainerStyle={{ gap: 8 }}
-                >
-                    {(['all', 'student', 'teacher', 'admin'] as const).map((filter) => (
-                        <TouchableOpacity
-                            key={filter}
-                            onPress={() => setActiveFilter(filter)}
-                            style={{
-                                paddingHorizontal: 24,
-                                paddingVertical: 16,
-                                borderRadius: 16,
-                                borderBottomWidth: 1,
-                                borderBottomColor: isDark ? '#2c2c2c' : '#f9fafb',
-                                borderBottomLeftRadius: 16,
-                                borderBottomRightRadius: 16,
-                                backgroundColor: activeFilter === filter
-                                    ? (isDark ? '#f1f1f1' : '#111827')
-                                    : (isDark ? '#1e1e1e' : '#ffffff'),
-                                borderColor: activeFilter === filter
-                                    ? (isDark ? '#f1f1f1' : '#111827')
-                                    : (isDark ? '#2c2c2c' : '#f3f4f6'),
-                            }}
-                        >
-                            <Text style={{
-                                fontWeight: '600',
-                                fontSize: 12,
-                                textTransform: 'capitalize',
-                                color: activeFilter === filter
-                                    ? (isDark ? '#111827' : '#ffffff')
-                                    : (isDark ? '#9ca3af' : '#6b7280'),
-                            }}>
-                                {filter}
-                            </Text>
-                        </TouchableOpacity>
-                    ))}
+                {/* Filter tabs */}
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
+                    {FILTERS.map(filter => {
+                        const isActive = activeFilter === filter;
+                        return (
+                            <TouchableOpacity
+                                key={filter}
+                                onPress={() => setActiveFilter(filter)}
+                                style={{
+                                    paddingHorizontal: 20, paddingVertical: 10, borderRadius: 12, borderWidth: 1,
+                                    backgroundColor: isActive ? (isDark ? '#f9fafb' : '#111827') : (isDark ? '#1e1e1e' : '#ffffff'),
+                                    borderColor: isActive ? (isDark ? '#f9fafb' : '#111827') : border,
+                                }}
+                            >
+                                <Text style={{
+                                    fontWeight: '600', fontSize: 13, textTransform: 'capitalize',
+                                    color: isActive ? (isDark ? '#111827' : '#ffffff') : textSecondary,
+                                }}>
+                                    {filter}
+                                </Text>
+                            </TouchableOpacity>
+                        );
+                    })}
                 </ScrollView>
             </View>
-            {/* User List */}
+
+            {/* User list */}
             {loading ? (
-                <View className="flex-1 justify-center items-center">
-                    <ActivityIndicator size="large" color={isDark ? "#f1f1f1" : "#111827"} />
+                <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+                    <ActivityIndicator size="large" color={isDark ? '#f9fafb' : '#111827'} />
                 </View>
             ) : (
                 <FlatList
                     data={filteredUsers}
-                    keyExtractor={(item) => item.id}
-                    contentContainerStyle={{ padding: 16, paddingBottom: 100 }}
+                    keyExtractor={item => item.id}
+                    contentContainerStyle={{ padding: 16, paddingBottom: insets.bottom + 24 }}
                     numColumns={Platform.OS === 'web' ? 3 : 1}
                     key={Platform.OS === 'web' ? 'web-grid' : 'mobile-list'}
                     columnWrapperStyle={Platform.OS === 'web' ? { gap: 16 } : undefined}
                     renderItem={({ item }) => (
                         <View style={Platform.OS === 'web' ? { width: '31.5%' } : { width: '100%' }}>
-                            <UserCard
-                                user={item}
-                                onPress={handleUserPress}
-                            />
+                            <UserCard user={item} onPress={u => router.push(`/(admin)/users/${u.id}` as Href)} />
                         </View>
                     )}
                     ListEmptyComponent={
