@@ -65,7 +65,7 @@ export default function SubjectsIndex() {
     const handleSubjectPress = (subject: Subject) => {
         // Navigate to the details page in the management/subjects folder, passing the subject id as a param
         router.push({
-            pathname: '/(admin)/management/subjects/details',
+            pathname: '/(admin)/management/subjects/details' as any,
             params: { id: subject.id }
         });
     };
