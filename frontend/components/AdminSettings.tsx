@@ -34,6 +34,10 @@ export default function AdminSettings() {
         </TouchableOpacity>
     )
 
+    function setShowPasswordForm(arg0: boolean): void {
+        throw new Error("Function not implemented.");
+    }
+
     return (
         <ScrollView className="flex-1 bg-white dark:bg-black">
             <View className="p-4 md:p-8 max-w-2xl mx-auto w-full">
@@ -45,7 +49,7 @@ export default function AdminSettings() {
                     >
                         <SettingRow icon={User} title="Edit Admin Profile" />
                     </TouchableOpacity>
-                    <SettingRow icon={Lock} title="Change Password" onPress={() => setShowPasswordForm(!showPasswordForm)} />
+                    <SettingRow icon={Lock} title="Change Password" onPress={() => setShowPasswordForm(!setShowPasswordForm)} />
                     <SettingRow icon={Globe} title="Language" isLast >
                         <Text className="text-gray-400 dark:text-gray-500 mr-2">English</Text>
                     </SettingRow>
@@ -59,7 +63,7 @@ export default function AdminSettings() {
                             onValueChange={setNotifications}
                             trackColor={{ false: "#374151", true: "#f97316" }}
                             thumbColor="#ffffff"
-                            disabled={loadingPrefs}
+                            // disabled={isUpdating}
                         />
                     </SettingRow>
                     <SettingRow icon={Shield} title="Admin Priority Alerts" isLast>
@@ -68,7 +72,7 @@ export default function AdminSettings() {
                             onValueChange={setSystemAlerts}
                             trackColor={{ false: "#374151", true: "#f97316" }}
                             thumbColor="#ffffff"
-                            disabled={loadingPrefs}
+                            // disabled={isUpdating}
                         />
                     </SettingRow>
                 </View>

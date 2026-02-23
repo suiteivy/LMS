@@ -44,7 +44,7 @@ const getBaseUrl = (): string => {
   }
 
   // Default for web, iOS simulator, and other local platforms
-  return "http://localhost:4001/api";
+  return "http://127.0.0.1:4001/api";
 };
 
 const baseURL = getBaseUrl();
