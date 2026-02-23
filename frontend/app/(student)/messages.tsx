@@ -4,6 +4,7 @@ import { format } from "date-fns";
 import { router } from "expo-router";
 import { Mail, MessageCircle, Plus, Search, Send, User, X } from "lucide-react-native";
 import React, { useEffect, useState } from "react";
+import { useRealtimeQuery } from "@/hooks/useRealtimeQuery";
 import { ActivityIndicator, Alert, FlatList, Modal, ScrollView, Text, TextInput, TouchableOpacity, View } from "react-native";
 
 export default function StudentMessagingPage() {
@@ -16,6 +17,13 @@ export default function StudentMessagingPage() {
     const [selectedReceiver, setSelectedReceiver] = useState<any>(null);
     const [messageContent, setMessageContent] = useState("");
     const [sending, setSending] = useState(false);
+
+    // Listen to realtime changes on the messages table
+    useRealtimeQuery('messages', () => {
+        if (!loading && !composeModal) {
+            fetchMessages();
+        }
+    });
 
     useEffect(() => {
         fetchMessages();

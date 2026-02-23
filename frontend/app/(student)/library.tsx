@@ -7,12 +7,20 @@ import { router } from "expo-router";
 import { BookOpen, CheckCircle2, Clock, Filter, Search, X } from 'lucide-react-native';
 import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, Modal, RefreshControl, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { useRealtimeQuery } from '@/hooks/useRealtimeQuery';
 
 export default function StudentLibrary() {
     const { studentId } = useAuth();
     const [searchQuery, setSearchQuery] = useState("");
     const [selectedBook, setSelectedBook] = useState<FrontendBook | null>(null);
     const [modalVisible, setModalVisible] = useState(false);
+
+    // Listen to realtime changes on the books table
+    useRealtimeQuery('books', () => {
+        if (!loading && !actionLoading && !refreshing) {
+            loadData();
+        }
+    });
 
     const [books, setBooks] = useState<FrontendBook[]>([]);
     const [borrowingHistory, setBorrowingHistory] = useState<FrontendBorrowedBook[]>([]);
