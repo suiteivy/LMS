@@ -1,77 +1,62 @@
-﻿# LMS Frontend - Expo React Native App ðŸ“±
+﻿# LMS Frontend - Expo React Native App 📱
 
 This is the frontend application for the Learning Management System, built with [Expo](https://expo.dev) and React Native.
 
 ## Prerequisites
 
-- Node.js (v14 or later)
+- Node.js (v18 or later)
 - npm or yarn
-- Expo CLI (installed automatically with npx)
+- Expo CLI
 
 ## Quick Start
 
 ### 1. Install Dependencies
-
 ```bash
 npm install
 ```
 
 ### 2. Configure Environment
-
-Create a `.env` file in this directory with your Supabase credentials:
-
+Create a `.env` file in the `frontend` directory:
 ```env
 EXPO_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
 EXPO_PUBLIC_SUPABASE_ANON_KEY=your-anon-key-here
 ```
 
-Get these values from your Supabase project: **Project Settings â†’ API**
-
 ### 3. Start the Development Server
-
 ```bash
 npm start
 ```
-
-This opens Expo DevTools. You can then:
-- Press `w` to open in web browser
-- Press `a` to open in Android emulator
-- Press `i` to open in iOS simulator
-- Scan QR code with Expo Go app on your phone
 
 ## Project Structure
 
 ```
 frontend/
-â”œâ”€â”€ app/                    # App screens (file-based routing)
-â”‚   â”œâ”€â”€ (admin)/           # Admin dashboard and features
-â”‚   â”œâ”€â”€ (auth)/            # Authentication screens (signIn, signUp)
-â”‚   â”œâ”€â”€ (student)/         # Student features
-â”‚   â”œâ”€â”€ (teacher)/         # Teacher features
-â”‚   â””â”€â”€ index.tsx          # Entry point
-â”œâ”€â”€ components/            # Reusable UI components
-â”œâ”€â”€ contexts/              # React contexts (Auth, etc.)
-â”œâ”€â”€ hooks/                 # Custom React hooks
-â”œâ”€â”€ libs/                  # External service configurations (Supabase)
-â”œâ”€â”€ services/              # API service functions
-â”œâ”€â”€ types/                 # TypeScript type definitions
-â””â”€â”€ utils/                 # Utility functions
+├── app/                    # App screens (file-based routing)
+│   ├── (admin)/            # Admin-only features
+│   ├── (auth)/             # Auth: Sign In, Sign Up, Trial
+│   ├── (parent)/           # Parent monitoring
+│   ├── (student)/          # Student dashboard & tools
+│   ├── (teacher)/          # Teacher academic tools
+│   ├── (bursary)/          # Bursary specific flows
+│   └── index.tsx           # Entry point
+├── components/             # Shared UI components
+├── contexts/               # Global state (Auth, Theme)
+├── services/               # Backend API integration
+└── types/                  # TypeScript definitions
 ```
 
 ## User Roles
 
-The app supports three roles:
-- **Admin**: Full system access, user management, analytics
-- **Teacher**: Subject management, grading, attendance
-- **Student**: Subject enrollment, assignments, grades
+The app supports four primary roles:
+- **Admin**: Institutional management and analytics.
+- **Teacher**: Grading, attendance, and subject management.
+- **Student**: Course materials, grades, and finance.
+- **Parent**: Student performance and fee tracking.
 
 ## Troubleshooting
 
 ### "Database error querying schema"
-This error occurs when the `public.users` table is not accessible:
-1. Ensure the user exists in BOTH `auth.users` AND `public.users`
-2. Check that RLS policies allow read access, or RLS is disabled
-3. Run: `GRANT SELECT ON public.users TO anon, authenticated;`
+Ensure the user exists in both `auth.users` and `public.users` tables and RLS policies allow authenticated access.
 
 ### Module not found errors
 Clear the Metro bundler cache:
@@ -79,13 +64,6 @@ Clear the Metro bundler cache:
 npx expo start --clear
 ```
 
-### Environment variables not loading
-- Ensure `.env` file is in the `frontend` directory
-- Restart the development server after changing `.env`
-- Variables must be prefixed with `EXPO_PUBLIC_`
-
 ## Learn More
-
 - [Expo Documentation](https://docs.expo.dev/)
-- [React Native Documentation](https://reactnative.dev/)
 - [Supabase Documentation](https://supabase.com/docs)

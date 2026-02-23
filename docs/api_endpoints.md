@@ -1,239 +1,84 @@
 ﻿# API Endpoints Documentation
 
-## Subject Endpoints
+This document provides a comprehensive reference for the LMS Backend API. All endpoints are prefixed with `/api`.
 
-### Get All Subjects for Institution
+## 📂 Core Modules
 
-```
-GET /api/Subjects
-```
+### 🔐 Authentication (`/api/auth`)
+Handles user registration, login, and administrative user management.
+- `POST /register`: Public registration for new users.
+- `POST /login`: Authenticate and receive JWT.
+- `POST /enroll-user`: (Admin Only) Register a new student/teacher with a generated ID and temporary password.
+- `PUT /admin-update-user/:id`: (Admin Only) Update profile and role-specific data.
 
-Returns all Subjects for the user's institution. This endpoint does not apply role-based filtering.
+### 🏛️ Institutions (`/api/institutions`)
+Global management of educational institutions.
+- `GET /`: List all available institutions.
+- `POST /`: (Admin Only) Register a new institution.
 
-**Authentication Required**: Yes
+### 📚 Subjects (`/api/subjects`)
+Academic course management.
+- `GET /`: List subjects (Student: enrolled only; Teacher: taught only; Admin: all).
+- `GET /:id`: Detailed subject information.
+- `POST /`: (Teacher/Admin) Create a new subject.
 
-**Response**:
-```json
-[
-  {
-    "id": "uuid",
-    "title": "Subject Title",
-    "description": "Subject Description",
-    "teacher_id": "TEA-YYYY-XXXX",
-    "institution_id": "uuid",
-    "created_at": "timestamp"
-  },
-  ...
-]
-```
+### 🎓 Academic & Grading (`/api/academic`)
+Management of student performance and scores.
+- `GET /grades`: Retrieve grades/submissions for the current user.
+- `POST /grades`: (Teacher) Post or update marks for a student's submission.
 
-### Get Filtered Subjects Based on User Role
+### 📖 Library (`/api/library`)
+Book inventory and lending management.
+- `GET /books`: List books in the institution.
+- `POST /books`: (Admin) Add new book to inventory.
+- `POST /borrow/:bookId`: Request to borrow a book.
+- `POST /return/:borrowId`: Return a borrowed book.
+- `GET /history/:studentId`: View borrowing history.
 
-```
-GET /api/Subjects/filtered
-```
+### 📅 Timetable (`/api/timetable`)
+Class scheduling and period management.
+- `GET /`: Fetch timetable slots for the user.
+- `POST /`: (Admin/Teacher) Create/Modify schedule.
 
-Returns Subjects filtered based on the user's role:
-- **Admin**: All Subjects in the institution
-- **Teacher**: Subjects where the user is the teacher
-- **Student**: Subjects where the student has attendance records or submissions
+### 🙋 Attendance (`/api/attendance`)
+Tracking student presence in classes.
+- `GET /`: View attendance reports.
+- `POST /`: Mark attendance for a specific session.
 
-**Authentication Required**: Yes
+### 📝 Exams (`/api/exams`)
+Scheduled assessments and results.
+- `GET /`: List exams.
+- `POST /`: (Teacher/Admin) Schedule an exam.
 
-**Response**:
-```json
-[
-  {
-    "id": "uuid",
-    "title": "Subject Title",
-    "description": "Subject Description",
-    "teacher_id": "TEA-YYYY-XXXX",
-    "institution_id": "uuid",
-    "created_at": "timestamp"
-  },
-  ...
-]
-```
+### 💰 Finance & Bursary (`/api/finance`, `/api/bursary`)
+Monetary transactions and financial aid.
+- `/api/finance`: 
+  - `GET /payments`: List fee payments.
+  - `GET /teacher/earnings`: View payout history.
+- `/api/bursary`: 
+  - `POST /apply`: Student bursary application.
+  - `GET /status`: Track application progress.
 
-### Get Subject by ID
+### 📢 Messaging & Notifications (`/api/messages`, `/api/notifications`)
+- `/api/messages`: Peer-to-peer or class-wide communication.
+- `/api/notifications`: System alerts for grades, fees, or announcements.
 
-```
-GET /api/Subjects/:id
-```
+---
 
-Returns a specific Subject by ID with role-based access control:
-- **Admin**: Can access any Subject in their institution
-- **Teacher**: Can only access Subjects they teach
-- **Student**: Can only access Subjects they're enrolled in (via attendance or submissions)
+## 🛡️ Security & Headers
 
-**Authentication Required**: Yes
-
-**URL Parameters**:
-- `id`: Subject ID (UUID)
-
-**Response**:
-```json
-{
-  "id": "uuid",
-  "title": "Subject Title",
-  "description": "Subject Description",
-  "teacher_id": "uuid",
-  "institution_id": "uuid",
-  "created_at": "timestamp"
-}
+### Authentication
+All secured endpoints require an `Authorization` header:
+```http
+Authorization: Bearer <JWT_TOKEN>
 ```
 
-**Error Responses**:
-- `404 Not Found`: Subject doesn't exist
-- `403 Forbidden`: User doesn't have access to this Subject
+### Institutional Scoping
+The backend uses the `institution_id` from the JWT to automatically filter all queries. This ensures that users can only see data belonging to their specific school.
 
-### Create Subject
-
-```
-POST /api/Subjects
-```
-
-Creates a new Subject. Only available to teachers and admins.
-
-**Authentication Required**: Yes
-
-**Request Body**:
-```json
-{
-  "title": "Subject Title",
-  "description": "Subject Description"
-}
-```
-
-**Response**:
-```json
-{
-  "id": "uuid",
-  "title": "Subject Title",
-  "description": "Subject Description",
-  "teacher_id": "uuid",
-  "institution_id": "uuid",
-  "created_at": "timestamp"
-}
-```
-
-## Auth / User Management Endpoints
-
-### Login
-
-```
-POST /api/auth/login
-```
-
-Authenticates a user with email and password.
-
-**Request Body**:
-```json
-{
-  "email": "user@example.com",
-  "password": "password123"
-}
-```
-
-### Enroll User (Admin Only)
-
-```
-POST /api/auth/enroll-user
-```
-
-Creates a new user with a specific role. Generates a temporary password and custom ID. Only accessible by admins.
-
-**Request Body**:
-```json
-{
-  "full_name": "John Doe",
-  "email": "john@example.com",
-  "role": "student",
-  "institution_id": "uuid",
-  "phone": "+254 7XX XXX XXX",
-  "gender": "male",
-  "date_of_birth": "2000-01-15",
-  "address": "123 Main St",
-  "grade_level": "Form 3",
-  "academic_year": "2026"
-}
-```
-
-**Response**:
-```json
-{
-  "message": "User enrolled successfully",
-  "uid": "uuid",
-  "email": "john@example.com",
-  "tempPassword": "Lms@Ab1234",
-  "customId": "STU-2026-000001",
-  "role": "student"
-}
-```
-
-### Admin Update User
-
-```
-PUT /api/auth/admin-update-user/:id
-```
-
-Updates any user's profile and role-specific details. Admin-only endpoint.
-
-**URL Parameters**:
-- `id`: User UUID
-
-**Request Body** (all fields optional):
-```json
-{
-  "full_name": "Jane Doe",
-  "email": "jane@example.com",
-  "phone": "+254 7XX XXX XXX",
-  "gender": "female",
-  "date_of_birth": "1995-06-20",
-  "address": "456 Oak Ave",
-  "grade_level": "Form 4",
-  "department": "Mathematics",
-  "qualification": "M.Ed"
-}
-```
-
-**Response**:
-```json
-{
-  "message": "User updated successfully"
-}
-```
-
-## Supabase Configuration
-
-The API endpoints rely on the following Supabase configurations:
-
-1. **Row Level Security (RLS) Policies**:
-   - Subjects table has policies for students, teachers, and admins
-   - Students can only view Subjects they're enrolled in (via attendance or submissions)
-   - Teachers can only view Subjects they teach
-   - Admins can view all Subjects in their institution
-
-2. **Database Indexes**:
-   - `idx_attendance_user_Subject` on `attendance(user_id, Subject_id)`
-   - `idx_submissions_student` on `submissions(student_id)`
-   - `idx_assignments_Subject` on `assignments(Subject_id)`
-   - `idx_Subjects_teacher` on `Subjects(teacher_id)`
-   - `idx_Subjects_institution` on `Subjects(institution_id)`
-
-These indexes improve the performance of the filtering queries.
-
-## Authentication
-
-All endpoints require authentication via a JWT token in the Authorization header:
-
-```
-Authorization: Bearer <token>
-```
-
-The token is validated by the `authMiddleware` which extracts:
-- User ID
-- User Role (admin, teacher, student)
-- Institution ID
-
-These values are used for role-based access control in the API endpoints.
+### Role-Based Access Control (RBAC)
+Endpoints are restricted based on the `role` field in the JWT:
+- **Admin**: Full institution-wide access.
+- **Teacher**: Access to assigned subjects, grading, and attendance.
+- **Student**: Access to personal grades, class materials, and finance.
+- **Parent**: Access to linked student's performance and fee status.

@@ -6,19 +6,20 @@ A comprehensive, role-based mobile application for managing educational institut
 - [**Getting Started**](docs/getting_started.md) - Setup and installation guide.
 - [**Architecture**](docs/architecture.md) - High-level system design.
 - [**API Reference**](docs/api_endpoints.md) - Backend API documentation.
-- [**Roles & Permissions**](docs/roles.md) - detailed role capabilities.
+- [**Roles & Permissions**](docs/roles.md) - Detailed role capabilities.
 
 ## ✨ Key Features
-- **Multi-Role Support**: Custom interfaces for Students, Teachers, Admins, and Parents.
-- **Real-time Analytics**: Live dashboard updates for administrators.
-- **Library Management**: Full inventory tracking with borrowing/returning logic.
-- **Finance Module**: Fee payments, bursaries, and teacher payouts.
-- **Academic Tools**: Grading, Attendance, and Subject Management.
+- **Multi-Role Support**: Tailored experiences for Students, Teachers, Admins, and Parents.
+- **Academic Management**: Grading, Attendance tracking, Subject management, and Timetables.
+- **Finance & Bursary**: Fee payment tracking, bursary applications, and teacher payout management with dynamic currency support.
+- **Library System**: Inventory tracking with automatic stock management and borrowing history.
+- **Examination Module**: Exam scheduling and results management.
+- **Real-time Communication**: Integrated messaging and notification system.
 
 ## 🛠️ Tech Stack
-- **Frontend**: React Native, Expo Router, NativeWind
-- **Backend**: Express.js (on Node.js), Supabase (PostgreSQL, Auth, Edge Functions)
-- **Tools**: TypeScript, Lucide Icons
+- **Frontend**: React Native, Expo Router, NativeWind (Tailwind CSS)
+- **Backend**: Express.js (Node.js), Supabase (PostgreSQL, Auth, Storage)
+- **Tools**: TypeScript, Lucide Icons, Axios
 
 ## 🤝 Contribution
 Please read our [Architecture Guide](docs/architecture.md) before contributing. Ensure all new features include proper RLS policies and Type definitions.
