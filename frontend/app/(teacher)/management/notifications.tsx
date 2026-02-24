@@ -5,11 +5,19 @@ import { router } from "expo-router";
 import { AlertCircle, Bell, Calendar, CheckCircle2, Info } from 'lucide-react-native';
 import React, { useEffect, useState } from "react";
 import { ActivityIndicator, RefreshControl, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { useRealtimeQuery } from "@/hooks/useRealtimeQuery";
 
 export default function TeacherNotifications() {
     const [notifications, setNotifications] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
+
+    // Listen to realtime changes on the notifications table
+    useRealtimeQuery('notifications', () => {
+        if (!loading && !refreshing) {
+            fetchNotifications();
+        }
+    });
 
     const fetchNotifications = async () => {
         try {

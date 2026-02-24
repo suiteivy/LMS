@@ -66,10 +66,16 @@ async function authMiddleware(req, res, next) {
       role: profile.role,
     };
 
-    // Convenience shorthands
-    req.institution_id = profile.institution_id;
-    req.userId = profile.id;
-    req.userRole = profile.role;
+    // Convenience shorthands (ensure always set)
+    req.institution_id = profile.institution_id || null;
+    req.userId = profile.id || null;
+    req.userRole = profile.role || null;
+
+    // Defensive: fallback if somehow missing
+    if (!req.userRole) {
+      console.error('[AuthMiddleware] userRole missing for user:', profile.id);
+      return res.status(403).json({ error: "User role not found in profile" });
+    }
 
     next();
   } catch (err) {
