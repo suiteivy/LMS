@@ -63,7 +63,7 @@ export default function Grades() {
                     grade,
                     assignment:assignments(
                         title,
-                        subject:subjects(title, id) 
+                        subject:subjects(title, id, credits) 
                     )
                 `)
                 .eq('student_id', studentId)
@@ -72,16 +72,17 @@ export default function Grades() {
             if (error) throw error;
 
             // Group by subject
-            const subjectGrades: Record<string, { total: number, count: number, name: string }> = {};
+            const subjectGrades: Record<string, { total: number, count: number, name: string, credits: number }> = {};
 
             data.forEach((sub: any) => {
                 const subjectId = sub.assignment?.subject?.id;
                 const subjectName = sub.assignment?.subject?.title;
+                const credits = sub.assignment?.subject?.credits || 0;
                 const score = Number(sub.grade);
 
                 if (subjectId && !isNaN(score)) {
                     if (!subjectGrades[subjectId]) {
-                        subjectGrades[subjectId] = { total: 0, count: 0, name: subjectName };
+                        subjectGrades[subjectId] = { total: 0, count: 0, name: subjectName, credits };
                     }
                     subjectGrades[subjectId].total += score;
                     subjectGrades[subjectId].count += 1;
@@ -98,10 +99,10 @@ export default function Grades() {
 
                 return {
                     SubjectName: val.name,
-                    SubjectCode: "SUB-" + id.substring(0, 4).toUpperCase(), // Updated prefix
+                    SubjectCode: "SUB-" + id.substring(0, 4).toUpperCase(),
                     grade: letter,
                     score: Math.round(avg),
-                    credits: 3 // Mock credits
+                    credits: val.credits
                 };
             });
 
@@ -115,8 +116,8 @@ export default function Grades() {
 
             setStats({
                 gpa: Number(gpa),
-                credits: formattedGrades.length * 3,
-                rank: 12 // Mock rank
+                credits: formattedGrades.reduce((sum, g) => sum + g.credits, 0),
+                rank: 0 // Mock removed
             });
 
         } catch (error) {
@@ -153,10 +154,12 @@ export default function Grades() {
                     </View>
 
                     <View className="flex-row mt-6 pt-6 border-t border-white/10 justify-between">
-                        <View className="items-center flex-1">
-                            <Text className="text-orange-100 text-xs uppercase">Rank</Text>
-                            <Text className="text-white font-bold text-lg">#{stats.rank} / 120</Text>
-                        </View>
+                        {stats.rank > 0 && (
+                            <View className="items-center flex-1">
+                                <Text className="text-orange-100 text-xs uppercase">Rank</Text>
+                                <Text className="text-white font-bold text-lg">#{stats.rank}</Text>
+                            </View>
+                        )}
                         <View className="items-center flex-1 border-x border-white/10">
                             <Text className="text-orange-100 text-xs uppercase">Credits</Text>
                             <Text className="text-white font-bold text-lg">{stats.credits}</Text>

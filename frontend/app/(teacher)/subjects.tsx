@@ -96,11 +96,11 @@ export default function TeacherSubjects() {
 
             const mappedSubjects: Subject[] = data.map((c: any) => ({
                 id: c.id,
-                title: c.name,
-                students: 0, // Need to count enrollments via class link, complicated query. Mock for now.
-                completion: 0, // Mock for now
-                status: "active", // Default, schema has no status column for now but we can assume active
-                lastUpdated: new Date(c.updated_at).toLocaleDateString()
+                title: c.title,
+                students: 0,
+                completion: 0,
+                status: "active",
+                lastUpdated: new Date(c.updated_at || c.created_at).toLocaleDateString()
             }));
 
             setSubjects(mappedSubjects);

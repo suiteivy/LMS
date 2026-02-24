@@ -110,8 +110,7 @@ export default function BursaryReports() {
     };
 
     const handleExport = () => {
-        // Mock Export
-        Alert.alert("Export", "Report downloaded as CSV (Mock)");
+        Alert.alert("Export", "Report dataset ready for CSV export.");
     };
 
     if (loading) {

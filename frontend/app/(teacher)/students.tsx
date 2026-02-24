@@ -106,7 +106,6 @@ export default function TeacherStudents() {
             if (enrollError) throw enrollError;
 
             // Map to Student interface
-            // For now, we'll use mock data for grade/progress as we don't have that fully calculated yet
             const mappedStudents: Student[] = enrollData.map((enroll: any) => {
                 const cls = classesData.find(c => c.id === enroll.class_id);
                 return {
@@ -114,8 +113,8 @@ export default function TeacherStudents() {
                     name: enroll.student?.user?.full_name || "Unknown",
                     email: enroll.student?.user?.email || "",
                     Subject: cls?.name || "Unknown Class",
-                    grade: "A", // Mock
-                    progress: 75 // Mock
+                    grade: "N/A",
+                    progress: 0
                 };
             });
 
@@ -177,7 +176,7 @@ export default function TeacherStudents() {
                             </View>
                             <View className="flex-1 bg-white p-4 rounded-2xl border border-gray-100">
                                 <TrendingUp size={18} color="#FF6B00" />
-                                <Text className="text-gray-900 text-xl font-bold mt-2">78%</Text>
+                                <Text className="text-gray-900 text-xl font-bold mt-2">0%</Text>
                                 <Text className="text-gray-400 text-xs uppercase">Avg Progress</Text>
                             </View>
                         </View>
