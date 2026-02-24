@@ -1,7 +1,8 @@
 import React, { useState } from "react";
 import { View, Text, ScrollView, TouchableOpacity, StatusBar } from 'react-native';
 import { Calendar, Clock, Bell, ArrowRight, BookOpen, Users, GraduationCap, School } from 'lucide-react-native';
-import { useAuth,logout } from '@/contexts/AuthContext';
+import { useAuth } from '@/contexts/AuthContext';
+import { TrialBanner, SubscriptionGate, PremiumBadge } from '@/components/shared/SubscriptionComponents';
 
 
 // Define Interface for the QuickAction props
@@ -9,14 +10,18 @@ interface QuickActionProps {
     icon: any;
     label: string;
     color: string;
+    badge?: React.ReactNode;
 }
 
-const QuickAction = ({ icon: Icon, label, color }: QuickActionProps) => (
+const QuickAction = ({ icon: Icon, label, color, badge }: QuickActionProps) => (
     <TouchableOpacity className="w-[48%] bg-white p-6 rounded-3xl border border-gray-100 shadow-sm items-center mb-4 active:bg-gray-50">
         <View style={{ backgroundColor: `${color}15` }} className="p-3 rounded-2xl mb-2">
             <Icon size={24} color={color} />
         </View>
-        <Text className="text-gray-800 font-bold">{label}</Text>
+        <View className="flex-row items-center justify-center">
+            <Text className="text-gray-800 font-bold text-center">{label}</Text>
+            {badge}
+        </View>
     </TouchableOpacity>
 );
 
@@ -27,6 +32,7 @@ export default function TeacherHome() {
     return (
         <>
             <StatusBar barStyle="dark-content" />
+            <TrialBanner />
 
             <View className="flex-1 bg-gray-50">
                 <ScrollView
@@ -49,33 +55,33 @@ export default function TeacherHome() {
                                 </Text>
                             </View>
                             <View className="">
-                            
 
-                            <TouchableOpacity
-                                className="relative p-2 bg-white rounded-full border border-gray-100 shadow-sm active:opacity-70"
-                                onPress={() => setShowNotification(true)}
-                            >
-                                <Bell size={24} color="#374151" />
-                                <View className="absolute top-2 right-2 w-3 h-3 bg-red-500 rounded-full border-2 border-white" />
-                            </TouchableOpacity>
 
-                            {/* Logout Button */}
-                            <TouchableOpacity
-                                className="mt-3 p-2 bg-red-500 rounded-full border border-red-600 shadow-sm active:opacity-70 items-center justify-center"
-                                onPress={async () => {
-                                    // Use the logout function from AuthContext
-                                    if (typeof window !== 'undefined') {
-                                        await logout();
-                                        sessionStorage.clear();
-                                        window.location.reload();
-                                    }
-                                }}
-                            >
-                                <View className="flex-row items-center">
-                                    <ArrowRight size={20} color="white" style={{ transform: [{ rotate: '180deg' }] }} />
-                                    
-                                </View>
-                            </TouchableOpacity>
+                                <TouchableOpacity
+                                    className="relative p-2 bg-white rounded-full border border-gray-100 shadow-sm active:opacity-70"
+                                    onPress={() => setShowNotification(true)}
+                                >
+                                    <Bell size={24} color="#374151" />
+                                    <View className="absolute top-2 right-2 w-3 h-3 bg-red-500 rounded-full border-2 border-white" />
+                                </TouchableOpacity>
+
+                                {/* Logout Button */}
+                                <TouchableOpacity
+                                    className="mt-3 p-2 bg-red-500 rounded-full border border-red-600 shadow-sm active:opacity-70 items-center justify-center"
+                                    onPress={async () => {
+                                        // Use the logout function from AuthContext
+                                        if (typeof window !== 'undefined') {
+                                            await logout();
+                                            sessionStorage.clear();
+                                            window.location.reload();
+                                        }
+                                    }}
+                                >
+                                    <View className="flex-row items-center">
+                                        <ArrowRight size={20} color="white" style={{ transform: [{ rotate: '180deg' }] }} />
+
+                                    </View>
+                                </TouchableOpacity>
                             </View>
 
                         </View>
@@ -177,17 +183,22 @@ export default function TeacherHome() {
                                     label="Grades"
                                     color="#1a1a1a"
                                 />
-                                <QuickAction
-                                    icon={School}
-                                    label="Classes"
-                                    color="#8b5cf6"
-                                />
+                                <SubscriptionGate>
+                                    <QuickAction
+                                        icon={School}
+                                        label="Classes"
+                                        color="#8b5cf6"
+                                        badge={<PremiumBadge />}
+                                    />
+                                </SubscriptionGate>
                                 <QuickAction
                                     icon={ArrowRight}
                                     label="Assignments"
                                     color="#f43f5e"
                                 />
-                                <QuickAction icon={Users} label="Students" color="#eab308" />
+                                <SubscriptionGate>
+                                    <QuickAction icon={Users} label="Students" color="#eab308" badge={<PremiumBadge />} />
+                                </SubscriptionGate>
                             </View>
                         </View>
                     </View>

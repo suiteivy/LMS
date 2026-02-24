@@ -16,6 +16,8 @@ interface AuthContextType {
   adminId: string | null
   parentId: string | null
   displayId: string | null
+  subscriptionStatus: string | null
+  trialEndDate: string | null
   loading: boolean
   signIn: (email: string, password: string) => Promise<{ data: any; error: any }>
   signOut: () => Promise<{ error: any }>
@@ -50,6 +52,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [adminId, setAdminId] = useState<string | null>(null)
   const [parentId, setParentId] = useState<string | null>(null)
   const [displayId, setDisplayId] = useState<string | null>(null)
+  const [subscriptionStatus, setSubscriptionStatus] = useState<string | null>(null)
+  const [trialEndDate, setTrialEndDate] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
 
   const timerRef = useRef<any>(null)
@@ -105,22 +109,34 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     loadingUserId.current = userId;
     try {
       setLoading(true);
-      // Get Base Profile and Role-Specific IDs in a single query
+      // Get Base Profile, Role-Specific IDs, and Institution in a single query
       const { data, error } = await supabase
         .from('users')
-        .select('*, students(id), teachers(id), admins(id), parents(id)')
+        .select('*, students(id), teachers(id), admins(id), parents(id), institutions(subscription_status, trial_end_date)')
         .eq('id', userId)
         .single()
 
       if (error) {
         console.error('Error loading profile:', error)
         setProfile(null)
+        setSubscriptionStatus(null)
+        setTrialEndDate(null)
         lastLoadedUserId.current = null;
         return null
       }
 
       const userData = data as any;
       setProfile(userData as UserProfile)
+
+      // Set Subscription Data
+      if (userData.institutions) {
+        setSubscriptionStatus(userData.institutions.subscription_status || null)
+        setTrialEndDate(userData.institutions.trial_end_date || null)
+      } else {
+        setSubscriptionStatus(null)
+        setTrialEndDate(null)
+      }
+
       lastLoadedUserId.current = userId;
 
       const getRoleId = (roleData: any) => {
@@ -207,6 +223,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           setAdminId(null)
           setParentId(null)
           setDisplayId(null)
+          setSubscriptionStatus(null)
+          setTrialEndDate(null)
 
           if (!isManualLogout.current) {
             console.log('User signed out unexpectedly, showing toast')
@@ -320,6 +338,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     adminId,
     parentId,
     displayId,
+    subscriptionStatus,
+    trialEndDate,
     loading,
     signIn: authService.signIn,
     signOut: handleLogout,
@@ -327,7 +347,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     resetPassword: authService.resetPassword,
     refreshProfile,
     resetSessionTimer,
-  }), [session, user, profile, studentId, teacherId, adminId, parentId, displayId, loading]);
+  }), [session, user, profile, studentId, teacherId, adminId, parentId, displayId, subscriptionStatus, trialEndDate, loading]);
 
   return (
     <AuthContext.Provider value={value}>

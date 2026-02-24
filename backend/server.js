@@ -42,16 +42,24 @@ app.use((req, res, next) => {
 });
 
 // Routes
-app.use("/api/auth", authRoutes);
-app.use("/api/subjects", subjectRoutes); // Updated endpoint
-app.use("/api/institutions", institutionRoutes);
-app.use("/api/library", libraryRoutes);
-app.use("/api/bursary", bursaryRoutes);
-app.use("/api/finance", financeRoutes);
-app.use("/api/notifications", notificationRoutes);
-app.use("/api/timetable", require("./routes/timetable.route"));
-app.use("/api/funds", require("./routes/finance_funds.route"));
-app.use("/api/attendance", require("./routes/attendance.route"));
+app.use("/api/auth", authRoutes); // Auth shouldn't be fully blocked, but register handles it
+
+// Apply Subscription Check Middleware to Protected Routes
+const checkSubscription = require("./middleware/subscriptionCheck");
+
+app.use("/api/subjects", checkSubscription, subjectRoutes);
+app.use("/api/institutions", checkSubscription, institutionRoutes);
+app.use("/api/library", checkSubscription, libraryRoutes);
+app.use("/api/bursary", checkSubscription, bursaryRoutes);
+app.use("/api/finance", checkSubscription, financeRoutes);
+app.use("/api/notifications", checkSubscription, notificationRoutes);
+app.use("/api/timetable", checkSubscription, require("./routes/timetable.route"));
+app.use("/api/funds", checkSubscription, require("./routes/finance_funds.route"));
+app.use("/api/attendance", checkSubscription, require("./routes/attendance.route"));
+
+// automated background jobs
+const { startTrialNudgesCron } = require('./cron/trialNudges');
+startTrialNudgesCron();
 
 // health check
 app.get("/", (req, res) => {

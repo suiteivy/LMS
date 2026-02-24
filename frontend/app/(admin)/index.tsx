@@ -19,12 +19,14 @@ import {
 import { useDashboardStats } from "@/hooks/useDashboardStats";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { User } from "@/types/types";
+import { TrialBanner, SubscriptionGate, OnboardingTracker, PremiumBadge } from "@/components/shared/SubscriptionComponents";
 
 interface QuickActionProps {
   icon: any;
   label: string;
   color: string;
   onPress: () => void;
+  badge?: React.ReactNode;
 }
 
 // Cast icons to any to avoid nativewind interop issues
@@ -41,15 +43,18 @@ const IconBookOpen = BookOpen as any;
 const IconBarChart3 = BarChart3 as any;
 const IconLogOut = LogOut as any;
 
-const QuickAction = ({ icon: Icon, label, color, onPress }: QuickActionProps) => (
+const QuickAction = ({ icon: Icon, label, color, onPress, badge }: QuickActionProps) => (
   <TouchableOpacity
-    className="w-full sm:w-[48%] lg:w-[23%] bg-white p-6 rounded-3xl border border-gray-100 shadow-sm items-center mb-4 active:bg-gray-50"
+    className="w-full sm:w-[48%] lg:w-[23%] bg-white p-6 rounded-3xl border border-gray-100 shadow-sm items-center mb-4 active:bg-gray-50 flex-col"
     onPress={onPress}
   >
     <View style={{ backgroundColor: `${color}15` }} className="p-3 rounded-2xl mb-2">
       <Icon size={24} color={color} />
     </View>
-    <Text className="text-gray-800 font-bold text-center">{label}</Text>
+    <View className="flex-row items-center justify-center">
+      <Text className="text-gray-800 font-bold text-center">{label}</Text>
+      {badge}
+    </View>
   </TouchableOpacity>
 );
 
@@ -171,6 +176,7 @@ export default function AdminDashboard() {
   return (
     <View className="flex-1 bg-gray-50/50">
       <StatusBar barStyle="dark-content" />
+      <TrialBanner />
 
       {/* Diagnostics Modal */}
       {showDebug && (
@@ -212,6 +218,9 @@ export default function AdminDashboard() {
               <IconLogOut size={22} color="#374151" />
             </TouchableOpacity>
           </View>
+
+          {/* --- 1.5. Onboarding Tracker --- */}
+          <OnboardingTracker stats={stats} />
 
           {/* --- 2. Quick Status Cards --- */}
           <View className="flex-row gap-4 mb-8">
@@ -256,24 +265,30 @@ export default function AdminDashboard() {
           <View className="mb-10">
             <Text className="text-lg font-bold text-gray-900 mb-4 px-1">Quick Actions</Text>
             <View className="flex-row flex-wrap gap-4">
-              <QuickAction
-                icon={IconUserPlus}
-                label="Enroll User"
-                color="#3b82f6"
-                onPress={() => router.push("/(admin)/users/create")}
-              />
+              <SubscriptionGate>
+                <QuickAction
+                  icon={IconUserPlus}
+                  label="Enroll User"
+                  color="#3b82f6"
+                  onPress={() => router.push("/(admin)/users/create")}
+                  badge={<PremiumBadge />}
+                />
+              </SubscriptionGate>
               <QuickAction
                 icon={IconBookOpen}
                 label="Library"
                 color="#eab308"
                 onPress={() => router.push("/(admin)/management/library" as any)}
               />
-              <QuickAction
-                icon={IconWallet}
-                label="Finance"
-                color="#10b981"
-                onPress={() => router.push("/(admin)/finance" as any)}
-              />
+              <SubscriptionGate>
+                <QuickAction
+                  icon={IconWallet}
+                  label="Finance"
+                  color="#10b981"
+                  onPress={() => router.push("/(admin)/finance" as any)}
+                  badge={<PremiumBadge />}
+                />
+              </SubscriptionGate>
               <QuickAction
                 icon={IconBarChart3}
                 label="Analytics"
