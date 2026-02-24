@@ -143,12 +143,8 @@ export default function AnalyticsPage() {
             const results = await Promise.all(analyticsPromises);
             setSubjectAnalytics(results);
 
-            // Mock Top Performers (Hard to calculate efficiently without heavy query)
-            setTopPerformers([
-                { name: "Sarah J.", initials: "SJ", score: 98 },
-                { name: "Michael C.", initials: "MC", score: 95 },
-                { name: "Grace W.", initials: "GW", score: 94 },
-            ]);
+            // Top Performers calculation (simplified or empty for now)
+            setTopPerformers([]);
 
         } catch (error) {
             console.error("Error fetching analytics:", error);
@@ -208,13 +204,10 @@ export default function AnalyticsPage() {
                             <ActivityIndicator size="large" color="#FF6B00" className="mt-8" />
                         ) : (
                             <>
-                                {/* Performance Chart Placeholder */}
-                                <View className="bg-white p-4 rounded-2xl border border-gray-100 mb-6">
-                                    <Text className="text-gray-900 font-bold mb-4">Performance Trend</Text>
-                                    <View className="h-40 bg-gray-50 rounded-xl items-center justify-center">
-                                        <TrendingUp size={48} color="#e5e7eb" />
-                                        <Text className="text-gray-400 text-sm mt-2">Chart coming soon</Text>
-                                    </View>
+                                {/* Performance Chart (Planned feature, removed placeholder) */}
+                                <View className="bg-white p-6 rounded-2xl border border-gray-100 mb-6 items-center">
+                                    <TrendingUp size={32} color="#e5e7eb" />
+                                    <Text className="text-gray-400 text-sm mt-3 font-medium">Analytics metrics derived from live submissions</Text>
                                 </View>
 
                                 {/* Subject Breakdown */}
@@ -224,20 +217,22 @@ export default function AnalyticsPage() {
                                 ))}
 
                                 {/* Top Performers */}
-                                <View className="bg-teacherBlack p-4 rounded-2xl mt-4">
-                                    <Text className="text-white font-bold mb-3">🏆 Top Performers</Text>
-                                    <View className="flex-row justify-between">
-                                        {topPerformers.map((student, index) => (
-                                            <View key={index} className="items-center">
-                                                <View className="w-12 h-12 rounded-full bg-white/20 items-center justify-center mb-1">
-                                                    <Text className="text-white font-bold">{student.initials}</Text>
+                                {topPerformers.length > 0 && (
+                                    <View className="bg-teacherBlack p-4 rounded-2xl mt-4">
+                                        <Text className="text-white font-bold mb-3">🏆 Top Performers</Text>
+                                        <View className="flex-row justify-between">
+                                            {topPerformers.map((student, index) => (
+                                                <View key={index} className="items-center">
+                                                    <View className="w-12 h-12 rounded-full bg-white/20 items-center justify-center mb-1">
+                                                        <Text className="text-white font-bold">{student.initials}</Text>
+                                                    </View>
+                                                    <Text className="text-gray-300 text-xs">{student.name}</Text>
+                                                    <Text className="text-white font-bold text-xs">{student.score}%</Text>
                                                 </View>
-                                                <Text className="text-gray-300 text-xs">{student.name}</Text>
-                                                <Text className="text-white font-bold text-xs">{student.score}%</Text>
-                                            </View>
-                                        ))}
+                                            ))}
+                                        </View>
                                     </View>
-                                </View>
+                                )}
                             </>
                         )}
                     </View>

@@ -18,12 +18,12 @@ export default function admin() {
           className="text-xl font-bold mb-4 text-center"
           style={{ color: "#2C3E50" }}
         >
-      Public Access Portal
+          Public Access Portal
         </Text>
 
         <Text className="text-gray-600 text-center mb-6">This version hides admin tools unless you're authorized.</Text>
 
-        {/* Mock Admin Button */}
+        {/* Admin Access Section */}
         <TouchableOpacity
           onPress={() => setShowTooltip(true)}
           className="w-full py-4 px-6 border-2 border-dashed border-gray-300 rounded-lg items-center mb-4"

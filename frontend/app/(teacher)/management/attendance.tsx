@@ -231,7 +231,7 @@ export default function AttendancePage() {
 
                         {/* Date & Class Selectors */}
                         <View className="flex-row gap-3 mb-4">
-                            {/* Date Picker (Mock Button for now) */}
+                            {/* Date Selection */}
                             <TouchableOpacity className="flex-1 bg-white rounded-xl px-4 py-3 border border-gray-100 flex-row items-center justify-between">
                                 <View className="flex-row items-center">
                                     <Calendar size={16} color="#FF6B00" />
