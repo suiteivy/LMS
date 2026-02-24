@@ -741,6 +741,13 @@ export default function Index() {
         <View style={{ flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(0,0,0,0.6)" }}>
           <View style={{ backgroundColor: "#13103A", borderTopLeftRadius: 32, borderTopRightRadius: 32, padding: 24, minHeight: 450 }}>
             <View style={{ width: 40, height: 4, backgroundColor: "rgba(255,255,255,0.2)", borderRadius: 2, alignSelf: "center", marginBottom: 24 }} />
+            {/* Close button */}
+            <TouchableOpacity
+              style={{ position: "absolute", top: 24, right: 24, zIndex: 10 }}
+              onPress={() => setModalVisible(false)}
+            >
+              <Text style={{ color: "rgba(255,255,255,0.6)", fontSize: 24, fontWeight: "bold" }}>×</Text>
+            </TouchableOpacity>
 
             {submitted ? (
               <View style={{ alignItems: "center", paddingVertical: 40 }}>
