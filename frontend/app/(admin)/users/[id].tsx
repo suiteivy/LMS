@@ -111,8 +111,8 @@ export default function UserDetailsScreen() {
 
             const role = typedUser?.role;
             let roleQuery: any = null;
-            if (role === 'student') roleQuery = supabase.from('students').select('*, enrollments(class_id), parent_students(parent_id)').eq('user_id', id as string).single();
-            else if (role === 'teacher') roleQuery = supabase.from('teachers').select('*').eq('user_id', id as string).single();
+            if (role === 'student') roleQuery = supabase.from('students').select('*, class_enrollments(class_id), parent_students(parent_id)').eq('user_id', id as string).single();
+            else if (role === 'teacher') roleQuery = supabase.from('teachers').select('*, classes(id)').eq('user_id', id as string).single();
             else if (role === 'admin') roleQuery = supabase.from('admins').select('*').eq('user_id', id as string).single();
             else if (role === 'parent') roleQuery = supabase.from('parents').select('*, parent_students(student_id)').eq('user_id', id as string).single();
 
@@ -150,6 +150,7 @@ export default function UserDetailsScreen() {
         } else if (role === 'teacher') {
             setDepartment(rd.department || ''); setQualification(rd.qualification || '');
             setSpecialization(rd.specialization || ''); setPosition(rd.position || ''); setHireDate(rd.hire_date || '');
+            setClassId(rd.classes?.[0]?.id || null);
         } else if (role === 'parent') {
             setOccupation(rd.occupation || ''); setParentAddress(rd.address || '');
             setLinkedStudents(rd.parent_students?.map((ps: any) => ps.student_id) || []);
@@ -185,7 +186,7 @@ export default function UserDetailsScreen() {
         try {
             const body: any = { full_name: fullName, email, phone: phone || undefined, gender: gender || undefined, date_of_birth: dob || undefined, address: address || undefined };
             if (user?.role === 'student') { Object.assign(body, { grade_level: gradeLevel || undefined, academic_year: academicYear || undefined, parent_contact: parentContact || undefined, emergency_contact_name: emergencyName || undefined, emergency_contact_phone: emergencyPhone || undefined, admission_date: admissionDate || undefined, class_id: classId, linked_parents: linkedParents }); }
-            else if (user?.role === 'teacher') { Object.assign(body, { department: department || undefined, qualification: qualification || undefined, specialization: specialization || undefined, position: position || undefined, hire_date: hireDate || undefined, subject_ids: subjectIds }); }
+            else if (user?.role === 'teacher') { Object.assign(body, { department: department || undefined, qualification: qualification || undefined, specialization: specialization || undefined, position: position || undefined, hire_date: hireDate || undefined, subject_ids: subjectIds, class_teacher_id: classId }); }
             else if (user?.role === 'parent') { Object.assign(body, { occupation: occupation || undefined, parent_address: parentAddress || undefined, linked_students: linkedStudents }); }
 
             const response = await fetch(`${API_URL}/api/auth/admin-update-user/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
@@ -366,6 +367,10 @@ export default function UserDetailsScreen() {
                         {renderField('Position', position, setPosition)}
                         <DatePicker label="Hire Date" value={hireDate} onChange={setHireDate} isDark={isDark} inline />
                         {renderChipList('Assigned Subjects', allSubjects, subjectIds, setSubjectIds, s => s.title, '#3b82f6')}
+                        {renderChipList('Assigned as Class Teacher', classes, classId ? [classId] : [],
+                            (ids) => setClassId(ids[ids.length - 1] ?? null),
+                            c => c.name, '#3b82f6'
+                        )}
                     </View>
                 )}
 

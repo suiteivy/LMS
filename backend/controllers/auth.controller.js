@@ -410,16 +410,16 @@ exports.adminUpdateUser = async (req, res) => {
 
         if (customStudentId) {
           if (class_id === null) {
-            await supabase.from('enrollments').delete().eq('student_id', customStudentId);
+            await supabase.from('class_enrollments').delete().eq('student_id', customStudentId);
           } else {
             // Check if already enrolled in a class
-            const { data: existing } = await supabase.from('enrollments')
+            const { data: existing } = await supabase.from('class_enrollments')
               .select('id').eq('student_id', customStudentId).maybeSingle();
 
             if (existing) {
-              await supabase.from('enrollments').update({ class_id }).eq('student_id', customStudentId);
+              await supabase.from('class_enrollments').update({ class_id }).eq('student_id', customStudentId);
             } else {
-              await supabase.from('enrollments').insert({ student_id: customStudentId, class_id });
+              await supabase.from('class_enrollments').insert({ student_id: customStudentId, class_id });
             }
           }
         }
@@ -470,6 +470,22 @@ exports.adminUpdateUser = async (req, res) => {
           // Assign new ones
           if (subject_ids && subject_ids.length > 0) {
             await supabase.from('subjects').update({ teacher_id: customTeacherId }).in('id', subject_ids);
+          }
+        }
+      }
+
+      // Update class teacher assignment
+      if (req.body.class_teacher_id !== undefined) {
+        const { data: teacherData } = await supabase.from('teachers').select('id').eq('user_id', id).single();
+        const customTeacherId = teacherData?.id;
+        const class_teacher_id = req.body.class_teacher_id;
+
+        if (customTeacherId) {
+          // Reset old classes where this teacher was class teacher
+          await supabase.from('classes').update({ teacher_id: null }).eq('teacher_id', customTeacherId);
+          // Assign new one
+          if (class_teacher_id) {
+            await supabase.from('classes').update({ teacher_id: customTeacherId }).eq('id', class_teacher_id);
           }
         }
       }
