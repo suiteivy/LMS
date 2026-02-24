@@ -3,7 +3,7 @@ import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, StatusBar 
 import { ArrowLeft, Plus, BookOpen, Clock, ChevronRight, Filter } from "lucide-react-native";
 import { router } from "expo-router";
 import { useAuth } from "@/contexts/AuthContext";
-import { TeacherAPI } from "@/libs/TeacherAPI";
+import { TeacherAPI } from "@/services/TeacherService";
 
 interface Subject {
     id: string;
@@ -18,7 +18,10 @@ const SubjectCard = ({ subject }: { subject: Subject }) => {
     return (
         <TouchableOpacity
             className="bg-white p-5 rounded-3xl border border-gray-100 mb-4 shadow-sm"
-            onPress={() => router.push(`/(teacher)/management/subjects/${subject.id}`)}
+            onPress={() => router.push({
+                pathname: "/(teacher)/management/subjects/details" as any,
+                params: { id: subject.id }
+            })}
         >
             <View className="flex-row justify-between items-start mb-4">
                 <View className="bg-orange-50 p-3 rounded-2xl">

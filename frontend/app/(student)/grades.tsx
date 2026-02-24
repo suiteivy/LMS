@@ -285,7 +285,7 @@ export default function Grades() {
                             <BarChart3 size={18} color="#FF6900" />
                             <Text className="text-gray-900 dark:text-white font-bold text-lg tracking-tight ml-3">Analytical Overview</Text>
                         </View>
-                        <div className="flex-row border-t border-gray-50 dark:border-gray-800 pt-6">
+                        <View className="flex-row border-t border-gray-50 dark:border-gray-800 pt-6">
                             <View className="flex-1">
                                 <Text className="text-gray-400 dark:text-gray-500 text-[8px] font-bold uppercase tracking-widest mb-1">Raw Aggregation</Text>
                                 <Text className="text-gray-900 dark:text-gray-100 font-bold text-xl">{stats.totalMarks.toLocaleString()}</Text>
@@ -303,7 +303,7 @@ export default function Grades() {
                                     })()}
                                 </Text>
                             </View>
-                        </div>
+                        </View>
                     </View>
 
                     {/* Subject Breakdown */}

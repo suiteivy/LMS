@@ -4,7 +4,7 @@ import { ArrowLeft, TrendingUp, Users, BookOpen, Clock, Award, ChevronDown, Down
 import { router } from "expo-router";
 import { supabase } from "@/libs/supabase";
 import { useAuth } from "@/contexts/AuthContext";
-import { TeacherAPI } from "@/libs/TeacherAPI";
+import { TeacherAPI } from "@/services/TeacherService";
 
 interface SubjectAnalytics {
     id: string;
@@ -80,62 +80,57 @@ export default function AnalyticsPage() {
             const { data: Subjects, error: SubjectsError } = await supabase
                 .from('subjects')
                 .select('id, title, class_id')
-                .eq('teacher_id', teacherId);
+                .eq('teacher_id', (teacherId as string));
 
             if (SubjectsError) throw SubjectsError;
 
-            // Fetch performance data to calculate top performers
-            const { data: enrollments, error: enrollmentsError } = await supabase
-                .from('enrollments')
+            const classIds = Subjects.map(s => s.class_id).filter(Boolean);
+            if (classIds.length === 0) {
+                setTopPerformers([]);
+                setLoading(false);
+                return;
+            }
+
+            // Fetch all graded submissions for students in the teacher's classes
+            const { data: allSubmissions, error: submissionError } = await supabase
+                .from('submissions')
                 .select(`
+                    grade,
                     student_id,
                     students (full_name),
-                    classes (
-                        subjects (
-                            id,
-                            assignments (
-                                id,
-                                submissions (grade)
-                            )
+                    assignment:assignments!inner (
+                        subject:subjects!inner (
+                            teacher_id
                         )
                     )
                 `)
-                .in('class_id', Subjects.map(s => s.class_id).filter(Boolean));
+                .eq('assignment.subject.teacher_id', (teacherId as string))
+                .eq('status', 'graded');
 
-            if (enrollmentsError) throw enrollmentsError;
+            if (submissionError) throw submissionError;
 
-            const allStudentsPerformance: { [key: string]: { full_name: string, grades: number[] } } = {};
+            const studentPerformance: { [key: string]: { name: string, total: number, count: number } } = {};
 
-            enrollments.forEach((enrollment: any) => {
-                const studentId = enrollment.student_id;
-                const studentName = enrollment.students?.full_name || 'Unknown Student';
+            (allSubmissions || []).forEach((sub: any) => {
+                const sid = sub.student_id;
+                const name = sub.students?.full_name || "Unknown";
+                const grade = Number(sub.grade);
 
-                if (!allStudentsPerformance[studentId]) {
-                    allStudentsPerformance[studentId] = { full_name: studentName, grades: [] };
+                if (!isNaN(grade)) {
+                    if (!studentPerformance[sid]) {
+                        studentPerformance[sid] = { name, total: 0, count: 0 };
+                    }
+                    studentPerformance[sid].total += grade;
+                    studentPerformance[sid].count += 1;
                 }
-
-                enrollment.classes?.subjects.forEach((subject: any) => {
-                    subject.assignments.forEach((assignment: any) => {
-                        assignment.submissions.forEach((submission: any) => {
-                            if (submission.grade !== null) {
-                                allStudentsPerformance[studentId].grades.push(submission.grade);
-                            }
-                        });
-                    });
-                });
             });
 
-            const topList = Object.values(allStudentsPerformance)
-                .map(s => {
-                    const avg = s.grades.length > 0
-                        ? s.grades.reduce((a: number, b: number) => a + b, 0) / s.grades.length
-                        : 0;
-                    return {
-                        name: s.full_name,
-                        initials: s.full_name.split(' ').map((n: string) => n[0]).join('').toUpperCase().substring(0, 2),
-                        score: Math.round(avg)
-                    };
-                })
+            const topList = Object.entries(studentPerformance)
+                .map(([id, stats]) => ({
+                    name: stats.name,
+                    initials: stats.name.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2),
+                    score: Math.round(stats.total / stats.count)
+                }))
                 .sort((a, b) => b.score - a.score)
                 .slice(0, 3);
 
