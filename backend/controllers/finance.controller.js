@@ -131,7 +131,7 @@ exports.getTransactions = async (req, res) => {
 
         let query = supabase
             .from("financial_transactions")
-            .select("*, users(full_name, avatar_url, role, students(id), teachers(id))")
+            .select("*, users(full_name), students(id)")
             .eq("institution_id", institution_id)
             .order("date", { ascending: false });
 
@@ -221,9 +221,10 @@ exports.createTransaction = async (req, res) => {
  */
 exports.recordFeePayment = async (req, res) => {
     try {
-        if (userRole !== "admin" && userRole !== "bursary") return res.status(403).json({ error: "Unauthorized" });
-
-        const { student_id, amount, method, reference_number, notes } = req.body;
+        const { userRole, institution_id } = req;
+        if (userRole !== "admin" ) return res.status(403).json({ error: "Unauthorized" });
+        console.log("recordFeePayment called with body:", req.body);
+        const { student_id, amount, payment_method, reference_number, notes } = req;
 
         // Verify student exists and get user_id
         const { data: student } = await supabase.from('students').select('user_id').eq('id', student_id).single();
@@ -237,15 +238,21 @@ exports.recordFeePayment = async (req, res) => {
                 type: 'fee_payment',
                 direction: 'inflow',
                 amount,
-                method,
+                method: payment_method,
                 meta: { notes, reference_number }
             }])
-            .select()
+            .select("*, users(full_name)")
             .single();
 
         if (error) throw error;
-        res.status(201).json(data);
+        // Attach student_name to response for frontend
+        const response = {
+            ...data,
+            student_name: data?.users?.full_name || ""
+        };
+        res.status(201).json(response);
     } catch (err) {
+        console.error("Record fee payment error:", err);
         res.status(500).json({ error: err.message });
     }
 };
