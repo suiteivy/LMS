@@ -570,7 +570,6 @@ export default function Index() {
               </View>
             </Animated.View>
 
-            Scroll Indicator Arrows
             {/* <Animated.View
               style={{
                 position: "absolute",
