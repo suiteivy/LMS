@@ -1,4 +1,4 @@
-import { Text, View, TouchableOpacity, StatusBar, ActivityIndicator, ScrollView, TextInput, KeyboardAvoidingView, Platform } from "react-native";
+import { Text, View, TouchableOpacity, StatusBar, ActivityIndicator, ScrollView, TextInput, KeyboardAvoidingView, Platform, Modal } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { School, ArrowRight, BookOpen, Library, CreditCard, BarChart2, Users, Settings, BadgeCheck } from "lucide-react-native";
 import { router } from "expo-router";
@@ -23,6 +23,8 @@ export default function Index() {
   const [form, setForm] = useState({ name: '', email: '', message: '' });
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [modalVisible, setModalVisible] = useState(false);
+  const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
   const formRef = useRef<View>(null);
   const scrollRef = useRef<ScrollView>(null);
 
@@ -89,14 +91,10 @@ export default function Index() {
               <TouchableOpacity
                 className="bg-orange-500 px-6 py-3 rounded-xl flex-row items-center justify-center shadow-md mr-4"
                 onPress={() => {
-                  if (formRef.current && scrollRef.current) {
-                    // Native: measureLayout, Web: measure (relative to window)
-                    // This works for both platforms
-                    formRef.current.measure?.((x, y, width, height, pageX, pageY) => {
-                      // ScrollView's scrollTo expects y relative to content
-                      scrollRef.current?.scrollTo({ y: pageY - 80, animated: true });
-                    });
-                  }
+                  setSelectedPlan("Free Trial");
+                  setModalVisible(true);
+                  setSubmitted(false);
+                  setForm({ name: '', email: '', message: '' });
                 }}
               >
                 <Text className="text-white font-bold">Get Started</Text>
@@ -174,80 +172,126 @@ export default function Index() {
             ))}
           </View>
 
-          {/* Free Tier Section */}
-          <View className="bg-orange-100 rounded-2xl p-6 my-20 items-center border border-orange-200">
-            <IconBadgeCheck size={32} color="#FF6B00" />
-            <Text className="text-orange-700 font-bold text-lg mt-2 mb-1">Free Trial</Text>
-            <Text className="text-orange-700 text-base text-center">Get started with all core modules at no cost. Upgrade anytime for more features!</Text>
+          {/* Pricing Plans Section */}
+          <View className="mb-10 w-full mt-8">
+            <Text className="text-center font-bold text-3xl text-gray-900 mb-8">Choose Your Plan</Text>
+            <View className="flex-row flex-wrap justify-center" style={{ gap: 24 }}>
+              {[
+                { name: "Free Trial", price: "Free", desc: "For exploring the platform", features: ["1 Admin", "Up to 50 Students", "30 Days Access"] },
+                { name: "Essential", price: "$49/mo", desc: "For small institutions", features: ["Unlimited Teachers", "Up to 500 Students", "Core Modules"] },
+                { name: "Premium", price: "$199/mo", desc: "For large organizations", features: ["Unlimited Everything", "Custom Branding", "Priority Support"] }
+              ].map((plan) => (
+                <View key={plan.name} className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm w-full sm:w-[30%] min-w-[280px]">
+                  <Text className="text-orange-600 font-bold text-xl mb-1">{plan.name}</Text>
+                  <Text className="text-gray-900 font-black text-3xl mb-2">{plan.price}</Text>
+                  <Text className="text-gray-500 text-sm mb-6 pb-6 border-b border-gray-100">{plan.desc}</Text>
+
+                  <View className="mb-8 gap-3">
+                    {plan.features.map((feat, i) => (
+                      <View key={i} className="flex-row items-center">
+                        <IconBadgeCheck size={16} color="#FF6B00" />
+                        <Text className="text-gray-700 ml-2">{feat}</Text>
+                      </View>
+                    ))}
+                  </View>
+
+                  <TouchableOpacity
+                    className={`w-full py-4 rounded-xl flex-row items-center justify-center ${plan.name === 'Essential' ? 'bg-orange-500' : 'bg-orange-100'}`}
+                    onPress={() => {
+                      setSelectedPlan(plan.name);
+                      setModalVisible(true);
+                      setSubmitted(false);
+                      setForm({ name: '', email: '', message: '' });
+                    }}
+                  >
+                    <Text className={`font-bold ${plan.name === 'Essential' ? 'text-white' : 'text-orange-600'}`}>
+                      Select Plan
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              ))}
+            </View>
           </View>
 
-          {/* Signup Form Section */}
-          <View ref={formRef} className="my-10 w-full items-center">
-            <KeyboardAvoidingView
-              behavior={Platform.OS === "ios" ? "padding" : undefined}
-              keyboardVerticalOffset={100}
-              style={{ width: "100%" }}
-            >
-              <View className="bg-white rounded-2xl shadow-md p-6 w-full items-center">
-                <Text className="text-orange-600 font-bold text-2xl mb-2">Sign Up for Free Trial</Text>
-                <Text className="text-gray-500 text-sm text-center mb-8">Be among the first to experience the future of learning management.</Text>
-                {submitted ? (
-                  <Text className="text-green-600 font-semibold text-center">Thank you! We'll be in touch soon.</Text>
-                ) : (
-                  <>
-                    <View className="w-full mb-3 gap-2">
-                      <Text className="text-gray-700 font-medium mb-1 ml-1">Full Name</Text>
+          {/* Registration Modal Popup */}
+          <Modal visible={modalVisible} animationType="fade" transparent={true}>
+            <View className="flex-1 justify-center items-center bg-black/60 px-4">
+              <KeyboardAvoidingView
+                behavior={Platform.OS === "ios" ? "padding" : undefined}
+                style={{ width: "100%", maxWidth: 500 }}
+              >
+                <View className="bg-white rounded-[32px] shadow-2xl p-8 w-full">
+                  <Text className="text-orange-600 font-black text-2xl mb-2">
+                    {selectedPlan === 'Free Trial' ? 'Get Started for Free' : `Sign Up for ${selectedPlan}`}
+                  </Text>
+                  <Text className="text-gray-500 text-sm mb-6">Enter your details and our team will set up your workspace.</Text>
+
+                  {submitted ? (
+                    <View className="items-center py-6">
+                      <IconBadgeCheck size={48} color="#10B981" />
+                      <Text className="text-gray-900 font-bold text-xl mt-4 mb-2">Thank you!</Text>
+                      <Text className="text-gray-500 text-center mb-6">We'll be in touch soon with your login instructions.</Text>
+                      <TouchableOpacity
+                        className="bg-gray-100 w-full py-4 rounded-xl items-center"
+                        onPress={() => setModalVisible(false)}
+                      >
+                        <Text className="text-gray-600 font-bold">Close</Text>
+                      </TouchableOpacity>
+                    </View>
+                  ) : (
+                    <>
                       <TextInput
-                        className="w-full bg-orange-50 border border-orange-200 rounded-xl px-4 py-3 text-base"
+                        className="bg-gray-50 border border-gray-200 p-4 rounded-xl mb-4 font-medium text-gray-800"
                         placeholder="Full Name"
                         value={form.name}
                         onChangeText={v => handleInput('name', v)}
                         editable={!submitting}
-                        autoCapitalize="words"
-                        returnKeyType="next"
                       />
-                    </View>
-                    <View className="w-full mb-3 gap-2">
-                      <Text className="text-gray-700 font-medium mb-1 ml-1">Email Address</Text>
+
                       <TextInput
-                        className="w-full bg-orange-50 border border-orange-200 rounded-xl px-4 py-3 text-base"
-                        placeholder="Email Address"
+                        className="bg-gray-50 border border-gray-200 p-4 rounded-xl mb-4 font-medium text-gray-800"
+                        placeholder="Your Email"
+                        keyboardType="email-address"
+                        autoCapitalize="none"
                         value={form.email}
                         onChangeText={v => handleInput('email', v)}
                         editable={!submitting}
-                        keyboardType="email-address"
-                        autoCapitalize="none"
-                        returnKeyType="next"
                       />
-                    </View>
-                    <View className="w-full mb-4 gap-2">
-                      <Text className="text-gray-700 font-medium mb-1 ml-1">Message</Text>
+
                       <TextInput
-                        className="w-full h-24 bg-orange-50 border border-orange-200 rounded-xl px-4 py-3 text-base"
-                        placeholder="Tell us about your institution or any questions"
-                        value={form.message || ''}
+                        className="bg-gray-50 border border-gray-200 p-4 rounded-xl mb-6 font-medium text-gray-800"
+                        placeholder="Organization Name"
+                        value={form.message}
                         onChangeText={v => handleInput('message', v)}
                         editable={!submitting}
-                        multiline
-                        numberOfLines={3}
-                        returnKeyType="done"
                       />
-                    </View>
-                    <TouchableOpacity
-                      className="bg-orange-500 w-full py-4 rounded-xl flex-row items-center justify-center shadow-md"
-                      onPress={handleSignup}
-                      disabled={submitting}
-                    >
-                      <Text className="text-white text-lg font-semibold mr-2">
-                        {submitting ? 'Submitting...' : 'Get Free Trial'}
-                      </Text>
-                      <IconArrowRight size={24} color="white" />
-                    </TouchableOpacity>
-                  </>
-                )}
-              </View>
-            </KeyboardAvoidingView>
-          </View>
+
+                      <View className="flex-row gap-3">
+                        <TouchableOpacity
+                          onPress={() => setModalVisible(false)}
+                          className="flex-1 py-4 items-center bg-gray-100 rounded-xl"
+                          disabled={submitting}
+                        >
+                          <Text className="text-gray-500 font-bold">Cancel</Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                          onPress={handleSignup}
+                          className="flex-[2] bg-orange-500 py-4 rounded-xl justify-center items-center flex-row"
+                          disabled={submitting}
+                        >
+                          <Text className="text-white font-bold mr-2">
+                            {submitting ? 'Submitting...' : 'Submit Request'}
+                          </Text>
+                          {!submitting && <IconArrowRight size={20} color="white" />}
+                        </TouchableOpacity>
+                      </View>
+                    </>
+                  )}
+                </View>
+              </KeyboardAvoidingView>
+            </View>
+          </Modal>
 
           {/* Footer CTA */}
           <View className="items-center px-8 mb-8 mt-2">
