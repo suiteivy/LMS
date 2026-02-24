@@ -5,6 +5,27 @@ The Learning Management System (LMS) incorporates a highly flexible, institution
 
 This model allows administrators, teachers, parents, and students to evaluate the full potential of the platform before committing to a paid subscription, without permanently locking them out of their data once the trial expires.
 
+## How to Access the Free Trial
+Accessing the free trial is fully automated and integrated into the standard registration flow. No credit card is required upfront.
+
+1. **Sign Up:** A new user navigates to the LMS landing page and clicks "**Get Started**" or "**Start Free Trial**".
+2. **Registration Options:** They are presented with the Pricing/Plans page. They select the "**Free Trial**" tier.
+3. **Institution Creation:** They fill out the standard registration form, providing their name, email, and the name of their Institution.
+4. **Automatic Enrollment:** Upon successful creation of their administrator account, the backend automatically provisions their `institution` record with:
+   - `subscription_status` = `trial`
+   - `trial_start_date` = Current Timestamp
+   - `trial_end_date` = Current Timestamp + 30 Days
+
+## The Onboarding Experience (Day 1)
+Immediately after registering, the Administrator logs in and is greeted by an onboarding flow designed to encourage platform exploration:
+
+1. **Dashboard Overview:** They land on the Admin Dashboard where a subtle, non-intrusive "Free Trial: 30 days remaining" banner is visible at the top.
+2. **Getting Started Widget:** A gamified "🚀 Getting Started" widget tracks their initial setup. It prompts them to complete core activation steps:
+   - ✅ Create your first subject
+   - ◯ Enroll a student
+   - ◯ Process a fee payment
+3. **Premium Feature Discovery:** As they navigate the dashboard, premium features (like creating classes, managing finances, or bulk enrolling users) are highlighted with a small `✨ PRO` badge. This reminds the administrator that they are experiencing the full, unrestricted premium tier for free.
+
 ## Trial Lifecycle
 
 1. **Active Trial (Days 1–30)**
