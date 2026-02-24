@@ -28,6 +28,7 @@ const checkSubscription = require("./middleware/subscriptionCheck");
 // Public Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/demo", require("./routes/demo.route"));
+app.use("/api/contact", require("./routes/contact.route"));
 
 // Gated Routes (Trial Branch)
 app.use("/api/subjects", checkSubscription, subjectRoutes);

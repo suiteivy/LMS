@@ -1,5 +1,6 @@
 import { UnifiedHeader } from "@/components/common/UnifiedHeader";
 import { ParentService } from "@/services/ParentService";
+import { supabase } from "@/libs/supabase";
 import { router, useLocalSearchParams } from "expo-router";
 import { BookOpen, LayoutList, Star, TrendingUp } from "lucide-react-native";
 import React, { useEffect, useState } from "react";
@@ -56,11 +57,16 @@ export default function StudentGradesPage() {
         attendancePct = `${Math.round((present / attendance.length) * 100)}`;
       }
 
+      // Fetch Rank
+      const { data: rankData }: any = await (supabase.rpc as any)('get_student_rank', { p_student_id: studentId });
+
       setStats({
         gpa,
         attendance_pct: attendancePct,
-        standing: Number(gpa) >= 3.5 ? "Excellent" : Number(gpa) >= 3.0 ? "Good" : "Probation"
-      });
+        standing: Number(gpa) >= 3.5 ? "Excellent" : Number(gpa) >= 3.0 ? "Good" : "Probation",
+        rank: rankData?.rank || 'N/A',
+        totalStudents: rankData?.total_students || 0
+      } as any);
 
     } catch (error) {
       console.error("Error fetching performance data:", error);
@@ -122,7 +128,7 @@ export default function StudentGradesPage() {
             <View className="flex-row justify-between pt-8 border-t border-white/10">
               <View className="items-center">
                 <Text className="text-white/30 text-[8px] font-bold uppercase tracking-widest">Cohort Rank</Text>
-                <Text className="text-white font-bold text-xl mt-1">N/A</Text>
+                <Text className="text-white font-bold text-xl mt-1">{(stats as any).rank}{(stats as any).totalStudents > 0 ? `/${(stats as any).totalStudents}` : ''}</Text>
               </View>
               <View className="items-center border-x border-white/10 px-8">
                 <Text className="text-white/30 text-[8px] font-bold uppercase tracking-widest">Attendance</Text>

@@ -25,6 +25,7 @@ import {
   Pressable, ScrollView, StatusBar, Text, TouchableOpacity, View, Modal, TextInput
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { api } from "@/services/api";
 import { useAuth } from "@/contexts/AuthContext";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
@@ -226,11 +227,29 @@ export default function Index() {
   const orb3Y = orb3.interpolate({ inputRange: [0, 1], outputRange: [0, -20] });
 
   const handleSignup = async () => {
+    if (!form.name || !form.email || !form.message) {
+      alert("Please fill in all fields.");
+      return;
+    }
+
     setSubmitting(true);
-    setTimeout(() => {
+    try {
+      const response = await api.post('/contact/booking', {
+        name: form.name,
+        email: form.email,
+        plan: selectedPlan,
+        message: form.message
+      });
+
+      if (response.data.success) {
+        setSubmitted(true);
+      }
+    } catch (error: any) {
+      console.error("Booking error:", error);
+      alert(error.message || "Something went wrong. Please try again.");
+    } finally {
       setSubmitting(false);
-      setSubmitted(true);
-    }, 1200);
+    }
   };
 
   const openRegistrationModal = (planName: string) => {

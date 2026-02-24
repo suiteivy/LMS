@@ -49,7 +49,7 @@ export default function Grades() {
     const { studentId, user } = useAuth();
     const [grades, setGrades] = useState<GradeProps[]>([]);
     const [loading, setLoading] = useState(true);
-    const [stats, setStats] = useState({ gpa: 0, credits: 0, totalMarks: 0, avgMark: 0 });
+    const [stats, setStats] = useState({ gpa: 0, credits: 0, totalMarks: 0, avgMark: 0, rank: 'N/A' as string | number, totalStudents: 0 });
     const [showModal, setShowModal] = useState(false);
     const [fetchingDetails, setFetchingDetails] = useState(false);
     const [selectedDetails, setSelectedDetails] = useState({
@@ -157,11 +157,16 @@ export default function Grades() {
             const avgScore = formattedGrades.length ? totalScore / formattedGrades.length : 0;
             const gpa = (avgScore / 25).toFixed(2);
 
+            // Fetch Rank - Cast to any to bypass generated type check
+            const { data: rankData }: any = await (supabase.rpc as any)('get_student_rank', { p_student_id: targetId });
+
             setStats({
                 gpa: Number(gpa),
                 credits: formattedGrades.reduce((acc, curr) => acc + curr.credits, 0),
                 totalMarks: totalScore,
-                avgMark: Number(avgScore.toFixed(2))
+                avgMark: Number(avgScore.toFixed(2)),
+                rank: rankData?.rank || 'N/A',
+                totalStudents: rankData?.total_students || 0
             });
         } catch (error) {
             console.error(error);
@@ -266,7 +271,7 @@ export default function Grades() {
                         <View className="flex-row justify-between pt-8 border-t border-white/10 dark:border-gray-800">
                             <View className="items-center">
                                 <Text className="text-white/30 dark:text-gray-600 text-[8px] font-bold uppercase tracking-widest">Global Rank</Text>
-                                <Text className="text-white font-bold text-xl mt-1">N/A</Text>
+                                <Text className="text-white font-bold text-xl mt-1">{stats.rank}{stats.totalStudents > 0 ? `/${stats.totalStudents}` : ''}</Text>
                             </View>
                             <View className="items-center border-x border-white/10 dark:border-gray-800 px-8">
                                 <Text className="text-white/30 dark:text-gray-600 text-[8px] font-bold uppercase tracking-widest">Credits</Text>
