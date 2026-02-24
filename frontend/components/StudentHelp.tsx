@@ -1,28 +1,50 @@
+import { useTheme } from "@/contexts/ThemeContext";
+import { ChevronDown, ChevronUp, LifeBuoy, Mail, MessageSquare, Search, X } from 'lucide-react-native';
 import React, { useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, TextInput, Modal } from 'react-native';
-import { Search, MessageSquare, Mail, ChevronDown, ChevronUp, LifeBuoy, X } from 'lucide-react-native';
+import { Modal, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 interface FAQItemProps {
     question: string;
     answer: string;
+    isDark: boolean;
 }
 
-const FAQItem = ({ question, answer }: FAQItemProps) => {
+const FAQItem = ({ question, answer, isDark }: FAQItemProps) => {
     const [isOpen, setIsOpen] = useState(false);
 
     return (
-        <View className="mb-3 bg-white border border-gray-100 rounded-2xl overflow-hidden shadow-sm">
+        <View style={{
+            marginBottom: 12,
+            backgroundColor: isDark ? '#1a1a1a' : '#ffffff',
+            borderWidth: 1,
+            borderColor: isDark ? '#1f2937' : '#f3f4f6',
+            borderRadius: 16,
+            overflow: 'hidden',
+            shadowColor: '#000',
+            shadowOpacity: isDark ? 0 : 0.04,
+            shadowRadius: 4,
+            elevation: isDark ? 0 : 1,
+        }}>
             <TouchableOpacity
                 onPress={() => setIsOpen(!isOpen)}
-                className="flex-row items-center justify-between p-4"
+                style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 16 }}
                 activeOpacity={0.7}
             >
-                <Text className="flex-1 text-gray-800 font-semibold text-base">{question}</Text>
-                {isOpen ? <ChevronUp size={20} color="#f97316" /> : <ChevronDown size={20} color="#9ca3af" />}
+                <Text style={{ flex: 1, color: isDark ? '#f3f4f6' : '#1f2937', fontWeight: '600', fontSize: 15 }}>{question}</Text>
+                {isOpen
+                    ? <ChevronUp size={20} color="#f97316" />
+                    : <ChevronDown size={20} color={isDark ? '#6b7280' : '#9ca3af'} />
+                }
             </TouchableOpacity>
             {isOpen && (
-                <View className="px-4 pb-4 border-t border-gray-50 pt-3">
-                    <Text className="text-gray-600 leading-6">{answer}</Text>
+                <View style={{
+                    paddingHorizontal: 16,
+                    paddingBottom: 16,
+                    paddingTop: 12,
+                    borderTopWidth: 1,
+                    borderTopColor: isDark ? '#1f2937' : '#f9fafb',
+                }}>
+                    <Text style={{ color: isDark ? '#9ca3af' : '#6b7280', lineHeight: 24 }}>{answer}</Text>
                 </View>
             )}
         </View>
@@ -30,127 +52,196 @@ const FAQItem = ({ question, answer }: FAQItemProps) => {
 };
 
 export default function StudentHelp() {
-    // State to track which contact method is selected
+    const { isDark } = useTheme();
     const [selectedTab, setSelectedTab] = useState<'chat' | 'email' | null>(null);
+
+    const tokens = {
+        bg:      isDark ? '#000000' : '#f9fafb',
+        surface: isDark ? '#1a1a1a' : '#ffffff',
+        border:  isDark ? '#1f2937' : '#f3f4f6',
+        textPrimary:   isDark ? '#ffffff' : '#111827',
+        textSecondary: isDark ? '#9ca3af' : '#6b7280',
+        textMuted:     isDark ? '#6b7280' : '#9ca3af',
+        inputBg:       isDark ? '#111827' : '#f9fafb',
+        inputBorder:   isDark ? '#1f2937' : '#f3f4f6',
+        inputText:     isDark ? '#ffffff' : '#111827',
+    };
 
     return (
         <>
-            <ScrollView className="flex-1 bg-gray-50">
-                <View className="p-4 md:p-8 max-w-2xl mx-auto w-full">
+            <ScrollView style={{ flex: 1, backgroundColor: tokens.bg }}>
+                <View style={{ padding: 16, maxWidth: 672, alignSelf: 'center', width: '100%' }}>
 
-                    {/* Header Section */}
-                    <View className="items-center mb-8">
-                        <View className="p-4 bg-orange-100 rounded-full mb-4">
-                            <LifeBuoy size={40} color="orange" />
+                    {/* Header */}
+                    <View style={{ alignItems: 'center', marginBottom: 32 }}>
+                        <View style={{ padding: 16, backgroundColor: isDark ? '#2a1200' : '#fff7ed', borderRadius: 99, marginBottom: 16 }}>
+                            <LifeBuoy size={40} color="#f97316" />
                         </View>
-                        <Text className="text-2xl font-bold text-gray-900">How can we help?</Text>
-                        <Text className="text-gray-500 mt-1">Search our help center or contact support.</Text>
+                        <Text style={{ fontSize: 24, fontWeight: '700', color: tokens.textPrimary }}>How can we help?</Text>
+                        <Text style={{ color: tokens.textSecondary, marginTop: 4 }}>Search our help center or contact support.</Text>
                     </View>
 
-                    {/* Search Bar */}
-                    <View className="flex-row items-center bg-white border border-gray-200 rounded-2xl px-4 py-3 mb-8 shadow-sm">
-                        <Search size={20} color="#9ca3af" className="mr-2" />
+                    {/* Search */}
+                    <View style={{
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        backgroundColor: tokens.surface,
+                        borderWidth: 1,
+                        borderColor: tokens.border,
+                        borderRadius: 16,
+                        paddingHorizontal: 16,
+                        paddingVertical: 12,
+                        marginBottom: 32,
+                        shadowColor: '#000',
+                        shadowOpacity: isDark ? 0 : 0.04,
+                        shadowRadius: 4,
+                        elevation: isDark ? 0 : 1,
+                    }}>
+                        <Search size={20} color={tokens.textMuted} />
                         <TextInput
                             placeholder="Search for articles..."
-                            className="flex-1 text-gray-700 h-6"
-                            placeholderTextColor="#9ca3af"
+                            style={{ flex: 1, color: tokens.inputText, marginLeft: 10, height: 24 }}
+                            placeholderTextColor={tokens.textMuted}
                         />
                     </View>
 
-                    {/* FAQ Section */}
-                    <Text className="text-xs font-bold text-gray-400 uppercase tracking-widest ml-1 mb-4">Frequently Asked Questions</Text>
+                    {/* FAQ */}
+                    <Text style={{ fontSize: 11, fontWeight: '700', color: tokens.textMuted, textTransform: 'uppercase', letterSpacing: 2, marginLeft: 4, marginBottom: 16 }}>
+                        Frequently Asked Questions
+                    </Text>
+                    <FAQItem isDark={isDark} question="How do I change my profile photo?" answer="Go to your Profile page, click the edit icon on your profile picture, and select a new image from your device." />
+                    <FAQItem isDark={isDark} question="Can I reset my password?" answer="Yes, navigate to Settings > Change Password to update your security credentials." />
+                    <FAQItem isDark={isDark} question="Where is my student ID?" answer="Your student ID is displayed on the Profile card under the 'Academic Info' section." />
 
-                    <FAQItem
-                        question="How do I change my profile photo?"
-                        answer="Go to your Profile page, click the edit icon on your profile picture, and select a new image from your device."
-                    />
-                    <FAQItem
-                        question="Can I reset my password?"
-                        answer="Yes, navigate to Settings > Change Password to update your security credentials."
-                    />
-                    <FAQItem
-                        question="Where is my student ID?"
-                        answer="Your student ID is displayed on the Profile card under the 'Academic Info' section."
-                    />
-
-                    {/* Contact Options */}
-                    <Text className="text-xs font-bold text-gray-400 uppercase tracking-widest ml-1 mt-6 mb-4">Still need help?</Text>
-
-                    <View className="flex-row flex-wrap justify-between">
-                        <TouchableOpacity 
+                    {/* Contact */}
+                    <Text style={{ fontSize: 11, fontWeight: '700', color: tokens.textMuted, textTransform: 'uppercase', letterSpacing: 2, marginLeft: 4, marginTop: 24, marginBottom: 16 }}>
+                        Still need help?
+                    </Text>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                        <TouchableOpacity
                             onPress={() => setSelectedTab('chat')}
-                            className="w-[48%] bg-white p-5 rounded-2xl border border-gray-100 items-center shadow-sm"
+                            style={{
+                                width: '48%',
+                                backgroundColor: tokens.surface,
+                                padding: 20,
+                                borderRadius: 16,
+                                borderWidth: 1,
+                                borderColor: tokens.border,
+                                alignItems: 'center',
+                                shadowColor: '#000',
+                                shadowOpacity: isDark ? 0 : 0.04,
+                                shadowRadius: 4,
+                                elevation: isDark ? 0 : 1,
+                            }}
                         >
                             <MessageSquare size={24} color="#0d9488" />
-                            <Text className="mt-2 font-bold text-gray-800">Live Chat</Text>
-                            <Text className="text-xs text-gray-400">Wait time: 5m</Text>
+                            <Text style={{ marginTop: 8, fontWeight: '700', color: tokens.textPrimary }}>Live Chat</Text>
+                            <Text style={{ fontSize: 12, color: tokens.textMuted, marginTop: 2 }}>Wait time: 5m</Text>
                         </TouchableOpacity>
 
-                        <TouchableOpacity 
+                        <TouchableOpacity
                             onPress={() => setSelectedTab('email')}
-                            className="w-[48%] bg-white p-5 rounded-2xl border border-gray-100 items-center shadow-sm"
+                            style={{
+                                width: '48%',
+                                backgroundColor: tokens.surface,
+                                padding: 20,
+                                borderRadius: 16,
+                                borderWidth: 1,
+                                borderColor: tokens.border,
+                                alignItems: 'center',
+                                shadowColor: '#000',
+                                shadowOpacity: isDark ? 0 : 0.04,
+                                shadowRadius: 4,
+                                elevation: isDark ? 0 : 1,
+                            }}
                         >
                             <Mail size={24} color="#3b82f6" />
-                            <Text className="mt-2 font-bold text-gray-800">Email Us</Text>
-                            <Text className="text-xs text-gray-400">Response in 24h</Text>
+                            <Text style={{ marginTop: 8, fontWeight: '700', color: tokens.textPrimary }}>Email Us</Text>
+                            <Text style={{ fontSize: 12, color: tokens.textMuted, marginTop: 2 }}>Response in 24h</Text>
                         </TouchableOpacity>
                     </View>
-
                 </View>
             </ScrollView>
 
-            {/* Support Modal */}
-            <Modal 
-                animationType='fade'
-                transparent={true}
-                visible={!!selectedTab}
-                onRequestClose={() => setSelectedTab(null)}
-            >
-                <View className='flex-1 justify-center items-center bg-black/60 px-4'>
-                    <View className='bg-white w-full max-w-[500px] overflow-hidden shadow-2xl rounded-[32px]'>
-                        
+            {/* Modal */}
+            <Modal animationType="fade" transparent visible={!!selectedTab} onRequestClose={() => setSelectedTab(null)}>
+                <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.6)', paddingHorizontal: 16 }}>
+                    <View style={{
+                        backgroundColor: tokens.surface,
+                        width: '100%',
+                        maxWidth: 500,
+                        borderRadius: 32,
+                        overflow: 'hidden',
+                        borderWidth: 1,
+                        borderColor: tokens.border,
+                    }}>
                         {/* Modal Header */}
-                        <View className="flex-row justify-between items-center p-6 border-b border-gray-100">
-                            <Text className="text-xl font-bold text-gray-900">
+                        <View style={{
+                            flexDirection: 'row',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                            padding: 24,
+                            borderBottomWidth: 1,
+                            borderBottomColor: tokens.border,
+                        }}>
+                            <Text style={{ fontSize: 20, fontWeight: '700', color: tokens.textPrimary }}>
                                 {selectedTab === 'chat' ? 'Live Chat' : 'Email Support'}
                             </Text>
                             <TouchableOpacity onPress={() => setSelectedTab(null)}>
-                                <X size={24} color="#9ca3af" />
+                                <X size={24} color={tokens.textMuted} />
                             </TouchableOpacity>
                         </View>
 
                         {/* Modal Content */}
-                        <View className="p-10 items-center">
+                        <View style={{ padding: 40, alignItems: 'center' }}>
                             {selectedTab === 'chat' ? (
                                 <>
-                                    <View className="w-20 h-20 bg-teal-50 rounded-full items-center justify-center mb-4">
+                                    <View style={{ width: 80, height: 80, backgroundColor: isDark ? '#0d2926' : '#f0fdfa', borderRadius: 99, alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}>
                                         <MessageSquare size={32} color="#0d9488" />
                                     </View>
-                                    <Text className="text-2xl font-black text-gray-900 mb-2">Coming Soon!</Text>
-                                    <Text className="text-gray-500 text-center leading-5">
+                                    <Text style={{ fontSize: 24, fontWeight: '900', color: tokens.textPrimary, marginBottom: 8 }}>Coming Soon!</Text>
+                                    <Text style={{ color: tokens.textSecondary, textAlign: 'center', lineHeight: 20 }}>
                                         Our real-time chat feature is currently under development. Please use Email Support in the meantime.
                                     </Text>
                                 </>
                             ) : (
-                                <View className="w-full">
-                                     <Text className="text-gray-900 font-bold mb-4 text-center">Send us a message</Text>
-                                     <TextInput 
+                                <View style={{ width: '100%' }}>
+                                    <Text style={{ color: tokens.textPrimary, fontWeight: '700', marginBottom: 16, textAlign: 'center' }}>Send us a message</Text>
+                                    <TextInput
                                         placeholder="How can we help?"
+                                        placeholderTextColor={tokens.textMuted}
                                         multiline
                                         numberOfLines={4}
-                                        className="bg-gray-50 border border-gray-100 rounded-2xl p-4 h-32 text-gray-800"
-                                        textAlignVertical="top"
-                                     />
-                                     <TouchableOpacity 
-                                        className="bg-orange-500 py-4 rounded-2xl mt-6 items-center shadow-lg shadow-orange-200"
+                                        style={{
+                                            backgroundColor: tokens.inputBg,
+                                            borderWidth: 1,
+                                            borderColor: tokens.inputBorder,
+                                            borderRadius: 16,
+                                            padding: 16,
+                                            height: 128,
+                                            color: tokens.inputText,
+                                            textAlignVertical: 'top',
+                                        }}
+                                    />
+                                    <TouchableOpacity
+                                        style={{
+                                            backgroundColor: '#f97316',
+                                            paddingVertical: 16,
+                                            borderRadius: 16,
+                                            marginTop: 24,
+                                            alignItems: 'center',
+                                            shadowColor: '#f97316',
+                                            shadowOpacity: 0.3,
+                                            shadowRadius: 8,
+                                            elevation: 4,
+                                        }}
                                         onPress={() => setSelectedTab(null)}
-                                     >
-                                        <Text className="text-white font-bold">Send Email</Text>
-                                     </TouchableOpacity>
+                                    >
+                                        <Text style={{ color: '#ffffff', fontWeight: '700' }}>Send Email</Text>
+                                    </TouchableOpacity>
                                 </View>
                             )}
                         </View>
-
                     </View>
                 </View>
             </Modal>

@@ -13,6 +13,7 @@
     "**/*.tsx",
     ".expo/types/**/*.ts",
     "expo-env.d.ts",
-    "nativewind-env.d.ts"
-, "app/(auth)/signUp.tsx"  ]
+    "nativewind-env.d.ts",
+    "app/(auth)/signUp.tsx",  
+]
 }

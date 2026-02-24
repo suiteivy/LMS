@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from "react";
-import { View, Text, ScrollView, TouchableOpacity, StatusBar, TextInput, Modal, ActivityIndicator } from 'react-native';
-import { ArrowLeft, Plus, Megaphone, Send, Edit2, Trash2, X, Users, Clock, ChevronDown } from 'lucide-react-native';
-import { router } from "expo-router";
-import { supabase } from "@/libs/supabase";
+import { UnifiedHeader } from "@/components/common/UnifiedHeader";
 import { useAuth } from "@/contexts/AuthContext";
-import { showSuccess, showError } from "@/utils/toast";
+import { supabase } from "@/libs/supabase";
+import { showError, showSuccess } from "@/utils/toast";
+import { router } from "expo-router";
+import { Edit2, Megaphone, Plus, Send, Trash2, X } from 'lucide-react-native';
+import React, { useEffect, useState } from "react";
+import { ActivityIndicator, Modal, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 interface Announcement {
     id: string;
@@ -12,60 +13,51 @@ interface Announcement {
     message: string;
     Subject_title: string;
     created_at: string;
-    readCount: number; // Placeholder
-    totalStudents: number; // Placeholder
+    readCount: number;
+    totalStudents: number;
     Subject_id: string;
 }
 
 const AnnouncementCard = ({ announcement, onDelete }: { announcement: Announcement; onDelete: (id: string) => void }) => {
     return (
-        <View className="bg-white p-4 rounded-2xl border border-gray-100 mb-3 shadow-sm">
-            <View className="flex-row items-start mb-3">
-                <View className="bg-orange-100 p-2 rounded-xl mr-3">
-                    <Megaphone size={20} color="#FF6B00" />
+        <View className="bg-white dark:bg-[#1a1a1a] p-5 rounded-3xl border border-gray-100 dark:border-gray-800 mb-4 shadow-sm">
+            <View className="flex-row items-start mb-4">
+                <View className="bg-orange-100 dark:bg-orange-950/20 p-2.5 rounded-2xl mr-4">
+                    <Megaphone size={20} color="#FF6900" />
                 </View>
                 <View className="flex-1">
-                    <Text className="text-gray-900 font-bold text-base">{announcement.title}</Text>
-                    <Text className="text-gray-400 text-xs">{announcement.Subject_title}</Text>
+                    <Text className="text-gray-900 dark:text-white font-bold text-lg leading-tight">{announcement.title}</Text>
+                    <Text className="text-[#FF6900] text-xs font-bold mt-1 uppercase tracking-wider">{announcement.Subject_title}</Text>
                 </View>
             </View>
 
-            <Text className="text-gray-600 text-sm mb-3" numberOfLines={2}>
+            <Text className="text-gray-600 dark:text-gray-400 text-sm mb-4 leading-5" numberOfLines={3}>
                 {announcement.message}
             </Text>
 
-            <View className="flex-row justify-between items-center">
-                <View className="flex-row items-center">
-                    <Clock size={12} color="#9CA3AF" />
-                    <Text className="text-gray-400 text-xs ml-1">{new Date(announcement.created_at).toLocaleDateString()}</Text>
-                </View>
-                {/* 
-                <View className="flex-row items-center">
-                    <Users size={12} color="#9CA3AF" />
-                    <Text className="text-gray-400 text-xs ml-1">
-                        {announcement.readCount}/{announcement.totalStudents} read
-                    </Text>
-                </View>
-                */}
-            </View>
+            <View className="flex-row justify-between items-center pt-4 border-t border-gray-50 dark:border-gray-800">
+                <Text className="text-gray-400 dark:text-gray-500 text-[10px] font-bold uppercase tracking-widest">
+                    Posted {new Date(announcement.created_at).toLocaleDateString()}
+                </Text>
 
-            <View className="flex-row justify-end gap-3 mt-3 pt-3 border-t border-gray-100">
-                {/* Edit functionality to be implemented */}
-                <TouchableOpacity className="flex-row items-center p-2">
-                    <Edit2 size={16} color="#6B7280" />
-                    <Text className="text-gray-500 text-xs ml-1 font-medium">Edit</Text>
-                </TouchableOpacity>
-                <TouchableOpacity className="flex-row items-center p-2" onPress={() => onDelete(announcement.id)}>
-                    <Trash2 size={16} color="#ef4444" />
-                    <Text className="text-red-500 text-xs ml-1 font-medium">Delete</Text>
-                </TouchableOpacity>
+                <View className="flex-row gap-2">
+                    <TouchableOpacity className="w-10 h-10 bg-gray-50 dark:bg-[#242424] rounded-xl items-center justify-center">
+                        <Edit2 size={16} color="#6B7280" />
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                        className="w-10 h-10 bg-red-50 dark:bg-red-950/20 rounded-xl items-center justify-center"
+                        onPress={() => onDelete(announcement.id)}
+                    >
+                        <Trash2 size={16} color="#ef4444" />
+                    </TouchableOpacity>
+                </View>
             </View>
         </View>
     );
 };
 
 export default function AnnouncementsPage() {
-    const { user, teacherId } = useAuth();
+    const { teacherId } = useAuth();
     const [showModal, setShowModal] = useState(false);
     const [loading, setLoading] = useState(true);
     const [announcements, setAnnouncements] = useState<Announcement[]>([]);
@@ -95,10 +87,7 @@ export default function AnnouncementsPage() {
         try {
             const { data, error } = await supabase
                 .from('announcements')
-                .select(`
-                    *,
-                    Subject:subjects(title)
-                `)
+                .select(`*, Subject:subjects(title)`)
                 .eq('teacher_id', teacherId)
                 .order('created_at', { ascending: false });
 
@@ -142,13 +131,12 @@ export default function AnnouncementsPage() {
 
             setShowModal(false);
             showSuccess("Success", "Announcement posted!");
-            // Reset
             setTitle("");
             setMessage("");
             setSelectedSubjectId("");
+            fetchAnnouncements();
         } catch (error) {
             showError("Error", "Failed to create announcement");
-            console.error(error);
         }
     };
 
@@ -164,101 +152,112 @@ export default function AnnouncementsPage() {
     };
 
     return (
-        <>
-            <StatusBar barStyle="dark-content" />
-            <View className="flex-1 bg-gray-50">
-                <ScrollView
-                    className="flex-1"
-                    showsVerticalScrollIndicator={false}
-                    contentContainerStyle={{ paddingBottom: 100 }}
-                >
-                    <View className="p-4">
-                        {/* Header */}
-                        <View className="flex-row items-center justify-between mb-6">
-                            <View className="flex-row items-center">
-                                <TouchableOpacity className="p-2 mr-2" onPress={() => router.back()}>
-                                    <ArrowLeft size={24} color="#374151" />
-                                </TouchableOpacity>
-                                <View>
-                                    <Text className="text-2xl font-bold text-gray-900">Announcements</Text>
-                                    <Text className="text-gray-500 text-sm">{announcements.length} posted</Text>
-                                </View>
-                            </View>
-                            <TouchableOpacity
-                                className="flex-row items-center bg-teacherOrange px-4 py-2 rounded-xl"
-                                onPress={() => setShowModal(true)}
-                            >
-                                <Plus size={18} color="white" />
-                                <Text className="text-white font-semibold ml-1">New</Text>
-                            </TouchableOpacity>
+        <View className="flex-1 bg-gray-50 dark:bg-black">
+            <UnifiedHeader
+                title="Management"
+                subtitle="Live Broadcast"
+                role="Teacher"
+                onBack={() => router.push("/(teacher)/management")}
+            />
+            <ScrollView
+                className="flex-1"
+                showsVerticalScrollIndicator={false}
+                contentContainerStyle={{ paddingBottom: 100 }}
+            >
+                <View className="p-4 md:p-8">
+                    {/* Header Row */}
+                    <View className="flex-row justify-between items-center mb-6 px-2">
+                        <View>
+                            <Text className="text-gray-400 dark:text-gray-500 font-bold text-[10px] uppercase tracking-wider">
+                                {announcements.length} posted announcements
+                            </Text>
                         </View>
-
-                        {/* Announcements List */}
-                        {loading ? (
-                            <ActivityIndicator size="large" color="#FF6B00" className="mt-8" />
-                        ) : announcements.length === 0 ? (
-                            <Text className="text-gray-500 text-center mt-8">No announcements found.</Text>
-                        ) : (
-                            announcements.map((announcement) => (
-                                <AnnouncementCard key={announcement.id} announcement={announcement} onDelete={deleteAnnouncement} />
-                            ))
-                        )}
+                        <TouchableOpacity
+                            className="flex-row items-center bg-[#FF6900] px-5 py-2.5 rounded-2xl shadow-lg active:bg-orange-600"
+                            onPress={() => setShowModal(true)}
+                        >
+                            <Plus size={18} color="white" />
+                            <Text className="text-white font-bold text-xs ml-2 uppercase tracking-widest">New</Text>
+                        </TouchableOpacity>
                     </View>
-                </ScrollView>
-            </View>
 
-            {/* Create Announcement Modal */}
+                    {/* Announcements List */}
+                    {loading ? (
+                        <ActivityIndicator size="large" color="#FF6900" className="mt-8" />
+                    ) : announcements.length === 0 ? (
+                        <View className="bg-white dark:bg-[#1a1a1a] p-12 rounded-[40px] items-center border border-gray-100 dark:border-gray-800 border-dashed">
+                            <Megaphone size={48} color="#E5E7EB" style={{ opacity: 0.3 }} />
+                            <Text className="text-gray-400 dark:text-gray-500 font-bold text-center mt-6 tracking-tight">No announcements posted yet.</Text>
+                        </View>
+                    ) : (
+                        announcements.map((announcement) => (
+                            <AnnouncementCard key={announcement.id} announcement={announcement} onDelete={deleteAnnouncement} />
+                        ))
+                    )}
+                </View>
+            </ScrollView>
+
+            {/* Create Modal */}
             <Modal visible={showModal} animationType="slide" transparent>
                 <View className="flex-1 bg-black/50 justify-end">
-                    <View className="bg-white rounded-t-3xl p-6">
-                        <View className="flex-row justify-between items-center mb-6">
-                            <Text className="text-xl font-bold text-gray-900">New Announcement</Text>
-                            <TouchableOpacity onPress={() => setShowModal(false)}>
-                                <X size={24} color="#6B7280" />
+                    <View className="bg-white dark:bg-[#121212] rounded-t-[40px] p-8 pb-12 border-t border-gray-100 dark:border-gray-800">
+                        <View className="flex-row justify-between items-center mb-8">
+                            <Text className="text-2xl font-bold text-gray-900 dark:text-white tracking-tight">Post Update</Text>
+                            <TouchableOpacity
+                                className="w-10 h-10 bg-gray-50 dark:bg-[#1a1a1a] rounded-full items-center justify-center"
+                                onPress={() => setShowModal(false)}
+                            >
+                                <X size={20} color="#6B7280" />
                             </TouchableOpacity>
                         </View>
 
-                        {/* Subject Selector */}
-                        <Text className="text-gray-500 text-xs uppercase mb-2 font-semibold">Select Subject</Text>
-                        <ScrollView horizontal className="flex-row mb-4" showsHorizontalScrollIndicator={false}>
+                        <Text className="text-gray-500 dark:text-gray-400 text-[10px] font-bold uppercase tracking-wider ml-2 mb-2">Target Subject</Text>
+                        <ScrollView horizontal className="flex-row mb-6" showsHorizontalScrollIndicator={false}>
                             {Subjects.map(c => (
                                 <TouchableOpacity
                                     key={c.id}
                                     onPress={() => setSelectedSubjectId(c.id)}
-                                    className={`mr-2 px-4 py-2 rounded-lg border ${selectedSubjectId === c.id ? 'bg-teacherOrange border-teacherOrange' : 'bg-gray-50 border-gray-200'}`}
+                                    className={`mr-3 px-6 py-3 rounded-2xl border ${selectedSubjectId === c.id ? 'bg-[#FF6900] border-[#FF6900] shadow-sm' : 'bg-gray-50 dark:bg-[#1a1a1a] border-gray-100 dark:border-gray-800'}`}
                                 >
-                                    <Text className={selectedSubjectId === c.id ? 'text-white' : 'text-gray-700'}>{c.title}</Text>
+                                    <Text className={`font-bold text-xs ${selectedSubjectId === c.id ? 'text-white' : 'text-gray-500 dark:text-gray-400'}`}>{c.title}</Text>
                                 </TouchableOpacity>
                             ))}
                         </ScrollView>
 
-                        <TextInput
-                            className="bg-gray-50 rounded-xl px-4 py-3 mb-4 text-gray-900"
-                            placeholder="Title"
-                            placeholderTextColor="#9CA3AF"
-                            value={title}
-                            onChangeText={setTitle}
-                        />
-                        <TextInput
-                            className="bg-gray-50 rounded-xl px-4 py-3 mb-4 text-gray-900 h-32"
-                            placeholder="Message"
-                            placeholderTextColor="#9CA3AF"
-                            multiline
-                            textAlignVertical="top"
-                            value={message}
-                            onChangeText={setMessage}
-                        />
+                        <View className="mb-6">
+                            <Text className="text-gray-500 dark:text-gray-400 text-[10px] font-bold uppercase tracking-wider ml-2 mb-2">Announcement Title</Text>
+                            <TextInput
+                                className="bg-gray-50 dark:bg-[#1a1a1a] rounded-2xl px-6 py-4 text-gray-900 dark:text-white font-bold border border-gray-100 dark:border-gray-800"
+                                placeholder="e.g. Exam Schedule Changed"
+                                placeholderTextColor="#9CA3AF"
+                                value={title}
+                                onChangeText={setTitle}
+                            />
+                        </View>
+
+                        <View className="mb-8">
+                            <Text className="text-gray-500 dark:text-gray-400 text-[10px] font-bold uppercase tracking-wider ml-2 mb-2">Message</Text>
+                            <TextInput
+                                className="bg-gray-50 dark:bg-[#1a1a1a] rounded-2xl px-6 py-4 text-gray-900 dark:text-white font-medium border border-gray-100 dark:border-gray-800 h-32"
+                                placeholder="Write your message here..."
+                                placeholderTextColor="#9CA3AF"
+                                multiline
+                                textAlignVertical="top"
+                                value={message}
+                                onChangeText={setMessage}
+                            />
+                        </View>
 
                         <TouchableOpacity
-                            className="bg-teacherOrange py-4 rounded-xl items-center flex-row justify-center"
+                            className="bg-[#FF6900] py-5 rounded-2xl items-center shadow-lg active:bg-orange-600 flex-row justify-center"
                             onPress={handleCreateAnnouncement}
                         >
                             <Send size={18} color="white" />
-                            <Text className="text-white font-bold text-base ml-2">Post Announcement</Text>
+                            <Text className="text-white font-bold text-lg ml-3">Broadcast</Text>
                         </TouchableOpacity>
                     </View>
                 </View>
             </Modal>
-        </>
+        </View>
     );
 }

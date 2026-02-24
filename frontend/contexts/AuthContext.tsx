@@ -1,8 +1,10 @@
-import React, { createContext, useContext, useEffect, useState, useRef } from 'react'
-import { Session, User } from '@supabase/supabase-js'
-import { AppState, AppStateStatus } from 'react-native'
-import { Database } from '@/types/database'
 import { authService, supabase } from '@/libs/supabase'
+import { Database } from '@/types/database'
+import AsyncStorage from '@react-native-async-storage/async-storage'
+import { Session, User } from '@supabase/supabase-js'
+import { router } from 'expo-router'
+import React, { createContext, useContext, useEffect, useRef, useState } from 'react'
+import { AppState, AppStateStatus } from 'react-native'
 import Toast from 'react-native-toast-message'
 
 type UserProfile = Database['public']['Tables']['users']['Row']
@@ -19,17 +21,19 @@ interface AuthContextType {
   subscriptionStatus: string | null
   trialEndDate: string | null
   loading: boolean
+  isInitializing: boolean
+  isProfileLoading: boolean
   signIn: (email: string, password: string) => Promise<{ data: any; error: any }>
   signOut: () => Promise<{ error: any }>
   logout: () => Promise<{ error: any }>
   resetPassword: (email: string) => Promise<{ error: any }>
   refreshProfile: () => Promise<UserProfile | null>
   resetSessionTimer: () => void
+  startDemo: (role: string) => Promise<{ data: any; error: any }>
+  isDemo: boolean
 }
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined)
-
-
 
 export const useAuth = () => {
   const context = useContext(AuthContext)
@@ -47,31 +51,71 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [session, setSession] = useState<Session | null>(null)
   const [user, setUser] = useState<User | null>(null)
   const [profile, setProfile] = useState<UserProfile | null>(null)
-  const [studentId, setStudentId] = useState<string | null>(null)
-  const [teacherId, setTeacherId] = useState<string | null>(null)
-  const [adminId, setAdminId] = useState<string | null>(null)
-  const [parentId, setParentId] = useState<string | null>(null)
-  const [displayId, setDisplayId] = useState<string | null>(null)
+
+  const [roleInfo, setRoleInfo] = useState({
+    studentId: null as string | null,
+    teacherId: null as string | null,
+    adminId: null as string | null,
+    parentId: null as string | null,
+    displayId: null as string | null
+  })
+
   const [subscriptionStatus, setSubscriptionStatus] = useState<string | null>(null)
   const [trialEndDate, setTrialEndDate] = useState<string | null>(null)
+  const [isInitializing, setIsInitializing] = useState(true)
+  const [isProfileLoading, setIsProfileLoading] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [isDemo, setIsDemo] = useState(false)
 
   const timerRef = useRef<any>(null)
   const appState = useRef(AppState.currentState);
   const lastActive = useRef(Date.now());
-
   const isManualLogout = useRef(false);
+  const currentSessionRef = useRef<Session | null>(null);
+  const isDemoRef = useRef(false);
+  useEffect(() => { isDemoRef.current = isDemo; }, [isDemo]);
 
   const handleLogout = async () => {
-    isManualLogout.current = true
-    try {
-      return await authService.signOut()
-    } finally {
-      // Reset after a short delay to allow the event listener to fire
-      setTimeout(() => {
-        isManualLogout.current = false
-      }, 1000)
+    isManualLogout.current = true;
+
+    // ── Optimistic local clear — user sees instant response ──────────────────
+    setSession(null);
+    setUser(null);
+    setProfile(null);
+    setRoleInfo({ studentId: null, teacherId: null, adminId: null, parentId: null, displayId: null });
+    setSubscriptionStatus(null);
+    setTrialEndDate(null);
+    setLoading(false);       // ← KEY FIX: drop the overlay immediately
+    setIsInitializing(false);
+    clearTimer();
+
+    // ── Navigate + toast immediately, don't wait for network ─────────────────
+    if (isDemoRef.current) {
+      Toast.show({ type: 'info', text1: 'Session ended', text2: 'Demo session ended.', position: 'bottom' });
+      router.replace('/(auth)/demo');
+    } else {
+      Toast.show({ type: 'success', text1: 'Logged Out', text2: 'You have been logged out successfully.', position: 'bottom' });
+      router.replace('/(auth)/signIn');
     }
+
+    // ── Fire-and-forget the actual Supabase signOut + cleanup ─────────────────
+    Promise.all([
+      authService.signOut(),
+      AsyncStorage.removeItem('demo_expiry').catch(() => { }),
+    ]).finally(() => {
+      setTimeout(() => { isManualLogout.current = false; }, 500);
+    });
+
+    return { error: null };
+  }
+
+  const handleStartDemo = async (role: string) => {
+    const result = await authService.startDemoSession(role);
+    if (!result.error && result.data) {
+      const expiry = Date.now() + 15 * 60 * 1000;
+      await AsyncStorage.setItem('demo_expiry', expiry.toString());
+    }
+    return result;
   }
 
   const clearTimer = () => {
@@ -82,34 +126,28 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   }
 
   const resetSessionTimer = () => {
-    if (session) {
-      startTimeoutTimer()
-    }
+    if (session) startTimeoutTimer()
   }
 
   const startTimeoutTimer = () => {
     clearTimer()
-    // 10 minutes = 10 * 60 * 1000 ms
     timerRef.current = setTimeout(async () => {
-      console.log('Session timeout reached (10 min), logging out...')
+      console.log('Session timeout reached (24 hours), logging out...')
       await handleLogout()
-    }, 10 * 60 * 1000)
+    }, 24 * 60 * 60 * 1000)
   }
 
   const lastLoadedUserId = useRef<string | null>(null);
   const loadingUserId = useRef<string | null>(null);
 
   const loadUserProfile = async (userId: string): Promise<UserProfile | null> => {
-    // Prevent redundant loads for the same user if we already have a profile
-    // OR if we are already loading this specific user
     if ((lastLoadedUserId.current === userId && profile && !loading) || loadingUserId.current === userId) {
       return profile;
     }
 
     loadingUserId.current = userId;
     try {
-      setLoading(true);
-      // Get Base Profile, Role-Specific IDs, and Institution in a single query
+      setIsProfileLoading(true);
       const { data, error } = await supabase
         .from('users')
         .select('*, students(id), teachers(id), admins(id), parents(id), institutions(subscription_status, trial_end_date)')
@@ -147,177 +185,151 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
       if (userData.role === 'student') {
         const id = getRoleId(userData.students);
-        setStudentId(id);
-        setDisplayId(id);
+        setRoleInfo(prev => ({ ...prev, studentId: id, displayId: id }));
       } else if (userData.role === 'teacher') {
         const id = getRoleId(userData.teachers);
-        setTeacherId(id);
-        setDisplayId(id);
+        setRoleInfo(prev => ({ ...prev, teacherId: id, displayId: id }));
       } else if (userData.role === 'admin') {
         const id = getRoleId(userData.admins);
-        setAdminId(id);
-        setDisplayId(id);
+        setRoleInfo(prev => ({ ...prev, adminId: id, displayId: id }));
       } else if (userData.role === 'parent') {
         const id = getRoleId(userData.parents);
-        setParentId(id);
-        setDisplayId(id);
+        setRoleInfo(prev => ({ ...prev, parentId: id, displayId: id }));
       }
 
       return userData as UserProfile
     } catch (err) {
-      console.error('Unexpected error loading profile:', err)
       setProfile(null)
       lastLoadedUserId.current = null;
       return null
     } finally {
+      setIsProfileLoading(false);
       setLoading(false);
       loadingUserId.current = null;
     }
   }
 
   const refreshProfile = async (): Promise<UserProfile | null> => {
-    if (user) {
-      return await loadUserProfile(user.id)
-    }
+    if (user) return await loadUserProfile(user.id)
     return null
   }
 
   useEffect(() => {
-    // Consolidate initialization into a single start method
     const initializeAuth = async () => {
       try {
-        const { data: { session: initialSession } } = await supabase.auth.getSession();
+        const { data: { session: initialSession }, error: sessionError } = await supabase.auth.getSession();
+
         if (initialSession) {
-          setSession(initialSession)
-          setUser(initialSession.user)
-          await loadUserProfile(initialSession.user.id)
-          startTimeoutTimer()
+          const { data: { user: validatedUser }, error: userError } = await supabase.auth.getUser();
+
+          if (userError || !validatedUser) {
+            setSession(null);
+            currentSessionRef.current = null;
+            setUser(null);
+            const persistedTrial = await AsyncStorage.getItem('is_demo_mode');
+            setIsDemo(persistedTrial === 'true');
+          } else {
+            setSession(initialSession);
+            currentSessionRef.current = initialSession;
+            setUser(validatedUser);
+
+            const isDemoUser = validatedUser.email?.startsWith('demo.') || false;
+            setIsDemo(isDemoUser);
+            if (isDemoUser) await AsyncStorage.setItem('is_demo_mode', 'true');
+
+            await loadUserProfile(validatedUser.id);
+            startTimeoutTimer();
+          }
+        } else {
+          setSession(null);
+          currentSessionRef.current = null;
+          setUser(null);
+          const persistedTrial = await AsyncStorage.getItem('is_demo_mode');
+          setIsDemo(persistedTrial === 'true');
         }
       } catch (error) {
         console.error('Error in initializeAuth:', error)
       } finally {
+        setIsInitializing(false)
         setLoading(false)
       }
     };
 
     initializeAuth();
 
-    // 2. Listen for auth state changes
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       try {
         setSession(session)
         setUser(session?.user ?? null)
 
         if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+          currentSessionRef.current = session;
           startTimeoutTimer()
           if (session?.user) {
+            const isDemoUser = session.user.email?.startsWith('demo.') || false;
+            setIsDemo(isDemoUser);
+            if (isDemoUser) {
+              AsyncStorage.setItem('is_demo_mode', 'true');
+            } else {
+              AsyncStorage.removeItem('is_demo_mode');
+            }
             loadUserProfile(session.user.id)
           }
         } else if (event === 'SIGNED_OUT') {
           clearTimer()
           setProfile(null)
-          setStudentId(null)
-          setTeacherId(null)
-          setAdminId(null)
-          setParentId(null)
-          setDisplayId(null)
+          setRoleInfo({ studentId: null, teacherId: null, adminId: null, parentId: null, displayId: null })
           setSubscriptionStatus(null)
           setTrialEndDate(null)
+          setLoading(false)        // ← KEY FIX: prevent 3s watchdog delay
+          setIsInitializing(false) // ← belt-and-suspenders
 
-          if (!isManualLogout.current) {
-            console.log('User signed out unexpectedly, showing toast')
+          // Only show unexpected logout toast if it wasn't triggered manually
+          if (!isManualLogout.current && currentSessionRef.current) {
+            const wasDemo = isDemoRef.current;
             Toast.show({
-              type: 'error',
-              text1: 'Session Expired',
-              text2: 'Please sign in again.',
+              type: 'info',
+              text1: wasDemo ? 'Session ended' : 'Session Expired',
+              text2: wasDemo ? 'Demo session time limit reached.' : 'Please sign in again.',
               position: 'bottom',
               visibilityTime: 4000,
             });
-          } else {
-            console.log('User signed out manually')
           }
-
-          // Reset just in case, though timeout in handleLogout also handles it
-          isManualLogout.current = false;
+          currentSessionRef.current = null;
+          setTimeout(() => { isManualLogout.current = false; }, 500);
         }
 
         // Handle edge case: auth event without session
+        // NOTE: do NOT await this — it was causing a second blocking signOut call
         if (!session && (event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED')) {
-          console.warn('Auth event without session, forcing logout')
-          // This creates a recursive call potential if we aren't careful, 
-          // but handleLogout sets isManualLogout=true so it won't toast loop.
-          // However, if it's an "unexpected" token refresh fail, maybe we WANT a toast?
-          // The prompt specifically asked about "Invalid Refresh Token".
-          // If we call signOut() here, it emits signed_out. 
-          // If we want a toast here, we should NOT set isManualLogout if we want the toast to appear in the SIGNED_OUT handler above.
-          // BUT, we are calling signOut() which is async.
-
-          // Let's decide: if it's a forced system logout due to error, we probably want the toast.
-          // So we should NOT set isManualLogout = true here.
-          // But `authService.signOut` just calls supabase.auth.signOut().
-          // If we call `authService.signOut()` directly here, `isManualLogout` remains false.
-          // The SIGNED_OUT event will fire.
-          // The check `!isManualLogout.current` will be true.
-          // Toast will show. Correct.
-          await authService.signOut()
+          authService.signOut(); // fire-and-forget, no await
         }
       } catch (error) {
         console.error('Error in auth listener:', error)
       }
     })
 
-    // 3. Watchdog: ensure loading resolves even if events stall
     const watchdog = setTimeout(() => {
-      if (loading) {
-        console.warn('Watchdog: Loading still true after 10s, forcing false')
-        setLoading(false)
-      }
-    }, 10000)
-
+      if (isInitializing) setIsInitializing(false)
+      if (loading) setLoading(false)
+    }, 3000)
 
     const appStateSubscription = AppState.addEventListener('change', async (nextAppState: AppStateStatus) => {
-      if (
-        appState.current.match(/inactive|background/) &&
-        nextAppState === 'active'
-      ) {
-        // App has come to the foreground
+      if (appState.current.match(/inactive|background/) && nextAppState === 'active') {
         const now = Date.now();
         const diff = now - lastActive.current;
         const { data: { session: currentSession } } = await supabase.auth.getSession();
-        // If backgrounded for more than 10 mins
-        if (diff > 10 * 60 * 1000 && currentSession) {
-          console.log('Inactive for more than 10 mins in background, logging out');
-          // This is a "system" logout due to inactivity, but we might want a specific message.
-          // The code originally had a specific toast here.
-          // If we call handleLogout(), it suppresses the generic "Session Expired" toast 
-          // (because isManualLogout=true) and we can show a specific one if we want.
-          // OR we can just let the generic one happen.
-          // The original code had:
-          // await authService.signOut();
-          // Toast.show(...)
-
-          // Let's keep the explicit inactivity toast by using handleLogout (suppress generic) + explicit toast.
-          isManualLogout.current = true; // suppress generic
+        if (diff > 24 * 60 * 60 * 1000 && currentSession) {
+          isManualLogout.current = true;
           await authService.signOut();
-          Toast.show({
-            type: 'info',
-            text1: 'Session Expired',
-            text2: 'Logged out due to inactivity.'
-          });
+          Toast.show({ type: 'info', text1: 'Session Expired', text2: 'Logged out due to inactivity.' });
+          router.push('/(auth)/signIn')
           setTimeout(() => { isManualLogout.current = false; }, 1000);
-
         } else {
-          // Reset timer if we came back within 10 mins
           resetSessionTimer();
         }
       }
-
-      if (nextAppState.match(/inactive|background/)) {
-        lastActive.current = Date.now();
-      }
-
+      if (nextAppState.match(/inactive|background/)) lastActive.current = Date.now();
       appState.current = nextAppState;
     });
 
@@ -327,27 +339,31 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       clearTimer()
       clearTimeout(watchdog)
     }
-  }, []) // Fix syntax error extra bracket
+  }, [])
 
   const value = React.useMemo(() => ({
     session,
     user,
     profile,
-    studentId,
-    teacherId,
-    adminId,
-    parentId,
-    displayId,
+    studentId: roleInfo.studentId,
+    teacherId: roleInfo.teacherId,
+    adminId: roleInfo.adminId,
+    parentId: roleInfo.parentId,
+    displayId: roleInfo.displayId,
     subscriptionStatus,
     trialEndDate,
     loading,
+    isInitializing,
+    isProfileLoading,
     signIn: authService.signIn,
     signOut: handleLogout,
     logout: handleLogout,
     resetPassword: authService.resetPassword,
     refreshProfile,
     resetSessionTimer,
-  }), [session, user, profile, studentId, teacherId, adminId, parentId, displayId, subscriptionStatus, trialEndDate, loading]);
+    startDemo: handleStartDemo,
+    isDemo,
+  }), [session, user, profile, roleInfo, subscriptionStatus, trialEndDate, loading, isInitializing, isProfileLoading, isDemo]);
 
   return (
     <AuthContext.Provider value={value}>

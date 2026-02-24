@@ -1,78 +1,67 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, TextInput, TouchableOpacity, FlatList, ActivityIndicator, Alert, Platform } from 'react-native';
-import { Stack, useRouter, useLocalSearchParams, Href } from 'expo-router';
-import { supabase } from '@/libs/supabase';
-import { Ionicons } from '@expo/vector-icons';
-import { User } from '@/types/types'; // Your User type
-import { UserCard } from '@/components/common/UserCard'; // Assuming you have this
-import { useSchool } from '@/contexts/SchoolContext'; // If needed for school context
 import { EmptyState } from '@/components/common/EmptyState';
+import { UnifiedHeader } from "@/components/common/UnifiedHeader";
+import { UserCard } from '@/components/common/UserCard';
+import { useTheme } from '@/contexts/ThemeContext';
+import { supabase } from '@/libs/supabase';
+import { User } from '@/types/types';
+import { Ionicons } from '@expo/vector-icons';
+import { Href, router, useLocalSearchParams } from 'expo-router';
 import { Users } from 'lucide-react-native';
+import React, { useEffect, useState } from 'react';
+import {
+    ActivityIndicator, Alert, FlatList, Platform,
+    ScrollView, Text, TextInput, TouchableOpacity, View
+} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function UsersManagementScreen() {
-    const router = useRouter();
     const params = useLocalSearchParams();
+    const { isDark } = useTheme();
+    const insets = useSafeAreaInsets();
+
     const [users, setUsers] = useState<User[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
     const [activeFilter, setActiveFilter] = useState<'all' | 'student' | 'teacher' | 'admin'>('all');
 
-    // Check if we need to open create modal immediately (optional feature based on params)
-    useEffect(() => {
-        if (params.action === 'create') {
-            // Logic to open create modal or navigate to create screen
-            // For now, let's just log or set a state
-            console.log("Create action triggered");
-        }
-    }, [params]);
+    // Theme shorthands
+    const bg = isDark ? '#121212' : '#ffffff';
+    const card = isDark ? '#1e1e1e' : '#ffffff';
+    const border = isDark ? '#2c2c2c' : '#f3f4f6';
+    const textPrimary = isDark ? '#f9fafb' : '#111827';
+    const textSecondary = isDark ? '#94a3b8' : '#6b7280';
+    const inputBg = isDark ? '#1e1e1e' : '#f9fafb';
+    const inputBorder = isDark ? '#2c2c2c' : '#f3f4f6';
 
-    useEffect(() => {
-        fetchUsers();
-    }, [activeFilter]);
+    useEffect(() => { fetchUsers(); }, [activeFilter]);
 
     const fetchUsers = async () => {
         try {
             setLoading(true);
             let query = supabase
                 .from('users')
-                .select(`
-                    *,
-                    students (id),
-                    teachers (id),
-                    admins (id),
-                    parents (id)
-                `)
+                .select(`id, full_name, email, role, created_at, students(id), teachers(id), admins(id), parents(id)`)
                 .order('created_at', { ascending: false });
-
-            if (activeFilter !== 'all') {
-                query = query.eq('role', activeFilter);
-            }
+            if (activeFilter !== 'all') query = query.eq('role', activeFilter);
 
             const { data, error } = await query;
-
             if (error) throw error;
-
             if (data) {
                 const formattedUsers = data.map((u: any) => {
-                    const getRoleId = (roleData: any) => {
-                        if (!roleData) return null;
-                        if (Array.isArray(roleData)) return roleData[0]?.id || null;
-                        return roleData.id || null;
-                    };
-
-                    let displayId = null;
-                    const roleId = getRoleId(u[`${u.role}s`]);
-                    if (roleId) displayId = roleId;
-
-                    return {
-                        id: u.id,
-                        displayId,
-                        name: u.full_name,
-                        email: u.email,
-                        role: u.role,
-                        joinDate: u.created_at,
-                    } as User;
-                });
+                    try {
+                        const getRoleId = (roleData: any) => {
+                            if (!roleData) return null;
+                            if (Array.isArray(roleData)) return roleData[0]?.id || null;
+                            return roleData?.id || null;
+                        };
+                        let displayId = null;
+                        if (u.role === 'student') displayId = getRoleId(u.students);
+                        else if (u.role === 'teacher') displayId = getRoleId(u.teachers);
+                        else if (u.role === 'admin') displayId = getRoleId(u.admins);
+                        else if (u.role === 'parent') displayId = getRoleId(u.parents);
+                        return { id: u.id, displayId, name: u.full_name || 'Unknown User', email: u.email || 'No Email', role: u.role || 'user', joinDate: u.created_at || new Date().toISOString() } as User;
+                    } catch { return null; }
+                }).filter((u): u is User => u !== null);
                 setUsers(formattedUsers);
             }
         } catch (error: any) {
@@ -82,87 +71,96 @@ export default function UsersManagementScreen() {
         }
     };
 
-    const handleSearch = (text: string) => {
-        setSearchQuery(text);
-        // Simple client-side filtering for now since list won't be massive initially
-        // Ideally should debounce and search on server
-    };
+    // Sanitize search input — no dangerous chars
+    const DANGEROUS_CHARS = /['"`;\\<>{}()\[\]|&$#%^*+=~]/g;
+    const handleSearch = (text: string) => setSearchQuery(text.replace(DANGEROUS_CHARS, ''));
 
     const filteredUsers = users.filter(user =>
-        user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        user.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (user.displayId && user.displayId.toLowerCase().includes(searchQuery.toLowerCase()))
+        (user.name?.toLowerCase().includes(searchQuery.toLowerCase()) ?? false) ||
+        (user.email?.toLowerCase().includes(searchQuery.toLowerCase()) ?? false) ||
+        (user.displayId?.toLowerCase().includes(searchQuery.toLowerCase()) ?? false)
     );
 
-    const handleUserPress = (user: User) => {
-        // Navigate to user details
-        router.push(`/(admin)/users/${user.id}` as Href);
-    };
+    const FILTERS = ['all', 'student', 'teacher', 'admin'] as const;
 
     return (
-        <View className="flex-1 bg-gray-50">
-            {/* Header */}
-            <View className="bg-white px-6 pt-12 pb-4 border-b border-gray-100">
-                <View className="flex-row justify-between items-center mb-4">
-                    <Text className="text-2xl font-bold text-gray-900">User Management</Text>
+        <View style={{ flex: 1, backgroundColor: bg }}>
+            <UnifiedHeader
+                title="Management"
+                subtitle="User Statistics"
+                role="Admin"
+                onBack={() => router.back()}
+            />
+
+            {/* Search & Filters */}
+            <View style={{ paddingHorizontal: 24, paddingTop: 16, paddingBottom: 12, borderBottomWidth: 1, borderBottomColor: border }}>
+                {/* Search row */}
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 16 }}>
+                    <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: inputBg, borderRadius: 16, paddingHorizontal: 16, paddingVertical: 12, borderWidth: 1, borderColor: inputBorder }}>
+                        <Ionicons name="search" size={20} color={textSecondary} />
+                        <TextInput
+                            style={{ flex: 1, marginLeft: 8, color: textPrimary, fontWeight: '600', fontSize: 13 }}
+                            placeholder="Search by name, email, or ID..."
+                            placeholderTextColor={textSecondary}
+                            value={searchQuery}
+                            onChangeText={handleSearch}
+                        />
+                        {searchQuery.length > 0 && (
+                            <TouchableOpacity onPress={() => setSearchQuery('')}>
+                                <Ionicons name="close-circle" size={18} color={textSecondary} />
+                            </TouchableOpacity>
+                        )}
+                    </View>
                     <TouchableOpacity
-                        onPress={() => router.push('/(admin)/users/create')} // Assume create route
-                        className="w-10 h-10 bg-black rounded-full items-center justify-center"
+                        onPress={() => router.push('/(admin)/users/create')}
+                        style={{ width: 48, height: 48, backgroundColor: '#FF6900', borderRadius: 16, alignItems: 'center', justifyContent: 'center', shadowColor: '#FF6900', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 6 }}
                     >
-                        <Ionicons name="add" size={24} color="white" />
+                        <Ionicons name="add" size={28} color="white" />
                     </TouchableOpacity>
                 </View>
 
-                {/* Search Bar */}
-                <View className="flex-row items-center bg-gray-100 rounded-xl px-4 py-3 mb-4">
-                    <Ionicons name="search" size={20} color="#9CA3AF" />
-                    <TextInput
-                        className="flex-1 ml-2 text-gray-900 font-medium"
-                        placeholder="Search by name, email, or ID..."
-                        value={searchQuery}
-                        onChangeText={handleSearch}
-                    />
-                </View>
-
-                {/* Filter Tabs */}
-                <View className="flex-row space-x-2 gap-2">
-                    {(['all', 'student', 'teacher', 'admin'] as const).map((filter) => (
-                        <TouchableOpacity
-                            key={filter}
-                            onPress={() => setActiveFilter(filter)}
-                            className={`px-4 py-2 rounded-full border ${activeFilter === filter
-                                ? 'bg-black border-black'
-                                : 'bg-white border-gray-200'
-                                }`}
-                        >
-                            <Text className={`font-medium capitalize ${activeFilter === filter ? 'text-white' : 'text-gray-600'
-                                }`}>
-                                {filter}
-                            </Text>
-                        </TouchableOpacity>
-                    ))}
-                </View>
+                {/* Filter tabs */}
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
+                    {FILTERS.map(filter => {
+                        const isActive = activeFilter === filter;
+                        return (
+                            <TouchableOpacity
+                                key={filter}
+                                onPress={() => setActiveFilter(filter)}
+                                style={{
+                                    paddingHorizontal: 20, paddingVertical: 10, borderRadius: 12, borderWidth: 1,
+                                    backgroundColor: isActive ? (isDark ? '#f9fafb' : '#111827') : (isDark ? '#1e1e1e' : '#ffffff'),
+                                    borderColor: isActive ? (isDark ? '#f9fafb' : '#111827') : border,
+                                }}
+                            >
+                                <Text style={{
+                                    fontWeight: '600', fontSize: 13, textTransform: 'capitalize',
+                                    color: isActive ? (isDark ? '#111827' : '#ffffff') : textSecondary,
+                                }}>
+                                    {filter}
+                                </Text>
+                            </TouchableOpacity>
+                        );
+                    })}
+                </ScrollView>
             </View>
 
-            {/* User List */}
+            {/* User list */}
             {loading ? (
-                <View className="flex-1 justify-center items-center">
-                    <ActivityIndicator size="large" color="black" />
+                <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+                    <ActivityIndicator size="large" color={isDark ? '#f9fafb' : '#111827'} />
                 </View>
             ) : (
                 <FlatList
                     data={filteredUsers}
-                    keyExtractor={(item) => item.id}
-                    contentContainerStyle={{ padding: 16, paddingBottom: 100 }}
+                    keyExtractor={item => item.id}
+                    contentContainerStyle={{ padding: 16, paddingBottom: insets.bottom + 24 }}
                     numColumns={Platform.OS === 'web' ? 3 : 1}
                     key={Platform.OS === 'web' ? 'web-grid' : 'mobile-list'}
                     columnWrapperStyle={Platform.OS === 'web' ? { gap: 16 } : undefined}
                     renderItem={({ item }) => (
                         <View style={Platform.OS === 'web' ? { width: '31.5%' } : { width: '100%' }}>
-                            <UserCard
-                                user={item}
-                                onPress={handleUserPress}
-                            />
+                            <UserCard user={item} onPress={u => router.push(`/(admin)/users/${u.id}` as Href)} />
                         </View>
                     )}
                     ListEmptyComponent={

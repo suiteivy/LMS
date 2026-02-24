@@ -347,6 +347,13 @@ export interface BackendBook {
   total_quantity: number;
   available_quantity: number;
   category?: string;
+  publisher?: string;
+  publication_year?: number;
+  edition?: string;
+  description?: string;
+  call_number?: string;
+  language?: string;
+  page_count?: number;
   institution_id: string;
   created_at: string;
 }
@@ -359,6 +366,13 @@ export interface FrontendBook {
   category: string;
   quantity: number;
   available: number;
+  publisher?: string;
+  publicationYear?: number;
+  edition?: string;
+  description?: string;
+  callNumber?: string;
+  language?: string;
+  pageCount?: number;
   institutionId: string;
   createdAt?: string;
 }
@@ -366,12 +380,14 @@ export interface FrontendBook {
 export interface BackendBorrowedBook {
   id: string;
   book_id: string;
+  // Refactored to match 'books' table relation
   books: {
     title: string;
     author: string;
     isbn?: string;
   };
   student_id: string;
+  // New backend structure: students -> users
   students?: {
     id: string;
     users?: {
@@ -380,14 +396,15 @@ export interface BackendBorrowedBook {
       phone?: string;
     };
   };
+  // Fallback if direct relation still exists or for older records
   users?: {
     full_name: string;
     email: string;
     phone?: string;
   };
-  borrowed_at: string;
+  borrowed_at: string; // Changed from borrow_date
   due_date: string;
-  returned_at?: string;
+  returned_at?: string; // Changed from return_date
   status: "borrowed" | "overdue" | "returned" | "waiting" | "ready_for_pickup" | "rejected";
 }
 
@@ -414,6 +431,13 @@ export interface AddBookRequest {
   total_quantity: number;
   institution_id: string;
   category?: string;
+  publisher?: string;
+  publication_year?: number;
+  edition?: string;
+  description?: string;
+  call_number?: string;
+  language?: string;
+  page_count?: number;
 }
 
 export interface UpdateBookRequest {

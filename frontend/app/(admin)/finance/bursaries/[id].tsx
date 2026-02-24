@@ -1,23 +1,27 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, ActivityIndicator, TouchableOpacity, Alert, FlatList } from 'react-native';
-import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
+import { UnifiedHeader } from "@/components/common/UnifiedHeader";
+import { useTheme } from "@/contexts/ThemeContext";
 import { BursaryService } from '@/services/BursaryService';
 import { formatCurrency } from '@/utils/currency';
 import { format } from 'date-fns';
-import { Ionicons } from '@expo/vector-icons';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import React, { useEffect, useState } from 'react';
+import { ActivityIndicator, Alert, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 
 export default function BursaryDetailsScreen() {
     const { id } = useLocalSearchParams<{ id: string }>();
     const router = useRouter();
+    const { isDark } = useTheme();
     const [bursary, setBursary] = useState<any>(null);
     const [applications, setApplications] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
 
-    useEffect(() => {
-        if (id) {
-            fetchDetails();
-        }
-    }, [id]);
+    const surface = isDark ? '#1e1e1e' : '#ffffff';
+    const border = isDark ? '#2c2c2c' : '#f3f4f6';
+    const textPrimary = isDark ? '#f1f1f1' : '#111827';
+    const textSecondary = isDark ? '#9ca3af' : '#6b7280';
+    const statsBg = isDark ? '#242424' : '#f9fafb';
+
+    useEffect(() => { if (id) fetchDetails(); }, [id]);
 
     const fetchDetails = async () => {
         try {
@@ -37,7 +41,7 @@ export default function BursaryDetailsScreen() {
         try {
             await BursaryService.updateApplicationStatus(appId, newStatus);
             Alert.alert('Success', `Application ${newStatus}`);
-            fetchDetails(); // Refresh list
+            fetchDetails();
         } catch (error: any) {
             Alert.alert('Error', error.message);
         }
@@ -45,99 +49,109 @@ export default function BursaryDetailsScreen() {
 
     if (loading) {
         return (
-            <View className="flex-1 justify-center items-center bg-white">
+            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: isDark ? '#121212' : '#f9fafb' }}>
                 <ActivityIndicator size="large" color="#FF6B00" />
             </View>
         );
     }
 
-    return (
-        <View className="flex-1 bg-gray-50">
-            <Stack.Screen options={{ title: 'Bursary Details', headerBackTitle: 'Back' }} />
+    const isOpen = bursary?.status === 'open';
 
-            <ScrollView className="flex-1 p-4">
+    return (
+        <View style={{ flex: 1, backgroundColor: isDark ? '#121212' : '#f9fafb' }}>
+            <UnifiedHeader
+                title="Finance"
+                subtitle="Bursary Details"
+                role="Admin"
+                onBack={() => router.back()}
+            />
+
+            <ScrollView style={{ flex: 1, padding: 16 }}>
                 {/* Bursary Info Card */}
                 {bursary && (
-                    <View className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 mb-6">
-                        <View className="flex-row justify-between items-start mb-2">
-                            <View className="flex-1">
-                                <Text className="text-2xl font-bold text-gray-900">{bursary.title}</Text>
-                                <Text className="text-3xl font-extrabold text-[#FF6B00] mt-2">{formatCurrency(bursary.amount)}</Text>
+                    <View style={{ backgroundColor: surface, padding: 24, borderRadius: 20, borderWidth: 1, borderColor: border, marginBottom: 24 }}>
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
+                            <View style={{ flex: 1 }}>
+                                <Text style={{ fontSize: 22, fontWeight: 'bold', color: textPrimary }}>{bursary.title}</Text>
+                                <Text style={{ fontSize: 28, fontWeight: '900', color: '#FF6B00', marginTop: 6 }}>{formatCurrency(bursary.amount)}</Text>
                             </View>
-                            <View className={`px-3 py-1 rounded-full ${bursary.status === 'open' ? 'bg-green-100' : 'bg-red-100'}`}>
-                                <Text className={`text-xs font-bold uppercase ${bursary.status === 'open' ? 'text-green-700' : 'text-red-700'}`}>
+                            <View style={{ paddingHorizontal: 12, paddingVertical: 4, borderRadius: 999, backgroundColor: isOpen ? (isDark ? '#052e16' : '#dcfce7') : (isDark ? '#1f2937' : '#fee2e2') }}>
+                                <Text style={{ fontSize: 11, fontWeight: 'bold', textTransform: 'uppercase', color: isOpen ? '#10b981' : (isDark ? '#9ca3af' : '#b91c1c') }}>
                                     {bursary.status}
                                 </Text>
                             </View>
                         </View>
 
-                        <Text className="text-gray-600 mt-4 leading-6">{bursary.description}</Text>
+                        <Text style={{ color: textSecondary, marginTop: 12, lineHeight: 22, fontSize: 14 }}>{bursary.description}</Text>
 
-                        <View className="mt-4 pt-4 border-t border-gray-50 flex-row gap-6">
+                        <View style={{ marginTop: 16, paddingTop: 16, borderTopWidth: 1, borderTopColor: border, flexDirection: 'row', gap: 24 }}>
                             <View>
-                                <Text className="text-xs text-gray-400 font-bold uppercase">Deadline</Text>
-                                <Text className="text-gray-900 font-medium">{format(new Date(bursary.deadline), 'MMM dd, yyyy')}</Text>
+                                <Text style={{ fontSize: 10, color: textSecondary, fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: 0.5 }}>Deadline</Text>
+                                <Text style={{ color: textPrimary, fontWeight: '500', marginTop: 2 }}>{format(new Date(bursary.deadline), 'MMM dd, yyyy')}</Text>
                             </View>
                             <View>
-                                <Text className="text-xs text-gray-400 font-bold uppercase">Applications</Text>
-                                <Text className="text-gray-900 font-medium">{applications.length}</Text>
+                                <Text style={{ fontSize: 10, color: textSecondary, fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: 0.5 }}>Applications</Text>
+                                <Text style={{ color: textPrimary, fontWeight: '500', marginTop: 2 }}>{applications.length}</Text>
                             </View>
                         </View>
                     </View>
                 )}
 
-                {/* Applications List */}
-                <Text className="text-lg font-bold text-gray-900 mb-4 px-2">Student Applications</Text>
+                {/* Applications */}
+                <Text style={{ fontSize: 17, fontWeight: 'bold', color: textPrimary, marginBottom: 16, paddingHorizontal: 4 }}>Student Applications</Text>
 
                 {applications.length === 0 ? (
-                    <View className="items-center py-10 bg-white rounded-xl">
-                        <Text className="text-gray-400">No applications yet</Text>
+                    <View style={{ alignItems: 'center', paddingVertical: 40, backgroundColor: surface, borderRadius: 16, borderWidth: 1, borderColor: border }}>
+                        <Text style={{ color: textSecondary }}>No applications yet</Text>
                     </View>
                 ) : (
-                    applications.map((app) => (
-                        <View key={app.id} className="bg-white p-4 rounded-xl mb-3 shadow-sm border border-gray-100">
-                            <View className="flex-row justify-between mb-2">
-                                <View>
-                                    <Text className="text-base font-bold text-gray-900">{app.student?.user?.full_name}</Text>
-                                    <Text className="text-xs text-gray-500">{app.student?.user?.email}</Text>
+                    applications.map((app) => {
+                        const statusColor = app.status === 'approved' ? '#10b981' : app.status === 'rejected' ? '#ef4444' : '#f59e0b';
+                        const statusBg = app.status === 'approved'
+                            ? (isDark ? '#052e16' : '#dcfce7')
+                            : app.status === 'rejected'
+                                ? (isDark ? 'rgba(239,68,68,0.12)' : '#fee2e2')
+                                : (isDark ? '#3d2000' : '#fef9c3');
+
+                        return (
+                            <View key={app.id} style={{ backgroundColor: surface, padding: 16, borderRadius: 16, marginBottom: 12, borderWidth: 1, borderColor: border }}>
+                                <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 }}>
+                                    <View>
+                                        <Text style={{ fontSize: 15, fontWeight: 'bold', color: textPrimary }}>{app.student?.user?.full_name}</Text>
+                                        <Text style={{ fontSize: 12, color: textSecondary, marginTop: 1 }}>{app.student?.user?.email}</Text>
+                                    </View>
+                                    <View style={{ paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999, backgroundColor: statusBg, alignSelf: 'flex-start' }}>
+                                        <Text style={{ fontSize: 10, fontWeight: 'bold', textTransform: 'uppercase', color: statusColor }}>{app.status}</Text>
+                                    </View>
                                 </View>
-                                <View className={`px-2 py-1 rounded h-6 w-20 items-center justify-center ${app.status === 'approved' ? 'bg-green-100' :
-                                    app.status === 'rejected' ? 'bg-red-100' : 'bg-yellow-100'
-                                    }`}>
-                                    <Text className={`text-[10px] font-bold uppercase ${app.status === 'approved' ? 'text-green-800' :
-                                        app.status === 'rejected' ? 'text-red-800' : 'text-yellow-800'
-                                        }`}>{app.status}</Text>
-                                </View>
+
+                                {app.justification && (
+                                    <View style={{ backgroundColor: statsBg, padding: 10, borderRadius: 10, marginTop: 8, borderWidth: 1, borderColor: border }}>
+                                        <Text style={{ color: textSecondary, fontSize: 13, fontStyle: 'italic' }}>"{app.justification}"</Text>
+                                    </View>
+                                )}
+
+                                {app.status === 'pending' && (
+                                    <View style={{ flexDirection: 'row', marginTop: 12, justifyContent: 'flex-end', gap: 10 }}>
+                                        <TouchableOpacity
+                                            onPress={() => handleApplicationStatus(app.id, 'rejected')}
+                                            style={{ backgroundColor: isDark ? '#242424' : '#f3f4f6', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 999, borderWidth: 1, borderColor: border }}
+                                        >
+                                            <Text style={{ color: textSecondary, fontWeight: 'bold', fontSize: 12 }}>Reject</Text>
+                                        </TouchableOpacity>
+                                        <TouchableOpacity
+                                            onPress={() => handleApplicationStatus(app.id, 'approved')}
+                                            style={{ backgroundColor: '#FF6B00', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 999 }}
+                                        >
+                                            <Text style={{ color: 'white', fontWeight: 'bold', fontSize: 12 }}>Approve</Text>
+                                        </TouchableOpacity>
+                                    </View>
+                                )}
                             </View>
-
-                            {app.justification && (
-                                <Text className="text-gray-600 text-sm mt-2 italic bg-gray-50 p-2 rounded">
-                                    "{app.justification}"
-                                </Text>
-                            )}
-
-                            {app.status === 'pending' && (
-                                <View className="flex-row mt-4 justify-end gap-3 space-x-3">
-                                    <TouchableOpacity
-                                        onPress={() => handleApplicationStatus(app.id, 'rejected')}
-                                        className="bg-gray-100 px-4 py-2 rounded-full"
-                                    >
-                                        <Text className="text-gray-600 font-bold text-xs">Reject</Text>
-                                    </TouchableOpacity>
-                                    <TouchableOpacity
-                                        onPress={() => handleApplicationStatus(app.id, 'approved')}
-                                        className="bg-[#FF6B00] px-4 py-2 rounded-full"
-                                    >
-                                        <Text className="text-white font-bold text-xs">Approve</Text>
-                                    </TouchableOpacity>
-                                </View>
-                            )}
-                        </View>
-                    ))
+                        );
+                    })
                 )}
-
-                {/* Spacer for bottom */}
-                <View className="h-10" />
+                <View style={{ height: 40 }} />
             </ScrollView>
         </View>
     );

@@ -1,7 +1,8 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { Notification } from '../types/types';
+import React, { createContext, ReactNode, useContext, useEffect, useState } from 'react';
 import { NotificationAPI } from '../services/NotificationService';
+import { Notification } from '../types/types';
 import { useAuth } from './AuthContext';
+import { useRealtimeQuery } from '../hooks/useRealtimeQuery';
 
 interface NotificationContextType {
     notifications: Notification[];
@@ -10,6 +11,8 @@ interface NotificationContextType {
     refreshNotifications: () => Promise<void>;
     markAsRead: (id: string) => Promise<void>;
     markAllAsRead: () => Promise<void>;
+    showNotifications: boolean;
+    setShowNotifications: (show: boolean) => void;
 }
 
 const NotificationContext = createContext<NotificationContextType | undefined>(undefined);
@@ -18,6 +21,7 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
     const { session } = useAuth();
     const [notifications, setNotifications] = useState<Notification[]>([]);
     const [loading, setLoading] = useState(false);
+    const [showNotifications, setShowNotifications] = useState(false);
 
     const fetchNotifications = async () => {
         if (!session) return;
@@ -28,6 +32,11 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
             console.error("Failed to fetch notifications:", error);
         }
     };
+
+    // Listen to realtime changes on the notifications table
+    useRealtimeQuery('notifications', () => {
+        fetchNotifications();
+    });
 
     const lastToken = React.useRef<string | null>(null);
 
@@ -80,7 +89,9 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
             loading,
             refreshNotifications: fetchNotifications,
             markAsRead,
-            markAllAsRead
+            markAllAsRead,
+            showNotifications,
+            setShowNotifications
         }}>
             {children}
         </NotificationContext.Provider>

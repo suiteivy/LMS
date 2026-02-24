@@ -1,19 +1,20 @@
-import { BookOpen, Edit3, Mail, Save, Briefcase, Layers, Users } from "lucide-react-native";
-import React, { useState, useEffect } from "react";
-import { View, Text, Image, TouchableOpacity, TextInput, ActivityIndicator, RefreshControl } from "react-native";
-import { ScrollView } from "react-native-gesture-handler";
 import { useAuth } from "@/contexts/AuthContext";
+import { useTheme } from "@/contexts/ThemeContext";
 import { authService, supabase } from "@/libs/supabase";
 import { Database } from "@/types/database";
-import { showSuccess, showError } from "@/utils/toast";
+import { showError, showSuccess } from "@/utils/toast";
+import { BookOpen, Calendar, Camera, GraduationCap, Layers, Mail, MapPin, Phone, User, UserCircle, Users } from "lucide-react-native";
+import React, { useEffect, useState } from "react";
+import { ActivityIndicator, RefreshControl, ScrollView, Text, TextInput, TouchableOpacity, View } from "react-native";
 
 type Subject = Database['public']['Tables']['subjects']['Row'];
 type Class = Database['public']['Tables']['classes']['Row'];
 
 export default function TeacherProfile() {
-    const { profile, user, refreshProfile, displayId, teacherId } = useAuth();
+    const { profile, user, refreshProfile, teacherId } = useAuth();
+    const { isDark } = useTheme();
     const [isEditing, setIsEditing] = useState(false);
-    const [name, setName] = useState(profile?.full_name || "");
+    const [fullName, setFullName] = useState(profile?.full_name || "");
     const [phone, setPhone] = useState(profile?.phone || "");
     const [gender, setGender] = useState(profile?.gender || "");
     const [dob, setDob] = useState(profile?.date_of_birth || "");
@@ -21,7 +22,6 @@ export default function TeacherProfile() {
     const [saving, setSaving] = useState(false);
     const [loadingData, setLoadingData] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
-    const [activeTab, setActiveTab] = useState<'overview' | 'subjects' | 'classes'>('overview');
 
     const [subjects, setSubjects] = useState<Subject[]>([]);
     const [classes, setClasses] = useState<Class[]>([]);
@@ -30,10 +30,14 @@ export default function TeacherProfile() {
         activeClasses: 0,
         totalStudents: 0
     });
+    const [teacherDetails, setTeacherDetails] = useState<{ department: string | null; hire_date: string | null }>({
+        department: null,
+        hire_date: null
+    });
 
     useEffect(() => {
         if (profile) {
-            setName(profile.full_name || "");
+            setFullName(profile.full_name || "");
             setPhone(profile.phone || "");
             setGender(profile.gender || "");
             setDob(profile.date_of_birth || "");
@@ -52,7 +56,6 @@ export default function TeacherProfile() {
     const fetchTeacherData = async () => {
         if (!teacherId) return;
         try {
-            // Fetch subjects
             const { data: subjectsData, error: subjectsError } = await supabase
                 .from('subjects')
                 .select('*')
@@ -61,7 +64,6 @@ export default function TeacherProfile() {
 
             if (subjectsError) throw subjectsError;
 
-            // Fetch Classes
             const { data: classesData, error: classesError } = await supabase
                 .from('classes')
                 .select('*')
@@ -70,7 +72,6 @@ export default function TeacherProfile() {
 
             if (classesError) throw classesError;
 
-            // Fetch Total Students (approximate by counting enrollments in these classes)
             let studentCount = 0;
             if (classesData && classesData.length > 0) {
                 const classIds = classesData.map(c => c.id);
@@ -82,6 +83,20 @@ export default function TeacherProfile() {
                 if (!countError && count !== null) {
                     studentCount = count;
                 }
+            }
+
+            // Fetch Teacher Details
+            const { data: teacherData, error: teacherError } = await supabase
+                .from('teachers')
+                .select('department, hire_date')
+                .eq('id', teacherId)
+                .single();
+
+            if (!teacherError && teacherData) {
+                setTeacherDetails({
+                    department: teacherData.department,
+                    hire_date: teacherData.hire_date
+                });
             }
 
             setSubjects(subjectsData || []);
@@ -107,8 +122,8 @@ export default function TeacherProfile() {
         fetchTeacherData();
     };
 
-    const handleSave = async () => {
-        if (!name.trim()) {
+    const handleUpdateProfile = async () => {
+        if (!fullName.trim()) {
             showError("Error", "Name cannot be empty");
             return;
         }
@@ -116,7 +131,7 @@ export default function TeacherProfile() {
         setSaving(true);
         try {
             const { error } = await authService.updateProfile({
-                full_name: name,
+                full_name: fullName,
                 phone: phone || null,
                 gender: (gender as any) || null,
                 date_of_birth: dob || null,
@@ -137,280 +152,132 @@ export default function TeacherProfile() {
 
     if (!profile) {
         return (
-            <View className="flex-1 justify-center items-center bg-gray-50">
+            <View className="flex-1 justify-center items-center bg-gray-50 dark:bg-black">
                 <ActivityIndicator size="large" color="#FF6B00" />
             </View>
         );
     }
 
-    const renderTabButton = (tab: 'overview' | 'subjects' | 'classes', label: string, icon: React.ReactElement) => (
-        <TouchableOpacity
-            onPress={() => setActiveTab(tab)}
-            className={`flex-row items-center px-4 py-2 rounded-full mr-2 ${activeTab === tab ? 'bg-teacherOrange' : 'bg-white border border-gray-200'}`}
-        >
-            {/* Clone icon with appropriate color */}
-            {React.cloneElement(icon, {
-                size: 16,
-                color: activeTab === tab ? 'white' : '#6b7280'
-            } as any)}
-            <Text className={`ml-2 font-medium ${activeTab === tab ? 'text-white' : 'text-gray-600'}`}>
-                {label}
-            </Text>
-        </TouchableOpacity>
-    );
-
-    const renderOverview = () => (
-        <View className="mt-4">
-            {/* Stats Grid */}
-            <View className="flex-row flex-wrap justify-between mb-6 gap-y-4">
-                <View className="w-full md:w-[32%] bg-white p-4 rounded-2xl border border-gray-100 shadow-sm items-center">
-                    <View className="p-2 bg-blue-50 rounded-full mb-2">
-                        <BookOpen size={20} color="#3b82f6" />
-                    </View>
-                    <Text className="text-2xl font-bold text-gray-900">{stats.totalSubjects}</Text>
-                    <Text className="text-xs text-gray-500 font-medium text-center">Subjects</Text>
-                </View>
-                <View className="w-full md:w-[32%] bg-white p-4 rounded-2xl border border-gray-100 shadow-sm items-center">
-                    <View className="p-2 bg-purple-50 rounded-full mb-2">
-                        <Layers size={20} color="#a855f7" />
-                    </View>
-                    <Text className="text-2xl font-bold text-gray-900">{stats.activeClasses}</Text>
-                    <Text className="text-xs text-gray-500 font-medium text-center">Classes</Text>
-                </View>
-                <View className="w-full md:w-[32%] bg-white p-4 rounded-2xl border border-gray-100 shadow-sm items-center">
-                    <View className="p-2 bg-orange-50 rounded-full mb-2">
-                        <Users size={20} color="#f97316" />
-                    </View>
-                    <Text className="text-2xl font-bold text-gray-900">{stats.totalStudents}</Text>
-                    <Text className="text-xs text-gray-500 font-medium text-center">Students</Text>
-                </View>
-            </View>
-
-            {/* Info Cards */}
-            <View className="flex-row flex-wrap justify-between">
-                <View className="w-full md:w-[48%] bg-white p-5 rounded-2xl border border-gray-100 mb-4 shadow-sm">
-                    <View className="flex-row items-center mb-4">
-                        <View className="p-2 bg-orange-50 rounded-lg">
-                            <Briefcase size={20} color="#FF6B00" />
+    return (
+        <View className="flex-1 bg-gray-50 dark:bg-black">
+            <ScrollView
+                className="flex-1"
+                showsVerticalScrollIndicator={false}
+                refreshControl={
+                    <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor="#FF6900" />
+                }
+            >
+                {/* Profile Info Section */}
+                <View className="items-center mt-8 mb-4">
+                    <View className="relative">
+                        <View className="w-32 h-32 rounded-[40px] bg-white dark:bg-gray-800 items-center justify-center border-4 border-gray-100 dark:border-gray-800 shadow-2xl overflow-hidden">
+                            <UserCircle size={80} color={isDark ? "#374151" : "#F3F4F6"} />
                         </View>
-                        <Text className="ml-3 font-semibold text-gray-800">Professional Info</Text>
+                        <TouchableOpacity className="absolute -bottom-2 -right-2 bg-[#FF6900] p-3 rounded-2xl shadow-lg border-2 border-gray-50 dark:border-gray-900">
+                            <Camera size={18} color="white" />
+                        </TouchableOpacity>
                     </View>
 
-                    <View className="space-y-3">
-                        <View>
-                            <Text className="text-xs text-gray-400 uppercase tracking-wider">Teacher ID</Text>
-                            <Text className="text-gray-700 font-medium">{displayId || "N/A"}</Text>
-                        </View>
-                        <View>
-                            <Text className="text-xs text-gray-400 uppercase tracking-wider">Institution ID</Text>
-                            <Text className="text-gray-700 font-medium">{profile.institution_id || "N/A"}</Text>
-                        </View>
-                        <View>
-                            <Text className="text-xs text-gray-400 uppercase tracking-wider">Joined Date</Text>
-                            <Text className="text-gray-700 font-medium">
-                                {new Date(profile.created_at).toLocaleDateString()}
-                            </Text>
-                        </View>
+                    <Text className="text-gray-900 dark:text-white text-3xl font-black tracking-tighter mt-6 text-center">{profile?.full_name}</Text>
+                    <View className="bg-[#FF6900]/10 px-4 py-1.5 rounded-full mt-2 border border-[#FF6900]/20 self-center">
+                        <Text className="text-[#FF6900] text-[10px] font-black uppercase tracking-[2px]">Faculty Member • ID: {teacherId?.slice(0, 8)}</Text>
                     </View>
                 </View>
 
-                <View className="w-full md:w-[48%] bg-white p-5 rounded-2xl border border-gray-100 mb-4 shadow-sm">
-                    <View className="flex-row items-center mb-4">
-                        <View className="p-2 bg-blue-50 rounded-lg">
-                            <Mail size={20} color="#2563eb" />
+                {/* Main Content */}
+                <View className="px-6 pb-32">
+                    <View className="bg-white dark:bg-[#1a1a1a] rounded-[48px] p-8 shadow-xl border border-gray-100 dark:border-gray-800">
+                        {/* Section Header */}
+                        <View className="flex-row items-center mb-10">
+                            <View className="bg-[#FF6900] w-1.5 h-6 rounded-full mr-4 shadow-sm" />
+                            <Text className="text-gray-900 dark:text-white font-black text-2xl tracking-tight uppercase">Professional Identity</Text>
                         </View>
-                        <Text className="ml-3 font-semibold text-gray-800">Contact</Text>
-                    </View>
 
-                    <View className="space-y-3">
                         <View>
-                            <Text className="text-xs text-gray-400 uppercase tracking-wider">Email Address</Text>
-                            <Text className="text-gray-700 font-medium">{profile.email}</Text>
-                        </View>
-                        <View className="mt-2">
-                            <Text className="text-xs text-gray-400 uppercase tracking-wider">Work Phone</Text>
+                            <View className="flex-row justify-between items-center mb-8">
+                                <Text className="text-gray-900 dark:text-white font-black text-xl tracking-tighter">Core Information</Text>
+                                <TouchableOpacity
+                                    onPress={() => setIsEditing(!isEditing)}
+                                    className="bg-orange-50 dark:bg-orange-950/30 px-5 py-2.5 rounded-2xl border border-orange-100 dark:border-orange-900/30"
+                                >
+                                    <Text className="text-[#FF6900] font-bold text-[10px] uppercase tracking-widest">{isEditing ? 'Cancel' : 'Modify'}</Text>
+                                </TouchableOpacity>
+                            </View>
+
                             {isEditing ? (
-                                <TextInput
-                                    value={phone}
-                                    onChangeText={setPhone}
-                                    placeholder="Enter phone number"
-                                    keyboardType="phone-pad"
-                                    className="bg-gray-50 text-gray-900 px-3 py-2 rounded-lg border border-gray-200 mt-1"
-                                />
+                                <View className="bg-gray-50 dark:bg-gray-900 p-6 rounded-[32px] border border-gray-100 dark:border-gray-800 mb-8">
+                                    <InfoInput label="Full Name" value={fullName} onChange={setFullName} icon={User} isDark={isDark} />
+                                    <InfoInput label="Contact Number" value={phone} onChange={setPhone} icon={Phone} isDark={isDark} />
+                                    <InfoInput label="Staff Address" value={address} onChange={setAddress} icon={MapPin} isDark={isDark} />
+                                    <TouchableOpacity className="bg-[#FF6900] py-4 rounded-2xl items-center mt-4 shadow-lg shadow-orange-500/20" onPress={handleUpdateProfile} disabled={saving}>
+                                        {saving ? <ActivityIndicator color="white" /> : <Text className="text-white font-black text-xs uppercase tracking-[2px]">Save Changes</Text>}
+                                    </TouchableOpacity>
+                                </View>
                             ) : (
-                                <Text className={`text-gray-700 font-medium ${!profile.phone ? 'text-gray-400 italic' : ''}`}>
-                                    {profile.phone || "Not set"}
-                                </Text>
+                                <View>
+                                    <InfoRow label="Email Identity" value={profile?.email || 'N/A'} icon={Mail} color="#6366f1" isDark={isDark} />
+                                    <InfoRow label="Contact Line" value={profile?.phone || 'Not listed'} icon={Phone} color="#10b981" isDark={isDark} />
+                                    <InfoRow label="Residence" value={profile?.address || 'Not listed'} icon={MapPin} color="#f59e0b" isDark={isDark} />
+                                    <View className="h-px bg-gray-50 dark:border-gray-800 my-6" />
+                                    <View className="flex-row gap-4">
+                                        <View className="flex-1 bg-gray-50 dark:bg-gray-900 p-4 rounded-2xl border border-gray-100 dark:border-gray-800">
+                                            <Text className="text-gray-400 text-[8px] font-bold uppercase tracking-widest mb-1">Gender</Text>
+                                            <Text className="text-gray-900 dark:text-white font-bold capitalize">{profile?.gender || 'N/A'}</Text>
+                                        </View>
+                                        <View className="flex-1 bg-gray-50 dark:bg-gray-900 p-4 rounded-2xl border border-gray-100 dark:border-gray-800">
+                                            <Text className="text-gray-400 text-[8px] font-bold uppercase tracking-widest mb-1">Birth Date</Text>
+                                            <Text className="text-gray-900 dark:text-white font-bold">{profile?.date_of_birth || 'N/A'}</Text>
+                                        </View>
+                                    </View>
+                                </View>
                             )}
                         </View>
-                    </View>
-                </View>
-            </View>
 
-            {/* Editable Personal Details (edit mode only) */}
-            {isEditing && (
-                <View className="bg-orange-50 p-5 rounded-2xl border border-orange-200 mb-4">
-                    <Text className="font-bold text-gray-800 mb-3">✏️ Edit Personal Details</Text>
-                    <View className="mb-3">
-                        <Text className="text-xs text-gray-500 uppercase font-semibold mb-1">Gender</Text>
-                        <View className="flex-row gap-2">
-                            {['male', 'female', 'other'].map(g => (
-                                <TouchableOpacity key={g} onPress={() => setGender(g)}
-                                    className={`px-4 py-2 rounded-full border ${gender === g ? 'bg-teacherOrange border-teacherOrange' : 'bg-white border-gray-200'}`}>
-                                    <Text className={`text-sm font-medium capitalize ${gender === g ? 'text-white' : 'text-gray-700'}`}>{g}</Text>
-                                </TouchableOpacity>
-                            ))}
-                        </View>
-                    </View>
-                    <View className="mb-3">
-                        <Text className="text-xs text-gray-500 uppercase font-semibold mb-1">Date of Birth</Text>
-                        <TextInput value={dob} onChangeText={setDob} placeholder="YYYY-MM-DD" placeholderTextColor="#9CA3AF" className="bg-white border border-gray-200 rounded-xl px-4 py-3 text-gray-900" />
-                    </View>
-                    <View className="mb-1">
-                        <Text className="text-xs text-gray-500 uppercase font-semibold mb-1">Address</Text>
-                        <TextInput value={address} onChangeText={setAddress} placeholder="Enter address" placeholderTextColor="#9CA3AF" className="bg-white border border-gray-200 rounded-xl px-4 py-3 text-gray-900" />
-                    </View>
-                </View>
-            )}
-
-        </View>
-    );
-
-    const renderSubjects = () => (
-        <View className="mt-4 pb-8">
-            {subjects.length === 0 ? (
-                <View className="bg-white p-8 rounded-2xl items-center justify-center border border-gray-100 border-dashed">
-                    <BookOpen size={48} color="#e5e7eb" />
-                    <Text className="text-gray-400 mt-4 text-center">No subjects assigned yet.</Text>
-                </View>
-            ) : (
-                subjects.map((subject) => (
-                    <View key={subject.id} className="bg-white p-4 rounded-2xl border border-gray-100 mb-3 shadow-sm flex-row items-center">
-                        <View className="w-12 h-12 bg-orange-100 rounded-xl items-center justify-center mr-4">
-                            <BookOpen size={24} color="#FF6B00" />
-                        </View>
-                        <View className="flex-1">
-                            <Text className="font-bold text-gray-900 text-lg">{subject.title}</Text>
-                            <Text className="text-gray-500 text-sm" numberOfLines={1}>{subject.description || "No description"}</Text>
-                        </View>
-                        <View className="bg-gray-50 px-3 py-1 rounded-lg">
-                            <Text className="text-xs font-bold text-gray-600">{subject.fee_amount ? `$${subject.fee_amount}` : 'Free'}</Text>
-                        </View>
-                    </View>
-                ))
-            )}
-        </View>
-    );
-
-    const renderClasses = () => (
-        <View className="mt-4 pb-8">
-            {classes.length === 0 ? (
-                <View className="bg-white p-8 rounded-2xl items-center justify-center border border-gray-100 border-dashed">
-                    <Layers size={48} color="#e5e7eb" />
-                    <Text className="text-gray-400 mt-4 text-center">No classes created yet.</Text>
-                </View>
-            ) : (
-                classes.map((cls) => (
-                    <View key={cls.id} className="bg-white p-4 rounded-2xl border border-gray-100 mb-3 shadow-sm flex-row items-center">
-                        <View className="w-12 h-12 bg-purple-100 rounded-xl items-center justify-center mr-4">
-                            <Layers size={24} color="#9333ea" />
-                        </View>
-                        <View className="flex-1">
-                            <Text className="font-bold text-gray-900 text-lg">{cls.name}</Text>
-                            <Text className="text-gray-500 text-sm">Created: {new Date(cls.created_at).toLocaleDateString()}</Text>
-                        </View>
-                    </View>
-                ))
-            )}
-        </View>
-    );
-
-    return (
-        <ScrollView
-            className="flex-1 bg-gray-50"
-            refreshControl={
-                <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} colors={["#FF6B00"]} />
-            }
-        >
-            <View className="p-4 md:p-8 max-w-3xl mx-auto w-full">
-                {/* Header section / profile card */}
-                <View className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden mb-6">
-                    <View className="h-32 bg-teacherOrange rounded-t-3xl relative">
-                        {/* Cover pattern or something could go here */}
-                        <View className="absolute bottom-0 w-full h-16 bg-gradient-to-t from-black/20 to-transparent" />
-                    </View>
-
-                    <View className="px-6 pb-6 mt-[-40px]">
-                        <View className="flex-row justify-between items-end">
-                            <View className="relative">
-                                <View style={{ elevation: 8, zIndex: 10 }} className="p-1 bg-white rounded-2xl shadow-sm">
-                                    <Image
-                                        source={{ uri: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=200' }}
-                                        className="w-24 h-24 rounded-xl bg-gray-200"
-                                    />
-                                </View>
-                                {/* Edit Button */}
-                                <TouchableOpacity
-                                    style={{ elevation: 10, zIndex: 20 }}
-                                    activeOpacity={0.8}
-                                    onPress={() => isEditing ? handleSave() : setIsEditing(true)}
-                                    disabled={saving}
-                                    className={`absolute -bottom-2 -right-2 p-2 rounded-full shadow-md border border-gray-100 ${isEditing ? 'bg-green-500' : 'bg-white'}`}
-                                >
-                                    {saving ? (
-                                        <ActivityIndicator size="small" color="white" />
-                                    ) : isEditing ? (
-                                        <Save size={16} color='white' />
-                                    ) : (
-                                        <Edit3 size={16} color='#FF6B00' />
-                                    )}
-                                </TouchableOpacity>
+                        {/* Academic Experience Section */}
+                        <View className="mt-12 pt-12 border-t border-gray-50 dark:border-gray-800">
+                            <View className="flex-row items-center mb-8">
+                                <View className="bg-purple-500 w-1.5 h-6 rounded-full mr-4 shadow-sm" />
+                                <Text className="text-gray-900 dark:text-white font-black text-xl tracking-tight uppercase">Academic Credentials</Text>
                             </View>
-
-                            <View className="flex-1 ml-4 mb-1">
-                                {isEditing ? (
-                                    <TextInput
-                                        value={name}
-                                        onChangeText={setName}
-                                        className="bg-gray-50 text-gray-900 px-3 py-2 rounded-lg text-xl font-bold border border-gray-200"
-                                        autoFocus
-                                    />
-                                ) : (
-                                    <Text className="text-2xl font-bold text-gray-900" numberOfLines={1}>
-                                        {profile.full_name || "Teacher"}
-                                    </Text>
-                                )}
-                                <Text className="text-gray-500 font-medium capitalize flex-row items-center mt-1">
-                                    {profile.role} • {profile.status}
-                                </Text>
+                            <View>
+                                <InfoRow label="Department" value={teacherDetails.department || 'General Faculty'} icon={GraduationCap} color="#ec4899" isDark={isDark} />
+                                <InfoRow label="Hire Date" value={teacherDetails.hire_date || 'N/A'} icon={Calendar} color="#8b5cf6" isDark={isDark} />
+                                <InfoRow label="Total Subjects" value={stats.totalSubjects.toString()} icon={BookOpen} color="#3b82f6" isDark={isDark} />
+                                <InfoRow label="Active Classes" value={stats.activeClasses.toString()} icon={Layers} color="#10b981" isDark={isDark} />
+                                <InfoRow label="Total Students" value={stats.totalStudents.toString()} icon={Users} color="#f59e0b" isDark={isDark} />
                             </View>
                         </View>
                     </View>
                 </View>
-
-                {/* Tabs */}
-                <View className="flex-row mb-2">
-                    <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                        {renderTabButton('overview', 'Overview', <Briefcase />)}
-                        {renderTabButton('subjects', 'Subjects', <BookOpen />)}
-                        {renderTabButton('classes', 'Classes', <Layers />)}
-                    </ScrollView>
-                </View>
-
-                {/* Content */}
-                {loadingData && !refreshing ? (
-                    <View className="py-10">
-                        <ActivityIndicator size="large" color="#FF6B00" />
-                    </View>
-                ) : (
-                    <>
-                        {activeTab === 'overview' && renderOverview()}
-                        {activeTab === 'subjects' && renderSubjects()}
-                        {activeTab === 'classes' && renderClasses()}
-                    </>
-                )}
-
-            </View>
-        </ScrollView>
+            </ScrollView>
+        </View>
     );
 }
+
+const InfoRow = ({ label, value, icon: Icon, color, isDark }: any) => (
+    <View className="flex-row items-center mb-6">
+        <View className="w-12 h-12 rounded-2xl items-center justify-center mr-4" style={{ backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : `${color}10` }}>
+            <Icon size={20} color={color} />
+        </View>
+        <View className="flex-1">
+            <Text className="text-gray-400 dark:text-gray-500 text-[8px] font-bold uppercase tracking-widest mb-0.5">{label}</Text>
+            <Text className="text-gray-900 dark:text-white font-bold text-base tracking-tight" numberOfLines={1}>{value}</Text>
+        </View>
+    </View>
+);
+
+const InfoInput = ({ label, value, onChange, icon: Icon, isDark }: any) => (
+    <View className="mb-6">
+        <Text className="text-gray-400 dark:text-gray-500 text-[8px] font-bold uppercase tracking-widest mb-2 ml-1">{label}</Text>
+        <View className="flex-row items-center bg-white dark:bg-black border border-gray-200 dark:border-gray-800 rounded-2xl px-4 py-3 shadow-sm">
+            <Icon size={16} color={isDark ? "#4B5563" : "#9CA3AF"} />
+            <TextInput
+                className="flex-1 ml-3 text-gray-900 dark:text-white font-bold text-xs"
+                value={value}
+                onChangeText={onChange}
+                placeholder={`Enter ${label.toLowerCase()}`}
+                placeholderTextColor={isDark ? "#4B5563" : "#D1D5DB"}
+            />
+        </View>
+    </View>
+);

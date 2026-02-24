@@ -1,6 +1,6 @@
-import React from "react";
-import { TouchableOpacity, Text } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import React from "react";
+import { Text, TouchableOpacity } from "react-native";
 
 interface TabButtonProps {
     label: string;
@@ -27,7 +27,7 @@ const TabButton: React.FC<TabButtonProps> = ({
                 color={isActive ? "white" : "#6B7280"}
             />
             <Text
-                className={`ml-1 text-xs font-medium ${isActive ? "text-white" : "text-gray-500"
+                className={`ml-1 text-xs font-medium ${isActive ? "text-white" : "text-gray-500 dark:text-gray-400"
                     }`}
             >
                 {label}

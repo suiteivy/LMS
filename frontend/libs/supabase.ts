@@ -4,36 +4,37 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Platform } from "react-native";
 import { Database } from "@/types/database";
 
-// Storage adapter for React Native
-const asyncStorageAdapter = {
-  getItem: (key: string) => AsyncStorage.getItem(key),
-  setItem: (key: string, value: string) => AsyncStorage.setItem(key, value),
-  removeItem: (key: string) => AsyncStorage.removeItem(key),
-};
-
-// Safe localStorage adapter for Web
-const safeLocalStorage = {
-  getItem: (key: string) => {
-    if (typeof window !== "undefined" && window.localStorage)
-      return window.localStorage.getItem(key);
-    return null;
-  },
-  setItem: (key: string, value: string) => {
-    if (typeof window !== "undefined" && window.localStorage)
-      return window.localStorage.setItem(key, value);
-  },
-  removeItem: (key: string) => {
-    if (typeof window !== "undefined" && window.localStorage)
-      return window.localStorage.removeItem(key);
-  },
-};
 
 const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL || "";
 const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || "";
 
+const storageAdapter = {
+  getItem: async (key: string) => {
+    if (Platform.OS === "web") {
+      if (typeof window === "undefined") return null;
+      return window.localStorage.getItem(key);
+    }
+    return AsyncStorage.getItem(key);
+  },
+  setItem: async (key: string, value: string) => {
+    if (Platform.OS === "web") {
+      if (typeof window === "undefined") return;
+      return window.localStorage.setItem(key, value);
+    }
+    return AsyncStorage.setItem(key, value);
+  },
+  removeItem: async (key: string) => {
+    if (Platform.OS === "web") {
+      if (typeof window === "undefined") return;
+      return window.localStorage.removeItem(key);
+    }
+    return AsyncStorage.removeItem(key);
+  },
+};
+
 export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
   auth: {
-    storage: Platform.OS === "web" ? safeLocalStorage : asyncStorageAdapter,
+    storage: storageAdapter,
     autoRefreshToken: true,
     persistSession: true,
     detectSessionInUrl: false,
@@ -58,6 +59,23 @@ export const authService = {
   // Sign out
   signOut: async () => {
     try {
+      // 1. Try to notify backend to clean up trial session
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.access_token) {
+        try {
+          await fetch(`${process.env.EXPO_PUBLIC_URL}/auth/logout`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${session.access_token}`
+            }
+          });
+        } catch (e) {
+          console.warn("Backend logout failed", e);
+          // Continue to local sign out anyway
+        }
+      }
+
       const { error } = await supabase.auth.signOut();
       return { error };
     } catch (error) {
@@ -157,6 +175,37 @@ export const authService = {
       return { exists: !!data, error };
     } catch (error) {
       return { exists: false, error };
+    }
+  },
+
+  // Start a demo session
+  startDemoSession: async (role: string) => {
+    try {
+      const response = await fetch(`${process.env.EXPO_PUBLIC_URL}/demo/start`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ role }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        return { data: null, error: data.error || "Failed to start demo" };
+      }
+
+      // Manually set the session in Supabase client
+      const { data: sessionData, error: sessionError } = await supabase.auth.setSession({
+        access_token: data.token,
+        refresh_token: data.refreshToken,
+      });
+
+      if (sessionError) return { data: null, error: sessionError };
+
+      return { data, error: null };
+    } catch (error: any) {
+      return { data: null, error: error.message || "Network error" };
     }
   },
 };

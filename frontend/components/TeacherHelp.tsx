@@ -1,6 +1,6 @@
+import { ChevronDown, ChevronUp, LifeBuoy, Mail, MessageSquare, Search } from 'lucide-react-native';
 import React, { useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, TextInput } from 'react-native';
-import { Search, HelpCircle, MessageSquare, Mail, ChevronDown, ChevronUp, LifeBuoy } from 'lucide-react-native';
+import { ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 interface FAQItemProps {
     question: string;

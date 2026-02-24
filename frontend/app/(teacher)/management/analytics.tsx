@@ -4,12 +4,13 @@ import { ArrowLeft, TrendingUp, Users, BookOpen, Clock, Award, ChevronDown, Down
 import { router } from "expo-router";
 import { supabase } from "@/libs/supabase";
 import { useAuth } from "@/contexts/AuthContext";
+import { TeacherAPI } from "@/libs/TeacherAPI";
 
 interface SubjectAnalytics {
     id: string;
     name: string;
     students: number;
-    avgProgress: number; // Mapping to completion rate for now
+    avgProgress: number;
     avgGrade: number;
     completionRate: number;
 }
@@ -58,9 +59,9 @@ const SubjectAnalyticsCard = ({ Subject }: { Subject: SubjectAnalytics }) => {
 };
 
 export default function AnalyticsPage() {
-    const { user, teacherId } = useAuth();
+    const { teacherId } = useAuth();
     const [selectedPeriod, setSelectedPeriod] = useState("All Time");
-    const [SubjectAnalytics, setSubjectAnalytics] = useState<SubjectAnalytics[]>([]);
+    const [subjectAnalytics, setSubjectAnalytics] = useState<SubjectAnalytics[]>([]);
     const [loading, setLoading] = useState(true);
     const [topPerformers, setTopPerformers] = useState<any[]>([]);
 
@@ -71,83 +72,19 @@ export default function AnalyticsPage() {
     }, [teacherId]);
 
     const fetchAnalytics = async () => {
-        if (!teacherId) return;
         setLoading(true);
         try {
-            // 1. Fetch Subjects for this teacher
+            const data = await TeacherAPI.getAnalytics();
+            setSubjectAnalytics(data);
+
             const { data: Subjects, error: SubjectsError } = await supabase
-                .from('subjects') // Fixed: Lowercase 'subjects'
+                .from('subjects')
                 .select('id, title, class_id')
                 .eq('teacher_id', teacherId);
 
             if (SubjectsError) throw SubjectsError;
 
-            // 2. Fetch Assignments & Students count for each Subject
-            const analyticsPromises = Subjects.map(async (Subject) => {
-                // A. Get Student Count
-                let studentCount = 0;
-                if (Subject.class_id) {
-                    const { count } = await supabase
-                        .from('enrollments')
-                        .select('*', { count: 'exact', head: true })
-                        .eq('class_id', Subject.class_id);
-                    studentCount = count || 0;
-                }
-
-                // B. Get Assignments
-                const { data: assignments } = await supabase
-                    .from('assignments')
-                    .select('id, total_points')
-                    .eq('subject_id', Subject.id); // Fixed: Lowercase 'subject_id'
-
-                const assignmentIds = (assignments || []).map(a => a.id);
-
-                // C. Get Submissions
-                let avgGrade = 0;
-                let completionRate = 0;
-                let totalSubmissions = 0;
-
-                if (assignmentIds.length > 0) {
-                    const { data: submissions } = await supabase
-                        .from('submissions')
-                        .select('grade, status')
-                        .in('assignment_id', assignmentIds);
-
-                    if (submissions && submissions.length > 0) {
-                        // Avg Grade calculation
-                        const gradedSubs = submissions.filter(s => s.grade !== null);
-                        if (gradedSubs.length > 0) {
-                            const totalScore = gradedSubs.reduce((sum, s) => sum + (s.grade || 0), 0);
-                            avgGrade = Math.round(totalScore / gradedSubs.length);
-                        }
-
-                        // Completion Rate
-                        totalSubmissions = submissions.length;
-                        const expectedSubmissions = assignmentIds.length * studentCount;
-                        if (expectedSubmissions > 0) {
-                            completionRate = Math.round((totalSubmissions / expectedSubmissions) * 100);
-                        }
-                    }
-                }
-
-                return {
-                    id: Subject.id,
-                    name: Subject.title,
-                    students: studentCount,
-                    avgProgress: completionRate, // reusing
-                    avgGrade,
-                    completionRate
-                };
-            });
-
-            const results = await Promise.all(analyticsPromises);
-            setSubjectAnalytics(results);
-
             // Fetch performance data to calculate top performers
-            // This part is adapted from the instruction, assuming 'TeacherAPI.getStudentPerformance()'
-            // would fetch student grades across all subjects for the teacher.
-            // For now, we'll simulate this by fetching all enrollments and their associated grades.
-
             const { data: enrollments, error: enrollmentsError } = await supabase
                 .from('enrollments')
                 .select(`
@@ -163,7 +100,7 @@ export default function AnalyticsPage() {
                         )
                     )
                 `)
-                .in('class_id', Subjects.map(s => s.class_id).filter(Boolean)); // Filter out null class_ids
+                .in('class_id', Subjects.map(s => s.class_id).filter(Boolean));
 
             if (enrollmentsError) throw enrollmentsError;
 
@@ -211,12 +148,12 @@ export default function AnalyticsPage() {
         }
     };
 
-    const totalStudents = SubjectAnalytics.reduce((acc, c) => acc + c.students, 0);
-    const avgCompletion = SubjectAnalytics.length > 0
-        ? Math.round(SubjectAnalytics.reduce((acc, c) => acc + c.completionRate, 0) / SubjectAnalytics.length)
+    const totalStudents = subjectAnalytics.reduce((acc, c) => acc + (c.students || 0), 0);
+    const avgCompletion = subjectAnalytics.length > 0
+        ? Math.round(subjectAnalytics.reduce((acc, c) => acc + (c.completionRate || 0), 0) / subjectAnalytics.length)
         : 0;
-    const avgGradeOverall = SubjectAnalytics.length > 0
-        ? Math.round(SubjectAnalytics.reduce((acc, c) => acc + c.avgGrade, 0) / SubjectAnalytics.length)
+    const avgGradeOverall = subjectAnalytics.length > 0
+        ? Math.round(subjectAnalytics.reduce((acc, c) => acc + (c.avgGrade || 0), 0) / subjectAnalytics.length)
         : 0;
 
     return (
@@ -242,19 +179,13 @@ export default function AnalyticsPage() {
                             </TouchableOpacity>
                         </View>
 
-                        {/* Period Selector */}
-                        <TouchableOpacity className="bg-white rounded-xl px-4 py-3 mb-6 border border-gray-100 flex-row items-center justify-between">
-                            <Text className="text-gray-700 font-medium">{selectedPeriod}</Text>
-                            <ChevronDown size={16} color="#6B7280" />
-                        </TouchableOpacity>
-
                         {/* Overview Stats */}
                         <View className="flex-row gap-3 mb-6">
                             <StatBox icon={Users} label="Total Students" value={totalStudents.toString()} color="#FF6B00" bgColor="#fff7ed" />
                             <StatBox icon={TrendingUp} label="Avg Completion" value={`${avgCompletion}%`} color="#1a1a1a" bgColor="#f3f4f6" />
                         </View>
                         <View className="flex-row gap-3 mb-6">
-                            <StatBox icon={BookOpen} label="Subjects" value={SubjectAnalytics.length.toString()} color="#FF6B00" bgColor="#fff7ed" />
+                            <StatBox icon={BookOpen} label="Subjects" value={subjectAnalytics.length.toString()} color="#FF6B00" bgColor="#fff7ed" />
                             <StatBox icon={Award} label="Avg Grade" value={`${avgGradeOverall}%`} color="#1a1a1a" bgColor="#f3f4f6" />
                         </View>
 
@@ -262,19 +193,16 @@ export default function AnalyticsPage() {
                             <ActivityIndicator size="large" color="#FF6B00" className="mt-8" />
                         ) : (
                             <>
-                                {/* Performance Chart (Planned feature, removed placeholder) */}
                                 <View className="bg-white p-6 rounded-2xl border border-gray-100 mb-6 items-center">
                                     <TrendingUp size={32} color="#e5e7eb" />
                                     <Text className="text-gray-400 text-sm mt-3 font-medium">Analytics metrics derived from live submissions</Text>
                                 </View>
 
-                                {/* Subject Breakdown */}
                                 <Text className="text-lg font-bold text-gray-900 mb-3">Subject Breakdown</Text>
-                                {SubjectAnalytics.map((Subject) => (
+                                {subjectAnalytics.map((Subject) => (
                                     <SubjectAnalyticsCard key={Subject.id} Subject={Subject} />
                                 ))}
 
-                                {/* Top Performers */}
                                 {topPerformers.length > 0 && (
                                     <View className="bg-teacherBlack p-4 rounded-2xl mt-4">
                                         <Text className="text-white font-bold mb-3">🏆 Top Performers</Text>

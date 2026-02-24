@@ -10,6 +10,8 @@ const libraryRoutes = require("./routes/library.route");
 const bursaryRoutes = require("./routes/bursary.route");
 const financeRoutes = require("./routes/finance.route");
 const notificationRoutes = require("./routes/notification.route");
+const settingsRoutes = require("./routes/settings.route");
+const settingsController = require("./controllers/settings.controller");
 const morgan = require("morgan");
 
 const app = express();
@@ -18,30 +20,11 @@ app.use(express.json());
 
 // Middleware
 app.use(cors()); //cors
-app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(morgan("dev")); // logging
 
-// handle cors
-app.use((req, res, next) => {
-  const origin = req.headers.origin;
-  if (["http://localhost:3000", "http://localhost:5173"].includes(origin)) {
-    res.header("Access-Control-Allow-Origin", origin);
-  } else {
-    res.header("Access-Control-Allow-Origin", "*");
-  }
-  res.header(
-    "Access-Control-Allow-Headers",
-    "Origin, X-Requested-With, Content-Type, Accept, Authorization"
-  );
-  if (req.method === "OPTIONS") {
-    res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE");
-    return res.status(200).json({});
-  }
-  next();
-});
-
 // Routes
+<<<<<<< HEAD
 app.use("/api/auth", authRoutes); // Auth shouldn't be fully blocked, but register handles it
 
 // Apply Subscription Check Middleware to Protected Routes
@@ -60,6 +43,28 @@ app.use("/api/attendance", checkSubscription, require("./routes/attendance.route
 // automated background jobs
 const { startTrialNudgesCron } = require('./cron/trialNudges');
 startTrialNudgesCron();
+=======
+app.use("/api/auth", authRoutes);
+app.use("/api/subjects", subjectRoutes); // Updated endpoint
+app.use("/api/institutions", institutionRoutes);
+app.use("/api/library", libraryRoutes);
+app.use("/api/bursary", bursaryRoutes);
+app.use("/api/finance", financeRoutes);
+app.use("/api/notifications", notificationRoutes);
+app.use("/api/timetable", require("./routes/timetable.route"));
+app.use("/api/funds", require("./routes/finance_funds.route"));
+app.use("/api/attendance", require("./routes/attendance.route"));
+app.use("/api/academic", require("./routes/academic.route.js"));
+app.use("/api/exams", require("./routes/exams.route.js"));
+app.use("/api/parent", require("./routes/parent.route.js"));
+app.use("/api/messages", require("./routes/messaging.route.js"));
+app.use("/api/resources", require("./routes/resources.route.js"));
+app.use("/api/teacher", require("./routes/teacher.route.js"));
+app.use("/api/settings", settingsRoutes);
+app.use("/api/demo", require("./routes/demo.route"));
+app.use("/api/student", require("./routes/student.route"));
+app.use("/api/classes", require("./routes/class.route"));
+>>>>>>> main
 
 // health check
 app.get("/", (req, res) => {
@@ -68,8 +73,10 @@ app.get("/", (req, res) => {
 
 // error handling
 app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(500).json({ error: "Internal Server Error" });
+  console.error(`[Error] ${req.method} ${req.url}`);
+  console.error("Error Details:", err.message);
+  console.error("Stack:", err.stack);
+  res.status(500).json({ error: "Internal Server Error", message: err.message });
 });
 
 process.on('uncaughtException', (err) => {
@@ -82,6 +89,22 @@ process.on('unhandledRejection', (reason, p) => {
 
 // Start server
 const PORT = process.env.PORT || 4001;
-app.listen(PORT, () =>
-  console.log(`LMS Backend running on http://localhost:${PORT}`)
-);
+const server = app.listen(PORT, () => {
+  console.log(`LMS Backend running on http://localhost:${PORT}`);
+  // Initialize dynamic currency rates check
+  settingsController.checkAndAutoUpdateRates();
+});
+
+// DEBUG: Keep process alive and log exit
+setInterval(() => { }, 10000); // 10s keep-alive
+
+process.on('exit', (code) => {
+  console.log(`[DEBUG] Process exiting with code: ${code}`);
+});
+
+process.on('SIGTERM', () => {
+  console.log('[DEBUG] SIGTERM received');
+  server.close(() => {
+    console.log('[DEBUG] Server closed');
+  });
+});

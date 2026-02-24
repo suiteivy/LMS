@@ -75,6 +75,9 @@ exports.enrollStudentInSubject = async (req, res) => {
     }
 
     // 3. Enroll (Insert into enrollments)
+    // 3. Enroll (Insert into enrollments)
+    console.log(`[Enrollment] Attempting to enroll student ${student_id} in subject ${subject_id}`);
+
     const { error } = await supabase
       .from("enrollments")
       .insert([{
@@ -85,16 +88,21 @@ exports.enrollStudentInSubject = async (req, res) => {
       }]);
 
     if (error) {
+      console.error("[Enrollment] Insert error:", error);
       if (error.code === '23505') { // Unique violation
         return res.status(400).json({ error: "Already enrolled" });
+      }
+      if (error.code === '23503') { // Foreign key violation
+        return res.status(400).json({ error: "Invalid student or subject ID (Reference violation)" });
       }
       throw error;
     }
 
+    console.log("[Enrollment] Success");
     res.status(200).json({ message: "Enrolled successfully" });
   } catch (err) {
     console.error("enrollStudentInSubject error:", err);
-    res.status(500).json({ error: "Server error" });
+    res.status(500).json({ error: "Server error: " + (err.message || err) });
   }
 };
 
@@ -148,18 +156,20 @@ exports.getFilteredSubjects = async (req, res) => {
         .select("*")
         .eq("institution_id", institution_id));
     } else if (userRole === "teacher") {
-      // Subjects where the user is the teacher
-      // Resolve teacher ID from User ID?
-      // Or subjects table uses User ID? Migration says teacher_id.
-      // Usually logic needs to match schema.
-      const { data: teacher } = await supabase.from('teachers').select('id').eq('user_id', userId).single();
-      const teacherId = teacher ? teacher.id : null;
+      const { data: teacher, error: tError } = await supabase.from('teachers').select('id').eq('user_id', userId).single();
+
+      if (tError || !teacher) {
+        console.warn(`[SubjectController] Teacher profile not found for user ${userId}`);
+        return res.status(404).json({ error: "Teacher profile not found" });
+      }
+
+      const teacherId = teacher.id;
 
       ({ data, error } = await supabase
         .from("subjects")
         .select("*")
         .eq("institution_id", institution_id)
-        .eq("teacher_id", teacherId)); // Empty if teacher not found?
+        .eq("teacher_id", teacherId));
     } else if (userRole === "student") {
       // Subjects where student is enrolled
       const { data: student } = await supabase.from('students').select('id').eq('user_id', userId).single();

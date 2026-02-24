@@ -38,7 +38,10 @@ router.delete(
 // For now, allow authenticated users
 router.get("/class/:class_id", authMiddleware, getClassTimetable);
 
-// View: Teacher timetable
-router.get("/teacher{/:teacher_id}", authMiddleware, getTeacherTimetable);
+// View: Teacher's own timetable (must be before :teacher_id route)
+router.get("/teacher", authMiddleware, getTeacherTimetable);
+
+// View: Specific teacher's timetable
+router.get("/teacher/:teacher_id", authMiddleware, getTeacherTimetable);
 
 module.exports = router;

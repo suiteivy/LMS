@@ -60,6 +60,9 @@ exports.login = async (req, res) => {
     } else if (userData.role === 'parent') {
       const { data } = await supabase.from('parents').select('id').eq('user_id', user.id).single();
       customId = data?.id;
+    } else if (userData.role === 'bursary') {
+      const { data } = await supabase.from('bursars').select('id').eq('user_id', user.id).single();
+      customId = data?.id;
     }
 
     res.status(200).json({
@@ -120,7 +123,7 @@ exports.enrollUser = async (req, res) => {
     });
   }
 
-  if (!['admin', 'student', 'teacher', 'parent'].includes(role)) {
+  if (!['admin', 'student', 'teacher', 'parent', 'bursary'].includes(role)) {
     return res.status(400).json({ error: "Invalid role" });
   }
 
@@ -141,6 +144,7 @@ exports.enrollUser = async (req, res) => {
     const uid = authData.user.id;
 
     // 3. Insert into users table
+    const targetInstitutionId = institution_id || req.institution_id;
     const { error: userInsertError } = await supabase.from("users").insert({
       id: uid,
       email,
@@ -150,7 +154,7 @@ exports.enrollUser = async (req, res) => {
       gender: gender || null,
       date_of_birth: date_of_birth || null,
       address: address || null,
-      institution_id: institution_id || null,
+      institution_id: targetInstitutionId,
     });
 
     if (userInsertError) throw userInsertError;
@@ -208,7 +212,7 @@ exports.enrollUser = async (req, res) => {
             full_name: parent_info.full_name,
             role: 'parent',
             phone: parent_info.phone || null,
-            institution_id: institution_id || null,
+            institution_id: targetInstitutionId,
           });
 
           await new Promise(resolve => setTimeout(resolve, 500));
@@ -295,6 +299,12 @@ exports.enrollUser = async (req, res) => {
       customId = adminData?.id;
     }
 
+    if (role === 'bursary') {
+      const { data: bursarData } = await supabase
+        .from('bursars').select('id').eq('user_id', uid).single();
+      customId = bursarData?.id;
+    }
+
     res.status(201).json({
       message: "User enrolled successfully",
       uid,
@@ -343,6 +353,7 @@ exports.adminUpdateUser = async (req, res) => {
     parent_address,
     avatar_url,
     linked_students, // For parents: Array of custom student IDs
+    linked_parents,  // For students: Array of custom parent IDs [NEW]
     class_id,        // For students: UUID of class
     subject_ids,     // For students/teachers: Array of UUIDs
   } = req.body;
@@ -360,7 +371,7 @@ exports.adminUpdateUser = async (req, res) => {
     if (gender !== undefined) userUpdates.gender = gender || null;
     if (date_of_birth !== undefined) userUpdates.date_of_birth = date_of_birth || null;
     if (address !== undefined) userUpdates.address = address || null;
-    if (institution_id !== undefined) userUpdates.institution_id = institution_id || null;
+    if (institution_id !== undefined) userUpdates.institution_id = institution_id || req.institution_id;
     if (avatar_url !== undefined) userUpdates.avatar_url = avatar_url || null;
 
     if (Object.keys(userUpdates).length > 0) {
@@ -399,17 +410,37 @@ exports.adminUpdateUser = async (req, res) => {
 
         if (customStudentId) {
           if (class_id === null) {
-            await supabase.from('enrollments').delete().eq('student_id', customStudentId);
+            await supabase.from('class_enrollments').delete().eq('student_id', customStudentId);
           } else {
             // Check if already enrolled in a class
-            const { data: existing } = await supabase.from('enrollments')
+            const { data: existing } = await supabase.from('class_enrollments')
               .select('id').eq('student_id', customStudentId).maybeSingle();
 
             if (existing) {
-              await supabase.from('enrollments').update({ class_id }).eq('student_id', customStudentId);
+              await supabase.from('class_enrollments').update({ class_id }).eq('student_id', customStudentId);
             } else {
-              await supabase.from('enrollments').insert({ student_id: customStudentId, class_id });
+              await supabase.from('class_enrollments').insert({ student_id: customStudentId, class_id });
             }
+          }
+        }
+      }
+
+      // Link Parents (New Feature)
+      if (linked_parents !== undefined) {
+        const { data: studentData } = await supabase.from('students').select('id').eq('user_id', id).single();
+        const customStudentId = studentData?.id;
+
+        if (customStudentId) {
+          // Delete existing links for this student? 
+          // Be careful not to delete links to other students for the same parent. 
+          // `parent_students` is (parent_id, student_id).
+          // We want to set the parents for THIS student.
+          // So we delete where student_id = customStudentId.
+          await supabase.from('parent_students').delete().eq('student_id', customStudentId);
+
+          if (linked_parents && linked_parents.length > 0) {
+            const inserts = linked_parents.map(pid => ({ parent_id: pid, student_id: customStudentId, relationship: 'guardian' }));
+            await supabase.from('parent_students').insert(inserts);
           }
         }
       }
@@ -439,6 +470,22 @@ exports.adminUpdateUser = async (req, res) => {
           // Assign new ones
           if (subject_ids && subject_ids.length > 0) {
             await supabase.from('subjects').update({ teacher_id: customTeacherId }).in('id', subject_ids);
+          }
+        }
+      }
+
+      // Update class teacher assignment
+      if (req.body.class_teacher_id !== undefined) {
+        const { data: teacherData } = await supabase.from('teachers').select('id').eq('user_id', id).single();
+        const customTeacherId = teacherData?.id;
+        const class_teacher_id = req.body.class_teacher_id;
+
+        if (customTeacherId) {
+          // Reset old classes where this teacher was class teacher
+          await supabase.from('classes').update({ teacher_id: null }).eq('teacher_id', customTeacherId);
+          // Assign new one
+          if (class_teacher_id) {
+            await supabase.from('classes').update({ teacher_id: customTeacherId }).eq('id', class_teacher_id);
           }
         }
       }
@@ -509,5 +556,185 @@ exports.deleteUser = async (req, res) => {
   } catch (err) {
     console.error('deleteUser error:', err);
     res.status(500).json({ error: "Server error during deletion" });
+  }
+};
+
+/**
+ * Search users by name or role
+ */
+exports.searchUsers = async (req, res) => {
+  try {
+    const { q, role } = req.query;
+    let query = supabase
+      .from("users")
+      .select("id, full_name, email, role, avatar_url");
+
+    if (q) {
+      query = query.ilike("full_name", `%${q}%`);
+    }
+
+    if (role) {
+      query = query.eq("role", role);
+    }
+
+    const { data, error } = await query.limit(10);
+
+    if (error) throw error;
+    res.json(data);
+  } catch (err) {
+    console.error("searchUsers error:", err);
+    res.status(500).json({ error: "Server error" });
+  }
+};
+
+/**
+ * Handle logout to clean up trial sessions
+ */
+exports.logout = async (req, res) => {
+  try {
+    const user = req.user;
+    if (user) {
+      // Clean up trial session for this user if it exists
+      const { error } = await supabase
+        .from('trial_sessions')
+        .delete()
+        .eq('demo_user_id', user.id);
+
+      if (error) {
+        console.warn("Error cleaning up trial session:", error);
+      } else {
+        console.log(`Trial session cleaned up for user ${user.id}`);
+      }
+    }
+    res.status(200).json({ message: "Logged out successfully" });
+  } catch (err) {
+    console.error("Logout error:", err);
+    res.status(500).json({ error: "Logout error" });
+  }
+};
+
+/**
+ * Change password for authenticated user
+ * Requires current_password and new_password in body
+ */
+exports.changePassword = async (req, res) => {
+  try {
+    const { current_password, new_password } = req.body;
+    const userId = req.userId;
+
+    if (!current_password || !new_password) {
+      return res.status(400).json({ error: "Current password and new password are required" });
+    }
+
+    if (new_password.length < 6) {
+      return res.status(400).json({ error: "New password must be at least 6 characters" });
+    }
+
+    // Verify current password by attempting sign-in
+    const { data: userData } = await supabase.from('users').select('email').eq('id', userId).single();
+    if (!userData) return res.status(404).json({ error: "User not found" });
+
+    const { createClient } = require("@supabase/supabase-js");
+    const scopedClient = createClient(
+      process.env.SUPABASE_URL || process.env.EXPO_PUBLIC_SUPABASE_URL,
+      process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY,
+      { auth: { persistSession: false } }
+    );
+
+    const { error: signInError } = await scopedClient.auth.signInWithPassword({
+      email: userData.email,
+      password: current_password,
+    });
+
+    if (signInError) {
+      return res.status(401).json({ error: "Current password is incorrect" });
+    }
+
+    // Update password via admin API
+    const { error: updateError } = await supabase.auth.admin.updateUserById(userId, {
+      password: new_password,
+    });
+
+    if (updateError) throw updateError;
+
+    res.status(200).json({ message: "Password changed successfully" });
+  } catch (err) {
+    console.error("changePassword error:", err);
+    res.status(500).json({ error: err.message || "Failed to change password" });
+  }
+};
+
+/**
+ * Send password reset email (public endpoint)
+ */
+exports.forgotPassword = async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({ error: "Email is required" });
+    }
+
+    const { createClient } = require("@supabase/supabase-js");
+    const scopedClient = createClient(
+      process.env.SUPABASE_URL || process.env.EXPO_PUBLIC_SUPABASE_URL,
+      process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY,
+      { auth: { persistSession: false } }
+    );
+
+    const { error } = await scopedClient.auth.resetPasswordForEmail(email, {
+      redirectTo: process.env.PASSWORD_RESET_REDIRECT_URL || undefined,
+    });
+
+    if (error) throw error;
+
+    // Always return success to not leak whether email exists
+    res.status(200).json({ message: "If an account with that email exists, a reset link has been sent." });
+  } catch (err) {
+    console.error("forgotPassword error:", err);
+    // Still return 200 to not leak info
+    res.status(200).json({ message: "If an account with that email exists, a reset link has been sent." });
+  }
+};
+
+/**
+ * Reset password using access token from reset email
+ */
+exports.resetPassword = async (req, res) => {
+  try {
+    const { access_token, new_password } = req.body;
+
+    if (!access_token || !new_password) {
+      return res.status(400).json({ error: "Access token and new password are required" });
+    }
+
+    if (new_password.length < 6) {
+      return res.status(400).json({ error: "Password must be at least 6 characters" });
+    }
+
+    // Get user from the access token
+    const { createClient } = require("@supabase/supabase-js");
+    const scopedClient = createClient(
+      process.env.SUPABASE_URL || process.env.EXPO_PUBLIC_SUPABASE_URL,
+      process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY,
+      { auth: { persistSession: false } }
+    );
+
+    const { data: { user }, error: getUserError } = await scopedClient.auth.getUser(access_token);
+    if (getUserError || !user) {
+      return res.status(401).json({ error: "Invalid or expired reset token" });
+    }
+
+    // Update password via admin API
+    const { error: updateError } = await supabase.auth.admin.updateUserById(user.id, {
+      password: new_password,
+    });
+
+    if (updateError) throw updateError;
+
+    res.status(200).json({ message: "Password reset successfully" });
+  } catch (err) {
+    console.error("resetPassword error:", err);
+    res.status(500).json({ error: err.message || "Failed to reset password" });
   }
 };

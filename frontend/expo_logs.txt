@@ -1,0 +1,3 @@
+Need to install the following packages:
+expo-cli@6.3.12
+Ok to proceed? (y) 

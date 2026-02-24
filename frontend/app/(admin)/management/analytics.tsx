@@ -1,21 +1,32 @@
-import React, { useState } from "react";
-import { View, Text, ScrollView, ActivityIndicator, TouchableOpacity, RefreshControl } from "react-native";
+import { UnifiedHeader } from "@/components/common/UnifiedHeader";
+import { useTheme } from "@/contexts/ThemeContext";
 import { useDashboardStats } from "@/hooks/useDashboardStats";
-import { Users, BookOpen, GraduationCap, DollarSign, TrendingUp, Calendar, ArrowLeft, BarChart3 } from "lucide-react-native";
 import { router } from "expo-router";
+import { BarChart3, BookOpen, DollarSign, GraduationCap, TrendingUp, Users } from "lucide-react-native";
+import React, { useState } from "react";
+import { ActivityIndicator, RefreshControl, ScrollView, Text, TouchableOpacity, View } from "react-native";
 
-const StatCard = ({ title, value, icon: Icon, color, trend }: any) => (
-    <View className="bg-white p-5 rounded-3xl border border-gray-100 shadow-sm flex-1 min-w-[160px] m-1">
-        <View className={`p-3 rounded-2xl mb-4 self-start`} style={{ backgroundColor: `${color}15` }}>
+const StatCard = ({ title, value, icon: Icon, color, trend, isDark }: any) => (
+    <View style={{
+        backgroundColor: isDark ? '#1e1e1e' : '#ffffff',
+        padding: 20,
+        borderRadius: 24,
+        borderWidth: 1,
+        borderColor: isDark ? '#2c2c2c' : '#f3f4f6',
+        flex: 1,
+        minWidth: 160,
+        margin: 4,
+    }}>
+        <View style={{ backgroundColor: `${color}20`, padding: 12, borderRadius: 16, marginBottom: 16, alignSelf: 'flex-start' }}>
             <Icon size={24} color={color} />
         </View>
-        <Text className="text-gray-500 text-sm font-medium">{title}</Text>
-        <View className="flex-row items-end justify-between mt-1">
-            <Text className="text-gray-900 text-2xl font-bold">{value}</Text>
+        <Text style={{ color: isDark ? '#9ca3af' : '#6b7280', fontSize: 13, fontWeight: '500' }} numberOfLines={1} adjustsFontSizeToFit>{title}</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', marginTop: 4 }}>
+            <Text style={{ color: isDark ? '#f1f1f1' : '#111827', fontSize: 24, fontWeight: 'bold' }} numberOfLines={1} adjustsFontSizeToFit>{value}</Text>
             {trend && (
-                <View className="flex-row items-center bg-green-50 px-2 py-0.5 rounded-full">
+                <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: isDark ? '#052e16' : '#f0fdf4', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 999 }}>
                     <TrendingUp size={12} color="#16a34a" />
-                    <Text className="text-green-700 text-xs font-bold ml-1">{trend}</Text>
+                    <Text style={{ color: '#16a34a', fontSize: 11, fontWeight: 'bold', marginLeft: 4 }}>{trend}</Text>
                 </View>
             )}
         </View>
@@ -24,6 +35,7 @@ const StatCard = ({ title, value, icon: Icon, color, trend }: any) => (
 
 export default function AnalyticsScreen() {
     const { stats, loading, revenueData, refresh } = useDashboardStats();
+    const { isDark } = useTheme();
     const [refreshing, setRefreshing] = useState(false);
 
     const onRefresh = async () => {
@@ -34,127 +46,135 @@ export default function AnalyticsScreen() {
 
     if (loading && !refreshing) {
         return (
-            <View className="flex-1 justify-center items-center bg-gray-50">
-                <ActivityIndicator size="large" color="#0D9488" />
+            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: isDark ? '#121212' : '#f9fafb' }}>
+                <ActivityIndicator size="large" color="#FF6B00" />
             </View>
         );
     }
 
-    // Map icons to stat keys
     const iconMap: any = {
         "Total Students": GraduationCap,
         "Active Subjects": BookOpen,
         "Teachers": Users,
-        "Revenue": DollarSign
+        "Revenue": DollarSign,
     };
 
     const colorMap: any = {
         "Total Students": "#3b82f6",
         "Active Subjects": "#10b981",
         "Teachers": "#8b5cf6",
-        "Revenue": "#f59e0b"
+        "Revenue": "#FF6B00",
     };
 
-    // Calculate max amount for chart scaling
     const maxRevenue = Math.max(...revenueData.map(d => d.amount), 100);
 
+    const surface = isDark ? '#1e1e1e' : '#ffffff';
+    const border = isDark ? '#2c2c2c' : '#f3f4f6';
+    const textPrimary = isDark ? '#f1f1f1' : '#111827';
+    const textSecondary = isDark ? '#9ca3af' : '#6b7280';
+
     return (
-        <ScrollView
-            className="flex-1 bg-gray-50"
-            showsVerticalScrollIndicator={false}
-            refreshControl={
-                <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={["#0D9488"]} />
-            }
-        >
-            <View className="p-6">
-                {/* Header */}
-                <View className="flex-row items-center mb-6">
-                    <TouchableOpacity
-                        onPress={() => router.back()}
-                        className="p-2 bg-white rounded-xl shadow-sm border border-gray-100 mr-4"
-                    >
-                        <ArrowLeft size={20} color="#374151" />
-                    </TouchableOpacity>
-                    <View>
-                        <Text className="text-2xl font-extrabold text-gray-900">Analytics</Text>
-                        <Text className="text-gray-500 text-sm">Real-time system performance insights</Text>
+        <View style={{ flex: 1, backgroundColor: isDark ? '#121212' : '#f9fafb' }}>
+            <UnifiedHeader
+                title="Management"
+                subtitle="Analytics"
+                role="Admin"
+                onBack={() => router.back()}
+            />
+            <ScrollView
+                style={{ flex: 1 }}
+                showsVerticalScrollIndicator={false}
+                refreshControl={
+                    <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={["#FF6B00"]} tintColor="#FF6B00" />
+                }
+            >
+                <View style={{ padding: 24 }}>
+                    {/* Stats Grid */}
+                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginHorizontal: -4, marginBottom: 24 }}>
+                        {stats.map((stat, index) => (
+                            <StatCard
+                                key={index}
+                                title={stat.label}
+                                value={stat.value}
+                                icon={iconMap[stat.label] || BarChart3}
+                                color={colorMap[stat.label] || "#FF6B00"}
+                                trend={stat.trend?.value}
+                                isDark={isDark}
+                            />
+                        ))}
                     </View>
-                </View>
 
-                {/* Stats Grid */}
-                <View className="flex-row flex-wrap -m-1 mb-6">
-                    {stats.map((stat, index) => (
-                        <StatCard
-                            key={index}
-                            title={stat.label}
-                            value={stat.value}
-                            icon={iconMap[stat.label] || BarChart3}
-                            color={colorMap[stat.label] || "#0D9488"}
-                            trend={stat.trend?.value}
-                        />
-                    ))}
-                </View>
-
-                {/* Revenue Overview (Last 7 Days) */}
-                <View className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm mb-6">
-                    <View className="flex-row justify-between items-center mb-6">
-                        <Text className="text-lg font-bold text-gray-900">Revenue (Last 7 Days)</Text>
-                        <View className="bg-teal-50 px-3 py-1 rounded-full">
-                            <Text className="text-teal-600 text-xs font-bold">Live Data</Text>
+                    {/* Revenue Chart */}
+                    <View style={{ backgroundColor: surface, padding: 24, borderRadius: 24, borderWidth: 1, borderColor: border, marginBottom: 24 }}>
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+                            <Text style={{ fontSize: 17, fontWeight: 'bold', color: textPrimary }}>Revenue (Last 7 Days)</Text>
+                            <View style={{ backgroundColor: isDark ? 'rgba(255,107,0,0.12)' : '#fff7ed', paddingHorizontal: 12, paddingVertical: 4, borderRadius: 999 }}>
+                                <Text style={{ color: '#FF6B00', fontSize: 11, fontWeight: 'bold' }}>Live Data</Text>
+                            </View>
                         </View>
-                    </View>
 
-                    {/* Dynamic Bar Chart */}
-                    <View className="flex-row items-end justify-between h-48 px-2">
-                        {revenueData.map((data, i) => {
-                            const height = (data.amount / maxRevenue) * 100;
-                            return (
-                                <View key={i} className="items-center flex-1">
-                                    <View className="mb-2">
-                                        <Text className="text-[8px] text-gray-400 font-bold">${data.amount}</Text>
+                        <View style={{ flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', height: 192, paddingHorizontal: 8 }}>
+                            {revenueData.map((data, i) => {
+                                const height = (data.amount / maxRevenue) * 100;
+                                return (
+                                    <View key={i} style={{ alignItems: 'center', flex: 1 }}>
+                                        <Text style={{ fontSize: 8, color: textSecondary, fontWeight: 'bold', marginBottom: 8 }}>${data.amount}</Text>
+                                        <View style={{
+                                            height: `${Math.max(height, 5)}%`,
+                                            width: 32,
+                                            backgroundColor: '#FF6B00',
+                                            borderTopLeftRadius: 8,
+                                            borderTopRightRadius: 8,
+                                            opacity: 0.9,
+                                        }} />
+                                        <Text style={{ color: textSecondary, fontSize: 10, marginTop: 8, fontWeight: '500' }}>{data.day}</Text>
                                     </View>
-                                    <View
-                                        style={{ height: `${Math.max(height, 5)}%` }}
-                                        className="w-8 bg-teal-600 rounded-t-lg opacity-80"
-                                    />
-                                    <Text className="text-gray-400 text-[10px] mt-2 font-medium">{data.day}</Text>
-                                </View>
-                            );
-                        })}
-                    </View>
-                    {revenueData.length === 0 && (
-                        <View className="h-40 justify-center items-center">
-                            <Text className="text-gray-400">No transaction data yet</Text>
+                                );
+                            })}
                         </View>
-                    )}
-                </View>
+                        {revenueData.length === 0 && (
+                            <View style={{ height: 160, justifyContent: 'center', alignItems: 'center' }}>
+                                <Text style={{ color: textSecondary }}>No transaction data yet</Text>
+                            </View>
+                        )}
+                    </View>
 
-                {/* System Activity */}
-                <View className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm">
-                    <Text className="text-lg font-bold text-gray-900 mb-4">System Capacity</Text>
-                    <View className="space-y-4">
-                        <View className="mb-4">
-                            <View className="flex-row justify-between mb-1">
-                                <Text className="text-sm text-gray-600 font-medium">Database Usage</Text>
-                                <Text className="text-sm text-gray-900 font-bold">Low</Text>
+                    {/* System Capacity */}
+                    <View style={{ backgroundColor: surface, padding: 24, borderRadius: 24, borderWidth: 1, borderColor: border }}>
+                        <Text style={{ fontSize: 17, fontWeight: 'bold', color: textPrimary, marginBottom: 16 }}>System Capacity</Text>
+
+                        <View style={{ marginBottom: 16 }}>
+                            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 }}>
+                                <Text style={{ fontSize: 13, color: textSecondary, fontWeight: '500' }}>Database Usage</Text>
+                                <Text style={{ fontSize: 13, color: textPrimary, fontWeight: 'bold' }}>
+                                    {parseInt(stats.find(s => s.label === "Total Students")?.value || "0") > 1000 ? "Medium" : "Low"}
+                                </Text>
                             </View>
-                            <View className="h-2 bg-gray-100 rounded-full overflow-hidden">
-                                <View className="h-full bg-blue-500 w-[15%]" />
+                            <View style={{ height: 8, backgroundColor: isDark ? '#2c2c2c' : '#f3f4f6', borderRadius: 999, overflow: 'hidden' }}>
+                                <View style={{
+                                    height: '100%',
+                                    backgroundColor: '#3b82f6',
+                                    width: `${Math.min((parseInt(stats.find(s => s.label === "Total Students")?.value || "0") / 5000) * 100, 100)}%`,
+                                    borderRadius: 999,
+                                }} />
                             </View>
+                            <Text style={{ fontSize: 11, color: textSecondary, marginTop: 4 }}>Based on student records</Text>
                         </View>
+
                         <View>
-                            <View className="flex-row justify-between mb-1">
-                                <Text className="text-sm text-gray-600 font-medium">Server Status</Text>
-                                <Text className="text-sm text-teal-600 font-bold">Optimal</Text>
+                            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 }}>
+                                <Text style={{ fontSize: 13, color: textSecondary, fontWeight: '500' }}>Server Status</Text>
+                                <Text style={{ fontSize: 13, color: '#10b981', fontWeight: 'bold' }}>Optimal</Text>
                             </View>
-                            <View className="h-2 bg-gray-100 rounded-full overflow-hidden">
-                                <View className="h-full bg-teal-500 w-[100%]" />
+                            <View style={{ height: 8, backgroundColor: isDark ? '#2c2c2c' : '#f3f4f6', borderRadius: 999, overflow: 'hidden' }}>
+                                <View style={{ height: '100%', backgroundColor: '#10b981', width: '100%', borderRadius: 999 }} />
                             </View>
+                            <Text style={{ fontSize: 11, color: textSecondary, marginTop: 4 }}>All services operational</Text>
                         </View>
                     </View>
                 </View>
-            </View>
-            <View className="h-10" />
-        </ScrollView>
+                <View style={{ height: 40 }} />
+            </ScrollView>
+        </View>
     );
 }

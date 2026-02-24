@@ -17,25 +17,32 @@ export interface TeacherAttendance {
 }
 
 export const TeacherAttendanceAPI = {
-    // Get attendance for a date
+    // Teacher Attendance
     getAttendance: async (date: string) => {
-        // Using generic api wrapper if possible but let's stick to axios for consistency with my other services if they used it, 
-        // actually looking at previous file `FundsService` I used axios directly.
-        // But `api.ts` exists. Let's use `api` wrapper if it handles token.
-        // `api.ts` usually handles token.
         const response = await api.get(`/attendance/teachers?date=${date}`);
         return response.data;
     },
 
-    // Mark attendance
     markAttendance: async (data: { teacher_id: string; date: string; status: string; notes?: string }) => {
         const response = await api.post('/attendance/teachers', data);
         return response.data;
     },
 
-    // Bulk mark (optional, but good for admin)
-    bulkMark: async (data: { date: string; records: { teacher_id: string; status: string }[] }) => {
-        const response = await api.post('/attendance/teachers/bulk', data);
+    // Student Attendance
+    getStudentAttendance: async (date: string, subjectId: string) => {
+        const response = await api.get(`/attendance/students`, { params: { date, subject_id: subjectId } });
+        return response.data;
+    },
+
+    markStudentAttendance: async (data: {
+        student_id: string;
+        subject_id: string;
+        class_id?: string;
+        status: string;
+        date?: string;
+        notes?: string
+    }) => {
+        const response = await api.post('/attendance/students', data);
         return response.data;
     }
 };

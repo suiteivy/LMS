@@ -1,20 +1,21 @@
-import React, { useState, useEffect, useCallback } from "react";
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  ScrollView,
-  Alert,
-  TextInput,
-  Modal,
-  RefreshControl,
-  ActivityIndicator,
-} from "react-native";
-import { Ionicons } from "@expo/vector-icons";
+import { EmptyState } from "@/components/common/EmptyState";
+import { useTheme } from "@/contexts/ThemeContext";
 import { LibraryAPI, useLibraryAPI } from "@/services/LibraryService";
 import { FrontendBorrowedBook } from "@/types/types";
-import { EmptyState } from "@/components/common/EmptyState";
+import { Ionicons } from "@expo/vector-icons";
 import { BookOpen } from "lucide-react-native";
+import React, { useCallback, useEffect, useState } from "react";
+import {
+  ActivityIndicator,
+  Alert,
+  Modal,
+  RefreshControl,
+  ScrollView,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from "react-native";
 
 // Extended interface to match your original component structure
 interface ExtendedBorrowedBook extends FrontendBorrowedBook {
@@ -45,10 +46,11 @@ const BorrowedBooksOverview: React.FC<BorrowedBooksOverviewProps> = ({
   onProcessFine,
 }) => {
   // State management
+  const { isDark } = useTheme();
   const [localBorrowedBooks, setLocalBorrowedBooks] = useState<ExtendedBorrowedBook[]>([]);
   const borrowedBooks = (propsBorrowedBooks?.map(b => (b as ExtendedBorrowedBook)) || localBorrowedBooks);
   const [searchQuery, setSearchQuery] = useState("");
-  const [filterStatus, setFilterStatus] = useState<
+  const [statusFilter, setStatusFilter] = useState<
     "all" | "borrowed" | "overdue" | "returned" | "waiting" | "ready_for_pickup"
   >("all");
   const [showReturnModal, setShowReturnModal] = useState(false);
@@ -134,45 +136,45 @@ const BorrowedBooksOverview: React.FC<BorrowedBooksOverviewProps> = ({
       case "borrowed":
         if (daysRemaining !== undefined && daysRemaining <= 1) {
           return {
-            bg: "bg-orange-100",
-            text: "text-orange-800",
-            border: "border-orange-200",
+            bg: "bg-orange-100 dark:bg-orange-900",
+            text: "text-orange-800 dark:text-orange-200",
+            border: "border-orange-200 dark:border-orange-700",
           };
         }
         return {
-          bg: "bg-teal-100",
-          text: "text-teal-800",
-          border: "border-teal-200",
+          bg: "bg-teal-100 dark:bg-teal-900",
+          text: "text-teal-800 dark:text-teal-200",
+          border: "border-teal-200 dark:border-teal-700",
         };
       case "overdue":
         return {
-          bg: "bg-red-100",
-          text: "text-red-800",
-          border: "border-red-200",
+          bg: "bg-red-100 dark:bg-red-900",
+          text: "text-red-800 dark:text-red-200",
+          border: "border-red-200 dark:border-red-700",
         };
       case "returned":
         return {
-          bg: "bg-green-100",
-          text: "text-green-800",
-          border: "border-green-200",
+          bg: "bg-green-100 dark:bg-green-900",
+          text: "text-green-800 dark:text-green-200",
+          border: "border-green-200 dark:border-green-700",
         };
       case "waiting":
         return {
-          bg: "bg-yellow-100",
-          text: "text-yellow-800",
-          border: "border-yellow-200",
+          bg: "bg-yellow-100 dark:bg-yellow-900",
+          text: "text-yellow-800 dark:text-yellow-200",
+          border: "border-yellow-200 dark:border-yellow-700",
         };
       case "ready_for_pickup":
         return {
-          bg: "bg-green-100",
-          text: "text-green-800",
-          border: "border-green-200",
+          bg: "bg-green-100 dark:bg-green-900",
+          text: "text-green-800 dark:text-green-200",
+          border: "border-green-200 dark:border-green-700",
         };
       default:
         return {
-          bg: "bg-gray-100",
-          text: "text-gray-800",
-          border: "border-gray-200",
+          bg: "bg-gray-100 dark:bg-gray-800",
+          text: "text-gray-800 dark:text-gray-200",
+          border: "border-gray-200 dark:border-gray-700",
         };
     }
   };
@@ -427,7 +429,7 @@ const BorrowedBooksOverview: React.FC<BorrowedBooksOverviewProps> = ({
       book.isbn.toLowerCase().includes(searchQuery.toLowerCase());
 
     const matchesFilter =
-      filterStatus === "all" || book.status === filterStatus;
+      statusFilter === "all" || book.status === statusFilter;
 
     return matchesSearch && matchesFilter;
   });
@@ -465,17 +467,17 @@ const BorrowedBooksOverview: React.FC<BorrowedBooksOverviewProps> = ({
     return (
       <View
         key={borrowedBook.id}
-        className="bg-white rounded-xl p-4 mb-3 shadow-sm border border-slate-200"
+        className="bg-white dark:bg-gray-900 rounded-xl p-4 mb-3 shadow-sm border border-slate-200 dark:border-gray-700"
       >
         <View className="flex-row justify-between items-start mb-3">
           <View className="flex-1">
-            <Text className="text-lg font-semibold text-slate-800 mb-1">
+            <Text className="text-lg font-semibold text-slate-800 dark:text-white mb-1">
               {borrowedBook.bookTitle}
             </Text>
-            <Text className="text-sm text-teal-600 mb-1">
+            <Text className="text-sm text-teal-600 dark:text-teal-400 mb-1">
               by {borrowedBook.author}
             </Text>
-            <Text className="text-xs text-gray-500 mb-2">
+            <Text className="text-xs text-gray-500 dark:text-gray-400 mb-2">
               ISBN: {borrowedBook.isbn}
             </Text>
           </View>
@@ -488,34 +490,34 @@ const BorrowedBooksOverview: React.FC<BorrowedBooksOverviewProps> = ({
               </Text>
             </View>
             {fine > 0 && (
-              <Text className="text-xs text-red-600 font-medium">
+              <Text className="text-xs text-red-600 dark:text-red-400 font-medium">
                 Fine: ${fine.toFixed(2)}
               </Text>
             )}
           </View>
         </View>
 
-        <View className="bg-mint-50 p-3 rounded-lg mb-3">
+        <View className="bg-mint-50 dark:bg-gray-800 p-3 rounded-lg mb-3">
           <View className="flex-row justify-between items-start mb-2">
             <View className="flex-1">
-              <Text className="text-sm font-medium text-slate-700 mb-1">
+              <Text className="text-sm font-medium text-slate-700 dark:text-gray-200 mb-1">
                 Borrower: {borrowedBook.borrowerName}
               </Text>
               {borrowedBook.borrowerDisplayId && (
-                <Text className="text-xs text-teal-600 font-medium mb-1">
+                <Text className="text-xs text-teal-600 dark:text-teal-400 font-medium mb-1">
                   ID: {borrowedBook.borrowerDisplayId}
                 </Text>
               )}
-              <Text className="text-xs text-gray-600 mb-1">
+              <Text className="text-xs text-gray-600 dark:text-gray-300 mb-1">
                 📧 {borrowedBook.borrowerEmail}
               </Text>
               {borrowedBook.borrowerPhone && (
-                <Text className="text-xs text-gray-600 mb-1">
+                <Text className="text-xs text-gray-600 dark:text-gray-300 mb-1">
                   📞 {borrowedBook.borrowerPhone}
                 </Text>
               )}
               {borrowedBook.renewalCount !== undefined && (
-                <Text className="text-xs text-teal-600">
+                <Text className="text-xs text-teal-600 dark:text-teal-400">
                   Renewals: {borrowedBook.renewalCount}/
                   {borrowedBook.maxRenewals || 1}
                 </Text>
@@ -525,15 +527,15 @@ const BorrowedBooksOverview: React.FC<BorrowedBooksOverviewProps> = ({
 
           <View className="flex-row justify-between items-center">
             <View className="flex-1">
-              <Text className="text-xs text-gray-600">
+              <Text className="text-xs text-gray-600 dark:text-gray-300">
                 Borrowed: {borrowedBook.borrowDate.toLocaleDateString()}
               </Text>
               <Text
                 className={`text-xs font-medium ${daysRemaining < 0
-                  ? "text-red-600"
+                  ? "text-red-600 dark:text-red-400"
                   : daysRemaining <= 3
-                    ? "text-orange-600"
-                    : "text-gray-600"
+                    ? "text-orange-600 dark:text-orange-400"
+                    : "text-gray-600 dark:text-gray-300"
                   }`}
               >
                 Due: {borrowedBook.dueDate.toLocaleDateString()}
@@ -548,7 +550,7 @@ const BorrowedBooksOverview: React.FC<BorrowedBooksOverviewProps> = ({
                 )}
               </Text>
               {borrowedBook.returnDate && (
-                <Text className="text-xs text-green-600">
+                <Text className="text-xs text-green-600 dark:text-green-400">
                   Returned: {borrowedBook.returnDate.toLocaleDateString()}
                 </Text>
               )}
@@ -656,88 +658,58 @@ const BorrowedBooksOverview: React.FC<BorrowedBooksOverviewProps> = ({
   // Show loading spinner on initial load
   if (loading && borrowedBooks.length === 0) {
     return (
-      <View className="flex-1 bg-mint-50 justify-center items-center">
+      <View className="flex-1 bg-mint-50 dark:bg-black justify-center items-center">
         <ActivityIndicator size="large" color="#0D9488" />
-        <Text className="text-gray-600 mt-2">Loading borrowed books...</Text>
+        <Text className="text-gray-600 dark:text-gray-300 mt-2">Loading borrowed books...</Text>
       </View>
     );
   }
 
   return (
-    <View className="flex-1 bg-mint-50">
+    <View className="flex-1 bg-mint-50 dark:bg-black">
       {/* Header */}
-      <View className="bg-white p-4 border-b border-slate-200">
-        <Text className="text-xl font-bold text-slate-800 mb-4">
-          Borrowed Books Management
+      <View className="bg-white dark:bg-[#121212] p-4 border-b border-teal-100 dark:border-gray-800">
+        <Text className="text-xl font-bold text-slate-800 dark:text-white">
+          Borrowed Books
         </Text>
+      </View>
 
-        {/* Error Banner */}
-        {error && (
-          <View className="bg-red-100 border border-red-200 rounded-lg p-3 mb-4 flex-row justify-between items-center">
-            <Text className="text-red-800 text-sm flex-1">{error}</Text>
-            <TouchableOpacity onPress={() => clearError()}>
-              <Ionicons name="close-circle" size={20} color="#991B1B" />
-            </TouchableOpacity>
-          </View>
-        )}
-
-        {/* Stats Cards */}
-        <View className="flex-row mb-4">
-          <View className="bg-teal-100 rounded-lg p-3 flex-1 mr-2">
-            <Text className="text-2xl font-bold text-teal-800">
-              {activeBorrowsCount}
-            </Text>
-            <Text className="text-sm text-teal-600">Active Borrows</Text>
-          </View>
-          <View className="bg-red-100 rounded-lg p-3 flex-1 mx-1">
-            <Text className="text-2xl font-bold text-red-800">
-              {overdueBooksCount}
-            </Text>
-            <Text className="text-sm text-red-600">Overdue Books</Text>
-          </View>
-          <View className="bg-orange-100 rounded-lg p-3 flex-1 ml-2">
-            <Text className="text-2xl font-bold text-orange-800">
-              {dueSoonCount}
-            </Text>
-            <Text className="text-sm text-orange-600">Due Soon</Text>
-          </View>
+      {/* Filters & Search */}
+      <View className="bg-white dark:bg-[#121212] px-4 pb-4 border-b border-teal-100 dark:border-gray-800">
+        <View className="flex-row items-center bg-gray-50 dark:bg-[#1a1a1a] border border-teal-100 dark:border-gray-800 rounded-xl px-4 py-2 mt-2 mb-4">
+          <Ionicons name="search" size={20} color={isDark ? "#9CA3AF" : "#6B7280"} />
+          <TextInput
+            className="flex-1 ml-2 text-slate-800 dark:text-white"
+            placeholder="Search by book, borrower, or email..."
+            placeholderTextColor={isDark ? "#6B7280" : "#9CA3AF"}
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+          />
         </View>
 
-        {/* Search */}
-        <View className="flex-row items-center mb-3">
-          <View className="flex-1 relative">
-            <TextInput
-              className="bg-gray-50 border border-gray-200 rounded-lg p-3 pr-10"
-              placeholder="Search books, borrowers, ISBN..."
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-            />
-            <View className="absolute right-3 top-3">
-              <Ionicons name="search" size={18} color="#64748B" />
-            </View>
-          </View>
-        </View>
-
-        {/* Filter Tabs */}
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
           <View className="flex-row">
-            {Object.entries(filterCounts).map(([status, count]) => (
-              <TouchableOpacity
-                key={status}
-                className={`mr-3 px-4 py-2 rounded-full border ${filterStatus === status
-                  ? "bg-teal-600 border-teal-600"
-                  : "bg-white border-gray-300"
-                  }`}
-                onPress={() => setFilterStatus(status as any)}
-              >
-                <Text
-                  className={`text-sm font-medium ${filterStatus === status ? "text-white" : "text-gray-700"
+            {(["all", "borrowed", "returned", "overdue", "waiting", "ready_for_pickup"] as const).map(
+              (filter) => (
+                <TouchableOpacity
+                  key={filter}
+                  className={`mr-2 px-4 py-2 rounded-full border ${statusFilter === filter
+                    ? "bg-orange-600 border-orange-600"
+                    : "bg-white dark:bg-gray-800 border-slate-300 dark:border-gray-700"
                     }`}
+                  onPress={() => setStatusFilter(filter)}
                 >
-                  {status.charAt(0).toUpperCase() + status.slice(1)} ({count})
-                </Text>
-              </TouchableOpacity>
-            ))}
+                  <Text
+                    className={`text-xs font-medium capitalize ${statusFilter === filter
+                      ? "text-white"
+                      : "text-slate-700 dark:text-gray-300"
+                      }`}
+                  >
+                    {filter.replace(/_/g, ' ')} ({filterCounts[filter]})
+                  </Text>
+                </TouchableOpacity>
+              )
+            )}
           </View>
         </ScrollView>
       </View>
@@ -749,25 +721,25 @@ const BorrowedBooksOverview: React.FC<BorrowedBooksOverviewProps> = ({
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            colors={["#0D9488"]}
-            tintColor="#0D9488"
+            colors={[isDark ? "#ff6900" : "#ff6900"]}
+            tintColor={isDark ? "#ff6900" : "#ff6900"}
           />
         }
       >
         {filteredBooks.length === 0 ? (
           <EmptyState
-            title={searchQuery || filterStatus !== "all" ? "No matches found" : "No borrowed books"}
-            message={searchQuery || filterStatus !== "all"
+            title={searchQuery || statusFilter !== "all" ? "No matches found" : "No borrowed books"}
+            message={searchQuery || statusFilter !== "all"
               ? "Try adjusting your search or filters to find what you're looking for."
               : "There are currently no books borrowed from the library."
             }
             icon={BookOpen}
-            color="#0D9488"
-            actionLabel={searchQuery || filterStatus !== "all" ? "Clear Filters" : "Refresh List"}
+            color={isDark ? "#ff6900" : "#ff6900"}
+            actionLabel={searchQuery || statusFilter !== "all" ? "Clear Filters" : "Refresh List"}
             onAction={() => {
-              if (searchQuery || filterStatus !== "all") {
+              if (searchQuery || statusFilter !== "all") {
                 setSearchQuery("");
-                setFilterStatus("all");
+                setStatusFilter("all");
               } else {
                 onRefresh();
               }
@@ -791,7 +763,7 @@ const BorrowedBooksOverview: React.FC<BorrowedBooksOverviewProps> = ({
         presentationStyle="pageSheet"
         onRequestClose={() => setShowReturnModal(false)}
       >
-        <View className="flex-1 bg-white">
+        <View className="flex-1 bg-white dark:bg-[#121212]">
           <View className="bg-teal-600 p-4 pt-12">
             <View className="flex-row justify-between items-center">
               <Text className="text-xl font-bold text-white">
@@ -805,20 +777,20 @@ const BorrowedBooksOverview: React.FC<BorrowedBooksOverviewProps> = ({
 
           {selectedBook && (
             <ScrollView className="flex-1 p-4">
-              <View className="bg-gray-50 p-4 rounded-lg mb-4">
-                <Text className="font-semibold text-slate-800 mb-1">
+              <View className="bg-gray-50 dark:bg-[#1a1a1a] p-4 rounded-lg mb-4">
+                <Text className="font-semibold text-slate-800 dark:text-white mb-1">
                   {selectedBook.bookTitle}
                 </Text>
-                <Text className="text-sm text-gray-600 mb-1">
+                <Text className="text-sm text-gray-600 dark:text-gray-400 mb-1">
                   by {selectedBook.author}
                 </Text>
-                <Text className="text-sm text-gray-600">
+                <Text className="text-sm text-gray-600 dark:text-gray-400">
                   Borrower: {selectedBook.borrowerName}
                 </Text>
               </View>
 
               <View className="mb-4">
-                <Text className="text-sm font-medium text-slate-700 mb-2">
+                <Text className="text-sm font-medium text-slate-700 dark:text-gray-200 mb-2">
                   Book Condition
                 </Text>
                 <View className="flex-row">
@@ -827,14 +799,14 @@ const BorrowedBooksOverview: React.FC<BorrowedBooksOverviewProps> = ({
                       key={condition}
                       className={`mr-2 px-4 py-2 rounded-full border ${returnCondition === condition
                         ? "bg-teal-600 border-teal-600"
-                        : "bg-white border-gray-300"
+                        : "bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700"
                         }`}
                       onPress={() => setReturnCondition(condition)}
                     >
                       <Text
                         className={`text-sm font-medium ${returnCondition === condition
                           ? "text-white"
-                          : "text-gray-700"
+                          : "text-gray-700 dark:text-gray-300"
                           }`}
                       >
                         {condition.charAt(0).toUpperCase() + condition.slice(1)}
@@ -845,15 +817,16 @@ const BorrowedBooksOverview: React.FC<BorrowedBooksOverviewProps> = ({
               </View>
 
               <View className="mb-4">
-                <Text className="text-sm font-medium text-slate-700 mb-2">
+                <Text className="text-sm font-medium text-slate-700 dark:text-gray-200 mb-2">
                   Fine Amount ($)
                 </Text>
                 <TextInput
-                  className="bg-gray-50 border border-gray-200 rounded-lg p-3"
+                  className="bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-3 text-slate-800 dark:text-white"
                   value={fineAmount}
                   onChangeText={setFineAmount}
                   keyboardType="decimal-pad"
                   placeholder="0.00"
+                  placeholderTextColor={isDark ? "#9CA3AF" : "#6B7280"}
                 />
                 {selectedBook.status === "overdue" && (
                   <Text className="text-xs text-red-600 mt-1">
@@ -864,33 +837,34 @@ const BorrowedBooksOverview: React.FC<BorrowedBooksOverviewProps> = ({
               </View>
 
               <View className="mb-6">
-                <Text className="text-sm font-medium text-slate-700 mb-2">
+                <Text className="text-sm font-medium text-slate-700 dark:text-gray-200 mb-2">
                   Notes (Optional)
                 </Text>
                 <TextInput
-                  className="bg-gray-50 border border-gray-200 rounded-lg p-3 h-20"
+                  className="bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-3 h-20 text-slate-800 dark:text-white"
                   value={notes}
                   onChangeText={setNotes}
                   placeholder="Add any notes about the return..."
+                  placeholderTextColor={isDark ? "#9CA3AF" : "#6B7280"}
                   multiline
                   textAlignVertical="top"
                 />
               </View>
 
-              <View className="flex-row">
+              {/* Actions */}
+              <View className="flex-row space-x-3 mb-6">
                 <TouchableOpacity
-                  className="bg-gray-100 flex-1 py-4 rounded-lg mr-2 active:bg-gray-200"
+                  className="flex-1 bg-gray-200 dark:bg-gray-700 p-4 rounded-xl"
                   onPress={() => setShowReturnModal(false)}
                 >
-                  <Text className="text-gray-700 text-center font-semibold">
+                  <Text className="text-slate-700 dark:text-gray-300 text-center font-bold">
                     Cancel
                   </Text>
                 </TouchableOpacity>
-
                 <TouchableOpacity
-                  className={`flex-1 py-4 rounded-lg ml-2 ${loading
-                    ? "bg-gray-400"
-                    : "bg-teal-600 active:bg-teal-700"
+                  className={`flex-1 p-4 rounded-xl ${loading
+                    ? "bg-teal-400"
+                    : "bg-teal-600 dark:bg-teal-700"
                     }`}
                   onPress={confirmReturn}
                   disabled={loading}
@@ -898,8 +872,8 @@ const BorrowedBooksOverview: React.FC<BorrowedBooksOverviewProps> = ({
                   {loading ? (
                     <ActivityIndicator color="white" />
                   ) : (
-                    <Text className="text-white text-center font-semibold">
-                      Process Return
+                    <Text className="text-white text-center font-bold">
+                      Confirm Return
                     </Text>
                   )}
                 </TouchableOpacity>

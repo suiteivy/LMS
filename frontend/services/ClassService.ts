@@ -1,37 +1,81 @@
-import { api } from "./api"; // Use the configured axios instance
+import { api } from './api';
 
-export interface ClassData {
+export interface ClassItem {
     id: string;
     name: string;
-    description?: string;
-    institution_id: string;
+    grade_level?: string;
+    capacity?: number;
+    teacher_id?: string;
+    institution_id?: string;
+    student_count?: number;
+    created_at?: string;
 }
 
-export const ClassAPI = {
-    // Get all classes
-    getClasses: async () => {
-        try {
-            // Adjust endpoint if needed. Typically /api/institutions/classes or similar.
-            // Based on server.js: app.use("/api/institutions", institutionRoutes);
-            // Let's assume a route exists or we create one. 
-            // Checking `institution.route.js` would differ, but for now assuming standard REST.
-            // If it fails, I will fix the backend.
-            const response = await api.get("/institutions/classes");
-            return response.data;
-        } catch (error: any) {
-            console.error("Get classes error", error.response?.data || error.message);
-            throw error.response?.data || { error: 'Failed to fetch classes' };
-        }
+export interface ClassStudent {
+    enrollment_id: string;
+    student_id: string;
+    enrolled_at: string;
+    full_name: string;
+    email: string;
+    grade_level: string;
+}
+
+export interface AutoAssignResult {
+    assigned: number;
+    total_unassigned_before?: number;
+    message: string;
+    classes?: { class_name: string; total_students: number }[];
+}
+
+export const ClassService = {
+    async getClasses(): Promise<ClassItem[]> {
+        const res = await api.get('/classes');
+        return res.data;
     },
 
-    // Get Subjects for a class (if needed for timetable validation)
-    getClassSubjects: async (classId: string) => {
-        try {
-            const response = await api.get(`/subjects/class/${classId}`);
-            return response.data;
-        } catch (error: any) {
-            console.error("Get class subjects error", error.response?.data || error.message);
-            throw error.response?.data || { error: 'Failed to fetch subjects' };
-        }
-    }
+    async createClass(data: {
+        name: string;
+        grade_level?: string;
+        capacity?: number;
+        teacher_id?: string;
+    }): Promise<ClassItem> {
+        const res = await api.post('/classes', data);
+        return res.data;
+    },
+
+    async updateClass(id: string, data: Partial<ClassItem>): Promise<ClassItem> {
+        const res = await api.put(`/classes/${id}`, data);
+        return res.data;
+    },
+
+    async deleteClass(id: string): Promise<void> {
+        await api.delete(`/classes/${id}`);
+    },
+
+    async getClassStudents(classId: string): Promise<ClassStudent[]> {
+        const res = await api.get(`/classes/${classId}/students`);
+        return res.data;
+    },
+
+    async enrollStudent(classId: string, studentId: string): Promise<void> {
+        await api.post(`/classes/${classId}/enroll`, { student_id: studentId });
+    },
+
+    async removeStudent(classId: string, studentId: string): Promise<void> {
+        await api.delete(`/classes/${classId}/students/${studentId}`);
+    },
+
+    async autoAssign(gradeLevel: string): Promise<AutoAssignResult> {
+        const res = await api.post('/classes/auto-assign', { grade_level: gradeLevel });
+        return res.data;
+    },
+
+    // Legacy: get subjects for a class
+    async getClassSubjects(classId: string): Promise<any[]> {
+        const res = await api.get(`/subjects/class/${classId}`);
+        return res.data;
+    },
 };
+
+// Keep backward-compatible export
+export const ClassAPI = ClassService;

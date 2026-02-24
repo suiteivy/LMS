@@ -1,10 +1,9 @@
-import React, { useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { SubjectCard } from './SubjectCard';
+import { useTheme } from '@/contexts/ThemeContext';
 import { Subject } from '@/types/types';
-import { EmptyState } from '@/components/common/EmptyState';
-import { BookOpen } from 'lucide-react-native';
+import { BookOpen, Filter } from 'lucide-react-native';
+import React, { useState } from 'react';
+import { ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { SubjectCard } from './SubjectCard';
 
 interface SubjectListProps {
   subjects: Subject[];
@@ -12,6 +11,7 @@ interface SubjectListProps {
   showFilters?: boolean;
   variant?: 'default' | 'compact' | 'featured';
   onPressSubject: (subject: Subject) => void;
+  kesRate?: number;
 }
 
 export const SubjectList: React.FC<SubjectListProps> = ({
@@ -20,108 +20,132 @@ export const SubjectList: React.FC<SubjectListProps> = ({
   showFilters = false,
   variant = 'default',
   onPressSubject,
+  kesRate = 129,
 }) => {
+  const { isDark } = useTheme();
   const [selectedFilter, setSelectedFilter] = useState<string>('all');
   const [selectedLevel, setSelectedLevel] = useState<string>('all');
 
-  const categories = ['all', 'Literacy', 'Mathematics', 'Science & Technology', 'Creative Arts'];
+  const categories = ['all', 'Literacy', 'Mathematics', 'Science', 'Creative Arts'];
   const levels = ['all', 'beginner', 'intermediate', 'advanced'];
 
   const filteredSubjects = subjects.filter(subject => {
-    const categoryMatch = selectedFilter === 'all' || subject.category === selectedFilter;
+    const categoryMatch = selectedFilter === 'all' ||
+      subject.category?.toLowerCase() === selectedFilter.toLowerCase() ||
+      (selectedFilter === 'Science' && subject.category?.includes('Science'));
     const levelMatch = selectedLevel === 'all' || subject.level === selectedLevel;
     return categoryMatch && levelMatch;
   });
 
+  // ── tokens ────────────────────────────────────────────────────────────────
+  const textPrimary = isDark ? '#f1f1f1' : '#111827';
+  const textSecondary = isDark ? '#9ca3af' : '#6b7280';
+  const surface = isDark ? '#1e1e1e' : '#ffffff';
+  const border = isDark ? '#2c2c2c' : '#f3f4f6';
+  const accent = '#FF6B00';
+
+  const FilterChip = ({ label, isSelected, onPress }: { label: string; isSelected: boolean; onPress: () => void }) => (
+    <TouchableOpacity
+      onPress={onPress}
+      activeOpacity={0.7}
+      style={{
+        paddingHorizontal: 20,
+        paddingVertical: 10,
+        borderRadius: 999,
+        marginRight: 10,
+        borderWidth: 1,
+        backgroundColor: isSelected ? accent : surface,
+        borderColor: isSelected ? accent : border,
+        ...(isSelected ? {
+          shadowColor: accent,
+          shadowOffset: { width: 0, height: 4 },
+          shadowOpacity: 0.25,
+          shadowRadius: 8,
+          elevation: 4,
+        } : {}),
+      }}
+    >
+      <Text style={{
+        fontSize: 11,
+        fontWeight: 'bold',
+        textTransform: 'uppercase',
+        letterSpacing: 1.5,
+        color: isSelected ? '#ffffff' : textSecondary,
+      }}>
+        {label}
+      </Text>
+    </TouchableOpacity>
+  );
+
   return (
-    <View className="flex-1 px-4">
+    <View style={{ flex: 1, paddingHorizontal: 16 }}>
       {/* Header */}
-      <View className="flex-row items-center justify-between mb-4">
-        <Text className="text-2xl font-bold text-[#2C3E50]">
-          {title}
-        </Text>
-        <Text className="text-gray-500">
-          {filteredSubjects.length} Subject{filteredSubjects.length !== 1 ? 's' : ''}
+      <View style={{ marginBottom: 24, marginTop: 16 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+          <Text style={{ fontSize: 36, fontWeight: 'bold', letterSpacing: -1, color: textPrimary }}>
+            {title.split(' ')[0]}
+            <Text style={{ color: accent }}>.</Text>
+          </Text>
+          <View style={{ backgroundColor: isDark ? '#1e1e1e' : '#111827', width: 40, height: 40, borderRadius: 16, alignItems: 'center', justifyContent: 'center', borderWidth: isDark ? 1 : 0, borderColor: border }}>
+            <Filter size={20} color="white" />
+          </View>
+        </View>
+        <Text style={{ color: textSecondary, fontWeight: '600', fontSize: 12, letterSpacing: 2 }}>
+          DISCOVER {filteredSubjects.length} PREMIUM COURSES
         </Text>
       </View>
 
       {/* Filters */}
       {showFilters && (
-        <View className="mb-4">
-          {/* Category Filter */}
-          <Text className="text-sm font-medium mb-2 text-[#2C3E50]">Category</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-4">
+        <View style={{ marginBottom: 24 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
+            <View style={{ width: 3, height: 18, backgroundColor: accent, borderRadius: 2, marginRight: 10 }} />
+            <Text style={{ fontSize: 11, fontWeight: 'bold', color: textSecondary, textTransform: 'uppercase', letterSpacing: 2 }}>Categories</Text>
+          </View>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 20 }}>
             {categories.map((category) => (
-              <TouchableOpacity
-                key={category}
-                onPress={() => setSelectedFilter(category)}
-                className={`px-4 py-2 rounded-full mr-2 ${selectedFilter === category
-                  ? 'bg-orange-500'
-                  : 'bg-white border border-gray-200'
-                  }`}
-              >
-                <Text
-                  className={`text-sm font-medium capitalize 
-                  ${selectedFilter === category ? 'text-white' : 'text-[#2C3E50]'
-                    }`}
-                >
-                  {category}
-                </Text>
-              </TouchableOpacity>
+              <FilterChip key={category} label={category} isSelected={selectedFilter === category} onPress={() => setSelectedFilter(category)} />
             ))}
           </ScrollView>
 
-          {/* Level Filter */}
-          <Text className="text-sm font-medium mb-2 text-[#2C3E50]">Level</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-4">
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
+            <View style={{ width: 3, height: 18, backgroundColor: isDark ? '#f1f1f1' : '#111827', borderRadius: 2, marginRight: 10 }} />
+            <Text style={{ fontSize: 11, fontWeight: 'bold', color: textSecondary, textTransform: 'uppercase', letterSpacing: 2 }}>Skill Level</Text>
+          </View>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
             {levels.map((level) => (
-              <TouchableOpacity
-                key={level}
-                onPress={() => setSelectedLevel(level)}
-                className={`px-4 py-2 rounded-full mr-2 
-                  ${selectedLevel === level
-                    ? 'bg-orange-500'
-                    : 'bg-white border border-gray-200'
-                  }`}
-              >
-                <Text className={`text-sm font-medium capitalize 
-                  ${selectedLevel === level ? 'text-white' : 'text-[#2C3E50]'
-                  }`}>
-                  {level}
-                </Text>
-              </TouchableOpacity>
+              <FilterChip key={level} label={level} isSelected={selectedLevel === level} onPress={() => setSelectedLevel(level)} />
             ))}
           </ScrollView>
         </View>
       )}
 
-      {/* Subject Grid */}
-      <ScrollView showsVerticalScrollIndicator={false}>
+      {/* Results */}
+      <View style={{ flex: 1 }}>
         {filteredSubjects.length > 0 ? (
-          filteredSubjects.map((subject) => (
-            <SubjectCard
-              key={subject.id}
-              Subject={subject}
-              onPress={() => onPressSubject(subject)}
-              variant={variant}
-            />
-          ))
+          <View style={{ paddingBottom: 80 }}>
+            {filteredSubjects.map((subject) => (
+              <SubjectCard
+                key={subject.id}
+                Subject={subject}
+                onPress={() => onPressSubject(subject)}
+                variant={variant}
+                kesRate={kesRate}
+              />
+            ))}
+          </View>
         ) : (
-          <EmptyState
-            title="No Subjects found"
-            message="Try adjusting your filters or search query."
-            icon={BookOpen}
-          />
-        )}
-        {filteredSubjects.length === 0 && (
-          <View className="items-center py-12">
-            <Ionicons name="school" size={48} color="orange" />
-            <Text className="text-gray-500 mt-4 text-center">
-              No Subjects found{'\n'}Try adjusting your filters
+          <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 80 }}>
+            <View style={{ width: 96, height: 96, backgroundColor: isDark ? 'rgba(255,107,0,0.12)' : '#fff7ed', borderRadius: 40, alignItems: 'center', justifyContent: 'center', marginBottom: 24 }}>
+              <BookOpen size={40} color={accent} />
+            </View>
+            <Text style={{ fontSize: 19, fontWeight: 'bold', color: textPrimary, marginBottom: 8 }}>Nothing found</Text>
+            <Text style={{ color: textSecondary, fontWeight: '500', textAlign: 'center', paddingHorizontal: 40 }}>
+              Try adjusting your filters to find what you're looking for.
             </Text>
           </View>
         )}
-      </ScrollView>
+      </View>
     </View>
   );
 };

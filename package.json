@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
+    "dev": "concurrently \"npm run backend\" \"npm run frontend\"",
+    "backend": "cd backend && npm run dev",
+    "frontend": "cd frontend && npx expo start",
     "start": "expo start"
   },
   "dependencies": {
@@ -35,6 +38,7 @@
   "devDependencies": {
     "@react-native-community/cli": "^13.0.0",
     "@types/react": "~19.1.10",
+    "concurrently": "^9.2.1",
     "supabase": "^2.34.3"
   }
 }

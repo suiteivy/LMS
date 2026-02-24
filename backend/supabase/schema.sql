@@ -26,6 +26,10 @@ CREATE TABLE institutions (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name TEXT NOT NULL,
     location TEXT,
+    phone TEXT,
+    email TEXT,
+    type TEXT CHECK (type IN ('primary', 'secondary', 'tertiary', 'vocational')),
+    principal_name TEXT,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -35,9 +39,13 @@ CREATE TABLE users (
     id UUID PRIMARY KEY REFERENCES auth.users(id),
     full_name TEXT NOT NULL,
     email TEXT NOT NULL UNIQUE,
-    role TEXT CHECK (role IN ('admin', 'student', 'teacher', 'parent')) NOT NULL,
+    role TEXT CHECK (role IN ('admin', 'student', 'teacher', 'parent', 'bursary')) NOT NULL,
     status TEXT NOT NULL DEFAULT 'approved' CHECK (status IN ('pending', 'approved', 'rejected')),
     phone TEXT,
+    gender TEXT CHECK (gender IN ('male', 'female', 'other')),
+    date_of_birth DATE,
+    address TEXT,
+    avatar_url TEXT,
     institution_id UUID REFERENCES institutions(id),
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
@@ -58,6 +66,7 @@ $$ LANGUAGE plpgsql SET search_path = public;
 CREATE TABLE admins (
     id TEXT PRIMARY KEY DEFAULT generate_custom_id('ADM'),
     user_id UUID REFERENCES users(id) ON DELETE CASCADE NOT NULL UNIQUE,
+    institution_id UUID REFERENCES institutions(id),
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -67,6 +76,10 @@ CREATE TABLE teachers (
     user_id UUID REFERENCES users(id) ON DELETE CASCADE NOT NULL UNIQUE,
     department TEXT,
     qualification TEXT,
+    position TEXT CHECK (position IN ('teacher', 'head_of_department', 'assistant', 'class_teacher', 'dean')) DEFAULT 'teacher',
+    hire_date DATE DEFAULT CURRENT_DATE,
+    specialization TEXT,
+    institution_id UUID REFERENCES institutions(id),
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -75,7 +88,13 @@ CREATE TABLE students (
     id TEXT PRIMARY KEY DEFAULT generate_custom_id('STU'),
     user_id UUID REFERENCES users(id) ON DELETE CASCADE NOT NULL UNIQUE,
     grade_level TEXT,
+    academic_year TEXT,
+    admission_date DATE DEFAULT CURRENT_DATE,
+    fee_balance NUMERIC DEFAULT 0,
     parent_contact TEXT,
+    emergency_contact_name TEXT,
+    emergency_contact_phone TEXT,
+    institution_id UUID REFERENCES institutions(id),
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -83,6 +102,17 @@ CREATE TABLE students (
 CREATE TABLE parents (
     id TEXT PRIMARY KEY DEFAULT generate_custom_id('PAR'),
     user_id UUID REFERENCES users(id) ON DELETE CASCADE NOT NULL UNIQUE,
+    occupation TEXT,
+    address TEXT,
+    institution_id UUID REFERENCES institutions(id),
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE bursars (
+    id TEXT PRIMARY KEY DEFAULT generate_custom_id('BUR'),
+    user_id UUID REFERENCES users(id) ON DELETE CASCADE NOT NULL UNIQUE,
+    institution_id UUID REFERENCES institutions(id),
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -114,9 +144,11 @@ CREATE TABLE classes (
 CREATE TABLE enrollments (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     student_id TEXT REFERENCES students(id) ON DELETE CASCADE,
-    class_id UUID REFERENCES classes(id) ON DELETE CASCADE,
-    enrolled_at TIMESTAMPTZ DEFAULT NOW(),
-    UNIQUE(student_id, class_id)
+    subject_id UUID REFERENCES subjects(id) ON DELETE CASCADE,
+    enrollment_date TIMESTAMPTZ DEFAULT NOW(),
+    status TEXT CHECK (status IN ('enrolled', 'completed', 'dropped')) DEFAULT 'enrolled',
+    grade TEXT,
+    UNIQUE(student_id, subject_id)
 );
 
 -- 3. Subjects
@@ -128,11 +160,39 @@ CREATE TABLE subjects (
     class_id UUID REFERENCES classes(id) ON DELETE SET NULL,
     institution_id UUID REFERENCES institutions(id),
     fee_amount NUMERIC(10, 2) NOT NULL DEFAULT 0,
+    fee_config JSONB DEFAULT '{}'::jsonb,
+    materials JSONB DEFAULT '[]'::jsonb,
+    metadata JSONB DEFAULT '{}'::jsonb,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 4. Assignments
+-- 4. Lessons
+CREATE TABLE lessons (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    subject_id UUID REFERENCES subjects(id) ON DELETE CASCADE,
+    title TEXT NOT NULL,
+    content TEXT,
+    scheduled_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 5. Timetables
+CREATE TABLE timetables (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    class_id UUID REFERENCES classes(id) ON DELETE CASCADE,
+    subject_id UUID REFERENCES subjects(id) ON DELETE CASCADE,
+    day_of_week TEXT CHECK (day_of_week IN ('Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday')),
+    start_time TIME NOT NULL,
+    end_time TIME NOT NULL,
+    room_number TEXT,
+    institution_id UUID REFERENCES institutions(id),
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 6. Assignments
 CREATE TABLE assignments (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     subject_id UUID REFERENCES subjects(id) ON DELETE CASCADE,
@@ -142,11 +202,15 @@ CREATE TABLE assignments (
     due_date TIMESTAMPTZ,
     total_points INTEGER DEFAULT 100,
     status TEXT CHECK (status IN ('draft', 'active', 'closed')) DEFAULT 'active',
+    is_published BOOLEAN DEFAULT false,
+    weight NUMERIC DEFAULT 0,
+    term TEXT,
+    institution_id UUID REFERENCES institutions(id),
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 5. Submissions
+-- 7. Submissions
 CREATE TABLE submissions (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     assignment_id UUID REFERENCES assignments(id) ON DELETE CASCADE,
@@ -156,44 +220,81 @@ CREATE TABLE submissions (
     grade NUMERIC,
     feedback TEXT,
     status TEXT CHECK (status IN ('submitted', 'graded', 'late', 'pending')) DEFAULT 'pending',
+    institution_id UUID REFERENCES institutions(id),
     submitted_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW(),
     UNIQUE(assignment_id, student_id)
 );
 
--- 6. Attendance
+-- 8. Attendance
 CREATE TABLE attendance (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     class_id UUID REFERENCES classes(id) ON DELETE CASCADE,
+    subject_id UUID REFERENCES subjects(id) ON DELETE CASCADE,
     student_id TEXT REFERENCES students(id) ON DELETE CASCADE,
     date DATE NOT NULL DEFAULT CURRENT_DATE,
     status TEXT CHECK (status IN ('present', 'absent', 'late', 'excused')) NOT NULL,
     notes TEXT,
+    institution_id UUID REFERENCES institutions(id),
     recorded_at TIMESTAMPTZ DEFAULT NOW(),
     UNIQUE(student_id, class_id, date)
 );
 
--- 7. Resources
+-- 9. Resources
 CREATE TABLE resources (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     subject_id UUID REFERENCES subjects(id) ON DELETE CASCADE,
+    teacher_id TEXT REFERENCES teachers(id) ON DELETE SET NULL,
     title TEXT NOT NULL,
-    type TEXT CHECK (type IN ('pdf', 'video', 'link', 'other')) DEFAULT 'other',
+    type TEXT NOT NULL,
     url TEXT NOT NULL,
     size TEXT,
+    institution_id UUID REFERENCES institutions(id),
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 8. Announcements
+-- 10. Announcements
 CREATE TABLE announcements (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     subject_id UUID REFERENCES subjects(id) ON DELETE CASCADE,
     teacher_id TEXT REFERENCES teachers(id) ON DELETE CASCADE,
     title TEXT NOT NULL,
     message TEXT NOT NULL,
+    institution_id UUID REFERENCES institutions(id),
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 11. Exams
+CREATE TABLE exams (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    subject_id UUID REFERENCES subjects(id) ON DELETE CASCADE,
+    teacher_id TEXT REFERENCES teachers(id) ON DELETE CASCADE,
+    title TEXT NOT NULL,
+    description TEXT,
+    date DATE NOT NULL,
+    max_score NUMERIC DEFAULT 100,
+    is_published BOOLEAN DEFAULT false,
+    weight NUMERIC DEFAULT 0,
+    term TEXT,
+    institution_id UUID REFERENCES institutions(id),
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 12. Exam Results
+CREATE TABLE exam_results (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    exam_id UUID REFERENCES exams(id) ON DELETE CASCADE,
+    student_id TEXT REFERENCES students(id) ON DELETE CASCADE,
+    score NUMERIC,
+    feedback TEXT,
+    graded_by TEXT REFERENCES teachers(id),
+    institution_id UUID REFERENCES institutions(id),
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE(exam_id, student_id)
 );
 
 -- ---------------------------------------------------------
@@ -210,9 +311,7 @@ CREATE TABLE library_config (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE OR REPLACE VIEW config AS SELECT * FROM library_config;
-
--- 2. Books (Plural)
+-- 2. Books
 CREATE TABLE books (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     title TEXT NOT NULL,
@@ -226,7 +325,7 @@ CREATE TABLE books (
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 3. Borrowed Books (Plural)
+-- 3. Borrowed Books
 CREATE TABLE borrowed_books (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     book_id UUID REFERENCES books(id) NOT NULL,
@@ -269,15 +368,15 @@ CREATE TABLE fee_structures (
     title TEXT NOT NULL,
     description TEXT,
     amount NUMERIC(10, 2) NOT NULL,
-    due_date DATE,
     academic_year TEXT,
     term TEXT,
-    is_active BOOLEAN DEFAULT false,
+    is_active BOOLEAN DEFAULT true,
+    institution_id UUID REFERENCES institutions(id),
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 2. Payments
+-- 2. Payments (Legacy)
 CREATE TABLE payments (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     student_id TEXT REFERENCES students(id) ON DELETE CASCADE,
@@ -314,10 +413,54 @@ CREATE TABLE bursary_applications (
     applied_at TIMESTAMPTZ DEFAULT NOW(),
     reviewed_by TEXT REFERENCES admins(id) ON DELETE SET NULL,
     reviewed_at TIMESTAMPTZ,
+    institution_id UUID REFERENCES institutions(id),
     UNIQUE(bursary_id, student_id)
 );
 
--- 5. Teacher Payouts
+-- 5. Funds
+CREATE TABLE funds (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name TEXT NOT NULL,
+    description TEXT,
+    total_amount NUMERIC(10, 2) DEFAULT 0,
+    allocated_amount NUMERIC(10, 2) DEFAULT 0,
+    institution_id UUID REFERENCES institutions(id),
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 6. Fund Allocations
+CREATE TABLE fund_allocations (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    fund_id UUID REFERENCES funds(id) ON DELETE CASCADE,
+    title TEXT NOT NULL,
+    description TEXT,
+    amount NUMERIC(10, 2) NOT NULL,
+    category TEXT,
+    allocation_date DATE DEFAULT CURRENT_DATE,
+    status TEXT CHECK (status IN ('planned', 'approved', 'spent')) DEFAULT 'planned',
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 7. Financial Transactions
+CREATE TABLE financial_transactions (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID REFERENCES users(id) ON DELETE SET NULL,
+    institution_id UUID REFERENCES institutions(id),
+    type TEXT CHECK (type IN ('fee_payment', 'salary_payout', 'expense', 'grant', 'other')),
+    direction TEXT CHECK (direction IN ('inflow', 'outflow')),
+    amount NUMERIC(10, 2) NOT NULL,
+    date DATE DEFAULT CURRENT_DATE,
+    method TEXT,
+    status TEXT DEFAULT 'completed',
+    reference_id TEXT,
+    meta JSONB DEFAULT '{}'::jsonb,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 8. Teacher Payouts
 CREATE TABLE teacher_payouts (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     teacher_id TEXT REFERENCES teachers(id) ON DELETE CASCADE,
@@ -327,8 +470,52 @@ CREATE TABLE teacher_payouts (
     status TEXT CHECK (status IN ('pending', 'processing', 'paid', 'failed')) DEFAULT 'pending',
     payout_date TIMESTAMPTZ,
     reference_number TEXT,
+    institution_id UUID REFERENCES institutions(id),
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 9. Teacher Attendance
+CREATE TABLE teacher_attendance (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    teacher_id TEXT REFERENCES teachers(id) ON DELETE CASCADE,
+    date DATE DEFAULT CURRENT_DATE,
+    status TEXT CHECK (status IN ('present', 'absent', 'late', 'excused')),
+    check_in_time TIMESTAMPTZ,
+    check_out_time TIMESTAMPTZ,
+    notes TEXT,
+    institution_id UUID REFERENCES institutions(id),
+    recorded_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- ---------------------------------------------------------
+-- PART 6: COMMUNICATION MODULE
+-- ---------------------------------------------------------
+
+-- 1. Messages
+CREATE TABLE messages (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    sender_id UUID REFERENCES users(id) ON DELETE CASCADE,
+    receiver_id UUID REFERENCES users(id) ON DELETE CASCADE,
+    subject TEXT,
+    content TEXT NOT NULL,
+    is_read BOOLEAN DEFAULT false,
+    institution_id UUID REFERENCES institutions(id),
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 2. Notifications
+CREATE TABLE notifications (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+    title TEXT NOT NULL,
+    message TEXT NOT NULL,
+    type TEXT CHECK (type IN ('info', 'success', 'warning', 'error')) DEFAULT 'info',
+    is_read BOOLEAN DEFAULT false,
+    data JSONB DEFAULT '{}'::jsonb,
+    institution_id UUID REFERENCES institutions(id),
+    created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- ---------------------------------------------------------
@@ -436,13 +623,15 @@ CREATE OR REPLACE FUNCTION handle_user_role_entry()
 RETURNS trigger AS $$
 BEGIN
   IF NEW.role = 'admin' THEN
-    INSERT INTO admins (user_id) VALUES (NEW.id) ON CONFLICT (user_id) DO NOTHING;
+    INSERT INTO admins (user_id, institution_id) VALUES (NEW.id, NEW.institution_id) ON CONFLICT (user_id) DO NOTHING;
   ELSIF NEW.role = 'teacher' THEN
-    INSERT INTO teachers (user_id) VALUES (NEW.id) ON CONFLICT (user_id) DO NOTHING;
+    INSERT INTO teachers (user_id, institution_id) VALUES (NEW.id, NEW.institution_id) ON CONFLICT (user_id) DO NOTHING;
   ELSIF NEW.role = 'student' THEN
-    INSERT INTO students (user_id) VALUES (NEW.id) ON CONFLICT (user_id) DO NOTHING;
+    INSERT INTO students (user_id, institution_id) VALUES (NEW.id, NEW.institution_id) ON CONFLICT (user_id) DO NOTHING;
   ELSIF NEW.role = 'parent' THEN
-    INSERT INTO parents (user_id) VALUES (NEW.id) ON CONFLICT (user_id) DO NOTHING;
+    INSERT INTO parents (user_id, institution_id) VALUES (NEW.id, NEW.institution_id) ON CONFLICT (user_id) DO NOTHING;
+  ELSIF NEW.role = 'bursary' THEN
+    INSERT INTO bursars (user_id, institution_id) VALUES (NEW.id, NEW.institution_id) ON CONFLICT (user_id) DO NOTHING;
   END IF;
   RETURN NEW;
 END;
@@ -453,13 +642,28 @@ CREATE TRIGGER tr_create_role_entry
 AFTER INSERT ON users
 FOR EACH ROW EXECUTE FUNCTION handle_user_role_entry();
 
+-- 4. Apply Updated_At Triggers to all tables
+DO $$
+DECLARE
+    t text;
+BEGIN
+    FOR t IN 
+        SELECT table_name FROM information_schema.columns 
+        WHERE column_name = 'updated_at' 
+        AND table_schema = 'public'
+    LOOP
+        EXECUTE format('DROP TRIGGER IF EXISTS tr_update_updated_at ON %I', t);
+        EXECUTE format('CREATE TRIGGER tr_update_updated_at BEFORE UPDATE ON %I FOR EACH ROW EXECUTE FUNCTION update_updated_at_column()', t);
+    END LOOP;
+END $$;
+
 -- ---------------------------------------------------------
 -- PART 7: HELPER FUNCTIONS FOR RLS
 -- ---------------------------------------------------------
 
-CREATE OR REPLACE FUNCTION get_current_user_role()
-RETURNS TEXT LANGUAGE SQL STABLE SECURITY DEFINER SET search_path = public AS $$
-  SELECT role FROM users WHERE id = auth.uid();
+CREATE OR REPLACE FUNCTION get_current_user_institution_id()
+RETURNS UUID LANGUAGE SQL STABLE SECURITY DEFINER SET search_path = public AS $$
+  SELECT institution_id FROM users WHERE id = auth.uid();
 $$;
 
 CREATE OR REPLACE FUNCTION current_user_student_id() RETURNS TEXT AS $$
@@ -468,6 +672,10 @@ $$ LANGUAGE sql STABLE SET search_path = public;
 
 CREATE OR REPLACE FUNCTION current_user_teacher_id() RETURNS TEXT AS $$
     SELECT id FROM teachers WHERE user_id = auth.uid();
+$$ LANGUAGE sql STABLE SET search_path = public;
+
+CREATE OR REPLACE FUNCTION current_user_bursar_id() RETURNS TEXT AS $$
+    SELECT id FROM bursars WHERE user_id = auth.uid();
 $$ LANGUAGE sql STABLE SET search_path = public;
 
 CREATE OR REPLACE FUNCTION is_student_in_class(p_class_id UUID, p_student_id TEXT)
@@ -488,86 +696,72 @@ ALTER TABLE admins ENABLE ROW LEVEL SECURITY;
 ALTER TABLE teachers ENABLE ROW LEVEL SECURITY;
 ALTER TABLE students ENABLE ROW LEVEL SECURITY;
 ALTER TABLE parents ENABLE ROW LEVEL SECURITY;
+ALTER TABLE bursars ENABLE ROW LEVEL SECURITY;
 ALTER TABLE parent_students ENABLE ROW LEVEL SECURITY;
 ALTER TABLE classes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE enrollments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE subjects ENABLE ROW LEVEL SECURITY;
+ALTER TABLE lessons ENABLE ROW LEVEL SECURITY;
+ALTER TABLE timetables ENABLE ROW LEVEL SECURITY;
 ALTER TABLE assignments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE submissions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE attendance ENABLE ROW LEVEL SECURITY;
 ALTER TABLE resources ENABLE ROW LEVEL SECURITY;
 ALTER TABLE announcements ENABLE ROW LEVEL SECURITY;
+ALTER TABLE exams ENABLE ROW LEVEL SECURITY;
+ALTER TABLE exam_results ENABLE ROW LEVEL SECURITY;
 ALTER TABLE library_config ENABLE ROW LEVEL SECURITY;
 ALTER TABLE books ENABLE ROW LEVEL SECURITY;
-
--- 3.5. Resources & Announcements Policies
-CREATE POLICY "Everyone view resources" ON resources FOR SELECT USING (true);
-CREATE POLICY "Teachers manage own resources" ON resources FOR ALL USING (
-    EXISTS (
-        SELECT 1 FROM subjects s
-        WHERE s.id = resources.subject_id
-        AND s.teacher_id = current_user_teacher_id()
-    )
-    OR get_current_user_role() = 'admin'
-);
-
-CREATE POLICY "Everyone view announcements" ON announcements FOR SELECT USING (true);
-CREATE POLICY "Teachers manage own announcements" ON announcements FOR ALL USING (teacher_id = current_user_teacher_id() OR get_current_user_role() = 'admin');
-
 ALTER TABLE borrowed_books ENABLE ROW LEVEL SECURITY;
-ALTER TABLE book ENABLE ROW LEVEL SECURITY;
-ALTER TABLE library ENABLE ROW LEVEL SECURITY;
 ALTER TABLE fee_structures ENABLE ROW LEVEL SECURITY;
 ALTER TABLE payments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE bursaries ENABLE ROW LEVEL SECURITY;
 ALTER TABLE bursary_applications ENABLE ROW LEVEL SECURITY;
+ALTER TABLE funds ENABLE ROW LEVEL SECURITY;
+ALTER TABLE fund_allocations ENABLE ROW LEVEL SECURITY;
+ALTER TABLE financial_transactions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE teacher_payouts ENABLE ROW LEVEL SECURITY;
+ALTER TABLE teacher_attendance ENABLE ROW LEVEL SECURITY;
+ALTER TABLE messages ENABLE ROW LEVEL SECURITY;
+ALTER TABLE notifications ENABLE ROW LEVEL SECURITY;
 
--- 1. Users Policies
-CREATE POLICY "Users can read own data" ON users FOR SELECT USING (auth.uid() = id);
-CREATE POLICY "Admin/Teacher read all users" ON users FOR SELECT USING (role IN ('admin', 'teacher'));
+-- 1. General Access Helper (Used by many)
+-- Users can see anything that belongs to their institution OR global items (institution_id IS NULL)
+-- RLS: institution_id IS NOT DISTINCT FROM get_current_user_institution_id()
 
--- 2. Role Table Policies
-CREATE POLICY "select_admins" ON admins FOR SELECT USING (true);
-CREATE POLICY "select_teachers" ON teachers FOR SELECT USING (true);
-CREATE POLICY "select_students" ON students FOR SELECT USING (true);
-CREATE POLICY "select_parents" ON parents FOR SELECT USING (true);
-CREATE POLICY "select_parent_students" ON parent_students FOR SELECT USING (true);
+-- 2. Master Policies
 
--- Use specific commands for management (avoids FOR ALL and SELECT path)
-CREATE POLICY "insert_admins" ON admins FOR INSERT WITH CHECK (get_current_user_role() = 'admin');
-CREATE POLICY "update_admins" ON admins FOR UPDATE USING (get_current_user_role() = 'admin');
-CREATE POLICY "delete_admins" ON admins FOR DELETE USING (get_current_user_role() = 'admin');
+-- Global View (Anything in same institution OR global)
+CREATE POLICY "institution_scoped_view" ON institutions FOR SELECT USING (true); -- Institutions are public/read-only for listing
+CREATE POLICY "institution_scoped_users" ON users FOR SELECT USING (institution_id IS NOT DISTINCT FROM get_current_user_institution_id() OR role = 'admin');
 
-CREATE POLICY "insert_teachers" ON teachers FOR INSERT WITH CHECK (get_current_user_role() = 'admin');
-CREATE POLICY "update_teachers" ON teachers FOR UPDATE USING (get_current_user_role() = 'admin');
-CREATE POLICY "delete_teachers" ON teachers FOR DELETE USING (get_current_user_role() = 'admin');
+-- Academic View
+CREATE POLICY "institution_scoped_subjects" ON subjects FOR SELECT USING (institution_id IS NOT DISTINCT FROM get_current_user_institution_id());
+CREATE POLICY "institution_scoped_assignments" ON assignments FOR SELECT USING (institution_id IS NOT DISTINCT FROM get_current_user_institution_id());
+CREATE POLICY "institution_scoped_announcements" ON announcements FOR SELECT USING (institution_id IS NOT DISTINCT FROM get_current_user_institution_id());
+CREATE POLICY "institution_scoped_resources" ON resources FOR SELECT USING (institution_id IS NOT DISTINCT FROM get_current_user_institution_id());
+CREATE POLICY "institution_scoped_exams" ON exams FOR SELECT USING (institution_id IS NOT DISTINCT FROM get_current_user_institution_id());
 
--- 3. Academic Policies
-CREATE POLICY "Everyone view subjects" ON subjects FOR SELECT USING (true);
-CREATE POLICY "Teachers manage own subjects" ON subjects FOR ALL USING (teacher_id = current_user_teacher_id());
-CREATE POLICY "Admins manage all subjects" ON subjects FOR ALL USING (get_current_user_role() = 'admin');
+-- Roles specific access
+CREATE POLICY "teachers_manage_assigned" ON subjects FOR ALL USING (teacher_id = current_user_teacher_id() OR get_current_user_role() = 'admin');
+CREATE POLICY "admins_manage_all" ON subjects FOR ALL USING (get_current_user_role() = 'admin');
 
-CREATE POLICY "View assignments" ON assignments FOR SELECT USING (true);
-CREATE POLICY "Manage assignments" ON assignments FOR ALL USING (get_current_user_role() IN ('admin', 'teacher'));
+-- Library
+CREATE POLICY "institution_scoped_books" ON books FOR SELECT USING (institution_id IS NOT DISTINCT FROM get_current_user_institution_id());
+CREATE POLICY "student_view_own_borrows" ON borrowed_books FOR SELECT USING (student_id = current_user_student_id());
 
-CREATE POLICY "Manage submissions" ON submissions FOR ALL USING (student_id = current_user_student_id() OR get_current_user_role() IN ('admin', 'teacher'));
+-- Finance
+CREATE POLICY "institution_scoped_financials" ON financial_transactions FOR SELECT USING (institution_id IS NOT DISTINCT FROM get_current_user_institution_id());
+CREATE POLICY "bursars_manage_finance" ON financial_transactions FOR ALL USING (get_current_user_role() IN ('admin', 'bursary'));
 
--- 4. Library Policies
-CREATE POLICY "Everyone view books" ON books FOR SELECT USING (true);
-CREATE POLICY "Admins manage library" ON books FOR ALL USING (get_current_user_role() = 'admin');
-CREATE POLICY "Students view own borrows" ON borrowed_books FOR SELECT USING (student_id = current_user_student_id());
-CREATE POLICY "Admins manage borrows" ON borrowed_books FOR ALL USING (get_current_user_role() = 'admin');
+-- Messaging
+CREATE POLICY "user_view_own_messages" ON messages FOR SELECT USING (sender_id = auth.uid() OR receiver_id = auth.uid());
+CREATE POLICY "user_view_own_notifications" ON notifications FOR SELECT USING (user_id = auth.uid());
 
-CREATE POLICY "Everyone view singular books" ON book FOR SELECT USING (true);
-CREATE POLICY "Everyone view library entry" ON library FOR SELECT USING (true);
+-- FALLBACK: Allow Admins Full Access to everything in their institution
+-- This is a generic pattern for any table missing a specific policy
+-- (Applying manually to critical ones)
 
--- 5. Finance Policies
-CREATE POLICY "Everyone view fee structures" ON fee_structures FOR SELECT USING (true);
-CREATE POLICY "Students view own payments" ON payments FOR SELECT USING (student_id = current_user_student_id());
-CREATE POLICY "Anyone view bursaries" ON bursaries FOR SELECT USING (true);
-CREATE POLICY "Students manage own applications" ON bursary_applications FOR ALL USING (student_id = current_user_student_id());
-CREATE POLICY "Admins manage finance" ON fee_structures FOR ALL USING (get_current_user_role() = 'admin');
-CREATE POLICY "Admins manage payments" ON payments FOR ALL USING (get_current_user_role() = 'admin');
-CREATE POLICY "Admins manage bursaries" ON bursary_applications FOR ALL USING (get_current_user_role() = 'admin');
-CREATE POLICY "Teachers view own payouts" ON teacher_payouts FOR SELECT USING (teacher_id = current_user_teacher_id());
+CREATE POLICY "admin_all_access" ON subjects FOR ALL USING (get_current_user_role() = 'admin');
+CREATE POLICY "admin_all_access_classes" ON classes FOR ALL USING (get_current_user_role() = 'admin');
+CREATE POLICY "admin_all_access_users" ON users FOR ALL USING (get_current_user_role() = 'admin');

@@ -1,8 +1,8 @@
-import { View, Text, Modal, Pressable, TouchableOpacity, KeyboardAvoidingView, Platform, ScrollView, TextInput, ActivityIndicator, Image, Alert } from 'react-native'
-import { X, Camera, ChevronLeft, CheckCircle2 } from 'lucide-react-native'
-import { useEffect, useState } from 'react'
-import * as ImagePicker from 'expo-image-picker';
 import { supabase } from '@/libs/supabase'; // Adjust path if needed, usually in lib or services
+import * as ImagePicker from 'expo-image-picker';
+import { Camera, CheckCircle2, ChevronLeft, X } from 'lucide-react-native';
+import { useEffect, useState } from 'react';
+import { ActivityIndicator, Alert, Image, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 interface EditFormProps {
   visible: boolean
@@ -15,8 +15,8 @@ const AuthView = ({ onBack, isVerified, authCode, onAuthChange }: any) => {
   return (
     <View>
       <TouchableOpacity onPress={onBack} className="flex-row items-center mb-6">
-        <ChevronLeft size={20} color="#0d9488" />
-        <Text className="text-orange-600 font-bold ml-1">Back to Profile</Text>
+        <ChevronLeft size={20} color="#FF6B00" />
+        <Text className="text-orange-500 font-bold ml-1">Back to Profile</Text>
       </TouchableOpacity>
 
       <Text className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4">
@@ -191,7 +191,7 @@ export const ProfileEdit = ({ visible, onClose, currentUser, onUpdate }: EditFor
       visible={visible}
       onRequestClose={onClose}
     >
-      <Pressable className="flex-1 bg-black/50 justify-end" onPress={onClose}>
+      <Pressable className="flex-1 bg-black/60 justify-end" onPress={onClose}>
         <Pressable
           className="bg-white rounded-t-[32px] h-[85%] w-full shadow-xl"
           onPress={(e) => e.stopPropagation()}
@@ -231,7 +231,7 @@ export const ProfileEdit = ({ visible, onClose, currentUser, onUpdate }: EditFor
                           </Text>
                         )}
                       </View>
-                      <View className="absolute bottom-0 right-0 bg-teal-600 p-2 rounded-full border-2 border-white">
+                      <View className="absolute bottom-0 right-0 bg-orange-500 p-2 rounded-full border-2 border-white">
                         {uploading ? <ActivityIndicator size="small" color="white" /> : <Camera size={14} color="white" />}
                       </View>
                     </TouchableOpacity>
@@ -248,7 +248,7 @@ export const ProfileEdit = ({ visible, onClose, currentUser, onUpdate }: EditFor
                         </Text>
                         <View className="bg-gray-50 p-4 rounded-2xl border border-gray-100">
                           <Text className="text-gray-500 text-base">
-                            Alex Reed
+                            {currentUser?.full_name || 'Alex Reed'}
                           </Text>
                         </View>
                       </View>
@@ -259,7 +259,7 @@ export const ProfileEdit = ({ visible, onClose, currentUser, onUpdate }: EditFor
                     <Text className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4">
                       Security
                     </Text>
-                    <View className="bg-orange-50/50 p-5 rounded-2xl mb-6 border border-orange-100">
+                    <View className="bg-orange-50 p-5 rounded-2xl mb-6 border border-orange-100">
                       <Text className="text-gray-900 text-sm leading-5">
                         To change your password, we will send a 6-digit code to
                         your email.

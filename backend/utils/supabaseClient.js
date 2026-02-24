@@ -18,7 +18,13 @@ function getClient() {
         if (!supabaseUrl || !supabaseKey) {
             console.error("ERROR: Supabase URL or Key missing during initialization.");
         }
-        supabaseInstance = createClient(supabaseUrl, supabaseKey);
+        supabaseInstance = createClient(supabaseUrl, supabaseKey, {
+            auth: {
+                persistSession: false,
+                autoRefreshToken: false,
+                detectSessionInUrl: false
+            }
+        });
     }
     return supabaseInstance;
 }

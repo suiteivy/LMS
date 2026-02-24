@@ -27,6 +27,17 @@ export const SubjectAPI = {
         }
     },
 
+    // Get subjects filtered by current user (teacher)
+    getFilteredSubjects: async (): Promise<SubjectData[]> => {
+        try {
+            const response = await api.get("/subjects/filtered");
+            return response.data;
+        } catch (error) {
+            console.error("Get filtered subjects error", error);
+            throw error;
+        }
+    },
+
     // Get subjects by class
     getSubjectsByClass: async (classId: string): Promise<SubjectData[]> => {
         try {
@@ -52,6 +63,7 @@ export const SubjectAPI = {
     // Enroll student in a subject
     enrollStudent: async (subjectId: string): Promise<any> => {
         try {
+            console.log(`[SubjectService] Enrolling in subject: ${subjectId}`);
             const response = await api.post("/subjects/enroll", { subject_id: subjectId.toString() });
             return response.data;
         } catch (error) {

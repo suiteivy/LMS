@@ -16,12 +16,12 @@ export class FinanceService {
         // Map FinancialTransaction -> Payment
         return response.data.map((tx: any) => ({
             id: tx.id,
-            student_id: tx.users?.students?.[0]?.id || tx.user_id, // Map Custom ID if available
+            student_id: tx.students?.id || tx.user_id,
             student_name: tx.users?.full_name || 'Unknown',
-            student_display_id: tx.users?.students?.[0]?.id,
+            student_display_id: tx.students?.id || tx.user_id,
             amount: tx.amount,
             payment_date: tx.date || tx.created_at,
-            payment_method: tx.method,
+            payment_method: tx.method || tx.payment_method,
             status: tx.status,
             reference_number: tx.meta?.reference_number,
             notes: tx.meta?.notes
@@ -61,13 +61,17 @@ export class FinanceService {
     }
 
     static async getFeeStructures(): Promise<FeeStructure[]> {
-        // Now fetched from subjects
         const response = await api.get('/finance/fee-structures');
         return response.data;
     }
 
-    static async updateFeeStructure(feeData: any) {
+    static async createFeeStructure(feeData: any) {
         const response = await api.post('/finance/fee-structures', feeData);
+        return response.data;
+    }
+
+    static async updateFeeStructure(id: string, feeData: any) {
+        const response = await api.put(`/finance/fee-structures/${id}`, feeData);
         return response.data;
     }
 }

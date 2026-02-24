@@ -1,11 +1,15 @@
-import { useEffect, useState } from 'react';
+import { useAuth } from '@/contexts/AuthContext';
+import { useCurrency } from '@/contexts/CurrencyContext';
 import { supabase } from '@/libs/supabase';
 import { StatsData } from '@/types/types';
+import { useEffect, useState } from 'react';
 
 export const useDashboardStats = () => {
     const [stats, setStats] = useState<StatsData[]>([]);
     const [loading, setLoading] = useState(true);
     const [revenueData, setRevenueData] = useState<{ day: string, amount: number }[]>([]);
+    
+    const { formatKES, formatUSD, rates } = useCurrency();
 
     const fetchStats = async () => {
         setLoading(true);
@@ -63,20 +67,8 @@ export const useDashboardStats = () => {
                 setRevenueData(breakdown);
             }
 
-            const exchangeRate = 129; // Fixed rate for now: 1 USD = 129 KES
+            const exchangeRate = rates.KES; 
             const totalRevenueKES = totalRevenue * exchangeRate;
-
-            const formattedRevenueKES = new Intl.NumberFormat('en-KE', {
-                style: 'currency',
-                currency: 'KES',
-                maximumFractionDigits: 0,
-            }).format(totalRevenueKES);
-
-            const formattedRevenueUSD = new Intl.NumberFormat('en-US', {
-                style: 'currency',
-                currency: 'USD',
-                maximumFractionDigits: 0,
-            }).format(totalRevenue);
 
             const statsData: StatsData[] = [
                 {
@@ -84,14 +76,12 @@ export const useDashboardStats = () => {
                     value: studentCount.toString(),
                     icon: "users",
                     color: "blue",
-                    trend: { value: "12%", isPositive: true },
                 },
                 {
                     label: "Teachers",
                     value: teacherCount.toString(),
                     icon: "school",
                     color: "green",
-                    trend: { value: "5%", isPositive: true },
                 },
                 {
                     label: "Subjects",
@@ -101,11 +91,10 @@ export const useDashboardStats = () => {
                 },
                 {
                     label: "Revenue",
-                    value: formattedRevenueKES,
-                    subValue: formattedRevenueUSD,
+                    value: formatKES(totalRevenueKES),
+                    subValue: formatUSD(totalRevenue),
                     icon: "wallet",
                     color: "yellow",
-                    trend: { value: "8%", isPositive: true },
                 },
             ];
             setStats(statsData);
@@ -116,8 +105,21 @@ export const useDashboardStats = () => {
         }
     };
 
+    const { isInitializing, session } = useAuth(); // Import useAuth to check session status
+
     useEffect(() => {
+        if (isInitializing || !session) return;
+
         fetchStats();
+
+        // Use a ref-based timer for debouncing realtime updates
+        let debounceTimer: any = null;
+        const debouncedFetch = () => {
+            if (debounceTimer) clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(() => {
+                fetchStats();
+            }, 1000); // 1s debounce
+        };
 
         // Real-time subscriptions
         const userChannel = supabase
@@ -125,7 +127,7 @@ export const useDashboardStats = () => {
             .on(
                 'postgres_changes',
                 { event: '*', schema: 'public', table: 'users' },
-                () => fetchStats()
+                () => debouncedFetch()
             )
             .subscribe();
 
@@ -134,7 +136,7 @@ export const useDashboardStats = () => {
             .on(
                 'postgres_changes',
                 { event: '*', schema: 'public', table: 'subjects' },
-                () => fetchStats()
+                () => debouncedFetch()
             )
             .subscribe();
 
@@ -143,16 +145,17 @@ export const useDashboardStats = () => {
             .on(
                 'postgres_changes',
                 { event: '*', schema: 'public', table: 'financial_transactions' },
-                () => fetchStats()
+                () => debouncedFetch()
             )
             .subscribe();
 
         return () => {
+            if (debounceTimer) clearTimeout(debounceTimer);
             supabase.removeChannel(userChannel);
             supabase.removeChannel(subjectChannel);
             supabase.removeChannel(transactionChannel);
         };
-    }, []);
+    }, [isInitializing, session]);
 
     return { stats, loading, revenueData, refresh: fetchStats };
 };

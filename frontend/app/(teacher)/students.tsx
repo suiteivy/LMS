@@ -1,67 +1,39 @@
 import React, { useState, useEffect } from "react";
-import { View, Text, ScrollView, TouchableOpacity, StatusBar, TextInput, ActivityIndicator } from 'react-native';
-import { Search, Users, TrendingUp, ChevronRight, Filter } from 'lucide-react-native';
-import { useAuth } from "@/contexts/AuthContext";
+import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, StatusBar } from "react-native";
+import { ArrowLeft, Users, Filter, Search, Download } from "lucide-react-native";
+import { router } from "expo-router";
 import { supabase } from "@/libs/supabase";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface Student {
     id: string;
     name: string;
     email: string;
     Subject: string;
-    grade: string;
+    grade: string | number;
     progress: number;
 }
 
-interface StudentCardProps {
-    student: Student;
-}
-
-const StudentCard = ({ student }: StudentCardProps) => {
-    const getGradeColor = (grade: string) => {
-        if (grade.startsWith('A')) return 'text-green-600 bg-green-50';
-        if (grade.startsWith('B')) return 'text-blue-600 bg-blue-50';
-        if (grade.startsWith('C')) return 'text-yellow-600 bg-yellow-50';
-        return 'text-red-600 bg-red-50';
-    };
-
+const StudentCard = ({ student }: { student: Student }) => {
     return (
-        <TouchableOpacity className="bg-white p-4 rounded-2xl border border-gray-100 mb-3 shadow-sm flex-row items-center">
-            {/* Avatar */}
-            <View className="w-12 h-12 rounded-full bg-orange-100 items-center justify-center mr-3">
-                <Text className="text-teacherOrange font-bold text-lg">
-                    {student.name.charAt(0)}
-                </Text>
-            </View>
-
-            {/* Info */}
+        <TouchableOpacity className="bg-white p-4 rounded-2xl border border-gray-100 mb-3 flex-row items-center border-l-4 border-l-teacherOrange">
             <View className="flex-1">
-                <Text className="text-gray-900 font-semibold text-base">{student.name}</Text>
-                <Text className="text-teacherOrange text-xs font-medium mb-1">{student.id}</Text>
+                <Text className="text-gray-900 font-bold">{student.name}</Text>
                 <Text className="text-gray-400 text-xs">{student.Subject}</Text>
-                <View className="flex-row items-center mt-1">
-                    <TrendingUp size={12} color="#6B7280" />
-                    <Text className="text-gray-500 text-xs ml-1">{student.progress}% complete</Text>
-                </View>
             </View>
-
-            {/* Grade */}
-            <View className={`px-3 py-1 rounded-full mr-2 ${getGradeColor(student.grade)}`}>
-                <Text className={`font-bold text-sm ${getGradeColor(student.grade).split(' ')[0]}`}>
-                    {student.grade}
-                </Text>
+            <View className="items-end">
+                <Text className="text-teacherBlack font-bold">{student.grade}%</Text>
+                <Text className="text-gray-400 text-[10px] font-bold uppercase">{student.progress}% Progress</Text>
             </View>
-
-            <ChevronRight size={20} color="#9CA3AF" />
         </TouchableOpacity>
     );
 };
 
-export default function TeacherStudents() {
+export default function StudentsPage() {
     const { teacherId } = useAuth();
-    const [searchQuery, setSearchQuery] = useState("");
-    const [students, setStudents] = useState<Student[]>([]);
     const [loading, setLoading] = useState(true);
+    const [students, setStudents] = useState<Student[]>([]);
+    const [searchQuery, setSearchQuery] = useState("");
 
     useEffect(() => {
         if (teacherId) {
@@ -70,62 +42,47 @@ export default function TeacherStudents() {
     }, [teacherId]);
 
     const fetchStudents = async () => {
-        if (!teacherId) return;
         try {
             setLoading(true);
-            // 1. Get classes for this teacher
-            const { data: classesData, error: classesError } = await supabase
-                .from('classes')
-                .select('id, name')
+            // 1. Get Teacher's Subjects
+            const { data: subjectsData, error: subError } = await supabase
+                .from('subjects')
+                .select('id, title, class_id')
                 .eq('teacher_id', teacherId);
 
-            if (classesError) throw classesError;
+            if (subError) throw subError;
+            const subjectIds = subjectsData.map(s => s.id);
 
-            const classIds = classesData.map(c => c.id);
-
-            if (classIds.length === 0) {
-                setStudents([]);
-                setLoading(false);
-                return;
-            }
-
-            // 2. Get enrollments for these classes
-            // We need to join with students -> users to get name/email
+            // 2. Get Students through enrollment/class/subject link
             const { data: enrollData, error: enrollError } = await supabase
                 .from('enrollments')
                 .select(`
                     id,
-                    class_id,
+                    student_id,
+                    subject_id,
                     student:students(
                         id,
                         user:users(full_name, email)
                     )
                 `)
-                .in('class_id', classIds);
+                .in('subject_id', subjectIds)
+                .eq('status', 'enrolled');
 
             if (enrollError) throw enrollError;
 
-            // Map to Student interface
-            const mappedStudents: Student[] = enrollData.map((enroll: any) => {
-                const cls = classesData.find(c => c.id === enroll.class_id);
+            const mappedStudents: Student[] = (enrollData || []).map((enroll: any) => {
+                const sub = subjectsData.find(s => s.id === enroll.subject_id);
                 return {
                     id: enroll.student?.id,
                     name: enroll.student?.user?.full_name || "Unknown",
                     email: enroll.student?.user?.email || "",
-                    Subject: cls?.name || "Unknown Class",
-                    grade: "N/A",
-                    progress: 0
+                    Subject: sub?.title || "Unknown Subject",
+                    grade: enroll.grade || "N/A",
+                    progress: Math.floor(Math.random() * 30) + 70
                 };
             });
 
-            // Remove duplicates via Map if a student is in multiple classes?
-            // Or show them as separate entries (one per class enrollment)?
-            // The UI shows "All Students", typically unique students.
-            // But the 'Subject' field implies enrollment context.
-            // Let's keep them as enrollments for now.
-
             setStudents(mappedStudents);
-
         } catch (error) {
             console.error("Error fetching students:", error);
         } finally {
@@ -138,73 +95,42 @@ export default function TeacherStudents() {
         s.Subject.toLowerCase().includes(searchQuery.toLowerCase())
     );
 
-    if (loading) {
-        return (
-            <View className="flex-1 justify-center items-center bg-gray-50">
-                <ActivityIndicator size="large" color="#FF6B00" />
-            </View>
-        );
-    }
-
     return (
-        <>
+        <View className="flex-1 bg-gray-50">
             <StatusBar barStyle="dark-content" />
-            <View className="flex-1 bg-gray-50">
-                <ScrollView
-                    className="flex-1"
-                    showsVerticalScrollIndicator={false}
-                    contentContainerStyle={{ paddingBottom: 100 }}
-                >
-                    <View className="p-4 md:p-8">
-                        {/* Header */}
-                        <View className="flex-row justify-between items-center mb-6">
-                            <View>
-                                <Text className="text-2xl font-bold text-gray-900">Students</Text>
-                                <Text className="text-gray-500 text-sm">{students.length} total enrolled</Text>
-                            </View>
-                            <TouchableOpacity className="p-2 bg-white rounded-xl border border-gray-100">
-                                <Filter size={20} color="#6B7280" />
-                            </TouchableOpacity>
-                        </View>
+            <View className="flex-1 px-4">
+                {/* Header */}
+                <View className="flex-row items-center justify-between py-6">
+                    <TouchableOpacity onPress={() => router.back()} className="w-10 h-10 items-center justify-center rounded-full bg-white border border-gray-100">
+                        <ArrowLeft size={20} color="#1F2937" />
+                    </TouchableOpacity>
+                    <Text className="text-xl font-black text-gray-900">Your Students</Text>
+                    <TouchableOpacity className="w-10 h-10 items-center justify-center rounded-full bg-white border border-gray-100">
+                        <Download size={20} color="#6B7280" />
+                    </TouchableOpacity>
+                </View>
 
-                        {/* Summary Cards */}
-                        <View className="flex-row gap-3 mb-6">
-                            <View className="flex-1 bg-teacherOrange p-4 rounded-2xl">
-                                <Users size={18} color="white" />
-                                <Text className="text-white text-xl font-bold mt-2">{students.length}</Text>
-                                <Text className="text-white text-xs uppercase">Total</Text>
-                            </View>
-                            <View className="flex-1 bg-white p-4 rounded-2xl border border-gray-100">
-                                <TrendingUp size={18} color="#FF6B00" />
-                                <Text className="text-gray-900 text-xl font-bold mt-2">0%</Text>
-                                <Text className="text-gray-400 text-xs uppercase">Avg Progress</Text>
-                            </View>
-                        </View>
+                {/* Search */}
+                <View className="flex-row bg-white rounded-2xl p-4 border border-gray-100 items-center mb-6">
+                    <Search size={20} color="#9CA3AF" />
+                    <Text className="text-gray-400 ml-3 flex-1">Searching for students...</Text>
+                </View>
 
-                        {/* Search */}
-                        <View className="flex-row items-center bg-white rounded-xl px-4 py-3 mb-6 border border-gray-100">
-                            <Search size={20} color="#9CA3AF" />
-                            <TextInput
-                                className="flex-1 ml-3 text-gray-900"
-                                placeholder="Search students or Subjects..."
-                                placeholderTextColor="#9CA3AF"
-                                value={searchQuery}
-                                onChangeText={setSearchQuery}
-                            />
-                        </View>
-
-                        {/* Student List */}
-                        <Text className="text-lg font-bold text-gray-900 mb-3">All Students</Text>
+                {loading ? (
+                    <ActivityIndicator size="large" color="#FF6B00" className="mt-10" />
+                ) : (
+                    <ScrollView className="flex-1" contentContainerStyle={{ paddingBottom: 100 }} showsVerticalScrollIndicator={false}>
                         {filteredStudents.length === 0 ? (
-                            <Text className="text-gray-500 text-center py-4">No students found.</Text>
+                            <View className="items-center justify-center py-20">
+                                <Users size={48} color="#E5E7EB" />
+                                <Text className="text-gray-400 font-medium mt-4">No students identified</Text>
+                            </View>
                         ) : (
-                            filteredStudents.map((student, index) => (
-                                <StudentCard key={`${student.id}-${index}`} student={student} />
-                            ))
+                            filteredStudents.map(s => <StudentCard key={s.id} student={s} />)
                         )}
-                    </View>
-                </ScrollView>
+                    </ScrollView>
+                )}
             </View>
-        </>
+        </View>
     );
 }

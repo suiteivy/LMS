@@ -1,7 +1,7 @@
 import { StatsCard } from '@/components/common/StatsCard';
 import { StatsData } from '@/types/types';
 import React from 'react';
-import { View, Text } from 'react-native';
+import { Text, View } from 'react-native';
 interface StatsOverviewProps {
   statsData?: StatsData[];
   loading?: boolean;
@@ -53,7 +53,7 @@ const StatsOverview: React.FC<StatsOverviewProps> = ({
 
   return (
     <View className="mb-6">
-      <Text className="text-xl font-semibold text-gray-900 mb-4">
+      <Text className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
         Overview
       </Text>
 
