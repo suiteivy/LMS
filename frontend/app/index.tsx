@@ -978,6 +978,13 @@ export default function Index() {
                 style={{ width: "100%", maxWidth: 500 }}
               >
                 <View style={{ backgroundColor: "#1E293B", borderRadius: 32, padding: 32, width: "100%", shadowColor: "#000", shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.5, shadowRadius: 20 }}>
+                  {/* Close button */}
+                  <TouchableOpacity
+                    style={{ position: "absolute", top: 16, right: 16, zIndex: 10 }}
+                    onPress={() => setModalVisible(false)}
+                  >
+                    <Text style={{ color: "rgba(255,255,255,0.6)", fontSize: 24, fontWeight: "bold" }}>×</Text>
+                  </TouchableOpacity>
                   <Text style={{ color: "white", fontWeight: "900", fontSize: 24, marginBottom: 8 }}>
                     {selectedPlan === 'Free Trial' ? 'Get Started for Free' : `Sign Up for ${selectedPlan}`}
                   </Text>
