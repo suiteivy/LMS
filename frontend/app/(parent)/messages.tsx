@@ -1,58 +1,11 @@
 import { UnifiedHeader } from "@/components/common/UnifiedHeader";
+import { MessageService } from "@/services/MessageService";
 import { router } from "expo-router";
 import { CheckCircle2, ChevronRight, Mail, MessageCircle, Plus, Search, Send, UserCircle } from "lucide-react-native";
-import React, { useState } from "react";
-import { ScrollView, Text, TextInput, TouchableOpacity, View } from "react-native";
+import React, { useEffect, useState } from "react";
+import { ActivityIndicator, RefreshControl, ScrollView, Text, TextInput, TouchableOpacity, View } from "react-native";
 
-// ── Dummy Data ───────────────────────────────────────────────────────────────
-const DUMMY_CONTACTS = [
-  { id: "t1", full_name: "Mr. James Otieno", role: "teacher" },
-  { id: "t2", full_name: "Mrs. Amina Wangari", role: "teacher" },
-  { id: "t3", full_name: "Mr. Peter Kamau", role: "teacher" },
-  { id: "a1", full_name: "Admin Office", role: "admin" },
-  { id: "a2", full_name: "Mrs. Josephine Waweru", role: "principal" },
-];
-
-const DUMMY_INBOX = [
-  {
-    id: "m1", is_read: false,
-    subject: "Ethan's Progress — Mathematics",
-    content: "Dear Parent, I wanted to reach out regarding Ethan's excellent performance in last week's algebra test. He scored 88/100 and is among the top students in class. Keep encouraging him!",
-    sender: { full_name: "Mr. James Otieno", role: "teacher" },
-    created_at: "2026-02-18T10:30:00Z",
-  },
-  {
-    id: "m2", is_read: true,
-    subject: "Parent-Teacher Day Reminder",
-    content: "This is a reminder that the Parent-Teacher Conference is scheduled for February 28th, 2026. Please confirm your attendance via the school portal or contact the admin office.",
-    sender: { full_name: "Admin Office", role: "admin" },
-    created_at: "2026-02-15T08:00:00Z",
-  },
-  {
-    id: "m3", is_read: true,
-    subject: "Aisha's Attendance Note",
-    content: "We noted that Aisha was absent on February 13th without prior notification. Kindly send a written excuse note or contact the class teacher at your earliest convenience.",
-    sender: { full_name: "Mrs. Amina Wangari", role: "teacher" },
-    created_at: "2026-02-14T09:15:00Z",
-  },
-];
-
-const DUMMY_SENT = [
-  {
-    id: "s1", is_read: true,
-    subject: "Question about Ethan's homework",
-    content: "Good morning Mr. Otieno, I wanted to ask about the mathematics homework assigned last Friday. Ethan seems to be struggling with the second set of problems. Could you provide some guidance?",
-    receiver: { full_name: "Mr. James Otieno", role: "teacher" },
-    created_at: "2026-02-16T07:45:00Z",
-  },
-  {
-    id: "s2", is_read: true,
-    subject: "Confirming PT Conference",
-    content: "Hello, I'm writing to confirm my attendance at the Parent-Teacher Conference on February 28th. I'll be available from 9 AM to 11 AM. Thank you.",
-    receiver: { full_name: "Admin Office", role: "admin" },
-    created_at: "2026-02-15T12:00:00Z",
-  },
-];
+// Dummy data removed, using MessageService
 
 const formatTime = (dateStr: string) => {
   const d = new Date(dateStr);
@@ -68,43 +21,96 @@ export default function ParentMessagingPage() {
   const [screen, setScreen] = useState<Screen>("list");
   const [viewItem, setViewItem] = useState<any>(null);
   const [sentSuccess, setSentSuccess] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
-  const [inbox, setInbox] = useState(DUMMY_INBOX);
-  const [sent, setSent] = useState(DUMMY_SENT);
+  const [inbox, setInbox] = useState<any[]>([]);
+  const [sent, setSent] = useState<any[]>([]);
 
   const [searchQuery, setSearchQuery] = useState("");
+  const [contacts, setContacts] = useState<any[]>([]);
   const [selectedReceiver, setSelectedReceiver] = useState<any>(null);
   const [messageContent, setMessageContent] = useState("");
 
-  const filteredContacts = DUMMY_CONTACTS.filter((c) =>
-    c.full_name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
-
-  const handleSendMessage = () => {
-    if (!selectedReceiver || !messageContent.trim()) return;
-    setSent((prev) => [
-      {
-        id: `s${Date.now()}`, is_read: true,
-        subject: `Message to ${selectedReceiver.full_name}`,
-        content: messageContent.trim(),
-        receiver: selectedReceiver,
-        created_at: new Date().toISOString(),
-      },
-      ...prev,
-    ]);
-    setScreen("list");
-    setMessageContent("");
-    setSelectedReceiver(null);
-    setSearchQuery("");
-    setSentSuccess(true);
-    setTimeout(() => setSentSuccess(false), 3000);
+  const fetchData = async () => {
+    try {
+      const [inboxRes, sentRes] = await Promise.all([
+        MessageService.getMessages('inbox'),
+        MessageService.getMessages('sent')
+      ]);
+      setInbox(inboxRes || []);
+      setSent(sentRes || []);
+    } catch (error) {
+      console.error("Error fetching messages:", error);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
   };
 
-  const markRead = (id: string) =>
-    setInbox((prev) => prev.map((m) => (m.id === id ? { ...m, is_read: true } : m)));
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  const onRefresh = () => {
+    setRefreshing(true);
+    fetchData();
+  };
+
+  useEffect(() => {
+    const searchContacts = async () => {
+      if (searchQuery.length > 2) {
+        try {
+          const res = await MessageService.searchUsers(searchQuery);
+          setContacts(res || []);
+        } catch (error) {
+          console.error("Error searching users:", error);
+        }
+      } else {
+        setContacts([]);
+      }
+    };
+    searchContacts();
+  }, [searchQuery]);
+
+  const handleSendMessage = async () => {
+    if (!selectedReceiver || !messageContent.trim()) return;
+    try {
+      setLoading(true);
+      await MessageService.sendMessage(selectedReceiver.id, messageContent.trim(), `Message to ${selectedReceiver.full_name}`);
+      setSentSuccess(true);
+      setScreen("list");
+      setMessageContent("");
+      setSelectedReceiver(null);
+      setSearchQuery("");
+      fetchData();
+      setTimeout(() => setSentSuccess(false), 3000);
+    } catch (error) {
+      console.error("Error sending message:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const markRead = async (id: string) => {
+    try {
+      await MessageService.markAsRead(id);
+      setInbox((prev) => prev.map((m) => (m.id === id ? { ...m, is_read: true } : m)));
+    } catch (error) {
+      console.error("Error marking as read:", error);
+    }
+  };
 
   const messages = activeTab === "inbox" ? inbox : sent;
   const unreadCount = inbox.filter((m) => !m.is_read).length;
+
+  if (loading && !refreshing && screen === "list") {
+    return (
+      <View className="flex-1 justify-center items-center bg-gray-50 dark:bg-black">
+        <ActivityIndicator size="large" color="#FF6900" />
+      </View>
+    );
+  }
 
   return (
     <View className="flex-1 bg-gray-50 dark:bg-black">
@@ -150,7 +156,7 @@ export default function ParentMessagingPage() {
                     onChangeText={setSearchQuery}
                   />
                 </View>
-                {filteredContacts.map((item) => (
+                {contacts.map((item) => (
                   <TouchableOpacity
                     key={item.id}
                     className="flex-row items-center p-4 mb-2 bg-gray-50/50 dark:bg-gray-800/50 rounded-2xl border border-gray-100 dark:border-gray-800"
@@ -244,7 +250,13 @@ export default function ParentMessagingPage() {
             </View>
           )}
 
-          <ScrollView className="flex-1 px-8" showsVerticalScrollIndicator={false}>
+          <ScrollView
+            className="flex-1 px-8"
+            showsVerticalScrollIndicator={false}
+            refreshControl={
+              <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={["#FF6900"]} tintColor="#FF6900" />
+            }
+          >
             {messages.length === 0 ? (
               <View className="items-center py-20 bg-white dark:bg-[#1a1a1a] rounded-[48px] border border-dashed border-gray-100 dark:border-gray-800">
                 <MessageCircle size={64} color="#E5E7EB" style={{ opacity: 0.2 }} />

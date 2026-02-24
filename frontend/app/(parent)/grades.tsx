@@ -1,23 +1,9 @@
 import { UnifiedHeader } from "@/components/common/UnifiedHeader";
-import { router } from "expo-router";
+import { ParentService } from "@/services/ParentService";
+import { router, useLocalSearchParams } from "expo-router";
 import { BookOpen, LayoutList, Star, TrendingUp } from "lucide-react-native";
-import React from "react";
-import { ScrollView, Text, TouchableOpacity, View } from "react-native";
-
-const DUMMY_PERFORMANCE = {
-  gpa: "3.7",
-  class_rank: "4",
-  class_size: "40",
-  attendance_pct: "92",
-};
-
-const DUMMY_EXAM_RESULTS = [
-  { id: "1", title: "Mid-Term Mathematics", subject: "Mathematics", score: 88, max_score: 100, grade: "A", feedback: "Excellent work! Strong algebra skills. Keep it up with geometry." },
-  { id: "2", title: "English Composition", subject: "English", score: 76, max_score: 100, grade: "B+", feedback: "Good structure and vocabulary. Work on thesis clarity." },
-  { id: "3", title: "Biology CAT 2", subject: "Biology", score: 91, max_score: 100, grade: "A+", feedback: "Outstanding! Perfect understanding of cell theory." },
-  { id: "4", title: "History Essay", subject: "History", score: 70, max_score: 100, grade: "B", feedback: "Good factual recall. Improve analysis and citations." },
-  { id: "5", title: "Physics Practicals", subject: "Physics", score: 83, max_score: 100, grade: "A-", feedback: "Accurate readings and good lab report structure." },
-];
+import React, { useEffect, useState } from "react";
+import { ActivityIndicator, RefreshControl, ScrollView, Text, TouchableOpacity, View } from "react-native";
 
 const gradeColor = (g: string) => {
   if (g.startsWith("A")) return { bg: "bg-emerald-50", text: "text-emerald-700" };
@@ -26,6 +12,80 @@ const gradeColor = (g: string) => {
 };
 
 export default function StudentGradesPage() {
+  const { studentId } = useLocalSearchParams<{ studentId: string }>();
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [performance, setPerformance] = useState<any>(null);
+  const [grades, setGrades] = useState<any[]>([]);
+  const [stats, setStats] = useState({ gpa: "0.0", attendance_pct: "0", standing: "N/A" });
+
+  const fetchPerformanceData = async () => {
+    if (!studentId) return;
+    try {
+      const [performanceData, attendance] = await Promise.all([
+        ParentService.getStudentPerformance(studentId),
+        ParentService.getStudentAttendance(studentId)
+      ]);
+
+      setPerformance(performanceData);
+
+      const allSubmissions = [
+        ...(performanceData.submissions || []),
+        ...(performanceData.grades || [])
+      ].map((s: any, idx: number) => ({
+        id: s.id || `grade-${idx}`,
+        title: s.assignment?.title || s.title || (s.subject?.title + " Grade"),
+        subject: s.assignment?.subject?.title || s.subject?.title || "Unknown",
+        score: s.grade || s.total_grade || 0,
+        grade: s.letter_grade || (s.grade >= 80 ? 'A' : s.grade >= 70 ? 'B' : s.grade >= 60 ? 'C' : 'D'),
+        feedback: s.feedback || ""
+      }));
+
+      setGrades(allSubmissions);
+
+      // Simple GPA Calc
+      const avg = allSubmissions.length > 0
+        ? allSubmissions.reduce((acc, curr) => acc + Number(curr.score), 0) / allSubmissions.length
+        : 0;
+      const gpa = (avg / 25).toFixed(1);
+
+      // Attendance Pct
+      let attendancePct = "0";
+      if (attendance && attendance.length > 0) {
+        const present = attendance.filter((a: any) => a.status === 'present' || a.status === 'late').length;
+        attendancePct = `${Math.round((present / attendance.length) * 100)}`;
+      }
+
+      setStats({
+        gpa,
+        attendance_pct: attendancePct,
+        standing: Number(gpa) >= 3.5 ? "Excellent" : Number(gpa) >= 3.0 ? "Good" : "Probation"
+      });
+
+    } catch (error) {
+      console.error("Error fetching performance data:", error);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchPerformanceData();
+  }, [studentId]);
+
+  const onRefresh = () => {
+    setRefreshing(true);
+    fetchPerformanceData();
+  };
+
+  if (loading && !refreshing) {
+    return (
+      <View className="flex-1 justify-center items-center bg-gray-50 dark:bg-black">
+        <ActivityIndicator size="large" color="#FF6900" />
+      </View>
+    );
+  }
   return (
     <View className="flex-1 bg-gray-50 dark:bg-black">
       <UnifiedHeader
@@ -40,6 +100,9 @@ export default function StudentGradesPage() {
         className="flex-1"
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 150 }}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={["#FF6900"]} tintColor="#FF6900" />
+        }
       >
         <View className="p-4 md:p-8">
           {/* GPA Hero Section */}
@@ -47,8 +110,8 @@ export default function StudentGradesPage() {
             <View className="flex-row justify-between items-start mb-10">
               <View>
                 <Text className="text-white/40 text-[10px] font-bold uppercase tracking-[3px] mb-2">Cumulative Index</Text>
-                <Text className="text-white text-6xl font-black tracking-tighter">{DUMMY_PERFORMANCE.gpa}</Text>
-                <Text className="text-[#FF6900] text-xs font-bold mt-2 uppercase tracking-widest">Distinction Runner</Text>
+                <Text className="text-white text-6xl font-black tracking-tighter">{stats.gpa}</Text>
+                <Text className="text-[#FF6900] text-xs font-bold mt-2 uppercase tracking-widest">{stats.standing} Standing</Text>
               </View>
               <View className="bg-[#FF6900] p-4 rounded-3xl shadow-lg">
                 <TrendingUp size={28} color="white" />
@@ -59,15 +122,15 @@ export default function StudentGradesPage() {
             <View className="flex-row justify-between pt-8 border-t border-white/10">
               <View className="items-center">
                 <Text className="text-white/30 text-[8px] font-bold uppercase tracking-widest">Cohort Rank</Text>
-                <Text className="text-white font-bold text-xl mt-1">#4 / 40</Text>
+                <Text className="text-white font-bold text-xl mt-1">N/A</Text>
               </View>
               <View className="items-center border-x border-white/10 px-8">
                 <Text className="text-white/30 text-[8px] font-bold uppercase tracking-widest">Attendance</Text>
-                <Text className="text-white font-bold text-xl mt-1">{DUMMY_PERFORMANCE.attendance_pct}%</Text>
+                <Text className="text-white font-bold text-xl mt-1">{stats.attendance_pct}%</Text>
               </View>
               <View className="items-center">
                 <Text className="text-white/30 text-[8px] font-bold uppercase tracking-widest">Standing</Text>
-                <Text className="text-emerald-400 font-bold text-xl mt-1">Excellent</Text>
+                <Text className="text-emerald-400 font-bold text-xl mt-1">{stats.standing}</Text>
               </View>
             </View>
           </View>
@@ -80,40 +143,47 @@ export default function StudentGradesPage() {
             </TouchableOpacity>
           </View>
 
-          {DUMMY_EXAM_RESULTS.map((result) => {
-            const gc = gradeColor(result.grade);
-            return (
-              <View key={result.id} className="bg-white dark:bg-[#1a1a1a] p-6 rounded-[32px] mb-4 border border-gray-50 dark:border-gray-800 shadow-sm">
-                <View className="flex-row justify-between items-center mb-6">
-                  <View className="flex-row items-center flex-1">
-                    <View className="w-10 h-10 rounded-2xl bg-orange-50 items-center justify-center mr-3">
-                      <BookOpen size={18} color="#FF6900" />
+          {grades.length === 0 ? (
+            <View className="bg-white dark:bg-[#1a1a1a] p-12 rounded-[40px] items-center border border-gray-100 dark:border-gray-800 border-dashed mt-4">
+              <Star size={48} color="#E5E7EB" style={{ opacity: 0.3 }} />
+              <Text className="text-gray-400 dark:text-gray-500 font-bold text-center mt-6">No records found</Text>
+            </View>
+          ) : (
+            grades.map((result: any) => {
+              const gc = gradeColor(result.grade);
+              return (
+                <View key={result.id} className="bg-white dark:bg-[#1a1a1a] p-6 rounded-[32px] mb-4 border border-gray-50 dark:border-gray-800 shadow-sm">
+                  <View className="flex-row justify-between items-center mb-6">
+                    <View className="flex-row items-center flex-1">
+                      <View className="w-10 h-10 rounded-2xl bg-orange-50 items-center justify-center mr-3">
+                        <BookOpen size={18} color="#FF6900" />
+                      </View>
+                      <View>
+                        <Text className="text-gray-900 dark:text-white font-bold text-base tracking-tight">{result.subject}</Text>
+                        <Text className="text-gray-400 text-[8px] font-bold uppercase tracking-widest mt-0.5">{result.title}</Text>
+                      </View>
                     </View>
-                    <View>
-                      <Text className="text-gray-900 dark:text-white font-bold text-base tracking-tight">{result.subject}</Text>
-                      <Text className="text-gray-400 text-[8px] font-bold uppercase tracking-widest mt-0.5">{result.title}</Text>
+                    <View className="items-end">
+                      <View className={`${gc.bg} px-3 py-1 rounded-full mb-1`}>
+                        <Text className={`${gc.text} font-black text-xs uppercase tracking-widest`}>{result.grade}</Text>
+                      </View>
+                      <Text className="text-gray-400 text-[8px] font-bold uppercase tracking-widest">{result.score}% Accuracy</Text>
                     </View>
                   </View>
-                  <View className="items-end">
-                    <View className={`${gc.bg} px-3 py-1 rounded-full mb-1`}>
-                      <Text className={`${gc.text} font-black text-xs uppercase tracking-widest`}>{result.grade}</Text>
-                    </View>
-                    <Text className="text-gray-400 text-[8px] font-bold uppercase tracking-widest">{result.score}% Accuracy</Text>
-                  </View>
-                </View>
 
-                {result.feedback && (
-                  <View className="bg-gray-50 dark:bg-gray-800 p-5 rounded-2xl border border-gray-100 dark:border-gray-700">
-                    <View className="flex-row items-center mb-3">
-                      <Star size={14} color="#FF6900" />
-                      <Text className="text-gray-400 text-[8px] font-bold uppercase tracking-widest ml-2">Faculty Evaluation</Text>
+                  {result.feedback && (
+                    <View className="bg-gray-50 dark:bg-gray-800 p-5 rounded-2xl border border-gray-100 dark:border-gray-700">
+                      <View className="flex-row items-center mb-3">
+                        <Star size={14} color="#FF6900" />
+                        <Text className="text-gray-400 text-[8px] font-bold uppercase tracking-widest ml-2">Faculty Evaluation</Text>
+                      </View>
+                      <Text className="text-gray-600 dark:text-gray-300 text-xs font-medium leading-5">{result.feedback}</Text>
                     </View>
-                    <Text className="text-gray-600 dark:text-gray-300 text-xs font-medium leading-5">{result.feedback}</Text>
-                  </View>
-                )}
-              </View>
-            );
-          })}
+                  )}
+                </View>
+              );
+            })
+          )}
         </View>
       </ScrollView>
     </View>

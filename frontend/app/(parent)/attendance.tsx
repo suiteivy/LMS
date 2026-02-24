@@ -1,25 +1,10 @@
 import { UnifiedHeader } from "@/components/common/UnifiedHeader";
-import { router } from "expo-router";
+import { ParentService } from "@/services/ParentService";
+import { router, useLocalSearchParams } from "expo-router";
 import { Calendar as CalendarIcon, CheckCircle2, Clock, Search, XCircle } from "lucide-react-native";
-import React from "react";
-import { ScrollView, Text, TouchableOpacity, View } from "react-native";
+import React, { useEffect, useState } from "react";
+import { ActivityIndicator, RefreshControl, ScrollView, Text, TouchableOpacity, View } from "react-native";
 
-const DUMMY_ATTENDANCE = [
-  { id: "1", date: "2026-02-18", status: "present", subject: "Mathematics" },
-  { id: "2", date: "2026-02-18", status: "present", subject: "English" },
-  { id: "3", date: "2026-02-17", status: "late", subject: "Biology" },
-  { id: "4", date: "2026-02-17", status: "present", subject: "History" },
-  { id: "5", date: "2026-02-14", status: "present", subject: "Physics" },
-  { id: "6", date: "2026-02-13", status: "absent", subject: "Chemistry" },
-  { id: "7", date: "2026-02-13", status: "present", subject: "Mathematics" },
-  { id: "8", date: "2026-02-12", status: "present", subject: "English" },
-  { id: "9", date: "2026-02-11", status: "present", subject: "Biology" },
-  { id: "10", date: "2026-02-10", status: "present", subject: "History" },
-  { id: "11", date: "2026-02-07", status: "absent", subject: "Physics" },
-  { id: "12", date: "2026-02-06", status: "present", subject: "Mathematics" },
-];
-
-const STATS = { present: 22, absent: 2, late: 1, total: 25, pct: "92%" };
 
 const getStatusConfig = (status: string) => {
   switch (status) {
@@ -36,6 +21,50 @@ const formatDate = (dateStr: string) => {
 };
 
 export default function StudentAttendancePage() {
+  const { studentId } = useLocalSearchParams<{ studentId: string }>();
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [attendanceLogs, setAttendanceLogs] = useState<any[]>([]);
+  const [stats, setStats] = useState({ present: 0, absent: 0, late: 0, total: 0, pct: "0%" });
+
+  const fetchAttendanceData = async () => {
+    if (!studentId) return;
+    try {
+      const data = await ParentService.getStudentAttendance(studentId);
+      setAttendanceLogs(data);
+
+      const total = data.length;
+      const present = data.filter((a: any) => a.status === 'present').length;
+      const absent = data.filter((a: any) => a.status === 'absent').length;
+      const late = data.filter((a: any) => a.status === 'late').length;
+      const pct = total > 0 ? `${Math.round(((present + late) / total) * 100)}%` : "0%";
+
+      setStats({ present, absent, late, total, pct });
+    } catch (error) {
+      console.error("Error fetching attendance data:", error);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchAttendanceData();
+  }, [studentId]);
+
+  const onRefresh = () => {
+    setRefreshing(true);
+    fetchAttendanceData();
+  };
+
+  if (loading && !refreshing) {
+    return (
+      <View className="flex-1 justify-center items-center bg-gray-50 dark:bg-black">
+        <ActivityIndicator size="large" color="#FF6900" />
+      </View>
+    );
+  }
+
   return (
     <View className="flex-1 bg-gray-50 dark:bg-black">
       <UnifiedHeader
@@ -50,6 +79,9 @@ export default function StudentAttendancePage() {
         className="flex-1"
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 150 }}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={["#FF6900"]} tintColor="#FF6900" />
+        }
       >
         <View className="p-4 md:p-8">
           {/* Attendance Hero */}
@@ -57,8 +89,8 @@ export default function StudentAttendancePage() {
             <View className="flex-row justify-between items-center mb-10">
               <View>
                 <Text className="text-white/40 text-[10px] font-bold uppercase tracking-[3px] mb-2">Academic Presence</Text>
-                <Text className="text-white text-6xl font-black tracking-tighter">{STATS.pct}</Text>
-                <Text className="text-[#FF6900] text-xs font-bold mt-2 uppercase tracking-widest">{STATS.total} Sessions Tracked</Text>
+                <Text className="text-white text-6xl font-black tracking-tighter">{stats.pct}</Text>
+                <Text className="text-[#FF6900] text-xs font-bold mt-2 uppercase tracking-widest">{stats.total} Sessions Tracked</Text>
               </View>
               <View className="w-16 h-16 rounded-full bg-[#FF6900] items-center justify-center shadow-lg">
                 <CalendarIcon size={32} color="white" />
@@ -69,15 +101,15 @@ export default function StudentAttendancePage() {
             <View className="flex-row justify-between pt-8 border-t border-white/10">
               <View className="items-center">
                 <Text className="text-white/30 text-[8px] font-bold uppercase tracking-widest">Present</Text>
-                <Text className="text-emerald-400 font-bold text-xl mt-1">{STATS.present}</Text>
+                <Text className="text-emerald-400 font-bold text-xl mt-1">{stats.present}</Text>
               </View>
               <View className="items-center border-x border-white/10 px-10">
                 <Text className="text-white/30 text-[8px] font-bold uppercase tracking-widest">Absent</Text>
-                <Text className="text-rose-400 font-bold text-xl mt-1">{STATS.absent}</Text>
+                <Text className="text-rose-400 font-bold text-xl mt-1">{stats.absent}</Text>
               </View>
               <View className="items-center">
                 <Text className="text-white/30 text-[8px] font-bold uppercase tracking-widest">Late</Text>
-                <Text className="text-amber-400 font-bold text-xl mt-1">{STATS.late}</Text>
+                <Text className="text-amber-400 font-bold text-xl mt-1">{stats.late}</Text>
               </View>
             </View>
           </View>
@@ -90,7 +122,7 @@ export default function StudentAttendancePage() {
             </TouchableOpacity>
           </View>
 
-          {DUMMY_ATTENDANCE.map((item) => {
+          {attendanceLogs.map((item: any) => {
             const config = getStatusConfig(item.status);
             return (
               <View key={item.id} className="bg-white dark:bg-[#1a1a1a] p-5 rounded-[32px] mb-4 flex-row items-center border border-gray-50 dark:border-gray-800 shadow-sm">
@@ -104,7 +136,7 @@ export default function StudentAttendancePage() {
                       <Text className={`font-black uppercase text-[8px] tracking-widest ${config.text}`}>{config.label}</Text>
                     </View>
                   </View>
-                  <Text className="text-gray-400 text-[10px] font-bold uppercase tracking-widest">Unit: {item.subject}</Text>
+                  <Text className="text-gray-400 text-[10px] font-bold uppercase tracking-widest">Unit: {item.subject?.title || 'Unknown'}</Text>
                 </View>
               </View>
             );

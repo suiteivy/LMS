@@ -23,39 +23,12 @@ export const generateUserId = (): string => {
 };
 
 /**
- * Creates sample users for testing/demo purposes
+ * Creates sample users for testing/demo purposes (Removed - relies on database)
  */
 export const createSampleUsers = (): User[] => {
-  const sampleData: CreateUserData[] = [
-    {
-      name: "John Doe",
-      email: "john.doe@example.com",
-      role: "student",
-    },
-    {
-      name: "Jane Smith",
-      email: "jane.smith@example.com",
-      role: "teacher",
-    },
-    {
-      name: "Admin User",
-      email: "admin@example.com",
-      role: "admin",
-    },
-    {
-      name: "Bob Johnson",
-      email: "bob.johnson@example.com",
-      role: "student",
-    },
-    {
-      name: "Alice Brown",
-      email: "alice.brown@example.com",
-      role: "teacher",
-    },
-  ];
-
-  return sampleData.map(createUser);
+  return [];
 };
+
 
 /**
  * Converts raw data to User objects
