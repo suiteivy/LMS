@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "expo-router";
 import { ChevronLeft, Plus, Trash2, Calendar, Clock, MapPin, X } from "lucide-react-native";
 import { TimetableAPI, TimetableEntry, CreateTimetableDto } from "@/services/TimetableService";
-import { ClassAPI, ClassData } from "@/services/ClassService";
+import { ClassAPI, ClassItem as ClassData } from "@/services/ClassService";
 import { SubjectAPI, SubjectData } from "@/services/SubjectService";
 import { Picker } from '@react-native-picker/picker';
 import { showSuccess, showError } from "@/utils/toast";
