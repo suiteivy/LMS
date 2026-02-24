@@ -247,17 +247,17 @@ export default function CreateUserScreen() {
         <View style={{ padding: 24 }}>
             <Text style={{ fontSize: 24, fontWeight: '700', color: textPrimary, marginBottom: 6 }}>Select Role</Text>
             <Text style={{ color: textSecondary, marginBottom: 24 }}>Choose the type of user you want to enroll</Text>
-            {ROLE_CARDS.map(card => (
-                <TouchableOpacity key={card.role} onPress={() => updateForm('role', card.role)} activeOpacity={0.7}
-                    style={{ padding: 20, borderRadius: 16, borderWidth: 2, flexDirection: 'row', alignItems: 'center', marginBottom: 12, backgroundColor: form.role === card.role ? (isDark ? '#2a1a0a' : '#fff7ed') : card, borderColor: form.role === card.role ? '#FF6B00' : border }}>
-                    <View style={{ width: 56, height: 56, borderRadius: 12, alignItems: 'center', justifyContent: 'center', marginRight: 16, backgroundColor: card.color + '20' }}>
-                        <Ionicons name={card.icon as any} size={28} color={card.color} />
+            {ROLE_CARDS.map(roleCard => (
+                <TouchableOpacity key={roleCard.role} onPress={() => updateForm('role', roleCard.role)} activeOpacity={0.7}
+                    style={{ padding: 20, borderRadius: 16, borderWidth: 2, flexDirection: 'row', alignItems: 'center', marginBottom: 12, backgroundColor: form.role === roleCard.role ? (isDark ? '#2a1a0a' : '#fff7ed') : card, borderColor: form.role === roleCard.role ? '#FF6B00' : border }}>
+                    <View style={{ width: 56, height: 56, borderRadius: 12, alignItems: 'center', justifyContent: 'center', marginRight: 16, backgroundColor: roleCard.color + '20' }}>
+                        <Ionicons name={roleCard.icon as any} size={28} color={roleCard.color} />
                     </View>
                     <View style={{ flex: 1 }}>
-                        <Text style={{ fontSize: 17, fontWeight: '700', color: textPrimary }}>{card.label}</Text>
-                        <Text style={{ fontSize: 13, color: textSecondary }}>{card.desc}</Text>
+                        <Text style={{ fontSize: 17, fontWeight: '700', color: textPrimary }}>{roleCard.label}</Text>
+                        <Text style={{ fontSize: 13, color: textSecondary }}>{roleCard.desc}</Text>
                     </View>
-                    {form.role === card.role && (
+                    {form.role === roleCard.role && (
                         <View style={{ width: 24, height: 24, borderRadius: 12, backgroundColor: '#FF6B00', alignItems: 'center', justifyContent: 'center' }}>
                             <Ionicons name="checkmark" size={14} color="white" />
                         </View>

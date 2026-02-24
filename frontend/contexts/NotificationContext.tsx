@@ -2,6 +2,7 @@ import React, { createContext, ReactNode, useContext, useEffect, useState } from
 import { NotificationAPI } from '../services/NotificationService';
 import { Notification } from '../types/types';
 import { useAuth } from './AuthContext';
+import { useRealtimeQuery } from '../hooks/useRealtimeQuery';
 
 interface NotificationContextType {
     notifications: Notification[];
@@ -31,6 +32,11 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
             console.error("Failed to fetch notifications:", error);
         }
     };
+
+    // Listen to realtime changes on the notifications table
+    useRealtimeQuery('notifications', () => {
+        fetchNotifications();
+    });
 
     const lastToken = React.useRef<string | null>(null);
 

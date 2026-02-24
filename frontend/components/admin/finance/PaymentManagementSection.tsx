@@ -14,6 +14,7 @@ import {
   TouchableOpacity,
   View
 } from "react-native";
+import Toast from 'react-native-toast-message';
 
 interface PaymentManagementSectionProps {
   payments: Payment[];
@@ -29,7 +30,6 @@ const PaymentManagementSection: React.FC<
   const [showForm, setShowForm] = useState(false);
   const [formData, setFormData] = useState({
     student_id: "",
-    student_name: "",
     amount: "",
     payment_method: "cash" as Payment["payment_method"],
     reference_number: "",
@@ -46,25 +46,35 @@ const PaymentManagementSection: React.FC<
   const resetForm = () => {
     setFormData({
       student_id: "",
-      student_name: "",
       amount: "",
-      payment_method: "cash",
+      payment_method: "cash" as Payment["payment_method"],
       reference_number: "",
       notes: "",
     });
   };
 
   const handleSubmit = () => {
-    if (!formData.student_id || !formData.student_name || !formData.amount) {
+    console.log("Submitting payment:", formData);
+    if (!formData.student_id || !formData.payment_method || !formData.amount) {
+      Toast.show({
+        type: 'error',
+        text1: 'Error',
+        text2: 'Please fill in all required fields including Student ID',
+        position: 'top',
+      });
       Alert.alert("Error", "Please fill in all required fields including Student ID");
       return;
     }
 
     const payment: Omit<Payment, "id"> = {
-      ...formData,
       amount: parseFloat(formData.amount),
       payment_date: new Date().toISOString(),
       status: "completed",
+      student_id: formData.student_id,
+      student_name: "john''", // Set to empty string or fetch if available
+      payment_method: formData.payment_method,
+      reference_number: formData.reference_number,
+      notes: formData.notes,
     };
 
     onPaymentSubmit(payment);
@@ -99,7 +109,7 @@ const PaymentManagementSection: React.FC<
     >
       <View className="flex-row justify-between items-start mb-2">
         <View>
-          <Text className="text-lg font-semibold" style={{ color: isDark ? "#fff" : "#2C3E50" }}>
+          <Text className="text-lg font-semibold text-black" style={{ color: isDark ? "#fff" : "#2C3E50" }}>
             {item.student_name}
           </Text>
           {item.student_display_id && (
@@ -139,11 +149,11 @@ const PaymentManagementSection: React.FC<
         <Text className="text-2xl font-bold mb-2" style={{ color: "#FF6B00" }}>
           {formatAmount(item.amount)}
         </Text>
-
+        
         <View className="flex-row justify-between">
           <Text className="text-sm text-gray-600 dark:text-gray-400">Method:</Text>
           <Text className="text-sm font-medium text-gray-900 dark:text-gray-100 capitalize">
-            {item.payment_method.replace("_", " ")}
+            {item.payment_method ? item.payment_method.replace("_", " ") : ""}
           </Text>
         </View>
 
@@ -258,21 +268,22 @@ const PaymentManagementSection: React.FC<
                   className="border border-gray-300 dark:border-gray-700 rounded-lg px-3 py-3 text-base text-gray-900 dark:text-white bg-white dark:bg-[#1a1a1a]"
                 />
               </View>
-
-              <View>
+{/* 
+                <View>
                 <Text className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Student Name *
                 </Text>
                 <TextInput
                   value={formData.student_name}
                   onChangeText={(text) =>
-                    setFormData({ ...formData, student_name: text })
+                  setFormData({ ...formData, student_name: text })
                   }
                   placeholder="Enter student name"
                   placeholderTextColor={isDark ? "#6B7280" : "#9CA3AF"}
                   className="border border-gray-300 dark:border-gray-700 rounded-lg px-3 py-3 text-base text-gray-900 dark:text-white bg-white dark:bg-[#1a1a1a]"
+                  editable={false}
                 />
-              </View>
+                </View> */}
 
               <View>
                 <Text className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
@@ -303,6 +314,7 @@ const PaymentManagementSection: React.FC<
                     dropdownIconColor={isDark ? "#fff" : "#000"}
                     style={{ color: isDark ? "#fff" : "#000" }}
                   >
+                    <Picker.Item label="Please select a payment method" value="" color={isDark ? "#fff" : "#000"} />
                     <Picker.Item label="Cash" value="cash" color={isDark ? "#fff" : "#000"} />
                     <Picker.Item label="Bank Transfer" value="bank_transfer" color={isDark ? "#fff" : "#000"} />
                     <Picker.Item label="Mobile Money" value="mobile_money" color={isDark ? "#fff" : "#000"} />
