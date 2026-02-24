@@ -99,6 +99,17 @@ function AppShell() {
   );
 }
 
+// ─── GlobalNotifications ─────────────────────────────────────────────────────
+function GlobalNotifications() {
+  const { showNotifications, setShowNotifications } = useNotifications();
+  return (
+    <Notifications
+      visible={showNotifications}
+      onClose={() => setShowNotifications(false)}
+    />
+  );
+}
+
 // ─── AuthHandler ─────────────────────────────────────────────────────────────
 function AuthHandler() {
   const { loading, isInitializing, resetSessionTimer, session } = useAuth();
