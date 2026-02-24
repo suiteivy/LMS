@@ -765,3 +765,45 @@ CREATE POLICY "user_view_own_notifications" ON notifications FOR SELECT USING (u
 CREATE POLICY "admin_all_access" ON subjects FOR ALL USING (get_current_user_role() = 'admin');
 CREATE POLICY "admin_all_access_classes" ON classes FOR ALL USING (get_current_user_role() = 'admin');
 CREATE POLICY "admin_all_access_users" ON users FOR ALL USING (get_current_user_role() = 'admin');
+
+-- 3. Custom RPC Functions
+
+-- Calculate student rank within their institution
+CREATE OR REPLACE FUNCTION get_student_rank(p_student_id TEXT)
+RETURNS JSONB AS $$
+DECLARE
+    v_institution_id UUID;
+    v_result JSONB;
+BEGIN
+    -- Get institution_id of the target student
+    SELECT institution_id INTO v_institution_id FROM students WHERE id = p_student_id;
+
+    WITH student_averages AS (
+        SELECT 
+            s.id AS student_id,
+            COALESCE(AVG(sub.grade), 0) AS avg_score
+        FROM students s
+        LEFT JOIN submissions sub ON s.id = sub.student_id AND sub.status = 'graded'
+        WHERE s.institution_id = v_institution_id
+        GROUP BY s.id
+    ),
+    ranked_students AS (
+        SELECT 
+            student_id,
+            avg_score,
+            RANK() OVER (ORDER BY avg_score DESC) as rank,
+            COUNT(*) OVER () as total_count
+        FROM student_averages
+    )
+    SELECT 
+        jsonb_build_object(
+            'rank', rank,
+            'total_students', total_count,
+            'average_score', ROUND(avg_score, 2)
+        ) INTO v_result
+    FROM ranked_students
+    WHERE student_id = p_student_id;
+
+    RETURN v_result;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;

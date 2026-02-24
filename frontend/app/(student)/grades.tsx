@@ -11,7 +11,7 @@ interface GradeProps {
     SubjectName: string;
     SubjectCode: string;
     grade: string;
-    score: number,
+    score: number;
     credits: number;
     onPress: () => void;
 }
@@ -46,10 +46,10 @@ const SubjectGrade = ({ SubjectCode, SubjectName, grade, score, credits, onPress
 }
 
 export default function Grades() {
-    const { studentId, displayId, user } = useAuth();
+    const { studentId, user } = useAuth();
     const [grades, setGrades] = useState<GradeProps[]>([]);
     const [loading, setLoading] = useState(true);
-    const [stats, setStats] = useState({ gpa: 0, credits: 0, rank: 0, totalMarks: 0, avgMark: 0 });
+    const [stats, setStats] = useState({ gpa: 0, credits: 0, totalMarks: 0, avgMark: 0, rank: 'N/A' as string | number, totalStudents: 0 });
     const [showModal, setShowModal] = useState(false);
     const [fetchingDetails, setFetchingDetails] = useState(false);
     const [selectedDetails, setSelectedDetails] = useState({
@@ -74,19 +74,29 @@ export default function Grades() {
     };
 
     const fetchGrades = async () => {
-        if (!studentId) return;
+        const targetId = studentId || user?.id;
+        if (!targetId) return;
         try {
             setLoading(true);
             const { data } = await supabase
                 .from('submissions')
                 .select(`grade, assignment:assignments!inner(title, is_published, subject:subjects(title, id, credits))`)
-                .eq('student_id', studentId)
+                .eq('student_id', targetId)
                 .eq('status', 'graded')
                 .eq('assignment.is_published', true);
-            const { data: enrollmentGrades } = await supabase.from('enrollments').select(`grade, subjects(id, title, credits)`).eq('student_id', studentId);
-            const { data: reportGrades } = await supabase.from('grades').select(`total_grade, subjects:subject_id(id, title, credits)`).eq('student_id', user?.id || '');
+
+            const { data: enrollmentGrades } = await supabase
+                .from('enrollments')
+                .select(`grade, subjects(id, title, credits)`)
+                .eq('student_id', targetId);
+
+            const { data: reportGrades } = await supabase
+                .from('grades')
+                .select(`total_grade, subjects:subject_id(id, title, credits)`)
+                .eq('student_id', user?.id || '');
 
             const subjectGrades: Record<string, { total: number, count: number, name: string, credits: number, finalGrade?: string, manualScore?: number }> = {};
+
             data?.forEach((sub: any) => {
                 const subjectId = sub.assignment?.subject?.id;
                 const score = Number(sub.grade);
@@ -96,6 +106,7 @@ export default function Grades() {
                     subjectGrades[subjectId].count += 1;
                 }
             });
+
             enrollmentGrades?.forEach((eg: any) => {
                 const subId = eg.subjects?.id;
                 if (subId) {
@@ -103,6 +114,7 @@ export default function Grades() {
                     subjectGrades[subId].finalGrade = eg.grade;
                 }
             });
+
             reportGrades?.forEach((rg: any) => {
                 const subId = rg.subjects?.id;
                 if (subId) {
@@ -126,7 +138,8 @@ export default function Grades() {
                     SubjectCode: "ACAD-" + id.substring(0, 4).toUpperCase(),
                     grade: letter,
                     score: Math.round(score),
-                    credits: val.credits
+                    credits: val.credits,
+                    onPress: () => { } // Placeholder, will set below
                 };
             });
 
@@ -134,12 +147,17 @@ export default function Grades() {
             const totalScore = formattedGrades.reduce((acc, curr) => acc + curr.score, 0);
             const avgScore = formattedGrades.length ? totalScore / formattedGrades.length : 0;
             const gpa = (avgScore / 25).toFixed(2);
+
+            // Fetch Rank - Cast to any to bypass generated type check
+            const { data: rankData }: any = await (supabase.rpc as any)('get_student_rank', { p_student_id: targetId });
+
             setStats({
                 gpa: Number(gpa),
                 credits: formattedGrades.reduce((acc, curr) => acc + curr.credits, 0),
-                rank: 12,
                 totalMarks: totalScore,
-                avgMark: Number(avgScore.toFixed(2))
+                avgMark: Number(avgScore.toFixed(2)),
+                rank: rankData?.rank || 'N/A',
+                totalStudents: rankData?.total_students || 0
             });
         } catch (error) {
             console.error(error);
@@ -149,11 +167,11 @@ export default function Grades() {
     };
 
     const fetchSubjectDetails = async (subject: any) => {
-        if (!studentId) return;
+        const targetId = studentId || user?.id;
+        if (!targetId) return;
         try {
             setFetchingDetails(true);
 
-            // 1. Fetch lecturer/subject info
             const { data: subjectData } = await supabase
                 .from('subjects')
                 .select('*, teacher:teachers(user:users(full_name))')
@@ -162,21 +180,19 @@ export default function Grades() {
 
             if (!subjectData) throw new Error("Subject not found");
 
-            // 2. Fetch submissions for published assignments
             const { data: submissions } = await supabase
                 .from('submissions')
                 .select('grade, assignment:assignments!inner(id, title, total_points, weight, is_published)')
-                .eq('student_id', studentId)
-                .eq('assignment.subject_id', subjectData.id)
+                .eq('student_id', targetId)
+                .eq('assignment.subject_id', (subjectData as any).id)
                 .eq('assignment.is_published', true)
                 .eq('status', 'graded');
 
-            // 3. Fetch exam results for published exams
             const { data: examResults } = await supabase
                 .from('exam_results')
                 .select('score, exam:exams!inner(id, title, max_score, weight, is_published)')
-                .eq('student_id', studentId)
-                .eq('exam.subject_id', subjectData.id)
+                .eq('student_id', targetId)
+                .eq('exam.subject_id', (subjectData as any).id)
                 .eq('exam.is_published', true);
 
             const testScores = [
@@ -211,7 +227,7 @@ export default function Grades() {
 
     if (loading) {
         return (
-            <View className="flex-1 justify-center items-center bg-gray-50">
+            <View className="flex-1 justify-center items-center bg-gray-50 dark:bg-black">
                 <ActivityIndicator size="large" color="#FF6900" />
             </View>
         );
@@ -246,7 +262,7 @@ export default function Grades() {
                         <View className="flex-row justify-between pt-8 border-t border-white/10 dark:border-gray-800">
                             <View className="items-center">
                                 <Text className="text-white/30 dark:text-gray-600 text-[8px] font-bold uppercase tracking-widest">Global Rank</Text>
-                                <Text className="text-white font-bold text-xl mt-1">#12</Text>
+                                <Text className="text-white font-bold text-xl mt-1">{stats.rank}{stats.totalStudents > 0 ? `/${stats.totalStudents}` : ''}</Text>
                             </View>
                             <View className="items-center border-x border-white/10 dark:border-gray-800 px-8">
                                 <Text className="text-white/30 dark:text-gray-600 text-[8px] font-bold uppercase tracking-widest">Credits</Text>
@@ -328,5 +344,5 @@ export default function Grades() {
                 </View>
             )}
         </View>
-    )
+    );
 }

@@ -14,8 +14,9 @@ exports.getLinkedStudents = async (req, res) => {
         // 2. Get Students
         const { data: students, error } = await supabase
             .from("parent_students")
-            .select("student:students(id, users(full_name, avatar_url, email))")
+            .select("student:students(id, grade_level, users(full_name, avatar_url, email))")
             .eq("parent_id", parent.id);
+
 
         if (error) throw error;
         res.json(students.map(s => s.student));

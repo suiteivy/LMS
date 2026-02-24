@@ -1,31 +1,52 @@
 import { UnifiedHeader } from "@/components/common/UnifiedHeader";
-import { router } from "expo-router";
+import { ParentService } from "@/services/ParentService";
+import { router, useLocalSearchParams } from "expo-router";
 import { ArrowDownLeft, ArrowUpRight, CreditCard, Info, Wallet } from "lucide-react-native";
-import React from "react";
-import { ScrollView, Text, TouchableOpacity, View } from "react-native";
-
-const DUMMY_FINANCE = {
-  balance: 8500,
-  total_fees: 45000,
-  paid_amount: 36500,
-  transactions: [
-    { id: "1", type: "School Fees Payment", date: "2026-02-10", amount: 15000, direction: "inflow" },
-    { id: "2", type: "Term 1 Tuition Fee", date: "2026-01-15", amount: 30000, direction: "outflow" },
-    { id: "3", type: "Activity Fee", date: "2026-01-15", amount: 5000, direction: "outflow" },
-    { id: "4", type: "Library Bond", date: "2026-01-15", amount: 2000, direction: "outflow" },
-    { id: "5", type: "Bursary Credit", date: "2026-01-20", amount: 8000, direction: "inflow" },
-    { id: "6", type: "School Fees Payment", date: "2026-02-01", amount: 13500, direction: "inflow" },
-    { id: "7", type: "ICT Levy", date: "2026-01-15", amount: 2500, direction: "outflow" },
-    { id: "8", type: "Uniform Deposit", date: "2026-01-16", amount: 5500, direction: "outflow" },
-  ],
-};
+import React, { useEffect, useState } from "react";
+import { ActivityIndicator, RefreshControl, ScrollView, Text, TouchableOpacity, View } from "react-native";
 
 const formatCurrency = (amount: number) =>
   `KES ${amount.toLocaleString("en-KE")}`;
 
 export default function StudentFinancePage() {
-  const { balance, total_fees, paid_amount, transactions } = DUMMY_FINANCE;
-  const paidPct = Math.round((paid_amount / total_fees) * 100);
+  const { studentId } = useLocalSearchParams<{ studentId: string }>();
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [financeData, setFinanceData] = useState<any>(null);
+
+  const fetchFinanceData = async () => {
+    if (!studentId) return;
+    try {
+      const data = await ParentService.getStudentFinance(studentId);
+      setFinanceData(data);
+    } catch (error) {
+      console.error("Error fetching finance data:", error);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchFinanceData();
+  }, [studentId]);
+
+  const onRefresh = () => {
+    setRefreshing(true);
+    fetchFinanceData();
+  };
+
+  if (loading && !refreshing) {
+    return (
+      <View className="flex-1 justify-center items-center bg-gray-50 dark:bg-black">
+        <ActivityIndicator size="large" color="#FF6900" />
+      </View>
+    );
+  }
+
+  const { balance, total_fees, paid_amount, transactions } = financeData || { balance: 0, total_fees: 0, paid_amount: 0, transactions: [] };
+  const paidPct = total_fees > 0 ? Math.round((paid_amount / total_fees) * 100) : 0;
+
 
   return (
     <View className="flex-1 bg-gray-50 dark:bg-black">
@@ -41,6 +62,9 @@ export default function StudentFinancePage() {
         className="flex-1"
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 150 }}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={["#FF6900"]} tintColor="#FF6900" />
+        }
       >
         <View className="p-4 md:p-8">
           {/* Balance Hero */}
@@ -100,7 +124,7 @@ export default function StudentFinancePage() {
             </TouchableOpacity>
           </View>
 
-          {transactions.map((tx) => (
+          {transactions.map((tx: any) => (
             <View key={tx.id} className="bg-white dark:bg-[#1a1a1a] p-5 rounded-[32px] mb-4 flex-row items-center border border-gray-50 dark:border-gray-800 shadow-sm">
               <View className={`w-12 h-12 rounded-2xl items-center justify-center mr-4 ${tx.direction === "inflow" ? "bg-green-50" : "bg-red-50"}`}>
                 {tx.direction === "inflow"

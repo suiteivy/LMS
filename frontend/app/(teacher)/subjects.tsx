@@ -4,6 +4,7 @@ import { TeacherAPI } from "@/services/TeacherService";
 import { Edit, Eye, TrendingUp, Users } from 'lucide-react-native';
 import React, { useEffect, useState } from "react";
 import { ActivityIndicator, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { useRouter } from "expo-router";
 
 interface Subject {
     id: string;
@@ -19,6 +20,7 @@ interface SubjectCardProps {
 }
 
 const SubjectCard = ({ Subject }: SubjectCardProps) => {
+    const router = useRouter();
     const isActive = Subject.status === "active";
 
     return (
@@ -67,7 +69,10 @@ const SubjectCard = ({ Subject }: SubjectCardProps) => {
                     <Edit size={16} color="#FF6B00" />
                     <Text className="text-[#FF6B00] text-xs ml-1.5 font-bold">Edit</Text>
                 </TouchableOpacity>
-                <TouchableOpacity className="flex-row items-center px-3 py-2 bg-gray-50 dark:bg-gray-800 rounded-xl">
+                <TouchableOpacity
+                    className="flex-row items-center px-3 py-2 bg-gray-50 dark:bg-gray-800 rounded-xl"
+                    onPress={() => router.push(`/(teacher)/management/subjects/details?id=${Subject.id}` as any)}
+                >
                     <Eye size={16} color="#6B7280" />
                     <Text className="text-gray-600 dark:text-gray-400 text-xs ml-1.5 font-bold">View</Text>
                 </TouchableOpacity>
@@ -77,6 +82,7 @@ const SubjectCard = ({ Subject }: SubjectCardProps) => {
 };
 
 export default function TeacherSubjects() {
+    const router = useRouter();
     const { teacherId } = useAuth();
     const [filter, setFilter] = useState<"all" | "active" | "draft">("all");
     const [subjects, setSubjects] = useState<Subject[]>([]);

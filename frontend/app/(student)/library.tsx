@@ -1,5 +1,4 @@
 import { UnifiedHeader } from "@/components/common/UnifiedHeader";
-import demoData from "@/constants/demoData";
 import { useAuth } from '@/contexts/AuthContext';
 import { LibraryAPI } from '@/services/LibraryService';
 import { FrontendBook, FrontendBorrowedBook } from '@/types/types';
@@ -35,20 +34,15 @@ export default function StudentLibrary() {
                 studentId ? LibraryAPI.getBorrowingHistory(studentId) : Promise.resolve([])
             ]);
 
-            const finalBooks = booksData.length > 0
-                ? booksData.map(LibraryAPI.transformBookData)
-                : demoData.MOCK_LIBRARY.catalog;
-
-            const finalHistory = historyData.length > 0
-                ? historyData.map(LibraryAPI.transformBorrowedBookData)
-                : demoData.MOCK_LIBRARY.activity;
+            const finalBooks = booksData.map(LibraryAPI.transformBookData);
+            const finalHistory = historyData.map(LibraryAPI.transformBorrowedBookData);
 
             setBooks(finalBooks as any);
             setBorrowingHistory(finalHistory as any);
         } catch (error) {
             console.error("Error loading library data:", error);
-            setBooks(demoData.MOCK_LIBRARY.catalog as any);
-            setBorrowingHistory(demoData.MOCK_LIBRARY.activity as any);
+            setBooks([]);
+            setBorrowingHistory([]);
         } finally {
             setLoading(false);
             setRefreshing(false);
@@ -67,19 +61,8 @@ export default function StudentLibrary() {
     const handleBorrow = async (book: FrontendBook) => {
         setActionLoading(true);
         if (!studentId) {
-            setTimeout(() => {
-                const newBorrow: any = {
-                    id: Math.random().toString(),
-                    bookTitle: book.title,
-                    status: 'waiting',
-                    dueDate: new Date(Date.now() + 1209600000).toISOString() as any,
-                    borrowDate: new Date().toISOString() as any,
-                };
-                setBorrowingHistory(prev => [newBorrow, ...prev]);
-                Alert.alert("Request Sent", `Successfully requested "${book.title}".`);
-                setModalVisible(false);
-                setActionLoading(false);
-            }, 1000);
+            Alert.alert("Unauthorized", "Please sign in as a student to borrow books.");
+            setActionLoading(false);
             return;
         }
 

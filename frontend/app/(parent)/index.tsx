@@ -1,6 +1,7 @@
 import { UnifiedHeader } from "@/components/common/UnifiedHeader";
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
+import { ParentService } from '@/services/ParentService';
 import { router } from 'expo-router';
 import {
   Calendar,
@@ -13,7 +14,7 @@ import {
   UserCircle
 } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, RefreshControl, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 
 export default function ParentIndex() {
   const { profile, loading, logout } = useAuth();
@@ -29,33 +30,83 @@ export default function ParentIndex() {
   return <ParentDashboard user={profile} logout={logout} />;
 }
 
-const DUMMY_STUDENTS = [
-  { id: "s1", name: "Ethan Kamau", grade_level: "9" },
-  { id: "s2", name: "Aisha Kamau", grade_level: "6" },
-];
 
-const DUMMY_STUDENT_DATA: Record<string, any> = {
-  s1: {
-    performance: { average_grade: "A-" },
-    attendance: { overall_percentage: 92 },
-  },
-  s2: {
-    performance: { average_grade: "B+" },
-    attendance: { overall_percentage: 87 },
-  },
-};
 
 function ParentDashboard({ user, logout }: any) {
   const { isDark } = useTheme();
-  const [linkedStudents, setLinkedStudents] = useState<any[]>(DUMMY_STUDENTS);
-  const [selectedStudent, setSelectedStudent] = useState<any>(DUMMY_STUDENTS[0]);
-  const [studentData, setStudentData] = useState<any>(DUMMY_STUDENT_DATA[DUMMY_STUDENTS[0].id]);
+  const [linkedStudents, setLinkedStudents] = useState<any[]>([]);
+  const [selectedStudent, setSelectedStudent] = useState<any>(null);
+  const [studentData, setStudentData] = useState<any>({});
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const fetchLinkedStudents = async () => {
+    try {
+      const students = await ParentService.getLinkedStudents();
+      setLinkedStudents(students);
+      if (students.length > 0) {
+        setSelectedStudent(students[0]);
+      }
+    } catch (error) {
+      console.error("Error fetching linked students:", error);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
+
+  const fetchStudentDetails = async (studentId: string) => {
+    try {
+      const [performance, attendance] = await Promise.all([
+        ParentService.getStudentPerformance(studentId),
+        ParentService.getStudentAttendance(studentId)
+      ]);
+
+      // Calculate Average Grade (Simplified)
+      let avgGrade = "N/A";
+      if (performance.grades && performance.grades.length > 0) {
+        // Just take the latest for now or calculate GPA if needed
+        avgGrade = performance.grades[0].grade || "N/A";
+      }
+
+      // Calculate Attendance Pct
+      let attendancePct = "N/A";
+      if (attendance && attendance.length > 0) {
+        const present = attendance.filter((a: any) => a.status === 'present' || a.status === 'late').length;
+        attendancePct = `${Math.round((present / attendance.length) * 100)}%`;
+      }
+
+      setStudentData({
+        performance: { average_grade: avgGrade },
+        attendance: { overall_percentage: attendancePct }
+      });
+    } catch (error) {
+      console.error("Error fetching student details:", error);
+    }
+  };
+
+  useEffect(() => {
+    fetchLinkedStudents();
+  }, []);
 
   useEffect(() => {
     if (selectedStudent) {
-      setStudentData(DUMMY_STUDENT_DATA[selectedStudent.id] || {});
+      fetchStudentDetails(selectedStudent.id);
     }
   }, [selectedStudent]);
+
+  const onRefresh = () => {
+    setRefreshing(true);
+    fetchLinkedStudents();
+  };
+
+  if (loading && !refreshing) {
+    return (
+      <View className="flex-1 justify-center items-center bg-white dark:bg-black">
+        <ActivityIndicator size="large" color="#FF6900" />
+      </View>
+    );
+  }
 
   return (
     <View className="flex-1 bg-white dark:bg-black">
@@ -70,6 +121,9 @@ function ParentDashboard({ user, logout }: any) {
         className="flex-1"
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 150 }}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={["#FF6900"]} tintColor="#FF6900" />
+        }
       >
         <View className="p-4 md:p-8">
           {/* Log out link in subtle position */}
@@ -91,9 +145,9 @@ function ParentDashboard({ user, logout }: any) {
             <View className="flex-row justify-between items-center mb-8">
               <View>
                 <Text className="text-white/40 text-[10px] font-bold uppercase tracking-[3px] mb-2">Child Profile</Text>
-                <Text className="text-white text-3xl font-black tracking-tighter">{selectedStudent?.name}</Text>
+                <Text className="text-white text-3xl font-black tracking-tighter">{selectedStudent?.users?.full_name}</Text>
                 <View className="bg-[#FF6900]/20 self-start px-3 py-1 rounded-full mt-2">
-                  <Text className="text-[#FF6900] text-[10px] font-bold tracking-widest uppercase">Grade {selectedStudent?.grade_level}</Text>
+                  <Text className="text-[#FF6900] text-[10px] font-bold tracking-widest uppercase">{selectedStudent?.grade_level ? `Grade ${selectedStudent.grade_level}` : 'No Grade'}</Text>
                 </View>
               </View>
               <View className="w-16 h-16 rounded-full bg-white/5 items-center justify-center border border-white/10">
@@ -111,7 +165,7 @@ function ParentDashboard({ user, logout }: any) {
                       onPress={() => setSelectedStudent(stu)}
                       className={`mr-3 px-6 py-2.5 rounded-2xl border ${selectedStudent?.id === stu.id ? 'bg-[#FF6900] border-[#FF6900]' : 'bg-white/5 border-white/10'}`}
                     >
-                      <Text className={`font-bold text-xs ${selectedStudent?.id === stu.id ? 'text-white' : 'text-gray-400'}`}>{stu.name}</Text>
+                      <Text className={`font-bold text-xs ${selectedStudent?.id === stu.id ? 'text-white' : 'text-gray-400'}`}>{stu.users?.full_name?.split(' ')[0]}</Text>
                     </TouchableOpacity>
                   ))}
                 </ScrollView>
@@ -129,7 +183,7 @@ function ParentDashboard({ user, logout }: any) {
             />
             <MetricCard
               icon={CheckCircle}
-              value={studentData.attendance?.overall_percentage ? `${studentData.attendance.overall_percentage}%` : "N/A"}
+              value={studentData.attendance?.overall_percentage || "N/A"}
               label="Attendance"
               color="#10B981"
             />
@@ -174,7 +228,7 @@ function ParentDashboard({ user, logout }: any) {
           {/* Updates Section */}
           <SectionHeader title="Institutional Updates" actionLabel="Archive" onAction={() => router.push("/(parent)/announcements" as any)} />
           <View className="bg-white dark:bg-[#1a1a1a] p-8 rounded-[40px] border border-gray-100 dark:border-gray-800 shadow-sm mb-8 items-center border-dashed">
-            <Text className="text-gray-400 dark:text-gray-500 text-xs font-bold uppercase tracking-widest italic text-center">No unread notifications for {selectedStudent?.name.split(" ")[0]}</Text>
+            <Text className="text-gray-400 dark:text-gray-500 text-xs font-bold uppercase tracking-widest italic text-center">No unread notifications for {selectedStudent?.users?.full_name?.split(" ")[0] || 'your child'}</Text>
           </View>
         </View>
       </ScrollView>
