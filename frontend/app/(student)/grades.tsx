@@ -155,9 +155,9 @@ export default function Grades() {
 
                     <View className="flex-row mt-6 pt-6 border-t border-white/10 justify-between">
                         {stats.rank > 0 && (
-                            <View className="items-center flex-1">
-                                <Text className="text-orange-100 text-xs uppercase">Rank</Text>
-                                <Text className="text-white font-bold text-lg">#{stats.rank}</Text>
+                            <View className="items-center">
+                                <Text className="text-white/30 dark:text-gray-600 text-[8px] font-bold uppercase tracking-widest">Global Rank</Text>
+                                <Text className="text-white font-bold text-xl mt-1">N/A</Text>
                             </View>
                         )}
                         <View className="items-center flex-1 border-x border-white/10">

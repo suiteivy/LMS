@@ -143,8 +143,66 @@ export default function AnalyticsPage() {
             const results = await Promise.all(analyticsPromises);
             setSubjectAnalytics(results);
 
-            // Top Performers calculation (simplified or empty for now)
-            setTopPerformers([]);
+            // Fetch performance data to calculate top performers
+            // This part is adapted from the instruction, assuming 'TeacherAPI.getStudentPerformance()'
+            // would fetch student grades across all subjects for the teacher.
+            // For now, we'll simulate this by fetching all enrollments and their associated grades.
+
+            const { data: enrollments, error: enrollmentsError } = await supabase
+                .from('enrollments')
+                .select(`
+                    student_id,
+                    students (full_name),
+                    classes (
+                        subjects (
+                            id,
+                            assignments (
+                                id,
+                                submissions (grade)
+                            )
+                        )
+                    )
+                `)
+                .in('class_id', Subjects.map(s => s.class_id).filter(Boolean)); // Filter out null class_ids
+
+            if (enrollmentsError) throw enrollmentsError;
+
+            const allStudentsPerformance: { [key: string]: { full_name: string, grades: number[] } } = {};
+
+            enrollments.forEach((enrollment: any) => {
+                const studentId = enrollment.student_id;
+                const studentName = enrollment.students?.full_name || 'Unknown Student';
+
+                if (!allStudentsPerformance[studentId]) {
+                    allStudentsPerformance[studentId] = { full_name: studentName, grades: [] };
+                }
+
+                enrollment.classes?.subjects.forEach((subject: any) => {
+                    subject.assignments.forEach((assignment: any) => {
+                        assignment.submissions.forEach((submission: any) => {
+                            if (submission.grade !== null) {
+                                allStudentsPerformance[studentId].grades.push(submission.grade);
+                            }
+                        });
+                    });
+                });
+            });
+
+            const topList = Object.values(allStudentsPerformance)
+                .map(s => {
+                    const avg = s.grades.length > 0
+                        ? s.grades.reduce((a: number, b: number) => a + b, 0) / s.grades.length
+                        : 0;
+                    return {
+                        name: s.full_name,
+                        initials: s.full_name.split(' ').map((n: string) => n[0]).join('').toUpperCase().substring(0, 2),
+                        score: Math.round(avg)
+                    };
+                })
+                .sort((a, b) => b.score - a.score)
+                .slice(0, 3);
+
+            setTopPerformers(topList);
 
         } catch (error) {
             console.error("Error fetching analytics:", error);
