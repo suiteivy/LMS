@@ -8,18 +8,35 @@ import React, { useEffect, useState } from "react";
 import { ActivityIndicator, Alert, ScrollView, Text, TouchableOpacity, View } from "react-native";
 
 export default function StudentFinancePage() {
-    const { studentId } = useAuth();
+    const { studentId, isDemo } = useAuth();
     const [loading, setLoading] = useState(true);
     const [financeData, setFinanceData] = useState<any>(null);
     const [kesRate, setKesRate] = useState<number>(129);
 
     useEffect(() => {
         fetchData();
-    }, []);
+    }, [isDemo]);
 
     const fetchData = async () => {
         try {
             setLoading(true);
+
+            if (isDemo) {
+                // High-quality mock data for Demo Mode
+                setFinanceData({
+                    balance: 450.00,
+                    total_fees: 1650.00,
+                    paid_amount: 1200.00,
+                    transactions: [
+                        { id: 'tx-1', type: 'fee_payment', direction: 'inflow', amount: 600.00, date: new Date().toISOString() },
+                        { id: 'tx-2', type: 'tuition_charge', direction: 'outflow', amount: 1050.00, date: new Date(Date.now() - 30 * 86400000).toISOString() },
+                        { id: 'tx-3', type: 'fee_payment', direction: 'inflow', amount: 600.00, date: new Date(Date.now() - 60 * 86400000).toISOString() }
+                    ]
+                });
+                setLoading(false);
+                return;
+            }
+
             const data = await StudentService.getFinance();
             setFinanceData(data);
             const { data: exchangeData } = await (supabase.from('system_settings').select('value').eq('key', 'exchange_rates').single() as any);

@@ -186,7 +186,7 @@ export default function CreateUserScreen() {
                             : <Text style={{ fontSize: 12, fontWeight: '700', color: i <= step ? 'white' : textSecondary }}>{i + 1}</Text>
                         }
                     </View>
-                    {i < 3 && <View style={{ width: 32, height: 2, backgroundColor: i < step ? '#FF6B00' : (isDark ? '#2c2c2c' : '#e5e7eb') }} />}
+                    {i < 4 && <View style={{ width: 32, height: 2, backgroundColor: i < step ? '#FF6B00' : (isDark ? '#2c2c2c' : '#e5e7eb') }} />}
                 </View>
             ))}
         </View>
@@ -601,7 +601,7 @@ export default function CreateUserScreen() {
                         style={{ flex: 1, backgroundColor: canGoNext() ? '#FF6B00' : (isDark ? '#2c2c2c' : '#d1d5db'), paddingVertical: 16, borderRadius: 12, alignItems: 'center' }}>
                         {loading
                             ? <ActivityIndicator color="white" />
-                            : <Text style={{ fontWeight: '700', color: 'white' }}>{step === 3 ? 'Confirm & Enroll' : 'Next'}</Text>
+                            : <Text style={{ fontWeight: '700', color: 'white' }}>{step === 4 ? 'Confirm & Enroll' : 'Next'}</Text>
                         }
                     </TouchableOpacity>
                 </View>

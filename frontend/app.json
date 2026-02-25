@@ -1,42 +1,48 @@
 {
   "expo": {
-    "name": "LMS",
-    "slug": "LMS",
+    "name": "Cloudora",
+    "slug": "CloudoraLMS",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
+    "icon": "./assets/images/clouds.png",
     "scheme": "lms",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.anonymous.CloudoraLMS"
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/images/adaptive-icon.png",
+        "foregroundImage": "./assets/images/clouds.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "com.anonymous.LMS"
+      "package": "com.anonymous.CloudoraLMS"
     },
     "androidStatusBar": {
-      "backgroundColor": "#ffffff",
-      "barStyle": "dark-content",
+      "backgroundColor": "#000000",
+      "barStyle": "light-content",
       "translucent": false
     },
     "web": {
       "bundler": "metro",
       "output": "static",
-      "favicon": "./assets/images/favicon.png"
+      "favicon": "./assets/images/clouds.png",
+      "title": "Cloudora LMS"
     },
     "plugins": [
       "expo-router",
       [
         "expo-splash-screen",
         {
-          "image": "./assets/images/splash-icon.png",
-          "imageWidth": 200,
+          "image": "./assets/images/clouds.png",
+          "imageWidth": 250,
           "resizeMode": "contain",
-          "backgroundColor": "#ffffff"
+          "backgroundColor": "#ffffff",
+          "dark": {
+            "backgroundColor": "#000000",
+            "image": "./assets/images/clouds.png"
+          }
         }
       ],
       "@react-native-community/datetimepicker",

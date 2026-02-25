@@ -1,6 +1,29 @@
 const supabase = require("../utils/supabaseClient");
 
 /**
+ * Helper to verify Parent-Student relationship
+ */
+async function verifyParentStudentLink(userId, studentId) {
+    // 1. Get Parent ID from userId
+    const { data: parent } = await supabase.from('parents').select('id').eq('user_id', userId).single();
+    if (!parent) return { error: "Parent profile not found", status: 404 };
+
+    // 2. Check if student is linked
+    const { data: link, error } = await supabase
+        .from("parent_students")
+        .select("id")
+        .eq("parent_id", parent.id)
+        .eq("student_id", studentId)
+        .maybeSingle();
+
+    if (error || !link) {
+        return { error: "Access denied: Student not linked to this parent", status: 403 };
+    }
+
+    return { parentId: parent.id, authorized: true };
+}
+
+/**
  * Get Students linked to this Parent
  */
 exports.getLinkedStudents = async (req, res) => {
@@ -11,7 +34,7 @@ exports.getLinkedStudents = async (req, res) => {
         const { data: parent } = await supabase.from('parents').select('id').eq('user_id', userId).single();
         if (!parent) return res.status(404).json({ error: "Parent profile not found" });
 
-        // 2. Get Students
+        // 2. Get Students with grade_level from students table
         const { data: students, error } = await supabase
             .from("parent_students")
             .select("student:students(id, grade_level, users(full_name, avatar_url, email))")
@@ -31,12 +54,25 @@ exports.getLinkedStudents = async (req, res) => {
 exports.getStudentAcademicData = async (req, res) => {
     try {
         const { studentId } = req.params;
+        const { userId } = req;
 
+        const auth = await verifyParentStudentLink(userId, studentId);
+        if (auth.error) return res.status(auth.status).json({ error: auth.error });
+
+        const {data: studentRecord} = await supabase
+        .from('students')
+        .select('user_id')
+        .eq('id', studentId)
+        .single();
+
+        if (!studentRecord) return res.status(404).json({ error: "Student not found" });
+
+        const studentUUID = studentRecord.user_id;           
         // Fetch Grades
         const { data: grades } = await supabase
             .from("grades")
             .select("*, subject:subjects(title)")
-            .eq("student_id", studentId);
+            .eq("student_id", studentUUID);
 
         // Fetch recent assignment submissions
         const { data: submissions } = await supabase
@@ -45,7 +81,7 @@ exports.getStudentAcademicData = async (req, res) => {
             .eq("student_id", studentId)
             .order("submitted_at", { ascending: false });
 
-        res.json({ grades, submissions });
+        res.json({ grades:grades || [], submissions:submissions || [] });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
@@ -57,6 +93,11 @@ exports.getStudentAcademicData = async (req, res) => {
 exports.getStudentAttendance = async (req, res) => {
     try {
         const { studentId } = req.params;
+        const { userId } = req;
+
+        const auth = await verifyParentStudentLink(userId, studentId);
+        if (auth.error) return res.status(auth.status).json({ error: auth.error });
+
         const { data, error } = await supabase
             .from("attendance")
             .select("*, subject:subjects(title)")
@@ -76,6 +117,10 @@ exports.getStudentAttendance = async (req, res) => {
 exports.getStudentFinance = async (req, res) => {
     try {
         const { studentId } = req.params;
+        const { userId } = req;
+
+        const auth = await verifyParentStudentLink(userId, studentId);
+        if (auth.error) return res.status(auth.status).json({ error: auth.error });
 
         // 1. Get student profile with balance
         const { data: student } = await supabase
@@ -101,11 +146,17 @@ exports.getStudentFinance = async (req, res) => {
         // total = paid + balance
         const totalFees = Number(student.fee_balance || 0) + paidAmount;
 
+        // Add direction field for frontend display
+        const enrichedTransactions = (transactions || []).map(t => ({
+            ...t,
+            direction: (t.type === 'fee_payment' && t.status === 'completed') ? 'inflow' : 'outflow'
+        }));
+
         res.json({
             balance: student.fee_balance,
             total_fees: totalFees,
             paid_amount: paidAmount,
-            transactions
+            transactions: enrichedTransactions
         });
     } catch (err) {
         res.status(500).json({ error: err.message });

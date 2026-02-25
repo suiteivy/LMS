@@ -1,5 +1,5 @@
 import { AuthGuard } from "@/components/AuthGuard";
-import { WebSidebar, NavItem } from "@/components/layouts/WebSideBar";
+import { NavItem, WebSidebar } from "@/components/layouts/WebSideBar";
 import { useTheme } from "@/contexts/ThemeContext";
 import { Slot, Tabs } from "expo-router";
 import { Bell, CalendarCheck, CreditCard, GraduationCap, LayoutDashboard, MessageSquare, Settings } from "lucide-react-native";
@@ -7,13 +7,11 @@ import { Platform, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const NAV_ITEMS: NavItem[] = [
-    { name: "index",         title: "Home",      icon: LayoutDashboard, route: "/(parent)" },
-    { name: "grades",        title: "Grades",    icon: GraduationCap,   route: "/(parent)/grades" },
-    { name: "attendance",    title: "Attendance",icon: CalendarCheck,   route: "/(parent)/attendance" },
-    { name: "finance",       title: "Fees",      icon: CreditCard,      route: "/(parent)/finance" },
-    { name: "messages",      title: "Chat",      icon: MessageSquare,   route: "/(parent)/messages" },
-    { name: "announcements", title: "Updates",   icon: Bell,            route: "/(parent)/announcements" },
-    { name: "settings",      title: "Settings",  icon: Settings,        route: "/(parent)/settings" },
+    { name: "index", title: "Home", icon: LayoutDashboard, route: "/(parent)" },
+    { name: "finance", title: "Fees", icon: CreditCard, route: "/(parent)/finance" },
+    { name: "messages", title: "Chat", icon: MessageSquare, route: "/(parent)/messages" },
+    { name: "announcements", title: "Updates", icon: Bell, route: "/(parent)/announcements" },
+    { name: "settings", title: "Settings", icon: Settings, route: "/(parent)/settings" },
 ];
 
 function ParentTabs() {
@@ -41,7 +39,6 @@ function ParentTabs() {
                 tabBarLabelStyle: { fontSize: 10, fontWeight: "600" },
                 sceneStyle: {
                     backgroundColor: isDark ? '#000000' : "#ffffff",
-                    paddingTop: insets.top,
                 },
             }}
         >
@@ -57,7 +54,10 @@ function ParentTabs() {
                         },
                     }}
                 />
+
             ))}
+            <Tabs.Screen name="grades" options={{href: null, headerShown: false}} />
+            <Tabs.Screen name="attendance" options={{href: null, headerShown: false}} />
         </Tabs>
     );
 }

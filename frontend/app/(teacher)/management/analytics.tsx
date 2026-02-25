@@ -63,7 +63,7 @@ const SubjectAnalyticsCard = ({ Subject }: { Subject: ISubjectAnalytics }) => {
 };
 
 export default function AnalyticsPage() {
-    const { profile, teacherId } = useAuth();
+    const { profile, teacherId, isDemo } = useAuth();
     const [selectedPeriod, setSelectedPeriod] = useState("All Time");
     const [SubjectAnalytics, setSubjectAnalytics] = useState<ISubjectAnalytics[]>([]);
     const [loading, setLoading] = useState(true);
@@ -71,11 +71,27 @@ export default function AnalyticsPage() {
 
     useEffect(() => {
         fetchAnalytics();
-    }, []);
+    }, [isDemo]);
 
     const fetchAnalytics = async () => {
         setLoading(true);
         try {
+            if (isDemo) {
+                // High-quality mock data for Teacher Demo Mode
+                setSubjectAnalytics([
+                    { id: '1', name: "Advanced Mathematics", students: 12, avgProgress: 88, avgGrade: 84, completionRate: 88 },
+                    { id: '2', name: "Theoretical Physics", students: 10, avgProgress: 75, avgGrade: 78, completionRate: 75 },
+                    { id: '3', name: "Software Engineering", students: 15, avgProgress: 92, avgGrade: 89, completionRate: 92 },
+                    { id: '4', name: "Database Systems", students: 5, avgProgress: 100, avgGrade: 92, completionRate: 100 }
+                ]);
+                setTopPerformers([
+                    { name: "Sarah J.", initials: "SJ", score: 98 },
+                    { name: "Michael C.", initials: "MC", score: 95 },
+                    { name: "Grace W.", initials: "GW", score: 94 },
+                ]);
+                return;
+            }
+
             const data = await TeacherAPI.getAnalytics();
             setSubjectAnalytics(data);
 

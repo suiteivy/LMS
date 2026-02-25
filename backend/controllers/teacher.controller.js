@@ -3,7 +3,8 @@ const supabase = require("../utils/supabaseClient");
 exports.getDashboardStats = async (req, res) => {
     const startTime = Date.now();
     try {
-        const { userId, userRole, institution_id } = req;
+        const { userId, userRole } = req;
+        const institution_id = req.institution_id || null;
         console.log(`[TeacherDashboard] Fetching stats for user: ${userId}, institution: ${institution_id}`);
 
         if (userRole !== 'teacher') {
@@ -11,37 +12,41 @@ exports.getDashboardStats = async (req, res) => {
         }
 
         // 1. Get Teacher ID
+        // Note: We filter by user_id only — institution_id is not stored on the teachers
+        // row created by the DB trigger (it lives on the users table).
         const { data: teacher, error: tError } = await supabase
             .from('teachers')
             .select('id')
             .eq('user_id', userId)
-            .eq('institution_id', institution_id)
             .single();
 
         if (tError || !teacher) {
-            console.error("[TeacherDashboard] Teacher profile not found:", tError);
+            console.error(`[TeacherDashboard] Teacher profile not found for userId=${userId}, institution=${institution_id}:`, tError);
             return res.status(404).json({ error: "Teacher profile not found" });
         }
         const teacherId = teacher.id;
 
         // Fetch subjects first as others depend on it
-        const { data: mySubjects, error: msError } = await supabase
+        let subjectsQuery = supabase
             .from('subjects')
             .select('id')
-            .eq('teacher_id', teacherId)
-            .eq('institution_id', institution_id);
+            .eq('teacher_id', teacherId);
+        if (institution_id) subjectsQuery = subjectsQuery.eq('institution_id', institution_id);
+        const { data: mySubjects, error: msError } = await subjectsQuery;
 
         if (msError) throw msError;
         const subjectIds = (mySubjects || []).map(s => s.id);
 
         // Prepare concurrent queries
+        let subjectsCountQuery = supabase
+            .from('subjects')
+            .select('*', { count: 'exact', head: true })
+            .eq('teacher_id', teacherId);
+        if (institution_id) subjectsCountQuery = subjectsCountQuery.eq('institution_id', institution_id);
+
         const queries = [
             // Count subjects
-            supabase
-                .from('subjects')
-                .select('*', { count: 'exact', head: true })
-                .eq('teacher_id', teacherId)
-                .eq('institution_id', institution_id),
+            subjectsCountQuery,
 
             // Count unread notifications
             supabase
@@ -120,8 +125,11 @@ exports.getAnalytics = async (req, res) => {
         const { userId, userRole } = req;
         if (userRole !== 'teacher') return res.status(403).json({ error: "Unauthorized" });
 
-        const { data: teacher } = await supabase.from('teachers').select('id').eq('user_id', userId).single();
-        if (!teacher) return res.status(404).json({ error: "Teacher profile not found" });
+        const { data: teacher, error: tError } = await supabase.from('teachers').select('id').eq('user_id', userId).single();
+        if (tError || !teacher) {
+            console.error(`[TeacherAnalytics] Teacher profile not found for userId=${userId}:`, tError);
+            return res.status(404).json({ error: "Teacher profile not found" });
+        }
         const teacherId = teacher.id;
 
         // 1. Get Subjects
@@ -194,8 +202,11 @@ exports.getEarnings = async (req, res) => {
         const { userId, userRole } = req;
         if (userRole !== 'teacher') return res.status(403).json({ error: "Unauthorized" });
 
-        const { data: teacher } = await supabase.from('teachers').select('id').eq('user_id', userId).single();
-        if (!teacher) return res.status(404).json({ error: "Teacher profile not found" });
+        const { data: teacher, error: tError } = await supabase.from('teachers').select('id').eq('user_id', userId).single();
+        if (tError || !teacher) {
+            console.error(`[TeacherEarnings] Teacher profile not found for userId=${userId}:`, tError);
+            return res.status(404).json({ error: "Teacher profile not found" });
+        }
         const teacherId = teacher.id;
 
         const { data: payouts, error } = await supabase
@@ -219,19 +230,24 @@ exports.getEarnings = async (req, res) => {
  */
 exports.getStudentPerformance = async (req, res) => {
     try {
-        const { userId, userRole, institution_id } = req;
+        const { userId, userRole } = req;
+        const institution_id = req.institution_id || null;
         if (userRole !== 'teacher') return res.status(403).json({ error: "Unauthorized" });
 
         // 1. Get teacher ID
-        const { data: teacher } = await supabase.from('teachers').select('id').eq('user_id', userId).single();
-        if (!teacher) return res.status(404).json({ error: "Teacher profile not found" });
+        const { data: teacher, error: tError } = await supabase.from('teachers').select('id').eq('user_id', userId).single();
+        if (tError || !teacher) {
+            console.error(`[TeacherStudentPerf] Teacher profile not found for userId=${userId}:`, tError);
+            return res.status(404).json({ error: "Teacher profile not found" });
+        }
 
         // 2. Get subjects taught by this teacher
-        const { data: subjects } = await supabase
+        let subjectsQuery = supabase
             .from('subjects')
             .select('id, title, class_id, classes(name)')
-            .eq('teacher_id', teacher.id)
-            .eq('institution_id', institution_id);
+            .eq('teacher_id', teacher.id);
+        if (institution_id) subjectsQuery = subjectsQuery.eq('institution_id', institution_id);
+        const { data: subjects } = await subjectsQuery;
 
         if (!subjects || subjects.length === 0) {
             return res.json({ subjects: [], students: [] });
@@ -257,9 +273,10 @@ exports.getStudentPerformance = async (req, res) => {
                 .from('submissions')
                 .select(`
                     id, student_id, assignment_id, grade, status, submitted_at, feedback,
-                    assignments ( title, subject_id, total_marks )
+                    assignments!inner ( title, subject_id, total_marks )
                 `)
-                .in('student_id', studentIds);
+                .in('student_id', studentIds)
+                .in('assignments.subject_id', subjectIds);
             submissions = subs || [];
         }
 

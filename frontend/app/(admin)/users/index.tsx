@@ -1,6 +1,7 @@
 import { EmptyState } from '@/components/common/EmptyState';
 import { UnifiedHeader } from "@/components/common/UnifiedHeader";
 import { UserCard } from '@/components/common/UserCard';
+import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { supabase } from '@/libs/supabase';
 import { User } from '@/types/types';
@@ -33,11 +34,33 @@ export default function UsersManagementScreen() {
     const inputBg = isDark ? '#1e1e1e' : '#f9fafb';
     const inputBorder = isDark ? '#2c2c2c' : '#f3f4f6';
 
-    useEffect(() => { fetchUsers(); }, [activeFilter]);
+    const { isDemo } = useAuth();
+
+    useEffect(() => { fetchUsers(); }, [activeFilter, isDemo]);
 
     const fetchUsers = async () => {
         try {
             setLoading(true);
+
+            if (isDemo) {
+                // High-quality mock data for Admin Demo Mode
+                const mockUsers: User[] = [
+                    { id: 'u1', displayId: 'STU-101', name: 'Emily Davis', email: 'emily@demo.com', role: 'student', joinDate: new Date().toISOString() },
+                    { id: 'u2', displayId: 'TEA-001', name: 'John Smith', email: 'john@demo.com', role: 'teacher', joinDate: new Date(Date.now() - 86400000).toISOString() },
+                    { id: 'u3', displayId: 'STU-102', name: 'Robert Wilson', email: 'robert@demo.com', role: 'student', joinDate: new Date(Date.now() - 172800000).toISOString() },
+                    { id: 'u4', displayId: 'TEA-002', name: 'Sarah Parker', email: 'sarah@demo.com', role: 'teacher', joinDate: new Date(Date.now() - 259200000).toISOString() },
+                    { id: 'u5', displayId: 'ADM-001', name: 'Michael Brown', email: 'michael@demo.com', role: 'admin', joinDate: new Date(Date.now() - 345600000).toISOString() },
+                    { id: 'u6', displayId: 'PAR-001', name: 'David Jones', email: 'david@demo.com', role: 'parent', joinDate: new Date(Date.now() - 432000000).toISOString() },
+                ];
+
+                const filtered = activeFilter === 'all'
+                    ? mockUsers
+                    : mockUsers.filter(u => u.role === activeFilter);
+
+                setUsers(filtered);
+                return;
+            }
+
             let query = supabase
                 .from('users')
                 .select(`id, full_name, email, role, created_at, students(id), teachers(id), admins(id), parents(id)`)

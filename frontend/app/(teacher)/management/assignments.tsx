@@ -2,7 +2,9 @@ import { UnifiedHeader } from "@/components/common/UnifiedHeader";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/libs/supabase";
 import DateTimePicker from '@react-native-community/datetimepicker';
+import { decode } from "base64-arraybuffer";
 import * as DocumentPicker from 'expo-document-picker';
+import * as FileSystem from 'expo-file-system';
 import { router } from "expo-router";
 import { Calendar, Edit2, Eye, FileText, Plus, Upload, Users, X } from 'lucide-react-native';
 import React, { useEffect, useState } from "react";
@@ -131,8 +133,15 @@ export default function AssignmentsPage() {
 
     const fetchSubjects = async () => {
         if (!teacherId) return;
-        const { data } = await supabase.from('subjects').select('id, title').eq('teacher_id', teacherId);
-        if (data) setSubjects(data);
+        // First try subjects assigned to this teacher
+        const { data: mySubjects } = await supabase.from('subjects').select('id, title').eq('teacher_id', teacherId);
+        if (mySubjects && mySubjects.length > 0) {
+            setSubjects(mySubjects);
+            return;
+        }
+        // Fallback: show all available subjects so the teacher can still create assignments
+        const { data: allSubjects } = await supabase.from('subjects').select('id, title').order('title');
+        if (allSubjects) setSubjects(allSubjects);
     };
 
     const fetchAssignments = async () => {
@@ -227,9 +236,16 @@ export default function AssignmentsPage() {
     };
 
     const saveAssignment = async () => {
-        if (!teacherId || uploading) return;
-        if (!title || !selectedSubjectId) {
-            Alert.alert("Missing Fields", "Please fill in title and select a Subject.");
+        if (uploading) return;
+        if (!teacherId) {
+            Alert.alert("Error", "Teacher ID not found. Please log out and log back in.");
+            return;
+        }
+        const missing: string[] = [];
+        if (!title.trim()) missing.push('Title');
+        if (!selectedSubjectId) missing.push('Subject');
+        if (missing.length > 0) {
+            Alert.alert("Missing Fields", `Please fill in: ${missing.join(', ')}`);
             return;
         }
 
@@ -237,51 +253,70 @@ export default function AssignmentsPage() {
         let attachmentUrl = editingAssignment?.attachment_url || null;
         let attachmentName = editingAssignment?.attachment_name || null;
 
+        // Check auth session first
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) {
+            Alert.alert("Session Expired", "Please log out and log back in.");
+            setUploading(false);
+            return;
+        }
+
         try {
             if (selectedFile) {
-                const fileExt = selectedFile.name.split('.').pop();
-                const filePath = `${teacherId}/${Date.now()}.${fileExt}`;
-                const fileBody = await fetch(selectedFile.uri).then(res => res.blob());
-                const { error: uploadError } = await supabase.storage
-                    .from('course_materials')
-                    .upload(filePath, fileBody);
-                if (uploadError) throw uploadError;
-                const { data: urlData } = supabase.storage
-                    .from('course_materials')
-                    .getPublicUrl(filePath);
-                attachmentUrl = urlData.publicUrl;
-                attachmentName = selectedFile.name;
+                try {
+                    const fileExt = selectedFile.name.split('.').pop();
+                    const filePath = `${teacherId}/${Date.now()}.${fileExt}`;
+
+                    // Robust file reading for mobile compatibility
+                    const base64 = await FileSystem.readAsStringAsync(selectedFile.uri, {
+                        encoding: FileSystem.EncodingType.Base64,
+                    });
+                    const fileBody = decode(base64);
+
+                    const { error: uploadError } = await supabase.storage
+                        .from('course_materials')
+                        .upload(filePath, fileBody, {
+                            contentType: selectedFile.mimeType || 'application/octet-stream',
+                        });
+
+                    if (uploadError) {
+                        console.error('[saveAssignment] Storage upload error:', uploadError);
+                        Alert.alert("Upload Warning", "File upload failed. The assignment will be saved without the attachment.");
+                    } else {
+                        const { data: urlData } = supabase.storage
+                            .from('course_materials')
+                            .getPublicUrl(filePath);
+                        attachmentUrl = urlData.publicUrl;
+                        attachmentName = selectedFile.name;
+                    }
+                } catch (uploadErr: any) {
+                    console.error('[saveAssignment] File upload catch error:', uploadErr);
+                    Alert.alert("Upload Warning", "Could not upload file. The assignment will be saved without the attachment.");
+                }
             }
 
+            const payload = {
+                teacher_id: teacherId,
+                subject_id: selectedSubjectId,
+                title,
+                description,
+                due_date: dueDate ? new Date(dueDate).toISOString() : null,
+                total_points: parseInt(points) || 100,
+                status: 'active' as const,
+                attachment_url: attachmentUrl,
+                attachment_name: attachmentName,
+                weight: parseFloat(weight) || 0,
+                term: term
+            };
+
             if (editingAssignment) {
+                const { teacher_id: _t, status: _s, ...updatePayload } = payload;
                 const { error } = await supabase.from('assignments')
-                    .update({
-                        subject_id: selectedSubjectId,
-                        title,
-                        description,
-                        due_date: dueDate ? new Date(dueDate).toISOString() : null,
-                        total_points: parseInt(points) || 100,
-                        attachment_url: attachmentUrl,
-                        attachment_name: attachmentName,
-                        weight: parseFloat(weight) || 0,
-                        term: term
-                    })
+                    .update(updatePayload)
                     .eq('id', editingAssignment.id);
                 if (error) throw error;
             } else {
-                const { error } = await supabase.from('assignments').insert({
-                    teacher_id: teacherId,
-                    subject_id: selectedSubjectId,
-                    title,
-                    description,
-                    due_date: dueDate ? new Date(dueDate).toISOString() : null,
-                    total_points: parseInt(points) || 100,
-                    status: 'active',
-                    attachment_url: attachmentUrl,
-                    attachment_name: attachmentName,
-                    weight: parseFloat(weight) || 0,
-                    term: term
-                });
+                const { error } = await supabase.from('assignments').insert(payload);
                 if (error) throw error;
             }
 
@@ -398,19 +433,38 @@ export default function AssignmentsPage() {
                                 </TouchableOpacity>
                             </View>
 
-                            <View className="mb-6">
-                                <Text className="text-gray-500 dark:text-gray-400 text-[10px] font-bold uppercase tracking-wider ml-2 mb-2">Subject</Text>
-                                <ScrollView horizontal className="flex-row" showsHorizontalScrollIndicator={false}>
-                                    {Subjects.map(c => (
-                                        <TouchableOpacity
-                                            key={c.id}
-                                            onPress={() => setSelectedSubjectId(c.id)}
-                                            className={`mr-3 px-6 py-3 rounded-2xl border ${selectedSubjectId === c.id ? 'bg-[#FF6900] border-[#FF6900] shadow-sm' : 'bg-gray-50 dark:bg-[#1a1a1a] border-gray-100 dark:border-gray-800'}`}
-                                        >
-                                            <Text className={`font-bold text-xs ${selectedSubjectId === c.id ? 'text-white' : 'text-gray-500 dark:text-gray-400'}`}>{c.title}</Text>
-                                        </TouchableOpacity>
-                                    ))}
-                                </ScrollView>
+                            <View style={{ marginBottom: 24 }}>
+                                <Text style={{ color: '#6B7280', fontSize: 10, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1.5, marginLeft: 8, marginBottom: 8 }}>Subject</Text>
+                                {Subjects.length === 0 ? (
+                                    <View style={{ backgroundColor: '#fefce8', padding: 16, borderRadius: 16, borderWidth: 1, borderColor: '#fde68a' }}>
+                                        <Text style={{ color: '#a16207', fontSize: 12, fontWeight: '700', textAlign: 'center' }}>
+                                            No subjects available. Ask your admin to assign subjects to you.
+                                        </Text>
+                                    </View>
+                                ) : (
+                                    <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                                        {Subjects.map(c => {
+                                            const isSelected = selectedSubjectId === c.id;
+                                            return (
+                                                <TouchableOpacity
+                                                    key={c.id}
+                                                    onPress={() => { console.log('[Subject] Selected:', c.id, c.title); setSelectedSubjectId(c.id); }}
+                                                    style={{
+                                                        marginRight: 12,
+                                                        paddingHorizontal: 24,
+                                                        paddingVertical: 12,
+                                                        borderRadius: 16,
+                                                        borderWidth: 1,
+                                                        backgroundColor: isSelected ? '#FF6900' : '#f9fafb',
+                                                        borderColor: isSelected ? '#FF6900' : '#f3f4f6',
+                                                    }}
+                                                >
+                                                    <Text style={{ fontWeight: '700', fontSize: 12, color: isSelected ? '#ffffff' : '#6B7280' }}>{c.title}</Text>
+                                                </TouchableOpacity>
+                                            );
+                                        })}
+                                    </ScrollView>
+                                )}
                             </View>
 
                             <View className="mb-6">

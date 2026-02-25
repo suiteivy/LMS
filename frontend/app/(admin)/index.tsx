@@ -106,7 +106,7 @@ const DebugSessionInfo = ({ onClose }: { onClose: () => void }) => {
 };
 
 export default function AdminDashboard() {
-  const { profile } = useAuth();
+  const { profile, isDemo } = useAuth();
   const { stats, loading: statsLoading } = useDashboardStats();
   const { isDark } = useTheme();
   const [recentUsers, setRecentUsers] = useState<User[]>([]);
@@ -116,6 +116,20 @@ export default function AdminDashboard() {
   const fetchRecentUsers = useCallback(async () => {
     try {
       setLoadingUsers(true);
+
+      if (isDemo) {
+        // High-quality mock data for Admin Demo Mode
+        const mockUsers: User[] = [
+          { id: 'u1', displayId: 'STU-101', name: 'Emily Davis', email: 'emily@demo.com', role: 'student', joinDate: new Date().toISOString() },
+          { id: 'u2', displayId: 'TEA-001', name: 'John Smith', email: 'john@demo.com', role: 'teacher', joinDate: new Date(Date.now() - 86400000).toISOString() },
+          { id: 'u3', displayId: 'STU-102', name: 'Robert Wilson', email: 'robert@demo.com', role: 'student', joinDate: new Date(Date.now() - 172800000).toISOString() },
+          { id: 'u4', displayId: 'TEA-002', name: 'Sarah Parker', email: 'sarah@demo.com', role: 'teacher', joinDate: new Date(Date.now() - 259200000).toISOString() },
+          { id: 'u5', displayId: 'ADM-001', name: 'Michael Brown', email: 'michael@demo.com', role: 'admin', joinDate: new Date(Date.now() - 345600000).toISOString() },
+        ];
+        setRecentUsers(mockUsers);
+        return;
+      }
+
       const { data, error } = await supabase
         .from("users")
         .select(`*, students(id), teachers(id), admins(id)`)
@@ -147,12 +161,13 @@ export default function AdminDashboard() {
     } finally {
       setLoadingUsers(false);
     }
-  }, []);
+  }, [isDemo]);
 
   useEffect(() => {
-    if (!profile) return;
-    fetchRecentUsers();
-  }, [fetchRecentUsers, profile]);
+    if (isDemo || profile) {
+      fetchRecentUsers();
+    }
+  }, [fetchRecentUsers, profile, isDemo]);
 
   // Theme-aware color tokens
   const cardBg = isDark ? '#121212' : '#111827';

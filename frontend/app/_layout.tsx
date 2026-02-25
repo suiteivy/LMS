@@ -2,7 +2,7 @@ import { AppLoading } from "@/components/AppLoading";
 import { toastConfig } from "@/components/CustomToast";
 import Notifications from "@/components/Notifications";
 import DemoBanner from "@/components/DemoBanner";
-import { DebugOverlay } from "@/components/common/DebugOverlay";
+// import { DebugOverlay } fro@/components/common/DebugOverlayslay";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { CurrencyProvider } from "@/contexts/CurrencyContext";
 import { NotificationProvider, useNotifications } from "@/contexts/NotificationContext";
@@ -179,7 +179,7 @@ function AuthHandler() {
         <Stack.Screen name="(auth)/demo" />
       </Stack>
 
-      <DebugOverlay />
+      {/* <DebugOverlay /> */}
       <GlobalNotifications />
       <Toast config={toastConfig} />
 

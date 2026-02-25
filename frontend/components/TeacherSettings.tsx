@@ -60,7 +60,6 @@ export default function TeacherSettings() {
                             onValueChange={setNotifications}
                             trackColor={{ false: isDark ? "#374151" : "#e5e7eb", true: "#f97316" }}
                             thumbColor="#ffffff"
-                            disabled={loadingPrefs}
                         />
                     </SettingRow>
                     <SettingRow icon={ClipboardCheck} title="Submission Alerts" isLast isDark={isDark}>
@@ -69,7 +68,6 @@ export default function TeacherSettings() {
                             onValueChange={setSubmissionAlerts}
                             trackColor={{ false: isDark ? "#374151" : "#e5e7eb", true: "#f97316" }}
                             thumbColor="#ffffff"
-                            disabled={loadingPrefs}
                         />
                     </SettingRow>
                 </View>

@@ -1,4 +1,5 @@
 import { UnifiedHeader } from "@/components/common/UnifiedHeader";
+import { useAuth } from "@/contexts/AuthContext";
 import { useCurrency } from "@/contexts/CurrencyContext";
 import { TeacherAPI } from "@/services/TeacherService";
 import { format } from 'date-fns';
@@ -47,17 +48,30 @@ const PaymentRow = ({ payment }: { payment: Payment }) => {
 };
 
 export default function EarningsPage() {
+    const { isDemo } = useAuth();
     const [payments, setPayments] = useState<Payment[]>([]);
     const [loading, setLoading] = useState(true);
     const { convertUSDToKES, formatKES, formatUSD } = useCurrency();
 
     useEffect(() => {
         fetchEarnings();
-    }, []);
+    }, [isDemo]);
 
     const fetchEarnings = async () => {
         try {
             setLoading(true);
+
+            if (isDemo) {
+                // High-quality mock data for Teacher Demo Mode
+                const mockPayments: Payment[] = [
+                    { id: 'demo-1', description: "Performance Bonus - Jan", amount: 500.00, date: 'Jan 28, 2024', status: 'completed' },
+                    { id: 'demo-2', description: "Monthly Salary - Jan", amount: 1950.00, date: 'Jan 25, 2024', status: 'completed' },
+                    { id: 'demo-3', description: "Subject Bonus - Feb", amount: 450.00, date: 'Feb 12, 2024', status: 'pending' },
+                ];
+                setPayments(mockPayments);
+                return;
+            }
+
             const data = await TeacherAPI.getEarnings();
             const mapped: Payment[] = data.map((p: any) => ({
                 id: p.id,

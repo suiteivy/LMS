@@ -2,6 +2,7 @@ import { DatePicker } from '@/components/common/DatePicker';
 import { UserCard } from '@/components/common/UserCard';
 import { useTheme } from '@/contexts/ThemeContext';
 import { supabase } from '@/libs/supabase';
+import { api } from '@/services/api';
 import { Database } from '@/types/database';
 import { User } from '@/types/types';
 import { Ionicons } from '@expo/vector-icons';
@@ -15,8 +16,6 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 type UserRow = Database['public']['Tables']['users']['Row'];
-
-const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:4000';
 
 // ---------- Sanitizers ----------
 const DANGEROUS_CHARS = /['"`;\\<>{}()\[\]|&$#%^*+=~]/g;
@@ -103,6 +102,7 @@ export default function UserDetailsScreen() {
     const fetchUserDetails = async () => {
         try {
             setLoading(true);
+            console.log('===== [RELOAD] Fetching user details =====');
             const { data: userData, error: userError } = await supabase.from('users').select('*').eq('id', id).single();
             if (userError) throw userError;
             const typedUser = userData as UserRow;
@@ -111,17 +111,62 @@ export default function UserDetailsScreen() {
 
             const role = typedUser?.role;
             let roleQuery: any = null;
-            if (role === 'student') roleQuery = supabase.from('students').select('*, class_enrollments(class_id), parent_students(parent_id)').eq('user_id', id as string).single();
-            else if (role === 'teacher') roleQuery = supabase.from('teachers').select('*, classes(id)').eq('user_id', id as string).single();
-            else if (role === 'admin') roleQuery = supabase.from('admins').select('*').eq('user_id', id as string).single();
-            else if (role === 'parent') roleQuery = supabase.from('parents').select('*, parent_students(student_id)').eq('user_id', id as string).single();
+            if (role === 'student') roleQuery = supabase
+                .from('students')
+                .select('*, class_enrollments(class_id), parent_students(parent_id)')
+                .eq('user_id', id as string)
+                .single();
+            else if (role === 'teacher') roleQuery = supabase
+                .from('teachers')
+                .select('*')
+                .eq('user_id', id as string)
+                .single();
+            else if (role === 'admin') roleQuery = supabase
+                .from('admins')
+                .select('*')
+                .eq('user_id', id as string)
+                .single();
+            else if (role === 'parent') roleQuery = supabase
+                .from('parents')
+                .select('*, parent_students(student_id)')
+                .eq('user_id', id as string)
+                .single();
 
             if (roleQuery) {
                 const { data: rData, error: rError } = await roleQuery;
+                console.log('[RELOAD] Role data parent_students:', JSON.stringify(rData?.parent_students));
+                if (rError) console.error('[RELOAD] Role query error:', rError);
                 if (!rError && rData) {
                     const nd = Array.isArray(rData) ? rData[0] : rData;
                     setRoleData(nd);
                     populateRoleFields(role, nd);
+
+                    // Fallback: if the join didn't return parent_students, query directly
+                    if (role === 'student' && (!nd.parent_students || nd.parent_students.length === 0) && nd.id) {
+                        console.log('[RELOAD] Fallback: querying parent_students for student', nd.id);
+                        const { data: psData, error: psErr } = await supabase.from('parent_students').select('parent_id').eq('student_id', nd.id);
+                        console.log('[RELOAD] Fallback result:', JSON.stringify(psData), 'error:', psErr);
+                        if (psData && psData.length > 0) {
+                            const parentIds = psData.map((ps: any) => ps.parent_id);
+                            console.log('[RELOAD] Setting linkedParents to:', parentIds);
+                            setLinkedParents(parentIds);
+                        } else {
+                            console.log('[RELOAD] No linked parents found');
+                        }
+                    }
+                    if (role === 'parent' && (!nd.parent_students || nd.parent_students.length === 0) && nd.id) {
+                        console.log('[RELOAD] Fallback: querying parent_students for parent', nd.id);
+                        const { data: psData, error: psErr } = await supabase.from('parent_students').select('student_id').eq('parent_id', nd.id);
+                        console.log('[RELOAD] Fallback result:', JSON.stringify(psData), 'error:', psErr);
+                        if (psData && psData.length > 0) {
+                            const studentIds = psData.map((ps: any) => ps.student_id);
+                            console.log('[RELOAD] Setting linkedStudents to:', studentIds);
+                            setLinkedStudents(studentIds);
+                        } else {
+                            console.log('[RELOAD] No linked students found');
+                        }
+                    }
+
                     if (role === 'teacher') {
                         const { data: subData } = await supabase.from('subjects').select('id').eq('teacher_id', nd.id);
                         if (subData) setSubjectIds(subData.map((s: any) => s.id));
@@ -145,7 +190,7 @@ export default function UserDetailsScreen() {
             setGradeLevel(rd.grade_level || ''); setAcademicYear(rd.academic_year || '');
             setParentContact(rd.parent_contact || ''); setEmergencyName(rd.emergency_contact_name || '');
             setEmergencyPhone(rd.emergency_contact_phone || ''); setAdmissionDate(rd.admission_date || '');
-            setClassId(rd.enrollments?.[0]?.class_id || null);
+            setClassId(rd.class_enrollments?.[0]?.class_id || null);
             setLinkedParents(rd.parent_students?.map((ps: any) => ps.parent_id) || []);
         } else if (role === 'teacher') {
             setDepartment(rd.department || ''); setQualification(rd.qualification || '');
@@ -164,11 +209,10 @@ export default function UserDetailsScreen() {
                 text: 'Delete', style: 'destructive', onPress: async () => {
                     try {
                         setLoading(true);
-                        const response = await fetch(`${API_URL}/api/auth/delete-user/${id}`, { method: 'DELETE' });
-                        if (!response.ok) { const data = await response.json(); throw new Error(data.error || 'Failed to delete user'); }
+                        await api.delete(`/auth/delete-user/${id}`);
                         Alert.alert('Success', 'User deleted successfully');
                         router.replace('/(admin)/users');
-                    } catch (err: any) { Alert.alert('Error', err.message); setLoading(false); }
+                    } catch (err: any) { Alert.alert('Error', err?.message || 'Failed to delete user'); setLoading(false); }
                 }
             }
         ]);
@@ -179,23 +223,71 @@ export default function UserDetailsScreen() {
         if (roleData && user) populateRoleFields(user.role, roleData);
         setIsEditing(false);
     };
+    
 
     const handleSave = async () => {
         if (!fullName.trim()) { Alert.alert('Validation', 'Full name is required'); return; }
         setSaving(true);
         try {
-            const body: any = { full_name: fullName, email, phone: phone || undefined, gender: gender || undefined, date_of_birth: dob || undefined, address: address || undefined };
-            if (user?.role === 'student') { Object.assign(body, { grade_level: gradeLevel || undefined, academic_year: academicYear || undefined, parent_contact: parentContact || undefined, emergency_contact_name: emergencyName || undefined, emergency_contact_phone: emergencyPhone || undefined, admission_date: admissionDate || undefined, class_id: classId, linked_parents: linkedParents }); }
-            else if (user?.role === 'teacher') { Object.assign(body, { department: department || undefined, qualification: qualification || undefined, specialization: specialization || undefined, position: position || undefined, hire_date: hireDate || undefined, subject_ids: subjectIds, class_teacher_id: classId }); }
-            else if (user?.role === 'parent') { Object.assign(body, { occupation: occupation || undefined, parent_address: parentAddress || undefined, linked_students: linkedStudents }); }
+            console.log('===== [SAVE] Step 1: Building request body =====');
 
-            const response = await fetch(`${API_URL}/api/auth/admin-update-user/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-            const data = await response.json();
-            if (!response.ok) throw new Error(data.error || 'Update failed');
+            const body: any = {
+                full_name: fullName,
+                email,
+                phone: phone || null,
+                gender: gender || null,
+                date_of_birth: dob || null,
+                address: address || null,
+            }
+
+            if (user?.role === 'student') {
+                Object.assign(body, {
+                    grade_level: gradeLevel || null,
+                    academic_year: academicYear || null,
+                    parent_contact: parentContact || null,
+                    emergency_contact_name: emergencyName || null,
+                    emergency_contact_phone: emergencyPhone || null,
+                    admission_date: admissionDate || null,
+                    class_id: classId ?? null,
+                    linked_parents: linkedParents ?? []
+                });
+            }
+            else if (user?.role === 'teacher') {
+                Object.assign(body, {
+                    department: department || null,
+                    qualification: qualification || null,
+                    specialization: specialization || null,
+                    position: position || null,
+                    hire_date: hireDate || null,
+                    subject_ids: subjectIds ?? []
+                });
+            }
+            else if (user?.role === 'parent') {
+                Object.assign(body, {
+                    occupation: occupation || null,
+                    parent_address: parentAddress || null,
+                    linked_students: linkedStudents ?? []
+                });
+            }
+
+            console.log('[SAVE] Step 1: Body =', JSON.stringify(body, null, 2));
+            console.log('[SAVE] Step 1: linked_parents =', linkedParents);
+            console.log('[SAVE] Step 1: linked_students =', linkedStudents);
+
+            console.log('===== [SAVE] Step 2: Sending PUT request =====');
+            console.log('[__SAVE__] class_id:', classId, 'linked_parents:', linkedParents)
+            const { data } = await api.put(`/auth/admin-update-user/${id}`, body);
+            console.log('[SAVE] Step 2: Response =', JSON.stringify(data, null, 2));
+
+            if (!data) throw new Error('Update failed');
             Alert.alert('Success', 'User updated successfully');
             setIsEditing(false);
-            fetchUserDetails();
+
+            console.log('===== [SAVE] Step 3: Reloading user details =====');
+            await fetchUserDetails();
+            console.log('===== [SAVE] Complete =====');
         } catch (err: any) {
+            console.error('[SAVE] ERROR:', err.message, JSON.stringify(err, null, 2));
             Alert.alert('Error', err.message);
         } finally {
             setSaving(false);
@@ -246,26 +338,34 @@ export default function UserDetailsScreen() {
         );
     };
 
-    const renderChipList = (label: string, items: any[], selectedIds: string[], setSelected: (ids: string[]) => void, displayFn: (item: any) => string, accentColor: string) => (
-        <View style={{ marginTop: 16, paddingTop: 16, borderTopWidth: 1, borderTopColor: border }}>
-            <Text style={{ color: textSecondary, fontWeight: '500', fontSize: 13, marginBottom: 10 }}>{label}</Text>
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-                {items.map(item => {
-                    const isSelected = selectedIds.includes(item.id);
-                    if (!isEditing && !isSelected) return null;
-                    return (
-                        <TouchableOpacity key={item.id}
-                            onPress={() => { if (!isEditing) return; setSelected(isSelected ? selectedIds.filter(i => i !== item.id) : [...selectedIds, item.id]); }}
-                            disabled={!isEditing}
-                            style={{ paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10, borderWidth: 1, backgroundColor: isSelected ? accentColor + '20' : (isDark ? '#1e1e1e' : '#f9fafb'), borderColor: isSelected ? accentColor : border }}>
-                            <Text style={{ fontSize: 12, fontWeight: '600', color: isSelected ? accentColor : textSecondary }}>{displayFn(item)}</Text>
-                        </TouchableOpacity>
-                    );
-                })}
-                {!isEditing && selectedIds.length === 0 && <Text style={{ color: textSecondary, fontStyle: 'italic', fontSize: 12 }}>None</Text>}
+    const renderChipList = (label: string, items: any[], selectedIds: string[], setSelected: (ids: string[]) => void, displayFn: (item: any) => string, accentColor: string) => {
+        console.log(`[ChipList] ${label}: ${items.length} items, ${selectedIds.length} selected`, selectedIds);
+        return (
+            <View style={{ marginTop: 16, paddingTop: 16, borderTopWidth: 1, borderTopColor: border }}>
+                <Text style={{ color: textSecondary, fontWeight: '500', fontSize: 13, marginBottom: 10 }}>{label}</Text>
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                    {items.map(item => {
+                        const isSelected = selectedIds.includes(item.id);
+                        if (!isEditing && !isSelected) return null;
+                        return (
+                            <TouchableOpacity key={item.id}
+                                onPress={() => {
+                                    if (!isEditing) return;
+                                    const newIds = isSelected ? selectedIds.filter(i => i !== item.id) : [...selectedIds, item.id];
+                                    console.log(`[ChipList] ${label} toggled ${item.id}: ${isSelected ? 'DESELECT' : 'SELECT'}, newIds:`, newIds);
+                                    setSelected(newIds);
+                                }}
+                                disabled={!isEditing}
+                                style={{ paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10, borderWidth: 1, backgroundColor: isSelected ? accentColor + '20' : (isDark ? '#1e1e1e' : '#f9fafb'), borderColor: isSelected ? accentColor : border }}>
+                                <Text style={{ fontSize: 12, fontWeight: '600', color: isSelected ? accentColor : textSecondary }}>{displayFn(item)}</Text>
+                            </TouchableOpacity>
+                        );
+                    })}
+                    {!isEditing && selectedIds.length === 0 && <Text style={{ color: textSecondary, fontStyle: 'italic', fontSize: 12 }}>None</Text>}
+                </View>
             </View>
-        </View>
-    );
+        );
+    };
 
     if (loading) {
         return (
@@ -367,10 +467,13 @@ export default function UserDetailsScreen() {
                         {renderField('Position', position, setPosition)}
                         <DatePicker label="Hire Date" value={hireDate} onChange={setHireDate} isDark={isDark} inline />
                         {renderChipList('Assigned Subjects', allSubjects, subjectIds, setSubjectIds, s => s.title, '#3b82f6')}
-                        {renderChipList('Assigned as Class Teacher', classes, classId ? [classId] : [],
-                            (ids) => setClassId(ids[ids.length - 1] ?? null),
-                            c => c.name, '#3b82f6'
-                        )}
+                        {renderChipList('Assigned Classes', 
+                            classes, 
+                            classId ? [classId] : [], 
+                            (ids) => setClassId(ids[ids.length - 1] ?? null), 
+                            c => c.name, 
+                            '#3b82f6')
+                        }
                     </View>
                 )}
 

@@ -16,6 +16,15 @@ import {
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, RefreshControl, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 
+const DEMO_STUDENTS = [
+  { id: "s1", name: "Ethan Kamau", grade_level: "9" },
+  { id: "s2", name: "Aisha Kamau", grade_level: "6" },
+];
+const DEMO_STUDENT_DATA: Record<string, any> = {
+  s1: { performance: { average_grade: "A-" }, attendance: { overall_percentage: 92 } },
+  s2: { performance: { average_grade: "B+" }, attendance: { overall_percentage: 87 } },
+};
+
 export default function ParentIndex() {
   const { profile, loading, logout } = useAuth();
 
@@ -29,8 +38,6 @@ export default function ParentIndex() {
 
   return <ParentDashboard user={profile} logout={logout} />;
 }
-
-
 
 function ParentDashboard({ user, logout }: any) {
   const { isDark } = useTheme();
@@ -62,14 +69,11 @@ function ParentDashboard({ user, logout }: any) {
         ParentService.getStudentAttendance(studentId)
       ]);
 
-      // Calculate Average Grade (Simplified)
       let avgGrade = "N/A";
       if (performance.grades && performance.grades.length > 0) {
-        // Just take the latest for now or calculate GPA if needed
         avgGrade = performance.grades[0].grade || "N/A";
       }
 
-      // Calculate Attendance Pct
       let attendancePct = "N/A";
       if (attendance && attendance.length > 0) {
         const present = attendance.filter((a: any) => a.status === 'present' || a.status === 'late').length;
@@ -126,7 +130,8 @@ function ParentDashboard({ user, logout }: any) {
         }
       >
         <View className="p-4 md:p-8">
-          {/* Log out link in subtle position */}
+
+          {/* Log out link */}
           <View className="flex-row justify-end mb-6 px-2">
             <TouchableOpacity
               onPress={async () => {
@@ -143,11 +148,15 @@ function ParentDashboard({ user, logout }: any) {
           {/* Child Selection Hero */}
           <View className="bg-gray-900 dark:bg-[#1a1a1a] p-8 rounded-[48px] shadow-2xl mb-8">
             <View className="flex-row justify-between items-center mb-8">
-              <View>
+              <View className="flex-1 mr-4">
                 <Text className="text-white/40 text-[10px] font-bold uppercase tracking-[3px] mb-2">Child Profile</Text>
-                <Text className="text-white text-3xl font-black tracking-tighter">{selectedStudent?.users?.full_name}</Text>
+                <Text className="text-white text-3xl font-black tracking-tighter" numberOfLines={1}>
+                  {selectedStudent?.users?.full_name}
+                </Text>
                 <View className="bg-[#FF6900]/20 self-start px-3 py-1 rounded-full mt-2">
-                  <Text className="text-[#FF6900] text-[10px] font-bold tracking-widest uppercase">{selectedStudent?.grade_level ? `Grade ${selectedStudent.grade_level}` : 'No Grade'}</Text>
+                  <Text className="text-[#FF6900] text-[10px] font-bold tracking-widest uppercase">
+                    {selectedStudent?.grade_level ? `Grade ${selectedStudent.grade_level}` : 'No Grade'}
+                  </Text>
                 </View>
               </View>
               <View className="w-16 h-16 rounded-full bg-white/5 items-center justify-center border border-white/10">
@@ -165,7 +174,9 @@ function ParentDashboard({ user, logout }: any) {
                       onPress={() => setSelectedStudent(stu)}
                       className={`mr-3 px-6 py-2.5 rounded-2xl border ${selectedStudent?.id === stu.id ? 'bg-[#FF6900] border-[#FF6900]' : 'bg-white/5 border-white/10'}`}
                     >
-                      <Text className={`font-bold text-xs ${selectedStudent?.id === stu.id ? 'text-white' : 'text-gray-400'}`}>{stu.users?.full_name?.split(' ')[0]}</Text>
+                      <Text className={`font-bold text-xs ${selectedStudent?.id === stu.id ? 'text-white' : 'text-gray-400'}`}>
+                        {stu.users?.full_name?.split(' ')[0]}
+                      </Text>
                     </TouchableOpacity>
                   ))}
                 </ScrollView>
@@ -194,20 +205,23 @@ function ParentDashboard({ user, logout }: any) {
             <Text className="text-gray-900 dark:text-white font-bold text-xl tracking-tight">Academic Oversight</Text>
           </View>
 
-          <View className="flex-row flex-wrap justify-between px-1">
+          <View className="flex-row flex-wrap justify-between px-1 mb-8">
             <QuickAction
-              icon={CreditCard}
-              label="Finances"
+              icon={FileText}
+              label="Grades"
               color="#2563eb"
               isDark={isDark}
-              onPress={() => router.navigate({ pathname: "/(parent)/finance" as any, params: { studentId: selectedStudent.id } })}
+              onPress={() => {
+                if (!selectedStudent?.id) return;
+                router.push({ pathname: "/(parent)/grades", params: { studentId: selectedStudent?.id } });
+              }}
             />
             <QuickAction
               icon={Calendar}
               label="Attendance"
               color="#7c3aed"
               isDark={isDark}
-              onPress={() => router.navigate({ pathname: "/(parent)/attendance" as any, params: { studentId: selectedStudent.id } })}
+              onPress={() => router.push({ pathname: "/(parent)/attendance", params: { studentId: selectedStudent?.id } })}
             />
             <QuickAction
               icon={MessageSquare}
@@ -216,20 +230,16 @@ function ParentDashboard({ user, logout }: any) {
               isDark={isDark}
               onPress={() => router.navigate("/(parent)/messages" as any)}
             />
-            <QuickAction
-              icon={FileText}
-              label="Transcript"
-              color="#ea580c"
-              isDark={isDark}
-              onPress={() => router.navigate({ pathname: "/(parent)/grades" as any, params: { studentId: selectedStudent.id } })}
-            />
           </View>
 
           {/* Updates Section */}
           <SectionHeader title="Institutional Updates" actionLabel="Archive" onAction={() => router.push("/(parent)/announcements" as any)} />
           <View className="bg-white dark:bg-[#1a1a1a] p-8 rounded-[40px] border border-gray-100 dark:border-gray-800 shadow-sm mb-8 items-center border-dashed">
-            <Text className="text-gray-400 dark:text-gray-500 text-xs font-bold uppercase tracking-widest italic text-center">No unread notifications for {selectedStudent?.users?.full_name?.split(" ")[0] || 'your child'}</Text>
+            <Text className="text-gray-400 dark:text-gray-500 text-xs font-bold uppercase tracking-widest italic text-center">
+              No unread notifications for {selectedStudent?.users?.full_name?.split(" ")[0] || 'your child'}
+            </Text>
           </View>
+
         </View>
       </ScrollView>
     </View>

@@ -6,7 +6,7 @@ import React, { useEffect, useState } from "react";
 import { ActivityIndicator, RefreshControl, ScrollView, Text, TouchableOpacity, View } from "react-native";
 
 const formatCurrency = (amount: number) =>
-  `KES ${amount.toLocaleString("en-KE")}`;
+  `KES ${Number(amount || 0).toLocaleString("en-KE")}`;
 
 export default function StudentFinancePage() {
   const { studentId } = useLocalSearchParams<{ studentId: string }>();
@@ -44,15 +44,20 @@ export default function StudentFinancePage() {
     );
   }
 
-  const { balance, total_fees, paid_amount, transactions } = financeData || { balance: 0, total_fees: 0, paid_amount: 0, transactions: [] };
-  const paidPct = total_fees > 0 ? Math.round((paid_amount / total_fees) * 100) : 0;
+  const {
+    balance = 0,
+    total_fees = 0,
+    paid_amount = 0,
+    transactions = []
+  } = financeData || {};
 
+  const paidPct = total_fees > 0 ? Math.round((paid_amount / total_fees) * 100) : 0;
 
   return (
     <View className="flex-1 bg-gray-50 dark:bg-black">
       <UnifiedHeader
         title="Intelligence"
-        subtitle="Compliance"
+        subtitle="Finance"
         role="Parent"
         onBack={() => router.back()}
         showNotification={false}
@@ -67,12 +72,15 @@ export default function StudentFinancePage() {
         }
       >
         <View className="p-4 md:p-8">
+
           {/* Balance Hero */}
           <View className="bg-gray-900 p-8 rounded-[48px] shadow-2xl mb-8">
             <View className="flex-row justify-between items-center mb-8">
-              <View>
+              <View className="flex-1 mr-4">
                 <Text className="text-white/40 text-[10px] font-bold uppercase tracking-[3px] mb-2">Portfolio Balance</Text>
-                <Text className="text-white text-5xl font-black tracking-tighter">{formatCurrency(balance)}</Text>
+                <Text className="text-white text-5xl font-black tracking-tighter" adjustsFontSizeToFit numberOfLines={1}>
+                  {formatCurrency(balance)}
+                </Text>
                 <View className="bg-[#FF6900]/20 self-start px-3 py-1 rounded-full mt-2">
                   <Text className="text-[#FF6900] text-[10px] font-bold tracking-widest uppercase">{paidPct}% Liquidated</Text>
                 </View>
@@ -106,14 +114,16 @@ export default function StudentFinancePage() {
           </View>
 
           {/* Status Feedback */}
-          <View className="p-6 rounded-[32px] mb-8 flex-row items-center border border-orange-100 dark:border-orange-900 bg-orange-50 dark:bg-orange-950/30">
-            <View className="w-10 h-10 rounded-2xl items-center justify-center bg-white shadow-sm">
-              <Info size={20} color="#FF6900" />
+          {Number(balance) > 0 && (
+            <View className="p-6 rounded-[32px] mb-8 flex-row items-center border border-orange-100 dark:border-orange-900 bg-orange-50 dark:bg-orange-950/30">
+              <View className="w-10 h-10 rounded-2xl items-center justify-center bg-white shadow-sm">
+                <Info size={20} color="#FF6900" />
+              </View>
+              <Text className="flex-1 ml-4 text-sm font-medium leading-tight text-gray-900 dark:text-gray-100">
+                Outstanding balance of {formatCurrency(balance)}. Please contact the finance office for payment options.
+              </Text>
             </View>
-            <Text className="flex-1 ml-4 text-sm font-medium leading-tight text-gray-900 dark:text-gray-100">
-              Your balance of {formatCurrency(balance)} is due by March 1st. Tap for payment options.
-            </Text>
-          </View>
+          )}
 
           {/* Transaction Ledger */}
           <View className="px-2 flex-row justify-between items-center mb-6">
@@ -124,22 +134,35 @@ export default function StudentFinancePage() {
             </TouchableOpacity>
           </View>
 
-          {transactions.map((tx: any) => (
-            <View key={tx.id} className="bg-white dark:bg-[#1a1a1a] p-5 rounded-[32px] mb-4 flex-row items-center border border-gray-50 dark:border-gray-800 shadow-sm">
-              <View className={`w-12 h-12 rounded-2xl items-center justify-center mr-4 ${tx.direction === "inflow" ? "bg-green-50" : "bg-red-50"}`}>
-                {tx.direction === "inflow"
-                  ? <ArrowDownLeft size={20} color="#10B981" />
-                  : <ArrowUpRight size={20} color="#F43F5E" />}
-              </View>
-              <View className="flex-1">
-                <Text className="text-gray-900 dark:text-white font-bold text-sm tracking-tight">{tx.type}</Text>
-                <Text className="text-gray-400 text-[10px] font-bold uppercase tracking-widest mt-1">{new Date(tx.date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</Text>
-              </View>
-              <Text className={`font-bold text-base ${tx.direction === "inflow" ? "text-green-600" : "text-gray-900 dark:text-white"}`}>
-                {tx.direction === "inflow" ? "+" : "-"}{formatCurrency(tx.amount).replace("KES ", "")}
+          {transactions.length === 0 ? (
+            <View className="bg-white dark:bg-[#1a1a1a] p-8 rounded-[40px] border border-dashed border-gray-100 dark:border-gray-800 items-center mb-8">
+              <Text className="text-gray-400 dark:text-gray-500 text-xs font-bold uppercase tracking-widest italic text-center">
+                No transactions recorded yet
               </Text>
             </View>
-          ))}
+          ) : (
+            transactions.map((tx: any) => (
+              <View key={tx.id} className="bg-white dark:bg-[#1a1a1a] p-5 rounded-[32px] mb-4 flex-row items-center border border-gray-50 dark:border-gray-800 shadow-sm">
+                <View className={`w-12 h-12 rounded-2xl items-center justify-center mr-4 ${tx.direction === "inflow" ? "bg-green-50" : "bg-red-50"}`}>
+                  {tx.direction === "inflow"
+                    ? <ArrowDownLeft size={20} color="#10B981" />
+                    : <ArrowUpRight size={20} color="#F43F5E" />}
+                </View>
+                <View className="flex-1">
+                  <Text className="text-gray-900 dark:text-white font-bold text-sm tracking-tight">
+                    {tx.type || tx.description || "Transaction"}
+                  </Text>
+                  <Text className="text-gray-400 text-[10px] font-bold uppercase tracking-widest mt-1">
+                    {new Date(tx.date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                  </Text>
+                </View>
+                <Text className={`font-bold text-base ${tx.direction === "inflow" ? "text-green-600" : "text-gray-900 dark:text-white"}`}>
+                  {tx.direction === "inflow" ? "+" : "-"}{formatCurrency(tx.amount).replace("KES ", "")}
+                </Text>
+              </View>
+            ))
+          )}
+
         </View>
       </ScrollView>
     </View>

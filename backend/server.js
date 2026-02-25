@@ -67,10 +67,18 @@ process.on('unhandledRejection', (reason, p) => {
   console.error('UNHANDLED REJECTION:', reason);
 });
 
-// Start server
+// Start server — bind to 0.0.0.0 so physical devices and Android emulators
+// on the same LAN can reach the backend (not just localhost).
 const PORT = process.env.PORT || 4001;
-const server = app.listen(PORT, () => {
-  console.log(`LMS Backend running on http://localhost:${PORT}`);
+const server = app.listen(PORT, "0.0.0.0", () => {
+  const { networkInterfaces } = require("os");
+  const nets = networkInterfaces();
+  const lanIp = Object.values(nets).flat().find(
+    (n) => n?.family === "IPv4" && !n.internal
+  )?.address || "unknown";
+  console.log(`LMS Backend running on:`);
+  console.log(`  Local:   http://localhost:${PORT}`);
+  console.log(`  Network: http://${lanIp}:${PORT}  ← use this for physical devices`);
   // Initialize dynamic currency rates check
   settingsController.checkAndAutoUpdateRates();
 });

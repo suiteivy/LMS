@@ -1,3 +1,4 @@
+import { GradeDetailModal } from "@/components/common/GradeDetailModal";
 import { UnifiedHeader } from "@/components/common/UnifiedHeader";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/libs/supabase";
@@ -5,7 +6,6 @@ import { router } from "expo-router";
 import { Award, BarChart3, Star, TrendingUp } from "lucide-react-native";
 import { useEffect, useState } from "react";
 import { ActivityIndicator, Alert, ScrollView, Text, TouchableOpacity, View } from "react-native";
-import { GradeDetailModal } from "@/components/common/GradeDetailModal";
 
 interface GradeProps {
     SubjectName: string;
@@ -46,7 +46,7 @@ const SubjectGrade = ({ SubjectCode, SubjectName, grade, score, credits, onPress
 }
 
 export default function Grades() {
-    const { studentId, user } = useAuth();
+    const { studentId, displayId, user, isDemo } = useAuth();
     const [grades, setGrades] = useState<GradeProps[]>([]);
     const [loading, setLoading] = useState(true);
     const [stats, setStats] = useState({ gpa: 0, credits: 0, totalMarks: 0, avgMark: 0, rank: 'N/A' as string | number, totalStudents: 0 });
@@ -60,10 +60,10 @@ export default function Grades() {
     });
 
     useEffect(() => {
-        if (studentId || user?.id) {
+        if (studentId || user?.id || isDemo) {
             fetchGrades();
         }
-    }, [studentId, user?.id]);
+    }, [studentId, user?.id, isDemo]);
 
     const getPerformanceStatus = (gpa: number) => {
         if (gpa >= 4.0) return { label: "Elite Achievement", color: "text-emerald-400" };
@@ -172,13 +172,15 @@ export default function Grades() {
         try {
             setFetchingDetails(true);
 
-            const { data: subjectData } = await supabase
+            const { data: subjectData, error: error } = await supabase
                 .from('subjects')
-                .select('*, teacher:teachers(user:users(full_name))')
+                .select('id, title, teacher:teachers(user:users(full_name))')
                 .eq('title', subject.SubjectName)
                 .single();
 
-            if (!subjectData) throw new Error("Subject not found");
+            if (error || !subjectData) throw new Error("Subject not found");
+
+            const subId = (subjectData as any).id;
 
             const { data: submissions } = await supabase
                 .from('submissions')
@@ -212,7 +214,7 @@ export default function Grades() {
 
             setSelectedDetails({
                 subjectName: subject.SubjectName,
-                lecturerName: subjectData?.teacher?.user?.full_name || "Assigned Faculty",
+                lecturerName: (subjectData as any).teacher?.user?.full_name || "Assigned Faculty",
                 examMark: subject.score,
                 testScores
             });

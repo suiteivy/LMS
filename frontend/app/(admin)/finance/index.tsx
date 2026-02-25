@@ -3,6 +3,7 @@ import { FeeStructureSection } from '@/components/admin/finance/FeeStructureSect
 import { PaymentManagementSection } from '@/components/admin/finance/PaymentManagementSection';
 import { TeacherPayoutSection } from '@/components/admin/finance/TeacherPayoutSection';
 import { UnifiedHeader } from '@/components/common/UnifiedHeader';
+import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { FinanceService } from '@/services/FinanceService';
 import { FeeStructure, Payment, TeacherPayout } from '@/types/types';
@@ -30,13 +31,36 @@ export default function FinanceDashboard() {
     const [feeStructures, setFeeStructures] = useState<FeeStructure[]>([]);
     const [loading, setLoading] = useState(true);
 
+    const { isDemo } = useAuth();
+
     useEffect(() => {
         fetchAllData();
-    }, []);
+    }, [isDemo]);
 
     const fetchAllData = async () => {
         try {
             setLoading(true);
+
+            if (isDemo) {
+                // High-quality mock data for Admin Demo Mode
+                const mockPayments: Payment[] = [
+                    { id: 'p1', student_name: 'Emily Davis', student_display_id: 'STU-101', amount: 15000, payment_date: new Date().toISOString(), status: 'completed', student_id: 's1', payment_method: 'mobile_money' },
+                    { id: 'p2', student_name: 'Robert Wilson', student_display_id: 'STU-102', amount: 13500, payment_date: new Date(Date.now() - 86400000).toISOString(), status: 'completed', student_id: 's2', payment_method: 'bank_transfer' },
+                ];
+                const mockPayouts: TeacherPayout[] = [
+                    { id: 't1', teacher_name: 'John Smith', teacher_display_id: 'TEA-001', amount: 1950.00, period_start: new Date(Date.now() - 30 * 86400000).toISOString(), period_end: new Date().toISOString(), status: 'paid', reference_number: 'SAL-001', teacher_id: 't1' },
+                ];
+                const mockFees: FeeStructure[] = [
+                    { id: 'f1', Subject_name: 'Grade 12 Tuition', base_fee: 45000, Subject_id: 'sub1', registration_fee: 5000, material_fee: 2000, teacher_rate: 1500, bursary_percentage: 10, effective_date: '2024-01-01', is_active: true },
+                    { id: 'f2', Subject_name: 'Registration Fee', base_fee: 5000, Subject_id: 'sub2', registration_fee: 0, material_fee: 0, teacher_rate: 0, bursary_percentage: 0, effective_date: '2024-01-01', is_active: true },
+                ];
+
+                setPayments(mockPayments);
+                setPayouts(mockPayouts);
+                setFeeStructures(mockFees);
+                return;
+            }
+
             const [paymentsData, payoutsData, feesData] = await Promise.all([
                 FinanceService.getPayments('all'),
                 FinanceService.getTeacherPayouts('all'),

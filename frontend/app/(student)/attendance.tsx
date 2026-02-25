@@ -7,7 +7,7 @@ import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, ScrollView, Text, View } from 'react-native';
 
 export default function AttendancePage() {
-    const { studentId } = useAuth();
+    const { studentId, isDemo } = useAuth();
     const [attendance, setAttendance] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [stats, setStats] = useState({
@@ -20,14 +20,31 @@ export default function AttendancePage() {
     });
 
     useEffect(() => {
-        if (studentId) {
+        if (studentId || isDemo) {
             fetchAttendance();
         }
-    }, [studentId]);
+    }, [studentId, isDemo]);
 
     const fetchAttendance = async () => {
         try {
             setLoading(true);
+
+            if (isDemo) {
+                // High-quality mock data for Demo Mode
+                const mockData = [
+                    { id: '1', date: new Date().toISOString(), status: 'present', classes: { name: 'Advanced Mathematics' } },
+                    { id: '2', date: new Date(Date.now() - 86400000).toISOString(), status: 'late', classes: { name: 'Theoretical Physics' } },
+                    { id: '3', date: new Date(Date.now() - 172800000).toISOString(), status: 'present', classes: { name: 'Software Engineering' } },
+                    { id: '4', date: new Date(Date.now() - 259200000).toISOString(), status: 'excused', classes: { name: 'Database Systems' } },
+                    { id: '5', date: new Date(Date.now() - 345600000).toISOString(), status: 'present', classes: { name: 'Advanced Mathematics' } },
+                ];
+                setAttendance(mockData);
+                setStats({ present: 22, absent: 1, late: 3, excused: 2, total: 28, percentage: 94 });
+                setLoading(false);
+                return;
+            }
+
+            if (!studentId) return;
             const { data, error } = await supabase
                 .from('attendance')
                 .select(`*, classes ( name )`)

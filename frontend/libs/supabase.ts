@@ -1,8 +1,22 @@
 // lib/supabaseClient.ts
-import { createClient } from "@supabase/supabase-js";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import { Platform } from "react-native";
 import { Database } from "@/types/database";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { createClient } from "@supabase/supabase-js";
+import Constants from "expo-constants";
+import { Platform } from "react-native";
+
+// Helper to resolve backend API base URL (mirrors logic in api.ts)
+const getApiBaseUrl = (): string => {
+  const envUrl = process.env.EXPO_PUBLIC_URL;
+  if (envUrl) return envUrl;
+  const debuggerHost = Constants.expoConfig?.hostUri;
+  if (debuggerHost) {
+    const ip = debuggerHost.split(':')[0];
+    return `http://${ip}:4001/api`;
+  }
+  if (Platform.OS === 'android') return 'http://10.0.2.2:4001/api';
+  return 'http://localhost:4001/api';
+};
 
 
 const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL || "";
@@ -63,7 +77,7 @@ export const authService = {
       const { data: { session } } = await supabase.auth.getSession();
       if (session?.access_token) {
         try {
-          await fetch(`${process.env.EXPO_PUBLIC_URL}/auth/logout`, {
+          await fetch(`${getApiBaseUrl()}/auth/logout`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -181,7 +195,7 @@ export const authService = {
   // Start a demo session
   startDemoSession: async (role: string) => {
     try {
-      const response = await fetch(`${process.env.EXPO_PUBLIC_URL}/demo/start`, {
+      const response = await fetch(`${getApiBaseUrl()}/demo/start`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

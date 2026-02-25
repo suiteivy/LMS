@@ -227,8 +227,14 @@ exports.recordFeePayment = async (req, res) => {
         const { student_id, amount, payment_method, reference_number, notes } = req;
 
         // Verify student exists and get user_id
-        const { data: student } = await supabase.from('students').select('user_id').eq('id', student_id).single();
+        const { data: student } = await supabase
+            .from('students')
+            .select('user_id, institution_id')
+            .eq('id', student_id)
+            .single();
+
         if (!student) return res.status(404).json({ error: "Student not found" });
+        if (student.institution_id !== institution_id) return res.status(403).json({ error: "Access denied: Student belongs to another institution" });
 
         const { data, error } = await supabase
             .from("financial_transactions")

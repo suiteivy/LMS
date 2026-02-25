@@ -27,7 +27,7 @@ const QuickAction = ({ icon: Icon, label, color, onPress }: QuickActionProps) =>
 );
 
 export default function Index() {
-  const { profile, displayId, loading: authLoading, studentId } = useAuth();
+  const { profile, displayId, loading: authLoading, studentId, isDemo } = useAuth();
   const { unreadCount } = useNotifications();
   const [showNotification, setShowNotification] = useState(false);
   const router = useRouter();
@@ -39,47 +39,67 @@ export default function Index() {
   const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
-    if (studentId) {
+    if (studentId || isDemo) {
       fetchDashboardData();
     }
-  }, [studentId]);
+  }, [studentId, isDemo]);
 
   const fetchDashboardData = async () => {
     try {
       setLoadingData(true);
-      const { data: enrollments } = await supabase
-        .from('enrollments')
-        .select('grade')
-        .eq('student_id', studentId!);
 
-      if (enrollments && enrollments.length > 0) {
-        const gradeToPoints = (grade: string | null): number | null => {
-          if (!grade) return null;
-          const g = grade.toUpperCase().trim();
-          if (g === 'A') return 4.0;
-          if (g === 'B+') return 3.5;
-          if (g === 'B') return 3.0;
-          if (g === 'C+') return 2.5;
-          if (g === 'C') return 2.0;
-          if (g === 'D') return 1.0;
-          if (g === 'F') return 0.0;
-          const num = parseFloat(g);
-          return isNaN(num) ? null : num;
-        };
+      if (isDemo) {
+        // High-quality mock data for Demo Mode
+        setGpa("3.85");
+        setAttendancePct("94%");
+        setTodaysSchedule([
+          {
+            id: 'demo-1',
+            start_time: '08:00:00',
+            end_time: '09:30:00',
+            subjects: { title: 'Advanced Mathematics' },
+            room_number: 'Lecture Hall A'
+          },
+          {
+            id: 'demo-2',
+            start_time: '10:00:00',
+            end_time: '11:30:00',
+            subjects: { title: 'Theoretical Physics' },
+            room_number: 'Science Lab 2'
+          },
+          {
+            id: 'demo-3',
+            start_time: '13:30:00',
+            end_time: '15:00:00',
+            subjects: { title: 'Software Engineering' },
+            room_number: 'CS Lab 101'
+          }
+        ]);
+        return;
+      }
 
-        const validGrades = enrollments
-          .map(e => gradeToPoints(e.grade))
-          .filter((p): p is number => p !== null);
+      if (!studentId) return;
 
-        if (validGrades.length > 0) {
-          const avg = validGrades.reduce((a, b) => a + b, 0) / validGrades.length;
-          setGpa(avg.toFixed(2));
-        } else {
+      const { data: gradesData } = await supabase
+        .from('grades')
+        .select('total_grade')
+        .eq('student_id', studentId);
+
+      if (gradesData && gradesData.length > 0) {
+        const scores = gradesData
+        .filter(g => g.total_grade !== null)
+        .map(g => g.total_grade);
+
+        if(scores.length > 0) {
+          const avg = scores.reduce((a, b) => a + b, 0) / scores.length;
+          setGpa((avg /25).toFixed(2));
+        }else {
           setGpa("0.00");
         }
       } else {
         setGpa("0.00");
       }
+        
 
       const { data: attendanceData } = await supabase
         .from('attendance')

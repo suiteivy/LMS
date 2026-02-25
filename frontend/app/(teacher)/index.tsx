@@ -28,7 +28,7 @@ const QuickAction = ({ icon: Icon, label, color, onPress }: QuickActionProps) =>
 );
 
 export default function TeacherHome() {
-    const { profile, displayId, signOut, isInitializing, session } = useAuth();
+    const { profile, displayId, signOut, isInitializing, session, isDemo } = useAuth();
     const [stats, setStats] = useState<any>(null);
     const [schedule, setSchedule] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
@@ -36,9 +36,45 @@ export default function TeacherHome() {
     const { isDark } = useTheme();
 
     const fetchDashboardData = async () => {
-        if (isInitializing || !session) return;
+        if (!isDemo && (isInitializing || !session)) return;
 
         try {
+            setLoading(true);
+            if (isDemo) {
+                // High-quality mock data for Teacher Demo Mode
+                setStats({
+                    studentsCount: 42,
+                    subjectsCount: 4
+                });
+                setSchedule([
+                    {
+                        id: 'demo-1',
+                        start_time: '08:00:00',
+                        end_time: '09:30:00',
+                        subjects: { title: 'Advanced Mathematics' },
+                        classes: { name: 'Grade 12A' },
+                        room_number: 'Lecture Hall A'
+                    },
+                    {
+                        id: 'demo-2',
+                        start_time: '10:00:00',
+                        end_time: '11:30:00',
+                        subjects: { title: 'Theoretical Physics' },
+                        classes: { name: 'Grade 12B' },
+                        room_number: 'Science Lab 2'
+                    },
+                    {
+                        id: 'demo-3',
+                        start_time: '13:30:00',
+                        end_time: '15:00:00',
+                        subjects: { title: 'Software Engineering' },
+                        classes: { name: 'Computer Sc 1' },
+                        room_number: 'CS Lab 101'
+                    }
+                ]);
+                return;
+            }
+
             const data = await TeacherAPI.getDashboardStats();
             setStats(data.stats);
             setSchedule(data.schedule);
@@ -51,10 +87,10 @@ export default function TeacherHome() {
     };
 
     useEffect(() => {
-        if (!isInitializing && session) {
+        if (isDemo || (!isInitializing && session)) {
             fetchDashboardData();
         }
-    }, [isInitializing, session]);
+    }, [isInitializing, session, isDemo]);
 
     const onRefresh = () => {
         setRefreshing(true);

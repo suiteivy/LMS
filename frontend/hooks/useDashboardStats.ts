@@ -11,9 +11,33 @@ export const useDashboardStats = () => {
     
     const { formatKES, formatUSD, rates } = useCurrency();
 
+    const { isInitializing, session, isDemo } = useAuth(); // Import useAuth to check session status
+
     const fetchStats = async () => {
         setLoading(true);
         try {
+            if (isDemo) {
+                // High-quality mock data for Admin Demo Mode
+                const mockStats: StatsData[] = [
+                    { label: "Total Students", value: "1,240", icon: "users", color: "blue" },
+                    { label: "Teachers", value: "86", icon: "school", color: "green" },
+                    { label: "Subjects", value: "42", icon: "book", color: "purple" },
+                    { label: "Revenue", value: "KES 2,450,000", subValue: "$18,500", icon: "wallet", color: "yellow" },
+                ];
+                setStats(mockStats);
+                
+                const mockRevenue = Array.from({ length: 7 }, (_, i) => {
+                    const d = new Date();
+                    d.setDate(d.getDate() - (6 - i));
+                    return {
+                        day: d.toISOString().split('T')[0].split('-').slice(1).reverse().join('/'),
+                        amount: 50000 + Math.random() * 20000
+                    };
+                });
+                setRevenueData(mockRevenue);
+                return;
+            }
+
             let studentCount = 0;
             let teacherCount = 0;
             let subjectCount = 0;
@@ -104,8 +128,6 @@ export const useDashboardStats = () => {
             setLoading(false);
         }
     };
-
-    const { isInitializing, session } = useAuth(); // Import useAuth to check session status
 
     useEffect(() => {
         if (isInitializing || !session) return;

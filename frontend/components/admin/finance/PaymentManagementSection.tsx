@@ -1,12 +1,14 @@
 import { EmptyState } from "@/components/common/EmptyState";
 import { useTheme } from "@/contexts/ThemeContext";
+import { supabase } from "@/libs/supabase";
 import { Payment } from "@/types/types";
 import { Ionicons } from "@expo/vector-icons";
 import { Picker } from "@react-native-picker/picker";
 import { Receipt } from "lucide-react-native";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   Alert,
+  FlatList,
   Modal,
   ScrollView,
   Text,
@@ -23,6 +25,8 @@ interface PaymentManagementSectionProps {
   onRefresh?: () => void;
 }
 
+type StudentOption = { id: string; user_id: string; full_name: string };
+
 const PaymentManagementSection: React.FC<
   PaymentManagementSectionProps
 > = ({ payments, loading, onPaymentSubmit, onRefresh }) => {
@@ -30,12 +34,50 @@ const PaymentManagementSection: React.FC<
   const [showForm, setShowForm] = useState(false);
   const [formData, setFormData] = useState({
     student_id: "",
+    student_name: "",
     amount: "",
     payment_method: "cash" as Payment["payment_method"],
     reference_number: "",
     notes: "",
   });
   const [searchQuery, setSearchQuery] = useState("");
+
+  // Student search in payment form
+  const [studentSearch, setStudentSearch] = useState("");
+  const [allStudents, setAllStudents] = useState<StudentOption[]>([]);
+  const [showStudentDropdown, setShowStudentDropdown] = useState(false);
+
+  // Load students when modal opens
+  useEffect(() => {
+    if (showForm && allStudents.length === 0) {
+      supabase
+        .from("students")
+        .select("id, user_id, users:user_id(full_name)")
+        .order("id")
+        .then(({ data }) => {
+          if (data) {
+            const mapped = data.map((s: any) => ({
+              id: s.id,
+              user_id: s.user_id,
+              full_name: (s.users as any)?.full_name || "Unknown",
+            }));
+            setAllStudents(mapped);
+          }
+        });
+    }
+  }, [showForm]);
+
+  const filteredStudents = allStudents.filter(
+    (s) =>
+      s.full_name.toLowerCase().includes(studentSearch.toLowerCase()) ||
+      s.id.toLowerCase().includes(studentSearch.toLowerCase())
+  );
+
+  const selectStudent = (student: StudentOption) => {
+    setFormData({ ...formData, student_id: student.id, student_name: student.full_name });
+    setStudentSearch("");
+    setShowStudentDropdown(false);
+  };
 
   const filteredPayments = payments.filter((p) =>
     p.student_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -46,23 +88,19 @@ const PaymentManagementSection: React.FC<
   const resetForm = () => {
     setFormData({
       student_id: "",
+      student_name: "",
       amount: "",
       payment_method: "cash" as Payment["payment_method"],
       reference_number: "",
       notes: "",
     });
+    setStudentSearch("");
+    setShowStudentDropdown(false);
   };
 
   const handleSubmit = () => {
-    console.log("Submitting payment:", formData);
-    if (!formData.student_id || !formData.payment_method || !formData.amount) {
-      Toast.show({
-        type: 'error',
-        text1: 'Error',
-        text2: 'Please fill in all required fields including Student ID',
-        position: 'top',
-      });
-      Alert.alert("Error", "Please fill in all required fields including Student ID");
+    if (!formData.student_id || !formData.student_name || !formData.amount) {
+      Alert.alert("Error", "Please fill in all required fields including Student");
       return;
     }
 
@@ -71,7 +109,7 @@ const PaymentManagementSection: React.FC<
       payment_date: new Date().toISOString(),
       status: "completed",
       student_id: formData.student_id,
-      student_name: "john''", // Set to empty string or fetch if available
+      student_name: formData.student_name,
       payment_method: formData.payment_method,
       reference_number: formData.reference_number,
       notes: formData.notes,
@@ -179,7 +217,7 @@ const PaymentManagementSection: React.FC<
           </View>
         )}
       </View>
-    </View >
+    </View>
   );
 
   return (
@@ -241,49 +279,132 @@ const PaymentManagementSection: React.FC<
       >
         <View className="flex-1 bg-white dark:bg-[#121212]">
           <View className="flex-row justify-between items-center p-4 border-b border-gray-200 dark:border-gray-800">
-            <TouchableOpacity onPress={() => setShowForm(false)}>
+            <TouchableOpacity onPress={() => { setShowForm(false); resetForm(); }}>
               <Text className="text-blue-600 dark:text-blue-400 text-lg">Cancel</Text>
             </TouchableOpacity>
             <Text className="text-lg font-semibold text-gray-900 dark:text-white">Record Payment</Text>
             <TouchableOpacity onPress={handleSubmit}>
-              <Text className=" text-sm border border-[#10B981] dark:border-green-500 px-3 py-2 rounded-full font-semibold text-[#10B981] dark:text-green-500">
+              <Text className="text-sm border border-[#10B981] dark:border-green-500 px-3 py-2 rounded-full font-semibold text-[#10B981] dark:text-green-500">
                 Save
               </Text>
             </TouchableOpacity>
           </View>
 
-          <ScrollView className="flex-1 p-4">
+          <ScrollView className="flex-1 p-4" keyboardShouldPersistTaps="handled">
             <View className="space-y-4">
-              <View>
+
+              {/* Student Search */}
+              <View style={{ zIndex: 10 }}>
                 <Text className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Student ID (STU-...) *
+                  Student *
                 </Text>
-                <TextInput
-                  value={formData.student_id}
-                  onChangeText={(text) =>
-                    setFormData({ ...formData, student_id: text })
-                  }
-                  placeholder="e.g. STU-2026-000001"
-                  placeholderTextColor={isDark ? "#6B7280" : "#9CA3AF"}
-                  className="border border-gray-300 dark:border-gray-700 rounded-lg px-3 py-3 text-base text-gray-900 dark:text-white bg-white dark:bg-[#1a1a1a]"
-                />
+
+                {/* Selected student display */}
+                {formData.student_id ? (
+                  <View style={{
+                    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+                    backgroundColor: isDark ? '#1a2e1a' : '#f0fdf4',
+                    borderWidth: 1, borderColor: isDark ? '#166534' : '#86efac',
+                    borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12,
+                  }}>
+                    <View>
+                      <Text style={{ fontWeight: '700', fontSize: 15, color: isDark ? '#bbf7d0' : '#166534' }}>
+                        {formData.student_name}
+                      </Text>
+                      <Text style={{ fontSize: 11, color: isDark ? '#4ade80' : '#15803d', fontWeight: '600', marginTop: 2 }}>
+                        {formData.student_id}
+                      </Text>
+                    </View>
+                    <TouchableOpacity onPress={() => {
+                      setFormData({ ...formData, student_id: "", student_name: "" });
+                      setShowStudentDropdown(true);
+                    }}>
+                      <Ionicons name="close-circle" size={22} color={isDark ? '#4ade80' : '#16a34a'} />
+                    </TouchableOpacity>
+                  </View>
+                ) : (
+                  <View>
+                    <View style={{
+                      flexDirection: 'row', alignItems: 'center',
+                      borderWidth: 1, borderColor: isDark ? '#374151' : '#d1d5db',
+                      borderRadius: 12, paddingHorizontal: 12, paddingVertical: 3,
+                      backgroundColor: isDark ? '#1a1a1a' : '#ffffff',
+                    }}>
+                      <Ionicons name="search" size={18} color={isDark ? '#9CA3AF' : '#6B7280'} />
+                      <TextInput
+                        value={studentSearch}
+                        onChangeText={(text) => {
+                          setStudentSearch(text);
+                          setShowStudentDropdown(true);
+                        }}
+                        onFocus={() => setShowStudentDropdown(true)}
+                        placeholder="Search by name or ID..."
+                        placeholderTextColor={isDark ? "#6B7280" : "#9CA3AF"}
+                        style={{
+                          flex: 1, marginLeft: 8, fontSize: 15,
+                          color: isDark ? '#fff' : '#111827',
+                          paddingVertical: 10,
+                        }}
+                      />
+                    </View>
+
+                    {/* Dropdown results */}
+                    {showStudentDropdown && (
+                      <View style={{
+                        marginTop: 4, borderWidth: 1,
+                        borderColor: isDark ? '#374151' : '#e5e7eb',
+                        borderRadius: 12, overflow: 'hidden',
+                        backgroundColor: isDark ? '#1e1e1e' : '#ffffff',
+                        maxHeight: 200,
+                      }}>
+                        {filteredStudents.length === 0 ? (
+                          <View style={{ padding: 16, alignItems: 'center' }}>
+                            <Text style={{ color: isDark ? '#6B7280' : '#9CA3AF', fontSize: 13 }}>
+                              {studentSearch ? 'No students found' : 'Type to search students...'}
+                            </Text>
+                          </View>
+                        ) : (
+                          <FlatList
+                            data={filteredStudents.slice(0, 20)}
+                            keyExtractor={(item) => item.id}
+                            keyboardShouldPersistTaps="handled"
+                            nestedScrollEnabled
+                            style={{ maxHeight: 200 }}
+                            renderItem={({ item }) => (
+                              <TouchableOpacity
+                                onPress={() => selectStudent(item)}
+                                style={{
+                                  flexDirection: 'row', alignItems: 'center',
+                                  paddingHorizontal: 14, paddingVertical: 12,
+                                  borderBottomWidth: 1,
+                                  borderBottomColor: isDark ? '#2c2c2c' : '#f3f4f6',
+                                }}
+                              >
+                                <View style={{
+                                  width: 36, height: 36, borderRadius: 10,
+                                  backgroundColor: isDark ? '#2c2c2c' : '#f3f4f6',
+                                  alignItems: 'center', justifyContent: 'center', marginRight: 12,
+                                }}>
+                                  <Ionicons name="person" size={16} color="#FF6B00" />
+                                </View>
+                                <View style={{ flex: 1 }}>
+                                  <Text style={{ fontWeight: '600', fontSize: 14, color: isDark ? '#f1f1f1' : '#111827' }}>
+                                    {item.full_name}
+                                  </Text>
+                                  <Text style={{ fontSize: 11, color: '#FF6B00', fontWeight: '500', marginTop: 1 }}>
+                                    {item.id}
+                                  </Text>
+                                </View>
+                                <Ionicons name="chevron-forward" size={16} color={isDark ? '#6B7280' : '#9CA3AF'} />
+                              </TouchableOpacity>
+                            )}
+                          />
+                        )}
+                      </View>
+                    )}
+                  </View>
+                )}
               </View>
-{/* 
-                <View>
-                <Text className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Student Name *
-                </Text>
-                <TextInput
-                  value={formData.student_name}
-                  onChangeText={(text) =>
-                  setFormData({ ...formData, student_name: text })
-                  }
-                  placeholder="Enter student name"
-                  placeholderTextColor={isDark ? "#6B7280" : "#9CA3AF"}
-                  className="border border-gray-300 dark:border-gray-700 rounded-lg px-3 py-3 text-base text-gray-900 dark:text-white bg-white dark:bg-[#1a1a1a]"
-                  editable={false}
-                />
-                </View> */}
 
               <View>
                 <Text className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
@@ -356,8 +477,8 @@ const PaymentManagementSection: React.FC<
             </View>
           </ScrollView>
         </View>
-      </Modal >
-    </View >
+      </Modal>
+    </View>
   );
 };
 

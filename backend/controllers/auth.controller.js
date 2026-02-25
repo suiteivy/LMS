@@ -375,7 +375,6 @@ exports.adminUpdateUser = async (req, res) => {
     if (avatar_url !== undefined) userUpdates.avatar_url = avatar_url || null;
 
     if (Object.keys(userUpdates).length > 0) {
-      userUpdates.updated_at = new Date().toISOString();
       const { error } = await supabase.from('users').update(userUpdates).eq('id', id);
       if (error) throw error;
     }
@@ -398,7 +397,6 @@ exports.adminUpdateUser = async (req, res) => {
       if (admission_date !== undefined) updates.admission_date = admission_date || null;
 
       if (Object.keys(updates).length > 0) {
-        updates.updated_at = new Date().toISOString();
         await supabase.from('students').update(updates).eq('user_id', id);
       }
 
@@ -429,19 +427,21 @@ exports.adminUpdateUser = async (req, res) => {
       if (linked_parents !== undefined) {
         const { data: studentData } = await supabase.from('students').select('id').eq('user_id', id).single();
         const customStudentId = studentData?.id;
+        console.log('[AdminUpdate] Linking parents for student:', { customStudentId, linked_parents });
 
         if (customStudentId) {
-          // Delete existing links for this student? 
-          // Be careful not to delete links to other students for the same parent. 
-          // `parent_students` is (parent_id, student_id).
-          // We want to set the parents for THIS student.
-          // So we delete where student_id = customStudentId.
-          await supabase.from('parent_students').delete().eq('student_id', customStudentId);
+          const { error: delErr } = await supabase.from('parent_students').delete().eq('student_id', customStudentId);
+          if (delErr) console.error('[AdminUpdate] Delete parent_students (student side) error:', delErr);
 
           if (linked_parents && linked_parents.length > 0) {
             const inserts = linked_parents.map(pid => ({ parent_id: pid, student_id: customStudentId, relationship: 'guardian' }));
-            await supabase.from('parent_students').insert(inserts);
+            console.log('[AdminUpdate] Inserting parent_students (student side):', inserts);
+            const { error: insErr } = await supabase.from('parent_students').insert(inserts);
+            if (insErr) console.error('[AdminUpdate] Insert parent_students (student side) error:', insErr);
+            else console.log('[AdminUpdate] Successfully linked parents to student');
           }
+        } else {
+          console.warn('[AdminUpdate] No student record found for user_id:', id);
         }
       }
     }
@@ -455,7 +455,6 @@ exports.adminUpdateUser = async (req, res) => {
       if (hire_date !== undefined) updates.hire_date = hire_date || null;
 
       if (Object.keys(updates).length > 0) {
-        updates.updated_at = new Date().toISOString();
         await supabase.from('teachers').update(updates).eq('user_id', id);
       }
 
@@ -497,7 +496,6 @@ exports.adminUpdateUser = async (req, res) => {
       if (parent_address !== undefined) updates.address = parent_address || null;
 
       if (Object.keys(updates).length > 0) {
-        updates.updated_at = new Date().toISOString();
         await supabase.from('parents').update(updates).eq('user_id', id);
       }
 
@@ -505,14 +503,21 @@ exports.adminUpdateUser = async (req, res) => {
       if (linked_students !== undefined) {
         const { data: parentData } = await supabase.from('parents').select('id').eq('user_id', id).single();
         const customParentId = parentData?.id;
+        console.log('[AdminUpdate] Linking students for parent:', { customParentId, linked_students });
 
         if (customParentId) {
           // Simple sync: delete all and re-insert
-          await supabase.from('parent_students').delete().eq('parent_id', customParentId);
+          const { error: delErr } = await supabase.from('parent_students').delete().eq('parent_id', customParentId);
+          if (delErr) console.error('[AdminUpdate] Delete parent_students error:', delErr);
+
           if (linked_students && linked_students.length > 0) {
-            const inserts = linked_students.map(sid => ({ parent_id: customParentId, student_id: sid }));
-            await supabase.from('parent_students').insert(inserts);
+            const inserts = linked_students.map(sid => ({ parent_id: customParentId, student_id: sid, relationship: 'guardian' }));
+            console.log('[AdminUpdate] Inserting parent_students:', inserts);
+            const { error: insErr } = await supabase.from('parent_students').insert(inserts);
+            if (insErr) console.error('[AdminUpdate] Insert parent_students error:', insErr);
           }
+        } else {
+          console.warn('[AdminUpdate] No parent record found for user_id:', id);
         }
       }
     }

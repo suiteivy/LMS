@@ -7,21 +7,28 @@ const supabase = require("../utils/supabaseClient");
 exports.getStudentAttendance = async (req, res) => {
     try {
         const { date, subject_id, class_id } = req.query;
+        const { userId, userRole, institution_id } = req;
+        
         if (!date || !subject_id) return res.status(400).json({ error: "Date and Subject ID required" });
 
-        // 1. Get all students enrolled in this subject (or class)
-        let query = supabase
-            .from("students")
-            .select("id, users!inner(full_name, avatar_url), enrollments!inner(subject_id)")
-            .eq("institution_id", req.institution_id)
-            .eq("enrollments.subject_id", subject_id);
-
-        if (class_id) {
-            // Further filter if class_id provided
-            // Actually, subjects usually belong to a class.
+        // Authorization: If teacher, verify they teach this subject
+        if (userRole === 'teacher') {
+            const { data: teacher } = await supabase.from('teachers').select('id').eq('user_id', userId).single();
+            if (!teacher) return res.status(404).json({ error: "Teacher profile not found" });
+            
+            const { data: subject } = await supabase.from('subjects').select('id').eq('id', subject_id).eq('teacher_id', teacher.id).single();
+            if (!subject) return res.status(403).json({ error: "Access denied: You do not teach this subject" });
+        } else if (!['admin', 'bursary'].includes(userRole)) {
+            return res.status(403).json({ error: "Unauthorized" });
         }
 
-        const { data: enrollments, error: eError } = await query;
+        // 1. Get all students enrolled in this subject
+        const { data: enrollments, error: eError } = await supabase
+            .from("students")
+            .select("id, users!inner(full_name, avatar_url), enrollments!inner(subject_id)")
+            .eq("institution_id", institution_id)
+            .eq("enrollments.subject_id", subject_id);
+
         if (eError) throw eError;
 
         // 2. Get attendance records for date and subject
@@ -47,7 +54,6 @@ exports.getStudentAttendance = async (req, res) => {
         });
 
         res.json(result);
-
     } catch (err) {
         console.error("[Attendance] getStudentAttendance error:", err);
         res.status(500).json({ error: err.message });
@@ -60,10 +66,18 @@ exports.getStudentAttendance = async (req, res) => {
 exports.markStudentAttendance = async (req, res) => {
     try {
         const { student_id, subject_id, class_id, date, status, notes } = req.body;
-        const { institution_id, userRole } = req;
+        const { userId, userRole, institution_id } = req;
 
-        if (!['admin', 'teacher', 'bursary'].includes(userRole)) {
-            return res.status(403).json({ error: "Unauthorized to mark attendance" });
+        // Authorization helper
+        if (userRole === 'teacher') {
+            const { data: teacher } = await supabase.from('teachers').select('id').eq('user_id', userId).single();
+            if (!teacher) return res.status(404).json({ error: "Teacher profile not found" });
+            
+            // Ensure teacher teaches this subject
+            const { data: subject } = await supabase.from('subjects').select('id').eq('id', subject_id).eq('teacher_id', teacher.id).single();
+            if (!subject) return res.status(403).json({ error: "Access denied: You do not teach this subject" });
+        } else if (!['admin', 'bursary'].includes(userRole)) {
+            return res.status(403).json({ error: "Unauthorized" });
         }
 
         if (!student_id || !subject_id || !status) {
@@ -98,36 +112,30 @@ exports.markStudentAttendance = async (req, res) => {
 exports.getTeacherAttendance = async (req, res) => {
     try {
         const { date } = req.query;
+        const { userRole, institution_id } = req;
+
+        if (userRole !== 'admin') {
+            return res.status(403).json({ error: "Unauthorized" });
+        }
+
         if (!date) return res.status(400).json({ error: "Date required" });
 
         // 1. Get all teachers
         const { data: teachers, error: tError } = await supabase
             .from("teachers")
             .select("id, users!inner(full_name, avatar_url)")
-            .eq("institution_id", req.institution_id);
+            .eq("institution_id", institution_id);
 
         if (tError) throw tError;
 
         // 2. Get attendance records for date
         const { data: attendance, error: aError } = await supabase
-            .from("teacher_attendance") // Need to ensure this table exists! 
-            // Wait, did I create 'teacher_attendance' table? 
-            // I created 'attendance' table (student).
-            // My migration Plan said "Replace student attendance with teacher attendance monitoring".
-            // I created `20260216160000_feature_enhancements.sql`. 
-            // Let's double check if `teacher_attendance` was in it.
-            // I see `attendance` table in schema.sql but that looks like student attendance (student_id).
-            // I might have forgotten to create `teacher_attendance` table in the migration?
-            // "Attendance: Replace student attendance with teacher attendance monitoring."
-            // In the migration SQL I wrote:
-            // "CREATE TABLE IF NOT EXISTS public.timetables..."
-            // "ALTER TABLE public.users..."
-            // I need to check if I added teacher_attendance.
-            // If not, I need to add it now.
+            .from("teacher_attendance")
             .select("*")
-            .eq("date", date);
+            .eq("date", date)
+            .eq("institution_id", institution_id);
 
-        if (aError && aError.code !== "PGRST116") throw aError; // PGRST116 is not found? No, simple select returns empty array.
+        if (aError) throw aError;
 
         // Merge logic
         const result = teachers.map(t => {
@@ -143,7 +151,6 @@ exports.getTeacherAttendance = async (req, res) => {
         });
 
         res.json(result);
-
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
@@ -152,7 +159,11 @@ exports.getTeacherAttendance = async (req, res) => {
 exports.markTeacherAttendance = async (req, res) => {
     try {
         const { teacher_id, date, status, notes } = req.body;
-        const { institution_id } = req;
+        const { institution_id, userRole } = req;
+
+        if (userRole !== 'admin') {
+            return res.status(403).json({ error: "Unauthorized" });
+        }
 
         // Upsert
         const { data, error } = await supabase
