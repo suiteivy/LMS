@@ -131,7 +131,7 @@ exports.getTransactions = async (req, res) => {
 
         let query = supabase
             .from("financial_transactions")
-            .select("*, users(full_name), students(id)")
+            .select("*")
             .eq("institution_id", institution_id)
             .order("date", { ascending: false });
 
@@ -187,7 +187,8 @@ exports.processTransaction = async (req, res) => {
  */
 exports.createTransaction = async (req, res) => {
     try {
-        if (userRole !== "admin" && userRole !== "bursary") return res.status(403).json({ error: "Unauthorized" });
+        const { userRole, institution_id } = req;   
+        if (userRole !== "admin") return res.status(403).json({ error: "Unauthorized" });
 
         const { user_id, type, direction, amount, date, method, status, reference_id, meta } = req.body;
 
@@ -224,14 +225,15 @@ exports.recordFeePayment = async (req, res) => {
         const { userRole, institution_id } = req;
         if (userRole !== "admin" ) return res.status(403).json({ error: "Unauthorized" });
         console.log("recordFeePayment called with body:", req.body);
-        const { student_id, amount, payment_method, reference_number, notes } = req;
-
+        const { student_id, amount, payment_method, reference_number, notes } = req.body;
+        console.log(`Recording fee payment: student_id=${student_id}, amount=${amount}, method=${payment_method}`);
         // Verify student exists and get user_id
-        const { data: student } = await supabase
-            .from('students')
-            .select('user_id, institution_id')
-            .eq('id', student_id)
-            .single();
+        const { data: student, error: studentError } = await supabase.from('students').select('id,user_id').eq('id', student_id).single();
+
+        if (studentError) {
+            console.error("Student lookup error:", studentError);
+            return res.status(500).json({ error: "Internal server error" });
+        }
 
         if (!student) return res.status(404).json({ error: "Student not found" });
         if (student.institution_id !== institution_id) return res.status(403).json({ error: "Access denied: Student belongs to another institution" });

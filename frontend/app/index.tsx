@@ -622,130 +622,143 @@ export default function Index() {
           </View>
 
           {/* ═══════════════════════ FEATURES SECTION ═══════════════════════ */}
-          <View
-            ref={featuresRef}
-            onLayout={(e) => handleLayout("features", e.nativeEvent.layout.y)}
-            style={{
-              paddingHorizontal: 20,
-              paddingTop: 60,
-              paddingBottom: 40,
-              backgroundColor: "#13103A",
-            }}
-          >
-            <Text
+            <View
+              ref={featuresRef}
+              onLayout={(e) => handleLayout("features", e.nativeEvent.layout.y)}
               style={{
-                color: "white",
-                fontSize: 28,
-                fontWeight: "900",
-                textAlign: "center",
-                marginBottom: 6,
+                paddingHorizontal: 20,
+                paddingTop: 48,
+                paddingBottom: 40,
+                backgroundColor: "#13103A",
               }}
             >
-              Everything You Need
-            </Text>
-            <Text
-              style={{
-                color: "rgba(255,255,255,0.5)",
-                fontSize: 14,
-                textAlign: "center",
-                marginBottom: 32,
-              }}
-            >
-              Powerful tools for every stakeholder
-            </Text>
+              <Text
+                style={{
+                  color: "white",
+                  fontSize: 28,
+                  fontWeight: "800",
+                  textAlign: "center",
+                  marginBottom: 6,
+                }}
+              >
+                Everything You Need
+              </Text>
+              <Text
+                style={{
+                  color: "rgba(255,255,255,0.5)",
+                  fontSize: 14,
+                  textAlign: "center",
+                  marginBottom: 32,
+                }}
+              >
+                Powerful tools for every stakeholder
+              </Text>
 
-            <View className="max-lg:flex-col flex-col lg:flex-row flex-wrap justify-center items-center gap-5">
-              {[
-                {
-                  icon: <BookOpen size={22} color="#FF8C40" />,
-                  title: "Courses",
-                  desc: "Browse, enroll, and manage courses with ease.",
-                  gradient: ["#FF6B00", "#FF8C40"],
-                },
-                {
-                  icon: <Library size={22} color="#A78BFA" />,
-                  title: "Library",
-                  desc: "Access digital books and resources anytime.",
-                  gradient: ["#7C3AED", "#A78BFA"],
-                },
-                {
-                  icon: <CreditCard size={22} color="#60A5FA" />,
-                  title: "Payments",
-                  desc: "Track fees and manage payments simply.",
-                  gradient: ["#2563EB", "#60A5FA"],
-                },
-                {
-                  icon: <BarChart2 size={22} color="#34D399" />,
-                  title: "Analytics",
-                  desc: "Get actionable insights and reports.",
-                  gradient: ["#059669", "#34D399"],
-                },
-                {
-                  icon: <Users size={22} color="#F472B6" />,
-                  title: "Users",
-                  desc: "Manage students, teachers, and admins.",
-                  gradient: ["#DB2777", "#F472B6"],
-                },
-                {
-                  icon: <Settings size={22} color="#FBBF24" />,
-                  title: "Settings",
-                  desc: "Customize your experience to your needs.",
-                  gradient: ["#D97706", "#FBBF24"],
-                },
-              ].map(({ icon, title, desc, gradient }) => (
-                <Pressable
-                  key={title}
-                  style={({ pressed }) => ({
-                    maxWidth: 340,
-                    minWidth: "46%",
-                    flexBasis: "46%",
-                    flexGrow: 1,
-                    backgroundColor: "rgba(255,255,255,0.04)",
-                    borderWidth: 1,
-                    borderColor: "rgba(255,255,255,0.08)",
-                    borderRadius: 20,
-                    padding: 20,
-                    transform: [{ scale: pressed ? 0.97 : 1 }],
-                  })}
-                >
+              {/* Responsive grid: 1 column on small, 2 columns on large screens */}
+              <View
+                style={{
+                  flexDirection: "row",
+                  flexWrap: "wrap",
+                  justifyContent: "center",
+                  alignItems: "stretch",
+                  marginHorizontal: -8,
+                }}
+              >
+                {[
+                  {
+                    icon: <BookOpen size={22} color="#FF8C40" />,
+                    title: "Courses",
+                    desc: "Browse, enroll, and manage courses with ease.",
+                    gradient: ["#FF6B00", "#FF8C40"],
+                  },
+                  {
+                    icon: <Library size={22} color="#A78BFA" />,
+                    title: "Library",
+                    desc: "Access digital books and resources anytime.",
+                    gradient: ["#7C3AED", "#A78BFA"],
+                  },
+                  {
+                    icon: <CreditCard size={22} color="#60A5FA" />,
+                    title: "Payments",
+                    desc: "Track fees and manage payments simply.",
+                    gradient: ["#2563EB", "#60A5FA"],
+                  },
+                  {
+                    icon: <BarChart2 size={22} color="#34D399" />,
+                    title: "Analytics",
+                    desc: "Get actionable insights and reports.",
+                    gradient: ["#059669", "#34D399"],
+                  },
+                  {
+                    icon: <Users size={22} color="#F472B6" />,
+                    title: "Users",
+                    desc: "Manage students, teachers, and admins.",
+                    gradient: ["#DB2777", "#F472B6"],
+                  },
+                  {
+                    icon: <Settings size={22} color="#FBBF24" />,
+                    title: "Settings",
+                    desc: "Customize your experience to your needs.",
+                    gradient: ["#D97706", "#FBBF24"],
+                  },
+                ].map(({ icon, title, desc, gradient }) => (
                   <View
+                    key={title}
                     style={{
-                      width: 48,
-                      height: 48,
-                      borderRadius: 14,
-                      backgroundColor: `${gradient[0]}18`,
+                      width:
+                        Platform.OS === "web" && SCREEN_WIDTH >= 800
+                          ? "46%"
+                          : "100%",
+                      maxWidth: 340,
+                      minWidth: Platform.OS === "web" && SCREEN_WIDTH >= 800 ? 260 : "90%",
+                      flexGrow: 1,
+                      backgroundColor: "rgba(255,255,255,0.05)",
                       borderWidth: 1,
-                      borderColor: `${gradient[0]}30`,
-                      justifyContent: "center",
-                      alignItems: "center",
-                      marginBottom: 14,
+                      borderColor: "rgba(255,255,255,0.10)",
+                      borderRadius: 18,
+                      padding: 20,
+                      margin: 8,
+                      alignSelf: "stretch",
                     }}
                   >
-                    {icon}
+                    <View
+                      style={{
+                        width: 48,
+                        height: 48,
+                        borderRadius: 14,
+                        backgroundColor: `${gradient[0]}18`,
+                        borderWidth: 1,
+                        borderColor: `${gradient[0]}30`,
+                        justifyContent: "center",
+                        alignItems: "center",
+                        marginBottom: 14,
+                      }}
+                    >
+                      {icon}
+                    </View>
+                    <Text
+                      style={{
+                        color: "white",
+                        fontWeight: "800",
+                        fontSize: 17,
+                        marginBottom: 6,
+                      }}
+                    >
+                      {title}
+                    </Text>
+                    <Text
+                      style={{
+                        color: "rgba(255,255,255,0.5)",
+                        fontSize: 13,
+                        lineHeight: 19,
+                      }}
+                    >
+                      {desc}
+                    </Text>
                   </View>
-                  <Text
-                    style={{
-                      color: "white",
-                      fontWeight: "800",
-                      fontSize: 17,
-                      marginBottom: 6,
-                    }}
-                  >
-                    {title}
-                  </Text>
-                  <Text
-                    style={{
-                      color: "rgba(255,255,255,0.5)",
-                      fontSize: 13,
-                      lineHeight: 19,
-                    }}
-                  >
-                    {desc}
-                  </Text>
-                </Pressable>
-              ))}
+                ))}
+              </View>
             </View>
-          </View>
 
           {/* ═══════════════════════ INTERACTIVE DEMO SECTION ═══════════════════════ */}
           <View
@@ -860,7 +873,7 @@ export default function Index() {
                 maxWidth: 400,
               }}
             >
-              Choose the right fit for your school's growth.
+              Choose the right fit for your school&#39;s growth.
             </Text>
 
             <View
@@ -979,6 +992,13 @@ export default function Index() {
                 style={{ width: "100%", maxWidth: 500 }}
               >
                 <View style={{ backgroundColor: "#1E293B", borderRadius: 32, padding: 32, width: "100%", shadowColor: "#000", shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.5, shadowRadius: 20 }}>
+                  {/* Close button */}
+                  <TouchableOpacity
+                    style={{ position: "absolute", top: 16, right: 16, zIndex: 10 }}
+                    onPress={() => setModalVisible(false)}
+                  >
+                    <Text style={{ color: "rgba(255,255,255,0.6)", fontSize: 24, fontWeight: "bold" }}>×</Text>
+                  </TouchableOpacity>
                   <Text style={{ color: "white", fontWeight: "900", fontSize: 24, marginBottom: 8 }}>
                     {selectedPlan === 'Free Trial' ? 'Get Started for Free' : `Sign Up for ${selectedPlan}`}
                   </Text>
@@ -990,7 +1010,7 @@ export default function Index() {
                     <View style={{ alignItems: "center", paddingVertical: 24 }}>
                       <BadgeCheck size={48} color="#10B981" />
                       <Text style={{ color: "white", fontWeight: "bold", fontSize: 20, marginTop: 16, marginBottom: 8 }}>Thank you!</Text>
-                      <Text style={{ color: "rgba(255,255,255,0.6)", textAlign: "center", marginBottom: 24 }}>We'll be in touch soon with your login instructions.</Text>
+                      <Text style={{ color: "rgba(255,255,255,0.6)", textAlign: "center", marginBottom: 24 }}>We&#39;ll be in touch soon with your login instructions.</Text>
                       <TouchableOpacity
                         style={{ backgroundColor: "rgba(255,255,255,0.1)", width: "100%", paddingVertical: 16, borderRadius: 16, alignItems: "center" }}
                         onPress={() => setModalVisible(false)}
