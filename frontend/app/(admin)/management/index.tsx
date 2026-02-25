@@ -8,6 +8,7 @@ import {
     CalendarCheck,
     ChevronRight,
     ClipboardList,
+    DoorClosedLocked,
     FileText,
     Shield
 } from 'lucide-react-native';
@@ -125,6 +126,15 @@ export default function AdminManagement() {
             bgColor: "#d1fae5",
             darkBgColor: "#052e16",
             route: "/(admin)/attendance/teachers"
+        },
+        {
+            icon: DoorClosedLocked,
+            title: "Class Management",
+            description: "Manage classes and streams",
+            color: "#10b981",
+            bgColor: "#d1fae5",
+            darkBgColor: "#052e16",
+            route: "/(admin)/classes"
         }
     ];
 

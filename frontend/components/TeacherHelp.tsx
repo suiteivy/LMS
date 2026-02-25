@@ -1,6 +1,6 @@
 import { ChevronDown, ChevronUp, LifeBuoy, Mail, MessageSquare, Search } from 'lucide-react-native';
 import React, { useState } from 'react';
-import { ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Linking, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 interface FAQItemProps {
     question: string;
@@ -83,10 +83,14 @@ export default function TeacherHelp() {
                         <Text className="text-xs text-gray-400">Response in 1h</Text>
                     </TouchableOpacity>
 
-                    <TouchableOpacity className="w-[48%] bg-white p-5 rounded-2xl border border-gray-100 items-center shadow-sm">
+                    <TouchableOpacity
+                        onPress={() => Linking.openURL('mailto:Support@cloudoraltd@gmail.com')}
+                        className="w-[48%] bg-white p-5 rounded-2xl border border-gray-100 items-center shadow-sm"
+                    >
                         <Mail size={24} color="#3b82f6" />
                         <Text className="mt-2 font-bold text-gray-800">Email Admin</Text>
-                        <Text className="text-xs text-gray-400">Response in 12h</Text>
+                        <Text className="text-[10px] text-blue-500 font-medium">Support@cloudoraltd@gmail.com</Text>
+                        <Text className="text-[10px] text-gray-400 mt-1">Response in 12h</Text>
                     </TouchableOpacity>
                 </View>
 

@@ -1,7 +1,7 @@
 import { useTheme } from "@/contexts/ThemeContext";
 import { ChevronDown, ChevronUp, LifeBuoy, Mail, MessageSquare, Search, X } from 'lucide-react-native';
 import React, { useState } from 'react';
-import { Modal, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Linking, Modal, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 interface FAQItemProps {
     question: string;
@@ -56,15 +56,15 @@ export default function StudentHelp() {
     const [selectedTab, setSelectedTab] = useState<'chat' | 'email' | null>(null);
 
     const tokens = {
-        bg:      isDark ? '#000000' : '#f9fafb',
+        bg: isDark ? '#000000' : '#f9fafb',
         surface: isDark ? '#1a1a1a' : '#ffffff',
-        border:  isDark ? '#1f2937' : '#f3f4f6',
-        textPrimary:   isDark ? '#ffffff' : '#111827',
+        border: isDark ? '#1f2937' : '#f3f4f6',
+        textPrimary: isDark ? '#ffffff' : '#111827',
         textSecondary: isDark ? '#9ca3af' : '#6b7280',
-        textMuted:     isDark ? '#6b7280' : '#9ca3af',
-        inputBg:       isDark ? '#111827' : '#f9fafb',
-        inputBorder:   isDark ? '#1f2937' : '#f3f4f6',
-        inputText:     isDark ? '#ffffff' : '#111827',
+        textMuted: isDark ? '#6b7280' : '#9ca3af',
+        inputBg: isDark ? '#111827' : '#f9fafb',
+        inputBorder: isDark ? '#1f2937' : '#f3f4f6',
+        inputText: isDark ? '#ffffff' : '#111827',
     };
 
     return (
@@ -157,7 +157,8 @@ export default function StudentHelp() {
                         >
                             <Mail size={24} color="#3b82f6" />
                             <Text style={{ marginTop: 8, fontWeight: '700', color: tokens.textPrimary }}>Email Us</Text>
-                            <Text style={{ fontSize: 12, color: tokens.textMuted, marginTop: 2 }}>Response in 24h</Text>
+                            <Text style={{ fontSize: 10, color: '#3b82f6', marginTop: 4 }}>Contact@cloudoraltd@gmail.com</Text>
+                            <Text style={{ fontSize: 10, color: tokens.textMuted, marginTop: 2 }}>Response in 24h</Text>
                         </TouchableOpacity>
                     </View>
                 </View>
@@ -206,38 +207,35 @@ export default function StudentHelp() {
                                 </>
                             ) : (
                                 <View style={{ width: '100%' }}>
-                                    <Text style={{ color: tokens.textPrimary, fontWeight: '700', marginBottom: 16, textAlign: 'center' }}>Send us a message</Text>
-                                    <TextInput
-                                        placeholder="How can we help?"
-                                        placeholderTextColor={tokens.textMuted}
-                                        multiline
-                                        numberOfLines={4}
-                                        style={{
-                                            backgroundColor: tokens.inputBg,
-                                            borderWidth: 1,
-                                            borderColor: tokens.inputBorder,
-                                            borderRadius: 16,
-                                            padding: 16,
-                                            height: 128,
-                                            color: tokens.inputText,
-                                            textAlignVertical: 'top',
-                                        }}
-                                    />
+                                    <View style={{ alignItems: 'center', marginBottom: 24 }}>
+                                        <View style={{ width: 64, height: 64, backgroundColor: isDark ? '#1e293b' : '#eff6ff', borderRadius: 32, alignItems: 'center', justifyContent: 'center', marginBottom: 12 }}>
+                                            <Mail size={32} color="#3b82f6" />
+                                        </View>
+                                        <Text style={{ color: tokens.textPrimary, fontWeight: '700', fontSize: 18 }}>Email Support</Text>
+                                        <Text style={{ color: '#3b82f6', fontWeight: '500', fontSize: 14, marginTop: 4 }}>Support@cloudoraltd@gmail.com</Text>
+                                    </View>
+
+                                    <Text style={{ color: tokens.textSecondary, textAlign: 'center', marginBottom: 24, fontSize: 14 }}>
+                                        Questions about your account or technical issues? Our support team is here to help.
+                                    </Text>
+
                                     <TouchableOpacity
                                         style={{
                                             backgroundColor: '#f97316',
                                             paddingVertical: 16,
-                                            borderRadius: 16,
-                                            marginTop: 24,
+                                            borderRadius: 20,
                                             alignItems: 'center',
                                             shadowColor: '#f97316',
                                             shadowOpacity: 0.3,
                                             shadowRadius: 8,
                                             elevation: 4,
                                         }}
-                                        onPress={() => setSelectedTab(null)}
+                                        onPress={() => {
+                                            Linking.openURL('mailto:Support@cloudoraltd@gmail.com');
+                                            setSelectedTab(null);
+                                        }}
                                     >
-                                        <Text style={{ color: '#ffffff', fontWeight: '700' }}>Send Email</Text>
+                                        <Text style={{ color: '#ffffff', fontWeight: '800', letterSpacing: 0.5 }}>CONTACT VIA EMAIL</Text>
                                     </TouchableOpacity>
                                 </View>
                             )}

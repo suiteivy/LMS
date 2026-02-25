@@ -4,7 +4,7 @@ import { SchoolProvider } from "@/contexts/SchoolContext";
 import { useTheme } from "@/contexts/ThemeContext";
 import { Slot, Tabs } from "expo-router";
 import { House, LayoutGrid, Settings, Users, Wallet } from "lucide-react-native";
-import { Platform, View } from "react-native";
+import { Platform, useWindowDimensions, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const NAV_ITEMS: NavItem[] = [
@@ -25,6 +25,7 @@ const HIDDEN = [
     "management/roles/index", "settings/index",
     "attendance/teachers/index", "finance/bursaries/reports",
     "classes/index",
+    "classes/create",
 ];
 
 function AdminTabs() {
@@ -88,10 +89,13 @@ function AdminSidebar() {
 }
 
 export default function AdminLayout() {
+    const { width } = useWindowDimensions();
+    const useWebLayout = Platform.OS === 'web' && width > 768;
+
     return (
         <AuthGuard allowedRoles={['admin']}>
             <SchoolProvider>
-                {Platform.OS === 'web' ? <AdminSidebar /> : <AdminTabs />}
+                {useWebLayout ? <AdminSidebar /> : <AdminTabs />}
             </SchoolProvider>
         </AuthGuard>
     );

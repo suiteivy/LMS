@@ -1,12 +1,12 @@
 import { AppLoading } from "@/components/AppLoading";
 import { useAuth } from "@/contexts/AuthContext";
+import { api } from "@/services/api";
 import { router, usePathname } from "expo-router";
 import {
   BadgeCheck,
   BarChart2,
   BookOpen,
   Check,
-  ChevronDown,
   CreditCard,
   Crown,
   Library,
@@ -14,18 +14,132 @@ import {
   Settings,
   Sparkles,
   Star,
-  Users,
-  Zap,
+  Timer,
+  Users
 } from "lucide-react-native";
 import React, { useEffect, useRef, useState } from "react";
 import {
-  ActivityIndicator, Animated, Dimensions, KeyboardAvoidingView, Platform,
-  Pressable, ScrollView, StatusBar, Text, TouchableOpacity, View, Modal, TextInput
+  Animated, Dimensions, KeyboardAvoidingView,
+  Modal,
+  Platform,
+  ScrollView, StatusBar, Text,
+  TextInput,
+  TouchableOpacity, View
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { api } from "@/services/api";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
+
+// ─── Discount Banner ────────────────────────────────────────────────────────
+// Offer ends Saturday 2026-02-28 00:00:00 EAT (UTC+3)
+const OFFER_END = new Date('2026-02-28T00:00:00+03:00').getTime();
+
+function useCountdown(targetMs: number) {
+  const calc = () => {
+    const diff = Math.max(0, targetMs - Date.now());
+    return {
+      days: Math.floor(diff / 86_400_000),
+      hours: Math.floor((diff % 86_400_000) / 3_600_000),
+      minutes: Math.floor((diff % 3_600_000) / 60_000),
+      seconds: Math.floor((diff % 60_000) / 1_000),
+      expired: diff === 0,
+    };
+  };
+  const [time, setTime] = useState(calc);
+  useEffect(() => {
+    const id = setInterval(() => setTime(calc()), 1000);
+    return () => clearInterval(id);
+  }, []);
+  return time;
+}
+
+function DiscountBanner() {
+  const { days, hours, minutes, seconds, expired } = useCountdown(OFFER_END);
+  const insets = useSafeAreaInsets();
+  const pulse = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    const anim = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulse, { toValue: 1.06, duration: 900, useNativeDriver: true }),
+        Animated.timing(pulse, { toValue: 1, duration: 900, useNativeDriver: true }),
+      ])
+    );
+    anim.start();
+    return () => anim.stop();
+  }, []);
+
+  if (expired) return null;
+
+  const pad = (n: number) => String(n).padStart(2, '0');
+
+  return (
+    <View
+      pointerEvents="none"
+      style={{
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        zIndex: 50,
+        backgroundColor: '#EA580C',
+        paddingTop: Math.max(insets.top, 8),
+        paddingBottom: 8,
+        paddingHorizontal: 16,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 10,
+        flexWrap: 'wrap',
+        // subtle glow shadow
+        shadowColor: '#FF6B00',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.6,
+        shadowRadius: 8,
+        elevation: 8,
+      }}
+    >
+      {/* Left: sparkle + offer text */}
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+        <Sparkles size={15} color="#FEF3C7" />
+        <Text style={{ color: 'white', fontWeight: '700', fontSize: 13 }}>
+          Limited-Time: 10% OFF all Cloudora services
+        </Text>
+      </View>
+
+      {/* Divider */}
+      <View style={{ width: 1, height: 16, backgroundColor: 'rgba(255,255,255,0.35)' }} />
+
+      {/* Right: live countdown */}
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+        <Timer size={13} color="#FEF3C7" />
+        {[
+          { v: days, l: 'd' },
+          { v: hours, l: 'h' },
+          { v: minutes, l: 'm' },
+          { v: seconds, l: 's' },
+        ].map(({ v, l }, i) => (
+          <View key={l} style={{ flexDirection: 'row', alignItems: 'center' }}>
+            {i > 0 && <Text style={{ color: 'rgba(255,255,255,0.6)', fontSize: 12, marginHorizontal: 1 }}>:</Text>}
+            <Animated.View
+              style={{
+                backgroundColor: 'rgba(0,0,0,0.25)',
+                borderRadius: 6,
+                paddingHorizontal: 6,
+                paddingVertical: 2,
+                transform: [{ scale: l === 's' ? pulse : 1 }],
+              }}
+            >
+              <Text style={{ color: 'white', fontWeight: '800', fontSize: 13, letterSpacing: 0.5 }}>
+                {pad(v)}{l}
+              </Text>
+            </Animated.View>
+          </View>
+        ))}
+      </View>
+    </View>
+  );
+}
 
 export default function Index() {
   const { session, loading, isInitializing, profile } = useAuth();
@@ -38,6 +152,10 @@ export default function Index() {
   const [form, setForm] = useState({ name: '', email: '', message: '' });
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+
+  // Show AppLoading for 5s before redirecting to dashboard
+  const [navigating, setNavigating] = useState(false);
+  const pendingRoute = useRef<string | null>(null);
 
   // Section refs for smooth scrolling
   const featuresRef = useRef<View>(null);
@@ -187,39 +305,45 @@ export default function Index() {
     return () => clearTimeout(timer);
   }, []);
 
+  // Detect session → store the target route and start loading screen
   useEffect(() => {
-    // Only auto-redirect to dashboard if we are actually ON the landing page.
-    // This prevents stealing the navigation if the user is refreshing a deep page
-    // and AuthHandler transiently lands them here.
     const isActuallyOnLanding = pathname === "/" || pathname === "/index";
-
     if (
       isActuallyOnLanding &&
       isNavReady &&
       !isInitializing &&
       session &&
-      profile
+      profile &&
+      !navigating
     ) {
-      if (profile.role === "admin") router.replace("/(admin)");
-      else if (profile.role === "teacher") router.replace("/(teacher)");
-      else if (profile.role === "student") router.replace("/(student)");
-      else if (profile.role === "parent") router.replace("/(parent)");
+      let route: string | null = null;
+      if (profile.role === "admin") route = "/(admin)";
+      else if (profile.role === "teacher") route = "/(teacher)";
+      else if (profile.role === "student") route = "/(student)";
+      else if (profile.role === "parent") route = "/(parent)";
+
+      if (route) {
+        pendingRoute.current = route;
+        setNavigating(true);
+      }
     }
   }, [isNavReady, isInitializing, session, profile, pathname]);
 
-  if (loading) {
-    return (
-      <View
-        style={{
-          flex: 1,
-          justifyContent: "center",
-          alignItems: "center",
-          backgroundColor: "#0F0B2E",
-        }}
-      >
-        <ActivityIndicator size="large" color="#FF6B00" />
-      </View>
-    );
+  // After 5 seconds of AppLoading, do the actual redirect
+  useEffect(() => {
+    if (!navigating) return;
+    const timer = setTimeout(() => {
+      if (pendingRoute.current) router.replace(pendingRoute.current as any);
+    }, 5000);
+    return () => clearTimeout(timer);
+  }, [navigating]);
+
+  // Show AppLoading immediately if:
+  //  1. navigating = true (5-second post-login animation), OR
+  //  2. auth is still initializing/loading (prevents landing page flash), OR
+  //  3. session already exists — redirect is imminent; don't paint the landing page
+  if (navigating || loading || isInitializing || (session && profile)) {
+    return <AppLoading />;
   }
 
   // Orb translations
@@ -265,6 +389,9 @@ export default function Index() {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: "#0F0B2E" }}>
       <StatusBar barStyle="light-content" />
+
+      {/* ═══════════════ FIXED DISCOUNT BANNER ═══════════════ */}
+      <DiscountBanner />
 
       {/* ═══════════════ FLOATING STICKY NAV ═══════════════ */}
       <Animated.View
@@ -622,143 +749,143 @@ export default function Index() {
           </View>
 
           {/* ═══════════════════════ FEATURES SECTION ═══════════════════════ */}
-            <View
-              ref={featuresRef}
-              onLayout={(e) => handleLayout("features", e.nativeEvent.layout.y)}
+          <View
+            ref={featuresRef}
+            onLayout={(e) => handleLayout("features", e.nativeEvent.layout.y)}
+            style={{
+              paddingHorizontal: 20,
+              paddingTop: 48,
+              paddingBottom: 40,
+              backgroundColor: "#13103A",
+            }}
+          >
+            <Text
               style={{
-                paddingHorizontal: 20,
-                paddingTop: 48,
-                paddingBottom: 40,
-                backgroundColor: "#13103A",
+                color: "white",
+                fontSize: 28,
+                fontWeight: "800",
+                textAlign: "center",
+                marginBottom: 6,
               }}
             >
-              <Text
-                style={{
-                  color: "white",
-                  fontSize: 28,
-                  fontWeight: "800",
-                  textAlign: "center",
-                  marginBottom: 6,
-                }}
-              >
-                Everything You Need
-              </Text>
-              <Text
-                style={{
-                  color: "rgba(255,255,255,0.5)",
-                  fontSize: 14,
-                  textAlign: "center",
-                  marginBottom: 32,
-                }}
-              >
-                Powerful tools for every stakeholder
-              </Text>
+              Everything You Need
+            </Text>
+            <Text
+              style={{
+                color: "rgba(255,255,255,0.5)",
+                fontSize: 14,
+                textAlign: "center",
+                marginBottom: 32,
+              }}
+            >
+              Powerful tools for every stakeholder
+            </Text>
 
-              {/* Responsive grid: 1 column on small, 2 columns on large screens */}
-              <View
-                style={{
-                  flexDirection: "row",
-                  flexWrap: "wrap",
-                  justifyContent: "center",
-                  alignItems: "stretch",
-                  marginHorizontal: -8,
-                }}
-              >
-                {[
-                  {
-                    icon: <BookOpen size={22} color="#FF8C40" />,
-                    title: "Courses",
-                    desc: "Browse, enroll, and manage courses with ease.",
-                    gradient: ["#FF6B00", "#FF8C40"],
-                  },
-                  {
-                    icon: <Library size={22} color="#A78BFA" />,
-                    title: "Library",
-                    desc: "Access digital books and resources anytime.",
-                    gradient: ["#7C3AED", "#A78BFA"],
-                  },
-                  {
-                    icon: <CreditCard size={22} color="#60A5FA" />,
-                    title: "Payments",
-                    desc: "Track fees and manage payments simply.",
-                    gradient: ["#2563EB", "#60A5FA"],
-                  },
-                  {
-                    icon: <BarChart2 size={22} color="#34D399" />,
-                    title: "Analytics",
-                    desc: "Get actionable insights and reports.",
-                    gradient: ["#059669", "#34D399"],
-                  },
-                  {
-                    icon: <Users size={22} color="#F472B6" />,
-                    title: "Users",
-                    desc: "Manage students, teachers, and admins.",
-                    gradient: ["#DB2777", "#F472B6"],
-                  },
-                  {
-                    icon: <Settings size={22} color="#FBBF24" />,
-                    title: "Settings",
-                    desc: "Customize your experience to your needs.",
-                    gradient: ["#D97706", "#FBBF24"],
-                  },
-                ].map(({ icon, title, desc, gradient }) => (
+            {/* Responsive grid: 1 column on small, 2 columns on large screens */}
+            <View
+              style={{
+                flexDirection: "row",
+                flexWrap: "wrap",
+                justifyContent: "center",
+                alignItems: "stretch",
+                marginHorizontal: -8,
+              }}
+            >
+              {[
+                {
+                  icon: <BookOpen size={22} color="#FF8C40" />,
+                  title: "Courses",
+                  desc: "Browse, enroll, and manage courses with ease.",
+                  gradient: ["#FF6B00", "#FF8C40"],
+                },
+                {
+                  icon: <Library size={22} color="#A78BFA" />,
+                  title: "Library",
+                  desc: "Access digital books and resources anytime.",
+                  gradient: ["#7C3AED", "#A78BFA"],
+                },
+                {
+                  icon: <CreditCard size={22} color="#60A5FA" />,
+                  title: "Payments",
+                  desc: "Track fees and manage payments simply.",
+                  gradient: ["#2563EB", "#60A5FA"],
+                },
+                {
+                  icon: <BarChart2 size={22} color="#34D399" />,
+                  title: "Analytics",
+                  desc: "Get actionable insights and reports.",
+                  gradient: ["#059669", "#34D399"],
+                },
+                {
+                  icon: <Users size={22} color="#F472B6" />,
+                  title: "Users",
+                  desc: "Manage students, teachers, and admins.",
+                  gradient: ["#DB2777", "#F472B6"],
+                },
+                {
+                  icon: <Settings size={22} color="#FBBF24" />,
+                  title: "Settings",
+                  desc: "Customize your experience to your needs.",
+                  gradient: ["#D97706", "#FBBF24"],
+                },
+              ].map(({ icon, title, desc, gradient }) => (
+                <View
+                  key={title}
+                  style={{
+                    width:
+                      Platform.OS === "web" && SCREEN_WIDTH >= 800
+                        ? "46%"
+                        : "100%",
+                    maxWidth: 340,
+                    minWidth: Platform.OS === "web" && SCREEN_WIDTH >= 800 ? 260 : "90%",
+                    flexGrow: 1,
+                    backgroundColor: "rgba(255,255,255,0.05)",
+                    borderWidth: 1,
+                    borderColor: "rgba(255,255,255,0.10)",
+                    borderRadius: 18,
+                    padding: 20,
+                    margin: 8,
+                    alignSelf: "stretch",
+                  }}
+                >
                   <View
-                    key={title}
                     style={{
-                      width:
-                        Platform.OS === "web" && SCREEN_WIDTH >= 800
-                          ? "46%"
-                          : "100%",
-                      maxWidth: 340,
-                      minWidth: Platform.OS === "web" && SCREEN_WIDTH >= 800 ? 260 : "90%",
-                      flexGrow: 1,
-                      backgroundColor: "rgba(255,255,255,0.05)",
+                      width: 48,
+                      height: 48,
+                      borderRadius: 14,
+                      backgroundColor: `${gradient[0]}18`,
                       borderWidth: 1,
-                      borderColor: "rgba(255,255,255,0.10)",
-                      borderRadius: 18,
-                      padding: 20,
-                      margin: 8,
-                      alignSelf: "stretch",
+                      borderColor: `${gradient[0]}30`,
+                      justifyContent: "center",
+                      alignItems: "center",
+                      marginBottom: 14,
                     }}
                   >
-                    <View
-                      style={{
-                        width: 48,
-                        height: 48,
-                        borderRadius: 14,
-                        backgroundColor: `${gradient[0]}18`,
-                        borderWidth: 1,
-                        borderColor: `${gradient[0]}30`,
-                        justifyContent: "center",
-                        alignItems: "center",
-                        marginBottom: 14,
-                      }}
-                    >
-                      {icon}
-                    </View>
-                    <Text
-                      style={{
-                        color: "white",
-                        fontWeight: "800",
-                        fontSize: 17,
-                        marginBottom: 6,
-                      }}
-                    >
-                      {title}
-                    </Text>
-                    <Text
-                      style={{
-                        color: "rgba(255,255,255,0.5)",
-                        fontSize: 13,
-                        lineHeight: 19,
-                      }}
-                    >
-                      {desc}
-                    </Text>
+                    {icon}
                   </View>
-                ))}
-              </View>
+                  <Text
+                    style={{
+                      color: "white",
+                      fontWeight: "800",
+                      fontSize: 17,
+                      marginBottom: 6,
+                    }}
+                  >
+                    {title}
+                  </Text>
+                  <Text
+                    style={{
+                      color: "rgba(255,255,255,0.5)",
+                      fontSize: 13,
+                      lineHeight: 19,
+                    }}
+                  >
+                    {desc}
+                  </Text>
+                </View>
+              ))}
             </View>
+          </View>
 
           {/* ═══════════════════════ INTERACTIVE DEMO SECTION ═══════════════════════ */}
           <View

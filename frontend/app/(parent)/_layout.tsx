@@ -2,8 +2,8 @@ import { AuthGuard } from "@/components/AuthGuard";
 import { NavItem, WebSidebar } from "@/components/layouts/WebSideBar";
 import { useTheme } from "@/contexts/ThemeContext";
 import { Slot, Tabs } from "expo-router";
-import { Bell, CalendarCheck, CreditCard, GraduationCap, LayoutDashboard, MessageSquare, Settings } from "lucide-react-native";
-import { Platform, View } from "react-native";
+import { Bell, CreditCard, LayoutDashboard, MessageSquare, Settings } from "lucide-react-native";
+import { Platform, useWindowDimensions, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const NAV_ITEMS: NavItem[] = [
@@ -56,8 +56,8 @@ function ParentTabs() {
                 />
 
             ))}
-            <Tabs.Screen name="grades" options={{href: null, headerShown: false}} />
-            <Tabs.Screen name="attendance" options={{href: null, headerShown: false}} />
+            <Tabs.Screen name="grades" options={{ href: null, headerShown: false }} />
+            <Tabs.Screen name="attendance" options={{ href: null, headerShown: false }} />
         </Tabs>
     );
 }
@@ -71,9 +71,12 @@ function ParentSidebar() {
 }
 
 export default function ParentLayout() {
+    const { width } = useWindowDimensions();
+    const useWebLayout = Platform.OS === 'web' && width > 768;
+
     return (
         <AuthGuard allowedRoles={['parent']}>
-            {Platform.OS === 'web' ? <ParentSidebar /> : <ParentTabs />}
+            {useWebLayout ? <ParentSidebar /> : <ParentTabs />}
         </AuthGuard>
     );
 }

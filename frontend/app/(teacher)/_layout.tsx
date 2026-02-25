@@ -1,19 +1,19 @@
 import { AuthGuard } from "@/components/AuthGuard";
-import { WebSidebar, NavItem } from "@/components/layouts/WebSideBar";
+import { NavItem, WebSidebar } from "@/components/layouts/WebSideBar";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTheme } from "@/contexts/ThemeContext";
 import { Slot, Tabs } from "expo-router";
 import { BookOpen, Building, LayoutGrid, School, Settings, Users } from "lucide-react-native";
-import { Platform, View } from "react-native";
+import { Platform, useWindowDimensions, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const NAV_ITEMS: NavItem[] = [
-    { name: "index",      title: "Home",     icon: Building,    route: "/(teacher)" },
-    { name: "subjects",   title: "Subjects", icon: BookOpen,    route: "/(teacher)/subjects" },
-    { name: "classes",    title: "Classes",  icon: School,      route: "/(teacher)/classes" },
-    { name: "students",   title: "Students", icon: Users,       route: "/(teacher)/students" },
-    { name: "management", title: "Manage",   icon: LayoutGrid,  route: "/(teacher)/management" },
-    { name: "settings",   title: "Settings", icon: Settings,    route: "/(teacher)/settings" },
+    { name: "index", title: "Home", icon: Building, route: "/(teacher)" },
+    { name: "subjects", title: "Subjects", icon: BookOpen, route: "/(teacher)/subjects" },
+    { name: "classes", title: "Classes", icon: School, route: "/(teacher)/classes" },
+    { name: "students", title: "Students", icon: Users, route: "/(teacher)/students" },
+    { name: "management", title: "Manage", icon: LayoutGrid, route: "/(teacher)/management" },
+    { name: "settings", title: "Settings", icon: Settings, route: "/(teacher)/settings" },
 ];
 
 function TeacherTabs() {
@@ -73,9 +73,12 @@ function TeacherSidebar() {
 }
 
 export default function TeacherLayout() {
+    const { width } = useWindowDimensions();
+    const useWebLayout = Platform.OS === 'web' && width > 768;
+
     return (
         <AuthGuard allowedRoles={['teacher']}>
-            {Platform.OS === 'web' ? <TeacherSidebar /> : <TeacherTabs />}
+            {useWebLayout ? <TeacherSidebar /> : <TeacherTabs />}
         </AuthGuard>
     );
 }

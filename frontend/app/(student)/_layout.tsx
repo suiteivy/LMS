@@ -1,5 +1,5 @@
 import { AuthGuard } from "@/components/AuthGuard";
-import { WebSidebar, NavItem } from "@/components/layouts/WebSideBar";
+import { NavItem, WebSidebar } from "@/components/layouts/WebSideBar";
 import { useTheme } from "@/contexts/ThemeContext";
 import { Slot, Tabs } from "expo-router";
 import {
@@ -12,19 +12,19 @@ import {
   Settings,
   Star,
 } from "lucide-react-native";
-import { Platform, View, Text } from "react-native";
+import { Platform, Text, useWindowDimensions, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 // Full nav — used by sidebar on web
 const NAV_ITEMS: NavItem[] = [
-  { name: "index",       title: "Home",        icon: Building,      route: "/(student)" },
-  { name: "subjects",    title: "Subjects",    icon: BookOpen,      route: "/(student)/subjects" },
-  { name: "library",     title: "Library",     icon: Glasses,       route: "/(student)/library" },
-  { name: "assignments", title: "Assignments", icon: PenBox,        route: "/(student)/assignments" },
-  { name: "grades",      title: "Grades",      icon: Star,          route: "/(student)/grades" },
-  { name: "finance",     title: "Finances",    icon: CreditCard,    route: "/(student)/finance" },
-  { name: "messages",    title: "Messages",    icon: MessageSquare, route: "/(student)/messages" },
-  { name: "settings",    title: "Settings",    icon: Settings,      route: "/(student)/settings" },
+  { name: "index", title: "Home", icon: Building, route: "/(student)" },
+  { name: "subjects", title: "Subjects", icon: BookOpen, route: "/(student)/subjects" },
+  { name: "library", title: "Library", icon: Glasses, route: "/(student)/library" },
+  { name: "assignments", title: "Assignments", icon: PenBox, route: "/(student)/assignments" },
+  { name: "grades", title: "Grades", icon: Star, route: "/(student)/grades" },
+  { name: "finance", title: "Finances", icon: CreditCard, route: "/(student)/finance" },
+  { name: "messages", title: "Messages", icon: MessageSquare, route: "/(student)/messages" },
+  { name: "settings", title: "Settings", icon: Settings, route: "/(student)/settings" },
 ];
 
 // Only these three show in the mobile bottom tab bar
@@ -146,9 +146,12 @@ function StudentSidebar() {
 }
 
 export default function StudentLayout() {
+  const { width } = useWindowDimensions();
+  const useWebLayout = Platform.OS === 'web' && width > 768;
+
   return (
     <AuthGuard allowedRoles={['student']}>
-      {Platform.OS === 'web' ? <StudentSidebar /> : <StudentTabs />}
+      {useWebLayout ? <StudentSidebar /> : <StudentTabs />}
     </AuthGuard>
   );
 }
