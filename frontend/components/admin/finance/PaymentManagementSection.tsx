@@ -71,7 +71,7 @@ const PaymentManagementSection: React.FC<
       payment_date: new Date().toISOString(),
       status: "completed",
       student_id: formData.student_id,
-      student_name: "john''", // Set to empty string or fetch if available
+      student_name: " ", // Set to empty string or fetch if available
       payment_method: formData.payment_method,
       reference_number: formData.reference_number,
       notes: formData.notes,
