@@ -154,6 +154,35 @@ exports.enrollUser = async (req, res) => {
   }
 
   try {
+    const targetInstitutionId = institution_id || req.institution_id;
+
+    // 0. Enforce Admin Limits
+    if (role === 'admin' && targetInstitutionId) {
+      const { data: inst } = await supabase
+        .from('institutions')
+        .select('subscription_plan')
+        .eq('id', targetInstitutionId)
+        .single();
+
+      const plan = inst?.subscription_plan || 'trial';
+      const planLimits = { 'trial': 1, 'basic': 2, 'pro': 5, 'premium': Infinity };
+      const maxAdmins = planLimits[plan] || 1;
+
+      if (maxAdmins !== Infinity) {
+        const { count: adminCount } = await supabase
+          .from('users')
+          .select('*', { count: 'exact', head: true })
+          .eq('institution_id', targetInstitutionId)
+          .eq('role', 'admin');
+
+        if (adminCount >= maxAdmins) {
+          return res.status(403).json({
+            error: `Administrative account limit reached for your current plan (${plan.toUpperCase()}). Please upgrade to add more administrators.`,
+            code: 'ADMIN_LIMIT_REACHED'
+          });
+        }
+      }
+    }
     // 1. Generate temporary password for primary user
     const tempPassword = generateTempPassword();
 
@@ -170,7 +199,6 @@ exports.enrollUser = async (req, res) => {
     const uid = authData.user.id;
 
     // 3. Insert into users table
-    const targetInstitutionId = institution_id || req.institution_id;
     const { error: userInsertError } = await supabase.from("users").insert({
       id: uid,
       email,

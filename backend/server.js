@@ -40,6 +40,7 @@ app.use("/api/auth/forgot-password", rateLimiters.passwordReset);
 app.use("/api/auth/reset-password", rateLimiters.passwordReset);
 
 // Subscription Check Middleware (Trial Branch specific)
+const { authMiddleware } = require("./middleware/auth.middleware");
 const checkSubscription = require("./middleware/subscriptionCheck");
 
 // Public Routes
@@ -47,24 +48,24 @@ app.use("/api/auth", authRoutes);
 app.use("/api/demo", require("./routes/demo.route"));
 app.use("/api/contact", require("./routes/contact.route"));
 // Gated Routes (Trial Branch)
-app.use("/api/subjects", checkSubscription, subjectRoutes);
-app.use("/api/institutions", checkSubscription, institutionRoutes);
-app.use("/api/library", checkSubscription, libraryRoutes);
-app.use("/api/bursary", checkSubscription, bursaryRoutes);
-app.use("/api/finance", checkSubscription, financeRoutes);
-app.use("/api/notifications", checkSubscription, notificationRoutes);
-app.use("/api/timetable", checkSubscription, require("./routes/timetable.route"));
-app.use("/api/funds", checkSubscription, require("./routes/finance_funds.route"));
-app.use("/api/attendance", checkSubscription, require("./routes/attendance.route"));
-app.use("/api/academic", checkSubscription, require("./routes/academic.route.js"));
-app.use("/api/exams", checkSubscription, require("./routes/exams.route.js"));
-app.use("/api/parent", checkSubscription, require("./routes/parent.route.js"));
-app.use("/api/messages", checkSubscription, require("./routes/messaging.route.js"));
-app.use("/api/resources", checkSubscription, require("./routes/resources.route.js"));
-app.use("/api/teacher", checkSubscription, require("./routes/teacher.route.js"));
-app.use("/api/settings", checkSubscription, settingsRoutes);
-app.use("/api/student", checkSubscription, require("./routes/student.route"));
-app.use("/api/classes", checkSubscription, require("./routes/class.route"));
+app.use("/api/subjects", authMiddleware, checkSubscription, subjectRoutes);
+app.use("/api/institutions", authMiddleware, checkSubscription, institutionRoutes);
+app.use("/api/library", authMiddleware, checkSubscription, libraryRoutes);
+app.use("/api/bursary", authMiddleware, checkSubscription, bursaryRoutes);
+app.use("/api/finance", authMiddleware, checkSubscription, financeRoutes);
+app.use("/api/notifications", authMiddleware, checkSubscription, notificationRoutes);
+app.use("/api/timetable", authMiddleware, checkSubscription, require("./routes/timetable.route"));
+app.use("/api/funds", authMiddleware, checkSubscription, require("./routes/finance_funds.route"));
+app.use("/api/attendance", authMiddleware, checkSubscription, require("./routes/attendance.route"));
+app.use("/api/academic", authMiddleware, checkSubscription, require("./routes/academic.route.js"));
+app.use("/api/exams", authMiddleware, checkSubscription, require("./routes/exams.route.js"));
+app.use("/api/parent", authMiddleware, checkSubscription, require("./routes/parent.route.js"));
+app.use("/api/messages", authMiddleware, checkSubscription, require("./routes/messaging.route.js"));
+app.use("/api/resources", authMiddleware, checkSubscription, require("./routes/resources.route.js"));
+app.use("/api/teacher", authMiddleware, checkSubscription, require("./routes/teacher.route.js"));
+app.use("/api/settings", authMiddleware, checkSubscription, settingsRoutes);
+app.use("/api/student", authMiddleware, checkSubscription, require("./routes/student.route"));
+app.use("/api/classes", authMiddleware, checkSubscription, require("./routes/class.route"));
 
 // Automated background jobs (Trial Branch)
 const { startTrialNudgesCron } = require('./cron/trialNudges');

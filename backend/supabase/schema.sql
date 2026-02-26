@@ -677,7 +677,7 @@ BEGIN
   RETURN EXISTS (
     SELECT 1 FROM institutions
     WHERE id = p_institution_id
-    AND subscription_status IN ('trial', 'active')
+    AND subscription_status = 'active'
     AND (trial_end_date IS NULL OR trial_end_date > NOW())
   );
 END;
