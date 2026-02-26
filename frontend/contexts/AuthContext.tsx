@@ -18,6 +18,8 @@ interface AuthContextType {
   adminId: string | null
   parentId: string | null
   displayId: string | null
+  subscriptionStatus: string | null
+  trialEndDate: string | null
   loading: boolean
   isInitializing: boolean
   isProfileLoading: boolean
@@ -58,6 +60,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     displayId: null as string | null
   })
 
+  const [subscriptionStatus, setSubscriptionStatus] = useState<string | null>(null)
+  const [trialEndDate, setTrialEndDate] = useState<string | null>(null)
   const [isInitializing, setIsInitializing] = useState(true)
   const [isProfileLoading, setIsProfileLoading] = useState(false)
   const [loading, setLoading] = useState(true)
@@ -79,6 +83,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setUser(null);
     setProfile(null);
     setRoleInfo({ studentId: null, teacherId: null, adminId: null, parentId: null, displayId: null });
+    setSubscriptionStatus(null);
+    setTrialEndDate(null);
     setLoading(false);       // ← KEY FIX: drop the overlay immediately
     setIsInitializing(false);
     clearTimer();
@@ -95,7 +101,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     // ── Fire-and-forget the actual Supabase signOut + cleanup ─────────────────
     Promise.all([
       authService.signOut(),
-      AsyncStorage.removeItem('demo_expiry').catch(() => {}),
+      AsyncStorage.removeItem('demo_expiry').catch(() => { }),
     ]).finally(() => {
       setTimeout(() => { isManualLogout.current = false; }, 500);
     });
@@ -144,19 +150,31 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setIsProfileLoading(true);
       const { data, error } = await supabase
         .from('users')
-        .select('*, students(id), teachers(id), admins(id), parents(id)')
+        .select('*, students(id), teachers(id), admins(id), parents(id), institutions(subscription_status, trial_end_date)')
         .eq('id', userId)
         .single()
 
       if (error) {
         console.error('Error loading profile:', error)
         setProfile(null)
+        setSubscriptionStatus(null)
+        setTrialEndDate(null)
         lastLoadedUserId.current = null;
         return null
       }
 
       const userData = data as any;
       setProfile(userData as UserProfile)
+
+      // Set Subscription Data
+      if (userData.institutions) {
+        setSubscriptionStatus(userData.institutions.subscription_status || null)
+        setTrialEndDate(userData.institutions.trial_end_date || null)
+      } else {
+        setSubscriptionStatus(null)
+        setTrialEndDate(null)
+      }
+
       lastLoadedUserId.current = userId;
 
       const getRoleId = (roleData: any) => {
@@ -261,6 +279,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           clearTimer()
           setProfile(null)
           setRoleInfo({ studentId: null, teacherId: null, adminId: null, parentId: null, displayId: null })
+          setSubscriptionStatus(null)
+          setTrialEndDate(null)
           setLoading(false)        // ← KEY FIX: prevent 3s watchdog delay
           setIsInitializing(false) // ← belt-and-suspenders
 
@@ -330,6 +350,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     adminId: roleInfo.adminId,
     parentId: roleInfo.parentId,
     displayId: roleInfo.displayId,
+    subscriptionStatus,
+    trialEndDate,
     loading,
     isInitializing,
     isProfileLoading,
@@ -341,7 +363,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     resetSessionTimer,
     startDemo: handleStartDemo,
     isDemo,
-  }), [session, user, profile, roleInfo, loading, isInitializing, isProfileLoading, isDemo]);
+  }), [session, user, profile, roleInfo, subscriptionStatus, trialEndDate, loading, isInitializing, isProfileLoading, isDemo]);
 
   return (
     <AuthContext.Provider value={value}>

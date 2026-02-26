@@ -16,35 +16,44 @@ const morgan = require("morgan");
 
 const app = express();
 app.use(express.json());
-// dotenv.config() removed from here
 
 // Middleware
-app.use(cors()); //cors
+app.use(cors());
 app.use(express.urlencoded({ extended: true }));
-app.use(morgan("dev")); // logging
+app.use(morgan("dev"));
 
-// Routes
+// Subscription Check Middleware (Trial Branch specific)
+const checkSubscription = require("./middleware/subscriptionCheck");
+
+// Public Routes
 app.use("/api/auth", authRoutes);
-app.use("/api/subjects", subjectRoutes); // Updated endpoint
-app.use("/api/institutions", institutionRoutes);
-app.use("/api/library", libraryRoutes);
-app.use("/api/bursary", bursaryRoutes);
-app.use("/api/finance", financeRoutes);
-app.use("/api/notifications", notificationRoutes);
-app.use("/api/timetable", require("./routes/timetable.route"));
-app.use("/api/funds", require("./routes/finance_funds.route"));
-app.use("/api/attendance", require("./routes/attendance.route"));
-app.use("/api/academic", require("./routes/academic.route.js"));
-app.use("/api/exams", require("./routes/exams.route.js"));
-app.use("/api/parent", require("./routes/parent.route.js"));
-app.use("/api/messages", require("./routes/messaging.route.js"));
-app.use("/api/resources", require("./routes/resources.route.js"));
-app.use("/api/teacher", require("./routes/teacher.route.js"));
-app.use("/api/settings", settingsRoutes);
 app.use("/api/demo", require("./routes/demo.route"));
 app.use("/api/contact", require("./routes/contact.route"));
-app.use("/api/student", require("./routes/student.route"));
-app.use("/api/classes", require("./routes/class.route"));
+// Gated Routes (Trial Branch)
+app.use("/api/subjects", checkSubscription, subjectRoutes);
+app.use("/api/institutions", checkSubscription, institutionRoutes);
+app.use("/api/library", checkSubscription, libraryRoutes);
+app.use("/api/bursary", checkSubscription, bursaryRoutes);
+app.use("/api/finance", checkSubscription, financeRoutes);
+app.use("/api/notifications", checkSubscription, notificationRoutes);
+app.use("/api/timetable", checkSubscription, require("./routes/timetable.route"));
+app.use("/api/funds", checkSubscription, require("./routes/finance_funds.route"));
+app.use("/api/attendance", checkSubscription, require("./routes/attendance.route"));
+app.use("/api/academic", checkSubscription, require("./routes/academic.route.js"));
+app.use("/api/exams", checkSubscription, require("./routes/exams.route.js"));
+app.use("/api/parent", checkSubscription, require("./routes/parent.route.js"));
+app.use("/api/messages", checkSubscription, require("./routes/messaging.route.js"));
+app.use("/api/resources", checkSubscription, require("./routes/resources.route.js"));
+app.use("/api/teacher", checkSubscription, require("./routes/teacher.route.js"));
+app.use("/api/settings", checkSubscription, settingsRoutes);
+app.use("/api/student", checkSubscription, require("./routes/student.route"));
+app.use("/api/classes", checkSubscription, require("./routes/class.route"));
+
+// Automated background jobs (Trial Branch)
+const { startTrialNudgesCron } = require('./cron/trialNudges');
+if (typeof startTrialNudgesCron === 'function') {
+  startTrialNudgesCron();
+}
 
 // health check
 app.get("/", (req, res) => {
@@ -80,7 +89,9 @@ const server = app.listen(PORT, "0.0.0.0", () => {
   console.log(`  Local:   http://localhost:${PORT}`);
   console.log(`  Network: http://${lanIp}:${PORT}  ← use this for physical devices`);
   // Initialize dynamic currency rates check
-  settingsController.checkAndAutoUpdateRates();
+  if (settingsController && typeof settingsController.checkAndAutoUpdateRates === 'function') {
+    settingsController.checkAndAutoUpdateRates();
+  }
 });
 
 // DEBUG: Keep process alive and log exit

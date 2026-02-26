@@ -30,7 +30,7 @@ const SubjectGrade = ({ SubjectCode, SubjectName, grade, score, credits, onPress
             className="bg-white dark:bg-[#1a1a1a] p-5 rounded-[32px] border border-gray-50 dark:border-gray-800 mb-4 shadow-sm flex-row items-center active:bg-gray-50 dark:active:bg-gray-900"
         >
             <View className={`w-12 h-12 rounded-2xl items-center justify-center mr-4 ${styles.bg}`}>
-                <Text className={`font-black text-xl ${styles.text}`}>{grade === 'N/A' ? '?' : grade}</Text>
+                <Text className={`font-black text-xl ${styles.text}`}>{grade === 'N/A' || grade === null ? '?' : grade}</Text>
             </View>
             <View className="flex-1">
                 <Text className="text-gray-400 dark:text-gray-500 text-[8px] font-bold uppercase tracking-[2px] mb-1">{SubjectCode}</Text>
@@ -93,7 +93,7 @@ export default function Grades() {
             const { data: reportGrades } = await supabase
                 .from('grades')
                 .select(`total_grade, subjects:subject_id(id, title, credits)`)
-                .eq('student_id', user?.id || '');
+                .eq('student_id', targetId);
 
             const subjectGrades: Record<string, { total: number, count: number, name: string, credits: number, finalGrade?: string, manualScore?: number }> = {};
 
@@ -101,7 +101,14 @@ export default function Grades() {
                 const subjectId = sub.assignment?.subject?.id;
                 const score = Number(sub.grade);
                 if (subjectId && !isNaN(score)) {
-                    if (!subjectGrades[subjectId]) subjectGrades[subjectId] = { total: 0, count: 0, name: sub.assignment.subject.title, credits: sub.assignment.subject.credits || 3 };
+                    if (!subjectGrades[subjectId]) {
+                        subjectGrades[subjectId] = {
+                            total: 0,
+                            count: 0,
+                            name: sub.assignment.subject.title,
+                            credits: sub.assignment.subject.credits || 0
+                        };
+                    }
                     subjectGrades[subjectId].total += score;
                     subjectGrades[subjectId].count += 1;
                 }
@@ -110,7 +117,7 @@ export default function Grades() {
             enrollmentGrades?.forEach((eg: any) => {
                 const subId = eg.subjects?.id;
                 if (subId) {
-                    if (!subjectGrades[subId]) subjectGrades[subId] = { total: 0, count: 0, name: eg.subjects.title, credits: eg.subjects.credits || 3 };
+                    if (!subjectGrades[subId]) subjectGrades[subId] = { total: 0, count: 0, name: eg.subjects.title, credits: eg.subjects.credits || 0 };
                     subjectGrades[subId].finalGrade = eg.grade;
                 }
             });
@@ -118,7 +125,7 @@ export default function Grades() {
             reportGrades?.forEach((rg: any) => {
                 const subId = rg.subjects?.id;
                 if (subId) {
-                    if (!subjectGrades[subId]) subjectGrades[subId] = { total: 0, count: 0, name: rg.subjects.title, credits: rg.subjects.credits || 3 };
+                    if (!subjectGrades[subId]) subjectGrades[subId] = { total: 0, count: 0, name: rg.subjects?.title || "Unknown Subject", credits: rg.subjects?.credits || 0 };
                     subjectGrades[subId].manualScore = Number(rg.total_grade);
                 }
             });
@@ -133,14 +140,16 @@ export default function Grades() {
                     else if (score >= 60) letter = 'D';
                     else if (score > 0) letter = 'F';
                 }
-                return {
+                const gradeItem = {
                     SubjectName: val.name,
                     SubjectCode: "ACAD-" + id.substring(0, 4).toUpperCase(),
                     grade: letter,
                     score: Math.round(score),
                     credits: val.credits,
-                    onPress: () => { } // Placeholder, will set below
+                    onPress: () => { }
                 };
+                gradeItem.onPress = () => fetchSubjectDetails(gradeItem);
+                return gradeItem;
             });
 
             setGrades(formattedGrades);
@@ -327,7 +336,7 @@ export default function Grades() {
                                 grade={g.grade}
                                 score={g.score}
                                 credits={g.credits}
-                                onPress={() => fetchSubjectDetails(g)}
+                                onPress={g.onPress}
                             />
                         ))
                     )}
