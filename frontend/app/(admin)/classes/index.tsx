@@ -13,6 +13,7 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 // ─── Types ─────────────────────────────────────────────────
 interface Teacher {
@@ -55,7 +56,7 @@ function getNameSuggestions(input: string, grade: string, existingClasses: Class
 
     if (grade) {
         NAME_SUFFIXES.forEach(suffix => {
-            const suggestion = `${grade} ${suffix}`;
+            const suggestion = `${grade} ${suffix} `;
             if (suggestion.toLowerCase().includes(input.toLowerCase())) {
                 suggestions.add(suggestion);
             }
@@ -202,7 +203,7 @@ export default function AdminClassManagement() {
     const buildStreamClasses = (grade: string, count: number): StreamClassConfig[] => {
         const short = gradeToShort(grade);
         return STREAM_LETTERS.slice(0, count).map(letter => ({
-            name: `${short}${letter}`,
+            name: `${short}${letter} `,
             capacity: '',
             teacher_id: '',
         }));
@@ -318,7 +319,7 @@ export default function AdminClassManagement() {
     const handleDelete = (cls: ClassItem) => {
         Alert.alert(
             'Delete Class',
-            `Are you sure you want to delete "${cls.name}"? This cannot be undone.`,
+            `Are you sure you want to delete "${cls.name}" ? This cannot be undone.`,
             [
                 { text: 'Cancel', style: 'cancel' },
                 {
@@ -461,57 +462,19 @@ export default function AdminClassManagement() {
     // ─── Render ────────────────────────────────────────────
     if (loading) {
         return (
-            <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: bg }}>
+            <SafeAreaView edges={['top']} style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: bg }}>
                 <ActivityIndicator size="large" color="#FF6B00" />
-            </View>
+            </SafeAreaView>
         );
     }
 
     return (
-        <View style={{ flex: 1, backgroundColor: bg }}>
+        <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: bg }}>
             <UnifiedHeader
                 title="Class Management"
                 subtitle={`${classes.length} Total Streams`}
                 role="Admin"
                 showNotification={true}
-                rightActions={
-                    <View style={{ flexDirection: 'row', gap: 8 }}>
-                        <TouchableOpacity
-                            onPress={() => { setAutoAssignGrade(''); setShowAutoAssignModal(true); }}
-                            style={{
-                                backgroundColor: '#7C3AED',
-                                paddingHorizontal: 12,
-                                paddingVertical: 8,
-                                borderRadius: 12,
-                                flexDirection: 'row',
-                                alignItems: 'center'
-                            }}
-                        >
-                            <Ionicons name="shuffle" size={16} color="white" />
-                            <Text style={{ color: 'white', fontWeight: '700', fontSize: 12, marginLeft: 4 }}>Auto</Text>
-                        </TouchableOpacity>
-
-                        <TouchableOpacity
-                            onPress={() => {
-                                setStreamGrade('');
-                                setStreamCount(4);
-                                setStreamClasses([]);
-                                setShowStreamModal(true);
-                            }}
-                            style={{
-                                backgroundColor: '#FF6B00',
-                                paddingHorizontal: 12,
-                                paddingVertical: 8,
-                                borderRadius: 12,
-                                flexDirection: 'row',
-                                alignItems: 'center'
-                            }}
-                        >
-                            <Ionicons name="apps" size={16} color="white" />
-                            <Text style={{ color: 'white', fontWeight: '700', fontSize: 12, marginLeft: 4 }}>Streams</Text>
-                        </TouchableOpacity>
-                    </View>
-                }
             />
             <ScrollView
                 style={{ flex: 1 }}
@@ -520,10 +483,33 @@ export default function AdminClassManagement() {
             >
                 <View style={{ padding: 16 }}>
 
-                    {/* ── Sub-Header Info ── */}
-                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-                        <View>
-                            <Text style={{ fontSize: 12, fontWeight: '700', color: textSecondary, textTransform: 'uppercase', letterSpacing: 1 }}>Active Streams</Text>
+                    {/* ── Action Bar ── */}
+                    <View style={{ justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                        <Text style={{ fontSize: 12, fontWeight: '700', color: textSecondary, textTransform: 'uppercase', letterSpacing: 1 }}>Active Streams</Text>
+                        <View style={{ flexDirection: 'row', gap: 8 }}>
+                            <TouchableOpacity
+                                onPress={() => { setAutoAssignGrade(''); setShowAutoAssignModal(true); }}
+                                style={{ backgroundColor: '#7C3AED', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 12, flexDirection: 'row', alignItems: 'center' }}
+                            >
+                                <Ionicons name="shuffle" size={15} color="white" />
+                                <Text style={{ color: 'white', fontWeight: '700', fontSize: 12, marginLeft: 5 }}>Auto</Text>
+                            </TouchableOpacity>
+
+                            <TouchableOpacity
+                                onPress={() => { setStreamGrade(''); setStreamCount(4); setStreamClasses([]); setShowStreamModal(true); }}
+                                style={{ backgroundColor: '#FF6B00', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 12, flexDirection: 'row', alignItems: 'center' }}
+                            >
+                                <Ionicons name="apps" size={15} color="white" />
+                                <Text style={{ color: 'white', fontWeight: '700', fontSize: 12, marginLeft: 5 }}>Streams</Text>
+                            </TouchableOpacity>
+
+                            <TouchableOpacity
+                                onPress={openCreateModal}
+                                style={{ backgroundColor: isDark ? '#FF6B00' : '#111827', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 12, flexDirection: 'row', alignItems: 'center' }}
+                            >
+                                <Ionicons name="add" size={16} color="white" />
+                                <Text style={{ color: 'white', fontWeight: '700', fontSize: 12, marginLeft: 4 }}>New</Text>
+                            </TouchableOpacity>
                         </View>
                     </View>
 
@@ -599,7 +585,7 @@ export default function AdminClassManagement() {
                                                 <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                                                     <Ionicons name="people" size={12} color={textMuted} />
                                                     <Text style={{ color: textSecondary, fontSize: 12, marginLeft: 4 }}>
-                                                        {cls.student_count || 0}{cls.capacity ? `/${cls.capacity}` : ''} students
+                                                        {cls.student_count || 0}{cls.capacity ? `/ ${cls.capacity}` : ''} students
                                                     </Text>
                                                 </View>
                                             </View>
@@ -765,7 +751,7 @@ export default function AdminClassManagement() {
                                         borderRadius: 14, paddingHorizontal: 16, paddingVertical: 14,
                                         color: textPrimary, fontSize: 15, fontWeight: '500',
                                     }}
-                                    placeholder={formGrade ? `e.g. ${formGrade} East` : 'e.g. Form 1 East'}
+                                    placeholder={formGrade ? `e.g.${formGrade} East` : 'e.g. Form 1 East'}
                                     value={formName}
                                     onChangeText={handleNameChange}
                                     placeholderTextColor={textMuted}
@@ -814,7 +800,7 @@ export default function AdminClassManagement() {
                                                 {['A', 'B', 'C', 'East', 'West', 'North', 'South', 'Red', 'Blue'].map(suffix => (
                                                     <TouchableOpacity
                                                         key={suffix}
-                                                        onPress={() => selectSuggestion(`${formGrade} ${suffix}`)}
+                                                        onPress={() => selectSuggestion(`${formGrade} ${suffix} `)}
                                                         style={{
                                                             paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20,
                                                             backgroundColor: isDark ? '#2A1A0A' : '#FFF3E8',
@@ -1176,7 +1162,7 @@ export default function AdminClassManagement() {
                                 ) : (
                                     <Text style={{ color: 'white', fontWeight: '800', fontSize: 16 }}>
                                         {streamClasses.length > 0
-                                            ? `Create ${streamClasses.length} Classes (${streamClasses.map(c => c.name).join(', ')})`
+                                            ? `Create ${streamClasses.length} Classes(${streamClasses.map(c => c.name).join(', ')})`
                                             : 'Select a grade to continue'}
                                     </Text>
                                 )}
@@ -1187,6 +1173,6 @@ export default function AdminClassManagement() {
                 </View>
             </Modal>
 
-        </View>
+        </SafeAreaView>
     );
 }

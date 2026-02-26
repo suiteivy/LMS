@@ -50,7 +50,7 @@ function TeacherTabs() {
                     name={item.name}
                     options={{
                         title: item.title,
-                        href: item.name === "settings" && isDemo ? null : undefined,
+                        href: undefined,
                         tabBarIcon: ({ size = 24, color }) => {
                             const Icon = item.icon as any;
                             return <View><Icon size={size} color={color} strokeWidth={2} /></View>;
@@ -63,8 +63,7 @@ function TeacherTabs() {
 }
 
 function TeacherSidebar() {
-    const { isDemo } = useAuth();
-    const items = NAV_ITEMS.filter(i => !(i.name === "settings" && isDemo));
+    const items = NAV_ITEMS;
     return (
         <WebSidebar items={items} basePath="(teacher)" role="Teacher">
             <Slot />

@@ -11,7 +11,7 @@ import {
     Text, TextInput, TouchableOpacity,
     View
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 // ---------- Types ----------
 type Role = 'student' | 'teacher' | 'parent' | 'admin';
@@ -176,21 +176,24 @@ export default function CreateUserScreen() {
     const GRADE_OPTIONS = ['Form 1', 'Form 2', 'Form 3', 'Form 4', 'Grade 1', 'Grade 2', 'Grade 3', 'Grade 4', 'Grade 5', 'Grade 6', 'Grade 7', 'Grade 8'];
 
     // ---------- Render helpers ----------
-    const renderStepIndicator = () => (
-        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 16, paddingHorizontal: 24, backgroundColor: card, borderBottomWidth: 1, borderBottomColor: border }}>
-            {['Role', 'Personal', form.role === 'admin' ? '' : 'Details', 'Review', 'Done'].filter(Boolean).map((label, i) => (
-                <View key={i} style={{ flexDirection: 'row', alignItems: 'center' }}>
-                    <View style={{ width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center', backgroundColor: i <= step ? '#FF6B00' : (isDark ? '#2c2c2c' : '#e5e7eb') }}>
-                        {i < step
-                            ? <Ionicons name="checkmark" size={16} color="white" />
-                            : <Text style={{ fontSize: 12, fontWeight: '700', color: i <= step ? 'white' : textSecondary }}>{i + 1}</Text>
-                        }
+    const renderStepIndicator = () => {
+        const labels = ['Role', 'Personal', form.role === 'admin' ? '' : 'Details', 'Review', 'Done'].filter(Boolean);
+        return (
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 16, paddingHorizontal: 24, backgroundColor: card, borderBottomWidth: 1, borderBottomColor: border }}>
+                {labels.map((label, i) => (
+                    <View key={i} style={{ flexDirection: 'row', alignItems: 'center' }}>
+                        <View style={{ width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center', backgroundColor: i <= step ? '#FF6B00' : (isDark ? '#2c2c2c' : '#e5e7eb') }}>
+                            {i < step
+                                ? <Ionicons name="checkmark" size={16} color="white" />
+                                : <Text style={{ fontSize: 12, fontWeight: '700', color: i <= step ? 'white' : textSecondary }}>{i + 1}</Text>
+                            }
+                        </View>
+                        {i < labels.length - 1 && <View style={{ width: 32, height: 2, backgroundColor: i < step ? '#FF6B00' : (isDark ? '#2c2c2c' : '#e5e7eb') }} />}
                     </View>
-                    {i < 4 && <View style={{ width: 32, height: 2, backgroundColor: i < step ? '#FF6B00' : (isDark ? '#2c2c2c' : '#e5e7eb') }} />}
-                </View>
-            ))}
-        </View>
-    );
+                ))}
+            </View>
+        );
+    };
 
     const renderInput = (label: string, key: keyof FormData, placeholder: string, opts?: { keyboardType?: any; type?: 'default' | 'email' | 'phone' }) => (
         <View style={{ marginBottom: 16 }}>
@@ -585,8 +588,17 @@ export default function CreateUserScreen() {
     const stepContent = [renderRoleSelection, renderPersonalInfo, renderRoleDetails, renderReview, renderSuccess];
 
     return (
-        <View style={{ flex: 1, backgroundColor: bg }}>
-            <Stack.Screen options={{ title: 'Enroll User', headerBackTitle: 'Users' }} />
+        <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: bg }}>
+            <Stack.Screen options={{ headerShown: false }} />
+
+            {/* Custom top bar */}
+            <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12, backgroundColor: card, borderBottomWidth: 1, borderBottomColor: border }}>
+                <TouchableOpacity onPress={() => router.back()} style={{ marginRight: 12, padding: 4 }}>
+                    <Ionicons name="arrow-back" size={22} color={textPrimary} />
+                </TouchableOpacity>
+                <Text style={{ fontSize: 17, fontWeight: '700', color: textPrimary }}>Enroll User</Text>
+            </View>
+
             {step < 4 && renderStepIndicator()}
             <ScrollView style={{ flex: 1 }} keyboardShouldPersistTaps="handled">
                 {stepContent[step]()}
@@ -601,11 +613,11 @@ export default function CreateUserScreen() {
                         style={{ flex: 1, backgroundColor: canGoNext() ? '#FF6B00' : (isDark ? '#2c2c2c' : '#d1d5db'), paddingVertical: 16, borderRadius: 12, alignItems: 'center' }}>
                         {loading
                             ? <ActivityIndicator color="white" />
-                            : <Text style={{ fontWeight: '700', color: 'white' }}>{step === 4 ? 'Confirm & Enroll' : 'Next'}</Text>
+                            : <Text style={{ fontWeight: '700', color: 'white' }}>{step === 3 ? 'Confirm & Enroll' : 'Next'}</Text>
                         }
                     </TouchableOpacity>
                 </View>
             )}
-        </View>
+        </SafeAreaView>
     );
 }

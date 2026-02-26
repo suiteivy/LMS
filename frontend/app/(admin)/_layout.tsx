@@ -19,13 +19,12 @@ const HIDDEN = [
     "users/[id]", "users/create",
     "finance/bursaries/[id]", "finance/bursaries/create",
     "management/analytics", "management/library/index",
-    "management/subjects/index", "management/subjects/create",
-    "subjects/index", "subjects/create",
+    "management/subjects/index", "management/subjects/create", "management/subjects/[id]", "management/subjects/details",
+    "subjects/index", "subjects/create", "subjects/[id]",
     "timetable/index", "finance/funds/index",
     "management/roles/index", "settings/index",
+    "management/classes/index", "classes/index", "classes/create", "classes/[id]", "classes/details",
     "attendance/teachers/index", "finance/bursaries/reports",
-    "classes/index",
-    "classes/create",
 ];
 
 function AdminTabs() {

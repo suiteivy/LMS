@@ -142,6 +142,7 @@ function DiscountBanner() {
 }
 
 export default function Index() {
+  const { expired } = useCountdown(OFFER_END);
   const { session, loading, isInitializing, profile } = useAuth();
   const formRef = useRef<View>(null);
   const trialRef = useRef<View>(null);
@@ -392,13 +393,12 @@ export default function Index() {
 
       {/* ═══════════════ FIXED DISCOUNT BANNER ═══════════════ */}
       <DiscountBanner />
-
       {/* ═══════════════ FLOATING STICKY NAV ═══════════════ */}
       <Animated.View
         pointerEvents={showNav ? "auto" : "none"}
         style={{
           position: "absolute",
-          top: Platform.OS === "web" ? 10 : 50,
+          top: !expired ? (Platform.OS === "web" ? 70 : 110) : (Platform.OS === "web" ? 10 : 50),
           left: 0,
           right: 0,
           zIndex: 100,

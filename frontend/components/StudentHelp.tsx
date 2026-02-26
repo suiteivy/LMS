@@ -140,7 +140,10 @@ export default function StudentHelp() {
                         </TouchableOpacity>
 
                         <TouchableOpacity
-                            onPress={() => setSelectedTab('email')}
+                            onPress={() => {
+                                Linking.openURL('mailto:Support@cloudoraltd@gmail.com');
+                                setSelectedTab(null);
+                            }}
                             style={{
                                 width: '48%',
                                 backgroundColor: tokens.surface,
@@ -157,7 +160,7 @@ export default function StudentHelp() {
                         >
                             <Mail size={24} color="#3b82f6" />
                             <Text style={{ marginTop: 8, fontWeight: '700', color: tokens.textPrimary }}>Email Us</Text>
-                            <Text style={{ fontSize: 10, color: '#3b82f6', marginTop: 4 }}>Contact@cloudoraltd@gmail.com</Text>
+                            <Text style={{ fontSize: 10, color: '#3b82f6', marginTop: 4 }}>Support@cloudoraltd@gmail.com</Text>
                             <Text style={{ fontSize: 10, color: tokens.textMuted, marginTop: 2 }}>Response in 24h</Text>
                         </TouchableOpacity>
                     </View>
