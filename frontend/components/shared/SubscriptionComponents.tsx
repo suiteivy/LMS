@@ -258,3 +258,8 @@ export const OnboardingTracker = ({ stats }: { stats: any[] }) => {
         </View>
     );
 };
+/**
+ * Aliases for compatibility with older code
+ */
+export const TrialBanner = SubscriptionBanner;
+export const PremiumBadge = SubscriptionBadge;

@@ -31,10 +31,7 @@ const checkSubscription = async (req, res, next) => {
         .single();
 
       if (instError || !institution) {
-        console.error("Subscription check error (institution):", instError);
-        // Fallback: Don't block the request if the DB is acting up, just log it.
-        // However, for strict gating, we might want to return 500.
-        // Let's return 500 to be safe about business rules.
+        console.error("Subscription check error (institution):", instError || 'Institution not found');
         return res.status(500).json({ error: 'Failed to verify institution subscription status.' });
       }
 
@@ -46,7 +43,7 @@ const checkSubscription = async (req, res, next) => {
       if (institution.subscription_plan === 'trial' && trialEnd && new Date() > trialEnd && status === 'active') {
         status = 'expired';
         // Fire-and-forget update
-        supabase.from('institutions').update({ subscription_status: 'expired' }).eq('id', institutionId).then();
+        supabase.from('institutions').update({ subscription_status: 'expired' }).eq('id', institutionId).catch(err => console.error('Auto-expire update failed:', err));
       }
 
       // Check Plan Limits (Students & Admins)
@@ -63,26 +60,26 @@ const checkSubscription = async (req, res, next) => {
 
       // Check Student Counts
       if (maxStudents !== Infinity && status === 'active') {
-        const { count: studentCount } = await supabase
+        const { count: studentCount, error: studentError } = await supabase
           .from('users')
           .select('*', { count: 'exact', head: true })
           .eq('institution_id', institutionId)
           .eq('role', 'student');
 
-        if (studentCount > maxStudents) {
+        if (!studentError && studentCount > maxStudents) {
           status = 'expired';
         }
       }
 
       // Check Admin Counts
       if (maxAdmins !== Infinity && status === 'active') {
-        const { count: adminCount } = await supabase
+        const { count: adminCount, error: adminError } = await supabase
           .from('users')
           .select('*', { count: 'exact', head: true })
           .eq('institution_id', institutionId)
           .eq('role', 'admin');
 
-        if (adminCount > maxAdmins) {
+        if (!adminError && adminCount > maxAdmins) {
           status = 'expired';
         }
       }
@@ -101,7 +98,7 @@ const checkSubscription = async (req, res, next) => {
     const { subscription_status, subscription_plan } = institutionData.data;
 
     // 3. Evaluate Feature Gating (Using originalUrl to handle sub-routers correctly)
-    const fullPath = req.originalUrl;
+    const fullPath = req.originalUrl || req.url || '';
 
     const restrictedFeatures = [
       { path: '/api/finance', minPlan: 'pro' },
@@ -139,18 +136,17 @@ const checkSubscription = async (req, res, next) => {
       }
 
       // Whitelist routes that should NEVER be blocked (auth, logout, etc.)
-      // Also allow admins to access institution settings to manage billing/renewals
       const whitelistedSubstrings = [
         '/auth/',
-        '/api/submissions', // Keep allowing submissions for students?
-        '/api/institutions' // IMPORTANT: Let admins manage their institution even if expired
+        '/api/submissions',
+        '/api/institutions'
       ];
 
       const isWhitelisted = whitelistedSubstrings.some(ws => fullPath.includes(ws));
 
       if (!isWhitelisted) {
         return res.status(403).json({
-          error: 'Your institution\'s subscription has expired or is over the limit (Students/Admins). Access is now Read-Only except for management routes.',
+          error: 'Your institution\'s subscription has expired or is over the limit. Access is now Read-Only.',
           code: 'SUBSCRIPTION_RESTRICTED'
         });
       }
@@ -161,10 +157,15 @@ const checkSubscription = async (req, res, next) => {
     next();
 
   } catch (error) {
-    console.error('Subscription Middleware Error:', error);
-    // Be defensive: don't crash the app, but log clearly.
+    console.error('Subscription Middleware Error Details:', {
+      message: error.message,
+      stack: error.stack,
+      path: req.originalUrl,
+      instId: req.institution_id
+    });
     return res.status(500).json({ error: 'Internal server error during subscription check.' });
   }
 };
 
 module.exports = checkSubscription;
+
