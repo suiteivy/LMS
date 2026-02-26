@@ -662,11 +662,28 @@ END $$;
 -- ---------------------------------------------------------
 
 CREATE OR REPLACE FUNCTION get_current_user_institution_id()
-RETURNS UUID LANGUAGE SQL STABLE SECURITY DEFINER SET search_path = public AS $$
+RETURNS UUID LANGUAGE SQL STABLE SECURITY DEFINER SET search_path = public AS $
   SELECT institution_id FROM users WHERE id = auth.uid();
-$$;
+$;
 
-CREATE OR REPLACE FUNCTION current_user_student_id() RETURNS TEXT AS $$
+CREATE OR REPLACE FUNCTION get_current_user_role()
+RETURNS TEXT LANGUAGE SQL STABLE SECURITY DEFINER SET search_path = public AS $
+  SELECT role FROM users WHERE id = auth.uid();
+$;
+
+CREATE OR REPLACE FUNCTION is_subscription_active(p_institution_id UUID)
+RETURNS BOOLEAN LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = public AS $
+BEGIN
+  RETURN EXISTS (
+    SELECT 1 FROM institutions
+    WHERE id = p_institution_id
+    AND subscription_status IN ('trial', 'active')
+    AND (trial_end_date IS NULL OR trial_end_date > NOW())
+  );
+END;
+$;
+
+CREATE OR REPLACE FUNCTION current_user_student_id() RETURNS TEXT AS $
     SELECT id FROM students WHERE user_id = auth.uid();
 $$ LANGUAGE sql STABLE SET search_path = public;
 

@@ -2,6 +2,8 @@ import { AppLoading } from "@/components/AppLoading";
 import { useAuth } from "@/contexts/AuthContext";
 import { api } from "@/services/api";
 import { router, usePathname } from "expo-router";
+import { supabase } from '@/libs/supabase'
+import React, { useEffect, useRef, useState } from 'react'
 import {
   BadgeCheck,
   BarChart2,
@@ -17,9 +19,8 @@ import {
   Timer,
   Users
 } from "lucide-react-native";
-import React, { useEffect, useRef, useState } from "react";
 import {
-  Animated, Dimensions, KeyboardAvoidingView,
+  ActivityIndicator, Animated, Dimensions, KeyboardAvoidingView,
   Modal,
   Platform,
   ScrollView, StatusBar, Text,
@@ -145,7 +146,6 @@ export default function Index() {
   const { expired } = useCountdown(OFFER_END);
   const { session, loading, isInitializing, profile } = useAuth();
   const formRef = useRef<View>(null);
-  const trialRef = useRef<View>(null);
   const scrollRef = useRef<ScrollView>(null);
   const pathname = usePathname();
   const [modalVisible, setModalVisible] = useState(false);
@@ -153,6 +153,7 @@ export default function Index() {
   const [form, setForm] = useState({ name: '', email: '', message: '' });
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [isNavReady, setIsNavReady] = useState(false);
 
   // Show AppLoading for 5s before redirecting to dashboard
   const [navigating, setNavigating] = useState(false);
@@ -160,7 +161,6 @@ export default function Index() {
 
   // Section refs for smooth scrolling
   const featuresRef = useRef<View>(null);
-  const demoRef = useRef<View>(null);
   const pricingRef = useRef<View>(null);
 
   // Sticky nav visibility
@@ -299,8 +299,6 @@ export default function Index() {
     }
   };
 
-  const [isNavReady, setIsNavReady] = useState(false);
-
   useEffect(() => {
     const timer = setTimeout(() => setIsNavReady(true), 1);
     return () => clearTimeout(timer);
@@ -355,8 +353,8 @@ export default function Index() {
   const orb3Y = orb3.interpolate({ inputRange: [0, 1], outputRange: [0, -20] });
 
   const handleSignup = async () => {
-    if (!form.name || !form.email || !form.message) {
-      alert("Please fill in all fields.");
+    if (!form.name || !form.email) {
+      alert("Please fill in your name and email.");
       return;
     }
 
@@ -366,7 +364,7 @@ export default function Index() {
         name: form.name,
         email: form.email,
         plan: selectedPlan,
-        message: form.message
+        message: form.message || `Setup request for ${selectedPlan} plan`
       });
 
       if (response.data.success) {
@@ -425,7 +423,6 @@ export default function Index() {
         >
           {[
             { label: "Features", onPress: () => scrollToSection("features") },
-            { label: "Demo", onPress: () => scrollToSection("demo") },
             { label: "Pricing", onPress: () => scrollToSection("pricing") },
             {
               label: "Sign In",
@@ -561,7 +558,6 @@ export default function Index() {
                 zIndex: 10,
               }}
             >
-              {/* Logo Badge */}
               <View
                 style={{
                   width: 90,
@@ -589,7 +585,6 @@ export default function Index() {
                 </View>
               </View>
 
-              {/* Tagline badge */}
               <View
                 style={{
                   backgroundColor: "rgba(255,107,0,0.12)",
@@ -618,7 +613,6 @@ export default function Index() {
                 </Text>
               </View>
 
-              {/* Headline */}
               <Text
                 style={{
                   color: "white",
@@ -635,7 +629,6 @@ export default function Index() {
                 <Text style={{ color: "#60A5FA" }}>Management</Text> Hub
               </Text>
 
-              {/* Subtitle */}
               <Text
                 style={{
                   color: "rgba(255,255,255,0.6)",
@@ -650,7 +643,6 @@ export default function Index() {
                 Courses, resources, payments, analytics — all in one place.
               </Text>
 
-              {/* CTA Buttons */}
               <View style={{ flexDirection: "row", marginTop: 32, gap: 12 }}>
                 <Animated.View style={{ transform: [{ scale: ctaPulse }] }}>
                   <TouchableOpacity
@@ -696,56 +688,6 @@ export default function Index() {
                 </TouchableOpacity>
               </View>
             </Animated.View>
-
-            {/* Scroll Indicator Arrows */}
-            {/* <Animated.View
-              style={{
-                position: "absolute",
-                bottom: 30,
-                alignItems: "center",
-                zIndex: 40,
-              
-              }}
-            >
-              <View style={{ height: 70, width: 40, alignItems: "center" }}>
-                {[0, 1, 2].map((index) => {
-                  const offset = index * 0.2;
-                  const translateY = scrollAnimation.interpolate({
-                    inputRange: [
-                      Math.max(0, offset),
-                      Math.min(0.4 + offset, 1),
-                      1,
-                    ],
-                    outputRange: [0, 10, 10],
-                    extrapolate: "clamp",
-                  });
-                  const opacity = scrollAnimation.interpolate({
-                    inputRange: [
-                      Math.max(0, offset),
-                      Math.min(0.15 + offset, 1),
-                      Math.min(0.35 + offset, 1),
-                      Math.min(0.55 + offset, 1),
-                      1,
-                    ],
-                    outputRange: [0, 1, 1, 0, 0],
-                    extrapolate: "clamp",
-                  });
-                  return (
-                    <Animated.View
-                      key={index}
-                      style={{
-                        position: "absolute",
-                        top: index * 18,
-                        opacity,
-                        transform: [{ translateY }],
-                      }}
-                    >
-                      <ChevronDown size={26} color="#FF8C40" strokeWidth={3} />
-                    </Animated.View>
-                  );
-                })}
-              </View>
-            </Animated.View> */}
           </View>
 
           {/* ═══════════════════════ FEATURES SECTION ═══════════════════════ */}
@@ -781,7 +723,6 @@ export default function Index() {
               Powerful tools for every stakeholder
             </Text>
 
-            {/* Responsive grid: 1 column on small, 2 columns on large screens */}
             <View
               style={{
                 flexDirection: "row",
@@ -887,122 +828,15 @@ export default function Index() {
             </View>
           </View>
 
-          {/* ═══════════════════════ INTERACTIVE DEMO SECTION ═══════════════════════ */}
-          <View
-            ref={demoRef}
-            onLayout={(e) => handleLayout("demo", e.nativeEvent.layout.y)}
-            style={{
-              marginHorizontal: 20,
-              marginVertical: 40,
-              borderRadius: 24,
-              overflow: "hidden",
-              borderWidth: 1,
-              borderColor: "rgba(255,107,0,0.2)",
-              backgroundColor: "rgba(255,107,0,0.06)",
-              padding: 32,
-              alignItems: "center",
-            }}
-          >
-            <View
-              style={{
-                width: 56,
-                height: 56,
-                borderRadius: 16,
-                backgroundColor: "rgba(255,107,0,0.15)",
-                justifyContent: "center",
-                alignItems: "center",
-                marginBottom: 16,
-              }}
-            >
-              <BadgeCheck size={28} color="#FF8C40" />
-            </View>
-            <Text
-              style={{
-                color: "white",
-                fontWeight: "800",
-                fontSize: 20,
-                marginBottom: 6,
-                textAlign: "center",
-              }}
-            >
-              Interactive Demo
-            </Text>
-            <Text
-              style={{
-                color: "rgba(255,255,255,0.6)",
-                fontSize: 14,
-                textAlign: "center",
-                maxWidth: 320,
-                marginBottom: 20,
-              }}
-            >
-              Explore the platform instantly — no signup required. Try every
-              role and feature live.
-            </Text>
-            <TouchableOpacity
-              style={{
-                backgroundColor: "#FF6B00",
-                paddingHorizontal: 28,
-                paddingVertical: 14,
-                borderRadius: 14,
-                flexDirection: "row",
-                alignItems: "center",
-                shadowColor: "#FF6B00",
-                shadowOffset: { width: 0, height: 6 },
-                shadowOpacity: 0.35,
-                shadowRadius: 16,
-                elevation: 6,
-              }}
-              onPress={() => router.push("/demo" as any)}
-            >
-              <Sparkles size={16} color="white" />
-              <Text
-                style={{
-                  color: "white",
-                  fontWeight: "800",
-                  marginLeft: 8,
-                  fontSize: 15,
-                }}
-              >
-                Try Interactive Demo
-              </Text>
-            </TouchableOpacity>
-          </View>
-
           {/* ═══════════════════════ PRICING SECTION ═══════════════════════ */}
           <View
             ref={pricingRef}
             onLayout={(e) => handleLayout("pricing", e.nativeEvent.layout.y)}
-            style={{
-              paddingHorizontal: 16,
-              paddingTop: 40,
-              paddingBottom: 20,
-              alignItems: "center",
-            }}
+            style={{ paddingHorizontal: 20, paddingVertical: 60, backgroundColor: "#0F0B2E" }}
           >
-            <Text
-              style={{
-                color: "white",
-                fontSize: 30,
-                fontWeight: "900",
-                textAlign: "center",
-                marginBottom: 6,
-              }}
-            >
-              Flexible Plans
+            <Text style={{ color: "white", fontSize: 28, fontWeight: "900", textAlign: "center", marginBottom: 32 }}>
+              Choose Your Plan
             </Text>
-            <Text
-              style={{
-                color: "rgba(255,255,255,0.5)",
-                fontSize: 14,
-                textAlign: "center",
-                marginBottom: 36,
-                maxWidth: 400,
-              }}
-            >
-              Choose the right fit for your school&#39;s growth.
-            </Text>
-
             <View
               style={{
                 flexDirection: "row",
@@ -1012,72 +846,47 @@ export default function Index() {
                 width: "100%",
               }}
             >
-              {/* FREE TRIAL card */}
-              <PricingCard
-                tier="trial"
-                title="FREE TRIAL"
-                price="0"
-                period="30 days"
-                features={[
-                  "Up to 10 Students",
-                  "Basic LMS Access",
-                  "Limited Analytics",
-                  "Community Forum",
-                ]}
-                ctaLabel="Start Free Trial"
-                onPressCta={() => openRegistrationModal("Free Trial")}
-              />
-
-              {/* BASIC card */}
-              <PricingCard
-                tier="basic"
-                title="BASIC"
-                price="150.00"
-                period="/yr"
-                features={[
-                  "Up to 50 Students",
-                  "Core LMS Access",
-                  "Standard Analytics",
-                  "Community Support",
-                ]}
-                ctaLabel="Get Started"
-                onPressCta={() => openRegistrationModal("Basic Plan")}
-              />
-
-              {/* PRO card — Most Popular */}
-              <PricingCard
-                tier="pro"
-                title="PRO"
-                price="350.00"
-                period="/yr"
-                isPopular={true}
-                features={[
-                  "Unlimited Students",
-                  "Advanced Finance Hub",
-                  "Custom Reports",
-                  "Priority Support",
-                  "No Distractions",
-                ]}
-                ctaLabel="Get Started"
-                onPressCta={() => openRegistrationModal("Pro Plan")}
-              />
-
-              {/* PREMIUM card */}
-              <PricingCard
-                tier="premium"
-                title="PREMIUM"
-                price="550.00"
-                period="/yr"
-                features={[
-                  "Multiple Campuses",
-                  "White-label Branding",
-                  "API Integration",
-                  "Dedicated Manager",
-                  "Prevent Online Tracking",
-                ]}
-                ctaLabel="Contact Sales"
-                onPressCta={() => openRegistrationModal("Premium Plan")}
-              />
+              {[
+                { name: "Trial", price: "Free", desc: "30-day full access", features: ["1 Admin", "Up to 50 Students", "Core Modules", "Trial Banner"] },
+                { name: "Basic", price: "$49/mo", desc: "For growing schools", features: ["Unlimited Teachers", "Up to 500 Students", "Standard Analytics", "Email Support"] },
+                { name: "Pro", price: "$99/mo", desc: "For advanced institutions", features: ["Up to 1000 Students", "Advanced Analytics", "Finance Module", "Priority Support"] },
+                { name: "Premium", price: "$199/mo", desc: "The ultimate solution", features: ["Unlimited Students", "Custom Branding", "Bulk Operations", "24/7 Support"] }
+              ].map((plan) => (
+                <View
+                  key={plan.name}
+                  style={{
+                    backgroundColor: 'rgba(255,255,255,0.04)',
+                    borderRadius: 24,
+                    padding: 24,
+                    borderWidth: 1,
+                    borderColor: 'rgba(255,255,255,0.1)',
+                    width: Platform.OS === 'web' && SCREEN_WIDTH > 800 ? '30%' : '100%',
+                    minWidth: 280,
+                    marginVertical: 10
+                  }}
+                >
+                  <Text style={{ color: "#FF8C40", fontWeight: "800", fontSize: 20, marginBottom: 8 }}>{plan.name}</Text>
+                  <Text style={{ color: "white", fontWeight: "900", fontSize: 32, marginBottom: 4 }}>{plan.price}</Text>
+                  <Text style={{ color: "rgba(255,255,255,0.5)", fontSize: 13, marginBottom: 24, paddingBottom: 24, borderBottomWidth: 1, borderBottomColor: "rgba(255,255,255,0.1)" }}>{plan.desc}</Text>
+                  <View style={{ gap: 12, marginBottom: 32 }}>
+                    {plan.features.map((feat, i) => (
+                      <View key={i} style={{ flexDirection: 'row', alignItems: 'center' }}>
+                        <BadgeCheck size={18} color="#FF8C40" />
+                        <Text style={{ color: "rgba(255,255,255,0.8)", marginLeft: 10, fontSize: 13 }}>{feat}</Text>
+                      </View>
+                    ))}
+                  </View>
+                  <TouchableOpacity
+                    style={{
+                      width: '100%', paddingVertical: 16, borderRadius: 16, alignItems: 'center',
+                      backgroundColor: plan.name === 'Essential' ? '#FF6B00' : 'rgba(255,255,255,0.1)'
+                    }}
+                    onPress={() => openRegistrationModal(plan.name)}
+                  >
+                    <Text style={{ color: "white", fontWeight: "700" }}>Get Started</Text>
+                  </TouchableOpacity>
+                </View>
+              ))}
             </View>
           </View>
 
@@ -1110,422 +919,85 @@ export default function Index() {
               </Text>
             </TouchableOpacity>
           </View>
-
-          {/* Registration Modal Popup */}
-          <Modal visible={modalVisible} animationType="fade" transparent={true}>
-            <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "rgba(0,0,0,0.8)", paddingHorizontal: 16 }}>
-              <KeyboardAvoidingView
-                behavior={Platform.OS === "ios" ? "padding" : undefined}
-                style={{ width: "100%", maxWidth: 500 }}
-              >
-                <View style={{ backgroundColor: "#1E293B", borderRadius: 32, padding: 32, width: "100%", shadowColor: "#000", shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.5, shadowRadius: 20 }}>
-                  {/* Close button */}
-                  <TouchableOpacity
-                    style={{ position: "absolute", top: 16, right: 16, zIndex: 10 }}
-                    onPress={() => setModalVisible(false)}
-                  >
-                    <Text style={{ color: "rgba(255,255,255,0.6)", fontSize: 24, fontWeight: "bold" }}>×</Text>
-                  </TouchableOpacity>
-                  <Text style={{ color: "white", fontWeight: "900", fontSize: 24, marginBottom: 8 }}>
-                    {selectedPlan === 'Free Trial' ? 'Get Started for Free' : `Sign Up for ${selectedPlan}`}
-                  </Text>
-                  <Text style={{ color: "rgba(255,255,255,0.6)", fontSize: 14, marginBottom: 24 }}>
-                    Enter your details and our team will set up your workspace.
-                  </Text>
-
-                  {submitted ? (
-                    <View style={{ alignItems: "center", paddingVertical: 24 }}>
-                      <BadgeCheck size={48} color="#10B981" />
-                      <Text style={{ color: "white", fontWeight: "bold", fontSize: 20, marginTop: 16, marginBottom: 8 }}>Thank you!</Text>
-                      <Text style={{ color: "rgba(255,255,255,0.6)", textAlign: "center", marginBottom: 24 }}>We&#39;ll be in touch soon with your login instructions.</Text>
-                      <TouchableOpacity
-                        style={{ backgroundColor: "rgba(255,255,255,0.1)", width: "100%", paddingVertical: 16, borderRadius: 16, alignItems: "center" }}
-                        onPress={() => setModalVisible(false)}
-                      >
-                        <Text style={{ color: "white", fontWeight: "bold" }}>Close</Text>
-                      </TouchableOpacity>
-                    </View>
-                  ) : (
-                    <>
-                      <TextInput
-                        style={{ backgroundColor: "rgba(255,255,255,0.05)", borderWidth: 1, borderColor: "rgba(255,255,255,0.1)", color: "white", padding: 16, borderRadius: 16, marginBottom: 16, fontWeight: "500" }}
-                        placeholder="Full Name"
-                        placeholderTextColor="rgba(255,255,255,0.4)"
-                        value={form.name}
-                        onChangeText={v => setForm({ ...form, name: v })}
-                        editable={!submitting}
-                      />
-
-                      <TextInput
-                        style={{ backgroundColor: "rgba(255,255,255,0.05)", borderWidth: 1, borderColor: "rgba(255,255,255,0.1)", color: "white", padding: 16, borderRadius: 16, marginBottom: 16, fontWeight: "500" }}
-                        placeholder="Your Email"
-                        placeholderTextColor="rgba(255,255,255,0.4)"
-                        keyboardType="email-address"
-                        autoCapitalize="none"
-                        value={form.email}
-                        onChangeText={v => setForm({ ...form, email: v })}
-                        editable={!submitting}
-                      />
-
-                      <TextInput
-                        style={{ backgroundColor: "rgba(255,255,255,0.05)", borderWidth: 1, borderColor: "rgba(255,255,255,0.1)", color: "white", padding: 16, borderRadius: 16, marginBottom: 24, fontWeight: "500" }}
-                        placeholder="Organization Name"
-                        placeholderTextColor="rgba(255,255,255,0.4)"
-                        value={form.message}
-                        onChangeText={v => setForm({ ...form, message: v })}
-                        editable={!submitting}
-                      />
-
-                      <View style={{ flexDirection: "row", gap: 12 }}>
-                        <TouchableOpacity
-                          onPress={() => setModalVisible(false)}
-                          style={{ flex: 1, paddingVertical: 16, alignItems: "center", backgroundColor: "rgba(255,255,255,0.05)", borderRadius: 16 }}
-                          disabled={submitting}
-                        >
-                          <Text style={{ color: "rgba(255,255,255,0.6)", fontWeight: "bold" }}>Cancel</Text>
-                        </TouchableOpacity>
-
-                        <TouchableOpacity
-                          onPress={handleSignup}
-                          style={{ flex: 2, backgroundColor: "#3B82F6", paddingVertical: 16, borderRadius: 16, justifyContent: "center", alignItems: "center", flexDirection: "row" }}
-                          disabled={submitting}
-                        >
-                          <Text style={{ color: "white", fontWeight: "bold", marginRight: 8 }}>
-                            {submitting ? 'Submitting...' : 'Submit Request'}
-                          </Text>
-                        </TouchableOpacity>
-                      </View>
-                    </>
-                  )}
-                </View>
-              </KeyboardAvoidingView>
-            </View>
-          </Modal>
-
         </ScrollView>
       </KeyboardAvoidingView>
-    </SafeAreaView>
-  );
-}
 
-/* ════════════════════════════════════════════════════════════════════
-   PRICING CARD COMPONENT — Tier-aware styling
-   ════════════════════════════════════════════════════════════════════ */
-
-interface PricingCardProps {
-  tier: "trial" | "basic" | "pro" | "premium";
-  title: string;
-  price: string;
-  period: string;
-  features: string[];
-  isPopular?: boolean;
-  roleAccess?: string;
-  ctaLabel: string;
-  onPressCta: () => void;
-}
-
-const TIER_STYLES = {
-  trial: {
-    bg: "rgba(255,255,255,0.03)",
-    border: "rgba(100,116,139,0.4)",
-    borderStyle: "dashed" as const,
-    accent: "#94A3B8",
-    ctaBg: "#475569",
-    ctaShadow: "#475569",
-    badgeBg: "rgba(100,116,139,0.15)",
-    badgeText: "#94A3B8",
-    badgeLabel: "30 Days Free",
-    checkColor: "#94A3B8",
-    titleColor: "#94A3B8",
-    headerBg: undefined as string | undefined,
-  },
-  basic: {
-    bg: "rgba(255,255,255,0.05)",
-    border: "rgba(255,255,255,0.1)",
-    borderStyle: "solid" as const,
-    accent: "#9CA3AF",
-    ctaBg: "#4B5563",
-    ctaShadow: "#374151",
-    badgeBg: undefined,
-    badgeText: undefined,
-    badgeLabel: undefined,
-    checkColor: "#9CA3AF",
-    titleColor: "#9CA3AF",
-    headerBg: undefined,
-  },
-  pro: {
-    bg: "rgba(34,197,94,0.04)",
-    border: "#22C55E",
-    borderStyle: "solid" as const,
-    accent: "#22C55E",
-    ctaBg: "#16A34A",
-    ctaShadow: "#15803D",
-    badgeBg: "#22C55E",
-    badgeText: "#fff",
-    badgeLabel: "⭐ Most Popular",
-    checkColor: "#22C55E",
-    titleColor: "#22C55E",
-    headerBg: "#22C55E",
-  },
-  premium: {
-    bg: "rgba(245,158,11,0.04)",
-    border: "rgba(245,158,11,0.5)",
-    borderStyle: "solid" as const,
-    accent: "#F59E0B",
-    ctaBg: "#D97706",
-    ctaShadow: "#B45309",
-    badgeBg: "rgba(245,158,11,0.15)",
-    badgeText: "#F59E0B",
-    badgeLabel: "Enterprise",
-    checkColor: "#F59E0B",
-    titleColor: "#F59E0B",
-    headerBg: undefined,
-  },
-};
-
-const PricingCard = ({
-  tier, title, price, period, features, isPopular = false, roleAccess, ctaLabel, onPressCta
-}: PricingCardProps) => {
-  const s = TIER_STYLES[tier];
-  const isPremium = tier === "premium";
-  const isPro = tier === "pro";
-
-  return (
-    <View
-      style={{
-        width: Platform.OS === "web" ? 270 : "100%",
-        minHeight: 420,
-        borderRadius: 24,
-        overflow: "hidden",
-        marginBottom: 20,
-        borderWidth: isPro ? 2 : 1.5,
-        borderColor: s.border,
-        borderStyle: s.borderStyle,
-        backgroundColor: s.bg,
-        shadowColor: isPro ? "#22C55E" : isPremium ? "#F59E0B" : "transparent",
-        shadowOffset: { width: 0, height: isPro ? 12 : isPremium ? 8 : 0 },
-        shadowOpacity: isPro ? 0.25 : isPremium ? 0.15 : 0,
-        shadowRadius: isPro ? 30 : isPremium ? 24 : 0,
-        elevation: isPro ? 12 : isPremium ? 8 : 0,
-        transform: [{ scale: isPro ? 1.03 : 1 }],
-        zIndex: isPro ? 10 : 1,
-      }}
-    >
-      {/* Top banner for PRO */}
-      {isPro && s.headerBg && (
-        <View
-          style={{
-            backgroundColor: s.headerBg,
-            paddingVertical: 8,
-            alignItems: "center",
-          }}
-        >
-          <Text
-            style={{
-              color: "white",
-              fontWeight: "900",
-              fontSize: 11,
-              letterSpacing: 2,
-              textTransform: "uppercase",
-            }}
-          >
-            ⭐ Most Popular
-          </Text>
-        </View>
-      )}
-
-      {/* Premium gold header */}
-      {isPremium && (
-        <View
-          style={{
-            paddingVertical: 10,
-            alignItems: "center",
-            flexDirection: "row",
-            justifyContent: "center",
-            backgroundColor: "rgba(245,158,11,0.12)",
-            borderBottomWidth: 1,
-            borderBottomColor: "rgba(245,158,11,0.2)",
-          }}
-        >
-          <Crown size={14} color="#F59E0B" />
-          <Text
-            style={{
-              color: "#F59E0B",
-              fontWeight: "900",
-              fontSize: 11,
-              letterSpacing: 2,
-              textTransform: "uppercase",
-              marginLeft: 6,
-            }}
-          >
-            Enterprise
-          </Text>
-          <Star size={14} color="#F59E0B" style={{ marginLeft: 6 }} />
-        </View>
-      )}
-
-      {/* Trial badge */}
-      {tier === "trial" && s.badgeLabel && (
-        <View
-          style={{
-            paddingVertical: 8,
-            alignItems: "center",
-            backgroundColor: s.badgeBg,
-            borderBottomWidth: 1,
-            borderBottomColor: "rgba(100,116,139,0.15)",
-          }}
-        >
-          <Text
-            style={{
-              color: s.badgeText,
-              fontWeight: "800",
-              fontSize: 11,
-              letterSpacing: 1.5,
-              textTransform: "uppercase",
-            }}
-          >
-            {s.badgeLabel}
-          </Text>
-        </View>
-      )}
-
-      <View style={{ padding: 24, alignItems: "center", flex: 1 }}>
-        {/* Title */}
-        <Text
-          style={{
-            color: s.titleColor,
-            fontWeight: "800",
-            fontSize: 15,
-            letterSpacing: 2,
-            marginBottom: 12,
-          }}
-        >
-          {title}
-        </Text>
-
-        {/* Price */}
-        <View
-          style={{
-            flexDirection: "row",
-            alignItems: "baseline",
-            marginBottom: 24,
-          }}
-        >
-          <Text
-            style={{
-              fontSize: 22,
-              fontWeight: "800",
-              color: "rgba(255,255,255,0.7)",
-            }}
-          >
-            $
-          </Text>
-          <Text
-            style={{
-              fontSize: isPro ? 52 : 44,
-              fontWeight: "900",
-              color: isPro ? "#22C55E" : isPremium ? "#F59E0B" : "white",
-            }}
-          >
-            {price}
-          </Text>
-          <Text
-            style={{
-              color: "rgba(255,255,255,0.4)",
-              fontSize: 13,
-              marginLeft: 4,
-            }}
-          >
-            {period}
-          </Text>
-        </View>
-
-        {/* Features */}
-        <View style={{ width: "100%", gap: 12, marginBottom: 20 }}>
-          {features.map((feat, i) => (
-            <View
-              key={i}
-              style={{ flexDirection: "row", alignItems: "center" }}
+      {/* Registration Modal */}
+      < Modal
+        animationType="slide"
+        transparent={true}
+        visible={modalVisible}
+        onRequestClose={() => setModalVisible(false)
+        }
+      >
+        <View style={{ flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(0,0,0,0.6)" }}>
+          <View style={{ backgroundColor: "#13103A", borderTopLeftRadius: 32, borderTopRightRadius: 32, padding: 24, minHeight: 450 }}>
+            <View style={{ width: 40, height: 4, backgroundColor: "rgba(255,255,255,0.2)", borderRadius: 2, alignSelf: "center", marginBottom: 24 }} />
+            {/* Close button */}
+            <TouchableOpacity
+              style={{ position: "absolute", top: 24, right: 24, zIndex: 10 }}
+              onPress={() => setModalVisible(false)}
             >
-              <View
-                style={{
-                  width: 22,
-                  height: 22,
-                  borderRadius: 6,
-                  backgroundColor: `${s.checkColor}18`,
-                  justifyContent: "center",
-                  alignItems: "center",
-                }}
-              >
-                <Check size={13} color={s.checkColor} strokeWidth={3} />
+              <Text style={{ color: "rgba(255,255,255,0.6)", fontSize: 24, fontWeight: "bold" }}>×</Text>
+            </TouchableOpacity>
+
+            {submitted ? (
+              <View style={{ alignItems: "center", paddingVertical: 40 }}>
+                <View style={{ width: 80, height: 80, borderRadius: 40, backgroundColor: "rgba(52, 211, 153, 0.1)", justifyContent: "center", alignItems: "center", marginBottom: 20 }}>
+                  <Check size={40} color="#10B981" />
+                </View>
+                <Text style={{ color: "white", fontSize: 24, fontWeight: "900", textAlign: "center", marginBottom: 12 }}>Request Received!</Text>
+                <Text style={{ color: "rgba(255,255,255,0.6)", textAlign: "center", marginBottom: 32 }}>Our team will reach out to you within 24 hours to set up your {selectedPlan} account.</Text>
+                <TouchableOpacity style={{ backgroundColor: "#FF6B00", paddingHorizontal: 32, paddingVertical: 16, borderRadius: 16 }} onPress={() => setModalVisible(false)}>
+                  <Text style={{ color: "white", fontWeight: "700" }}>Close</Text>
+                </TouchableOpacity>
               </View>
-              <Text
-                style={{
-                  color: "rgba(255,255,255,0.7)",
-                  fontSize: 13,
-                  marginLeft: 10,
-                  fontWeight: "500",
-                }}
-              >
-                {feat}
-              </Text>
-            </View>
-          ))}
-        </View>
+            ) : (
+              <>
+                <Text style={{ color: "white", fontSize: 22, fontWeight: "900", marginBottom: 8 }}>Register for {selectedPlan}</Text>
+                <Text style={{ color: "rgba(255,255,255,0.5)", marginBottom: 24 }}>Enter your details and our team will contact you shortly.</Text>
 
-        {/* Role access note (free trial only) */}
-        {roleAccess && (
-          <View
-            style={{
-              backgroundColor: "rgba(100,116,139,0.08)",
-              borderRadius: 10,
-              padding: 10,
-              marginBottom: 16,
-              width: "100%",
-            }}
-          >
-            <Text
-              style={{
-                color: "rgba(255,255,255,0.4)",
-                fontSize: 11,
-                textAlign: "center",
-                lineHeight: 16,
-              }}
-            >
-              Roles: {roleAccess}
-            </Text>
+                <View style={{ gap: 16, marginBottom: 32 }}>
+                  <TextInput
+                    style={{ backgroundColor: "rgba(255,255,255,0.05)", borderRadius: 16, padding: 18, color: "white", borderWidth: 1, borderColor: "rgba(255,255,255,0.1)" }}
+                    placeholder="Institution Name"
+                    placeholderTextColor="rgba(255,255,255,0.3)"
+                    value={form.name}
+                    onChangeText={(t) => setForm(prev => ({ ...prev, name: t }))}
+                  />
+                  <TextInput
+                    style={{ backgroundColor: "rgba(255,255,255,0.05)", borderRadius: 16, padding: 18, color: "white", borderWidth: 1, borderColor: "rgba(255,255,255,0.1)" }}
+                    placeholder="Contact Email"
+                    placeholderTextColor="rgba(255,255,255,0.3)"
+                    keyboardType="email-address"
+                    value={form.email}
+                    onChangeText={(t) => setForm(prev => ({ ...prev, email: t }))}
+                  />
+                  <TextInput
+                    style={{ backgroundColor: "rgba(255,255,255,0.05)", borderRadius: 16, padding: 18, color: "white", borderWidth: 1, borderColor: "rgba(255,255,255,0.1)", minHeight: 80 }}
+                    placeholder="Additional Message (Optional)"
+                    placeholderTextColor="rgba(255,255,255,0.3)"
+                    multiline
+                    value={form.message}
+                    onChangeText={(t) => setForm(prev => ({ ...prev, message: t }))}
+                  />
+                </View>
+
+                <TouchableOpacity
+                  style={{ backgroundColor: "#FF6B00", paddingVertical: 18, borderRadius: 16, alignItems: "center", flexDirection: 'row', justifyContent: 'center' }}
+                  onPress={handleSignup}
+                  disabled={submitting}
+                >
+                  {submitting ? <ActivityIndicator color="white" style={{ marginRight: 10 }} /> : null}
+                  <Text style={{ color: "white", fontWeight: "800", fontSize: 16 }}>
+                    {submitting ? "Sending Request..." : "Request Setup"}
+                  </Text>
+                </TouchableOpacity>
+              </>
+            )}
           </View>
-        )}
-
-        <TouchableOpacity
-          style={{
-            width: "100%",
-            paddingVertical: 16,
-            borderRadius: 14,
-            alignItems: "center",
-            marginTop: "auto",
-            backgroundColor: s.ctaBg,
-            shadowColor: s.ctaShadow,
-            shadowOffset: { width: 0, height: 4 },
-            shadowOpacity: isPro ? 0.4 : 0.2,
-            shadowRadius: 12,
-            elevation: 4,
-          }}
-          onPress={onPressCta}
-        >
-          <Text
-            style={{
-              color: "white",
-              fontWeight: "800",
-              fontSize: 14,
-              textTransform: "uppercase",
-              letterSpacing: 1,
-            }}
-          >
-            {ctaLabel}
-          </Text>
-        </TouchableOpacity>
-      </View>
-    </View>
+        </View>
+      </Modal >
+    </SafeAreaView >
   );
-};
+}

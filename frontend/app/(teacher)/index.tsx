@@ -5,7 +5,8 @@ import { TeacherAPI } from "@/services/TeacherService";
 import { router } from "expo-router";
 import { ArrowRight, BookOpen, Calendar, Clock, GraduationCap, MessageSquare, School, Users } from 'lucide-react-native';
 import React, { useEffect, useState } from "react";
-import { ActivityIndicator, RefreshControl, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, RefreshControl, ScrollView, Text, TouchableOpacity, View, StatusBar } from 'react-native';
+import { TrialBanner, SubscriptionGate, PremiumBadge } from '@/components/shared/SubscriptionComponents';
 
 // Define Interface for the QuickAction props
 interface QuickActionProps {
@@ -13,9 +14,10 @@ interface QuickActionProps {
     label: string;
     color: string;
     onPress?: () => void;
+    badge?: React.ReactNode;
 }
 
-const QuickAction = ({ icon: Icon, label, color, onPress }: QuickActionProps) => (
+const QuickAction = ({ icon: Icon, label, color, onPress, badge }: QuickActionProps) => (
     <TouchableOpacity
         onPress={onPress}
         className="w-[48%] bg-white dark:bg-[#1a1a1a] p-6 rounded-3xl border border-gray-100 dark:border-gray-800 shadow-sm items-center mb-4 active:bg-gray-50 dark:active:bg-gray-900"
@@ -23,7 +25,10 @@ const QuickAction = ({ icon: Icon, label, color, onPress }: QuickActionProps) =>
         <View style={{ backgroundColor: `${color}15` }} className="p-3 rounded-2xl mb-2">
             <Icon size={24} color={color} />
         </View>
-        <Text className="text-gray-800 dark:text-gray-200 font-bold">{label}</Text>
+        <View className="flex-row items-center justify-center">
+            <Text className="text-gray-800 dark:text-gray-200 font-bold text-center">{label}</Text>
+            {badge}
+        </View>
     </TouchableOpacity>
 );
 
@@ -97,9 +102,10 @@ export default function TeacherHome() {
         fetchDashboardData();
     };
 
-
     return (
         <View className="flex-1 bg-white dark:bg-black">
+            <StatusBar barStyle={isDark ? "light-content" : "dark-content"} />
+            <TrialBanner />
             <UnifiedHeader
                 title="Welcome back,"
                 subtitle={profile?.full_name?.split(" ")[0] || 'Teacher'}
@@ -193,27 +199,33 @@ export default function TeacherHome() {
                             <QuickAction
                                 icon={GraduationCap}
                                 label="Grades"
-                                color={isDark ? "#ff6900" : "#ffffff"}
+                                color={isDark ? "#ff6900" : "#1a1a1a"}
                                 onPress={() => router.push("/(teacher)/management/grades" as any)}
                             />
-                            <QuickAction
-                                icon={School}
-                                label="Classes"
-                                color="#8b5cf6"
-                                onPress={() => router.push("/(teacher)/classes" as any)}
-                            />
+                            <SubscriptionGate>
+                                <QuickAction
+                                    icon={School}
+                                    label="Classes"
+                                    color="#8b5cf6"
+                                    onPress={() => router.push("/(teacher)/classes" as any)}
+                                    badge={<PremiumBadge />}
+                                />
+                            </SubscriptionGate>
                             <QuickAction
                                 icon={ArrowRight}
                                 label="Assignments"
                                 color="#f43f5e"
                                 onPress={() => router.push("/(teacher)/management/assignments" as any)}
                             />
-                            <QuickAction
-                                icon={MessageSquare}
-                                label="Messages"
-                                color="#0891b2"
-                                onPress={() => router.push("/(teacher)/management/messages" as any)}
-                            />
+                            <SubscriptionGate>
+                                <QuickAction
+                                    icon={MessageSquare}
+                                    label="Messages"
+                                    color="#0891b2"
+                                    onPress={() => router.push("/(teacher)/management/messages" as any)}
+                                    badge={<PremiumBadge />}
+                                />
+                            </SubscriptionGate>
                         </View>
                     </View>
                 </View>

@@ -34,10 +34,15 @@ async function authMiddleware(req, res, next) {
     if (cached && (now - cached.timestamp < CACHE_TTL)) {
       profile = cached.profile;
     } else {
-      // Get institution_id and role from profile table
+      // Get institution_id, role, and is_master status
       const { data, error: profileError } = await supabase
         .from("users")
-        .select("id, institution_id, role")
+        .select(`
+          id, 
+          institution_id, 
+          role,
+          admins!user_id(is_master)
+        `)
         .eq("id", user.id)
         .single();
 
@@ -49,7 +54,7 @@ async function authMiddleware(req, res, next) {
       profile = data;
       // Update cache
       profileCache.set(user.id, { profile, timestamp: now });
-      
+
       // Periodic cache cleanup (crude)
       if (profileCache.size > 1000) {
         const fiveMinsAgo = now - (300000);
@@ -64,12 +69,14 @@ async function authMiddleware(req, res, next) {
       id: profile.id,
       institution_id: profile.institution_id,
       role: profile.role,
+      is_master: profile.admins?.[0]?.is_master || false,
     };
 
     // Convenience shorthands (ensure always set)
     req.institution_id = profile.institution_id || null;
     req.userId = profile.id || null;
     req.userRole = profile.role || null;
+    req.isMaster = req.user.is_master;
 
     // Defensive: fallback if somehow missing
     if (!req.userRole) {

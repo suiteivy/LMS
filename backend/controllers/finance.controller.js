@@ -80,6 +80,7 @@ exports.createAllocation = async (req, res) => {
                 description,
                 amount,
                 category,
+                institution_id,
                 status: status || 'planned'
             }])
             .select()
@@ -187,7 +188,7 @@ exports.processTransaction = async (req, res) => {
  */
 exports.createTransaction = async (req, res) => {
     try {
-        const { userRole, institution_id } = req;   
+        const { userRole, institution_id } = req;
         if (userRole !== "admin") return res.status(403).json({ error: "Unauthorized" });
 
         const { user_id, type, direction, amount, date, method, status, reference_id, meta } = req.body;
@@ -223,7 +224,7 @@ exports.createTransaction = async (req, res) => {
 exports.recordFeePayment = async (req, res) => {
     try {
         const { userRole, institution_id } = req;
-        if (userRole !== "admin" ) return res.status(403).json({ error: "Unauthorized" });
+        if (userRole !== "admin") return res.status(403).json({ error: "Unauthorized" });
         console.log("recordFeePayment called with body:", req.body);
         const { student_id, amount, payment_method, reference_number, notes } = req.body;
         console.log(`Recording fee payment: student_id=${student_id}, amount=${amount}, method=${payment_method}`);

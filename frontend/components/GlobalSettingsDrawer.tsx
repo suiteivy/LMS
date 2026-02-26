@@ -15,6 +15,7 @@ import StudentSettings from '@/components/StudentSettings';
 import TeacherHelp from '@/components/TeacherHelp';
 import TeacherProfile from '@/components/TeacherProfile';
 import TeacherSettings from '@/components/TeacherSettings';
+import InstitutionOwnership from '@/components/InstitutionOwnership';
 import { router } from 'expo-router';
 
 type MenuItemProps = {
@@ -47,8 +48,8 @@ const MenuItem = ({ icon, label, onPress, danger, isDark }: MenuItemProps) => (
   </TouchableOpacity>
 );
 
-function SettingsMenu({ userRole, onNavigate }: { userRole: string; onNavigate: (screen: 'profile' | 'settings' | 'help' | 'overview') => void }) {
-  const { signOut, profile, loading, displayId, isTrial } = useAuth();
+function SettingsMenu({ userRole, onNavigate }: { userRole: string; onNavigate: (screen: 'profile' | 'settings' | 'help' | 'overview' | 'ownership') => void }) {
+  const { signOut, profile, loading, displayId, isTrial, isMaster } = useAuth();
   const { theme, setTheme, isDark } = useTheme();
   const roleLabel = userRole.charAt(0).toUpperCase() + userRole.slice(1);
 
@@ -113,7 +114,12 @@ function SettingsMenu({ userRole, onNavigate }: { userRole: string; onNavigate: 
       {/* Menu Items */}
       <ScrollView style={{ flex: 1, backgroundColor: isDark ? '#121212' : '#ffffff' }} contentContainerStyle={{ paddingBottom: 20 }}>
         {userRole === 'admin' && (
-          <MenuItem isDark={isDark} icon={<ShieldCheck size={22} color="#8b5cf6" />} label="Admin Overview" onPress={() => onNavigate('overview')} />
+          <>
+            <MenuItem isDark={isDark} icon={<ShieldCheck size={22} color="#8b5cf6" />} label="Admin Overview" onPress={() => onNavigate('overview')} />
+            {isMaster && (
+              <MenuItem isDark={isDark} icon={<ShieldCheck size={22} color="#f59e0b" />} label="Institution Ownership" onPress={() => onNavigate('ownership')} />
+            )}
+          </>
         )}
         <MenuItem
           isDark={isDark}
@@ -194,7 +200,7 @@ function SettingsMenu({ userRole, onNavigate }: { userRole: string; onNavigate: 
 }
 
 export function GlobalSettingsContent({ userRole = 'student' }: { userRole?: 'student' | 'teacher' | 'admin' | 'parent' }) {
-  const [activeScreen, setActiveScreen] = useState<'menu' | 'profile' | 'settings' | 'help' | 'overview'>('menu');
+  const [activeScreen, setActiveScreen] = useState<'menu' | 'profile' | 'settings' | 'help' | 'overview' | 'ownership'>('menu');
   const { isDark } = useTheme();
 
   const renderContent = () => {
@@ -211,6 +217,8 @@ export function GlobalSettingsContent({ userRole = 'student' }: { userRole?: 'st
       case 'help':
         if (userRole === 'teacher') return <TeacherHelp />;
         return <StudentHelp />;
+      case 'ownership':
+        return <InstitutionOwnership />;
       default:
         return <SettingsMenu userRole={userRole} onNavigate={setActiveScreen} />;
     }
@@ -222,6 +230,7 @@ export function GlobalSettingsContent({ userRole = 'student' }: { userRole?: 'st
       case 'profile': return 'My Profile';
       case 'settings': return 'Settings';
       case 'help': return 'Help & Support';
+      case 'ownership': return 'Institution Ownership';
       default: return '';
     }
   };

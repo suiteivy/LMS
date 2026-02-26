@@ -1,4 +1,5 @@
 const supabase = require("../utils/supabaseClient");
+const logger = require("../utils/logger");
 
 // Generate a random 8-character temporary password
 const generateTempPassword = () => {
@@ -40,7 +41,7 @@ exports.login = async (req, res) => {
 
     const { data: userData, error: userError } = await supabase
       .from("users")
-      .select("full_name, role, institution_id")
+      .select("full_name, role, institution_id, admins!user_id(is_master)")
       .eq("id", user.id)
       .single();
 
@@ -65,14 +66,39 @@ exports.login = async (req, res) => {
       customId = data?.id;
     }
 
+    const isMaster = userData.admins?.[0]?.is_master || false;
+
+    // Fetch institution subscription details
+    let subscription = null;
+    if (userData.institution_id) {
+      const { data: instData } = await supabase
+        .from('institutions')
+        .select('subscription_status, subscription_plan, trial_end_date, has_used_trial')
+        .eq('id', userData.institution_id)
+        .single();
+
+      if (instData) {
+        subscription = {
+          status: instData.subscription_status,
+          plan: instData.subscription_plan,
+          trialEndDate: instData.trial_end_date,
+          hasUsedTrial: instData.has_used_trial
+        };
+      }
+    }
+
     res.status(200).json({
       message: "Login successful",
       token: authData.session.access_token,
       user: {
         uid: user.id,
         email: user.email,
-        ...userData,
+        full_name: userData.full_name,
+        role: userData.role,
+        institution_id: userData.institution_id,
+        isMaster,
         customId,
+        subscription
       },
     });
   } catch (err) {
@@ -741,5 +767,31 @@ exports.resetPassword = async (req, res) => {
   } catch (err) {
     console.error("resetPassword error:", err);
     res.status(500).json({ error: err.message || "Failed to reset password" });
+  }
+};
+
+/**
+ * Transfer Master Admin status to another administrator in the same institution.
+ * Only current Master Admin can perform this.
+ */
+exports.transferMasterAdmin = async (req, res) => {
+  try {
+    const { targetAdminUserId } = req.body;
+    const currentUserId = req.userId;
+
+    if (!targetAdminUserId) {
+      return res.status(400).json({ error: "Recipient admin user ID is required" });
+    }
+
+    const { error } = await supabase.rpc('transfer_master_status', {
+      p_old_admin_user_id: currentUserId,
+      p_new_admin_user_id: targetAdminUserId
+    });
+
+    if (error) throw error;
+
+    res.json({ message: "Master Admin status transferred successfully" });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 };

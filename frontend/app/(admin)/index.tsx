@@ -20,12 +20,14 @@ import {
   Wallet
 } from 'lucide-react-native';
 import React, { useCallback, useEffect, useState } from "react";
-import { ActivityIndicator, ScrollView, Text, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, ScrollView, Text, TouchableOpacity, View, StatusBar } from "react-native";
+import { SubscriptionBanner, SubscriptionGate, OnboardingTracker, SubscriptionBadge } from "@/components/shared/SubscriptionComponents";
 
 interface QuickActionProps {
   icon: any;
   label: string;
   onPress: () => void;
+  badge?: React.ReactNode;
 }
 
 const IconUserPlus = UserPlus as any;
@@ -41,7 +43,7 @@ const IconBookOpen = BookOpen as any;
 const IconBarChart3 = BarChart3 as any;
 const IconLogOut = LogOut as any;
 
-const QuickAction = ({ icon: Icon, label, onPress }: QuickActionProps) => (
+const QuickAction = ({ icon: Icon, label, onPress, badge }: QuickActionProps) => (
   <TouchableOpacity
     className="w-[48%] bg-white dark:bg-[#1a1a1a] p-5 rounded-3xl border border-gray-100 dark:border-gray-800 mb-4 items-center shadow-sm active:opacity-70"
     onPress={onPress}
@@ -50,7 +52,10 @@ const QuickAction = ({ icon: Icon, label, onPress }: QuickActionProps) => (
     <View className="bg-orange-50 dark:bg-orange-950/30 p-3 rounded-2xl mb-2">
       <Icon size={24} color="#FF6B00" />
     </View>
-    <Text className="text-gray-900 dark:text-gray-200 font-bold text-[13px] text-center">{label}</Text>
+    <View className="flex-row items-center justify-center">
+      <Text className="text-gray-900 dark:text-gray-200 font-bold text-[13px] text-center">{label}</Text>
+      {badge}
+    </View>
   </TouchableOpacity>
 );
 
@@ -106,7 +111,7 @@ const DebugSessionInfo = ({ onClose }: { onClose: () => void }) => {
 };
 
 export default function AdminDashboard() {
-  const { profile, isDemo } = useAuth();
+  const { profile, isDemo, signOut, subscriptionPlan, subscriptionStatus, isMaster } = useAuth();
   const { stats, loading: statsLoading } = useDashboardStats();
   const { isDark } = useTheme();
   const [recentUsers, setRecentUsers] = useState<User[]>([]);
@@ -180,11 +185,14 @@ export default function AdminDashboard() {
 
   return (
     <View className="flex-1 bg-white dark:bg-black">
+      <StatusBar barStyle={isDark ? "light-content" : "dark-content"} />
+      <SubscriptionBanner />
       <UnifiedHeader
         title="Welcome back,"
         subtitle={profile?.full_name?.split(" ")[0] || "Administrator"}
         role="Admin"
         showNotification={true}
+        showMasterBadge={isMaster}
       />
 
       {showDebug && (
@@ -199,6 +207,9 @@ export default function AdminDashboard() {
         contentContainerStyle={{ paddingBottom: 100, padding: 24, paddingTop: 10 }}
       >
         <View>
+          {/* Onboarding Tracker */}
+          <OnboardingTracker stats={stats} />
+
           {/* Stat Cards */}
           {statsLoading ? (
             <View className="flex-row mb-8">
@@ -229,7 +240,7 @@ export default function AdminDashboard() {
                 </Text>
               </View>
 
-              {/* Revenue Card — always orange, no dark variant needed */}
+              {/* Revenue Card — always orange */}
               <View style={{
                 flex: 1, backgroundColor: "#FF6B00",
                 padding: 20, borderRadius: 24, marginLeft: 6,
@@ -257,13 +268,59 @@ export default function AdminDashboard() {
             </View>
           )}
 
+          {/* Subscription Usage */}
+          <View style={{ marginBottom: 32 }}>
+            <View style={{
+              backgroundColor: surfaceBg,
+              padding: 24,
+              borderRadius: 32,
+              borderWidth: 1,
+              borderColor: surfaceBorder,
+              shadowColor: "#000",
+              shadowOffset: { width: 0, height: 4 },
+              shadowOpacity: 0.05,
+              shadowRadius: 10,
+              elevation: 2
+            }}>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                <View>
+                  <Text style={{ fontSize: 18, fontWeight: '800', color: textPrimary, letterSpacing: -0.5 }}>Capacity Usage</Text>
+                  <Text style={{ fontSize: 10, fontWeight: '600', color: textMuted, textTransform: 'uppercase', letterSpacing: 1 }}>{(subscriptionPlan || 'trial').toUpperCase()} PLAN</Text>
+                </View>
+                <SubscriptionBadge />
+              </View>
+
+              <View style={{ height: 10, backgroundColor: isDark ? '#333' : '#f3f4f6', borderRadius: 5, overflow: 'hidden', marginBottom: 16 }}>
+                <View style={{
+                  height: '100%',
+                  width: `${Math.min((parseInt(stats.find(s => s.label === "Total Students")?.value || "0") / (subscriptionPlan === 'trial' ? 50 : subscriptionPlan === 'basic' ? 500 : subscriptionPlan === 'pro' ? 1000 : 100000)) * 100, 100)}%`,
+                  backgroundColor: '#FF6B00',
+                  borderRadius: 5
+                }} />
+              </View>
+
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Text style={{ fontSize: 12, fontWeight: '600', color: textMuted }}>
+                  {stats.find(s => s.label === "Total Students")?.value || "0"} Students enrolled
+                </Text>
+                <Text style={{ fontSize: 12, fontWeight: '700', color: textPrimary }}>
+                  {subscriptionPlan === 'premium' ? 'No Limit' : `Limit: ${subscriptionPlan === 'trial' ? '50' : subscriptionPlan === 'basic' ? '500' : '1000'}`}
+                </Text>
+              </View>
+            </View>
+          </View>
+
           {/* Quick Actions */}
           <View className="mb-10">
             <Text className="text-lg font-bold text-gray-900 dark:text-white mb-4 px-1">Quick Actions</Text>
             <View style={{ flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between" }}>
-              <QuickAction icon={IconUserPlus} label="Enroll User" onPress={() => router.push("/(admin)/users/create")} />
+              <SubscriptionGate>
+                <QuickAction icon={IconUserPlus} label="Enroll User" onPress={() => router.push("/(admin)/users/create")} badge={<SubscriptionBadge />} />
+              </SubscriptionGate>
               <QuickAction icon={IconBookOpen} label="Library" onPress={() => router.navigate("/(admin)/management/library" as any)} />
-              <QuickAction icon={IconWallet} label="Finance" onPress={() => router.navigate("/(admin)/finance" as any)} />
+              <SubscriptionGate minPlan="pro">
+                <QuickAction icon={IconWallet} label="Finance" onPress={() => router.navigate("/(admin)/finance" as any)} badge={<SubscriptionBadge />} />
+              </SubscriptionGate>
               <QuickAction icon={IconBarChart3} label="Analytics" onPress={() => router.navigate("/(admin)/management/analytics" as any)} />
             </View>
           </View>
@@ -291,34 +348,8 @@ export default function AdminDashboard() {
               </View>
             ) : (
               <>
-                {/* Desktop */}
-                <View className="hidden lg:flex flex-row flex-wrap gap-4">
-                  {recentUsers.map((user) => (
-                    <View key={user.id} style={{ backgroundColor: surfaceBg, padding: 20, borderRadius: 24, borderWidth: 1, borderColor: surfaceBorder, flex: 1, minWidth: "30%" }}>
-                      <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
-                        <View style={{
-                          height: 40, width: 40, borderRadius: 12, alignItems: "center", justifyContent: "center",
-                          backgroundColor: user.role === 'student' ? (isDark ? '#431407' : '#fff7ed') : user.role === 'teacher' ? (isDark ? '#2e1065' : '#f3e8ff') : (isDark ? '#172554' : '#eff6ff')
-                        }}>
-                          {user.role === 'student' ? <IconGraduationCap size={20} color="#FF6B00" /> :
-                            user.role === 'teacher' ? <IconSchool size={20} color="#8b5cf6" /> :
-                              <IconSettings size={20} color="#3b82f6" />}
-                        </View>
-                        <View style={{ backgroundColor: badgeBg, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 }}>
-                          <Text style={{ color: textSubtle, fontWeight: "500", fontSize: 10 }}>
-                            {user.joinDate ? new Date(user.joinDate).toLocaleDateString() : 'N/A'}
-                          </Text>
-                        </View>
-                      </View>
-                      <Text style={{ color: textPrimary, fontWeight: "700", fontSize: 16, marginBottom: 4 }} numberOfLines={1}>{user.name}</Text>
-                      <Text style={{ color: textMuted, fontSize: 12, marginBottom: 4, fontWeight: "500" }}>{user.role.toUpperCase()}</Text>
-                      <Text style={{ color: textSubtle, fontSize: 10 }}>{user.displayId}</Text>
-                    </View>
-                  ))}
-                </View>
-
-                {/* Mobile */}
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} className="flex-row -mx-6 px-6 lg:hidden" contentContainerStyle={{ paddingRight: 24 }}>
+                {/* Mobile ScrollView */}
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} className="flex-row -mx-6 px-6" contentContainerStyle={{ paddingRight: 24 }}>
                   {recentUsers.map((user) => (
                     <View key={user.id} className="bg-white dark:bg-[#1a1a1a] p-5 rounded-3xl border border-gray-100 dark:border-gray-800 mr-4 w-72">
                       <View className="flex-row items-center justify-between mb-4">

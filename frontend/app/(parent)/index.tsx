@@ -15,6 +15,7 @@ import {
 } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, RefreshControl, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { SubscriptionBanner } from "@/components/shared/SubscriptionComponents";
 
 const DEMO_STUDENTS = [
   { id: "s1", name: "Ethan Kamau", grade_level: "9" },
@@ -120,6 +121,7 @@ function ParentDashboard({ user, logout }: any) {
         role="Parent"
         showNotification={true}
       />
+      <SubscriptionBanner />
 
       <ScrollView
         className="flex-1"

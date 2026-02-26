@@ -1,42 +1,38 @@
-import { UnifiedHeader } from "@/components/common/UnifiedHeader";
-import { useTheme } from "@/contexts/ThemeContext";
+import React, { useState, useEffect } from "react";
+import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, Alert, StatusBar } from "react-native";
+import { ArrowLeft, FileText, Download, Users, TrendingUp, DollarSign, Calendar } from "lucide-react-native";
+import { router } from "expo-router";
 import { supabase } from "@/libs/supabase";
-import { Bursary } from "@/types/types";
-import { useRouter } from "expo-router";
-import { DollarSign, Download, FileText, TrendingUp, Users } from "lucide-react-native";
-import React, { useEffect, useState } from "react";
-import { ActivityIndicator, Alert, ScrollView, Text, TouchableOpacity, View } from "react-native";
+import { useAuth } from "@/contexts/AuthContext";
 
-export default function BursaryReports() {
-    const router = useRouter();
-    const { isDark } = useTheme();
+export default function ReportsPage() {
+    const { user, isInitializing } = useAuth();
     const [loading, setLoading] = useState(true);
-    const [stats, setStats] = useState({ totalBursaries: 0, totalApplications: 0, totalAllocated: 0, totalDisbursed: 0, approvalRate: 0 });
+    const [stats, setStats] = useState({
+        totalBursaries: 0,
+        totalApplications: 0,
+        totalAllocated: 0,
+        totalDisbursed: 0,
+        approvalRate: 0
+    });
     const [bursaryStats, setBursaryStats] = useState<any[]>([]);
 
-    const surface = isDark ? '#1e1e1e' : '#ffffff';
-    const border = isDark ? '#2c2c2c' : '#f3f4f6';
-    const textPrimary = isDark ? '#f1f1f1' : '#111827';
-    const textSecondary = isDark ? '#9ca3af' : '#6b7280';
-    const statsBg = isDark ? '#242424' : '#f9fafb';
+    const isDark = false; // Using standard light theme for admin portal for now
 
-    useEffect(() => { fetchReports(); }, []);
+    useEffect(() => {
+        fetchReports();
+    }, []);
 
     const fetchReports = async () => {
+        setLoading(true);
         try {
-            setLoading(true);
-            const { data: bursaries, error: bursaryError } = await supabase.from('bursaries').select('*').returns<Bursary[]>();
-            if (bursaryError) throw bursaryError;
+            const { data: bursaries } = await supabase.from('bursaries').select('*');
+            const { data: applications } = await supabase.from('bursary_applications').select('*, bursary:bursaries(amount)');
 
-            type BursaryApplicationWithDetails = { id: string; bursary_id: string; student_id: string; status: "pending" | "approved" | "rejected"; justification: string | null; created_at: string; bursary: { amount: number } | null; };
-            const { data, error: appError } = await supabase.from('bursary_applications').select('*, bursary:bursaries(amount)');
-            if (appError) throw appError;
-
-            const applications = data as unknown as BursaryApplicationWithDetails[];
             const totalBursaries = bursaries?.length || 0;
             const totalApplications = applications?.length || 0;
             const approvedApps = applications?.filter(a => a.status === 'approved') || [];
-            const totalDisbursed = approvedApps.reduce((sum, app) => sum + (Number(app.bursary?.amount) || 0), 0);
+            const totalDisbursed = approvedApps.reduce((sum, a) => sum + (Number(a.bursary?.amount) || 0), 0);
             const approvalRate = totalApplications > 0 ? (approvedApps.length / totalApplications) * 100 : 0;
 
             setStats({ totalBursaries, totalApplications, totalAllocated: 0, totalDisbursed, approvalRate });
@@ -47,7 +43,10 @@ export default function BursaryReports() {
                 const bData = statsMap.get(a.bursary_id);
                 if (bData) {
                     bData.stats.appCount += 1;
-                    if (a.status === 'approved') { bData.stats.approvedCount += 1; bData.stats.disbursed += (Number(a.bursary?.amount) || 0); }
+                    if (a.status === 'approved') {
+                        bData.stats.approvedCount += 1;
+                        bData.stats.disbursed += (Number(a.bursary?.amount) || 0);
+                    }
                 }
             });
             setBursaryStats(Array.from(statsMap.values()));
@@ -59,86 +58,90 @@ export default function BursaryReports() {
         }
     };
 
+    const handleExport = () => {
+        Alert.alert("Export", "Report dataset ready for CSV export.");
+    };
+
     const statCards = [
-        { label: 'Total Disbursed', value: `$${stats.totalDisbursed.toLocaleString()}`, icon: DollarSign, color: '#FF6B00', bg: isDark ? 'rgba(255,107,0,0.12)' : '#fff7ed', cardBorder: isDark ? 'rgba(255,107,0,0.2)' : '#fed7aa' },
-        { label: 'Applications', value: stats.totalApplications.toString(), icon: Users, color: '#3b82f6', bg: isDark ? '#1e3a5f' : '#eff6ff', cardBorder: isDark ? '#1e3a5f' : '#bfdbfe' },
-        { label: 'Approval Rate', value: `${stats.approvalRate.toFixed(1)}%`, icon: TrendingUp, color: '#10b981', bg: isDark ? '#052e16' : '#f0fdf4', cardBorder: isDark ? '#052e16' : '#bbf7d0' },
-        { label: 'Active Schemes', value: stats.totalBursaries.toString(), icon: FileText, color: '#8b5cf6', bg: isDark ? '#2e1065' : '#f5f3ff', cardBorder: isDark ? '#2e1065' : '#ddd6fe' },
+        { label: 'Total Disbursed', value: `$${stats.totalDisbursed.toLocaleString()}`, icon: DollarSign, color: '#FF6B00', bg: '#fff7ed', cardBorder: '#fed7aa' },
+        { label: 'Applications', value: stats.totalApplications.toString(), icon: Users, color: '#3b82f6', bg: '#eff6ff', cardBorder: '#bfdbfe' },
+        { label: 'Approval Rate', value: `${stats.approvalRate.toFixed(1)}%`, icon: TrendingUp, color: '#10b981', bg: '#f0fdf4', cardBorder: '#bbf7d0' },
+        { label: 'Active Schemes', value: stats.totalBursaries.toString(), icon: FileText, color: '#8b5cf6', bg: '#f5f3ff', cardBorder: '#ddd6fe' },
     ];
 
     if (loading) {
         return (
-            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: isDark ? '#121212' : '#f9fafb' }}>
+            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#f9fafb' }}>
                 <ActivityIndicator size="large" color="#FF6B00" />
             </View>
         );
     }
 
     return (
-        <View style={{ flex: 1, backgroundColor: isDark ? '#121212' : '#f9fafb' }}>
-            <UnifiedHeader
-                title="Finance"
-                subtitle="Bursary Reports"
-                role="Admin"
-                onBack={() => router.back()}
-
-            />
-
-            <ScrollView style={{ flex: 1, padding: 16 }}>
-                <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginBottom: 16 }}>
-                    <TouchableOpacity
-                        onPress={() => Alert.alert("Export", "Report downloaded as CSV (Mock)")}
-                        style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: isDark ? '#242424' : '#f3f4f6', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 12, borderWidth: 1, borderColor: border }}
-                    >
-                        <Download size={16} color={isDark ? '#9ca3af' : '#374151'} />
-                        <Text style={{ marginLeft: 6, fontWeight: '600', color: isDark ? '#9ca3af' : '#374151', fontSize: 13 }}>Export</Text>
+        <View style={{ flex: 1, backgroundColor: '#f9fafb' }}>
+            <StatusBar barStyle="dark-content" />
+            <ScrollView className="flex-1 px-4" contentContainerStyle={{ paddingBottom: 100 }}>
+                {/* Header */}
+                <View className="flex-row items-center justify-between py-6">
+                    <View className="flex-row items-center">
+                        <TouchableOpacity onPress={() => router.back()} className="w-10 h-10 items-center justify-center rounded-full bg-white border border-gray-100 mr-4">
+                            <ArrowLeft size={20} color="#1F2937" />
+                        </TouchableOpacity>
+                        <Text className="text-xl font-black text-gray-900">Financial Reports</Text>
+                    </View>
+                    <TouchableOpacity onPress={handleExport} className="w-10 h-10 items-center justify-center rounded-full bg-teacherBlack">
+                        <Download size={20} color="white" />
                     </TouchableOpacity>
                 </View>
+
                 {/* Stats Grid */}
-                <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginHorizontal: -8, marginBottom: 24 }}>
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginBottom: 24 }}>
                     {statCards.map((card, i) => (
-                        <View key={i} style={{ width: '50%', paddingHorizontal: 8, marginBottom: 16 }}>
-                            <View style={{ backgroundColor: surface, padding: 16, borderRadius: 16, borderWidth: 1, borderColor: card.cardBorder }}>
-                                <View style={{ width: 40, height: 40, backgroundColor: card.bg, borderRadius: 20, alignItems: 'center', justifyContent: 'center', marginBottom: 12 }}>
-                                    <card.icon size={20} color={card.color} />
-                                </View>
-                                <Text style={{ color: textSecondary, fontSize: 10, textTransform: 'uppercase', fontWeight: 'bold', letterSpacing: 0.5 }}>{card.label}</Text>
-                                <Text style={{ fontSize: 22, fontWeight: 'bold', color: textPrimary, marginTop: 2 }}>{card.value}</Text>
+                        <View key={i} style={{ flexBasis: '48%', flexGrow: 1, backgroundColor: 'white', padding: 16, borderRadius: 24, borderWeight: 1, borderColor: card.cardBorder }}>
+                            <View style={{ backgroundColor: card.bg, width: 40, height: 40, borderRadius: 12, justifyContent: 'center', alignItems: 'center', marginBottom: 12 }}>
+                                <card.icon size={20} color={card.color} />
                             </View>
+                            <Text style={{ color: '#9CA3AF', fontSize: 10, fontWeight: '700', textTransform: 'uppercase', marginBottom: 4 }}>{card.label}</Text>
+                            <Text style={{ color: '#111827', fontSize: 18, fontWeight: '800' }}>{card.value}</Text>
                         </View>
                     ))}
                 </View>
 
-                {/* Scheme Performance */}
-                <Text style={{ fontSize: 17, fontWeight: 'bold', color: textPrimary, marginBottom: 16 }}>Scheme Performance</Text>
-
-                {bursaryStats.map((b) => (
-                    <View key={b.id} style={{ backgroundColor: surface, borderRadius: 16, padding: 16, marginBottom: 12, borderWidth: 1, borderColor: border }}>
-                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
-                            <View style={{ flex: 1, marginRight: 8 }}>
-                                <Text style={{ fontWeight: 'bold', color: textPrimary, fontSize: 16 }}>{b.title}</Text>
-                                <Text style={{ color: textSecondary, fontSize: 11, marginTop: 2 }}>Value: ${Number(b.amount).toLocaleString()}</Text>
+                {/* Schemes Breakdown */}
+                <Text className="text-lg font-bold text-gray-900 mb-4">Allocation Breakdown</Text>
+                {bursaryStats.map((item, i) => (
+                    <View key={i} className="bg-white p-5 rounded-3xl border border-gray-100 mb-4">
+                        <View className="flex-row justify-between items-start mb-4">
+                            <View>
+                                <Text className="text-gray-900 font-bold">{item.title}</Text>
+                                <Text className="text-gray-400 text-xs">Target: {item.target_group}</Text>
                             </View>
-                            <View style={{ paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999, backgroundColor: b.status === 'open' ? (isDark ? '#052e16' : '#dcfce7') : (isDark ? '#1f2937' : '#f3f4f6') }}>
-                                <Text style={{ fontSize: 11, fontWeight: 'bold', textTransform: 'uppercase', color: b.status === 'open' ? '#10b981' : textSecondary }}>{b.status}</Text>
-                            </View>
+                            <Text className="text-teacherOrange font-black">${item.amount.toLocaleString()}</Text>
                         </View>
 
-                        <View style={{ flexDirection: 'row', backgroundColor: statsBg, borderRadius: 12, padding: 12, marginTop: 8, justifyContent: 'space-between', borderWidth: 1, borderColor: border }}>
-                            {[
-                                { label: 'Total Apps', value: b.stats.appCount.toString(), color: textPrimary },
-                                { label: 'Approved', value: b.stats.approvedCount.toString(), color: textPrimary },
-                                { label: 'Disbursed', value: `$${b.stats.disbursed.toLocaleString()}`, color: '#10b981' },
-                            ].map((item, i) => (
-                                <View key={i} style={{ alignItems: 'center' }}>
-                                    <Text style={{ color: textSecondary, fontSize: 10, textTransform: 'uppercase', fontWeight: 'bold', letterSpacing: 0.5 }}>{item.label}</Text>
-                                    <Text style={{ color: item.color, fontWeight: 'bold', fontSize: 16, marginTop: 2 }}>{item.value}</Text>
-                                </View>
-                            ))}
+                        <View className="h-2 bg-gray-50 rounded-full overflow-hidden mb-4">
+                            <View
+                                style={{ width: `${Math.min(100, (item.stats.disbursed / item.amount) * 100)}%` }}
+                                className="h-full bg-teacherOrange rounded-full"
+                            />
+                        </View>
+
+                        <View className="flex-row justify-between items-center">
+                            <View>
+                                <Text className="text-gray-400 text-[10px] font-bold uppercase">Apps</Text>
+                                <Text className="text-gray-900 font-bold text-xs">{item.stats.appCount}</Text>
+                            </View>
+                            <View className="items-center">
+                                <Text className="text-gray-400 text-[10px] font-bold uppercase">Approved</Text>
+                                <Text className="text-gray-900 font-bold text-xs">{item.stats.approvedCount}</Text>
+                            </View>
+                            <View className="items-end">
+                                <Text className="text-gray-400 text-[10px] font-bold uppercase">Disbursed</Text>
+                                <Text className="text-teacherBlack font-bold text-xs">${item.stats.disbursed.toLocaleString()}</Text>
+                            </View>
                         </View>
                     </View>
                 ))}
-                <View style={{ height: 80 }} />
             </ScrollView>
         </View>
     );
