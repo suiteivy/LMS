@@ -57,7 +57,14 @@ The `institutions` table tracks the subscription lifecycle using the following f
 - `trial_start_date` (TIMESTAMPTZ): The timestamp when the trial began.
 - `trial_end_date` (TIMESTAMPTZ): Exactly 30 days after the start date.
 - `subscription_status` (TEXT): Currently constrained to `trial`, `active`, `expired`, or `cancelled`.
-- `subscription_plan` (TEXT): For future billing tiers (`free`, `premium`, etc.).
+- `subscription_plan` (TEXT): For future billing tiers (`trial`, `basic`, `pro`, `premium`).
+- `has_used_trial` (BOOLEAN): Indicates whether the institution has used their free trial (prevents re-registration abuse).
+
+### Database Functions
+The following helper functions are available:
+- `is_subscription_active(p_institution_id UUID)`: Returns true if the institution has an active subscription or valid trial.
+- `get_current_user_institution_id()`: Returns the institution_id for the currently authenticated user.
+- `get_current_user_role()`: Returns the role of the currently authenticated user.
 
 ### Backend Enforcement
 - Core functionality endpoints (e.g., `GET` requests, student submissions) remain accessible.

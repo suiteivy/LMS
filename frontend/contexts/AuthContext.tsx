@@ -176,7 +176,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setProfile(userData as UserProfile)
 
       // Set Subscription Data
-      if (userData.institutions) {
+      if (userData.subscription) {
+        setSubscriptionStatus(userData.subscription.status || null)
+        setSubscriptionPlan(userData.subscription.plan || null)
+        setTrialEndDate(userData.subscription.trialEndDate || null)
+      } else if (userData.institutions) {
+        // Legacy fallback
         setSubscriptionStatus(userData.institutions.subscription_status || null)
         setSubscriptionPlan(userData.institutions.subscription_plan || null)
         setTrialEndDate(userData.institutions.trial_end_date || null)

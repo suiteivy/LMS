@@ -67,6 +67,25 @@ exports.login = async (req, res) => {
 
     const isMaster = userData.admins?.[0]?.is_master || false;
 
+    // Fetch institution subscription details
+    let subscription = null;
+    if (userData.institution_id) {
+      const { data: instData } = await supabase
+        .from('institutions')
+        .select('subscription_status, subscription_plan, trial_end_date, has_used_trial')
+        .eq('id', userData.institution_id)
+        .single();
+
+      if (instData) {
+        subscription = {
+          status: instData.subscription_status,
+          plan: instData.subscription_plan,
+          trialEndDate: instData.trial_end_date,
+          hasUsedTrial: instData.has_used_trial
+        };
+      }
+    }
+
     res.status(200).json({
       message: "Login successful",
       token: authData.session.access_token,
@@ -78,6 +97,7 @@ exports.login = async (req, res) => {
         institution_id: userData.institution_id,
         isMaster,
         customId,
+        subscription
       },
     });
   } catch (err) {
