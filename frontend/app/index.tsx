@@ -848,9 +848,9 @@ export default function Index() {
             >
               {[
                 { name: "Trial", price: "Free", desc: "30-day full access", features: ["1 Admin", "Up to 50 Students", "Core Modules", "Trial Banner"] },
-                { name: "Basic", price: "$49/mo", desc: "For growing schools", features: ["Unlimited Teachers", "Up to 500 Students", "Standard Analytics", "Email Support"] },
-                { name: "Pro", price: "$99/mo", desc: "For advanced institutions", features: ["Up to 1000 Students", "Advanced Analytics", "Finance Module", "Priority Support"] },
-                { name: "Premium", price: "$199/mo", desc: "The ultimate solution", features: ["Unlimited Students", "Custom Branding", "Bulk Operations", "24/7 Support"] }
+                { name: "Basic", price: "$150/mo", desc: "For growing schools", features: ["Unlimited Teachers", "Up to 500 Students", "Standard Analytics", "Email Support"] },
+                { name: "Pro", price: "$350/mo", desc: "For advanced institutions", features: ["Up to 1000 Students", "Advanced Analytics", "Finance Module", "Priority Support"] },
+                { name: "Premium", price: "$550/mo", desc: "The ultimate solution", features: ["Unlimited Students", "Custom Branding", "Bulk Operations", "24/7 Support"] }
               ].map((plan) => (
                 <View
                   key={plan.name}
