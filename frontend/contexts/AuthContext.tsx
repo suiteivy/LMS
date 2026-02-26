@@ -136,12 +136,17 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     if (session) startTimeoutTimer()
   }
 
-  const startTimeoutTimer = () => {
+  const startTimeoutTimer = (isDemoSession?: boolean) => {
     clearTimer()
+    const isActuallyDemo = isDemoSession !== undefined ? isDemoSession : isDemo;
+    const durationMs = isActuallyDemo ? 15 * 60 * 1000 : 24 * 60 * 60 * 1000;
+
+    console.log(`Starting session timer for ${isActuallyDemo ? 'demo' : 'standard'} user: ${durationMs / 3600000} hours`);
+
     timerRef.current = setTimeout(async () => {
-      console.log('Session timeout reached (24 hours), logging out...')
+      console.log(`Session timeout reached (${isActuallyDemo ? '15 minutes' : '24 hours'}), logging out...`)
       await handleLogout()
-    }, 24 * 60 * 60 * 1000)
+    }, durationMs)
   }
 
   const lastLoadedUserId = useRef<string | null>(null);
@@ -257,7 +262,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             if (isDemoUser) await AsyncStorage.setItem('is_demo_mode', 'true');
 
             await loadUserProfile(validatedUser.id);
-            startTimeoutTimer();
+            startTimeoutTimer(isDemoUser);
           }
         } else {
           setSession(null);
@@ -283,10 +288,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
         if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
           currentSessionRef.current = session;
-          startTimeoutTimer()
           if (session?.user) {
             const isDemoUser = session.user.email?.startsWith('demo.') || false;
             setIsDemo(isDemoUser);
+            startTimeoutTimer(isDemoUser);
             if (isDemoUser) {
               AsyncStorage.setItem('is_demo_mode', 'true');
             } else {

@@ -17,8 +17,22 @@ import {
   Sparkles,
   Star,
   Timer,
-  Users
+  Users,
+  MoveRight
 } from "lucide-react-native";
+import { BlurView } from 'expo-blur';
+import Svg, { Defs, LinearGradient, Stop, Rect, Circle, Path } from 'react-native-svg';
+import {
+  useSharedValue,
+  useAnimatedStyle,
+  useAnimatedProps,
+  withRepeat,
+  withTiming,
+  withSequence,
+  interpolate,
+  Extrapolate
+} from 'react-native-reanimated';
+import Reanimated from 'react-native-reanimated';
 import {
   ActivityIndicator, Animated, Dimensions, KeyboardAvoidingView,
   Modal,
@@ -30,6 +44,298 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
+
+// ─── Fancy Pricing Card Component ──────────────────────────────────────────
+const AnimatedCircle = Reanimated.createAnimatedComponent(Circle);
+
+const FancyPricingCard = ({ plan, openRegistrationModal }: any) => {
+  const hoverValue = useSharedValue(0);
+  const animValue = useSharedValue(0);
+  const tiltX = useSharedValue(0);
+  const tiltY = useSharedValue(0);
+  const shineX = useSharedValue(-100);
+
+  const borderAnim = useSharedValue(0);
+
+  useEffect(() => {
+    animValue.value = withRepeat(
+      withSequence(
+        withTiming(1, { duration: 5000 }),
+        withTiming(0, { duration: 5000 })
+      ),
+      -1,
+      true
+    );
+
+    borderAnim.value = withRepeat(
+      withTiming(1, { duration: 4000 }),
+      -1,
+      false
+    );
+  }, []);
+
+  const animatedStyle = useAnimatedStyle(() => {
+    return {
+      transform: [
+        { perspective: 1000 },
+        { translateY: interpolate(hoverValue.value, [0, 1], [0, -12]) },
+        { scale: interpolate(hoverValue.value, [0, 1], [1, 1.03]) },
+        { rotateX: `${tiltX.value}deg` },
+        { rotateY: `${tiltY.value}deg` },
+      ],
+      shadowOpacity: interpolate(hoverValue.value, [0, 1], [0.1, 0.4]),
+      shadowRadius: interpolate(hoverValue.value, [0, 1], [10, 25]),
+    };
+  });
+
+  const shineStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: shineX.value }],
+  }));
+
+  const blob1Props = useAnimatedProps(() => ({
+    cx: interpolate(animValue.value, [0, 1], [10, 40]) + '%',
+    cy: interpolate(animValue.value, [0, 1], [10, 30]) + '%',
+  }));
+
+  const blob2Props = useAnimatedProps(() => ({
+    cx: interpolate(animValue.value, [0, 1], [90, 60]) + '%',
+    cy: interpolate(animValue.value, [0, 1], [90, 70]) + '%',
+  }));
+
+  const onPointerMove = (e: any) => {
+    if (Platform.OS !== 'web') return;
+    const { width, height, left, top } = e.currentTarget.getBoundingClientRect();
+    const x = e.clientX - left;
+    const y = e.clientY - top;
+
+    const centerX = width / 2;
+    const centerY = height / 2;
+
+    tiltY.value = withTiming((x - centerX) / 15, { duration: 100 });
+    tiltX.value = withTiming((centerY - y) / 15, { duration: 100 });
+  };
+
+  const onHoverIn = () => {
+    if (Platform.OS === 'web') {
+      hoverValue.value = withTiming(1, { duration: 300 });
+      shineX.value = withSequence(
+        withTiming(-100, { duration: 0 }),
+        withTiming(400, { duration: 800 })
+      );
+    }
+  };
+
+  const onHoverOut = () => {
+    if (Platform.OS === 'web') {
+      hoverValue.value = withTiming(0, { duration: 300 });
+      tiltX.value = withTiming(0);
+      tiltY.value = withTiming(0);
+    }
+  };
+
+  return (
+    <Reanimated.View
+      style={[{
+        width: Platform.OS === 'web' && SCREEN_WIDTH > 1100 ? '23%' : (Platform.OS === 'web' && SCREEN_WIDTH > 768 ? '46%' : '100%'),
+        minWidth: 280,
+        marginVertical: 12,
+        position: 'relative',
+        shadowColor: plan.accent,
+        shadowOffset: { width: 0, height: 10 },
+      }, animatedStyle]}
+      //@ts-ignore - for web hover
+      onPointerEnter={onHoverIn}
+      onPointerLeave={onHoverOut}
+      onPointerMove={onPointerMove}
+    >
+      {/* Premium Rotating Border */}
+      {plan.premium && Platform.OS === 'web' && (
+        <View style={{ position: 'absolute', top: -2, left: -2, right: -2, bottom: -2, borderRadius: 38, overflow: 'hidden' }}>
+          <Reanimated.View
+            style={[useAnimatedStyle(() => ({
+              transform: [{ rotate: `${borderAnim.value * 360}deg` }]
+            })), {
+              width: '200%',
+              height: '200%',
+              position: 'absolute',
+              top: '-50%',
+              left: '-50%',
+              //@ts-ignore
+              backgroundImage: 'conic-gradient(from 0deg, transparent, #8B5CF6, #EC4899, #3B82F6, transparent)',
+            }] as any}
+          />
+        </View>
+      )}
+
+      <View style={{
+        backgroundColor: 'rgba(255,255,255,0.04)',
+        borderRadius: 36,
+        overflow: 'hidden',
+        borderWidth: 1.5,
+        borderColor: plan.popular ? `${plan.accent}66` : 'rgba(255,255,255,0.1)',
+        height: '100%',
+        flex: 1,
+        backdropFilter: Platform.OS === 'web' ? 'blur(20px)' : 'none'
+      } as any}>
+
+        {/* Shine Animation - Web Only */}
+        {Platform.OS === 'web' && (
+          <Reanimated.View
+            style={[{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              width: 50,
+              height: '100%',
+              backgroundColor: 'rgba(255,255,255,0.15)',
+              transform: [{ skewX: '-20deg' }],
+              zIndex: 10,
+            }, shineStyle]}
+          />
+        )}
+
+        {/* Background Decorative Shapes */}
+        <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, opacity: 0.25 }}>
+          <Svg height="100%" width="100%">
+            <Defs>
+              <LinearGradient id={`grad-${plan.name}`} x1="0%" y1="0%" x2="100%" y2="100%">
+                <Stop offset="0%" stopColor={plan.accent} stopOpacity="0.6" />
+                <Stop offset="100%" stopColor={plan.accent} stopOpacity="0" />
+              </LinearGradient>
+            </Defs>
+            <AnimatedCircle r="100" fill={`url(#grad-${plan.name})`} animatedProps={blob1Props} />
+            <AnimatedCircle r="120" fill={`url(#grad-${plan.name})`} animatedProps={blob2Props} />
+          </Svg>
+        </View>
+
+        {/* Dynamic Glow for Pro/Premium */}
+        {(plan.popular || plan.premium) && (
+          <View style={{
+            position: 'absolute',
+            top: '20%',
+            left: '20%',
+            right: '20%',
+            bottom: '20%',
+            backgroundColor: plan.accent,
+            opacity: 0.1,
+            borderRadius: 100,
+            filter: 'blur(60px)',
+            zIndex: -1
+          } as any} />
+        )}
+
+        {Platform.OS !== 'web' && (
+          <BlurView intensity={30} style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }} tint="dark" />
+        )}
+
+        <View style={{ padding: 36, flex: 1 }}>
+          {(plan.popular || plan.premium) && (
+            <View style={{
+              position: 'absolute',
+              top: 20,
+              right: -30,
+              backgroundColor: plan.premium ? '#8B5CF6' : '#F59E0B',
+              paddingHorizontal: 40,
+              paddingVertical: 6,
+              transform: [{ rotate: '45deg' }],
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 4,
+              shadowColor: '#000',
+              shadowOffset: { width: 0, height: 2 },
+              shadowOpacity: 0.3,
+              shadowRadius: 4,
+              zIndex: 20
+            }}>
+              <Text style={{ color: 'white', fontWeight: '900', fontSize: 10, textTransform: 'uppercase', letterSpacing: 1 }}>
+                {plan.premium ? 'Elite' : 'Popular'}
+              </Text>
+            </View>
+          )}
+
+          <View style={{
+            marginBottom: 28,
+            backgroundColor: `${plan.accent}15`,
+            width: 64,
+            height: 64,
+            borderRadius: 22,
+            alignItems: 'center',
+            justifyContent: 'center',
+            borderWidth: 1.5,
+            borderColor: `${plan.accent}33`
+          }}>
+            {React.cloneElement(plan.icon, { size: 28, color: plan.accent })}
+          </View>
+
+          <Text style={{
+            color: plan.accent,
+            fontWeight: "800",
+            fontSize: 14,
+            textTransform: 'uppercase',
+            letterSpacing: 3,
+            marginBottom: 14
+          }}>{plan.name}</Text>
+
+          <View style={{ flexDirection: 'row', alignItems: 'flex-end', marginBottom: 14 }}>
+            <Text style={{ color: "white", fontWeight: "900", fontSize: 52 }}>{plan.price.split('/')[0]}</Text>
+            {plan.price.includes('/') && (
+              <Text style={{ color: "rgba(255,255,255,0.4)", fontWeight: "600", fontSize: 20, marginBottom: 12, marginLeft: 4 }}>/{plan.price.split('/')[1]}</Text>
+            )}
+          </View>
+
+          <Text style={{ color: "rgba(255,255,255,0.5)", fontSize: 16, marginBottom: 36, lineHeight: 24 }}>{plan.desc}</Text>
+
+          <View style={{ gap: 18, marginBottom: 44, flex: 1 }}>
+            {plan.features.map((feat: string, i: number) => (
+              <View key={i} style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <View style={{
+                  width: 24,
+                  height: 24,
+                  borderRadius: 8,
+                  backgroundColor: `${plan.accent}15`,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  marginRight: 16,
+                  borderWidth: 1,
+                  borderColor: `${plan.accent}33`
+                }}>
+                  <Check size={14} color={plan.accent} strokeWidth={3} />
+                </View>
+                <Text style={{ color: "rgba(255,255,255,0.9)", fontSize: 15, fontWeight: '500' }}>{feat}</Text>
+              </View>
+            ))}
+          </View>
+
+          <TouchableOpacity
+            style={{
+              width: '100%',
+              paddingVertical: 20,
+              borderRadius: 24,
+              alignItems: 'center',
+              backgroundColor: plan.accent,
+              shadowColor: plan.accent,
+              shadowOffset: { width: 0, height: 12 },
+              shadowOpacity: 0.4,
+              shadowRadius: 20,
+              borderWidth: 1,
+              borderColor: 'rgba(255,255,255,0.2)'
+            }}
+            onPress={() => openRegistrationModal(plan.name)}
+            activeOpacity={0.85}
+          >
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+              <Text style={{ color: "white", fontWeight: "900", fontSize: 17 }}>
+                {plan.name === 'Trial' ? 'Get Started' : 'Subscribe Now'}
+              </Text>
+              <MoveRight size={20} color="white" />
+            </View>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </Reanimated.View>
+  );
+};
 
 // ─── Discount Banner ────────────────────────────────────────────────────────
 // Offer ends Saturday 2026-02-28 00:00:00 EAT (UTC+3)
@@ -842,50 +1148,56 @@ export default function Index() {
                 flexDirection: "row",
                 flexWrap: "wrap",
                 justifyContent: "center",
-                gap: Platform.OS === "web" ? 20 : 0,
+                gap: Platform.OS === "web" ? 24 : 0,
                 width: "100%",
+                paddingTop: 20
               }}
             >
               {[
-                { name: "Trial", price: "Free", desc: "30-day full access", features: ["1 Admin Account", "Up to 50 Students", "Core Modules", "Trial Banner"] },
-                { name: "Basic", price: "$49/mo", desc: "For growing schools", features: ["2 Admin Accounts", "Unlimited Teachers", "Up to 500 Students", "Standard Analytics"] },
-                { name: "Pro", price: "$99/mo", desc: "For advanced institutions", features: ["5 Admin Accounts", "Up to 1000 Students", "Advanced Analytics", "Finance Module"] },
-                { name: "Premium", price: "$199/mo", desc: "The ultimate solution", features: ["Unlimited Admins", "Unlimited Students", "Custom Branding", "Bulk Operations"] }
+                {
+                  name: "Trial",
+                  price: "Free",
+                  desc: "Perfect to explore",
+                  features: ["1 Admin Account", "Up to 50 Students", "Core Modules", "Trial Banner"],
+                  icon: <Timer size={24} color="#94A3B8" />,
+                  accent: "#94A3B8",
+                  bg: "rgba(148, 163, 184, 0.05)"
+                },
+                {
+                  name: "Basic",
+                  price: "$49/mo",
+                  desc: "For growing schools",
+                  features: ["2 Admin Accounts", "Unlimited Teachers", "Up to 500 Students", "Standard Analytics"],
+                  icon: <BookOpen size={24} color="#3B82F6" />,
+                  accent: "#3B82F6",
+                  bg: "rgba(59, 130, 246, 0.05)"
+                },
+                {
+                  name: "Pro",
+                  price: "$99/mo",
+                  desc: "Advanced institutions",
+                  features: ["5 Admin Accounts", "Up to 1000 Students", "Advanced Analytics", "Finance Module"],
+                  icon: <Crown size={24} color="#F59E0B" />,
+                  accent: "#F59E0B",
+                  bg: "rgba(245, 158, 11, 0.08)",
+                  popular: true
+                },
+                {
+                  name: "Premium",
+                  price: "$199/mo",
+                  desc: "Ultimate solution",
+                  features: ["Unlimited Admins", "Unlimited Students", "Custom Branding", "Bulk Operations"],
+                  icon: <Sparkles size={24} color="#8B5CF6" />,
+                  accent: "#8B5CF6",
+                  bg: "rgba(139, 92, 246, 0.1)",
+                  premium: true
+                }
               ].map((plan) => (
-                <View
+                <FancyPricingCard
                   key={plan.name}
-                  style={{
-                    backgroundColor: 'rgba(255,255,255,0.04)',
-                    borderRadius: 24,
-                    padding: 24,
-                    borderWidth: 1,
-                    borderColor: 'rgba(255,255,255,0.1)',
-                    width: Platform.OS === 'web' && SCREEN_WIDTH > 800 ? '30%' : '100%',
-                    minWidth: 280,
-                    marginVertical: 10
-                  }}
-                >
-                  <Text style={{ color: "#FF8C40", fontWeight: "800", fontSize: 20, marginBottom: 8 }}>{plan.name}</Text>
-                  <Text style={{ color: "white", fontWeight: "900", fontSize: 32, marginBottom: 4 }}>{plan.price}</Text>
-                  <Text style={{ color: "rgba(255,255,255,0.5)", fontSize: 13, marginBottom: 24, paddingBottom: 24, borderBottomWidth: 1, borderBottomColor: "rgba(255,255,255,0.1)" }}>{plan.desc}</Text>
-                  <View style={{ gap: 12, marginBottom: 32 }}>
-                    {plan.features.map((feat, i) => (
-                      <View key={i} style={{ flexDirection: 'row', alignItems: 'center' }}>
-                        <BadgeCheck size={18} color="#FF8C40" />
-                        <Text style={{ color: "rgba(255,255,255,0.8)", marginLeft: 10, fontSize: 13 }}>{feat}</Text>
-                      </View>
-                    ))}
-                  </View>
-                  <TouchableOpacity
-                    style={{
-                      width: '100%', paddingVertical: 16, borderRadius: 16, alignItems: 'center',
-                      backgroundColor: plan.name === 'Essential' ? '#FF6B00' : 'rgba(255,255,255,0.1)'
-                    }}
-                    onPress={() => openRegistrationModal(plan.name)}
-                  >
-                    <Text style={{ color: "white", fontWeight: "700" }}>Get Started</Text>
-                  </TouchableOpacity>
-                </View>
+                  plan={plan}
+                  openRegistrationModal={openRegistrationModal}
+                />
               ))}
             </View>
           </View>

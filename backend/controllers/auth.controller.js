@@ -87,9 +87,13 @@ exports.login = async (req, res) => {
       }
     }
 
+    // For actual users, we increase the expiry to 24 hours
+    const expiresIn = 24 * 60 * 60; // 86400 seconds
+
     res.status(200).json({
       message: "Login successful",
       token: authData.session.access_token,
+      expiresIn,
       user: {
         uid: user.id,
         email: user.email,

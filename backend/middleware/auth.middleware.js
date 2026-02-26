@@ -26,6 +26,31 @@ async function authMiddleware(req, res, next) {
       return res.status(401).json({ error: "Invalid token" });
     }
 
+    // --- Demo User Enforcement ---
+    // If the user is a demo user, we MUST enforce the 15-minute limit
+    // regardless of the global Supabase JWT expiry setting.
+    if (user.email && user.email.startsWith('demo.')) {
+      const { data: trialSession, error: trialError } = await supabase
+        .from('trial_sessions')
+        .select('expires_at')
+        .eq('demo_user_id', user.id)
+        .single();
+
+      if (trialError || !trialSession) {
+        console.warn(`[AuthMiddleware] No trial session found for demo user: ${user.id}`);
+        return res.status(401).json({ error: "Trial session missing or expired" });
+      }
+
+      const expiresAt = new Date(trialSession.expires_at).getTime();
+      if (Date.now() > expiresAt) {
+        console.log(`[AuthMiddleware] Trial session expired for demo user: ${user.id}`);
+        // Clean up if expired
+        await supabase.from('trial_sessions').delete().eq('demo_user_id', user.id).catch(() => { });
+        return res.status(401).json({ error: "Trial session has expired" });
+      }
+    }
+    // ----------------------------
+
     // Check cache first
     const cached = profileCache.get(user.id);
     const now = Date.now();
