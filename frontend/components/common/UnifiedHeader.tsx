@@ -4,6 +4,7 @@ import { Ionicons } from "@expo/vector-icons";
 import React from "react";
 import { Text, TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { MasterAdminBadge } from "../shared/SubscriptionComponents";
 
 interface UnifiedHeaderProps {
   title: string;
@@ -13,6 +14,7 @@ interface UnifiedHeaderProps {
   onNotificationPress?: () => void;
   onBack?: () => void;
   rightActions?: React.ReactNode;
+  showMasterBadge?: boolean;
 }
 
 export const UnifiedHeader: React.FC<UnifiedHeaderProps> = ({
@@ -23,6 +25,7 @@ export const UnifiedHeader: React.FC<UnifiedHeaderProps> = ({
   onNotificationPress,
   onBack,
   rightActions,
+  showMasterBadge = false,
 }) => {
   const insets = useSafeAreaInsets();
   const { setShowNotifications, unreadCount } = useNotifications();
@@ -83,24 +86,27 @@ export const UnifiedHeader: React.FC<UnifiedHeaderProps> = ({
             <Ionicons name="school" size={20} color="#FF6900" />
           </View>
 
-          <View style={{ flex: 1 }}>
-            <Text style={{
-              fontSize: 10,
-              fontWeight: 'bold',
-              color: isDark ? '#6b7280' : '#9ca3af',
-              textTransform: 'uppercase',
-              letterSpacing: 1.5,
-            }}>
-              {title}
-            </Text>
-            <Text style={{
-              fontSize: 20,
-              fontWeight: 'bold',
-              color: isDark ? '#f1f1f1' : '#000000',
-              letterSpacing: -0.5,
-            }} numberOfLines={1}>
-              {subtitle || "Portal"}<Text style={{ color: '#FF6900' }}>.</Text>
-            </Text>
+          <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center' }}>
+            <View style={{ flex: 1 }}>
+              <Text style={{
+                fontSize: 10,
+                fontWeight: 'bold',
+                color: isDark ? '#6b7280' : '#9ca3af',
+                textTransform: 'uppercase',
+                letterSpacing: 1.5,
+              }}>
+                {title}
+              </Text>
+              <Text style={{
+                fontSize: 20,
+                fontWeight: 'bold',
+                color: isDark ? '#f1f1f1' : '#000000',
+                letterSpacing: -0.5,
+              }} numberOfLines={1}>
+                {subtitle || "Portal"}<Text style={{ color: '#FF6900' }}>.</Text>
+              </Text>
+            </View>
+            {showMasterBadge && <MasterAdminBadge />}
           </View>
         </View>
 

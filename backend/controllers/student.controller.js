@@ -12,6 +12,7 @@ exports.getMyFinance = async (req, res) => {
             .from('students')
             .select('id, fee_balance')
             .eq('user_id', userId)
+            .eq('institution_id', req.institution_id)
             .single();
 
         if (!student) return res.status(404).json({ error: "Student profile not found" });
@@ -21,6 +22,7 @@ exports.getMyFinance = async (req, res) => {
             .from("financial_transactions")
             .select("*")
             .eq("user_id", userId)
+            .eq("institution_id", req.institution_id)
             .order("date", { ascending: false });
 
         // Calculate paid and total

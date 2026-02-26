@@ -34,7 +34,7 @@ const checkSubscription = async (req, res, next) => {
     // 2. Fetch the institution's subscription details
     const { data: institution, error: instError } = await supabase
       .from('institutions')
-      .select('subscription_status, trial_end_date')
+      .select('subscription_status, subscription_plan, trial_end_date')
       .eq('id', user.institution_id)
       .single();
 
@@ -57,18 +57,55 @@ const checkSubscription = async (req, res, next) => {
       supabase.from('institutions').update({ subscription_status: 'expired' }).eq('id', user.institution_id).then();
     }
 
-    // Evaluate Freemium Limits (e.g. max 50 students during trial)
-    if (subscription_status === 'trial') {
+    // Evaluate Student Limits based on Plan
+    const planLimits = {
+      'trial': 50,
+      'basic': 500,
+      'pro': 1000,
+      'premium': Infinity
+    };
+
+    const maxStudents = planLimits[institution.subscription_plan] || 50;
+
+    if (maxStudents !== Infinity && (subscription_status === 'active' || subscription_status === 'trial')) {
       const { count: studentCount } = await supabase
         .from('users')
         .select('*', { count: 'exact', head: true })
         .eq('institution_id', user.institution_id)
         .eq('role', 'student');
 
-      if (studentCount > 50) {
-        // Act as if expired for the duration of this request, but we don't permanently set it to 'expired' 
-        // so they can remove students to get back under the limit if necessary
-        subscription_status = 'expired';
+      if (studentCount > maxStudents) {
+        subscription_status = 'expired'; // Or 'over_limit' if we had that status
+      }
+    }
+
+    // Evaluate Feature Gating
+    const path = req.path;
+    const method = req.method;
+
+    const restrictedFeatures = [
+      { path: '/api/finance', minPlan: 'pro' },
+      { path: '/api/bursary', minPlan: 'pro' },
+      { path: '/api/analytics', minPlan: 'basic' }, // Basic analytics allowed
+      { path: '/api/analytics/advanced', minPlan: 'pro' },
+      { path: '/api/reports/custom', minPlan: 'premium' },
+      { path: '/api/settings/branding', minPlan: 'premium' },
+      { path: '/api/bulk', minPlan: 'premium' }
+    ];
+
+    const currentPlan = institution.subscription_plan || 'trial';
+    const planOrder = ['trial', 'basic', 'pro', 'premium'];
+    const currentPlanRank = planOrder.indexOf(currentPlan);
+
+    for (const feature of restrictedFeatures) {
+      if (path.includes(feature.path)) {
+        const minPlanRank = planOrder.indexOf(feature.minPlan);
+        if (currentPlanRank < minPlanRank) {
+          return res.status(403).json({
+            error: `Your current plan (${currentPlan.toUpperCase()}) does not include access to this feature. Please upgrade to ${feature.minPlan.toUpperCase()}.`,
+            code: 'PLAN_INSUFFICIENT'
+          });
+        }
       }
     }
 
@@ -95,8 +132,8 @@ const checkSubscription = async (req, res, next) => {
 
       if (!isAllowed) {
         return res.status(403).json({
-          error: 'Your institution\'s free trial has expired.',
-          code: 'TRIAL_EXPIRED'
+          error: 'Your institution\'s subscription has expired or is over the student limit. Access is now Read-Only.',
+          code: 'SUBSCRIPTION_RESTRICTED'
         });
       }
     }

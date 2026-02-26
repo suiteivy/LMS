@@ -111,7 +111,7 @@ const DebugSessionInfo = ({ onClose }: { onClose: () => void }) => {
 };
 
 export default function AdminDashboard() {
-  const { profile, isDemo, signOut, subscriptionPlan, subscriptionStatus } = useAuth();
+  const { profile, isDemo, signOut, subscriptionPlan, subscriptionStatus, isMaster } = useAuth();
   const { stats, loading: statsLoading } = useDashboardStats();
   const { isDark } = useTheme();
   const [recentUsers, setRecentUsers] = useState<User[]>([]);
@@ -192,6 +192,7 @@ export default function AdminDashboard() {
         subtitle={profile?.full_name?.split(" ")[0] || "Administrator"}
         role="Admin"
         showNotification={true}
+        showMasterBadge={isMaster}
       />
 
       {showDebug && (

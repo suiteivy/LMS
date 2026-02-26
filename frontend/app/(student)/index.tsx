@@ -6,6 +6,7 @@ import { useRouter } from "expo-router";
 import { ArrowRight, Book, BookOpen, CalendarCheck, Clock, GraduationCap, Star, Wallet } from 'lucide-react-native';
 import React, { useEffect, useState } from "react";
 import { ActivityIndicator, RefreshControl, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { SubscriptionBanner } from "@/components/shared/SubscriptionComponents";
 
 interface QuickActionProps {
   icon: any;
@@ -86,20 +87,20 @@ export default function Index() {
         .eq('student_id', studentId);
 
       if (gradesData && gradesData.length > 0) {
-        const scores = gradesData
-        .filter(g => g.total_grade !== null)
-        .map(g => g.total_grade);
+        const scores = (gradesData as any[])
+          .filter(g => g.total_grade !== null)
+          .map(g => g.total_grade);
 
-        if(scores.length > 0) {
+        if (scores.length > 0) {
           const avg = scores.reduce((a, b) => a + b, 0) / scores.length;
-          setGpa((avg /25).toFixed(2));
-        }else {
+          setGpa((avg / 25).toFixed(2));
+        } else {
           setGpa("0.00");
         }
       } else {
         setGpa("0.00");
       }
-        
+
 
       const { data: attendanceData } = await supabase
         .from('attendance')
@@ -173,6 +174,7 @@ export default function Index() {
         role="Student"
         showNotification={true}
       />
+      <SubscriptionBanner />
 
       <ScrollView
         className="flex-1"

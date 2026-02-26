@@ -19,7 +19,9 @@ interface AuthContextType {
   parentId: string | null
   displayId: string | null
   subscriptionStatus: string | null
+  subscriptionPlan: string | null
   trialEndDate: string | null
+  isMaster: boolean
   loading: boolean
   isInitializing: boolean
   isProfileLoading: boolean
@@ -31,6 +33,7 @@ interface AuthContextType {
   resetSessionTimer: () => void
   startDemo: (role: string) => Promise<{ data: any; error: any }>
   isDemo: boolean
+  isTrial: boolean
 }
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -61,7 +64,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   })
 
   const [subscriptionStatus, setSubscriptionStatus] = useState<string | null>(null)
+  const [subscriptionPlan, setSubscriptionPlan] = useState<string | null>(null)
   const [trialEndDate, setTrialEndDate] = useState<string | null>(null)
+  const [isMaster, setIsMaster] = useState(false)
   const [isInitializing, setIsInitializing] = useState(true)
   const [isProfileLoading, setIsProfileLoading] = useState(false)
   const [loading, setLoading] = useState(true)
@@ -84,7 +89,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setProfile(null);
     setRoleInfo({ studentId: null, teacherId: null, adminId: null, parentId: null, displayId: null });
     setSubscriptionStatus(null);
+    setSubscriptionPlan(null);
     setTrialEndDate(null);
+    setIsMaster(false);
     setLoading(false);       // ← KEY FIX: drop the overlay immediately
     setIsInitializing(false);
     clearTimer();
@@ -150,7 +157,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setIsProfileLoading(true);
       const { data, error } = await supabase
         .from('users')
-        .select('*, students(id), teachers(id), admins(id), parents(id), institutions(subscription_status, trial_end_date)')
+        .select('*, students(id), teachers(id), admins(id), parents(id), institutions(subscription_status, subscription_plan, trial_end_date)')
         .eq('id', userId)
         .single()
 
@@ -158,7 +165,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         console.error('Error loading profile:', error)
         setProfile(null)
         setSubscriptionStatus(null)
+        setSubscriptionPlan(null)
         setTrialEndDate(null)
+        setIsMaster(false)
         lastLoadedUserId.current = null;
         return null
       }
@@ -169,11 +178,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       // Set Subscription Data
       if (userData.institutions) {
         setSubscriptionStatus(userData.institutions.subscription_status || null)
+        setSubscriptionPlan(userData.institutions.subscription_plan || null)
         setTrialEndDate(userData.institutions.trial_end_date || null)
       } else {
         setSubscriptionStatus(null)
+        setSubscriptionPlan(null)
         setTrialEndDate(null)
       }
+
+      const isMasterAdmin = userData.admins?.[0]?.is_master || false;
+      setIsMaster(isMasterAdmin);
 
       lastLoadedUserId.current = userId;
 
@@ -280,7 +294,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           setProfile(null)
           setRoleInfo({ studentId: null, teacherId: null, adminId: null, parentId: null, displayId: null })
           setSubscriptionStatus(null)
+          setSubscriptionPlan(null)
           setTrialEndDate(null)
+          setIsMaster(false)
           setLoading(false)        // ← KEY FIX: prevent 3s watchdog delay
           setIsInitializing(false) // ← belt-and-suspenders
 
@@ -351,6 +367,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     parentId: roleInfo.parentId,
     displayId: roleInfo.displayId,
     subscriptionStatus,
+    subscriptionPlan,
     trialEndDate,
     loading,
     isInitializing,
@@ -363,7 +380,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     resetSessionTimer,
     startDemo: handleStartDemo,
     isDemo,
-  }), [session, user, profile, roleInfo, subscriptionStatus, trialEndDate, loading, isInitializing, isProfileLoading, isDemo]);
+    isTrial: subscriptionStatus === 'trial' || subscriptionPlan === 'trial',
+    isMaster,
+  }), [session, user, profile, roleInfo, subscriptionStatus, subscriptionPlan, trialEndDate, loading, isInitializing, isProfileLoading, isDemo]);
 
   return (
     <AuthContext.Provider value={value}>

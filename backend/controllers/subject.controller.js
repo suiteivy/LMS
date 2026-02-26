@@ -83,6 +83,7 @@ exports.enrollStudentInSubject = async (req, res) => {
       .insert([{
         student_id,
         subject_id,
+        institution_id: req.institution_id,
         status: 'enrolled',
         enrollment_date: new Date().toISOString()
       }]);

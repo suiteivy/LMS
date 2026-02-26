@@ -8,18 +8,52 @@ exports.createInstitution = async (req, res) => {
       .json({ error: "Only admins can create institutions" });
   }
 
-  const { name, location } = req.body;
+  const { name, location, email, plan = 'trial' } = req.body;
   if (!name)
     return res.status(400).json({ error: "Institution name is required" });
 
+  // One-time trial enforcement: Check if an institution with this name OR email has already used a trial
+  if (plan === 'trial') {
+    if (!email) return res.status(400).json({ error: "Email is required for free trial signup" });
+
+    const { data: existing, error: checkError } = await supabase
+      .from('institutions')
+      .select('has_used_trial')
+      .or(`name.ilike.${name},email.eq.${email}`)
+      .eq('has_used_trial', true)
+      .maybeSingle();
+
+    if (existing) {
+      return res.status(403).json({
+        error: "This institution or client has already utilized its one-time free trial.",
+        code: "TRIAL_ALREADY_USED"
+      });
+    }
+  }
+
+  const subscription_status = plan === 'trial' ? 'trial' : 'active';
+  const trial_end_date = plan === 'trial' ? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString() : null;
+
   const { data, error } = await supabase
     .from("institutions")
-    .insert([{ name, location }])
+    .insert([{
+      name,
+      location,
+      email: email || null,
+      subscription_plan: plan,
+      subscription_status,
+      has_used_trial: plan === 'trial',
+      trial_start_date: plan === 'trial' ? new Date().toISOString() : null,
+      trial_end_date
+    }])
     .select()
     .single();
 
-  if (error) return res.status(500).json({ error: error.message });
-  res.status(201).json({ message: "Institution created", institution: data });
+  if (error) {
+    console.error("Institution creation error:", error);
+    return res.status(500).json({ error: error.message });
+  }
+  res.status(201).json({ message: "Institution created successfully", institution: data });
 };
 
 exports.getInstitutions = async (req, res) => {

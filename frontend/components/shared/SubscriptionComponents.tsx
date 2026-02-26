@@ -7,16 +7,16 @@ import { router } from 'expo-router';
 /**
  * Banner displayed at the top of the dashboard for Admins/Teachers
  */
-export const TrialBanner = () => {
-    const { subscriptionStatus, trialEndDate, profile } = useAuth();
+/**
+ * Banner displayed at the top of the dashboard for Admins/Teachers
+ */
+export const SubscriptionBanner = () => {
+    const { subscriptionStatus, subscriptionPlan, trialEndDate, profile } = useAuth();
 
-    // Only show for admins or if explicitly needed. For now, showing for all authenticated users to be transparent, 
-    // but maybe prioritize admins. Let's show for admins and teachers.
     if (!profile || (profile.role !== 'admin' && profile.role !== 'teacher')) return null;
 
-    if (subscriptionStatus === 'active') return null; // Don't show if fully subscribed
-
-    const isExpired = subscriptionStatus === 'expired';
+    const isExpired = subscriptionStatus === 'expired' || subscriptionStatus === 'cancelled';
+    const isTrial = subscriptionStatus === 'trial' || subscriptionPlan === 'trial';
 
     let daysRemaining = 0;
     if (trialEndDate) {
@@ -27,89 +27,175 @@ export const TrialBanner = () => {
 
     const handleUpgradePress = () => {
         Alert.alert(
-            "Upgrade Required",
-            "Please contact LMS billing support to upgrade your institution's subscription."
+            "Upgrade Subscription",
+            "Please contact LMS billing support at billing@cloudora.live to upgrade or renew your institution's subscription."
         );
     };
 
-    if (isExpired || daysRemaining === 0) {
+    if (isExpired) {
         return (
             <View className="bg-red-500 flex-row items-center px-4 py-3 justify-between">
                 <View className="flex-row items-center flex-1 pr-2">
                     <Ionicons name="warning" size={20} color="white" />
                     <Text className="text-white font-bold ml-2 text-sm flex-1">
-                        Trial Expired! Core features are now read-only.
+                        Subscription Expired! Access is now read-only.
                     </Text>
                 </View>
                 <TouchableOpacity
                     className="bg-white px-3 py-1.5 rounded-lg"
                     onPress={handleUpgradePress}
                 >
-                    <Text className="text-red-600 font-bold text-xs uppercase">Upgrade</Text>
+                    <Text className="text-red-600 font-bold text-xs uppercase">Renew</Text>
                 </TouchableOpacity>
             </View>
         );
     }
 
-    return (
-        <View className="bg-orange-500 flex-row items-center px-4 py-3 justify-between">
-            <View className="flex-row items-center">
-                <Ionicons name="time" size={20} color="white" />
-                <Text className="text-white font-bold ml-2 text-sm">
-                    Free Trial: {daysRemaining} days remaining
-                </Text>
+    if (isTrial) {
+        return (
+            <View className="bg-orange-500 flex-row items-center px-4 py-3 justify-between">
+                <View className="flex-row items-center">
+                    <Ionicons name="time" size={20} color="white" />
+                    <Text className="text-white font-bold ml-2 text-sm">
+                        Free Trial: {daysRemaining} days remaining
+                    </Text>
+                </View>
+                <TouchableOpacity
+                    className="bg-white/20 px-3 py-1.5 rounded-lg border border-white/40"
+                    onPress={handleUpgradePress}
+                >
+                    <Text className="text-white font-bold text-xs uppercase">Upgrade</Text>
+                </TouchableOpacity>
             </View>
+        );
+    }
+
+    // Active paid plans
+    const planColors: Record<string, string> = {
+        'basic': 'bg-blue-600',
+        'pro': 'bg-indigo-600',
+        'premium': 'bg-emerald-600'
+    };
+
+    const bgColor = planColors[subscriptionPlan || 'basic'] || 'bg-blue-600';
+
+    return (
+        <View className={`${bgColor} flex-row items-center px-4 py-1.5 justify-center`}>
+            <Text className="text-white font-bold text-[10px] uppercase tracking-widest opacity-90">
+                {subscriptionPlan} INSTITUTION
+            </Text>
+        </View>
+    );
+};
+
+interface SubscriptionGateProps {
+    children: React.ReactNode;
+    fallback?: React.ReactNode;
+    minPlan?: 'trial' | 'basic' | 'pro' | 'premium';
+}
+
+/**
+ * Wrapper component to hide or disable UI elements based on subscription status and plan level
+ */
+export const SubscriptionGate = ({ children, fallback, minPlan = 'trial' }: SubscriptionGateProps) => {
+    const { subscriptionStatus, subscriptionPlan } = useAuth();
+
+    const isExpired = subscriptionStatus === 'expired' || subscriptionStatus === 'cancelled';
+
+    // Check if current plan meets min requirements (Trial < Basic < Pro < Premium)
+    const planHierarchy: Record<string, number> = { 'trial': 0, 'basic': 1, 'pro': 2, 'premium': 3 };
+    const userPlanLevel = planHierarchy[subscriptionPlan || 'trial'] ?? 0;
+    const requiredLevel = planHierarchy[minPlan];
+
+    if (isExpired) {
+        if (fallback) return <>{fallback}</>;
+        return (
             <TouchableOpacity
-                className="bg-white/20 px-3 py-1.5 rounded-lg border border-white/40"
-                onPress={handleUpgradePress}
+                className="opacity-50"
+                onPress={() => Alert.alert("Subscription Expired", "This feature is restricted. Please renew your subscription to regain access.")}
+                activeOpacity={0.7}
             >
-                <Text className="text-white font-bold text-xs uppercase">View Plans</Text>
+                <View pointerEvents="none">
+                    {children}
+                </View>
             </TouchableOpacity>
+        );
+    }
+
+    if (userPlanLevel < requiredLevel) {
+        if (fallback) return <>{fallback}</>;
+        return (
+            <TouchableOpacity
+                className="opacity-50"
+                onPress={() => Alert.alert("Upgrade Required", `This feature requires a ${minPlan.toUpperCase()} plan. Please upgrade to gain access.`)}
+                activeOpacity={0.7}
+            >
+                <View pointerEvents="none">
+                    {children}
+                </View>
+            </TouchableOpacity>
+        );
+    }
+
+    return <>{children}</>;
+};
+
+/**
+ * A small badge shown next to premium features or institution name
+ */
+export const SubscriptionBadge = () => {
+    const { subscriptionStatus, subscriptionPlan } = useAuth();
+
+    if (subscriptionStatus === 'expired' || subscriptionStatus === 'cancelled') {
+        return (
+            <View className="bg-red-500/20 px-1.5 py-0.5 rounded ml-2 flex-row items-center border border-red-500/30">
+                <Text className="text-red-500 text-[9px] font-extrabold uppercase tracking-widest">EXPIRED</Text>
+            </View>
+        );
+    }
+
+    if (subscriptionStatus === 'trial') {
+        return (
+            <View className="bg-orange-500/20 px-1.5 py-0.5 rounded ml-2 flex-row items-center border border-orange-500/30">
+                <Text className="text-orange-500 text-[9px] font-extrabold uppercase tracking-widest">TRIAL</Text>
+            </View>
+        );
+    }
+
+    const planStyles: Record<string, { bg: string, text: string, border: string }> = {
+        'basic': { bg: 'bg-blue-500/20', text: 'text-blue-500', border: 'border-blue-500/30' },
+        'pro': { bg: 'bg-indigo-500/20', text: 'text-indigo-500', border: 'border-indigo-500/30' },
+        'premium': { bg: 'bg-emerald-500/20', text: 'text-emerald-500', border: 'border-emerald-500/30' }
+    };
+
+    const style = planStyles[subscriptionPlan || 'basic'] || planStyles.basic;
+
+    return (
+        <View className={`${style.bg} px-1.5 py-0.5 rounded ml-2 flex-row items-center border ${style.border}`}>
+            <Text className={`${style.text} text-[9px] font-extrabold uppercase tracking-widest`}>
+                {subscriptionPlan === 'premium' ? '✨ ' : ''}{subscriptionPlan}
+            </Text>
         </View>
     );
 };
 
 /**
- * Wrapper component to hide or disable UI elements based on subscription status
+ * A gold badge shown only for the Master Admin of an institution
  */
-export const SubscriptionGate = ({ children, fallbackAction }: { children: React.ReactNode, fallbackAction?: React.ReactNode }) => {
-    const { subscriptionStatus } = useAuth();
+export const MasterAdminBadge = () => {
+    const { isMaster, profile } = useAuth();
 
-    // If empty or loading, assume trial just in case to prevent UI flicker
-    if (!subscriptionStatus || subscriptionStatus === 'trial' || subscriptionStatus === 'active') {
-        return <>{children}</>;
-    }
+    if (!isMaster || profile?.role !== 'admin') return null;
 
-    if (fallbackAction) {
-        return <>{fallbackAction}</>;
-    }
-
-    // Default: disabled button look
     return (
-        <TouchableOpacity
-            className="opacity-50"
-            onPress={() => Alert.alert("Action Disabled", "This action requires an active subscription. Your trial has expired.")}
-            activeOpacity={0.7}
+        <View
+            className="bg-amber-100 px-1.5 py-0.5 rounded ml-2 flex-row items-center border border-amber-300 shadow-sm"
+            style={{ elevation: 1 }}
         >
-            <View pointerEvents="none">
-                {children}
-            </View>
-        </TouchableOpacity>
-    );
-}
-
-/**
- * A small "PRO" badge shown next to premium features during the free trial
- */
-export const PremiumBadge = () => {
-    const { subscriptionStatus } = useAuth();
-
-    // Only highlight premium features during the trial so they know what they're getting for free
-    if (subscriptionStatus !== 'trial') return null;
-
-    return (
-        <View className="bg-amber-100/20 px-1.5 py-0.5 rounded ml-2 flex-row items-center border border-amber-500/30">
-            <Text className="text-amber-500 text-[9px] font-extrabold uppercase tracking-widest">✨ PRO</Text>
+            <Ionicons name="star" size={10} color="#92400E" className="mr-1" />
+            <Text className="text-amber-800 text-[9px] font-extrabold uppercase tracking-widest">
+                Master Admin
+            </Text>
         </View>
     );
 };
