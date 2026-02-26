@@ -8,6 +8,24 @@ import { Ionicons } from '@expo/vector-icons';
 import React, { useState } from 'react';
 import { ActivityIndicator, Alert, Platform, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
+const Field = ({ label, children, labelColor }: { label: string; children: React.ReactNode, labelColor: string }) => (
+    <View style={{ marginBottom: 24 }}>
+        <Text style={{ fontSize: 11, fontWeight: 'bold', color: labelColor, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>{label}</Text>
+        {children}
+    </View>
+);
+
+const createInputStyle = (inputBg: string, border: string, textPrimary: string) => ({
+    backgroundColor: inputBg,
+    borderWidth: 1,
+    borderColor: border,
+    borderRadius: 14,
+    padding: 16,
+    color: textPrimary,
+    fontWeight: '500' as const,
+    fontSize: 15
+});
+
 export default function CreateBursaryScreen() {
     const router = useRouter();
     const { isDark } = useTheme();
@@ -48,14 +66,7 @@ export default function CreateBursaryScreen() {
         if (selectedDate) setDeadline(selectedDate);
     };
 
-    const Field = ({ label, children }: { label: string; children: React.ReactNode }) => (
-        <View style={{ marginBottom: 24 }}>
-            <Text style={{ fontSize: 11, fontWeight: 'bold', color: labelColor, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>{label}</Text>
-            {children}
-        </View>
-    );
-
-    const inputStyle = { backgroundColor: inputBg, borderWidth: 1, borderColor: border, borderRadius: 14, padding: 16, color: textPrimary, fontWeight: '500' as const, fontSize: 15 };
+    const inputStyle = createInputStyle(inputBg, border, textPrimary);
 
     return (
         <View style={{ flex: 1, backgroundColor: isDark ? '#121212' : '#f9fafb' }}>
@@ -67,7 +78,7 @@ export default function CreateBursaryScreen() {
             />
 
             <ScrollView style={{ flex: 1, paddingHorizontal: 20, paddingTop: 24 }}>
-                <Field label="Title">
+                <Field label="Title" labelColor={labelColor}>
                     <TextInput
                         style={inputStyle}
                         placeholder="e.g. Merit Scholarship 2024"
@@ -77,7 +88,7 @@ export default function CreateBursaryScreen() {
                     />
                 </Field>
 
-                <Field label="Amount">
+                <Field label="Amount" labelColor={labelColor}>
                     <TextInput
                         style={inputStyle}
                         placeholder="0.00"
@@ -88,7 +99,7 @@ export default function CreateBursaryScreen() {
                     />
                 </Field>
 
-                <Field label="Deadline">
+                <Field label="Deadline" labelColor={labelColor}>
                     <TouchableOpacity
                         onPress={() => setShowDatePicker(true)}
                         style={{ ...inputStyle, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}
@@ -107,7 +118,7 @@ export default function CreateBursaryScreen() {
                     )}
                 </Field>
 
-                <Field label="Description">
+                <Field label="Description" labelColor={labelColor}>
                     <TextInput
                         style={{ ...inputStyle, height: 96, textAlignVertical: 'top' }}
                         placeholder="Brief description of the bursary..."
@@ -119,7 +130,7 @@ export default function CreateBursaryScreen() {
                     />
                 </Field>
 
-                <Field label="Requirements">
+                <Field label="Requirements" labelColor={labelColor}>
                     <TextInput
                         style={{ ...inputStyle, height: 96, textAlignVertical: 'top' }}
                         placeholder="List eligibility requirements..."

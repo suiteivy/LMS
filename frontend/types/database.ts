@@ -253,6 +253,11 @@ export interface Database {
           email: string | null;
           type: "primary" | "secondary" | "tertiary" | "vocational" | null;
           principal_name: string | null;
+          subscription_status: "active" | "expired" | "cancelled" | null;
+          subscription_plan: "trial" | "basic" | "pro" | "premium" | null;
+          subscription_cycle: "monthly" | "annually" | null;
+          trial_end_date: string | null;
+          has_used_trial: boolean;
         };
         Insert: {
           id?: string;
@@ -262,6 +267,11 @@ export interface Database {
           email?: string | null;
           type?: "primary" | "secondary" | "tertiary" | "vocational" | null;
           principal_name?: string | null;
+          subscription_status?: "active" | "expired" | "cancelled" | null;
+          subscription_plan?: "trial" | "basic" | "pro" | "premium" | null;
+          subscription_cycle?: "monthly" | "annually" | null;
+          trial_end_date?: string | null;
+          has_used_trial?: boolean;
         };
         Update: {
           id?: string;
@@ -271,6 +281,11 @@ export interface Database {
           email?: string | null;
           type?: "primary" | "secondary" | "tertiary" | "vocational" | null;
           principal_name?: string | null;
+          subscription_status?: "active" | "expired" | "cancelled" | null;
+          subscription_plan?: "trial" | "basic" | "pro" | "premium" | null;
+          subscription_cycle?: "monthly" | "annually" | null;
+          trial_end_date?: string | null;
+          has_used_trial?: boolean;
         };
         Relationships: [];
       };

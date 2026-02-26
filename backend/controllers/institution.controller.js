@@ -31,9 +31,9 @@ exports.createInstitution = async (req, res) => {
     }
   }
 
-  const subscription_status = (plan === 'trial' || plan === 'basic' || plan === 'pro' || plan === 'premium') ? 'active' : 'active';
-  // Simplified: Trial institutions now start with 'active' status. 
-  // Expiration is handled by the middleware/cron based on trial_end_date.
+  // Simplified: All new institutions start with 'active' status. 
+  // Expiration is handled by the middleware/cron based on trial_end_date or plan limits.
+  const subscription_status = 'active';
   const trial_end_date = plan === 'trial' ? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString() : null;
   const subscription_cycle = 'monthly';
 

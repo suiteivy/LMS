@@ -92,12 +92,14 @@ interface SubscriptionGateProps {
     children: React.ReactNode;
     fallback?: React.ReactNode;
     minPlan?: 'trial' | 'basic' | 'pro' | 'premium';
+    className?: string;
+    style?: any;
 }
 
 /**
  * Wrapper component to hide or disable UI elements based on subscription status and plan level
  */
-export const SubscriptionGate = ({ children, fallback, minPlan = 'trial' }: SubscriptionGateProps) => {
+export const SubscriptionGate = ({ children, fallback, minPlan = 'trial', className, style }: SubscriptionGateProps) => {
     const { subscriptionStatus, subscriptionPlan } = useAuth();
 
     const isExpired = subscriptionStatus === 'expired' || subscriptionStatus === 'cancelled';
@@ -111,7 +113,8 @@ export const SubscriptionGate = ({ children, fallback, minPlan = 'trial' }: Subs
         if (fallback) return <>{fallback}</>;
         return (
             <TouchableOpacity
-                className="opacity-50"
+                className={`opacity-50 ${className || ''}`}
+                style={style}
                 onPress={() => Alert.alert("Subscription Expired", "This feature is restricted. Please renew your subscription to regain access.")}
                 activeOpacity={0.7}
             >
@@ -126,7 +129,8 @@ export const SubscriptionGate = ({ children, fallback, minPlan = 'trial' }: Subs
         if (fallback) return <>{fallback}</>;
         return (
             <TouchableOpacity
-                className="opacity-50"
+                className={`opacity-50 ${className || ''}`}
+                style={style}
                 onPress={() => Alert.alert("Upgrade Required", `This feature requires a ${minPlan.toUpperCase()} plan. Please upgrade to gain access.`)}
                 activeOpacity={0.7}
             >

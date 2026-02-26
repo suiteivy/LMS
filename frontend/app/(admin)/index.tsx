@@ -314,14 +314,18 @@ export default function AdminDashboard() {
           <View className="mb-10">
             <Text className="text-lg font-bold text-gray-900 dark:text-white mb-4 px-1">Quick Actions</Text>
             <View style={{ flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between" }}>
-              <SubscriptionGate>
+              <SubscriptionGate className="w-[48%]">
                 <QuickAction icon={IconUserPlus} label="Enroll User" onPress={() => router.push("/(admin)/users/create")} badge={<SubscriptionBadge />} />
               </SubscriptionGate>
-              <QuickAction icon={IconBookOpen} label="Library" onPress={() => router.navigate("/(admin)/management/library" as any)} />
-              <SubscriptionGate minPlan="pro">
+              <View className="w-[48%]">
+                <QuickAction icon={IconBookOpen} label="Library" onPress={() => router.navigate("/(admin)/management/library" as any)} />
+              </View>
+              <SubscriptionGate minPlan="pro" className="w-[48%]">
                 <QuickAction icon={IconWallet} label="Finance" onPress={() => router.navigate("/(admin)/finance" as any)} badge={<SubscriptionBadge />} />
               </SubscriptionGate>
-              <QuickAction icon={IconBarChart3} label="Analytics" onPress={() => router.navigate("/(admin)/management/analytics" as any)} />
+              <View className="w-[48%]">
+                <QuickAction icon={IconBarChart3} label="Analytics" onPress={() => router.navigate("/(admin)/management/analytics" as any)} />
+              </View>
             </View>
           </View>
 

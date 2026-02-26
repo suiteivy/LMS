@@ -6,7 +6,7 @@ import { router } from "expo-router";
 import { ArrowRight, BookOpen, Calendar, Clock, GraduationCap, MessageSquare, School, Users } from 'lucide-react-native';
 import React, { useEffect, useState } from "react";
 import { ActivityIndicator, RefreshControl, ScrollView, Text, TouchableOpacity, View, StatusBar } from 'react-native';
-import { TrialBanner, SubscriptionGate, PremiumBadge } from '@/components/shared/SubscriptionComponents';
+import { SubscriptionBanner, SubscriptionGate, SubscriptionBadge } from '@/components/shared/SubscriptionComponents';
 
 // Define Interface for the QuickAction props
 interface QuickActionProps {
@@ -105,7 +105,7 @@ export default function TeacherHome() {
     return (
         <View className="flex-1 bg-white dark:bg-black">
             <StatusBar barStyle={isDark ? "light-content" : "dark-content"} />
-            <TrialBanner />
+            <SubscriptionBanner />
             <UnifiedHeader
                 title="Welcome back,"
                 subtitle={profile?.full_name?.split(" ")[0] || 'Teacher'}
@@ -196,34 +196,38 @@ export default function TeacherHome() {
                             Quick Actions
                         </Text>
                         <View className="flex-row flex-wrap justify-between">
-                            <QuickAction
-                                icon={GraduationCap}
-                                label="Grades"
-                                color={isDark ? "#ff6900" : "#1a1a1a"}
-                                onPress={() => router.push("/(teacher)/management/grades" as any)}
-                            />
-                            <SubscriptionGate>
+                            <View className="w-[48%]">
+                                <QuickAction
+                                    icon={GraduationCap}
+                                    label="Grades"
+                                    color={isDark ? "#ff6900" : "#1a1a1a"}
+                                    onPress={() => router.push("/(teacher)/management/grades" as any)}
+                                />
+                            </View>
+                            <SubscriptionGate className="w-[48%]">
                                 <QuickAction
                                     icon={School}
                                     label="Classes"
                                     color="#8b5cf6"
                                     onPress={() => router.push("/(teacher)/classes" as any)}
-                                    badge={<PremiumBadge />}
+                                    badge={<SubscriptionBadge />}
                                 />
                             </SubscriptionGate>
-                            <QuickAction
-                                icon={ArrowRight}
-                                label="Assignments"
-                                color="#f43f5e"
-                                onPress={() => router.push("/(teacher)/management/assignments" as any)}
-                            />
-                            <SubscriptionGate>
+                            <View className="w-[48%]">
+                                <QuickAction
+                                    icon={ArrowRight}
+                                    label="Assignments"
+                                    color="#f43f5e"
+                                    onPress={() => router.push("/(teacher)/management/assignments" as any)}
+                                />
+                            </View>
+                            <SubscriptionGate className="w-[48%]">
                                 <QuickAction
                                     icon={MessageSquare}
                                     label="Messages"
                                     color="#0891b2"
                                     onPress={() => router.push("/(teacher)/management/messages" as any)}
-                                    badge={<PremiumBadge />}
+                                    badge={<SubscriptionBadge />}
                                 />
                             </SubscriptionGate>
                         </View>
