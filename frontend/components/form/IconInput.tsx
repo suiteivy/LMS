@@ -153,21 +153,34 @@ export const ImageUpload: React.FC<ImageUploadProps> = ({
   onImageSelect,
 }) => {
   const pickImage = async () => {
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== "granted") {
-      Alert.alert("Permission needed", "Please grant camera roll permissions");
-      return;
-    }
+    try {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== "granted") {
+        Alert.alert("Permission needed", "Please grant camera roll permissions");
+        return;
+      }
 
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      aspect: [16, 9],
-      quality: 0.8,
-    });
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [16, 9],
+        quality: 0.8,
+      });
 
-    if (!result.canceled && result.assets?.[0]?.uri) {
-      onImageSelect(result.assets[0].uri);
+      if (!result.canceled && result.assets?.[0]?.uri) {
+        const asset = result.assets[0];
+
+        // Validate the asset
+        if (!asset.uri) {
+          Alert.alert('Error', 'Failed to get image URI');
+          return;
+        }
+
+        onImageSelect(asset.uri);
+      }
+    } catch (error) {
+      console.error('Image picker error:', error);
+      Alert.alert('Error', 'Failed to pick image');
     }
   };
 

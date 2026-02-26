@@ -77,6 +77,11 @@ app.get("/", (req, res) => {
   res.status(200).json({ message: "LMS API is running" });
 });
 
+// Favicon handler - prevent 404/500 errors on favicon requests
+app.get("/favicon.ico", (req, res) => {
+  res.status(204).end();
+});
+
 // Global error handler - catches all errors and returns generic messages
 app.use((err, req, res, next) => {
   logger.error('Unhandled error in request', {

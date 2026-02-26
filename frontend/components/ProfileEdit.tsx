@@ -95,6 +95,13 @@ export const ProfileEdit = ({ visible, onClose, currentUser, onUpdate }: EditFor
 
   const pickImage = async () => {
     try {
+      const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+      if (permissionResult.status !== 'granted') {
+        Alert.alert('Permission Required', 'Please grant access to your photo library to upload avatars.');
+        return;
+      }
+
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsEditing: true,
@@ -102,10 +109,19 @@ export const ProfileEdit = ({ visible, onClose, currentUser, onUpdate }: EditFor
         quality: 1,
       });
 
-      if (!result.canceled) {
-        uploadAvatar(result.assets[0].uri);
+      if (!result.canceled && result.assets?.[0]?.uri) {
+        const asset = result.assets[0];
+
+        // Validate the asset has required properties
+        if (!asset.uri || !asset.type) {
+          Alert.alert('Error', 'Selected image is invalid');
+          return;
+        }
+
+        uploadAvatar(asset.uri);
       }
     } catch (error) {
+      console.error('Image picker error:', error);
       Alert.alert('Error', 'Failed to pick image');
     }
   };
@@ -113,22 +129,37 @@ export const ProfileEdit = ({ visible, onClose, currentUser, onUpdate }: EditFor
   const uploadAvatar = async (uri: string) => {
     try {
       setUploading(true);
-      // Minimal upload logic - assuming Supabase storage 'avatars' bucket
-      // If not set up, this might fail, so we should allow just passing the URI if local for testing?
-      // But the requirement is "Upload". 
-      // For now, I'll mock the upload if bucket doesn't exist or just handle the file object.
-      // Actually, without `fetch` blob support in RN sometimes tricky.
 
-      const arrayBuffer = await fetch(uri).then(res => res.arrayBuffer());
-      const fileExt = uri.split('.').pop();
-      const fileName = `${Date.now()}.${fileExt}`;
+      if (!uri) {
+        throw new Error('Invalid image URI');
+      }
+
+      // Fetch the image as an array buffer
+      const response = await fetch(uri);
+      if (!response.ok) {
+        throw new Error('Failed to fetch image');
+      }
+
+      const arrayBuffer = await response.arrayBuffer();
+
+      if (!arrayBuffer || arrayBuffer.byteLength === 0) {
+        throw new Error('Image buffer is empty');
+      }
+
+      // Get file extension with fallback
+      const uriParts = uri.split('.');
+      const fileExt = uriParts.length > 1 ? uriParts.pop()?.toLowerCase() : 'jpg';
+      const validExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+      const safeExt = validExtensions.includes(fileExt || '') ? fileExt : 'jpg';
+
+      const fileName = `${Date.now()}.${safeExt}`;
       const filePath = `${fileName}`;
 
       // This requires 'avatars' bucket to be public or authorized
       const { error: uploadError } = await supabase.storage
         .from('avatars')
         .upload(filePath, arrayBuffer, {
-          contentType: `image/${fileExt}`,
+          contentType: `image/${safeExt}`,
           upsert: true
         });
 
@@ -138,9 +169,11 @@ export const ProfileEdit = ({ visible, onClose, currentUser, onUpdate }: EditFor
 
       const { data } = supabase.storage.from('avatars').getPublicUrl(filePath);
       setAvatarUrl(data.publicUrl);
-      setUploading(false);
     } catch (error: any) {
-      Alert.alert("Upload Failed", error.message);
+      console.error('Avatar upload error:', error);
+      // Silently fail - don't alert user, just don't update avatar
+      return;
+    } finally {
       setUploading(false);
     }
   };
