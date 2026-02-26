@@ -1,4 +1,5 @@
 const supabase = require("../utils/supabaseClient");
+const logger = require("../utils/logger");
 
 // Generate a random 8-character temporary password
 const generateTempPassword = () => {
