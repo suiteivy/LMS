@@ -1,4 +1,5 @@
 import { UnifiedHeader } from "@/components/common/UnifiedHeader";
+import { SubscriptionBanner } from "@/components/shared/SubscriptionComponents";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNotifications } from "@/contexts/NotificationContext";
 import { supabase } from "@/libs/supabase";
@@ -6,7 +7,6 @@ import { useRouter } from "expo-router";
 import { ArrowRight, Book, BookOpen, CalendarCheck, Clock, GraduationCap, Star, Wallet } from 'lucide-react-native';
 import React, { useEffect, useState } from "react";
 import { ActivityIndicator, RefreshControl, ScrollView, Text, TouchableOpacity, View } from 'react-native';
-import { SubscriptionBanner } from "@/components/shared/SubscriptionComponents";
 
 interface QuickActionProps {
   icon: any;
@@ -132,7 +132,12 @@ export default function Index() {
           .from('timetables')
           .select(`
             *,
-            subjects ( title ),
+            subjects ( 
+              title,
+              teachers (
+                users ( full_name )
+              )
+            ),
             classes ( name )
           `)
           .in('class_id', classIds)
@@ -241,9 +246,14 @@ export default function Index() {
                   <Text className="text-gray-900 dark:text-white font-bold text-lg mb-1 tracking-tight" numberOfLines={1}>
                     {item.subjects?.title || "Subject"}
                   </Text>
-                  <Text className="text-gray-600 dark:text-gray-300 text-xs font-medium">
-                    {item.room_number || "Remote Learning"}
-                  </Text>
+                  <View className="flex-row items-center justify-between">
+                    <Text className="text-gray-600 dark:text-gray-300 text-[10px] font-medium">
+                      {item.room_number || "Room TBD"}
+                    </Text>
+                    <Text className="text-[#FF6900] text-[10px] font-bold">
+                      {item.subjects?.teachers?.users?.full_name?.split(' ')[0] || "Faculty"}
+                    </Text>
+                  </View>
                 </View>
               ))
             ) : (

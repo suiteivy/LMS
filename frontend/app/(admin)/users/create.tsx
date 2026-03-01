@@ -92,7 +92,7 @@ export default function CreateUserScreen() {
     const loadLookupData = async () => {
         const [classRes, subjectRes, studentRes] = await Promise.all([
             supabase.from('classes').select('id, name, grade_level'),
-            supabase.from('subjects').select('id, name, teacher_id'),
+            supabase.from('subjects').select('id, title, teacher_id'),
             supabase.from('students').select('id, user_id, grade_level, users:user_id(full_name)') as any,
         ]);
         if (classRes.data) setClasses(classRes.data);
@@ -303,7 +303,7 @@ export default function CreateUserScreen() {
                 <RenderInput label="Qualification" value={form.qualification} onChangeText={(v: string) => updateFormSanitized('qualification', v)} placeholder="e.g. B.Ed Mathematics" isDark={isDark} textPrimary={textPrimary} textSecondary={textSecondary} inputBg={inputBg} inputBorder={inputBorder} />
                 <RenderInput label="Specialization" value={form.specialization} onChangeText={(v: string) => updateFormSanitized('specialization', v)} placeholder="e.g. Applied Mathematics" isDark={isDark} textPrimary={textPrimary} textSecondary={textSecondary} inputBg={inputBg} inputBorder={inputBorder} />
                 <RenderPicker label="Position" options={POSITION_OPTIONS} selected={form.position} onSelect={(v: string) => updateForm('position', v)} isDark={isDark} textPrimary={textPrimary} textSecondary={textSecondary} border={border} card={card} />
-                <RenderMultiSelect label="Assign Subjects (unassigned only)" items={unassignedSubjects} selectedIds={form.subject_ids} toggleItem={(id: string) => toggleArrayItem('subject_ids', id)} displayFn={(s: any) => s.name} isDark={isDark} textPrimary={textPrimary} textSecondary={textSecondary} border={border} card={card} />
+                <RenderMultiSelect label="Assign Subjects (unassigned only)" items={unassignedSubjects} selectedIds={form.subject_ids} toggleItem={(id: string) => toggleArrayItem('subject_ids', id)} displayFn={(s: any) => s.title} isDark={isDark} textPrimary={textPrimary} textSecondary={textSecondary} border={border} card={card} />
                 <View style={{ marginBottom: 16 }}>
                     <Text style={{ fontSize: 13, fontWeight: '600', color: textSecondary, marginBottom: 6 }}>Assign as Class Teacher</Text>
                     {classes.map(c => (
@@ -447,7 +447,7 @@ export default function CreateUserScreen() {
                     {renderReviewRow('Qualification', form.qualification)}
                     {renderReviewRow('Specialization', form.specialization)}
                     {renderReviewRow('Position', form.position?.replace(/_/g, ' '))}
-                    {renderReviewRow('Subjects', form.subject_ids.length > 0 ? form.subject_ids.map(id => subjects.find(s => s.id === id)?.name || id).join(', ') : undefined)}
+                    {renderReviewRow('Subjects', form.subject_ids.length > 0 ? form.subject_ids.map(id => subjects.find(s => s.id === id)?.title || id).join(', ') : undefined)}
                     {renderReviewRow('Class Teacher', form.class_teacher_id ? classes.find(c => c.id === form.class_teacher_id)?.name : undefined)}
                 </View>
             )}

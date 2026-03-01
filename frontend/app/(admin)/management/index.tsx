@@ -5,6 +5,7 @@ import { router } from "expo-router";
 import {
     BarChart3,
     BookOpen,
+    Calendar,
     CalendarCheck,
     ChevronRight,
     ClipboardList,
@@ -135,6 +136,15 @@ export default function AdminManagement() {
             bgColor: "#d1fae5",
             darkBgColor: "#052e16",
             route: "/(admin)/classes"
+        },
+        {
+            icon: Calendar,
+            title: "Timetable Builder",
+            description: "Create schedules and check for conflicts",
+            color: "#FF6900",
+            bgColor: "#fff0e6",
+            darkBgColor: "#3d1a00",
+            route: "/(admin)/timetable"
         }
     ];
 
