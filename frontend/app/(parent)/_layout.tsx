@@ -38,7 +38,7 @@ function ParentTabs() {
                 tabBarInactiveTintColor: isDark ? "#94a3b8" : "#64748b",
                 tabBarLabelStyle: { fontSize: 10, fontWeight: "600" },
                 sceneStyle: {
-                    backgroundColor: isDark ? '#000000' : "#ffffff",
+                    backgroundColor: isDark ? '#0F0B2E' : "#ffffff",
                 },
             }}
         >

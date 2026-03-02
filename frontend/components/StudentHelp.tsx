@@ -15,9 +15,9 @@ const FAQItem = ({ question, answer, isDark }: FAQItemProps) => {
     return (
         <View style={{
             marginBottom: 12,
-            backgroundColor: isDark ? '#1a1a1a' : '#ffffff',
+            backgroundColor: isDark ? '#13103A' : '#ffffff',
             borderWidth: 1,
-            borderColor: isDark ? '#1f2937' : '#f3f4f6',
+            borderColor: isDark ? 'rgba(255,255,255,0.1)' : '#f3f4f6',
             borderRadius: 16,
             overflow: 'hidden',
             shadowColor: '#000',
@@ -56,14 +56,14 @@ export default function StudentHelp() {
     const [selectedTab, setSelectedTab] = useState<'chat' | 'email' | null>(null);
 
     const tokens = {
-        bg: isDark ? '#000000' : '#f9fafb',
-        surface: isDark ? '#1a1a1a' : '#ffffff',
-        border: isDark ? '#1f2937' : '#f3f4f6',
+        bg: isDark ? '#0F0B2E' : '#f9fafb',
+        surface: isDark ? '#13103A' : '#ffffff',
+        border: isDark ? 'rgba(255,255,255,0.1)' : '#f3f4f6',
         textPrimary: isDark ? '#ffffff' : '#111827',
         textSecondary: isDark ? '#9ca3af' : '#6b7280',
         textMuted: isDark ? '#6b7280' : '#9ca3af',
-        inputBg: isDark ? '#111827' : '#f9fafb',
-        inputBorder: isDark ? '#1f2937' : '#f3f4f6',
+        inputBg: isDark ? '#1A1650' : '#f9fafb',
+        inputBorder: isDark ? 'rgba(255,255,255,0.1)' : '#f3f4f6',
         inputText: isDark ? '#ffffff' : '#111827',
     };
 

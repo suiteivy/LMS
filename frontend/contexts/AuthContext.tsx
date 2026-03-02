@@ -330,9 +330,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           setTimeout(() => { isManualLogout.current = false; }, 500);
         }
 
-        // Handle edge case: auth event without session
-        // NOTE: do NOT await this — it was causing a second blocking signOut call
-        if (!session && (event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED')) {
+        // Handle edge case: USER_UPDATED event without session (genuine error state)
+        // NOTE: TOKEN_REFRESHED with null session is normal during web hydration — do NOT sign out on it
+        if (!session && event === 'USER_UPDATED') {
           authService.signOut(); // fire-and-forget, no await
         }
       } catch (error) {

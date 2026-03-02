@@ -160,7 +160,7 @@ function AnimatedCloud({ isDark }: { isDark: boolean }) {
             width: 96,
             height: 96,
             borderRadius: 28,
-            backgroundColor: isDark ? '#1a1a1a' : '#fff7f0',
+            backgroundColor: isDark ? '#13103A' : '#fff7f0',
             alignItems: 'center',
             justifyContent: 'center',
             borderWidth: 1.5,
