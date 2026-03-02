@@ -1,4 +1,4 @@
-import { BursariesList } from '@/components/admin/finance/BursariesList';
+﻿import { BursariesList } from '@/components/admin/finance/BursariesList';
 import { FeeStructureSection } from '@/components/admin/finance/FeeStructureSection';
 import { PaymentManagementSection } from '@/components/admin/finance/PaymentManagementSection';
 import { TeacherPayoutSection } from '@/components/admin/finance/TeacherPayoutSection';
@@ -124,7 +124,7 @@ export default function FinanceDashboard() {
     }, []);
 
     return (
-        <View style={{ flex: 1, backgroundColor: isDark ? '#121212' : '#f9fafb' }}>
+        <View style={{ flex: 1, backgroundColor: isDark ? '#0F0B2E' : '#f9fafb' }}>
             <UnifiedHeader
                 title="Management"
                 subtitle="Finance"
@@ -135,9 +135,9 @@ export default function FinanceDashboard() {
 
                 {/* Tabs */}
                 <View style={{
-                    backgroundColor: isDark ? '#1e1e1e' : '#ffffff',
+                    backgroundColor: isDark ? '#13103A' : '#ffffff',
                     borderBottomWidth: 1,
-                    borderBottomColor: isDark ? '#2c2c2c' : '#f3f4f6',
+                    borderBottomColor: isDark ? 'rgba(255,255,255,0.1)' : '#f3f4f6',
                     paddingHorizontal: 16,
                     paddingVertical: 8,
                 }}>
@@ -155,7 +155,7 @@ export default function FinanceDashboard() {
                                         borderRadius: 999,
                                         borderWidth: 1,
                                         backgroundColor: isActive ? '#FF6B00' : 'transparent',
-                                        borderColor: isActive ? '#FF6B00' : (isDark ? '#2c2c2c' : '#e5e7eb'),
+                                        borderColor: isActive ? '#FF6B00' : (isDark ? 'rgba(255,255,255,0.1)' : '#e5e7eb'),
                                     }}
                                 >
                                     <Text style={{
@@ -194,12 +194,12 @@ export default function FinanceDashboard() {
                         <TouchableOpacity
                             style={{
                                 width: 48, height: 48,
-                                backgroundColor: isDark ? '#1e1e1e' : '#ffffff',
+                                backgroundColor: isDark ? '#13103A' : '#ffffff',
                                 borderRadius: 24,
                                 alignItems: 'center',
                                 justifyContent: 'center',
                                 borderWidth: 1,
-                                borderColor: isDark ? '#2c2c2c' : '#f3f4f6',
+                                borderColor: isDark ? 'rgba(255,255,255,0.1)' : '#f3f4f6',
                                 shadowColor: '#000',
                                 shadowOffset: { width: 0, height: 4 },
                                 shadowOpacity: isDark ? 0.4 : 0.1,

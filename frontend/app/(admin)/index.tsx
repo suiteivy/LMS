@@ -1,4 +1,4 @@
-import { UnifiedHeader } from "@/components/common/UnifiedHeader";
+﻿import { UnifiedHeader } from "@/components/common/UnifiedHeader";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useDashboardStats } from "@/hooks/useDashboardStats";
@@ -175,7 +175,7 @@ export default function AdminDashboard() {
   }, [fetchRecentUsers, profile, isDemo]);
 
   // Theme-aware color tokens
-  const cardBg = isDark ? '#121212' : '#111827';
+  const cardBg = isDark ? '#0F0B2E' : '#111827';
   const surfaceBg = isDark ? '#1a1a1a' : '#ffffff';
   const surfaceBorder = isDark ? '#1f2937' : '#f3f4f6';
   const textPrimary = isDark ? '#f9fafb' : '#111827';
@@ -343,7 +343,7 @@ export default function AdminDashboard() {
                 <ActivityIndicator color="#FF6900" />
               </View>
             ) : recentUsers.length === 0 ? (
-              <View className="bg-white dark:bg-[#121212] p-8 rounded-3xl border border-dashed border-gray-200 dark:border-gray-800 items-center justify-center mb-6">
+              <View className="bg-white dark:bg-[#0F0B2E] p-8 rounded-3xl border border-dashed border-gray-200 dark:border-gray-800 items-center justify-center mb-6">
                 <View className="w-12 h-12 bg-gray-50 dark:bg-gray-800 rounded-full items-center justify-center mb-3">
                   <IconUsers size={24} color="#9ca3af" />
                 </View>

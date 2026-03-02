@@ -1,4 +1,4 @@
-import { EmptyState } from "@/components/common/EmptyState";
+﻿import { EmptyState } from "@/components/common/EmptyState";
 import { useTheme } from "@/contexts/ThemeContext";
 import { LibraryAPI, useLibraryAPI } from "@/services/LibraryService";
 import { FrontendBorrowedBook } from "@/types/types";
@@ -668,14 +668,14 @@ const BorrowedBooksOverview: React.FC<BorrowedBooksOverviewProps> = ({
   return (
     <View className="flex-1 bg-mint-50 dark:bg-black">
       {/* Header */}
-      <View className="bg-white dark:bg-[#121212] p-4 border-b border-teal-100 dark:border-gray-800">
+      <View className="bg-white dark:bg-[#0F0B2E] p-4 border-b border-teal-100 dark:border-gray-800">
         <Text className="text-xl font-bold text-slate-800 dark:text-white">
           Borrowed Books
         </Text>
       </View>
 
       {/* Filters & Search */}
-      <View className="bg-white dark:bg-[#121212] px-4 pb-4 border-b border-teal-100 dark:border-gray-800">
+      <View className="bg-white dark:bg-[#0F0B2E] px-4 pb-4 border-b border-teal-100 dark:border-gray-800">
         <View className="flex-row items-center bg-gray-50 dark:bg-[#1a1a1a] border border-teal-100 dark:border-gray-800 rounded-xl px-4 py-2 mt-2 mb-4">
           <Ionicons name="search" size={20} color={isDark ? "#9CA3AF" : "#6B7280"} />
           <TextInput
@@ -763,7 +763,7 @@ const BorrowedBooksOverview: React.FC<BorrowedBooksOverviewProps> = ({
         presentationStyle="pageSheet"
         onRequestClose={() => setShowReturnModal(false)}
       >
-        <View className="flex-1 bg-white dark:bg-[#121212]">
+        <View className="flex-1 bg-white dark:bg-[#0F0B2E]">
           <View className="bg-teal-600 p-4 pt-12">
             <View className="flex-row justify-between items-center">
               <Text className="text-xl font-bold text-white">

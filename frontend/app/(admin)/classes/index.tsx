@@ -1,4 +1,4 @@
-import { UnifiedHeader } from '@/components/common/UnifiedHeader';
+﻿import { UnifiedHeader } from '@/components/common/UnifiedHeader';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { supabase } from '@/libs/supabase';
@@ -116,19 +116,19 @@ export default function AdminClassManagement() {
     const GRADE_OPTIONS = ['Form 1', 'Form 2', 'Form 3', 'Form 4', 'Grade 1', 'Grade 2', 'Grade 3', 'Grade 4', 'Grade 5', 'Grade 6', 'Grade 7', 'Grade 8'];
 
     // ─── Theme helpers ─────────────────────────────────────
-    const bg = isDark ? '#121212' : '#F9FAFB';
-    const card = isDark ? '#1E1E1E' : '#FFFFFF';
-    const border = isDark ? '#2C2C2C' : '#F3F4F6';
+    const bg = isDark ? '#0F0B2E' : '#F9FAFB';
+    const card = isDark ? '#13103A' : '#FFFFFF';
+    const border = isDark ? 'rgba(255,255,255,0.1)' : '#F3F4F6';
     const textPrimary = isDark ? '#F9FAFB' : '#111827';
     const textSecondary = isDark ? '#9CA3AF' : '#6B7280';
     const textMuted = isDark ? '#6B7280' : '#9CA3AF';
-    const inputBg = isDark ? '#2C2C2C' : '#F9FAFB';
+    const inputBg = isDark ? 'rgba(255,255,255,0.1)' : '#F9FAFB';
     const inputBorder = isDark ? '#3F3F3F' : '#E5E7EB';
-    const pillInactive = isDark ? '#2C2C2C' : '#FFFFFF';
+    const pillInactive = isDark ? 'rgba(255,255,255,0.1)' : '#FFFFFF';
     const pillInactiveBorder = isDark ? '#3F3F3F' : '#E5E7EB';
     const pillInactiveText = isDark ? '#9CA3AF' : '#4B5563';
-    const modalBg = isDark ? '#1E1E1E' : '#FFFFFF';
-    const sectionBg = isDark ? '#242424' : '#F9FAFB';
+    const modalBg = isDark ? '#13103A' : '#FFFFFF';
+    const sectionBg = isDark ? '#1A1650' : '#F9FAFB';
 
     // ─── Data Loading ──────────────────────────────────────
     const loadClasses = useCallback(async () => {
@@ -592,7 +592,7 @@ export default function AdminClassManagement() {
                                             <Text style={{ color: textPrimary, fontWeight: '700', fontSize: 15 }}>{cls.name}</Text>
                                             <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4, flexWrap: 'wrap', gap: 6 }}>
                                                 {cls.grade_level && (
-                                                    <View style={{ backgroundColor: isDark ? '#2C2C2C' : '#F3F4F6', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 20 }}>
+                                                    <View style={{ backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : '#F3F4F6', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 20 }}>
                                                         <Text style={{ color: textSecondary, fontSize: 11, fontWeight: '600' }}>{cls.grade_level}</Text>
                                                     </View>
                                                 )}
@@ -939,7 +939,7 @@ export default function AdminClassManagement() {
                             <View style={{ flexDirection: 'row', gap: 12 }}>
                                 <TouchableOpacity
                                     onPress={() => setShowAutoAssignModal(false)}
-                                    style={{ flex: 1, backgroundColor: isDark ? '#2C2C2C' : '#F3F4F6', paddingVertical: 14, borderRadius: 14, alignItems: 'center' }}
+                                    style={{ flex: 1, backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : '#F3F4F6', paddingVertical: 14, borderRadius: 14, alignItems: 'center' }}
                                 >
                                     <Text style={{ color: textSecondary, fontWeight: '700' }}>Cancel</Text>
                                 </TouchableOpacity>

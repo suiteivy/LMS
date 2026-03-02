@@ -1,4 +1,4 @@
-import { DatePicker } from '@/components/common/DatePicker';
+﻿import { DatePicker } from '@/components/common/DatePicker';
 import { useTheme } from '@/contexts/ThemeContext';
 import { supabase } from '@/libs/supabase';
 import { api } from '@/services/api';
@@ -166,13 +166,13 @@ export default function CreateUserScreen() {
     const prevStep = () => { if (step > 0) setStep((step - 1) as Step); else router.back(); };
 
     // ---------- Theme shorthands ----------
-    const bg = isDark ? '#121212' : '#f9fafb';
-    const card = isDark ? '#1e1e1e' : '#ffffff';
-    const border = isDark ? '#2c2c2c' : '#e5e7eb';
+    const bg = isDark ? '#0F0B2E' : '#f9fafb';
+    const card = isDark ? '#13103A' : '#ffffff';
+    const border = isDark ? 'rgba(255,255,255,0.1)' : '#e5e7eb';
     const textPrimary = isDark ? '#f9fafb' : '#111827';
     const textSecondary = isDark ? '#94a3b8' : '#6b7280';
-    const inputBg = isDark ? '#1e1e1e' : '#f9fafb';
-    const inputBorder = isDark ? '#2c2c2c' : '#e5e7eb';
+    const inputBg = isDark ? '#13103A' : '#f9fafb';
+    const inputBorder = isDark ? 'rgba(255,255,255,0.1)' : '#e5e7eb';
 
     // ---------- Options ----------
     const ROLE_CARDS = [
@@ -191,13 +191,13 @@ export default function CreateUserScreen() {
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 16, paddingHorizontal: 24, backgroundColor: card, borderBottomWidth: 1, borderBottomColor: border }}>
             {['Role', 'Personal', form.role === 'admin' ? '' : 'Details', 'Review', 'Done'].filter(Boolean).map((label, i) => (
                 <View key={i} style={{ flexDirection: 'row', alignItems: 'center' }}>
-                    <View style={{ width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center', backgroundColor: i <= step ? '#FF6B00' : (isDark ? '#2c2c2c' : '#e5e7eb') }}>
+                    <View style={{ width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center', backgroundColor: i <= step ? '#FF6B00' : (isDark ? 'rgba(255,255,255,0.1)' : '#e5e7eb') }}>
                         {i < step
                             ? <Ionicons name="checkmark" size={16} color="white" />
                             : <Text style={{ fontSize: 12, fontWeight: '700', color: i <= step ? 'white' : textSecondary }}>{i + 1}</Text>
                         }
                     </View>
-                    {i < 4 && <View style={{ width: 32, height: 2, backgroundColor: i < step ? '#FF6B00' : (isDark ? '#2c2c2c' : '#e5e7eb') }} />}
+                    {i < 4 && <View style={{ width: 32, height: 2, backgroundColor: i < step ? '#FF6B00' : (isDark ? 'rgba(255,255,255,0.1)' : '#e5e7eb') }} />}
                 </View>
             ))}
         </View>
@@ -354,7 +354,7 @@ export default function CreateUserScreen() {
                         </View>
                     )}
                     {form.linked_students.map(ls => (
-                        <View key={ls.student_id} style={{ backgroundColor: isDark ? '#1e1e1e' : '#f9fafb', borderRadius: 12, padding: 16, marginBottom: 8, borderWidth: 1, borderColor: border }}>
+                        <View key={ls.student_id} style={{ backgroundColor: isDark ? '#13103A' : '#f9fafb', borderRadius: 12, padding: 16, marginBottom: 8, borderWidth: 1, borderColor: border }}>
                             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
                                 <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                                     <Ionicons name="person" size={16} color="#FF6B00" />
@@ -388,7 +388,7 @@ export default function CreateUserScreen() {
             {form.role === 'teacher' && renderTeacherDetails()}
             {form.role === 'parent' && renderParentDetails()}
             {form.role === 'admin' && (
-                <View style={{ backgroundColor: isDark ? '#1e1e1e' : '#f9fafb', borderRadius: 12, padding: 24, alignItems: 'center' }}>
+                <View style={{ backgroundColor: isDark ? '#13103A' : '#f9fafb', borderRadius: 12, padding: 24, alignItems: 'center' }}>
                     <Ionicons name="shield-checkmark" size={48} color={textSecondary} />
                     <Text style={{ color: textSecondary, marginTop: 12, textAlign: 'center' }}>No additional details needed for admin accounts</Text>
                 </View>
@@ -558,7 +558,7 @@ export default function CreateUserScreen() {
                         <Text style={{ fontWeight: '700', color: textPrimary }}>{step === 0 ? 'Cancel' : 'Back'}</Text>
                     </TouchableOpacity>
                     <TouchableOpacity onPress={nextStep} disabled={!canGoNext() || loading}
-                        style={{ flex: 1, backgroundColor: canGoNext() ? '#FF6B00' : (isDark ? '#2c2c2c' : '#d1d5db'), paddingVertical: 16, borderRadius: 12, alignItems: 'center' }}>
+                        style={{ flex: 1, backgroundColor: canGoNext() ? '#FF6B00' : (isDark ? 'rgba(255,255,255,0.1)' : '#d1d5db'), paddingVertical: 16, borderRadius: 12, alignItems: 'center' }}>
                         {loading
                             ? <ActivityIndicator color="white" />
                             : <Text style={{ fontWeight: '700', color: 'white' }}>{step === 3 ? 'Confirm & Enroll' : 'Next'}</Text>

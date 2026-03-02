@@ -1,4 +1,4 @@
-import { UnifiedHeader } from "@/components/common/UnifiedHeader";
+﻿import { UnifiedHeader } from "@/components/common/UnifiedHeader";
 import { useAuth } from "@/contexts/AuthContext";
 import { ExamService } from "@/services/ExamService";
 import { SubjectAPI } from "@/services/SubjectService";
@@ -120,7 +120,7 @@ export default function ExamsPage() {
                                         <Text className="text-gray-900 dark:text-white font-bold text-lg leading-tight">{exam.title}</Text>
                                         <Text className="text-[#FF6900] text-xs font-bold mt-1 uppercase tracking-wider">{exam.subject_title}</Text>
                                     </View>
-                                    <View className="bg-gray-50 dark:bg-[#242424] px-3 py-1 rounded-full border border-gray-100 dark:border-gray-800">
+                                    <View className="bg-gray-50 dark:bg-[#1A1650] px-3 py-1 rounded-full border border-gray-100 dark:border-gray-800">
                                         <Text className="text-gray-400 dark:text-gray-500 text-[10px] font-bold uppercase tracking-widest">{exam.results_count} results</Text>
                                     </View>
                                 </View>
@@ -152,7 +152,7 @@ export default function ExamsPage() {
             {/* Create Modal */}
             <Modal visible={showCreateModal} animationType="slide" transparent>
                 <View className="flex-1 bg-black/50 justify-end">
-                    <View className="bg-white dark:bg-[#121212] rounded-t-[40px] p-8 pb-12 border-t border-gray-100 dark:border-gray-800">
+                    <View className="bg-white dark:bg-[#0F0B2E] rounded-t-[40px] p-8 pb-12 border-t border-gray-100 dark:border-gray-800">
                         <View className="flex-row justify-between items-center mb-8">
                             <Text className="text-2xl font-bold text-gray-900 dark:text-white tracking-tight">Schedule Exam</Text>
                             <TouchableOpacity

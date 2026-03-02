@@ -1,4 +1,4 @@
-import { useAuth } from "@/contexts/AuthContext";
+﻿import { useAuth } from "@/contexts/AuthContext";
 import { useTheme } from "@/contexts/ThemeContext";
 import { LibraryAPI, useLibraryAPI } from "@/services/LibraryService";
 import { AddUpdateDeleteBooksFormProps, FrontendBook, FrontendBorrowedBook } from "@/types/types";
@@ -237,7 +237,7 @@ const AddUpdateDeleteBooksForm: React.FC<AddUpdateDeleteBooksFormProps> = ({
   return (
     <View className="flex-1 bg-mint-50 dark:bg-black">
       {/* Header */}
-      <View className="bg-white dark:bg-[#121212] p-4 border-b border-teal-100 dark:border-gray-800">
+      <View className="bg-white dark:bg-[#0F0B2E] p-4 border-b border-teal-100 dark:border-gray-800">
         <View className="flex-row justify-between items-center">
           <Text className="text-xl font-bold text-slate-800 dark:text-white">
             Book Management
@@ -341,7 +341,7 @@ const AddUpdateDeleteBooksForm: React.FC<AddUpdateDeleteBooksFormProps> = ({
         animationType="slide"
         presentationStyle="pageSheet"
       >
-        <View className="flex-1 bg-white dark:bg-[#121212]">
+        <View className="flex-1 bg-white dark:bg-[#0F0B2E]">
           <View className="bg-teal-600 dark:bg-teal-900 p-4 pt-12">
             <View className="flex-row justify-between items-center">
               <Text className="text-xl font-bold text-white">

@@ -1,4 +1,4 @@
-import { useNotifications } from "@/contexts/NotificationContext";
+﻿import { useNotifications } from "@/contexts/NotificationContext";
 import { useTheme } from "@/contexts/ThemeContext";
 import { Ionicons } from "@expo/vector-icons";
 import React from "react";
@@ -32,10 +32,10 @@ export const UnifiedHeader: React.FC<UnifiedHeaderProps> = ({
   const { isDark } = useTheme();
 
   // Material Dark tokens
-  const bg = isDark ? '#1e1e1e' : '#ffffff';
-  const border = isDark ? '#2c2c2c' : '#f3f4f6';
-  const surface = isDark ? '#242424' : '#f9fafb';
-  const surfaceBorder = isDark ? '#2c2c2c' : '#f3f4f6';
+  const bg = isDark ? '#13103A' : '#ffffff';
+  const border = isDark ? 'rgba(255,255,255,0.1)' : '#f3f4f6';
+  const surface = isDark ? '#1A1650' : '#f9fafb';
+  const surfaceBorder = isDark ? 'rgba(255,255,255,0.1)' : '#f3f4f6';
   const iconColor = isDark ? '#e5e5e5' : '#111827';
   const subtleIconColor = isDark ? '#9ca3af' : '#6b7280';
 

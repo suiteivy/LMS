@@ -1,4 +1,4 @@
-import { EmptyState } from '@/components/common/EmptyState';
+﻿import { EmptyState } from '@/components/common/EmptyState';
 import { UnifiedHeader } from "@/components/common/UnifiedHeader";
 import { UserCard } from '@/components/common/UserCard';
 import { useAuth } from '@/contexts/AuthContext';
@@ -26,13 +26,13 @@ export default function UsersManagementScreen() {
     const [activeFilter, setActiveFilter] = useState<'all' | 'student' | 'teacher' | 'admin'>('all');
 
     // Theme shorthands
-    const bg = isDark ? '#121212' : '#ffffff';
-    const card = isDark ? '#1e1e1e' : '#ffffff';
-    const border = isDark ? '#2c2c2c' : '#f3f4f6';
+    const bg = isDark ? '#0F0B2E' : '#ffffff';
+    const card = isDark ? '#13103A' : '#ffffff';
+    const border = isDark ? 'rgba(255,255,255,0.1)' : '#f3f4f6';
     const textPrimary = isDark ? '#f9fafb' : '#111827';
     const textSecondary = isDark ? '#94a3b8' : '#6b7280';
-    const inputBg = isDark ? '#1e1e1e' : '#f9fafb';
-    const inputBorder = isDark ? '#2c2c2c' : '#f3f4f6';
+    const inputBg = isDark ? '#13103A' : '#f9fafb';
+    const inputBorder = isDark ? 'rgba(255,255,255,0.1)' : '#f3f4f6';
 
     const { isDemo } = useAuth();
 
@@ -152,7 +152,7 @@ export default function UsersManagementScreen() {
                                 onPress={() => setActiveFilter(filter)}
                                 style={{
                                     paddingHorizontal: 20, paddingVertical: 10, borderRadius: 12, borderWidth: 1,
-                                    backgroundColor: isActive ? (isDark ? '#f9fafb' : '#111827') : (isDark ? '#1e1e1e' : '#ffffff'),
+                                    backgroundColor: isActive ? (isDark ? '#f9fafb' : '#111827') : (isDark ? '#13103A' : '#ffffff'),
                                     borderColor: isActive ? (isDark ? '#f9fafb' : '#111827') : border,
                                 }}
                             >

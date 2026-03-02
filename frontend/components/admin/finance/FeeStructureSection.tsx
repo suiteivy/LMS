@@ -1,4 +1,4 @@
-import { useTheme } from "@/contexts/ThemeContext";
+﻿import { useTheme } from "@/contexts/ThemeContext";
 import { FeeStructure } from "@/types/types";
 import React, { useState } from "react";
 import {
@@ -272,7 +272,7 @@ const FeeStructureSection: React.FC<FeeStructureSectionProps> = ({
         animationType="slide"
         presentationStyle="pageSheet"
       >
-        <View className="flex-1 bg-white dark:bg-[#121212]">
+        <View className="flex-1 bg-white dark:bg-[#0F0B2E]">
           <View className="flex-row justify-between items-center p-4 border-b border-gray-200 dark:border-gray-800">
             <TouchableOpacity onPress={() => setShowForm(false)}>
               <Text className="text-blue-600 dark:text-blue-400 text-lg">Cancel</Text>

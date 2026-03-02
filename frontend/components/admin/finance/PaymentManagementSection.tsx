@@ -1,4 +1,4 @@
-import { EmptyState } from "@/components/common/EmptyState";
+﻿import { EmptyState } from "@/components/common/EmptyState";
 import { useTheme } from "@/contexts/ThemeContext";
 import { supabase } from "@/libs/supabase";
 import { Payment } from "@/types/types";
@@ -277,7 +277,7 @@ const PaymentManagementSection: React.FC<
         animationType="slide"
         presentationStyle="pageSheet"
       >
-        <View className="flex-1 bg-white dark:bg-[#121212]">
+        <View className="flex-1 bg-white dark:bg-[#0F0B2E]">
           <View className="flex-row justify-between items-center p-4 border-b border-gray-200 dark:border-gray-800">
             <TouchableOpacity onPress={() => { setShowForm(false); resetForm(); }}>
               <Text className="text-blue-600 dark:text-blue-400 text-lg">Cancel</Text>
@@ -354,7 +354,7 @@ const PaymentManagementSection: React.FC<
                         marginTop: 4, borderWidth: 1,
                         borderColor: isDark ? '#374151' : '#e5e7eb',
                         borderRadius: 12, overflow: 'hidden',
-                        backgroundColor: isDark ? '#1e1e1e' : '#ffffff',
+                        backgroundColor: isDark ? '#13103A' : '#ffffff',
                         maxHeight: 200,
                       }}>
                         {filteredStudents.length === 0 ? (
@@ -377,12 +377,12 @@ const PaymentManagementSection: React.FC<
                                   flexDirection: 'row', alignItems: 'center',
                                   paddingHorizontal: 14, paddingVertical: 12,
                                   borderBottomWidth: 1,
-                                  borderBottomColor: isDark ? '#2c2c2c' : '#f3f4f6',
+                                  borderBottomColor: isDark ? 'rgba(255,255,255,0.1)' : '#f3f4f6',
                                 }}
                               >
                                 <View style={{
                                   width: 36, height: 36, borderRadius: 10,
-                                  backgroundColor: isDark ? '#2c2c2c' : '#f3f4f6',
+                                  backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : '#f3f4f6',
                                   alignItems: 'center', justifyContent: 'center', marginRight: 12,
                                 }}>
                                   <Ionicons name="person" size={16} color="#FF6B00" />

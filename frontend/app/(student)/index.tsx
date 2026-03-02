@@ -1,4 +1,4 @@
-import { UnifiedHeader } from "@/components/common/UnifiedHeader";
+﻿import { UnifiedHeader } from "@/components/common/UnifiedHeader";
 import { SubscriptionBanner } from "@/components/shared/SubscriptionComponents";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNotifications } from "@/contexts/NotificationContext";
@@ -18,7 +18,7 @@ interface QuickActionProps {
 const QuickAction = ({ icon: Icon, label, color, onPress }: QuickActionProps) => (
   <TouchableOpacity
     onPress={onPress}
-    className="w-[47%] bg-white dark:bg-[#121212] p-6 rounded-[32px] border border-gray-100 dark:border-gray-800 shadow-sm items-center mb-4 active:bg-gray-50 dark:active:bg-gray-900"
+    className="w-[47%] bg-white dark:bg-[#0F0B2E] p-6 rounded-[32px] border border-gray-100 dark:border-gray-800 shadow-sm items-center mb-4 active:bg-gray-50 dark:active:bg-gray-900"
   >
     <View style={{ backgroundColor: `${color}10` }} className="p-3.5 rounded-2xl mb-3">
       <Icon size={24} color={color} />

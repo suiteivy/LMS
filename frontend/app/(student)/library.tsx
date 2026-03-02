@@ -1,4 +1,4 @@
-import { UnifiedHeader } from "@/components/common/UnifiedHeader";
+﻿import { UnifiedHeader } from "@/components/common/UnifiedHeader";
 import { useAuth } from '@/contexts/AuthContext';
 import { LibraryAPI } from '@/services/LibraryService';
 import { FrontendBook, FrontendBorrowedBook } from '@/types/types';
@@ -189,7 +189,7 @@ export default function StudentLibrary() {
 
             <Modal animationType="slide" transparent visible={modalVisible}>
                 <View className="flex-1 bg-black/60 justify-end">
-                    <View className="bg-white dark:bg-[#121212] rounded-t-[50px] p-8 pb-12 border-t border-gray-100 dark:border-gray-800">
+                    <View className="bg-white dark:bg-[#0F0B2E] rounded-t-[50px] p-8 pb-12 border-t border-gray-100 dark:border-gray-800">
                         <View className="flex-row justify-between items-start mb-8">
                             <View className="flex-1 pr-6">
                                 <Text className="text-[#FF6900] font-bold text-[10px] uppercase tracking-[3px] mb-2">{selectedBook?.category}</Text>

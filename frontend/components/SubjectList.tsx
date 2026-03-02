@@ -1,4 +1,4 @@
-import { useTheme } from '@/contexts/ThemeContext';
+﻿import { useTheme } from '@/contexts/ThemeContext';
 import { Subject } from '@/types/types';
 import { BookOpen, Filter } from 'lucide-react-native';
 import React, { useState } from 'react';
@@ -40,8 +40,8 @@ export const SubjectList: React.FC<SubjectListProps> = ({
   // ── tokens ────────────────────────────────────────────────────────────────
   const textPrimary = isDark ? '#f1f1f1' : '#111827';
   const textSecondary = isDark ? '#9ca3af' : '#6b7280';
-  const surface = isDark ? '#1e1e1e' : '#ffffff';
-  const border = isDark ? '#2c2c2c' : '#f3f4f6';
+  const surface = isDark ? '#13103A' : '#ffffff';
+  const border = isDark ? 'rgba(255,255,255,0.1)' : '#f3f4f6';
   const accent = '#FF6B00';
 
   const FilterChip = ({ label, isSelected, onPress }: { label: string; isSelected: boolean; onPress: () => void }) => (
@@ -86,7 +86,7 @@ export const SubjectList: React.FC<SubjectListProps> = ({
             {title.split(' ')[0]}
             <Text style={{ color: accent }}>.</Text>
           </Text>
-          <View style={{ backgroundColor: isDark ? '#1e1e1e' : '#111827', width: 40, height: 40, borderRadius: 16, alignItems: 'center', justifyContent: 'center', borderWidth: isDark ? 1 : 0, borderColor: border }}>
+          <View style={{ backgroundColor: isDark ? '#13103A' : '#111827', width: 40, height: 40, borderRadius: 16, alignItems: 'center', justifyContent: 'center', borderWidth: isDark ? 1 : 0, borderColor: border }}>
             <Filter size={20} color="white" />
           </View>
         </View>

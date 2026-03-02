@@ -1,4 +1,4 @@
-import { UnifiedHeader } from "@/components/common/UnifiedHeader";
+﻿import { UnifiedHeader } from "@/components/common/UnifiedHeader";
 import { useTheme } from "@/contexts/ThemeContext";
 import { TeacherAttendance, TeacherAttendanceAPI } from "@/services/TeacherAttendanceService";
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -21,8 +21,8 @@ export default function TeacherAttendancePage() {
     const [date, setDate] = useState(new Date());
     const [showDatePicker, setShowDatePicker] = useState(false);
 
-    const surface = isDark ? '#1e1e1e' : '#ffffff';
-    const border = isDark ? '#2c2c2c' : '#f3f4f6';
+    const surface = isDark ? '#13103A' : '#ffffff';
+    const border = isDark ? 'rgba(255,255,255,0.1)' : '#f3f4f6';
     const textPrimary = isDark ? '#f1f1f1' : '#111827';
     const textSecondary = isDark ? '#9ca3af' : '#6b7280';
 
@@ -63,12 +63,12 @@ export default function TeacherAttendancePage() {
             case 'present': return { dot: '#10b981', activeBg: isDark ? '#052e16' : '#dcfce7', activeBorder: '#10b981' };
             case 'absent': return { dot: '#ef4444', activeBg: isDark ? 'rgba(239,68,68,0.12)' : '#fee2e2', activeBorder: '#ef4444' };
             case 'late': return { dot: '#f59e0b', activeBg: isDark ? '#3d2000' : '#fef9c3', activeBorder: '#f59e0b' };
-            default: return { dot: isDark ? '#2c2c2c' : '#d1d5db', activeBg: 'transparent', activeBorder: border };
+            default: return { dot: isDark ? 'rgba(255,255,255,0.1)' : '#d1d5db', activeBg: 'transparent', activeBorder: border };
         }
     };
 
     return (
-        <View style={{ flex: 1, backgroundColor: isDark ? '#121212' : '#f9fafb' }}>
+        <View style={{ flex: 1, backgroundColor: isDark ? '#0F0B2E' : '#f9fafb' }}>
             <UnifiedHeader
                 title="Management"
                 subtitle="Attendance"
@@ -110,7 +110,7 @@ export default function TeacherAttendancePage() {
                             <View key={item.teacher_id} style={{ backgroundColor: surface, padding: 16, borderRadius: 16, borderWidth: 1, borderColor: border, marginBottom: 12, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
                                 {/* Avatar + Name */}
                                 <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, marginRight: 12 }}>
-                                    <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: isDark ? '#242424' : '#f3f4f6', marginRight: 12, overflow: 'hidden', flexShrink: 0 }}>
+                                    <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: isDark ? '#1A1650' : '#f3f4f6', marginRight: 12, overflow: 'hidden', flexShrink: 0 }}>
                                         {item.teachers?.users?.avatar_url ? (
                                             <Image source={{ uri: item.teachers.users.avatar_url }} style={{ width: '100%', height: '100%' }} />
                                         ) : (

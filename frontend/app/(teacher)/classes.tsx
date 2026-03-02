@@ -1,4 +1,4 @@
-import { UnifiedHeader } from "@/components/common/UnifiedHeader";
+﻿import { UnifiedHeader } from "@/components/common/UnifiedHeader";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/libs/supabase";
 import { ClassService, ClassStudent } from "@/services/ClassService";
@@ -144,7 +144,7 @@ const StatusBtn = ({
             disabled={locked}
             className={`w-9 h-9 rounded-xl items-center justify-center ${isActive
                 ? activeBg[status]
-                : "bg-gray-100 dark:bg-[#242424] border border-gray-200 dark:border-gray-700"
+                : "bg-gray-100 dark:bg-[#1A1650] border border-gray-200 dark:border-gray-700"
                 } ${locked ? "opacity-60" : ""}`}
         >
             {icons[status]}
@@ -642,7 +642,7 @@ const ClassAttendanceModal = ({
             >
                 <TouchableOpacity
                     activeOpacity={1}
-                    className="bg-white dark:bg-[#121212] rounded-t-[36px] border-t border-gray-100 dark:border-gray-800"
+                    className="bg-white dark:bg-[#0F0B2E] rounded-t-[36px] border-t border-gray-100 dark:border-gray-800"
                     style={{ height: "90%" }}
                 >
                     {/* Drag handle */}

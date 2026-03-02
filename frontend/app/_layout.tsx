@@ -1,4 +1,4 @@
-import { AppLoading } from "@/components/AppLoading";
+﻿import { AppLoading } from "@/components/AppLoading";
 import { toastConfig } from "@/components/CustomToast";
 import Notifications from "@/components/Notifications";
 import DemoBanner from "@/components/DemoBanner";
@@ -49,11 +49,11 @@ console.error = (...args: unknown[]) => {
 
 LogBox.ignoreLogs(["Couldn't find a navigation context"]);
 
-// Material Dark color scale
-// Background:  #121212
-// Surface:     #1e1e1e
-// Cards:       #242424
-// Borders:     #2c2c2c
+// SuiteIvy Dark color palette (matches landing page)
+// Background:  #0F0B2E  (deep navy)
+// Surface:     #13103A  (slightly lighter navy)
+// Cards:       #1A1650  (muted navy)
+// Borders:     rgba(255,255,255,0.1)  (translucent white)
 
 // ─── Root ────────────────────────────────────────────────────────────────────
 export default function RootLayout() {
@@ -87,7 +87,7 @@ function AppShell() {
       {Platform.OS === 'android' ? (
         <StatusBar
           style={isDark ? "light" : "dark"}
-          backgroundColor={isDark ? '#121212' : '#ffffff'}
+          backgroundColor={isDark ? '#0F0B2E' : '#ffffff'}
           translucent={false}
         />
       ) : (
@@ -144,7 +144,7 @@ function AuthHandler() {
         // Special case: if we just loaded and isInitializing just flipped to false,
         // we might be in a race with the router. 
         // Let's only redirect if we aren't in a transient state.
-        router.replace("/");
+        router.replace("/(auth)/signIn");
       }
     } else {
       // LOGGED IN
@@ -187,7 +187,7 @@ function AuthHandler() {
             position: 'absolute',
             top: 0, left: 0, right: 0, bottom: 0,
             zIndex: 100000,
-            backgroundColor: isDark ? '#121212' : '#ffffff',
+            backgroundColor: isDark ? '#0F0B2E' : '#ffffff',
           }}
         >
           <AppLoading />

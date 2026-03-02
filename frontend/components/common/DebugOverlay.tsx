@@ -1,4 +1,4 @@
-import { useTheme } from '@/contexts/ThemeContext';
+﻿import { useTheme } from '@/contexts/ThemeContext';
 import { LogEntry, logger } from '@/services/LoggingService';
 import { Ionicons } from '@expo/vector-icons';
 import React, { useEffect, useState } from 'react';
@@ -55,7 +55,7 @@ export const DebugOverlay: React.FC = () => {
       style={{ zIndex: 1000000 }}
     >
       <SafeAreaView className="flex-1">
-        <View className="flex-row justify-between items-center p-4 border-b border-gray-100 dark:border-gray-800 bg-white dark:bg-[#121212]">
+        <View className="flex-row justify-between items-center p-4 border-b border-gray-100 dark:border-gray-800 bg-white dark:bg-[#0F0B2E]">
           <Text className="text-lg font-bold text-gray-900 dark:text-white">Debug Hub</Text>
           <View className="flex-row items-center">
             <TouchableOpacity onPress={() => logger.copyToClipboard()} className="mr-6 p-2 bg-gray-50 dark:bg-[#1a1a1a] rounded-lg border border-transparent dark:border-gray-800">

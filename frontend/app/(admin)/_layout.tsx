@@ -1,4 +1,4 @@
-import { AuthGuard } from "@/components/AuthGuard";
+﻿import { AuthGuard } from "@/components/AuthGuard";
 import { NavItem, WebSidebar } from "@/components/layouts/WebSideBar";
 import { SchoolProvider } from "@/contexts/SchoolContext";
 import { useTheme } from "@/contexts/ThemeContext";
@@ -37,27 +37,27 @@ function AdminTabs() {
             screenOptions={{
                 headerShown: false,
                 headerStyle: {
-                    backgroundColor: isDark ? '#121212' : '#ffffff',
+                    backgroundColor: isDark ? '#0F0B2E' : '#ffffff',
                     elevation: 0,
                     shadowOpacity: 0,
                     borderBottomWidth: 1,
-                    borderBottomColor: isDark ? '#2c2c2c' : '#f3f4f6',
+                    borderBottomColor: isDark ? 'rgba(255,255,255,0.1)' : '#f3f4f6',
                 },
                 headerTitleStyle: {
                     fontWeight: 'bold',
                     color: isDark ? '#f9fafb' : '#111827',
                 },
                 tabBarStyle: {
-                    backgroundColor: isDark ? '#121212' : "#ffffff",
+                    backgroundColor: isDark ? '#0F0B2E' : "#ffffff",
                     borderTopWidth: 1,
-                    borderTopColor: isDark ? '#2c2c2c' : '#f3f4f6',
+                    borderTopColor: isDark ? 'rgba(255,255,255,0.1)' : '#f3f4f6',
                     height: 64,
                     paddingBottom: 10,
                 },
                 tabBarActiveTintColor: "#FF6B00",
                 tabBarInactiveTintColor: isDark ? "#94a3b8" : "#64748b",
                 tabBarLabelStyle: { fontSize: 11, fontWeight: "600", marginTop: 0 },
-                sceneStyle: { backgroundColor: isDark ? '#121212' : "#f9fafb" },
+                sceneStyle: { backgroundColor: isDark ? '#0F0B2E' : "#f9fafb" },
             }}
         >
             {NAV_ITEMS.map((item) => (

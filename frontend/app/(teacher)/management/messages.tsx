@@ -1,4 +1,4 @@
-import { UnifiedHeader } from "@/components/common/UnifiedHeader";
+﻿import { UnifiedHeader } from "@/components/common/UnifiedHeader";
 import { MessageService } from "@/services/MessageService";
 import { format } from "date-fns";
 import { router } from "expo-router";
@@ -151,7 +151,7 @@ export default function MessagingPage() {
 
             <Modal visible={composeModal} animationType="slide" transparent>
                 <View className="flex-1 bg-black/50 justify-end">
-                    <View className="bg-white dark:bg-[#121212] h-[90%] rounded-t-[40px] p-8 border-t border-gray-100 dark:border-gray-800">
+                    <View className="bg-white dark:bg-[#0F0B2E] h-[90%] rounded-t-[40px] p-8 border-t border-gray-100 dark:border-gray-800">
                         <View className="flex-row justify-between items-center mb-8">
                             <Text className="text-2xl font-bold text-gray-900 dark:text-white tracking-tight">Compose</Text>
                             <TouchableOpacity

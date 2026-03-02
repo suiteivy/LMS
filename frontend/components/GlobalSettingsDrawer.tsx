@@ -1,4 +1,4 @@
-import { UnifiedHeader } from "@/components/common/UnifiedHeader";
+﻿import { UnifiedHeader } from "@/components/common/UnifiedHeader";
 import { useAuth } from '@/contexts/AuthContext';
 import { ThemeMode, useTheme } from '@/contexts/ThemeContext';
 import { ChevronRight, HelpCircle, LogOut, Moon, Settings, ShieldCheck, Sun, UserCircle } from 'lucide-react-native';
@@ -34,10 +34,10 @@ const MenuItem = ({ icon, label, onPress, danger, isDark }: MenuItemProps) => (
       alignItems: 'center',
       padding: 16,
       borderBottomWidth: 1,
-      borderBottomColor: isDark ? '#2c2c2c' : '#f3f4f6',
+      borderBottomColor: isDark ? 'rgba(255,255,255,0.1)' : '#f3f4f6',
       backgroundColor: danger
         ? (isDark ? 'rgba(127,29,29,0.2)' : '#fef2f2')
-        : (isDark ? '#121212' : '#ffffff'),
+        : (isDark ? '#0F0B2E' : '#ffffff'),
     }}
   >
     <View style={{ width: 32 }}>{icon}</View>
@@ -53,12 +53,12 @@ function SettingsMenu({ userRole, onNavigate }: { userRole: string; onNavigate: 
   const { theme, setTheme, isDark } = useTheme();
   const roleLabel = userRole.charAt(0).toUpperCase() + userRole.slice(1);
 
-  const surface = isDark ? '#1e1e1e' : '#ffffff';
-  const border = isDark ? '#2c2c2c' : '#f3f4f6';
+  const surface = isDark ? '#13103A' : '#ffffff';
+  const border = isDark ? 'rgba(255,255,255,0.1)' : '#f3f4f6';
   const textPrimary = isDark ? '#f1f1f1' : '#111827';
   const textSecondary = isDark ? '#6b7280' : '#9ca3af';
-  const pillBg = isDark ? '#121212' : '#f9fafb';
-  const pillBorder = isDark ? '#2c2c2c' : '#f3f4f6';
+  const pillBg = isDark ? '#0F0B2E' : '#f9fafb';
+  const pillBorder = isDark ? 'rgba(255,255,255,0.1)' : '#f3f4f6';
 
   const handleLogout = async () => {
     try {
@@ -112,7 +112,7 @@ function SettingsMenu({ userRole, onNavigate }: { userRole: string; onNavigate: 
       </View>
 
       {/* Menu Items */}
-      <ScrollView style={{ flex: 1, backgroundColor: isDark ? '#121212' : '#ffffff' }} contentContainerStyle={{ paddingBottom: 20 }}>
+      <ScrollView style={{ flex: 1, backgroundColor: isDark ? '#0F0B2E' : '#ffffff' }} contentContainerStyle={{ paddingBottom: 20 }}>
         {userRole === 'admin' && (
           <>
             <MenuItem isDark={isDark} icon={<ShieldCheck size={22} color="#8b5cf6" />} label="Admin Overview" onPress={() => onNavigate('overview')} />
@@ -180,7 +180,7 @@ function SettingsMenu({ userRole, onNavigate }: { userRole: string; onNavigate: 
       </ScrollView>
 
       {/* Logout */}
-      <View style={{ padding: 24, paddingBottom: 40, borderTopWidth: 1, borderTopColor: border, backgroundColor: isDark ? '#121212' : '#ffffff' }}>
+      <View style={{ padding: 24, paddingBottom: 40, borderTopWidth: 1, borderTopColor: border, backgroundColor: isDark ? '#0F0B2E' : '#ffffff' }}>
         <TouchableOpacity
           onPress={handleLogout}
           disabled={loading}
@@ -238,7 +238,7 @@ export function GlobalSettingsContent({ userRole = 'student' }: { userRole?: 'st
   const roleLabel = (userRole.charAt(0).toUpperCase() + userRole.slice(1)) as "Student" | "Teacher" | "Admin" | "Parent";
 
   return (
-    <View style={{ flex: 1, backgroundColor: isDark ? '#121212' : '#ffffff' }}>
+    <View style={{ flex: 1, backgroundColor: isDark ? '#0F0B2E' : '#ffffff' }}>
       {activeScreen !== 'menu' && (
         <UnifiedHeader
           title={roleLabel}

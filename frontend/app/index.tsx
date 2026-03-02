@@ -30,7 +30,8 @@ import {
   withTiming,
   withSequence,
   interpolate,
-  Extrapolate
+  Extrapolate,
+  Easing
 } from 'react-native-reanimated';
 import Reanimated from 'react-native-reanimated';
 import {
@@ -49,12 +50,8 @@ const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const AnimatedCircle = Reanimated.createAnimatedComponent(Circle);
 
 const FancyPricingCard = ({ plan, openRegistrationModal }: any) => {
-  const hoverValue = useSharedValue(0);
+  const [hovered, setHovered] = useState(false);
   const animValue = useSharedValue(0);
-  const tiltX = useSharedValue(0);
-  const tiltY = useSharedValue(0);
-  const shineX = useSharedValue(-100);
-
   const borderAnim = useSharedValue(0);
 
   useEffect(() => {
@@ -74,24 +71,6 @@ const FancyPricingCard = ({ plan, openRegistrationModal }: any) => {
     );
   }, []);
 
-  const animatedStyle = useAnimatedStyle(() => {
-    return {
-      transform: [
-        { perspective: 1000 },
-        { translateY: interpolate(hoverValue.value, [0, 1], [0, -12]) },
-        { scale: interpolate(hoverValue.value, [0, 1], [1, 1.03]) },
-        { rotateX: `${tiltX.value}deg` },
-        { rotateY: `${tiltY.value}deg` },
-      ],
-      shadowOpacity: interpolate(hoverValue.value, [0, 1], [0.1, 0.4]),
-      shadowRadius: interpolate(hoverValue.value, [0, 1], [10, 25]),
-    };
-  });
-
-  const shineStyle = useAnimatedStyle(() => ({
-    transform: [{ translateX: shineX.value }],
-  }));
-
   const blob1Props = useAnimatedProps(() => ({
     cx: interpolate(animValue.value, [0, 1], [10, 40]) + '%',
     cy: interpolate(animValue.value, [0, 1], [10, 30]) + '%',
@@ -102,51 +81,57 @@ const FancyPricingCard = ({ plan, openRegistrationModal }: any) => {
     cy: interpolate(animValue.value, [0, 1], [90, 70]) + '%',
   }));
 
-  const onPointerMove = (e: any) => {
-    if (Platform.OS !== 'web') return;
-    const { width, height, left, top } = e.currentTarget.getBoundingClientRect();
-    const x = e.clientX - left;
-    const y = e.clientY - top;
+  // Web: use CSS transitions on a plain View for guaranteed smoothness
+  // Native: use Reanimated shared values
+  const nativeHover = useSharedValue(0);
 
-    const centerX = width / 2;
-    const centerY = height / 2;
+  const nativeAnimStyle = useAnimatedStyle(() => ({
+    transform: [
+      { translateY: interpolate(nativeHover.value, [0, 1], [0, -12]) },
+      { scale: interpolate(nativeHover.value, [0, 1], [1, 1.03]) },
+    ],
+  }));
 
-    tiltY.value = withTiming((x - centerX) / 15, { duration: 100 });
-    tiltX.value = withTiming((centerY - y) / 15, { duration: 100 });
+  const cardWidth = Platform.OS === 'web' && SCREEN_WIDTH > 1100
+    ? '23%'
+    : Platform.OS === 'web' && SCREEN_WIDTH > 768
+      ? '46%'
+      : '100%';
+
+  // Web-specific CSS hover style
+  const webHoverStyle = Platform.OS === 'web' ? {
+    transform: hovered ? [{ translateY: -12 }, { scale: 1.03 }] : [{ translateY: 0 }, { scale: 1 }],
+    transition: 'transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.4s ease',
+    boxShadow: hovered
+      ? `0 24px 48px ${plan.accent}55, 0 8px 24px ${plan.accent}33`
+      : `0 8px 24px rgba(0,0,0,0.3)`,
+    cursor: 'pointer',
+  } : {};
+
+  const sharedContainerStyle: any = {
+    width: cardWidth,
+    minWidth: 280,
+    marginVertical: 12,
+    position: 'relative',
   };
+
+  const containerStyle = Platform.OS === 'web'
+    ? [sharedContainerStyle, webHoverStyle]
+    : [sharedContainerStyle, nativeAnimStyle];
 
   const onHoverIn = () => {
-    if (Platform.OS === 'web') {
-      hoverValue.value = withTiming(1, { duration: 300 });
-      shineX.value = withSequence(
-        withTiming(-100, { duration: 0 }),
-        withTiming(400, { duration: 800 })
-      );
-    }
+    setHovered(true);
   };
-
   const onHoverOut = () => {
-    if (Platform.OS === 'web') {
-      hoverValue.value = withTiming(0, { duration: 300 });
-      tiltX.value = withTiming(0);
-      tiltY.value = withTiming(0);
-    }
+    setHovered(false);
   };
 
   return (
     <Reanimated.View
-      style={[{
-        width: Platform.OS === 'web' && SCREEN_WIDTH > 1100 ? '23%' : (Platform.OS === 'web' && SCREEN_WIDTH > 768 ? '46%' : '100%'),
-        minWidth: 280,
-        marginVertical: 12,
-        position: 'relative',
-        shadowColor: plan.accent,
-        shadowOffset: { width: 0, height: 10 },
-      }, animatedStyle]}
-      //@ts-ignore - for web hover
-      onPointerEnter={onHoverIn}
-      onPointerLeave={onHoverOut}
-      onPointerMove={onPointerMove}
+      style={containerStyle as any}
+      //@ts-ignore
+      onMouseEnter={onHoverIn}
+      onMouseLeave={onHoverOut}
     >
       {/* Premium Rotating Border */}
       {plan.premium && Platform.OS === 'web' && (
@@ -178,20 +163,31 @@ const FancyPricingCard = ({ plan, openRegistrationModal }: any) => {
         backdropFilter: Platform.OS === 'web' ? 'blur(20px)' : 'none'
       } as any}>
 
-        {/* Shine Animation - Web Only */}
+        {/* Shine sweep on hover - Web Only */}
         {Platform.OS === 'web' && (
-          <Reanimated.View
-            style={[{
+          <View
+            pointerEvents="none"
+            style={{
               position: 'absolute',
               top: 0,
               left: 0,
-              width: 50,
+              width: '100%',
               height: '100%',
-              backgroundColor: 'rgba(255,255,255,0.15)',
-              transform: [{ skewX: '-20deg' }],
               zIndex: 10,
-            }, shineStyle]}
-          />
+              overflow: 'hidden',
+            } as any}
+          >
+            <View style={{
+              position: 'absolute',
+              top: 0,
+              width: 60,
+              height: '100%',
+              background: 'linear-gradient(105deg, transparent, rgba(255,255,255,0.12), transparent)',
+              transform: [{ skewX: '-20deg' }],
+              transition: 'left 0.8s ease',
+              left: hovered ? '120%' : '-60px',
+            } as any} />
+          </View>
         )}
 
         {/* Background Decorative Shapes */}
@@ -217,10 +213,11 @@ const FancyPricingCard = ({ plan, openRegistrationModal }: any) => {
             right: '20%',
             bottom: '20%',
             backgroundColor: plan.accent,
-            opacity: 0.1,
+            opacity: hovered ? 0.18 : 0.08,
             borderRadius: 100,
             filter: 'blur(60px)',
-            zIndex: -1
+            zIndex: -1,
+            transition: 'opacity 0.4s ease',
           } as any} />
         )}
 
@@ -319,7 +316,7 @@ const FancyPricingCard = ({ plan, openRegistrationModal }: any) => {
               shadowOpacity: 0.4,
               shadowRadius: 20,
               borderWidth: 1,
-              borderColor: 'rgba(255,255,255,0.2)'
+              borderColor: 'rgba(255,255,255,0.2)',
             }}
             onPress={() => openRegistrationModal(plan.name)}
             activeOpacity={0.85}
@@ -331,6 +328,133 @@ const FancyPricingCard = ({ plan, openRegistrationModal }: any) => {
               <MoveRight size={20} color="white" />
             </View>
           </TouchableOpacity>
+        </View>
+      </View>
+    </Reanimated.View>
+  );
+};
+
+
+// ─── Feature Card Component ─────────────────────────────────────────────────
+const FeatureCard = ({ icon, title, desc, accent, tag }: any) => {
+  const hoverVal = useSharedValue(0);
+  const glowVal = useSharedValue(0);
+
+  useEffect(() => {
+    glowVal.value = withRepeat(
+      withSequence(
+        withTiming(1, { duration: 2500, easing: Easing.inOut(Easing.sin) }),
+        withTiming(0.4, { duration: 2500, easing: Easing.inOut(Easing.sin) })
+      ),
+      -1,
+      true
+    );
+  }, []);
+
+  const cardStyle = useAnimatedStyle(() => ({
+    transform: [
+      { translateY: interpolate(hoverVal.value, [0, 1], [0, -10]) },
+      { scale: interpolate(hoverVal.value, [0, 1], [1, 1.025]) },
+    ],
+    shadowOpacity: interpolate(hoverVal.value, [0, 1], [0.08, 0.35]),
+    shadowRadius: interpolate(hoverVal.value, [0, 1], [8, 28]),
+  }));
+
+  const glowStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(glowVal.value, [0, 1], [0.25, 0.7]),
+    transform: [{ scale: interpolate(glowVal.value, [0, 1], [0.95, 1.05]) }],
+  }));
+
+  const onHoverIn = () => {
+    if (Platform.OS === 'web') hoverVal.value = withTiming(1, { duration: 400, easing: Easing.out(Easing.cubic) });
+  };
+  const onHoverOut = () => {
+    if (Platform.OS === 'web') hoverVal.value = withTiming(0, { duration: 350, easing: Easing.inOut(Easing.cubic) });
+  };
+
+  const cardWidth = Platform.OS === 'web' && SCREEN_WIDTH >= 1100
+    ? '30%'
+    : Platform.OS === 'web' && SCREEN_WIDTH >= 700
+      ? '46%'
+      : '100%';
+
+  return (
+    <Reanimated.View
+      style={[{
+        width: cardWidth,
+        minWidth: 240,
+        margin: 10,
+        borderRadius: 24,
+        backgroundColor: 'rgba(255,255,255,0.04)',
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.08)',
+        overflow: 'hidden',
+        shadowColor: accent,
+        shadowOffset: { width: 0, height: 8 },
+      }, cardStyle]}
+      //@ts-ignore
+      onPointerEnter={onHoverIn}
+      onPointerLeave={onHoverOut}
+    >
+      {/* Top accent bar */}
+      <View style={{ height: 3, backgroundColor: accent, opacity: 0.7 }} />
+
+      <View style={{ padding: 26 }}>
+        {/* Icon with animated glow */}
+        <View style={{ marginBottom: 20, alignSelf: 'flex-start' }}>
+          <Reanimated.View style={[{
+            position: 'absolute',
+            width: 56,
+            height: 56,
+            borderRadius: 18,
+            backgroundColor: accent,
+          }, glowStyle, { filter: 'blur(14px)' } as any]} />
+          <View style={{
+            width: 52,
+            height: 52,
+            borderRadius: 16,
+            backgroundColor: `${accent}1A`,
+            borderWidth: 1,
+            borderColor: `${accent}35`,
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}>
+            {icon}
+          </View>
+        </View>
+
+        {/* Tag */}
+        {tag && (
+          <View style={{
+            alignSelf: 'flex-start',
+            backgroundColor: `${accent}18`,
+            borderRadius: 8,
+            paddingHorizontal: 8,
+            paddingVertical: 3,
+            marginBottom: 10,
+            borderWidth: 1,
+            borderColor: `${accent}30`,
+          }}>
+            <Text style={{ color: accent, fontSize: 10, fontWeight: '800', letterSpacing: 1.5, textTransform: 'uppercase' }}>{tag}</Text>
+          </View>
+        )}
+
+        <Text style={{ color: '#ffffff', fontWeight: '800', fontSize: 18, marginBottom: 8, letterSpacing: -0.3 }}>
+          {title}
+        </Text>
+        <Text style={{ color: 'rgba(255,255,255,0.5)', fontSize: 13.5, lineHeight: 21 }}>
+          {desc}
+        </Text>
+
+        {/* Arrow indicator */}
+        <View style={{
+          marginTop: 20,
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: 6,
+        }}>
+          <View style={{ width: 20, height: 1.5, backgroundColor: accent, opacity: 0.6 }} />
+          <MoveRight size={14} color={accent} />
         </View>
       </View>
     </Reanimated.View>
@@ -1002,136 +1126,108 @@ export default function Index() {
             onLayout={(e) => handleLayout("features", e.nativeEvent.layout.y)}
             style={{
               paddingHorizontal: 20,
-              paddingTop: 48,
-              paddingBottom: 40,
+              paddingTop: 72,
+              paddingBottom: 72,
               backgroundColor: "#13103A",
+              position: 'relative',
+              overflow: 'hidden',
             }}
           >
-            <Text
-              style={{
-                color: "white",
-                fontSize: 28,
-                fontWeight: "800",
-                textAlign: "center",
-                marginBottom: 6,
-              }}
-            >
-              Everything You Need
-            </Text>
-            <Text
-              style={{
-                color: "rgba(255,255,255,0.5)",
-                fontSize: 14,
-                textAlign: "center",
-                marginBottom: 32,
-              }}
-            >
-              Powerful tools for every stakeholder
-            </Text>
+            {/* Section background mesh */}
+            <View style={{
+              position: 'absolute', top: '10%', left: '-5%',
+              width: 320, height: 320, borderRadius: 160,
+              backgroundColor: 'rgba(255,107,0,0.05)',
+            } as any} />
+            <View style={{
+              position: 'absolute', bottom: '5%', right: '-5%',
+              width: 280, height: 280, borderRadius: 140,
+              backgroundColor: 'rgba(99,102,241,0.07)',
+            } as any} />
 
-            <View
-              style={{
-                flexDirection: "row",
-                flexWrap: "wrap",
-                justifyContent: "center",
-                alignItems: "stretch",
-                marginHorizontal: -8,
-              }}
-            >
+            {/* Section header */}
+            <View style={{ alignItems: 'center', marginBottom: 52 }}>
+              {/* Badge */}
+              <View style={{
+                flexDirection: 'row', alignItems: 'center', gap: 7,
+                backgroundColor: 'rgba(255,107,0,0.1)',
+                borderRadius: 20, paddingHorizontal: 14, paddingVertical: 6,
+                borderWidth: 1, borderColor: 'rgba(255,107,0,0.22)',
+                marginBottom: 20,
+              }}>
+                <BadgeCheck size={14} color="#FF8C40" />
+                <Text style={{ color: '#FF8C40', fontSize: 11, fontWeight: '800', letterSpacing: 2, textTransform: 'uppercase' }}>
+                  Platform Capabilities
+                </Text>
+              </View>
+
+              <Text style={{ color: '#ffffff', fontSize: Platform.OS === 'web' && SCREEN_WIDTH > 768 ? 40 : 30, fontWeight: '900', textAlign: 'center', letterSpacing: -0.5, lineHeight: Platform.OS === 'web' && SCREEN_WIDTH > 768 ? 48 : 38 }}>
+                Everything You{' '}
+                <Text style={{ color: '#FF8C40' }}>Need</Text>
+              </Text>
+
+              {/* Animated underline */}
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 10 }}>
+                <View style={{ width: 32, height: 2, borderRadius: 2, backgroundColor: 'rgba(255,107,0,0.3)' }} />
+                <View style={{ width: 64, height: 2, borderRadius: 2, backgroundColor: '#FF6B00' }} />
+                <View style={{ width: 32, height: 2, borderRadius: 2, backgroundColor: 'rgba(255,107,0,0.3)' }} />
+              </View>
+
+              <Text style={{ color: 'rgba(255,255,255,0.45)', fontSize: 15, textAlign: 'center', marginTop: 18, maxWidth: 520, lineHeight: 23 }}>
+                A unified platform built for every stakeholder — from admin and teachers to students and parents.
+              </Text>
+            </View>
+
+            {/* Feature cards grid */}
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', marginHorizontal: -10 }}>
               {[
                 {
-                  icon: <BookOpen size={22} color="#FF8C40" />,
-                  title: "Courses",
-                  desc: "Browse, enroll, and manage courses with ease.",
-                  gradient: ["#FF6B00", "#FF8C40"],
+                  icon: <BookOpen size={24} color="#FF8C40" />,
+                  title: 'Course Management',
+                  desc: 'Create, publish and manage rich courses with videos, quizzes, and assignments — all in one editor.',
+                  accent: '#FF6B00',
+                  tag: 'Core',
                 },
                 {
-                  icon: <Library size={22} color="#A78BFA" />,
-                  title: "Library",
-                  desc: "Access digital books and resources anytime.",
-                  gradient: ["#7C3AED", "#A78BFA"],
+                  icon: <Library size={24} color="#A78BFA" />,
+                  title: 'Digital Library',
+                  desc: 'Give students and teachers instant access to a searchable library of books, PDFs, and media.',
+                  accent: '#7C3AED',
+                  tag: 'Resources',
                 },
                 {
-                  icon: <CreditCard size={22} color="#60A5FA" />,
-                  title: "Payments",
-                  desc: "Track fees and manage payments simply.",
-                  gradient: ["#2563EB", "#60A5FA"],
+                  icon: <CreditCard size={24} color="#60A5FA" />,
+                  title: 'Fee & Payments',
+                  desc: 'Automate invoicing, track outstanding fees, and accept payments — with real-time dashboards.',
+                  accent: '#2563EB',
+                  tag: 'Finance',
                 },
                 {
-                  icon: <BarChart2 size={22} color="#34D399" />,
-                  title: "Analytics",
-                  desc: "Get actionable insights and reports.",
-                  gradient: ["#059669", "#34D399"],
+                  icon: <BarChart2 size={24} color="#34D399" />,
+                  title: 'Advanced Analytics',
+                  desc: 'Drill into performance trends, attendance, and engagement with beautiful, exportable reports.',
+                  accent: '#059669',
+                  tag: 'Insights',
                 },
                 {
-                  icon: <Users size={22} color="#F472B6" />,
-                  title: "Users",
-                  desc: "Manage students, teachers, and admins.",
-                  gradient: ["#DB2777", "#F472B6"],
+                  icon: <Users size={24} color="#F472B6" />,
+                  title: 'User Management',
+                  desc: 'Onboard and manage admins, teachers, students, and parents with role-based access control.',
+                  accent: '#DB2777',
+                  tag: 'Admin',
                 },
                 {
-                  icon: <Settings size={22} color="#FBBF24" />,
-                  title: "Settings",
-                  desc: "Customize your experience to your needs.",
-                  gradient: ["#D97706", "#FBBF24"],
+                  icon: <Settings size={24} color="#FBBF24" />,
+                  title: 'Smart Configuration',
+                  desc: 'Customize branding, modules, permissions and notifications to perfectly fit your institution.',
+                  accent: '#D97706',
+                  tag: 'Setup',
                 },
-              ].map(({ icon, title, desc, gradient }) => (
-                <View
-                  key={title}
-                  style={{
-                    width:
-                      Platform.OS === "web" && SCREEN_WIDTH >= 800
-                        ? "46%"
-                        : "100%",
-                    maxWidth: 340,
-                    minWidth: Platform.OS === "web" && SCREEN_WIDTH >= 800 ? 260 : "90%",
-                    flexGrow: 1,
-                    backgroundColor: "rgba(255,255,255,0.05)",
-                    borderWidth: 1,
-                    borderColor: "rgba(255,255,255,0.10)",
-                    borderRadius: 18,
-                    padding: 20,
-                    margin: 8,
-                    alignSelf: "stretch",
-                  }}
-                >
-                  <View
-                    style={{
-                      width: 48,
-                      height: 48,
-                      borderRadius: 14,
-                      backgroundColor: `${gradient[0]}18`,
-                      borderWidth: 1,
-                      borderColor: `${gradient[0]}30`,
-                      justifyContent: "center",
-                      alignItems: "center",
-                      marginBottom: 14,
-                    }}
-                  >
-                    {icon}
-                  </View>
-                  <Text
-                    style={{
-                      color: "white",
-                      fontWeight: "800",
-                      fontSize: 17,
-                      marginBottom: 6,
-                    }}
-                  >
-                    {title}
-                  </Text>
-                  <Text
-                    style={{
-                      color: "rgba(255,255,255,0.5)",
-                      fontSize: 13,
-                      lineHeight: 19,
-                    }}
-                  >
-                    {desc}
-                  </Text>
-                </View>
+              ].map((feat) => (
+                <FeatureCard key={feat.title} {...feat} />
               ))}
             </View>
+
           </View>
 
           {/* ═══════════════════════ PRICING SECTION ═══════════════════════ */}

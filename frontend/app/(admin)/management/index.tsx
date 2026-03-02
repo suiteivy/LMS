@@ -1,4 +1,4 @@
-import { UnifiedHeader } from "@/components/common/UnifiedHeader";
+﻿import { UnifiedHeader } from "@/components/common/UnifiedHeader";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useDashboardStats } from "@/hooks/useDashboardStats";
 import { router } from "expo-router";
@@ -31,8 +31,8 @@ interface FeatureCardProps {
 const FeatureCard = ({ icon: Icon, title, description, color, bgColor, darkBgColor, route, badge, isDark }: FeatureCardProps) => (
     <TouchableOpacity
         style={{
-            backgroundColor: isDark ? '#1e1e1e' : '#ffffff',
-            borderColor: isDark ? '#2c2c2c' : '#f3f4f6',
+            backgroundColor: isDark ? '#13103A' : '#ffffff',
+            borderColor: isDark ? 'rgba(255,255,255,0.1)' : '#f3f4f6',
             borderWidth: 1,
             borderRadius: 16,
             marginBottom: 12,
@@ -149,7 +149,7 @@ export default function AdminManagement() {
     ];
 
     return (
-        <View style={{ flex: 1, backgroundColor: isDark ? '#121212' : '#f9fafb' }}>
+        <View style={{ flex: 1, backgroundColor: isDark ? '#0F0B2E' : '#f9fafb' }}>
             <UnifiedHeader
                 title="System"
                 subtitle="Management"
@@ -167,9 +167,9 @@ export default function AdminManagement() {
                         {/* System Status */}
                         <View style={{
                             flex: 1, padding: 16, borderRadius: 24,
-                            backgroundColor: isDark ? '#1e1e1e' : '#111827',
+                            backgroundColor: isDark ? '#13103A' : '#111827',
                             borderWidth: isDark ? 1 : 0,
-                            borderColor: '#2c2c2c',
+                            borderColor: 'rgba(255,255,255,0.1)',
                         }}>
                             <Text style={{ color: '#6b7280', fontSize: 10, fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: 1 }}>
                                 System Status

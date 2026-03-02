@@ -1,4 +1,4 @@
-import { useTheme } from '@/contexts/ThemeContext';
+﻿import { useTheme } from '@/contexts/ThemeContext';
 import { Cloud } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
 import { Text, View } from 'react-native';
@@ -205,7 +205,7 @@ function ProgressBar({ isDark }: { isDark: boolean }) {
         width: 200,
         height: 3,
         borderRadius: 2,
-        backgroundColor: isDark ? '#2c2c2c' : '#f0f0f0',
+        backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : '#f0f0f0',
         overflow: 'hidden',
         marginTop: 32,
       }}
@@ -239,7 +239,7 @@ export const AppLoading: React.FC = () => {
   return (
     <Animated.View
       entering={FadeIn.duration(600)}
-      style={{ flex: 1, backgroundColor: isDark ? '#121212' : '#ffffff' }}
+      style={{ flex: 1, backgroundColor: isDark ? '#0F0B2E' : '#ffffff' }}
     >
       <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32 }}>
 

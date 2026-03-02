@@ -1,4 +1,4 @@
-import { UnifiedHeader } from "@/components/common/UnifiedHeader";
+﻿import { UnifiedHeader } from "@/components/common/UnifiedHeader";
 import { useTheme } from "@/contexts/ThemeContext";
 import { ClassService } from "@/services/ClassService";
 import { supabase } from "@/libs/supabase";
@@ -42,9 +42,9 @@ export default function CreateClassScreen() {
     const [teacherId, setTeacherId] = useState("");
     const [showTeacherModal, setShowTeacherModal] = useState(false);
 
-    const surface = isDark ? "#1e1e1e" : "#ffffff";
-    const border = isDark ? "#2c2c2c" : "#e5e7eb";
-    const inputBg = isDark ? "#242424" : "#f9fafb";
+    const surface = isDark ? "#13103A" : "#ffffff";
+    const border = isDark ? "rgba(255,255,255,0.1)" : "#e5e7eb";
+    const inputBg = isDark ? "#1A1650" : "#f9fafb";
     const textPrimary = isDark ? "#f1f1f1" : "#111827";
     const textSecondary = isDark ? "#9ca3af" : "#6b7280";
     const labelColor = isDark ? "#9ca3af" : "#374151";
@@ -100,7 +100,7 @@ export default function CreateClassScreen() {
     const selectedTeacher = teachers.find((t) => t.id === teacherId);
 
     return (
-        <View style={{ flex: 1, backgroundColor: isDark ? "#121212" : "#f9fafb" }}>
+        <View style={{ flex: 1, backgroundColor: isDark ? "#0F0B2E" : "#f9fafb" }}>
             <UnifiedHeader
                 title="Class Management"
                 subtitle="Create Class"

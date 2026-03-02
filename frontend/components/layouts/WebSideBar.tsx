@@ -1,4 +1,4 @@
-import { useTheme } from "@/contexts/ThemeContext";
+﻿import { useTheme } from "@/contexts/ThemeContext";
 import { router, useSegments } from "expo-router";
 import {
   BookOpen,
@@ -37,11 +37,11 @@ export const WebSidebar = ({ items, basePath, role, children }: WebSidebarProps)
   const segments = useSegments();
   const [collapsed, setCollapsed] = useState(false);
 
-  const surface = isDark ? '#1e1e1e' : '#ffffff';
-  const border = isDark ? '#2c2c2c' : '#e5e7eb';
+  const surface = isDark ? '#13103A' : '#ffffff';
+  const border = isDark ? 'rgba(255,255,255,0.1)' : '#e5e7eb';
   const textPrimary = isDark ? '#f1f1f1' : '#111827';
   const textSecondary = isDark ? '#9ca3af' : '#64748b';
-  const bg = isDark ? '#121212' : '#f9fafb';
+  const bg = isDark ? '#0F0B2E' : '#f9fafb';
 
   // Determine active route from segments
   const activeSegment = segments[segments.length - 1] ?? 'index';
@@ -137,7 +137,7 @@ export const WebSidebar = ({ items, basePath, role, children }: WebSidebarProps)
             alignItems: 'center',
             justifyContent: 'center',
             flexDirection: 'row',
-            backgroundColor: isDark ? '#242424' : '#f9fafb',
+            backgroundColor: isDark ? '#1A1650' : '#f9fafb',
           }}
         >
           {collapsed

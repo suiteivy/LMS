@@ -286,7 +286,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         setSession(session)
         setUser(session?.user ?? null)
 
-        if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+        if (event === 'SIGNED_IN') {
           currentSessionRef.current = session;
           if (session?.user) {
             const isDemoUser = session.user.email?.startsWith('demo.') || false;
@@ -299,6 +299,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             }
             loadUserProfile(session.user.id)
           }
+        } else if (event === 'TOKEN_REFRESHED') {
+          // Token refreshed by Supabase — do NOT restart the inactivity timer.
+          // Just update the session reference so the client uses the new JWT.
+          currentSessionRef.current = session;
+          if (session?.user) loadUserProfile(session.user.id);
         } else if (event === 'SIGNED_OUT') {
           clearTimer()
           setProfile(null)

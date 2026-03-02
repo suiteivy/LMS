@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+﻿import React, { useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, ActivityIndicator, Alert } from 'react-native';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -13,8 +13,8 @@ export default function InstitutionOwnership() {
     const [loading, setLoading] = useState(true);
     const [transferring, setTransferring] = useState(false);
 
-    const surface = isDark ? '#1e1e1e' : '#ffffff';
-    const border = isDark ? '#2c2c2c' : '#f3f4f6';
+    const surface = isDark ? '#13103A' : '#ffffff';
+    const border = isDark ? 'rgba(255,255,255,0.1)' : '#f3f4f6';
     const textPrimary = isDark ? '#f1f1f1' : '#111827';
     const textSecondary = isDark ? '#6b7280' : '#9ca3af';
 
@@ -89,7 +89,7 @@ export default function InstitutionOwnership() {
 
     if (loading) {
         return (
-            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: isDark ? '#121212' : '#ffffff' }}>
+            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: isDark ? '#0F0B2E' : '#ffffff' }}>
                 <ActivityIndicator size="large" color="#FF6B00" />
             </View>
         );
@@ -97,7 +97,7 @@ export default function InstitutionOwnership() {
 
     if (!isMaster) {
         return (
-            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24, backgroundColor: isDark ? '#121212' : '#ffffff' }}>
+            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24, backgroundColor: isDark ? '#0F0B2E' : '#ffffff' }}>
                 <View style={{ backgroundColor: isDark ? '#1f2937' : '#fef2f2', padding: 24, borderRadius: 24, alignItems: 'center', borderWidth: 1, borderColor: isDark ? '#374151' : '#fecaca' }}>
                     <Ionicons name="lock-closed" size={48} color="#ef4444" />
                     <Text style={{ marginTop: 16, fontSize: 18, fontWeight: 'bold', color: textPrimary, textAlign: 'center' }}>Access Denied</Text>
@@ -108,7 +108,7 @@ export default function InstitutionOwnership() {
     }
 
     return (
-        <ScrollView style={{ flex: 1, backgroundColor: isDark ? '#121212' : '#ffffff' }} contentContainerStyle={{ padding: 24 }}>
+        <ScrollView style={{ flex: 1, backgroundColor: isDark ? '#0F0B2E' : '#ffffff' }} contentContainerStyle={{ padding: 24 }}>
             <View style={{ backgroundColor: isDark ? 'rgba(251, 191, 36, 0.1)' : '#FFFBEB', padding: 20, borderRadius: 20, borderWidth: 1, borderColor: isDark ? 'rgba(251, 191, 36, 0.2)' : '#FDE68A', marginBottom: 24 }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
                     <View style={{ width: 32, height: 32, borderRadius: 10, backgroundColor: '#FDE68A', alignItems: 'center', justifyContent: 'center' }}>
