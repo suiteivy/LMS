@@ -88,6 +88,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setUser(null);
     setProfile(null);
     setRoleInfo({ studentId: null, teacherId: null, adminId: null, parentId: null, displayId: null });
+    setIsDemo(false);
     setSubscriptionStatus(null);
     setSubscriptionPlan(null);
     setTrialEndDate(null);
@@ -109,6 +110,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     Promise.all([
       authService.signOut(),
       AsyncStorage.removeItem('demo_expiry').catch(() => { }),
+      AsyncStorage.removeItem('is_demo_mode').catch(() => { }),
     ]).finally(() => {
       setTimeout(() => { isManualLogout.current = false; }, 500);
     });
@@ -117,10 +119,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   }
 
   const handleStartDemo = async (role: string) => {
+    // ── Pre-set expiry to avoid race in DemoBanner ──────────────────────────
+    const expiry = Date.now() + 15 * 60 * 1000;
+    await AsyncStorage.setItem('demo_expiry', expiry.toString());
+
     const result = await authService.startDemoSession(role);
-    if (!result.error && result.data) {
-      const expiry = Date.now() + 15 * 60 * 1000;
-      await AsyncStorage.setItem('demo_expiry', expiry.toString());
+
+    if (result.error) {
+      await AsyncStorage.removeItem('demo_expiry').catch(() => { });
     }
     return result;
   }

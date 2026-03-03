@@ -1,10 +1,9 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, TouchableOpacity, Alert } from 'react-native';
 import { useAuth } from '@/contexts/AuthContext';
-import { Clock, X } from 'lucide-react-native';
-import { useRouter } from 'expo-router';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useRouter } from 'expo-router';
+import { Clock } from 'lucide-react-native';
+import React, { useEffect, useState } from 'react';
+import { Alert, Text, TouchableOpacity, View } from 'react-native';
 
 export default function DemoBanner() {
     const { isDemo, logout } = useAuth();
@@ -52,7 +51,10 @@ export default function DemoBanner() {
             if (remaining <= 0) {
                 setTimeLeft(0);
                 clearInterval(interval);
-                handleExpiry();
+                // Only trigger expiry if it was recently valid (prevents race on mount with old data)
+                if (expiryTime > Date.now() - 5000) {
+                    handleExpiry();
+                }
             } else {
                 setTimeLeft(remaining);
             }

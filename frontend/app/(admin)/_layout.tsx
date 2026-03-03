@@ -24,8 +24,8 @@ const HIDDEN = [
     "timetable/index", "finance/funds/index",
     "management/roles/index", "settings/index",
     "attendance/teachers/index", "finance/bursaries/reports",
-    "classes/index",
-    "classes/create",
+    "classes/index", "classes/create",
+    "management/subjects/details",
 ];
 
 function AdminTabs() {

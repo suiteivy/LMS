@@ -1,9 +1,8 @@
 import { AppLoading } from "@/components/AppLoading";
 import { useAuth } from "@/contexts/AuthContext";
 import { api } from "@/services/api";
+import { BlurView } from 'expo-blur';
 import { router, usePathname } from "expo-router";
-import { supabase } from '@/libs/supabase'
-import React, { useEffect, useRef, useState } from 'react'
 import {
   BadgeCheck,
   BarChart2,
@@ -12,28 +11,15 @@ import {
   CreditCard,
   Crown,
   Library,
+  MoveRight,
   School,
   Settings,
   Sparkles,
   Star,
   Timer,
-  Users,
-  MoveRight
+  Users
 } from "lucide-react-native";
-import { BlurView } from 'expo-blur';
-import Svg, { Defs, LinearGradient, Stop, Rect, Circle, Path } from 'react-native-svg';
-import {
-  useSharedValue,
-  useAnimatedStyle,
-  useAnimatedProps,
-  withRepeat,
-  withTiming,
-  withSequence,
-  interpolate,
-  Extrapolate,
-  Easing
-} from 'react-native-reanimated';
-import Reanimated from 'react-native-reanimated';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator, Animated, Dimensions, KeyboardAvoidingView,
   Modal,
@@ -42,14 +28,128 @@ import {
   TextInput,
   TouchableOpacity, View
 } from "react-native";
+import Reanimated, {
+  Easing,
+  interpolate,
+  useAnimatedProps,
+  useAnimatedStyle,
+  useSharedValue,
+  withRepeat,
+  withSequence,
+  withTiming
+} from 'react-native-reanimated';
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
+import Svg, { Circle, Defs, LinearGradient, Stop } from 'react-native-svg';
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
-// ─── Fancy Pricing Card Component ──────────────────────────────────────────
+// ─── Pricing Components ──────────────────────────────────────────────────────
 const AnimatedCircle = Reanimated.createAnimatedComponent(Circle);
 
-const FancyPricingCard = ({ plan, openRegistrationModal }: any) => {
+// ── Tier Tab Pill ────────────────────────────────────────────────────────────
+const PackageTierTab = ({ tier, label, icon, tagline, isActive, onPress }: any) => {
+  const [hovered, setHovered] = useState(false);
+  const glow = useSharedValue(0);
+
+  useEffect(() => {
+    if (isActive) {
+      glow.value = withRepeat(
+        withSequence(
+          withTiming(1, { duration: 2000, easing: Easing.inOut(Easing.sin) }),
+          withTiming(0.5, { duration: 2000, easing: Easing.inOut(Easing.sin) })
+        ), -1, true
+      );
+    } else {
+      glow.value = withTiming(0, { duration: 300 });
+    }
+  }, [isActive]);
+
+  const glowStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(glow.value, [0, 1], [0, 0.5]),
+  }));
+
+  const isWeb = Platform.OS === 'web';
+
+  return (
+    <TouchableOpacity
+      onPress={onPress}
+      activeOpacity={0.8}
+      //@ts-ignore
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      style={[
+        {
+          flex: 1,
+          minWidth: 110,
+          maxWidth: 200,
+          paddingVertical: 16,
+          paddingHorizontal: 14,
+          borderRadius: 20,
+          alignItems: 'center',
+          borderWidth: 1.5,
+          position: 'relative',
+          overflow: 'hidden',
+          borderColor: isActive ? `${tier.accent}66` : 'rgba(255,255,255,0.08)',
+          backgroundColor: isActive ? `${tier.accent}12` : hovered ? 'rgba(255,255,255,0.04)' : 'transparent',
+        },
+        isWeb ? {
+          transition: 'background-color 0.3s ease, border-color 0.3s ease, transform 0.2s ease',
+          transform: hovered && !isActive ? [{ scale: 1.02 }] : [{ scale: 1 }],
+          cursor: 'pointer',
+        } as any : {},
+      ]}
+    >
+      {/* Glow blob behind active */}
+      {isActive && (
+        <Reanimated.View style={[{
+          position: 'absolute',
+          top: '-50%', left: '-50%',
+          width: '200%', height: '200%',
+          borderRadius: 999,
+          backgroundColor: tier.accent,
+          filter: 'blur(30px)',
+        } as any, glowStyle]} />
+      )}
+
+      {/* Active underline bar */}
+      {isActive && (
+        <View style={{
+          position: 'absolute', bottom: 0, left: '20%', right: '20%',
+          height: 2.5, borderRadius: 2,
+          backgroundColor: tier.accent,
+        }} />
+      )}
+
+      <View style={{
+        width: 36, height: 36, borderRadius: 12,
+        backgroundColor: isActive ? `${tier.accent}25` : 'rgba(255,255,255,0.06)',
+        alignItems: 'center', justifyContent: 'center',
+        marginBottom: 8,
+        borderWidth: 1,
+        borderColor: isActive ? `${tier.accent}40` : 'rgba(255,255,255,0.08)',
+      }}>
+        {React.cloneElement(icon, { size: 16, color: isActive ? tier.accent : 'rgba(255,255,255,0.45)' })}
+      </View>
+
+      <Text style={{
+        color: isActive ? 'white' : 'rgba(255,255,255,0.6)',
+        fontWeight: '800',
+        fontSize: 13,
+        marginBottom: 2,
+      }}>{label}</Text>
+
+      <Text style={{
+        color: isActive ? `${tier.accent}CC` : 'rgba(255,255,255,0.3)',
+        fontSize: 10,
+        textAlign: 'center',
+        lineHeight: 13,
+      }}>{tagline}</Text>
+    </TouchableOpacity>
+  );
+};
+
+// ── Plan Card within a tier ────────────────────────────────────────────────
+const PlanCard = ({ plan, tierAccent, openRegistrationModal }: any) => {
   const [hovered, setHovered] = useState(false);
   const animValue = useSharedValue(0);
   const borderAnim = useSharedValue(0);
@@ -59,32 +159,23 @@ const FancyPricingCard = ({ plan, openRegistrationModal }: any) => {
       withSequence(
         withTiming(1, { duration: 5000 }),
         withTiming(0, { duration: 5000 })
-      ),
-      -1,
-      true
+      ), -1, true
     );
-
-    borderAnim.value = withRepeat(
-      withTiming(1, { duration: 4000 }),
-      -1,
-      false
-    );
+    if (plan.premium) {
+      borderAnim.value = withRepeat(withTiming(1, { duration: 4000 }), -1, false);
+    }
   }, []);
 
   const blob1Props = useAnimatedProps(() => ({
     cx: interpolate(animValue.value, [0, 1], [10, 40]) + '%',
     cy: interpolate(animValue.value, [0, 1], [10, 30]) + '%',
   }));
-
   const blob2Props = useAnimatedProps(() => ({
     cx: interpolate(animValue.value, [0, 1], [90, 60]) + '%',
     cy: interpolate(animValue.value, [0, 1], [90, 70]) + '%',
   }));
 
-  // Web: use CSS transitions on a plain View for guaranteed smoothness
-  // Native: use Reanimated shared values
   const nativeHover = useSharedValue(0);
-
   const nativeAnimStyle = useAnimatedStyle(() => ({
     transform: [
       { translateY: interpolate(nativeHover.value, [0, 1], [0, -12]) },
@@ -93,12 +184,11 @@ const FancyPricingCard = ({ plan, openRegistrationModal }: any) => {
   }));
 
   const cardWidth = Platform.OS === 'web' && SCREEN_WIDTH > 1100
-    ? '23%'
+    ? '30%'
     : Platform.OS === 'web' && SCREEN_WIDTH > 768
       ? '46%'
       : '100%';
 
-  // Web-specific CSS hover style
   const webHoverStyle = Platform.OS === 'web' ? {
     transform: hovered ? [{ translateY: -12 }, { scale: 1.03 }] : [{ translateY: 0 }, { scale: 1 }],
     transition: 'transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.4s ease',
@@ -110,7 +200,7 @@ const FancyPricingCard = ({ plan, openRegistrationModal }: any) => {
 
   const sharedContainerStyle: any = {
     width: cardWidth,
-    minWidth: 280,
+    minWidth: 260,
     marginVertical: 12,
     position: 'relative',
   };
@@ -119,12 +209,8 @@ const FancyPricingCard = ({ plan, openRegistrationModal }: any) => {
     ? [sharedContainerStyle, webHoverStyle]
     : [sharedContainerStyle, nativeAnimStyle];
 
-  const onHoverIn = () => {
-    setHovered(true);
-  };
-  const onHoverOut = () => {
-    setHovered(false);
-  };
+  const onHoverIn = () => setHovered(true);
+  const onHoverOut = () => setHovered(false);
 
   return (
     <Reanimated.View
@@ -133,20 +219,17 @@ const FancyPricingCard = ({ plan, openRegistrationModal }: any) => {
       onMouseEnter={onHoverIn}
       onMouseLeave={onHoverOut}
     >
-      {/* Premium Rotating Border */}
+      {/* Premium rotating border */}
       {plan.premium && Platform.OS === 'web' && (
         <View style={{ position: 'absolute', top: -2, left: -2, right: -2, bottom: -2, borderRadius: 38, overflow: 'hidden' }}>
           <Reanimated.View
             style={[useAnimatedStyle(() => ({
               transform: [{ rotate: `${borderAnim.value * 360}deg` }]
             })), {
-              width: '200%',
-              height: '200%',
-              position: 'absolute',
-              top: '-50%',
-              left: '-50%',
+              width: '200%', height: '200%',
+              position: 'absolute', top: '-50%', left: '-50%',
               //@ts-ignore
-              backgroundImage: 'conic-gradient(from 0deg, transparent, #8B5CF6, #EC4899, #3B82F6, transparent)',
+              backgroundImage: `conic-gradient(from 0deg, transparent, ${plan.accent}, #EC4899, ${tierAccent}, transparent)`,
             }] as any}
           />
         </View>
@@ -154,34 +237,18 @@ const FancyPricingCard = ({ plan, openRegistrationModal }: any) => {
 
       <View style={{
         backgroundColor: 'rgba(255,255,255,0.04)',
-        borderRadius: 36,
-        overflow: 'hidden',
+        borderRadius: 36, overflow: 'hidden',
         borderWidth: 1.5,
         borderColor: plan.popular ? `${plan.accent}66` : 'rgba(255,255,255,0.1)',
-        height: '100%',
-        flex: 1,
+        height: '100%', flex: 1,
         backdropFilter: Platform.OS === 'web' ? 'blur(20px)' : 'none'
       } as any}>
 
-        {/* Shine sweep on hover - Web Only */}
+        {/* Shine sweep */}
         {Platform.OS === 'web' && (
-          <View
-            pointerEvents="none"
-            style={{
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              width: '100%',
-              height: '100%',
-              zIndex: 10,
-              overflow: 'hidden',
-            } as any}
-          >
+          <View pointerEvents="none" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', zIndex: 10, overflow: 'hidden' } as any}>
             <View style={{
-              position: 'absolute',
-              top: 0,
-              width: 60,
-              height: '100%',
+              position: 'absolute', top: 0, width: 60, height: '100%',
               background: 'linear-gradient(105deg, transparent, rgba(255,255,255,0.12), transparent)',
               transform: [{ skewX: '-20deg' }],
               transition: 'left 0.8s ease',
@@ -190,33 +257,25 @@ const FancyPricingCard = ({ plan, openRegistrationModal }: any) => {
           </View>
         )}
 
-        {/* Background Decorative Shapes */}
-        <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, opacity: 0.25 }}>
+        {/* Decorative blobs */}
+        <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, opacity: 0.2 }}>
           <Svg height="100%" width="100%">
             <Defs>
               <LinearGradient id={`grad-${plan.name}`} x1="0%" y1="0%" x2="100%" y2="100%">
-                <Stop offset="0%" stopColor={plan.accent} stopOpacity="0.6" />
+                <Stop offset="0%" stopColor={plan.accent} stopOpacity="0.7" />
                 <Stop offset="100%" stopColor={plan.accent} stopOpacity="0" />
               </LinearGradient>
             </Defs>
-            <AnimatedCircle r="100" fill={`url(#grad-${plan.name})`} animatedProps={blob1Props} />
-            <AnimatedCircle r="120" fill={`url(#grad-${plan.name})`} animatedProps={blob2Props} />
+            <AnimatedCircle r="90" fill={`url(#grad-${plan.name})`} animatedProps={blob1Props} />
+            <AnimatedCircle r="110" fill={`url(#grad-${plan.name})`} animatedProps={blob2Props} />
           </Svg>
         </View>
 
-        {/* Dynamic Glow for Pro/Premium */}
         {(plan.popular || plan.premium) && (
           <View style={{
-            position: 'absolute',
-            top: '20%',
-            left: '20%',
-            right: '20%',
-            bottom: '20%',
-            backgroundColor: plan.accent,
-            opacity: hovered ? 0.18 : 0.08,
-            borderRadius: 100,
-            filter: 'blur(60px)',
-            zIndex: -1,
+            position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+            backgroundColor: plan.accent, opacity: hovered ? 0.14 : 0.06,
+            borderRadius: 100, filter: 'blur(60px)', zIndex: -1,
             transition: 'opacity 0.4s ease',
           } as any} />
         )}
@@ -225,113 +284,225 @@ const FancyPricingCard = ({ plan, openRegistrationModal }: any) => {
           <BlurView intensity={30} style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }} tint="dark" />
         )}
 
-        <View style={{ padding: 36, flex: 1 }}>
+        <View style={{ padding: 32, flex: 1 }}>
+          {/* Popular / Elite ribbon */}
           {(plan.popular || plan.premium) && (
             <View style={{
-              position: 'absolute',
-              top: 20,
-              right: -30,
-              backgroundColor: plan.premium ? '#8B5CF6' : '#F59E0B',
-              paddingHorizontal: 40,
-              paddingVertical: 6,
+              position: 'absolute', top: 20, right: -30,
+              backgroundColor: plan.premium ? '#8B5CF6' : plan.accent,
+              paddingHorizontal: 40, paddingVertical: 6,
               transform: [{ rotate: '45deg' }],
-              flexDirection: 'row',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 4,
-              shadowColor: '#000',
-              shadowOffset: { width: 0, height: 2 },
-              shadowOpacity: 0.3,
-              shadowRadius: 4,
+              flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4,
               zIndex: 20
             }}>
-              <Text style={{ color: 'white', fontWeight: '900', fontSize: 10, textTransform: 'uppercase', letterSpacing: 1 }}>
+              <Text style={{ color: 'white', fontWeight: '900', fontSize: 9, textTransform: 'uppercase', letterSpacing: 1 }}>
                 {plan.premium ? 'Elite' : 'Popular'}
               </Text>
             </View>
           )}
 
+          {/* Icon */}
           <View style={{
-            marginBottom: 28,
+            marginBottom: 22,
             backgroundColor: `${plan.accent}15`,
-            width: 64,
-            height: 64,
-            borderRadius: 22,
-            alignItems: 'center',
-            justifyContent: 'center',
-            borderWidth: 1.5,
-            borderColor: `${plan.accent}33`
+            width: 56, height: 56, borderRadius: 18,
+            alignItems: 'center', justifyContent: 'center',
+            borderWidth: 1.5, borderColor: `${plan.accent}33`
           }}>
-            {React.cloneElement(plan.icon, { size: 28, color: plan.accent })}
+            {React.cloneElement(plan.icon, { size: 24, color: plan.accent })}
           </View>
 
+          {/* Plan name */}
           <Text style={{
-            color: plan.accent,
-            fontWeight: "800",
-            fontSize: 14,
-            textTransform: 'uppercase',
-            letterSpacing: 3,
-            marginBottom: 14
+            color: plan.accent, fontWeight: '800', fontSize: 12,
+            textTransform: 'uppercase', letterSpacing: 3, marginBottom: 10
           }}>{plan.name}</Text>
 
-          <View style={{ flexDirection: 'row', alignItems: 'flex-end', marginBottom: 14 }}>
-            <Text style={{ color: "white", fontWeight: "900", fontSize: 52 }}>{plan.price.split('/')[0]}</Text>
+          {/* Price */}
+          <View style={{ flexDirection: 'row', alignItems: 'flex-end', marginBottom: 10 }}>
+            <Text style={{ color: 'white', fontWeight: '900', fontSize: 44 }}>{plan.price.split('/')[0]}</Text>
             {plan.price.includes('/') && (
-              <Text style={{ color: "rgba(255,255,255,0.4)", fontWeight: "600", fontSize: 20, marginBottom: 12, marginLeft: 4 }}>/{plan.price.split('/')[1]}</Text>
+              <Text style={{ color: 'rgba(255,255,255,0.4)', fontWeight: '600', fontSize: 17, marginBottom: 10, marginLeft: 4 }}>/{plan.price.split('/')[1]}</Text>
             )}
           </View>
 
-          <Text style={{ color: "rgba(255,255,255,0.5)", fontSize: 16, marginBottom: 36, lineHeight: 24 }}>{plan.desc}</Text>
+          <Text style={{ color: 'rgba(255,255,255,0.5)', fontSize: 14, marginBottom: 28, lineHeight: 21 }}>{plan.desc}</Text>
 
-          <View style={{ gap: 18, marginBottom: 44, flex: 1 }}>
+          {/* Features */}
+          <View style={{ gap: 14, marginBottom: 36, flex: 1 }}>
             {plan.features.map((feat: string, i: number) => (
               <View key={i} style={{ flexDirection: 'row', alignItems: 'center' }}>
                 <View style={{
-                  width: 24,
-                  height: 24,
-                  borderRadius: 8,
+                  width: 22, height: 22, borderRadius: 7,
                   backgroundColor: `${plan.accent}15`,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  marginRight: 16,
-                  borderWidth: 1,
-                  borderColor: `${plan.accent}33`
+                  alignItems: 'center', justifyContent: 'center',
+                  marginRight: 14, borderWidth: 1, borderColor: `${plan.accent}33`
                 }}>
-                  <Check size={14} color={plan.accent} strokeWidth={3} />
+                  <Check size={13} color={plan.accent} strokeWidth={3} />
                 </View>
-                <Text style={{ color: "rgba(255,255,255,0.9)", fontSize: 15, fontWeight: '500' }}>{feat}</Text>
+                <Text style={{ color: 'rgba(255,255,255,0.88)', fontSize: 14, fontWeight: '500' }}>{feat}</Text>
               </View>
             ))}
           </View>
 
+          {/* CTA */}
           <TouchableOpacity
             style={{
-              width: '100%',
-              paddingVertical: 20,
-              borderRadius: 24,
+              width: '100%', paddingVertical: 18, borderRadius: 22,
               alignItems: 'center',
-              backgroundColor: plan.accent,
+              backgroundColor: plan.popular || plan.premium ? plan.accent : 'transparent',
+              borderWidth: 1.5,
+              borderColor: plan.popular || plan.premium ? 'rgba(255,255,255,0.2)' : `${plan.accent}55`,
               shadowColor: plan.accent,
-              shadowOffset: { width: 0, height: 12 },
-              shadowOpacity: 0.4,
-              shadowRadius: 20,
-              borderWidth: 1,
-              borderColor: 'rgba(255,255,255,0.2)',
+              shadowOffset: { width: 0, height: 10 },
+              shadowOpacity: plan.popular || plan.premium ? 0.4 : 0.1,
+              shadowRadius: 16,
             }}
             onPress={() => openRegistrationModal(plan.name)}
             activeOpacity={0.85}
           >
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-              <Text style={{ color: "white", fontWeight: "900", fontSize: 17 }}>
-                {plan.name === 'Trial' ? 'Get Started' : 'Subscribe Now'}
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <Text style={{
+                color: plan.popular || plan.premium ? 'white' : plan.accent,
+                fontWeight: '800', fontSize: 15,
+              }}>
+                {plan.cta ?? 'Get Started'}
               </Text>
-              <MoveRight size={20} color="white" />
+              <MoveRight size={18} color={plan.popular || plan.premium ? 'white' : plan.accent} />
             </View>
           </TouchableOpacity>
         </View>
       </View>
     </Reanimated.View>
   );
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Tier & plan data
+// ─────────────────────────────────────────────────────────────────────────────
+const TIERS = [
+  {
+    key: 'basic',
+    label: 'Basic',
+    tagline: 'Small schools',
+    icon: <School size={16} color="white" />,
+    accent: '#3B82F6',
+    description: 'Ideal for independent schools and small academies getting started.',
+  },
+  {
+    key: 'enterprise',
+    label: 'Enterprise',
+    tagline: 'Large institutions',
+    icon: <Star size={16} color="white" />,
+    accent: '#FF6B00',
+    description: 'Built for large schools, districts, and multi-campus institutions with advanced needs.',
+  },
+  {
+    key: 'custom',
+    label: 'Custom',
+    tagline: 'Bespoke & white-label',
+    icon: <Sparkles size={16} color="white" />,
+    accent: '#8B5CF6',
+    description: 'Fully tailored deployments with custom branding, integrations, and dedicated support.',
+  },
+] as const;
+
+type TierKey = 'basic' | 'enterprise' | 'custom';
+
+const TIER_PLANS: Record<TierKey, any[]> = {
+  basic: [
+    {
+      name: 'Basic',
+      price: '$59/mo',
+      desc: 'Core tools for a growing school',
+      features: ['1 Admin Account', 'Up to 200 Students', 'Core LMS Modules', 'Email Support'],
+      icon: <BookOpen size={24} color="#3B82F6" />,
+      accent: '#3B82F6',
+      cta: 'Get Started',
+    },
+    {
+      name: 'Pro',
+      price: '$109/mo',
+      desc: 'Analytics, finance & more',
+      features: ['3 Admin Accounts', 'Up to 500 Students', 'Finance Module', 'Standard Analytics', 'Priority Support'],
+      icon: <Crown size={24} color="#F59E0B" />,
+      accent: '#F59E0B',
+      popular: true,
+      cta: 'Start Pro',
+    },
+    {
+      name: 'Premium',
+      price: '$149/mo',
+      desc: 'Full platform, no limits',
+      features: ['Unlimited Admins', 'Unlimited Students', 'Custom Branding', 'Advanced Analytics', 'Bulk Operations'],
+      icon: <Sparkles size={24} color="#8B5CF6" />,
+      accent: '#8B5CF6',
+      premium: true,
+      cta: 'Go Premium',
+    },
+  ],
+  enterprise: [
+    {
+      name: 'Basic',
+      price: '$349/mo',
+      desc: 'Enterprise essentials',
+      features: ['5 Admin Accounts', 'Up to 2,000 Students', 'SLA 99.5% Uptime', 'Core Modules', 'Dedicated Onboarding'],
+      icon: <BookOpen size={24} color="#3B82F6" />,
+      accent: '#3B82F6',
+      cta: 'Get Started',
+    },
+    {
+      name: 'Pro',
+      price: '$409/mo',
+      desc: 'Advanced enterprise tools',
+      features: ['15 Admin Accounts', 'Up to 5,000 Students', 'Advanced Analytics', 'Finance & Payroll', 'SLA 99.9%', 'API Access'],
+      icon: <Crown size={24} color="#FF6B00" />,
+      accent: '#FF6B00',
+      popular: true,
+      cta: 'Start Pro',
+    },
+    {
+      name: 'Premium',
+      price: '$549/mo',
+      desc: 'Unlimited enterprise power',
+      features: ['Unlimited Admins', 'Unlimited Students', 'Multi-Campus Support', 'Custom Integrations', 'White-Glove Support', 'SLA 99.99%'],
+      icon: <Sparkles size={24} color="#8B5CF6" />,
+      accent: '#8B5CF6',
+      premium: true,
+      cta: 'Go Premium',
+    },
+  ],
+  custom: [
+    {
+      name: 'Basic',
+      price: 'Contact Us',
+      desc: 'Custom deployment starter',
+      features: ['Custom User Limits', 'Branded Domain', 'On-Premise Option', 'Basic SLA'],
+      icon: <BookOpen size={24} color="#3B82F6" />,
+      accent: '#3B82F6',
+      cta: 'Talk to Sales',
+    },
+    {
+      name: 'Pro',
+      price: 'Contact Us',
+      desc: 'Tailored integrations & APIs',
+      features: ['Custom User Limits', 'Full White-Label', 'SSO & LDAP', 'Custom Analytics', 'Dedicated CSM'],
+      icon: <Crown size={24} color="#8B5CF6" />,
+      accent: '#8B5CF6',
+      popular: true,
+      cta: 'Talk to Sales',
+    },
+    {
+      name: 'Premium',
+      price: 'Contact Us',
+      desc: 'Fully bespoke solution',
+      features: ['Unlimited Everything', 'Custom Feature Dev', 'Source Code Option', 'Multi-Region Deploy', 'Enterprise SLA', '24/7 Support'],
+      icon: <Sparkles size={24} color="#EC4899" />,
+      accent: '#EC4899',
+      premium: true,
+      cta: 'Talk to Sales',
+    },
+  ],
 };
 
 
@@ -579,6 +750,7 @@ export default function Index() {
   const pathname = usePathname();
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
+  const [selectedTier, setSelectedTier] = useState<TierKey>('enterprise');
   const [form, setForm] = useState({ name: '', email: '', message: '' });
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
@@ -1234,68 +1406,218 @@ export default function Index() {
           <View
             ref={pricingRef}
             onLayout={(e) => handleLayout("pricing", e.nativeEvent.layout.y)}
-            style={{ paddingHorizontal: 20, paddingVertical: 60, backgroundColor: "#0F0B2E" }}
+            style={{
+              paddingHorizontal: 20,
+              paddingTop: 72,
+              paddingBottom: 80,
+              backgroundColor: '#0A0820',
+              position: 'relative',
+              overflow: 'hidden',
+            }}
           >
-            <Text style={{ color: "white", fontSize: 28, fontWeight: "900", textAlign: "center", marginBottom: 32 }}>
-              Choose Your Plan
-            </Text>
-            <View
-              style={{
-                flexDirection: "row",
-                flexWrap: "wrap",
-                justifyContent: "center",
-                gap: Platform.OS === "web" ? 24 : 0,
-                width: "100%",
-                paddingTop: 20
-              }}
-            >
-              {[
-                {
-                  name: "Trial",
-                  price: "Free",
-                  desc: "Perfect to explore",
-                  features: ["1 Admin Account", "Up to 50 Students", "Core Modules", "Trial Banner"],
-                  icon: <Timer size={24} color="#94A3B8" />,
-                  accent: "#94A3B8",
-                  bg: "rgba(148, 163, 184, 0.05)"
-                },
-                {
-                  name: "Basic",
-                  price: "$49/mo",
-                  desc: "For growing schools",
-                  features: ["2 Admin Accounts", "Unlimited Teachers", "Up to 500 Students", "Standard Analytics"],
-                  icon: <BookOpen size={24} color="#3B82F6" />,
-                  accent: "#3B82F6",
-                  bg: "rgba(59, 130, 246, 0.05)"
-                },
-                {
-                  name: "Pro",
-                  price: "$99/mo",
-                  desc: "Advanced institutions",
-                  features: ["5 Admin Accounts", "Up to 1000 Students", "Advanced Analytics", "Finance Module"],
-                  icon: <Crown size={24} color="#F59E0B" />,
-                  accent: "#F59E0B",
-                  bg: "rgba(245, 158, 11, 0.08)",
-                  popular: true
-                },
-                {
-                  name: "Premium",
-                  price: "$199/mo",
-                  desc: "Ultimate solution",
-                  features: ["Unlimited Admins", "Unlimited Students", "Custom Branding", "Bulk Operations"],
-                  icon: <Sparkles size={24} color="#8B5CF6" />,
-                  accent: "#8B5CF6",
-                  bg: "rgba(139, 92, 246, 0.1)",
-                  premium: true
-                }
-              ].map((plan) => (
-                <FancyPricingCard
-                  key={plan.name}
-                  plan={plan}
-                  openRegistrationModal={openRegistrationModal}
+            {/* Background mesh blobs */}
+            <View style={{ position: 'absolute', top: '5%', left: '-10%', width: 380, height: 380, borderRadius: 190, backgroundColor: 'rgba(255,107,0,0.05)' } as any} />
+            <View style={{ position: 'absolute', bottom: '5%', right: '-10%', width: 340, height: 340, borderRadius: 170, backgroundColor: 'rgba(139,92,246,0.06)' } as any} />
+
+            {/* Section header */}
+            <View style={{ alignItems: 'center', marginBottom: 52 }}>
+              <View style={{
+                flexDirection: 'row', alignItems: 'center', gap: 7,
+                backgroundColor: 'rgba(255,107,0,0.1)',
+                borderRadius: 20, paddingHorizontal: 14, paddingVertical: 6,
+                borderWidth: 1, borderColor: 'rgba(255,107,0,0.22)',
+                marginBottom: 20,
+              }}>
+                <CreditCard size={14} color="#FF8C40" />
+                <Text style={{ color: '#FF8C40', fontSize: 11, fontWeight: '800', letterSpacing: 2, textTransform: 'uppercase' }}>
+                  Flexible Pricing
+                </Text>
+              </View>
+
+              <Text style={{
+                color: '#ffffff',
+                fontSize: Platform.OS === 'web' && SCREEN_WIDTH > 768 ? 42 : 30,
+                fontWeight: '900',
+                textAlign: 'center',
+                letterSpacing: -0.5,
+                lineHeight: Platform.OS === 'web' && SCREEN_WIDTH > 768 ? 50 : 38,
+                marginBottom: 12,
+              }}>
+                Choose Your{' '}
+                <Text style={{ color: '#FF8C40' }}>Package</Text>
+              </Text>
+
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 16 }}>
+                <View style={{ width: 32, height: 2, borderRadius: 2, backgroundColor: 'rgba(255,107,0,0.3)' }} />
+                <View style={{ width: 64, height: 2, borderRadius: 2, backgroundColor: '#FF6B00' }} />
+                <View style={{ width: 32, height: 2, borderRadius: 2, backgroundColor: 'rgba(255,107,0,0.3)' }} />
+              </View>
+
+              <Text style={{ color: 'rgba(255,255,255,0.45)', fontSize: 15, textAlign: 'center', maxWidth: 520, lineHeight: 23 }}>
+                Select your deployment scale, then pick the plan that fits your institution.
+              </Text>
+            </View>
+
+            {/* ── LEVEL 1: Tier Selector ── */}
+            <View style={{
+              flexDirection: 'row',
+              justifyContent: 'center',
+              gap: 10,
+              flexWrap: 'wrap',
+              marginBottom: 16,
+              paddingHorizontal: Platform.OS === 'web' ? 40 : 0,
+            }}>
+              {TIERS.map((tier) => (
+                <PackageTierTab
+                  key={tier.key}
+                  tier={tier}
+                  label={tier.label}
+                  icon={tier.icon}
+                  tagline={tier.tagline}
+                  isActive={selectedTier === tier.key}
+                  onPress={() => setSelectedTier(tier.key)}
                 />
               ))}
             </View>
+
+            {/* Active tier description */}
+            <View style={{ alignItems: 'center', marginBottom: 40 }}>
+              <Text style={{
+                color: 'rgba(255,255,255,0.38)',
+                fontSize: 13,
+                textAlign: 'center',
+                maxWidth: 480,
+                lineHeight: 20,
+              }}>
+                {TIERS.find(t => t.key === selectedTier)?.description}
+              </Text>
+            </View>
+
+            {/* ── LEVEL 2: Plan Cards ── */}
+            <View style={{
+              flexDirection: 'row',
+              flexWrap: 'wrap',
+              justifyContent: 'center',
+              gap: Platform.OS === 'web' ? 24 : 0,
+              width: '100%',
+            }}>
+              {TIER_PLANS[selectedTier].map((plan) => (
+                <PlanCard
+                  key={`${selectedTier}-${plan.name}`}
+                  plan={plan}
+                  tierAccent={TIERS.find(t => t.key === selectedTier)?.accent ?? '#FF6B00'}
+                  openRegistrationModal={(planName: string) =>
+                    openRegistrationModal(`${TIERS.find(t => t.key === selectedTier)?.label} ${planName}`)
+                  }
+                />
+              ))}
+            </View>
+
+            {/* Free Trial Card */}
+            <View style={{
+              width: '100%',
+              marginTop: 40,
+              alignItems: 'center',
+            }}>
+              <View style={{
+                width: Platform.OS === 'web' && SCREEN_WIDTH > 768 ? '70%' : '100%',
+                maxWidth: 700,
+                borderRadius: 28,
+                overflow: 'hidden',
+                borderWidth: 1.5,
+                borderColor: 'rgba(52,211,153,0.35)',
+                backgroundColor: 'rgba(52,211,153,0.05)',
+              }}>
+                {/* Top accent bar */}
+                <View style={{ height: 3, backgroundColor: '#10B981', opacity: 0.8 }} />
+
+                <View style={{
+                  padding: 28,
+                  flexDirection: Platform.OS === 'web' && SCREEN_WIDTH > 600 ? 'row' : 'column',
+                  alignItems: 'center',
+                  gap: 24,
+                }}>
+                  {/* Icon + label */}
+                  <View style={{ alignItems: 'center', gap: 10, minWidth: 80 }}>
+                    <View style={{
+                      width: 56, height: 56, borderRadius: 18,
+                      backgroundColor: 'rgba(16,185,129,0.12)',
+                      borderWidth: 1.5, borderColor: 'rgba(16,185,129,0.3)',
+                      alignItems: 'center', justifyContent: 'center',
+                    }}>
+                      <Sparkles size={24} color="#10B981" />
+                    </View>
+                    <View style={{
+                      backgroundColor: 'rgba(16,185,129,0.15)',
+                      borderRadius: 10, paddingHorizontal: 10, paddingVertical: 3,
+                      borderWidth: 1, borderColor: 'rgba(16,185,129,0.25)',
+                    }}>
+                      <Text style={{ color: '#10B981', fontSize: 10, fontWeight: '800', letterSpacing: 1.5, textTransform: 'uppercase' }}>Free</Text>
+                    </View>
+                  </View>
+
+                  {/* Text */}
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ color: 'white', fontWeight: '800', fontSize: 20, marginBottom: 6 }}>
+                      Try Cloudora Free for 14 Days
+                    </Text>
+                    <Text style={{ color: 'rgba(255,255,255,0.5)', fontSize: 14, lineHeight: 21 }}>
+                      No credit card required. Get full access to all core features and see how Cloudora transforms your institution.
+                    </Text>
+                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 14 }}>
+                      {['Unlimited Students', 'All Core Modules', 'Email Support', 'No Commitment'].map((feat) => (
+                        <View key={feat} style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+                          <Check size={12} color="#10B981" strokeWidth={3} />
+                          <Text style={{ color: 'rgba(255,255,255,0.7)', fontSize: 12, fontWeight: '500' }}>{feat}</Text>
+                        </View>
+                      ))}
+                    </View>
+                  </View>
+
+                  {/* CTA button */}
+                  <TouchableOpacity
+                    onPress={() => openRegistrationModal('Free Trial')}
+                    activeOpacity={0.85}
+                    style={{
+                      paddingVertical: 16, paddingHorizontal: 28,
+                      borderRadius: 18,
+                      backgroundColor: '#10B981',
+                      alignItems: 'center',
+                      shadowColor: '#10B981',
+                      shadowOffset: { width: 0, height: 8 },
+                      shadowOpacity: 0.35,
+                      shadowRadius: 16,
+                      minWidth: 160,
+                    }}
+                  >
+                    <Text style={{ color: 'white', fontWeight: '800', fontSize: 14 }}>Start Free Trial</Text>
+                    {/* <Text style={{ color: 'rgba(255,255,255,0.7)', fontSize: 11, marginTop: 2 }}>No card needed</Text> */}
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </View>
+
+            {/* Contact CTA for Custom */}
+            {selectedTier === 'custom' && (
+              <View style={{ alignItems: 'center', marginTop: 36 }}>
+                <Text style={{ color: 'rgba(255,255,255,0.45)', fontSize: 13, marginBottom: 12 }}>
+                  Need a fully custom quote? Talk to our team directly.
+                </Text>
+                <TouchableOpacity
+                  style={{
+                    flexDirection: 'row', alignItems: 'center', gap: 8,
+                    backgroundColor: 'rgba(139,92,246,0.12)',
+                    borderWidth: 1.5, borderColor: 'rgba(139,92,246,0.35)',
+                    borderRadius: 16, paddingVertical: 14, paddingHorizontal: 28,
+                  }}
+                  onPress={() => openRegistrationModal('Custom Enterprise')}
+                  activeOpacity={0.8}
+                >
+                  <Text style={{ color: '#A78BFA', fontWeight: '700', fontSize: 14 }}>Schedule a Demo</Text>
+                  <MoveRight size={16} color="#A78BFA" />
+                </TouchableOpacity>
+              </View>
+            )}
           </View>
 
           {/* ═══════════════════════ FOOTER ═══════════════════════ */}
