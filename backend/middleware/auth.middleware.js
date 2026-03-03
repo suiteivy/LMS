@@ -30,11 +30,14 @@ async function authMiddleware(req, res, next) {
     // If the user is a demo user, we MUST enforce the 15-minute limit
     // regardless of the global Supabase JWT expiry setting.
     if (user.email && user.email.startsWith('demo.')) {
-      const { data: trialSession, error: trialError } = await supabase
+      const { data: trialSessions, error: trialError } = await supabase
         .from('trial_sessions')
         .select('expires_at')
         .eq('demo_user_id', user.id)
-        .single();
+        .order('created_at', { ascending: false })
+        .limit(1);
+
+      const trialSession = trialSessions?.[0];
 
       if (trialError || !trialSession) {
         console.warn(`[AuthMiddleware] No trial session found for demo user: ${user.id}`);

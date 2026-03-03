@@ -50,12 +50,14 @@ exports.startDemo = async (req, res) => {
         const session = authData.session;
         const user = authData.user;
 
-        // 2. Log the session start in trial_sessions (using Service Role client)
-        // We assume global `supabase` is the Service Role client from utils
+        // 2. Clean up any existing trial sessions for this demo user
+        await supabase.from('trial_sessions').delete().eq('demo_user_id', user.id);
+
+        // 3. Log the new session start in trial_sessions (using Service Role client)
         const { error: logError } = await supabase.from('trial_sessions').insert({
             role,
             demo_user_id: user.id,
-            session_token: session.access_token, // Store specifically related to this request?
+            session_token: session.access_token,
             ip_address: req.ip || req.connection.remoteAddress
         });
 
