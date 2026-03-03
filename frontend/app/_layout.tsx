@@ -170,6 +170,7 @@ function AuthHandler() {
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="index" />
         <Stack.Screen name="(auth)/signIn" />
+        <Stack.Screen name="(master-admin)" />
         <Stack.Screen name="(admin)" />
         <Stack.Screen name="(student)" />
         <Stack.Screen name="(teacher)" />

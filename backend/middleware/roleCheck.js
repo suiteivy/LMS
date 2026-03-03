@@ -60,9 +60,30 @@ const requireAdminOrBursary = requireRole('admin', 'bursary');
  */
 const requireAdminOrTeacher = requireRole('admin', 'teacher');
 
+/**
+ * Middleware to ensure user is a Platform (Master Overall) Admin.
+ * They must have the 'admin' role AND NO institution_id assigned.
+ */
+const requirePlatformAdmin = (req, res, next) => {
+    if (req.userRole !== 'admin' || req.institution_id !== null) {
+        logger.warn('Platform Admin check failed - unauthorized', {
+            path: req.path,
+            userId: req.user?.id,
+            role: req.userRole,
+            institutionId: req.institution_id
+        });
+        return res.status(403).json({
+            error: 'You do not have platform admin privileges',
+            code: 'FORBIDDEN'
+        });
+    }
+    next();
+};
+
 module.exports = {
     requireRole,
     requireAdmin,
     requireAdminOrBursary,
-    requireAdminOrTeacher
+    requireAdminOrTeacher,
+    requirePlatformAdmin
 };

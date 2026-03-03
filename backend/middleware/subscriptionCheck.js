@@ -49,6 +49,7 @@ const checkSubscription = async (req, res, next) => {
       // Check Plan Limits (Students & Admins)
       const planLimits = {
         'trial': { maxStudents: 50, maxAdmins: 1 },
+        'beta_free': { maxStudents: 500, maxAdmins: 2 },
         'basic': { maxStudents: 500, maxAdmins: 2 },
         'pro': { maxStudents: 1000, maxAdmins: 5 },
         'premium': { maxStudents: Infinity, maxAdmins: Infinity }
@@ -111,8 +112,14 @@ const checkSubscription = async (req, res, next) => {
     ];
 
     const currentPlan = subscription_plan || 'trial';
-    const planOrder = ['trial', 'basic', 'pro', 'premium'];
-    const currentPlanRank = planOrder.indexOf(currentPlan);
+    // 'beta_free' is fundamentally identical to basic, so it's ranked the same
+    const planOrder = ['trial', 'beta_free', 'basic', 'pro', 'premium'];
+
+    // For evaluating features specifically asking for "basic", both "basic" and "beta_free" maps to index 2
+    let currentPlanRank = planOrder.indexOf(currentPlan);
+    if (currentPlan === 'beta_free') {
+      currentPlanRank = planOrder.indexOf('basic'); // Force beta_free to have Basic powers
+    }
 
     for (const feature of restrictedFeatures) {
       if (fullPath.includes(feature.path)) {

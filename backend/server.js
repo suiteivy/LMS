@@ -15,6 +15,7 @@ const bursaryRoutes = require("./routes/bursary.route");
 const financeRoutes = require("./routes/finance.route");
 const notificationRoutes = require("./routes/notification.route");
 const settingsRoutes = require("./routes/settings.route");
+const masterAdminRoutes = require("./routes/master_admin.route");
 const settingsController = require("./controllers/settings.controller");
 const morgan = require("morgan");
 
@@ -66,6 +67,9 @@ app.use("/api/teacher", authMiddleware, checkSubscription, require("./routes/tea
 app.use("/api/settings", authMiddleware, checkSubscription, settingsRoutes);
 app.use("/api/student", authMiddleware, checkSubscription, require("./routes/student.route"));
 app.use("/api/classes", authMiddleware, checkSubscription, require("./routes/class.route"));
+
+// Platform Admin Routes (Protected explicitly internally by requirePlatformAdmin)
+app.use("/api/master-admin", authMiddleware, masterAdminRoutes);
 
 // Automated background jobs (Trial Branch)
 const { startTrialNudgesCron } = require('./cron/trialNudges');

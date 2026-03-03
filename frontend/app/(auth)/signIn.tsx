@@ -455,6 +455,11 @@ export default function SignIn() {
       showToast(`👋 Welcome back, ${userData.full_name || "there"}!`);
 
       setTimeout(() => {
+        if (userData.role === "admin" && !userData.institution_id) {
+          router.replace("/(master-admin)" as any);
+          return;
+        }
+
         switch (userData.role) {
           case "admin": router.replace("/(admin)"); break;
           case "teacher": router.replace("/(teacher)"); break;

@@ -9,6 +9,8 @@ A comprehensive, role-based mobile application for managing educational institut
 - [**Roles & Permissions**](docs/roles.md) - Detailed role capabilities.
 
 ## ✨ Key Features
+- **Master Platform Admin**: View `/(master-admin)` for global platform management, subscription controls, institution enrollment, and granting Beta Free access.
+  - *Default Local Credentials:* `masteradmin@suiteivy.com` / `Master@123456`
 - **Multi-Role Support**: Tailored experiences for Students, Teachers, Admins, and Parents.
 - **Academic Management**: Grading, Attendance tracking, Subject management, and Timetables.
 - **Finance & Bursary**: Fee payment tracking, bursary applications, and teacher payout management with dynamic currency support.
