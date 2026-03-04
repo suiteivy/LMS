@@ -79,9 +79,10 @@ const PackageTierTab = ({ tier, label, icon, tagline, isActive, onPress }: any) 
       onMouseLeave={() => setHovered(false)}
       style={[
         {
-          flex: 1,
-          minWidth: 110,
-          maxWidth: 200,
+          // Wide screens (>= 768px): flex fills equal share; narrow: fixed compact width
+          ...(SCREEN_WIDTH >= 768
+            ? { flex: 1, minWidth: 110, maxWidth: 200 }
+            : { width: 118, flexShrink: 0 }),
           paddingVertical: 16,
           paddingHorizontal: 14,
           borderRadius: 20,
@@ -763,6 +764,8 @@ export default function Index() {
   // Section refs for smooth scrolling
   const featuresRef = useRef<View>(null);
   const pricingRef = useRef<View>(null);
+  // Y-offset of the plan-cards block (so we can scroll to it on mobile tier tap)
+  const [pricingCardsY, setPricingCardsY] = useState<number | null>(null);
 
   // Sticky nav visibility
   const [showNav, setShowNav] = useState(false);
@@ -1459,26 +1462,64 @@ export default function Index() {
             </View>
 
             {/* ── LEVEL 1: Tier Selector ── */}
-            <View style={{
-              flexDirection: 'row',
-              justifyContent: 'center',
-              gap: 10,
-              flexWrap: 'wrap',
-              marginBottom: 16,
-              paddingHorizontal: Platform.OS === 'web' ? 40 : 0,
-            }}>
-              {TIERS.map((tier) => (
-                <PackageTierTab
-                  key={tier.key}
-                  tier={tier}
-                  label={tier.label}
-                  icon={tier.icon}
-                  tagline={tier.tagline}
-                  isActive={selectedTier === tier.key}
-                  onPress={() => setSelectedTier(tier.key)}
-                />
-              ))}
-            </View>
+            {SCREEN_WIDTH >= 768 ? (
+              /* Wide screen (>=768px): centred flex row */
+              <View style={{
+                flexDirection: 'row',
+                justifyContent: 'center',
+                gap: 10,
+                flexWrap: 'wrap',
+                marginBottom: 16,
+                paddingHorizontal: 40,
+              }}>
+                {TIERS.map((tier) => (
+                  <PackageTierTab
+                    key={tier.key}
+                    tier={tier}
+                    label={tier.label}
+                    icon={tier.icon}
+                    tagline={tier.tagline}
+                    isActive={selectedTier === tier.key}
+                    onPress={() => setSelectedTier(tier.key)}
+                  />
+                ))}
+              </View>
+            ) : (
+              /* Narrow screen (<768px): horizontal scroll strip */
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 10,
+                  paddingHorizontal: 20,
+                  paddingBottom: 4,
+                }}
+                style={{ marginBottom: 16 }}
+              >
+                {TIERS.map((tier) => (
+                  <PackageTierTab
+                    key={tier.key}
+                    tier={tier}
+                    label={tier.label}
+                    icon={tier.icon}
+                    tagline={tier.tagline}
+                    isActive={selectedTier === tier.key}
+                    onPress={() => {
+                      setSelectedTier(tier.key);
+                      // Gently scroll so the plan cards come into view
+                      if (pricingCardsY !== null) {
+                        scrollRef.current?.scrollTo({
+                          y: pricingCardsY - 80,
+                          animated: true,
+                        });
+                      }
+                    }}
+                  />
+                ))}
+              </ScrollView>
+            )}
 
             {/* Active tier description */}
             <View style={{ alignItems: 'center', marginBottom: 40 }}>
@@ -1494,13 +1535,15 @@ export default function Index() {
             </View>
 
             {/* ── LEVEL 2: Plan Cards ── */}
-            <View style={{
-              flexDirection: 'row',
-              flexWrap: 'wrap',
-              justifyContent: 'center',
-              gap: Platform.OS === 'web' ? 24 : 0,
-              width: '100%',
-            }}>
+            <View
+              onLayout={(e) => setPricingCardsY(e.nativeEvent.layout.y + (sectionPositions['pricing'] ?? 0))}
+              style={{
+                flexDirection: 'row',
+                flexWrap: 'wrap',
+                justifyContent: 'center',
+                gap: Platform.OS === 'web' ? 24 : 0,
+                width: '100%',
+              }}>
               {TIER_PLANS[selectedTier].map((plan) => (
                 <PlanCard
                   key={`${selectedTier}-${plan.name}`}
