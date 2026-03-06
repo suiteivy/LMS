@@ -8,14 +8,15 @@ import {
   BarChart2,
   BookOpen,
   Check,
+  Coins,
   CreditCard,
   Crown,
   Library,
   MoveRight,
+  Plus,
   School,
   Settings,
   Sparkles,
-  Star,
   Timer,
   Users
 } from "lucide-react-native";
@@ -379,53 +380,53 @@ const PlanCard = ({ plan, tierAccent, openRegistrationModal }: any) => {
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Tier & plan data
+// Tier & plan data.....change to addons
 // ─────────────────────────────────────────────────────────────────────────────
 const TIERS = [
   {
-    key: 'basic',
-    label: 'Basic',
+    key: 'plans',
+    label: 'Pricing Plans',
     tagline: 'Small schools',
-    icon: <School size={16} color="white" />,
+    icon: <Coins size={16} color="white" />,
     accent: '#3B82F6',
     description: 'Ideal for independent schools and small academies getting started.',
   },
   {
-    key: 'enterprise',
-    label: 'Enterprise',
-    tagline: 'Large institutions',
-    icon: <Star size={16} color="white" />,
-    accent: '#FF6B00',
-    description: 'Built for large schools, districts, and multi-campus institutions with advanced needs.',
-  },
-  {
     key: 'custom',
     label: 'Custom',
-    tagline: 'Bespoke & white-label',
-    icon: <Sparkles size={16} color="white" />,
-    accent: '#8B5CF6',
-    description: 'Fully tailored deployments with custom branding, integrations, and dedicated support.',
+    tagline: 'Large schools',
+    icon: <School size={16} color="white" />,
+    accent: '#3B82F6',
+    description: 'Ideal for independent schools and small academies getting started.',
   },
 ] as const;
 
-type TierKey = 'basic' | 'enterprise' | 'custom';
+type TierKey = 'plans' | 'custom' | 'addOns'
 
 const TIER_PLANS: Record<TierKey, any[]> = {
-  basic: [
+  plans: [
     {
       name: 'Basic',
-      price: '$59/mo',
-      desc: 'Core tools for a growing school',
-      features: ['1 Admin Account', 'Up to 200 Students', 'Core LMS Modules', 'Email Support'],
+      price: '$100/month',
+      desc: 'Ideal for Small schools & early adopters ideal for 200-900 students',
+      features: [
+        'Student module',
+        'Teacher module',
+        'Parent module',
+      ],
       icon: <BookOpen size={24} color="#3B82F6" />,
       accent: '#3B82F6',
       cta: 'Get Started',
     },
     {
       name: 'Pro',
-      price: '$109/mo',
-      desc: 'Analytics, finance & more',
-      features: ['3 Admin Accounts', 'Up to 500 Students', 'Finance Module', 'Standard Analytics', 'Priority Support'],
+      price: '$300/month',
+      desc: 'Mid-sized schools and training centers\nUp to 1000 students',
+      features: [
+        'Student module',
+        'Teacher module',
+        'Parent module',
+      ],
       icon: <Crown size={24} color="#F59E0B" />,
       accent: '#F59E0B',
       popular: true,
@@ -433,40 +434,13 @@ const TIER_PLANS: Record<TierKey, any[]> = {
     },
     {
       name: 'Premium',
-      price: '$149/mo',
-      desc: 'Full platform, no limits',
-      features: ['Unlimited Admins', 'Unlimited Students', 'Custom Branding', 'Advanced Analytics', 'Bulk Operations'],
-      icon: <Sparkles size={24} color="#8B5CF6" />,
-      accent: '#8B5CF6',
-      premium: true,
-      cta: 'Go Premium',
-    },
-  ],
-  enterprise: [
-    {
-      name: 'Basic',
-      price: '$349/mo',
-      desc: 'Enterprise essentials',
-      features: ['5 Admin Accounts', 'Up to 2,000 Students', 'SLA 99.5% Uptime', 'Core Modules', 'Dedicated Onboarding'],
-      icon: <BookOpen size={24} color="#3B82F6" />,
-      accent: '#3B82F6',
-      cta: 'Get Started',
-    },
-    {
-      name: 'Pro',
-      price: '$409/mo',
-      desc: 'Advanced enterprise tools',
-      features: ['15 Admin Accounts', 'Up to 5,000 Students', 'Advanced Analytics', 'Finance & Payroll', 'SLA 99.9%', 'API Access'],
-      icon: <Crown size={24} color="#FF6B00" />,
-      accent: '#FF6B00',
-      popular: true,
-      cta: 'Start Pro',
-    },
-    {
-      name: 'Premium',
-      price: '$549/mo',
-      desc: 'Unlimited enterprise power',
-      features: ['Unlimited Admins', 'Unlimited Students', 'Multi-Campus Support', 'Custom Integrations', 'White-Glove Support', 'SLA 99.99%'],
+      price: '$500/month',
+      desc: 'Large private school & tertiary institutions\nIdeal for 5000+ students',
+      features: [
+        'Student module',
+        'Teacher module',
+        'Parent module',
+      ],
       icon: <Sparkles size={24} color="#8B5CF6" />,
       accent: '#8B5CF6',
       premium: true,
@@ -475,35 +449,60 @@ const TIER_PLANS: Record<TierKey, any[]> = {
   ],
   custom: [
     {
-      name: 'Basic',
-      price: 'Contact Us',
-      desc: 'Custom deployment starter',
-      features: ['Custom User Limits', 'Branded Domain', 'On-Premise Option', 'Basic SLA'],
-      icon: <BookOpen size={24} color="#3B82F6" />,
-      accent: '#3B82F6',
-      cta: 'Talk to Sales',
-    },
-    {
-      name: 'Pro',
-      price: 'Contact Us',
-      desc: 'Tailored integrations & APIs',
-      features: ['Custom User Limits', 'Full White-Label', 'SSO & LDAP', 'Custom Analytics', 'Dedicated CSM'],
-      icon: <Crown size={24} color="#8B5CF6" />,
+      name: 'Custom',
+      price: 'Custom',
+      desc: 'Custom plan tailored and configured to meet a specific orgainizations learning needs and have features, content or workflows tailored for your organization',
+      features: [
+        'Client-specific courses',
+        'Categories',
+        'HR management',
+        'Progress learner reports',
+        'UI adjusments',
+      ],
+      icon: <Sparkles size={24} color="#8B5CF6" />,
       accent: '#8B5CF6',
-      popular: true,
-      cta: 'Talk to Sales',
-    },
-    {
-      name: 'Premium',
-      price: 'Contact Us',
-      desc: 'Fully bespoke solution',
-      features: ['Unlimited Everything', 'Custom Feature Dev', 'Source Code Option', 'Multi-Region Deploy', 'Enterprise SLA', '24/7 Support'],
-      icon: <Sparkles size={24} color="#EC4899" />,
-      accent: '#EC4899',
       premium: true,
-      cta: 'Talk to Sales',
+      cta: 'Select custom features & modules',
     },
   ],
+  addOns: [
+    {
+      name: 'Library Module',
+      price: '$30',
+      desc: 'Manage library and virtual materials on a main dashboard',
+      features: [
+
+      ],
+      icon: <Sparkles size={24} color="#8B5CF6" />,
+      accent: '#8B5CF6',
+      premium: true,
+      cta: 'Go Premium',
+    },
+    {
+      name: 'Bursary Module',
+      price: '$30',
+      desc: 'Manage student accounts and financial logs on a main dashboard',
+      features: [
+
+      ],
+      icon: <Sparkles size={24} color="#8B5CF6" />,
+      accent: '#8B5CF6',
+      premium: true,
+      cta: 'Go Premium',
+    },
+    {
+      name: 'Messageing + Virtual Diary',
+      price: '$10',
+      desc: 'Direct messaging and announcment sharing on e-learning platform',
+      features: [
+
+      ],
+      icon: <Sparkles size={24} color="#8B5CF6" />,
+      accent: '#8B5CF6',
+      premium: true,
+      cta: 'Go Premium',
+    },
+  ]
 };
 
 
@@ -751,11 +750,16 @@ export default function Index() {
   const pathname = usePathname();
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
-  const [selectedTier, setSelectedTier] = useState<TierKey>('enterprise');
+  const [selectedTier, setSelectedTier] = useState<TierKey>('plans');
   const [form, setForm] = useState({ name: '', email: '', message: '' });
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [isNavReady, setIsNavReady] = useState(false);
+  const [addonModalVisible, setAddonModalVisible] = useState(false);
+  const [customModalVisible, setCustomModalVisible] = useState(false);
+  const [selectedAddons, setSelectedAddons] = useState<string[]>([]);
+  const [selectedCustomFeatures, setSelectedCustomFeatures] = useState<string[]>([]);
+  const [selectedCoreModules, setSelectedCoreModules] = useState<string[]>([]);
 
   // Show AppLoading for 5s before redirecting to dashboard
   const [navigating, setNavigating] = useState(false);
@@ -968,7 +972,10 @@ export default function Index() {
         name: form.name,
         email: form.email,
         plan: selectedPlan,
-        message: form.message || `Setup request for ${selectedPlan} plan`
+        addons: selectedAddons,
+        customFeatures: selectedCustomFeatures,
+        coreModules: selectedCoreModules,
+        message: form.message || `Setup request for ${selectedPlan} plan${selectedCoreModules.length > 0 ? ` with core modules: ${selectedCoreModules.join(', ')}` : ''}${selectedAddons.length > 0 ? ` with addons: ${selectedAddons.join(', ')}` : ''}${selectedCustomFeatures.length > 0 ? ` with custom features: ${selectedCustomFeatures.join(', ')}` : ''}`
       });
 
       if (response.data.success) {
@@ -985,7 +992,23 @@ export default function Index() {
   const openRegistrationModal = (planName: string) => {
     setSelectedPlan(planName);
     setForm({ name: '', email: '', message: '' });
+    setSelectedAddons([]);
+    setSelectedCustomFeatures([]);
+    setSelectedCoreModules([]);
     setSubmitted(false);
+
+    if (planName.toLowerCase().includes("free trial")) {
+      setModalVisible(true);
+    } else if (planName.toLowerCase().includes("custom")) {
+      setCustomModalVisible(true);
+    } else {
+      setAddonModalVisible(true);
+    }
+  };
+
+  const proceedToRegistration = () => {
+    setAddonModalVisible(false);
+    setCustomModalVisible(false);
     setModalVisible(true);
   };
 
@@ -1694,6 +1717,293 @@ export default function Index() {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
+
+      {/* Addon Modal */}
+      <Modal
+        animationType="fade"
+        transparent={true}
+        visible={addonModalVisible}
+        onRequestClose={() => setAddonModalVisible(false)}
+      >
+        <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "rgba(0,0,0,0.8)" }}>
+          <View style={{
+            backgroundColor: "#13103A",
+            borderRadius: 32,
+            padding: 24,
+            width: Platform.OS === 'web' ? 500 : '90%',
+            maxWidth: 500,
+            borderWidth: 1,
+            borderColor: "rgba(255,255,255,0.1)"
+          }}>
+            <TouchableOpacity
+              style={{ position: "absolute", top: 20, right: 20, zIndex: 10 }}
+              onPress={() => setAddonModalVisible(false)}
+            >
+              <Text style={{ color: "rgba(255,255,255,0.6)", fontSize: 24, fontWeight: "bold" }}>×</Text>
+            </TouchableOpacity>
+
+            <View style={{ alignItems: 'center', marginBottom: 24 }}>
+              <View style={{
+                width: 64, height: 64, borderRadius: 20,
+                backgroundColor: "rgba(255, 107, 0, 0.1)",
+                justifyContent: "center", alignItems: "center",
+                marginBottom: 16,
+                borderWidth: 1, borderColor: "rgba(255, 107, 0, 0.3)"
+              }}>
+                <Plus size={32} color="#FF6B00" />
+              </View>
+              <Text style={{ color: "white", fontSize: 24, fontWeight: "900", textAlign: "center" }}>Boost Your Plan</Text>
+              <Text style={{ color: "rgba(255,255,255,0.5)", textAlign: "center", marginTop: 8 }}>Enhance your {selectedPlan} with powerful add-ons.</Text>
+            </View>
+
+            <View style={{ gap: 12, marginBottom: 24 }}>
+              {TIER_PLANS.addOns.map((addon) => {
+                const isSelected = selectedAddons.includes(addon.name);
+                return (
+                  <TouchableOpacity
+                    key={addon.name}
+                    onPress={() => {
+                      if (isSelected) {
+                        setSelectedAddons(selectedAddons.filter(a => a !== addon.name));
+                      } else {
+                        setSelectedAddons([...selectedAddons, addon.name]);
+                      }
+                    }}
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      backgroundColor: isSelected ? "rgba(255, 107, 0, 0.15)" : "rgba(255,255,255,0.05)",
+                      padding: 16,
+                      borderRadius: 18,
+                      borderWidth: 1.5,
+                      borderColor: isSelected ? "#FF6B00" : "rgba(255,255,255,0.1)",
+                    }}
+                  >
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ color: isSelected ? "white" : "rgba(255,255,255,0.9)", fontWeight: "700", fontSize: 16 }}>{addon.name}</Text>
+                      <Text style={{ color: "rgba(255,255,255,0.45)", fontSize: 12, marginTop: 2 }}>{addon.desc}</Text>
+                    </View>
+                    <View style={{ alignItems: 'flex-end' }}>
+                      <Text style={{ color: "#FF8C40", fontWeight: "800", fontSize: 14 }}>{addon.price}</Text>
+                      {isSelected && (
+                        <View style={{ backgroundColor: "#FF6B00", borderRadius: 8, padding: 2, marginTop: 4 }}>
+                          <Check size={12} color="white" strokeWidth={3} />
+                        </View>
+                      )}
+                    </View>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+
+            <View style={{ gap: 12 }}>
+              <TouchableOpacity
+                style={{
+                  backgroundColor: "#FF6B00",
+                  paddingVertical: 18,
+                  borderRadius: 18,
+                  alignItems: "center",
+                  shadowColor: "#FF6B00",
+                  shadowOffset: { width: 0, height: 8 },
+                  shadowOpacity: 0.3,
+                  shadowRadius: 12,
+                }}
+                onPress={proceedToRegistration}
+              >
+                <Text style={{ color: "white", fontWeight: "900", fontSize: 16 }}>
+                  {selectedAddons.length > 0 ? "Add & Continue" : "Skip & Continue"}
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={{ paddingVertical: 12, alignItems: "center" }}
+                onPress={() => setAddonModalVisible(false)}
+              >
+                <Text style={{ color: "rgba(255,255,255,0.4)", fontWeight: "600" }}>Cancel</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Custom Features Modal */}
+      <Modal
+        animationType="fade"
+        transparent={true}
+        visible={customModalVisible}
+        onRequestClose={() => setCustomModalVisible(false)}
+      >
+        <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "rgba(0,0,0,0.8)" }}>
+          <View style={{
+            backgroundColor: "#13103A",
+            borderRadius: 32,
+            padding: 24,
+            width: Platform.OS === 'web' ? 600 : '95%',
+            maxWidth: 600,
+            borderWidth: 1,
+            borderColor: "rgba(255,255,255,0.1)"
+          }}>
+            <TouchableOpacity
+              style={{ position: "absolute", top: 20, right: 20, zIndex: 10 }}
+              onPress={() => setCustomModalVisible(false)}
+            >
+              <Text style={{ color: "rgba(255,255,255,0.6)", fontSize: 24, fontWeight: "bold" }}>×</Text>
+            </TouchableOpacity>
+
+            <View style={{ alignItems: 'center', marginBottom: 24 }}>
+              <View style={{
+                width: 64, height: 64, borderRadius: 20,
+                backgroundColor: "rgba(139, 92, 246, 0.1)",
+                justifyContent: "center", alignItems: "center",
+                marginBottom: 16,
+                borderWidth: 1, borderColor: "rgba(139, 92, 246, 0.3)"
+              }}>
+                <Settings size={32} color="#8B5CF6" />
+              </View>
+              <Text style={{ color: "white", fontSize: 24, fontWeight: "900", textAlign: "center" }}>Configure Custom Plan</Text>
+              <Text style={{ color: "rgba(255,255,255,0.5)", textAlign: "center", marginTop: 8 }}>Select the specialized features and modules for your institution.</Text>
+            </View>
+
+            <View style={{ maxHeight: 400 }}>
+              <ScrollView showsVerticalScrollIndicator={false}>
+                {/* Core Modules Section */}
+                <Text style={{ color: "rgba(255,255,255,0.4)", fontSize: 11, fontWeight: "800", letterSpacing: 1.5, textTransform: "uppercase", marginBottom: 12, marginLeft: 4 }}>Core Modules</Text>
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 24, justifyContent: 'flex-start' }}>
+                  {['Student module', 'Teacher module', 'Parent module'].map((mod) => {
+                    const isSelected = selectedCoreModules.includes(mod);
+                    return (
+                      <TouchableOpacity
+                        key={mod}
+                        onPress={() => {
+                          if (isSelected) {
+                            setSelectedCoreModules(selectedCoreModules.filter(m => m !== mod));
+                          } else {
+                            setSelectedCoreModules([...selectedCoreModules, mod]);
+                          }
+                        }}
+                        style={{
+                          backgroundColor: isSelected ? "rgba(59, 130, 246, 0.2)" : "rgba(255,255,255,0.04)",
+                          paddingHorizontal: 16,
+                          paddingVertical: 12,
+                          borderRadius: 14,
+                          borderWidth: 1.5,
+                          borderColor: isSelected ? "#3B82F6" : "rgba(255,255,255,0.08)",
+                          flexDirection: 'row',
+                          alignItems: 'center',
+                          gap: 8
+                        }}
+                      >
+                        <Text style={{ color: isSelected ? "white" : "rgba(255,255,255,0.7)", fontWeight: "600", fontSize: 13 }}>{mod}</Text>
+                        {isSelected && <Check size={14} color="#3B82F6" strokeWidth={3} />}
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+
+                {/* Custom Modules Section */}
+                <Text style={{ color: "rgba(255,255,255,0.4)", fontSize: 11, fontWeight: "800", letterSpacing: 1.5, textTransform: "uppercase", marginBottom: 12, marginLeft: 4 }}>Custom Modules</Text>
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 24, justifyContent: 'flex-start' }}>
+                  {TIER_PLANS.custom[0].features.map((feat: string) => {
+                    const isSelected = selectedCustomFeatures.includes(feat);
+                    return (
+                      <TouchableOpacity
+                        key={feat}
+                        onPress={() => {
+                          if (isSelected) {
+                            setSelectedCustomFeatures(selectedCustomFeatures.filter(f => f !== feat));
+                          } else {
+                            setSelectedCustomFeatures([...selectedCustomFeatures, feat]);
+                          }
+                        }}
+                        style={{
+                          backgroundColor: isSelected ? "rgba(139, 92, 246, 0.2)" : "rgba(255,255,255,0.04)",
+                          paddingHorizontal: 16,
+                          paddingVertical: 12,
+                          borderRadius: 14,
+                          borderWidth: 1.5,
+                          borderColor: isSelected ? "#8B5CF6" : "rgba(255,255,255,0.08)",
+                          flexDirection: 'row',
+                          alignItems: 'center',
+                          gap: 8
+                        }}
+                      >
+                        <Text style={{ color: isSelected ? "white" : "rgba(255,255,255,0.7)", fontWeight: "600", fontSize: 13 }}>{feat}</Text>
+                        {isSelected && <Check size={14} color="#8B5CF6" strokeWidth={3} />}
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+
+                {/* Add-on Modules Section */}
+                <Text style={{ color: "rgba(255,255,255,0.4)", fontSize: 11, fontWeight: "800", letterSpacing: 1.5, textTransform: "uppercase", marginBottom: 12, marginLeft: 4 }}>Add-on Modules (Included in Custom)</Text>
+                <View style={{ gap: 10, marginBottom: 24 }}>
+                  {TIER_PLANS.addOns.map((addon) => {
+                    const isSelected = selectedAddons.includes(addon.name);
+                    return (
+                      <TouchableOpacity
+                        key={addon.name}
+                        onPress={() => {
+                          if (isSelected) {
+                            setSelectedAddons(selectedAddons.filter(a => a !== addon.name));
+                          } else {
+                            setSelectedAddons([...selectedAddons, addon.name]);
+                          }
+                        }}
+                        style={{
+                          flexDirection: 'row',
+                          alignItems: 'center',
+                          backgroundColor: isSelected ? "rgba(255, 107, 0, 0.15)" : "rgba(255,255,255,0.04)",
+                          padding: 14,
+                          borderRadius: 16,
+                          borderWidth: 1.5,
+                          borderColor: isSelected ? "#FF6B00" : "rgba(255,255,255,0.08)",
+                        }}
+                      >
+                        <View style={{ flex: 1 }}>
+                          <Text style={{ color: isSelected ? "white" : "rgba(255,255,255,0.9)", fontWeight: "700", fontSize: 14 }}>{addon.name}</Text>
+                          <Text style={{ color: "rgba(255,255,255,0.4)", fontSize: 11, marginTop: 1 }}>{addon.desc}</Text>
+                        </View>
+                        {isSelected && (
+                          <View style={{ backgroundColor: "#FF6B00", borderRadius: 8, padding: 2 }}>
+                            <Check size={12} color="white" strokeWidth={3} />
+                          </View>
+                        )}
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              </ScrollView>
+            </View>
+
+            <View style={{ gap: 12 }}>
+              <TouchableOpacity
+                style={{
+                  backgroundColor: "#8B5CF6",
+                  paddingVertical: 18,
+                  borderRadius: 18,
+                  alignItems: "center",
+                  shadowColor: "#8B5CF6",
+                  shadowOffset: { width: 0, height: 8 },
+                  shadowOpacity: 0.3,
+                  shadowRadius: 12,
+                }}
+                onPress={proceedToRegistration}
+              >
+                <Text style={{ color: "white", fontWeight: "900", fontSize: 16 }}>
+                  {(selectedCustomFeatures.length > 0 || selectedCoreModules.length > 0 || selectedAddons.length > 0) ? "Apply & Continue" : "Skip & Continue"}
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={{ paddingVertical: 12, alignItems: "center" }}
+                onPress={() => setCustomModalVisible(false)}
+              >
+                <Text style={{ color: "rgba(255,255,255,0.4)", fontWeight: "600" }}>Cancel</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
 
       {/* Registration Modal */}
       < Modal

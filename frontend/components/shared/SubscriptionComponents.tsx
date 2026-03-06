@@ -37,7 +37,7 @@ export const SubscriptionBanner = () => {
             <View className="bg-red-500 flex-row items-center px-4 py-3 justify-between">
                 <View className="flex-row items-center flex-1 pr-2">
                     <Ionicons name="warning" size={20} color="white" />
-                    <Text className="text-white font-bold ml-2 text-sm flex-1">
+                    <Text className="text-white font-bold text-sm flex-1">
                         Subscription Expired! Access is now read-only.
                     </Text>
                 </View>
@@ -56,7 +56,7 @@ export const SubscriptionBanner = () => {
             <View className="bg-orange-500 flex-row items-center px-4 py-3 justify-between">
                 <View className="flex-row items-center">
                     <Ionicons name="time" size={20} color="white" />
-                    <Text className="text-white font-bold ml-2 text-sm">
+                    <Text className="text-white font-bold text-sm">
                         Free Trial: {daysRemaining} days remaining
                     </Text>
                 </View>
@@ -152,7 +152,7 @@ export const SubscriptionBadge = () => {
 
     if (subscriptionStatus === 'expired' || subscriptionStatus === 'cancelled') {
         return (
-            <View className="bg-red-500/20 px-1.5 py-0.5 rounded ml-2 flex-row items-center border border-red-500/30">
+            <View className="bg-red-500/20 px-1.5 py-0.5 rounded flex-row items-center border border-red-500/30">
                 <Text className="text-red-500 text-[9px] font-extrabold uppercase tracking-widest">EXPIRED</Text>
             </View>
         );
@@ -160,7 +160,7 @@ export const SubscriptionBadge = () => {
 
     if (subscriptionStatus === 'trial') {
         return (
-            <View className="bg-orange-500/20 px-1.5 py-0.5 rounded ml-2 flex-row items-center border border-orange-500/30">
+            <View className="bg-orange-500/20 px-1.5 py-0.5 rounded flex-row items-center border border-orange-500/30">
                 <Text className="text-orange-500 text-[9px] font-extrabold uppercase tracking-widest">TRIAL</Text>
             </View>
         );
@@ -175,7 +175,7 @@ export const SubscriptionBadge = () => {
     const style = planStyles[subscriptionPlan || 'basic'] || planStyles.basic;
 
     return (
-        <View className={`${style.bg} px-1.5 py-0.5 rounded ml-2 flex-row items-center border ${style.border}`}>
+        <View className={`${style.bg} px-1.5 py-0.5 rounded flex-row items-center border ${style.border}`}>
             <Text className={`${style.text} text-[9px] font-extrabold uppercase tracking-widest`}>
                 {subscriptionPlan === 'premium' ? '✨ ' : ''}{subscriptionPlan}
             </Text>

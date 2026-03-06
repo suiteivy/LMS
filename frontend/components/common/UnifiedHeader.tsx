@@ -1,6 +1,9 @@
-﻿import { useNotifications } from "@/contexts/NotificationContext";
+﻿import { useAuth } from "@/contexts/AuthContext";
+import { useNotifications } from "@/contexts/NotificationContext";
 import { useTheme } from "@/contexts/ThemeContext";
 import { Ionicons } from "@expo/vector-icons";
+import { router } from "expo-router";
+import { LogOut } from "lucide-react-native";
 import React from "react";
 import { Text, TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -30,6 +33,12 @@ export const UnifiedHeader: React.FC<UnifiedHeaderProps> = ({
   const insets = useSafeAreaInsets();
   const { setShowNotifications, unreadCount } = useNotifications();
   const { isDark } = useTheme();
+  const { isDemo, signOut } = useAuth();
+
+  const handleExitDemo = async () => {
+    await signOut();
+    router.replace('/');
+  };
 
   // Material Dark tokens
   const bg = isDark ? '#13103A' : '#ffffff';
