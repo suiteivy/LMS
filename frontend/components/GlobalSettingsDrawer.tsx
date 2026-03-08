@@ -16,6 +16,8 @@ import TeacherHelp from '@/components/TeacherHelp';
 import TeacherProfile from '@/components/TeacherProfile';
 import TeacherSettings from '@/components/TeacherSettings';
 import InstitutionOwnership from '@/components/InstitutionOwnership';
+import MasterAdminProfile from '@/components/MasterAdminProfile';
+import MasterAdminSettings from '@/components/MasterAdminSettings';
 import { router } from 'expo-router';
 
 type MenuItemProps = {
@@ -51,7 +53,7 @@ const MenuItem = ({ icon, label, onPress, danger, isDark }: MenuItemProps) => (
 function SettingsMenu({ userRole, onNavigate }: { userRole: string; onNavigate: (screen: 'profile' | 'settings' | 'help' | 'overview' | 'ownership') => void }) {
   const { signOut, profile, loading, displayId, isTrial, isMain } = useAuth();
   const { theme, setTheme, isDark } = useTheme();
-  const roleLabel = userRole.charAt(0).toUpperCase() + userRole.slice(1);
+  const roleLabel = userRole === 'master_admin' ? 'Master Admin' : (userRole.charAt(0).toUpperCase() + userRole.slice(1));
 
   const surface = isDark ? '#13103A' : '#ffffff';
   const border = isDark ? 'rgba(255,255,255,0.1)' : '#f3f4f6';
@@ -88,7 +90,7 @@ function SettingsMenu({ userRole, onNavigate }: { userRole: string; onNavigate: 
       <UnifiedHeader
         title="Account"
         subtitle="Settings"
-        role={roleLabel as "Student" | "Teacher" | "Admin" | "Parent"}
+        role={roleLabel as "Student" | "Teacher" | "Admin" | "Parent" | "Master Admin"}
         showNotification={false}
       />
 
@@ -127,13 +129,11 @@ function SettingsMenu({ userRole, onNavigate }: { userRole: string; onNavigate: 
           label={isTrial ? "My Profile (Restricted)" : "My Profile"}
           onPress={() => isTrial ? Alert.alert("Demo Mode", "Profile editing is disabled in demo mode.") : onNavigate('profile')}
         />
-        {userRole !== 'admin' && (
-          <>
-            {!isTrial && (
-              <MenuItem isDark={isDark} icon={<Settings size={22} color="#6b7280" />} label="Settings" onPress={() => onNavigate('settings')} />
-            )}
-            <MenuItem isDark={isDark} icon={<HelpCircle size={22} color="#3b82f6" />} label="Help & Support" onPress={() => onNavigate('help')} />
-          </>
+        {!isTrial && (
+          <MenuItem isDark={isDark} icon={<Settings size={22} color="#6b7280" />} label="Settings" onPress={() => onNavigate('settings')} />
+        )}
+        {userRole !== 'admin' && userRole !== 'master_admin' && (
+          <MenuItem isDark={isDark} icon={<HelpCircle size={22} color="#3b82f6" />} label="Help & Support" onPress={() => onNavigate('help')} />
         )}
 
         {/* Theme toggle — all style={{}} to avoid dark: className crash on toggle */}
@@ -199,7 +199,7 @@ function SettingsMenu({ userRole, onNavigate }: { userRole: string; onNavigate: 
   );
 }
 
-export function GlobalSettingsContent({ userRole = 'student' }: { userRole?: 'student' | 'teacher' | 'admin' | 'parent' }) {
+export function GlobalSettingsContent({ userRole = 'student' }: { userRole?: 'student' | 'teacher' | 'admin' | 'parent' | 'master_admin' }) {
   const [activeScreen, setActiveScreen] = useState<'menu' | 'profile' | 'settings' | 'help' | 'overview' | 'ownership'>('menu');
   const { isDark } = useTheme();
 
@@ -207,10 +207,12 @@ export function GlobalSettingsContent({ userRole = 'student' }: { userRole?: 'st
     switch (activeScreen) {
       case 'overview': return <AdminOverview />;
       case 'profile':
+        if (userRole === 'master_admin') return <MasterAdminProfile />;
         if (userRole === 'admin') return <AdminProfile />;
         if (userRole === 'teacher') return <TeacherProfile />;
         return <StudentProfile />;
       case 'settings':
+        if (userRole === 'master_admin') return <MasterAdminSettings />;
         if (userRole === 'admin') return <AdminSettings />;
         if (userRole === 'teacher') return <TeacherSettings />;
         return <StudentSettings />;
@@ -235,7 +237,7 @@ export function GlobalSettingsContent({ userRole = 'student' }: { userRole?: 'st
     }
   };
 
-  const roleLabel = (userRole.charAt(0).toUpperCase() + userRole.slice(1)) as "Student" | "Teacher" | "Admin" | "Parent";
+  const roleLabel = userRole === 'master_admin' ? 'Master Admin' : (userRole.charAt(0).toUpperCase() + userRole.slice(1)) as "Student" | "Teacher" | "Admin" | "Parent" | "Master Admin";
 
   return (
     <View style={{ flex: 1, backgroundColor: isDark ? '#0F0B2E' : '#ffffff' }}>
@@ -243,7 +245,7 @@ export function GlobalSettingsContent({ userRole = 'student' }: { userRole?: 'st
         <UnifiedHeader
           title={roleLabel}
           subtitle={getTitle()}
-          role={roleLabel}
+          role={roleLabel as any}
           showNotification={false}
           onBack={() => setActiveScreen('menu')}
         />
@@ -253,6 +255,6 @@ export function GlobalSettingsContent({ userRole = 'student' }: { userRole?: 'st
   );
 }
 
-export default function GlobalSettingsDrawer({ userRole = 'student' }: { userRole?: 'student' | 'teacher' | 'admin' | 'parent' }) {
+export default function GlobalSettingsDrawer({ userRole = 'student' }: { userRole?: 'student' | 'teacher' | 'admin' | 'parent' | 'master_admin' }) {
   return <GlobalSettingsContent userRole={userRole} />;
 }

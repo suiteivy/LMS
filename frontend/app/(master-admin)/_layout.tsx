@@ -9,11 +9,11 @@ import { Platform, useWindowDimensions, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const NAV_ITEMS: NavItem[] = [
-    { name: "settings", title: "Settings", icon: Settings, route: "/(master-admin)/settings" },
     { name: "index", title: "Dashboard", icon: LayoutDashboard, route: "/(master-admin)" },
     { name: "institutions", title: "Institutions", icon: Building2, route: "/(master-admin)/institutions" },
     { name: "notifications", title: "Notices", icon: Bell, route: "/(master-admin)/notifications" },
     { name: "support", title: "Support", icon: Headphones, route: "/(master-admin)/support" },
+    { name: "settings", title: "Settings", icon: Settings, route: "/(master-admin)/settings" },
 ];
 
 const MOBILE_TAB_NAMES = ["settings", "index", "institutions"];

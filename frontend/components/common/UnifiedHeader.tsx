@@ -12,7 +12,7 @@ import { MainAdminBadge } from "../shared/SubscriptionComponents";
 interface UnifiedHeaderProps {
   title: string;
   subtitle?: string;
-  role: "Student" | "Teacher" | "Admin" | "Parent";
+  role: "Student" | "Teacher" | "Admin" | "Parent" | "Master Admin";
   showNotification?: boolean;
   onNotificationPress?: () => void;
   onBack?: () => void;
@@ -166,7 +166,8 @@ export const UnifiedHeader: React.FC<UnifiedHeaderProps> = ({
                 role === "Student" ? "school-outline" :
                   role === "Teacher" ? "briefcase-outline" :
                     role === "Admin" ? "shield-checkmark-outline" :
-                      "people-outline"
+                      role === "Master Admin" ? "globe-outline" :
+                        "people-outline"
               }
               size={14}
               color={subtleIconColor}

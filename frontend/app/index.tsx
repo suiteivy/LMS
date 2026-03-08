@@ -167,13 +167,20 @@ const PlanCard = ({ plan, tierAccent, openRegistrationModal }: any) => {
     }
   }, []);
 
-  const blob1Props = useAnimatedProps(() => ({
-    cx: interpolate(animValue.value, [0, 1], [10, 40]) + '%',
-    cy: interpolate(animValue.value, [0, 1], [10, 30]) + '%',
+  const blob1Style = useAnimatedStyle(() => ({
+    transform: [
+      { translateX: interpolate(animValue.value, [0, 1], [-20, 20]) },
+      { translateY: interpolate(animValue.value, [0, 1], [-10, 30]) }
+    ],
+    opacity: 0.3
   }));
-  const blob2Props = useAnimatedProps(() => ({
-    cx: interpolate(animValue.value, [0, 1], [90, 60]) + '%',
-    cy: interpolate(animValue.value, [0, 1], [90, 70]) + '%',
+
+  const blob2Style = useAnimatedStyle(() => ({
+    transform: [
+      { translateX: interpolate(animValue.value, [0, 1], [20, -20]) },
+      { translateY: interpolate(animValue.value, [0, 1], [10, -20]) }
+    ],
+    opacity: 0.25
   }));
 
   const nativeHover = useSharedValue(0);
@@ -204,6 +211,8 @@ const PlanCard = ({ plan, tierAccent, openRegistrationModal }: any) => {
     minWidth: 260,
     marginVertical: 12,
     position: 'relative',
+    // isolate rendering context to fix backdrop-filter clip bugs
+    ...(Platform.OS === 'web' && { transform: [{ translateZ: '0' }] })
   };
 
   const containerStyle = Platform.OS === 'web'
@@ -236,53 +245,75 @@ const PlanCard = ({ plan, tierAccent, openRegistrationModal }: any) => {
         </View>
       )}
 
+      {/* Main Inner Card container */}
       <View style={{
-        backgroundColor: 'rgba(255,255,255,0.04)',
         borderRadius: 36, overflow: 'hidden',
         borderWidth: 1.5,
         borderColor: plan.popular ? `${plan.accent}66` : 'rgba(255,255,255,0.1)',
         height: '100%', flex: 1,
-        backdropFilter: Platform.OS === 'web' ? 'blur(20px)' : 'none'
-      } as any}>
+        backgroundColor: 'rgba(255,255,255,0.02)',
+        position: 'relative',
+      }}>
 
-        {/* Shine sweep */}
-        {Platform.OS === 'web' && (
-          <View pointerEvents="none" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', zIndex: 10, overflow: 'hidden' } as any}>
-            <View style={{
-              position: 'absolute', top: 0, width: 60, height: '100%',
-              background: 'linear-gradient(105deg, transparent, rgba(255,255,255,0.12), transparent)',
-              transform: [{ skewX: '-20deg' }],
-              transition: 'left 0.8s ease',
-              left: hovered ? '120%' : '-60px',
-            } as any} />
-          </View>
-        )}
+        {/* Backdrop filter container separated from main wrapper to avoid Chrome clip bug */}
+        <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, overflow: 'hidden', borderRadius: 36, zIndex: 0 }}>
+          {Platform.OS === 'web' ? (
+            <div style={{ width: '100%', height: '100%', backdropFilter: 'blur(30px)', WebkitBackdropFilter: 'blur(30px)' }} />
+          ) : (
+            <BlurView intensity={30} style={{ flex: 1 }} tint="dark" />
+          )}
+        </View>
 
         {/* Decorative blobs */}
-        <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, opacity: 0.2 }}>
-          <Svg height="100%" width="100%">
-            <Defs>
-              <LinearGradient id={`grad-${plan.name}`} x1="0%" y1="0%" x2="100%" y2="100%">
-                <Stop offset="0%" stopColor={plan.accent} stopOpacity="0.7" />
-                <Stop offset="100%" stopColor={plan.accent} stopOpacity="0" />
-              </LinearGradient>
-            </Defs>
-            <AnimatedCircle r="90" fill={`url(#grad-${plan.name})`} animatedProps={blob1Props} />
-            <AnimatedCircle r="110" fill={`url(#grad-${plan.name})`} animatedProps={blob2Props} />
-          </Svg>
+        <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 1, overflow: 'hidden', borderRadius: 36 }}>
+          {Platform.OS === 'web' ? (
+            <>
+              <Reanimated.View style={[blob1Style, {
+                position: 'absolute', top: '-10%', left: '-10%', width: 140, height: 140, borderRadius: 70,
+                backgroundColor: plan.accent, filter: 'blur(60px)'
+              } as any]} />
+              <Reanimated.View style={[blob2Style, {
+                position: 'absolute', bottom: '-10%', right: '-10%', width: 160, height: 160, borderRadius: 80,
+                backgroundColor: tierAccent || plan.accent, filter: 'blur(60px)'
+              } as any]} />
+            </>
+          ) : (
+            <Svg height="100%" width="100%">
+              <Defs>
+                <LinearGradient id={`grad-${plan.name}`} x1="0%" y1="0%" x2="100%" y2="100%">
+                  <Stop offset="0%" stopColor={plan.accent} stopOpacity="0.4" />
+                  <Stop offset="100%" stopColor={plan.accent} stopOpacity="0" />
+                </LinearGradient>
+              </Defs>
+              <Reanimated.View style={blob1Style}>
+                <Circle cx="20%" cy="20%" r="80" fill={`url(#grad-${plan.name})`} />
+              </Reanimated.View>
+              <Reanimated.View style={blob2Style}>
+                <Circle cx="80%" cy="80%" r="100" fill={`url(#grad-${plan.name})`} />
+              </Reanimated.View>
+            </Svg>
+          )}
         </View>
 
         {(plan.popular || plan.premium) && (
           <View style={{
             position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
-            backgroundColor: plan.accent, opacity: hovered ? 0.14 : 0.06,
-            borderRadius: 100, filter: 'blur(60px)', zIndex: -1,
-            transition: 'opacity 0.4s ease',
+            backgroundColor: plan.accent, opacity: hovered ? 0.08 : 0.03,
+            zIndex: 1, transition: 'opacity 0.4s ease', pointerEvents: 'none'
           } as any} />
         )}
 
-        {Platform.OS !== 'web' && (
-          <BlurView intensity={30} style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }} tint="dark" />
+        {/* Shine sweep locked to bounds */}
+        {Platform.OS === 'web' && (
+          <View pointerEvents="none" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', zIndex: 10, overflow: 'hidden', borderRadius: 36 } as any}>
+            <View style={{
+              position: 'absolute', top: 0, width: 80, height: '100%',
+              background: 'linear-gradient(105deg, transparent, rgba(255,255,255,0.08), transparent)',
+              transform: [{ skewX: '-20deg' }],
+              transition: 'left 0.7s ease',
+              left: hovered ? '150%' : '-80px',
+            } as any} />
+          </View>
         )}
 
         <View style={{ padding: 32, flex: 1 }}>
