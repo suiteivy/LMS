@@ -1,9 +1,10 @@
 -- ============================================================
--- LMS DATABASE SETUP - STEP 3: CREATE MASTER ADMIN USER
+-- LMS DATABASE SETUP - STEP 3: CREATE MASTER PLATFORM ADMIN USER
 -- ============================================================
--- Run this LAST in Supabase SQL Editor (after 02_rls_policies.sql)
--- Creates the initial MASTER admin user for the entire platform.
--- Master admins have a NULL institution_id, granting them global
+-- Run this LAST in-- LMS DATABASE SETUP - STEP 3: CREATE MASTER PLATFORM ADMIN USER
+--
+-- Creates the initial MASTER PLATFORM admin user for the entire platform.
+-- Master platform admins have a NULL institution_id, granting them global
 -- access across all organizations.
 -- 
 -- CHANGE the email and password below before running in production!
@@ -22,7 +23,12 @@ WITH new_auth_user AS (
     raw_user_meta_data,
     is_super_admin,
     role,
-    aud
+    aud,
+    confirmation_token,
+    recovery_token,
+    email_change_token_new,
+    email_change_token_current,
+    email_change
   )
   VALUES (
     gen_random_uuid(),
@@ -36,7 +42,12 @@ WITH new_auth_user AS (
     '{"full_name":"SuiteIvy Platform Admin"}',
     FALSE,
     'authenticated',
-    'authenticated'
+    'authenticated',
+    '',
+    '',
+    '',
+    '',
+    ''
   )
   RETURNING id, email
 )

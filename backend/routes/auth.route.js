@@ -10,7 +10,7 @@ const {
   changePassword,
   forgotPassword,
   resetPassword,
-  transferMasterAdmin,
+  transferMainAdmin,
 } = require("../controllers/auth.controller");
 const { authMiddleware } = require("../middleware/auth.middleware");
 const checkSubscription = require("../middleware/subscriptionCheck");
@@ -63,12 +63,12 @@ router.post("/logout", authMiddleware, logout);
 // Password management
 router.put("/change-password", authMiddleware, changePassword);
 
-// Master Admin Management
+// Main Admin Management
 router.post(
-  "/transfer-master",
+  "/transfer-main",
   authMiddleware,
   requireAdmin,
-  transferMasterAdmin,
+  transferMainAdmin,
 );
 
 module.exports = router;

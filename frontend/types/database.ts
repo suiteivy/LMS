@@ -258,6 +258,10 @@ export interface Database {
           subscription_cycle: "monthly" | "annually" | null;
           trial_end_date: string | null;
           has_used_trial: boolean;
+          addon_library: boolean;
+          addon_messaging: boolean;
+          addon_finance: boolean;
+          addon_analytics: boolean;
         };
         Insert: {
           id?: string;
@@ -272,6 +276,10 @@ export interface Database {
           subscription_cycle?: "monthly" | "annually" | null;
           trial_end_date?: string | null;
           has_used_trial?: boolean;
+          addon_library?: boolean;
+          addon_messaging?: boolean;
+          addon_finance?: boolean;
+          addon_analytics?: boolean;
         };
         Update: {
           id?: string;
@@ -286,6 +294,10 @@ export interface Database {
           subscription_cycle?: "monthly" | "annually" | null;
           trial_end_date?: string | null;
           has_used_trial?: boolean;
+          addon_library?: boolean;
+          addon_messaging?: boolean;
+          addon_finance?: boolean;
+          addon_analytics?: boolean;
         };
         Relationships: [];
       };

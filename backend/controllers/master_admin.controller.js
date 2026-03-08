@@ -74,7 +74,7 @@ exports.getInstitutionDetails = async (req, res) => {
 
         if (getErr) throw getErr;
 
-        // Fetch master admins for this institution
+        // Fetch administrators for this institution
         const { data: admins } = await adminClient
             .from('users')
             .select('id, full_name, email, phone')
@@ -94,9 +94,9 @@ exports.getInstitutionDetails = async (req, res) => {
 exports.updateSubscriptionStatus = async (req, res) => {
     try {
         const { id } = req.params;
-        const { subscription_status, subscription_plan, trial_end_date } = req.body;
+        const { subscription_status, subscription_plan, trial_end_date, addon_library, addon_messaging, addon_finance, addon_analytics } = req.body;
 
-        if (!subscription_status && !subscription_plan && !trial_end_date) {
+        if (!subscription_status && !subscription_plan && !trial_end_date && addon_library === undefined && addon_messaging === undefined && addon_finance === undefined && addon_analytics === undefined) {
             return res.status(400).json({ error: "No update fields provided." });
         }
 
@@ -105,6 +105,10 @@ exports.updateSubscriptionStatus = async (req, res) => {
         if (subscription_status) updates.subscription_status = subscription_status;
         if (subscription_plan) updates.subscription_plan = subscription_plan;
         if (trial_end_date) updates.trial_end_date = trial_end_date;
+        if (addon_library !== undefined) updates.addon_library = addon_library;
+        if (addon_messaging !== undefined) updates.addon_messaging = addon_messaging;
+        if (addon_finance !== undefined) updates.addon_finance = addon_finance;
+        if (addon_analytics !== undefined) updates.addon_analytics = addon_analytics;
         updates.updated_at = new Date().toISOString();
 
         const { data: updatedInst, error } = await adminClient
@@ -186,9 +190,13 @@ exports.enrollInstitution = async (req, res) => {
                 type: 'secondary', // Generic default
                 subscription_status: req.body.subscription_status || 'trial',
                 subscription_plan: req.body.subscription_plan || 'trial',
-                has_used_trial: req.body.subscription_plan === 'beta_free' ? true : false,
+                has_used_trial: req.body.subscription_plan === 'trial' ? false : true,
                 trial_start_date: new Date().toISOString(),
-                trial_end_date: req.body.trial_end_date || null
+                trial_end_date: req.body.trial_end_date || null,
+                addon_library: req.body.addon_library || false,
+                addon_messaging: req.body.addon_messaging || false,
+                addon_finance: req.body.addon_finance || false,
+                addon_analytics: req.body.addon_analytics || false
             }])
             .select('id')
             .single();
@@ -239,15 +247,15 @@ exports.enrollInstitution = async (req, res) => {
         });
 
     } catch (error) {
-        console.error("Master Admin Enroll Error:", error);
+        console.error("Platform Admin Enroll Error:", error);
         return res.status(500).json({ error: "Server error during enrollment." });
     }
 };
 
 /**
- * Updates the authenticated Master Admin's own profile.
+ * Updates the authenticated Platform Admin's own profile.
  */
-exports.updateMasterProfile = async (req, res) => {
+exports.updatePlatformProfile = async (req, res) => {
     try {
         const userId = req.userId;
         const { full_name, phone } = req.body;
@@ -275,7 +283,7 @@ exports.updateMasterProfile = async (req, res) => {
 
         res.status(200).json({ message: "Profile updated successfully.", full_name, phone });
     } catch (err) {
-        console.error("updateMasterProfile error:", err);
+        console.error("updatePlatformProfile error:", err);
         res.status(500).json({ error: "Failed to update profile." });
     }
 };

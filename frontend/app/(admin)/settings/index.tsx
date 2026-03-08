@@ -36,14 +36,7 @@ export default function SettingsScreen() {
     };
 
     const handleLogout = () => {
-        Alert.alert(
-            "Logout",
-            "Are you sure you want to log out?",
-            [
-                { text: "Cancel", style: "cancel" },
-                { text: "Logout", style: "destructive", onPress: () => signOut() }
-            ]
-        );
+        signOut();
     };
 
     return (

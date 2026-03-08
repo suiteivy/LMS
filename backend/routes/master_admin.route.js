@@ -5,7 +5,7 @@ const masterAdminController = require("../controllers/master_admin.controller");
 
 const { requirePlatformAdmin } = require("../middleware/roleCheck");
 
-// All routes require the user to be a Platform Master Admin
+// All routes require the user to be a Master Platform Admin
 router.use(requirePlatformAdmin);
 
 // Dashboard Statistics
@@ -22,7 +22,7 @@ router.post('/institutions', masterAdminController.enrollInstitution);
 // Communications / App Updates
 router.post("/notifications", masterAdminController.notifyTarget);
 
-// Master Admin profile editor
-router.put('/profile', masterAdminController.updateMasterProfile);
+// Master Platform Admin profile editor
+router.put('/profile', masterAdminController.updatePlatformProfile);
 
 module.exports = router;

@@ -49,7 +49,7 @@ const MenuItem = ({ icon, label, onPress, danger, isDark }: MenuItemProps) => (
 );
 
 function SettingsMenu({ userRole, onNavigate }: { userRole: string; onNavigate: (screen: 'profile' | 'settings' | 'help' | 'overview' | 'ownership') => void }) {
-  const { signOut, profile, loading, displayId, isTrial, isMaster } = useAuth();
+  const { signOut, profile, loading, displayId, isTrial, isMain } = useAuth();
   const { theme, setTheme, isDark } = useTheme();
   const roleLabel = userRole.charAt(0).toUpperCase() + userRole.slice(1);
 
@@ -116,7 +116,7 @@ function SettingsMenu({ userRole, onNavigate }: { userRole: string; onNavigate: 
         {userRole === 'admin' && (
           <>
             <MenuItem isDark={isDark} icon={<ShieldCheck size={22} color="#8b5cf6" />} label="Admin Overview" onPress={() => onNavigate('overview')} />
-            {isMaster && (
+            {isMain && (
               <MenuItem isDark={isDark} icon={<ShieldCheck size={22} color="#f59e0b" />} label="Institution Ownership" onPress={() => onNavigate('ownership')} />
             )}
           </>

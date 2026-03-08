@@ -65,6 +65,7 @@ export default function RootLayout() {
             <CurrencyProvider>
               <NotificationProvider>
                 <AppShell />
+                <Toast config={toastConfig} />
               </NotificationProvider>
             </CurrencyProvider>
           </AuthProvider>
@@ -112,7 +113,7 @@ function GlobalNotifications() {
 
 // ─── AuthHandler ─────────────────────────────────────────────────────────────
 function AuthHandler() {
-  const { loading, isInitializing, resetSessionTimer, session } = useAuth();
+  const { loading, isInitializing, resetSessionTimer, session, signOut } = useAuth();
   const { isDark } = useTheme();
   const segments = useSegments();
   const router = useRouter();
@@ -126,34 +127,24 @@ function AuthHandler() {
   }, [isNavigationReady]);
 
   React.useEffect(() => {
-    // 1. Wait for everything to be ready
     if (isInitializing || !isNavigationReady) return;
 
     const inAuthGroup = segments.some(s => s === "(auth)");
     const currentPath = `/${segments.join('/')}`;
-    const isRoot = currentPath === '/' || currentPath === '/index' || currentPath === '/(auth)';
-
-    // Debug logging for routing issues
-    // console.log("[AuthHandler] State:", { hasSession: !!session, inAuthGroup, isRoot, currentPath });
+    const isRoot = currentPath === '/' || currentPath === '/index' || currentPath === '';
 
     if (!session) {
-      // NOT LOGGED IN
-      // If we are not in auth group and not at root, we should probably go to root.
-      // BUT: Only if we aren't already there.
+      // IF NO SESSION: If they are NOT in auth group and NOT at root, force login
       if (!inAuthGroup && !isRoot) {
-        // Special case: if we just loaded and isInitializing just flipped to false,
-        // we might be in a race with the router. 
-        // Let's only redirect if we aren't in a transient state.
         router.replace("/(auth)/signIn");
       }
     } else {
-      // LOGGED IN
-      // If we are in the auth group, we should go to root (which will then redirect to dashboard)
+      // IF SESSION EXISTS: If they are in the auth group, send to root for dispatching
       if (inAuthGroup) {
         router.replace("/");
       }
     }
-  }, [session, isInitializing, isNavigationReady, segments.join('|')]);
+  }, [session, isInitializing, isNavigationReady, segments]);
 
   const handleInteraction = React.useCallback(() => {
     if (session) resetSessionTimer();
@@ -180,7 +171,6 @@ function AuthHandler() {
       </Stack>
 
       <GlobalNotifications />
-      <Toast config={toastConfig} />
 
       {isLoadingOverlayVisible && (
         <View
@@ -191,7 +181,7 @@ function AuthHandler() {
             backgroundColor: isDark ? '#0F0B2E' : '#ffffff',
           }}
         >
-          <AppLoading />
+          <AppLoading onLogout={signOut} />
         </View>
       )}
     </View>

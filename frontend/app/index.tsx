@@ -108,8 +108,7 @@ const PackageTierTab = ({ tier, label, icon, tagline, isActive, onPress }: any) 
           top: '-50%', left: '-50%',
           width: '200%', height: '200%',
           borderRadius: 999,
-          backgroundColor: tier.accent,
-          filter: 'blur(30px)',
+          opacity: 0.15,
         } as any, glowStyle]} />
       )}
 
@@ -579,7 +578,8 @@ const FeatureCard = ({ icon, title, desc, accent, tag }: any) => {
             height: 56,
             borderRadius: 18,
             backgroundColor: accent,
-          }, glowStyle, { filter: 'blur(14px)' } as any]} />
+            opacity: 0.1,
+          }, glowStyle]} />
           <View style={{
             width: 52,
             height: 52,
@@ -744,7 +744,7 @@ function DiscountBanner() {
 }
 
 export default function Index() {
-  const { session, loading, isInitializing, profile } = useAuth();
+  const { session, loading, isInitializing, profile, isPlatformAdmin } = useAuth();
   const formRef = useRef<View>(null);
   const scrollRef = useRef<ScrollView>(null);
   const pathname = usePathname();
@@ -912,45 +912,47 @@ export default function Index() {
     return () => clearTimeout(timer);
   }, []);
 
-  // Detect session → store the target route and start loading screen
+  // Detect session → immediate redirect
   useEffect(() => {
-    const isActuallyOnLanding = pathname === "/" || pathname === "/index";
-    if (
-      isActuallyOnLanding &&
-      isNavReady &&
-      !isInitializing &&
-      session &&
-      profile &&
-      !navigating
-    ) {
+    // Reset navigating lock if session is lost (e.g. user logged out)
+    if (!session) {
+      setNavigating(false);
+    }
+
+    if (!isNavReady || isInitializing || navigating) return;
+
+    if (session && profile) {
+      setNavigating(true);
+
       let route: string | null = null;
-      if (profile.role === "admin") route = "/(admin)";
-      else if (profile.role === "teacher") route = "/(teacher)";
-      else if (profile.role === "student") route = "/(student)";
-      else if (profile.role === "parent") route = "/(parent)";
+      if (isPlatformAdmin) {
+        route = "/(master-admin)";
+      } else {
+        switch (profile.role) {
+          case "admin": route = "/(admin)"; break;
+          case "teacher": route = "/(teacher)"; break;
+          case "student": route = "/(student)"; break;
+          case "parent": route = "/(parent)"; break;
+          default:
+            console.error("Unrecognized role on landing page:", profile.role);
+            // Fallback to sign in if we can't determine where they belong
+            route = "/(auth)/signIn";
+            break;
+        }
+      }
 
       if (route) {
-        pendingRoute.current = route;
-        setNavigating(true);
+        router.replace(route as any);
+      } else {
+        // Absolute fallback to avoid hang
+        router.replace("/(auth)/signIn");
       }
     }
-  }, [isNavReady, isInitializing, session, profile, pathname]);
+  }, [isNavReady, isInitializing, session, profile, isPlatformAdmin, navigating]);
 
-  // After 5 seconds of AppLoading, do the actual redirect
-  useEffect(() => {
-    if (!navigating) return;
-    const timer = setTimeout(() => {
-      if (pendingRoute.current) router.replace(pendingRoute.current as any);
-    }, 5000);
-    return () => clearTimeout(timer);
-  }, [navigating]);
-
-  // Show AppLoading immediately if:
-  //  1. navigating = true (5-second post-login animation), OR
-  //  2. auth is still initializing/loading (prevents landing page flash), OR
-  //  3. session already exists — redirect is imminent; don't paint the landing page
-  if (navigating || loading || isInitializing || (session && profile)) {
-    return <AppLoading />;
+  // No local AppLoading here — trust _layout.tsx's global overlay
+  if (isInitializing || navigating) {
+    return <View style={{ flex: 1, backgroundColor: "#0F0B2E" }} />;
   }
 
   // Orb translations
@@ -1663,6 +1665,158 @@ export default function Index() {
               </View>
             </View>
 
+            {/* ── Add-Ons Section ── */}
+            <View style={{ width: '100%', marginTop: 56 }}>
+              {/* Header */}
+              <View style={{ alignItems: 'center', marginBottom: 28 }}>
+                <View style={{
+                  flexDirection: 'row', alignItems: 'center', gap: 7,
+                  backgroundColor: 'rgba(139,92,246,0.1)',
+                  borderRadius: 20, paddingHorizontal: 14, paddingVertical: 6,
+                  borderWidth: 1, borderColor: 'rgba(139,92,246,0.22)',
+                  marginBottom: 14,
+                }}>
+                  <Sparkles size={14} color="#A78BFA" />
+                  <Text style={{ color: '#A78BFA', fontSize: 11, fontWeight: '800', letterSpacing: 2, textTransform: 'uppercase' }}>
+                    Add-Ons
+                  </Text>
+                </View>
+                <Text style={{ color: 'white', fontWeight: '800', fontSize: 22, textAlign: 'center', marginBottom: 6 }}>
+                  Enhance Your Plan
+                </Text>
+                <Text style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13, textAlign: 'center', maxWidth: 460, lineHeight: 20 }}>
+                  Bolt on powerful modules to any plan — available standalone or bundled with Pro &amp; above.
+                </Text>
+              </View>
+
+              {/* Add-on cards */}
+              <View style={{
+                flexDirection: Platform.OS === 'web' && SCREEN_WIDTH > 700 ? 'row' : 'column',
+                gap: 20, justifyContent: 'center', flexWrap: 'wrap',
+                paddingHorizontal: Platform.OS === 'web' ? 40 : 0,
+              }}>
+                {[
+                  {
+                    icon: <Library size={28} color="#A78BFA" />,
+                    name: 'Digital Library',
+                    tagline: 'Add-On Module',
+                    price: 'From $19/mo',
+                    accent: '#8B5CF6',
+                    desc: 'Give your institution a fully searchable digital library — books, PDFs, videos and more. Included in Pro & above.',
+                    features: [
+                      'Unlimited uploads & categories',
+                      'Student & teacher access controls',
+                      'Search, filter & bookmarking',
+                      'Mobile-friendly reader',
+                    ],
+                    includedIn: 'Included in Basic Pro, Enterprise & Custom plans',
+                  },
+                  {
+                    icon: <BadgeCheck size={28} color="#34D399" />,
+                    name: 'Messaging',
+                    tagline: 'Add-On Module',
+                    price: 'From $14/mo',
+                    accent: '#10B981',
+                    desc: 'Real-time in-app messaging between teachers, students and parents. Keep communication within the platform.',
+                    features: [
+                      'Direct & group messaging',
+                      'Announcements & broadcasts',
+                      'File & image sharing',
+                      'Read receipts & notifications',
+                    ],
+                    includedIn: 'Included in Basic Pro, Enterprise & Custom plans',
+                  },
+                ].map((addon) => (
+                  <View
+                    key={addon.name}
+                    style={Platform.OS === 'web' ? {
+                      flex: 1, minWidth: 280, maxWidth: 440,
+                    } : { width: '100%' }}
+                  >
+                    <View style={{
+                      borderRadius: 28, overflow: 'hidden',
+                      borderWidth: 1.5, borderColor: `${addon.accent}33`,
+                      backgroundColor: `${addon.accent}08`,
+                    }}>
+                      {/* Top accent line */}
+                      <View style={{ height: 3, backgroundColor: addon.accent, opacity: 0.7 }} />
+                      <View style={{ padding: 28 }}>
+                        {/* Icon + prices row */}
+                        <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 16 }}>
+                          <View style={{
+                            width: 54, height: 54, borderRadius: 16,
+                            backgroundColor: `${addon.accent}15`,
+                            borderWidth: 1, borderColor: `${addon.accent}30`,
+                            alignItems: 'center', justifyContent: 'center',
+                          }}>
+                            {addon.icon}
+                          </View>
+                          <View style={{ alignItems: 'flex-end' }}>
+                            <View style={{
+                              backgroundColor: `${addon.accent}18`, borderRadius: 8,
+                              paddingHorizontal: 10, paddingVertical: 3,
+                              borderWidth: 1, borderColor: `${addon.accent}28`, marginBottom: 6,
+                            }}>
+                              <Text style={{ color: addon.accent, fontSize: 9, fontWeight: '800', letterSpacing: 1.5, textTransform: 'uppercase' }}>
+                                {addon.tagline}
+                              </Text>
+                            </View>
+                            <Text style={{ color: 'white', fontWeight: '900', fontSize: 22 }}>{addon.price}</Text>
+                          </View>
+                        </View>
+
+                        <Text style={{ color: 'white', fontWeight: '800', fontSize: 18, marginBottom: 8 }}>{addon.name}</Text>
+                        <Text style={{ color: 'rgba(255,255,255,0.5)', fontSize: 13, lineHeight: 20, marginBottom: 18 }}>{addon.desc}</Text>
+
+                        {/* Features */}
+                        <View style={{ gap: 10, marginBottom: 20 }}>
+                          {addon.features.map((feat) => (
+                            <View key={feat} style={{ flexDirection: 'row', alignItems: 'center' }}>
+                              <View style={{
+                                width: 20, height: 20, borderRadius: 6,
+                                backgroundColor: `${addon.accent}15`,
+                                alignItems: 'center', justifyContent: 'center',
+                                marginRight: 12, borderWidth: 1, borderColor: `${addon.accent}30`,
+                              }}>
+                                <Check size={12} color={addon.accent} strokeWidth={3} />
+                              </View>
+                              <Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: 13 }}>{feat}</Text>
+                            </View>
+                          ))}
+                        </View>
+
+                        {/* Included-in note */}
+                        <View style={{
+                          backgroundColor: `${addon.accent}10`, borderRadius: 10,
+                          paddingHorizontal: 14, paddingVertical: 8,
+                          borderWidth: 1, borderColor: `${addon.accent}20`, marginBottom: 20,
+                          flexDirection: 'row', alignItems: 'center', gap: 8,
+                        }}>
+                          <Check size={13} color={addon.accent} strokeWidth={3} />
+                          <Text style={{ color: addon.accent, fontSize: 11, fontWeight: '600', flex: 1 }}>{addon.includedIn}</Text>
+                        </View>
+
+                        {/* CTA */}
+                        <TouchableOpacity
+                          style={{
+                            width: '100%', paddingVertical: 14, borderRadius: 18,
+                            alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 8,
+                            borderWidth: 1.5, borderColor: `${addon.accent}55`,
+                            backgroundColor: 'transparent',
+                          }}
+                          onPress={() => openRegistrationModal(`${addon.name} Add-On`)}
+                          activeOpacity={0.8}
+                        >
+                          <Text style={{ color: addon.accent, fontWeight: '700', fontSize: 14 }}>Talk to Sales</Text>
+                          <MoveRight size={16} color={addon.accent} />
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  </View>
+                ))}
+              </View>
+            </View>
+
             {/* Contact CTA for Custom */}
             {selectedTier === 'custom' && (
               <View style={{ alignItems: 'center', marginTop: 36 }}>
@@ -1685,6 +1839,7 @@ export default function Index() {
               </View>
             )}
           </View>
+
 
           {/* ═══════════════════════ FOOTER ═══════════════════════ */}
           <View

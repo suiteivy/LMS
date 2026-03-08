@@ -1,7 +1,7 @@
 import { UnifiedHeader } from "@/components/common/UnifiedHeader";
 import { ParentService } from "@/services/ParentService";
 import { router, useLocalSearchParams } from "expo-router";
-import { ArrowDownLeft, ArrowUpRight, CreditCard, Info, Wallet } from "lucide-react-native";
+import { ArrowDownLeft, ArrowUpRight, Award, CreditCard, Info, Wallet } from "lucide-react-native";
 import React, { useEffect, useState } from "react";
 import { ActivityIndicator, RefreshControl, ScrollView, Text, TouchableOpacity, View } from "react-native";
 
@@ -13,6 +13,9 @@ export default function StudentFinancePage() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [financeData, setFinanceData] = useState<any>(null);
+  const [bursaries, setBursaries] = useState<any[]>([]);
+  const [bursaryLoading, setBursaryLoading] = useState(false);
+  const [bursariesFetched, setBursariesFetched] = useState(false);
 
   const fetchFinanceData = async () => {
     if (!studentId) return;
@@ -27,8 +30,23 @@ export default function StudentFinancePage() {
     }
   };
 
+  const fetchBursaries = async () => {
+    if (!studentId || bursariesFetched) return;
+    try {
+      setBursaryLoading(true);
+      const data = await ParentService.getStudentBursaries(studentId);
+      setBursaries(data);
+      setBursariesFetched(true);
+    } catch (err) {
+      console.error('Error fetching bursaries:', err);
+    } finally {
+      setBursaryLoading(false);
+    }
+  };
+
   useEffect(() => {
     fetchFinanceData();
+    fetchBursaries();
   }, [studentId]);
 
   const onRefresh = () => {
@@ -162,6 +180,65 @@ export default function StudentFinancePage() {
               </View>
             ))
           )}
+
+          {/* ── Bursaries Section ── */}
+          <View className="mt-8">
+            <Text className="text-gray-900 dark:text-white font-bold text-xl tracking-tight mb-5 px-2">Bursaries</Text>
+            {bursaryLoading ? (
+              <ActivityIndicator size="small" color="#FF6900" />
+            ) : bursaries.length > 0 ? (
+              bursaries.map((item: any) => (
+                <View key={item.id} className="bg-white dark:bg-[#1a1a1a] rounded-[28px] mb-4 border border-gray-100 dark:border-gray-800 shadow-sm overflow-hidden">
+                  <View className="h-1.5 bg-emerald-500" />
+                  <View className="p-5">
+                    <View className="flex-row justify-between items-start mb-2">
+                      <Text className="text-gray-900 dark:text-white font-bold text-sm flex-1 mr-3">{item.bursary?.title}</Text>
+                      <View className="bg-emerald-100 dark:bg-emerald-950/40 px-2 py-0.5 rounded-full border border-emerald-200 dark:border-emerald-800">
+                        <Text className="text-emerald-700 dark:text-emerald-400 text-[9px] font-extrabold uppercase tracking-wider">Approved</Text>
+                      </View>
+                    </View>
+
+                    {item.bursary?.description && (
+                      <Text className="text-gray-500 dark:text-gray-400 text-xs mb-3 leading-5">{item.bursary.description}</Text>
+                    )}
+
+                    <View className="bg-gray-900 rounded-2xl p-4 flex-row justify-between items-center">
+                      <View>
+                        <Text className="text-white/40 text-[9px] font-bold uppercase tracking-widest mb-1">Amount Awarded</Text>
+                        <Text className="text-white text-2xl font-black">{formatCurrency(item.amount_awarded || item.bursary?.amount || 0)}</Text>
+                      </View>
+                      <View className="w-12 h-12 rounded-full bg-emerald-500/10 border border-emerald-500/20 items-center justify-center">
+                        <Award size={22} color="#10B981" />
+                      </View>
+                    </View>
+
+                    {(item.bursary?.deadline || item.notes) && (
+                      <View className="flex-row gap-2 flex-wrap mt-3">
+                        {item.bursary?.deadline && (
+                          <View className="bg-gray-50 dark:bg-gray-800 px-3 py-1.5 rounded-xl flex-row items-center gap-1">
+                            <Text className="text-[9px] font-bold text-gray-400 uppercase tracking-wider">Deadline:</Text>
+                            <Text className="text-xs font-bold text-gray-900 dark:text-white">
+                              {new Date(item.bursary.deadline).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })}
+                            </Text>
+                          </View>
+                        )}
+                        {item.notes && (
+                          <View className="bg-blue-50 dark:bg-blue-950/30 px-3 py-1.5 rounded-xl">
+                            <Text className="text-xs text-blue-700 dark:text-blue-400 font-medium">{item.notes}</Text>
+                          </View>
+                        )}
+                      </View>
+                    )}
+                  </View>
+                </View>
+              ))
+            ) : (
+              <View className="bg-white dark:bg-[#1a1a1a] p-8 rounded-[40px] border border-dashed border-gray-100 dark:border-gray-800 items-center">
+                <Award size={36} color="#E5E7EB" />
+                <Text className="text-gray-400 text-sm font-bold text-center mt-4">No approved bursaries</Text>
+              </View>
+            )}
+          </View>
 
         </View>
       </ScrollView>

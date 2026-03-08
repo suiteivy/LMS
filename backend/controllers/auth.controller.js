@@ -41,7 +41,7 @@ exports.login = async (req, res) => {
 
     const { data: userData, error: userError } = await supabase
       .from("users")
-      .select("full_name, role, institution_id, admins!user_id(is_master)")
+      .select("full_name, role, institution_id, admins!user_id(is_main)")
       .eq("id", user.id)
       .single();
 
@@ -66,7 +66,21 @@ exports.login = async (req, res) => {
       customId = data?.id;
     }
 
-    const isMaster = userData.admins?.[0]?.is_master || false;
+    const isMain = userData.admins?.[0]?.is_main || false;
+
+    // Check if this is a platform admin (dedicated role or matching registry)
+    let isPlatformAdmin = userData.role === 'master_admin';
+    if (!isPlatformAdmin && userData.role === 'admin' && !userData.institution_id) {
+      const { data: platAdmin } = await supabase
+        .from("platform_admins")
+        .select("id")
+        .eq("id", user.id)
+        .single();
+
+      if (platAdmin) {
+        isPlatformAdmin = true;
+      }
+    }
 
     // Fetch institution subscription details
     let subscription = null;
@@ -100,7 +114,8 @@ exports.login = async (req, res) => {
         full_name: userData.full_name,
         role: userData.role,
         institution_id: userData.institution_id,
-        isMaster,
+        isMain,
+        isPlatformAdmin,
         customId,
         subscription
       },
@@ -651,13 +666,15 @@ exports.searchUsers = async (req, res) => {
 };
 
 /**
- * Handle logout to clean up trial sessions
+ * Handle logout to clean up trial sessions (demo users only)
  */
 exports.logout = async (req, res) => {
   try {
     const user = req.user;
-    if (user) {
-      // Clean up trial session for this user if it exists
+
+    // Only demo users (email starts with 'demo.') have trial sessions to clean up.
+    // Regular admins, students, teachers etc. use 24-hour JWT sessions — do NOT touch them.
+    if (user && user.email && user.email.startsWith('demo.')) {
       const { error } = await supabase
         .from('trial_sessions')
         .delete()
@@ -666,9 +683,10 @@ exports.logout = async (req, res) => {
       if (error) {
         console.warn("Error cleaning up trial session:", error);
       } else {
-        console.log(`Trial session cleaned up for user ${user.id}`);
+        console.log(`Trial session cleaned up for demo user ${user.id}`);
       }
     }
+
     res.status(200).json({ message: "Logged out successfully" });
   } catch (err) {
     console.error("Logout error:", err);
@@ -803,10 +821,10 @@ exports.resetPassword = async (req, res) => {
 };
 
 /**
- * Transfer Master Admin status to another administrator in the same institution.
- * Only current Master Admin can perform this.
+ * Transfer Main Admin status to another administrator in the same institution.
+ * Only current Main Admin can perform this.
  */
-exports.transferMasterAdmin = async (req, res) => {
+exports.transferMainAdmin = async (req, res) => {
   try {
     const { targetAdminUserId } = req.body;
     const currentUserId = req.userId;
@@ -815,14 +833,14 @@ exports.transferMasterAdmin = async (req, res) => {
       return res.status(400).json({ error: "Recipient admin user ID is required" });
     }
 
-    const { error } = await supabase.rpc('transfer_master_status', {
+    const { error } = await supabase.rpc('transfer_main_admin_status', {
       p_old_admin_user_id: currentUserId,
       p_new_admin_user_id: targetAdminUserId
     });
 
     if (error) throw error;
 
-    res.json({ message: "Master Admin status transferred successfully" });
+    res.json({ message: "Main Admin status transferred successfully" });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

@@ -7,7 +7,7 @@ import { LogOut } from "lucide-react-native";
 import React from "react";
 import { Text, TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { MasterAdminBadge } from "../shared/SubscriptionComponents";
+import { MainAdminBadge } from "../shared/SubscriptionComponents";
 
 interface UnifiedHeaderProps {
   title: string;
@@ -17,7 +17,7 @@ interface UnifiedHeaderProps {
   onNotificationPress?: () => void;
   onBack?: () => void;
   rightActions?: React.ReactNode;
-  showMasterBadge?: boolean;
+  showMainBadge?: boolean;
 }
 
 export const UnifiedHeader: React.FC<UnifiedHeaderProps> = ({
@@ -28,7 +28,7 @@ export const UnifiedHeader: React.FC<UnifiedHeaderProps> = ({
   onNotificationPress,
   onBack,
   rightActions,
-  showMasterBadge = false,
+  showMainBadge = false,
 }) => {
   const insets = useSafeAreaInsets();
   const { setShowNotifications, unreadCount } = useNotifications();
@@ -115,7 +115,7 @@ export const UnifiedHeader: React.FC<UnifiedHeaderProps> = ({
                 {subtitle || "Portal"}<Text style={{ color: '#FF6900' }}>.</Text>
               </Text>
             </View>
-            {showMasterBadge && <MasterAdminBadge />}
+            {showMainBadge && <MainAdminBadge />}
           </View>
         </View>
 

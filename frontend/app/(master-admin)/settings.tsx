@@ -49,16 +49,7 @@ export default function MasterSettings() {
     }
 
     const handleLogout = () => {
-        if (Platform.OS === 'web') {
-            if (window.confirm("Are you sure you want to log out?")) {
-                logout();
-            }
-        } else {
-            Alert.alert("Log Out", "Are you sure you want to log out?", [
-                { text: "Cancel", style: "cancel" },
-                { text: "Log Out", style: "destructive", onPress: logout }
-            ]);
-        }
+        logout();
     };
 
     const handleUpdateProfile = async () => {
@@ -160,7 +151,7 @@ export default function MasterSettings() {
                             <Text style={{ fontSize: 14, color: themeColors.subtext, marginTop: 2 }}>{profile?.email}</Text>
                             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 8 }}>
                                 <View style={{ backgroundColor: `${themeColors.primary}20`, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 }}>
-                                    <Text style={{ color: themeColors.primary, fontSize: 11, fontWeight: '800', textTransform: 'uppercase' }}>Master Admin</Text>
+                                    <Text style={{ color: themeColors.primary, fontSize: 11, fontWeight: '800', textTransform: 'uppercase' }}>Master Platform Admin</Text>
                                 </View>
                                 <TouchableOpacity onPress={() => setProfileModalVisible(true)} style={{ backgroundColor: 'rgba(255,255,255,0.1)', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, borderWidth: 1, borderColor: themeColors.border }}>
                                     <Text style={{ color: themeColors.text, fontSize: 11, fontWeight: '600', textTransform: 'uppercase' }}>Edit Profile</Text>

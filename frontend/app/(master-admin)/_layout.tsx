@@ -1,92 +1,148 @@
+import { AuthGuard } from "@/components/AuthGuard";
+import { NavItem, WebSidebar } from "@/components/layouts/WebSideBar";
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { Redirect, Tabs } from 'expo-router';
+import { Redirect, Slot, Tabs } from "expo-router";
+import { Bell, Building2, Headphones, LayoutDashboard, Settings } from 'lucide-react-native';
 import React from 'react';
-import { Platform } from 'react-native';
+import { Platform, useWindowDimensions, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-const MasterAdminLayout = () => {
-    const { session, profile, isInitializing, loading, adminId, user } = useAuth();
+const NAV_ITEMS: NavItem[] = [
+    { name: "settings", title: "Settings", icon: Settings, route: "/(master-admin)/settings" },
+    { name: "index", title: "Dashboard", icon: LayoutDashboard, route: "/(master-admin)" },
+    { name: "institutions", title: "Institutions", icon: Building2, route: "/(master-admin)/institutions" },
+    { name: "notifications", title: "Notices", icon: Bell, route: "/(master-admin)/notifications" },
+    { name: "support", title: "Support", icon: Headphones, route: "/(master-admin)/support" },
+];
+
+const MOBILE_TAB_NAMES = ["settings", "index", "institutions"];
+
+const ALL_OTHER = NAV_ITEMS
+    .filter(i => !MOBILE_TAB_NAMES.includes(i.name))
+    .map(i => i.name);
+
+const HIDDEN = [...ALL_OTHER];
+
+function MasterAdminTabs() {
+    const insets = useSafeAreaInsets();
     const { isDark } = useTheme();
-
-    // If loading or initializing, don't flash content (handled by root AppShell)
-    if (isInitializing || loading) {
-        return null;
-    }
-
-    // Double check protection: must be logged in, be an admin, and have no institution
-    if (!session || profile?.role !== 'admin' || profile?.institution_id) {
-        return <Redirect href="/(auth)/signIn" />;
-    }
-
-    const primaryColor = '#FF6B00'; // Requested Orange Theme
-    const bgColor = isDark ? '#0F0B2E' : '#ffffff';
-    const tabBgColor = isDark ? '#13103A' : '#f8fafc';
-    const inactiveColor = isDark ? '#64748b' : '#94a3b8';
 
     return (
         <Tabs
             screenOptions={{
                 headerShown: false,
+                tabBarActiveTintColor: "#FF6B00",
+                tabBarInactiveTintColor: isDark ? "#94a3b8" : "#64748b",
+                tabBarLabelStyle: { fontSize: 11, fontWeight: "600" },
                 tabBarStyle: {
-                    backgroundColor: tabBgColor,
-                    borderTopColor: isDark ? 'rgba(255,255,255,0.05)' : '#e2e8f0',
-                    height: Platform.OS === 'ios' ? 88 : 68,
-                    paddingBottom: Platform.OS === 'ios' ? 28 : 12,
-                    paddingTop: 12,
+                    backgroundColor: isDark ? '#0F0B2E' : "#ffffff",
+                    borderTopWidth: 1,
+                    borderTopColor: isDark ? '#1f2937' : "#e5e7eb",
+                    height: 56 + insets.bottom,
+                    paddingBottom: insets.bottom || 6,
+                    paddingTop: 6,
+                    paddingHorizontal: 40,
+                    justifyContent: "center",
+                    gap: 32,
+                    elevation: 8,
+                    shadowColor: "#000",
+                    shadowOffset: { width: 0, height: -4 },
+                    shadowOpacity: 0.1,
+                    shadowRadius: 3,
                 },
-                tabBarActiveTintColor: primaryColor,
-                tabBarInactiveTintColor: inactiveColor,
-                sceneStyle: { backgroundColor: bgColor },
+                sceneStyle: { backgroundColor: isDark ? '#0F0B2E' : "#f9fafb" },
             }}
         >
             <Tabs.Screen
-                name="index"
+                name="settings"
                 options={{
-                    title: 'Dashboard',
-                    tabBarIcon: ({ color, size }) => (
-                        <MaterialCommunityIcons name="view-dashboard" size={size} color={color} />
-                    ),
+                    title: "Settings",
+                    tabBarIcon: ({ size, color }) => {
+                        const Icon = Settings as any;
+                        return <View><Icon size={size} color={color} strokeWidth={2} /></View>;
+                    },
                 }}
             />
+
+            <Tabs.Screen
+                name="index"
+                options={{
+                    title: "Home",
+                    tabBarIcon: ({ color, focused }) => {
+                        const Icon = LayoutDashboard as any;
+                        return (
+                            <View style={{
+                                width: focused ? 48 : 28,
+                                height: focused ? 48 : 28,
+                                borderRadius: focused ? 24 : 6,
+                                backgroundColor: focused ? "#FF6B00" : "transparent",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                marginTop: focused ? -14 : 0,
+                                shadowColor: "#FF6B00",
+                                shadowOffset: { width: 0, height: 4 },
+                                shadowOpacity: focused ? 0.35 : 0,
+                                shadowRadius: 8,
+                                elevation: focused ? 6 : 0,
+                            }}>
+                                <Icon
+                                    size={focused ? 22 : 20}
+                                    color={focused ? "#ffffff" : color}
+                                    strokeWidth={2}
+                                />
+                            </View>
+                        );
+                    },
+                }}
+            />
+
             <Tabs.Screen
                 name="institutions"
                 options={{
-                    title: 'Institutions',
-                    tabBarIcon: ({ color, size }) => (
-                        <MaterialCommunityIcons name="office-building-cog" size={size} color={color} />
-                    ),
+                    title: "Institutions",
+                    tabBarIcon: ({ size, color }) => {
+                        const Icon = Building2 as any;
+                        return <View><Icon size={size} color={color} strokeWidth={2} /></View>;
+                    },
                 }}
             />
-            <Tabs.Screen
-                name="notifications"
-                options={{
-                    title: 'Notices',
-                    tabBarIcon: ({ color, size }) => (
-                        <MaterialCommunityIcons name="bell-ring" size={size} color={color} />
-                    ),
-                }}
-            />
-            <Tabs.Screen
-                name="support"
-                options={{
-                    title: 'Support',
-                    tabBarIcon: ({ color, size }) => (
-                        <MaterialCommunityIcons name="headphones" size={size} color={color} />
-                    ),
-                }}
-            />
-            <Tabs.Screen
-                name="settings"
-                options={{
-                    title: 'Settings',
-                    tabBarIcon: ({ color, size }) => (
-                        <MaterialCommunityIcons name="cog-outline" size={size} color={color} />
-                    ),
-                }}
-            />
+
+            {HIDDEN.map((name) => (
+                <Tabs.Screen key={name} name={name} options={{ href: null }} />
+            ))}
         </Tabs>
     );
-};
+}
 
-export default MasterAdminLayout;
+function MasterAdminSidebar() {
+    return (
+        <WebSidebar items={NAV_ITEMS} basePath="(master-admin)" role="Master Admin">
+            <Slot />
+        </WebSidebar>
+    );
+}
+
+export default function MasterAdminLayout() {
+    const { session, profile, isInitializing, loading, isPlatformAdmin } = useAuth();
+    const { width } = useWindowDimensions();
+    const useWebLayout = Platform.OS === 'web' && width > 768;
+
+    // If loading or initializing, don't flash content
+    if (isInitializing || loading) {
+        return null;
+    }
+
+    // Protection: must be logged in and either a master admin or a platform admin
+    const isAllowed = session && (profile?.role === 'admin' || isPlatformAdmin);
+
+    if (!isAllowed) {
+        return <Redirect href="/(auth)/signIn" />;
+    }
+
+    return (
+        <AuthGuard allowedRoles={['admin', 'master_admin']}>
+            {useWebLayout ? <MasterAdminSidebar /> : <MasterAdminTabs />}
+        </AuthGuard>
+    );
+}

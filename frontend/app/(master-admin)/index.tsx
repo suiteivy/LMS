@@ -111,7 +111,7 @@ export default function MasterDashboard() {
                     </View>
                     <View>
                         <Text style={{ fontSize: 24, fontWeight: '800', color: themeColors.text }}>Platform Admin</Text>
-                        <Text style={{ fontSize: 14, color: themeColors.subtext, marginTop: 2 }}>Master Overall Control</Text>
+                        <Text style={{ fontSize: 14, color: themeColors.subtext, marginTop: 2 }}>Global Platform Control</Text>
                     </View>
                 </View>
             </View>
@@ -156,7 +156,7 @@ export default function MasterDashboard() {
                 <View style={{ marginTop: 24, backgroundColor: themeColors.card, borderRadius: 16, padding: 20, borderWidth: 1, borderColor: themeColors.border }}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 16 }}>
                         <MaterialCommunityIcons name="information" size={24} color={themeColors.primary} style={{ marginRight: 8 }} />
-                        <Text style={{ fontSize: 16, fontWeight: '700', color: themeColors.text }}>Master Admin Privileges</Text>
+                        <Text style={{ fontSize: 16, fontWeight: '700', color: themeColors.text }}>Master Platform Admin Privileges</Text>
                     </View>
                     <Text style={{ color: themeColors.subtext, lineHeight: 22 }}>
                         You have full read access to all registered institutions on the platform. Manage subscriptions, dispatch app updates, and oversee global operations from the bottom tabs.

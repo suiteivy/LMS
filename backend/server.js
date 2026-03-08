@@ -64,9 +64,12 @@ app.use("/api/parent", authMiddleware, checkSubscription, require("./routes/pare
 app.use("/api/messages", authMiddleware, checkSubscription, require("./routes/messaging.route.js"));
 app.use("/api/resources", authMiddleware, checkSubscription, require("./routes/resources.route.js"));
 app.use("/api/teacher", authMiddleware, checkSubscription, require("./routes/teacher.route.js"));
-app.use("/api/settings", authMiddleware, checkSubscription, settingsRoutes);
 app.use("/api/student", authMiddleware, checkSubscription, require("./routes/student.route"));
 app.use("/api/classes", authMiddleware, checkSubscription, require("./routes/class.route"));
+
+// Explicitly define currency route as public before using auth wrapper on settings
+app.get("/api/settings/currency", settingsController.getCurrencyRates);
+app.use("/api/settings", authMiddleware, checkSubscription, settingsRoutes);
 
 // Platform Admin Routes (Protected explicitly internally by requirePlatformAdmin)
 app.use("/api/master-admin", authMiddleware, masterAdminRoutes);

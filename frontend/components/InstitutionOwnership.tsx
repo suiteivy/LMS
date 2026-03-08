@@ -7,7 +7,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { api } from '@/services/api';
 
 export default function InstitutionOwnership() {
-    const { profile, isMaster, refreshProfile } = useAuth();
+    const { profile, isMain, refreshProfile } = useAuth();
     const { isDark } = useTheme();
     const [admins, setAdmins] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
@@ -48,14 +48,14 @@ export default function InstitutionOwnership() {
     };
 
     const handleTransfer = async (targetAdmin: any) => {
-        if (!isMaster) {
-            Alert.alert("Permission Denied", "Only the Master Admin can transfer institutional ownership.");
+        if (!isMain) {
+            Alert.alert("Permission Denied", "Only the Main Admin can transfer institutional ownership.");
             return;
         }
 
         Alert.alert(
             "Transfer Ownership",
-            `Are you sure you want to transfer Master Admin status to ${targetAdmin.full_name}? \n\nThis action will revoke your Master Admin privileges and grant them to ${targetAdmin.full_name}.`,
+            `Are you sure you want to transfer Main Admin status to ${targetAdmin.full_name}? \n\nThis action will revoke your Main Admin privileges and grant them to ${targetAdmin.full_name}.`,
             [
                 { text: "Cancel", style: "cancel" },
                 {
@@ -65,7 +65,7 @@ export default function InstitutionOwnership() {
                         try {
                             setTransferring(true);
                             // Call backend API
-                            const response = await api.post('/auth/transfer-master', {
+                            const response = await api.post('/auth/transfer-main', {
                                 targetAdminUserId: targetAdmin.id
                             });
 
@@ -95,13 +95,13 @@ export default function InstitutionOwnership() {
         );
     }
 
-    if (!isMaster) {
+    if (!isMain) {
         return (
             <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24, backgroundColor: isDark ? '#0F0B2E' : '#ffffff' }}>
                 <View style={{ backgroundColor: isDark ? '#1f2937' : '#fef2f2', padding: 24, borderRadius: 24, alignItems: 'center', borderWidth: 1, borderColor: isDark ? '#374151' : '#fecaca' }}>
                     <Ionicons name="lock-closed" size={48} color="#ef4444" />
                     <Text style={{ marginTop: 16, fontSize: 18, fontWeight: 'bold', color: textPrimary, textAlign: 'center' }}>Access Denied</Text>
-                    <Text style={{ marginTop: 8, color: textSecondary, textAlign: 'center' }}>Only the Master Admin can manage institutional ownership.</Text>
+                    <Text style={{ marginTop: 8, color: textSecondary, textAlign: 'center' }}>Only the Main Admin can manage institutional ownership.</Text>
                 </View>
             </View>
         );
@@ -117,7 +117,7 @@ export default function InstitutionOwnership() {
                     <Text style={{ marginLeft: 12, fontWeight: 'bold', color: '#92400E', fontSize: 16 }}>Institutional Ownership</Text>
                 </View>
                 <Text style={{ color: isDark ? '#D97706' : '#92400E', fontSize: 13, lineHeight: 20 }}>
-                    As the Master Admin, you have full control over the institution's settings and billing. You can transfer this status to another administrator below.
+                    As the Main Admin, you have full control over the institution's settings and billing. You can transfer this status to another administrator below.
                 </Text>
             </View>
 

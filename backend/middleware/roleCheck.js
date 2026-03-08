@@ -61,11 +61,12 @@ const requireAdminOrBursary = requireRole('admin', 'bursary');
 const requireAdminOrTeacher = requireRole('admin', 'teacher');
 
 /**
- * Middleware to ensure user is a Platform (Master Overall) Admin.
+ * Middleware to ensure user is a Master Platform Admin.
  * They must have the 'admin' role AND NO institution_id assigned.
  */
-const requirePlatformAdmin = (req, res, next) => {
-    if (req.userRole !== 'admin' || req.institution_id !== null) {
+const requirePlatformAdmin = async (req, res, next) => {
+    // Check for the dedicated master_admin role or legacy platform admin flags
+    if (req.userRole !== 'master_admin' && (!req.isPlatformAdmin || req.userRole !== 'admin' || req.institution_id !== null)) {
         logger.warn('Platform Admin check failed - unauthorized', {
             path: req.path,
             userId: req.user?.id,
@@ -77,6 +78,26 @@ const requirePlatformAdmin = (req, res, next) => {
             code: 'FORBIDDEN'
         });
     }
+
+    // Double check against platform_admins table for strict isolation
+    const supabase = require("../utils/supabaseClient");
+    const { data: platAdmin } = await supabase
+        .from("platform_admins")
+        .select("id")
+        .eq("id", req.user.id)
+        .single();
+
+    if (!platAdmin) {
+        logger.warn('Platform Admin check failed - not in platform_admins table', {
+            path: req.path,
+            userId: req.user?.id
+        });
+        return res.status(403).json({
+            error: 'Platform admin account verified but not found in control registry',
+            code: 'FORBIDDEN'
+        });
+    }
+
     next();
 };
 

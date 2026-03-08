@@ -13,8 +13,18 @@ export default function MasterInstitutions() {
     const [loading, setLoading] = useState(true);
 
     // Modals state
-    const [betaModalVisible, setBetaModalVisible] = useState(false);
+    const [freeModalVisible, setFreeModalVisible] = useState(false);
     const [selectedInstId, setSelectedInstId] = useState<string | null>(null);
+
+    // Addons State
+    const [addonsModalVisible, setAddonsModalVisible] = useState(false);
+    const [addonsForm, setAddonsForm] = useState({
+        addon_library: false,
+        addon_messaging: false,
+        addon_finance: false,
+        addon_analytics: false
+    });
+    const [addonsLoading, setAddonsLoading] = useState(false);
 
     // Enrollment State
     const [enrollModalVisible, setEnrollModalVisible] = useState(false);
@@ -30,9 +40,9 @@ export default function MasterInstitutions() {
     });
     const [enrollLoading, setEnrollLoading] = useState(false);
 
-    // Beta Form State
-    const [betaDays, setBetaDays] = useState('30');
-    const [isSubmitting, setIsSubmitting] = useState(false); // This is for the beta modal submission
+    // Free Form State
+    const [freeDays, setFreeDays] = useState('30');
+    const [isSubmitting, setIsSubmitting] = useState(false); // This is for the free modal submission
 
     const themeColors = {
         bg: isDark ? '#0F0B2E' : '#f8fafc',
@@ -57,9 +67,9 @@ export default function MasterInstitutions() {
             const { data: { session } } = await supabase.auth.getSession();
             if (!session) return;
 
-            const res = await fetch(`${getBackendUrl()} /api/master - admin / institutions`, {
+            const res = await fetch(`${getBackendUrl()}/api/master-admin/institutions`, {
                 headers: {
-                    'Authorization': `Bearer ${session.access_token} `,
+                    'Authorization': `Bearer ${session.access_token}`,
                     'Accept': 'application/json'
                 }
             });
@@ -102,7 +112,7 @@ export default function MasterInstitutions() {
             const { data: { session } } = await supabase.auth.getSession();
             if (!session) return;
 
-            const res = await fetch(`${getBackendUrl()} /api/master - admin / institutions / ${id}/subscription`, {
+            const res = await fetch(`${getBackendUrl()}/api/master-admin/institutions/${id}/subscription`, {
                 method: 'PUT',
                 headers: {
                     'Authorization': `Bearer ${session.access_token}`,
@@ -169,8 +179,8 @@ export default function MasterInstitutions() {
         }
     };
 
-    const handleGrantBeta = async () => {
-        if (!selectedInstId || !betaDays) return;
+    const handleGrantFreeAccess = async () => {
+        if (!selectedInstId || !freeDays) return;
 
         try {
             setIsSubmitting(true);
@@ -179,7 +189,7 @@ export default function MasterInstitutions() {
 
             // Calculate expiration date
             const expDate = new Date();
-            expDate.setDate(expDate.getDate() + parseInt(betaDays, 10));
+            expDate.setDate(expDate.getDate() + parseInt(freeDays, 10));
 
             const res = await fetch(`${getBackendUrl()}/api/master-admin/institutions/${selectedInstId}/subscription`, {
                 method: 'PUT',
@@ -189,24 +199,57 @@ export default function MasterInstitutions() {
                 },
                 body: JSON.stringify({
                     subscription_status: 'active',
-                    subscription_plan: 'beta_free',
+                    subscription_plan: 'basic_basic',
                     trial_end_date: expDate.toISOString()
                 })
             });
 
             const data = await res.json();
             if (res.ok) {
-                Toast.show({ type: 'success', text1: 'Success', text2: `Beta Free granted for ${betaDays} days.` });
-                setBetaModalVisible(false);
+                Toast.show({ type: 'success', text1: 'Success', text2: `Basic Free granted for ${freeDays} days.` });
+                setFreeModalVisible(false);
                 fetchInstitutions(); // refresh list to show updated plan
             } else {
                 Toast.show({ type: 'error', text1: 'Error', text2: data.error });
             }
         } catch (err) {
             console.error(err);
-            Toast.show({ type: 'error', text1: 'Error', text2: 'Failed to grant beta access' });
+            Toast.show({ type: 'error', text1: 'Error', text2: 'Failed to grant free access' });
         } finally {
             setIsSubmitting(false);
+        }
+    };
+
+    const handleSaveAddons = async () => {
+        if (!selectedInstId) return;
+
+        try {
+            setAddonsLoading(true);
+            const { data: { session } } = await supabase.auth.getSession();
+            if (!session) return;
+
+            const res = await fetch(`${getBackendUrl()}/api/master-admin/institutions/${selectedInstId}/subscription`, {
+                method: 'PUT',
+                headers: {
+                    'Authorization': `Bearer ${session.access_token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(addonsForm)
+            });
+
+            const data = await res.json();
+            if (res.ok) {
+                Toast.show({ type: 'success', text1: 'Success', text2: 'Addons updated successfully.' });
+                setAddonsModalVisible(false);
+                fetchInstitutions();
+            } else {
+                Toast.show({ type: 'error', text1: 'Error', text2: data.error });
+            }
+        } catch (err) {
+            console.error(err);
+            Toast.show({ type: 'error', text1: 'Error', text2: 'Failed to update addons' });
+        } finally {
+            setAddonsLoading(false);
         }
     };
 
@@ -256,17 +299,38 @@ export default function MasterInstitutions() {
                         )}
                     </View>
 
-                    {/* Grant Beta Access Button */}
-                    <TouchableOpacity
-                        onPress={() => {
-                            setSelectedInstId(item.id);
-                            setBetaModalVisible(true);
-                        }}
-                        style={{ marginTop: 12, flexDirection: 'row', alignItems: 'center', gap: 6 }}
-                    >
-                        <MaterialCommunityIcons name="star-circle-outline" size={16} color={themeColors.primary} />
-                        <Text style={{ color: themeColors.primary, fontSize: 13, fontWeight: '600' }}>Grant Beta Access</Text>
-                    </TouchableOpacity>
+                    {/* Access & Addons Buttons */}
+                    <View style={{ marginTop: 12, flexDirection: 'row', alignItems: 'center', gap: 16 }}>
+                        <TouchableOpacity
+                            onPress={() => {
+                                setSelectedInstId(item.id);
+                                setFreeModalVisible(true);
+                            }}
+                            style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}
+                        >
+                            <MaterialCommunityIcons name="star-circle-outline" size={16} color={themeColors.primary} />
+                            <Text style={{ color: themeColors.primary, fontSize: 13, fontWeight: '600' }}>Grant Free Access</Text>
+                        </TouchableOpacity>
+
+                        {(item.subscription_plan === 'basic' || item.subscription_plan === 'basic_basic' || item.subscription_plan === 'beta_free') && (
+                            <TouchableOpacity
+                                onPress={() => {
+                                    setSelectedInstId(item.id);
+                                    setAddonsForm({
+                                        addon_library: item.addon_library || false,
+                                        addon_messaging: item.addon_messaging || false,
+                                        addon_finance: item.addon_finance || false,
+                                        addon_analytics: item.addon_analytics || false,
+                                    });
+                                    setAddonsModalVisible(true);
+                                }}
+                                style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}
+                            >
+                                <MaterialCommunityIcons name="puzzle-plus-outline" size={16} color="#3B82F6" />
+                                <Text style={{ color: '#3B82F6', fontSize: 13, fontWeight: '600' }}>Manage Add-ons</Text>
+                            </TouchableOpacity>
+                        )}
+                    </View>
                 </View>
 
                 <TouchableOpacity
@@ -459,11 +523,11 @@ export default function MasterInstitutions() {
                 </View>
             </Modal>
 
-            {/* BETA FREE MODAL */}
-            <Modal visible={betaModalVisible} animationType="fade" transparent>
+            {/* FREE ACCESS MODAL */}
+            <Modal visible={freeModalVisible} animationType="fade" transparent>
                 <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', padding: 20 }}>
                     <View style={{ backgroundColor: themeColors.card, borderRadius: 20, padding: 24, width: '100%', maxWidth: 400 }}>
-                        <Text style={{ fontSize: 20, fontWeight: 'bold', color: themeColors.text, marginBottom: 8 }}>Grant Beta Free Access</Text>
+                        <Text style={{ fontSize: 20, fontWeight: 'bold', color: themeColors.text, marginBottom: 8 }}>Grant Free Access</Text>
                         <Text style={{ color: themeColors.subtext, fontSize: 14, marginBottom: 20 }}>
                             This provides the institution full 'Basic' features for a limited time duration without payment.
                         </Text>
@@ -474,23 +538,73 @@ export default function MasterInstitutions() {
                             placeholder="e.g. 30"
                             placeholderTextColor={themeColors.subtext}
                             keyboardType="number-pad"
-                            value={betaDays}
-                            onChangeText={setBetaDays}
+                            value={freeDays}
+                            onChangeText={setFreeDays}
                         />
 
                         <View style={{ flexDirection: 'row', gap: 12 }}>
                             <TouchableOpacity
-                                onPress={() => setBetaModalVisible(false)}
+                                onPress={() => setFreeModalVisible(false)}
                                 style={{ flex: 1, padding: 14, borderRadius: 12, alignItems: 'center', borderWidth: 1, borderColor: themeColors.border }}
                             >
                                 <Text style={{ color: themeColors.text, fontWeight: '600' }}>Cancel</Text>
                             </TouchableOpacity>
                             <TouchableOpacity
-                                onPress={handleGrantBeta}
+                                onPress={handleGrantFreeAccess}
                                 disabled={isSubmitting}
                                 style={{ flex: 1, padding: 14, borderRadius: 12, alignItems: 'center', backgroundColor: themeColors.primary, opacity: isSubmitting ? 0.7 : 1 }}
                             >
                                 {isSubmitting ? <ActivityIndicator color="#fff" /> : <Text style={{ color: '#fff', fontWeight: '600' }}>Grant Access</Text>}
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </View>
+            </Modal>
+
+            {/* MANAGE ADDONS MODAL */}
+            <Modal visible={addonsModalVisible} animationType="fade" transparent>
+                <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', padding: 20 }}>
+                    <View style={{ backgroundColor: themeColors.card, borderRadius: 20, padding: 24, width: '100%', maxWidth: 400 }}>
+                        <Text style={{ fontSize: 20, fontWeight: 'bold', color: themeColors.text, marginBottom: 8 }}>Manage Add-ons</Text>
+                        <Text style={{ color: themeColors.subtext, fontSize: 14, marginBottom: 20 }}>
+                            Toggle individual premium features for this institution.
+                        </Text>
+
+                        <View style={{ marginBottom: 24, gap: 16 }}>
+                            {[
+                                { key: 'addon_library', label: '📖 Digital Library' },
+                                { key: 'addon_messaging', label: '💬 Internal Messaging' },
+                                { key: 'addon_finance', label: '💰 Bursary & Finance' },
+                                { key: 'addon_analytics', label: '📈 Advanced Analytics' }
+                            ].map((addon) => (
+                                <TouchableOpacity
+                                    key={addon.key}
+                                    style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 12, borderRadius: 12, backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#f1f5f9' }}
+                                    onPress={() => setAddonsForm(prev => ({ ...prev, [addon.key]: !prev[addon.key as keyof typeof prev] }))}
+                                >
+                                    <Text style={{ color: themeColors.text, fontSize: 16, fontWeight: '600' }}>{addon.label}</Text>
+                                    <MaterialCommunityIcons
+                                        name={addonsForm[addon.key as keyof typeof addonsForm] ? "toggle-switch" : "toggle-switch-off"}
+                                        size={36}
+                                        color={addonsForm[addon.key as keyof typeof addonsForm] ? '#10b981' : themeColors.subtext}
+                                    />
+                                </TouchableOpacity>
+                            ))}
+                        </View>
+
+                        <View style={{ flexDirection: 'row', gap: 12 }}>
+                            <TouchableOpacity
+                                onPress={() => setAddonsModalVisible(false)}
+                                style={{ flex: 1, padding: 14, borderRadius: 12, alignItems: 'center', borderWidth: 1, borderColor: themeColors.border }}
+                            >
+                                <Text style={{ color: themeColors.text, fontWeight: '600' }}>Cancel</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                onPress={handleSaveAddons}
+                                disabled={addonsLoading}
+                                style={{ flex: 1, padding: 14, borderRadius: 12, alignItems: 'center', backgroundColor: '#3B82F6', opacity: addonsLoading ? 0.7 : 1 }}
+                            >
+                                {addonsLoading ? <ActivityIndicator color="#fff" /> : <Text style={{ color: '#fff', fontWeight: '600' }}>Save Add-ons</Text>}
                             </TouchableOpacity>
                         </View>
                     </View>

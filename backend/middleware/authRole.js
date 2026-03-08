@@ -11,7 +11,14 @@ function authorizeRoles(roles = []) {
     try {
       const user = req.user; // comes from auth middleware (must run before this)
 
-      if (!user || !roles.includes(user.role)) {
+      let isAllowed = roles.includes(user.role);
+
+      // Master Admins inherit standard 'admin' route privileges 
+      if (!isAllowed && user.role === 'master_admin' && roles.includes('admin')) {
+        isAllowed = true;
+      }
+
+      if (!user || !isAllowed) {
         return res
           .status(403)
           .json({ error: "Access denied: insufficient permissions" });

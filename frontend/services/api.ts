@@ -116,10 +116,20 @@ api.interceptors.response.use(
         case 401:
           title = "Unauthorized";
           message = "Please sign in again.";
+
+          const skipSignOut = (error.config as InternalAxiosRequestConfig & { skipErrorToast?: boolean })?.skipErrorToast;
+
           // Trigger global sign-out to clear state and redirect
           // We do NOT show a toast here to avoid spam/race conditions during logout.
-          // AuthContext's onAuthStateChange will handle the UI.
-          supabase.auth.signOut().catch(e => console.warn("SignOut error:", e));
+          // Only sign out if this was a critical request (not marked skipErrorToast)
+          // AND it actually attempted to use a token (if no Authorization header was present
+          //   it means it was a premature request, not an invalid session).
+          if (!skipSignOut && error.config?.headers?.Authorization) {
+            console.warn("[API] 401 received with token. Triggering global signOut.");
+            supabase.auth.signOut().catch(e => console.warn("SignOut error:", e));
+          } else {
+            console.warn("[API] 401 received but skipped signOut due to skipErrorToast or missing token.");
+          }
           return Promise.reject({ ...error, isAuthError: true });
         case 403:
           title = "Permission Denied";
