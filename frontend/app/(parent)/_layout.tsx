@@ -1,12 +1,14 @@
 import { AuthGuard } from "@/components/AuthGuard";
 import { NavItem, WebSidebar } from "@/components/layouts/WebSideBar";
 import { useTheme } from "@/contexts/ThemeContext";
+import { useSubscriptionTier } from "@/hooks/useSubscriptionTier";
 import { Slot, Tabs } from "expo-router";
 import { Bell, CreditCard, LayoutDashboard, MessageSquare, Settings } from "lucide-react-native";
 import { Platform, useWindowDimensions, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-const NAV_ITEMS: NavItem[] = [
+// All nav items — finance tab conditionally removed for free plan at runtime
+const ALL_NAV_ITEMS: NavItem[] = [
     { name: "index", title: "Home", icon: LayoutDashboard, route: "/(parent)" },
     { name: "finance", title: "Fees", icon: CreditCard, route: "/(parent)/finance" },
     { name: "messages", title: "Chat", icon: MessageSquare, route: "/(parent)/messages" },
@@ -17,6 +19,12 @@ const NAV_ITEMS: NavItem[] = [
 function ParentTabs() {
     const insets = useSafeAreaInsets();
     const { isDark } = useTheme();
+    const { isFree } = useSubscriptionTier();
+
+    // Free plan: no finance module
+    const NAV_ITEMS = isFree
+        ? ALL_NAV_ITEMS.filter(i => i.name !== "finance")
+        : ALL_NAV_ITEMS;
 
     return (
         <Tabs
@@ -54,8 +62,11 @@ function ParentTabs() {
                         },
                     }}
                 />
-
             ))}
+            {/* Finance screen hidden from tab bar on free plan but still registered */}
+            {isFree && (
+                <Tabs.Screen name="finance" options={{ href: null, headerShown: false }} />
+            )}
             <Tabs.Screen name="grades" options={{ href: null, headerShown: false }} />
             <Tabs.Screen name="attendance" options={{ href: null, headerShown: false }} />
         </Tabs>
@@ -63,8 +74,12 @@ function ParentTabs() {
 }
 
 function ParentSidebar() {
+    const { isFree } = useSubscriptionTier();
+    const items = isFree
+        ? ALL_NAV_ITEMS.filter(i => i.name !== "finance")
+        : ALL_NAV_ITEMS;
     return (
-        <WebSidebar items={NAV_ITEMS} basePath="(parent)" role="Parent">
+        <WebSidebar items={items} basePath="(parent)" role="Parent">
             <Slot />
         </WebSidebar>
     );

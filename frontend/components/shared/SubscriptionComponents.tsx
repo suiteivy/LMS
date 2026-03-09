@@ -64,6 +64,7 @@ export const SubscriptionBanner = () => {
 
     // Active paid plan — show tier + plan label
     const planColors: Record<string, string> = {
+        'free': 'bg-green-600',
         'basic_basic': 'bg-blue-600',
         'basic_pro': 'bg-indigo-600',
         'basic_premium': 'bg-purple-600',
@@ -90,6 +91,7 @@ export const SubscriptionBanner = () => {
 
 // ─── Plan Hierarchy (frontend gate) ──────────────────────────────────────────
 const PLAN_HIERARCHY: Record<string, number> = {
+    'free': -1,     // master-admin granted free access; below trial, not a paid subscription
     'trial': 0,
     'basic_basic': 1,
     'basic_pro': 2,
@@ -104,8 +106,9 @@ const PLAN_HIERARCHY: Record<string, number> = {
     'basic': 1,
     'pro': 2,
     'premium': 3,
-    'beta_free': 1,
+    'beta_free': -1,   // legacy maps to free, not basic_basic
 };
+
 
 interface SubscriptionGateProps {
     children: React.ReactNode;

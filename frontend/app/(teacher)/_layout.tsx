@@ -2,12 +2,14 @@ import { AuthGuard } from "@/components/AuthGuard";
 import { NavItem, WebSidebar } from "@/components/layouts/WebSideBar";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTheme } from "@/contexts/ThemeContext";
+import { useSubscriptionTier } from "@/hooks/useSubscriptionTier";
 import { Slot, Tabs } from "expo-router";
 import { BookOpen, Building, LayoutGrid, School, Settings, Users } from "lucide-react-native";
 import { Platform, useWindowDimensions, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-const NAV_ITEMS: NavItem[] = [
+// Full nav items for paid plans
+const ALL_NAV_ITEMS: NavItem[] = [
     { name: "index", title: "Home", icon: Building, route: "/(teacher)" },
     { name: "subjects", title: "Subjects", icon: BookOpen, route: "/(teacher)/subjects" },
     { name: "classes", title: "Classes", icon: School, route: "/(teacher)/classes" },
@@ -16,10 +18,23 @@ const NAV_ITEMS: NavItem[] = [
     { name: "settings", title: "Settings", icon: Settings, route: "/(teacher)/settings" },
 ];
 
+// Simplified nav for free plan — Home + Classes + Settings only
+const FREE_NAV_ITEMS: NavItem[] = [
+    { name: "index", title: "Home", icon: Building, route: "/(teacher)" },
+    { name: "classes", title: "Classes", icon: School, route: "/(teacher)/classes" },
+    { name: "settings", title: "Settings", icon: Settings, route: "/(teacher)/settings" },
+];
+
+// Names hidden from tabs on free plan (registered as routes but not shown)
+const FREE_HIDDEN = ["subjects", "students", "management"];
+
 function TeacherTabs() {
     const insets = useSafeAreaInsets();
     const { isDemo } = useAuth();
     const { isDark } = useTheme();
+    const { isFree } = useSubscriptionTier();
+
+    const NAV_ITEMS = isFree ? FREE_NAV_ITEMS : ALL_NAV_ITEMS;
 
     return (
         <Tabs
@@ -58,13 +73,19 @@ function TeacherTabs() {
                     }}
                 />
             ))}
+            {/* On free plan, hide paid-only tabs from nav but register them as routes */}
+            {isFree && FREE_HIDDEN.map(name => (
+                <Tabs.Screen key={name} name={name} options={{ href: null, headerShown: false }} />
+            ))}
         </Tabs>
     );
 }
 
 function TeacherSidebar() {
     const { isDemo } = useAuth();
-    const items = NAV_ITEMS.filter(i => !(i.name === "settings" && isDemo));
+    const { isFree } = useSubscriptionTier();
+    const baseItems = isFree ? FREE_NAV_ITEMS : ALL_NAV_ITEMS;
+    const items = baseItems.filter(i => !(i.name === "settings" && isDemo));
     return (
         <WebSidebar items={items} basePath="(teacher)" role="Teacher">
             <Slot />

@@ -2,6 +2,7 @@ import { useAuth } from '@/contexts/AuthContext';
 
 // ─── Plan order (lowest → highest capability) ────────────────────────────────
 export const PLAN_ORDER = [
+    'free',          // master-admin granted; kindergartens / small nurseries
     'trial',
     'basic_basic',
     'basic_pro',
@@ -18,7 +19,7 @@ type PlanId = typeof PLAN_ORDER[number] | string;
 
 // Legacy plan normalisation (for data migrated before the tier rename)
 const LEGACY_MAP: Record<string, string> = {
-    beta_free: 'basic_basic',
+    beta_free: 'free',    // legacy — previously mis-mapped to basic_basic; now correctly the free tier
     basic: 'basic_basic',
     pro: 'basic_pro',
     premium: 'basic_premium',
@@ -37,6 +38,7 @@ export function getPlanRank(plan: string | null | undefined): number {
 
 // ─── Human-readable labels ────────────────────────────────────────────────────
 const PLAN_LABELS: Record<string, string> = {
+    free: 'Free Access',
     trial: 'Free Trial',
     basic_basic: 'Basic',
     basic_pro: 'Basic Pro',

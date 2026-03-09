@@ -2,12 +2,14 @@
 import { NavItem, WebSidebar } from "@/components/layouts/WebSideBar";
 import { SchoolProvider } from "@/contexts/SchoolContext";
 import { useTheme } from "@/contexts/ThemeContext";
+import { useSubscriptionTier } from "@/hooks/useSubscriptionTier";
 import { Slot, Tabs } from "expo-router";
 import { House, LayoutGrid, Settings, Users, Wallet } from "lucide-react-native";
 import { Platform, useWindowDimensions, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-const NAV_ITEMS: NavItem[] = [
+// Full nav for paid plans
+const ALL_NAV_ITEMS: NavItem[] = [
     { name: "settings/settings", title: "Settings", icon: Settings, route: "/(admin)/settings/settings" },
     { name: "index", title: "Home", icon: House, route: "/(admin)" },
     { name: "management/index", title: "Manage", icon: LayoutGrid, route: "/(admin)/management" },
@@ -15,9 +17,16 @@ const NAV_ITEMS: NavItem[] = [
     { name: "finance/index", title: "Finance", icon: Wallet, route: "/(admin)/finance" },
 ];
 
+// Free plan nav: Settings, Home, Users only (no Finance, no full Management)
+const FREE_NAV_ITEMS: NavItem[] = [
+    { name: "settings/settings", title: "Settings", icon: Settings, route: "/(admin)/settings/settings" },
+    { name: "index", title: "Home", icon: House, route: "/(admin)" },
+    { name: "users/index", title: "Users", icon: Users, route: "/(admin)/users" },
+];
+
 const MOBILE_TAB_NAMES = ["settings/settings", "index", "management/index"];
 
-const ALL_OTHER = NAV_ITEMS
+const ALL_OTHER = ALL_NAV_ITEMS
     .filter(i => !MOBILE_TAB_NAMES.includes(i.name))
     .map(i => i.name);
 
@@ -35,9 +44,13 @@ const HIDDEN = [
     "management/subjects/details",
 ];
 
+// Extra routes to hide from tabs on free plan
+const FREE_EXTRA_HIDDEN = ["management/index", "finance/index"];
+
 function AdminTabs() {
     const insets = useSafeAreaInsets();
     const { isDark } = useTheme();
+    const { isFree } = useSubscriptionTier();
 
     return (
         <Tabs
@@ -110,20 +123,27 @@ function AdminTabs() {
                 }}
             />
 
-            {/* Manage — right */}
-            <Tabs.Screen
-                name="management/index"
-                options={{
-                    title: "Manage",
-                    tabBarIcon: ({ size, color }) => {
-                        const Icon = LayoutGrid as any;
-                        return <View><Icon size={size} color={color} strokeWidth={2} /></View>;
-                    },
-                }}
-            />
+            {/* Manage — right (paid plan only; hidden for free) */}
+            {!isFree && (
+                <Tabs.Screen
+                    name="management/index"
+                    options={{
+                        title: "Manage",
+                        tabBarIcon: ({ size, color }) => {
+                            const Icon = LayoutGrid as any;
+                            return <View><Icon size={size} color={color} strokeWidth={2} /></View>;
+                        },
+                    }}
+                />
+            )}
 
-            {/* Hidden items */}
+            {/* Hidden items (routes registered but not shown in tab bar) */}
             {HIDDEN.map((name) => (
+                <Tabs.Screen key={name} name={name} options={{ href: null }} />
+            ))}
+
+            {/* Free plan extra hidden items */}
+            {isFree && FREE_EXTRA_HIDDEN.map((name) => (
                 <Tabs.Screen key={name} name={name} options={{ href: null }} />
             ))}
         </Tabs>
@@ -131,8 +151,10 @@ function AdminTabs() {
 }
 
 function AdminSidebar() {
+    const { isFree } = useSubscriptionTier();
+    const items = isFree ? FREE_NAV_ITEMS : ALL_NAV_ITEMS;
     return (
-        <WebSidebar items={NAV_ITEMS} basePath="(admin)" role="Admin">
+        <WebSidebar items={items} basePath="(admin)" role="Admin">
             <Slot />
         </WebSidebar>
     );

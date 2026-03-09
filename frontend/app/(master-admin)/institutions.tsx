@@ -199,14 +199,14 @@ export default function MasterInstitutions() {
                 },
                 body: JSON.stringify({
                     subscription_status: 'active',
-                    subscription_plan: 'basic_basic',
+                    subscription_plan: 'free',
                     trial_end_date: expDate.toISOString()
                 })
             });
 
             const data = await res.json();
             if (res.ok) {
-                Toast.show({ type: 'success', text1: 'Success', text2: `Basic Free granted for ${freeDays} days.` });
+                Toast.show({ type: 'success', text1: 'Free Access Granted', text2: `Free access granted for ${freeDays} days.` });
                 setFreeModalVisible(false);
                 fetchInstitutions(); // refresh list to show updated plan
             } else {

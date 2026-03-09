@@ -14,7 +14,8 @@ const CACHE_TTL = 60000; // 60 seconds
 // Legacy IDs kept for backward compat: beta_free, basic, pro, premium
 
 const PLAN_ORDER = [
-  'trial',
+  'free',          // free access: granted by master admin to small schools / kindergartens
+  'trial',         // 14‑day trial for new institutions
   'basic_basic',   // was 'basic'
   'basic_pro',     // was 'pro'
   'basic_premium', // was 'premium'
@@ -29,7 +30,7 @@ const PLAN_ORDER = [
 // Normalise legacy/shorthand plan IDs to canonical ones
 function normalisePlan(plan) {
   const map = {
-    'beta_free': 'basic_basic',
+    'beta_free': 'free',      // legacy — now maps to the proper free tier
     'basic': 'basic_basic',
     'pro': 'basic_pro',
     'premium': 'basic_premium',
@@ -45,6 +46,7 @@ function planRank(plan) {
 
 // ─── Student / Admin limits ───────────────────────────────────────────────────
 const PLAN_LIMITS = {
+  'free': { maxStudents: 30, maxAdmins: 1 },   // small school / kindergarten
   'trial': { maxStudents: 50, maxAdmins: 1 },
   'basic_basic': { maxStudents: 200, maxAdmins: 1 },
   'basic_pro': { maxStudents: 500, maxAdmins: 3 },
@@ -61,28 +63,32 @@ const PLAN_LIMITS = {
 // minPlan is the LOWEST canonical plan ID that unlocks the feature.
 // enterprise_basic ranks 4, basic_pro ranks 2 — finance is available to both.
 const RESTRICTED_FEATURES = [
-  // Finance & Bursary require at least basic_pro OR enterprise_basic
-  // We use a custom resolver for these to handle the "enterprise gets it cheaper" logic.
+  // ── Finance & Bursary — basic_pro+ (free & trial cannot access AT ALL) ──
   { path: '/api/finance', minRank: planRank('basic_pro') },
   { path: '/api/bursary', minRank: planRank('basic_pro') },
 
-  // Analytics — at least basic_basic
+  // ── Analytics — basic_basic+ (free cannot access) ──
   { path: '/api/analytics', minRank: planRank('basic_basic') },
   { path: '/api/analytics/advanced', minRank: planRank('basic_pro') },
 
-  // Custom reports — basic_premium+
+  // ── Custom reports — basic_premium+ ──
   { path: '/api/reports/custom', minRank: planRank('basic_premium') },
 
-  // Branding — basic_premium+
+  // ── Branding — basic_premium+ ──
   { path: '/api/settings/branding', minRank: planRank('basic_premium') },
 
-  // Bulk ops — basic_premium+
+  // ── Bulk ops — basic_premium+ ──
   { path: '/api/bulk', minRank: planRank('basic_premium') },
 
-  // ── Add-ons (all tiers need explicit add-on purchase or enterprise/custom plan) ──
-  // Library is included from enterprise_basic onward; lower tiers need add-on.
-  { path: '/api/library', minRank: planRank('basic_basic') },   // basic_basic gets read; write gated below via WRITE_FEATURES
-  // Messaging add-on – enterprise_basic or higher, or basic_premium+
+  // ── Library ──
+  // free plan: read allowed ONLY with addon_library add-on
+  // basic_basic: read always allowed, write needs addon or basic_pro
+  // enterprise_basic+: always included
+  { path: '/api/library', minRank: planRank('basic_basic') },
+
+  // ── Messaging ──
+  // free plan: allowed ONLY with addon_messaging add-on
+  // basic_pro+: always included
   { path: '/api/messaging', minRank: planRank('basic_pro') },
 ];
 
