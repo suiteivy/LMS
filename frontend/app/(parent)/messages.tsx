@@ -1,4 +1,4 @@
-import { UnifiedHeader } from "@/components/common/UnifiedHeader";
+﻿import { UnifiedHeader } from "@/components/common/UnifiedHeader";
 import { MessageService } from "@/services/MessageService";
 import { router } from "expo-router";
 import { CheckCircle2, ChevronRight, Mail, MessageCircle, Plus, Search, Send, UserCircle } from "lucide-react-native";
@@ -106,14 +106,14 @@ export default function ParentMessagingPage() {
 
   if (loading && !refreshing && screen === "list") {
     return (
-      <View className="flex-1 justify-center items-center bg-gray-50 dark:bg-black">
+      <View className="flex-1 justify-center items-center bg-gray-50 dark:bg-navy">
         <ActivityIndicator size="large" color="#FF6900" />
       </View>
     );
   }
 
   return (
-    <View className="flex-1 bg-gray-50 dark:bg-black">
+    <View className="flex-1 bg-gray-50 dark:bg-navy">
       <UnifiedHeader
         title="Intelligence"
         subtitle="Secure Inbox"
@@ -176,7 +176,7 @@ export default function ParentMessagingPage() {
               <View className="bg-gray-900 dark:bg-[#1a1a1a] p-8 rounded-[40px] mb-8 shadow-xl">
                 <View className="flex-row items-center justify-between mb-8">
                   <View className="flex-row items-center">
-                    <View className="bg-white/10 dark:bg-black/20 p-4 rounded-3xl">
+                    <View className="bg-white/10 dark:bg-navy/20 p-4 rounded-3xl">
                       <UserCircle size={24} color="white" />
                     </View>
                     <View className="ml-4">
@@ -184,7 +184,7 @@ export default function ParentMessagingPage() {
                       <Text className="text-[#FF6900] text-[10px] font-bold uppercase tracking-widest mt-0.5">{selectedReceiver.role}</Text>
                     </View>
                   </View>
-                  <TouchableOpacity onPress={() => setSelectedReceiver(null)} className="bg-white/10 dark:bg-black/20 px-4 py-2 rounded-xl">
+                  <TouchableOpacity onPress={() => setSelectedReceiver(null)} className="bg-white/10 dark:bg-navy/20 px-4 py-2 rounded-xl">
                     <Text className="text-white text-[10px] font-bold uppercase">Change</Text>
                   </TouchableOpacity>
                 </View>

@@ -7,7 +7,7 @@ import { LogOut } from "lucide-react-native";
 import React from "react";
 import { Text, TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { MainAdminBadge } from "../shared/SubscriptionComponents";
+import { MainAdminBadge, SubscriptionStatusBadge } from "../shared/SubscriptionComponents";
 
 interface UnifiedHeaderProps {
   title: string;
@@ -116,6 +116,7 @@ export const UnifiedHeader: React.FC<UnifiedHeaderProps> = ({
               </Text>
             </View>
             {showMainBadge && <MainAdminBadge />}
+            <SubscriptionStatusBadge />
           </View>
         </View>
 

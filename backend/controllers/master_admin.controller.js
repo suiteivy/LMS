@@ -94,21 +94,46 @@ exports.getInstitutionDetails = async (req, res) => {
 exports.updateSubscriptionStatus = async (req, res) => {
     try {
         const { id } = req.params;
-        const { subscription_status, subscription_plan, trial_end_date, addon_library, addon_messaging, addon_finance, addon_analytics } = req.body;
+        const { 
+            subscription_status, 
+            subscription_plan, 
+            trial_end_date, 
+            addon_library, 
+            addon_messaging, 
+            addon_diary,
+            addon_bursary, 
+            addon_finance, 
+            addon_analytics,
+            custom_student_limit
+        } = req.body;
 
-        if (!subscription_status && !subscription_plan && !trial_end_date && addon_library === undefined && addon_messaging === undefined && addon_finance === undefined && addon_analytics === undefined) {
+        if (
+            subscription_status === undefined && 
+            subscription_plan === undefined && 
+            trial_end_date === undefined && 
+            addon_library === undefined && 
+            addon_messaging === undefined && 
+            addon_diary === undefined &&
+            addon_bursary === undefined && 
+            addon_finance === undefined && 
+            addon_analytics === undefined &&
+            custom_student_limit === undefined
+        ) {
             return res.status(400).json({ error: "No update fields provided." });
         }
 
         const adminClient = getServiceSupabase();
         const updates = {};
-        if (subscription_status) updates.subscription_status = subscription_status;
-        if (subscription_plan) updates.subscription_plan = subscription_plan;
-        if (trial_end_date) updates.trial_end_date = trial_end_date;
+        if (subscription_status !== undefined) updates.subscription_status = subscription_status;
+        if (subscription_plan !== undefined) updates.subscription_plan = subscription_plan;
+        if (trial_end_date !== undefined) updates.trial_end_date = trial_end_date;
         if (addon_library !== undefined) updates.addon_library = addon_library;
         if (addon_messaging !== undefined) updates.addon_messaging = addon_messaging;
+        if (addon_diary !== undefined) updates.addon_diary = addon_diary;
+        if (addon_bursary !== undefined) updates.addon_bursary = addon_bursary;
         if (addon_finance !== undefined) updates.addon_finance = addon_finance;
         if (addon_analytics !== undefined) updates.addon_analytics = addon_analytics;
+        if (custom_student_limit !== undefined) updates.custom_student_limit = custom_student_limit;
         updates.updated_at = new Date().toISOString();
 
         const { data: updatedInst, error } = await adminClient
@@ -195,8 +220,11 @@ exports.enrollInstitution = async (req, res) => {
                 trial_end_date: req.body.trial_end_date || null,
                 addon_library: req.body.addon_library || false,
                 addon_messaging: req.body.addon_messaging || false,
+                addon_diary: req.body.addon_diary || false,
+                addon_bursary: req.body.addon_bursary || false,     // Bursary add-on (separate from finance)
                 addon_finance: req.body.addon_finance || false,
-                addon_analytics: req.body.addon_analytics || false
+                addon_analytics: req.body.addon_analytics || false,
+                custom_student_limit: req.body.custom_student_limit || null
             }])
             .select('id')
             .single();
@@ -251,6 +279,135 @@ exports.enrollInstitution = async (req, res) => {
         return res.status(500).json({ error: "Server error during enrollment." });
     }
 };
+
+/**
+ * Enroll a new Master Admin
+ */
+exports.enrollMasterAdmin = async (req, res) => {
+    try {
+        const { full_name, email, password } = req.body;
+
+        if (!full_name || !email || !password) {
+            return res.status(400).json({ error: "Missing required fields for master admin enrollment." });
+        }
+
+        const adminClient = getServiceSupabase();
+
+        // Create the user in Supabase Auth
+        const { data: authUser, error: authError } = await adminClient.auth.admin.createUser({
+            email: email,
+            password: password,
+            email_confirm: true,
+            user_metadata: { full_name }
+        });
+
+        if (authError || !authUser.user) {
+            console.error("Error creating auth user:", authError);
+            return res.status(400).json({ error: authError?.message || "Failed to create user." });
+        }
+
+        // Update the user profile
+        const { error: profileError } = await adminClient
+            .from('users')
+            .update({
+                role: 'master_admin',
+                institution_id: null,
+                status: 'approved',
+                full_name: full_name
+            })
+            .eq('id', authUser.user.id);
+
+        if (profileError) {
+            console.error("Error updating user profile for master admin:", profileError);
+            await adminClient.auth.admin.deleteUser(authUser.user.id);
+            return res.status(500).json({ error: "Failed to map new master admin profile." });
+        }
+
+        // Insert into platform_admins
+        const { error: paError } = await adminClient
+            .from('platform_admins')
+            .insert([{
+                id: authUser.user.id,
+                user_id: authUser.user.id,
+                full_name: full_name,
+                email: email
+            }]);
+
+        if (paError) {
+            console.error("Error inserting into platform_admins:", paError);
+            // Attempt to gracefully continue
+        }
+
+        return res.status(201).json({
+            message: "Master Admin created successfully."
+        });
+
+    } catch (error) {
+        console.error("Master Admin Enroll Error:", error);
+        return res.status(500).json({ error: "Server error during master admin enrollment." });
+    }
+};
+
+/**
+ * Get all support requests
+ */
+exports.getSupportRequests = async (req, res) => {
+    try {
+        const adminClient = getServiceSupabase();
+        const { data, error } = await adminClient
+            .from('support_requests')
+            .select(`
+                *,
+                users:user_id(full_name, email),
+                institutions:institution_id(name)
+            `)
+            .order('created_at', { ascending: false });
+
+        if (error) throw error;
+
+        // Map to include inst field easily
+        const mappedData = data.map(req => ({
+            ...req,
+            inst: req.institutions?.name || 'Unknown',
+            user_name: req.users?.full_name || 'Unknown',
+            title: req.subject,
+            date: req.created_at.split('T')[0]
+        }));
+
+        res.status(200).json({ requests: mappedData });
+    } catch (error) {
+        console.error("Error fetching support requests:", error);
+        res.status(500).json({ error: "Failed to fetch support requests" });
+    }
+};
+
+/**
+ * Update support request status
+ */
+exports.updateSupportRequest = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { status } = req.body;
+
+        if (!status) return res.status(400).json({ error: "Status is required." });
+
+        const adminClient = getServiceSupabase();
+        const { data, error } = await adminClient
+            .from('support_requests')
+            .update({ status, updated_at: new Date().toISOString() })
+            .eq('id', id)
+            .select()
+            .single();
+
+        if (error) throw error;
+
+        res.status(200).json({ message: "Request updated", request: data });
+    } catch (error) {
+        console.error("Error updating support request:", error);
+        res.status(500).json({ error: "Failed to update support request" });
+    }
+};
+
 
 /**
  * Updates the authenticated Platform Admin's own profile.

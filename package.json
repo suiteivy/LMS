@@ -6,7 +6,7 @@
     "dev": "concurrently \"npm run backend\" \"npm run frontend\"",
     "backend": "cd backend && npm run dev",
     "frontend": "cd frontend && npx expo start",
-    "start": "expo start"
+    "start": "start cmd /k \"cd backend && npm start\" && start cmd /k \"cd frontend && npx expo start\""
   },
   "dependencies": {
     "@next-auth/prisma-adapter": "^1.0.7",

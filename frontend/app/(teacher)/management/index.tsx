@@ -1,4 +1,4 @@
-import { UnifiedHeader } from "@/components/common/UnifiedHeader";
+﻿import { UnifiedHeader } from "@/components/common/UnifiedHeader";
 import { router } from "expo-router";
 import {
     BarChart3,
@@ -12,6 +12,7 @@ import {
     Wallet
 } from 'lucide-react-native';
 import { ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { useSubscriptionTier } from "@/hooks/useSubscriptionTier";
 
 interface FeatureCardProps {
     icon: any;
@@ -26,7 +27,7 @@ interface FeatureCardProps {
 const FeatureCard = ({ icon: Icon, title, description, color, bgColor, route, badge }: FeatureCardProps) => {
     return (
         <TouchableOpacity
-            className="bg-white dark:bg-[#1a1a1a] p-5 rounded-[32px] border border-gray-100 dark:border-gray-800 shadow-sm mb-4 flex-row items-center active:bg-gray-50"
+            className="bg-white dark:bg-navy-surface p-5 rounded-[32px] border border-gray-100 dark:border-gray-800 shadow-sm mb-4 flex-row items-center active:bg-gray-50"
             onPress={() => router.push(route as any)}
         >
             <View style={{ backgroundColor: bgColor }} className="p-3.5 rounded-2xl mr-4 shadow-sm dark:opacity-90">
@@ -49,6 +50,7 @@ const FeatureCard = ({ icon: Icon, title, description, color, bgColor, route, ba
 };
 
 export default function ManagementIndex() {
+    const { hasDiary } = useSubscriptionTier();
     const features: FeatureCardProps[] = [
         {
             icon: GraduationCap,
@@ -114,11 +116,19 @@ export default function ManagementIndex() {
             color: "#0891b2",
             bgColor: "#ecfeff",
             route: "/(teacher)/management/messages"
-        }
+        },
+        ...(hasDiary ? [{
+            icon: BookOpen,
+            title: "Virtual Diary",
+            description: "Log daily classroom activities",
+            color: "#f59e0b",
+            bgColor: "#fef3c7",
+            route: "/(teacher)/management/diary"
+        }] : [])
     ];
 
     return (
-        <View className="flex-1 bg-gray-50 dark:bg-black">
+        <View className="flex-1 bg-gray-50 dark:bg-navy">
             <UnifiedHeader
                 title="Intelligence"
                 subtitle="Management"
@@ -139,11 +149,11 @@ export default function ManagementIndex() {
 
                     {/* Quick Stats Row */}
                     <View className="flex-row gap-4 mb-8">
-                        <View className="flex-1 bg-gray-900 dark:bg-[#1a1a1a] p-6 rounded-[32px] shadow-lg border border-transparent dark:border-gray-800">
+                        <View className="flex-1 bg-gray-900 dark:bg-navy-surface p-6 rounded-[32px] shadow-lg border border-transparent dark:border-gray-800">
                             <Text className="text-white/40 dark:text-gray-500 text-[8px] font-bold uppercase tracking-widest">Pending</Text>
                             <Text className="text-white text-3xl font-bold mt-1">12</Text>
                         </View>
-                        <View className="flex-1 bg-white dark:bg-[#1a1a1a] p-6 rounded-[32px] border border-gray-100 dark:border-gray-800 shadow-sm">
+                        <View className="flex-1 bg-white dark:bg-navy-surface p-6 rounded-[32px] border border-gray-100 dark:border-gray-800 shadow-sm">
                             <Text className="text-gray-400 dark:text-gray-500 text-[8px] font-bold uppercase tracking-widest">Submitted</Text>
                             <Text className="text-gray-900 dark:text-white text-3xl font-bold mt-1">28</Text>
                         </View>

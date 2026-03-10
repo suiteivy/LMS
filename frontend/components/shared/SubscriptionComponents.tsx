@@ -2,111 +2,34 @@ import React from 'react';
 import { View, Text, TouchableOpacity, Alert } from 'react-native';
 import { useAuth } from '@/contexts/AuthContext';
 import { Ionicons } from '@expo/vector-icons';
+import { Zap } from 'lucide-react-native';
 import { getPlanLabel, getPlanRank, normalisePlan } from '@/services/SubscriptionService';
+import { AddonRequestModal } from './AddonRequestModal';
+import { useSubscriptionTier } from '@/hooks/useSubscriptionTier';
+
+export { AddonRequestModal };
 
 /**
  * Banner displayed at the top of the dashboard for Admins/Teachers
  */
+/**
+ * Banner displayed at the top of the dashboard for Admins/Teachers
+ */
 export const SubscriptionBanner = () => {
-    const { subscriptionStatus, subscriptionPlan, trialEndDate, profile } = useAuth();
-
-    if (!profile || (profile.role !== 'admin' && profile.role !== 'teacher')) return null;
-
-    const isExpired = subscriptionStatus === 'expired' || subscriptionStatus === 'cancelled' || subscriptionStatus === 'over_limit';
-    const isTrial = subscriptionStatus === 'trial' || subscriptionPlan === 'trial';
-
-    let daysRemaining = 0;
-    if (trialEndDate) {
-        const end = new Date(trialEndDate).getTime();
-        const now = new Date().getTime();
-        daysRemaining = Math.max(0, Math.floor((end - now) / (1000 * 60 * 60 * 24)));
-    }
-
-    const handleUpgradePress = () => {
-        Alert.alert(
-            "Upgrade Subscription",
-            "Please contact Cloudora billing support at billing@cloudora.live to upgrade or renew your institution's subscription."
-        );
-    };
-
-    if (isExpired) {
-        const msg = subscriptionStatus === 'over_limit'
-            ? 'Plan limit exceeded. Writes are restricted — upgrade to continue.'
-            : 'Subscription expired! Access is now read-only.';
-        return (
-            <View className="bg-red-500 flex-row items-center px-4 py-3 justify-between">
-                <View className="flex-row items-center flex-1 pr-2">
-                    <Ionicons name="warning" size={20} color="white" />
-                    <Text className="text-white font-bold ml-2 text-sm flex-1">{msg}</Text>
-                </View>
-                <TouchableOpacity className="bg-white px-3 py-1.5 rounded-lg" onPress={handleUpgradePress}>
-                    <Text className="text-red-600 font-bold text-xs uppercase">Upgrade</Text>
-                </TouchableOpacity>
-            </View>
-        );
-    }
-
-    if (isTrial) {
-        return (
-            <View className="bg-orange-500 flex-row items-center px-4 py-3 justify-between">
-                <View className="flex-row items-center">
-                    <Ionicons name="time" size={20} color="white" />
-                    <Text className="text-white font-bold ml-2 text-sm">
-                        Free Trial: {daysRemaining} day{daysRemaining !== 1 ? 's' : ''} remaining
-                    </Text>
-                </View>
-                <TouchableOpacity className="bg-white/20 px-3 py-1.5 rounded-lg border border-white/40" onPress={handleUpgradePress}>
-                    <Text className="text-white font-bold text-xs uppercase">Upgrade</Text>
-                </TouchableOpacity>
-            </View>
-        );
-    }
-
-    // Active paid plan — show tier + plan label
-    const planColors: Record<string, string> = {
-        'free': 'bg-green-600',
-        'basic_basic': 'bg-blue-600',
-        'basic_pro': 'bg-indigo-600',
-        'basic_premium': 'bg-purple-600',
-        'enterprise_basic': 'bg-orange-600',
-        'enterprise_pro': 'bg-rose-600',
-        'enterprise_premium': 'bg-emerald-600',
-        'custom_basic': 'bg-violet-600',
-        'custom_pro': 'bg-fuchsia-600',
-        'custom_premium': 'bg-pink-600',
-    };
-
-    const canonical = normalisePlan(subscriptionPlan);
-    const bgColor = planColors[canonical] || 'bg-blue-600';
-    const label = getPlanLabel(subscriptionPlan);
-
-    return (
-        <View className={`${bgColor} flex-row items-center px-4 py-1.5 justify-center`}>
-            <Text className="text-white font-bold text-[10px] uppercase tracking-widest opacity-90">
-                {label} INSTITUTION
-            </Text>
-        </View>
-    );
+    // Persistent bottom banners removed per user request.
+    // We only show critical system-wide banners here if any.
+    return null;
 };
 
 // ─── Plan Hierarchy (frontend gate) ──────────────────────────────────────────
+// Mirrors PLAN_RANK in useSubscriptionTier.ts
 const PLAN_HIERARCHY: Record<string, number> = {
-    'free': -1,     // master-admin granted free access; below trial, not a paid subscription
-    'trial': 0,
-    'basic_basic': 1,
-    'basic_pro': 2,
-    'basic_premium': 3,
-    'enterprise_basic': 4,
-    'enterprise_pro': 5,
-    'enterprise_premium': 6,
-    'custom_basic': 7,
-    'custom_pro': 8,
-    'custom_premium': 9,
-    // legacy aliases
-    'basic': 1,
-    'pro': 2,
-    'premium': 3,
-    'beta_free': -1,   // legacy maps to free, not basic_basic
+    'free': 0,
+    'trial': 1,
+    'basic': 2,
+    'pro': 3,
+    'premium': 4,
+    'custom': 5,
 };
 
 
@@ -114,107 +37,120 @@ interface SubscriptionGateProps {
     children: React.ReactNode;
     fallback?: React.ReactNode;
     minPlan?: string;
+    feature?: 'finance' | 'bursary' | 'analytics' | 'messaging' | 'diary' | 'library';
     className?: string;
     style?: any;
 }
 
+
+export const AddonRequestButton = ({ onPress, style }: { onPress: () => void; style?: any }) => (
+    <TouchableOpacity
+        onPress={onPress}
+        style={[{
+            flexDirection: 'row',
+            alignItems: 'center',
+            backgroundColor: '#FF6900',
+            paddingHorizontal: 16,
+            paddingVertical: 10,
+            borderRadius: 12,
+            gap: 8,
+            shadowColor: '#FF6900',
+            shadowOffset: { width: 0, height: 4 },
+            shadowOpacity: 0.2,
+            shadowRadius: 8,
+            elevation: 4
+        }, style]}
+    >
+        <Zap size={16} color="white" />
+        <Text style={{ color: 'white', fontWeight: '800', fontSize: 13 }}>Request Feature</Text>
+    </TouchableOpacity>
+);
+
 /**
- * Wrapper component to hide or disable UI elements based on subscription plan level
+ * Wrapper component to hide or disable UI elements based on subscription plan level.
+ * Refined to hide features completely to maintain clean layout.
  */
-export const SubscriptionGate = ({ children, fallback, minPlan = 'trial', className, style }: SubscriptionGateProps) => {
-    const { subscriptionStatus, subscriptionPlan } = useAuth();
+export const SubscriptionGate = ({ children, fallback, minPlan, feature, className, style }: SubscriptionGateProps) => {
+    const { subscriptionStatus } = useAuth();
+    const tier = useSubscriptionTier();
 
     const isExpired = subscriptionStatus === 'expired' || subscriptionStatus === 'cancelled' || subscriptionStatus === 'over_limit';
-    const userPlanLevel = PLAN_HIERARCHY[normalisePlan(subscriptionPlan)] ?? 0;
-    const requiredLevel = PLAN_HIERARCHY[normalisePlan(minPlan)] ?? 0;
-
-    if (isExpired) {
-        if (fallback) return <>{fallback}</>;
-        return (
-            <TouchableOpacity
-                className={`opacity-50 ${className || ''}`}
-                style={style}
-                onPress={() => Alert.alert("Subscription Expired", "This feature is restricted. Please renew your subscription to regain access.")}
-                activeOpacity={0.7}
-            >
-                <View pointerEvents="none">{children}</View>
-            </TouchableOpacity>
-        );
+    
+    // 1. Check feature-specific gate if provided
+    let hasAccess = true;
+    if (feature) {
+        switch (feature) {
+            case 'finance': hasAccess = tier.hasFinance; break;
+            case 'bursary': hasAccess = tier.hasBursary; break;
+            case 'analytics': hasAccess = tier.hasAnalytics; break;
+            case 'messaging': hasAccess = tier.hasMessaging; break;
+            case 'diary': hasAccess = tier.hasDiary; break;
+            case 'library': hasAccess = tier.hasLibrary; break;
+        }
     }
 
-    if (userPlanLevel < requiredLevel) {
-        if (fallback) return <>{fallback}</>;
-        const reqLabel = getPlanLabel(minPlan);
-        return (
-            <TouchableOpacity
-                className={`opacity-50 ${className || ''}`}
-                style={style}
-                onPress={() => Alert.alert("Upgrade Required", `This feature requires a ${reqLabel} plan or above. Please upgrade to gain access.`)}
-                activeOpacity={0.7}
-            >
-                <View pointerEvents="none">{children}</View>
-            </TouchableOpacity>
-        );
+    // 2. Check plan level gate if provided (fallback to true if not provided)
+    if (minPlan) {
+        const userPlanLevel = tier.planRank;
+        const requiredLevel = PLAN_HIERARCHY[normalisePlan(minPlan)] ?? 1;
+        if (userPlanLevel < requiredLevel) hasAccess = false;
+    }
+
+    if (isExpired || !hasAccess) {
+        return fallback ? <>{fallback}</> : null;
     }
 
     return <>{children}</>;
 };
 
 /**
- * A small badge shown next to premium features or institution name
+ * Premium Status Badge for the Header
  */
-export const SubscriptionBadge = () => {
-    const { subscriptionStatus, subscriptionPlan } = useAuth();
+export const SubscriptionStatusBadge = () => {
+    const { subscriptionPlan, subscriptionStatus, isTrial } = useAuth();
+    const plan = normalisePlan(subscriptionPlan);
 
     if (subscriptionStatus === 'expired' || subscriptionStatus === 'cancelled') {
         return (
-            <View className="bg-red-500/20 px-1.5 py-0.5 rounded flex-row items-center border border-red-500/30">
-                <Text className="text-red-500 text-[9px] font-extrabold uppercase tracking-widest">EXPIRED</Text>
+            <View className="bg-red-500/10 px-2 py-0.5 rounded-full border border-red-500/20 ml-2">
+                <Text className="text-red-500 text-[10px] font-bold uppercase tracking-wider">Status: Expired</Text>
             </View>
         );
     }
 
-    if (subscriptionStatus === 'over_limit') {
+    if (isTrial) {
         return (
-            <View className="bg-orange-500/20 px-1.5 py-0.5 rounded ml-2 flex-row items-center border border-orange-500/30">
-                <Text className="text-orange-500 text-[9px] font-extrabold uppercase tracking-widest">OVER LIMIT</Text>
+            <View className="bg-orange-500/10 px-2 py-0.5 rounded-full border border-orange-500/20 ml-2">
+                <Text className="text-orange-500 text-[10px] font-bold uppercase tracking-wider">Trial Mode</Text>
             </View>
         );
     }
 
-    if (subscriptionStatus === 'trial') {
-        return (
-            <View className="bg-orange-500/20 px-1.5 py-0.5 rounded flex-row items-center border border-orange-500/30">
-                <Text className="text-orange-500 text-[9px] font-extrabold uppercase tracking-widest">TRIAL</Text>
-            </View>
-        );
-    }
-
-    const canonical = normalisePlan(subscriptionPlan);
-    const label = getPlanLabel(subscriptionPlan);
-
-    const badgeStyles: Record<string, { bg: string; text: string; border: string }> = {
-        'basic_basic': { bg: 'bg-blue-500/20', text: 'text-blue-500', border: 'border-blue-500/30' },
-        'basic_pro': { bg: 'bg-indigo-500/20', text: 'text-indigo-500', border: 'border-indigo-500/30' },
-        'basic_premium': { bg: 'bg-purple-500/20', text: 'text-purple-500', border: 'border-purple-500/30' },
-        'enterprise_basic': { bg: 'bg-orange-500/20', text: 'text-orange-500', border: 'border-orange-500/30' },
-        'enterprise_pro': { bg: 'bg-rose-500/20', text: 'text-rose-500', border: 'border-rose-500/30' },
-        'enterprise_premium': { bg: 'bg-emerald-500/20', text: 'text-emerald-500', border: 'border-emerald-500/30' },
-        'custom_basic': { bg: 'bg-violet-500/20', text: 'text-violet-500', border: 'border-violet-500/30' },
-        'custom_pro': { bg: 'bg-fuchsia-500/20', text: 'text-fuchsia-500', border: 'border-fuchsia-500/30' },
-        'custom_premium': { bg: 'bg-pink-500/20', text: 'text-pink-500', border: 'border-pink-500/30' },
+    // Premium/Pro Gradients logic (CSS based for Web, View based for Native)
+    const getBadgeStyle = () => {
+        switch (plan) {
+            case 'premium': return { bg: 'bg-purple-600/10', text: 'text-purple-600', border: 'border-purple-600/20', label: '✨ Premium' };
+            case 'pro': return { bg: 'bg-indigo-600/10', text: 'text-indigo-600', border: 'border-indigo-600/20', label: 'Pro' };
+            case 'custom': return { bg: 'bg-blue-600/10', text: 'text-blue-600', border: 'border-blue-600/20', label: 'Custom' };
+            default: return { bg: 'bg-slate-500/10', text: 'text-slate-500', border: 'border-slate-500/20', label: 'Standard' };
+        }
     };
 
-    const style = badgeStyles[canonical] || badgeStyles['basic_basic'];
+    const style = getBadgeStyle();
 
     return (
-        <View className={`${style.bg} px-1.5 py-0.5 rounded flex-row items-center border ${style.border}`}>
-            <Text className={`${style.text} text-[9px] font-extrabold uppercase tracking-widest`}>
-                {canonical.includes('premium') ? '✨ ' : ''}{label}
+        <View className={`${style.bg} px-2 py-0.5 rounded-full border ${style.border} ml-2 items-center justify-center`}>
+            <Text className={`${style.text} text-[10px] font-black uppercase tracking-widest`}>
+                {style.label}
             </Text>
         </View>
     );
 };
+
+/**
+ * A small badge shown next to premium features or institution name (Legacy support)
+ */
+export const SubscriptionBadge = () => <SubscriptionStatusBadge />;
 
 /**
  * A gold badge shown only for the Main Admin of an institution

@@ -1,4 +1,4 @@
-import { UnifiedHeader } from "@/components/common/UnifiedHeader";
+﻿import { UnifiedHeader } from "@/components/common/UnifiedHeader";
 import { MessageService } from "@/services/MessageService";
 import { format } from "date-fns";
 import { router } from "expo-router";
@@ -76,7 +76,7 @@ export default function StudentMessagingPage() {
     };
 
     return (
-        <View className="flex-1 bg-gray-50 dark:bg-black">
+        <View className="flex-1 bg-gray-50 dark:bg-navy">
             <UnifiedHeader
                 title="Intelligence"
                 subtitle="Portal"

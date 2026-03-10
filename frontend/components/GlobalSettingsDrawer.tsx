@@ -6,6 +6,7 @@ import React, { useState } from 'react';
 import { Alert, Platform, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 
 // Screens
+import AdminHelp from '@/components/AdminHelp';
 import AdminOverview from '@/components/AdminOverview';
 import AdminProfile from '@/components/AdminProfile';
 import AdminSettings from '@/components/AdminSettings';
@@ -132,7 +133,10 @@ function SettingsMenu({ userRole, onNavigate }: { userRole: string; onNavigate: 
         {!isTrial && (
           <MenuItem isDark={isDark} icon={<Settings size={22} color="#6b7280" />} label="Settings" onPress={() => onNavigate('settings')} />
         )}
-        {userRole !== 'admin' && userRole !== 'master_admin' && (
+        {isTrial && userRole !== 'admin' && userRole !== 'master_admin' && (
+          <MenuItem isDark={isDark} icon={<HelpCircle size={22} color="#3b82f6" />} label="Help & Support" onPress={() => onNavigate('help')} />
+        )}
+        {!isTrial && userRole !== 'master_admin' && (
           <MenuItem isDark={isDark} icon={<HelpCircle size={22} color="#3b82f6" />} label="Help & Support" onPress={() => onNavigate('help')} />
         )}
 
@@ -217,6 +221,7 @@ export function GlobalSettingsContent({ userRole = 'student' }: { userRole?: 'st
         if (userRole === 'teacher') return <TeacherSettings />;
         return <StudentSettings />;
       case 'help':
+        if (userRole === 'admin') return <AdminHelp />;
         if (userRole === 'teacher') return <TeacherHelp />;
         return <StudentHelp />;
       case 'ownership':

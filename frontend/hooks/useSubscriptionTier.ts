@@ -1,30 +1,23 @@
 import { useAuth } from '@/contexts/AuthContext';
 
 // ── Plan rank order (mirrors backend subscriptionCheck.js) ──────────────────
-// free=0, trial=1, basic_basic=2, basic_pro=3, basic_premium=4,
-// enterprise_basic=5, enterprise_pro=6, enterprise_premium=7,
-// custom_basic=8, custom_pro=9, custom_premium=10
+// free=0, trial=1, standard=2, pro=3, premium=4, custom=5
 const PLAN_RANK: Record<string, number> = {
     free: 0,
     trial: 1,
-    basic_basic: 2,
-    basic_pro: 3,
-    basic_premium: 4,
-    enterprise_basic: 5,
-    enterprise_pro: 6,
-    enterprise_premium: 7,
-    custom_basic: 8,
-    custom_pro: 9,
-    custom_premium: 10,
+    basic: 2,
+    pro: 3,
+    premium: 4,
+    custom: 5,
 };
 
-// Normalise legacy plan IDs to canonical ones (same logic as backend)
+// Normalise legacy plan IDs to canonical ones
 function normalisePlan(plan: string | null | undefined): string {
     const map: Record<string, string> = {
         beta_free: 'free',
-        basic: 'basic_basic',
-        pro: 'basic_pro',
-        premium: 'basic_premium',
+        basic_basic: 'basic',
+        basic_pro: 'pro',
+        basic_premium: 'premium',
     };
     return map[plan ?? ''] ?? plan ?? 'trial';
 }
@@ -35,20 +28,24 @@ function rank(plan: string | null | undefined): number {
 }
 
 export interface SubscriptionTierInfo {
-    /** The raw/normalised canonical plan ID e.g. 'free', 'basic_basic' */
+    /** The raw/normalised canonical plan ID e.g. 'free', 'basic' */
     plan: string;
     /** True if the institution is on the free (master-admin granted) tier */
     isFree: boolean;
-    /** True if any paid plan (basic_basic and above) */
+    /** True if any paid plan (basic and above) */
     isPaid: boolean;
-    /** Whether this tier includes the Finance/Bursary module */
+    /** Whether this tier includes the Finance module */
     hasFinance: boolean;
+    /** Whether this tier includes the Bursary add-on */
+    hasBursary: boolean;
     /** Whether this tier includes the full Student module for students to login */
     hasStudentModule: boolean;
     /** Whether this tier includes Analytics */
     hasAnalytics: boolean;
     /** Whether this tier includes full Messaging (without add-on) */
     hasMessaging: boolean;
+    /** Whether this tier includes Class Diary */
+    hasDiary: boolean;
     /** Whether this tier includes Library (without add-on) */
     hasLibrary: boolean;
     /** Numeric rank — higher = more capable */
@@ -57,26 +54,54 @@ export interface SubscriptionTierInfo {
 
 /**
  * Lightweight hook that exposes feature flags derived from the current
- * institution's subscription plan.  Use this to gate UI elements per plan.
- *
- * @example
- * const { isFree, hasFinance } = useSubscriptionTier();
- * if (isFree) { // hide finance tab }
+ * institution's subscription plan and specific add-ons.
  */
 export function useSubscriptionTier(): SubscriptionTierInfo {
-    const { subscriptionPlan } = useAuth();
+    const {
+        subscriptionPlan,
+        addonMessaging,
+        addonLibrary,
+        addonFinance,
+        addonAnalytics,
+        addonBursary,
+        addonDiary
+    } = useAuth();
+
     const canonical = normalisePlan(subscriptionPlan);
     const r = rank(canonical);
+
+    // Feature gates logic:
+    // - Pro (rank 3) includes Library ONLY.
+    // - Premium (rank 4) includes Library, Messaging, Finance, and Analytics.
+    // - Custom (rank 5) depends entirely on add-on flags.
+    // - Specific add-ons always grant access regardless of base plan.
 
     return {
         plan: canonical,
         isFree: canonical === 'free',
-        isPaid: r >= PLAN_RANK['basic_basic'],
-        hasFinance: r >= PLAN_RANK['basic_pro'],
-        hasStudentModule: r >= PLAN_RANK['basic_basic'], // basic_basic and above include student portal
-        hasAnalytics: r >= PLAN_RANK['basic_basic'],
-        hasMessaging: r >= PLAN_RANK['basic_pro'],       // without add-on; add-on allows messaging on free too
-        hasLibrary: r >= PLAN_RANK['basic_basic'],       // without add-on; add-on allows library on free too
+        isPaid: r >= PLAN_RANK['basic'],
+
+        // Finance: Included in Premium (4) OR explicitly granted as add-on
+        hasFinance: r === PLAN_RANK['premium'] || addonFinance,
+
+        // Bursary: Independent add-on
+        hasBursary: addonBursary,
+
+        // Student Module: Always enabled for authenticated students
+        hasStudentModule: true,
+
+        // Analytics: Included in Premium (4) OR explicitly granted as add-on
+        hasAnalytics: r === PLAN_RANK['premium'] || addonAnalytics,
+
+        // Messaging: Included in Pro (3) and Premium (4) OR explicitly granted as add-on
+        hasMessaging: r >= PLAN_RANK['pro'] || addonMessaging,
+
+        // Diary: Included in Pro (3) and Premium (4) OR explicitly granted as add-on
+        hasDiary: r >= PLAN_RANK['pro'] || addonDiary,
+
+        // Library: Included in Basic (2), Pro (3) and Premium (4) OR explicitly granted as add-on
+        hasLibrary: r >= PLAN_RANK['basic'] || addonLibrary,
+
         planRank: r,
     };
 }

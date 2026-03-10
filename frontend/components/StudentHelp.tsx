@@ -1,7 +1,9 @@
 import { useTheme } from "@/contexts/ThemeContext";
-import { ChevronDown, ChevronUp, LifeBuoy, Mail, MessageSquare, Search, X } from 'lucide-react-native';
+import { ChevronDown, ChevronUp, LifeBuoy, Mail, MessageSquare, Search, X, Send } from 'lucide-react-native';
 import React, { useState } from 'react';
-import { Linking, Modal, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Linking, Modal, ScrollView, Text, TextInput, TouchableOpacity, View, ActivityIndicator, Platform } from 'react-native';
+import Toast from 'react-native-toast-message';
+import { supabase } from '@/libs/supabase';
 
 interface FAQItemProps {
     question: string;
@@ -53,7 +55,60 @@ const FAQItem = ({ question, answer, isDark }: FAQItemProps) => {
 
 export default function StudentHelp() {
     const { isDark } = useTheme();
-    const [selectedTab, setSelectedTab] = useState<'chat' | 'email' | null>(null);
+    const [selectedTab, setSelectedTab] = useState<'ticket' | 'email' | null>(null);
+
+    const [ticketSubject, setTicketSubject] = useState('');
+    const [ticketDescription, setTicketDescription] = useState('');
+    const [submitting, setSubmitting] = useState(false);
+
+    const getBackendUrl = () => {
+        let url = process.env.EXPO_PUBLIC_API_URL || "http://localhost:4001";
+        if (Platform.OS === 'android') {
+            url = url.replace('localhost', '10.0.2.2');
+        }
+        return url;
+    };
+
+    const handleSubmitTicket = async () => {
+        if (!ticketSubject.trim() || !ticketDescription.trim()) {
+            Toast.show({ type: 'error', text1: 'Validation Error', text2: 'Please fill in all fields.' });
+            return;
+        }
+
+        setSubmitting(true);
+        try {
+            const { data: { session } } = await supabase.auth.getSession();
+            if (!session) return;
+
+            const res = await fetch(`${getBackendUrl()}/api/settings/support`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${session.access_token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    subject: ticketSubject,
+                    description: ticketDescription,
+                    priority: 'normal'
+                })
+            });
+
+            if (res.ok) {
+                Toast.show({ type: 'success', text1: 'Success', text2: 'Support ticket submitted successfully.' });
+                setSelectedTab(null);
+                setTicketSubject('');
+                setTicketDescription('');
+            } else {
+                const data = await res.json();
+                Toast.show({ type: 'error', text1: 'Error', text2: data.error || 'Failed to submit ticket' });
+            }
+        } catch (err) {
+            console.error("Submit ticket error:", err);
+            Toast.show({ type: 'error', text1: 'Error', text2: 'Failed to submit ticket' });
+        } finally {
+            setSubmitting(false);
+        }
+    };
 
     const tokens = {
         bg: isDark ? '#0F0B2E' : '#f9fafb',
@@ -119,7 +174,7 @@ export default function StudentHelp() {
                     </Text>
                     <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
                         <TouchableOpacity
-                            onPress={() => setSelectedTab('chat')}
+                            onPress={() => setSelectedTab('ticket')}
                             style={{
                                 width: '48%',
                                 backgroundColor: tokens.surface,
@@ -134,9 +189,9 @@ export default function StudentHelp() {
                                 elevation: isDark ? 0 : 1,
                             }}
                         >
-                            <MessageSquare size={24} color="#0d9488" />
-                            <Text style={{ marginTop: 8, fontWeight: '700', color: tokens.textPrimary }}>Live Chat</Text>
-                            <Text style={{ fontSize: 12, color: tokens.textMuted, marginTop: 2 }}>Wait time: 5m</Text>
+                            <Send size={24} color="#0d9488" />
+                            <Text style={{ marginTop: 8, fontWeight: '700', color: tokens.textPrimary }}>Submit Ticket</Text>
+                            <Text style={{ fontSize: 12, color: tokens.textMuted, marginTop: 2 }}>In-App Support</Text>
                         </TouchableOpacity>
 
                         <TouchableOpacity
@@ -186,7 +241,7 @@ export default function StudentHelp() {
                             borderBottomColor: tokens.border,
                         }}>
                             <Text style={{ fontSize: 20, fontWeight: '700', color: tokens.textPrimary }}>
-                                {selectedTab === 'chat' ? 'Live Chat' : 'Email Support'}
+                                {selectedTab === 'ticket' ? 'Submit Support Ticket' : 'Email Support'}
                             </Text>
                             <TouchableOpacity onPress={() => setSelectedTab(null)}>
                                 <X size={24} color={tokens.textMuted} />
@@ -195,16 +250,41 @@ export default function StudentHelp() {
 
                         {/* Modal Content */}
                         <View style={{ padding: 40, alignItems: 'center' }}>
-                            {selectedTab === 'chat' ? (
-                                <>
-                                    <View style={{ width: 80, height: 80, backgroundColor: isDark ? '#0d2926' : '#f0fdfa', borderRadius: 99, alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}>
-                                        <MessageSquare size={32} color="#0d9488" />
-                                    </View>
-                                    <Text style={{ fontSize: 24, fontWeight: '900', color: tokens.textPrimary, marginBottom: 8 }}>Coming Soon!</Text>
-                                    <Text style={{ color: tokens.textSecondary, textAlign: 'center', lineHeight: 20 }}>
-                                        Our real-time chat feature is currently under development. Please use Email Support in the meantime.
-                                    </Text>
-                                </>
+                            {selectedTab === 'ticket' ? (
+                                <View style={{ width: '100%', alignItems: 'flex-start' }}>
+                                    <Text style={{ color: tokens.textPrimary, fontWeight: '600', marginBottom: 8, fontSize: 13, textTransform: 'uppercase', letterSpacing: 1 }}>Subject</Text>
+                                    <TextInput
+                                        style={{ backgroundColor: tokens.inputBg, color: tokens.inputText, borderRadius: 12, padding: 14, marginBottom: 16, borderWidth: 1, borderColor: tokens.inputBorder, width: '100%' }}
+                                        placeholder="Brief summary of the issue"
+                                        placeholderTextColor={tokens.textMuted}
+                                        value={ticketSubject}
+                                        onChangeText={setTicketSubject}
+                                    />
+
+                                    <Text style={{ color: tokens.textPrimary, fontWeight: '600', marginBottom: 8, fontSize: 13, textTransform: 'uppercase', letterSpacing: 1 }}>Description</Text>
+                                    <TextInput
+                                        style={{ backgroundColor: tokens.inputBg, color: tokens.inputText, borderRadius: 12, padding: 14, marginBottom: 24, borderWidth: 1, borderColor: tokens.inputBorder, width: '100%', minHeight: 120, textAlignVertical: 'top' }}
+                                        placeholder="Please describe your issue in detail..."
+                                        placeholderTextColor={tokens.textMuted}
+                                        multiline
+                                        numberOfLines={5}
+                                        value={ticketDescription}
+                                        onChangeText={setTicketDescription}
+                                    />
+
+                                    <TouchableOpacity
+                                        onPress={handleSubmitTicket}
+                                        disabled={submitting}
+                                        style={{ backgroundColor: '#0d9488', paddingVertical: 16, borderRadius: 20, alignItems: 'center', width: '100%', flexDirection: 'row', justifyContent: 'center', gap: 8 }}
+                                    >
+                                        {submitting ? <ActivityIndicator color="#fff" /> : (
+                                            <>
+                                                <Send size={20} color="#fff" />
+                                                <Text style={{ color: '#ffffff', fontWeight: '800', letterSpacing: 0.5 }}>SUBMIT TICKET</Text>
+                                            </>
+                                        )}
+                                    </TouchableOpacity>
+                                </View>
                             ) : (
                                 <View style={{ width: '100%' }}>
                                     <View style={{ alignItems: 'center', marginBottom: 24 }}>

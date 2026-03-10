@@ -18,4 +18,7 @@ router.post("/currency/update", authMiddleware, (req, res, next) => {
 router.get("/preferences", authMiddleware, preferencesController.getPreferences);
 router.put("/preferences", authMiddleware, preferencesController.updatePreferences);
 
+// Support
+router.post("/support", authMiddleware, settingsController.createSupportRequest);
+
 module.exports = router;

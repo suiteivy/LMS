@@ -658,7 +658,7 @@ const BorrowedBooksOverview: React.FC<BorrowedBooksOverviewProps> = ({
   // Show loading spinner on initial load
   if (loading && borrowedBooks.length === 0) {
     return (
-      <View className="flex-1 bg-mint-50 dark:bg-black justify-center items-center">
+      <View className="flex-1 bg-mint-50 dark:bg-navy justify-center items-center">
         <ActivityIndicator size="large" color="#0D9488" />
         <Text className="text-gray-600 dark:text-gray-300 mt-2">Loading borrowed books...</Text>
       </View>
@@ -666,7 +666,7 @@ const BorrowedBooksOverview: React.FC<BorrowedBooksOverviewProps> = ({
   }
 
   return (
-    <View className="flex-1 bg-mint-50 dark:bg-black">
+    <View className="flex-1 bg-mint-50 dark:bg-navy">
       {/* Header */}
       <View className="bg-white dark:bg-[#0F0B2E] p-4 border-b border-teal-100 dark:border-gray-800">
         <Text className="text-xl font-bold text-slate-800 dark:text-white">
@@ -676,7 +676,7 @@ const BorrowedBooksOverview: React.FC<BorrowedBooksOverviewProps> = ({
 
       {/* Filters & Search */}
       <View className="bg-white dark:bg-[#0F0B2E] px-4 pb-4 border-b border-teal-100 dark:border-gray-800">
-        <View className="flex-row items-center bg-gray-50 dark:bg-[#1a1a1a] border border-teal-100 dark:border-gray-800 rounded-xl px-4 py-2 mt-2 mb-4">
+        <View className="flex-row items-center bg-gray-50 dark:bg-navy-surface border border-teal-100 dark:border-gray-800 rounded-xl px-4 py-2 mt-2 mb-4">
           <Ionicons name="search" size={20} color={isDark ? "#9CA3AF" : "#6B7280"} />
           <TextInput
             className="flex-1 ml-2 text-slate-800 dark:text-white"
@@ -777,7 +777,7 @@ const BorrowedBooksOverview: React.FC<BorrowedBooksOverviewProps> = ({
 
           {selectedBook && (
             <ScrollView className="flex-1 p-4">
-              <View className="bg-gray-50 dark:bg-[#1a1a1a] p-4 rounded-lg mb-4">
+              <View className="bg-gray-50 dark:bg-navy-surface p-4 rounded-lg mb-4">
                 <Text className="font-semibold text-slate-800 dark:text-white mb-1">
                   {selectedBook.bookTitle}
                 </Text>

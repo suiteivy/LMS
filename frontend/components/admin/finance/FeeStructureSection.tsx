@@ -108,7 +108,7 @@ const FeeStructureSection: React.FC<FeeStructureSectionProps> = ({
     const displayDesc = (item as any).description;
 
     return (
-      <View className="bg-white dark:bg-[#1a1a1a] rounded-3xl p-6 mb-6 shadow-xl shadow-slate-200/50 dark:shadow-none border border-slate-100 dark:border-gray-800">
+      <View className="bg-white dark:bg-navy-surface rounded-3xl p-6 mb-6 shadow-xl shadow-slate-200/50 dark:shadow-none border border-slate-100 dark:border-gray-800">
         {/* Header */}
         <View className="flex-row justify-between items-start mb-5">
           <View className="flex-1 mr-3">
@@ -192,7 +192,7 @@ const FeeStructureSection: React.FC<FeeStructureSectionProps> = ({
 
       {/* ── Create / Edit Modal ── */}
       <Modal visible={showForm} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => { setShowForm(false); resetForm(); }}>
-        <ScrollView className="flex-1 bg-white dark:bg-black" contentContainerStyle={{ padding: 24, paddingBottom: 80 }}>
+        <ScrollView className="flex-1 bg-white dark:bg-navy" contentContainerStyle={{ padding: 24, paddingBottom: 80 }}>
           <View className="flex-row justify-between items-center mb-8">
             <Text className="text-gray-900 dark:text-white font-black text-2xl">
               {editingStructure ? "Edit Fee Structure" : "New Fee Structure"}

@@ -1,4 +1,4 @@
-import { useTheme } from "@/contexts/ThemeContext";
+﻿import { useTheme } from "@/contexts/ThemeContext";
 import { Bell, ChevronRight, Globe, LucideIcon, User } from "lucide-react-native";
 import React, { ReactNode, useState } from "react";
 import { ScrollView, Switch, Text, TouchableOpacity, View } from "react-native";
@@ -36,7 +36,7 @@ export default function StudentSettings() {
     )
 
     return (
-        <ScrollView className="flex-1 bg-gray-50 dark:bg-black">
+        <ScrollView className="flex-1 bg-gray-50 dark:bg-navy">
             <View className="p-4 md:p-8 max-w-2xl mx-auto w-full">
 
                 <Text className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest ml-1 mb-2">Account</Text>

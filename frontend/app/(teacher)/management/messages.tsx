@@ -1,242 +1,168 @@
-﻿import { UnifiedHeader } from "@/components/common/UnifiedHeader";
+import { UnifiedHeader } from "@/components/common/UnifiedHeader";
+import { useAuth } from "@/contexts/AuthContext";
 import { MessageService } from "@/services/MessageService";
 import { format } from "date-fns";
 import { router } from "expo-router";
-import { ChevronRight, MessageCircle, Plus, Search, Send, User, X } from "lucide-react-native";
+import { ChevronRight, MessageCircle, Plus, Search, Send, User, X, Zap } from "lucide-react-native";
 import React, { useEffect, useState } from "react";
 import { ActivityIndicator, Alert, Modal, ScrollView, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { SubscriptionGate, AddonRequestButton } from "@/components/shared/SubscriptionComponents";
 
 export default function MessagingPage() {
     const [messages, setMessages] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
-    const [activeTab, setActiveTab] = useState<'inbox' | 'sent'>('inbox');
-    const [composeModal, setComposeModal] = useState(false);
-
-    // Compose State
-    const [searchQuery, setSearchQuery] = useState("");
-    const [searchResults, setSearchResults] = useState<any[]>([]);
-    const [selectedReceiver, setSelectedReceiver] = useState<any>(null);
-    const [messageContent, setMessageContent] = useState("");
-    const [sending, setSending] = useState(false);
+    const [activeTab, setActiveTab] = useState<'received' | 'sent'>('received');
+    const [searchQuery, setSearchQuery] = useState('');
+    const [selectedMessage, setSelectedMessage] = useState<any>(null);
+    const [modalVisible, setModalVisible] = useState(false);
+    const { profile, isDemo } = useAuth();
 
     useEffect(() => {
         fetchMessages();
-    }, [activeTab]);
+    }, [isDemo]);
 
     const fetchMessages = async () => {
         try {
             setLoading(true);
-            const data = await MessageService.getMessages(activeTab);
-            setMessages(data);
+            if (isDemo) {
+                const mockMessages = [
+                    { id: '1', sender_id: 'parent-1', receiver_id: 'teacher-1', subject: 'Homework Query', body: 'Hello, I wanted to ask about the math homework.', created_at: new Date().toISOString(), sender: { full_name: 'John Parent' }, receiver: { full_name: 'Sarah Teacher' } },
+                    { id: '2', sender_id: 'teacher-1', receiver_id: 'parent-2', subject: 'Progress Update', body: 'Your child is doing great in science.', created_at: new Date().toISOString(), sender: { full_name: 'Sarah Teacher' }, receiver: { full_name: 'Mary Parent' } }
+                ];
+                setMessages(mockMessages);
+                return;
+            }
+            const data = await MessageService.getMessages();
+            setMessages(data || []);
         } catch (error) {
-            console.error(error);
+            console.error("Error fetching messages:", error);
+            Alert.alert("Error", "Failed to fetch messages.");
         } finally {
             setLoading(false);
         }
     };
 
-    const handleSearch = async (text: string) => {
-        setSearchQuery(text);
-        if (text.length > 2) {
-            try {
-                const results = await MessageService.searchUsers(text);
-                setSearchResults(results);
-            } catch (error) {
-                console.error(error);
-            }
-        } else {
-            setSearchResults([]);
-        }
-    };
-
-    const handleSendMessage = async () => {
-        if (!selectedReceiver || !messageContent.trim()) {
-            Alert.alert("Error", "Please select a recipient and enter a message");
-            return;
-        }
-
-        try {
-            setSending(true);
-            await MessageService.sendMessage(selectedReceiver.id, messageContent);
-            Alert.alert("Success", "Message sent successfully");
-            setComposeModal(false);
-            setMessageContent("");
-            setSelectedReceiver(null);
-            setSearchQuery("");
-            setSearchResults([]);
-            if (activeTab === 'sent') fetchMessages();
-        } catch (error) {
-            Alert.alert("Error", "Failed to send message");
-        } finally {
-            setSending(false);
-        }
-    };
-
-    const renderMessageItem = (item: any) => {
-        const interlocutor = activeTab === 'inbox' ? item.sender : item.receiver;
-        return (
-            <TouchableOpacity
-                key={item.id}
-                className={`flex-row items-center p-5 mb-4 rounded-3xl border shadow-sm ${!item.is_read && activeTab === 'inbox' ? 'bg-white dark:bg-[#1a1a1a] border-orange-100 dark:border-orange-950/20' : 'bg-white dark:bg-[#1a1a1a] border-gray-50 dark:border-gray-800'}`}
-                onPress={() => {
-                    if (!item.is_read && activeTab === 'inbox') {
-                        MessageService.markAsRead(item.id);
-                        fetchMessages();
-                    }
-                    Alert.alert(item.subject || "Message", item.content);
-                }}
-            >
-                <View className={`p-3 rounded-2xl mr-4 ${!item.is_read && activeTab === 'inbox' ? 'bg-orange-50 dark:bg-orange-950/20' : 'bg-gray-50 dark:bg-gray-800'}`}>
-                    <User size={24} color={!item.is_read && activeTab === 'inbox' ? "#FF6900" : "#6B7280"} />
-                </View>
-                <View className="flex-1">
-                    <View className="flex-row justify-between items-center mb-1">
-                        <Text className={`text-base tracking-tight ${!item.is_read && activeTab === 'inbox' ? 'font-bold text-gray-900 dark:text-white' : 'font-semibold text-gray-700 dark:text-gray-300'}`}>{interlocutor?.full_name}</Text>
-                        <Text className="text-gray-400 dark:text-gray-500 text-[10px] font-bold uppercase tracking-widest">{format(new Date(item.created_at), 'MMM dd')}</Text>
-                    </View>
-                    <Text className="text-gray-400 dark:text-gray-500 text-sm font-medium" numberOfLines={1}>{item.content}</Text>
-                </View>
-                {!item.is_read && activeTab === 'inbox' && (
-                    <View className="w-2.5 h-2.5 bg-[#FF6900] rounded-full ml-4 shadow-sm" />
-                )}
-            </TouchableOpacity>
-        );
-    };
+    const filteredMessages = messages.filter(msg => {
+        const isCorrectTab = activeTab === 'received' 
+            ? msg.receiver_id === profile?.id 
+            : msg.sender_id === profile?.id;
+        
+        const matchesSearch = msg.subject.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                             msg.sender?.full_name?.toLowerCase().includes(searchQuery.toLowerCase());
+        
+        return isCorrectTab && matchesSearch;
+    });
 
     return (
-        <View className="flex-1 bg-gray-50 dark:bg-black">
+        <View className="flex-1 bg-gray-50 dark:bg-navy">
             <UnifiedHeader
-                title="Communications"
+                title="Management"
                 subtitle="Messaging"
                 role="Teacher"
                 onBack={() => router.push("/(teacher)/management")}
             />
 
-            <View className="px-4 md:px-8 mt-6">
-                <View className="flex-row bg-white dark:bg-[#1a1a1a] p-1.5 rounded-[24px] border border-gray-100 dark:border-gray-800 shadow-sm mb-6">
-                    <TouchableOpacity
-                        className={`flex-1 py-3.5 rounded-2xl items-center ${activeTab === 'inbox' ? 'bg-[#FF6900]' : ''}`}
-                        onPress={() => setActiveTab('inbox')}
-                    >
-                        <Text className={`text-xs font-bold uppercase tracking-widest ${activeTab === 'inbox' ? 'text-white' : 'text-gray-400 dark:text-gray-500'}`}>Inbox</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                        className={`flex-1 py-3.5 rounded-2xl items-center ${activeTab === 'sent' ? 'bg-gray-900 dark:bg-gray-800' : ''}`}
-                        onPress={() => setActiveTab('sent')}
-                    >
-                        <Text className={`text-xs font-bold uppercase tracking-widest ${activeTab === 'sent' ? 'text-white' : 'text-gray-400 dark:text-gray-500'}`}>Sent</Text>
-                    </TouchableOpacity>
-                </View>
-            </View>
-
-            <ScrollView className="flex-1 px-4 md:px-8" showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 150 }}>
-                {loading ? (
-                    <ActivityIndicator size="large" color="#FF6900" className="mt-20" />
-                ) : messages.length > 0 ? (
-                    messages.map(renderMessageItem)
-                ) : (
-                    <View className="bg-white dark:bg-[#1a1a1a] p-16 rounded-[40px] items-center border border-gray-100 dark:border-gray-800 border-dashed mt-10">
-                        <MessageCircle size={64} color="#E5E7EB" style={{ opacity: 0.3 }} />
-                        <Text className="text-gray-400 dark:text-gray-500 font-bold text-center mt-6 tracking-tight">Your inbox is clear.</Text>
+            <SubscriptionGate 
+                feature="messaging"
+                fallback={
+                    <View className="flex-1 items-center justify-center p-8">
+                        <View className="bg-orange-50 p-8 rounded-[40px] items-center border border-orange-100 border-dashed max-w-sm">
+                            <Zap size={48} color="#FF6900" style={{ marginBottom: 20 }} />
+                            <Text className="text-xl font-bold text-gray-900 text-center mb-2">Messaging Locked</Text>
+                            <Text className="text-gray-500 text-center mb-8 leading-5">
+                                Advanced messaging features are not included in your current subscription plan.
+                            </Text>
+                            <AddonRequestButton onPress={() => { /* Handle request */ }} />
+                        </View>
                     </View>
-                )}
-            </ScrollView>
-
-            <TouchableOpacity
-                onPress={() => setComposeModal(true)}
-                className="absolute bottom-10 right-8 w-16 h-16 bg-gray-900 dark:bg-[#1a1a1a] rounded-full items-center justify-center shadow-2xl border border-transparent dark:border-gray-800"
+                }
             >
-                <Plus size={32} color="white" />
-            </TouchableOpacity>
-
-            <Modal visible={composeModal} animationType="slide" transparent>
-                <View className="flex-1 bg-black/50 justify-end">
-                    <View className="bg-white dark:bg-[#0F0B2E] h-[90%] rounded-t-[40px] p-8 border-t border-gray-100 dark:border-gray-800">
-                        <View className="flex-row justify-between items-center mb-8">
-                            <Text className="text-2xl font-bold text-gray-900 dark:text-white tracking-tight">Compose</Text>
+                <View className="flex-1">
+                    <View className="px-4 md:px-8 mt-6">
+                        <View className="flex-row bg-white dark:bg-navy-surface p-1.5 rounded-[24px] border border-gray-100 dark:border-gray-800 shadow-sm mb-6">
                             <TouchableOpacity
-                                className="w-10 h-10 bg-gray-50 dark:bg-[#1a1a1a] rounded-full items-center justify-center"
-                                onPress={() => setComposeModal(false)}
+                                onPress={() => setActiveTab('received')}
+                                className={`flex-1 flex-row items-center justify-center py-3.5 rounded-2xl ${activeTab === 'received' ? 'bg-teacherOrange shadow-md' : ''}`}
                             >
-                                <X size={20} color="#6B7280" />
+                                <MessageCircle size={18} color={activeTab === 'received' ? 'white' : '#64748b'} />
+                                <Text className={`ml-2 font-bold text-sm ${activeTab === 'received' ? 'text-white' : 'text-slate-500'}`}>Inbox</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                onPress={() => setActiveTab('sent')}
+                                className={`flex-1 flex-row items-center justify-center py-3.5 rounded-2xl ${activeTab === 'sent' ? 'bg-teacherBlack shadow-md' : ''}`}
+                            >
+                                <Send size={18} color={activeTab === 'sent' ? 'white' : '#64748b'} />
+                                <Text className={`ml-2 font-bold text-sm ${activeTab === 'sent' ? 'text-white' : 'text-slate-500'}`}>Sent</Text>
                             </TouchableOpacity>
                         </View>
 
-                        {/* Search Recipient */}
-                        {!selectedReceiver ? (
-                            <View className="mb-6">
-                                <View className="flex-row items-center bg-gray-50 dark:bg-[#1a1a1a] px-6 py-4 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm mb-4">
-                                    <Search size={20} color="#9CA3AF" />
-                                    <TextInput
-                                        className="flex-1 ml-4 text-gray-900 dark:text-white font-bold text-xs uppercase tracking-widest"
-                                        placeholder="Search faculty or students..."
-                                        placeholderTextColor="#9CA3AF"
-                                        value={searchQuery}
-                                        onChangeText={handleSearch}
-                                    />
-                                </View>
-                                <ScrollView className="max-h-60" showsVerticalScrollIndicator={false}>
-                                    {searchResults.map((item) => (
-                                        <TouchableOpacity
-                                            key={item.id}
-                                            className="flex-row items-center p-4 bg-white dark:bg-[#1a1a1a] rounded-2xl mb-2 border border-gray-50 dark:border-gray-800"
-                                            onPress={() => setSelectedReceiver(item)}
-                                        >
-                                            <View className="bg-gray-100 dark:bg-gray-800 p-2.5 rounded-xl mr-4">
-                                                <User size={18} color="#6B7280" />
-                                            </View>
-                                            <View className="flex-1">
-                                                <Text className="text-gray-900 dark:text-white font-bold text-sm tracking-tight">{item.full_name}</Text>
-                                                <Text className="text-gray-400 dark:text-gray-500 text-[10px] font-bold uppercase tracking-widest">{item.role}</Text>
-                                            </View>
-                                            <ChevronRight size={16} color="#D1D5DB" />
-                                        </TouchableOpacity>
-                                    ))}
-                                </ScrollView>
-                            </View>
-                        ) : (
-                            <View className="flex-row items-center bg-orange-50 dark:bg-orange-950/20 p-6 rounded-3xl mb-8 border border-orange-100 dark:border-orange-900">
-                                <View className="bg-[#FF6900] p-3 rounded-2xl mr-4 shadow-sm">
-                                    <User size={20} color="white" />
-                                </View>
-                                <View className="flex-1">
-                                    <Text className="text-gray-900 dark:text-white font-bold text-base tracking-tight">{selectedReceiver.full_name}</Text>
-                                    <Text className="text-[#FF6900] text-[10px] font-bold uppercase tracking-widest">{selectedReceiver.role}</Text>
-                                </View>
-                                <TouchableOpacity
-                                    className="bg-white/50 dark:bg-white/10 px-4 py-2 rounded-xl"
-                                    onPress={() => setSelectedReceiver(null)}
-                                >
-                                    <Text className="text-gray-400 dark:text-gray-500 text-[10px] font-bold uppercase tracking-widest">Edit</Text>
-                                </TouchableOpacity>
-                            </View>
-                        )}
-
-                        <View className="flex-1">
-                            <Text className="text-gray-400 dark:text-gray-500 text-[8px] font-bold uppercase tracking-[2px] ml-2 mb-2">Message Content</Text>
+                        <View className="flex-row items-center bg-white dark:bg-navy-surface px-5 py-4 rounded-[28px] border border-gray-100 dark:border-gray-800 shadow-sm mb-6">
+                            <Search size={20} color="#94a3b8" />
                             <TextInput
-                                className="bg-gray-50 dark:bg-[#1a1a1a] p-6 rounded-[32px] text-gray-900 dark:text-white font-medium text-base h-full border border-gray-100 dark:border-gray-800"
-                                placeholder="Write your message..."
-                                placeholderTextColor="#9CA3AF"
-                                multiline
-                                textAlignVertical="top"
-                                value={messageContent}
-                                onChangeText={setMessageContent}
+                                placeholder="Search by subject or name..."
+                                placeholderTextColor="#94a3b8"
+                                className="flex-1 ml-3 text-slate-900 dark:text-white font-medium"
+                                value={searchQuery}
+                                onChangeText={setSearchQuery}
                             />
                         </View>
 
-                        <TouchableOpacity
-                            className={`mt-8 py-5 rounded-[24px] shadow-lg flex-row justify-center items-center ${sending ? 'bg-gray-100' : 'bg-[#FF6900]'}`}
-                            onPress={handleSendMessage}
-                            disabled={sending}
-                        >
-                            {sending ? <ActivityIndicator color="#9CA3AF" /> : (
-                                <>
-                                    <Text className="text-white font-bold text-lg mr-3">Send</Text>
-                                    <Send size={20} color="white" />
-                                </>
-                            )}
-                        </TouchableOpacity>
+                        {loading ? (
+                            <ActivityIndicator size="large" color="#FF6900" className="mt-8" />
+                        ) : filteredMessages.length === 0 ? (
+                            <View className="bg-white dark:bg-navy-surface p-12 rounded-[40px] items-center border border-gray-100 dark:border-gray-800 border-dashed mt-4">
+                                <MessageCircle size={48} color="#e2e8f0" style={{ opacity: 0.5 }} />
+                                <Text className="text-slate-400 font-bold text-center mt-6">No messages found</Text>
+                            </View>
+                        ) : (
+                            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
+                                {filteredMessages.map((msg) => (
+                                    <TouchableOpacity
+                                        key={msg.id}
+                                        onPress={() => {
+                                            setSelectedMessage(msg);
+                                            setModalVisible(true);
+                                        }}
+                                        className="bg-white dark:bg-navy-surface p-5 rounded-[32px] border border-gray-50 dark:border-gray-800 mb-4 flex-row items-center shadow-sm active:bg-slate-50 dark:active:bg-slate-900"
+                                    >
+                                        <View className="w-12 h-12 rounded-2xl bg-slate-50 dark:bg-navy-light items-center justify-center mr-4">
+                                            <User size={22} color="#64748b" />
+                                        </View>
+                                        <View className="flex-1">
+                                            <Text className="text-slate-900 dark:text-white font-bold text-base leading-tight" numberOfLines={1}>{msg.subject}</Text>
+                                            <Text className="text-slate-400 text-xs font-medium mt-1">
+                                                {activeTab === 'received' ? `From: ${msg.sender?.full_name}` : `To: ${msg.receiver?.full_name}`}
+                                            </Text>
+                                        </View>
+                                        <ChevronRight size={20} color="#cbd5e1" />
+                                    </TouchableOpacity>
+                                ))}
+                            </ScrollView>
+                        )}
+                    </View>
+                </View>
+            </SubscriptionGate>
+
+            <Modal animationType="slide" transparent visible={modalVisible}>
+                <View className="flex-1 bg-black/60 justify-end">
+                    <View className="bg-white dark:bg-navy rounded-t-[50px] p-8 pb-12 shadow-2xl">
+                        <View className="flex-row justify-between items-start mb-8">
+                            <View className="flex-1 pr-6">
+                                <Text className="text-slate-400 font-bold text-[10px] uppercase tracking-[3px] mb-2">Message Detail</Text>
+                                <Text className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight leading-tight">{selectedMessage?.subject}</Text>
+                            </View>
+                            <TouchableOpacity onPress={() => setModalVisible(false)} className="w-10 h-10 bg-slate-50 dark:bg-navy-light rounded-full items-center justify-center">
+                                <X size={20} color="#64748b" />
+                            </TouchableOpacity>
+                        </View>
+                        <ScrollView className="max-h-96">
+                            <Text className="text-slate-600 dark:text-slate-400 text-base leading-7">{selectedMessage?.body}</Text>
+                        </ScrollView>
+                        <View className="mt-8 pt-8 border-t border-slate-100 dark:border-gray-800">
+                            <Text className="text-slate-400 text-xs font-bold uppercase tracking-widest">
+                                Sent on {selectedMessage && format(new Date(selectedMessage.created_at), 'MMM d, yyyy h:mm a')}
+                            </Text>
+                        </View>
                     </View>
                 </View>
             </Modal>

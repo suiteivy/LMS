@@ -11,6 +11,9 @@ export default function MasterInstitutions() {
     const { isDark } = useTheme();
     const [institutions, setInstitutions] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
+    const [activeTab, setActiveTab] = useState<'institutions' | 'requests'>('institutions');
+    const [addonRequests, setAddonRequests] = useState<any[]>([]);
+    const [requestsLoading, setRequestsLoading] = useState(false);
 
     // Modals state
     const [freeModalVisible, setFreeModalVisible] = useState(false);
@@ -21,8 +24,11 @@ export default function MasterInstitutions() {
     const [addonsForm, setAddonsForm] = useState({
         addon_library: false,
         addon_messaging: false,
+        addon_diary: false,
+        addon_bursary: false,     // Bursary is its own add-on (separate from finance)
         addon_finance: false,
-        addon_analytics: false
+        addon_analytics: false,
+        custom_student_limit: null as number | null
     });
     const [addonsLoading, setAddonsLoading] = useState(false);
 
@@ -36,7 +42,8 @@ export default function MasterInstitutions() {
         admin_password: '',
         subscription_plan: 'trial',
         subscription_status: 'trial',
-        trial_end_date: ''
+        trial_end_date: '',
+        custom_student_limit: ''
     });
     const [enrollLoading, setEnrollLoading] = useState(false);
 
@@ -87,9 +94,39 @@ export default function MasterInstitutions() {
         }
     };
 
+    const fetchAddonRequests = async () => {
+        try {
+            setRequestsLoading(true);
+            const { data: { session } } = await supabase.auth.getSession();
+            if (!session) return;
+
+            const res = await fetch(`${getBackendUrl()}/api/addon-requests`, {
+                headers: {
+                    'Authorization': `Bearer ${session.access_token}`,
+                    'Accept': 'application/json'
+                }
+            });
+            const data = await res.json();
+            if (res.ok) {
+                setAddonRequests(data.requests || []);
+            } else {
+                Toast.show({ type: 'error', text1: 'Error', text2: data.error });
+            }
+        } catch (err) {
+            console.error(err);
+            Toast.show({ type: 'error', text1: 'Error', text2: "Failed to fetch requests" });
+        } finally {
+            setRequestsLoading(false);
+        }
+    };
+
     useEffect(() => {
-        fetchInstitutions();
-    }, []);
+        if (activeTab === 'institutions') {
+            fetchInstitutions();
+        } else {
+            fetchAddonRequests();
+        }
+    }, [activeTab]);
 
     const toggleSubscription = async (id: string, currentStatus: string) => {
         const nextStatus = currentStatus === 'active' ? 'suspended' : 'active';
@@ -165,7 +202,7 @@ export default function MasterInstitutions() {
                 Toast.show({ type: 'success', text1: 'Success', text2: 'Institution enrolled successfully' });
                 setEnrollModalVisible(false);
                 setEnrollForm({
-                    institution_name: '', location: '', admin_full_name: '', admin_email: '', admin_password: '', subscription_plan: 'trial', subscription_status: 'trial', trial_end_date: ''
+                    institution_name: '', location: '', admin_full_name: '', admin_email: '', admin_password: '', subscription_plan: 'trial', subscription_status: 'trial', trial_end_date: '', custom_student_limit: ''
                 });
                 fetchInstitutions(); // Refresh the list
             } else {
@@ -234,7 +271,11 @@ export default function MasterInstitutions() {
                     'Authorization': `Bearer ${session.access_token}`,
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify(addonsForm)
+                body: JSON.stringify({
+                    ...addonsForm,
+                    // Ensure custom_student_limit is handled as a number or null
+                    custom_student_limit: addonsForm.custom_student_limit ? parseInt(addonsForm.custom_student_limit.toString(), 10) : null
+                })
             });
 
             const data = await res.json();
@@ -251,6 +292,133 @@ export default function MasterInstitutions() {
         } finally {
             setAddonsLoading(false);
         }
+    };
+
+    const handleUpdateRequestStatus = async (requestId: string, status: 'approved' | 'rejected') => {
+        try {
+            const { data: { session } } = await supabase.auth.getSession();
+            if (!session) return;
+
+            const res = await fetch(`${getBackendUrl()}/api/addon-requests/${requestId}/status`, {
+                method: 'PUT',
+                headers: {
+                    'Authorization': `Bearer ${session.access_token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ status })
+            });
+
+            const data = await res.json();
+            if (res.ok) {
+                Toast.show({
+                    type: 'success',
+                    text1: status === 'approved' ? 'Request Approved' : 'Request Rejected',
+                    text2: data.message
+                });
+                fetchAddonRequests();
+                if (status === 'approved') fetchInstitutions();
+            } else {
+                Toast.show({ type: 'error', text1: 'Error', text2: data.error });
+            }
+        } catch (err) {
+            console.error(err);
+            Toast.show({ type: 'error', text1: 'Error', text2: 'Failed to update request' });
+        }
+    };
+
+    const renderRequestItem = ({ item }: { item: any }) => {
+        const isPending = item.status === 'pending';
+        const date = new Date(item.created_at).toLocaleDateString();
+
+        return (
+            <View style={{
+                backgroundColor: themeColors.card,
+                padding: 16,
+                borderRadius: 16,
+                borderWidth: 1,
+                borderColor: themeColors.border,
+                marginBottom: 12,
+                ...(Platform.OS === 'ios' ? {
+                    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 8,
+                } : { elevation: 2 })
+            }}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
+                    <View style={{ flex: 1 }}>
+                        <Text style={{ fontSize: 16, fontWeight: '700', color: themeColors.text }}>
+                            {item.institutions?.name}
+                        </Text>
+                        <Text style={{ color: themeColors.subtext, fontSize: 12, marginTop: 2 }}>
+                            Requested by: {item.users?.full_name} • {date}
+                        </Text>
+                    </View>
+                    <View style={{
+                        backgroundColor: item.status === 'pending' ? '#FEF3C7' : (item.status === 'approved' ? '#D1FAE5' : '#FEE2E2'),
+                        paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6
+                    }}>
+                        <Text style={{
+                            color: item.status === 'pending' ? '#92400E' : (item.status === 'approved' ? '#065F46' : '#991B1B'),
+                            fontSize: 10, fontWeight: '800', textTransform: 'uppercase'
+                        }}>{item.status}</Text>
+                    </View>
+                </View>
+
+                <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : '#f8fafc', padding: 12, borderRadius: 12, marginBottom: 16 }}>
+                    <View style={{ width: 32, height: 32, borderRadius: 8, backgroundColor: `${themeColors.primary}20`, alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
+                        <MaterialCommunityIcons name="puzzle" size={20} color={themeColors.primary} />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                        <Text style={{ color: themeColors.text, fontWeight: '700', fontSize: 14 }}>
+                            {item.addon_type.charAt(0).toUpperCase() + item.addon_type.slice(1)} Module
+                        </Text>
+                        {item.notes && (
+                            <Text style={{ color: themeColors.subtext, fontSize: 12, marginTop: 2 }} numberOfLines={2}>
+                                {item.notes}
+                            </Text>
+                        )}
+                    </View>
+                </View>
+
+                {isPending && (
+                    <View style={{ flexDirection: 'row', gap: 12 }}>
+                        <TouchableOpacity
+                            onPress={() => {
+                                if (Platform.OS === 'web') {
+                                    if (window.confirm("Are you sure you want to reject this request?")) {
+                                        handleUpdateRequestStatus(item.id, 'rejected');
+                                    }
+                                } else {
+                                    Alert.alert("Reject Request", "Are you sure you want to reject this request?", [
+                                        { text: "Cancel", style: "cancel" },
+                                        { text: "Reject", style: "destructive", onPress: () => handleUpdateRequestStatus(item.id, 'rejected') }
+                                    ]);
+                                }
+                            }}
+                            style={{ flex: 1, paddingVertical: 12, borderRadius: 12, borderWidth: 1, borderColor: '#fee2e2', alignItems: 'center', backgroundColor: '#fef2f2' }}
+                        >
+                            <Text style={{ color: '#ef4444', fontWeight: 'bold' }}>Reject</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                            onPress={() => {
+                                const msg = `Grant ${item.addon_type} access to ${item.institutions?.name}?`;
+                                if (Platform.OS === 'web') {
+                                    if (window.confirm(msg)) {
+                                        handleUpdateRequestStatus(item.id, 'approved');
+                                    }
+                                } else {
+                                    Alert.alert("Approve Request", msg, [
+                                        { text: "Cancel", style: "cancel" },
+                                        { text: "Approve", style: "default", onPress: () => handleUpdateRequestStatus(item.id, 'approved') }
+                                    ]);
+                                }
+                            }}
+                            style={{ flex: 1, paddingVertical: 12, borderRadius: 12, alignItems: 'center', backgroundColor: '#10b981' }}
+                        >
+                            <Text style={{ color: 'white', fontWeight: 'bold' }}>Approve</Text>
+                        </TouchableOpacity>
+                    </View>
+                )}
+            </View>
+        );
     };
 
     const renderItem = ({ item }: { item: any }) => {
@@ -312,15 +480,19 @@ export default function MasterInstitutions() {
                             <Text style={{ color: themeColors.primary, fontSize: 13, fontWeight: '600' }}>Grant Free Access</Text>
                         </TouchableOpacity>
 
-                        {(item.subscription_plan === 'basic' || item.subscription_plan === 'basic_basic' || item.subscription_plan === 'beta_free') && (
+                        {/* Manage Add-ons: visible for all paid plans */}
+                        {!['trial', 'free', null, undefined].includes(item.subscription_plan) && (
                             <TouchableOpacity
                                 onPress={() => {
                                     setSelectedInstId(item.id);
                                     setAddonsForm({
                                         addon_library: item.addon_library || false,
                                         addon_messaging: item.addon_messaging || false,
+                                        addon_diary: item.addon_diary || false,
+                                        addon_bursary: item.addon_bursary || false,
                                         addon_finance: item.addon_finance || false,
                                         addon_analytics: item.addon_analytics || false,
+                                        custom_student_limit: item.custom_student_limit || null
                                     });
                                     setAddonsModalVisible(true);
                                 }}
@@ -365,29 +537,71 @@ export default function MasterInstitutions() {
                         <Text style={{ fontSize: 14, color: themeColors.subtext, marginTop: 2 }}>Manage accounts & subscriptions</Text>
                     </View>
                 </View>
-                <TouchableOpacity onPress={fetchInstitutions}>
+                <TouchableOpacity onPress={activeTab === 'institutions' ? fetchInstitutions : fetchAddonRequests}>
                     <MaterialCommunityIcons name="refresh" size={24} color={themeColors.text} />
                 </TouchableOpacity>
             </View>
 
-            {loading ? (
-                <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-                    <ActivityIndicator size="large" color={themeColors.primary} />
-                </View>
-            ) : (
-                <FlatList
-                    data={institutions}
-                    keyExtractor={item => item.id}
-                    renderItem={renderItem}
-                    contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 100 }}
-                    ItemSeparatorComponent={() => <View style={{ height: 4 }} />}
-                    ListEmptyComponent={
-                        <View style={{ alignItems: 'center', marginTop: 40 }}>
-                            <MaterialCommunityIcons name="domain-off" size={48} color={themeColors.border} />
-                            <Text style={{ color: themeColors.subtext, marginTop: 16, fontSize: 16 }}>No institutions found.</Text>
+            {/* Tab Switcher */}
+            <View style={{ flexDirection: 'row', marginHorizontal: 20, marginBottom: 20, backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#f1f5f9', borderRadius: 12, padding: 4 }}>
+                <TouchableOpacity
+                    onPress={() => setActiveTab('institutions')}
+                    style={{ flex: 1, paddingVertical: 10, alignItems: 'center', backgroundColor: activeTab === 'institutions' ? themeColors.card : 'transparent', borderRadius: 8 }}
+                >
+                    <Text style={{ color: activeTab === 'institutions' ? themeColors.primary : themeColors.subtext, fontWeight: '700' }}>Institutions</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                    onPress={() => setActiveTab('requests')}
+                    style={{ flex: 1, paddingVertical: 10, alignItems: 'center', backgroundColor: activeTab === 'requests' ? themeColors.card : 'transparent', borderRadius: 8, flexDirection: 'row', justifyContent: 'center', gap: 6 }}
+                >
+                    <Text style={{ color: activeTab === 'requests' ? themeColors.primary : themeColors.subtext, fontWeight: '700' }}>Feature Requests</Text>
+                    {addonRequests.filter(r => r.status === 'pending').length > 0 && (
+                        <View style={{ backgroundColor: '#ef4444', height: 18, minWidth: 18, borderRadius: 9, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4 }}>
+                            <Text style={{ color: 'white', fontSize: 10, fontWeight: 'bold' }}>{addonRequests.filter(r => r.status === 'pending').length}</Text>
                         </View>
-                    }
-                />
+                    )}
+                </TouchableOpacity>
+            </View>
+
+            {activeTab === 'institutions' ? (
+                loading ? (
+                    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+                        <ActivityIndicator size="large" color={themeColors.primary} />
+                    </View>
+                ) : (
+                    <FlatList
+                        data={institutions}
+                        keyExtractor={item => item.id}
+                        renderItem={renderItem}
+                        contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 100 }}
+                        ItemSeparatorComponent={() => <View style={{ height: 4 }} />}
+                        ListEmptyComponent={
+                            <View style={{ alignItems: 'center', marginTop: 40 }}>
+                                <MaterialCommunityIcons name="domain-off" size={48} color={themeColors.border} />
+                                <Text style={{ color: themeColors.subtext, marginTop: 16, fontSize: 16 }}>No institutions found.</Text>
+                            </View>
+                        }
+                    />
+                )
+            ) : (
+                requestsLoading ? (
+                    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+                        <ActivityIndicator size="large" color={themeColors.primary} />
+                    </View>
+                ) : (
+                    <FlatList
+                        data={addonRequests}
+                        keyExtractor={item => item.id}
+                        renderItem={renderRequestItem}
+                        contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 100 }}
+                        ListEmptyComponent={
+                            <View style={{ alignItems: 'center', marginTop: 40 }}>
+                                <MaterialCommunityIcons name="clipboard-text-outline" size={48} color={themeColors.border} />
+                                <Text style={{ color: themeColors.subtext, marginTop: 16, fontSize: 16 }}>No feature requests yet.</Text>
+                            </View>
+                        }
+                    />
+                )
             )}
 
             {/* Enroll Floating Action Button */}
@@ -475,15 +689,16 @@ export default function MasterInstitutions() {
                                     style={{ color: themeColors.text }}
                                     dropdownIconColor={themeColors.text}
                                 >
-                                    <Picker.Item label="Trial" value="trial" />
-                                    <Picker.Item label="Basic" value="basic" />
-                                    <Picker.Item label="Pro" value="pro" />
-                                    <Picker.Item label="Premium" value="premium" />
-                                    <Picker.Item label="Beta Free (Hidden Tier)" value="beta_free" />
+                                    <Picker.Item label="14-Day Trial" value="trial" />
+                                    <Picker.Item label="Basic  —  $100/mo (up to 900 students)" value="basic_basic" />
+                                    <Picker.Item label="Pro  —  $300/mo (up to 1,000 students)" value="basic_pro" />
+                                    <Picker.Item label="Premium  —  $500/mo (5,000+ students)" value="basic_premium" />
+                                    <Picker.Item label="Custom  —  Enterprise (Scalable)" value="custom" />
+                                    <Picker.Item label="Free Access (Small School)" value="free" />
                                 </Picker>
                             </View>
 
-                            {enrollForm.subscription_plan === 'beta_free' && (
+                            {(enrollForm.subscription_plan === 'free') && (
                                 <>
                                     <Text style={{ color: themeColors.text, fontWeight: '600', marginBottom: 8 }}>Beta Expiration Date (ISO String / Optional)</Text>
                                     <TextInput
@@ -492,6 +707,20 @@ export default function MasterInstitutions() {
                                         placeholderTextColor={themeColors.subtext}
                                         value={enrollForm.trial_end_date}
                                         onChangeText={(text) => setEnrollForm({ ...enrollForm, trial_end_date: text })}
+                                    />
+                                </>
+                            )}
+
+                            {enrollForm.subscription_plan === 'custom' && (
+                                <>
+                                    <Text style={{ color: themeColors.text, fontWeight: '600', marginBottom: 8 }}>Custom Student Limit*</Text>
+                                    <TextInput
+                                        style={{ backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#f1f5f9', color: themeColors.text, borderRadius: 12, padding: 14, marginBottom: 16 }}
+                                        placeholder="e.g. 2500"
+                                        placeholderTextColor={themeColors.subtext}
+                                        keyboardType="number-pad"
+                                        value={enrollForm.custom_student_limit}
+                                        onChangeText={(text) => setEnrollForm({ ...enrollForm, custom_student_limit: text })}
                                     />
                                 </>
                             )}
@@ -567,22 +796,27 @@ export default function MasterInstitutions() {
                     <View style={{ backgroundColor: themeColors.card, borderRadius: 20, padding: 24, width: '100%', maxWidth: 400 }}>
                         <Text style={{ fontSize: 20, fontWeight: 'bold', color: themeColors.text, marginBottom: 8 }}>Manage Add-ons</Text>
                         <Text style={{ color: themeColors.subtext, fontSize: 14, marginBottom: 20 }}>
-                            Toggle individual premium features for this institution.
+                            Allocate or revoke add-on modules for this institution. Add-ons are master-admin controlled and independent of the subscription plan.
                         </Text>
 
                         <View style={{ marginBottom: 24, gap: 16 }}>
                             {[
-                                { key: 'addon_library', label: '📖 Digital Library' },
-                                { key: 'addon_messaging', label: '💬 Internal Messaging' },
-                                { key: 'addon_finance', label: '💰 Bursary & Finance' },
-                                { key: 'addon_analytics', label: '📈 Advanced Analytics' }
+                                { key: 'addon_library', label: '📖 Digital Library', sub: 'Enable Library Management' },
+                                { key: 'addon_bursary', label: '🏦 Bursary Module', sub: 'Financial tracking & receipts' },
+                                { key: 'addon_messaging', label: '💬 Messaging Module', sub: 'Announcements & direct chat' },
+                                { key: 'addon_diary', label: '📒 Virtual Diary', sub: 'Class entries & daily reports' },
+                                { key: 'addon_finance', label: '💰 Accounting Plus', sub: 'Advanced financial reports' },
+                                { key: 'addon_analytics', label: '📈 Performance Analytics', sub: 'Insightful progress tracking' }
                             ].map((addon) => (
                                 <TouchableOpacity
                                     key={addon.key}
                                     style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 12, borderRadius: 12, backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#f1f5f9' }}
                                     onPress={() => setAddonsForm(prev => ({ ...prev, [addon.key]: !prev[addon.key as keyof typeof prev] }))}
                                 >
-                                    <Text style={{ color: themeColors.text, fontSize: 16, fontWeight: '600' }}>{addon.label}</Text>
+                                    <View>
+                                        <Text style={{ color: themeColors.text, fontSize: 16, fontWeight: '600' }}>{addon.label}</Text>
+                                        <Text style={{ color: themeColors.subtext, fontSize: 11, marginTop: 2 }}>{addon.sub}</Text>
+                                    </View>
                                     <MaterialCommunityIcons
                                         name={addonsForm[addon.key as keyof typeof addonsForm] ? "toggle-switch" : "toggle-switch-off"}
                                         size={36}
@@ -590,6 +824,21 @@ export default function MasterInstitutions() {
                                     />
                                 </TouchableOpacity>
                             ))}
+
+                            <View style={{ marginTop: 8 }}>
+                                <Text style={{ color: themeColors.text, fontWeight: '600', marginBottom: 8 }}>Custom Student Limit</Text>
+                                <TextInput
+                                    style={{ backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#f1f5f9', color: themeColors.text, borderRadius: 12, padding: 14 }}
+                                    placeholder="e.g. 5000 (Set to clear for default)"
+                                    placeholderTextColor={themeColors.subtext}
+                                    keyboardType="number-pad"
+                                    value={addonsForm.custom_student_limit?.toString() || ''}
+                                    onChangeText={(t) => setAddonsForm(prev => ({ ...prev, custom_student_limit: t ? parseInt(t, 10) : null }))}
+                                />
+                                <Text style={{ color: themeColors.subtext, fontSize: 10, marginTop: 4 }}>
+                                    Leave empty to use the default plan limits.
+                                </Text>
+                            </View>
                         </View>
 
                         <View style={{ flexDirection: 'row', gap: 12 }}>

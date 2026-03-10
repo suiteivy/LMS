@@ -1,4 +1,4 @@
-﻿# 📚 Learning Management System (LMS)
+# 📚 Learning Management System (LMS)
 
 A comprehensive, role-based mobile application for managing educational institutions. Built with **React Native (Expo)** and **Supabase**.
 
@@ -9,13 +9,15 @@ A comprehensive, role-based mobile application for managing educational institut
 - [**Roles & Permissions**](docs/roles.md) - Detailed role capabilities.
 
 ## ✨ Key Features
-- **Master Platform Admin**: View `/(master-admin)` for global platform management, subscription controls, institution enrollment, and granting Beta Free access.
+- **Master Platform Admin**: View `/(master-admin)` for global platform management, subscription controls, institution enrollment, scalable student limits (Custom plans), and Add-on (Digital Library, Bursary, Messaging, Virtual Diary) distribution.
   - *Default Local Credentials:* `masteradmin@suiteivy.com` / `Master@123456`
 - **Multi-Role Support**: Tailored experiences for Students, Teachers, Admins, and Parents.
 - **Academic Management**: Grading, Attendance tracking, Subject management, and Timetables.
+- **Virtual Diary**: Daily classroom logging to keep parents and students up to date seamlessly.
 - **Finance & Bursary**: Fee payment tracking, bursary applications, and teacher payout management with dynamic currency support.
 - **Library System**: Inventory tracking with automatic stock management and borrowing history.
 - **Examination Module**: Exam scheduling and results management.
+- **Platform Subscriptions**: Granular Role-Based Access Control (RBAC) securely governed by custom database-driven subscription gating logic (`subscriptionCheck`).
 - **Real-time Communication**: Integrated messaging and notification system.
 
 ## 🛠️ Tech Stack

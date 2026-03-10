@@ -1,4 +1,4 @@
-import { UnifiedHeader } from "@/components/common/UnifiedHeader";
+﻿import { UnifiedHeader } from "@/components/common/UnifiedHeader";
 import { ParentService } from "@/services/ParentService";
 import { supabase } from "@/libs/supabase";
 import { router, useLocalSearchParams } from "expo-router";
@@ -13,7 +13,7 @@ const gradeColor = (g: string) => {
 };
 
 export default function StudentGradesPage() {
-  const { studentId } = useLocalSearchParams<{ studentId: string }>();
+  const { studentId, studentName } = useLocalSearchParams<{ studentId: string; studentName?: string }>();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [performance, setPerformance] = useState<any>(null);
@@ -87,16 +87,16 @@ export default function StudentGradesPage() {
 
   if (loading && !refreshing) {
     return (
-      <View className="flex-1 justify-center items-center bg-gray-50 dark:bg-black">
+      <View className="flex-1 justify-center items-center bg-gray-50 dark:bg-navy">
         <ActivityIndicator size="large" color="#FF6900" />
       </View>
     );
   }
   return (
-    <View className="flex-1 bg-gray-50 dark:bg-black">
+    <View className="flex-1 bg-gray-50 dark:bg-navy">
       <UnifiedHeader
-        title="Intelligence"
-        subtitle="Performance"
+        title={studentName ? `${studentName}'s Report` : "Performance"}
+        subtitle="Academic Report"
         role="Parent"
         onBack={() => router.back()}
         showNotification={false}
@@ -144,13 +144,13 @@ export default function StudentGradesPage() {
           {/* Transcript Breakdown */}
           <View className="px-2 flex-row justify-between items-center mb-6">
             <Text className="text-gray-900 dark:text-white font-bold text-xl tracking-tight">Academic Transcript</Text>
-            <TouchableOpacity className="bg-white dark:bg-[#1a1a1a] p-2 rounded-xl border border-gray-100 dark:border-gray-800 shadow-sm">
+            <TouchableOpacity className="bg-white dark:bg-navy-surface p-2 rounded-xl border border-gray-100 dark:border-gray-800 shadow-sm">
               <LayoutList size={16} color="#FF6900" />
             </TouchableOpacity>
           </View>
 
           {grades.length === 0 ? (
-            <View className="bg-white dark:bg-[#1a1a1a] p-12 rounded-[40px] items-center border border-gray-100 dark:border-gray-800 border-dashed mt-4">
+            <View className="bg-white dark:bg-navy-surface p-12 rounded-[40px] items-center border border-gray-100 dark:border-gray-800 border-dashed mt-4">
               <Star size={48} color="#E5E7EB" style={{ opacity: 0.3 }} />
               <Text className="text-gray-400 dark:text-gray-500 font-bold text-center mt-6">No records found</Text>
             </View>
@@ -158,7 +158,7 @@ export default function StudentGradesPage() {
             grades.map((result: any) => {
               const gc = gradeColor(result.grade);
               return (
-                <View key={result.id} className="bg-white dark:bg-[#1a1a1a] p-6 rounded-[32px] mb-4 border border-gray-50 dark:border-gray-800 shadow-sm">
+                <View key={result.id} className="bg-white dark:bg-navy-surface p-6 rounded-[32px] mb-4 border border-gray-50 dark:border-gray-800 shadow-sm">
                   <View className="flex-row justify-between items-center mb-6">
                     <View className="flex-row items-center flex-1">
                       <View className="w-10 h-10 rounded-2xl bg-orange-50 items-center justify-center mr-3">

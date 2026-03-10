@@ -135,7 +135,7 @@ export default function AttendancePage() {
     const selectedSubjectName = subjects.find(s => s.id === selectedSubjectId)?.title || "Select Subject";
 
     return (
-        <View className="flex-1 bg-gray-50 dark:bg-black">
+        <View className="flex-1 bg-gray-50 dark:bg-navy">
             <UnifiedHeader
                 title="Management"
                 subtitle="Attendance"

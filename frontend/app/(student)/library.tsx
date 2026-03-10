@@ -1,4 +1,4 @@
-﻿import { UnifiedHeader } from "@/components/common/UnifiedHeader";
+import { UnifiedHeader } from "@/components/common/UnifiedHeader";
 import { useAuth } from '@/contexts/AuthContext';
 import { LibraryAPI } from '@/services/LibraryService';
 import { FrontendBook, FrontendBorrowedBook } from '@/types/types';
@@ -7,6 +7,8 @@ import { BookOpen, CheckCircle2, Clock, Filter, Search, X } from 'lucide-react-n
 import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, Modal, RefreshControl, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useRealtimeQuery } from '@/hooks/useRealtimeQuery';
+import { SubscriptionGate, AddonRequestButton } from "@/components/shared/SubscriptionComponents";
+import { Zap } from "lucide-react-native";
 
 export default function StudentLibrary() {
     const { studentId } = useAuth();
@@ -86,13 +88,28 @@ export default function StudentLibrary() {
     );
 
     return (
-        <View className="flex-1 bg-gray-50 dark:bg-black">
+        <View className="flex-1 bg-gray-50 dark:bg-navy">
             <UnifiedHeader
                 title="Resources"
                 subtitle="Library"
                 role="Student"
                 onBack={() => router.back()}
             />
+
+            <SubscriptionGate 
+                feature="library"
+                fallback={
+                    <View className="flex-1 items-center justify-center p-8">
+                        <View className="bg-orange-50 p-8 rounded-[40px] items-center border border-orange-100 border-dashed max-w-sm">
+                            <Zap size={48} color="#FF6900" style={{ marginBottom: 20 }} />
+                            <Text className="text-xl font-bold text-gray-900 text-center mb-2">Library Locked</Text>
+                            <Text className="text-gray-500 text-center mb-8 leading-5">
+                                the Digital Library is not included in your current subscription plan.
+                            </Text>
+                        </View>
+                    </View>
+                }
+            >
 
             <View className="p-4 md:p-8">
                 {/* Search Header */}
@@ -229,6 +246,7 @@ export default function StudentLibrary() {
                 </View>
             </Modal>
 
+            </SubscriptionGate>
         </View>
     );
 }

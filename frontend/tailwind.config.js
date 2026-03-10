@@ -22,6 +22,10 @@ module.exports = {
         actionColor: '#1ABC9C',
         teacherOrange: "#FF6B00",
         teacherBlack: "#1a1a1a",
+        // SuiteIvy dark palette
+        navy: "#0F0B2E",
+        "navy-surface": "#13103A",
+        "navy-card": "#1A1650",
       },
     },
   },

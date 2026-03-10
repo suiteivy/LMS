@@ -13,16 +13,24 @@ import {
   Crown,
   Library,
   MoveRight,
+  Package,
   Plus,
   School,
+  Building,
   Settings,
   Sparkles,
   Timer,
-  Users
+  Users,
+  Mail,
+  Phone,
+  Instagram,
+  Linkedin,
+  LogIn,
+  ClipboardList
 } from "lucide-react-native";
 import React, { useEffect, useRef, useState } from 'react';
 import {
-  ActivityIndicator, Animated, Dimensions, KeyboardAvoidingView,
+  ActivityIndicator, Alert, Animated, Dimensions, KeyboardAvoidingView,
   Modal,
   Platform,
   ScrollView, StatusBar, Text,
@@ -76,8 +84,8 @@ const PackageTierTab = ({ tier, label, icon, tagline, isActive, onPress }: any) 
       onPress={onPress}
       activeOpacity={0.8}
       //@ts-ignore
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
+      onPointerEnter={() => setHovered(true)}
+      onPointerLeave={() => setHovered(false)}
       style={[
         {
           // Wide screens (>= 768px): flex fills equal share; narrow: fixed compact width
@@ -157,10 +165,9 @@ const PlanCard = ({ plan, tierAccent, openRegistrationModal }: any) => {
 
   useEffect(() => {
     animValue.value = withRepeat(
-      withSequence(
-        withTiming(1, { duration: 5000 }),
-        withTiming(0, { duration: 5000 })
-      ), -1, true
+      withTiming(1, { duration: 6000, easing: Easing.inOut(Easing.ease) }),
+      -1,
+      true
     );
     if (plan.premium) {
       borderAnim.value = withRepeat(withTiming(1, { duration: 4000 }), -1, false);
@@ -169,18 +176,18 @@ const PlanCard = ({ plan, tierAccent, openRegistrationModal }: any) => {
 
   const blob1Style = useAnimatedStyle(() => ({
     transform: [
-      { translateX: interpolate(animValue.value, [0, 1], [-20, 20]) },
-      { translateY: interpolate(animValue.value, [0, 1], [-10, 30]) }
+      { translateX: interpolate(animValue.value, [0, 1], [-40, 40]) },
+      { translateY: interpolate(animValue.value, [0, 1], [-20, 50]) }
     ],
-    opacity: 0.3
+    opacity: 0.4
   }));
 
   const blob2Style = useAnimatedStyle(() => ({
     transform: [
-      { translateX: interpolate(animValue.value, [0, 1], [20, -20]) },
-      { translateY: interpolate(animValue.value, [0, 1], [10, -20]) }
+      { translateX: interpolate(animValue.value, [0, 1], [40, -40]) },
+      { translateY: interpolate(animValue.value, [0, 1], [30, -50]) }
     ],
-    opacity: 0.25
+    opacity: 0.35
   }));
 
   const nativeHover = useSharedValue(0);
@@ -211,6 +218,7 @@ const PlanCard = ({ plan, tierAccent, openRegistrationModal }: any) => {
     minWidth: 260,
     marginVertical: 12,
     position: 'relative',
+    borderRadius: 36,
     // isolate rendering context to fix backdrop-filter clip bugs
     ...(Platform.OS === 'web' && { transform: [{ translateZ: '0' }] })
   };
@@ -226,8 +234,8 @@ const PlanCard = ({ plan, tierAccent, openRegistrationModal }: any) => {
     <Reanimated.View
       style={containerStyle as any}
       //@ts-ignore
-      onMouseEnter={onHoverIn}
-      onMouseLeave={onHoverOut}
+      onPointerEnter={onHoverIn}
+      onPointerLeave={onHoverOut}
     >
       {/* Premium rotating border */}
       {plan.premium && Platform.OS === 'web' && (
@@ -255,8 +263,26 @@ const PlanCard = ({ plan, tierAccent, openRegistrationModal }: any) => {
         position: 'relative',
       }}>
 
-        {/* Backdrop filter container separated from main wrapper to avoid Chrome clip bug */}
-        <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, overflow: 'hidden', borderRadius: 36, zIndex: 0 }}>
+        {/* Decorative blobs (behind glass layer) */}
+        <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 0, overflow: 'hidden', borderRadius: 36 }}>
+          <Reanimated.View style={[blob1Style, { position: 'absolute', top: '-15%', left: '-10%' }]}>
+            <View style={{
+              width: 180, height: 180, borderRadius: 90,
+              backgroundColor: plan.accent,
+              ...(Platform.OS === 'web' && { filter: 'blur(60px)' })
+            } as any} />
+          </Reanimated.View>
+          <Reanimated.View style={[blob2Style, { position: 'absolute', bottom: '-15%', right: '-10%' }]}>
+            <View style={{
+              width: 200, height: 200, borderRadius: 100,
+              backgroundColor: tierAccent || plan.accent,
+              ...(Platform.OS === 'web' && { filter: 'blur(60px)' })
+            } as any} />
+          </Reanimated.View>
+        </View>
+
+        {/* Backdrop filter container (the glass effect) */}
+        <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, overflow: 'hidden', borderRadius: 36, zIndex: 1 }}>
           {Platform.OS === 'web' ? (
             <div style={{ width: '100%', height: '100%', backdropFilter: 'blur(30px)', WebkitBackdropFilter: 'blur(30px)' }} />
           ) : (
@@ -264,42 +290,11 @@ const PlanCard = ({ plan, tierAccent, openRegistrationModal }: any) => {
           )}
         </View>
 
-        {/* Decorative blobs */}
-        <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 1, overflow: 'hidden', borderRadius: 36 }}>
-          {Platform.OS === 'web' ? (
-            <>
-              <Reanimated.View style={[blob1Style, {
-                position: 'absolute', top: '-10%', left: '-10%', width: 140, height: 140, borderRadius: 70,
-                backgroundColor: plan.accent, filter: 'blur(60px)'
-              } as any]} />
-              <Reanimated.View style={[blob2Style, {
-                position: 'absolute', bottom: '-10%', right: '-10%', width: 160, height: 160, borderRadius: 80,
-                backgroundColor: tierAccent || plan.accent, filter: 'blur(60px)'
-              } as any]} />
-            </>
-          ) : (
-            <Svg height="100%" width="100%">
-              <Defs>
-                <LinearGradient id={`grad-${plan.name}`} x1="0%" y1="0%" x2="100%" y2="100%">
-                  <Stop offset="0%" stopColor={plan.accent} stopOpacity="0.4" />
-                  <Stop offset="100%" stopColor={plan.accent} stopOpacity="0" />
-                </LinearGradient>
-              </Defs>
-              <Reanimated.View style={blob1Style}>
-                <Circle cx="20%" cy="20%" r="80" fill={`url(#grad-${plan.name})`} />
-              </Reanimated.View>
-              <Reanimated.View style={blob2Style}>
-                <Circle cx="80%" cy="80%" r="100" fill={`url(#grad-${plan.name})`} />
-              </Reanimated.View>
-            </Svg>
-          )}
-        </View>
-
         {(plan.popular || plan.premium) && (
           <View style={{
             position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
             backgroundColor: plan.accent, opacity: hovered ? 0.08 : 0.03,
-            zIndex: 1, transition: 'opacity 0.4s ease', pointerEvents: 'none'
+            zIndex: 2, transition: 'opacity 0.4s ease', pointerEvents: 'none'
           } as any} />
         )}
 
@@ -316,7 +311,7 @@ const PlanCard = ({ plan, tierAccent, openRegistrationModal }: any) => {
           </View>
         )}
 
-        <View style={{ padding: 32, flex: 1 }}>
+        <View style={{ padding: 32, flex: 1, zIndex: 10, position: 'relative' }}>
           {/* Popular / Elite ribbon */}
           {(plan.popular || plan.premium) && (
             <View style={{
@@ -352,10 +347,10 @@ const PlanCard = ({ plan, tierAccent, openRegistrationModal }: any) => {
 
           {/* Price */}
           <View style={{ flexDirection: 'row', alignItems: 'flex-end', marginBottom: 10 }}>
-            <Text style={{ color: 'white', fontWeight: '900', fontSize: 44 }}>{plan.price.split('/')[0]}</Text>
-            {plan.price.includes('/') && (
-              <Text style={{ color: 'rgba(255,255,255,0.4)', fontWeight: '600', fontSize: 17, marginBottom: 10, marginLeft: 4 }}>/{plan.price.split('/')[1]}</Text>
-            )}
+            <Text style={{ color: 'white', fontWeight: '900', fontSize: 44 }}>{plan.price}</Text>
+            {plan.period ? (
+              <Text style={{ color: 'rgba(255,255,255,0.4)', fontWeight: '600', fontSize: 17, marginBottom: 10, marginLeft: 4 }}>{plan.period}</Text>
+            ) : null}
           </View>
 
           <Text style={{ color: 'rgba(255,255,255,0.5)', fontSize: 14, marginBottom: 28, lineHeight: 21 }}>{plan.desc}</Text>
@@ -366,13 +361,14 @@ const PlanCard = ({ plan, tierAccent, openRegistrationModal }: any) => {
               <View key={i} style={{ flexDirection: 'row', alignItems: 'center' }}>
                 <View style={{
                   width: 22, height: 22, borderRadius: 7,
-                  backgroundColor: `${plan.accent}15`,
+                  backgroundColor: plan.premium ? 'rgba(255,255,255,0.15)' : `${plan.accent}15`,
                   alignItems: 'center', justifyContent: 'center',
-                  marginRight: 14, borderWidth: 1, borderColor: `${plan.accent}33`
+                  marginRight: 14, borderWidth: 1, borderColor: plan.premium ? 'rgba(255,255,255,0.3)' : `${plan.accent}33`,
+                  flexShrink: 0
                 }}>
-                  <Check size={13} color={plan.accent} strokeWidth={3} />
+                  <Check size={13} color={plan.premium ? '#FFF' : plan.accent} strokeWidth={3} />
                 </View>
-                <Text style={{ color: 'rgba(255,255,255,0.88)', fontSize: 14, fontWeight: '500' }}>{feat}</Text>
+                <Text style={{ color: 'rgba(255,255,255,0.88)', fontSize: 14, fontWeight: '500', flexShrink: 1 }}>{feat}</Text>
               </View>
             ))}
           </View>
@@ -413,22 +409,8 @@ const PlanCard = ({ plan, tierAccent, openRegistrationModal }: any) => {
 // Tier & plan data.....change to addons
 // ─────────────────────────────────────────────────────────────────────────────
 const TIERS = [
-  {
-    key: 'plans',
-    label: 'Pricing Plans',
-    tagline: 'Small schools',
-    icon: <Coins size={16} color="white" />,
-    accent: '#3B82F6',
-    description: 'Ideal for independent schools and small academies getting started.',
-  },
-  {
-    key: 'custom',
-    label: 'Custom',
-    tagline: 'Large schools',
-    icon: <School size={16} color="white" />,
-    accent: '#3B82F6',
-    description: 'Ideal for independent schools and small academies getting started.',
-  },
+  { key: 'plans', label: 'Subscription Plans', tagline: 'For schools of all sizes', description: 'Everything you need to grow your institution. Choose Basic, Pro, or Premium.', accent: '#FF6B00', icon: <Package size={16} /> },
+  { key: 'custom', label: 'Custom Enterprise', tagline: 'Tailored for scale', description: 'A tailored platform deployment configured for your exact needs.', accent: '#8B5CF6', icon: <Building size={16} /> },
 ] as const;
 
 type TierKey = 'plans' | 'custom' | 'addOns'
@@ -437,101 +419,120 @@ const TIER_PLANS: Record<TierKey, any[]> = {
   plans: [
     {
       name: 'Basic',
-      price: '$100/month',
-      desc: 'Ideal for Small schools & early adopters ideal for 200-900 students',
+      price: '$100',
+      period: '/month',
+      desc: 'Perfect for small schools and early adopters starting their digital journey.',
       features: [
         'Student module',
         'Teacher module',
         'Parent module',
+        'Up to 900 students',
+        'One-time setup: $20'
       ],
       icon: <BookOpen size={24} color="#3B82F6" />,
       accent: '#3B82F6',
-      cta: 'Get Started',
+      cta: 'Get Basic',
     },
     {
       name: 'Pro',
-      price: '$300/month',
-      desc: 'Mid-sized schools and training centers\nUp to 1000 students',
+      price: '$300',
+      period: '/month',
+      desc: 'Ideal for mid-sized schools & training centers needing more capacity and tools.',
       features: [
         'Student module',
         'Teacher module',
         'Parent module',
+        'Library add-on included',
+        'Messaging + Diary included',
+        'Up to 1,000 students',
+        'One-time setup: $60'
       ],
       icon: <Crown size={24} color="#F59E0B" />,
       accent: '#F59E0B',
       popular: true,
-      cta: 'Start Pro',
+      cta: 'Get Pro',
     },
     {
       name: 'Premium',
-      price: '$500/month',
-      desc: 'Large private school & tertiary institutions\nIdeal for 5000+ students',
+      price: '$500',
+      period: '/month',
+      desc: 'Built for large private schools & tertiary institutions operating at scale.',
       features: [
         'Student module',
         'Teacher module',
         'Parent module',
+        'All add-ons included',
+        '5,000+ students',
+        'Priority support',
+        'One-time setup: $100'
       ],
       icon: <Sparkles size={24} color="#8B5CF6" />,
       accent: '#8B5CF6',
       premium: true,
-      cta: 'Go Premium',
+      cta: 'Get Premium',
     },
   ],
   custom: [
     {
       name: 'Custom',
       price: 'Custom',
-      desc: 'Custom plan tailored and configured to meet a specific orgainizations learning needs and have features, content or workflows tailored for your organization',
+      period: '',
+      desc: 'A customized LMS deployed to meet your specific organizational workflows and learning needs.',
       features: [
-        'Client-specific courses',
-        'Categories',
-        'HR management',
-        'Progress learner reports',
-        'UI adjusments',
+        'Client-specific courses & learning paths',
+        'HR system & attendance integration',
+        'Custom progress & certification reports',
+        'UI adjustments (dashboards, labels, branding)',
+        'All add-ons included (Library, Bursary, Messaging)',
+        'Dedicated onboarding & support'
       ],
       icon: <Sparkles size={24} color="#8B5CF6" />,
       accent: '#8B5CF6',
       premium: true,
-      cta: 'Select custom features & modules',
+      cta: 'Contact Sales',
     },
   ],
   addOns: [
     {
-      name: 'Library Module',
-      price: '$30',
-      desc: 'Manage library and virtual materials on a main dashboard',
-      features: [
-
-      ],
-      icon: <Sparkles size={24} color="#8B5CF6" />,
+      name: 'Digital Library',
+      tagline: 'Add-On Module',
+      price: '$30/mo',
+      desc: 'Manage library and virtual learning materials on a main dashboard',
+      features: [],
+      icon: <Library size={24} color="#8B5CF6" />,
       accent: '#8B5CF6',
-      premium: true,
-      cta: 'Go Premium',
+      cta: 'Add Library'
     },
     {
       name: 'Bursary Module',
-      price: '$30',
+      tagline: 'Add-On Module',
+      price: '$30/mo',
       desc: 'Manage student accounts and financial logs on a main dashboard',
-      features: [
-
-      ],
-      icon: <Sparkles size={24} color="#8B5CF6" />,
-      accent: '#8B5CF6',
-      premium: true,
-      cta: 'Go Premium',
+      features: [],
+      icon: <CreditCard size={24} color="#F59E0B" />,
+      accent: '#F59E0B',
+      cta: 'Add Bursary'
     },
     {
-      name: 'Messageing + Virtual Diary',
-      price: '$10',
-      desc: 'Direct messaging and announcment sharing on e-learning platform',
-      features: [
-
-      ],
-      icon: <Sparkles size={24} color="#8B5CF6" />,
-      accent: '#8B5CF6',
-      premium: true,
-      cta: 'Go Premium',
+      name: 'Messaging Module',
+      tagline: 'Add-On Module',
+      price: '$5/mo',
+      desc: 'Direct messaging and announcement sharing on e-learning platform',
+      features: [],
+      icon: <BadgeCheck size={24} color="#10B981" />,
+      accent: '#10B981',
+      cta: 'Add Messaging'
     },
+    {
+      name: 'Virtual Diary',
+      tagline: 'Add-On Module',
+      price: '$5/mo',
+      desc: 'Digital class entries, daily reports and performance tracking for students',
+      features: [],
+      icon: <ClipboardList size={24} color="#3B82F6" />,
+      accent: '#3B82F6',
+      cta: 'Add Diary'
+    }
   ]
 };
 
@@ -774,6 +775,110 @@ function DiscountBanner() {
   );
 }
 
+// ── Hover Animated Buttons ───────────────────────────────────────────────────
+const SignInButtonFloating = () => {
+  const hoverVal = useSharedValue(0);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: interpolate(hoverVal.value, [0, 1], [1, 1.05]) }],
+    shadowOpacity: interpolate(hoverVal.value, [0, 1], [0.3, 0.6]),
+    shadowRadius: interpolate(hoverVal.value, [0, 1], [10, 20]),
+    backgroundColor: hoverVal.value > 0.5 ? 'rgba(255, 107, 0, 0.25)' : 'rgba(255, 107, 0, 0.15)',
+  }));
+
+  const onHoverIn = () => {
+    if (Platform.OS === 'web') hoverVal.value = withTiming(1, { duration: 200, easing: Easing.out(Easing.ease) });
+  };
+  const onHoverOut = () => {
+    if (Platform.OS === 'web') hoverVal.value = withTiming(0, { duration: 250, easing: Easing.inOut(Easing.ease) });
+  };
+
+  return (
+    <Reanimated.View
+      style={[{
+        borderRadius: 20,
+        shadowColor: "#FF6B00",
+        shadowOffset: { width: 0, height: 4 },
+        elevation: 8,
+      }, animatedStyle]}
+    >
+      <TouchableOpacity
+        //@ts-ignore
+        onPointerEnter={onHoverIn}
+        onPointerLeave={onHoverOut}
+        onPress={() => router.push("/(auth)/signIn")}
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          paddingHorizontal: 16,
+          paddingVertical: 10,
+          borderRadius: 20,
+          borderWidth: 1,
+          borderColor: "rgba(255, 107, 0, 0.3)",
+          gap: 8,
+        }}
+        activeOpacity={0.8}
+      >
+        <LogIn size={16} color="#FF6B00" />
+        <Text style={{ color: "#FF8C40", fontWeight: "800", fontSize: 13, letterSpacing: 0.5 }}>
+          Sign In
+        </Text>
+      </TouchableOpacity>
+    </Reanimated.View>
+  );
+};
+
+const SignInButtonMain = () => {
+  const hoverVal = useSharedValue(0);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [
+      { scale: interpolate(hoverVal.value, [0, 1], [1, 1.05]) },
+      { translateY: interpolate(hoverVal.value, [0, 1], [0, -4]) }
+    ],
+    shadowOpacity: interpolate(hoverVal.value, [0, 1], [0.4, 0.7]),
+    shadowRadius: interpolate(hoverVal.value, [0, 1], [24, 32]),
+  }));
+
+  const onHoverIn = () => {
+    if (Platform.OS === 'web') hoverVal.value = withTiming(1, { duration: 200, easing: Easing.out(Easing.ease) });
+  };
+  const onHoverOut = () => {
+    if (Platform.OS === 'web') hoverVal.value = withTiming(0, { duration: 250, easing: Easing.inOut(Easing.ease) });
+  };
+
+  return (
+    <Reanimated.View
+      style={[{
+        borderRadius: 100,
+        shadowColor: '#FF6B00',
+        shadowOffset: { width: 0, height: 8 },
+      }, animatedStyle]}
+    >
+      <TouchableOpacity
+        //@ts-ignore
+        onPointerEnter={onHoverIn}
+        onPointerLeave={onHoverOut}
+        style={{
+          backgroundColor: '#FF6B00',
+          paddingHorizontal: 48,
+          paddingVertical: 20,
+          borderRadius: 100,
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: 12,
+        }}
+        onPress={() => router.push("/(auth)/signIn")}
+        activeOpacity={0.8}
+      >
+        <Text style={{ color: 'white', fontWeight: '800', fontSize: 16, letterSpacing: 0.5 }}>Sign In to Account</Text>
+        <MoveRight size={18} color="white" />
+      </TouchableOpacity>
+    </Reanimated.View>
+  );
+};
+
+
 export default function Index() {
   const { session, loading, isInitializing, profile, isPlatformAdmin } = useAuth();
   const formRef = useRef<View>(null);
@@ -799,6 +904,7 @@ export default function Index() {
   // Section refs for smooth scrolling
   const featuresRef = useRef<View>(null);
   const pricingRef = useRef<View>(null);
+  const getInTouchRef = useRef<View>(null);
   // Y-offset of the plan-cards block (so we can scroll to it on mobile tier tap)
   const [pricingCardsY, setPricingCardsY] = useState<number | null>(null);
 
@@ -981,9 +1087,9 @@ export default function Index() {
     }
   }, [isNavReady, isInitializing, session, profile, isPlatformAdmin, navigating]);
 
-  // No local AppLoading here — trust _layout.tsx's global overlay
-  if (isInitializing || navigating) {
-    return <View style={{ flex: 1, backgroundColor: "#0F0B2E" }} />;
+  // Show AppLoading immediately when session exists (prevents seeing landing page during redirect)
+  if (isInitializing || navigating || (session && !isNavReady)) {
+    return <AppLoading />;
   }
 
   // Orb translations
@@ -994,8 +1100,8 @@ export default function Index() {
   const orb3Y = orb3.interpolate({ inputRange: [0, 1], outputRange: [0, -20] });
 
   const handleSignup = async () => {
-    if (!form.name || !form.email) {
-      alert("Please fill in your name and email.");
+    if (!form.name.trim() || !form.email.trim()) {
+      Alert.alert("Missing Info", "Please fill in your name and email.");
       return;
     }
 
@@ -1016,7 +1122,7 @@ export default function Index() {
       }
     } catch (error: any) {
       console.error("Booking error:", error);
-      alert(error.message || "Something went wrong. Please try again.");
+      Alert.alert("Error", error.message || "Something went wrong. Please try again.");
     } finally {
       setSubmitting(false);
     }
@@ -1052,6 +1158,23 @@ export default function Index() {
       {/* ═══════════════ FIXED DISCOUNT BANNER ═══════════════ */}
       <DiscountBanner />
 
+      {/* ═══════════════ FLOATING TOP-RIGHT SIGN IN ═══════════════ */}
+      <Animated.View
+        pointerEvents={showNav ? "none" : "auto"}
+        style={{
+          position: "absolute",
+          top: Platform.OS === "web" ? 10 : 50,
+          right: 24,
+          zIndex: 99,
+          opacity: navOpacity.interpolate({
+            inputRange: [0, 1],
+            outputRange: [1, 0],
+          }),
+        }}
+      >
+        <SignInButtonFloating />
+      </Animated.View>
+
       {/* ═══════════════ FLOATING STICKY NAV ═══════════════ */}
       <Animated.View
         pointerEvents={showNav ? "auto" : "none"}
@@ -1085,6 +1208,7 @@ export default function Index() {
           {[
             { label: "Features", onPress: () => scrollToSection("features") },
             { label: "Pricing", onPress: () => scrollToSection("pricing") },
+            { label: "Contact", onPress: () => scrollToSection("getInTouch") },
             {
               label: "Sign In",
               onPress: () => router.push("/(auth)/signIn"),
@@ -1731,22 +1855,37 @@ export default function Index() {
                     icon: <Library size={28} color="#A78BFA" />,
                     name: 'Digital Library',
                     tagline: 'Add-On Module',
-                    price: 'From $19/mo',
+                    price: '$30/mo',
                     accent: '#8B5CF6',
-                    desc: 'Give your institution a fully searchable digital library — books, PDFs, videos and more. Included in Pro & above.',
+                    desc: 'Give your institution a fully searchable digital library — books, PDFs, videos and more.',
                     features: [
                       'Unlimited uploads & categories',
                       'Student & teacher access controls',
                       'Search, filter & bookmarking',
                       'Mobile-friendly reader',
                     ],
-                    includedIn: 'Included in Basic Pro, Enterprise & Custom plans',
+                    includedIn: 'Included in Pro, Premium & Custom plans',
+                  },
+                  {
+                    icon: <CreditCard size={28} color="#FBBF24" />,
+                    name: 'Bursary Module',
+                    tagline: 'Add-On Module',
+                    price: '$30/mo',
+                    accent: '#D97706',
+                    desc: 'Manage student accounts and financial logs on a centralised dashboard.',
+                    features: [
+                      'Student fee tracking',
+                      'Financial log dashboard',
+                      'Bursary award management',
+                      'Payment history & reports',
+                    ],
+                    includedIn: 'Included in Premium & Custom plans',
                   },
                   {
                     icon: <BadgeCheck size={28} color="#34D399" />,
-                    name: 'Messaging',
+                    name: 'Messaging + Virtual Diary',
                     tagline: 'Add-On Module',
-                    price: 'From $14/mo',
+                    price: '$10/mo',
                     accent: '#10B981',
                     desc: 'Real-time in-app messaging between teachers, students and parents. Keep communication within the platform.',
                     features: [
@@ -1755,7 +1894,7 @@ export default function Index() {
                       'File & image sharing',
                       'Read receipts & notifications',
                     ],
-                    includedIn: 'Included in Basic Pro, Enterprise & Custom plans',
+                    includedIn: 'Included in Pro, Premium & Custom plans',
                   },
                 ].map((addon) => (
                   <View
@@ -1872,34 +2011,108 @@ export default function Index() {
           </View>
 
 
-          {/* ═══════════════════════ FOOTER ═══════════════════════ */}
-          <View
-            style={{
-              alignItems: "center",
-              paddingHorizontal: 32,
-              paddingBottom: 24,
-              paddingTop: 32,
-            }}
-          >
-            <Text
-              style={{
-                color: "rgba(255,255,255,0.35)",
-                fontSize: 14,
-                textAlign: "center",
-              }}
-            >
-              Already have an account?
-            </Text>
-            <TouchableOpacity
-              style={{ marginTop: 8 }}
-              onPress={() => router.push("/(auth)/signIn")}
-            >
-              <Text
-                style={{ color: "#FF8C40", fontWeight: "700", fontSize: 15 }}
-              >
-                Sign In
+          {/* ═══════════════════════ ACCESS PORTAL / SIGN IN ═══════════════ */}
+          <View style={{ paddingHorizontal: 24, paddingVertical: 40, alignItems: 'center' }}>
+            <View style={{
+              backgroundColor: 'rgba(19, 16, 58, 0.4)',
+              borderRadius: 32,
+              padding: 48,
+              borderWidth: 1,
+              borderColor: 'rgba(255, 255, 255, 0.08)',
+              alignItems: 'center',
+              position: 'relative',
+              overflow: 'hidden',
+              width: '100%',
+              maxWidth: 1000,
+            }}>
+              {/* Blur background effect */}
+              {Platform.OS === 'web' && (
+                <div style={{ position: 'absolute', inset: 0, backdropFilter: 'blur(20px)', zIndex: -1 }} />
+              )}
+
+              {/* Decorative background glowing orbs */}
+              <View style={{ position: 'absolute', top: -100, right: -100, width: 300, height: 300, borderRadius: 150, backgroundColor: 'rgba(255, 107, 0, 0.08)', filter: Platform.OS === 'web' ? 'blur(60px)' : undefined }} />
+              <View style={{ position: 'absolute', bottom: -100, left: -100, width: 300, height: 300, borderRadius: 150, backgroundColor: 'rgba(139, 92, 246, 0.08)', filter: Platform.OS === 'web' ? 'blur(60px)' : undefined }} />
+
+              <View style={{
+                width: 64, height: 64, borderRadius: 24,
+                backgroundColor: 'rgba(255, 107, 0, 0.1)',
+                alignItems: 'center', justifyContent: 'center',
+                marginBottom: 24,
+                borderWidth: 1, borderColor: 'rgba(255, 107, 0, 0.2)'
+              }}>
+                <LogIn size={28} color="#FF6B00" />
+              </View>
+
+              <Text style={{ color: 'white', fontSize: 36, fontWeight: '900', marginBottom: 16, textAlign: 'center', letterSpacing: -1 }}>Access you portal</Text>
+              <Text style={{ color: 'rgba(255,255,255,0.5)', fontSize: 18, marginBottom: 40, textAlign: 'center', maxWidth: 500, lineHeight: 28 }}>
+                Connect with your institution, track your progress, and unlock your personalized learning dashboard.
               </Text>
-            </TouchableOpacity>
+
+              <SignInButtonMain />
+            </View>
+          </View>
+
+          {/* ═══════════════════════ GET IN TOUCH FOOTER ═══════════════════════ */}
+          <View
+            ref={getInTouchRef}
+            onLayout={(e) => handleLayout("getInTouch", e.nativeEvent.layout.y)}
+            style={{ paddingHorizontal: 24, paddingBottom: 60, paddingTop: 60, borderTopWidth: 1, borderColor: 'rgba(255,255,255,0.05)', marginTop: 40, width: '100%', alignItems: 'center' }}
+          >
+            <View style={{ marginBottom: 48, alignItems: 'center' }}>
+              <View style={{
+                width: 48, height: 48, borderRadius: 16, backgroundColor: 'rgba(139, 92, 246, 0.1)',
+                alignItems: 'center', justifyContent: 'center', marginBottom: 16,
+                borderWidth: 1, borderColor: 'rgba(139, 92, 246, 0.2)'
+              }}>
+                <Mail size={24} color="#8B5CF6" />
+              </View>
+              <Text style={{ color: 'white', fontSize: 36, fontWeight: '900', marginBottom: 12, textAlign: 'center', letterSpacing: -1 }}>Get In Touch</Text>
+              <Text style={{ color: 'rgba(255,255,255,0.5)', fontSize: 16, textAlign: 'center', maxWidth: 500, lineHeight: 24 }}>
+                Ready to transform your institution or need help with your current setup? We are here for you.
+              </Text>
+            </View>
+
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 20, justifyContent: 'center', maxWidth: 1000, alignSelf: 'center' }}>
+              {[
+                { title: 'Email Us', value: 'Support@cloudoraltd.live', icon: <Mail size={22} color="#8B5CF6" /> },
+                { title: 'Call Us', value: '+254 759 585 197', icon: <Phone size={22} color="#8B5CF6" /> },
+                { title: 'Instagram', value: '@cloudora.solutions', icon: <Instagram size={22} color="#8B5CF6" /> },
+                { title: 'LinkedIn', value: 'Cloudora Solutions', icon: <Linkedin size={22} color="#8B5CF6" /> },
+              ].map((item, idx) => (
+                <View key={idx} style={{
+                  width: Platform.OS === 'web' && SCREEN_WIDTH > 768 ? '48%' : '100%',
+                  backgroundColor: 'rgba(255,255,255,0.03)',
+                  borderRadius: 24,
+                  padding: 24,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 20,
+                  borderWidth: 1,
+                  borderColor: 'rgba(255,255,255,0.08)',
+                }}>
+                  <View style={{
+                    width: 56, height: 56, borderRadius: 20,
+                    backgroundColor: 'rgba(139, 92, 246, 0.1)',
+                    borderWidth: 1,
+                    borderColor: 'rgba(139, 92, 246, 0.2)',
+                    alignItems: 'center', justifyContent: 'center'
+                  }}>
+                    {item.icon}
+                  </View>
+                  <View>
+                    <Text style={{ color: 'rgba(255,255,255,0.5)', fontSize: 13, marginBottom: 4, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.5 }}>{item.title}</Text>
+                    <Text style={{ color: 'white', fontSize: 16, fontWeight: '800' }}>{item.value}</Text>
+                  </View>
+                </View>
+              ))}
+            </View>
+
+            <View style={{ marginTop: 80, borderTopWidth: 1, borderColor: 'rgba(255,255,255,0.05)', paddingTop: 32, width: '100%', maxWidth: 1000, flexDirection: 'row', justifyContent: 'center' }}>
+              <Text style={{ color: 'rgba(255,255,255,0.4)', textAlign: 'center', fontSize: 14, fontWeight: '500' }}>
+                © {new Date().getFullYear()} Cloudora Solutions. All rights reserved.
+              </Text>
+            </View>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -2192,81 +2405,127 @@ export default function Index() {
       </Modal>
 
       {/* Registration Modal */}
-      < Modal
+      <Modal
         animationType="slide"
         transparent={true}
         visible={modalVisible}
-        onRequestClose={() => setModalVisible(false)
-        }
+        onRequestClose={() => setModalVisible(false)}
       >
-        <View style={{ flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(0,0,0,0.6)" }}>
-          <View style={{ backgroundColor: "#13103A", borderTopLeftRadius: 32, borderTopRightRadius: 32, padding: 24, minHeight: 450 }}>
-            <View style={{ width: 40, height: 4, backgroundColor: "rgba(255,255,255,0.2)", borderRadius: 2, alignSelf: "center", marginBottom: 24 }} />
-            {/* Close button */}
-            <TouchableOpacity
-              style={{ position: "absolute", top: 24, right: 24, zIndex: 10 }}
-              onPress={() => setModalVisible(false)}
-            >
-              <Text style={{ color: "rgba(255,255,255,0.6)", fontSize: 24, fontWeight: "bold" }}>×</Text>
-            </TouchableOpacity>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
+          <View style={{ flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(0,0,0,0.75)" }}>
+            <View style={{
+              backgroundColor: "#13103A",
+              borderTopLeftRadius: 36,
+              borderTopRightRadius: 36,
+              padding: 32,
+              paddingTop: 24,
+              minHeight: 520,
+              borderWidth: 1,
+              borderColor: 'rgba(255, 107, 0, 0.15)',
+              borderBottomWidth: 0,
+            }}>
+              <View style={{ width: 48, height: 5, backgroundColor: "rgba(255,255,255,0.15)", borderRadius: 3, alignSelf: "center", marginBottom: 32 }} />
 
-            {submitted ? (
-              <View style={{ alignItems: "center", paddingVertical: 40 }}>
-                <View style={{ width: 80, height: 80, borderRadius: 40, backgroundColor: "rgba(52, 211, 153, 0.1)", justifyContent: "center", alignItems: "center", marginBottom: 20 }}>
-                  <Check size={40} color="#10B981" />
-                </View>
-                <Text style={{ color: "white", fontSize: 24, fontWeight: "900", textAlign: "center", marginBottom: 12 }}>Request Received!</Text>
-                <Text style={{ color: "rgba(255,255,255,0.6)", textAlign: "center", marginBottom: 32 }}>Our team will reach out to you within 24 hours to set up your {selectedPlan} account.</Text>
-                <TouchableOpacity style={{ backgroundColor: "#FF6B00", paddingHorizontal: 32, paddingVertical: 16, borderRadius: 16 }} onPress={() => setModalVisible(false)}>
-                  <Text style={{ color: "white", fontWeight: "700" }}>Close</Text>
-                </TouchableOpacity>
-              </View>
-            ) : (
-              <>
-                <Text style={{ color: "white", fontSize: 22, fontWeight: "900", marginBottom: 8 }}>Register for {selectedPlan}</Text>
-                <Text style={{ color: "rgba(255,255,255,0.5)", marginBottom: 24 }}>Enter your details and our team will contact you shortly.</Text>
+              <TouchableOpacity
+                style={{ position: "absolute", top: 24, right: 28, zIndex: 10, width: 32, height: 32, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: 16 }}
+                onPress={() => setModalVisible(false)}
+              >
+                <Text style={{ color: "rgba(255,255,255,0.7)", fontSize: 20, fontWeight: "600", lineHeight: 22 }}>×</Text>
+              </TouchableOpacity>
 
-                <View style={{ gap: 16, marginBottom: 32 }}>
-                  <TextInput
-                    style={{ backgroundColor: "rgba(255,255,255,0.05)", borderRadius: 16, padding: 18, color: "white", borderWidth: 1, borderColor: "rgba(255,255,255,0.1)" }}
-                    placeholder="Institution Name"
-                    placeholderTextColor="rgba(255,255,255,0.3)"
-                    value={form.name}
-                    onChangeText={(t) => setForm(prev => ({ ...prev, name: t }))}
-                  />
-                  <TextInput
-                    style={{ backgroundColor: "rgba(255,255,255,0.05)", borderRadius: 16, padding: 18, color: "white", borderWidth: 1, borderColor: "rgba(255,255,255,0.1)" }}
-                    placeholder="Contact Email"
-                    placeholderTextColor="rgba(255,255,255,0.3)"
-                    keyboardType="email-address"
-                    value={form.email}
-                    onChangeText={(t) => setForm(prev => ({ ...prev, email: t }))}
-                  />
-                  <TextInput
-                    style={{ backgroundColor: "rgba(255,255,255,0.05)", borderRadius: 16, padding: 18, color: "white", borderWidth: 1, borderColor: "rgba(255,255,255,0.1)", minHeight: 80 }}
-                    placeholder="Additional Message (Optional)"
-                    placeholderTextColor="rgba(255,255,255,0.3)"
-                    multiline
-                    value={form.message}
-                    onChangeText={(t) => setForm(prev => ({ ...prev, message: t }))}
-                  />
-                </View>
-
-                <TouchableOpacity
-                  style={{ backgroundColor: "#FF6B00", paddingVertical: 18, borderRadius: 16, alignItems: "center", flexDirection: 'row', justifyContent: 'center' }}
-                  onPress={handleSignup}
-                  disabled={submitting}
-                >
-                  {submitting ? <ActivityIndicator color="white" style={{ marginRight: 10 }} /> : null}
-                  <Text style={{ color: "white", fontWeight: "800", fontSize: 16 }}>
-                    {submitting ? "Sending Request..." : "Request Setup"}
+              {submitted ? (
+                <View style={{ alignItems: "center", paddingVertical: 60, flex: 1, justifyContent: 'center' }}>
+                  <View style={{ width: 90, height: 90, borderRadius: 45, backgroundColor: "rgba(16, 185, 129, 0.15)", justifyContent: "center", alignItems: "center", marginBottom: 24, shadowColor: '#10B981', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.4, shadowRadius: 16 }}>
+                    <Check size={44} color="#10B981" strokeWidth={3} />
+                  </View>
+                  <Text style={{ color: "white", fontSize: 28, fontWeight: "900", textAlign: "center", marginBottom: 12, letterSpacing: -0.5 }}>Request Received!</Text>
+                  <Text style={{ color: "rgba(255,255,255,0.6)", textAlign: "center", marginBottom: 40, fontSize: 16, lineHeight: 24, paddingHorizontal: 20 }}>
+                    Thank you! Our team will reach out to you within 24 hours to set up your {selectedPlan} account.
                   </Text>
-                </TouchableOpacity>
-              </>
-            )}
+                  <TouchableOpacity
+                    style={{ backgroundColor: "#10B981", paddingHorizontal: 48, paddingVertical: 18, borderRadius: 20, shadowColor: '#10B981', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.3, shadowRadius: 16 }}
+                    onPress={() => setModalVisible(false)}
+                  >
+                    <Text style={{ color: "white", fontWeight: "800", fontSize: 16 }}>Return to Home</Text>
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 20 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 8 }}>
+                    <View style={{ width: 44, height: 44, borderRadius: 16, backgroundColor: 'rgba(255, 107, 0, 0.15)', alignItems: 'center', justifyContent: 'center' }}>
+                      <Building size={22} color="#FF6B00" />
+                    </View>
+                    <View>
+                      <Text style={{ color: "white", fontSize: 24, fontWeight: "900", letterSpacing: -0.5 }}>Request {selectedPlan}</Text>
+                      <Text style={{ color: "#FF6B00", fontWeight: "600", fontSize: 13, textTransform: 'uppercase', letterSpacing: 1 }}>Setup & Onboarding</Text>
+                    </View>
+                  </View>
+
+                  <Text style={{ color: "rgba(255,255,255,0.5)", marginBottom: 32, fontSize: 15, lineHeight: 22, marginTop: 8 }}>Fill out the details below, and our implementation team will contact you to start the process.</Text>
+
+                  <View style={{ gap: 20, marginBottom: 40 }}>
+                    <View>
+                      <Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: 13, fontWeight: '700', marginBottom: 8, marginLeft: 4 }}>Institution Name</Text>
+                      <TextInput
+                        style={{ backgroundColor: "rgba(255,255,255,0.04)", borderRadius: 16, padding: 18, color: "white", borderWidth: 1.5, borderColor: "rgba(255,255,255,0.08)", fontSize: 15 }}
+                        placeholder="E.g. Greenfield Academy"
+                        placeholderTextColor="rgba(255,255,255,0.25)"
+                        value={form.name}
+                        onChangeText={(t) => setForm(prev => ({ ...prev, name: t }))}
+                      />
+                    </View>
+                    <View>
+                      <Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: 13, fontWeight: '700', marginBottom: 8, marginLeft: 4 }}>Contact Email</Text>
+                      <TextInput
+                        style={{ backgroundColor: "rgba(255,255,255,0.04)", borderRadius: 16, padding: 18, color: "white", borderWidth: 1.5, borderColor: "rgba(255,255,255,0.08)", fontSize: 15 }}
+                        placeholder="admin@school.com"
+                        placeholderTextColor="rgba(255,255,255,0.25)"
+                        keyboardType="email-address"
+                        value={form.email}
+                        onChangeText={(t) => setForm(prev => ({ ...prev, email: t }))}
+                      />
+                    </View>
+                    <View>
+                      <Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: 13, fontWeight: '700', marginBottom: 8, marginLeft: 4 }}>Additional Requirements (Optional)</Text>
+                      <TextInput
+                        style={{ backgroundColor: "rgba(255,255,255,0.04)", borderRadius: 16, padding: 18, color: "white", borderWidth: 1.5, borderColor: "rgba(255,255,255,0.08)", minHeight: 100, fontSize: 15, textAlignVertical: 'top' }}
+                        placeholder="Tell us about your specific goals, student count, or any integrations needed..."
+                        placeholderTextColor="rgba(255,255,255,0.25)"
+                        multiline
+                        value={form.message}
+                        onChangeText={(t) => setForm(prev => ({ ...prev, message: t }))}
+                      />
+                    </View>
+                  </View>
+
+                  <TouchableOpacity
+                    style={{
+                      backgroundColor: "#FF6B00",
+                      paddingVertical: 20,
+                      borderRadius: 18,
+                      alignItems: "center",
+                      flexDirection: 'row',
+                      justifyContent: 'center',
+                      shadowColor: '#FF6B00',
+                      shadowOffset: { width: 0, height: 8 },
+                      shadowOpacity: 0.35,
+                      shadowRadius: 16,
+                    }}
+                    onPress={handleSignup}
+                    disabled={submitting}
+                  >
+                    {submitting ? <ActivityIndicator color="white" style={{ marginRight: 12 }} /> : null}
+                    <Text style={{ color: "white", fontWeight: "900", fontSize: 16 }}>
+                      {submitting ? "Sending Request..." : "Request Setup Now"}
+                    </Text>
+                    {!submitting && <MoveRight size={18} color="white" style={{ marginLeft: 8 }} />}
+                  </TouchableOpacity>
+                </ScrollView>
+              )}
+            </View>
           </View>
-        </View>
-      </Modal >
-    </SafeAreaView >
+        </KeyboardAvoidingView>
+      </Modal>
+    </SafeAreaView>
   );
 }

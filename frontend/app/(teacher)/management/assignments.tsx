@@ -335,7 +335,7 @@ export default function AssignmentsPage() {
         : assignments.filter(a => a.status === filter);
 
     return (
-        <View className="flex-1 bg-gray-50 dark:bg-black">
+        <View className="flex-1 bg-gray-50 dark:bg-navy">
             <UnifiedHeader
                 title="Management"
                 subtitle="Assignments"

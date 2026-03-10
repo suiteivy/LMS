@@ -152,7 +152,7 @@ export default function AnnouncementsPage() {
     };
 
     return (
-        <View className="flex-1 bg-gray-50 dark:bg-black">
+        <View className="flex-1 bg-gray-50 dark:bg-navy">
             <UnifiedHeader
                 title="Management"
                 subtitle="Live Broadcast"

@@ -25,4 +25,11 @@ router.post("/notifications", masterAdminController.notifyTarget);
 // Master Platform Admin profile editor
 router.put('/profile', masterAdminController.updatePlatformProfile);
 
+// Enroll new Master Admin
+router.post('/enroll-master-admin', masterAdminController.enrollMasterAdmin);
+
+// View and update support requests
+router.get('/support-requests', masterAdminController.getSupportRequests);
+router.put('/support-requests/:id', masterAdminController.updateSupportRequest);
+
 module.exports = router;

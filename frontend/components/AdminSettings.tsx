@@ -1,4 +1,4 @@
-import { ProfileEdit } from "@/components/ProfileEdit";
+﻿import { ProfileEdit } from "@/components/ProfileEdit";
 import { useTheme } from "@/contexts/ThemeContext";
 import { Bell, ChevronRight, Globe, LucideIcon, Shield, User } from "lucide-react-native";
 import React, { ReactNode, useState } from "react";
@@ -39,7 +39,7 @@ export default function AdminSettings() {
     }
 
     return (
-        <ScrollView className="flex-1 bg-white dark:bg-black">
+        <ScrollView className="flex-1 bg-white dark:bg-navy">
             <View className="p-4 md:p-8 max-w-2xl mx-auto w-full">
 
                 <Text className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest ml-1 mb-2">Account</Text>

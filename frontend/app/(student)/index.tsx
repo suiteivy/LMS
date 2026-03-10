@@ -1,6 +1,7 @@
 ﻿import { UnifiedHeader } from "@/components/common/UnifiedHeader";
 import { SubscriptionBanner } from "@/components/shared/SubscriptionComponents";
 import { useAuth } from "@/contexts/AuthContext";
+import { useSubscriptionTier } from "@/hooks/useSubscriptionTier";
 import { useNotifications } from "@/contexts/NotificationContext";
 import { supabase } from "@/libs/supabase";
 import { useRouter } from "expo-router";
@@ -29,6 +30,7 @@ const QuickAction = ({ icon: Icon, label, color, onPress }: QuickActionProps) =>
 
 export default function Index() {
   const { profile, displayId, loading: authLoading, studentId, isDemo } = useAuth();
+  const { hasDiary } = useSubscriptionTier();
   const { unreadCount } = useNotifications();
   const [showNotification, setShowNotification] = useState(false);
   const router = useRouter();
@@ -165,14 +167,14 @@ export default function Index() {
 
   if (authLoading) {
     return (
-      <View className="flex-1 justify-center items-center bg-gray-50 dark:bg-black">
+      <View className="flex-1 justify-center items-center bg-gray-50 dark:bg-navy">
         <ActivityIndicator size="large" color="#FF6900" />
       </View>
     );
   }
 
   return (
-    <View className="flex-1 bg-white dark:bg-black">
+    <View className="flex-1 bg-white dark:bg-navy">
       <UnifiedHeader
         title="Intelligence"
         subtitle="Dashboard"
@@ -189,7 +191,7 @@ export default function Index() {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={["#FF6900"]} tintColor="#FF6900" />
         }
       >
-        <View className="p-4 md:p-8 bg-gray-50 dark:bg-black">
+        <View className="p-4 md:p-8 bg-gray-50 dark:bg-navy">
           {/* Welcome Header */}
           <View className="mb-8 px-2">
             <Text className="text-gray-400 dark:text-gray-500 font-bold text-[10px] uppercase tracking-[3px] mb-2">Academic Portal</Text>
@@ -304,6 +306,14 @@ export default function Index() {
               color="#FF6900"
               onPress={() => router.push("/(student)/finance" as any)}
             />
+            {hasDiary && (
+              <QuickAction
+                icon={BookOpen}
+                label="Class Diary"
+                color="#f59e0b"
+                onPress={() => router.push("/(student)/diary" as any)}
+              />
+            )}
           </View>
         </View>
       </ScrollView>

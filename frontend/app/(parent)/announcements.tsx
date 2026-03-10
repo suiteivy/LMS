@@ -1,4 +1,4 @@
-import { UnifiedHeader } from "@/components/common/UnifiedHeader";
+﻿import { UnifiedHeader } from "@/components/common/UnifiedHeader";
 import { NotificationAPI } from "@/services/NotificationService";
 import { router } from "expo-router";
 import { AlertTriangle, Bell, Calendar, ChevronRight, Info, MessageSquare } from "lucide-react-native";
@@ -46,13 +46,13 @@ export default function StudentAnnouncementsPage() {
 
   if (loading && !refreshing) {
     return (
-      <View className="flex-1 justify-center items-center bg-gray-50 dark:bg-black">
+      <View className="flex-1 justify-center items-center bg-gray-50 dark:bg-navy">
         <ActivityIndicator size="large" color="#FF6900" />
       </View>
     );
   }
   return (
-    <View className="flex-1 bg-gray-50 dark:bg-black">
+    <View className="flex-1 bg-gray-50 dark:bg-navy">
       <UnifiedHeader
         title="Intelligence"
         subtitle="Archives"
@@ -78,7 +78,7 @@ export default function StudentAnnouncementsPage() {
           </View>
 
           {announcements.length === 0 ? (
-            <View className="bg-white dark:bg-[#1a1a1a] p-12 rounded-[40px] items-center border border-gray-100 dark:border-gray-800 border-dashed mt-4">
+            <View className="bg-white dark:bg-navy-surface p-12 rounded-[40px] items-center border border-gray-100 dark:border-gray-800 border-dashed mt-4">
               <Bell size={48} color="#E5E7EB" style={{ opacity: 0.3 }} />
               <Text className="text-gray-400 dark:text-gray-500 font-bold text-center mt-6">No announcements recorded</Text>
             </View>
@@ -89,7 +89,7 @@ export default function StudentAnnouncementsPage() {
                 <TouchableOpacity
                   key={item.id}
                   activeOpacity={0.8}
-                  className="bg-white dark:bg-[#1a1a1a] p-8 rounded-[48px] mb-6 border border-gray-50 dark:border-gray-800 shadow-sm"
+                  className="bg-white dark:bg-navy-surface p-8 rounded-[48px] mb-6 border border-gray-50 dark:border-gray-800 shadow-sm"
                 >
                   {/* Tag + Date Row */}
                   <View className="flex-row items-center justify-between mb-6">

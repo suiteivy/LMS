@@ -155,7 +155,7 @@ const TeacherPayoutSection: React.FC<TeacherPayoutSectionProps> = ({
   const renderPayoutItem = ({ item }: { item: TeacherPayout }) => (
     <TouchableOpacity
       onPress={() => handlePayoutAction(item)}
-      className="bg-white dark:bg-[#1a1a1a] rounded-lg p-4 mb-3 shadow-sm border border-gray-100 dark:border-gray-800"
+      className="bg-white dark:bg-navy-surface rounded-lg p-4 mb-3 shadow-sm border border-gray-100 dark:border-gray-800"
       style={{
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
@@ -233,7 +233,7 @@ const TeacherPayoutSection: React.FC<TeacherPayoutSectionProps> = ({
   const totalPaid = calculateTotalPaid();
 
   return (
-    <View className="flex-1 bg-gray-50 dark:bg-black">
+    <View className="flex-1 bg-gray-50 dark:bg-navy">
       <Text className="text-2xl font-bold text-gray-800 dark:text-white mb-2 ml-4 mt-2">Teachers Payouts</Text>
       <View className="p-4">
         {/* Summary Cards */}
@@ -338,7 +338,7 @@ const TeacherPayoutSection: React.FC<TeacherPayoutSectionProps> = ({
 
           {selectedPayout && (
             <ScrollView className="flex-1 p-4">
-              <View className="bg-white dark:bg-[#1a1a1a] rounded-lg border border-gray-200 dark:border-gray-800 p-4 mb-4">
+              <View className="bg-white dark:bg-navy-surface rounded-lg border border-gray-200 dark:border-gray-800 p-4 mb-4">
                 <Text className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
                   {selectedPayout.teacher_name}
                 </Text>

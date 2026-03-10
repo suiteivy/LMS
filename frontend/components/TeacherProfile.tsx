@@ -1,4 +1,4 @@
-import { useAuth } from "@/contexts/AuthContext";
+﻿import { useAuth } from "@/contexts/AuthContext";
 import { useTheme } from "@/contexts/ThemeContext";
 import { authService, supabase } from "@/libs/supabase";
 import { Database } from "@/types/database";
@@ -152,14 +152,14 @@ export default function TeacherProfile() {
 
     if (!profile) {
         return (
-            <View className="flex-1 justify-center items-center bg-gray-50 dark:bg-black">
+            <View className="flex-1 justify-center items-center bg-gray-50 dark:bg-navy">
                 <ActivityIndicator size="large" color="#FF6B00" />
             </View>
         );
     }
 
     return (
-        <View className="flex-1 bg-gray-50 dark:bg-black">
+        <View className="flex-1 bg-gray-50 dark:bg-navy">
             <ScrollView
                 className="flex-1"
                 showsVerticalScrollIndicator={false}
@@ -269,7 +269,7 @@ const InfoRow = ({ label, value, icon: Icon, color, isDark }: any) => (
 const InfoInput = ({ label, value, onChange, icon: Icon, isDark }: any) => (
     <View className="mb-6">
         <Text className="text-gray-400 dark:text-gray-500 text-[8px] font-bold uppercase tracking-widest mb-2 ml-1">{label}</Text>
-        <View className="flex-row items-center bg-white dark:bg-black border border-gray-200 dark:border-gray-800 rounded-2xl px-4 py-3 shadow-sm">
+        <View className="flex-row items-center bg-white dark:bg-navy border border-gray-200 dark:border-gray-800 rounded-2xl px-4 py-3 shadow-sm">
             <Icon size={16} color={isDark ? "#4B5563" : "#9CA3AF"} />
             <TextInput
                 className="flex-1 ml-3 text-gray-900 dark:text-white font-bold text-xs"

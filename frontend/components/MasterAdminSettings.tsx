@@ -21,6 +21,11 @@ export default function MasterAdminSettings() {
     const [newPassword, setNewPassword] = useState("");
     const [loading, setLoading] = useState(false);
 
+    // Enrollment State
+    const [enrollModalVisible, setEnrollModalVisible] = useState(false);
+    const [enrollData, setEnrollData] = useState({ full_name: "", email: "", password: "" });
+    const [enrollLoading, setEnrollLoading] = useState(false);
+
     const tokens = {
         bg: isDark ? "#0F0B2E" : "#f8fafc",
         surface: isDark ? "#13103A" : "#ffffff",
@@ -77,6 +82,47 @@ export default function MasterAdminSettings() {
         }
     };
 
+    const handleEnrollMasterAdmin = async () => {
+        if (!enrollData.full_name || !enrollData.email || !enrollData.password) {
+            Toast.show({ type: 'error', text1: 'Validation Error', text2: 'Please fill in all fields.' });
+            return;
+        }
+
+        if (enrollData.password.length < 6) {
+            Toast.show({ type: 'error', text1: 'Validation Error', text2: 'Password must be at least 6 characters.' });
+            return;
+        }
+
+        setEnrollLoading(true);
+        try {
+            const { data: { session } } = await supabase.auth.getSession();
+            if (!session) return;
+
+            const res = await fetch(`${getBackendUrl()}/api/master-admin/enroll-master-admin`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${session.access_token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(enrollData)
+            });
+
+            const data = await res.json();
+            if (res.ok) {
+                Toast.show({ type: 'success', text1: 'Success', text2: 'Master Admin enrolled successfully.' });
+                setEnrollModalVisible(false);
+                setEnrollData({ full_name: "", email: "", password: "" });
+            } else {
+                Toast.show({ type: 'error', text1: 'Error', text2: data.error || 'Failed to enroll master admin' });
+            }
+        } catch (err) {
+            console.error(err);
+            Toast.show({ type: 'error', text1: 'Error', text2: 'Failed to enroll master admin' });
+        } finally {
+            setEnrollLoading(false);
+        }
+    };
+
     const SettingRow = ({ icon: Icon, title, onPress, isLast }: SettingRowProps) => (
         <TouchableOpacity
             onPress={onPress}
@@ -108,6 +154,11 @@ export default function MasterAdminSettings() {
                 <View style={{ backgroundColor: tokens.surface, borderRadius: 16, borderWidth: 1, borderColor: tokens.border, marginBottom: 24, overflow: 'hidden' }}>
                     <SettingRow icon={Lock} title="Change Password" onPress={() => setPasswordModalVisible(true)} />
                     <SettingRow icon={ShieldAlert} title="Two-Factor Authentication (Coming Soon)" isLast />
+                </View>
+
+                <Text style={{ fontSize: 12, fontWeight: 'bold', color: tokens.textSecondary, textTransform: 'uppercase', letterSpacing: 1, marginLeft: 4, marginBottom: 8 }}>Administration</Text>
+                <View style={{ backgroundColor: tokens.surface, borderRadius: 16, borderWidth: 1, borderColor: tokens.border, marginBottom: 24, overflow: 'hidden' }}>
+                    <SettingRow icon={ShieldAlert} title="Enroll New Master Admin" onPress={() => setEnrollModalVisible(true)} isLast />
                 </View>
 
             </View>
@@ -148,6 +199,58 @@ export default function MasterAdminSettings() {
                             style={{ backgroundColor: tokens.primary, padding: 16, borderRadius: 14, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 8 }}
                         >
                             {loading ? <ActivityIndicator color="#fff" /> : <Text style={{ color: '#fff', fontSize: 16, fontWeight: '700' }}>Save Password</Text>}
+                        </TouchableOpacity>
+                    </View>
+                </View>
+            </Modal>
+
+            {/* Enroll Master Admin Modal */}
+            <Modal visible={enrollModalVisible} transparent animationType="slide">
+                <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}>
+                    <View style={{ backgroundColor: tokens.surface, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: Platform.OS === 'ios' ? 40 : 24 }}>
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+                            <Text style={{ fontSize: 20, fontWeight: '800', color: tokens.textPrimary }}>Enroll Master Admin</Text>
+                            <TouchableOpacity onPress={() => setEnrollModalVisible(false)}>
+                                <MaterialCommunityIcons name="close" size={24} color={tokens.textSecondary} />
+                            </TouchableOpacity>
+                        </View>
+
+                        <Text style={{ color: tokens.textPrimary, fontWeight: '600', marginBottom: 8 }}>Full Name</Text>
+                        <TextInput
+                            style={{ backgroundColor: tokens.inputBg, color: tokens.textPrimary, borderRadius: 12, padding: 14, marginBottom: 16, borderWidth: 1, borderColor: tokens.inputBorder }}
+                            placeholder="e.g. John Doe"
+                            placeholderTextColor={tokens.textSecondary}
+                            value={enrollData.full_name}
+                            onChangeText={(text) => setEnrollData({ ...enrollData, full_name: text })}
+                        />
+
+                        <Text style={{ color: tokens.textPrimary, fontWeight: '600', marginBottom: 8 }}>Email Address</Text>
+                        <TextInput
+                            style={{ backgroundColor: tokens.inputBg, color: tokens.textPrimary, borderRadius: 12, padding: 14, marginBottom: 16, borderWidth: 1, borderColor: tokens.inputBorder }}
+                            placeholder="admin@cloudora.com"
+                            placeholderTextColor={tokens.textSecondary}
+                            keyboardType="email-address"
+                            autoCapitalize="none"
+                            value={enrollData.email}
+                            onChangeText={(text) => setEnrollData({ ...enrollData, email: text })}
+                        />
+
+                        <Text style={{ color: tokens.textPrimary, fontWeight: '600', marginBottom: 8 }}>Initial Password</Text>
+                        <TextInput
+                            style={{ backgroundColor: tokens.inputBg, color: tokens.textPrimary, borderRadius: 12, padding: 14, marginBottom: 24, borderWidth: 1, borderColor: tokens.inputBorder }}
+                            secureTextEntry
+                            placeholder="••••••••"
+                            placeholderTextColor={tokens.textSecondary}
+                            value={enrollData.password}
+                            onChangeText={(text) => setEnrollData({ ...enrollData, password: text })}
+                        />
+
+                        <TouchableOpacity
+                            onPress={handleEnrollMasterAdmin}
+                            disabled={enrollLoading}
+                            style={{ backgroundColor: tokens.primary, padding: 16, borderRadius: 14, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 8 }}
+                        >
+                            {enrollLoading ? <ActivityIndicator color="#fff" /> : <Text style={{ color: '#fff', fontSize: 16, fontWeight: '700' }}>Enroll Admin</Text>}
                         </TouchableOpacity>
                     </View>
                 </View>

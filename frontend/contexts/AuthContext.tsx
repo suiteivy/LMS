@@ -36,6 +36,13 @@ interface AuthContextType {
   startDemo: (role: string) => Promise<{ data: any; error: any }>
   isDemo: boolean
   isTrial: boolean
+  addonMessaging: boolean
+  addonLibrary: boolean
+  addonFinance: boolean
+  addonAnalytics: boolean
+  addonBursary: boolean
+  addonDiary: boolean
+  customStudentLimit: number | null
 }
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -70,6 +77,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [trialEndDate, setTrialEndDate] = useState<string | null>(null)
   const [isMain, setIsMain] = useState(false)
   const [isPlatformAdmin, setIsPlatformAdmin] = useState(false)
+  const [addonFlags, setAddonFlags] = useState({
+    messaging: false,
+    library: false,
+    finance: false,
+    analytics: false,
+    bursary: false,
+    diary: false
+  })
+  const [customStudentLimit, setCustomStudentLimit] = useState<number | null>(null)
   const [isInitializing, setIsInitializing] = useState(true)
   const [isProfileLoading, setIsProfileLoading] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -102,6 +118,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setTrialEndDate(null);
     setIsMain(false);
     setIsPlatformAdmin(false);
+    setAddonFlags({ messaging: false, library: false, finance: false, analytics: false, bursary: false, diary: false });
+    setCustomStudentLimit(null);
     setLoading(false);
     setIsInitializing(false);
     clearTimer();
@@ -183,7 +201,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setIsProfileLoading(true);
       const { data, error } = await supabase
         .from('users')
-        .select('*, students(id), teachers(id), admins(id), parents(id), institutions(subscription_status, subscription_plan, trial_end_date), platform_admins(id)')
+        .select('*, students(id), teachers(id), admins(id), parents(id), institutions(subscription_status, subscription_plan, trial_end_date, addon_messaging, addon_library, addon_diary, addon_finance, addon_analytics, addon_bursary, custom_student_limit), platform_admins(id)')
         .eq('id', userId)
         .single()
 
@@ -203,6 +221,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         newSubscriptionStatus = userData.institutions.subscription_status || null;
         newSubscriptionPlan = userData.institutions.subscription_plan || null;
         newTrialEndDate = userData.institutions.trial_end_date || null;
+        setAddonFlags({
+          messaging: !!userData.institutions.addon_messaging,
+          library: !!userData.institutions.addon_library,
+          finance: !!userData.institutions.addon_finance,
+          analytics: !!userData.institutions.addon_analytics,
+          bursary: !!userData.institutions.addon_bursary,
+          diary: !!userData.institutions.addon_diary,
+        });
+        setCustomStudentLimit(userData.institutions.custom_student_limit || null);
       }
 
       const getRoleId = (roleData: any) => {
@@ -359,7 +386,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     isTrial: subscriptionStatus === 'trial' || subscriptionPlan === 'trial',
     isMain,
     isPlatformAdmin,
-  }), [session, user, profile, roleInfo, subscriptionStatus, subscriptionPlan, trialEndDate, loading, isInitializing, isProfileLoading, isDemo, isMain, isPlatformAdmin]);
+    addonMessaging: addonFlags.messaging,
+    addonLibrary: addonFlags.library,
+    addonFinance: addonFlags.finance,
+    addonAnalytics: addonFlags.analytics,
+    addonBursary: addonFlags.bursary,
+    addonDiary: addonFlags.diary,
+    customStudentLimit,
+  }), [session, user, profile, roleInfo, subscriptionStatus, subscriptionPlan, trialEndDate, loading, isInitializing, isProfileLoading, isDemo, isMain, isPlatformAdmin, addonFlags, customStudentLimit]);
 
   return (
     <AuthContext.Provider value={value}>

@@ -1,4 +1,4 @@
-import { UnifiedHeader } from "@/components/common/UnifiedHeader";
+﻿import { UnifiedHeader } from "@/components/common/UnifiedHeader";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/libs/supabase";
 import { BursaryService } from "@/services/BursaryService";
@@ -105,14 +105,14 @@ export default function StudentFinancePage() {
 
     if (loading) {
         return (
-            <View className="flex-1 justify-center items-center bg-gray-50 dark:bg-black">
+            <View className="flex-1 justify-center items-center bg-gray-50 dark:bg-navy">
                 <ActivityIndicator size="large" color="#FF6900" />
             </View>
         );
     }
 
     return (
-        <View className="flex-1 bg-gray-50 dark:bg-black">
+        <View className="flex-1 bg-gray-50 dark:bg-navy">
             <UnifiedHeader
                 title="Intelligence"
                 subtitle="Finances"
@@ -138,7 +138,7 @@ export default function StudentFinancePage() {
             </View>
 
             <ScrollView className="flex-1" showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 150 }}>
-                <View className="p-4 md:p-8 bg-gray-50 dark:bg-black">
+                <View className="p-4 md:p-8 bg-gray-50 dark:bg-navy">
 
                     {activeTab === 'fees' ? (
                         <>

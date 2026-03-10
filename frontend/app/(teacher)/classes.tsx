@@ -764,7 +764,7 @@ export default function TeacherClasses() {
     };
 
     return (
-        <View className="flex-1 bg-white dark:bg-black">
+        <View className="flex-1 bg-white dark:bg-navy">
             <UnifiedHeader title="Management" subtitle="My Classes" role="Teacher" />
 
             <ScrollView

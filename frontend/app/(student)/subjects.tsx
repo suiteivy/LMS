@@ -129,7 +129,7 @@ export default function Subjects() {
 
   if (loading) {
     return (
-      <View className="flex-1 justify-center items-center bg-gray-50 dark:bg-black">
+      <View className="flex-1 justify-center items-center bg-gray-50 dark:bg-navy">
         <ActivityIndicator size="large" color="#FF6900" />
         <Text className="mt-4 text-gray-400 dark:text-gray-500 font-bold text-xs uppercase tracking-widest">Entering Classroom...</Text>
       </View>
@@ -137,7 +137,7 @@ export default function Subjects() {
   }
 
   return (
-    <View className="flex-1 bg-gray-50 dark:bg-black">
+    <View className="flex-1 bg-gray-50 dark:bg-navy">
       <UnifiedHeader
         title="Intelligence"
         subtitle={currentView === "details" ? "Details" : "Subject Portal"}

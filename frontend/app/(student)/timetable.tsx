@@ -1,4 +1,4 @@
-import { UnifiedHeader } from "@/components/common/UnifiedHeader";
+﻿import { UnifiedHeader } from "@/components/common/UnifiedHeader";
 import { StudentService } from "@/services/StudentService";
 import { addDays, format, isSameDay, startOfWeek } from "date-fns";
 import { router } from "expo-router";
@@ -40,7 +40,7 @@ export default function StudentTimetablePage() {
     ).sort((a, b) => a.start_time.localeCompare(b.start_time));
 
     return (
-        <View className="flex-1 bg-gray-50 dark:bg-black">
+        <View className="flex-1 bg-gray-50 dark:bg-navy">
             <UnifiedHeader
                 title="Intelligence"
                 subtitle="Portal"
@@ -61,7 +61,7 @@ export default function StudentTimetablePage() {
                                 key={index}
                                 activeOpacity={0.7}
                                 onPress={() => setSelectedDay(date)}
-                                className={`mr-4 p-5 rounded-[28px] items-center min-w-[75px] shadow-sm border ${isSelected ? 'bg-gray-900 border-gray-900' : 'bg-white dark:bg-[#1a1a1a] border-gray-100 dark:border-gray-800'}`}
+                                className={`mr-4 p-5 rounded-[28px] items-center min-w-[75px] shadow-sm border ${isSelected ? 'bg-gray-900 border-gray-900' : 'bg-white dark:bg-navy-surface border-gray-100 dark:border-gray-800'}`}
                             >
                                 <Text className={`text-[10px] font-bold uppercase tracking-widest mb-1.5 ${isSelected ? 'text-white/40' : 'text-gray-400'}`}>
                                     {format(date, 'EEE')}
@@ -100,7 +100,7 @@ export default function StudentTimetablePage() {
                             </View>
 
                             {/* Class Card */}
-                            <View className="flex-1 bg-white dark:bg-[#1a1a1a] p-6 rounded-[32px] border border-gray-50 dark:border-gray-800 shadow-sm">
+                            <View className="flex-1 bg-white dark:bg-navy-surface p-6 rounded-[32px] border border-gray-50 dark:border-gray-800 shadow-sm">
                                 <View className="flex-row justify-between items-start mb-4">
                                     <View className="bg-blue-50 px-3 py-1 rounded-xl">
                                         <Text className="text-blue-600 text-[8px] font-bold uppercase tracking-widest">
@@ -134,7 +134,7 @@ export default function StudentTimetablePage() {
                         </View>
                     ))
                 ) : (
-                    <View className="bg-white dark:bg-[#1a1a1a] p-20 rounded-[48px] items-center border border-gray-100 dark:border-gray-700 border-dashed mt-4">
+                    <View className="bg-white dark:bg-navy-surface p-20 rounded-[48px] items-center border border-gray-100 dark:border-gray-700 border-dashed mt-4">
                         <Calendar size={48} color="#E5E7EB" />
                         <Text className="text-gray-400 font-bold text-center mt-6">No Academic Sessions</Text>
                     </View>

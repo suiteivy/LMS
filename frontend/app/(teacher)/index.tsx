@@ -1,4 +1,4 @@
-import { UnifiedHeader } from "@/components/common/UnifiedHeader";
+﻿import { UnifiedHeader } from "@/components/common/UnifiedHeader";
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from "@/contexts/ThemeContext";
 import { TeacherAPI } from "@/services/TeacherService";
@@ -107,7 +107,7 @@ export default function TeacherHome() {
     };
 
     return (
-        <View className="flex-1 bg-white dark:bg-black">
+        <View className="flex-1 bg-white dark:bg-navy">
             <StatusBar barStyle={isDark ? "light-content" : "dark-content"} />
             <SubscriptionBanner />
             <UnifiedHeader

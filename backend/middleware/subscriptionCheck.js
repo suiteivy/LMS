@@ -48,9 +48,9 @@ function planRank(plan) {
 const PLAN_LIMITS = {
   'free': { maxStudents: 30, maxAdmins: 1 },   // small school / kindergarten
   'trial': { maxStudents: 50, maxAdmins: 1 },
-  'basic_basic': { maxStudents: 200, maxAdmins: 1 },
-  'basic_pro': { maxStudents: 500, maxAdmins: 3 },
-  'basic_premium': { maxStudents: Infinity, maxAdmins: Infinity },
+  'basic_basic': { maxStudents: 900, maxAdmins: 1 },   // PDF: 200-900 students
+  'basic_pro': { maxStudents: 1000, maxAdmins: 3 },    // PDF: up to 1000 students
+  'basic_premium': { maxStudents: 5000, maxAdmins: Infinity }, // PDF: 5000+ students
   'enterprise_basic': { maxStudents: 2000, maxAdmins: 5 },
   'enterprise_pro': { maxStudents: 5000, maxAdmins: 15 },
   'enterprise_premium': { maxStudents: Infinity, maxAdmins: Infinity },
@@ -61,10 +61,16 @@ const PLAN_LIMITS = {
 
 // ─── Feature gate definitions ─────────────────────────────────────────────────
 // minPlan is the LOWEST canonical plan ID that unlocks the feature.
-// enterprise_basic ranks 4, basic_pro ranks 2 — finance is available to both.
+// Add-ons (library, bursary, messaging) are allocated by the master admin
+// independently of the subscription plan and can override the plan gate.
 const RESTRICTED_FEATURES = [
-  // ── Finance & Bursary — basic_pro+ (free & trial cannot access AT ALL) ──
+  // ── Finance (internal accounting) — basic_pro+ ──
   { path: '/api/finance', minRank: planRank('basic_pro') },
+  { path: '/api/funds', minRank: planRank('basic_pro') },
+
+  // ── Bursary Module — add-on allocated by master admin ──
+  // Accessible from basic_basic IF addon_bursary is enabled by master admin.
+  // Without the add-on, requires basic_pro minimum.
   { path: '/api/bursary', minRank: planRank('basic_pro') },
 
   // ── Analytics — basic_basic+ (free cannot access) ──
@@ -80,16 +86,16 @@ const RESTRICTED_FEATURES = [
   // ── Bulk ops — basic_premium+ ──
   { path: '/api/bulk', minRank: planRank('basic_premium') },
 
-  // ── Library ──
-  // free plan: read allowed ONLY with addon_library add-on
-  // basic_basic: read always allowed, write needs addon or basic_pro
-  // enterprise_basic+: always included
+  // ── Library — add-on module, also included from basic_basic plan ──
+  // free plan: allowed ONLY with addon_library add-on
+  // basic_basic+: always included
   { path: '/api/library', minRank: planRank('basic_basic') },
 
-  // ── Messaging ──
-  // free plan: allowed ONLY with addon_messaging add-on
+  // ── Messaging + Virtual Diary — add-on module, also included from basic_pro ──
+  // Lower plans: allowed ONLY with addon_messaging add-on
   // basic_pro+: always included
   { path: '/api/messaging', minRank: planRank('basic_pro') },
+  { path: '/api/diary', minRank: planRank('basic_pro') },
 ];
 
 // Write-specific restrictions (POST/PUT/DELETE) on library for basic_basic
@@ -114,7 +120,7 @@ const checkSubscription = async (req, res, next) => {
     if (!institutionData || (now - institutionData.timestamp > CACHE_TTL)) {
       const { data: institution, error: instError } = await supabase
         .from('institutions')
-        .select('subscription_status, subscription_plan, trial_end_date, addon_library, addon_messaging, addon_finance, addon_analytics')
+        .select('subscription_status, subscription_plan, trial_end_date, addon_library, addon_messaging, addon_diary, addon_bursary, addon_finance, addon_analytics, custom_student_limit')
         .eq('id', institutionId)
         .single();
 
@@ -134,7 +140,12 @@ const checkSubscription = async (req, res, next) => {
           .catch(err => console.error('Auto-expire update failed:', err));
       }
 
-      const limits = PLAN_LIMITS[canonicalPlan] || PLAN_LIMITS['trial'];
+      let limits = PLAN_LIMITS[canonicalPlan] || PLAN_LIMITS['trial'];
+      
+      // Override limits for custom plan if specified
+      if (canonicalPlan === 'custom' && institution.custom_student_limit !== null && institution.custom_student_limit !== undefined) {
+        limits = { ...limits, maxStudents: institution.custom_student_limit };
+      }
 
       // Check Student Counts
       if (limits.maxStudents !== Infinity && status === 'active') {
@@ -165,17 +176,19 @@ const checkSubscription = async (req, res, next) => {
       subscriptionCache.set(institutionId, institutionData);
     }
 
-    const { subscription_status, subscription_plan, addon_library, addon_messaging, addon_finance, addon_analytics } = institutionData.data;
+    const { subscription_status, subscription_plan, addon_library, addon_messaging, addon_diary, addon_bursary, addon_finance, addon_analytics } = institutionData.data;
     const fullPath = req.originalUrl || req.url || '';
     const currentRank = planRank(subscription_plan);
 
     // ── Feature gating ──────────────────────────────────────────────────────
     for (const feature of RESTRICTED_FEATURES) {
       if (fullPath.includes(feature.path)) {
-        // Special Add-on Checks
+        // Add-on overrides — each add-on is independently allocated by master admin
         if (feature.path === '/api/library' && addon_library) continue;
         if (feature.path === '/api/messaging' && addon_messaging) continue;
-        if ((feature.path === '/api/finance' || feature.path === '/api/bursary') && addon_finance) continue;
+        if (feature.path === '/api/diary' && addon_diary) continue;
+        if (feature.path === '/api/bursary' && addon_bursary) continue;        // Bursary is its own add-on
+        if ((feature.path === '/api/finance' || feature.path === '/api/funds') && addon_finance) continue;
         if (feature.path.startsWith('/api/analytics') && addon_analytics) continue;
 
         if (currentRank < feature.minRank) {

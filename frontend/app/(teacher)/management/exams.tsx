@@ -80,7 +80,7 @@ export default function ExamsPage() {
     };
 
     return (
-        <View className="flex-1 bg-gray-50 dark:bg-black">
+        <View className="flex-1 bg-gray-50 dark:bg-navy">
             <UnifiedHeader
                 title="Academic"
                 subtitle="Exams"

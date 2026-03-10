@@ -28,3 +28,5 @@ export class ParentService {
     }
 }
 
+export const ParentAPI = ParentService;
+

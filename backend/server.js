@@ -66,6 +66,8 @@ app.use("/api/resources", authMiddleware, checkSubscription, require("./routes/r
 app.use("/api/teacher", authMiddleware, checkSubscription, require("./routes/teacher.route.js"));
 app.use("/api/student", authMiddleware, checkSubscription, require("./routes/student.route"));
 app.use("/api/classes", authMiddleware, checkSubscription, require("./routes/class.route"));
+app.use("/api/diary", authMiddleware, checkSubscription, require("./routes/diary.route"));
+app.use("/api/addon-requests", authMiddleware, require("./routes/addon_request.routes"));
 
 // Explicitly define currency route as public before using auth wrapper on settings
 app.get("/api/settings/currency", settingsController.getCurrencyRates);

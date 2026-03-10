@@ -175,29 +175,64 @@ exports.enrollUser = async (req, res) => {
   try {
     const targetInstitutionId = institution_id || req.institution_id;
 
-    // 0. Enforce Admin Limits
-    if (role === 'admin' && targetInstitutionId) {
+    // 0. Enforce Limits
+    if (targetInstitutionId && (role === 'admin' || role === 'student')) {
       const { data: inst } = await supabase
         .from('institutions')
         .select('subscription_plan')
         .eq('id', targetInstitutionId)
         .single();
 
-      const plan = inst?.subscription_plan || 'trial';
-      const planLimits = { 'trial': 1, 'basic': 2, 'pro': 5, 'premium': Infinity };
-      const maxAdmins = planLimits[plan] || 1;
+      // Normalise legacy IDs to canonical plan IDs
+      const rawPlan = inst?.subscription_plan || 'trial';
+      const normPlan = (p) => ({
+        beta_free: 'free', basic: 'basic_basic', pro: 'basic_pro', premium: 'basic_premium'
+      }[p] || p || 'trial');
+      const canonicalPlan = normPlan(rawPlan);
 
-      if (maxAdmins !== Infinity) {
+      // Limits aligned with PLAN_LIMITS in subscriptionCheck.js
+      const LIMITS = {
+        free: { maxStudents: 30, maxAdmins: 1 },
+        trial: { maxStudents: 50, maxAdmins: 1 },
+        basic_basic: { maxStudents: 900, maxAdmins: 1 },
+        basic_pro: { maxStudents: 1000, maxAdmins: 3 },
+        basic_premium: { maxStudents: 5000, maxAdmins: Infinity },
+        enterprise_basic: { maxStudents: 2000, maxAdmins: 5 },
+        enterprise_pro: { maxStudents: 5000, maxAdmins: 15 },
+        enterprise_premium: { maxStudents: Infinity, maxAdmins: Infinity },
+        custom_basic: { maxStudents: Infinity, maxAdmins: Infinity },
+        custom_pro: { maxStudents: Infinity, maxAdmins: Infinity },
+        custom_premium: { maxStudents: Infinity, maxAdmins: Infinity },
+      };
+
+      const limits = LIMITS[canonicalPlan] ?? { maxStudents: 50, maxAdmins: 1 };
+
+      if (role === 'admin' && limits.maxAdmins !== Infinity) {
         const { count: adminCount } = await supabase
           .from('users')
           .select('*', { count: 'exact', head: true })
           .eq('institution_id', targetInstitutionId)
           .eq('role', 'admin');
 
-        if (adminCount >= maxAdmins) {
+        if (adminCount >= limits.maxAdmins) {
           return res.status(403).json({
-            error: `Administrative account limit reached for your current plan (${plan.toUpperCase()}). Please upgrade to add more administrators.`,
+            error: `Administrative account limit reached for your current plan (${canonicalPlan.toUpperCase()}). Please upgrade to add more administrators.`,
             code: 'ADMIN_LIMIT_REACHED'
+          });
+        }
+      }
+
+      if (role === 'student' && limits.maxStudents !== Infinity) {
+        const { count: studentCount } = await supabase
+          .from('users')
+          .select('*', { count: 'exact', head: true })
+          .eq('institution_id', targetInstitutionId)
+          .eq('role', 'student');
+
+        if (studentCount >= limits.maxStudents) {
+          return res.status(403).json({
+            error: `Student enrollment limit reached for your current plan (${canonicalPlan.toUpperCase()}). Please upgrade to enroll more students.`,
+            code: 'STUDENT_LIMIT_REACHED'
           });
         }
       }

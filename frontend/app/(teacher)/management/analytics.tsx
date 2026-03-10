@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from "react";
 import { View, Text, ScrollView, TouchableOpacity, StatusBar, ActivityIndicator } from 'react-native';
-import { ArrowLeft, TrendingUp, Users, BookOpen, Clock, Award, ChevronDown, Download } from 'lucide-react-native';
+import { ArrowLeft, TrendingUp, Users, BookOpen, Award, Download, Zap } from 'lucide-react-native';
 import { router } from "expo-router";
 import { supabase } from "@/libs/supabase";
 import { useAuth } from "@/contexts/AuthContext";
 import { TeacherAPI } from "@/services/TeacherService";
-import { SubscriptionBanner } from "@/components/shared/SubscriptionComponents";
+import { SubscriptionBanner, SubscriptionGate, AddonRequestButton } from "@/components/shared/SubscriptionComponents";
+import { UnifiedHeader } from "@/components/common/UnifiedHeader";
 
 interface SubjectAnalytics {
     id: string;
@@ -167,6 +168,7 @@ export default function AnalyticsPage() {
     const avgGradeOverall = subjectAnalytics.length > 0
         ? Math.round(subjectAnalytics.reduce((acc, c) => acc + (c.avgGrade || 0), 0) / subjectAnalytics.length)
         : 0;
+
     return (
         <>
             <StatusBar barStyle="dark-content" />
@@ -191,48 +193,64 @@ export default function AnalyticsPage() {
                             </TouchableOpacity>
                         </View>
 
-                        {/* Overview Stats */}
-                        <View className="flex-row gap-3 mb-6">
-                            <StatBox icon={Users} label="Total Students" value={totalStudents.toString()} color="#FF6B00" bgColor="#fff7ed" />
-                            <StatBox icon={TrendingUp} label="Avg Completion" value={`${avgCompletion}%`} color="#1a1a1a" bgColor="#f3f4f6" />
-                        </View>
-                        <View className="flex-row gap-3 mb-6">
-                            <StatBox icon={BookOpen} label="Subjects" value={subjectAnalytics.length.toString()} color="#FF6B00" bgColor="#fff7ed" />
-                            <StatBox icon={Award} label="Avg Grade" value={`${avgGradeOverall}%`} color="#1a1a1a" bgColor="#f3f4f6" />
-                        </View>
-
-                        {loading ? (
-                            <ActivityIndicator size="large" color="#FF6B00" className="mt-8" />
-                        ) : (
-                            <>
-                                <View className="bg-white p-6 rounded-2xl border border-gray-100 mb-6 items-center">
-                                    <TrendingUp size={32} color="#e5e7eb" />
-                                    <Text className="text-gray-400 text-sm mt-3 font-medium">Analytics metrics derived from live submissions</Text>
+                        <SubscriptionGate 
+                            feature="analytics"
+                            fallback={
+                                <View className="bg-orange-50 p-8 rounded-[40px] items-center border border-orange-100 border-dashed">
+                                    <Zap size={48} color="#FF6900" style={{ marginBottom: 20 }} />
+                                    <Text className="text-xl font-bold text-gray-900 text-center mb-2">Analytics Locked</Text>
+                                    <Text className="text-gray-500 text-center mb-8 leading-5">
+                                        Advanced analytics are not included in your current subscription plan.
+                                    </Text>
+                                    <AddonRequestButton onPress={() => { /* Handle request */ }} />
+                                </View>
+                            }
+                        >
+                            <View>
+                                {/* Overview Stats */}
+                                <View className="flex-row gap-3 mb-6">
+                                    <StatBox icon={Users} label="Total Students" value={totalStudents.toString()} color="#FF6B00" bgColor="#fff7ed" />
+                                    <StatBox icon={TrendingUp} label="Avg Completion" value={`${avgCompletion}%`} color="#1a1a1a" bgColor="#f3f4f6" />
+                                </View>
+                                <View className="flex-row gap-3 mb-6">
+                                    <StatBox icon={BookOpen} label="Subjects" value={subjectAnalytics.length.toString()} color="#FF6B00" bgColor="#fff7ed" />
+                                    <StatBox icon={Award} label="Avg Grade" value={`${avgGradeOverall}%`} color="#1a1a1a" bgColor="#f3f4f6" />
                                 </View>
 
-                                <Text className="text-lg font-bold text-gray-900 mb-3">Subject Breakdown</Text>
-                                {subjectAnalytics.map((Subject) => (
-                                    <SubjectAnalyticsCard key={Subject.id} Subject={Subject} />
-                                ))}
-
-                                {topPerformers.length > 0 && (
-                                    <View className="bg-teacherBlack p-4 rounded-2xl mt-4">
-                                        <Text className="text-white font-bold mb-3">🏆 Top Performers</Text>
-                                        <View className="flex-row justify-between">
-                                            {topPerformers.map((student, index) => (
-                                                <View key={index} className="items-center">
-                                                    <View className="w-12 h-12 rounded-full bg-white/20 items-center justify-center mb-1">
-                                                        <Text className="text-white font-bold">{student.initials}</Text>
-                                                    </View>
-                                                    <Text className="text-gray-300 text-xs">{student.name}</Text>
-                                                    <Text className="text-white font-bold text-xs">{student.score}%</Text>
-                                                </View>
-                                            ))}
+                                {loading ? (
+                                    <ActivityIndicator size="large" color="#FF6B00" className="mt-8" />
+                                ) : (
+                                    <>
+                                        <View className="bg-white p-6 rounded-2xl border border-gray-100 mb-6 items-center">
+                                            <TrendingUp size={32} color="#e5e7eb" />
+                                            <Text className="text-gray-400 text-sm mt-3 font-medium">Analytics metrics derived from live submissions</Text>
                                         </View>
-                                    </View>
+
+                                        <Text className="text-lg font-bold text-gray-900 mb-3">Subject Breakdown</Text>
+                                        {subjectAnalytics.map((Subject) => (
+                                            <SubjectAnalyticsCard key={Subject.id} Subject={Subject} />
+                                        ))}
+
+                                        {topPerformers.length > 0 && (
+                                            <View className="bg-teacherBlack p-4 rounded-2xl mt-4">
+                                                <Text className="text-white font-bold mb-3">🏆 Top Performers</Text>
+                                                <View className="flex-row justify-between">
+                                                    {topPerformers.map((student, index) => (
+                                                        <View key={index} className="items-center">
+                                                            <View className="w-12 h-12 rounded-full bg-white/20 items-center justify-center mb-1">
+                                                                <Text className="text-white font-bold">{student.initials}</Text>
+                                                            </View>
+                                                            <Text className="text-gray-300 text-xs">{student.name}</Text>
+                                                            <Text className="text-white font-bold text-xs">{student.score}%</Text>
+                                                        </View>
+                                                    ))}
+                                                </View>
+                                            </View>
+                                        )}
+                                    </>
                                 )}
-                            </>
-                        )}
+                            </View>
+                        </SubscriptionGate>
                     </View>
                 </ScrollView>
             </View>
