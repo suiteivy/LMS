@@ -1,4 +1,4 @@
-﻿import { AppLoading } from "@/components/AppLoading";
+import { AppLoading } from "@/components/AppLoading";
 import { toastConfig } from "@/components/CustomToast";
 import Notifications from "@/components/Notifications";
 import DemoBanner from "@/components/DemoBanner";
@@ -113,38 +113,36 @@ function GlobalNotifications() {
 
 // ─── AuthHandler ─────────────────────────────────────────────────────────────
 function AuthHandler() {
-  const { loading, isInitializing, resetSessionTimer, session, signOut } = useAuth();
+  const { loading, isInitializing, isNavReady, resetSessionTimer, session, profile, isPlatformAdmin, getRoleRedirect, signOut } = useAuth();
   const { isDark } = useTheme();
   const segments = useSegments();
   const router = useRouter();
-  const [isNavigationReady, setIsNavigationReady] = React.useState(false);
 
   React.useEffect(() => {
-    if (!isNavigationReady) {
-      const timer = setTimeout(() => setIsNavigationReady(true), 1);
-      return () => clearTimeout(timer);
-    }
-  }, [isNavigationReady]);
+    if (isInitializing || !isNavReady) return;
 
-  React.useEffect(() => {
-    if (isInitializing || !isNavigationReady) return;
-
-    const inAuthGroup = segments.some(s => s === "(auth)");
     const currentPath = `/${segments.join('/')}`;
+    const inAuthGroup = segments.some(s => s === "(auth)");
     const isRoot = currentPath === '/' || currentPath === '/index' || currentPath === '';
 
+    console.log(`[AuthHandler] State - Session: ${!!session}, Root: ${isRoot}, AuthGroup: ${inAuthGroup}, Path: ${currentPath}`);
+
     if (!session) {
-      // IF NO SESSION: If they are NOT in auth group and NOT at root, force login
       if (!inAuthGroup && !isRoot) {
+        console.log('[AuthHandler] No session, redirecting to signIn');
         router.replace("/(auth)/signIn");
       }
-    } else {
-      // IF SESSION EXISTS: If they are in the auth group, send to root for dispatching
-      if (inAuthGroup) {
-        router.replace("/");
+    } else if (profile) {
+      // If at root or in auth group, redirect to role-specific dashboard
+      if (isRoot || inAuthGroup) {
+        const redirectPath = getRoleRedirect(profile, isPlatformAdmin);
+        if (redirectPath && currentPath !== redirectPath) {
+          console.log(`[AuthHandler] Redirecting to ${redirectPath}`);
+          router.replace(redirectPath as any);
+        }
       }
     }
-  }, [session, isInitializing, isNavigationReady, segments]);
+  }, [session, profile, isInitializing, isNavReady, segments, isPlatformAdmin]);
 
   const handleInteraction = React.useCallback(() => {
     if (session) resetSessionTimer();

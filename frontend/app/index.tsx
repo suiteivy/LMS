@@ -880,7 +880,7 @@ const SignInButtonMain = () => {
 
 
 export default function Index() {
-  const { session, loading, isInitializing, profile, isPlatformAdmin } = useAuth();
+  const { session, loading, isInitializing, profile, isPlatformAdmin, isNavReady } = useAuth();
   const formRef = useRef<View>(null);
   const scrollRef = useRef<ScrollView>(null);
   const pathname = usePathname();
@@ -890,7 +890,6 @@ export default function Index() {
   const [form, setForm] = useState({ name: '', email: '', message: '' });
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
-  const [isNavReady, setIsNavReady] = useState(false);
   const [addonModalVisible, setAddonModalVisible] = useState(false);
   const [customModalVisible, setCustomModalVisible] = useState(false);
   const [selectedAddons, setSelectedAddons] = useState<string[]>([]);
@@ -1044,48 +1043,7 @@ export default function Index() {
     }
   };
 
-  useEffect(() => {
-    const timer = setTimeout(() => setIsNavReady(true), 1);
-    return () => clearTimeout(timer);
-  }, []);
 
-  // Detect session → immediate redirect
-  useEffect(() => {
-    // Reset navigating lock if session is lost (e.g. user logged out)
-    if (!session) {
-      setNavigating(false);
-    }
-
-    if (!isNavReady || isInitializing || navigating) return;
-
-    if (session && profile) {
-      setNavigating(true);
-
-      let route: string | null = null;
-      if (isPlatformAdmin) {
-        route = "/(master-admin)";
-      } else {
-        switch (profile.role) {
-          case "admin": route = "/(admin)"; break;
-          case "teacher": route = "/(teacher)"; break;
-          case "student": route = "/(student)"; break;
-          case "parent": route = "/(parent)"; break;
-          default:
-            console.error("Unrecognized role on landing page:", profile.role);
-            // Fallback to sign in if we can't determine where they belong
-            route = "/(auth)/signIn";
-            break;
-        }
-      }
-
-      if (route) {
-        router.replace(route as any);
-      } else {
-        // Absolute fallback to avoid hang
-        router.replace("/(auth)/signIn");
-      }
-    }
-  }, [isNavReady, isInitializing, session, profile, isPlatformAdmin, navigating]);
 
   // Show AppLoading immediately when session exists (prevents seeing landing page during redirect)
   if (isInitializing || navigating || (session && !isNavReady)) {

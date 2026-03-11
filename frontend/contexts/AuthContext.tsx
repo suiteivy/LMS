@@ -26,6 +26,7 @@ interface AuthContextType {
   loading: boolean
   setLoading: (loading: boolean) => void
   isInitializing: boolean
+  isNavReady: boolean
   isProfileLoading: boolean
   signIn: (email: string, password: string) => Promise<{ data: any; error: any }>
   signOut: () => Promise<{ error: any }>
@@ -43,6 +44,7 @@ interface AuthContextType {
   addonBursary: boolean
   addonDiary: boolean
   customStudentLimit: number | null
+  getRoleRedirect: (profile: UserProfile | null, isPlatformAdmin: boolean) => string | null
 }
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -87,6 +89,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   })
   const [customStudentLimit, setCustomStudentLimit] = useState<number | null>(null)
   const [isInitializing, setIsInitializing] = useState(true)
+  const [isNavReady, setIsNavReady] = useState(false)
   const [isProfileLoading, setIsProfileLoading] = useState(false)
   const [loading, setLoading] = useState(false)
   const [isDemo, setIsDemo] = useState(false)
@@ -106,7 +109,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   }
 
-  const handleLogout = async () => {
+  const handleLogout = async (silent: boolean = false) => {
     isManualLogout.current = true;
     setSession(null);
     setUser(null);
@@ -124,10 +127,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setIsInitializing(false);
     clearTimer();
 
-    if (isDemoRef.current) {
-      Toast.show({ type: 'info', text1: 'Session ended', text2: 'Demo session ended.', position: 'bottom' });
-    } else {
-      Toast.show({ type: 'success', text1: 'Logged Out', text2: 'You have been logged out successfully.', position: 'bottom' });
+    if (!silent) {
+      if (isDemoRef.current) {
+        Toast.show({ type: 'info', text1: 'Session ended', text2: 'Demo session ended.', position: 'bottom' });
+      } else {
+        Toast.show({ type: 'success', text1: 'Logged Out', text2: 'You have been logged out successfully.', position: 'bottom' });
+      }
     }
 
     Promise.all([
@@ -285,19 +290,36 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     return null
   }
 
+  const getRoleRedirect = (userProfile: UserProfile | null, platformAdmin: boolean): string | null => {
+    if (!userProfile) return null;
+    if (platformAdmin) return "/(master-admin)";
+
+    switch (userProfile.role) {
+      case "admin": return "/(admin)";
+      case "teacher": return "/(teacher)";
+      case "student": return "/(student)";
+      case "parent": return "/(parent)";
+      default: return "/(auth)/signIn";
+    }
+  };
+
   useEffect(() => {
     const initializeAuth = async () => {
       setIsInitializing(true);
+      console.log('[AuthContext] Initializing auth...');
       try {
         const { data: { session: initialSession } } = await supabase.auth.getSession();
+        console.log('[AuthContext] Supabase session found:', !!initialSession);
+        
         if (initialSession) {
           // Race protection: timeout for getUser
           const userPromise = supabase.auth.getUser();
-          const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('getUser timeout')), 3000));
+          const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('getUser timeout')), 8000));
 
           try {
             const { data: { user: validatedUser } } = await Promise.race([userPromise, timeoutPromise]) as any;
             if (validatedUser) {
+              console.log('[AuthContext] User validated:', validatedUser.email);
               setSession(initialSession);
               currentSessionRef.current = initialSession;
               setUser(validatedUser);
@@ -306,11 +328,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
               await loadUserProfile(validatedUser.id);
               startTimeoutTimer(isDemoUser);
             } else {
+              console.warn('[AuthContext] getUser returned no data during init');
               setIsInitializing(false);
               setLoading(false);
             }
           } catch (e) {
-            console.error('[AuthContext] Error or timeout in getUser:', e);
+            console.error('[AuthContext] Error or timeout in getUser during init:', e);
             setIsInitializing(false);
             setLoading(false);
           }
@@ -318,35 +341,41 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           setSession(null);
           currentSessionRef.current = null;
           setUser(null);
-          setIsInitializing(false);
-          setLoading(false);
         }
       } catch (error) {
-        console.error('Error in initializeAuth:', error)
+        console.error('[AuthContext] Error in initializeAuth:', error);
       } finally {
-        setIsInitializing(false)
-        setLoading(false)
+        console.log('[AuthContext] Initialization complete.');
+        setIsInitializing(false);
+        setLoading(false);
       }
     };
 
     const watchdog = setTimeout(() => {
       if (isInitializing || loading) {
-        console.warn('[AuthContext] Watchdog triggered: clearing stuck loading states');
+        console.warn('[AuthContext] Watchdog triggered (12s limit): clearing stuck loading states');
         setIsInitializing(false);
         setLoading(false);
       }
-    }, 3500);
+    }, 12000);
 
     initializeAuth();
+    
+    const navTimer = setTimeout(() => setIsNavReady(true), 1);
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log(`[AuthContext] Auth state changed: ${event}`);
+      
       setSession(session)
       setUser(session?.user ?? null)
+      
       if (event === 'SIGNED_IN' && session?.user) {
         currentSessionRef.current = session;
         loadUserProfile(session.user.id);
       } else if (event === 'SIGNED_OUT') {
-        handleLogout();
+        // If we are still initializing, the SIGNED_OUT event might be spurious or initial
+        // We handle it silently to avoid the "Logged Out" toast on startup if no session exists.
+        handleLogout(isInitializing || !isNavReady);
       }
     });
 
@@ -362,6 +391,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       appStateSubscription.remove()
       clearTimer()
       clearTimeout(watchdog)
+      clearTimeout(navTimer)
     }
   }, [])
 
@@ -373,7 +403,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     parentId: roleInfo.parentId,
     displayId: roleInfo.displayId,
     subscriptionStatus, subscriptionPlan, trialEndDate,
-    loading, isInitializing, isProfileLoading,
+    loading, isInitializing, isNavReady, isProfileLoading,
     signIn: handleSignIn,
     setLoading,
     signOut: handleLogout,
@@ -393,7 +423,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     addonBursary: addonFlags.bursary,
     addonDiary: addonFlags.diary,
     customStudentLimit,
-  }), [session, user, profile, roleInfo, subscriptionStatus, subscriptionPlan, trialEndDate, loading, isInitializing, isProfileLoading, isDemo, isMain, isPlatformAdmin, addonFlags, customStudentLimit]);
+    getRoleRedirect,
+  }), [session, user, profile, roleInfo, subscriptionStatus, subscriptionPlan, trialEndDate, loading, isInitializing, isNavReady, isProfileLoading, isDemo, isMain, isPlatformAdmin, addonFlags, customStudentLimit]);
 
   return (
     <AuthContext.Provider value={value}>
