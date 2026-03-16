@@ -92,6 +92,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [isNavReady, setIsNavReady] = useState(false)
   const [isProfileLoading, setIsProfileLoading] = useState(false)
   const [loading, setLoading] = useState(false)
+
+  // Keep refs in sync so closures (e.g. onAuthStateChange) always read live values
+  useEffect(() => { isInitializingRef.current = isInitializing; }, [isInitializing]);
+  useEffect(() => { isNavReadyRef.current = isNavReady; }, [isNavReady]);
   const [isDemo, setIsDemo] = useState(false)
 
   const timerRef = useRef<any>(null)
@@ -100,6 +104,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const isManualLogout = useRef(false);
   const currentSessionRef = useRef<Session | null>(null);
   const isDemoRef = useRef(false);
+  const isInitializingRef = useRef(true);
+  const isNavReadyRef = useRef(false);
   useEffect(() => { isDemoRef.current = isDemo; }, [isDemo]);
 
   const clearTimer = () => {
@@ -365,17 +371,42 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       console.log(`[AuthContext] Auth state changed: ${event}`);
-      
-      setSession(session)
-      setUser(session?.user ?? null)
-      
+
       if (event === 'SIGNED_IN' && session?.user) {
+        setSession(session);
+        setUser(session.user);
         currentSessionRef.current = session;
         loadUserProfile(session.user.id);
+      } else if (event === 'TOKEN_REFRESHED' && session?.user) {
+        setSession(session);
+        setUser(session.user);
+        currentSessionRef.current = session;
       } else if (event === 'SIGNED_OUT') {
-        // If we are still initializing, the SIGNED_OUT event might be spurious or initial
-        // We handle it silently to avoid the "Logged Out" toast on startup if no session exists.
-        handleLogout(isInitializing || !isNavReady);
+        // IMPORTANT: Do NOT call handleLogout() here — it calls authService.signOut(),
+        // which emits another SIGNED_OUT event, causing an infinite loop.
+        // The sign-out has already happened; just clear local state.
+        if (isManualLogout.current) return; // already handled by handleLogout
+        const silent = isInitializingRef.current || !isNavReadyRef.current;
+        setSession(null);
+        setUser(null);
+        setProfile(null);
+        setRoleInfo({ studentId: null, teacherId: null, adminId: null, parentId: null, displayId: null });
+        setIsDemo(false);
+        setSubscriptionStatus(null);
+        setSubscriptionPlan(null);
+        setTrialEndDate(null);
+        setIsMain(false);
+        setIsPlatformAdmin(false);
+        setAddonFlags({ messaging: false, library: false, finance: false, analytics: false, bursary: false, diary: false });
+        setCustomStudentLimit(null);
+        setLoading(false);
+        setIsInitializing(false);
+        clearTimer();
+        currentSessionRef.current = null;
+        lastLoadedUserId.current = null;
+        if (!silent) {
+          Toast.show({ type: 'success', text1: 'Logged Out', text2: 'You have been logged out successfully.', position: 'bottom' });
+        }
       }
     });
 
