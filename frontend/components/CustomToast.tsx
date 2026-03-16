@@ -1,7 +1,17 @@
 import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
-import { Text, View } from 'react-native';
-import { ToastConfig } from 'react-native-toast-message';
+import { Text, TouchableOpacity, View } from 'react-native';
+import Toast, { ToastConfig } from 'react-native-toast-message';
+
+const DismissButton = () => (
+    <TouchableOpacity
+        onPress={() => Toast.hide()}
+        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+        className="ml-2 p-1"
+    >
+        <Ionicons name="close" size={16} color="#9CA3AF" />
+    </TouchableOpacity>
+);
 
 // Define custom toast configuration
 export const toastConfig: ToastConfig = {
@@ -14,6 +24,7 @@ export const toastConfig: ToastConfig = {
                 <Text className="text-gray-900 font-bold text-base mb-0.5">{props.text1}</Text>
                 {props.text2 && <Text className="text-gray-500 text-xs font-medium">{props.text2}</Text>}
             </View>
+            <DismissButton />
         </View>
     ),
     error: (props) => (
@@ -25,6 +36,7 @@ export const toastConfig: ToastConfig = {
                 <Text className="text-gray-900 font-bold text-base mb-0.5">{props.text1}</Text>
                 {props.text2 && <Text className="text-gray-500 text-xs font-medium">{props.text2}</Text>}
             </View>
+            <DismissButton />
         </View>
     ),
     info: (props) => (
@@ -36,6 +48,7 @@ export const toastConfig: ToastConfig = {
                 <Text className="text-gray-900 font-bold text-base mb-0.5">{props.text1}</Text>
                 {props.text2 && <Text className="text-gray-500 text-xs font-medium">{props.text2}</Text>}
             </View>
+            <DismissButton />
         </View>
     ),
 };
