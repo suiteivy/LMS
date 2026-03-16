@@ -9,7 +9,7 @@ import {
     ActivityIndicator,
     Alert
 } from 'react-native';
-import { X, CheckCircle, Info, Library, MessageSquare, BadgeCent, BarChart3, HelpCircle } from 'lucide-react-native';
+import { X, CheckCircle, Info, Library, MessageSquare, BadgeCent, BarChart3, HelpCircle, Users, Zap } from 'lucide-react-native';
 import { api } from '@/services/api';
 import { showSuccess, showError } from '@/utils/toast';
 
@@ -22,6 +22,8 @@ interface AddonRequestModalProps {
 const ADDON_OPTIONS = [
     { key: 'library', label: '📖 Digital Library', icon: Library, color: '#FF6B00', desc: 'Manage books, PDFs and student borrowing.' },
     { key: 'messaging', label: '💬 Messaging + Diary', icon: MessageSquare, color: '#8B5CF6', desc: 'Direct chat, announcements and daily logs.' },
+    { key: 'attendance', label: '📋 Attendance Management', icon: Users, color: '#EC4899', desc: 'Advanced student and teacher tracking.' },
+    { key: 'feature_request', label: '✨ Feature Request', icon: Zap, color: '#F59E0B', desc: 'Describe a new feature or modification you need.' },
     { key: 'finance', label: '💰 Accounting Plus', icon: BadgeCent, color: '#10B981', desc: 'Advanced financial reports and fee tracking.' },
     { key: 'analytics', label: '📈 Performance Analytics', icon: BarChart3, color: '#3B82F6', desc: 'Student progress and visual data insights.' },
     { key: 'bursary', label: '🏦 Bursary Module', icon: HelpCircle, color: '#F59E0B', desc: 'Financial aid tracking and disbursements.' },

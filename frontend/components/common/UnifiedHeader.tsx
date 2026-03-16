@@ -1,4 +1,4 @@
-﻿import { useAuth } from "@/contexts/AuthContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { useNotifications } from "@/contexts/NotificationContext";
 import { useTheme } from "@/contexts/ThemeContext";
 import { Ionicons } from "@expo/vector-icons";
@@ -115,8 +115,23 @@ export const UnifiedHeader: React.FC<UnifiedHeaderProps> = ({
                 {subtitle || "Portal"}<Text style={{ color: '#FF6900' }}>.</Text>
               </Text>
             </View>
-            {showMainBadge && <MainAdminBadge />}
-            <SubscriptionStatusBadge />
+          </View>
+
+          {/* Center Badges (Absolute Centered) */}
+          <View style={{
+            position: 'absolute',
+            left: 0,
+            right: 0,
+            top: 0,
+            bottom: 0,
+            justifyContent: 'center',
+            alignItems: 'center',
+            pointerEvents: 'none',
+          }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, pointerEvents: 'auto' }}>
+              {showMainBadge && <MainAdminBadge />}
+              <SubscriptionStatusBadge />
+            </View>
           </View>
         </View>
 

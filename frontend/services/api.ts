@@ -125,10 +125,17 @@ api.interceptors.response.use(
           // AND it actually attempted to use a token (if no Authorization header was present
           //   it means it was a premature request, not an invalid session).
           if (!skipSignOut && error.config?.headers?.Authorization) {
-            console.warn("[API] 401 received with token. Triggering global signOut.");
-            supabase.auth.signOut().catch(e => console.warn("SignOut error:", e));
+            console.warn("[API] 401 received with token. Checking session before triggering global signOut.");
+            supabase.auth.getSession().then(({ data: { session } }) => {
+              if (session) {
+                console.warn("[API] Session still exists but 401 received. Triggering signOut.");
+                supabase.auth.signOut().catch(e => console.warn("SignOut error:", e));
+              } else {
+                console.log("[API] 401 received but session is already gone. Skipping signOut.");
+              }
+            });
           } else {
-            console.warn("[API] 401 received but skipped signOut due to skipErrorToast or missing token.");
+            console.log("[API] 401 received but skipped signOut due to skipErrorToast or missing token.");
           }
           return Promise.reject({ ...error, isAuthError: true });
         case 403:

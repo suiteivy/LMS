@@ -42,6 +42,7 @@ interface AuthContextType {
   addonFinance: boolean
   addonAnalytics: boolean
   addonBursary: boolean
+  addonAttendance: boolean
   addonDiary: boolean
   customStudentLimit: number | null
   getRoleRedirect: (profile: UserProfile | null, isPlatformAdmin: boolean) => string | null
@@ -85,6 +86,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     finance: false,
     analytics: false,
     bursary: false,
+    attendance: false,
     diary: false
   })
   const [customStudentLimit, setCustomStudentLimit] = useState<number | null>(null)
@@ -100,7 +102,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const isManualLogout = useRef(false);
   const currentSessionRef = useRef<Session | null>(null);
   const isDemoRef = useRef(false);
+  const profileRef = useRef<UserProfile | null>(null);
+  const userRef = useRef<User | null>(null);
+
   useEffect(() => { isDemoRef.current = isDemo; }, [isDemo]);
+  useEffect(() => { profileRef.current = profile; }, [profile]);
+  useEffect(() => { userRef.current = user; }, [user]);
 
   const clearTimer = () => {
     if (timerRef.current) {
@@ -110,38 +117,58 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   }
 
   const handleLogout = async (silent: boolean = false) => {
-    isManualLogout.current = true;
-    setSession(null);
-    setUser(null);
-    setProfile(null);
-    setRoleInfo({ studentId: null, teacherId: null, adminId: null, parentId: null, displayId: null });
-    setIsDemo(false);
-    setSubscriptionStatus(null);
-    setSubscriptionPlan(null);
-    setTrialEndDate(null);
-    setIsMain(false);
-    setIsPlatformAdmin(false);
-    setAddonFlags({ messaging: false, library: false, finance: false, analytics: false, bursary: false, diary: false });
-    setCustomStudentLimit(null);
-    setLoading(false);
-    setIsInitializing(false);
-    clearTimer();
-
-    if (!silent) {
-      if (isDemoRef.current) {
-        Toast.show({ type: 'info', text1: 'Session ended', text2: 'Demo session ended.', position: 'bottom' });
-      } else {
-        Toast.show({ type: 'success', text1: 'Logged Out', text2: 'You have been logged out successfully.', position: 'bottom' });
-      }
+    // Prevent recursion if already logging out or already logged out
+    if (isManualLogout.current) return { error: null };
+    
+    // If silent and no session/user exists, we don't need to do anything
+    // This prevents the "SIGNED_OUT" event from triggering a logout on app start
+    if (silent && !currentSessionRef.current && !user && !profile) {
+      setIsInitializing(false);
+      setLoading(false);
+      return { error: null };
     }
 
-    Promise.all([
-      authService.signOut(),
-      AsyncStorage.removeItem('demo_expiry').catch(() => { }),
-      AsyncStorage.removeItem('is_demo_mode').catch(() => { }),
-    ]).finally(() => {
-      setTimeout(() => { isManualLogout.current = false; }, 500);
-    });
+    console.log(`[AuthContext] handleLogout called (silent: ${silent})`);
+    isManualLogout.current = true;
+    
+    try {
+      setSession(null);
+      setUser(null);
+      setProfile(null);
+      currentSessionRef.current = null;
+      userRef.current = null;
+      profileRef.current = null;
+      setRoleInfo({ studentId: null, teacherId: null, adminId: null, parentId: null, displayId: null });
+      setIsDemo(false);
+      setSubscriptionStatus(null);
+      setSubscriptionPlan(null);
+      setTrialEndDate(null);
+      setIsMain(false);
+      setIsPlatformAdmin(false);
+      setAddonFlags({ messaging: false, library: false, finance: false, analytics: false, bursary: false, attendance: false, diary: false });
+      setCustomStudentLimit(null);
+      setLoading(false);
+      setIsInitializing(false);
+      clearTimer();
+
+      if (!silent) {
+        if (isDemoRef.current) {
+          Toast.show({ type: 'info', text1: 'Session ended', text2: 'Demo session ended.', position: 'bottom' });
+        } else {
+          Toast.show({ type: 'success', text1: 'Logged Out', text2: 'You have been logged out successfully.', position: 'bottom' });
+        }
+      }
+
+      await Promise.all([
+        authService.signOut().catch(e => console.warn('[AuthContext] authService.signOut error:', e)),
+        AsyncStorage.removeItem('demo_expiry').catch(() => { }),
+        AsyncStorage.removeItem('is_demo_mode').catch(() => { }),
+        AsyncStorage.removeItem('session_start_time').catch(() => { }),
+      ]);
+    } finally {
+      // Delay resetting the flag to allow events to settle
+      setTimeout(() => { isManualLogout.current = false; }, 1000);
+    }
 
     return { error: null };
   }
@@ -168,17 +195,42 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     return result;
   }
 
-  const resetSessionTimer = () => {
-    if (session) startTimeoutTimer()
+  const resetSessionTimer = async () => {
+    if (session) await startTimeoutTimer()
   }
 
-  const startTimeoutTimer = (isDemoSession?: boolean) => {
+  const startTimeoutTimer = async (isDemoSession?: boolean) => {
     clearTimer()
-    const isActuallyDemo = isDemoSession !== undefined ? isDemoSession : isDemo;
-    const durationMs = isActuallyDemo ? 15 * 60 * 1000 : 24 * 60 * 60 * 1000;
-    timerRef.current = setTimeout(async () => {
-      await handleLogout()
-    }, durationMs)
+    const isActuallyDemo = isDemoSession !== undefined ? isDemoSession : isDemoRef.current;
+    
+    // Duration: 15 mins for demo, 24 hours for regular users
+    const totalDurationMs = isActuallyDemo ? 15 * 60 * 1000 : 24 * 60 * 60 * 1000;
+    
+    // Check for persisted start time
+    let startTime = Date.now();
+    try {
+      const persistedStart = await AsyncStorage.getItem('session_start_time');
+      if (persistedStart) {
+        startTime = parseInt(persistedStart, 10);
+      } else {
+        await AsyncStorage.setItem('session_start_time', startTime.toString());
+      }
+    } catch (e) {
+      console.warn('[AuthContext] Error accessing session_start_time:', e);
+    }
+
+    const elapsed = Date.now() - startTime;
+    const remaining = totalDurationMs - elapsed;
+
+    if (remaining <= 0) {
+      console.log(`[AuthContext] Session expired (${isActuallyDemo ? 'demo' : 'regular'}). Elapsed: ${elapsed}ms`);
+      await handleLogout();
+    } else {
+      console.log(`[AuthContext] Timer set for ${isActuallyDemo ? 'demo' : 'regular'}. Remaining: ${Math.round(remaining / 60000)} mins`);
+      timerRef.current = setTimeout(async () => {
+        await handleLogout()
+      }, remaining)
+    }
   }
 
   const lastLoadedUserId = useRef<string | null>(null);
@@ -206,7 +258,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setIsProfileLoading(true);
       const { data, error } = await supabase
         .from('users')
-        .select('*, students(id), teachers(id), admins(id), parents(id), institutions(subscription_status, subscription_plan, trial_end_date, addon_messaging, addon_library, addon_diary, addon_finance, addon_analytics, addon_bursary, custom_student_limit), platform_admins(id)')
+        .select('*, students(id), teachers(id), admins(id), parents(id), institutions(subscription_status, subscription_plan, trial_end_date, addon_messaging, addon_library, addon_diary, addon_finance, addon_analytics, addon_bursary, addon_attendance, custom_student_limit), platform_admins(id)')
         .eq('id', userId)
         .single()
 
@@ -232,6 +284,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           finance: !!userData.institutions.addon_finance,
           analytics: !!userData.institutions.addon_analytics,
           bursary: !!userData.institutions.addon_bursary,
+          attendance: !!userData.institutions.addon_attendance,
           diary: !!userData.institutions.addon_diary,
         });
         setCustomStudentLimit(userData.institutions.custom_student_limit || null);
@@ -326,7 +379,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
               const isDemoUser = validatedUser.email?.startsWith('demo.') || false;
               setIsDemo(isDemoUser);
               await loadUserProfile(validatedUser.id);
-              startTimeoutTimer(isDemoUser);
+              await startTimeoutTimer(isDemoUser);
             } else {
               console.warn('[AuthContext] getUser returned no data during init');
               setIsInitializing(false);
@@ -366,22 +419,36 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       console.log(`[AuthContext] Auth state changed: ${event}`);
       
-      setSession(session)
-      setUser(session?.user ?? null)
-      
       if (event === 'SIGNED_IN' && session?.user) {
+        setSession(session);
         currentSessionRef.current = session;
+        setUser(session.user);
+        const isDemoUser = session.user.email?.startsWith('demo.') || false;
+        setIsDemo(isDemoUser);
         loadUserProfile(session.user.id);
+        await startTimeoutTimer(isDemoUser);
       } else if (event === 'SIGNED_OUT') {
-        // If we are still initializing, the SIGNED_OUT event might be spurious or initial
-        // We handle it silently to avoid the "Logged Out" toast on startup if no session exists.
-        handleLogout(isInitializing || !isNavReady);
+        // Only trigger logout if it's not a manual logout we already handled,
+        // and if we actually have a session or user to clear.
+        if (!isManualLogout.current && (currentSessionRef.current || userRef.current || profileRef.current)) {
+          console.log('[AuthContext] Spontaneous SIGNED_OUT event detected. Processing logout.');
+          handleLogout(isInitializing || !isNavReady);
+        } else {
+          console.log('[AuthContext] SIGNED_OUT event ignored (manual logout in progress or already logged out)');
+          // Ensure we still clear initial loading state
+          if (isInitializing) setIsInitializing(false);
+          if (loading) setLoading(false);
+        }
+      } else if (event === 'TOKEN_REFRESHED' && session) {
+        setSession(session);
+        currentSessionRef.current = session;
+        setUser(session.user);
       }
     });
 
     const appStateSubscription = AppState.addEventListener('change', async (nextAppState: AppStateStatus) => {
       if (appState.current.match(/inactive|background/) && nextAppState === 'active') {
-        resetSessionTimer();
+        await resetSessionTimer();
       }
       appState.current = nextAppState;
     });
@@ -421,6 +488,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     addonFinance: addonFlags.finance,
     addonAnalytics: addonFlags.analytics,
     addonBursary: addonFlags.bursary,
+    addonAttendance: addonFlags.attendance,
     addonDiary: addonFlags.diary,
     customStudentLimit,
     getRoleRedirect,

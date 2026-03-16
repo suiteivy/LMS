@@ -32,4 +32,10 @@ router.post('/enroll-master-admin', masterAdminController.enrollMasterAdmin);
 router.get('/support-requests', masterAdminController.getSupportRequests);
 router.put('/support-requests/:id', masterAdminController.updateSupportRequest);
 
+// Global Payments Ledger
+router.get("/payments", masterAdminController.getAllPayments);
+
+// Institution Analytics
+router.get("/analytics/:id", masterAdminController.getInstitutionAnalytics);
+
 module.exports = router;

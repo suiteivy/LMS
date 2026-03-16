@@ -1,4 +1,4 @@
-﻿import { UnifiedHeader } from "@/components/common/UnifiedHeader";
+import { UnifiedHeader } from "@/components/common/UnifiedHeader";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useDashboardStats } from "@/hooks/useDashboardStats";
@@ -23,6 +23,7 @@ import {
 import React, { useCallback, useEffect, useState } from "react";
 import { ActivityIndicator, ScrollView, Text, TouchableOpacity, View, StatusBar } from "react-native";
 import { SubscriptionBanner, SubscriptionGate, OnboardingTracker, SubscriptionBadge, AddonRequestModal, AddonRequestButton } from "@/components/shared/SubscriptionComponents";
+import { useSubscriptionTier } from "@/hooks/useSubscriptionTier";
 
 interface QuickActionProps {
   icon: any;
@@ -141,6 +142,18 @@ export default function AdminDashboard() {
   const textPrimary = isDark ? '#f9fafb' : '#111827';
   const textMuted = isDark ? '#6b7280' : '#6b7280';
 
+  const tier = useSubscriptionTier();
+
+  // Create a comma-separated list of active add-ons/features
+  const activeFeatures = [
+    tier.hasFinance && 'Finance',
+    tier.hasLibrary && 'Library',
+    tier.hasAnalytics && 'Analytics',
+    tier.hasMessaging && 'Messaging',
+    tier.hasBursary && 'Bursary',
+    tier.hasDiary && 'Diary',
+  ].filter(Boolean).join(', ');
+
   return (
     <View className="flex-1 bg-white dark:bg-navy">
       <StatusBar barStyle={isDark ? "light-content" : "dark-content"} />
@@ -233,12 +246,14 @@ export default function AdminDashboard() {
               <View className="flex-row items-center justify-between bg-gray-50 dark:bg-gray-800/50 p-4 rounded-2xl">
                 <View>
                   <Text className="text-gray-400 text-[10px] font-bold uppercase mb-1">Current Base Plan</Text>
-                  <Text className="text-gray-900 dark:text-white font-bold">{subscriptionPlan?.toUpperCase() || 'TRIAL'}</Text>
+                  <Text className="text-gray-900 dark:text-white font-bold">{tier.plan === 'premium' ? 'PREMIUM' : tier.plan === 'pro' ? 'PRO' : tier.plan === 'basic' ? 'BASIC' : tier.plan.toUpperCase()}</Text>
                 </View>
                 <View className="h-8 w-[1px] bg-gray-200 dark:bg-gray-700 mx-4" />
                 <View className="flex-1">
-                  <Text className="text-gray-400 text-[10px] font-bold uppercase mb-1">Add-ons</Text>
-                  <Text className="text-gray-500 dark:text-gray-400 text-[11px] font-medium">Request Finance, Library or Analytics</Text>
+                  <Text className="text-gray-400 text-[10px] font-bold uppercase mb-1">Active Modules</Text>
+                  <Text className="text-gray-900 dark:text-white text-[11px] font-bold" numberOfLines={1}>
+                    {activeFeatures || "Core Modules Only"}
+                  </Text>
                 </View>
               </View>
             </View>

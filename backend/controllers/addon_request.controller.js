@@ -110,7 +110,7 @@ exports.updateRequestStatus = async (req, res) => {
         if (updateErr) throw updateErr;
 
         // 3. If approved, automatically update the institution's features
-        if (status === 'approved') {
+        if (status === 'approved' && request.addon_type !== 'feature_request') {
             const addonColumn = `addon_${request.addon_type}`;
             const { error: instErr } = await adminClient
                 .from('institutions')

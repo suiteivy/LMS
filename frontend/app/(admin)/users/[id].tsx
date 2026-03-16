@@ -11,8 +11,9 @@ import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
     ActivityIndicator, Alert, ScrollView, Text,
-    TextInput, TouchableOpacity, View
+    TextInput, TouchableOpacity, View, Platform
 } from 'react-native';
+import { SettingsService } from '@/services/SettingsService';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 type UserRow = Database['public']['Tables']['users']['Row'];
@@ -177,6 +178,22 @@ export default function UserDetailsScreen() {
             Alert.alert('Error', error.message);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleAdminResetPassword = async (newPassword: string | undefined | null) => {
+        if (!newPassword || newPassword.length < 6) {
+            Alert.alert('Error', 'Password must be at least 6 characters');
+            return;
+        }
+        try {
+            setSaving(true);
+            const res = await SettingsService.adminResetPassword(id as string, newPassword);
+            Alert.alert('Success', res.message || 'Password reset successfully');
+        } catch (err: any) {
+            Alert.alert('Error', err?.response?.data?.error || err.message || 'Failed to reset password');
+        } finally {
+            setSaving(false);
         }
     };
 
@@ -410,6 +427,29 @@ export default function UserDetailsScreen() {
                                 <Ionicons name="create-outline" size={18} color="white" />
                                 <Text style={{ color: 'white', fontWeight: '700', marginLeft: 8 }}>Edit User</Text>
                             </TouchableOpacity>
+
+                            <TouchableOpacity 
+                                onPress={() => {
+                                    if (Platform.OS === 'web') {
+                                        const pass = window.prompt("Enter new password (min 6 chars):");
+                                        if (pass) handleAdminResetPassword(pass);
+                                    } else {
+                                        Alert.prompt(
+                                            "Reset Password",
+                                            "Enter the new password for this user:",
+                                            [
+                                                { text: "Cancel", style: "cancel" },
+                                                { text: "Reset", onPress: (pass?: string) => handleAdminResetPassword(pass) }
+                                            ],
+                                            "plain-text"
+                                        );
+                                    }
+                                }}
+                                style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: isDark ? '#1e293b' : '#f1f5f9', paddingVertical: 14, borderRadius: 12, borderWidth: 1, borderColor: isDark ? '#334155' : '#e2e8f0' }}>
+                                <Ionicons name="key-outline" size={18} color={textPrimary} />
+                                <Text style={{ color: textPrimary, fontWeight: '700', marginLeft: 8 }}>Reset Password</Text>
+                            </TouchableOpacity>
+
                             <TouchableOpacity onPress={handleDelete}
                                 style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: isDark ? '#2c1a1a' : '#fef2f2', paddingVertical: 14, borderRadius: 12, borderWidth: 1, borderColor: isDark ? '#7f1d1d' : '#fecaca' }}>
                                 <Ionicons name="trash-outline" size={18} color="#ef4444" />

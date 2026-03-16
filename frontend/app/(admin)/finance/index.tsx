@@ -1,10 +1,11 @@
-﻿import { BursariesList } from '@/components/admin/finance/BursariesList';
-import { FeeStructureSection } from '@/components/admin/finance/FeeStructureSection';
+import { BursariesList } from '@/components/admin/finance/BursariesList';
+import FeeStructureSection from '@/components/admin/finance/FeeStructureSection';
 import { PaymentManagementSection } from '@/components/admin/finance/PaymentManagementSection';
 import { TeacherPayoutSection } from '@/components/admin/finance/TeacherPayoutSection';
 import { UnifiedHeader } from '@/components/common/UnifiedHeader';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
+import { useSubscriptionTier } from '@/hooks/useSubscriptionTier';
 import { FinanceService } from '@/services/FinanceService';
 import { FeeStructure, Payment, TeacherPayout } from '@/types/types';
 import { Ionicons } from '@expo/vector-icons';
@@ -32,6 +33,7 @@ export default function FinanceDashboard() {
     const [loading, setLoading] = useState(true);
 
     const { isDemo } = useAuth();
+    const tier = useSubscriptionTier();
 
     useEffect(() => {
         fetchAllData();
@@ -143,6 +145,9 @@ export default function FinanceDashboard() {
                 }}>
                     <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                         {TABS.map(({ key, label }) => {
+                            // Gate specific tabs
+                            if (key === 'bursaries' && !tier.hasBursary) return null;
+                            
                             const isActive = activeTab === key;
                             return (
                                 <TouchableOpacity

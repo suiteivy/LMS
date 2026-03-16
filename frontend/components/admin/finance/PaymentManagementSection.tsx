@@ -1,4 +1,4 @@
-﻿import { EmptyState } from "@/components/common/EmptyState";
+import { EmptyState } from "@/components/common/EmptyState";
 import { useTheme } from "@/contexts/ThemeContext";
 import { supabase } from "@/libs/supabase";
 import { Payment } from "@/types/types";
@@ -437,8 +437,11 @@ const PaymentManagementSection: React.FC<
                   >
                     <Picker.Item label="Please select a payment method" value="" color={isDark ? "#fff" : "#000"} />
                     <Picker.Item label="Cash" value="cash" color={isDark ? "#fff" : "#000"} />
-                    <Picker.Item label="Bank Transfer" value="bank_transfer" color={isDark ? "#fff" : "#000"} />
-                    <Picker.Item label="Mobile Money" value="mobile_money" color={isDark ? "#fff" : "#000"} />
+                    <Picker.Item label="Bank" value="bank" color={isDark ? "#fff" : "#000"} />
+                    <Picker.Item label="MPesa" value="mpesa" color={isDark ? "#fff" : "#000"} />
+                    <Picker.Item label="Bank Transfer (Other)" value="bank_transfer" color={isDark ? "#fff" : "#000"} />
+                    <Picker.Item label="Mobile Money (Other)" value="mobile_money" color={isDark ? "#fff" : "#000"} />
+                    <Picker.Item label="Card" value="card" color={isDark ? "#fff" : "#000"} />
                   </Picker>
                 </View>
               </View>

@@ -1,7 +1,7 @@
 import { useAuth } from '@/contexts/AuthContext';
 
 // ── Plan rank order (mirrors backend subscriptionCheck.js) ──────────────────
-// free=0, trial=1, standard=2, pro=3, premium=4, custom=5
+// free=0, trial=1, basic=2, pro=3, premium=4, custom=5
 const PLAN_RANK: Record<string, number> = {
     free: 0,
     trial: 1,
@@ -18,8 +18,12 @@ function normalisePlan(plan: string | null | undefined): string {
         basic_basic: 'basic',
         basic_pro: 'pro',
         basic_premium: 'premium',
+        enterprise_basic: 'custom',
+        enterprise_pro: 'custom',
+        enterprise_premium: 'custom',
     };
-    return map[plan ?? ''] ?? plan ?? 'trial';
+    const p = plan ?? 'trial';
+    return map[p] ?? p;
 }
 
 function rank(plan: string | null | undefined): number {
@@ -48,6 +52,8 @@ export interface SubscriptionTierInfo {
     hasDiary: boolean;
     /** Whether this tier includes Library (without add-on) */
     hasLibrary: boolean;
+    /** Whether this tier includes Attendance */
+    hasAttendance: boolean;
     /** Numeric rank — higher = more capable */
     planRank: number;
 }
@@ -64,16 +70,17 @@ export function useSubscriptionTier(): SubscriptionTierInfo {
         addonFinance,
         addonAnalytics,
         addonBursary,
-        addonDiary
+        addonDiary,
+        addonAttendance
     } = useAuth();
 
     const canonical = normalisePlan(subscriptionPlan);
     const r = rank(canonical);
 
-    // Feature gates logic:
-    // - Pro (rank 3) includes Library ONLY.
-    // - Premium (rank 4) includes Library, Messaging, Finance, and Analytics.
-    // - Custom (rank 5) depends entirely on add-on flags.
+    // Feature gates logic (aligned with landing page promises):
+    // - PRO (Rank 3): Messaging, Diary, Library.
+    // - PREMIUM (Rank 4): Finance, Analytics, Bursary (all add-ons).
+    // - CUSTOM (Rank 5): Custom settings.
     // - Specific add-ons always grant access regardless of base plan.
 
     return {
@@ -82,25 +89,29 @@ export function useSubscriptionTier(): SubscriptionTierInfo {
         isPaid: r >= PLAN_RANK['basic'],
 
         // Finance: Included in Premium (4) OR explicitly granted as add-on
-        hasFinance: r === PLAN_RANK['premium'] || addonFinance,
+        hasFinance: r >= PLAN_RANK['premium'] || addonFinance,
 
-        // Bursary: Independent add-on
-        hasBursary: addonBursary,
+        // Bursary: Included in Premium (4) OR explicitly granted as add-on
+        hasBursary: r >= PLAN_RANK['premium'] || addonBursary,
 
         // Student Module: Always enabled for authenticated students
         hasStudentModule: true,
 
         // Analytics: Included in Premium (4) OR explicitly granted as add-on
-        hasAnalytics: r === PLAN_RANK['premium'] || addonAnalytics,
+        hasAnalytics: r >= PLAN_RANK['premium'] || addonAnalytics,
 
-        // Messaging: Included in Pro (3) and Premium (4) OR explicitly granted as add-on
+        // Messaging: Included in Pro (3)+ OR explicitly granted as add-on
         hasMessaging: r >= PLAN_RANK['pro'] || addonMessaging,
 
-        // Diary: Included in Pro (3) and Premium (4) OR explicitly granted as add-on
+        // Diary: Included in Pro (3)+ OR explicitly granted as add-on
         hasDiary: r >= PLAN_RANK['pro'] || addonDiary,
 
-        // Library: Included in Basic (2), Pro (3) and Premium (4) OR explicitly granted as add-on
-        hasLibrary: r >= PLAN_RANK['basic'] || addonLibrary,
+        // Library: Included in Pro (3)+ OR explicitly granted as add-on
+        hasLibrary: r >= PLAN_RANK['pro'] || addonLibrary,
+
+        // Attendance: Included in Pro (3) and Premium (4) OR explicitly granted as add-on
+        // Specifically for Custom (5), it's only granted if the addonAttendance flag is set.
+        hasAttendance: (r >= PLAN_RANK['pro'] && r !== PLAN_RANK['custom']) || addonAttendance,
 
         planRank: r,
     };

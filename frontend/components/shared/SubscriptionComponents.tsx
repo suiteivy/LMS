@@ -37,7 +37,7 @@ interface SubscriptionGateProps {
     children: React.ReactNode;
     fallback?: React.ReactNode;
     minPlan?: string;
-    feature?: 'finance' | 'bursary' | 'analytics' | 'messaging' | 'diary' | 'library';
+    feature?: 'finance' | 'bursary' | 'analytics' | 'messaging' | 'diary' | 'library' | 'attendance';
     className?: string;
     style?: any;
 }
@@ -86,6 +86,7 @@ export const SubscriptionGate = ({ children, fallback, minPlan, feature, classNa
             case 'messaging': hasAccess = tier.hasMessaging; break;
             case 'diary': hasAccess = tier.hasDiary; break;
             case 'library': hasAccess = tier.hasLibrary; break;
+            case 'attendance': hasAccess = tier.hasAttendance; break;
         }
     }
 
@@ -112,7 +113,7 @@ export const SubscriptionStatusBadge = () => {
 
     if (subscriptionStatus === 'expired' || subscriptionStatus === 'cancelled') {
         return (
-            <View className="bg-red-500/10 px-2 py-0.5 rounded-full border border-red-500/20 ml-2">
+            <View className="bg-red-500/10 px-2 py-0.5 rounded-full border border-red-500/20">
                 <Text className="text-red-500 text-[10px] font-bold uppercase tracking-wider">Status: Expired</Text>
             </View>
         );
@@ -120,7 +121,7 @@ export const SubscriptionStatusBadge = () => {
 
     if (isTrial) {
         return (
-            <View className="bg-orange-500/10 px-2 py-0.5 rounded-full border border-orange-500/20 ml-2">
+            <View className="bg-orange-500/10 px-2 py-0.5 rounded-full border border-orange-500/20">
                 <Text className="text-orange-500 text-[10px] font-bold uppercase tracking-wider">Trial Mode</Text>
             </View>
         );
@@ -129,9 +130,12 @@ export const SubscriptionStatusBadge = () => {
     // Premium/Pro Gradients logic (CSS based for Web, View based for Native)
     const getBadgeStyle = () => {
         switch (plan) {
-            case 'premium': return { bg: 'bg-purple-600/10', text: 'text-purple-600', border: 'border-purple-600/20', label: '✨ Premium' };
-            case 'pro': return { bg: 'bg-indigo-600/10', text: 'text-indigo-600', border: 'border-indigo-600/20', label: 'Pro' };
-            case 'custom': return { bg: 'bg-blue-600/10', text: 'text-blue-600', border: 'border-blue-600/20', label: 'Custom' };
+            case 'premium':
+                return { bg: 'bg-purple-600/10', text: 'text-purple-600', border: 'border-purple-600/20', label: '✨ Premium' };
+            case 'pro':
+                return { bg: 'bg-indigo-600/10', text: 'text-indigo-600', border: 'border-indigo-600/20', label: 'Pro' };
+            case 'custom':
+                return { bg: 'bg-blue-600/10', text: 'text-blue-600', border: 'border-blue-600/20', label: 'Custom' };
             default: return { bg: 'bg-slate-500/10', text: 'text-slate-500', border: 'border-slate-500/20', label: 'Standard' };
         }
     };
@@ -139,7 +143,7 @@ export const SubscriptionStatusBadge = () => {
     const style = getBadgeStyle();
 
     return (
-        <View className={`${style.bg} px-2 py-0.5 rounded-full border ${style.border} ml-2 items-center justify-center`}>
+        <View className={`${style.bg} px-2 py-0.5 rounded-full border ${style.border} items-center justify-center`}>
             <Text className={`${style.text} text-[10px] font-black uppercase tracking-widest`}>
                 {style.label}
             </Text>
@@ -162,7 +166,7 @@ export const MainAdminBadge = () => {
 
     return (
         <View
-            className="bg-amber-100 px-1.5 py-0.5 rounded ml-2 flex-row items-center border border-amber-300 shadow-sm"
+            className="bg-amber-100 px-1.5 py-0.5 rounded flex-row items-center border border-amber-300 shadow-sm"
             style={{ elevation: 1 }}
         >
             <Ionicons name="star" size={10} color="#92400E" className="mr-1" />

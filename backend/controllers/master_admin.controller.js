@@ -197,7 +197,8 @@ exports.enrollInstitution = async (req, res) => {
             location,
             admin_full_name,
             admin_email,
-            admin_password
+            admin_password,
+            email_domain
         } = req.body;
 
         if (!institution_name || !admin_full_name || !admin_email || !admin_password) {
@@ -212,6 +213,7 @@ exports.enrollInstitution = async (req, res) => {
             .insert([{
                 name: institution_name,
                 location: location || '',
+                email_domain: email_domain || (institution_name.toLowerCase().replace(/\s+/g, '') + '.edu'),
                 type: 'secondary', // Generic default
                 subscription_status: req.body.subscription_status || 'trial',
                 subscription_plan: req.body.subscription_plan || 'trial',
@@ -220,7 +222,7 @@ exports.enrollInstitution = async (req, res) => {
                 trial_end_date: req.body.trial_end_date || null,
                 addon_library: req.body.addon_library || false,
                 addon_messaging: req.body.addon_messaging || false,
-                addon_diary: req.body.addon_diary || false,
+                addon_diary: req.body.subscription_plan === 'free' ? true : (req.body.addon_diary || false),
                 addon_bursary: req.body.addon_bursary || false,     // Bursary add-on (separate from finance)
                 addon_finance: req.body.addon_finance || false,
                 addon_analytics: req.body.addon_analytics || false,
@@ -442,6 +444,64 @@ exports.updatePlatformProfile = async (req, res) => {
     } catch (err) {
         console.error("updatePlatformProfile error:", err);
         res.status(500).json({ error: "Failed to update profile." });
+    }
+};
+
+/**
+ * Get all payments globally for Master Admin ledger
+ */
+exports.getAllPayments = async (req, res) => {
+    try {
+        const adminClient = getServiceSupabase();
+        const { data, error } = await adminClient
+            .from('financial_transactions')
+            .select(`
+                *,
+                institutions:institution_id(name),
+                users:user_id(full_name, email)
+            `)
+            .order('date', { ascending: false });
+
+        if (error) throw error;
+
+        res.status(200).json({ payments: data });
+    } catch (error) {
+        console.error("Error fetching global payments:", error);
+        res.status(500).json({ error: "Failed to fetch global payments ledger" });
+    }
+};
+
+/**
+ * Get detailed analytics for a specific institution
+ */
+exports.getInstitutionAnalytics = async (req, res) => {
+    const { id } = req.params;
+    try {
+        const adminClient = getServiceSupabase();
+        
+        const [
+            { count: studentCount },
+            { count: teacherCount },
+            { count: classCount },
+            { data: revenueData }
+        ] = await Promise.all([
+            adminClient.from('users').select('*', { count: 'exact', head: true }).eq('institution_id', id).eq('role', 'student'),
+            adminClient.from('users').select('*', { count: 'exact', head: true }).eq('institution_id', id).eq('role', 'teacher'),
+            adminClient.from('classes').select('*', { count: 'exact', head: true }).eq('institution_id', id),
+            adminClient.from('financial_transactions').select('amount').eq('institution_id', id).eq('status', 'completed').eq('type', 'fee_payment')
+        ]);
+
+        const totalRevenue = revenueData ? revenueData.reduce((acc, curr) => acc + Number(curr.amount), 0) : 0;
+
+        res.status(200).json({
+            students: studentCount || 0,
+            teachers: teacherCount || 0,
+            classes: classCount || 0,
+            revenue: totalRevenue
+        });
+    } catch (error) {
+        console.error("Error fetching institution analytics:", error);
+        res.status(500).json({ error: "Failed to fetch institution analytics" });
     }
 };
 

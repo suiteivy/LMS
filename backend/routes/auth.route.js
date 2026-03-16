@@ -10,6 +10,7 @@ const {
   changePassword,
   forgotPassword,
   resetPassword,
+  adminResetPassword,
   transferMainAdmin,
 } = require("../controllers/auth.controller");
 const { authMiddleware } = require("../middleware/auth.middleware");
@@ -62,6 +63,7 @@ router.post("/logout", authMiddleware, logout);
 
 // Password management
 router.put("/change-password", authMiddleware, changePassword);
+router.post("/admin-reset-password", authMiddleware, adminResetPassword);
 
 // Main Admin Management
 router.post(

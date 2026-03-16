@@ -6,6 +6,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { supabase } from '@/libs/supabase';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
+import { SettingsService } from '@/services/SettingsService';
 
 export default function MasterInstitutions() {
     const { isDark } = useTheme();
@@ -18,6 +19,9 @@ export default function MasterInstitutions() {
     // Modals state
     const [freeModalVisible, setFreeModalVisible] = useState(false);
     const [selectedInstId, setSelectedInstId] = useState<string | null>(null);
+    const [analyticsModalVisible, setAnalyticsModalVisible] = useState(false);
+    const [analyticsData, setAnalyticsData] = useState<any>(null);
+    const [analyticsLoading, setAnalyticsLoading] = useState(false);
 
     // Addons State
     const [addonsModalVisible, setAddonsModalVisible] = useState(false);
@@ -43,13 +47,21 @@ export default function MasterInstitutions() {
         subscription_plan: 'trial',
         subscription_status: 'trial',
         trial_end_date: '',
-        custom_student_limit: ''
+        custom_student_limit: '',
+        email_domain: ''
     });
     const [enrollLoading, setEnrollLoading] = useState(false);
 
     // Free Form State
     const [freeDays, setFreeDays] = useState('30');
+    const [freeStudentLimit, setFreeStudentLimit] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false); // This is for the free modal submission
+    const [saving, setSaving] = useState(false);
+
+    // Admin Management State
+    const [adminModalVisible, setAdminModalVisible] = useState(false);
+    const [selectedInstAdmins, setSelectedInstAdmins] = useState<any[]>([]);
+    const [adminLoading, setAdminLoading] = useState(false);
 
     const themeColors = {
         bg: isDark ? '#0F0B2E' : '#f8fafc',
@@ -182,10 +194,14 @@ export default function MasterInstitutions() {
             if (!session) return;
 
             const payload = { ...enrollForm };
-            if (payload.subscription_plan === 'beta_free' && !payload.trial_end_date) {
-                const expirationDate = new Date();
-                expirationDate.setDate(expirationDate.getDate() + 30); // Default to 30 days if empty
-                payload.trial_end_date = expirationDate.toISOString();
+            if (payload.subscription_plan === 'free') {
+                if (!payload.trial_end_date) {
+                    const expirationDate = new Date();
+                    expirationDate.setFullYear(expirationDate.getFullYear() + 10); // "Forever" = 10 years for now
+                    payload.trial_end_date = expirationDate.toISOString();
+                }
+                // @ts-ignore - dynamic payload
+                payload.addon_diary = true;
             }
 
             const res = await fetch(`${getBackendUrl()}/api/master-admin/institutions`, {
@@ -202,7 +218,7 @@ export default function MasterInstitutions() {
                 Toast.show({ type: 'success', text1: 'Success', text2: 'Institution enrolled successfully' });
                 setEnrollModalVisible(false);
                 setEnrollForm({
-                    institution_name: '', location: '', admin_full_name: '', admin_email: '', admin_password: '', subscription_plan: 'trial', subscription_status: 'trial', trial_end_date: '', custom_student_limit: ''
+                    institution_name: '', location: '', admin_full_name: '', admin_email: '', admin_password: '', subscription_plan: 'trial', subscription_status: 'trial', trial_end_date: '', custom_student_limit: '', email_domain: ''
                 });
                 fetchInstitutions(); // Refresh the list
             } else {
@@ -237,7 +253,9 @@ export default function MasterInstitutions() {
                 body: JSON.stringify({
                     subscription_status: 'active',
                     subscription_plan: 'free',
-                    trial_end_date: expDate.toISOString()
+                    trial_end_date: expDate.toISOString(),
+                    addon_diary: true,
+                    custom_student_limit: freeStudentLimit ? parseInt(freeStudentLimit, 10) : null
                 })
             });
 
@@ -323,6 +341,95 @@ export default function MasterInstitutions() {
         } catch (err) {
             console.error(err);
             Toast.show({ type: 'error', text1: 'Error', text2: 'Failed to update request' });
+        }
+    };
+
+    const handleViewAnalytics = async (id: string) => {
+        try {
+            setSelectedInstId(id);
+            setAnalyticsModalVisible(true);
+            setAnalyticsLoading(true);
+            const { data: { session } } = await supabase.auth.getSession();
+            if (!session) return;
+
+            const res = await fetch(`${getBackendUrl()}/api/master-admin/analytics/${id}`, {
+                headers: {
+                    'Authorization': `Bearer ${session.access_token}`,
+                    'Accept': 'application/json'
+                }
+            });
+            const data = await res.json();
+            if (res.ok) {
+                setAnalyticsData(data);
+            } else {
+                Toast.show({ type: 'error', text1: 'Error', text2: data.error });
+            }
+        } catch (err) {
+            console.error(err);
+            Toast.show({ type: 'error', text1: 'Error', text2: 'Failed to fetch analytics' });
+        } finally {
+            setAnalyticsLoading(false);
+        }
+    };
+
+    const handleManageAdmins = async (id: string) => {
+        try {
+            setSelectedInstId(id);
+            setAdminModalVisible(true);
+            setAdminLoading(true);
+            const { data: { session } } = await supabase.auth.getSession();
+            if (!session) return;
+
+            const res = await fetch(`${getBackendUrl()}/api/master-admin/institutions/${id}`, {
+                headers: {
+                    'Authorization': `Bearer ${session.access_token}`,
+                    'Accept': 'application/json'
+                }
+            });
+            const data = await res.json();
+            if (res.ok) {
+                setSelectedInstAdmins(data.admins || []);
+            } else {
+                Toast.show({ type: 'error', text1: 'Error', text2: data.error });
+            }
+        } catch (err) {
+            console.error(err);
+            Toast.show({ type: 'error', text1: 'Error', text2: 'Failed to fetch admins' });
+        } finally {
+            setAdminLoading(false);
+        }
+    };
+
+    const handleResetAdminPassword = (userId: string, userName: string) => {
+        const handler = async (pass: string) => {
+            if (!pass || pass.length < 6) {
+                Toast.show({ type: 'error', text1: 'Error', text2: 'Password must be at least 6 characters' });
+                return;
+            }
+            try {
+                setSaving(true);
+                await SettingsService.adminResetPassword(userId, pass);
+                Toast.show({ type: 'success', text1: 'Success', text2: `Password for ${userName} reset successfully` });
+            } catch (err: any) {
+                Toast.show({ type: 'error', text1: 'Error', text2: err?.message || 'Failed to reset password' });
+            } finally {
+                setSaving(false);
+            }
+        };
+
+        if (Platform.OS === 'web') {
+            const pass = window.prompt(`Enter new password for ${userName}:`);
+            if (pass) handler(pass);
+        } else {
+            Alert.prompt(
+                "Reset Password",
+                `Enter new password for ${userName}:`,
+                [
+                    { text: "Cancel", style: "cancel" },
+                    { text: "Reset", onPress: (pass?: string) => pass && handler(pass) }
+                ],
+                "plain-text"
+            );
         }
     };
 
@@ -449,6 +556,10 @@ export default function MasterInstitutions() {
                     </Text>
                     <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
                         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                            <MaterialCommunityIcons name="at" size={14} color={themeColors.primary} />
+                            <Text style={{ color: themeColors.primary, fontSize: 13, fontWeight: '700' }}>{item.email_domain || 'no-domain.edu'}</Text>
+                        </View>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
                             <MaterialCommunityIcons name="email-outline" size={14} color={themeColors.subtext} />
                             <Text style={{ color: themeColors.subtext, fontSize: 13 }}>{item.email || 'No email'}</Text>
                         </View>
@@ -502,6 +613,22 @@ export default function MasterInstitutions() {
                                 <Text style={{ color: '#3B82F6', fontSize: 13, fontWeight: '600' }}>Manage Add-ons</Text>
                             </TouchableOpacity>
                         )}
+
+                        <TouchableOpacity
+                            onPress={() => handleViewAnalytics(item.id)}
+                            style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}
+                        >
+                            <MaterialCommunityIcons name="chart-bar" size={16} color="#8B5CF6" />
+                            <Text style={{ color: '#8B5CF6', fontSize: 13, fontWeight: '600' }}>View Stats</Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                            onPress={() => handleManageAdmins(item.id)}
+                            style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}
+                        >
+                            <MaterialCommunityIcons name="account-cog" size={16} color="#059669" />
+                            <Text style={{ color: '#059669', fontSize: 13, fontWeight: '600' }}>Manage Admins</Text>
+                        </TouchableOpacity>
                     </View>
                 </View>
 
@@ -627,6 +754,56 @@ export default function MasterInstitutions() {
                 <MaterialCommunityIcons name="plus" size={30} color="#fff" />
             </TouchableOpacity>
 
+            {/* ANALYTICS MODAL */}
+            <Modal visible={analyticsModalVisible} animationType="fade" transparent>
+                <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', padding: 20 }}>
+                    <View style={{ backgroundColor: themeColors.card, borderRadius: 24, padding: 24, width: '100%', maxWidth: 400 }}>
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+                            <Text style={{ fontSize: 20, fontWeight: 'bold', color: themeColors.text }}>Institution Stats</Text>
+                            <TouchableOpacity onPress={() => { setAnalyticsModalVisible(false); setAnalyticsData(null); }}>
+                                <MaterialCommunityIcons name="close" size={24} color={themeColors.subtext} />
+                            </TouchableOpacity>
+                        </View>
+
+                        {analyticsLoading ? (
+                            <ActivityIndicator size="large" color={themeColors.primary} style={{ marginVertical: 40 }} />
+                        ) : analyticsData ? (
+                            <View style={{ gap: 16 }}>
+                                <View style={{ flexDirection: 'row', gap: 12 }}>
+                                    <View style={{ flex: 1, backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : '#f8fafc', padding: 16, borderRadius: 16, alignItems: 'center' }}>
+                                        <Text style={{ color: themeColors.subtext, fontSize: 12, marginBottom: 4 }}>Students</Text>
+                                        <Text style={{ color: themeColors.text, fontSize: 24, fontWeight: '800' }}>{analyticsData.students}</Text>
+                                    </View>
+                                    <View style={{ flex: 1, backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : '#f8fafc', padding: 16, borderRadius: 16, alignItems: 'center' }}>
+                                        <Text style={{ color: themeColors.subtext, fontSize: 12, marginBottom: 4 }}>Teachers</Text>
+                                        <Text style={{ color: themeColors.text, fontSize: 24, fontWeight: '800' }}>{analyticsData.teachers}</Text>
+                                    </View>
+                                </View>
+                                <View style={{ flexDirection: 'row', gap: 12 }}>
+                                    <View style={{ flex: 1, backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : '#f8fafc', padding: 16, borderRadius: 16, alignItems: 'center' }}>
+                                        <Text style={{ color: themeColors.subtext, fontSize: 12, marginBottom: 4 }}>Classes</Text>
+                                        <Text style={{ color: themeColors.text, fontSize: 24, fontWeight: '800' }}>{analyticsData.classes}</Text>
+                                    </View>
+                                    <View style={{ flex: 1, backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : '#f8fafc', padding: 16, borderRadius: 16, alignItems: 'center' }}>
+                                        <Text style={{ color: themeColors.subtext, fontSize: 12, marginBottom: 4 }}>Revenue</Text>
+                                        <Text style={{ color: themeColors.primary, fontSize: 20, fontWeight: '800' }}>KES {Number(analyticsData.revenue).toLocaleString()}</Text>
+                                    </View>
+                                </View>
+                                
+                                <TouchableOpacity 
+                                    onPress={() => { setAnalyticsModalVisible(false); setAnalyticsData(null); }}
+                                    style={{ backgroundColor: themeColors.primary, paddingVertical: 14, borderRadius: 12, alignItems: 'center', marginTop: 10 }}
+                                >
+                                    <Text style={{ color: 'white', fontWeight: 'bold' }}>Close</Text>
+                                </TouchableOpacity>
+                            </View>
+                        ) : (
+                            <Text style={{ color: themeColors.subtext, textAlign: 'center', marginVertical: 20 }}>No data available</Text>
+                        )}
+                    </View>
+                </View>
+            </Modal>
+
             {/* ENROLL MODAL */}
             <Modal visible={enrollModalVisible} animationType="slide" transparent>
                 <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}>
@@ -653,6 +830,14 @@ export default function MasterInstitutions() {
                                 placeholderTextColor={themeColors.subtext}
                                 value={enrollForm.location}
                                 onChangeText={t => setEnrollForm(prev => ({ ...prev, location: t }))}
+                            />
+                            <TextInput
+                                style={{ backgroundColor: themeColors.bg, color: themeColors.text, padding: 14, borderRadius: 12, borderWidth: 1, borderColor: themeColors.border, marginBottom: 24 }}
+                                placeholder="Custom Email Domain (e.g. momentum.edu)"
+                                placeholderTextColor={themeColors.subtext}
+                                autoCapitalize="none"
+                                value={enrollForm.email_domain}
+                                onChangeText={t => setEnrollForm(prev => ({ ...prev, email_domain: t }))}
                             />
 
                             <Text style={{ color: themeColors.primary, fontWeight: 'bold', marginBottom: 8 }}>Primary Admin Details</Text>
@@ -690,11 +875,11 @@ export default function MasterInstitutions() {
                                     dropdownIconColor={themeColors.text}
                                 >
                                     <Picker.Item label="14-Day Trial" value="trial" />
-                                    <Picker.Item label="Basic  —  $100/mo (up to 900 students)" value="basic_basic" />
-                                    <Picker.Item label="Pro  —  $300/mo (up to 1,000 students)" value="basic_pro" />
-                                    <Picker.Item label="Premium  —  $500/mo (5,000+ students)" value="basic_premium" />
-                                    <Picker.Item label="Custom  —  Enterprise (Scalable)" value="custom" />
-                                    <Picker.Item label="Free Access (Small School)" value="free" />
+                                    <Picker.Item label="Basic Plan ($100/mo)" value="basic" />
+                                    <Picker.Item label="Pro Plan ($300/mo)" value="pro" />
+                                    <Picker.Item label="Premium Plan ($500/mo)" value="premium" />
+                                    <Picker.Item label="Custom Enterprise" value="custom" />
+                                    <Picker.Item label="Free Forever" value="free" />
                                 </Picker>
                             </View>
 
@@ -763,12 +948,22 @@ export default function MasterInstitutions() {
 
                         <Text style={{ color: themeColors.text, marginBottom: 8, fontWeight: '600' }}>Duration (Days)</Text>
                         <TextInput
-                            style={{ backgroundColor: themeColors.bg, color: themeColors.text, padding: 14, borderRadius: 12, borderWidth: 1, borderColor: themeColors.border, marginBottom: 24 }}
+                            style={{ backgroundColor: themeColors.bg, color: themeColors.text, padding: 14, borderRadius: 12, borderWidth: 1, borderColor: themeColors.border, marginBottom: 16 }}
                             placeholder="e.g. 30"
                             placeholderTextColor={themeColors.subtext}
                             keyboardType="number-pad"
                             value={freeDays}
                             onChangeText={setFreeDays}
+                        />
+
+                        <Text style={{ color: themeColors.text, marginBottom: 8, fontWeight: '600' }}>Student Limit (Optional)</Text>
+                        <TextInput
+                            style={{ backgroundColor: themeColors.bg, color: themeColors.text, padding: 14, borderRadius: 12, borderWidth: 1, borderColor: themeColors.border, marginBottom: 24 }}
+                            placeholder="e.g. 100"
+                            placeholderTextColor={themeColors.subtext}
+                            keyboardType="number-pad"
+                            value={freeStudentLimit}
+                            onChangeText={setFreeStudentLimit}
                         />
 
                         <View style={{ flexDirection: 'row', gap: 12 }}>
@@ -786,6 +981,57 @@ export default function MasterInstitutions() {
                                 {isSubmitting ? <ActivityIndicator color="#fff" /> : <Text style={{ color: '#fff', fontWeight: '600' }}>Grant Access</Text>}
                             </TouchableOpacity>
                         </View>
+                    </View>
+                </View>
+            </Modal>
+
+            {/* ADMIN MANAGEMENT MODAL */}
+            <Modal visible={adminModalVisible} animationType="fade" transparent>
+                <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', padding: 20 }}>
+                    <View style={{ backgroundColor: themeColors.card, borderRadius: 24, padding: 24, width: '100%', maxWidth: 450 }}>
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+                            <Text style={{ fontSize: 20, fontWeight: 'bold', color: themeColors.text }}>Institution Admins</Text>
+                            <TouchableOpacity onPress={() => { setAdminModalVisible(false); setSelectedInstAdmins([]); }}>
+                                <MaterialCommunityIcons name="close" size={24} color={themeColors.subtext} />
+                            </TouchableOpacity>
+                        </View>
+
+                        {adminLoading ? (
+                            <ActivityIndicator size="large" color={themeColors.primary} style={{ marginVertical: 40 }} />
+                        ) : selectedInstAdmins.length > 0 ? (
+                            <View style={{ gap: 12 }}>
+                                {selectedInstAdmins.map((admin) => (
+                                    <View key={admin.id} style={{ 
+                                        backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : '#f8fafc', 
+                                        padding: 16, 
+                                        borderRadius: 16,
+                                        flexDirection: 'row',
+                                        justifyContent: 'space-between',
+                                        alignItems: 'center'
+                                    }}>
+                                        <View style={{ flex: 1 }}>
+                                            <Text style={{ color: themeColors.text, fontWeight: '700', fontSize: 15 }}>{admin.full_name}</Text>
+                                            <Text style={{ color: themeColors.subtext, fontSize: 13 }}>{admin.email}</Text>
+                                        </View>
+                                        <TouchableOpacity 
+                                            onPress={() => handleResetAdminPassword(admin.id, admin.full_name)}
+                                            style={{ backgroundColor: `${themeColors.primary}20`, padding: 10, borderRadius: 10 }}
+                                        >
+                                            <MaterialCommunityIcons name="key-variant" size={20} color={themeColors.primary} />
+                                        </TouchableOpacity>
+                                    </View>
+                                ))}
+                            </View>
+                        ) : (
+                            <Text style={{ color: themeColors.subtext, textAlign: 'center', marginVertical: 20 }}>No admin users found.</Text>
+                        )}
+
+                        <TouchableOpacity 
+                            onPress={() => { setAdminModalVisible(false); setSelectedInstAdmins([]); }}
+                            style={{ backgroundColor: themeColors.primary, paddingVertical: 14, borderRadius: 12, alignItems: 'center', marginTop: 20 }}
+                        >
+                            <Text style={{ color: 'white', fontWeight: 'bold' }}>Close</Text>
+                        </TouchableOpacity>
                     </View>
                 </View>
             </Modal>

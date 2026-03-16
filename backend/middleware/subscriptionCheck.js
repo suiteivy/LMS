@@ -14,93 +14,94 @@ const CACHE_TTL = 60000; // 60 seconds
 // Legacy IDs kept for backward compat: beta_free, basic, pro, premium
 
 const PLAN_ORDER = [
-  'free',          // free access: granted by master admin to small schools / kindergartens
-  'trial',         // 14‑day trial for new institutions
-  'basic_basic',   // was 'basic'
-  'basic_pro',     // was 'pro'
-  'basic_premium', // was 'premium'
-  'enterprise_basic',
-  'enterprise_pro',
-  'enterprise_premium',
-  'custom_basic',
-  'custom_pro',
-  'custom_premium',
+  'free',
+  'trial',
+  'basic',
+  'pro',
+  'premium',
+  'custom',
 ];
 
 // Normalise legacy/shorthand plan IDs to canonical ones
 function normalisePlan(plan) {
   const map = {
-    'beta_free': 'free',      // legacy — now maps to the proper free tier
-    'basic': 'basic_basic',
-    'pro': 'basic_pro',
-    'premium': 'basic_premium',
+    'free': 'free',
+    'beta_free': 'free',
+    'trial': 'trial',
+    'basic': 'basic',
+    'basic_basic': 'basic',
+    'pro': 'pro',
+    'basic_pro': 'pro',
+    'premium': 'premium',
+    'basic_premium': 'premium',
+    'enterprise': 'custom',
+    'enterprise_basic': 'custom',
+    'enterprise_pro': 'custom',
+    'enterprise_premium': 'custom',
+    'custom': 'custom',
+    'custom_basic': 'custom',
+    'custom_pro': 'custom',
+    'custom_premium': 'custom',
   };
-  return map[plan] || plan || 'trial';
+  const p = plan ? plan.toLowerCase() : 'trial';
+  return map[p] || p;
 }
 
 // Return a numeric rank (higher = more capable)
 function planRank(plan) {
   const idx = PLAN_ORDER.indexOf(normalisePlan(plan));
-  return idx === -1 ? 0 : idx;
+  return idx === -1 ? 1 : idx; // Default to trial rank (1)
 }
 
 // ─── Student / Admin limits ───────────────────────────────────────────────────
 const PLAN_LIMITS = {
-  'free': { maxStudents: 30, maxAdmins: 1 },   // small school / kindergarten
+  'free': { maxStudents: 30, maxAdmins: 1 },
   'trial': { maxStudents: 50, maxAdmins: 1 },
-  'basic_basic': { maxStudents: 900, maxAdmins: 1 },   // PDF: 200-900 students
-  'basic_pro': { maxStudents: 1000, maxAdmins: 3 },    // PDF: up to 1000 students
-  'basic_premium': { maxStudents: 5000, maxAdmins: Infinity }, // PDF: 5000+ students
-  'enterprise_basic': { maxStudents: 2000, maxAdmins: 5 },
-  'enterprise_pro': { maxStudents: 5000, maxAdmins: 15 },
-  'enterprise_premium': { maxStudents: Infinity, maxAdmins: Infinity },
-  'custom_basic': { maxStudents: Infinity, maxAdmins: Infinity },
-  'custom_pro': { maxStudents: Infinity, maxAdmins: Infinity },
-  'custom_premium': { maxStudents: Infinity, maxAdmins: Infinity },
+  'basic': { maxStudents: 900, maxAdmins: 1 },
+  'pro': { maxStudents: 1000, maxAdmins: 3 },
+  'premium': { maxStudents: 5000, maxAdmins: Infinity },
+  'custom': { maxStudents: Infinity, maxAdmins: Infinity },
 };
 
 // ─── Feature gate definitions ─────────────────────────────────────────────────
 // minPlan is the LOWEST canonical plan ID that unlocks the feature.
-// Add-ons (library, bursary, messaging) are allocated by the master admin
-// independently of the subscription plan and can override the plan gate.
 const RESTRICTED_FEATURES = [
-  // ── Finance (internal accounting) — basic_pro+ ──
-  { path: '/api/finance', minRank: planRank('basic_pro') },
-  { path: '/api/funds', minRank: planRank('basic_pro') },
+  // ── Finance Base (Fees, Payments, Transactions) — basic+ (Rank 2) ──
+  { path: '/api/finance/fee-structures', minRank: planRank('basic') },
+  { path: '/api/finance/fees', minRank: planRank('basic') },
+  { path: '/api/finance/transactions', minRank: planRank('basic') },
 
-  // ── Bursary Module — add-on allocated by master admin ──
-  // Accessible from basic_basic IF addon_bursary is enabled by master admin.
-  // Without the add-on, requires basic_pro minimum.
-  { path: '/api/bursary', minRank: planRank('basic_pro') },
+  // ── Advanced Finance (Funds, Allocations, Budgeting) — premium+ (Rank 4) ──
+  { path: '/api/finance/funds', minRank: planRank('premium') },
+  { path: '/api/finance/allocations', minRank: planRank('premium') },
 
-  // ── Analytics — basic_basic+ (free cannot access) ──
-  { path: '/api/analytics', minRank: planRank('basic_basic') },
-  { path: '/api/analytics/advanced', minRank: planRank('basic_pro') },
+  // ── Bursary Module — premium+ (Rank 4) ──
+  { path: '/api/bursary', minRank: planRank('premium') },
 
-  // ── Custom reports — basic_premium+ ──
-  { path: '/api/reports/custom', minRank: planRank('basic_premium') },
+  // ── Analytics — premium+ (Rank 4) ──
+  { path: '/api/analytics', minRank: planRank('premium') },
+  { path: '/api/analytics/advanced', minRank: planRank('premium') },
 
-  // ── Branding — basic_premium+ ──
-  { path: '/api/settings/branding', minRank: planRank('basic_premium') },
+  // ── Custom reports — premium+ (Rank 4) ──
+  { path: '/api/reports/custom', minRank: planRank('premium') },
 
-  // ── Bulk ops — basic_premium+ ──
-  { path: '/api/bulk', minRank: planRank('basic_premium') },
+  // ── Branding — premium+ (Rank 4) ──
+  { path: '/api/settings/branding', minRank: planRank('premium') },
 
-  // ── Library — add-on module, also included from basic_basic plan ──
-  // free plan: allowed ONLY with addon_library add-on
-  // basic_basic+: always included
-  { path: '/api/library', minRank: planRank('basic_basic') },
+  // ── Bulk ops — premium+ (Rank 4) ──
+  { path: '/api/bulk', minRank: planRank('premium') },
 
-  // ── Messaging + Virtual Diary — add-on module, also included from basic_pro ──
-  // Lower plans: allowed ONLY with addon_messaging add-on
-  // basic_pro+: always included
-  { path: '/api/messaging', minRank: planRank('basic_pro') },
-  { path: '/api/diary', minRank: planRank('basic_pro') },
+  // ── Library — pro+ (Rank 3) ──
+  { path: '/api/library', minRank: planRank('pro') },
+
+  // ── Messaging + Virtual Diary — pro+ (Rank 3) ──
+  { path: '/api/messaging', minRank: planRank('pro') },
+  { path: '/api/diary', minRank: planRank('pro') },
 ];
 
-// Write-specific restrictions (POST/PUT/DELETE) on library for basic_basic
+// Write-specific restrictions (POST/PUT/DELETE) on library for basic
 const WRITE_RESTRICTED = [
-  { path: '/api/library', minRank: planRank('basic_pro') },
+  { path: '/api/library', minRank: planRank('pro') },
 ];
 
 /**

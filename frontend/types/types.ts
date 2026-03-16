@@ -169,7 +169,7 @@ export interface Payment {
   student_display_id?: string;
   amount: number;
   payment_date: string;
-  payment_method: "cash" | "bank_transfer" | "mobile_money" | "card" | "scholarship";
+  payment_method: "cash" | "bank_transfer" | "mobile_money" | "card" | "scholarship" | "bank" | "mpesa";
   status: "pending" | "completed" | "failed";
   reference_number?: string;
   notes?: string;

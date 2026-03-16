@@ -132,7 +132,7 @@ exports.login = async (req, res) => {
  */
 exports.enrollUser = async (req, res) => {
   const {
-    email,
+    email, // This might be overridden for custom domains
     full_name,
     role,
     phone,
@@ -176,33 +176,42 @@ exports.enrollUser = async (req, res) => {
     const targetInstitutionId = institution_id || req.institution_id;
 
     // 0. Enforce Limits
-    if (targetInstitutionId && (role === 'admin' || role === 'student')) {
+    if (targetInstitutionId) {
       const { data: inst } = await supabase
         .from('institutions')
-        .select('subscription_plan')
+        .select('subscription_plan, email_domain')
         .eq('id', targetInstitutionId)
         .single();
 
+      const institutionDomain = inst?.email_domain;
+
       // Normalise legacy IDs to canonical plan IDs
       const rawPlan = inst?.subscription_plan || 'trial';
-      const normPlan = (p) => ({
-        beta_free: 'free', basic: 'basic_basic', pro: 'basic_pro', premium: 'basic_premium'
-      }[p] || p || 'trial');
+      const normPlan = (p) => {
+        const mapping = {
+          beta_free: 'free',
+          basic_basic: 'basic',
+          basic_pro: 'pro',
+          basic_premium: 'premium',
+          enterprise_basic: 'custom',
+          enterprise_pro: 'custom',
+          enterprise_premium: 'custom',
+          custom_basic: 'custom',
+          custom_pro: 'custom',
+          custom_premium: 'custom'
+        };
+        return mapping[p] || p || 'trial';
+      };
       const canonicalPlan = normPlan(rawPlan);
 
-      // Limits aligned with PLAN_LIMITS in subscriptionCheck.js
+      // Limits aligned with landing page promises
       const LIMITS = {
         free: { maxStudents: 30, maxAdmins: 1 },
         trial: { maxStudents: 50, maxAdmins: 1 },
-        basic_basic: { maxStudents: 900, maxAdmins: 1 },
-        basic_pro: { maxStudents: 1000, maxAdmins: 3 },
-        basic_premium: { maxStudents: 5000, maxAdmins: Infinity },
-        enterprise_basic: { maxStudents: 2000, maxAdmins: 5 },
-        enterprise_pro: { maxStudents: 5000, maxAdmins: 15 },
-        enterprise_premium: { maxStudents: Infinity, maxAdmins: Infinity },
-        custom_basic: { maxStudents: Infinity, maxAdmins: Infinity },
-        custom_pro: { maxStudents: Infinity, maxAdmins: Infinity },
-        custom_premium: { maxStudents: Infinity, maxAdmins: Infinity },
+        basic: { maxStudents: 900, maxAdmins: 1 },
+        pro: { maxStudents: 1000, maxAdmins: 3 },
+        premium: { maxStudents: 5000, maxAdmins: Infinity },
+        custom: { maxStudents: Infinity, maxAdmins: Infinity },
       };
 
       const limits = LIMITS[canonicalPlan] ?? { maxStudents: 50, maxAdmins: 1 };
@@ -237,13 +246,35 @@ exports.enrollUser = async (req, res) => {
         }
       }
     }
+
+    // 0.5 Generate custom email if institution has a domain and role permits
+    let finalEmail = email;
+    if (targetInstitutionId) {
+      const { data: inst } = await supabase.from('institutions').select('email_domain').eq('id', targetInstitutionId).single();
+      if (inst?.email_domain && ['student', 'teacher', 'admin'].includes(role)) {
+        const nameParts = full_name.trim().toLowerCase().replace(/[^a-z\s]/g, '').split(/\s+/);
+        if (nameParts.length >= 2) {
+          finalEmail = `${nameParts[0]}.${nameParts[nameParts.length - 1]}@${inst.email_domain}`;
+        } else {
+          finalEmail = `${nameParts[0]}@${inst.email_domain}`;
+        }
+      }
+    }
+
+    // Validate required fields again with potentially updated email
+    if (!finalEmail || !full_name || !role) {
+      return res.status(400).json({
+        error: "full_name and role are required. email generation failed or missing.",
+      });
+    }
+
     // 1. Generate temporary password for primary user
     const tempPassword = generateTempPassword();
 
     // 2. Create primary auth user
     const { data: authData, error: authError } =
       await supabase.auth.admin.createUser({
-        email,
+        email: finalEmail,
         password: tempPassword,
         email_confirm: true,
         user_metadata: { full_name },
@@ -255,7 +286,7 @@ exports.enrollUser = async (req, res) => {
     // 3. Insert into users table
     const { error: userInsertError } = await supabase.from("users").insert({
       id: uid,
-      email,
+      email: finalEmail,
       full_name,
       role,
       phone: phone || null,
@@ -416,7 +447,7 @@ exports.enrollUser = async (req, res) => {
     res.status(201).json({
       message: "User enrolled successfully",
       uid,
-      email,
+      email: finalEmail,
       tempPassword,
       customId,
       role,
@@ -781,7 +812,68 @@ exports.changePassword = async (req, res) => {
 };
 
 /**
- * Send password reset email (public endpoint)
+ * Admin action to reset a user's password manually (Hierarchical control)
+ * req.userId, req.userRole etc are provided by authMiddleware
+ */
+exports.adminResetPassword = async (req, res) => {
+  try {
+    const { targetUserId, newPassword } = req.body;
+    const adminId = req.userId;
+    const adminRole = req.userRole;
+    const adminInstId = req.institutionId;
+
+    if (!targetUserId || !newPassword) {
+      return res.status(400).json({ error: "Target user ID and new password are required" });
+    }
+
+    if (newPassword.length < 6) {
+      return res.status(400).json({ error: "Password must be at least 6 characters" });
+    }
+
+    // Fetch target user info
+    const { data: targetUser, error: targetError } = await supabase
+      .from('users')
+      .select('institution_id, role')
+      .eq('id', targetUserId)
+      .single();
+
+    if (targetError || !targetUser) {
+      return res.status(404).json({ error: "Target user not found" });
+    }
+
+    // Role-based hierarchy enforcement
+    if (adminRole === 'master_admin') {
+      // Master admin can reset any user
+    } else if (adminRole === 'admin') {
+      // Regular admin can only reset users in their own institution
+      if (targetUser.institution_id !== adminInstId) {
+        return res.status(403).json({ error: "Access denied. Target user belongs to a different institution." });
+      }
+      // Admins cannot reset other admins (except themselves via changePassword)
+      // They must contact Master Admin for platform-level reset as per user request
+      if (targetUser.role === 'admin' && targetUserId !== adminId) {
+        return res.status(403).json({ error: "As an institution administrator, you cannot reset other administrators. Please contact the Master Admin." });
+      }
+    } else {
+      return res.status(403).json({ error: "Unauthorized. Insufficient permissions." });
+    }
+
+    // Update password via admin API (requires Service Role key)
+    const { error: updateError } = await supabase.auth.admin.updateUserById(targetUserId, {
+      password: newPassword,
+    });
+
+    if (updateError) throw updateError;
+
+    res.status(200).json({ message: "User password has been reset successfully." });
+  } catch (err) {
+    console.error("adminResetPassword error:", err);
+    res.status(500).json({ error: err.message || "Failed to reset user password" });
+  }
+};
+
+/**
+ * Send password reset email (public endpoint) or notify admin for Free tier
  */
 exports.forgotPassword = async (req, res) => {
   try {
@@ -789,6 +881,69 @@ exports.forgotPassword = async (req, res) => {
 
     if (!email) {
       return res.status(400).json({ error: "Email is required" });
+    }
+
+    // Check user role and institution tier for hierarchical recovery requirements
+    const { data: userData } = await supabase
+      .from("users")
+      .select("id, full_name, role, institution_id, institutions!institution_id(subscription_plan)")
+      .eq("email", email)
+      .single();
+
+    if (userData) {
+      const plan = userData.institutions?.subscription_plan;
+      const role = userData.role;
+
+      // Hierarchical recovery for Free Tier (beta_free)
+      if (plan === 'beta_free' || plan === 'free') {
+        if (role === 'student' || role === 'parent' || role === 'teacher' || role === 'bursary') {
+          // Notify Institution Admins
+          const { data: admins } = await supabase
+            .from('users')
+            .select('id')
+            .eq('institution_id', userData.institution_id)
+            .eq('role', 'admin');
+
+          if (admins && admins.length > 0) {
+            const notifications = admins.map(admin => ({
+              user_id: admin.id,
+              title: "Password Reset Request",
+              message: `${userData.full_name} (${role}) has requested a password reset. Please assist them in the User Management section.`,
+              type: 'warning',
+              institution_id: userData.institution_id,
+              data: { target_user_id: userData.id, target_name: userData.full_name }
+            }));
+            await supabase.from('notifications').insert(notifications);
+          }
+
+          return res.status(200).json({ 
+            message: "Your institution is on the Free Tier. Please contact your internal school administrator to reset your password.",
+            is_hierarchical: true
+          });
+        } else if (role === 'admin') {
+          // Notify Master Admins
+          const { data: masterAdmins } = await supabase
+            .from('users')
+            .select('id')
+            .eq('role', 'master_admin');
+
+          if (masterAdmins && masterAdmins.length > 0) {
+            const notifications = masterAdmins.map(ma => ({
+              user_id: ma.id,
+              title: "Admin Password Reset Request",
+              message: `Administrator ${userData.full_name} from a Free Tier institution has requested a password reset.`,
+              type: 'critical',
+              data: { target_user_id: userData.id, target_name: userData.full_name, institution_id: userData.institution_id }
+            }));
+            await supabase.from('notifications').insert(notifications);
+          }
+
+          return res.status(200).json({ 
+            message: "Administrative reset requested. Please contact the platform support (Master Admin) to reset your password.",
+            is_hierarchical: true
+          });
+        }
+      }
     }
 
     const { createClient } = require("@supabase/supabase-js");

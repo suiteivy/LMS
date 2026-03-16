@@ -2,10 +2,12 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useTheme } from "@/contexts/ThemeContext";
 import { Lock, ShieldAlert } from "lucide-react-native";
 import React, { useState } from "react";
-import { ActivityIndicator, Modal, Platform, ScrollView, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, Modal, Platform, ScrollView, Text, TextInput, TouchableOpacity, View, Alert } from "react-native";
 import Toast from 'react-native-toast-message';
 import { supabase } from '@/libs/supabase';
 import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { ChangePasswordModal } from "./shared/ChangePasswordModal";
+import { SettingsService } from "@/services/SettingsService";
 
 interface SettingRowProps {
     icon: any;
@@ -17,9 +19,6 @@ interface SettingRowProps {
 export default function MasterAdminSettings() {
     const { isDark } = useTheme();
     const [passwordModalVisible, setPasswordModalVisible] = useState(false);
-    const [currentPassword, setCurrentPassword] = useState("");
-    const [newPassword, setNewPassword] = useState("");
-    const [loading, setLoading] = useState(false);
 
     // Enrollment State
     const [enrollModalVisible, setEnrollModalVisible] = useState(false);
@@ -45,42 +44,6 @@ export default function MasterAdminSettings() {
         return url;
     }
 
-    const handleChangePassword = async () => {
-        if (!currentPassword || newPassword.length < 6) {
-            Toast.show({ type: 'error', text1: 'Validation Error', text2: 'New password must be at least 6 chars.' });
-            return;
-        }
-
-        setLoading(true);
-        try {
-            const { data: { session } } = await supabase.auth.getSession();
-            if (!session) return;
-
-            const res = await fetch(`${getBackendUrl()}/api/auth/change-password`, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${session.access_token}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ current_password: currentPassword, new_password: newPassword })
-            });
-
-            const data = await res.json();
-            if (res.ok) {
-                Toast.show({ type: 'success', text1: 'Success', text2: 'Password updated successfully' });
-                setPasswordModalVisible(false);
-                setCurrentPassword('');
-                setNewPassword('');
-            } else {
-                Toast.show({ type: 'error', text1: 'Error', text2: data.error });
-            }
-        } catch (err) {
-            console.error(err);
-            Toast.show({ type: 'error', text1: 'Error', text2: 'Failed to update password' });
-        } finally {
-            setLoading(false);
-        }
-    };
 
     const handleEnrollMasterAdmin = async () => {
         if (!enrollData.full_name || !enrollData.email || !enrollData.password) {
@@ -163,46 +126,10 @@ export default function MasterAdminSettings() {
 
             </View>
 
-            <Modal visible={passwordModalVisible} transparent animationType="slide">
-                <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}>
-                    <View style={{ backgroundColor: tokens.surface, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: Platform.OS === 'ios' ? 40 : 24 }}>
-                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
-                            <Text style={{ fontSize: 20, fontWeight: '800', color: tokens.textPrimary }}>Change Password</Text>
-                            <TouchableOpacity onPress={() => setPasswordModalVisible(false)}>
-                                <MaterialCommunityIcons name="close" size={24} color={tokens.textSecondary} />
-                            </TouchableOpacity>
-                        </View>
-
-                        <Text style={{ color: tokens.textPrimary, fontWeight: '600', marginBottom: 8 }}>Current Password</Text>
-                        <TextInput
-                            style={{ backgroundColor: tokens.inputBg, color: tokens.textPrimary, borderRadius: 12, padding: 14, marginBottom: 16, borderWidth: 1, borderColor: tokens.inputBorder }}
-                            secureTextEntry
-                            placeholder="••••••••"
-                            placeholderTextColor={tokens.textSecondary}
-                            value={currentPassword}
-                            onChangeText={setCurrentPassword}
-                        />
-
-                        <Text style={{ color: tokens.textPrimary, fontWeight: '600', marginBottom: 8 }}>New Password</Text>
-                        <TextInput
-                            style={{ backgroundColor: tokens.inputBg, color: tokens.textPrimary, borderRadius: 12, padding: 14, marginBottom: 24, borderWidth: 1, borderColor: tokens.inputBorder }}
-                            secureTextEntry
-                            placeholder="••••••••"
-                            placeholderTextColor={tokens.textSecondary}
-                            value={newPassword}
-                            onChangeText={setNewPassword}
-                        />
-
-                        <TouchableOpacity
-                            onPress={handleChangePassword}
-                            disabled={loading}
-                            style={{ backgroundColor: tokens.primary, padding: 16, borderRadius: 14, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 8 }}
-                        >
-                            {loading ? <ActivityIndicator color="#fff" /> : <Text style={{ color: '#fff', fontSize: 16, fontWeight: '700' }}>Save Password</Text>}
-                        </TouchableOpacity>
-                    </View>
-                </View>
-            </Modal>
+            <ChangePasswordModal 
+                visible={passwordModalVisible} 
+                onClose={() => setPasswordModalVisible(false)} 
+            />
 
             {/* Enroll Master Admin Modal */}
             <Modal visible={enrollModalVisible} transparent animationType="slide">
