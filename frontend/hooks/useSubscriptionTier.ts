@@ -1,9 +1,9 @@
 import { useAuth } from '@/contexts/AuthContext';
 
 // ── Plan rank order (mirrors backend subscriptionCheck.js) ──────────────────
-// free=0, trial=1, basic=2, pro=3, premium=4, custom=5
+// beta=0, trial=1, basic=2, pro=3, premium=4, custom=5
 const PLAN_RANK: Record<string, number> = {
-    free: 0,
+    beta: 0,
     trial: 1,
     basic: 2,
     pro: 3,
@@ -14,7 +14,8 @@ const PLAN_RANK: Record<string, number> = {
 // Normalise legacy plan IDs to canonical ones
 function normalisePlan(plan: string | null | undefined): string {
     const map: Record<string, string> = {
-        beta_free: 'free',
+        beta_free: 'beta',
+        free: 'beta', // handle plain legacy 'free'
         basic_basic: 'basic',
         basic_pro: 'pro',
         basic_premium: 'premium',
@@ -34,8 +35,8 @@ function rank(plan: string | null | undefined): number {
 export interface SubscriptionTierInfo {
     /** The raw/normalised canonical plan ID e.g. 'free', 'basic' */
     plan: string;
-    /** True if the institution is on the free (master-admin granted) tier */
-    isFree: boolean;
+    /** True if the institution is on the beta (master-admin granted) tier */
+    isBeta: boolean;
     /** True if any paid plan (basic and above) */
     isPaid: boolean;
     /** Whether this tier includes the Finance module */
@@ -85,7 +86,7 @@ export function useSubscriptionTier(): SubscriptionTierInfo {
 
     return {
         plan: canonical,
-        isFree: canonical === 'free',
+        isBeta: canonical === 'beta',
         isPaid: r >= PLAN_RANK['basic'],
 
         // Finance: Included in Premium (4) OR explicitly granted as add-on
@@ -100,11 +101,11 @@ export function useSubscriptionTier(): SubscriptionTierInfo {
         // Analytics: Included in Premium (4) OR explicitly granted as add-on
         hasAnalytics: r >= PLAN_RANK['premium'] || addonAnalytics,
 
-        // Messaging: Included in Pro (3)+ OR explicitly granted as add-on
-        hasMessaging: r >= PLAN_RANK['pro'] || addonMessaging,
+        // Messaging: Included in Beta (0)+ OR explicitly granted as add-on
+        hasMessaging: r >= PLAN_RANK['beta'] || addonMessaging,
 
-        // Diary: Included in Pro (3)+ OR explicitly granted as add-on
-        hasDiary: r >= PLAN_RANK['pro'] || addonDiary,
+        // Diary: Included in Beta (0)+ OR explicitly granted as add-on
+        hasDiary: r >= PLAN_RANK['beta'] || addonDiary,
 
         // Library: Included in Pro (3)+ OR explicitly granted as add-on
         hasLibrary: r >= PLAN_RANK['pro'] || addonLibrary,

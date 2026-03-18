@@ -1,4 +1,4 @@
-﻿import { EmptyState } from "@/components/common/EmptyState";
+import { EmptyState } from "@/components/common/EmptyState";
 import { useTheme } from "@/contexts/ThemeContext";
 import { LibraryAPI, useLibraryAPI } from "@/services/LibraryService";
 import { FrontendBorrowedBook } from "@/types/types";
@@ -68,7 +68,7 @@ const BorrowedBooksOverview: React.FC<BorrowedBooksOverviewProps> = ({
     const frontendBook = LibraryAPI.transformBorrowedBookData(backendBook);
     return {
       ...frontendBook,
-      borrowerPhone: backendBook.student?.phone || undefined,
+      borrowerPhone: frontendBook.borrowerPhone,
       renewalCount: backendBook.renewal_count || 0,
       maxRenewals: backendBook.max_renewals || 1,
       fineAmount: backendBook.fine_amount || undefined,
@@ -503,11 +503,25 @@ const BorrowedBooksOverview: React.FC<BorrowedBooksOverviewProps> = ({
               <Text className="text-sm font-medium text-slate-700 dark:text-gray-200 mb-1">
                 Borrower: {borrowedBook.borrowerName}
               </Text>
-              {borrowedBook.borrowerDisplayId && (
-                <Text className="text-xs text-teal-600 dark:text-teal-400 font-medium mb-1">
-                  ID: {borrowedBook.borrowerDisplayId}
-                </Text>
-              )}
+              
+              <View className="flex-row flex-wrap gap-2 mb-1">
+                {borrowedBook.borrowerDisplayId && (
+                  <Text className="text-[10px] bg-teal-50 dark:bg-teal-900/30 text-teal-600 dark:text-teal-400 font-bold px-2 py-0.5 rounded-md uppercase tracking-wider">
+                    ID: {borrowedBook.borrowerDisplayId}
+                  </Text>
+                )}
+                {borrowedBook.borrowerType === 'student' && borrowedBook.gradeLevel && (
+                  <Text className="text-[10px] bg-orange-50 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 font-bold px-2 py-0.5 rounded-md uppercase tracking-wider">
+                    Grade: {borrowedBook.gradeLevel}
+                  </Text>
+                )}
+                {borrowedBook.borrowerType === 'teacher' && borrowedBook.department && (
+                  <Text className="text-[10px] bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 font-bold px-2 py-0.5 rounded-md uppercase tracking-wider">
+                    Dept: {borrowedBook.department}
+                  </Text>
+                )}
+              </View>
+
               <Text className="text-xs text-gray-600 dark:text-gray-300 mb-1">
                 📧 {borrowedBook.borrowerEmail}
               </Text>
@@ -517,9 +531,8 @@ const BorrowedBooksOverview: React.FC<BorrowedBooksOverviewProps> = ({
                 </Text>
               )}
               {borrowedBook.renewalCount !== undefined && (
-                <Text className="text-xs text-teal-600 dark:text-teal-400">
-                  Renewals: {borrowedBook.renewalCount}/
-                  {borrowedBook.maxRenewals || 1}
+                <Text className="text-[10px] text-teal-600 dark:text-teal-400 font-bold uppercase tracking-wider mt-1">
+                  Renewals: {borrowedBook.renewalCount} / {borrowedBook.maxRenewals || 1}
                 </Text>
               )}
             </View>

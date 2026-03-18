@@ -15,7 +15,9 @@ export interface ClassStudent {
     enrollment_id: string;
     student_id: string;
     enrolled_at: string;
-    full_name: string;
+    first_name: string;
+    last_name: string;
+    full_name?: string;
     email: string;
     grade_level: string;
 }

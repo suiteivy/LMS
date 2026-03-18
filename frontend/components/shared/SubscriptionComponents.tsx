@@ -24,7 +24,7 @@ export const SubscriptionBanner = () => {
 // ─── Plan Hierarchy (frontend gate) ──────────────────────────────────────────
 // Mirrors PLAN_RANK in useSubscriptionTier.ts
 const PLAN_HIERARCHY: Record<string, number> = {
-    'free': 0,
+    'beta': 0,
     'trial': 1,
     'basic': 2,
     'pro': 3,
@@ -108,8 +108,11 @@ export const SubscriptionGate = ({ children, fallback, minPlan, feature, classNa
  * Premium Status Badge for the Header
  */
 export const SubscriptionStatusBadge = () => {
-    const { subscriptionPlan, subscriptionStatus, isTrial } = useAuth();
+    const { subscriptionPlan, subscriptionStatus, isTrial, profile } = useAuth();
     const plan = normalisePlan(subscriptionPlan);
+
+    // Hide for non-admins
+    if (profile?.role !== 'admin' && profile?.role !== 'master_admin') return null;
 
     if (subscriptionStatus === 'expired' || subscriptionStatus === 'cancelled') {
         return (
@@ -129,14 +132,17 @@ export const SubscriptionStatusBadge = () => {
 
     // Premium/Pro Gradients logic (CSS based for Web, View based for Native)
     const getBadgeStyle = () => {
+        const label = getPlanLabel(plan);
         switch (plan) {
             case 'premium':
-                return { bg: 'bg-purple-600/10', text: 'text-purple-600', border: 'border-purple-600/20', label: '✨ Premium' };
+                return { bg: 'bg-purple-600/10', text: 'text-purple-600', border: 'border-purple-600/20', label: `✨ ${label}` };
             case 'pro':
-                return { bg: 'bg-indigo-600/10', text: 'text-indigo-600', border: 'border-indigo-600/20', label: 'Pro' };
+                return { bg: 'bg-indigo-600/10', text: 'text-indigo-600', border: 'border-indigo-600/20', label };
             case 'custom':
-                return { bg: 'bg-blue-600/10', text: 'text-blue-600', border: 'border-blue-600/20', label: 'Custom' };
-            default: return { bg: 'bg-slate-500/10', text: 'text-slate-500', border: 'border-slate-500/20', label: 'Standard' };
+                return { bg: 'bg-blue-600/10', text: 'text-blue-600', border: 'border-blue-600/20', label };
+            case 'beta':
+                return { bg: 'bg-emerald-600/10', text: 'text-emerald-600', border: 'border-emerald-600/20', label };
+            default: return { bg: 'bg-slate-500/10', text: 'text-slate-500', border: 'border-slate-500/20', label };
         }
     };
 

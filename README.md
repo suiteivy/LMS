@@ -9,7 +9,7 @@ A comprehensive, role-based mobile application for managing educational institut
 - [**Roles & Permissions**](docs/roles.md) - Detailed role capabilities.
 
 ## ✨ Key Features
-- **Master Platform Admin**: View `/(master-admin)` for global platform management, subscription controls, institution enrollment, scalable student limits (Custom plans), and Add-on (Digital Library, Bursary, Messaging, Virtual Diary) distribution.
+- **Master Platform Admin**: View `/(master-admin)` for global platform management, subscription controls, institution enrollment, scalable student limits (Custom plans), and Add-on (Digital Library, Bursary, Messaging, Virtual Diary) distribution. Includes a comprehensive Support Desk for ticket management and escalation.
   - *Default Local Credentials:* `masteradmin@suiteivy.com` / `Master@123456`
 - **Multi-Role Support**: Tailored experiences for Students, Teachers, Admins, and Parents.
 - **Academic Management**: Grading, Attendance tracking, Subject management, and Timetables.
@@ -19,6 +19,8 @@ A comprehensive, role-based mobile application for managing educational institut
 - **Examination Module**: Exam scheduling and results management.
 - **Platform Subscriptions**: Granular Role-Based Access Control (RBAC) securely governed by custom database-driven subscription gating logic (`subscriptionCheck`).
 - **Real-time Communication**: Integrated messaging and notification system.
+- **Support Ticketing**: Integrated support system with priority levels, assignment, and escalation for seamless institution assistance.
+- **Flexible Plans**: Choice between **Beta (Entry level)**, Trial (30-day full access), and tiered premium plans (Basic, Pro, Premium, Custom) to suit various institution sizes.
 
 ## 🛠️ Tech Stack
 - **Frontend**: React Native, Expo Router, NativeWind (Tailwind CSS)

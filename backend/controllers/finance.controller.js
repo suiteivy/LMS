@@ -250,14 +250,15 @@ exports.recordFeePayment = async (req, res) => {
                 method: payment_method,
                 meta: { notes, reference_number }
             }])
-            .select("*, users(full_name)")
+            .select("*, users(first_name, last_name, full_name)")
             .single();
 
         if (error) throw error;
         // Attach student_name to response for frontend
+        const student_name = data?.users?.first_name ? `${data.users.first_name} ${data.users.last_name || ''}`.trim() : (data?.users?.full_name || "");
         const response = {
             ...data,
-            student_name: data?.users?.full_name || ""
+            student_name
         };
         res.status(201).json(response);
     } catch (err) {

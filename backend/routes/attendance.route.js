@@ -6,14 +6,16 @@ const {
     getStudentAttendance,
     markStudentAttendance
 } = require("../controllers/attendance.controller");
-const { authMiddleware } = require("../middleware/auth.middleware");
+const { authorizeRoles } = require("../middleware/authRole");
 
-// Teacher Attendance Routes (Admin only usually)
-router.get("/teachers", authMiddleware, getTeacherAttendance);
-router.post("/teachers", authMiddleware, markTeacherAttendance);
+router.use(authMiddleware);
+
+// Teacher Attendance Routes (Admin only)
+router.get("/teachers", authorizeRoles(["admin"]), getTeacherAttendance);
+router.post("/teachers", authorizeRoles(["admin"]), markTeacherAttendance);
 
 // Student Attendance Routes (Teachers/Admins)
-router.get("/students", authMiddleware, getStudentAttendance);
-router.post("/students", authMiddleware, markStudentAttendance);
+router.get("/students", authorizeRoles(["admin", "teacher"]), getStudentAttendance);
+router.post("/students", authorizeRoles(["admin", "teacher"]), markStudentAttendance);
 
 module.exports = router;

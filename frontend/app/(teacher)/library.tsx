@@ -7,11 +7,11 @@ import { BookOpen, CheckCircle2, Clock, Filter, Search, X } from 'lucide-react-n
 import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, Modal, RefreshControl, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useRealtimeQuery } from '@/hooks/useRealtimeQuery';
-import { SubscriptionGate, AddonRequestButton } from "@/components/shared/SubscriptionComponents";
+import { SubscriptionGate } from "@/components/shared/SubscriptionComponents";
 import { Zap } from "lucide-react-native";
 
-export default function StudentLibrary() {
-    const { studentId } = useAuth();
+export default function TeacherLibrary() {
+    const { teacherId } = useAuth();
     const [searchQuery, setSearchQuery] = useState("");
     const [selectedBook, setSelectedBook] = useState<FrontendBook | null>(null);
     const [modalVisible, setModalVisible] = useState(false);
@@ -33,7 +33,7 @@ export default function StudentLibrary() {
         try {
             const [booksData, historyData] = await Promise.all([
                 LibraryAPI.getBooks(),
-                LibraryAPI.getBorrowingHistory()
+                teacherId ? LibraryAPI.getBorrowingHistory(teacherId) : Promise.resolve([])
             ]);
 
             const finalBooks = booksData.map(LibraryAPI.transformBookData);
@@ -49,7 +49,7 @@ export default function StudentLibrary() {
             setLoading(false);
             setRefreshing(false);
         }
-    }, [studentId]);
+    }, [teacherId]);
 
     useEffect(() => {
         loadData();
@@ -62,8 +62,8 @@ export default function StudentLibrary() {
 
     const handleBorrow = async (book: FrontendBook) => {
         setActionLoading(true);
-        if (!studentId) {
-            Alert.alert("Unauthorized", "Please sign in as a student to borrow books.");
+        if (!teacherId) {
+            Alert.alert("Unauthorized", "Profile data missing. Please try again.");
             setActionLoading(false);
             return;
         }
@@ -90,7 +90,7 @@ export default function StudentLibrary() {
             <UnifiedHeader
                 title="Resources"
                 subtitle="Library"
-                role="Student"
+                role="Teacher"
                 onBack={() => router.back()}
             />
 
@@ -140,7 +140,7 @@ export default function StudentLibrary() {
                         {borrowingHistory.filter(b => ['borrowed', 'waiting', 'ready_for_pickup', 'overdue'].includes(b.status)).length > 0 && (
                             <>
                                 <View className="px-2 mb-4">
-                                    <Text className="text-gray-400 dark:text-gray-500 font-bold text-[10px] uppercase tracking-[3px]">Active Borrowing</Text>
+                                    <Text className="text-gray-400 dark:text-gray-500 font-bold text-[10px] uppercase tracking-[3px]">My Borrowed Books</Text>
                                 </View>
                                 {borrowingHistory.filter(b => ['borrowed', 'waiting', 'ready_for_pickup', 'overdue'].includes(b.status)).map((borrow) => (
                                     <View key={borrow.id} className="bg-white dark:bg-[#1a1a1a] p-5 rounded-3xl border border-gray-100 dark:border-gray-800 mb-3 flex-row items-center shadow-sm">
@@ -236,7 +236,7 @@ export default function StudentLibrary() {
                         >
                             {actionLoading ? <ActivityIndicator color="white" /> : (
                                 <Text className="text-white font-bold text-lg">
-                                    {(selectedBook?.available ?? 0) > 0 ? "Reserve Publication" : "Currently Unavailable"}
+                                    {(selectedBook?.available ?? 0) > 0 ? "Borrow Publication" : "Currently Unavailable"}
                                 </Text>
                             )}
                         </TouchableOpacity>

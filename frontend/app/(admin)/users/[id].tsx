@@ -46,7 +46,8 @@ export default function UserDetailsScreen() {
     const [isEditing, setIsEditing] = useState(false);
     const [saving, setSaving] = useState(false);
 
-    const [fullName, setFullName] = useState('');
+    const [firstName, setFirstName] = useState('');
+    const [lastName, setLastName] = useState('');
     const [email, setEmail] = useState('');
     const [phone, setPhone] = useState('');
     const [gender, setGender] = useState('');
@@ -80,9 +81,15 @@ export default function UserDetailsScreen() {
     const [allSubjects, setAllSubjects] = useState<any[]>([]);
 
     const mappedUser: User | null = user ? {
-        id: user.id, name: user.full_name, email: user.email,
-        role: user.role, joinDate: user.created_at,
-        displayId: roleData?.id || undefined, avatar: user.avatar_url || undefined
+        id: user.id, 
+        first_name: user.first_name || '',
+        last_name: user.last_name || '',
+        name: user.first_name ? `${user.first_name} ${user.last_name || ''}`.trim() : 'Unknown User', 
+        email: user.email || '',
+        role: user.role, 
+        joinDate: user.created_at || new Date().toISOString(),
+        displayId: roleData?.id || undefined, 
+        avatar: user.avatar_url || undefined
     } : null;
 
     useEffect(() => { if (id) { fetchUserDetails(); loadLookupData(); } }, [id]);
@@ -91,8 +98,8 @@ export default function UserDetailsScreen() {
         const [classRes, subjectRes, studentRes, parentRes] = await Promise.all([
             supabase.from('classes').select('id, name').order('name'),
             supabase.from('subjects').select('id, title').order('title'),
-            supabase.from('students').select('id, user_id, users:user_id(full_name)').order('id'),
-            supabase.from('parents').select('id, user_id, users:user_id(full_name)').order('id'),
+            supabase.from('students').select('id, user_id, users:user_id(first_name, last_name)').order('id'),
+            supabase.from('parents').select('id, user_id, users:user_id(first_name, last_name)').order('id'),
         ]);
         if (classRes.data) setClasses(classRes.data);
         if (subjectRes.data) setAllSubjects(subjectRes.data);
@@ -198,7 +205,7 @@ export default function UserDetailsScreen() {
     };
 
     const populateUserFields = (u: any) => {
-        setFullName(u.full_name || ''); setEmail(u.email || ''); setPhone(u.phone || '');
+        setFirstName(u.first_name || ''); setLastName(u.last_name || ''); setEmail(u.email || ''); setPhone(u.phone || '');
         setGender(u.gender || ''); setDob(u.date_of_birth || ''); setAddress(u.address || '');
     };
 
@@ -243,13 +250,14 @@ export default function UserDetailsScreen() {
     
 
     const handleSave = async () => {
-        if (!fullName.trim()) { Alert.alert('Validation', 'Full name is required'); return; }
+        if (!firstName.trim()) { Alert.alert('Validation', 'First name is required'); return; }
         setSaving(true);
         try {
             console.log('===== [SAVE] Step 1: Building request body =====');
 
             const body: any = {
-                full_name: fullName,
+                first_name: firstName,
+                last_name: lastName,
                 email,
                 phone: phone || null,
                 gender: gender || null,
@@ -476,7 +484,8 @@ export default function UserDetailsScreen() {
                     {renderReadOnly('User ID', roleData?.id || 'N/A')}
                     {renderReadOnly('Role', user.role)}
                     {renderReadOnly('Joined', format(new Date(user.created_at), 'MMM dd, yyyy'))}
-                    {renderField('Full Name', fullName, setFullName)}
+                    {renderField('First Name', firstName, setFirstName)}
+                    {renderField('Last Name', lastName, setLastName)}
                     {renderField('Email', email, setEmail, { type: 'email' })}
                     {renderField('Phone', phone, setPhone, { type: 'phone' })}
                     {renderGenderPicker()}
@@ -495,7 +504,7 @@ export default function UserDetailsScreen() {
                             (ids) => setClassId(ids[ids.length - 1] ?? null),
                             c => c.name, '#10b981'
                         )}
-                        {renderChipList('Linked Parents', allParents, linkedParents, setLinkedParents, p => p.users?.full_name || p.id, '#6366f1')}
+                        {renderChipList('Linked Parents', allParents, linkedParents, setLinkedParents, p => p.users ? `${p.users.first_name || ''} ${p.users.last_name || ''}`.trim() : p.id, '#6366f1')}
                     </View>
                 )}
 
@@ -523,7 +532,7 @@ export default function UserDetailsScreen() {
                         <Text style={{ fontSize: 11, fontWeight: '700', color: '#f59e0b', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 4 }}>👨‍👩‍👧 Parent Details</Text>
                         {renderField('Occupation', occupation, setOccupation)}
                         {renderField('Address', parentAddress, setParentAddress)}
-                        {renderChipList('Linked Children', students, linkedStudents, setLinkedStudents, s => s.users?.full_name || s.id, '#f59e0b')}
+                        {renderChipList('Linked Children', students, linkedStudents, setLinkedStudents, s => s.users ? `${s.users.first_name || ''} ${s.users.last_name || ''}`.trim() : s.id, '#f59e0b')}
                     </View>
                 )}
 

@@ -1,4 +1,4 @@
-﻿import { useTheme } from "@/contexts/ThemeContext";
+import { useTheme } from "@/contexts/ThemeContext";
 import { router, useSegments } from "expo-router";
 import {
   BookOpen,
@@ -59,7 +59,9 @@ export const WebSidebar = ({ items, basePath, role, children }: WebSidebarProps)
         paddingTop: insets.top + 16,
         paddingBottom: insets.bottom + 16,
         transition: 'width 0.2s',
-      } as any}>
+      } as any}
+      collapsable={undefined}
+    >
         {/* Logo / Role badge */}
         {!collapsed && (
           <View style={{ paddingHorizontal: 20, marginBottom: 24 }}>

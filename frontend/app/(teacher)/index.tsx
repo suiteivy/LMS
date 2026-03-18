@@ -1,4 +1,4 @@
-﻿import { UnifiedHeader } from "@/components/common/UnifiedHeader";
+import { UnifiedHeader } from "@/components/common/UnifiedHeader";
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from "@/contexts/ThemeContext";
 import { TeacherAPI } from "@/services/TeacherService";
@@ -112,7 +112,7 @@ export default function TeacherHome() {
             <SubscriptionBanner />
             <UnifiedHeader
                 title="Welcome back,"
-                subtitle={profile?.full_name?.split(" ")[0] || 'Teacher'}
+                subtitle={profile?.first_name || profile?.full_name?.split(" ")[0] || 'Teacher'}
                 role="Teacher"
                 showNotification={true}
             />

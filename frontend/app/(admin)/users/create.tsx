@@ -1,4 +1,4 @@
-﻿import { DatePicker } from '@/components/common/DatePicker';
+import { DatePicker } from '@/components/common/DatePicker';
 import { useTheme } from '@/contexts/ThemeContext';
 import { supabase } from '@/libs/supabase';
 import { api } from '@/services/api';
@@ -19,6 +19,8 @@ type Step = 0 | 1 | 2 | 3 | 4;
 
 interface FormData {
     role: Role | null;
+    first_name: string;
+    last_name: string;
     full_name: string;
     email: string;
     phone: string;
@@ -43,6 +45,8 @@ interface FormData {
     linked_students: { student_id: string; relationship: string; name?: string }[];
     create_parent: boolean;
     parent_info: {
+        first_name: string;
+        last_name: string;
         full_name: string;
         email: string;
         phone: string;
@@ -52,7 +56,7 @@ interface FormData {
 }
 
 const initialFormData: FormData = {
-    role: null, full_name: '', email: '', phone: '', gender: '',
+    role: null, first_name: '', last_name: '', full_name: '', email: '', phone: '', gender: '',
     date_of_birth: '', address: '', institution_id: '',
     grade_level: '', academic_year: new Date().getFullYear().toString(),
     parent_contact: '', emergency_contact_name: '', emergency_contact_phone: '',
@@ -62,7 +66,7 @@ const initialFormData: FormData = {
     occupation: '', parent_address: '',
     linked_students: [],
     create_parent: false,
-    parent_info: { full_name: '', email: '', phone: '', occupation: '', address: '' },
+    parent_info: { first_name: '', last_name: '', full_name: '', email: '', phone: '', occupation: '', address: '' },
 };
 
 // ---------- Sanitizers ----------
@@ -93,7 +97,7 @@ export default function CreateUserScreen() {
         const [classRes, subjectRes, studentRes] = await Promise.all([
             supabase.from('classes').select('id, name, grade_level'),
             supabase.from('subjects').select('id, title, teacher_id'),
-            supabase.from('students').select('id, user_id, grade_level, users:user_id(full_name)') as any,
+            supabase.from('students').select('id, user_id, grade_level, users:user_id(first_name, last_name, full_name)') as any,
         ]);
         if (classRes.data) setClasses(classRes.data);
         if (subjectRes.data) setSubjects(subjectRes.data);
@@ -125,7 +129,11 @@ export default function CreateUserScreen() {
         setForm(prev => ({ ...prev, linked_students: prev.linked_students.map(ls => ls.student_id === studentId ? { ...ls, relationship } : ls) }));
 
     const handleSubmit = async () => {
-        if (!form.full_name.trim() || !form.email.trim()) { Alert.alert('Validation', 'Name and email are required'); return; }
+        const isParentRole = form.role === 'parent';
+        if (!form.first_name.trim() || !form.last_name.trim() || (isParentRole && !form.email.trim())) {
+            Alert.alert('Validation', `First name, last name ${isParentRole ? 'and email ' : ''}are required`);
+            return;
+        }
         setLoading(true);
         try {
             const response = await api.post('/auth/enroll-user', { ...form, parent_info: form.create_parent ? form.parent_info : undefined });
@@ -159,7 +167,10 @@ export default function CreateUserScreen() {
 
     const canGoNext = (): boolean => {
         if (step === 0) return !!form.role;
-        if (step === 1) return !!form.full_name.trim() && !!form.email.trim();
+        if (step === 1) {
+            const isParentRole = form.role === 'parent';
+            return !!form.first_name.trim() && !!form.last_name.trim() && (isParentRole ? !!form.email.trim() : true);
+        }
         return true;
     };
     const nextStep = () => { if (step === 3) { handleSubmit(); return; } if (canGoNext()) setStep((step + 1) as Step); };
@@ -231,8 +242,29 @@ export default function CreateUserScreen() {
         <View style={{ padding: 24 }}>
             <Text style={{ fontSize: 24, fontWeight: '700', color: textPrimary, marginBottom: 6 }}>Personal Information</Text>
             <Text style={{ color: textSecondary, marginBottom: 24 }}>Enter the user's basic details</Text>
-            <RenderInput label="Full Name *" value={form.full_name} onChangeText={(v: string) => updateFormSanitized('full_name', v)} placeholder="e.g. John Doe" isDark={isDark} textPrimary={textPrimary} textSecondary={textSecondary} inputBg={inputBg} inputBorder={inputBorder} />
-            <RenderInput label="Email *" value={form.email} onChangeText={(v: string) => updateFormSanitized('email', v, 'email')} placeholder="e.g. john@school.com" keyboardType="email-address" isDark={isDark} textPrimary={textPrimary} textSecondary={textSecondary} inputBg={inputBg} inputBorder={inputBorder} />
+            <View style={{ flexDirection: 'row', gap: 12 }}>
+                <View style={{ flex: 1 }}>
+                    <RenderInput label="First Name *" value={form.first_name} onChangeText={(v: string) => updateFormSanitized('first_name', v)} placeholder="John" isDark={isDark} textPrimary={textPrimary} textSecondary={textSecondary} inputBg={inputBg} inputBorder={inputBorder} />
+                </View>
+                <View style={{ flex: 1 }}>
+                    <RenderInput label="Last Name *" value={form.last_name} onChangeText={(v: string) => updateFormSanitized('last_name', v)} placeholder="Doe" isDark={isDark} textPrimary={textPrimary} textSecondary={textSecondary} inputBg={inputBg} inputBorder={inputBorder} />
+                </View>
+            </View>
+            <RenderInput 
+                label={`Email ${form.role === 'parent' ? '*' : '(Optional)'}`} 
+                value={form.email} 
+                onChangeText={(v: string) => updateFormSanitized('email', v, 'email')} 
+                placeholder={form.role === 'parent' ? "parent@example.com" : "Auto-generated if left blank"} 
+                keyboardType="email-address" 
+                isDark={isDark} textPrimary={textPrimary} textSecondary={textSecondary} inputBg={inputBg} inputBorder={inputBorder} 
+            />
+            {form.role !== 'parent' && !form.email.trim() && (
+                <View style={{ backgroundColor: isDark ? '#1e293b' : '#f1f5f9', padding: 12, borderRadius: 12, marginBottom: 16 }}>
+                    <Text style={{ fontSize: 11, color: textSecondary }}>
+                        💡 Leaving this blank will automatically create an email: <Text style={{ fontWeight: 'bold' }}>first.last@institution.com</Text>
+                    </Text>
+                </View>
+            )}
             <RenderInput label="Phone" value={form.phone} onChangeText={(v: string) => updateFormSanitized('phone', v, 'phone')} placeholder="+254 7XX XXX XXX" keyboardType="phone-pad" isDark={isDark} textPrimary={textPrimary} textSecondary={textSecondary} inputBg={inputBg} inputBorder={inputBorder} />
             <RenderPicker label="Gender" options={GENDER_OPTIONS} selected={form.gender} onSelect={(v: string) => updateForm('gender', v)} isDark={isDark} textPrimary={textPrimary} textSecondary={textSecondary} border={border} card={card} />
             <DatePicker label="Date of Birth" value={form.date_of_birth} onChange={v => updateForm('date_of_birth', v)} isDark={isDark} />
@@ -268,7 +300,8 @@ export default function CreateUserScreen() {
                 {form.create_parent && (
                     <View>
                         {[
-                            { label: 'Parent Full Name *', key: 'full_name', placeholder: "Guardian's name", type: 'default' },
+                            { label: 'Parent First Name *', key: 'first_name', placeholder: "First name", type: 'default' },
+                            { label: 'Parent Last Name *', key: 'last_name', placeholder: "Last name", type: 'default' },
                             { label: 'Parent Email *', key: 'email', placeholder: 'parent@example.com', type: 'email' },
                             { label: 'Parent Phone', key: 'phone', placeholder: '+254...', type: 'phone' },
                             { label: 'Parent Occupation', key: 'occupation', placeholder: 'e.g. Doctor', type: 'default' },
@@ -320,7 +353,8 @@ export default function CreateUserScreen() {
 
     const renderParentDetails = () => {
         const filteredStudents = students.filter(s => {
-            const name = (s.users as any)?.full_name || '';
+            const u = s.users as any;
+            const name = u?.first_name ? `${u.first_name} ${u.last_name || ''}`.trim() : (u?.full_name || '');
             return name.toLowerCase().includes(studentSearch.toLowerCase()) || s.id?.toLowerCase().includes(studentSearch.toLowerCase());
         });
         return (
@@ -345,7 +379,10 @@ export default function CreateUserScreen() {
                                         style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: border }}>
                                         <Ionicons name="person-outline" size={18} color={textSecondary} />
                                         <Text style={{ marginLeft: 8, color: textPrimary, fontWeight: '500' }}>
-                                            {(s.users as any)?.full_name || 'Unknown'}
+                                            {(() => {
+                                                const u = s.users as any;
+                                                return u?.first_name ? `${u.first_name} ${u.last_name || ''}`.trim() : (u?.full_name || 'Unknown');
+                                            })()}
                                         </Text>
                                         <Text style={{ color: textSecondary, fontSize: 11, marginLeft: 4 }}>{s.id}</Text>
                                     </TouchableOpacity>
@@ -413,7 +450,8 @@ export default function CreateUserScreen() {
             <View style={{ backgroundColor: card, borderRadius: 16, borderWidth: 1, borderColor: border, padding: 16, marginBottom: 16 }}>
                 <Text style={{ fontSize: 11, fontWeight: '700', color: textSecondary, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>Personal</Text>
                 {renderReviewRow('Role', form.role || '')}
-                {renderReviewRow('Name', form.full_name)}
+                {renderReviewRow('First Name', form.first_name)}
+                {renderReviewRow('Last Name', form.last_name)}
                 {renderReviewRow('Email', form.email)}
                 {renderReviewRow('Phone', form.phone)}
                 {renderReviewRow('Gender', form.gender)}
@@ -434,7 +472,8 @@ export default function CreateUserScreen() {
             {form.role === 'student' && form.create_parent && (
                 <View style={{ backgroundColor: isDark ? '#0f172a' : '#eff6ff', borderRadius: 16, borderWidth: 1, borderColor: isDark ? '#1e3a5f' : '#bfdbfe', padding: 16, marginBottom: 16 }}>
                     <Text style={{ fontSize: 11, fontWeight: '700', color: '#3b82f6', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>Parent to be Created</Text>
-                    {renderReviewRow('Parent Name', form.parent_info.full_name)}
+                    {renderReviewRow('Parent First Name', form.parent_info.first_name)}
+                    {renderReviewRow('Parent Last Name', form.parent_info.last_name)}
                     {renderReviewRow('Parent Email', form.parent_info.email)}
                     {renderReviewRow('Parent Phone', form.parent_info.phone)}
                     {renderReviewRow('Occupation', form.parent_info.occupation)}

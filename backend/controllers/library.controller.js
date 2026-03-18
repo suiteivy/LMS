@@ -75,29 +75,47 @@ async function getStudentId(userId) {
   return data.id;
 }
 
-/** Check if student has any overdue, unreturned books */
-async function hasOverdueBooks({ studentId }) {
+/** Helper to get TEACHER ID (TEXT) from USER ID (UUID) */
+async function getTeacherId(userId) {
   const { data, error } = await supabase
+    .from('teachers')
+    .select('id')
+    .eq('user_id', userId)
+    .single();
+
+  if (error || !data) return null;
+  return data.id;
+}
+
+/** Check if borrower has any overdue, unreturned books */
+async function hasOverdueBooks({ studentId, teacherId }) {
+  const query = supabase
     .from("borrowed_books")
     .select("id")
-    .eq("student_id", studentId)
     .is("returned_at", null)
     .lt("due_date", new Date().toISOString().slice(0, 10))
     .neq("status", "returned");
 
+  if (studentId) query.eq("student_id", studentId);
+  if (teacherId) query.eq("teacher_id", teacherId);
+
+  const { data, error } = await query;
   if (error) throw error;
   return (data || []).length > 0;
 }
 
 /** Count actively borrowed (not yet returned) */
-async function activeBorrowCount({ studentId }) {
-  const { count, error } = await supabase
+async function activeBorrowCount({ studentId, teacherId }) {
+  const query = supabase
     .from("borrowed_books")
     .select("id", { count: "exact", head: true })
-    .eq("student_id", studentId)
     .is("returned_at", null)
     .eq("status", "borrowed");
 
+  if (studentId) query.eq("student_id", studentId);
+  if (teacherId) query.eq("teacher_id", teacherId);
+
+  const { count, error } = await query;
   if (error) throw error;
   return count ?? 0;
 }
@@ -231,13 +249,20 @@ exports.borrowBook = async (req, res) => {
     const { bookId, days = 14 } = req.body; // bookId matches existing param
     const appUserId = req.userId; // This is the user.id (UUID)
 
-    if (!["student"].includes(userRole)) {
-      return res.status(403).json({ error: "Students only." });
+    if (!["student", "teacher"].includes(userRole)) {
+      return res.status(403).json({ error: "Students or Teachers only." });
     }
 
-    // 0) Get Student ID (TEXT)
-    const studentId = await getStudentId(appUserId);
-    if (!studentId) return res.status(400).json({ error: "Student profile not found" });
+    let studentId = null;
+    let teacherId = null;
+
+    if (userRole === "student") {
+      studentId = await getStudentId(appUserId);
+      if (!studentId) return res.status(400).json({ error: "Student profile not found" });
+    } else {
+      teacherId = await getTeacherId(appUserId);
+      if (!teacherId) return res.status(400).json({ error: "Teacher profile not found" });
+    }
 
     // 1) Book must exist
     const { data: item, error: itemErr } = await supabase
@@ -250,23 +275,26 @@ exports.borrowBook = async (req, res) => {
     if (itemErr || !item) return res.status(404).json({ error: "Book not found." });
     if (item.available_quantity <= 0) return res.status(400).json({ error: "Book out of stock" });
 
-    // 2) Fee threshold
-    const cfg = await getActiveConfig();
-    const overallPct = await getStudentOverallFeePercent(appUserId, institution_id);
-    if (overallPct < Number(cfg.min_fee_percent_for_borrow)) {
-      return res.status(403).json({
-        error: `Insufficient fee payment. Need at least ${Number(cfg.min_fee_percent_for_borrow) * 100}% overall.`,
-        details: { percent: Math.round(overallPct * 100) },
-      });
+    // 2) Fee threshold (Students only)
+    if (userRole === "student") {
+      const cfg = await getActiveConfig();
+      const overallPct = await getStudentOverallFeePercent(appUserId, institution_id);
+      if (overallPct < Number(cfg.min_fee_percent_for_borrow)) {
+        return res.status(403).json({
+          error: `Insufficient fee payment. Need at least ${Number(cfg.min_fee_percent_for_borrow) * 100}% overall.`,
+          details: { percent: Math.round(overallPct * 100) },
+        });
+      }
     }
 
     // 3) No overdue books
-    if (await hasOverdueBooks({ studentId })) {
+    if (await hasOverdueBooks({ studentId, teacherId })) {
       return res.status(403).json({ error: "You have overdue books. Return them first." });
     }
 
     // 4) Borrow count < limit
-    const activeCount = await activeBorrowCount({ studentId });
+    const cfg = await getActiveConfig();
+    const activeCount = await activeBorrowCount({ studentId, teacherId });
     if (activeCount >= Number(cfg.default_borrow_limit)) {
       return res.status(403).json({ error: `Borrow limit reached (${cfg.default_borrow_limit}).` });
     }
@@ -279,7 +307,8 @@ exports.borrowBook = async (req, res) => {
       .insert([
         {
           book_id: bookId, // Changed from item_id
-          student_id: studentId, // Changed from user_id (UUID)
+          student_id,
+          teacher_id,
           status: 'borrowed',
           borrowed_at: new Date().toISOString(), // Changed from borrow_date
           due_date: dueDate.toISOString().slice(0, 10),
@@ -335,12 +364,14 @@ exports.returnBook = async (req, res) => {
       .eq("id", borrowId)
       .is("returned_at", null); // Changed from return_date
 
-    // If student, ensure it owns the loan
-    if (userRole !== "admin") {
-      // Need student ID
+    // If student or teacher, ensure it owns the loan
+    if (!["admin", "master_admin"].includes(userRole)) {
       const studentId = await getStudentId(appUserId);
-      if (!studentId) return res.status(403).json({ error: "Student profile required" });
-      query = query.eq("student_id", studentId);
+      const teacherId = await getTeacherId(appUserId);
+      
+      if (studentId) query = query.eq("student_id", studentId);
+      else if (teacherId) query = query.eq("teacher_id", teacherId);
+      else return res.status(403).json({ error: "Profile required" });
     }
 
     const { data: loan, error: loanErr } = await query.limit(1).maybeSingle();
@@ -380,10 +411,24 @@ exports.history = async (req, res) => {
     let targetStudentId = studentId;
 
     if (!targetStudentId) {
-      // If student viewing own history
+      // If student or teacher viewing own history
       const sId = await getStudentId(req.userId);
-      if (!sId) return res.status(400).json({ error: "Profile not found" });
-      targetStudentId = sId;
+      const tId = await getTeacherId(req.userId);
+      
+      if (sId) {
+        targetStudentId = sId;
+      } else if (tId) {
+        // Teachers see their own history
+        const { data, error } = await supabase
+          .from("borrowed_books")
+          .select("*, books(title, author, isbn)")
+          .eq("teacher_id", tId)
+          .order("created_at", { ascending: false });
+        if (error) return res.status(500).json({ error: error.message });
+        return res.json(data);
+      } else {
+        return res.status(400).json({ error: "Profile not found" });
+      }
     }
 
     const { data, error } = await supabase
@@ -409,10 +454,18 @@ exports.getAllBorrowedBooks = async (req, res) => {
       .from("borrowed_books")
       .select(`
         *,
-        books (title, author),
+        books (title, author, isbn, category),
         students (
           id,
-          users (full_name, email)
+          grade_level,
+          academic_year,
+          users (first_name, last_name, full_name, email, phone)
+        ),
+        teachers (
+          id,
+          department,
+          position,
+          users (first_name, last_name, full_name, email, phone)
         )
       `)
       .order("created_at", { ascending: false });

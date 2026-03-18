@@ -17,7 +17,7 @@ export class FinanceService {
         return response.data.map((tx: any) => ({
             id: tx.id,
             student_id: tx.students?.id || tx.user_id,
-            student_name: tx.users?.full_name || 'Unknown',
+            student_name: tx.users?.first_name || tx.users?.full_name || 'Unknown',
             student_display_id: tx.students?.id || tx.user_id,
             amount: tx.amount,
             payment_date: tx.date || tx.created_at,
@@ -44,7 +44,7 @@ export class FinanceService {
         return response.data.map((tx: any) => ({
             id: tx.id,
             teacher_id: tx.users?.teachers?.[0]?.id || tx.user_id,
-            teacher_name: tx.users?.full_name || 'Unknown',
+            teacher_name: tx.users?.first_name || tx.users?.full_name || 'Unknown',
             teacher_display_id: tx.users?.teachers?.[0]?.id,
             amount: tx.amount,
             period_start: tx.date, // Approximate

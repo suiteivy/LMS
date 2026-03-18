@@ -344,10 +344,15 @@ export default function ForgotPassword() {
         setTimeout(() => router.back(), 4500);
       }
     } catch (err: any) {
-      // In case of real error, we still show a generic success to prevent email enumeration 
-      // UNLESS the error is from our own logic which we already handled above in the try block
-      showToast("If an account with that email exists, a reset link has been sent.");
-      setTimeout(() => router.back(), 4500);
+      const errorData = err.response?.data || err.data;
+      if (errorData?.code === 'RATE_LIMIT_EXCEEDED') {
+        setError(errorData.error || "Too many password reset requests. Please try again in an hour.");
+        shakeCard();
+      } else {
+        // In case of real error, we still show a generic success to prevent email enumeration 
+        showToast("If an account with that email exists, a reset link has been sent.");
+        setTimeout(() => router.back(), 4500);
+      }
     } finally {
       setLoading(false);
     }

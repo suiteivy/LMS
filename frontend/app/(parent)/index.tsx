@@ -1,4 +1,4 @@
-﻿import { UnifiedHeader } from "@/components/common/UnifiedHeader";
+import { UnifiedHeader } from "@/components/common/UnifiedHeader";
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { ParentService } from '@/services/ParentService';
@@ -174,7 +174,7 @@ function ParentDashboard({ user, logout }: any) {
                 <View className="flex-1 mr-4">
                   <Text className="text-white/40 text-[10px] font-bold uppercase tracking-[3px] mb-2">Child Profile</Text>
                   <Text className="text-white text-3xl font-black tracking-tighter" numberOfLines={1}>
-                    {selectedStudent?.users?.full_name}
+                    {selectedStudent?.users?.first_name ? `${selectedStudent.users.first_name} ${selectedStudent.users.last_name || ''}` : selectedStudent?.users?.full_name}
                   </Text>
                   <View className="bg-[#FF6900]/20 self-start px-3 py-1 rounded-full mt-2">
                     <Text className="text-[#FF6900] text-[10px] font-bold tracking-widest uppercase">
@@ -201,7 +201,7 @@ function ParentDashboard({ user, logout }: any) {
                         className={`mr-3 px-6 py-2.5 rounded-2xl border ${selectedStudent?.id === stu.id ? 'bg-[#FF6900] border-[#FF6900]' : 'bg-white/5 border-white/10'}`}
                       >
                         <Text className={`font-bold text-xs ${selectedStudent?.id === stu.id ? 'text-white' : 'text-gray-400'}`}>
-                          {stu.users?.full_name?.split(' ')[0]}
+                          {stu.users?.first_name || stu.users?.full_name?.split(' ')[0]}
                         </Text>
                         {stu.grade_level && (
                           <Text className={`text-[9px] mt-0.5 ${selectedStudent?.id === stu.id ? 'text-white/70' : 'text-gray-600'}`}>
@@ -240,7 +240,7 @@ function ParentDashboard({ user, logout }: any) {
               <View className="px-2 mb-6">
                 <Text className="text-gray-900 dark:text-white font-bold text-xl tracking-tight">Academic Oversight</Text>
                 <Text className="text-gray-400 dark:text-gray-500 text-xs mt-1">
-                  Viewing: {selectedStudent.users?.full_name?.split(' ')[0]}
+                  Viewing: {selectedStudent.users?.first_name || selectedStudent.users?.full_name?.split(' ')[0]}
                   {linkedStudents.length > 1 ? ` · ${linkedStudents.length} children` : ''}
                 </Text>
               </View>
@@ -296,7 +296,7 @@ function ParentDashboard({ user, logout }: any) {
           <View className="bg-white dark:bg-navy-surface p-8 rounded-[40px] border border-gray-100 dark:border-gray-800 shadow-sm mb-8 items-center border-dashed">
             <Bell size={28} color={isDark ? '#374151' : '#d1d5db'} />
             <Text className="text-gray-400 dark:text-gray-500 text-xs font-bold uppercase tracking-widest italic text-center mt-4">
-              No unread notifications for {selectedStudent?.users?.full_name?.split(" ")[0] || 'your child'}
+              No unread notifications for {selectedStudent?.users?.first_name || selectedStudent?.users?.full_name?.split(" ")[0] || 'your child'}
             </Text>
           </View>
 

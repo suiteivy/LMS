@@ -10,7 +10,9 @@ export interface SubjectData {
     class_id?: string;
     teachers?: {
         users: {
-            full_name: string;
+            first_name: string;
+            last_name: string;
+            full_name?: string;
         }
     };
 }

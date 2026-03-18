@@ -260,7 +260,7 @@ export const ProfileEdit = ({ visible, onClose, currentUser, onUpdate }: EditFor
                           <Image source={{ uri: avatarUrl }} className="w-full h-full" />
                         ) : (
                           <Text className="text-gray-400 text-2xl font-bold">
-                            {currentUser?.full_name?.charAt(0) || "U"}
+                            {currentUser?.first_name?.charAt(0) || currentUser?.full_name?.charAt(0) || "U"}
                           </Text>
                         )}
                       </View>
@@ -277,11 +277,11 @@ export const ProfileEdit = ({ visible, onClose, currentUser, onUpdate }: EditFor
                     <View className="space-y-4">
                       <View>
                         <Text className="text-sm font-semibold text-gray-700 mb-2">
-                          Full Name
+                          Display Name
                         </Text>
                         <View className="bg-gray-50 p-4 rounded-2xl border border-gray-100">
                           <Text className="text-gray-500 text-base">
-                            {currentUser?.full_name || 'Alex Reed'}
+                            {currentUser?.first_name} {currentUser?.last_name}
                           </Text>
                         </View>
                       </View>

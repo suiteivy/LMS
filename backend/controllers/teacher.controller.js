@@ -260,7 +260,7 @@ exports.getStudentPerformance = async (req, res) => {
             .from('enrollments')
             .select(`
                 id, student_id, subject_id,
-                students ( id, user_id, grade_level, users(full_name, email, avatar_url) )
+                students ( id, user_id, grade_level, users(first_name, last_name, full_name, email, avatar_url) )
             `)
             .in('subject_id', subjectIds);
 
@@ -295,6 +295,8 @@ exports.getStudentPerformance = async (req, res) => {
                 return {
                     student_id: enrollment.student_id,
                     full_name: enrollment.students?.users?.full_name || 'Unknown',
+                    first_name: enrollment.students?.users?.first_name || '',
+                    last_name: enrollment.students?.users?.last_name || '',
                     email: enrollment.students?.users?.email || '',
                     avatar_url: enrollment.students?.users?.avatar_url || null,
                     grade_level: enrollment.students?.grade_level || null,

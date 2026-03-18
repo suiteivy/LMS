@@ -79,6 +79,8 @@ export default function MasterPayments() {
     const filteredPayments = payments.filter(p => 
         p.institutions?.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
         p.users?.full_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        p.users?.first_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        p.users?.last_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
         p.reference_number?.toLowerCase().includes(searchQuery.toLowerCase())
     );
 
@@ -91,7 +93,9 @@ export default function MasterPayments() {
                 <View style={styles.cardHeader}>
                     <View style={styles.instInfo}>
                         <Text style={[styles.instName, { color: themeColors.text }]}>{item.institutions?.name || 'Unknown Institution'}</Text>
-                        <Text style={[styles.subtext, { color: themeColors.subtext }]}>{item.users?.full_name || 'Staff'}</Text>
+                        <Text style={[styles.subtext, { color: themeColors.subtext }]}>
+                            {item.users?.first_name ? `${item.users.first_name} ${item.users.last_name || ''}`.trim() : (item.users?.full_name || 'Staff')}
+                        </Text>
                     </View>
                     <View style={[styles.statusBadge, { backgroundColor: `${statusColor}15` }]}>
                         <Text style={[styles.statusText, { color: statusColor }]}>{item.status?.toUpperCase()}</Text>

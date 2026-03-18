@@ -1,4 +1,4 @@
-﻿import { UnifiedHeader } from "@/components/common/UnifiedHeader";
+import { UnifiedHeader } from "@/components/common/UnifiedHeader";
 import { SubscriptionBanner } from "@/components/shared/SubscriptionComponents";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSubscriptionTier } from "@/hooks/useSubscriptionTier";
@@ -196,7 +196,7 @@ export default function Index() {
           <View className="mb-8 px-2">
             <Text className="text-gray-400 dark:text-gray-500 font-bold text-[10px] uppercase tracking-[3px] mb-2">Academic Portal</Text>
             <Text className="text-gray-900 dark:text-white font-bold text-3xl tracking-tight">
-              Hello, {profile?.full_name?.split(' ')[0] || 'Student'} 👋
+              Hello, {profile?.first_name || profile?.full_name?.split(' ')[0] || 'Student'} 👋
             </Text>
             <Text className="text-gray-400 dark:text-gray-500 text-xs font-medium mt-1">ID: {displayId || 'Not Assigned'}</Text>
           </View>

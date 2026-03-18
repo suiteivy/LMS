@@ -37,7 +37,7 @@ exports.getLinkedStudents = async (req, res) => {
         // 2. Get Students with grade_level from students table
         const { data: students, error } = await supabase
             .from("parent_students")
-            .select("student:students(id, grade_level, users(full_name, avatar_url, email))")
+            .select("student:students(id, grade_level, users(first_name, last_name, full_name, avatar_url, email))")
             .eq("parent_id", parent.id);
 
 

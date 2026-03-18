@@ -1,4 +1,4 @@
-﻿import { useTheme } from "@/contexts/ThemeContext";
+import { useTheme } from "@/contexts/ThemeContext";
 import { Ionicons } from "@expo/vector-icons";
 import React, { useState } from "react";
 import {
@@ -282,7 +282,7 @@ const BorrowLimitConfiguration: React.FC<BorrowLimitConfigurationProps> = ({
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: bg }}>
+    <View style={{ flex: 1, backgroundColor: bg }} collapsable={undefined}>
       {/* Header */}
       <View style={{ backgroundColor: surface, padding: 16, borderBottomWidth: 1, borderBottomColor: border }}>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>

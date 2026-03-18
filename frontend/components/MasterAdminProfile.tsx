@@ -11,7 +11,8 @@ export default function MasterAdminProfile() {
     const { profile, refreshProfile, displayId } = useAuth();
     const { isDark } = useTheme();
     const [isEditing, setIsEditing] = useState(false);
-    const [name, setName] = useState(profile?.full_name || "");
+    const [firstName, setFirstName] = useState(profile?.first_name || "");
+    const [lastName, setLastName] = useState(profile?.last_name || "");
     const [phone, setPhone] = useState(profile?.phone || "");
     const [saving, setSaving] = useState(false);
 
@@ -31,7 +32,8 @@ export default function MasterAdminProfile() {
 
     useEffect(() => {
         if (profile) {
-            setName(profile.full_name || "");
+            setFirstName(profile.first_name || "");
+            setLastName(profile.last_name || "");
             setPhone(profile.phone || "");
         }
     }, [profile]);
@@ -45,8 +47,8 @@ export default function MasterAdminProfile() {
     }
 
     const handleSave = async () => {
-        if (!name.trim()) {
-            Toast.show({ type: 'error', text1: 'Validation Error', text2: 'Name cannot be empty' });
+        if (!firstName.trim()) {
+            Toast.show({ type: 'error', text1: 'Validation Error', text2: 'First name cannot be empty' });
             return;
         }
         setSaving(true);
@@ -60,7 +62,11 @@ export default function MasterAdminProfile() {
                     'Authorization': `Bearer ${session.access_token}`,
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify({ full_name: name, phone })
+                body: JSON.stringify({ 
+                    first_name: firstName, 
+                    last_name: lastName,
+                    phone 
+                })
             });
 
             const data = await res.json();
@@ -105,26 +111,48 @@ export default function MasterAdminProfile() {
                             <View style={{ paddingHorizontal: 24, paddingBottom: 24, flexDirection: "row", justifyContent: "space-between", alignItems: "flex-end", marginTop: 16 }}>
                                 <View style={{ flex: 1, paddingBottom: 8 }}>
                                     {isEditing ? (
-                                        <TextInput
-                                            value={name}
-                                            onChangeText={setName}
-                                            autoFocus
-                                            style={{
-                                                backgroundColor: tokens.inputBg,
-                                                color: tokens.inputText,
-                                                paddingHorizontal: 12,
-                                                paddingVertical: 8,
-                                                borderRadius: 10,
-                                                fontSize: 20,
-                                                fontWeight: "700",
-                                                marginRight: 8,
-                                                borderWidth: 1,
-                                                borderColor: tokens.inputBorder,
-                                            }}
-                                        />
+                                        <View style={{ gap: 8 }}>
+                                            <TextInput
+                                                value={firstName}
+                                                onChangeText={setFirstName}
+                                                autoFocus
+                                                placeholder="First Name"
+                                                placeholderTextColor={tokens.textMuted}
+                                                style={{
+                                                    backgroundColor: tokens.inputBg,
+                                                    color: tokens.inputText,
+                                                    paddingHorizontal: 12,
+                                                    paddingVertical: 8,
+                                                    borderRadius: 10,
+                                                    fontSize: 16,
+                                                    fontWeight: "700",
+                                                    marginRight: 8,
+                                                    borderWidth: 1,
+                                                    borderColor: tokens.inputBorder,
+                                                }}
+                                            />
+                                            <TextInput
+                                                value={lastName}
+                                                onChangeText={setLastName}
+                                                placeholder="Last Name"
+                                                placeholderTextColor={tokens.textMuted}
+                                                style={{
+                                                    backgroundColor: tokens.inputBg,
+                                                    color: tokens.inputText,
+                                                    paddingHorizontal: 12,
+                                                    paddingVertical: 8,
+                                                    borderRadius: 10,
+                                                    fontSize: 16,
+                                                    fontWeight: "700",
+                                                    marginRight: 8,
+                                                    borderWidth: 1,
+                                                    borderColor: tokens.inputBorder,
+                                                }}
+                                            />
+                                        </View>
                                     ) : (
                                         <Text style={{ fontSize: 24, fontWeight: "700", color: "#ffffff" }}>
-                                            {profile.full_name || "Master Admin"}
+                                            {profile.first_name} {profile.last_name}
                                         </Text>
                                     )}
                                     <Text style={{ color: "#ffedd5", fontWeight: "500", marginTop: 2 }}>
@@ -192,7 +220,7 @@ export default function MasterAdminProfile() {
                                                 zIndex: 20,
                                             }}
                                             activeOpacity={0.8}
-                                            onPress={() => { setIsEditing(false); setName(profile.full_name || ""); setPhone(profile.phone || ""); }}
+                                            onPress={() => { setIsEditing(false); setFirstName(profile.first_name || ""); setLastName(profile.last_name || ""); setPhone(profile.phone || ""); }}
                                         >
                                             <X size={18} color="#ef4444" />
                                         </TouchableOpacity>

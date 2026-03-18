@@ -16,32 +16,31 @@ const router = express.Router();
 router.post(
     "/",
     authMiddleware,
-    authorizeRoles(["admin"]),
+    authorizeRoles(["admin", "master_admin"]),
     createTimetableEntry
 );
 
 router.put(
     "/:id",
     authMiddleware,
-    authorizeRoles(["admin"]),
+    authorizeRoles(["admin", "master_admin"]),
     updateTimetableEntry
 );
 
 router.delete(
     "/:id",
     authMiddleware,
-    authorizeRoles(["admin"]),
+    authorizeRoles(["admin", "master_admin"]),
     deleteTimetableEntry
 );
 
-// View: Class timetable (public/student/teacher/admin likely needs access)
-// For now, allow authenticated users
-router.get("/class/:class_id", authMiddleware, getClassTimetable);
+// View: Class timetable
+router.get("/class/:class_id", authMiddleware, authorizeRoles(["admin", "teacher", "student", "parent"]), getClassTimetable);
 
-// View: Teacher's own timetable (must be before :teacher_id route)
-router.get("/teacher", authMiddleware, getTeacherTimetable);
+// View: Teacher's own timetable
+router.get("/teacher", authMiddleware, authorizeRoles(["teacher"]), getTeacherTimetable);
 
-// View: Specific teacher's timetable
-router.get("/teacher/:teacher_id", authMiddleware, getTeacherTimetable);
+// View: Specific teacher's timetable (Admins/Master Admins)
+router.get("/teacher/:teacher_id", authMiddleware, authorizeRoles(["admin", "master_admin"]), getTeacherTimetable);
 
 module.exports = router;

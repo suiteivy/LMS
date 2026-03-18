@@ -17,23 +17,23 @@ const {
 
 // Funds
 router.get("/funds", authMiddleware, getFunds);
-router.post("/funds", authMiddleware, authorizeRoles(['admin', 'bursary']), createFund);
+router.post("/funds", authMiddleware, authorizeRoles(['admin', 'bursary', 'master_admin']), createFund);
 
 // Allocations
 router.get("/allocations", authMiddleware, getAllocations);
-router.post("/allocations", authMiddleware, authorizeRoles(['admin', 'bursary']), createAllocation);
+router.post("/allocations", authMiddleware, authorizeRoles(['admin', 'bursary', 'master_admin']), createAllocation);
 
 // Transactions (Unified Replacement for Payments/Payouts)
 router.get("/transactions", authMiddleware, getTransactions);
-router.post("/transactions", authMiddleware, authorizeRoles(['admin', 'bursary']), createTransaction);
-router.put("/transactions/:id/process", authMiddleware, authorizeRoles(['admin', 'bursary']), processTransaction);
+router.post("/transactions", authMiddleware, authorizeRoles(['admin', 'bursary', 'master_admin']), createTransaction);
+router.put("/transactions/:id/process", authMiddleware, authorizeRoles(['admin', 'bursary', 'master_admin']), processTransaction);
 
 // Fee Structures
 router.get("/fee-structures", authMiddleware, getFeeStructures);
-router.post("/fee-structures", authMiddleware, authorizeRoles(['admin', 'bursary']), require("../controllers/finance.controller").createFeeStructure);
-router.put("/fee-structures/:id", authMiddleware, authorizeRoles(['admin', 'bursary']), updateFeeStructure);
+router.post("/fee-structures", authMiddleware, authorizeRoles(['admin', 'bursary', 'master_admin']), require("../controllers/finance.controller").createFeeStructure);
+router.put("/fee-structures/:id", authMiddleware, authorizeRoles(['admin', 'bursary', 'master_admin']), updateFeeStructure);
 
 // Helper for Fees
-router.post("/fees/pay", authMiddleware, authorizeRoles(['admin', 'bursary']), recordFeePayment);
+router.post("/fees/pay", authMiddleware, authorizeRoles(['admin', 'bursary', 'master_admin']), recordFeePayment);
 
 module.exports = router;

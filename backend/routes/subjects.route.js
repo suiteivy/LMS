@@ -11,22 +11,26 @@ const {
   getSubjectsByClass,
 } = require("../controllers/subject.controller");
 
-// Create a new subject
-router.post("/", authMiddleware, createSubject);
+const { authorizeRoles } = require("../middleware/authRole");
 
-// Get all subjects for an institution (no role-based filtering)
-router.get("/", authMiddleware, getSubjects);
+router.use(authMiddleware);
+
+// Create a new subject
+router.post("/", authorizeRoles(["admin", "master_admin"]), createSubject);
+
+// Get all subjects for an institution
+router.get("/", authorizeRoles(["admin", "teacher", "student", "parent"]), getSubjects);
 
 // Get subjects filtered by user role and ID
-router.get("/filtered", authMiddleware, getFilteredSubjects);
+router.get("/filtered", authorizeRoles(["admin", "teacher", "student", "parent"]), getFilteredSubjects);
 
 // Get subjects by class ID
-router.get("/class/:classId", authMiddleware, getSubjectsByClass);
+router.get("/class/:classId", authorizeRoles(["admin", "teacher", "student", "parent"]), getSubjectsByClass);
 
-// Get subject by ID with role-based access control
-router.get("/:id", authMiddleware, getSubjectById);
+// Get subject by ID
+router.get("/:id", authorizeRoles(["admin", "teacher", "student", "parent"]), getSubjectById);
 
-// Enroll in a subject (requires authentication)
-router.post("/enroll", authMiddleware, enrollStudentInSubject);
+// Enroll in a subject
+router.post("/enroll", authorizeRoles(["admin", "teacher", "student"]), enrollStudentInSubject);
 
 module.exports = router;

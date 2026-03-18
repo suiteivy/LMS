@@ -2,7 +2,7 @@ import { useAuth } from '@/contexts/AuthContext';
 
 // ─── Plan order (lowest → highest capability) ────────────────────────────────
 export const PLAN_ORDER = [
-    'free',
+    'beta',
     'trial',
     'basic',
     'pro',
@@ -14,8 +14,9 @@ type PlanId = typeof PLAN_ORDER[number] | string;
 
 // Map legacy tiered plan IDs to our new clean canonical ones
 const LEGACY_MAP: Record<string, string> = {
-    free: 'free',
-    beta_free: 'free',
+    free: 'beta',
+    beta_free: 'beta',
+    beta: 'beta',
     trial: 'trial',
     basic: 'basic',
     basic_basic: 'basic',
@@ -47,7 +48,7 @@ export function getPlanRank(plan: string | null | undefined): number {
 
 // ─── Human-readable labels ────────────────────────────────────────────────────
 const PLAN_LABELS: Record<string, string> = {
-    free: 'Free Access',
+    beta: 'Beta Access',
     trial: 'Free Trial',
     basic: 'Basic',
     pro: 'Pro',

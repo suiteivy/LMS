@@ -1,4 +1,4 @@
-﻿import { UnifiedHeader } from "@/components/common/UnifiedHeader";
+import { UnifiedHeader } from "@/components/common/UnifiedHeader";
 import { useTheme } from "@/contexts/ThemeContext";
 import { TeacherAttendance, TeacherAttendanceAPI } from "@/services/TeacherAttendanceService";
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -8,9 +8,9 @@ import { useEffect, useState } from "react";
 import { ActivityIndicator, Alert, Image, ScrollView, Text, TouchableOpacity, View } from "react-native";
 
 const DEMO_ATTENDANCE: TeacherAttendance[] = [
-    { id: "ATT1", teacher_id: "T1", status: "present", date: new Date().toISOString(), notes: "", teachers: { id: "T1", users: { full_name: "Isaac Newton", avatar_url: undefined } } },
-    { id: "ATT2", teacher_id: "T2", status: "absent", date: new Date().toISOString(), notes: "On medical leave", teachers: { id: "T2", users: { full_name: "Marie Curie", avatar_url: undefined } } },
-    { id: "ATT3", teacher_id: "T3", status: "late", date: new Date().toISOString(), notes: "Arrived at 8:15 AM", teachers: { id: "T3", users: { full_name: "Albert Einstein", avatar_url: undefined } } },
+    { id: "ATT1", teacher_id: "T1", status: "present", date: new Date().toISOString(), notes: "", teachers: { id: "T1", users: { first_name: "Isaac", last_name: "Newton", full_name: "Isaac Newton", avatar_url: undefined } } },
+    { id: "ATT2", teacher_id: "T2", status: "absent", date: new Date().toISOString(), notes: "On medical leave", teachers: { id: "T2", users: { first_name: "Marie", last_name: "Curie", full_name: "Marie Curie", avatar_url: undefined } } },
+    { id: "ATT3", teacher_id: "T3", status: "late", date: new Date().toISOString(), notes: "Arrived at 8:15 AM", teachers: { id: "T3", users: { first_name: "Albert", last_name: "Einstein", full_name: "Albert Einstein", avatar_url: undefined } } },
 ];
 
 export default function TeacherAttendancePage() {
@@ -116,14 +116,14 @@ export default function TeacherAttendancePage() {
                                         ) : (
                                             <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: isDark ? 'rgba(255,107,0,0.12)' : '#fff7ed' }}>
                                                 <Text style={{ color: '#FF6B00', fontWeight: 'bold', fontSize: 16 }}>
-                                                    {item.teachers?.users?.full_name?.charAt(0) || "T"}
+                                                    {item.teachers?.users?.first_name?.charAt(0) || item.teachers?.users?.full_name?.charAt(0) || "T"}
                                                 </Text>
                                             </View>
                                         )}
                                     </View>
                                     <View style={{ flex: 1 }}>
                                         <Text style={{ fontSize: 15, fontWeight: 'bold', color: textPrimary }} numberOfLines={1}>
-                                            {item.teachers?.users?.full_name || "Unknown Teacher"}
+                                            {item.teachers?.users?.first_name ? `${item.teachers.users.first_name} ${item.teachers.users.last_name || ''}`.trim() : (item.teachers?.users?.full_name || "Unknown Teacher")}
                                         </Text>
                                         <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
                                             <View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: config.dot, marginRight: 6 }} />

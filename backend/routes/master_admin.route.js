@@ -31,6 +31,8 @@ router.post('/enroll-master-admin', masterAdminController.enrollMasterAdmin);
 // View and update support requests
 router.get('/support-requests', masterAdminController.getSupportRequests);
 router.put('/support-requests/:id', masterAdminController.updateSupportRequest);
+router.get('/support-requests/:id/messages', masterAdminController.getTicketMessages);
+router.post('/support-requests/:id/messages', masterAdminController.addTicketMessage);
 
 // Global Payments Ledger
 router.get("/payments", masterAdminController.getAllPayments);

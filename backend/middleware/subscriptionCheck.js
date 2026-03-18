@@ -14,7 +14,7 @@ const CACHE_TTL = 60000; // 60 seconds
 // Legacy IDs kept for backward compat: beta_free, basic, pro, premium
 
 const PLAN_ORDER = [
-  'free',
+  'beta',
   'trial',
   'basic',
   'pro',
@@ -25,8 +25,9 @@ const PLAN_ORDER = [
 // Normalise legacy/shorthand plan IDs to canonical ones
 function normalisePlan(plan) {
   const map = {
-    'free': 'free',
-    'beta_free': 'free',
+    'free': 'beta',
+    'beta_free': 'beta',
+    'beta': 'beta',
     'trial': 'trial',
     'basic': 'basic',
     'basic_basic': 'basic',
@@ -55,7 +56,7 @@ function planRank(plan) {
 
 // ─── Student / Admin limits ───────────────────────────────────────────────────
 const PLAN_LIMITS = {
-  'free': { maxStudents: 30, maxAdmins: 1 },
+  'beta': { maxStudents: 30, maxAdmins: 1 },
   'trial': { maxStudents: 50, maxAdmins: 1 },
   'basic': { maxStudents: 900, maxAdmins: 1 },
   'pro': { maxStudents: 1000, maxAdmins: 3 },
@@ -94,9 +95,9 @@ const RESTRICTED_FEATURES = [
   // ── Library — pro+ (Rank 3) ──
   { path: '/api/library', minRank: planRank('pro') },
 
-  // ── Messaging + Virtual Diary — pro+ (Rank 3) ──
-  { path: '/api/messaging', minRank: planRank('pro') },
-  { path: '/api/diary', minRank: planRank('pro') },
+  // ── Messaging + Virtual Diary — beta+ (Rank 0) ──
+  { path: '/api/messaging', minRank: planRank('beta') },
+  { path: '/api/diary', minRank: planRank('beta') },
 ];
 
 // Write-specific restrictions (POST/PUT/DELETE) on library for basic

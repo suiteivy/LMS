@@ -1,5 +1,6 @@
 const supabase = require("../utils/supabaseClient");
 const logger = require("../utils/logger");
+const { sendEmail } = require("../utils/emailService");
 
 // Generate a random 8-character temporary password
 const generateTempPassword = () => {
@@ -41,7 +42,7 @@ exports.login = async (req, res) => {
 
     const { data: userData, error: userError } = await supabase
       .from("users")
-      .select("full_name, role, institution_id, admins!user_id(is_main)")
+      .select("first_name, last_name, full_name, role, institution_id, admins!user_id(is_main)")
       .eq("id", user.id)
       .single();
 
@@ -112,6 +113,8 @@ exports.login = async (req, res) => {
         uid: user.id,
         email: user.email,
         full_name: userData.full_name,
+        first_name: userData.first_name,
+        last_name: userData.last_name,
         role: userData.role,
         institution_id: userData.institution_id,
         isMain,
@@ -133,21 +136,23 @@ exports.login = async (req, res) => {
 exports.enrollUser = async (req, res) => {
   const {
     email, // This might be overridden for custom domains
-    full_name,
-    role,
+    full_name, // fallback for legacy
+    first_name,
+    last_name,
     phone,
+    role,
     gender,
-    date_of_birth,
     address,
+    date_of_birth,
     institution_id,
-    // Student-specific
+    // Role-specific fields
     grade_level,
     academic_year,
     parent_contact,
     emergency_contact_name,
     emergency_contact_phone,
     class_ids, // array of class UUIDs for student enrollment
-    parent_info, // Optional: { full_name, email, phone, occupation, address }
+    parent_info, // Optional: { first_name, last_name, email, phone, occupation, address }
     // Teacher-specific
     department,
     qualification,
@@ -161,10 +166,21 @@ exports.enrollUser = async (req, res) => {
     linked_students, // array of { student_id, relationship }
   } = req.body;
 
+  // Derive first/last from full_name if provided and first_name is missing
+  let fName = first_name;
+  let lName = last_name;
+  if (!fName && full_name) {
+    const parts = full_name.trim().split(/\s+/);
+    fName = parts[0];
+    lName = parts.slice(1).join(' ');
+  }
+
+  const finalFullName = `${fName} ${lName}`.trim();
+
   // Validate required fields
-  if (!email || !full_name || !role) {
+  if (!fName || !role) {
     return res.status(400).json({
-      error: "email, full_name, and role are required",
+      error: "first_name and role are required",
     });
   }
 
@@ -189,7 +205,7 @@ exports.enrollUser = async (req, res) => {
       const rawPlan = inst?.subscription_plan || 'trial';
       const normPlan = (p) => {
         const mapping = {
-          beta_free: 'free',
+          beta_free: 'beta',
           basic_basic: 'basic',
           basic_pro: 'pro',
           basic_premium: 'premium',
@@ -206,7 +222,7 @@ exports.enrollUser = async (req, res) => {
 
       // Limits aligned with landing page promises
       const LIMITS = {
-        free: { maxStudents: 30, maxAdmins: 1 },
+        beta: { maxStudents: 30, maxAdmins: 1 },
         trial: { maxStudents: 50, maxAdmins: 1 },
         basic: { maxStudents: 900, maxAdmins: 1 },
         pro: { maxStudents: 1000, maxAdmins: 3 },
@@ -247,24 +263,45 @@ exports.enrollUser = async (req, res) => {
       }
     }
 
+    // 0.2 Uniqueness Check for Name in Institution
+    if (targetInstitutionId) {
+      const { data: existingUser } = await supabase
+        .from('users')
+        .select('id')
+        .eq('institution_id', targetInstitutionId)
+        .ilike('first_name', fName)
+        .ilike('last_name', lName || '')
+        .maybeSingle();
+
+      if (existingUser) {
+        return res.status(400).json({
+          error: "A user with the same first and last name already exists in this institution. Please provide a slight variation to distinguish them.",
+          code: 'DUPLICATE_NAME'
+        });
+      }
+    }
+
     // 0.5 Generate custom email if institution has a domain and role permits
     let finalEmail = email;
     if (targetInstitutionId) {
       const { data: inst } = await supabase.from('institutions').select('email_domain').eq('id', targetInstitutionId).single();
       if (inst?.email_domain && ['student', 'teacher', 'admin'].includes(role)) {
-        const nameParts = full_name.trim().toLowerCase().replace(/[^a-z\s]/g, '').split(/\s+/);
-        if (nameParts.length >= 2) {
-          finalEmail = `${nameParts[0]}.${nameParts[nameParts.length - 1]}@${inst.email_domain}`;
-        } else {
-          finalEmail = `${nameParts[0]}@${inst.email_domain}`;
+        // Automatically generate: first.last@domain.edu
+        const cleanF = fName.toLowerCase().replace(/[^a-z0-9]/g, '');
+        const cleanL = (lName || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+        
+        if (cleanF && cleanL) {
+          finalEmail = `${cleanF}.${cleanL}@${inst.email_domain}`;
+        } else if (cleanF) {
+          finalEmail = `${cleanF}@${inst.email_domain}`;
         }
       }
     }
 
     // Validate required fields again with potentially updated email
-    if (!finalEmail || !full_name || !role) {
+    if (!finalEmail || !fName || !role) {
       return res.status(400).json({
-        error: "full_name and role are required. email generation failed or missing.",
+        error: "first_name and role are required. email generation failed or missing.",
       });
     }
 
@@ -277,7 +314,7 @@ exports.enrollUser = async (req, res) => {
         email: finalEmail,
         password: tempPassword,
         email_confirm: true,
-        user_metadata: { full_name },
+        user_metadata: { full_name: finalFullName, first_name: fName, last_name: lName },
       });
 
     if (authError) throw authError;
@@ -287,7 +324,9 @@ exports.enrollUser = async (req, res) => {
     const { error: userInsertError } = await supabase.from("users").insert({
       id: uid,
       email: finalEmail,
-      full_name,
+      full_name: finalFullName,
+      first_name: fName,
+      last_name: lName,
       role,
       phone: phone || null,
       gender: gender || null,
@@ -338,7 +377,11 @@ exports.enrollUser = async (req, res) => {
           email: parent_info.email,
           password: parentTempPass,
           email_confirm: true,
-          user_metadata: { full_name: parent_info.full_name },
+          user_metadata: { 
+            full_name: `${parent_info.first_name || ''} ${parent_info.last_name || ''}`.trim(),
+            first_name: parent_info.first_name,
+            last_name: parent_info.last_name 
+          },
         });
 
         if (!pAuthError) {
@@ -348,7 +391,9 @@ exports.enrollUser = async (req, res) => {
           await supabase.from("users").insert({
             id: pUid,
             email: parent_info.email,
-            full_name: parent_info.full_name,
+            full_name: `${parent_info.first_name || ''} ${parent_info.last_name || ''}`.trim(),
+            first_name: parent_info.first_name || '',
+            last_name: parent_info.last_name || '',
             role: 'parent',
             phone: parent_info.phone || null,
             institution_id: targetInstitutionId,
@@ -376,8 +421,42 @@ exports.enrollUser = async (req, res) => {
               email: parent_info.email,
               tempPassword: parentTempPass,
               customId: pData.id,
-              full_name: parent_info.full_name
+              full_name: `${parent_info.first_name || ''} ${parent_info.last_name || ''}`.trim()
             };
+
+            // Send Enrollment Email to Parent
+            // We do this asynchronously to avoid blocking the main enrollment response
+            sendEmail({
+              to: parent_info.email,
+              subject: "Welcome to Cloudora LMS - Parent Account Details",
+              html: `
+                <div style="font-family: Arial, sans-serif; color: #333; max-width: 600px; margin: 0 auto; border: 1px solid #e0e0e0; border-radius: 8px; overflow: hidden;">
+                  <div style="background-color: #FF6B00; padding: 20px; text-align: center;">
+                    <h2 style="color: white; margin: 0;">Account Created Successfully</h2>
+                  </div>
+                  <div style="padding: 24px;">
+                    <p>Dear ${parent_info.first_name || 'Parent'},</p>
+                    <p>Your parent account for the Cloudora LMS platform has been created. You can now log in to monitor your child's academic progress.</p>
+                    
+                    <div style="background-color: #f9f9f9; padding: 20px; border-radius: 8px; margin: 24px 0; border: 1px solid #eee;">
+                      <p style="margin: 0 0 10px 0;"><strong>Login Credentials:</strong></p>
+                      <p style="margin: 5px 0;">Email: <span style="color: #FF6B00; font-weight: bold;">${parent_info.email}</span></p>
+                      <p style="margin: 5px 0;">Temporary Password: <span style="color: #FF6B00; font-weight: bold;">${parentTempPass}</span></p>
+                    </div>
+
+                    <p style="font-size: 14px; color: #666;">For security reasons, please change your password after your first login.</p>
+                    
+                    <div style="margin-top: 32px; text-align: center;">
+                      <a href="https://cloudoralms.live" style="background-color: #FF6B00; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; font-weight: bold;">Go to Dashboard</a>
+                    </div>
+                  </div>
+                  <div style="background-color: #f0f0f0; padding: 16px; text-align: center; font-size: 12px; color: #777;">
+                    &copy; 2026 Cloudora LMS. All rights reserved.
+                  </div>
+                </div>
+              `,
+              text: `Dear ${parent_info.first_name || 'Parent'},\n\nYour parent account for Cloudora LMS has been created.\n\nLogin Credentials:\nEmail: ${parent_info.email}\nTemporary Password: ${parentTempPass}\n\nPlease change your password after your first login.`
+            }).catch(e => console.error("Failed to send parent enrollment email:", e));
           }
         }
       }
@@ -467,6 +546,8 @@ exports.adminUpdateUser = async (req, res) => {
   const { id } = req.params; // UUID of the user
   const {
     // Users table fields
+    first_name,
+    last_name,
     full_name,
     email,
     phone,
@@ -504,6 +585,8 @@ exports.adminUpdateUser = async (req, res) => {
   try {
     // 1. Build users table update
     const userUpdates = {};
+    if (first_name !== undefined) userUpdates.first_name = first_name;
+    if (last_name !== undefined) userUpdates.last_name = last_name;
     if (full_name !== undefined) userUpdates.full_name = full_name;
     if (email !== undefined) userUpdates.email = email;
     if (phone !== undefined) userUpdates.phone = phone || null;
@@ -711,10 +794,10 @@ exports.searchUsers = async (req, res) => {
     const { q, role } = req.query;
     let query = supabase
       .from("users")
-      .select("id, full_name, email, role, avatar_url");
+      .select("id, first_name, last_name, full_name, email, role, avatar_url");
 
     if (q) {
-      query = query.ilike("full_name", `%${q}%`);
+      query = query.or(`first_name.ilike.%${q}%,last_name.ilike.%${q}%,full_name.ilike.%${q}%`);
     }
 
     if (role) {
@@ -883,6 +966,24 @@ exports.forgotPassword = async (req, res) => {
       return res.status(400).json({ error: "Email is required" });
     }
 
+    // 0. Rate Limiting Check
+    const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
+    const { data: recentRequests, error: rateError } = await supabase
+      .from('password_reset_requests')
+      .select('id')
+      .eq('email', email)
+      .gt('requested_at', new Date(Date.now() - 3600000).toISOString()); // Last 1 hour
+
+    if (recentRequests && recentRequests.length >= 3) {
+      return res.status(429).json({ 
+        error: "Too many password reset requests. Please try again in an hour.",
+        code: 'RATE_LIMIT_EXCEEDED'
+      });
+    }
+
+    // Log the request
+    await supabase.from('password_reset_requests').insert({ email, ip_address: ip });
+
     // Check user role and institution tier for hierarchical recovery requirements
     const { data: userData } = await supabase
       .from("users")
@@ -891,11 +992,18 @@ exports.forgotPassword = async (req, res) => {
       .single();
 
     if (userData) {
-      const plan = userData.institutions?.subscription_plan;
+      const rawPlan = userData.institutions?.subscription_plan;
+      const plan = ((p) => {
+        const mapping = {
+          beta_free: 'beta',
+          free: 'beta'
+        };
+        return mapping[p] || p;
+      })(rawPlan);
       const role = userData.role;
 
-      // Hierarchical recovery for Free Tier (beta_free)
-      if (plan === 'beta_free' || plan === 'free') {
+      // Hierarchical recovery for Beta Tier (formerly free)
+      if (plan === 'beta') {
         if (role === 'student' || role === 'parent' || role === 'teacher' || role === 'bursary') {
           // Notify Institution Admins
           const { data: admins } = await supabase
@@ -917,7 +1025,7 @@ exports.forgotPassword = async (req, res) => {
           }
 
           return res.status(200).json({ 
-            message: "Your institution is on the Free Tier. Please contact your internal school administrator to reset your password.",
+            message: "Your institution is on the Beta Tier. Please contact your internal school administrator to reset your password.",
             is_hierarchical: true
           });
         } else if (role === 'admin') {
@@ -931,7 +1039,7 @@ exports.forgotPassword = async (req, res) => {
             const notifications = masterAdmins.map(ma => ({
               user_id: ma.id,
               title: "Admin Password Reset Request",
-              message: `Administrator ${userData.full_name} from a Free Tier institution has requested a password reset.`,
+              message: `Administrator ${userData.full_name} from a Beta Tier institution has requested a password reset.`,
               type: 'critical',
               data: { target_user_id: userData.id, target_name: userData.full_name, institution_id: userData.institution_id }
             }));

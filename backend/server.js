@@ -9,6 +9,9 @@ const { rateLimiters } = require("./middleware/rateLimiter");
 
 const authRoutes = require("./routes/auth.route");
 const subjectRoutes = require("./routes/subjects.route");
+const contactRoutes = require("./routes/contact.route");
+const supportRoutes = require("./routes/support.route");
+const demoRoutes = require("./routes/demo.route");
 const institutionRoutes = require("./routes/institution.route");
 const libraryRoutes = require("./routes/library.route");
 const bursaryRoutes = require("./routes/bursary.route");
@@ -46,8 +49,9 @@ const checkSubscription = require("./middleware/subscriptionCheck");
 
 // Public Routes
 app.use("/api/auth", authRoutes);
-app.use("/api/demo", require("./routes/demo.route"));
-app.use("/api/contact", require("./routes/contact.route"));
+app.use("/api/contact", contactRoutes);
+app.use("/api/support", supportRoutes);
+app.use("/api/demo", demoRoutes);
 // Gated Routes (Trial Branch)
 app.use("/api/subjects", authMiddleware, checkSubscription, subjectRoutes);
 app.use("/api/institutions", authMiddleware, checkSubscription, institutionRoutes);

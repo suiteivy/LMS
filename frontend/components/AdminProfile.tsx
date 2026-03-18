@@ -10,7 +10,8 @@ export default function AdminProfile() {
     const { profile, user, refreshProfile, displayId } = useAuth();
     const { isDark } = useTheme();
     const [isEditing, setIsEditing] = useState(false);
-    const [name, setName] = useState(profile?.full_name || "");
+    const [firstName, setFirstName] = useState(profile?.first_name || "");
+    const [lastName, setLastName] = useState(profile?.last_name || "");
     const [phone, setPhone] = useState(profile?.phone || "");
     const [saving, setSaving] = useState(false);
 
@@ -30,19 +31,24 @@ export default function AdminProfile() {
 
     useEffect(() => {
         if (profile) {
-            setName(profile.full_name || "");
+            setFirstName(profile.first_name || "");
+            setLastName(profile.last_name || "");
             setPhone(profile.phone || "");
         }
     }, [profile]);
 
     const handleSave = async () => {
-        if (!name.trim()) {
-            Alert.alert("Error", "Name cannot be empty");
+        if (!firstName.trim()) {
+            Alert.alert("Error", "First name cannot be empty");
             return;
         }
         setSaving(true);
         try {
-            const { error } = await authService.updateProfile({ full_name: name, phone });
+            const { error } = await authService.updateProfile({ 
+                first_name: firstName, 
+                last_name: lastName,
+                phone 
+            });
             if (error) throw error;
             await refreshProfile();
             setIsEditing(false);
@@ -84,26 +90,48 @@ export default function AdminProfile() {
                                 {/* Name + role */}
                                 <View style={{ flex: 1, paddingBottom: 8 }}>
                                     {isEditing ? (
-                                        <TextInput
-                                            value={name}
-                                            onChangeText={setName}
-                                            autoFocus
-                                            style={{
-                                                backgroundColor: tokens.inputBg,
-                                                color: tokens.inputText,
-                                                paddingHorizontal: 12,
-                                                paddingVertical: 8,
-                                                borderRadius: 10,
-                                                fontSize: 20,
-                                                fontWeight: "700",
-                                                marginRight: 8,
-                                                borderWidth: 1,
-                                                borderColor: tokens.inputBorder,
-                                            }}
-                                        />
+                                        <View style={{ gap: 8 }}>
+                                            <TextInput
+                                                value={firstName}
+                                                onChangeText={setFirstName}
+                                                autoFocus
+                                                placeholder="First Name"
+                                                placeholderTextColor={tokens.textMuted}
+                                                style={{
+                                                    backgroundColor: tokens.inputBg,
+                                                    color: tokens.inputText,
+                                                    paddingHorizontal: 12,
+                                                    paddingVertical: 8,
+                                                    borderRadius: 10,
+                                                    fontSize: 16,
+                                                    fontWeight: "700",
+                                                    marginRight: 8,
+                                                    borderWidth: 1,
+                                                    borderColor: tokens.inputBorder,
+                                                }}
+                                            />
+                                            <TextInput
+                                                value={lastName}
+                                                onChangeText={setLastName}
+                                                placeholder="Last Name"
+                                                placeholderTextColor={tokens.textMuted}
+                                                style={{
+                                                    backgroundColor: tokens.inputBg,
+                                                    color: tokens.inputText,
+                                                    paddingHorizontal: 12,
+                                                    paddingVertical: 8,
+                                                    borderRadius: 10,
+                                                    fontSize: 16,
+                                                    fontWeight: "700",
+                                                    marginRight: 8,
+                                                    borderWidth: 1,
+                                                    borderColor: tokens.inputBorder,
+                                                }}
+                                            />
+                                        </View>
                                     ) : (
                                         <Text style={{ fontSize: 24, fontWeight: "700", color: "#ffffff" }}>
-                                            {profile.full_name || "Admin"}
+                                            {profile.first_name} {profile.last_name}
                                         </Text>
                                     )}
                                     <Text style={{ color: "#fecaca", fontWeight: "500", marginTop: 2 }}>
@@ -172,7 +200,7 @@ export default function AdminProfile() {
                                                 zIndex: 20,
                                             }}
                                             activeOpacity={0.8}
-                                            onPress={() => { setIsEditing(false); setName(profile.full_name); }}
+                                            onPress={() => { setIsEditing(false); setFirstName(profile.first_name || ""); setLastName(profile.last_name || ""); }}
                                         >
                                             <X size={18} color="#ef4444" />
                                         </TouchableOpacity>

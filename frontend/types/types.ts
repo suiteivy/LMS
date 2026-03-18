@@ -11,12 +11,15 @@ import { TextInputProps } from "react-native";
  * User-related types
  */
 
-export type UserRole = "admin" | "teacher" | "student" | "parent";
+export type UserRole = "admin" | "teacher" | "student" | "parent" | "bursary" | "master_admin" | "librarian";
 
 export interface User {
   id: string;
   displayId?: string;
-  name: string;
+  name?: string; // keeping name for backward compatibility until full refactor
+  first_name: string;
+  last_name: string;
+  full_name?: string;
   email: string;
   role: UserRole;
   joinDate: string;
@@ -25,7 +28,9 @@ export interface User {
 }
 
 export interface CreateUserData {
-  name: string;
+  name?: string;
+  first_name: string;
+  last_name: string;
   email: string;
   role: UserRole;
   avatar?: string;
@@ -390,7 +395,23 @@ export interface BackendBorrowedBook {
   // New backend structure: students -> users
   students?: {
     id: string;
+    grade_level?: string;
+    academic_year?: string;
     users?: {
+      first_name: string;
+      last_name: string;
+      full_name: string;
+      email: string;
+      phone?: string;
+    };
+  };
+  teachers?: {
+    id: string;
+    department?: string;
+    position?: string;
+    users?: {
+      first_name: string;
+      last_name: string;
       full_name: string;
       email: string;
       phone?: string;
@@ -398,6 +419,8 @@ export interface BackendBorrowedBook {
   };
   // Fallback if direct relation still exists or for older records
   users?: {
+    first_name: string;
+    last_name: string;
     full_name: string;
     email: string;
     phone?: string;
@@ -415,9 +438,17 @@ export interface FrontendBorrowedBook {
   isbn: string;
   borrowerId: string;
   borrowerName: string;
+  borrowerFirstName?: string;
+  borrowerLastName?: string;
   borrowerDisplayId?: string;
   borrowerEmail: string;
   borrowerPhone?: string;
+  borrowerType: 'student' | 'teacher' | 'user';
+  // Extra Details
+  gradeLevel?: string;
+  department?: string;
+  position?: string;
+  
   borrowDate: Date;
   dueDate: Date;
   returnDate?: Date;

@@ -13,7 +13,9 @@ export interface DiaryEntry {
     teacher?: {
         id: string;
         users: {
-            full_name: string;
+            first_name: string;
+            last_name: string;
+            full_name?: string;
         };
     };
 }

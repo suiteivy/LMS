@@ -1,4 +1,4 @@
-﻿-- ==========================================
+-- ==========================================
 -- LMS SYSTEM MASTER SCHEMA
 -- Consolidated: 2026-02-11
 -- ==========================================
@@ -31,7 +31,7 @@ CREATE TABLE institutions (
     type TEXT CHECK (type IN ('primary', 'secondary', 'tertiary', 'vocational')),
     principal_name TEXT,
     subscription_status TEXT DEFAULT 'trial' CHECK (subscription_status IN ('trial', 'active', 'expired', 'cancelled')),
-    subscription_plan TEXT DEFAULT 'trial' CHECK (subscription_plan IN ('trial', 'beta_free', 'basic', 'pro', 'premium', 'custom')),
+    subscription_plan TEXT DEFAULT 'trial' CHECK (subscription_plan IN ('trial', 'beta', 'basic', 'pro', 'premium', 'custom')),
     has_used_trial BOOLEAN DEFAULT TRUE,
     trial_start_date TIMESTAMPTZ DEFAULT NOW(),
     trial_end_date TIMESTAMPTZ DEFAULT NOW() + INTERVAL '30 days',
@@ -40,6 +40,10 @@ CREATE TABLE institutions (
     addon_messaging BOOLEAN NOT NULL DEFAULT false,
     addon_finance BOOLEAN NOT NULL DEFAULT false,
     addon_analytics BOOLEAN NOT NULL DEFAULT false,
+    addon_diary BOOLEAN NOT NULL DEFAULT false,
+    addon_attendance BOOLEAN NOT NULL DEFAULT false,
+    email_domain TEXT,
+    custom_student_limit INTEGER,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -47,6 +51,8 @@ CREATE TABLE institutions (
 -- 2. Users (Base table for Auth mapping)
 CREATE TABLE users (
     id UUID PRIMARY KEY REFERENCES auth.users(id),
+    first_name TEXT,
+    last_name TEXT,
     full_name TEXT NOT NULL,
     email TEXT NOT NULL UNIQUE,
     role TEXT CHECK (role IN ('admin', 'student', 'teacher', 'parent', 'bursary', 'master_admin')) NOT NULL,
@@ -61,6 +67,11 @@ CREATE TABLE users (
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- Unique name constraint per institution
+CREATE UNIQUE INDEX IF NOT EXISTS idx_unique_user_name_per_institution 
+ON users (institution_id, LOWER(first_name), LOWER(last_name)) 
+WHERE first_name IS NOT NULL AND last_name IS NOT NULL;
 
 -- ---------------------------------------------------------
 -- PART 2: CUSTOM ID SYSTEM
@@ -162,6 +173,16 @@ CREATE TABLE enrollments (
     grade TEXT,
     UNIQUE(student_id, subject_id),
     institution_id UUID REFERENCES institutions(id)
+);
+
+-- 3. Class Enrollments
+CREATE TABLE class_enrollments (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    student_id TEXT REFERENCES students(id) ON DELETE CASCADE,
+    class_id UUID REFERENCES classes(id) ON DELETE CASCADE,
+    enrolled_at TIMESTAMPTZ DEFAULT NOW(),
+    institution_id UUID REFERENCES institutions(id),
+    UNIQUE(student_id, class_id)
 );
 
 -- 3. Subjects
@@ -280,6 +301,19 @@ CREATE TABLE announcements (
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- 11. Diary Entries
+CREATE TABLE diary_entries (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    institution_id UUID REFERENCES institutions(id) ON DELETE CASCADE,
+    class_id UUID REFERENCES classes(id) ON DELETE CASCADE,
+    teacher_id TEXT REFERENCES teachers(id) ON DELETE SET NULL,
+    title TEXT NOT NULL,
+    content TEXT NOT NULL,
+    entry_date DATE NOT NULL DEFAULT CURRENT_DATE,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 -- 11. Exams
 CREATE TABLE exams (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -344,14 +378,19 @@ CREATE TABLE books (
 CREATE TABLE borrowed_books (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     book_id UUID REFERENCES books(id) NOT NULL,
-    student_id TEXT REFERENCES students(id) ON DELETE CASCADE NOT NULL,
+    student_id TEXT REFERENCES students(id) ON DELETE CASCADE,
+    teacher_id TEXT REFERENCES teachers(id) ON DELETE CASCADE,
     borrowed_at TIMESTAMPTZ DEFAULT NOW(),
     due_date DATE,
     returned_at TIMESTAMPTZ NULL,
     status TEXT DEFAULT 'borrowed' CHECK (status IN ('borrowed', 'returned', 'overdue')),
     institution_id UUID REFERENCES institutions(id),
     created_at TIMESTAMPTZ DEFAULT NOW(),
-    updated_at TIMESTAMPTZ DEFAULT NOW()
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    CONSTRAINT check_borrower_presence CHECK (
+        (student_id IS NOT NULL AND teacher_id IS NULL) OR 
+        (student_id IS NULL AND teacher_id IS NOT NULL)
+    )
 );
 
 -- 4. Legacy/Preserved Tables (Singular)
@@ -723,7 +762,7 @@ $$ LANGUAGE sql STABLE SET search_path = public;
 CREATE OR REPLACE FUNCTION is_student_in_class(p_class_id UUID, p_student_id TEXT)
 RETURNS BOOLEAN LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
 BEGIN
-  RETURN EXISTS (SELECT 1 FROM enrollments WHERE class_id = p_class_id AND student_id = p_student_id);
+  RETURN EXISTS (SELECT 1 FROM class_enrollments WHERE class_id = p_class_id AND student_id = p_student_id);
 END;
 $$;
 
@@ -794,6 +833,10 @@ ALTER TABLE messages ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "strict_institution_isolation" ON messages FOR ALL USING (institution_id = get_current_user_institution_id() OR get_current_user_role() = 'master_admin');
 ALTER TABLE notifications ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "strict_institution_isolation" ON notifications FOR ALL USING (institution_id = get_current_user_institution_id() OR get_current_user_role() = 'master_admin');
+ALTER TABLE class_enrollments ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "strict_institution_isolation" ON class_enrollments FOR ALL USING (institution_id = get_current_user_institution_id() OR get_current_user_role() = 'master_admin');
+ALTER TABLE diary_entries ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "strict_institution_isolation" ON diary_entries FOR ALL USING (institution_id = get_current_user_institution_id() OR get_current_user_role() = 'master_admin');
 ALTER TABLE institutions ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "strict_institution_isolation" ON institutions FOR ALL USING (id = get_current_user_institution_id() OR get_current_user_role() = 'master_admin');
 CREATE POLICY "public_read_institutions" ON institutions FOR SELECT USING (true);
@@ -831,53 +874,83 @@ ON platform_admins FOR ALL
 USING (true)
 WITH CHECK (true);
 
--- 2. Support/Maintenance Requests
-CREATE TABLE support_requests (
+-- 2. Password Reset Rate Limiting
+CREATE TABLE password_reset_requests (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    email TEXT NOT NULL,
+    ip_address TEXT,
+    requested_at TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE INDEX idx_password_reset_email_time ON password_reset_requests(email, requested_at);
+
+-- 3. Support Ticketing System
+CREATE TABLE support_tickets (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID REFERENCES users(id) ON DELETE CASCADE,
     institution_id UUID REFERENCES institutions(id) ON DELETE SET NULL,
     subject TEXT NOT NULL,
     description TEXT NOT NULL,
-    status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'in_progress', 'resolved', 'closed')),
+    category TEXT,
+    status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'open', 'in_progress', 'awaiting_customer', 'escalated', 'resolved', 'closed')),
     priority TEXT DEFAULT 'normal' CHECK (priority IN ('low', 'normal', 'high', 'critical')),
+    assigned_to_id UUID REFERENCES users(id) ON DELETE SET NULL,
+    escalation_level INTEGER DEFAULT 0,
+    metadata JSONB DEFAULT '{}'::jsonb,
+    resolved_at TIMESTAMPTZ,
     created_at TIMESTAMPTZ DEFAULT now(),
     updated_at TIMESTAMPTZ DEFAULT now()
 );
 
-ALTER TABLE support_requests ENABLE ROW LEVEL SECURITY;
+CREATE TABLE ticket_messages (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    ticket_id UUID REFERENCES support_tickets(id) ON DELETE CASCADE,
+    sender_id UUID REFERENCES users(id) ON DELETE SET NULL,
+    message TEXT NOT NULL,
+    is_internal BOOLEAN DEFAULT false,
+    created_at TIMESTAMPTZ DEFAULT now()
+);
 
--- Users can view their own requests
-CREATE POLICY "Users can view own support requests" 
-ON support_requests FOR SELECT
-USING (user_id = auth.uid());
+ALTER TABLE support_tickets ENABLE ROW LEVEL SECURITY;
+ALTER TABLE ticket_messages ENABLE ROW LEVEL SECURITY;
 
--- Users can create their own requests
-CREATE POLICY "Users can create support requests" 
-ON support_requests FOR INSERT
+-- Tickets policies
+CREATE POLICY "Users can view own tickets" 
+ON support_tickets FOR SELECT
+USING (user_id = auth.uid() OR assigned_to_id = auth.uid());
+
+CREATE POLICY "Users can create tickets" 
+ON support_tickets FOR INSERT
 WITH CHECK (user_id = auth.uid());
 
--- Master Admins can view and update all requests
-CREATE POLICY "Master admins can view all support requests" 
-ON support_requests FOR SELECT
+CREATE POLICY "Master admins can manage all tickets" 
+ON support_tickets FOR ALL
+USING (EXISTS (SELECT 1 FROM users WHERE id = auth.uid() AND role = 'master_admin'));
+
+-- Ticket messages policies
+CREATE POLICY "Users can view messages for their tickets"
+ON ticket_messages FOR SELECT
 USING (
     EXISTS (
-        SELECT 1 FROM users 
-        WHERE id = auth.uid() 
-        AND role = 'master_admin'
+        SELECT 1 FROM support_tickets 
+        WHERE id = ticket_messages.ticket_id 
+        AND (user_id = auth.uid() OR assigned_to_id = auth.uid())
     )
+    OR EXISTS (SELECT 1 FROM users WHERE id = auth.uid() AND role = 'master_admin')
 );
 
-CREATE POLICY "Master admins can update support requests" 
-ON support_requests FOR UPDATE
-USING (
+CREATE POLICY "Users can add messages to their tickets"
+ON ticket_messages FOR INSERT
+WITH CHECK (
     EXISTS (
-        SELECT 1 FROM users 
-        WHERE id = auth.uid() 
-        AND role = 'master_admin'
+        SELECT 1 FROM support_tickets 
+        WHERE id = ticket_messages.ticket_id 
+        AND (user_id = auth.uid() OR assigned_to_id = auth.uid())
     )
+    OR EXISTS (SELECT 1 FROM users WHERE id = auth.uid() AND role = 'master_admin')
 );
 
--- 3. Add-on Requests
+-- 4. Add-on Requests
 CREATE TABLE addon_requests (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     institution_id UUID REFERENCES institutions(id) ON DELETE CASCADE,

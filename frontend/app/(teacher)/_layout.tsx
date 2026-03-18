@@ -14,27 +14,30 @@ const ALL_NAV_ITEMS: NavItem[] = [
     { name: "subjects", title: "Subjects", icon: BookOpen, route: "/(teacher)/subjects" },
     { name: "classes", title: "Classes", icon: School, route: "/(teacher)/classes" },
     { name: "students", title: "Students", icon: Users, route: "/(teacher)/students" },
+    { name: "library", title: "Library", icon: BookOpen, route: "/(teacher)/library" },
     { name: "management", title: "Manage", icon: LayoutGrid, route: "/(teacher)/management" },
     { name: "settings", title: "Settings", icon: Settings, route: "/(teacher)/settings" },
 ];
 
-// Simplified nav for free plan — Home + Classes + Settings only
-const FREE_NAV_ITEMS: NavItem[] = [
+// Simplified nav for beta plan — Home + Classes + Library + Settings
+const BETA_NAV_ITEMS: NavItem[] = [
     { name: "index", title: "Home", icon: Building, route: "/(teacher)" },
     { name: "classes", title: "Classes", icon: School, route: "/(teacher)/classes" },
+    { name: "library", title: "Library", icon: BookOpen, route: "/(teacher)/library" },
     { name: "settings", title: "Settings", icon: Settings, route: "/(teacher)/settings" },
 ];
 
-// Names hidden from tabs on free plan (registered as routes but not shown)
-const FREE_HIDDEN = ["subjects", "students", "management"];
+// Names hidden from tabs on beta plan (registered as routes but not shown)
+const BETA_HIDDEN = ["subjects", "students", "management"];
 
 function TeacherTabs() {
     const insets = useSafeAreaInsets();
     const { isDemo } = useAuth();
     const { isDark } = useTheme();
-    const { isFree } = useSubscriptionTier();
+    const { isBeta } = useSubscriptionTier();
 
-    const NAV_ITEMS = isFree ? FREE_NAV_ITEMS : ALL_NAV_ITEMS;
+    const NAV_ITEMS = isBeta ? BETA_NAV_ITEMS : ALL_NAV_ITEMS;
+
 
     return (
         <Tabs
@@ -74,7 +77,7 @@ function TeacherTabs() {
                 />
             ))}
             {/* On free plan, hide paid-only tabs from nav but register them as routes */}
-            {isFree && FREE_HIDDEN.map(name => (
+            {isBeta && BETA_HIDDEN.map(name => (
                 <Tabs.Screen key={name} name={name} options={{ href: null, headerShown: false }} />
             ))}
         </Tabs>
@@ -83,8 +86,8 @@ function TeacherTabs() {
 
 function TeacherSidebar() {
     const { isDemo } = useAuth();
-    const { isFree } = useSubscriptionTier();
-    const baseItems = isFree ? FREE_NAV_ITEMS : ALL_NAV_ITEMS;
+    const { isBeta } = useSubscriptionTier();
+    const baseItems = isBeta ? BETA_NAV_ITEMS : ALL_NAV_ITEMS;
     const items = baseItems.filter(i => !(i.name === "settings" && isDemo));
     return (
         <WebSidebar items={items} basePath="(teacher)" role="Teacher">

@@ -77,7 +77,7 @@ exports.getInstitutionDetails = async (req, res) => {
         // Fetch administrators for this institution
         const { data: admins } = await adminClient
             .from('users')
-            .select('id, full_name, email, phone')
+            .select('id, first_name, last_name, full_name, email, phone')
             .eq('institution_id', id)
             .eq('role', 'admin');
 
@@ -196,13 +196,19 @@ exports.enrollInstitution = async (req, res) => {
             institution_name,
             location,
             admin_full_name,
+            admin_first_name,
+            admin_last_name,
             admin_email,
             admin_password,
             email_domain
         } = req.body;
 
-        if (!institution_name || !admin_full_name || !admin_email || !admin_password) {
-            return res.status(400).json({ error: "Missing required fields for enrollment." });
+        const fName = admin_first_name || admin_full_name?.split(' ')[0] || '';
+        const lName = admin_last_name || admin_full_name?.split(' ').slice(1).join(' ') || '';
+        const finalFullName = admin_full_name || `${fName} ${lName}`.trim();
+
+        if (!institution_name || !fName || !admin_email || !admin_password) {
+            return res.status(400).json({ error: "Missing required fields for enrollment (Institution Name, Admin First Name, Email, Password)." });
         }
 
         const adminClient = getServiceSupabase();
@@ -241,7 +247,11 @@ exports.enrollInstitution = async (req, res) => {
             email: admin_email,
             password: admin_password,
             email_confirm: true,
-            user_metadata: { full_name: admin_full_name }
+            user_metadata: { 
+                full_name: finalFullName,
+                first_name: fName,
+                last_name: lName
+            }
         });
 
         if (authError || !authUser.user) {
@@ -258,7 +268,9 @@ exports.enrollInstitution = async (req, res) => {
                 role: 'admin',
                 institution_id: newInst.id,
                 status: 'approved',
-                full_name: admin_full_name
+                full_name: finalFullName,
+                first_name: fName,
+                last_name: lName
             })
             .eq('id', authUser.user.id);
 
@@ -287,10 +299,14 @@ exports.enrollInstitution = async (req, res) => {
  */
 exports.enrollMasterAdmin = async (req, res) => {
     try {
-        const { full_name, email, password } = req.body;
+        const { full_name, first_name, last_name, email, password } = req.body;
 
-        if (!full_name || !email || !password) {
-            return res.status(400).json({ error: "Missing required fields for master admin enrollment." });
+        const fName = first_name || full_name?.split(' ')[0] || '';
+        const lName = last_name || full_name?.split(' ').slice(1).join(' ') || '';
+        const finalFullName = full_name || `${fName} ${lName}`.trim();
+
+        if (!fName || !email || !password) {
+            return res.status(400).json({ error: "Missing required fields for master admin enrollment (First Name, Email, Password)." });
         }
 
         const adminClient = getServiceSupabase();
@@ -300,7 +316,11 @@ exports.enrollMasterAdmin = async (req, res) => {
             email: email,
             password: password,
             email_confirm: true,
-            user_metadata: { full_name }
+            user_metadata: { 
+                full_name: finalFullName,
+                first_name: fName,
+                last_name: lName
+            }
         });
 
         if (authError || !authUser.user) {
@@ -315,7 +335,9 @@ exports.enrollMasterAdmin = async (req, res) => {
                 role: 'master_admin',
                 institution_id: null,
                 status: 'approved',
-                full_name: full_name
+                full_name: finalFullName,
+                first_name: fName,
+                last_name: lName
             })
             .eq('id', authUser.user.id);
 
@@ -331,7 +353,9 @@ exports.enrollMasterAdmin = async (req, res) => {
             .insert([{
                 id: authUser.user.id,
                 user_id: authUser.user.id,
-                full_name: full_name,
+                full_name: finalFullName,
+                first_name: fName,
+                last_name: lName,
                 email: email
             }]);
 
@@ -351,62 +375,130 @@ exports.enrollMasterAdmin = async (req, res) => {
 };
 
 /**
- * Get all support requests
+ * Get all support tickets
  */
 exports.getSupportRequests = async (req, res) => {
     try {
         const adminClient = getServiceSupabase();
         const { data, error } = await adminClient
-            .from('support_requests')
+            .from('support_tickets')
             .select(`
                 *,
-                users:user_id(full_name, email),
-                institutions:institution_id(name)
+                users:user_id(first_name, last_name, full_name, email),
+                institutions:institution_id(name),
+                assigned_to:assigned_to_id(first_name, last_name, full_name)
             `)
             .order('created_at', { ascending: false });
 
         if (error) throw error;
 
         // Map to include inst field easily
-        const mappedData = data.map(req => ({
-            ...req,
-            inst: req.institutions?.name || 'Unknown',
-            user_name: req.users?.full_name || 'Unknown',
-            title: req.subject,
-            date: req.created_at.split('T')[0]
+        const mappedData = data.map(ticket => ({
+            ...ticket,
+            inst: ticket.institutions?.name || 'Unknown',
+            user_name: ticket.users?.full_name || 
+                       (ticket.users?.first_name ? `${ticket.users.first_name} ${ticket.users.last_name || ''}`.trim() : 'Unknown'),
+            title: ticket.subject,
+            date: ticket.created_at.split('T')[0],
+            assigned_name: ticket.assigned_to?.full_name || 
+                           (ticket.assigned_to?.first_name ? `${ticket.assigned_to.first_name} ${ticket.assigned_to.last_name || ''}`.trim() : 'Unassigned')
         }));
 
         res.status(200).json({ requests: mappedData });
     } catch (error) {
-        console.error("Error fetching support requests:", error);
-        res.status(500).json({ error: "Failed to fetch support requests" });
+        console.error("Error fetching support tickets:", error);
+        res.status(500).json({ error: "Failed to fetch support tickets" });
     }
 };
 
 /**
- * Update support request status
+ * Update support ticket
  */
 exports.updateSupportRequest = async (req, res) => {
     try {
         const { id } = req.params;
-        const { status } = req.body;
+        const { status, priority, assigned_to_id, escalation_level } = req.body;
 
-        if (!status) return res.status(400).json({ error: "Status is required." });
+        const updates = { updated_at: new Date().toISOString() };
+        if (status) updates.status = status;
+        if (priority) updates.priority = priority;
+        if (assigned_to_id !== undefined) updates.assigned_to_id = assigned_to_id;
+        if (escalation_level !== undefined) updates.escalation_level = escalation_level;
+        if (status === 'resolved') updates.resolved_at = new Date().toISOString();
 
         const adminClient = getServiceSupabase();
         const { data, error } = await adminClient
-            .from('support_requests')
-            .update({ status, updated_at: new Date().toISOString() })
+            .from('support_tickets')
+            .update(updates)
             .eq('id', id)
             .select()
             .single();
 
         if (error) throw error;
 
-        res.status(200).json({ message: "Request updated", request: data });
+        res.status(200).json({ message: "Ticket updated", request: data });
     } catch (error) {
-        console.error("Error updating support request:", error);
-        res.status(500).json({ error: "Failed to update support request" });
+        console.error("Error updating support ticket:", error);
+        res.status(500).json({ error: "Failed to update support ticket" });
+    }
+};
+
+/**
+ * Get ticket messages
+ */
+exports.getTicketMessages = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const adminClient = getServiceSupabase();
+        
+        const { data, error } = await adminClient
+            .from('ticket_messages')
+            .select('*, sender:sender_id(first_name, last_name, full_name, role)')
+            .eq('ticket_id', id)
+            .order('created_at', { ascending: true });
+
+        if (error) throw error;
+        res.status(200).json({ messages: data });
+    } catch (error) {
+        console.error("Error fetching ticket messages:", error);
+        res.status(500).json({ error: "Failed to fetch ticket messages" });
+    }
+};
+
+/**
+ * Add a message to a ticket
+ */
+exports.addTicketMessage = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { message, is_internal } = req.body;
+        const sender_id = req.userId;
+
+        if (!message) return res.status(400).json({ error: "Message is required" });
+
+        const adminClient = getServiceSupabase();
+        const { data, error } = await adminClient
+            .from('ticket_messages')
+            .insert([{
+                ticket_id: id,
+                sender_id,
+                message,
+                is_internal: !!is_internal
+            }])
+            .select()
+            .single();
+
+        if (error) throw error;
+
+        // Auto-reply context: if status was 'pending', move to 'awaiting_customer' or 'in_progress'
+        await adminClient.from('support_tickets')
+            .update({ status: 'in_progress', updated_at: new Date().toISOString() })
+            .eq('id', id);
+
+        res.status(201).json({ message: "Message added", data });
+    } catch (error) {
+        console.error("Error adding ticket message:", error);
+        res.status(500).json({ error: "Failed to add message" });
     }
 };
 
@@ -417,30 +509,51 @@ exports.updateSupportRequest = async (req, res) => {
 exports.updatePlatformProfile = async (req, res) => {
     try {
         const userId = req.userId;
-        const { full_name, phone } = req.body;
+        const { full_name, first_name, last_name, phone } = req.body;
 
-        if (!full_name) {
-            return res.status(400).json({ error: "full_name is required" });
+        const fName = first_name || full_name?.split(' ')[0] || '';
+        const lName = last_name || full_name?.split(' ').slice(1).join(' ') || '';
+        const finalFullName = full_name || `${fName} ${lName}`.trim();
+
+        if (!fName && !finalFullName) {
+            return res.status(400).json({ error: "first_name or full_name is required" });
         }
 
         const adminClient = getServiceSupabase();
 
         // 1. Update public.users table (which cascades UI changes locally)
+        const updates = { 
+            full_name: finalFullName,
+            phone: phone || null 
+        };
+        if (fName) updates.first_name = fName;
+        if (lName) updates.last_name = lName;
+
         const { error: dbError } = await adminClient
             .from('users')
-            .update({ full_name, phone: phone || null })
+            .update(updates)
             .eq('id', userId);
 
         if (dbError) throw dbError;
 
         // 2. Update Auth User Metadata
         const { error: authError } = await adminClient.auth.admin.updateUserById(userId, {
-            user_metadata: { full_name }
+            user_metadata: { 
+                full_name: finalFullName,
+                first_name: fName,
+                last_name: lName
+            }
         });
 
         if (authError) throw authError;
 
-        res.status(200).json({ message: "Profile updated successfully.", full_name, phone });
+        res.status(200).json({ 
+            message: "Profile updated successfully.", 
+            full_name: finalFullName,
+            first_name: fName,
+            last_name: lName,
+            phone 
+        });
     } catch (err) {
         console.error("updatePlatformProfile error:", err);
         res.status(500).json({ error: "Failed to update profile." });
@@ -458,7 +571,7 @@ exports.getAllPayments = async (req, res) => {
             .select(`
                 *,
                 institutions:institution_id(name),
-                users:user_id(full_name, email)
+                users:user_id(first_name, last_name, full_name, email)
             `)
             .order('date', { ascending: false });
 

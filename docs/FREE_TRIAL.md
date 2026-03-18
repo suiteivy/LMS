@@ -1,15 +1,18 @@
-# LMS Free Trial Documentation
+# LMS Beta & Trial Documentation
 
 ## Overview
-The Learning Management System (LMS) incorporates a highly flexible, institution-level **30-Day Free Trial** mechanism. When a new institution is registered, it is automatically enrolled in a 30-day fully featured trial. 
+The Learning Management System (LMS) incorporates a highly flexible, institution-level **30-Day Trial** mechanism. When a new institution is registered, it is automatically enrolled in a 30-day fully featured trial. 
 
 This model allows administrators, teachers, parents, and students to evaluate the full potential of the platform before committing to a paid subscription, without permanently locking them out of their data once the trial expires.
 
-## How to Access the Free Trial
-Accessing the free trial is fully automated and integrated into the standard registration flow. No credit card is required upfront.
+## Beta Access
+The **Beta Tier** (formerly Free Access) is a permanent, limited tier granted by platform administrators. It serves as an entry point for smaller institutions or those in pilot phases.
 
-1. **Sign Up:** A new user navigates to the LMS landing page and clicks "**Get Started**" or "**Start Free Trial**".
-2. **Registration Options:** They are presented with the Pricing/Plans page. They select the "**Free Trial**" tier.
+## How to Access the Trial
+Accessing the trial is fully automated and integrated into the standard registration flow. No credit card is required upfront.
+
+1. **Sign Up:** A new user navigates to the LMS landing page and clicks "**Get Started**" or "**Start Trial**".
+2. **Registration Options:** They are presented with the Pricing/Plans page. They select the "**Trial**" tier.
 3. **Institution Creation:** They fill out the standard registration form, providing their name, email, and the name of their Institution.
 4. **Automatic Enrollment:** Upon successful creation of their administrator account, the backend automatically provisions their `institution` record with:
    - `subscription_status` = `trial`
@@ -19,7 +22,7 @@ Accessing the free trial is fully automated and integrated into the standard reg
 ## The Onboarding Experience (Day 1)
 Immediately after registering, the Administrator logs in and is greeted by an onboarding flow designed to encourage platform exploration:
 
-1. **Dashboard Overview:** They land on the Admin Dashboard where a subtle, non-intrusive "Free Trial: 30 days remaining" banner is visible at the top.
+1. **Dashboard Overview:** They land on the Admin Dashboard where a subtle, non-intrusive "Trial: 30 days remaining" banner is visible at the top.
 2. **Getting Started Widget:** A gamified "🚀 Getting Started" widget tracks their initial setup. It prompts them to complete core activation steps:
    - ✅ Create your first subject
    - ◯ Enroll a student
@@ -42,7 +45,7 @@ Immediately after registering, the Administrator logs in and is greeted by an on
 
 3. **Active Subscription**
    - **Status:** `active`
-   - **Access:** Unrestricted access based on the purchased `subscription_plan` (e.g., 'premium', 'basic').
+   - **Access:** Unrestricted access based on the purchased `subscription_plan` (e.g., 'premium', 'basic', 'beta').
    - **UI Indicators:** A subtle "Pro" or "Premium" badge might be displayed based on the plan, confirming active status. No trial warnings.
 
 ## Differentiating Trial vs. Subscribed Users
@@ -57,8 +60,8 @@ The `institutions` table tracks the subscription lifecycle using the following f
 - `trial_start_date` (TIMESTAMPTZ): The timestamp when the trial began.
 - `trial_end_date` (TIMESTAMPTZ): Exactly 30 days after the start date.
 - `subscription_status` (TEXT): Currently constrained to `trial`, `active`, `expired`, or `cancelled`.
-- `subscription_plan` (TEXT): For future billing tiers (`trial`, `basic`, `pro`, `premium`).
-- `has_used_trial` (BOOLEAN): Indicates whether the institution has used their free trial (prevents re-registration abuse).
+- `subscription_plan` (TEXT): For billing tiers (`beta`, `basic`, `pro`, `premium`).
+- `has_used_trial` (BOOLEAN): Indicates whether the institution has used their trial (prevents re-registration abuse).
 
 ### Database Functions
 The following helper functions are available:

@@ -1,4 +1,4 @@
-﻿import { useAuth } from "@/contexts/AuthContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { useTheme } from "@/contexts/ThemeContext";
 import { authService, supabase } from "@/libs/supabase";
 import { Database } from "@/types/database";
@@ -14,7 +14,8 @@ export default function TeacherProfile() {
     const { profile, user, refreshProfile, teacherId } = useAuth();
     const { isDark } = useTheme();
     const [isEditing, setIsEditing] = useState(false);
-    const [fullName, setFullName] = useState(profile?.full_name || "");
+    const [firstName, setFirstName] = useState(profile?.first_name || "");
+    const [lastName, setLastName] = useState(profile?.last_name || "");
     const [phone, setPhone] = useState(profile?.phone || "");
     const [gender, setGender] = useState(profile?.gender || "");
     const [dob, setDob] = useState(profile?.date_of_birth || "");
@@ -37,7 +38,8 @@ export default function TeacherProfile() {
 
     useEffect(() => {
         if (profile) {
-            setFullName(profile.full_name || "");
+            setFirstName(profile.first_name || "");
+            setLastName(profile.last_name || "");
             setPhone(profile.phone || "");
             setGender(profile.gender || "");
             setDob(profile.date_of_birth || "");
@@ -123,15 +125,16 @@ export default function TeacherProfile() {
     };
 
     const handleUpdateProfile = async () => {
-        if (!fullName.trim()) {
-            showError("Error", "Name cannot be empty");
+        if (!firstName.trim()) {
+            showError("Error", "First name cannot be empty");
             return;
         }
 
         setSaving(true);
         try {
             const { error } = await authService.updateProfile({
-                full_name: fullName,
+                first_name: firstName,
+                last_name: lastName,
                 phone: phone || null,
                 gender: (gender as any) || null,
                 date_of_birth: dob || null,
@@ -178,7 +181,7 @@ export default function TeacherProfile() {
                         </TouchableOpacity>
                     </View>
 
-                    <Text className="text-gray-900 dark:text-white text-3xl font-black tracking-tighter mt-6 text-center">{profile?.full_name}</Text>
+                    <Text className="text-gray-900 dark:text-white text-3xl font-black tracking-tighter mt-6 text-center">{profile?.first_name} {profile?.last_name}</Text>
                     <View className="bg-[#FF6900]/10 px-4 py-1.5 rounded-full mt-2 border border-[#FF6900]/20 self-center">
                         <Text className="text-[#FF6900] text-[10px] font-black uppercase tracking-[2px]">Faculty Member • ID: {teacherId?.slice(0, 8)}</Text>
                     </View>
@@ -206,7 +209,8 @@ export default function TeacherProfile() {
 
                             {isEditing ? (
                                 <View className="bg-gray-50 dark:bg-gray-900 p-6 rounded-[32px] border border-gray-100 dark:border-gray-800 mb-8">
-                                    <InfoInput label="Full Name" value={fullName} onChange={setFullName} icon={User} isDark={isDark} />
+                                    <InfoInput label="First Name" value={firstName} onChange={setFirstName} icon={User} isDark={isDark} />
+                                    <InfoInput label="Last Name" value={lastName} onChange={setLastName} icon={User} isDark={isDark} />
                                     <InfoInput label="Contact Number" value={phone} onChange={setPhone} icon={Phone} isDark={isDark} />
                                     <InfoInput label="Staff Address" value={address} onChange={setAddress} icon={MapPin} isDark={isDark} />
                                     <TouchableOpacity className="bg-[#FF6900] py-4 rounded-2xl items-center mt-4 shadow-lg shadow-orange-500/20" onPress={handleUpdateProfile} disabled={saving}>

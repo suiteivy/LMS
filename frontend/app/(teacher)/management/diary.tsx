@@ -4,7 +4,7 @@ import { DiaryAPI, DiaryEntry } from "@/services/DiaryService";
 import { ClassAPI, ClassItem } from "@/services/ClassService";
 import { showError, showSuccess } from "@/utils/toast";
 import { router } from "expo-router";
-import { BookOpen, Calendar, ChevronDown, Edit2, Pencil, Plus, Send, Trash2, X, Zap } from 'lucide-react-native';
+import { BookOpen, Calendar, ChevronDown, Edit2, Plus, Send, Trash2, X, Zap } from 'lucide-react-native';
 import React, { useEffect, useState } from "react";
 import { ActivityIndicator, Modal, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { SubscriptionGate, AddonRequestButton } from "@/components/shared/SubscriptionComponents";
@@ -64,7 +64,7 @@ export default function TeacherDiaryPage() {
     const [selectedClassId, setSelectedClassId] = useState("");
     const [showClassDropdown, setShowClassDropdown] = useState(false);
 
-    // Form
+    const [saving, setSaving] = useState(false);
     const [title, setTitle] = useState("");
     const [content, setContent] = useState("");
     const [editingEntryId, setEditingEntryId] = useState<string | null>(null);
@@ -80,14 +80,18 @@ export default function TeacherDiaryPage() {
     }, [selectedClassId]);
 
     const fetchClasses = async () => {
+        setLoading(true);
         try {
             const data = await ClassAPI.getClasses();
             setClasses(data);
             if (data.length > 0) {
                 setSelectedClassId(data[0].id);
             }
-        } catch (error) {
+        } catch (error: any) {
             console.error("Error fetching classes:", error);
+            showError("Load Error", error.response?.data?.error || "Failed to load assigned classes.");
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -97,28 +101,30 @@ export default function TeacherDiaryPage() {
         try {
             const data = await DiaryAPI.getEntries(selectedClassId);
             setEntries(data);
-        } catch (error) {
+        } catch (error: any) {
             console.error("Error fetching diary entries:", error);
+            showError("Load Error", error.response?.data?.error || "Failed to load diary entries.");
         } finally {
             setLoading(false);
         }
     };
 
     const handleSaveEntry = async () => {
-        if (!title || !content || !selectedClassId) {
-            showError("Missing Fields", "Please fill all fields.");
+        if (!title.trim() || !content.trim() || !selectedClassId) {
+            showError("Missing Fields", "Please fill both subject and notes.");
             return;
         }
 
+        setSaving(true);
         try {
             if (editingEntryId) {
-                await DiaryAPI.updateEntry(editingEntryId, { title, content });
+                await DiaryAPI.updateEntry(editingEntryId, { title: title.trim(), content: content.trim() });
                 showSuccess("Success", "Diary entry updated!");
             } else {
                 await DiaryAPI.createEntry({
                     class_id: selectedClassId,
-                    title,
-                    content
+                    title: title.trim(),
+                    content: content.trim()
                 });
                 showSuccess("Success", "Diary entry created!");
             }
@@ -128,8 +134,11 @@ export default function TeacherDiaryPage() {
             setContent("");
             setEditingEntryId(null);
             fetchEntries();
-        } catch (error) {
-            showError("Error", "Failed to save diary entry");
+        } catch (error: any) {
+            console.error("Error saving diary entry:", error);
+            showError("Save Error", error.response?.data?.error || "Failed to save diary entry. You might not have permission for this class.");
+        } finally {
+            setSaving(false);
         }
     };
 
@@ -176,130 +185,155 @@ export default function TeacherDiaryPage() {
                     </View>
                 }
             >
-
-            <View className="p-4 md:p-8 flex-1">
-                {/* Class Selection */}
-                <View className="mb-6 relative z-10">
-                    <TouchableOpacity
-                        className="bg-white dark:bg-[#1a1a1a] rounded-3xl px-6 py-4 border border-gray-100 dark:border-gray-800 flex-row items-center justify-between shadow-sm"
-                        onPress={() => setShowClassDropdown(!showClassDropdown)}
-                    >
-                        <View className="flex-row items-center">
-                            <BookOpen size={18} color="#FF6900" className="mr-3" />
-                            <Text className="text-gray-900 dark:text-gray-100 font-bold text-sm">{selectedClassName}</Text>
-                        </View>
-                        <ChevronDown size={18} color="#6B7280" />
-                    </TouchableOpacity>
-
-                    {showClassDropdown && (
-                        <View className="absolute top-16 left-0 right-0 bg-white dark:bg-[#1a1a1a] border border-gray-100 dark:border-gray-800 rounded-[32px] shadow-2xl z-20 overflow-hidden">
-                            {classes.map(cls => (
-                                <TouchableOpacity
-                                    key={cls.id}
-                                    className="px-6 py-4 border-b border-gray-50 dark:border-gray-900 active:bg-gray-50 dark:active:bg-gray-900"
-                                    onPress={() => {
-                                        setSelectedClassId(cls.id);
-                                        setShowClassDropdown(false);
-                                    }}
-                                >
-                                    <Text className="text-gray-900 dark:text-gray-100 font-bold text-sm">{cls.name}</Text>
-                                </TouchableOpacity>
-                            ))}
-                        </View>
-                    )}
-                </View>
-
-                {/* Header Row */}
-                <View className="flex-row justify-between items-center mb-6 px-2">
-                    <Text className="text-gray-400 dark:text-gray-500 font-bold text-[10px] uppercase tracking-wider">
-                        {entries.length} Entries found
-                    </Text>
-                    <TouchableOpacity
-                        className="flex-row items-center bg-[#FF6900] px-5 py-2.5 rounded-2xl shadow-lg"
-                        onPress={() => {
-                            setEditingEntryId(null);
-                            setTitle("");
-                            setContent("");
-                            setShowModal(true);
-                        }}
-                    >
-                        <Plus size={18} color="white" />
-                        <Text className="text-white font-bold text-xs ml-2 uppercase tracking-widest">Add Entry</Text>
-                    </TouchableOpacity>
-                </View>
-
-                {/* List */}
-                <ScrollView className="flex-1" showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
-                    {loading ? (
-                        <ActivityIndicator size="large" color="#FF6900" className="mt-8" />
-                    ) : entries.length === 0 ? (
-                        <View className="bg-white dark:bg-[#1a1a1a] p-12 rounded-[40px] items-center border border-gray-100 dark:border-gray-800 border-dashed">
-                            <BookOpen size={48} color="#E5E7EB" style={{ opacity: 0.3 }} />
-                            <Text className="text-gray-400 dark:text-gray-500 font-bold text-center mt-6 tracking-tight">No diary entries for this class.</Text>
-                        </View>
-                    ) : (
-                        entries.map((entry) => (
-                            <DiaryCard
-                                key={entry.id}
-                                entry={entry}
-                                onDelete={handleDeleteEntry}
-                                onEdit={handleEditEntry}
-                            />
-                        ))
-                    )}
-                </ScrollView>
-            </View>
-
-            {/* Modal */}
-            <Modal visible={showModal} animationType="slide" transparent>
-                <View className="flex-1 bg-black/50 justify-end">
-                    <View className="bg-white dark:bg-[#0F0B2E] rounded-t-[40px] p-8 pb-12 border-t border-gray-100 dark:border-gray-800">
-                        <View className="flex-row justify-between items-center mb-8">
-                            <Text className="text-2xl font-bold text-gray-900 dark:text-white tracking-tight">
-                                {editingEntryId ? "Edit Entry" : "New Diary Entry"}
+                <View className="p-4 md:p-8 flex-1">
+                    {classes.length === 0 && !loading ? (
+                        <View className="bg-white dark:bg-[#1a1a1a] p-12 rounded-[40px] items-center border border-gray-100 dark:border-gray-800 border-dashed mt-8">
+                            <View className="bg-orange-100 dark:bg-orange-950/20 p-6 rounded-full mb-6">
+                                <BookOpen size={48} color="#FF6900" />
+                            </View>
+                            <Text className="text-xl font-bold text-gray-900 dark:text-white text-center mb-3">No Classes Assigned</Text>
+                            <Text className="text-gray-500 dark:text-gray-400 text-center mb-8 leading-6">
+                                You haven't been assigned to any classes yet. Please contact your administrator to assign you a class before you can create diary entries.
                             </Text>
                             <TouchableOpacity
-                                className="w-10 h-10 bg-gray-50 dark:bg-[#1a1a1a] rounded-full items-center justify-center"
-                                onPress={() => setShowModal(false)}
+                                className="bg-gray-100 dark:bg-gray-800 px-8 py-4 rounded-2xl active:bg-gray-200"
+                                onPress={() => router.push("/(teacher)")}
                             >
-                                <X size={20} color="#6B7280" />
+                                <Text className="text-gray-600 dark:text-gray-300 font-bold uppercase tracking-widest text-xs">Return to Dashboard</Text>
                             </TouchableOpacity>
                         </View>
+                    ) : (
+                        <>
+                            <View className="mb-6 relative z-10">
+                                <TouchableOpacity
+                                    className="bg-white dark:bg-[#1a1a1a] rounded-3xl px-6 py-4 border border-gray-100 dark:border-gray-800 flex-row items-center justify-between shadow-sm"
+                                    onPress={() => setShowClassDropdown(!showClassDropdown)}
+                                >
+                                    <View className="flex-row items-center">
+                                        <BookOpen size={18} color="#FF6900" className="mr-3" />
+                                        <Text className="text-gray-900 dark:text-gray-100 font-bold text-sm">{selectedClassName}</Text>
+                                    </View>
+                                    <ChevronDown size={18} color="#6B7280" />
+                                </TouchableOpacity>
 
-                        <View className="mb-6">
-                            <Text className="text-gray-500 dark:text-gray-400 text-[10px] font-bold uppercase tracking-wider ml-2 mb-2">Subject/Title</Text>
-                            <TextInput
-                                className="bg-gray-50 dark:bg-[#1a1a1a] rounded-2xl px-6 py-4 text-gray-900 dark:text-white font-bold border border-gray-100 dark:border-gray-800"
-                                placeholder="e.g. Mathematics - Introduction to Algebra"
-                                placeholderTextColor="#9CA3AF"
-                                value={title}
-                                onChangeText={setTitle}
-                            />
-                        </View>
+                                {showClassDropdown && (
+                                    <View className="absolute top-16 left-0 right-0 bg-white dark:bg-[#1a1a1a] border border-gray-100 dark:border-gray-800 rounded-[32px] shadow-2xl z-20 overflow-hidden">
+                                        {classes.map(cls => (
+                                            <TouchableOpacity
+                                                key={cls.id}
+                                                className="px-6 py-4 border-b border-gray-50 dark:border-gray-900 active:bg-gray-50 dark:active:bg-gray-900"
+                                                onPress={() => {
+                                                    setSelectedClassId(cls.id);
+                                                    setShowClassDropdown(false);
+                                                }}
+                                            >
+                                                <Text className="text-gray-900 dark:text-gray-100 font-bold text-sm">{cls.name}</Text>
+                                            </TouchableOpacity>
+                                        ))}
+                                    </View>
+                                )}
+                            </View>
 
-                        <View className="mb-8">
-                            <Text className="text-gray-500 dark:text-gray-400 text-[10px] font-bold uppercase tracking-wider ml-2 mb-2">Activities/Notes</Text>
-                            <TextInput
-                                className="bg-gray-50 dark:bg-[#1a1a1a] rounded-2xl px-6 py-4 text-gray-900 dark:text-white font-medium border border-gray-100 dark:border-gray-800 h-32"
-                                placeholder="What did the students do today?"
-                                placeholderTextColor="#9CA3AF"
-                                multiline
-                                textAlignVertical="top"
-                                value={content}
-                                onChangeText={setContent}
-                            />
-                        </View>
+                            <View className="flex-row justify-between items-center mb-6 px-2">
+                                <Text className="text-gray-400 dark:text-gray-500 font-bold text-[10px] uppercase tracking-wider">
+                                    {entries.length} Entries found
+                                </Text>
+                                <TouchableOpacity
+                                    className="flex-row items-center bg-[#FF6900] px-5 py-2.5 rounded-2xl shadow-lg"
+                                    onPress={() => {
+                                        setEditingEntryId(null);
+                                        setTitle("");
+                                        setContent("");
+                                        setShowModal(true);
+                                    }}
+                                >
+                                    <Plus size={18} color="white" />
+                                    <Text className="text-white font-bold text-xs ml-2 uppercase tracking-widest">Add Entry</Text>
+                                </TouchableOpacity>
+                            </View>
 
-                        <TouchableOpacity
-                            className="bg-[#FF6900] py-5 rounded-2xl items-center shadow-lg active:bg-orange-600 flex-row justify-center"
-                            onPress={handleSaveEntry}
-                        >
-                            <Send size={18} color="white" />
-                            <Text className="text-white font-bold text-lg ml-3">{editingEntryId ? "Update" : "Save Entry"}</Text>
-                        </TouchableOpacity>
-                    </View>
+                            <ScrollView className="flex-1" showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
+                                {loading ? (
+                                    <ActivityIndicator size="large" color="#FF6900" className="mt-8" />
+                                ) : entries.length === 0 ? (
+                                    <View className="bg-white dark:bg-[#1a1a1a] p-12 rounded-[40px] items-center border border-gray-100 dark:border-gray-800 border-dashed">
+                                        <BookOpen size={48} color="#E5E7EB" style={{ opacity: 0.3 }} />
+                                        <Text className="text-gray-400 dark:text-gray-500 font-bold text-center mt-6 tracking-tight">No diary entries for this class.</Text>
+                                    </View>
+                                ) : (
+                                    entries.map((entry) => (
+                                        <DiaryCard
+                                            key={entry.id}
+                                            entry={entry}
+                                            onDelete={handleDeleteEntry}
+                                            onEdit={handleEditEntry}
+                                        />
+                                    ))
+                                )}
+                            </ScrollView>
+                        </>
+                    )}
                 </View>
-            </Modal>
+
+                <Modal visible={showModal} animationType="slide" transparent>
+                    <View className="flex-1 bg-black/50 justify-end">
+                        <View className="bg-white dark:bg-[#0F0B2E] rounded-t-[40px] p-8 pb-12 border-t border-gray-100 dark:border-gray-800">
+                            <View className="flex-row justify-between items-center mb-8">
+                                <Text className="text-2xl font-bold text-gray-900 dark:text-white tracking-tight">
+                                    {editingEntryId ? "Edit Entry" : "New Diary Entry"}
+                                </Text>
+                                <TouchableOpacity
+                                    className="w-10 h-10 bg-gray-50 dark:bg-[#1a1a1a] rounded-full items-center justify-center"
+                                    onPress={() => setShowModal(false)}
+                                    disabled={saving}
+                                >
+                                    <X size={20} color="#6B7280" />
+                                </TouchableOpacity>
+                            </View>
+
+                            <View className="mb-6">
+                                <Text className="text-gray-500 dark:text-gray-400 text-[10px] font-bold uppercase tracking-wider ml-2 mb-2">Subject/Title</Text>
+                                <TextInput
+                                    className="bg-gray-50 dark:bg-[#1a1a1a] rounded-2xl px-6 py-4 text-gray-900 dark:text-white font-bold border border-gray-100 dark:border-gray-800"
+                                    placeholder="e.g. Mathematics - Introduction to Algebra"
+                                    placeholderTextColor="#9CA3AF"
+                                    value={title}
+                                    onChangeText={setTitle}
+                                    editable={!saving}
+                                />
+                            </View>
+
+                            <View className="mb-8">
+                                <Text className="text-gray-500 dark:text-gray-400 text-[10px] font-bold uppercase tracking-wider ml-2 mb-2">Activities/Notes</Text>
+                                <TextInput
+                                    className="bg-gray-50 dark:bg-[#1a1a1a] rounded-2xl px-6 py-4 text-gray-900 dark:text-white font-medium border border-gray-100 dark:border-gray-800 h-32"
+                                    placeholder="What did the students do today?"
+                                    placeholderTextColor="#9CA3AF"
+                                    multiline
+                                    textAlignVertical="top"
+                                    value={content}
+                                    onChangeText={setContent}
+                                    editable={!saving}
+                                />
+                            </View>
+
+                            <TouchableOpacity
+                                className={`py-5 rounded-2xl items-center shadow-lg flex-row justify-center ${saving ? 'bg-orange-300' : 'bg-[#FF6900] active:bg-orange-600'}`}
+                                onPress={handleSaveEntry}
+                                disabled={saving}
+                            >
+                                {saving ? (
+                                    <ActivityIndicator size="small" color="white" />
+                                ) : (
+                                    <Send size={18} color="white" />
+                                )}
+                                <Text className="text-white font-bold text-lg ml-3">
+                                    {saving ? "Saving..." : (editingEntryId ? "Update" : "Save Entry")}
+                                </Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </Modal>
             </SubscriptionGate>
         </View>
     );

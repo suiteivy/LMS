@@ -28,7 +28,7 @@ exports.createEntry = async (req, res) => {
             }
 
             effectiveTeacherId = teacher.id;
-        } else if (userRole !== 'admin') {
+        } else if (!['admin', 'master_admin'].includes(userRole)) {
             return res.status(403).json({ error: "Unauthorized" });
         }
 
@@ -90,7 +90,7 @@ exports.getEntries = async (req, res) => {
             .from("diary_entries")
             .select(`
                 *,
-                teacher:teachers(id, users(full_name))
+                teacher:teachers(id, users(first_name, last_name, full_name))
             `)
             .eq("class_id", targetClassId)
             .eq("institution_id", institution_id)
@@ -120,7 +120,7 @@ exports.updateEntry = async (req, res) => {
             if (!entry || entry.teacher_id !== teacher.id) {
                 return res.status(403).json({ error: "Access denied: You did not create this entry" });
             }
-        } else if (userRole !== 'admin') {
+        } else if (!['admin', 'master_admin'].includes(userRole)) {
             return res.status(403).json({ error: "Unauthorized" });
         }
 
@@ -152,7 +152,7 @@ exports.deleteEntry = async (req, res) => {
             if (!entry || entry.teacher_id !== teacher.id) {
                 return res.status(403).json({ error: "Access denied: You did not create this entry" });
             }
-        } else if (userRole !== 'admin') {
+        } else if (!['admin', 'master_admin'].includes(userRole)) {
             return res.status(403).json({ error: "Unauthorized" });
         }
 

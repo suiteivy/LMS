@@ -1,10 +1,10 @@
-﻿import { AuthGuard } from "@/components/AuthGuard";
+import { AuthGuard } from "@/components/AuthGuard";
 import { NavItem, WebSidebar } from "@/components/layouts/WebSideBar";
 import { SchoolProvider } from "@/contexts/SchoolContext";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useSubscriptionTier } from "@/hooks/useSubscriptionTier";
 import { Slot, Tabs } from "expo-router";
-import { House, LayoutGrid, Settings, Users, Wallet } from "lucide-react-native";
+import { House, LayoutGrid, Settings, Users, Wallet, Headphones } from "lucide-react-native";
 import { Platform, useWindowDimensions, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -15,13 +15,15 @@ const ALL_NAV_ITEMS: NavItem[] = [
     { name: "management/index", title: "Manage", icon: LayoutGrid, route: "/(admin)/management" },
     { name: "users/index", title: "Users", icon: Users, route: "/(admin)/users" },
     { name: "finance/index", title: "Finance", icon: Wallet, route: "/(admin)/finance" },
+    { name: "support", title: "Support", icon: Headphones, route: "/(admin)/support" },
 ];
 
-// Free plan nav: Settings, Home, Users only (no Finance, no full Management)
-const FREE_NAV_ITEMS: NavItem[] = [
+// Beta plan nav: Settings, Home, Users only (no Finance, no full Management)
+const BETA_NAV_ITEMS: NavItem[] = [
     { name: "settings/settings", title: "Settings", icon: Settings, route: "/(admin)/settings/settings" },
     { name: "index", title: "Home", icon: House, route: "/(admin)" },
     { name: "users/index", title: "Users", icon: Users, route: "/(admin)/users" },
+    { name: "support", title: "Support", icon: Headphones, route: "/(admin)/support" },
 ];
 
 const MOBILE_TAB_NAMES = ["settings/settings", "index", "management/index"];
@@ -44,13 +46,13 @@ const HIDDEN = [
     "management/subjects/details",
 ];
 
-// Extra routes to hide from tabs on free plan
-const FREE_EXTRA_HIDDEN = ["management/index", "finance/index"];
+// Beta plan extra hidden items
+const BETA_EXTRA_HIDDEN = ["management/index", "finance/index"];
 
 function AdminTabs() {
     const insets = useSafeAreaInsets();
     const { isDark } = useTheme();
-    const { isFree } = useSubscriptionTier();
+    const { isBeta } = useSubscriptionTier();
 
     return (
         <Tabs
@@ -123,8 +125,8 @@ function AdminTabs() {
                 }}
             />
 
-            {/* Manage — right (paid plan only; hidden for free) */}
-            {!isFree && (
+            {/* Manage — right (paid plan only; hidden for beta) */}
+            {!isBeta && (
                 <Tabs.Screen
                     name="management/index"
                     options={{
@@ -142,8 +144,8 @@ function AdminTabs() {
                 <Tabs.Screen key={name} name={name} options={{ href: null }} />
             ))}
 
-            {/* Free plan extra hidden items */}
-            {isFree && FREE_EXTRA_HIDDEN.map((name) => (
+            {/* Beta plan extra hidden items */}
+            {isBeta && BETA_EXTRA_HIDDEN.map((name) => (
                 <Tabs.Screen key={name} name={name} options={{ href: null }} />
             ))}
         </Tabs>
@@ -151,8 +153,8 @@ function AdminTabs() {
 }
 
 function AdminSidebar() {
-    const { isFree } = useSubscriptionTier();
-    const items = isFree ? FREE_NAV_ITEMS : ALL_NAV_ITEMS;
+    const { isBeta } = useSubscriptionTier();
+    const items = isBeta ? BETA_NAV_ITEMS : ALL_NAV_ITEMS;
     return (
         <WebSidebar items={items} basePath="(admin)" role="Admin">
             <Slot />
