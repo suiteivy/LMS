@@ -1,8 +1,9 @@
 import { ProfileEdit } from "@/components/ProfileEdit";
 import { useTheme } from "@/contexts/ThemeContext";
-import { Bell, ChevronRight, Globe, LucideIcon, Shield, User } from "lucide-react-native";
+import { Bell, ChevronRight, Globe, Lock, LucideIcon, Shield, User } from "lucide-react-native";
 import React, { ReactNode, useState } from "react";
 import { ScrollView, Switch, Text, TouchableOpacity, View } from "react-native";
+import { ChangePasswordModal } from "./shared/ChangePasswordModal";
 
 interface SettingRowProps {
     icon: LucideIcon;
@@ -16,6 +17,7 @@ export default function AdminSettings() {
     const [notifications, setNotifications] = useState(true)
     const [systemAlerts, setSystemAlerts] = useState(true)
     const [showEditForm, setShowEditForm] = useState(false)
+    const [showPasswordForm, setShowPasswordForm] = useState(false)
     const { isDark } = useTheme()
 
     const SettingRow = ({ icon: Icon, title, onPress, isLast, children }: SettingRowProps) => (
@@ -34,8 +36,9 @@ export default function AdminSettings() {
         </TouchableOpacity>
     )
 
+
     return (
-        <ScrollView className="flex-1 bg-white dark:bg-black">
+        <ScrollView className="flex-1 bg-white dark:bg-navy">
             <View className="p-4 md:p-8 max-w-2xl mx-auto w-full">
 
                 <Text className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest ml-1 mb-2">Account</Text>
@@ -45,7 +48,7 @@ export default function AdminSettings() {
                     >
                         <SettingRow icon={User} title="Edit Admin Profile" />
                     </TouchableOpacity>
-                    <SettingRow icon={Lock} title="Change Password" onPress={() => setShowPasswordForm(!showPasswordForm)} />
+                    <SettingRow icon={Lock} title="Change Password" onPress={() => setShowPasswordForm(true)} />
                     <SettingRow icon={Globe} title="Language" isLast >
                         <Text className="text-gray-400 dark:text-gray-500 mr-2">English</Text>
                     </SettingRow>
@@ -59,7 +62,7 @@ export default function AdminSettings() {
                             onValueChange={setNotifications}
                             trackColor={{ false: "#374151", true: "#f97316" }}
                             thumbColor="#ffffff"
-                            disabled={loadingPrefs}
+                            // disabled={isUpdating}
                         />
                     </SettingRow>
                     <SettingRow icon={Shield} title="Admin Priority Alerts" isLast>
@@ -68,7 +71,7 @@ export default function AdminSettings() {
                             onValueChange={setSystemAlerts}
                             trackColor={{ false: "#374151", true: "#f97316" }}
                             thumbColor="#ffffff"
-                            disabled={loadingPrefs}
+                            // disabled={isUpdating}
                         />
                     </SettingRow>
                 </View>
@@ -76,6 +79,11 @@ export default function AdminSettings() {
                 <ProfileEdit
                     visible={showEditForm}
                     onClose={() => setShowEditForm(false)}
+                />
+
+                <ChangePasswordModal
+                    visible={showPasswordForm}
+                    onClose={() => setShowPasswordForm(false)}
                 />
             </View>
         </ScrollView>

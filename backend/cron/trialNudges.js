@@ -19,7 +19,8 @@ const startTrialNudgesCron = () => {
             const { data: trials, error } = await supabase
                 .from('institutions')
                 .select('id, name, trial_start_date, trial_end_date, subscription_status')
-                .eq('subscription_status', 'trial');
+                .eq('subscription_plan', 'trial')
+                .eq('subscription_status', 'active');
 
             if (error) throw error;
             if (!trials || trials.length === 0) return;

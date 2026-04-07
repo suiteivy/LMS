@@ -4,7 +4,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage'
 import { Session, User } from '@supabase/supabase-js'
 import { router } from 'expo-router'
 import React, { createContext, useContext, useEffect, useRef, useState } from 'react'
-import { AppState, AppStateStatus } from 'react-native'
+import { AppState, AppStateStatus, Platform } from 'react-native'
 import Toast from 'react-native-toast-message'
 
 type UserProfile = Database['public']['Tables']['users']['Row']
@@ -21,9 +21,12 @@ interface AuthContextType {
   subscriptionStatus: string | null
   subscriptionPlan: string | null
   trialEndDate: string | null
-  isMaster: boolean
+  isMain: boolean
+  isPlatformAdmin: boolean
   loading: boolean
+  setLoading: (loading: boolean) => void
   isInitializing: boolean
+  isNavReady: boolean
   isProfileLoading: boolean
   signIn: (email: string, password: string) => Promise<{ data: any; error: any }>
   signOut: () => Promise<{ error: any }>
@@ -34,6 +37,15 @@ interface AuthContextType {
   startDemo: (role: string) => Promise<{ data: any; error: any }>
   isDemo: boolean
   isTrial: boolean
+  addonMessaging: boolean
+  addonLibrary: boolean
+  addonFinance: boolean
+  addonAnalytics: boolean
+  addonBursary: boolean
+  addonAttendance: boolean
+  addonDiary: boolean
+  customStudentLimit: number | null
+  getRoleRedirect: (profile: UserProfile | null, isPlatformAdmin: boolean) => string | null
 }
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -66,10 +78,26 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [subscriptionStatus, setSubscriptionStatus] = useState<string | null>(null)
   const [subscriptionPlan, setSubscriptionPlan] = useState<string | null>(null)
   const [trialEndDate, setTrialEndDate] = useState<string | null>(null)
-  const [isMaster, setIsMaster] = useState(false)
+  const [isMain, setIsMain] = useState(false)
+  const [isPlatformAdmin, setIsPlatformAdmin] = useState(false)
+  const [addonFlags, setAddonFlags] = useState({
+    messaging: false,
+    library: false,
+    finance: false,
+    analytics: false,
+    bursary: false,
+    attendance: false,
+    diary: false
+  })
+  const [customStudentLimit, setCustomStudentLimit] = useState<number | null>(null)
   const [isInitializing, setIsInitializing] = useState(true)
+  const [isNavReady, setIsNavReady] = useState(false)
   const [isProfileLoading, setIsProfileLoading] = useState(false)
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(false)
+
+  // Keep refs in sync so closures (e.g. onAuthStateChange) always read live values
+  useEffect(() => { isInitializingRef.current = isInitializing; }, [isInitializing]);
+  useEffect(() => { isNavReadyRef.current = isNavReady; }, [isNavReady]);
   const [isDemo, setIsDemo] = useState(false)
 
   const timerRef = useRef<any>(null)
@@ -78,52 +106,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const isManualLogout = useRef(false);
   const currentSessionRef = useRef<Session | null>(null);
   const isDemoRef = useRef(false);
+  const profileRef = useRef<UserProfile | null>(null);
+  const userRef = useRef<User | null>(null);
+  const isInitializingRef = useRef(true);
+  const isNavReadyRef = useRef(false);
   useEffect(() => { isDemoRef.current = isDemo; }, [isDemo]);
-
-  const handleLogout = async () => {
-    isManualLogout.current = true;
-
-    // ── Optimistic local clear — user sees instant response ──────────────────
-    setSession(null);
-    setUser(null);
-    setProfile(null);
-    setRoleInfo({ studentId: null, teacherId: null, adminId: null, parentId: null, displayId: null });
-    setSubscriptionStatus(null);
-    setSubscriptionPlan(null);
-    setTrialEndDate(null);
-    setIsMaster(false);
-    setLoading(false);       // ← KEY FIX: drop the overlay immediately
-    setIsInitializing(false);
-    clearTimer();
-
-    // ── Navigate + toast immediately, don't wait for network ─────────────────
-    if (isDemoRef.current) {
-      Toast.show({ type: 'info', text1: 'Session ended', text2: 'Demo session ended.', position: 'bottom' });
-      router.replace('/(auth)/demo');
-    } else {
-      Toast.show({ type: 'success', text1: 'Logged Out', text2: 'You have been logged out successfully.', position: 'bottom' });
-      router.replace('/(auth)/signIn');
-    }
-
-    // ── Fire-and-forget the actual Supabase signOut + cleanup ─────────────────
-    Promise.all([
-      authService.signOut(),
-      AsyncStorage.removeItem('demo_expiry').catch(() => { }),
-    ]).finally(() => {
-      setTimeout(() => { isManualLogout.current = false; }, 500);
-    });
-
-    return { error: null };
-  }
-
-  const handleStartDemo = async (role: string) => {
-    const result = await authService.startDemoSession(role);
-    if (!result.error && result.data) {
-      const expiry = Date.now() + 15 * 60 * 1000;
-      await AsyncStorage.setItem('demo_expiry', expiry.toString());
-    }
-    return result;
-  }
+  useEffect(() => { profileRef.current = profile; }, [profile]);
+  useEffect(() => { userRef.current = user; }, [user]);
 
   const clearTimer = () => {
     if (timerRef.current) {
@@ -132,16 +121,121 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   }
 
-  const resetSessionTimer = () => {
-    if (session) startTimeoutTimer()
+  const handleLogout = async (silent: boolean = false) => {
+    // Prevent recursion if already logging out or already logged out
+    if (isManualLogout.current) return { error: null };
+
+    // If silent and no session/user exists, we don't need to do anything
+    // This prevents the "SIGNED_OUT" event from triggering a logout on app start
+    if (silent && !currentSessionRef.current && !user && !profile) {
+      setIsInitializing(false);
+      setLoading(false);
+      return { error: null };
+    }
+
+    console.log(`[AuthContext] handleLogout called (silent: ${silent})`);
+    isManualLogout.current = true;
+
+    try {
+      setSession(null);
+      setUser(null);
+      setProfile(null);
+      currentSessionRef.current = null;
+      userRef.current = null;
+      profileRef.current = null;
+      setRoleInfo({ studentId: null, teacherId: null, adminId: null, parentId: null, displayId: null });
+      setIsDemo(false);
+      setSubscriptionStatus(null);
+      setSubscriptionPlan(null);
+      setTrialEndDate(null);
+      setIsMain(false);
+      setIsPlatformAdmin(false);
+      setAddonFlags({ messaging: false, library: false, finance: false, analytics: false, bursary: false, attendance: false, diary: false });
+      setCustomStudentLimit(null);
+      setLoading(false);
+      setIsInitializing(false);
+      clearTimer();
+
+      if (!silent) {
+        if (isDemoRef.current) {
+          Toast.show({ type: 'info', text1: 'Session ended', text2: 'Demo session ended.', position: 'bottom' });
+        } else {
+          Toast.show({ type: 'success', text1: 'Logged Out', text2: 'You have been logged out successfully.', position: 'bottom' });
+        }
+      }
+
+      await Promise.all([
+        authService.signOut().catch(e => console.warn('[AuthContext] authService.signOut error:', e)),
+        AsyncStorage.removeItem('demo_expiry').catch(() => { }),
+        AsyncStorage.removeItem('is_demo_mode').catch(() => { }),
+        AsyncStorage.removeItem('session_start_time').catch(() => { }),
+      ]);
+    } finally {
+      // Delay resetting the flag to allow events to settle
+      setTimeout(() => { isManualLogout.current = false; }, 1000);
+    }
+
+    return { error: null };
   }
 
-  const startTimeoutTimer = () => {
+  const handleSignIn = async (email: string, password: string) => {
+    setLoading(true);
+    try {
+      const result = await authService.signIn(email, password);
+      if (result.error) setLoading(false);
+      return result;
+    } catch (error) {
+      setLoading(false);
+      return { data: null, error };
+    }
+  }
+
+  const handleStartDemo = async (role: string) => {
+    const expiry = Date.now() + 15 * 60 * 1000;
+    await AsyncStorage.setItem('demo_expiry', expiry.toString());
+    const result = await authService.startDemoSession(role);
+    if (result.error) {
+      await AsyncStorage.removeItem('demo_expiry').catch(() => { });
+    }
+    return result;
+  }
+
+  const resetSessionTimer = async () => {
+    if (session) await startTimeoutTimer()
+  }
+
+  const startTimeoutTimer = async (isDemoSession?: boolean) => {
     clearTimer()
-    timerRef.current = setTimeout(async () => {
-      console.log('Session timeout reached (24 hours), logging out...')
-      await handleLogout()
-    }, 24 * 60 * 60 * 1000)
+    const isActuallyDemo = isDemoSession !== undefined ? isDemoSession : isDemoRef.current;
+
+    // Duration: 15 mins for demo, 24 hours for regular users
+    const totalDurationMs = isActuallyDemo ? 15 * 60 * 1000 : 24 * 60 * 60 * 1000;
+
+    // Check for persisted start time
+    let startTime = Date.now();
+    try {
+      const persistedStart = await AsyncStorage.getItem('session_start_time');
+      if (persistedStart) {
+        startTime = parseInt(persistedStart, 10);
+      } else {
+        await AsyncStorage.setItem('session_start_time', startTime.toString());
+      }
+    } catch (e) {
+      console.warn('[AuthContext] Error accessing session_start_time:', e);
+    }
+
+    const elapsed = Date.now() - startTime;
+    const remaining = totalDurationMs - elapsed;
+
+    if (remaining <= 0) {
+      console.log(`[AuthContext] Session expired (${isActuallyDemo ? 'demo' : 'regular'}). Elapsed: ${elapsed}ms`);
+      await handleLogout();
+    } else {
+      console.log(`[AuthContext] Timer set for ${isActuallyDemo ? 'demo' : 'regular'}. Remaining: ${Math.round(remaining / 60000)} mins`);
+      timerRef.current = setTimeout(async () => {
+        await handleLogout()
+      }, remaining)
+    }
   }
 
   const lastLoadedUserId = useRef<string | null>(null);
@@ -149,52 +243,57 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const loadUserProfile = async (userId: string): Promise<UserProfile | null> => {
     if ((lastLoadedUserId.current === userId && profile && !loading) || loadingUserId.current === userId) {
+      if (loading) setLoading(false);
       return profile;
     }
 
     loadingUserId.current = userId;
+
+    // Add a safety timeout for the profile load itself
+    const safetyTimeout = setTimeout(() => {
+      if (loadingUserId.current === userId) {
+        console.warn(`[AuthContext] Profile load for ${userId} timed out after 6s`);
+        setIsProfileLoading(false);
+        setLoading(false);
+        loadingUserId.current = null;
+      }
+    }, 6000);
+
     try {
       setIsProfileLoading(true);
       const { data, error } = await supabase
         .from('users')
-        .select('*, students(id), teachers(id), admins(id), parents(id), institutions(subscription_status, subscription_plan, trial_end_date)')
+        .select('*, students(id), teachers(id), admins(id), parents(id), institutions(subscription_status, subscription_plan, trial_end_date, addon_messaging, addon_library, addon_diary, addon_finance, addon_analytics, addon_bursary, addon_attendance, custom_student_limit), platform_admins(id)')
         .eq('id', userId)
         .single()
 
-      if (error) {
-        console.error('Error loading profile:', error)
-        setProfile(null)
-        setSubscriptionStatus(null)
-        setSubscriptionPlan(null)
-        setTrialEndDate(null)
-        setIsMaster(false)
-        lastLoadedUserId.current = null;
-        return null
-      }
+      if (error) throw error;
 
       const userData = data as any;
-      setProfile(userData as UserProfile)
 
-      // Set Subscription Data
-      if (userData.subscription) {
-        setSubscriptionStatus(userData.subscription.status || null)
-        setSubscriptionPlan(userData.subscription.plan || null)
-        setTrialEndDate(userData.subscription.trialEndDate || null)
-      } else if (userData.institutions) {
-        // Legacy fallback
-        setSubscriptionStatus(userData.institutions.subscription_status || null)
-        setSubscriptionPlan(userData.institutions.subscription_plan || null)
-        setTrialEndDate(userData.institutions.trial_end_date || null)
-      } else {
-        setSubscriptionStatus(null)
-        setSubscriptionPlan(null)
-        setTrialEndDate(null)
+      // 1. Calculate all derived states FIRST
+      const isPlatformAdminFlag = !!userData.platform_admins?.[0] || userData.role === 'master_admin';
+      const isMainFlag = userData.admins?.[0]?.is_main || false;
+
+      let newSubscriptionStatus = null;
+      let newSubscriptionPlan = null;
+      let newTrialEndDate = null;
+
+      if (userData.institutions) {
+        newSubscriptionStatus = userData.institutions.subscription_status || null;
+        newSubscriptionPlan = userData.institutions.subscription_plan || null;
+        newTrialEndDate = userData.institutions.trial_end_date || null;
+        setAddonFlags({
+          messaging: !!userData.institutions.addon_messaging,
+          library: !!userData.institutions.addon_library,
+          finance: !!userData.institutions.addon_finance,
+          analytics: !!userData.institutions.addon_analytics,
+          bursary: !!userData.institutions.addon_bursary,
+          attendance: !!userData.institutions.addon_attendance,
+          diary: !!userData.institutions.addon_diary,
+        });
+        setCustomStudentLimit(userData.institutions.custom_student_limit || null);
       }
-
-      const isMasterAdmin = userData.admins?.[0]?.is_master || false;
-      setIsMaster(isMasterAdmin);
-
-      lastLoadedUserId.current = userId;
 
       const getRoleId = (roleData: any) => {
         if (!roleData) return null;
@@ -202,26 +301,42 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         return roleData.id || null;
       };
 
+      let newRoleInfo = { studentId: null, teacherId: null, adminId: null, parentId: null, displayId: null };
       if (userData.role === 'student') {
         const id = getRoleId(userData.students);
-        setRoleInfo(prev => ({ ...prev, studentId: id, displayId: id }));
+        newRoleInfo = { ...newRoleInfo, studentId: id, displayId: id };
       } else if (userData.role === 'teacher') {
         const id = getRoleId(userData.teachers);
-        setRoleInfo(prev => ({ ...prev, teacherId: id, displayId: id }));
-      } else if (userData.role === 'admin') {
+        newRoleInfo = { ...newRoleInfo, teacherId: id, displayId: id };
+      } else if (userData.role === 'admin' || userData.role === 'master_admin') {
         const id = getRoleId(userData.admins);
-        setRoleInfo(prev => ({ ...prev, adminId: id, displayId: id }));
+        newRoleInfo = { ...newRoleInfo, adminId: id, displayId: id };
       } else if (userData.role === 'parent') {
         const id = getRoleId(userData.parents);
-        setRoleInfo(prev => ({ ...prev, parentId: id, displayId: id }));
+        newRoleInfo = { ...newRoleInfo, parentId: id, displayId: id };
       }
 
-      return userData as UserProfile
+      // 2. Batch State Updates
+      setSubscriptionStatus(newSubscriptionStatus);
+      setSubscriptionPlan(newSubscriptionPlan);
+      setTrialEndDate(newTrialEndDate);
+      setIsPlatformAdmin(isPlatformAdminFlag);
+      setIsMain(isMainFlag);
+      setRoleInfo(newRoleInfo);
+
+      // Setting profile LAST ensures that any effects watching 'profile' 
+      // see the most current version of all other auth states.
+      setProfile(userData as UserProfile);
+
+      lastLoadedUserId.current = userId;
+      return userData as UserProfile;
     } catch (err) {
+      console.error('Error loading profile:', err)
       setProfile(null)
       lastLoadedUserId.current = null;
       return null
     } finally {
+      clearTimeout(safetyTimeout);
       setIsProfileLoading(false);
       setLoading(false);
       loadingUserId.current = null;
@@ -233,124 +348,126 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     return null
   }
 
+  const getRoleRedirect = (userProfile: UserProfile | null, platformAdmin: boolean): string | null => {
+    if (!userProfile) return null;
+    if (platformAdmin) return "/(master-admin)";
+
+    switch (userProfile.role) {
+      case "admin": return "/(admin)";
+      case "teacher": return "/(teacher)";
+      case "student": return "/(student)";
+      case "parent": return "/(parent)";
+      default: return "/(auth)/signIn";
+    }
+  };
+
   useEffect(() => {
     const initializeAuth = async () => {
+      setIsInitializing(true);
+      console.log('[AuthContext] Initializing auth...');
       try {
-        const { data: { session: initialSession }, error: sessionError } = await supabase.auth.getSession();
+        const { data: { session: initialSession } } = await supabase.auth.getSession();
+        console.log('[AuthContext] Supabase session found:', !!initialSession);
 
         if (initialSession) {
-          const { data: { user: validatedUser }, error: userError } = await supabase.auth.getUser();
+          // Race protection: timeout for getUser
+          const userPromise = supabase.auth.getUser();
+          const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('getUser timeout')), 8000));
 
-          if (userError || !validatedUser) {
-            setSession(null);
-            currentSessionRef.current = null;
-            setUser(null);
-            const persistedTrial = await AsyncStorage.getItem('is_demo_mode');
-            setIsDemo(persistedTrial === 'true');
-          } else {
-            setSession(initialSession);
-            currentSessionRef.current = initialSession;
-            setUser(validatedUser);
-
-            const isDemoUser = validatedUser.email?.startsWith('demo.') || false;
-            setIsDemo(isDemoUser);
-            if (isDemoUser) await AsyncStorage.setItem('is_demo_mode', 'true');
-
-            await loadUserProfile(validatedUser.id);
-            startTimeoutTimer();
+          try {
+            const { data: { user: validatedUser } } = await Promise.race([userPromise, timeoutPromise]) as any;
+            if (validatedUser) {
+              console.log('[AuthContext] User validated:', validatedUser.email);
+              setSession(initialSession);
+              currentSessionRef.current = initialSession;
+              setUser(validatedUser);
+              const isDemoUser = validatedUser.email?.startsWith('demo.') || false;
+              setIsDemo(isDemoUser);
+              await loadUserProfile(validatedUser.id);
+              await startTimeoutTimer(isDemoUser);
+            } else {
+              console.warn('[AuthContext] getUser returned no data during init');
+              setIsInitializing(false);
+              setLoading(false);
+            }
+          } catch (e) {
+            console.error('[AuthContext] Error or timeout in getUser during init:', e);
+            setIsInitializing(false);
+            setLoading(false);
           }
         } else {
           setSession(null);
           currentSessionRef.current = null;
           setUser(null);
-          const persistedTrial = await AsyncStorage.getItem('is_demo_mode');
-          setIsDemo(persistedTrial === 'true');
         }
       } catch (error) {
-        console.error('Error in initializeAuth:', error)
+        console.error('[AuthContext] Error in initializeAuth:', error);
       } finally {
-        setIsInitializing(false)
-        setLoading(false)
+        console.log('[AuthContext] Initialization complete.');
+        setIsInitializing(false);
+        setLoading(false);
       }
     };
 
+    const watchdog = setTimeout(() => {
+      if (isInitializing || loading) {
+        console.warn('[AuthContext] Watchdog triggered (12s limit): clearing stuck loading states');
+        setIsInitializing(false);
+        setLoading(false);
+      }
+    }, 12000);
+
     initializeAuth();
 
+    const navTimer = setTimeout(() => setIsNavReady(true), 1);
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      try {
-        setSession(session)
-        setUser(session?.user ?? null)
-
-        if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-          currentSessionRef.current = session;
-          startTimeoutTimer()
-          if (session?.user) {
-            const isDemoUser = session.user.email?.startsWith('demo.') || false;
-            setIsDemo(isDemoUser);
-            if (isDemoUser) {
-              AsyncStorage.setItem('is_demo_mode', 'true');
-            } else {
-              AsyncStorage.removeItem('is_demo_mode');
-            }
-            loadUserProfile(session.user.id)
-          }
-        } else if (event === 'SIGNED_OUT') {
-          clearTimer()
-          setProfile(null)
-          setRoleInfo({ studentId: null, teacherId: null, adminId: null, parentId: null, displayId: null })
-          setSubscriptionStatus(null)
-          setSubscriptionPlan(null)
-          setTrialEndDate(null)
-          setIsMaster(false)
-          setLoading(false)        // ← KEY FIX: prevent 3s watchdog delay
-          setIsInitializing(false) // ← belt-and-suspenders
-
-          // Only show unexpected logout toast if it wasn't triggered manually
-          if (!isManualLogout.current && currentSessionRef.current) {
-            const wasDemo = isDemoRef.current;
-            Toast.show({
-              type: 'info',
-              text1: wasDemo ? 'Session ended' : 'Session Expired',
-              text2: wasDemo ? 'Demo session time limit reached.' : 'Please sign in again.',
-              position: 'bottom',
-              visibilityTime: 4000,
-            });
-          }
-          currentSessionRef.current = null;
-          setTimeout(() => { isManualLogout.current = false; }, 500);
+      console.log(`[AuthContext] Auth state changed: ${event}`);
+      if (event === 'SIGNED_IN' && session?.user) {
+        setSession(session);
+        setUser(session.user);
+        currentSessionRef.current = session;
+        const isDemoUser = session.user.email?.startsWith('demo.') || false;
+        setIsDemo(isDemoUser);
+        loadUserProfile(session.user.id);
+        await startTimeoutTimer(isDemoUser);
+      } else if (event === 'TOKEN_REFRESHED' && session?.user) {
+        setSession(session);
+        setUser(session.user);
+        currentSessionRef.current = session;
+      } else if (event === 'SIGNED_OUT') {
+        // IMPORTANT: Do NOT call handleLogout() here — it calls authService.signOut(),
+        // which emits another SIGNED_OUT event, causing an infinite loop.
+        // The sign-out has already happened; just clear local state.
+        if (isManualLogout.current) return; // already handled by handleLogout
+        const silent = isInitializingRef.current || !isNavReadyRef.current;
+        setSession(null);
+        setUser(null);
+        setProfile(null);
+        setRoleInfo({ studentId: null, teacherId: null, adminId: null, parentId: null, displayId: null });
+        setIsDemo(false);
+        setSubscriptionStatus(null);
+        setSubscriptionPlan(null);
+        setTrialEndDate(null);
+        setIsMain(false);
+        setIsPlatformAdmin(false);
+        setAddonFlags({ messaging: false, library: false, finance: false, analytics: false, bursary: false, attendance: false, diary: false });
+        setCustomStudentLimit(null);
+        setLoading(false);
+        setIsInitializing(false);
+        clearTimer();
+        currentSessionRef.current = null;
+        lastLoadedUserId.current = null;
+        if (!silent) {
+          Toast.show({ type: 'success', text1: 'Logged Out', text2: 'You have been logged out successfully.', position: 'bottom' });
         }
-
-        // Handle edge case: auth event without session
-        // NOTE: do NOT await this — it was causing a second blocking signOut call
-        if (!session && (event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED')) {
-          authService.signOut(); // fire-and-forget, no await
-        }
-      } catch (error) {
-        console.error('Error in auth listener:', error)
       }
-    })
-
-    const watchdog = setTimeout(() => {
-      if (isInitializing) setIsInitializing(false)
-      if (loading) setLoading(false)
-    }, 3000)
+    });
 
     const appStateSubscription = AppState.addEventListener('change', async (nextAppState: AppStateStatus) => {
       if (appState.current.match(/inactive|background/) && nextAppState === 'active') {
-        const now = Date.now();
-        const diff = now - lastActive.current;
-        const { data: { session: currentSession } } = await supabase.auth.getSession();
-        if (diff > 24 * 60 * 60 * 1000 && currentSession) {
-          isManualLogout.current = true;
-          await authService.signOut();
-          Toast.show({ type: 'info', text1: 'Session Expired', text2: 'Logged out due to inactivity.' });
-          router.push('/(auth)/signIn')
-          setTimeout(() => { isManualLogout.current = false; }, 1000);
-        } else {
-          resetSessionTimer();
-        }
+        await resetSessionTimer();
       }
-      if (nextAppState.match(/inactive|background/)) lastActive.current = Date.now();
       appState.current = nextAppState;
     });
 
@@ -359,25 +476,21 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       appStateSubscription.remove()
       clearTimer()
       clearTimeout(watchdog)
+      clearTimeout(navTimer)
     }
   }, [])
 
   const value = React.useMemo(() => ({
-    session,
-    user,
-    profile,
+    session, user, profile,
     studentId: roleInfo.studentId,
     teacherId: roleInfo.teacherId,
     adminId: roleInfo.adminId,
     parentId: roleInfo.parentId,
     displayId: roleInfo.displayId,
-    subscriptionStatus,
-    subscriptionPlan,
-    trialEndDate,
-    loading,
-    isInitializing,
-    isProfileLoading,
-    signIn: authService.signIn,
+    subscriptionStatus, subscriptionPlan, trialEndDate,
+    loading, isInitializing, isNavReady, isProfileLoading,
+    signIn: handleSignIn,
+    setLoading,
     signOut: handleLogout,
     logout: handleLogout,
     resetPassword: authService.resetPassword,
@@ -386,8 +499,18 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     startDemo: handleStartDemo,
     isDemo,
     isTrial: subscriptionStatus === 'trial' || subscriptionPlan === 'trial',
-    isMaster,
-  }), [session, user, profile, roleInfo, subscriptionStatus, subscriptionPlan, trialEndDate, loading, isInitializing, isProfileLoading, isDemo]);
+    isMain,
+    isPlatformAdmin,
+    addonMessaging: addonFlags.messaging,
+    addonLibrary: addonFlags.library,
+    addonFinance: addonFlags.finance,
+    addonAnalytics: addonFlags.analytics,
+    addonBursary: addonFlags.bursary,
+    addonAttendance: addonFlags.attendance,
+    addonDiary: addonFlags.diary,
+    customStudentLimit,
+    getRoleRedirect,
+  }), [session, user, profile, roleInfo, subscriptionStatus, subscriptionPlan, trialEndDate, loading, isInitializing, isNavReady, isProfileLoading, isDemo, isMain, isPlatformAdmin, addonFlags, customStudentLimit]);
 
   return (
     <AuthContext.Provider value={value}>

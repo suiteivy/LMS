@@ -9,12 +9,16 @@ const { rateLimiters } = require("./middleware/rateLimiter");
 
 const authRoutes = require("./routes/auth.route");
 const subjectRoutes = require("./routes/subjects.route");
+const contactRoutes = require("./routes/contact.route");
+const supportRoutes = require("./routes/support.route");
+const demoRoutes = require("./routes/demo.route");
 const institutionRoutes = require("./routes/institution.route");
 const libraryRoutes = require("./routes/library.route");
 const bursaryRoutes = require("./routes/bursary.route");
 const financeRoutes = require("./routes/finance.route");
 const notificationRoutes = require("./routes/notification.route");
 const settingsRoutes = require("./routes/settings.route");
+const masterAdminRoutes = require("./routes/master_admin.route");
 const settingsController = require("./controllers/settings.controller");
 const morgan = require("morgan");
 
@@ -40,31 +44,41 @@ app.use("/api/auth/forgot-password", rateLimiters.passwordReset);
 app.use("/api/auth/reset-password", rateLimiters.passwordReset);
 
 // Subscription Check Middleware (Trial Branch specific)
+const { authMiddleware } = require("./middleware/auth.middleware");
 const checkSubscription = require("./middleware/subscriptionCheck");
 
 // Public Routes
 app.use("/api/auth", authRoutes);
-app.use("/api/demo", require("./routes/demo.route"));
-app.use("/api/contact", require("./routes/contact.route"));
+app.use("/api/contact", contactRoutes);
+app.use("/api/support", supportRoutes);
+app.use("/api/demo", demoRoutes);
 // Gated Routes (Trial Branch)
-app.use("/api/subjects", checkSubscription, subjectRoutes);
-app.use("/api/institutions", checkSubscription, institutionRoutes);
-app.use("/api/library", checkSubscription, libraryRoutes);
-app.use("/api/bursary", checkSubscription, bursaryRoutes);
-app.use("/api/finance", checkSubscription, financeRoutes);
-app.use("/api/notifications", checkSubscription, notificationRoutes);
-app.use("/api/timetable", checkSubscription, require("./routes/timetable.route"));
-app.use("/api/funds", checkSubscription, require("./routes/finance_funds.route"));
-app.use("/api/attendance", checkSubscription, require("./routes/attendance.route"));
-app.use("/api/academic", checkSubscription, require("./routes/academic.route.js"));
-app.use("/api/exams", checkSubscription, require("./routes/exams.route.js"));
-app.use("/api/parent", checkSubscription, require("./routes/parent.route.js"));
-app.use("/api/messages", checkSubscription, require("./routes/messaging.route.js"));
-app.use("/api/resources", checkSubscription, require("./routes/resources.route.js"));
-app.use("/api/teacher", checkSubscription, require("./routes/teacher.route.js"));
-app.use("/api/settings", checkSubscription, settingsRoutes);
-app.use("/api/student", checkSubscription, require("./routes/student.route"));
-app.use("/api/classes", checkSubscription, require("./routes/class.route"));
+app.use("/api/subjects", authMiddleware, checkSubscription, subjectRoutes);
+app.use("/api/institutions", authMiddleware, checkSubscription, institutionRoutes);
+app.use("/api/library", authMiddleware, checkSubscription, libraryRoutes);
+app.use("/api/bursary", authMiddleware, checkSubscription, bursaryRoutes);
+app.use("/api/finance", authMiddleware, checkSubscription, financeRoutes);
+app.use("/api/notifications", authMiddleware, checkSubscription, notificationRoutes);
+app.use("/api/timetable", authMiddleware, checkSubscription, require("./routes/timetable.route"));
+app.use("/api/funds", authMiddleware, checkSubscription, require("./routes/finance_funds.route"));
+app.use("/api/attendance", authMiddleware, checkSubscription, require("./routes/attendance.route"));
+app.use("/api/academic", authMiddleware, checkSubscription, require("./routes/academic.route.js"));
+app.use("/api/exams", authMiddleware, checkSubscription, require("./routes/exams.route.js"));
+app.use("/api/parent", authMiddleware, checkSubscription, require("./routes/parent.route.js"));
+app.use("/api/messages", authMiddleware, checkSubscription, require("./routes/messaging.route.js"));
+app.use("/api/resources", authMiddleware, checkSubscription, require("./routes/resources.route.js"));
+app.use("/api/teacher", authMiddleware, checkSubscription, require("./routes/teacher.route.js"));
+app.use("/api/student", authMiddleware, checkSubscription, require("./routes/student.route"));
+app.use("/api/classes", authMiddleware, checkSubscription, require("./routes/class.route"));
+app.use("/api/diary", authMiddleware, checkSubscription, require("./routes/diary.route"));
+app.use("/api/addon-requests", authMiddleware, require("./routes/addon_request.routes"));
+
+// Explicitly define currency route as public before using auth wrapper on settings
+app.get("/api/settings/currency", settingsController.getCurrencyRates);
+app.use("/api/settings", authMiddleware, checkSubscription, settingsRoutes);
+
+// Platform Admin Routes (Protected explicitly internally by requirePlatformAdmin)
+app.use("/api/master-admin", authMiddleware, masterAdminRoutes);
 
 // Automated background jobs (Trial Branch)
 const { startTrialNudgesCron } = require('./cron/trialNudges');
@@ -75,6 +89,11 @@ if (typeof startTrialNudgesCron === 'function') {
 // health check
 app.get("/", (req, res) => {
   res.status(200).json({ message: "LMS API is running" });
+});
+
+// Favicon handler - prevent 404/500 errors on favicon requests
+app.get("/favicon.ico", (req, res) => {
+  res.status(204).end();
 });
 
 // Global error handler - catches all errors and returns generic messages

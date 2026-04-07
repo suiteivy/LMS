@@ -131,12 +131,11 @@ export class LibraryAPI {
    * @returns {Promise<BackendBorrowedBook[]>} Borrowing history
    */
   static async getBorrowingHistory(
-    studentId: string
+    studentId?: string
   ): Promise<BackendBorrowedBook[]> {
     try {
-      const response = await api.get<BackendBorrowedBook[]>(
-        `/library/history/${studentId}`
-      );
+      const url = studentId ? `/library/history/${studentId}` : "/library/history";
+      const response = await api.get<BackendBorrowedBook[]>(url);
       return response.data;
     } catch (error) {
       console.error("Error fetching borrowing history:", error);
@@ -276,24 +275,28 @@ export class LibraryAPI {
   static transformBorrowedBookData(
     backendBorrow: BackendBorrowedBook
   ): FrontendBorrowedBook {
+    const student = backendBorrow.students;
+    const teacher = backendBorrow.teachers;
+    const user = student?.users || teacher?.users || backendBorrow.users;
+
     return {
       id: backendBorrow.id,
       bookTitle: backendBorrow.books?.title || "Unknown Book",
       author: backendBorrow.books?.author || "Unknown Author",
       isbn: backendBorrow.books?.isbn || "N/A",
 
-      // Use student_id if nested user info not available
-      borrowerId: backendBorrow.students?.users?.email || backendBorrow.student_id,
-      borrowerName: backendBorrow.students?.users?.full_name ||
-        backendBorrow.users?.full_name ||
-        "Unknown",
+      borrowerId: user?.email || backendBorrow.student_id || backendBorrow.id,
+      borrowerName: user?.first_name ? `${user.first_name} ${user.last_name || ''}`.trim() : (user?.full_name || "Unknown"),
+      borrowerFirstName: user?.first_name,
+      borrowerLastName: user?.last_name,
       borrowerDisplayId: backendBorrow.student_id,
-      borrowerEmail: backendBorrow.students?.users?.email ||
-        backendBorrow.users?.email ||
-        "",
-      borrowerPhone: backendBorrow.students?.users?.phone ||
-        backendBorrow.users?.phone ||
-        undefined,
+      borrowerEmail: user?.email || "",
+      borrowerPhone: user?.phone,
+      borrowerType: student ? 'student' : (teacher ? 'teacher' : 'user'),
+      
+      gradeLevel: student?.grade_level,
+      department: teacher?.department,
+      position: teacher?.position,
 
       borrowDate: new Date(backendBorrow.borrowed_at || (backendBorrow as any).created_at),
       dueDate: new Date(backendBorrow.due_date),

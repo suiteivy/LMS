@@ -1,12 +1,13 @@
 import { UnifiedHeader } from "@/components/common/UnifiedHeader";
+import { SubscriptionBanner } from "@/components/shared/SubscriptionComponents";
 import { useAuth } from "@/contexts/AuthContext";
+import { useSubscriptionTier } from "@/hooks/useSubscriptionTier";
 import { useNotifications } from "@/contexts/NotificationContext";
 import { supabase } from "@/libs/supabase";
 import { useRouter } from "expo-router";
 import { ArrowRight, Book, BookOpen, CalendarCheck, Clock, GraduationCap, Star, Wallet } from 'lucide-react-native';
 import React, { useEffect, useState } from "react";
 import { ActivityIndicator, RefreshControl, ScrollView, Text, TouchableOpacity, View } from 'react-native';
-import { SubscriptionBanner } from "@/components/shared/SubscriptionComponents";
 
 interface QuickActionProps {
   icon: any;
@@ -18,7 +19,7 @@ interface QuickActionProps {
 const QuickAction = ({ icon: Icon, label, color, onPress }: QuickActionProps) => (
   <TouchableOpacity
     onPress={onPress}
-    className="w-[47%] bg-white dark:bg-[#121212] p-6 rounded-[32px] border border-gray-100 dark:border-gray-800 shadow-sm items-center mb-4 active:bg-gray-50 dark:active:bg-gray-900"
+    className="w-[47%] bg-white dark:bg-[#0F0B2E] p-6 rounded-[32px] border border-gray-100 dark:border-gray-800 shadow-sm items-center mb-4 active:bg-gray-50 dark:active:bg-gray-900"
   >
     <View style={{ backgroundColor: `${color}10` }} className="p-3.5 rounded-2xl mb-3">
       <Icon size={24} color={color} />
@@ -29,6 +30,7 @@ const QuickAction = ({ icon: Icon, label, color, onPress }: QuickActionProps) =>
 
 export default function Index() {
   const { profile, displayId, loading: authLoading, studentId, isDemo } = useAuth();
+  const { hasDiary } = useSubscriptionTier();
   const { unreadCount } = useNotifications();
   const [showNotification, setShowNotification] = useState(false);
   const router = useRouter();
@@ -132,7 +134,12 @@ export default function Index() {
           .from('timetables')
           .select(`
             *,
-            subjects ( title ),
+            subjects ( 
+              title,
+              teachers (
+                users ( full_name )
+              )
+            ),
             classes ( name )
           `)
           .in('class_id', classIds)
@@ -160,14 +167,14 @@ export default function Index() {
 
   if (authLoading) {
     return (
-      <View className="flex-1 justify-center items-center bg-gray-50 dark:bg-black">
+      <View className="flex-1 justify-center items-center bg-gray-50 dark:bg-navy">
         <ActivityIndicator size="large" color="#FF6900" />
       </View>
     );
   }
 
   return (
-    <View className="flex-1 bg-white dark:bg-black">
+    <View className="flex-1 bg-white dark:bg-navy">
       <UnifiedHeader
         title="Intelligence"
         subtitle="Dashboard"
@@ -184,12 +191,12 @@ export default function Index() {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={["#FF6900"]} tintColor="#FF6900" />
         }
       >
-        <View className="p-4 md:p-8 bg-gray-50 dark:bg-black">
+        <View className="p-4 md:p-8 bg-gray-50 dark:bg-navy">
           {/* Welcome Header */}
           <View className="mb-8 px-2">
             <Text className="text-gray-400 dark:text-gray-500 font-bold text-[10px] uppercase tracking-[3px] mb-2">Academic Portal</Text>
             <Text className="text-gray-900 dark:text-white font-bold text-3xl tracking-tight">
-              Hello, {profile?.full_name?.split(' ')[0] || 'Student'} 👋
+              Hello, {profile?.first_name || profile?.full_name?.split(' ')[0] || 'Student'} 👋
             </Text>
             <Text className="text-gray-400 dark:text-gray-500 text-xs font-medium mt-1">ID: {displayId || 'Not Assigned'}</Text>
           </View>
@@ -241,9 +248,14 @@ export default function Index() {
                   <Text className="text-gray-900 dark:text-white font-bold text-lg mb-1 tracking-tight" numberOfLines={1}>
                     {item.subjects?.title || "Subject"}
                   </Text>
-                  <Text className="text-gray-600 dark:text-gray-300 text-xs font-medium">
-                    {item.room_number || "Remote Learning"}
-                  </Text>
+                  <View className="flex-row items-center justify-between">
+                    <Text className="text-gray-600 dark:text-gray-300 text-[10px] font-medium">
+                      {item.room_number || "Room TBD"}
+                    </Text>
+                    <Text className="text-[#FF6900] text-[10px] font-bold">
+                      {item.subjects?.teachers?.users?.full_name?.split(' ')[0] || "Faculty"}
+                    </Text>
+                  </View>
                 </View>
               ))
             ) : (
@@ -294,6 +306,14 @@ export default function Index() {
               color="#FF6900"
               onPress={() => router.push("/(student)/finance" as any)}
             />
+            {hasDiary && (
+              <QuickAction
+                icon={BookOpen}
+                label="Class Diary"
+                color="#f59e0b"
+                onPress={() => router.push("/(student)/diary" as any)}
+              />
+            )}
           </View>
         </View>
       </ScrollView>

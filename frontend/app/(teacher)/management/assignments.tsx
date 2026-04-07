@@ -1,4 +1,4 @@
-import { UnifiedHeader } from "@/components/common/UnifiedHeader";
+﻿import { UnifiedHeader } from "@/components/common/UnifiedHeader";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/libs/supabase";
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -69,14 +69,14 @@ const AssignmentCard = ({ assignment, onEdit, onView }: { assignment: Assignment
             </View>
 
             {/* Progress Bar */}
-            <View className="h-2 bg-gray-100 dark:bg-[#242424] rounded-full overflow-hidden mb-5">
+            <View className="h-2 bg-gray-100 dark:bg-[#1A1650] rounded-full overflow-hidden mb-5">
                 <View className="h-full bg-[#FF6900] rounded-full" style={{ width: `${progressPercent}%` }} />
             </View>
 
             {/* Actions */}
             <View className="flex-row justify-end gap-2">
                 <TouchableOpacity
-                    className="flex-row items-center px-4 py-2 bg-gray-50 dark:bg-[#242424] rounded-xl"
+                    className="flex-row items-center px-4 py-2 bg-gray-50 dark:bg-[#1A1650] rounded-xl"
                     onPress={() => onView(assignment)}
                 >
                     <Eye size={16} color="#6B7280" />
@@ -335,7 +335,7 @@ export default function AssignmentsPage() {
         : assignments.filter(a => a.status === filter);
 
     return (
-        <View className="flex-1 bg-gray-50 dark:bg-black">
+        <View className="flex-1 bg-gray-50 dark:bg-navy">
             <UnifiedHeader
                 title="Management"
                 subtitle="Assignments"
@@ -419,7 +419,7 @@ export default function AssignmentsPage() {
             {/* Create/Edit Assignment Modal */}
             <Modal visible={showModal} animationType="slide" transparent>
                 <View className="flex-1 bg-black/50 justify-end">
-                    <View className="bg-white dark:bg-[#121212] rounded-t-[40px] p-8 h-[85%] border-t border-gray-100 dark:border-gray-800">
+                    <View className="bg-white dark:bg-[#0F0B2E] rounded-t-[40px] p-8 h-[85%] border-t border-gray-100 dark:border-gray-800">
                         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
                             <View className="flex-row justify-between items-center mb-10">
                                 <Text className="text-3xl font-bold text-gray-900 dark:text-white tracking-tight">

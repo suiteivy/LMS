@@ -1,20 +1,23 @@
+import { useAuth } from "@/contexts/AuthContext";
 import { useNotifications } from "@/contexts/NotificationContext";
 import { useTheme } from "@/contexts/ThemeContext";
 import { Ionicons } from "@expo/vector-icons";
+import { router } from "expo-router";
+import { LogOut } from "lucide-react-native";
 import React from "react";
 import { Text, TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { MasterAdminBadge } from "../shared/SubscriptionComponents";
+import { MainAdminBadge, SubscriptionStatusBadge } from "../shared/SubscriptionComponents";
 
 interface UnifiedHeaderProps {
   title: string;
   subtitle?: string;
-  role: "Student" | "Teacher" | "Admin" | "Parent";
+  role: "Student" | "Teacher" | "Admin" | "Parent" | "Master Admin";
   showNotification?: boolean;
   onNotificationPress?: () => void;
   onBack?: () => void;
   rightActions?: React.ReactNode;
-  showMasterBadge?: boolean;
+  showMainBadge?: boolean;
 }
 
 export const UnifiedHeader: React.FC<UnifiedHeaderProps> = ({
@@ -25,17 +28,23 @@ export const UnifiedHeader: React.FC<UnifiedHeaderProps> = ({
   onNotificationPress,
   onBack,
   rightActions,
-  showMasterBadge = false,
+  showMainBadge = false,
 }) => {
   const insets = useSafeAreaInsets();
   const { setShowNotifications, unreadCount } = useNotifications();
   const { isDark } = useTheme();
+  const { isDemo, signOut } = useAuth();
+
+  const handleExitDemo = async () => {
+    await signOut();
+    router.replace('/');
+  };
 
   // Material Dark tokens
-  const bg = isDark ? '#1e1e1e' : '#ffffff';
-  const border = isDark ? '#2c2c2c' : '#f3f4f6';
-  const surface = isDark ? '#242424' : '#f9fafb';
-  const surfaceBorder = isDark ? '#2c2c2c' : '#f3f4f6';
+  const bg = isDark ? '#13103A' : '#ffffff';
+  const border = isDark ? 'rgba(255,255,255,0.1)' : '#f3f4f6';
+  const surface = isDark ? '#1A1650' : '#f9fafb';
+  const surfaceBorder = isDark ? 'rgba(255,255,255,0.1)' : '#f3f4f6';
   const iconColor = isDark ? '#e5e5e5' : '#111827';
   const subtleIconColor = isDark ? '#9ca3af' : '#6b7280';
 
@@ -106,7 +115,23 @@ export const UnifiedHeader: React.FC<UnifiedHeaderProps> = ({
                 {subtitle || "Portal"}<Text style={{ color: '#FF6900' }}>.</Text>
               </Text>
             </View>
-            {showMasterBadge && <MasterAdminBadge />}
+          </View>
+
+          {/* Center Badges (Absolute Centered) */}
+          <View style={{
+            position: 'absolute',
+            left: 0,
+            right: 0,
+            top: 0,
+            bottom: 0,
+            justifyContent: 'center',
+            alignItems: 'center',
+            pointerEvents: 'none',
+          }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, pointerEvents: 'auto' }}>
+              {showMainBadge && <MainAdminBadge />}
+              <SubscriptionStatusBadge />
+            </View>
           </View>
         </View>
 
@@ -157,7 +182,8 @@ export const UnifiedHeader: React.FC<UnifiedHeaderProps> = ({
                 role === "Student" ? "school-outline" :
                   role === "Teacher" ? "briefcase-outline" :
                     role === "Admin" ? "shield-checkmark-outline" :
-                      "people-outline"
+                      role === "Master Admin" ? "globe-outline" :
+                        "people-outline"
               }
               size={14}
               color={subtleIconColor}

@@ -1,4 +1,4 @@
-﻿-- ==========================================
+-- ==========================================
 -- LMS SYSTEM MASTER SCHEMA
 -- Consolidated: 2026-02-11
 -- ==========================================
@@ -30,6 +30,20 @@ CREATE TABLE institutions (
     email TEXT,
     type TEXT CHECK (type IN ('primary', 'secondary', 'tertiary', 'vocational')),
     principal_name TEXT,
+    subscription_status TEXT DEFAULT 'trial' CHECK (subscription_status IN ('trial', 'active', 'expired', 'cancelled')),
+    subscription_plan TEXT DEFAULT 'trial' CHECK (subscription_plan IN ('trial', 'beta', 'basic', 'pro', 'premium', 'custom')),
+    has_used_trial BOOLEAN DEFAULT TRUE,
+    trial_start_date TIMESTAMPTZ DEFAULT NOW(),
+    trial_end_date TIMESTAMPTZ DEFAULT NOW() + INTERVAL '30 days',
+    addon_bursary BOOLEAN NOT NULL DEFAULT false,
+    addon_library BOOLEAN NOT NULL DEFAULT false,
+    addon_messaging BOOLEAN NOT NULL DEFAULT false,
+    addon_finance BOOLEAN NOT NULL DEFAULT false,
+    addon_analytics BOOLEAN NOT NULL DEFAULT false,
+    addon_diary BOOLEAN NOT NULL DEFAULT false,
+    addon_attendance BOOLEAN NOT NULL DEFAULT false,
+    email_domain TEXT,
+    custom_student_limit INTEGER,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -37,9 +51,11 @@ CREATE TABLE institutions (
 -- 2. Users (Base table for Auth mapping)
 CREATE TABLE users (
     id UUID PRIMARY KEY REFERENCES auth.users(id),
+    first_name TEXT,
+    last_name TEXT,
     full_name TEXT NOT NULL,
     email TEXT NOT NULL UNIQUE,
-    role TEXT CHECK (role IN ('admin', 'student', 'teacher', 'parent', 'bursary')) NOT NULL,
+    role TEXT CHECK (role IN ('admin', 'student', 'teacher', 'parent', 'bursary', 'master_admin')) NOT NULL,
     status TEXT NOT NULL DEFAULT 'approved' CHECK (status IN ('pending', 'approved', 'rejected')),
     phone TEXT,
     gender TEXT CHECK (gender IN ('male', 'female', 'other')),
@@ -47,9 +63,15 @@ CREATE TABLE users (
     address TEXT,
     avatar_url TEXT,
     institution_id UUID REFERENCES institutions(id),
+    is_main BOOLEAN DEFAULT false,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- Unique name constraint per institution
+CREATE UNIQUE INDEX IF NOT EXISTS idx_unique_user_name_per_institution 
+ON users (institution_id, LOWER(first_name), LOWER(last_name)) 
+WHERE first_name IS NOT NULL AND last_name IS NOT NULL;
 
 -- ---------------------------------------------------------
 -- PART 2: CUSTOM ID SYSTEM
@@ -122,6 +144,7 @@ CREATE TABLE parent_students (
     parent_id TEXT REFERENCES parents(id) ON DELETE CASCADE,
     student_id TEXT REFERENCES students(id) ON DELETE CASCADE,
     relationship TEXT,
+    institution_id UUID REFERENCES institutions(id),
     created_at TIMESTAMPTZ DEFAULT NOW(),
     UNIQUE(parent_id, student_id)
 );
@@ -148,7 +171,18 @@ CREATE TABLE enrollments (
     enrollment_date TIMESTAMPTZ DEFAULT NOW(),
     status TEXT CHECK (status IN ('enrolled', 'completed', 'dropped')) DEFAULT 'enrolled',
     grade TEXT,
-    UNIQUE(student_id, subject_id)
+    UNIQUE(student_id, subject_id),
+    institution_id UUID REFERENCES institutions(id)
+);
+
+-- 3. Class Enrollments
+CREATE TABLE class_enrollments (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    student_id TEXT REFERENCES students(id) ON DELETE CASCADE,
+    class_id UUID REFERENCES classes(id) ON DELETE CASCADE,
+    enrolled_at TIMESTAMPTZ DEFAULT NOW(),
+    institution_id UUID REFERENCES institutions(id),
+    UNIQUE(student_id, class_id)
 );
 
 -- 3. Subjects
@@ -174,6 +208,7 @@ CREATE TABLE lessons (
     title TEXT NOT NULL,
     content TEXT,
     scheduled_at TIMESTAMPTZ,
+    institution_id UUID REFERENCES institutions(id),
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -266,6 +301,19 @@ CREATE TABLE announcements (
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- 11. Diary Entries
+CREATE TABLE diary_entries (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    institution_id UUID REFERENCES institutions(id) ON DELETE CASCADE,
+    class_id UUID REFERENCES classes(id) ON DELETE CASCADE,
+    teacher_id TEXT REFERENCES teachers(id) ON DELETE SET NULL,
+    title TEXT NOT NULL,
+    content TEXT NOT NULL,
+    entry_date DATE NOT NULL DEFAULT CURRENT_DATE,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 -- 11. Exams
 CREATE TABLE exams (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -308,6 +356,7 @@ CREATE TABLE library_config (
     default_borrow_limit INTEGER DEFAULT 3,
     active BOOLEAN DEFAULT true,
     effective_from TIMESTAMPTZ DEFAULT NOW(),
+    institution_id UUID REFERENCES institutions(id),
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -329,14 +378,19 @@ CREATE TABLE books (
 CREATE TABLE borrowed_books (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     book_id UUID REFERENCES books(id) NOT NULL,
-    student_id TEXT REFERENCES students(id) ON DELETE CASCADE NOT NULL,
+    student_id TEXT REFERENCES students(id) ON DELETE CASCADE,
+    teacher_id TEXT REFERENCES teachers(id) ON DELETE CASCADE,
     borrowed_at TIMESTAMPTZ DEFAULT NOW(),
     due_date DATE,
     returned_at TIMESTAMPTZ NULL,
     status TEXT DEFAULT 'borrowed' CHECK (status IN ('borrowed', 'returned', 'overdue')),
     institution_id UUID REFERENCES institutions(id),
     created_at TIMESTAMPTZ DEFAULT NOW(),
-    updated_at TIMESTAMPTZ DEFAULT NOW()
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    CONSTRAINT check_borrower_presence CHECK (
+        (student_id IS NOT NULL AND teacher_id IS NULL) OR 
+        (student_id IS NULL AND teacher_id IS NOT NULL)
+    )
 );
 
 -- 4. Legacy/Preserved Tables (Singular)
@@ -386,6 +440,7 @@ CREATE TABLE payments (
     reference_number TEXT,
     payment_date TIMESTAMPTZ DEFAULT NOW(),
     status TEXT CHECK (status IN ('pending', 'completed', 'failed')) DEFAULT 'completed',
+    institution_id UUID REFERENCES institutions(id),
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -399,6 +454,7 @@ CREATE TABLE bursaries (
     deadline DATE,
     requirements TEXT,
     status TEXT CHECK (status IN ('open', 'closed')) DEFAULT 'open',
+    institution_id UUID REFERENCES institutions(id),
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -439,6 +495,7 @@ CREATE TABLE fund_allocations (
     category TEXT,
     allocation_date DATE DEFAULT CURRENT_DATE,
     status TEXT CHECK (status IN ('planned', 'approved', 'spent')) DEFAULT 'planned',
+    institution_id UUID REFERENCES institutions(id),
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -621,9 +678,16 @@ FOR EACH ROW EXECUTE FUNCTION _validate_and_decrement_book();
 -- 3. User Role Entry Trigger
 CREATE OR REPLACE FUNCTION handle_user_role_entry()
 RETURNS trigger AS $$
+DECLARE
+    v_is_main BOOLEAN := false;
 BEGIN
   IF NEW.role = 'admin' THEN
-    INSERT INTO admins (user_id, institution_id) VALUES (NEW.id, NEW.institution_id) ON CONFLICT (user_id) DO NOTHING;
+    IF NOT EXISTS (SELECT 1 FROM admins WHERE institution_id = NEW.institution_id) THEN
+        v_is_main := true;
+    END IF;
+    INSERT INTO admins (user_id, institution_id, is_main) 
+    VALUES (NEW.id, NEW.institution_id, v_is_main) 
+    ON CONFLICT (user_id) DO UPDATE SET is_main = EXCLUDED.is_main;
   ELSIF NEW.role = 'teacher' THEN
     INSERT INTO teachers (user_id, institution_id) VALUES (NEW.id, NEW.institution_id) ON CONFLICT (user_id) DO NOTHING;
   ELSIF NEW.role = 'student' THEN
@@ -677,7 +741,7 @@ BEGIN
   RETURN EXISTS (
     SELECT 1 FROM institutions
     WHERE id = p_institution_id
-    AND subscription_status IN ('trial', 'active')
+    AND subscription_status = 'active'
     AND (trial_end_date IS NULL OR trial_end_date > NOW())
   );
 END;
@@ -698,7 +762,7 @@ $$ LANGUAGE sql STABLE SET search_path = public;
 CREATE OR REPLACE FUNCTION is_student_in_class(p_class_id UUID, p_student_id TEXT)
 RETURNS BOOLEAN LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
 BEGIN
-  RETURN EXISTS (SELECT 1 FROM enrollments WHERE class_id = p_class_id AND student_id = p_student_id);
+  RETURN EXISTS (SELECT 1 FROM class_enrollments WHERE class_id = p_class_id AND student_id = p_student_id);
 END;
 $$;
 
@@ -706,121 +770,247 @@ $$;
 -- PART 8: ROW LEVEL SECURITY POLICIES
 -- ---------------------------------------------------------
 
--- Enable RLS on all tables
+-- Apply strict institution isolation to all tables
 ALTER TABLE users ENABLE ROW LEVEL SECURITY;
-ALTER TABLE institutions ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "strict_institution_isolation" ON users FOR ALL USING (id = auth.uid() OR institution_id = get_current_user_institution_id() OR role = 'master_admin');
 ALTER TABLE admins ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "strict_institution_isolation" ON admins FOR ALL USING (institution_id = get_current_user_institution_id() OR get_current_user_role() = 'master_admin');
 ALTER TABLE teachers ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "strict_institution_isolation" ON teachers FOR ALL USING (institution_id = get_current_user_institution_id() OR get_current_user_role() = 'master_admin');
 ALTER TABLE students ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "strict_institution_isolation" ON students FOR ALL USING (institution_id = get_current_user_institution_id() OR get_current_user_role() = 'master_admin');
 ALTER TABLE parents ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "strict_institution_isolation" ON parents FOR ALL USING (institution_id = get_current_user_institution_id() OR get_current_user_role() = 'master_admin');
 ALTER TABLE bursars ENABLE ROW LEVEL SECURITY;
-ALTER TABLE parent_students ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "strict_institution_isolation" ON bursars FOR ALL USING (institution_id = get_current_user_institution_id() OR get_current_user_role() = 'master_admin');
 ALTER TABLE classes ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "strict_institution_isolation" ON classes FOR ALL USING (institution_id = get_current_user_institution_id() OR get_current_user_role() = 'master_admin');
 ALTER TABLE enrollments ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "strict_institution_isolation" ON enrollments FOR ALL USING (institution_id = get_current_user_institution_id() OR get_current_user_role() = 'master_admin');
 ALTER TABLE subjects ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "strict_institution_isolation" ON subjects FOR ALL USING (institution_id = get_current_user_institution_id() OR get_current_user_role() = 'master_admin');
 ALTER TABLE lessons ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "strict_institution_isolation" ON lessons FOR ALL USING (institution_id = get_current_user_institution_id() OR get_current_user_role() = 'master_admin');
 ALTER TABLE timetables ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "strict_institution_isolation" ON timetables FOR ALL USING (institution_id = get_current_user_institution_id() OR get_current_user_role() = 'master_admin');
 ALTER TABLE assignments ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "strict_institution_isolation" ON assignments FOR ALL USING (institution_id = get_current_user_institution_id() OR get_current_user_role() = 'master_admin');
 ALTER TABLE submissions ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "strict_institution_isolation" ON submissions FOR ALL USING (institution_id = get_current_user_institution_id() OR get_current_user_role() = 'master_admin');
 ALTER TABLE attendance ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "strict_institution_isolation" ON attendance FOR ALL USING (institution_id = get_current_user_institution_id() OR get_current_user_role() = 'master_admin');
 ALTER TABLE resources ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "strict_institution_isolation" ON resources FOR ALL USING (institution_id = get_current_user_institution_id() OR get_current_user_role() = 'master_admin');
 ALTER TABLE announcements ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "strict_institution_isolation" ON announcements FOR ALL USING (institution_id = get_current_user_institution_id() OR get_current_user_role() = 'master_admin');
 ALTER TABLE exams ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "strict_institution_isolation" ON exams FOR ALL USING (institution_id = get_current_user_institution_id() OR get_current_user_role() = 'master_admin');
 ALTER TABLE exam_results ENABLE ROW LEVEL SECURITY;
-ALTER TABLE library_config ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "strict_institution_isolation" ON exam_results FOR ALL USING (institution_id = get_current_user_institution_id() OR get_current_user_role() = 'master_admin');
 ALTER TABLE books ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "strict_institution_isolation" ON books FOR ALL USING (institution_id = get_current_user_institution_id() OR get_current_user_role() = 'master_admin');
 ALTER TABLE borrowed_books ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "strict_institution_isolation" ON borrowed_books FOR ALL USING (institution_id = get_current_user_institution_id() OR get_current_user_role() = 'master_admin');
 ALTER TABLE fee_structures ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "strict_institution_isolation" ON fee_structures FOR ALL USING (institution_id = get_current_user_institution_id() OR get_current_user_role() = 'master_admin');
 ALTER TABLE payments ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "strict_institution_isolation" ON payments FOR ALL USING (institution_id = get_current_user_institution_id() OR get_current_user_role() = 'master_admin');
 ALTER TABLE bursaries ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "strict_institution_isolation" ON bursaries FOR ALL USING (institution_id = get_current_user_institution_id() OR get_current_user_role() = 'master_admin');
 ALTER TABLE bursary_applications ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "strict_institution_isolation" ON bursary_applications FOR ALL USING (institution_id = get_current_user_institution_id() OR get_current_user_role() = 'master_admin');
 ALTER TABLE funds ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "strict_institution_isolation" ON funds FOR ALL USING (institution_id = get_current_user_institution_id() OR get_current_user_role() = 'master_admin');
 ALTER TABLE fund_allocations ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "strict_institution_isolation" ON fund_allocations FOR ALL USING (institution_id = get_current_user_institution_id() OR get_current_user_role() = 'master_admin');
 ALTER TABLE financial_transactions ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "strict_institution_isolation" ON financial_transactions FOR ALL USING (institution_id = get_current_user_institution_id() OR get_current_user_role() = 'master_admin');
 ALTER TABLE teacher_payouts ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "strict_institution_isolation" ON teacher_payouts FOR ALL USING (institution_id = get_current_user_institution_id() OR get_current_user_role() = 'master_admin');
 ALTER TABLE teacher_attendance ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "strict_institution_isolation" ON teacher_attendance FOR ALL USING (institution_id = get_current_user_institution_id() OR get_current_user_role() = 'master_admin');
 ALTER TABLE messages ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "strict_institution_isolation" ON messages FOR ALL USING (institution_id = get_current_user_institution_id() OR get_current_user_role() = 'master_admin');
 ALTER TABLE notifications ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "strict_institution_isolation" ON notifications FOR ALL USING (institution_id = get_current_user_institution_id() OR get_current_user_role() = 'master_admin');
+ALTER TABLE class_enrollments ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "strict_institution_isolation" ON class_enrollments FOR ALL USING (institution_id = get_current_user_institution_id() OR get_current_user_role() = 'master_admin');
+ALTER TABLE diary_entries ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "strict_institution_isolation" ON diary_entries FOR ALL USING (institution_id = get_current_user_institution_id() OR get_current_user_role() = 'master_admin');
+ALTER TABLE institutions ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "strict_institution_isolation" ON institutions FOR ALL USING (id = get_current_user_institution_id() OR get_current_user_role() = 'master_admin');
+CREATE POLICY "public_read_institutions" ON institutions FOR SELECT USING (true);
 
--- 1. General Access Helper (Used by many)
--- Users can see anything that belongs to their institution OR global items (institution_id IS NULL)
--- RLS: institution_id IS NOT DISTINCT FROM get_current_user_institution_id()
 
--- 2. Master Policies
+-- ---------------------------------------------------------
+-- PART 9: PLATFORM ADMINS & SUPPORT REQUESTS
+-- ---------------------------------------------------------
 
--- Global View (Anything in same institution OR global)
-CREATE POLICY "institution_scoped_view" ON institutions FOR SELECT USING (true); -- Institutions are public/read-only for listing
-CREATE POLICY "institution_scoped_users" ON users FOR SELECT USING (institution_id IS NOT DISTINCT FROM get_current_user_institution_id() OR role = 'admin');
+-- 1. Platform Admins
+CREATE TABLE platform_admins (
+    id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    full_name TEXT,
+    email TEXT,
+    created_at TIMESTAMPTZ DEFAULT now(),
+    updated_at TIMESTAMPTZ DEFAULT now(),
+    UNIQUE(user_id)
+);
 
--- Academic View
-CREATE POLICY "institution_scoped_subjects" ON subjects FOR SELECT USING (institution_id IS NOT DISTINCT FROM get_current_user_institution_id());
-CREATE POLICY "institution_scoped_assignments" ON assignments FOR SELECT USING (institution_id IS NOT DISTINCT FROM get_current_user_institution_id());
-CREATE POLICY "institution_scoped_announcements" ON announcements FOR SELECT USING (institution_id IS NOT DISTINCT FROM get_current_user_institution_id());
-CREATE POLICY "institution_scoped_resources" ON resources FOR SELECT USING (institution_id IS NOT DISTINCT FROM get_current_user_institution_id());
-CREATE POLICY "institution_scoped_exams" ON exams FOR SELECT USING (institution_id IS NOT DISTINCT FROM get_current_user_institution_id());
+ALTER TABLE platform_admins ENABLE ROW LEVEL SECURITY;
 
--- Roles specific access
-CREATE POLICY "teachers_manage_assigned" ON subjects FOR ALL USING (teacher_id = current_user_teacher_id() OR get_current_user_role() = 'admin');
-CREATE POLICY "admins_manage_all" ON subjects FOR ALL USING (get_current_user_role() = 'admin');
-
--- Library
-CREATE POLICY "institution_scoped_books" ON books FOR SELECT USING (institution_id IS NOT DISTINCT FROM get_current_user_institution_id());
-CREATE POLICY "student_view_own_borrows" ON borrowed_books FOR SELECT USING (student_id = current_user_student_id());
-
--- Finance
-CREATE POLICY "institution_scoped_financials" ON financial_transactions FOR SELECT USING (institution_id IS NOT DISTINCT FROM get_current_user_institution_id());
-CREATE POLICY "bursars_manage_finance" ON financial_transactions FOR ALL USING (get_current_user_role() IN ('admin', 'bursary'));
-
--- Messaging
-CREATE POLICY "user_view_own_messages" ON messages FOR SELECT USING (sender_id = auth.uid() OR receiver_id = auth.uid());
-CREATE POLICY "user_view_own_notifications" ON notifications FOR SELECT USING (user_id = auth.uid());
-
--- FALLBACK: Allow Admins Full Access to everything in their institution
--- This is a generic pattern for any table missing a specific policy
--- (Applying manually to critical ones)
-
-CREATE POLICY "admin_all_access" ON subjects FOR ALL USING (get_current_user_role() = 'admin');
-CREATE POLICY "admin_all_access_classes" ON classes FOR ALL USING (get_current_user_role() = 'admin');
-CREATE POLICY "admin_all_access_users" ON users FOR ALL USING (get_current_user_role() = 'admin');
-
--- 3. Custom RPC Functions
-
--- Calculate student rank within their institution
-CREATE OR REPLACE FUNCTION get_student_rank(p_student_id TEXT)
-RETURNS JSONB AS $$
-DECLARE
-    v_institution_id UUID;
-    v_result JSONB;
-BEGIN
-    -- Get institution_id of the target student
-    SELECT institution_id INTO v_institution_id FROM students WHERE id = p_student_id;
-
-    WITH student_averages AS (
-        SELECT 
-            s.id AS student_id,
-            COALESCE(AVG(sub.grade), 0) AS avg_score
-        FROM students s
-        LEFT JOIN submissions sub ON s.id = sub.student_id AND sub.status = 'graded'
-        WHERE s.institution_id = v_institution_id
-        GROUP BY s.id
-    ),
-    ranked_students AS (
-        SELECT 
-            student_id,
-            avg_score,
-            RANK() OVER (ORDER BY avg_score DESC) as rank,
-            COUNT(*) OVER () as total_count
-        FROM student_averages
+CREATE POLICY "Platform admins can see all platform admins" 
+ON platform_admins FOR SELECT 
+USING (
+    EXISTS (
+        SELECT 1 FROM users 
+        WHERE id = auth.uid() 
+        AND role = 'master_admin'
     )
-    SELECT 
-        jsonb_build_object(
-            'rank', rank,
-            'total_students', total_count,
-            'average_score', ROUND(avg_score, 2)
-        ) INTO v_result
-    FROM ranked_students
-    WHERE student_id = p_student_id;
+);
 
-    RETURN v_result;
+CREATE POLICY "Service role full access" 
+ON platform_admins FOR ALL 
+USING (true)
+WITH CHECK (true);
+
+-- 2. Password Reset Rate Limiting
+CREATE TABLE password_reset_requests (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    email TEXT NOT NULL,
+    ip_address TEXT,
+    requested_at TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE INDEX idx_password_reset_email_time ON password_reset_requests(email, requested_at);
+
+-- 3. Support Ticketing System
+CREATE TABLE support_tickets (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+    institution_id UUID REFERENCES institutions(id) ON DELETE SET NULL,
+    subject TEXT NOT NULL,
+    description TEXT NOT NULL,
+    category TEXT,
+    status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'open', 'in_progress', 'awaiting_customer', 'escalated', 'resolved', 'closed')),
+    priority TEXT DEFAULT 'normal' CHECK (priority IN ('low', 'normal', 'high', 'critical')),
+    assigned_to_id UUID REFERENCES users(id) ON DELETE SET NULL,
+    escalation_level INTEGER DEFAULT 0,
+    metadata JSONB DEFAULT '{}'::jsonb,
+    resolved_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ DEFAULT now(),
+    updated_at TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE TABLE ticket_messages (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    ticket_id UUID REFERENCES support_tickets(id) ON DELETE CASCADE,
+    sender_id UUID REFERENCES users(id) ON DELETE SET NULL,
+    message TEXT NOT NULL,
+    is_internal BOOLEAN DEFAULT false,
+    created_at TIMESTAMPTZ DEFAULT now()
+);
+
+ALTER TABLE support_tickets ENABLE ROW LEVEL SECURITY;
+ALTER TABLE ticket_messages ENABLE ROW LEVEL SECURITY;
+
+-- Tickets policies
+CREATE POLICY "Users can view own tickets" 
+ON support_tickets FOR SELECT
+USING (user_id = auth.uid() OR assigned_to_id = auth.uid());
+
+CREATE POLICY "Users can create tickets" 
+ON support_tickets FOR INSERT
+WITH CHECK (user_id = auth.uid());
+
+CREATE POLICY "Master admins can manage all tickets" 
+ON support_tickets FOR ALL
+USING (EXISTS (SELECT 1 FROM users WHERE id = auth.uid() AND role = 'master_admin'));
+
+-- Ticket messages policies
+CREATE POLICY "Users can view messages for their tickets"
+ON ticket_messages FOR SELECT
+USING (
+    EXISTS (
+        SELECT 1 FROM support_tickets 
+        WHERE id = ticket_messages.ticket_id 
+        AND (user_id = auth.uid() OR assigned_to_id = auth.uid())
+    )
+    OR EXISTS (SELECT 1 FROM users WHERE id = auth.uid() AND role = 'master_admin')
+);
+
+CREATE POLICY "Users can add messages to their tickets"
+ON ticket_messages FOR INSERT
+WITH CHECK (
+    EXISTS (
+        SELECT 1 FROM support_tickets 
+        WHERE id = ticket_messages.ticket_id 
+        AND (user_id = auth.uid() OR assigned_to_id = auth.uid())
+    )
+    OR EXISTS (SELECT 1 FROM users WHERE id = auth.uid() AND role = 'master_admin')
+);
+
+-- 4. Add-on Requests
+CREATE TABLE addon_requests (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    institution_id UUID REFERENCES institutions(id) ON DELETE CASCADE,
+    user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+    addon_type TEXT NOT NULL CHECK (addon_type IN ('library', 'messaging', 'finance', 'analytics', 'bursary')),
+    status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected')),
+    notes TEXT,
+    created_at TIMESTAMPTZ DEFAULT now(),
+    updated_at TIMESTAMPTZ DEFAULT now()
+);
+
+ALTER TABLE addon_requests ENABLE ROW LEVEL SECURITY;
+
+-- Admins can view and create their own institution's requests
+CREATE POLICY "Admins can view own addon requests" 
+ON addon_requests FOR SELECT
+USING (institution_id = get_current_user_institution_id());
+
+CREATE POLICY "Admins can create addon requests" 
+ON addon_requests FOR INSERT
+WITH CHECK (institution_id = get_current_user_institution_id());
+
+-- Master Admins can view and update all requests
+CREATE POLICY "Master admins can view all addon requests" 
+ON addon_requests FOR SELECT
+USING (
+    EXISTS (
+        SELECT 1 FROM users 
+        WHERE id = auth.uid() 
+        AND role = 'master_admin'
+    )
+);
+
+CREATE POLICY "Master admins can update addon requests" 
+ON addon_requests FOR UPDATE
+USING (
+    EXISTS (
+        SELECT 1 FROM users 
+        WHERE id = auth.uid() 
+        AND role = 'master_admin'
+    )
+);
+
+-- 4. Transfer Main Admin Status Function
+CREATE OR REPLACE FUNCTION transfer_main_admin_status(p_old_admin_user_id UUID, p_new_admin_user_id UUID)
+RETURNS void AS $$
+DECLARE
+    v_inst_id UUID;
+BEGIN
+    SELECT institution_id INTO v_inst_id FROM admins WHERE user_id = p_old_admin_user_id AND is_main = true;
+    IF v_inst_id IS NULL THEN
+        RAISE EXCEPTION 'Sender is not a Main Admin';
+    END IF;
+
+    IF NOT EXISTS (SELECT 1 FROM admins WHERE user_id = p_new_admin_user_id AND institution_id = v_inst_id) THEN
+        RAISE EXCEPTION 'Recipient must be an admin in the same institution';
+    END IF;
+
+    UPDATE admins SET is_main = false WHERE user_id = p_old_admin_user_id;
+    UPDATE admins SET is_main = true WHERE user_id = p_new_admin_user_id;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
+

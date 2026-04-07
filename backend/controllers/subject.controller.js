@@ -116,7 +116,7 @@ exports.getSubjects = async (req, res) => {
       .from("subjects")
       .select(`
         *,
-        teacher:teachers(user:users(full_name))
+        teacher:teachers(user:users(first_name, last_name, full_name))
       `)
       .eq("institution_id", institution_id)
       .order('title');

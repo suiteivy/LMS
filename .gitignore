@@ -2,6 +2,7 @@
 node_modules/
 npm-debug.log
 yarn-error.log
+access.log
 build/
 .vscode/
 
@@ -26,6 +27,7 @@ ios/
 .supabase/
 
 .kilocode
+LMS Tasks.txt
 
 
 

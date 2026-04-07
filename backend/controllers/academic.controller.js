@@ -210,7 +210,7 @@ exports.getAnnouncements = async (req, res) => {
         const { subject_id } = req.query;
         const { institution_id } = req;
         let query = supabase.from("announcements")
-            .select("*, teacher:teachers(user:users(full_name))")
+            .select("*, teacher:teachers(user:users(first_name, last_name, full_name))")
             .eq("institution_id", institution_id);
         if (subject_id) query = query.eq("subject_id", subject_id);
 

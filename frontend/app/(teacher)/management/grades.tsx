@@ -1,4 +1,4 @@
-import { UnifiedHeader } from "@/components/common/UnifiedHeader";
+﻿import { UnifiedHeader } from "@/components/common/UnifiedHeader";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/libs/supabase";
 import { router } from "expo-router";
@@ -61,7 +61,7 @@ const GradeRow = ({ student, onGrade }: { student: StudentGrade; onGrade: (stude
 
             {/* Grade Button */}
             <TouchableOpacity
-                className={`w-10 h-10 rounded-xl items-center justify-center ${student.status === "graded" ? "bg-gray-100 dark:bg-[#242424]" : "bg-[#FF6900] shadow-sm active:bg-orange-600"}`}
+                className={`w-10 h-10 rounded-xl items-center justify-center ${student.status === "graded" ? "bg-gray-100 dark:bg-[#1A1650]" : "bg-[#FF6900] shadow-sm active:bg-orange-600"}`}
                 onPress={() => onGrade(student)}
             >
                 {student.status === "graded" ? (
@@ -274,7 +274,7 @@ export default function GradesPage() {
     const pendingCount = submissions.filter(s => s.status !== "graded").length;
 
     return (
-        <View className="flex-1 bg-gray-50 dark:bg-black">
+        <View className="flex-1 bg-gray-50 dark:bg-navy">
             <UnifiedHeader
                 title="Management"
                 subtitle="Grade Book"
@@ -418,7 +418,7 @@ export default function GradesPage() {
             {/* Grading Modal */}
             <Modal visible={gradingModalVisible} animationType="slide" transparent>
                 <View className="flex-1 bg-black/50 justify-end">
-                    <View className="bg-white dark:bg-[#121212] rounded-t-[40px] p-8 pb-12 border-t border-gray-100 dark:border-gray-800">
+                    <View className="bg-white dark:bg-[#0F0B2E] rounded-t-[40px] p-8 pb-12 border-t border-gray-100 dark:border-gray-800">
                         <View className="flex-row justify-between items-center mb-8">
                             <Text className="text-2xl font-bold text-gray-900 dark:text-white tracking-tight">Grade Submission</Text>
                             <TouchableOpacity

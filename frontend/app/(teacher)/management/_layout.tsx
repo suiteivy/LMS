@@ -1,4 +1,4 @@
-import { Stack } from "expo-router";
+﻿import { Stack } from "expo-router";
 import { View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -6,7 +6,7 @@ export default function ManagementLayout() {
     const insets = useSafeAreaInsets();
 
     return (
-        <View style={{ flex: 1 }} className="bg-gray-50 dark:bg-black">
+        <View style={{ flex: 1 }} className="bg-gray-50 dark:bg-navy">
             <Stack
                 screenOptions={{
                     headerShown: false,
@@ -21,6 +21,7 @@ export default function ManagementLayout() {
                 <Stack.Screen name="analytics" />
                 <Stack.Screen name="earnings" />
                 <Stack.Screen name="resources" />
+                <Stack.Screen name="diary" />
             </Stack>
         </View>
     );

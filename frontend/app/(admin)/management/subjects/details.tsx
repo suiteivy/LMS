@@ -1,4 +1,4 @@
-import { UnifiedHeader } from "@/components/common/UnifiedHeader";
+﻿import { UnifiedHeader } from "@/components/common/UnifiedHeader";
 import { useTheme } from "@/contexts/ThemeContext";
 import { supabase } from "@/libs/supabase";
 import { Subject } from "@/types/types";
@@ -27,9 +27,9 @@ function SubjectDetailsScreen() {
   const [teachers, setTeachers] = useState<any[]>([]);
   const [classes, setClasses] = useState<any[]>([]);
 
-  // const surface = isDark ? "#1e1e1e" : "#ffffff";
-  const border = isDark ? "#2c2c2c" : "#f3f4f6";
-  const inputBg = isDark ? "#242424" : "#f3f4f6";
+  // const surface = isDark ? "#13103A" : "#ffffff";
+  const border = isDark ? "rgba(255,255,255,0.1)" : "#f3f4f6";
+  const inputBg = isDark ? "#1A1650" : "#f3f4f6";
   const textPrimary = isDark ? "#f1f1f1" : "#111827";
   const textMuted = isDark ? "#9ca3af" : "#9ca3af";
 
@@ -102,7 +102,7 @@ function SubjectDetailsScreen() {
           flex: 1,
           justifyContent: "center",
           alignItems: "center",
-          backgroundColor: isDark ? "#121212" : "#f9fafb",
+          backgroundColor: isDark ? "#0F0B2E" : "#f9fafb",
         }}
       >
         <ActivityIndicator size="large" color="#FF6B00" />
@@ -117,7 +117,7 @@ function SubjectDetailsScreen() {
           flex: 1,
           justifyContent: "center",
           alignItems: "center",
-          backgroundColor: isDark ? "#121212" : "#f9fafb",
+          backgroundColor: isDark ? "#0F0B2E" : "#f9fafb",
         }}
       >
         <Text style={{ color: textPrimary }}>Subject not found.</Text>
@@ -127,10 +127,10 @@ function SubjectDetailsScreen() {
 
   return (
     <ScrollView
-      style={{ flex: 1, backgroundColor: isDark ? "#121212" : "#f9fafb" }}
+      style={{ flex: 1, backgroundColor: isDark ? "#0F0B2E" : "#f9fafb" }}
     >
       <View
-        style={{ flex: 1, backgroundColor: isDark ? "#121212" : "#f9fafb" }}
+        style={{ flex: 1, backgroundColor: isDark ? "#0F0B2E" : "#f9fafb" }}
       >
         <UnifiedHeader
           title="Subject Details"

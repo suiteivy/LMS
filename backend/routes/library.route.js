@@ -45,19 +45,19 @@ router.delete(
 // Anyone (scoped by institution): list books
 router.get("/books", authMiddleware, listBooks);
 
-// Student: borrow
+// Student/Teacher: borrow
 router.post(
   "/borrow",
   authMiddleware,
-  authorizeRoles(["student"]),
+  authorizeRoles(["student", "teacher"]),
   borrowBook
 );
 
-// Student/Admin: return
+// Student/Teacher/Admin: return
 router.post(
   "/return/:borrowId",
   authMiddleware,
-  authorizeRoles(["student", "admin"]),
+  authorizeRoles(["student", "teacher", "admin"]),
   returnBook
 );
 

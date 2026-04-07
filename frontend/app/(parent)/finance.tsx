@@ -1,7 +1,7 @@
-import { UnifiedHeader } from "@/components/common/UnifiedHeader";
+﻿import { UnifiedHeader } from "@/components/common/UnifiedHeader";
 import { ParentService } from "@/services/ParentService";
 import { router, useLocalSearchParams } from "expo-router";
-import { ArrowDownLeft, ArrowUpRight, CreditCard, Info, Wallet } from "lucide-react-native";
+import { ArrowDownLeft, ArrowUpRight, Award, CreditCard, Info, Wallet } from "lucide-react-native";
 import React, { useEffect, useState } from "react";
 import { ActivityIndicator, RefreshControl, ScrollView, Text, TouchableOpacity, View } from "react-native";
 
@@ -9,10 +9,13 @@ const formatCurrency = (amount: number) =>
   `KES ${Number(amount || 0).toLocaleString("en-KE")}`;
 
 export default function StudentFinancePage() {
-  const { studentId } = useLocalSearchParams<{ studentId: string }>();
+  const { studentId, studentName } = useLocalSearchParams<{ studentId: string; studentName?: string }>();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [financeData, setFinanceData] = useState<any>(null);
+  const [bursaries, setBursaries] = useState<any[]>([]);
+  const [bursaryLoading, setBursaryLoading] = useState(false);
+  const [bursariesFetched, setBursariesFetched] = useState(false);
 
   const fetchFinanceData = async () => {
     if (!studentId) return;
@@ -27,8 +30,23 @@ export default function StudentFinancePage() {
     }
   };
 
+  const fetchBursaries = async () => {
+    if (!studentId || bursariesFetched) return;
+    try {
+      setBursaryLoading(true);
+      const data = await ParentService.getStudentBursaries(studentId);
+      setBursaries(data);
+      setBursariesFetched(true);
+    } catch (err) {
+      console.error('Error fetching bursaries:', err);
+    } finally {
+      setBursaryLoading(false);
+    }
+  };
+
   useEffect(() => {
     fetchFinanceData();
+    fetchBursaries();
   }, [studentId]);
 
   const onRefresh = () => {
@@ -36,13 +54,46 @@ export default function StudentFinancePage() {
     fetchFinanceData();
   };
 
+  // When accessed directly from the tab bar without a selected student
+  if (!studentId) {
+    return (
+      <View className="flex-1 bg-gray-50 dark:bg-navy">
+        <UnifiedHeader
+          title={studentName ? `${studentName}'s Finance` : "Finance"}
+          subtitle="Fee Statement"
+          role="Parent"
+          onBack={() => router.back()}
+          showNotification={false}
+        />
+        <View className="flex-1 items-center justify-center p-8">
+          <View className="bg-white dark:bg-navy-surface p-10 rounded-[40px] border border-gray-100 dark:border-gray-800 items-center" style={{ width: '100%' }}>
+            <CreditCard size={40} color="#FF6900" style={{ opacity: 0.6 }} />
+            <Text className="text-gray-900 dark:text-white font-bold text-lg text-center mt-6 tracking-tight">
+              Select a Child First
+            </Text>
+            <Text className="text-gray-400 dark:text-gray-500 text-sm text-center mt-3 leading-6">
+              Go to the Home tab and tap a child's Finance card to view their fee statement.
+            </Text>
+            <TouchableOpacity
+              onPress={() => router.replace("/(parent)" as any)}
+              className="mt-8 bg-[#FF6900] px-8 py-4 rounded-2xl"
+            >
+              <Text className="text-white font-bold text-sm">Go to Home</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+    );
+  }
+
   if (loading && !refreshing) {
     return (
-      <View className="flex-1 justify-center items-center bg-gray-50 dark:bg-black">
+      <View className="flex-1 justify-center items-center bg-gray-50 dark:bg-navy">
         <ActivityIndicator size="large" color="#FF6900" />
       </View>
     );
   }
+
 
   const {
     balance = 0,
@@ -54,10 +105,10 @@ export default function StudentFinancePage() {
   const paidPct = total_fees > 0 ? Math.round((paid_amount / total_fees) * 100) : 0;
 
   return (
-    <View className="flex-1 bg-gray-50 dark:bg-black">
+    <View className="flex-1 bg-gray-50 dark:bg-navy">
       <UnifiedHeader
-        title="Intelligence"
-        subtitle="Finance"
+        title={studentName ? `${studentName}'s Finance` : "Finance"}
+        subtitle="Fee Statement"
         role="Parent"
         onBack={() => router.back()}
         showNotification={false}
@@ -128,21 +179,21 @@ export default function StudentFinancePage() {
           {/* Transaction Ledger */}
           <View className="px-2 flex-row justify-between items-center mb-6">
             <Text className="text-gray-900 dark:text-white font-bold text-xl tracking-tight">Financial Statements</Text>
-            <TouchableOpacity className="flex-row items-center bg-white dark:bg-[#1a1a1a] px-4 py-2 rounded-xl border border-gray-100 dark:border-gray-800 shadow-sm">
+            <TouchableOpacity className="flex-row items-center bg-white dark:bg-navy-surface px-4 py-2 rounded-xl border border-gray-100 dark:border-gray-800 shadow-sm">
               <CreditCard size={14} color="#FF6900" />
               <Text className="text-gray-900 dark:text-white text-[10px] font-bold uppercase tracking-widest ml-2">Pay Now</Text>
             </TouchableOpacity>
           </View>
 
           {transactions.length === 0 ? (
-            <View className="bg-white dark:bg-[#1a1a1a] p-8 rounded-[40px] border border-dashed border-gray-100 dark:border-gray-800 items-center mb-8">
+            <View className="bg-white dark:bg-navy-surface p-8 rounded-[40px] border border-dashed border-gray-100 dark:border-gray-800 items-center mb-8">
               <Text className="text-gray-400 dark:text-gray-500 text-xs font-bold uppercase tracking-widest italic text-center">
                 No transactions recorded yet
               </Text>
             </View>
           ) : (
             transactions.map((tx: any) => (
-              <View key={tx.id} className="bg-white dark:bg-[#1a1a1a] p-5 rounded-[32px] mb-4 flex-row items-center border border-gray-50 dark:border-gray-800 shadow-sm">
+              <View key={tx.id} className="bg-white dark:bg-navy-surface p-5 rounded-[32px] mb-4 flex-row items-center border border-gray-50 dark:border-gray-800 shadow-sm">
                 <View className={`w-12 h-12 rounded-2xl items-center justify-center mr-4 ${tx.direction === "inflow" ? "bg-green-50" : "bg-red-50"}`}>
                   {tx.direction === "inflow"
                     ? <ArrowDownLeft size={20} color="#10B981" />
@@ -162,6 +213,65 @@ export default function StudentFinancePage() {
               </View>
             ))
           )}
+
+          {/* ── Bursaries Section ── */}
+          <View className="mt-8">
+            <Text className="text-gray-900 dark:text-white font-bold text-xl tracking-tight mb-5 px-2">Bursaries</Text>
+            {bursaryLoading ? (
+              <ActivityIndicator size="small" color="#FF6900" />
+            ) : bursaries.length > 0 ? (
+              bursaries.map((item: any) => (
+                <View key={item.id} className="bg-white dark:bg-navy-surface rounded-[28px] mb-4 border border-gray-100 dark:border-gray-800 shadow-sm overflow-hidden">
+                  <View className="h-1.5 bg-emerald-500" />
+                  <View className="p-5">
+                    <View className="flex-row justify-between items-start mb-2">
+                      <Text className="text-gray-900 dark:text-white font-bold text-sm flex-1 mr-3">{item.bursary?.title}</Text>
+                      <View className="bg-emerald-100 dark:bg-emerald-950/40 px-2 py-0.5 rounded-full border border-emerald-200 dark:border-emerald-800">
+                        <Text className="text-emerald-700 dark:text-emerald-400 text-[9px] font-extrabold uppercase tracking-wider">Approved</Text>
+                      </View>
+                    </View>
+
+                    {item.bursary?.description && (
+                      <Text className="text-gray-500 dark:text-gray-400 text-xs mb-3 leading-5">{item.bursary.description}</Text>
+                    )}
+
+                    <View className="bg-gray-900 rounded-2xl p-4 flex-row justify-between items-center">
+                      <View>
+                        <Text className="text-white/40 text-[9px] font-bold uppercase tracking-widest mb-1">Amount Awarded</Text>
+                        <Text className="text-white text-2xl font-black">{formatCurrency(item.amount_awarded || item.bursary?.amount || 0)}</Text>
+                      </View>
+                      <View className="w-12 h-12 rounded-full bg-emerald-500/10 border border-emerald-500/20 items-center justify-center">
+                        <Award size={22} color="#10B981" />
+                      </View>
+                    </View>
+
+                    {(item.bursary?.deadline || item.notes) && (
+                      <View className="flex-row gap-2 flex-wrap mt-3">
+                        {item.bursary?.deadline && (
+                          <View className="bg-gray-50 dark:bg-gray-800 px-3 py-1.5 rounded-xl flex-row items-center gap-1">
+                            <Text className="text-[9px] font-bold text-gray-400 uppercase tracking-wider">Deadline:</Text>
+                            <Text className="text-xs font-bold text-gray-900 dark:text-white">
+                              {new Date(item.bursary.deadline).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })}
+                            </Text>
+                          </View>
+                        )}
+                        {item.notes && (
+                          <View className="bg-blue-50 dark:bg-blue-950/30 px-3 py-1.5 rounded-xl">
+                            <Text className="text-xs text-blue-700 dark:text-blue-400 font-medium">{item.notes}</Text>
+                          </View>
+                        )}
+                      </View>
+                    )}
+                  </View>
+                </View>
+              ))
+            ) : (
+              <View className="bg-white dark:bg-navy-surface p-8 rounded-[40px] border border-dashed border-gray-100 dark:border-gray-800 items-center">
+                <Award size={36} color="#E5E7EB" />
+                <Text className="text-gray-400 text-sm font-bold text-center mt-4">No approved bursaries</Text>
+              </View>
+            )}
+          </View>
 
         </View>
       </ScrollView>

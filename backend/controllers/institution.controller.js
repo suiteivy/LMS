@@ -31,8 +31,11 @@ exports.createInstitution = async (req, res) => {
     }
   }
 
-  const subscription_status = plan === 'trial' ? 'trial' : 'active';
+  // Simplified: All new institutions start with 'active' status. 
+  // Expiration is handled by the middleware/cron based on trial_end_date or plan limits.
+  const subscription_status = 'active';
   const trial_end_date = plan === 'trial' ? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString() : null;
+  const subscription_cycle = 'monthly';
 
   const { data, error } = await supabase
     .from("institutions")
@@ -44,7 +47,8 @@ exports.createInstitution = async (req, res) => {
       subscription_status,
       has_used_trial: plan === 'trial',
       trial_start_date: plan === 'trial' ? new Date().toISOString() : null,
-      trial_end_date
+      trial_end_date,
+      subscription_cycle
     }])
     .select()
     .single();

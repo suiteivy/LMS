@@ -1,4 +1,4 @@
-import { UnifiedHeader } from "@/components/common/UnifiedHeader";
+﻿import { UnifiedHeader } from "@/components/common/UnifiedHeader";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/libs/supabase";
 import * as DocumentPicker from 'expo-document-picker';
@@ -128,7 +128,7 @@ export default function StudentsAssignments() {
   }) ?? [];
 
   return (
-    <View className="flex-1 bg-gray-50 dark:bg-black">
+    <View className="flex-1 bg-gray-50 dark:bg-navy">
       <UnifiedHeader
         title="Tasks"
         subtitle="Assignments"
@@ -194,7 +194,7 @@ export default function StudentsAssignments() {
 
       <Modal animationType="slide" transparent visible={!!selectedAssignment}>
         <View className="flex-1 bg-black/60 justify-end">
-          <View className="bg-white dark:bg-[#121212] rounded-t-[50px] p-8 pb-12 border-t border-gray-100 dark:border-gray-800">
+          <View className="bg-white dark:bg-[#0F0B2E] rounded-t-[50px] p-8 pb-12 border-t border-gray-100 dark:border-gray-800">
             <View className="flex-row justify-between items-start mb-8">
               <View className="flex-1 pr-6">
                 <Text className="text-[#FF6900] font-bold text-[10px] uppercase tracking-[3px] mb-2">{selectedAssignment?.subject?.title}</Text>
@@ -229,7 +229,7 @@ export default function StudentsAssignments() {
                 onPress={() => handleDownload(selectedAssignment!.attachment_url!)}
                 className="bg-orange-50 dark:bg-orange-950/20 p-6 rounded-[32px] border border-orange-100 dark:border-orange-900 flex-row items-center mb-8"
               >
-                <View className="bg-white dark:bg-[#121212] p-3 rounded-2xl shadow-sm mr-4">
+                <View className="bg-white dark:bg-[#0F0B2E] p-3 rounded-2xl shadow-sm mr-4">
                   <Download size={20} color="#FF6900" />
                 </View>
                 <View className="flex-1">
@@ -242,7 +242,7 @@ export default function StudentsAssignments() {
             {/* Submission Zone */}
             {selectedAssignment?.status === 'completed' ? (
               <View className="bg-green-50 dark:bg-green-950/20 p-8 rounded-[40px] border border-green-100 dark:border-green-900 items-center">
-                <View className="bg-white dark:bg-[#121212] p-4 rounded-full shadow-sm mb-4">
+                <View className="bg-white dark:bg-[#0F0B2E] p-4 rounded-full shadow-sm mb-4">
                   <CheckCircle2 size={32} color="#16a34a" />
                 </View>
                 <Text className="text-green-600 dark:text-green-400 font-bold text-lg tracking-tight">Assignment Submitted</Text>

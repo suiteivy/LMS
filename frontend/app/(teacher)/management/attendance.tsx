@@ -1,4 +1,4 @@
-import { UnifiedHeader } from "@/components/common/UnifiedHeader";
+﻿import { UnifiedHeader } from "@/components/common/UnifiedHeader";
 import { useAuth } from "@/contexts/AuthContext";
 import { SubjectAPI } from "@/services/SubjectService";
 import { TeacherAttendanceAPI } from "@/services/TeacherAttendanceService";
@@ -32,19 +32,19 @@ const StudentAttendanceRow = ({ student, onMark }: { student: Student; onMark: (
 
             <View className="flex-row gap-2">
                 <TouchableOpacity
-                    className={`w-10 h-10 rounded-xl items-center justify-center ${student.status === "present" ? "bg-green-500 shadow-sm" : "bg-gray-50 dark:bg-[#242424] border border-gray-100 dark:border-gray-800"}`}
+                    className={`w-10 h-10 rounded-xl items-center justify-center ${student.status === "present" ? "bg-green-500 shadow-sm" : "bg-gray-50 dark:bg-[#1A1650] border border-gray-100 dark:border-gray-800"}`}
                     onPress={() => onMark(student.student_id, "present")}
                 >
                     <Check size={18} color={student.status === "present" ? "white" : "#9CA3AF"} />
                 </TouchableOpacity>
                 <TouchableOpacity
-                    className={`w-10 h-10 rounded-xl items-center justify-center ${student.status === "absent" ? "bg-red-500 shadow-sm" : "bg-gray-50 dark:bg-[#242424] border border-gray-100 dark:border-gray-800"}`}
+                    className={`w-10 h-10 rounded-xl items-center justify-center ${student.status === "absent" ? "bg-red-500 shadow-sm" : "bg-gray-50 dark:bg-[#1A1650] border border-gray-100 dark:border-gray-800"}`}
                     onPress={() => onMark(student.student_id, "absent")}
                 >
                     <X size={18} color={student.status === "absent" ? "white" : "#9CA3AF"} />
                 </TouchableOpacity>
                 <TouchableOpacity
-                    className={`w-10 h-10 rounded-xl items-center justify-center ${student.status === "late" ? "bg-yellow-500 shadow-sm" : "bg-gray-50 dark:bg-[#242424] border border-gray-100 dark:border-gray-800"}`}
+                    className={`w-10 h-10 rounded-xl items-center justify-center ${student.status === "late" ? "bg-yellow-500 shadow-sm" : "bg-gray-50 dark:bg-[#1A1650] border border-gray-100 dark:border-gray-800"}`}
                     onPress={() => onMark(student.student_id, "late")}
                 >
                     <Clock size={16} color={student.status === "late" ? "white" : "#9CA3AF"} />
@@ -135,7 +135,7 @@ export default function AttendancePage() {
     const selectedSubjectName = subjects.find(s => s.id === selectedSubjectId)?.title || "Select Subject";
 
     return (
-        <View className="flex-1 bg-gray-50 dark:bg-black">
+        <View className="flex-1 bg-gray-50 dark:bg-navy">
             <UnifiedHeader
                 title="Management"
                 subtitle="Attendance"

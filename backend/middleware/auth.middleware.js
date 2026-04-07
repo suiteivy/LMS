@@ -26,6 +26,34 @@ async function authMiddleware(req, res, next) {
       return res.status(401).json({ error: "Invalid token" });
     }
 
+    // --- Demo User Enforcement ---
+    // If the user is a demo user, we MUST enforce the 15-minute limit
+    // regardless of the global Supabase JWT expiry setting.
+    if (user.email && user.email.startsWith('demo.')) {
+      const { data: trialSessions, error: trialError } = await supabase
+        .from('trial_sessions')
+        .select('expires_at')
+        .eq('demo_user_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(1);
+
+      const trialSession = trialSessions?.[0];
+
+      if (trialError || !trialSession) {
+        console.warn(`[AuthMiddleware] No trial session found for demo user: ${user.id}`);
+        return res.status(401).json({ error: "Trial session missing or expired" });
+      }
+
+      const expiresAt = new Date(trialSession.expires_at).getTime();
+      if (Date.now() > expiresAt) {
+        console.log(`[AuthMiddleware] Trial session expired for demo user: ${user.id}`);
+        // Clean up if expired
+        await supabase.from('trial_sessions').delete().eq('demo_user_id', user.id).catch(() => { });
+        return res.status(401).json({ error: "Trial session has expired" });
+      }
+    }
+    // ----------------------------
+
     // Check cache first
     const cached = profileCache.get(user.id);
     const now = Date.now();
@@ -34,24 +62,40 @@ async function authMiddleware(req, res, next) {
     if (cached && (now - cached.timestamp < CACHE_TTL)) {
       profile = cached.profile;
     } else {
-      // Get institution_id, role, and is_master status
-      const { data, error: profileError } = await supabase
-        .from("users")
-        .select(`
-          id, 
-          institution_id, 
-          role,
-          admins!user_id(is_master)
-        `)
-        .eq("id", user.id)
+      // Query the extended profile from 'users' table (which includes platform_admins join if applicable)
+      const { data: profileData, error: profileError } = await supabase
+        .from('users')
+        .select('*, admins(id, is_main), platform_admins(id)')
+        .eq('id', user.id)
         .single();
 
-      if (profileError || !data) {
+      if (profileError || !profileData) {
         console.error(`[AuthMiddleware] Profile fetch error for ${user.id}:`, profileError?.message);
         return res.status(403).json({ error: "Unauthorized" });
       }
 
-      profile = data;
+      // Determine if platform admin
+      let isPlatformAdmin = profileData.role === 'master_admin';
+
+      // Fallback/Legacy check just in case
+      if (!isPlatformAdmin && profileData.role === 'admin' && !profileData.institution_id) {
+        // The new select statement already includes platform_admins(id)
+        if (profileData.platform_admins && profileData.platform_admins.length > 0) {
+          isPlatformAdmin = true;
+        }
+      }
+
+      const isMain = profileData.admins?.[0]?.is_main || false;
+
+      profile = {
+        id: profileData.id,
+        email: profileData.email,
+        institution_id: profileData.institution_id,
+        role: profileData.role,
+        is_main: isMain,
+        isPlatformAdmin: isPlatformAdmin
+      };
+
       // Update cache
       profileCache.set(user.id, { profile, timestamp: now });
 
@@ -67,16 +111,19 @@ async function authMiddleware(req, res, next) {
     // Add user info to request object
     req.user = {
       id: profile.id,
+      email: profile.email,
       institution_id: profile.institution_id,
       role: profile.role,
-      is_master: profile.admins?.[0]?.is_master || false,
+      is_main: profile.admins?.[0]?.is_main || false,
+      is_platform_admin: profile.isPlatformAdmin || false
     };
 
     // Convenience shorthands (ensure always set)
     req.institution_id = profile.institution_id || null;
     req.userId = profile.id || null;
     req.userRole = profile.role || null;
-    req.isMaster = req.user.is_master;
+    req.isMain = req.user.is_main;
+    req.isPlatformAdmin = req.user.is_platform_admin;
 
     // Defensive: fallback if somehow missing
     if (!req.userRole) {

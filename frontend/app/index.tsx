@@ -1,35 +1,668 @@
 import { AppLoading } from "@/components/AppLoading";
 import { useAuth } from "@/contexts/AuthContext";
 import { api } from "@/services/api";
+import { BlurView } from 'expo-blur';
 import { router, usePathname } from "expo-router";
-import { supabase } from '@/libs/supabase'
-import React, { useEffect, useRef, useState } from 'react'
 import {
   BadgeCheck,
   BarChart2,
   BookOpen,
   Check,
+  Coins,
   CreditCard,
   Crown,
   Library,
+  MoveRight,
+  Package,
+  Plus,
   School,
+  Building,
   Settings,
   Sparkles,
-  Star,
   Timer,
-  Users
+  Users,
+  Mail,
+  Phone,
+  Instagram,
+  Linkedin,
+  LogIn,
+  ClipboardList
 } from "lucide-react-native";
+import React, { useEffect, useRef, useState } from 'react';
 import {
-  ActivityIndicator, Animated, Dimensions, KeyboardAvoidingView,
+  ActivityIndicator, Alert, Animated, Dimensions, KeyboardAvoidingView,
   Modal,
   Platform,
   ScrollView, StatusBar, Text,
   TextInput,
   TouchableOpacity, View
 } from "react-native";
+import Reanimated, {
+  Easing,
+  interpolate,
+  useAnimatedProps,
+  useAnimatedStyle,
+  useSharedValue,
+  withRepeat,
+  withSequence,
+  withTiming
+} from 'react-native-reanimated';
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
+import Svg, { Circle, Defs, LinearGradient, Stop } from 'react-native-svg';
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
+
+// ─── Pricing Components ──────────────────────────────────────────────────────
+const AnimatedCircle = Reanimated.createAnimatedComponent(Circle);
+
+// ── Tier Tab Pill ────────────────────────────────────────────────────────────
+const PackageTierTab = ({ tier, label, icon, tagline, isActive, onPress }: any) => {
+  const [hovered, setHovered] = useState(false);
+  const glow = useSharedValue(0);
+
+  useEffect(() => {
+    if (isActive) {
+      glow.value = withRepeat(
+        withSequence(
+          withTiming(1, { duration: 2000, easing: Easing.inOut(Easing.sin) }),
+          withTiming(0.5, { duration: 2000, easing: Easing.inOut(Easing.sin) })
+        ), -1, true
+      );
+    } else {
+      glow.value = withTiming(0, { duration: 300 });
+    }
+  }, [isActive]);
+
+  const glowStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(glow.value, [0, 1], [0, 0.5]),
+  }));
+
+  const isWeb = Platform.OS === 'web';
+
+  return (
+    <TouchableOpacity
+      onPress={onPress}
+      activeOpacity={0.8}
+      //@ts-ignore
+      onPointerEnter={() => setHovered(true)}
+      onPointerLeave={() => setHovered(false)}
+      style={[
+        {
+          // Wide screens (>= 768px): flex fills equal share; narrow: fixed compact width
+          ...(SCREEN_WIDTH >= 768
+            ? { flex: 1, minWidth: 110, maxWidth: 200 }
+            : { width: 118, flexShrink: 0 }),
+          paddingVertical: 16,
+          paddingHorizontal: 14,
+          borderRadius: 20,
+          alignItems: 'center',
+          borderWidth: 1.5,
+          position: 'relative',
+          overflow: 'hidden',
+          borderColor: isActive ? `${tier.accent}66` : 'rgba(255,255,255,0.08)',
+          backgroundColor: isActive ? `${tier.accent}12` : hovered ? 'rgba(255,255,255,0.04)' : 'transparent',
+        },
+        isWeb ? {
+          transition: 'background-color 0.3s ease, border-color 0.3s ease, transform 0.2s ease',
+          transform: hovered && !isActive ? [{ scale: 1.02 }] : [{ scale: 1 }],
+          cursor: 'pointer',
+        } as any : {},
+      ]}
+    >
+      {/* Glow blob behind active */}
+      {isActive && (
+        <Reanimated.View style={[{
+          position: 'absolute',
+          top: '-50%', left: '-50%',
+          width: '200%', height: '200%',
+          borderRadius: 999,
+          opacity: 0.15,
+        } as any, glowStyle]} />
+      )}
+
+      {/* Active underline bar */}
+      {isActive && (
+        <View style={{
+          position: 'absolute', bottom: 0, left: '20%', right: '20%',
+          height: 2.5, borderRadius: 2,
+          backgroundColor: tier.accent,
+        }} />
+      )}
+
+      <View style={{
+        width: 36, height: 36, borderRadius: 12,
+        backgroundColor: isActive ? `${tier.accent}25` : 'rgba(255,255,255,0.06)',
+        alignItems: 'center', justifyContent: 'center',
+        marginBottom: 8,
+        borderWidth: 1,
+        borderColor: isActive ? `${tier.accent}40` : 'rgba(255,255,255,0.08)',
+      }}>
+        {React.cloneElement(icon, { size: 16, color: isActive ? tier.accent : 'rgba(255,255,255,0.45)' })}
+      </View>
+
+      <Text style={{
+        color: isActive ? 'white' : 'rgba(255,255,255,0.6)',
+        fontWeight: '800',
+        fontSize: 13,
+        marginBottom: 2,
+      }}>{label}</Text>
+
+      <Text style={{
+        color: isActive ? `${tier.accent}CC` : 'rgba(255,255,255,0.3)',
+        fontSize: 10,
+        textAlign: 'center',
+        lineHeight: 13,
+      }}>{tagline}</Text>
+    </TouchableOpacity>
+  );
+};
+
+// ── Plan Card within a tier ────────────────────────────────────────────────
+const PlanCard = ({ plan, tierAccent, openRegistrationModal }: any) => {
+  const [hovered, setHovered] = useState(false);
+  const animValue = useSharedValue(0);
+  const borderAnim = useSharedValue(0);
+
+  useEffect(() => {
+    animValue.value = withRepeat(
+      withTiming(1, { duration: 6000, easing: Easing.inOut(Easing.ease) }),
+      -1,
+      true
+    );
+    if (plan.premium) {
+      borderAnim.value = withRepeat(withTiming(1, { duration: 4000 }), -1, false);
+    }
+  }, []);
+
+  const blob1Style = useAnimatedStyle(() => ({
+    transform: [
+      { translateX: interpolate(animValue.value, [0, 1], [-40, 40]) },
+      { translateY: interpolate(animValue.value, [0, 1], [-20, 50]) }
+    ],
+    opacity: 0.4
+  }));
+
+  const blob2Style = useAnimatedStyle(() => ({
+    transform: [
+      { translateX: interpolate(animValue.value, [0, 1], [40, -40]) },
+      { translateY: interpolate(animValue.value, [0, 1], [30, -50]) }
+    ],
+    opacity: 0.35
+  }));
+
+  const nativeHover = useSharedValue(0);
+  const nativeAnimStyle = useAnimatedStyle(() => ({
+    transform: [
+      { translateY: interpolate(nativeHover.value, [0, 1], [0, -12]) },
+      { scale: interpolate(nativeHover.value, [0, 1], [1, 1.03]) },
+    ],
+  }));
+
+  const cardWidth = Platform.OS === 'web' && SCREEN_WIDTH > 1100
+    ? '30%'
+    : Platform.OS === 'web' && SCREEN_WIDTH > 768
+      ? '46%'
+      : '100%';
+
+  const webHoverStyle = Platform.OS === 'web' ? {
+    transform: hovered ? [{ translateY: -12 }, { scale: 1.03 }] : [{ translateY: 0 }, { scale: 1 }],
+    transition: 'transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.4s ease',
+    boxShadow: hovered
+      ? `0 24px 48px ${plan.accent}55, 0 8px 24px ${plan.accent}33`
+      : `0 8px 24px rgba(0,0,0,0.3)`,
+    cursor: 'pointer',
+  } : {};
+
+  const sharedContainerStyle: any = {
+    width: cardWidth,
+    minWidth: 260,
+    marginVertical: 12,
+    position: 'relative',
+    borderRadius: 36,
+    // isolate rendering context to fix backdrop-filter clip bugs
+    ...(Platform.OS === 'web' && { transform: [{ translateZ: '0' }] })
+  };
+
+  const containerStyle = Platform.OS === 'web'
+    ? [sharedContainerStyle, webHoverStyle]
+    : [sharedContainerStyle, nativeAnimStyle];
+
+  const onHoverIn = () => setHovered(true);
+  const onHoverOut = () => setHovered(false);
+
+  return (
+    <Reanimated.View
+      style={containerStyle as any}
+      //@ts-ignore
+      onPointerEnter={onHoverIn}
+      onPointerLeave={onHoverOut}
+    >
+      {/* Premium rotating border */}
+      {plan.premium && Platform.OS === 'web' && (
+        <View style={{ position: 'absolute', top: -2, left: -2, right: -2, bottom: -2, borderRadius: 38, overflow: 'hidden' }}>
+          <Reanimated.View
+            style={[useAnimatedStyle(() => ({
+              transform: [{ rotate: `${borderAnim.value * 360}deg` }]
+            })), {
+              width: '200%', height: '200%',
+              position: 'absolute', top: '-50%', left: '-50%',
+              //@ts-ignore
+              backgroundImage: `conic-gradient(from 0deg, transparent, ${plan.accent}, #EC4899, ${tierAccent}, transparent)`,
+            }] as any}
+          />
+        </View>
+      )}
+
+      {/* Main Inner Card container */}
+      <View style={{
+        borderRadius: 36, overflow: 'hidden',
+        borderWidth: 1.5,
+        borderColor: plan.popular ? `${plan.accent}66` : 'rgba(255,255,255,0.1)',
+        height: '100%', flex: 1,
+        backgroundColor: 'rgba(255,255,255,0.02)',
+        position: 'relative',
+      }}>
+
+        {/* Decorative blobs (behind glass layer) */}
+        <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 0, overflow: 'hidden', borderRadius: 36 }}>
+          <Reanimated.View style={[blob1Style, { position: 'absolute', top: '-15%', left: '-10%' }]}>
+            <View style={{
+              width: 180, height: 180, borderRadius: 90,
+              backgroundColor: plan.accent,
+              ...(Platform.OS === 'web' && { filter: 'blur(60px)' })
+            } as any} />
+          </Reanimated.View>
+          <Reanimated.View style={[blob2Style, { position: 'absolute', bottom: '-15%', right: '-10%' }]}>
+            <View style={{
+              width: 200, height: 200, borderRadius: 100,
+              backgroundColor: tierAccent || plan.accent,
+              ...(Platform.OS === 'web' && { filter: 'blur(60px)' })
+            } as any} />
+          </Reanimated.View>
+        </View>
+
+        {/* Backdrop filter container (the glass effect) */}
+        <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, overflow: 'hidden', borderRadius: 36, zIndex: 1 }}>
+          {Platform.OS === 'web' ? (
+            <div style={{ width: '100%', height: '100%', backdropFilter: 'blur(30px)', WebkitBackdropFilter: 'blur(30px)' }} />
+          ) : (
+            <BlurView intensity={30} style={{ flex: 1 }} tint="dark" />
+          )}
+        </View>
+
+        {(plan.popular || plan.premium) && (
+          <View style={{
+            position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+            backgroundColor: plan.accent, opacity: hovered ? 0.08 : 0.03,
+            zIndex: 2, transition: 'opacity 0.4s ease', pointerEvents: 'none'
+          } as any} />
+        )}
+
+        {/* Shine sweep locked to bounds */}
+        {Platform.OS === 'web' && (
+          <View pointerEvents="none" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', zIndex: 10, overflow: 'hidden', borderRadius: 36 } as any}>
+            <View style={{
+              position: 'absolute', top: 0, width: 80, height: '100%',
+              background: 'linear-gradient(105deg, transparent, rgba(255,255,255,0.08), transparent)',
+              transform: [{ skewX: '-20deg' }],
+              transition: 'left 0.7s ease',
+              left: hovered ? '150%' : '-80px',
+            } as any} />
+          </View>
+        )}
+
+        <View style={{ padding: 32, flex: 1, zIndex: 10, position: 'relative' }}>
+          {/* Popular / Elite ribbon */}
+          {(plan.popular || plan.premium) && (
+            <View style={{
+              position: 'absolute', top: 20, right: -30,
+              backgroundColor: plan.premium ? '#8B5CF6' : plan.accent,
+              paddingHorizontal: 40, paddingVertical: 6,
+              transform: [{ rotate: '45deg' }],
+              flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4,
+              zIndex: 20
+            }}>
+              <Text style={{ color: 'white', fontWeight: '900', fontSize: 9, textTransform: 'uppercase', letterSpacing: 1 }}>
+                {plan.premium ? 'Elite' : 'Popular'}
+              </Text>
+            </View>
+          )}
+
+          {/* Icon */}
+          <View style={{
+            marginBottom: 22,
+            backgroundColor: `${plan.accent}15`,
+            width: 56, height: 56, borderRadius: 18,
+            alignItems: 'center', justifyContent: 'center',
+            borderWidth: 1.5, borderColor: `${plan.accent}33`
+          }}>
+            {React.cloneElement(plan.icon, { size: 24, color: plan.accent })}
+          </View>
+
+          {/* Plan name */}
+          <Text style={{
+            color: plan.accent, fontWeight: '800', fontSize: 12,
+            textTransform: 'uppercase', letterSpacing: 3, marginBottom: 10
+          }}>{plan.name}</Text>
+
+          {/* Price */}
+          <View style={{ flexDirection: 'row', alignItems: 'flex-end', marginBottom: 10 }}>
+            <Text style={{ color: 'white', fontWeight: '900', fontSize: 44 }}>{plan.price}</Text>
+            {plan.period ? (
+              <Text style={{ color: 'rgba(255,255,255,0.4)', fontWeight: '600', fontSize: 17, marginBottom: 10, marginLeft: 4 }}>{plan.period}</Text>
+            ) : null}
+          </View>
+
+          <Text style={{ color: 'rgba(255,255,255,0.5)', fontSize: 14, marginBottom: 28, lineHeight: 21 }}>{plan.desc}</Text>
+
+          {/* Features */}
+          <View style={{ gap: 14, marginBottom: 36, flex: 1 }}>
+            {plan.features.map((feat: string, i: number) => (
+              <View key={i} style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <View style={{
+                  width: 22, height: 22, borderRadius: 7,
+                  backgroundColor: plan.premium ? 'rgba(255,255,255,0.15)' : `${plan.accent}15`,
+                  alignItems: 'center', justifyContent: 'center',
+                  marginRight: 14, borderWidth: 1, borderColor: plan.premium ? 'rgba(255,255,255,0.3)' : `${plan.accent}33`,
+                  flexShrink: 0
+                }}>
+                  <Check size={13} color={plan.premium ? '#FFF' : plan.accent} strokeWidth={3} />
+                </View>
+                <Text style={{ color: 'rgba(255,255,255,0.88)', fontSize: 14, fontWeight: '500', flexShrink: 1 }}>{feat}</Text>
+              </View>
+            ))}
+          </View>
+
+          {/* CTA */}
+          <TouchableOpacity
+            style={{
+              width: '100%', paddingVertical: 18, borderRadius: 22,
+              alignItems: 'center',
+              backgroundColor: plan.popular || plan.premium ? plan.accent : 'transparent',
+              borderWidth: 1.5,
+              borderColor: plan.popular || plan.premium ? 'rgba(255,255,255,0.2)' : `${plan.accent}55`,
+              shadowColor: plan.accent,
+              shadowOffset: { width: 0, height: 10 },
+              shadowOpacity: plan.popular || plan.premium ? 0.4 : 0.1,
+              shadowRadius: 16,
+            }}
+            onPress={() => openRegistrationModal(plan.name)}
+            activeOpacity={0.85}
+          >
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <Text style={{
+                color: plan.popular || plan.premium ? 'white' : plan.accent,
+                fontWeight: '800', fontSize: 15,
+              }}>
+                {plan.cta ?? 'Get Started'}
+              </Text>
+              <MoveRight size={18} color={plan.popular || plan.premium ? 'white' : plan.accent} />
+            </View>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </Reanimated.View>
+  );
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Tier & plan data.....change to addons
+// ─────────────────────────────────────────────────────────────────────────────
+const TIERS = [
+  { key: 'plans', label: 'Subscription Plans', tagline: 'For schools of all sizes', description: 'Everything you need to grow your institution. Choose Basic, Pro, or Premium.', accent: '#FF6B00', icon: <Package size={16} /> },
+  { key: 'custom', label: 'Custom Enterprise', tagline: 'Tailored for scale', description: 'A tailored platform deployment configured for your exact needs.', accent: '#8B5CF6', icon: <Building size={16} /> },
+] as const;
+
+type TierKey = 'plans' | 'custom' | 'addOns'
+
+const TIER_PLANS: Record<TierKey, any[]> = {
+  plans: [
+    {
+      name: 'Basic',
+      price: '$100',
+      period: '/month',
+      desc: 'Perfect for small schools and early adopters starting their digital journey.',
+      features: [
+        'Student module',
+        'Teacher module',
+        'Parent module',
+        'Up to 900 students',
+        'One-time setup: $20'
+      ],
+      icon: <BookOpen size={24} color="#3B82F6" />,
+      accent: '#3B82F6',
+      cta: 'Get Basic',
+    },
+    {
+      name: 'Pro',
+      price: '$300',
+      period: '/month',
+      desc: 'Ideal for mid-sized schools & training centers needing more capacity and tools.',
+      features: [
+        'Student module',
+        'Teacher module',
+        'Parent module',
+        'Library add-on included',
+        'Messaging + Diary included',
+        'Up to 1,000 students',
+        'One-time setup: $60'
+      ],
+      icon: <Crown size={24} color="#F59E0B" />,
+      accent: '#F59E0B',
+      popular: true,
+      cta: 'Get Pro',
+    },
+    {
+      name: 'Premium',
+      price: '$500',
+      period: '/month',
+      desc: 'Built for large private schools & tertiary institutions operating at scale.',
+      features: [
+        'Student module',
+        'Teacher module',
+        'Parent module',
+        'All add-ons included',
+        '5,000+ students',
+        'Priority support',
+        'One-time setup: $100'
+      ],
+      icon: <Sparkles size={24} color="#8B5CF6" />,
+      accent: '#8B5CF6',
+      premium: true,
+      cta: 'Get Premium',
+    },
+  ],
+  custom: [
+    {
+      name: 'Custom',
+      price: 'Custom',
+      period: '',
+      desc: 'A customized LMS deployed to meet your specific organizational workflows and learning needs.',
+      features: [
+        'Client-specific courses & learning paths',
+        'HR system & attendance integration',
+        'Custom progress & certification reports',
+        'UI adjustments (dashboards, labels, branding)',
+        'All add-ons included (Library, Bursary, Messaging)',
+        'Dedicated onboarding & support'
+      ],
+      icon: <Sparkles size={24} color="#8B5CF6" />,
+      accent: '#8B5CF6',
+      premium: true,
+      cta: 'Contact Sales',
+    },
+  ],
+  addOns: [
+    {
+      name: 'Digital Library',
+      tagline: 'Add-On Module',
+      price: '$30/mo',
+      desc: 'Manage library and virtual learning materials on a main dashboard',
+      features: [],
+      icon: <Library size={24} color="#8B5CF6" />,
+      accent: '#8B5CF6',
+      cta: 'Add Library'
+    },
+    {
+      name: 'Bursary Module',
+      tagline: 'Add-On Module',
+      price: '$30/mo',
+      desc: 'Manage student accounts and financial logs on a main dashboard',
+      features: [],
+      icon: <CreditCard size={24} color="#F59E0B" />,
+      accent: '#F59E0B',
+      cta: 'Add Bursary'
+    },
+    {
+      name: 'Messaging Module',
+      tagline: 'Add-On Module',
+      price: '$5/mo',
+      desc: 'Direct messaging and announcement sharing on e-learning platform',
+      features: [],
+      icon: <BadgeCheck size={24} color="#10B981" />,
+      accent: '#10B981',
+      cta: 'Add Messaging'
+    },
+    {
+      name: 'Virtual Diary',
+      tagline: 'Add-On Module',
+      price: '$5/mo',
+      desc: 'Digital class entries, daily reports and performance tracking for students',
+      features: [],
+      icon: <ClipboardList size={24} color="#3B82F6" />,
+      accent: '#3B82F6',
+      cta: 'Add Diary'
+    }
+  ]
+};
+
+
+// ─── Feature Card Component ─────────────────────────────────────────────────
+const FeatureCard = ({ icon, title, desc, accent, tag }: any) => {
+  const hoverVal = useSharedValue(0);
+  const glowVal = useSharedValue(0);
+
+  useEffect(() => {
+    glowVal.value = withRepeat(
+      withSequence(
+        withTiming(1, { duration: 2500, easing: Easing.inOut(Easing.sin) }),
+        withTiming(0.4, { duration: 2500, easing: Easing.inOut(Easing.sin) })
+      ),
+      -1,
+      true
+    );
+  }, []);
+
+  const cardStyle = useAnimatedStyle(() => ({
+    transform: [
+      { translateY: interpolate(hoverVal.value, [0, 1], [0, -10]) },
+      { scale: interpolate(hoverVal.value, [0, 1], [1, 1.025]) },
+    ],
+    shadowOpacity: interpolate(hoverVal.value, [0, 1], [0.08, 0.35]),
+    shadowRadius: interpolate(hoverVal.value, [0, 1], [8, 28]),
+  }));
+
+  const glowStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(glowVal.value, [0, 1], [0.25, 0.7]),
+    transform: [{ scale: interpolate(glowVal.value, [0, 1], [0.95, 1.05]) }],
+  }));
+
+  const onHoverIn = () => {
+    if (Platform.OS === 'web') hoverVal.value = withTiming(1, { duration: 400, easing: Easing.out(Easing.cubic) });
+  };
+  const onHoverOut = () => {
+    if (Platform.OS === 'web') hoverVal.value = withTiming(0, { duration: 350, easing: Easing.inOut(Easing.cubic) });
+  };
+
+  const cardWidth = Platform.OS === 'web' && SCREEN_WIDTH >= 1100
+    ? '30%'
+    : Platform.OS === 'web' && SCREEN_WIDTH >= 700
+      ? '46%'
+      : '100%';
+
+  return (
+    <Reanimated.View
+      style={[{
+        width: cardWidth,
+        minWidth: 240,
+        margin: 10,
+        borderRadius: 24,
+        backgroundColor: 'rgba(255,255,255,0.04)',
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.08)',
+        overflow: 'hidden',
+        shadowColor: accent,
+        shadowOffset: { width: 0, height: 8 },
+      }, cardStyle]}
+      //@ts-ignore
+      onPointerEnter={onHoverIn}
+      onPointerLeave={onHoverOut}
+    >
+      {/* Top accent bar */}
+      <View style={{ height: 3, backgroundColor: accent, opacity: 0.7 }} />
+
+      <View style={{ padding: 26 }}>
+        {/* Icon with animated glow */}
+        <View style={{ marginBottom: 20, alignSelf: 'flex-start' }}>
+          <Reanimated.View style={[{
+            position: 'absolute',
+            width: 56,
+            height: 56,
+            borderRadius: 18,
+            backgroundColor: accent,
+            opacity: 0.1,
+          }, glowStyle]} />
+          <View style={{
+            width: 52,
+            height: 52,
+            borderRadius: 16,
+            backgroundColor: `${accent}1A`,
+            borderWidth: 1,
+            borderColor: `${accent}35`,
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}>
+            {icon}
+          </View>
+        </View>
+
+        {/* Tag */}
+        {tag && (
+          <View style={{
+            alignSelf: 'flex-start',
+            backgroundColor: `${accent}18`,
+            borderRadius: 8,
+            paddingHorizontal: 8,
+            paddingVertical: 3,
+            marginBottom: 10,
+            borderWidth: 1,
+            borderColor: `${accent}30`,
+          }}>
+            <Text style={{ color: accent, fontSize: 10, fontWeight: '800', letterSpacing: 1.5, textTransform: 'uppercase' }}>{tag}</Text>
+          </View>
+        )}
+
+        <Text style={{ color: '#ffffff', fontWeight: '800', fontSize: 18, marginBottom: 8, letterSpacing: -0.3 }}>
+          {title}
+        </Text>
+        <Text style={{ color: 'rgba(255,255,255,0.5)', fontSize: 13.5, lineHeight: 21 }}>
+          {desc}
+        </Text>
+
+        {/* Arrow indicator */}
+        <View style={{
+          marginTop: 20,
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: 6,
+        }}>
+          <View style={{ width: 20, height: 1.5, backgroundColor: accent, opacity: 0.6 }} />
+          <MoveRight size={14} color={accent} />
+        </View>
+      </View>
+    </Reanimated.View>
+  );
+};
 
 // ─── Discount Banner ────────────────────────────────────────────────────────
 // Offer ends Saturday 2026-02-28 00:00:00 EAT (UTC+3)
@@ -142,18 +775,126 @@ function DiscountBanner() {
   );
 }
 
+// ── Hover Animated Buttons ───────────────────────────────────────────────────
+const SignInButtonFloating = () => {
+  const hoverVal = useSharedValue(0);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: interpolate(hoverVal.value, [0, 1], [1, 1.05]) }],
+    shadowOpacity: interpolate(hoverVal.value, [0, 1], [0.3, 0.6]),
+    shadowRadius: interpolate(hoverVal.value, [0, 1], [10, 20]),
+    backgroundColor: hoverVal.value > 0.5 ? 'rgba(255, 107, 0, 0.25)' : 'rgba(255, 107, 0, 0.15)',
+  }));
+
+  const onHoverIn = () => {
+    if (Platform.OS === 'web') hoverVal.value = withTiming(1, { duration: 200, easing: Easing.out(Easing.ease) });
+  };
+  const onHoverOut = () => {
+    if (Platform.OS === 'web') hoverVal.value = withTiming(0, { duration: 250, easing: Easing.inOut(Easing.ease) });
+  };
+
+  return (
+    <Reanimated.View
+      style={[{
+        borderRadius: 20,
+        shadowColor: "#FF6B00",
+        shadowOffset: { width: 0, height: 4 },
+        elevation: 8,
+      }, animatedStyle]}
+    >
+      <TouchableOpacity
+        //@ts-ignore
+        onPointerEnter={onHoverIn}
+        onPointerLeave={onHoverOut}
+        onPress={() => router.push("/(auth)/signIn")}
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          paddingHorizontal: 16,
+          paddingVertical: 10,
+          borderRadius: 20,
+          borderWidth: 1,
+          borderColor: "rgba(255, 107, 0, 0.3)",
+          gap: 8,
+        }}
+        activeOpacity={0.8}
+      >
+        <LogIn size={16} color="#FF6B00" />
+        <Text style={{ color: "#FF8C40", fontWeight: "800", fontSize: 13, letterSpacing: 0.5 }}>
+          Sign In
+        </Text>
+      </TouchableOpacity>
+    </Reanimated.View>
+  );
+};
+
+const SignInButtonMain = () => {
+  const hoverVal = useSharedValue(0);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [
+      { scale: interpolate(hoverVal.value, [0, 1], [1, 1.05]) },
+      { translateY: interpolate(hoverVal.value, [0, 1], [0, -4]) }
+    ],
+    shadowOpacity: interpolate(hoverVal.value, [0, 1], [0.4, 0.7]),
+    shadowRadius: interpolate(hoverVal.value, [0, 1], [24, 32]),
+  }));
+
+  const onHoverIn = () => {
+    if (Platform.OS === 'web') hoverVal.value = withTiming(1, { duration: 200, easing: Easing.out(Easing.ease) });
+  };
+  const onHoverOut = () => {
+    if (Platform.OS === 'web') hoverVal.value = withTiming(0, { duration: 250, easing: Easing.inOut(Easing.ease) });
+  };
+
+  return (
+    <Reanimated.View
+      style={[{
+        borderRadius: 100,
+        shadowColor: '#FF6B00',
+        shadowOffset: { width: 0, height: 8 },
+      }, animatedStyle]}
+    >
+      <TouchableOpacity
+        //@ts-ignore
+        onPointerEnter={onHoverIn}
+        onPointerLeave={onHoverOut}
+        style={{
+          backgroundColor: '#FF6B00',
+          paddingHorizontal: 48,
+          paddingVertical: 20,
+          borderRadius: 100,
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: 12,
+        }}
+        onPress={() => router.push("/(auth)/signIn")}
+        activeOpacity={0.8}
+      >
+        <Text style={{ color: 'white', fontWeight: '800', fontSize: 16, letterSpacing: 0.5 }}>Sign In to Account</Text>
+        <MoveRight size={18} color="white" />
+      </TouchableOpacity>
+    </Reanimated.View>
+  );
+};
+
+
 export default function Index() {
-  const { expired } = useCountdown(OFFER_END);
-  const { session, loading, isInitializing, profile } = useAuth();
+  const { session, loading, isInitializing, profile, isPlatformAdmin, isNavReady } = useAuth();
   const formRef = useRef<View>(null);
   const scrollRef = useRef<ScrollView>(null);
   const pathname = usePathname();
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
+  const [selectedTier, setSelectedTier] = useState<TierKey>('plans');
   const [form, setForm] = useState({ name: '', email: '', message: '' });
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
-  const [isNavReady, setIsNavReady] = useState(false);
+  const [addonModalVisible, setAddonModalVisible] = useState(false);
+  const [customModalVisible, setCustomModalVisible] = useState(false);
+  const [selectedAddons, setSelectedAddons] = useState<string[]>([]);
+  const [selectedCustomFeatures, setSelectedCustomFeatures] = useState<string[]>([]);
+  const [selectedCoreModules, setSelectedCoreModules] = useState<string[]>([]);
 
   // Show AppLoading for 5s before redirecting to dashboard
   const [navigating, setNavigating] = useState(false);
@@ -162,6 +903,9 @@ export default function Index() {
   // Section refs for smooth scrolling
   const featuresRef = useRef<View>(null);
   const pricingRef = useRef<View>(null);
+  const getInTouchRef = useRef<View>(null);
+  // Y-offset of the plan-cards block (so we can scroll to it on mobile tier tap)
+  const [pricingCardsY, setPricingCardsY] = useState<number | null>(null);
 
   // Sticky nav visibility
   const [showNav, setShowNav] = useState(false);
@@ -299,49 +1043,10 @@ export default function Index() {
     }
   };
 
-  useEffect(() => {
-    const timer = setTimeout(() => setIsNavReady(true), 1);
-    return () => clearTimeout(timer);
-  }, []);
 
-  // Detect session → store the target route and start loading screen
-  useEffect(() => {
-    const isActuallyOnLanding = pathname === "/" || pathname === "/index";
-    if (
-      isActuallyOnLanding &&
-      isNavReady &&
-      !isInitializing &&
-      session &&
-      profile &&
-      !navigating
-    ) {
-      let route: string | null = null;
-      if (profile.role === "admin") route = "/(admin)";
-      else if (profile.role === "teacher") route = "/(teacher)";
-      else if (profile.role === "student") route = "/(student)";
-      else if (profile.role === "parent") route = "/(parent)";
 
-      if (route) {
-        pendingRoute.current = route;
-        setNavigating(true);
-      }
-    }
-  }, [isNavReady, isInitializing, session, profile, pathname]);
-
-  // After 5 seconds of AppLoading, do the actual redirect
-  useEffect(() => {
-    if (!navigating) return;
-    const timer = setTimeout(() => {
-      if (pendingRoute.current) router.replace(pendingRoute.current as any);
-    }, 5000);
-    return () => clearTimeout(timer);
-  }, [navigating]);
-
-  // Show AppLoading immediately if:
-  //  1. navigating = true (5-second post-login animation), OR
-  //  2. auth is still initializing/loading (prevents landing page flash), OR
-  //  3. session already exists — redirect is imminent; don't paint the landing page
-  if (navigating || loading || isInitializing || (session && profile)) {
+  // Show AppLoading immediately when session exists (prevents seeing landing page during redirect)
+  if (isInitializing || navigating || (session && !isNavReady)) {
     return <AppLoading />;
   }
 
@@ -353,8 +1058,8 @@ export default function Index() {
   const orb3Y = orb3.interpolate({ inputRange: [0, 1], outputRange: [0, -20] });
 
   const handleSignup = async () => {
-    if (!form.name || !form.email) {
-      alert("Please fill in your name and email.");
+    if (!form.name.trim() || !form.email.trim()) {
+      Alert.alert("Missing Info", "Please fill in your name and email.");
       return;
     }
 
@@ -364,7 +1069,10 @@ export default function Index() {
         name: form.name,
         email: form.email,
         plan: selectedPlan,
-        message: form.message || `Setup request for ${selectedPlan} plan`
+        addons: selectedAddons,
+        customFeatures: selectedCustomFeatures,
+        coreModules: selectedCoreModules,
+        message: form.message || `Setup request for ${selectedPlan} plan${selectedCoreModules.length > 0 ? ` with core modules: ${selectedCoreModules.join(', ')}` : ''}${selectedAddons.length > 0 ? ` with addons: ${selectedAddons.join(', ')}` : ''}${selectedCustomFeatures.length > 0 ? ` with custom features: ${selectedCustomFeatures.join(', ')}` : ''}`
       });
 
       if (response.data.success) {
@@ -372,7 +1080,7 @@ export default function Index() {
       }
     } catch (error: any) {
       console.error("Booking error:", error);
-      alert(error.message || "Something went wrong. Please try again.");
+      Alert.alert("Error", error.message || "Something went wrong. Please try again.");
     } finally {
       setSubmitting(false);
     }
@@ -381,7 +1089,23 @@ export default function Index() {
   const openRegistrationModal = (planName: string) => {
     setSelectedPlan(planName);
     setForm({ name: '', email: '', message: '' });
+    setSelectedAddons([]);
+    setSelectedCustomFeatures([]);
+    setSelectedCoreModules([]);
     setSubmitted(false);
+
+    if (planName.toLowerCase().includes("free trial")) {
+      setModalVisible(true);
+    } else if (planName.toLowerCase().includes("custom")) {
+      setCustomModalVisible(true);
+    } else {
+      setAddonModalVisible(true);
+    }
+  };
+
+  const proceedToRegistration = () => {
+    setAddonModalVisible(false);
+    setCustomModalVisible(false);
     setModalVisible(true);
   };
 
@@ -391,6 +1115,24 @@ export default function Index() {
 
       {/* ═══════════════ FIXED DISCOUNT BANNER ═══════════════ */}
       <DiscountBanner />
+
+      {/* ═══════════════ FLOATING TOP-RIGHT SIGN IN ═══════════════ */}
+      <Animated.View
+        pointerEvents={showNav ? "none" : "auto"}
+        style={{
+          position: "absolute",
+          top: Platform.OS === "web" ? 10 : 50,
+          right: 24,
+          zIndex: 99,
+          opacity: navOpacity.interpolate({
+            inputRange: [0, 1],
+            outputRange: [1, 0],
+          }),
+        }}
+      >
+        <SignInButtonFloating />
+      </Animated.View>
+
       {/* ═══════════════ FLOATING STICKY NAV ═══════════════ */}
       <Animated.View
         pointerEvents={showNav ? "auto" : "none"}
@@ -424,6 +1166,7 @@ export default function Index() {
           {[
             { label: "Features", onPress: () => scrollToSection("features") },
             { label: "Pricing", onPress: () => scrollToSection("pricing") },
+            { label: "Contact", onPress: () => scrollToSection("getInTouch") },
             {
               label: "Sign In",
               onPress: () => router.push("/(auth)/signIn"),
@@ -696,308 +1439,1051 @@ export default function Index() {
             onLayout={(e) => handleLayout("features", e.nativeEvent.layout.y)}
             style={{
               paddingHorizontal: 20,
-              paddingTop: 48,
-              paddingBottom: 40,
+              paddingTop: 72,
+              paddingBottom: 72,
               backgroundColor: "#13103A",
+              position: 'relative',
+              overflow: 'hidden',
             }}
           >
-            <Text
-              style={{
-                color: "white",
-                fontSize: 28,
-                fontWeight: "800",
-                textAlign: "center",
-                marginBottom: 6,
-              }}
-            >
-              Everything You Need
-            </Text>
-            <Text
-              style={{
-                color: "rgba(255,255,255,0.5)",
-                fontSize: 14,
-                textAlign: "center",
-                marginBottom: 32,
-              }}
-            >
-              Powerful tools for every stakeholder
-            </Text>
+            {/* Section background mesh */}
+            <View style={{
+              position: 'absolute', top: '10%', left: '-5%',
+              width: 320, height: 320, borderRadius: 160,
+              backgroundColor: 'rgba(255,107,0,0.05)',
+            } as any} />
+            <View style={{
+              position: 'absolute', bottom: '5%', right: '-5%',
+              width: 280, height: 280, borderRadius: 140,
+              backgroundColor: 'rgba(99,102,241,0.07)',
+            } as any} />
 
-            <View
-              style={{
-                flexDirection: "row",
-                flexWrap: "wrap",
-                justifyContent: "center",
-                alignItems: "stretch",
-                marginHorizontal: -8,
-              }}
-            >
+            {/* Section header */}
+            <View style={{ alignItems: 'center', marginBottom: 52 }}>
+              {/* Badge */}
+              <View style={{
+                flexDirection: 'row', alignItems: 'center', gap: 7,
+                backgroundColor: 'rgba(255,107,0,0.1)',
+                borderRadius: 20, paddingHorizontal: 14, paddingVertical: 6,
+                borderWidth: 1, borderColor: 'rgba(255,107,0,0.22)',
+                marginBottom: 20,
+              }}>
+                <BadgeCheck size={14} color="#FF8C40" />
+                <Text style={{ color: '#FF8C40', fontSize: 11, fontWeight: '800', letterSpacing: 2, textTransform: 'uppercase' }}>
+                  Platform Capabilities
+                </Text>
+              </View>
+
+              <Text style={{ color: '#ffffff', fontSize: Platform.OS === 'web' && SCREEN_WIDTH > 768 ? 40 : 30, fontWeight: '900', textAlign: 'center', letterSpacing: -0.5, lineHeight: Platform.OS === 'web' && SCREEN_WIDTH > 768 ? 48 : 38 }}>
+                Everything You{' '}
+                <Text style={{ color: '#FF8C40' }}>Need</Text>
+              </Text>
+
+              {/* Animated underline */}
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 10 }}>
+                <View style={{ width: 32, height: 2, borderRadius: 2, backgroundColor: 'rgba(255,107,0,0.3)' }} />
+                <View style={{ width: 64, height: 2, borderRadius: 2, backgroundColor: '#FF6B00' }} />
+                <View style={{ width: 32, height: 2, borderRadius: 2, backgroundColor: 'rgba(255,107,0,0.3)' }} />
+              </View>
+
+              <Text style={{ color: 'rgba(255,255,255,0.45)', fontSize: 15, textAlign: 'center', marginTop: 18, maxWidth: 520, lineHeight: 23 }}>
+                A unified platform built for every stakeholder — from admin and teachers to students and parents.
+              </Text>
+            </View>
+
+            {/* Feature cards grid */}
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', marginHorizontal: -10 }}>
               {[
                 {
-                  icon: <BookOpen size={22} color="#FF8C40" />,
-                  title: "Courses",
-                  desc: "Browse, enroll, and manage courses with ease.",
-                  gradient: ["#FF6B00", "#FF8C40"],
+                  icon: <BookOpen size={24} color="#FF8C40" />,
+                  title: 'Course Management',
+                  desc: 'Create, publish and manage rich courses with videos, quizzes, and assignments — all in one editor.',
+                  accent: '#FF6B00',
+                  tag: 'Core',
                 },
                 {
-                  icon: <Library size={22} color="#A78BFA" />,
-                  title: "Library",
-                  desc: "Access digital books and resources anytime.",
-                  gradient: ["#7C3AED", "#A78BFA"],
+                  icon: <Library size={24} color="#A78BFA" />,
+                  title: 'Digital Library',
+                  desc: 'Give students and teachers instant access to a searchable library of books, PDFs, and media.',
+                  accent: '#7C3AED',
+                  tag: 'Resources',
                 },
                 {
-                  icon: <CreditCard size={22} color="#60A5FA" />,
-                  title: "Payments",
-                  desc: "Track fees and manage payments simply.",
-                  gradient: ["#2563EB", "#60A5FA"],
+                  icon: <CreditCard size={24} color="#60A5FA" />,
+                  title: 'Fee & Payments',
+                  desc: 'Automate invoicing, track outstanding fees, and accept payments — with real-time dashboards.',
+                  accent: '#2563EB',
+                  tag: 'Finance',
                 },
                 {
-                  icon: <BarChart2 size={22} color="#34D399" />,
-                  title: "Analytics",
-                  desc: "Get actionable insights and reports.",
-                  gradient: ["#059669", "#34D399"],
+                  icon: <BarChart2 size={24} color="#34D399" />,
+                  title: 'Advanced Analytics',
+                  desc: 'Drill into performance trends, attendance, and engagement with beautiful, exportable reports.',
+                  accent: '#059669',
+                  tag: 'Insights',
                 },
                 {
-                  icon: <Users size={22} color="#F472B6" />,
-                  title: "Users",
-                  desc: "Manage students, teachers, and admins.",
-                  gradient: ["#DB2777", "#F472B6"],
+                  icon: <Users size={24} color="#F472B6" />,
+                  title: 'User Management',
+                  desc: 'Onboard and manage admins, teachers, students, and parents with role-based access control.',
+                  accent: '#DB2777',
+                  tag: 'Admin',
                 },
                 {
-                  icon: <Settings size={22} color="#FBBF24" />,
-                  title: "Settings",
-                  desc: "Customize your experience to your needs.",
-                  gradient: ["#D97706", "#FBBF24"],
+                  icon: <Settings size={24} color="#FBBF24" />,
+                  title: 'Smart Configuration',
+                  desc: 'Customize branding, modules, permissions and notifications to perfectly fit your institution.',
+                  accent: '#D97706',
+                  tag: 'Setup',
                 },
-              ].map(({ icon, title, desc, gradient }) => (
-                <View
-                  key={title}
-                  style={{
-                    width:
-                      Platform.OS === "web" && SCREEN_WIDTH >= 800
-                        ? "46%"
-                        : "100%",
-                    maxWidth: 340,
-                    minWidth: Platform.OS === "web" && SCREEN_WIDTH >= 800 ? 260 : "90%",
-                    flexGrow: 1,
-                    backgroundColor: "rgba(255,255,255,0.05)",
-                    borderWidth: 1,
-                    borderColor: "rgba(255,255,255,0.10)",
-                    borderRadius: 18,
-                    padding: 20,
-                    margin: 8,
-                    alignSelf: "stretch",
-                  }}
-                >
-                  <View
-                    style={{
-                      width: 48,
-                      height: 48,
-                      borderRadius: 14,
-                      backgroundColor: `${gradient[0]}18`,
-                      borderWidth: 1,
-                      borderColor: `${gradient[0]}30`,
-                      justifyContent: "center",
-                      alignItems: "center",
-                      marginBottom: 14,
-                    }}
-                  >
-                    {icon}
-                  </View>
-                  <Text
-                    style={{
-                      color: "white",
-                      fontWeight: "800",
-                      fontSize: 17,
-                      marginBottom: 6,
-                    }}
-                  >
-                    {title}
-                  </Text>
-                  <Text
-                    style={{
-                      color: "rgba(255,255,255,0.5)",
-                      fontSize: 13,
-                      lineHeight: 19,
-                    }}
-                  >
-                    {desc}
-                  </Text>
-                </View>
+              ].map((feat) => (
+                <FeatureCard key={feat.title} {...feat} />
               ))}
             </View>
+
           </View>
 
           {/* ═══════════════════════ PRICING SECTION ═══════════════════════ */}
           <View
             ref={pricingRef}
             onLayout={(e) => handleLayout("pricing", e.nativeEvent.layout.y)}
-            style={{ paddingHorizontal: 20, paddingVertical: 60, backgroundColor: "#0F0B2E" }}
+            style={{
+              paddingHorizontal: 20,
+              paddingTop: 72,
+              paddingBottom: 80,
+              backgroundColor: '#0A0820',
+              position: 'relative',
+              overflow: 'hidden',
+            }}
           >
-            <Text style={{ color: "white", fontSize: 28, fontWeight: "900", textAlign: "center", marginBottom: 32 }}>
-              Choose Your Plan
-            </Text>
-            <View
-              style={{
-                flexDirection: "row",
-                flexWrap: "wrap",
-                justifyContent: "center",
-                gap: Platform.OS === "web" ? 20 : 0,
-                width: "100%",
-              }}
-            >
-              {[
-                { name: "Trial", price: "Free", desc: "30-day full access", features: ["1 Admin", "Up to 50 Students", "Core Modules", "Trial Banner"] },
-                { name: "Basic", price: "$49/mo", desc: "For growing schools", features: ["Unlimited Teachers", "Up to 500 Students", "Standard Analytics", "Email Support"] },
-                { name: "Pro", price: "$99/mo", desc: "For advanced institutions", features: ["Up to 1000 Students", "Advanced Analytics", "Finance Module", "Priority Support"] },
-                { name: "Premium", price: "$199/mo", desc: "The ultimate solution", features: ["Unlimited Students", "Custom Branding", "Bulk Operations", "24/7 Support"] }
-              ].map((plan) => (
-                <View
-                  key={plan.name}
-                  style={{
-                    backgroundColor: 'rgba(255,255,255,0.04)',
-                    borderRadius: 24,
-                    padding: 24,
-                    borderWidth: 1,
-                    borderColor: 'rgba(255,255,255,0.1)',
-                    width: Platform.OS === 'web' && SCREEN_WIDTH > 800 ? '30%' : '100%',
-                    minWidth: 280,
-                    marginVertical: 10
-                  }}
-                >
-                  <Text style={{ color: "#FF8C40", fontWeight: "800", fontSize: 20, marginBottom: 8 }}>{plan.name}</Text>
-                  <Text style={{ color: "white", fontWeight: "900", fontSize: 32, marginBottom: 4 }}>{plan.price}</Text>
-                  <Text style={{ color: "rgba(255,255,255,0.5)", fontSize: 13, marginBottom: 24, paddingBottom: 24, borderBottomWidth: 1, borderBottomColor: "rgba(255,255,255,0.1)" }}>{plan.desc}</Text>
-                  <View style={{ gap: 12, marginBottom: 32 }}>
-                    {plan.features.map((feat, i) => (
-                      <View key={i} style={{ flexDirection: 'row', alignItems: 'center' }}>
-                        <BadgeCheck size={18} color="#FF8C40" />
-                        <Text style={{ color: "rgba(255,255,255,0.8)", marginLeft: 10, fontSize: 13 }}>{feat}</Text>
-                      </View>
-                    ))}
-                  </View>
-                  <TouchableOpacity
-                    style={{
-                      width: '100%', paddingVertical: 16, borderRadius: 16, alignItems: 'center',
-                      backgroundColor: plan.name === 'Essential' ? '#FF6B00' : 'rgba(255,255,255,0.1)'
+            {/* Background mesh blobs */}
+            <View style={{ position: 'absolute', top: '5%', left: '-10%', width: 380, height: 380, borderRadius: 190, backgroundColor: 'rgba(255,107,0,0.05)' } as any} />
+            <View style={{ position: 'absolute', bottom: '5%', right: '-10%', width: 340, height: 340, borderRadius: 170, backgroundColor: 'rgba(139,92,246,0.06)' } as any} />
+
+            {/* Section header */}
+            <View style={{ alignItems: 'center', marginBottom: 52 }}>
+              <View style={{
+                flexDirection: 'row', alignItems: 'center', gap: 7,
+                backgroundColor: 'rgba(255,107,0,0.1)',
+                borderRadius: 20, paddingHorizontal: 14, paddingVertical: 6,
+                borderWidth: 1, borderColor: 'rgba(255,107,0,0.22)',
+                marginBottom: 20,
+              }}>
+                <CreditCard size={14} color="#FF8C40" />
+                <Text style={{ color: '#FF8C40', fontSize: 11, fontWeight: '800', letterSpacing: 2, textTransform: 'uppercase' }}>
+                  Flexible Pricing
+                </Text>
+              </View>
+
+              <Text style={{
+                color: '#ffffff',
+                fontSize: Platform.OS === 'web' && SCREEN_WIDTH > 768 ? 42 : 30,
+                fontWeight: '900',
+                textAlign: 'center',
+                letterSpacing: -0.5,
+                lineHeight: Platform.OS === 'web' && SCREEN_WIDTH > 768 ? 50 : 38,
+                marginBottom: 12,
+              }}>
+                Choose Your{' '}
+                <Text style={{ color: '#FF8C40' }}>Package</Text>
+              </Text>
+
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 16 }}>
+                <View style={{ width: 32, height: 2, borderRadius: 2, backgroundColor: 'rgba(255,107,0,0.3)' }} />
+                <View style={{ width: 64, height: 2, borderRadius: 2, backgroundColor: '#FF6B00' }} />
+                <View style={{ width: 32, height: 2, borderRadius: 2, backgroundColor: 'rgba(255,107,0,0.3)' }} />
+              </View>
+
+              <Text style={{ color: 'rgba(255,255,255,0.45)', fontSize: 15, textAlign: 'center', maxWidth: 520, lineHeight: 23 }}>
+                Select your deployment scale, then pick the plan that fits your institution.
+              </Text>
+            </View>
+
+            {/* ── LEVEL 1: Tier Selector ── */}
+            {SCREEN_WIDTH >= 768 ? (
+              /* Wide screen (>=768px): centred flex row */
+              <View style={{
+                flexDirection: 'row',
+                justifyContent: 'center',
+                gap: 10,
+                flexWrap: 'wrap',
+                marginBottom: 16,
+                paddingHorizontal: 40,
+              }}>
+                {TIERS.map((tier) => (
+                  <PackageTierTab
+                    key={tier.key}
+                    tier={tier}
+                    label={tier.label}
+                    icon={tier.icon}
+                    tagline={tier.tagline}
+                    isActive={selectedTier === tier.key}
+                    onPress={() => setSelectedTier(tier.key)}
+                  />
+                ))}
+              </View>
+            ) : (
+              /* Narrow screen (<768px): horizontal scroll strip */
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 10,
+                  paddingHorizontal: 20,
+                  paddingBottom: 4,
+                }}
+                style={{ marginBottom: 16 }}
+              >
+                {TIERS.map((tier) => (
+                  <PackageTierTab
+                    key={tier.key}
+                    tier={tier}
+                    label={tier.label}
+                    icon={tier.icon}
+                    tagline={tier.tagline}
+                    isActive={selectedTier === tier.key}
+                    onPress={() => {
+                      setSelectedTier(tier.key);
+                      // Gently scroll so the plan cards come into view
+                      if (pricingCardsY !== null) {
+                        scrollRef.current?.scrollTo({
+                          y: pricingCardsY - 80,
+                          animated: true,
+                        });
+                      }
                     }}
-                    onPress={() => openRegistrationModal(plan.name)}
+                  />
+                ))}
+              </ScrollView>
+            )}
+
+            {/* Active tier description */}
+            <View style={{ alignItems: 'center', marginBottom: 40 }}>
+              <Text style={{
+                color: 'rgba(255,255,255,0.38)',
+                fontSize: 13,
+                textAlign: 'center',
+                maxWidth: 480,
+                lineHeight: 20,
+              }}>
+                {TIERS.find(t => t.key === selectedTier)?.description}
+              </Text>
+            </View>
+
+            {/* ── LEVEL 2: Plan Cards ── */}
+            <View
+              onLayout={(e) => setPricingCardsY(e.nativeEvent.layout.y + (sectionPositions['pricing'] ?? 0))}
+              style={{
+                flexDirection: 'row',
+                flexWrap: 'wrap',
+                justifyContent: 'center',
+                gap: Platform.OS === 'web' ? 24 : 0,
+                width: '100%',
+              }}>
+              {TIER_PLANS[selectedTier].map((plan) => (
+                <PlanCard
+                  key={`${selectedTier}-${plan.name}`}
+                  plan={plan}
+                  tierAccent={TIERS.find(t => t.key === selectedTier)?.accent ?? '#FF6B00'}
+                  openRegistrationModal={(planName: string) =>
+                    openRegistrationModal(`${TIERS.find(t => t.key === selectedTier)?.label} ${planName}`)
+                  }
+                />
+              ))}
+            </View>
+
+            {/* Free Trial Card */}
+            <View style={{
+              width: '100%',
+              marginTop: 40,
+              alignItems: 'center',
+            }}>
+              <View style={{
+                width: Platform.OS === 'web' && SCREEN_WIDTH > 768 ? '70%' : '100%',
+                maxWidth: 700,
+                borderRadius: 28,
+                overflow: 'hidden',
+                borderWidth: 1.5,
+                borderColor: 'rgba(52,211,153,0.35)',
+                backgroundColor: 'rgba(52,211,153,0.05)',
+              }}>
+                {/* Top accent bar */}
+                <View style={{ height: 3, backgroundColor: '#10B981', opacity: 0.8 }} />
+
+                <View style={{
+                  padding: 28,
+                  flexDirection: Platform.OS === 'web' && SCREEN_WIDTH > 600 ? 'row' : 'column',
+                  alignItems: 'center',
+                  gap: 24,
+                }}>
+                  {/* Icon + label */}
+                  <View style={{ alignItems: 'center', gap: 10, minWidth: 80 }}>
+                    <View style={{
+                      width: 56, height: 56, borderRadius: 18,
+                      backgroundColor: 'rgba(16,185,129,0.12)',
+                      borderWidth: 1.5, borderColor: 'rgba(16,185,129,0.3)',
+                      alignItems: 'center', justifyContent: 'center',
+                    }}>
+                      <Sparkles size={24} color="#10B981" />
+                    </View>
+                    <View style={{
+                      backgroundColor: 'rgba(16,185,129,0.15)',
+                      borderRadius: 10, paddingHorizontal: 10, paddingVertical: 3,
+                      borderWidth: 1, borderColor: 'rgba(16,185,129,0.25)',
+                    }}>
+                      <Text style={{ color: '#10B981', fontSize: 10, fontWeight: '800', letterSpacing: 1.5, textTransform: 'uppercase' }}>Free</Text>
+                    </View>
+                  </View>
+
+                  {/* Text */}
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ color: 'white', fontWeight: '800', fontSize: 20, marginBottom: 6 }}>
+                      Try Cloudora Free for 14 Days
+                    </Text>
+                    <Text style={{ color: 'rgba(255,255,255,0.5)', fontSize: 14, lineHeight: 21 }}>
+                      No credit card required. Get full access to all core features and see how Cloudora transforms your institution.
+                    </Text>
+                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 14 }}>
+                      {['Unlimited Students', 'All Core Modules', 'Email Support', 'No Commitment'].map((feat) => (
+                        <View key={feat} style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+                          <Check size={12} color="#10B981" strokeWidth={3} />
+                          <Text style={{ color: 'rgba(255,255,255,0.7)', fontSize: 12, fontWeight: '500' }}>{feat}</Text>
+                        </View>
+                      ))}
+                    </View>
+                  </View>
+
+                  {/* CTA button */}
+                  <TouchableOpacity
+                    onPress={() => openRegistrationModal('Free Trial')}
+                    activeOpacity={0.85}
+                    style={{
+                      paddingVertical: 16, paddingHorizontal: 28,
+                      borderRadius: 18,
+                      backgroundColor: '#10B981',
+                      alignItems: 'center',
+                      shadowColor: '#10B981',
+                      shadowOffset: { width: 0, height: 8 },
+                      shadowOpacity: 0.35,
+                      shadowRadius: 16,
+                      minWidth: 160,
+                    }}
                   >
-                    <Text style={{ color: "white", fontWeight: "700" }}>Get Started</Text>
+                    <Text style={{ color: 'white', fontWeight: '800', fontSize: 14 }}>Start Free Trial</Text>
+                    {/* <Text style={{ color: 'rgba(255,255,255,0.7)', fontSize: 11, marginTop: 2 }}>No card needed</Text> */}
                   </TouchableOpacity>
                 </View>
-              ))}
+              </View>
+            </View>
+
+            {/* ── Add-Ons Section ── */}
+            <View style={{ width: '100%', marginTop: 56 }}>
+              {/* Header */}
+              <View style={{ alignItems: 'center', marginBottom: 28 }}>
+                <View style={{
+                  flexDirection: 'row', alignItems: 'center', gap: 7,
+                  backgroundColor: 'rgba(139,92,246,0.1)',
+                  borderRadius: 20, paddingHorizontal: 14, paddingVertical: 6,
+                  borderWidth: 1, borderColor: 'rgba(139,92,246,0.22)',
+                  marginBottom: 14,
+                }}>
+                  <Sparkles size={14} color="#A78BFA" />
+                  <Text style={{ color: '#A78BFA', fontSize: 11, fontWeight: '800', letterSpacing: 2, textTransform: 'uppercase' }}>
+                    Add-Ons
+                  </Text>
+                </View>
+                <Text style={{ color: 'white', fontWeight: '800', fontSize: 22, textAlign: 'center', marginBottom: 6 }}>
+                  Enhance Your Plan
+                </Text>
+                <Text style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13, textAlign: 'center', maxWidth: 460, lineHeight: 20 }}>
+                  Bolt on powerful modules to any plan — available standalone or bundled with Pro &amp; above.
+                </Text>
+              </View>
+
+              {/* Add-on cards */}
+              <View style={{
+                flexDirection: Platform.OS === 'web' && SCREEN_WIDTH > 700 ? 'row' : 'column',
+                gap: 20, justifyContent: 'center', flexWrap: 'wrap',
+                paddingHorizontal: Platform.OS === 'web' ? 40 : 0,
+              }}>
+                {[
+                  {
+                    icon: <Library size={28} color="#A78BFA" />,
+                    name: 'Digital Library',
+                    tagline: 'Add-On Module',
+                    price: '$30/mo',
+                    accent: '#8B5CF6',
+                    desc: 'Give your institution a fully searchable digital library — books, PDFs, videos and more.',
+                    features: [
+                      'Unlimited uploads & categories',
+                      'Student & teacher access controls',
+                      'Search, filter & bookmarking',
+                      'Mobile-friendly reader',
+                    ],
+                    includedIn: 'Included in Pro, Premium & Custom plans',
+                  },
+                  {
+                    icon: <CreditCard size={28} color="#FBBF24" />,
+                    name: 'Bursary Module',
+                    tagline: 'Add-On Module',
+                    price: '$30/mo',
+                    accent: '#D97706',
+                    desc: 'Manage student accounts and financial logs on a centralised dashboard.',
+                    features: [
+                      'Student fee tracking',
+                      'Financial log dashboard',
+                      'Bursary award management',
+                      'Payment history & reports',
+                    ],
+                    includedIn: 'Included in Premium & Custom plans',
+                  },
+                  {
+                    icon: <BadgeCheck size={28} color="#34D399" />,
+                    name: 'Messaging + Virtual Diary',
+                    tagline: 'Add-On Module',
+                    price: '$10/mo',
+                    accent: '#10B981',
+                    desc: 'Real-time in-app messaging between teachers, students and parents. Keep communication within the platform.',
+                    features: [
+                      'Direct & group messaging',
+                      'Announcements & broadcasts',
+                      'File & image sharing',
+                      'Read receipts & notifications',
+                    ],
+                    includedIn: 'Included in Pro, Premium & Custom plans',
+                  },
+                ].map((addon) => (
+                  <View
+                    key={addon.name}
+                    style={Platform.OS === 'web' ? {
+                      flex: 1, minWidth: 280, maxWidth: 440,
+                    } : { width: '100%' }}
+                  >
+                    <View style={{
+                      borderRadius: 28, overflow: 'hidden',
+                      borderWidth: 1.5, borderColor: `${addon.accent}33`,
+                      backgroundColor: `${addon.accent}08`,
+                    }}>
+                      {/* Top accent line */}
+                      <View style={{ height: 3, backgroundColor: addon.accent, opacity: 0.7 }} />
+                      <View style={{ padding: 28 }}>
+                        {/* Icon + prices row */}
+                        <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 16 }}>
+                          <View style={{
+                            width: 54, height: 54, borderRadius: 16,
+                            backgroundColor: `${addon.accent}15`,
+                            borderWidth: 1, borderColor: `${addon.accent}30`,
+                            alignItems: 'center', justifyContent: 'center',
+                          }}>
+                            {addon.icon}
+                          </View>
+                          <View style={{ alignItems: 'flex-end' }}>
+                            <View style={{
+                              backgroundColor: `${addon.accent}18`, borderRadius: 8,
+                              paddingHorizontal: 10, paddingVertical: 3,
+                              borderWidth: 1, borderColor: `${addon.accent}28`, marginBottom: 6,
+                            }}>
+                              <Text style={{ color: addon.accent, fontSize: 9, fontWeight: '800', letterSpacing: 1.5, textTransform: 'uppercase' }}>
+                                {addon.tagline}
+                              </Text>
+                            </View>
+                            <Text style={{ color: 'white', fontWeight: '900', fontSize: 22 }}>{addon.price}</Text>
+                          </View>
+                        </View>
+
+                        <Text style={{ color: 'white', fontWeight: '800', fontSize: 18, marginBottom: 8 }}>{addon.name}</Text>
+                        <Text style={{ color: 'rgba(255,255,255,0.5)', fontSize: 13, lineHeight: 20, marginBottom: 18 }}>{addon.desc}</Text>
+
+                        {/* Features */}
+                        <View style={{ gap: 10, marginBottom: 20 }}>
+                          {addon.features.map((feat) => (
+                            <View key={feat} style={{ flexDirection: 'row', alignItems: 'center' }}>
+                              <View style={{
+                                width: 20, height: 20, borderRadius: 6,
+                                backgroundColor: `${addon.accent}15`,
+                                alignItems: 'center', justifyContent: 'center',
+                                marginRight: 12, borderWidth: 1, borderColor: `${addon.accent}30`,
+                              }}>
+                                <Check size={12} color={addon.accent} strokeWidth={3} />
+                              </View>
+                              <Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: 13 }}>{feat}</Text>
+                            </View>
+                          ))}
+                        </View>
+
+                        {/* Included-in note */}
+                        <View style={{
+                          backgroundColor: `${addon.accent}10`, borderRadius: 10,
+                          paddingHorizontal: 14, paddingVertical: 8,
+                          borderWidth: 1, borderColor: `${addon.accent}20`, marginBottom: 20,
+                          flexDirection: 'row', alignItems: 'center', gap: 8,
+                        }}>
+                          <Check size={13} color={addon.accent} strokeWidth={3} />
+                          <Text style={{ color: addon.accent, fontSize: 11, fontWeight: '600', flex: 1 }}>{addon.includedIn}</Text>
+                        </View>
+
+                        {/* CTA */}
+                        <TouchableOpacity
+                          style={{
+                            width: '100%', paddingVertical: 14, borderRadius: 18,
+                            alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 8,
+                            borderWidth: 1.5, borderColor: `${addon.accent}55`,
+                            backgroundColor: 'transparent',
+                          }}
+                          onPress={() => openRegistrationModal(`${addon.name} Add-On`)}
+                          activeOpacity={0.8}
+                        >
+                          <Text style={{ color: addon.accent, fontWeight: '700', fontSize: 14 }}>Talk to Sales</Text>
+                          <MoveRight size={16} color={addon.accent} />
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  </View>
+                ))}
+              </View>
+            </View>
+
+            {/* Contact CTA for Custom */}
+            {selectedTier === 'custom' && (
+              <View style={{ alignItems: 'center', marginTop: 36 }}>
+                <Text style={{ color: 'rgba(255,255,255,0.45)', fontSize: 13, marginBottom: 12 }}>
+                  Need a fully custom quote? Talk to our team directly.
+                </Text>
+                <TouchableOpacity
+                  style={{
+                    flexDirection: 'row', alignItems: 'center', gap: 8,
+                    backgroundColor: 'rgba(139,92,246,0.12)',
+                    borderWidth: 1.5, borderColor: 'rgba(139,92,246,0.35)',
+                    borderRadius: 16, paddingVertical: 14, paddingHorizontal: 28,
+                  }}
+                  onPress={() => openRegistrationModal('Custom Enterprise')}
+                  activeOpacity={0.8}
+                >
+                  <Text style={{ color: '#A78BFA', fontWeight: '700', fontSize: 14 }}>Schedule a Demo</Text>
+                  <MoveRight size={16} color="#A78BFA" />
+                </TouchableOpacity>
+              </View>
+            )}
+          </View>
+
+
+          {/* ═══════════════════════ ACCESS PORTAL / SIGN IN ═══════════════ */}
+          <View style={{ paddingHorizontal: 24, paddingVertical: 40, alignItems: 'center' }}>
+            <View style={{
+              backgroundColor: 'rgba(19, 16, 58, 0.4)',
+              borderRadius: 32,
+              padding: 48,
+              borderWidth: 1,
+              borderColor: 'rgba(255, 255, 255, 0.08)',
+              alignItems: 'center',
+              position: 'relative',
+              overflow: 'hidden',
+              width: '100%',
+              maxWidth: 1000,
+            }}>
+              {/* Blur background effect */}
+              {Platform.OS === 'web' && (
+                <div style={{ position: 'absolute', inset: 0, backdropFilter: 'blur(20px)', zIndex: -1 }} />
+              )}
+
+              {/* Decorative background glowing orbs */}
+              <View style={{ position: 'absolute', top: -100, right: -100, width: 300, height: 300, borderRadius: 150, backgroundColor: 'rgba(255, 107, 0, 0.08)', filter: Platform.OS === 'web' ? 'blur(60px)' : undefined }} />
+              <View style={{ position: 'absolute', bottom: -100, left: -100, width: 300, height: 300, borderRadius: 150, backgroundColor: 'rgba(139, 92, 246, 0.08)', filter: Platform.OS === 'web' ? 'blur(60px)' : undefined }} />
+
+              <View style={{
+                width: 64, height: 64, borderRadius: 24,
+                backgroundColor: 'rgba(255, 107, 0, 0.1)',
+                alignItems: 'center', justifyContent: 'center',
+                marginBottom: 24,
+                borderWidth: 1, borderColor: 'rgba(255, 107, 0, 0.2)'
+              }}>
+                <LogIn size={28} color="#FF6B00" />
+              </View>
+
+              <Text style={{ color: 'white', fontSize: 36, fontWeight: '900', marginBottom: 16, textAlign: 'center', letterSpacing: -1 }}>Access you portal</Text>
+              <Text style={{ color: 'rgba(255,255,255,0.5)', fontSize: 18, marginBottom: 40, textAlign: 'center', maxWidth: 500, lineHeight: 28 }}>
+                Connect with your institution, track your progress, and unlock your personalized learning dashboard.
+              </Text>
+
+              <SignInButtonMain />
             </View>
           </View>
 
-          {/* ═══════════════════════ FOOTER ═══════════════════════ */}
+          {/* ═══════════════════════ GET IN TOUCH FOOTER ═══════════════════════ */}
           <View
-            style={{
-              alignItems: "center",
-              paddingHorizontal: 32,
-              paddingBottom: 24,
-              paddingTop: 32,
-            }}
+            ref={getInTouchRef}
+            onLayout={(e) => handleLayout("getInTouch", e.nativeEvent.layout.y)}
+            style={{ paddingHorizontal: 24, paddingBottom: 60, paddingTop: 60, borderTopWidth: 1, borderColor: 'rgba(255,255,255,0.05)', marginTop: 40, width: '100%', alignItems: 'center' }}
           >
-            <Text
-              style={{
-                color: "rgba(255,255,255,0.35)",
-                fontSize: 14,
-                textAlign: "center",
-              }}
-            >
-              Already have an account?
-            </Text>
-            <TouchableOpacity
-              style={{ marginTop: 8 }}
-              onPress={() => router.push("/(auth)/signIn")}
-            >
-              <Text
-                style={{ color: "#FF8C40", fontWeight: "700", fontSize: 15 }}
-              >
-                Sign In
+            <View style={{ marginBottom: 48, alignItems: 'center' }}>
+              <View style={{
+                width: 48, height: 48, borderRadius: 16, backgroundColor: 'rgba(139, 92, 246, 0.1)',
+                alignItems: 'center', justifyContent: 'center', marginBottom: 16,
+                borderWidth: 1, borderColor: 'rgba(139, 92, 246, 0.2)'
+              }}>
+                <Mail size={24} color="#8B5CF6" />
+              </View>
+              <Text style={{ color: 'white', fontSize: 36, fontWeight: '900', marginBottom: 12, textAlign: 'center', letterSpacing: -1 }}>Get In Touch</Text>
+              <Text style={{ color: 'rgba(255,255,255,0.5)', fontSize: 16, textAlign: 'center', maxWidth: 500, lineHeight: 24 }}>
+                Ready to transform your institution or need help with your current setup? We are here for you.
               </Text>
-            </TouchableOpacity>
+            </View>
+
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 20, justifyContent: 'center', maxWidth: 1000, alignSelf: 'center' }}>
+              {[
+                { title: 'Email Us', value: 'Support@cloudoraltd.live', icon: <Mail size={22} color="#8B5CF6" /> },
+                { title: 'Call Us', value: '+254 759 585 197', icon: <Phone size={22} color="#8B5CF6" /> },
+                { title: 'Instagram', value: '@cloudora.solutions', icon: <Instagram size={22} color="#8B5CF6" /> },
+                { title: 'LinkedIn', value: 'Cloudora Solutions', icon: <Linkedin size={22} color="#8B5CF6" /> },
+              ].map((item, idx) => (
+                <View key={idx} style={{
+                  width: Platform.OS === 'web' && SCREEN_WIDTH > 768 ? '48%' : '100%',
+                  backgroundColor: 'rgba(255,255,255,0.03)',
+                  borderRadius: 24,
+                  padding: 24,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 20,
+                  borderWidth: 1,
+                  borderColor: 'rgba(255,255,255,0.08)',
+                }}>
+                  <View style={{
+                    width: 56, height: 56, borderRadius: 20,
+                    backgroundColor: 'rgba(139, 92, 246, 0.1)',
+                    borderWidth: 1,
+                    borderColor: 'rgba(139, 92, 246, 0.2)',
+                    alignItems: 'center', justifyContent: 'center'
+                  }}>
+                    {item.icon}
+                  </View>
+                  <View>
+                    <Text style={{ color: 'rgba(255,255,255,0.5)', fontSize: 13, marginBottom: 4, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.5 }}>{item.title}</Text>
+                    <Text style={{ color: 'white', fontSize: 16, fontWeight: '800' }}>{item.value}</Text>
+                  </View>
+                </View>
+              ))}
+            </View>
+
+            <View style={{ marginTop: 80, borderTopWidth: 1, borderColor: 'rgba(255,255,255,0.05)', paddingTop: 32, width: '100%', maxWidth: 1000, flexDirection: 'row', justifyContent: 'center' }}>
+              <Text style={{ color: 'rgba(255,255,255,0.4)', textAlign: 'center', fontSize: 14, fontWeight: '500' }}>
+                © {new Date().getFullYear()} Cloudora Solutions. All rights reserved.
+              </Text>
+            </View>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
 
-      {/* Registration Modal */}
-      < Modal
-        animationType="slide"
+      {/* Addon Modal */}
+      <Modal
+        animationType="fade"
         transparent={true}
-        visible={modalVisible}
-        onRequestClose={() => setModalVisible(false)
-        }
+        visible={addonModalVisible}
+        onRequestClose={() => setAddonModalVisible(false)}
       >
-        <View style={{ flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(0,0,0,0.6)" }}>
-          <View style={{ backgroundColor: "#13103A", borderTopLeftRadius: 32, borderTopRightRadius: 32, padding: 24, minHeight: 450 }}>
-            <View style={{ width: 40, height: 4, backgroundColor: "rgba(255,255,255,0.2)", borderRadius: 2, alignSelf: "center", marginBottom: 24 }} />
-            {/* Close button */}
+        <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "rgba(0,0,0,0.8)" }}>
+          <View style={{
+            backgroundColor: "#13103A",
+            borderRadius: 32,
+            padding: 24,
+            width: Platform.OS === 'web' ? 500 : '90%',
+            maxWidth: 500,
+            borderWidth: 1,
+            borderColor: "rgba(255,255,255,0.1)"
+          }}>
             <TouchableOpacity
-              style={{ position: "absolute", top: 24, right: 24, zIndex: 10 }}
-              onPress={() => setModalVisible(false)}
+              style={{ position: "absolute", top: 20, right: 20, zIndex: 10 }}
+              onPress={() => setAddonModalVisible(false)}
             >
               <Text style={{ color: "rgba(255,255,255,0.6)", fontSize: 24, fontWeight: "bold" }}>×</Text>
             </TouchableOpacity>
 
-            {submitted ? (
-              <View style={{ alignItems: "center", paddingVertical: 40 }}>
-                <View style={{ width: 80, height: 80, borderRadius: 40, backgroundColor: "rgba(52, 211, 153, 0.1)", justifyContent: "center", alignItems: "center", marginBottom: 20 }}>
-                  <Check size={40} color="#10B981" />
-                </View>
-                <Text style={{ color: "white", fontSize: 24, fontWeight: "900", textAlign: "center", marginBottom: 12 }}>Request Received!</Text>
-                <Text style={{ color: "rgba(255,255,255,0.6)", textAlign: "center", marginBottom: 32 }}>Our team will reach out to you within 24 hours to set up your {selectedPlan} account.</Text>
-                <TouchableOpacity style={{ backgroundColor: "#FF6B00", paddingHorizontal: 32, paddingVertical: 16, borderRadius: 16 }} onPress={() => setModalVisible(false)}>
-                  <Text style={{ color: "white", fontWeight: "700" }}>Close</Text>
-                </TouchableOpacity>
+            <View style={{ alignItems: 'center', marginBottom: 24 }}>
+              <View style={{
+                width: 64, height: 64, borderRadius: 20,
+                backgroundColor: "rgba(255, 107, 0, 0.1)",
+                justifyContent: "center", alignItems: "center",
+                marginBottom: 16,
+                borderWidth: 1, borderColor: "rgba(255, 107, 0, 0.3)"
+              }}>
+                <Plus size={32} color="#FF6B00" />
               </View>
-            ) : (
-              <>
-                <Text style={{ color: "white", fontSize: 22, fontWeight: "900", marginBottom: 8 }}>Register for {selectedPlan}</Text>
-                <Text style={{ color: "rgba(255,255,255,0.5)", marginBottom: 24 }}>Enter your details and our team will contact you shortly.</Text>
+              <Text style={{ color: "white", fontSize: 24, fontWeight: "900", textAlign: "center" }}>Boost Your Plan</Text>
+              <Text style={{ color: "rgba(255,255,255,0.5)", textAlign: "center", marginTop: 8 }}>Enhance your {selectedPlan} with powerful add-ons.</Text>
+            </View>
 
-                <View style={{ gap: 16, marginBottom: 32 }}>
-                  <TextInput
-                    style={{ backgroundColor: "rgba(255,255,255,0.05)", borderRadius: 16, padding: 18, color: "white", borderWidth: 1, borderColor: "rgba(255,255,255,0.1)" }}
-                    placeholder="Institution Name"
-                    placeholderTextColor="rgba(255,255,255,0.3)"
-                    value={form.name}
-                    onChangeText={(t) => setForm(prev => ({ ...prev, name: t }))}
-                  />
-                  <TextInput
-                    style={{ backgroundColor: "rgba(255,255,255,0.05)", borderRadius: 16, padding: 18, color: "white", borderWidth: 1, borderColor: "rgba(255,255,255,0.1)" }}
-                    placeholder="Contact Email"
-                    placeholderTextColor="rgba(255,255,255,0.3)"
-                    keyboardType="email-address"
-                    value={form.email}
-                    onChangeText={(t) => setForm(prev => ({ ...prev, email: t }))}
-                  />
-                  <TextInput
-                    style={{ backgroundColor: "rgba(255,255,255,0.05)", borderRadius: 16, padding: 18, color: "white", borderWidth: 1, borderColor: "rgba(255,255,255,0.1)", minHeight: 80 }}
-                    placeholder="Additional Message (Optional)"
-                    placeholderTextColor="rgba(255,255,255,0.3)"
-                    multiline
-                    value={form.message}
-                    onChangeText={(t) => setForm(prev => ({ ...prev, message: t }))}
-                  />
-                </View>
+            <View style={{ gap: 12, marginBottom: 24 }}>
+              {TIER_PLANS.addOns.map((addon) => {
+                const isSelected = selectedAddons.includes(addon.name);
+                return (
+                  <TouchableOpacity
+                    key={addon.name}
+                    onPress={() => {
+                      if (isSelected) {
+                        setSelectedAddons(selectedAddons.filter(a => a !== addon.name));
+                      } else {
+                        setSelectedAddons([...selectedAddons, addon.name]);
+                      }
+                    }}
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      backgroundColor: isSelected ? "rgba(255, 107, 0, 0.15)" : "rgba(255,255,255,0.05)",
+                      padding: 16,
+                      borderRadius: 18,
+                      borderWidth: 1.5,
+                      borderColor: isSelected ? "#FF6B00" : "rgba(255,255,255,0.1)",
+                    }}
+                  >
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ color: isSelected ? "white" : "rgba(255,255,255,0.9)", fontWeight: "700", fontSize: 16 }}>{addon.name}</Text>
+                      <Text style={{ color: "rgba(255,255,255,0.45)", fontSize: 12, marginTop: 2 }}>{addon.desc}</Text>
+                    </View>
+                    <View style={{ alignItems: 'flex-end' }}>
+                      <Text style={{ color: "#FF8C40", fontWeight: "800", fontSize: 14 }}>{addon.price}</Text>
+                      {isSelected && (
+                        <View style={{ backgroundColor: "#FF6B00", borderRadius: 8, padding: 2, marginTop: 4 }}>
+                          <Check size={12} color="white" strokeWidth={3} />
+                        </View>
+                      )}
+                    </View>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
 
-                <TouchableOpacity
-                  style={{ backgroundColor: "#FF6B00", paddingVertical: 18, borderRadius: 16, alignItems: "center", flexDirection: 'row', justifyContent: 'center' }}
-                  onPress={handleSignup}
-                  disabled={submitting}
-                >
-                  {submitting ? <ActivityIndicator color="white" style={{ marginRight: 10 }} /> : null}
-                  <Text style={{ color: "white", fontWeight: "800", fontSize: 16 }}>
-                    {submitting ? "Sending Request..." : "Request Setup"}
-                  </Text>
-                </TouchableOpacity>
-              </>
-            )}
+            <View style={{ gap: 12 }}>
+              <TouchableOpacity
+                style={{
+                  backgroundColor: "#FF6B00",
+                  paddingVertical: 18,
+                  borderRadius: 18,
+                  alignItems: "center",
+                  shadowColor: "#FF6B00",
+                  shadowOffset: { width: 0, height: 8 },
+                  shadowOpacity: 0.3,
+                  shadowRadius: 12,
+                }}
+                onPress={proceedToRegistration}
+              >
+                <Text style={{ color: "white", fontWeight: "900", fontSize: 16 }}>
+                  {selectedAddons.length > 0 ? "Add & Continue" : "Skip & Continue"}
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={{ paddingVertical: 12, alignItems: "center" }}
+                onPress={() => setAddonModalVisible(false)}
+              >
+                <Text style={{ color: "rgba(255,255,255,0.4)", fontWeight: "600" }}>Cancel</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
-      </Modal >
-    </SafeAreaView >
+      </Modal>
+
+      {/* Custom Features Modal */}
+      <Modal
+        animationType="fade"
+        transparent={true}
+        visible={customModalVisible}
+        onRequestClose={() => setCustomModalVisible(false)}
+      >
+        <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "rgba(0,0,0,0.8)" }}>
+          <View style={{
+            backgroundColor: "#13103A",
+            borderRadius: 32,
+            padding: 24,
+            width: Platform.OS === 'web' ? 600 : '95%',
+            maxWidth: 600,
+            borderWidth: 1,
+            borderColor: "rgba(255,255,255,0.1)"
+          }}>
+            <TouchableOpacity
+              style={{ position: "absolute", top: 20, right: 20, zIndex: 10 }}
+              onPress={() => setCustomModalVisible(false)}
+            >
+              <Text style={{ color: "rgba(255,255,255,0.6)", fontSize: 24, fontWeight: "bold" }}>×</Text>
+            </TouchableOpacity>
+
+            <View style={{ alignItems: 'center', marginBottom: 24 }}>
+              <View style={{
+                width: 64, height: 64, borderRadius: 20,
+                backgroundColor: "rgba(139, 92, 246, 0.1)",
+                justifyContent: "center", alignItems: "center",
+                marginBottom: 16,
+                borderWidth: 1, borderColor: "rgba(139, 92, 246, 0.3)"
+              }}>
+                <Settings size={32} color="#8B5CF6" />
+              </View>
+              <Text style={{ color: "white", fontSize: 24, fontWeight: "900", textAlign: "center" }}>Configure Custom Plan</Text>
+              <Text style={{ color: "rgba(255,255,255,0.5)", textAlign: "center", marginTop: 8 }}>Select the specialized features and modules for your institution.</Text>
+            </View>
+
+            <View style={{ maxHeight: 400 }}>
+              <ScrollView showsVerticalScrollIndicator={false}>
+                {/* Core Modules Section */}
+                <Text style={{ color: "rgba(255,255,255,0.4)", fontSize: 11, fontWeight: "800", letterSpacing: 1.5, textTransform: "uppercase", marginBottom: 12, marginLeft: 4 }}>Core Modules</Text>
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 24, justifyContent: 'flex-start' }}>
+                  {['Student module', 'Teacher module', 'Parent module'].map((mod) => {
+                    const isSelected = selectedCoreModules.includes(mod);
+                    return (
+                      <TouchableOpacity
+                        key={mod}
+                        onPress={() => {
+                          if (isSelected) {
+                            setSelectedCoreModules(selectedCoreModules.filter(m => m !== mod));
+                          } else {
+                            setSelectedCoreModules([...selectedCoreModules, mod]);
+                          }
+                        }}
+                        style={{
+                          backgroundColor: isSelected ? "rgba(59, 130, 246, 0.2)" : "rgba(255,255,255,0.04)",
+                          paddingHorizontal: 16,
+                          paddingVertical: 12,
+                          borderRadius: 14,
+                          borderWidth: 1.5,
+                          borderColor: isSelected ? "#3B82F6" : "rgba(255,255,255,0.08)",
+                          flexDirection: 'row',
+                          alignItems: 'center',
+                          gap: 8
+                        }}
+                      >
+                        <Text style={{ color: isSelected ? "white" : "rgba(255,255,255,0.7)", fontWeight: "600", fontSize: 13 }}>{mod}</Text>
+                        {isSelected && <Check size={14} color="#3B82F6" strokeWidth={3} />}
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+
+                {/* Custom Modules Section */}
+                <Text style={{ color: "rgba(255,255,255,0.4)", fontSize: 11, fontWeight: "800", letterSpacing: 1.5, textTransform: "uppercase", marginBottom: 12, marginLeft: 4 }}>Custom Modules</Text>
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 24, justifyContent: 'flex-start' }}>
+                  {TIER_PLANS.custom[0].features.map((feat: string) => {
+                    const isSelected = selectedCustomFeatures.includes(feat);
+                    return (
+                      <TouchableOpacity
+                        key={feat}
+                        onPress={() => {
+                          if (isSelected) {
+                            setSelectedCustomFeatures(selectedCustomFeatures.filter(f => f !== feat));
+                          } else {
+                            setSelectedCustomFeatures([...selectedCustomFeatures, feat]);
+                          }
+                        }}
+                        style={{
+                          backgroundColor: isSelected ? "rgba(139, 92, 246, 0.2)" : "rgba(255,255,255,0.04)",
+                          paddingHorizontal: 16,
+                          paddingVertical: 12,
+                          borderRadius: 14,
+                          borderWidth: 1.5,
+                          borderColor: isSelected ? "#8B5CF6" : "rgba(255,255,255,0.08)",
+                          flexDirection: 'row',
+                          alignItems: 'center',
+                          gap: 8
+                        }}
+                      >
+                        <Text style={{ color: isSelected ? "white" : "rgba(255,255,255,0.7)", fontWeight: "600", fontSize: 13 }}>{feat}</Text>
+                        {isSelected && <Check size={14} color="#8B5CF6" strokeWidth={3} />}
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+
+                {/* Add-on Modules Section */}
+                <Text style={{ color: "rgba(255,255,255,0.4)", fontSize: 11, fontWeight: "800", letterSpacing: 1.5, textTransform: "uppercase", marginBottom: 12, marginLeft: 4 }}>Add-on Modules (Included in Custom)</Text>
+                <View style={{ gap: 10, marginBottom: 24 }}>
+                  {TIER_PLANS.addOns.map((addon) => {
+                    const isSelected = selectedAddons.includes(addon.name);
+                    return (
+                      <TouchableOpacity
+                        key={addon.name}
+                        onPress={() => {
+                          if (isSelected) {
+                            setSelectedAddons(selectedAddons.filter(a => a !== addon.name));
+                          } else {
+                            setSelectedAddons([...selectedAddons, addon.name]);
+                          }
+                        }}
+                        style={{
+                          flexDirection: 'row',
+                          alignItems: 'center',
+                          backgroundColor: isSelected ? "rgba(255, 107, 0, 0.15)" : "rgba(255,255,255,0.04)",
+                          padding: 14,
+                          borderRadius: 16,
+                          borderWidth: 1.5,
+                          borderColor: isSelected ? "#FF6B00" : "rgba(255,255,255,0.08)",
+                        }}
+                      >
+                        <View style={{ flex: 1 }}>
+                          <Text style={{ color: isSelected ? "white" : "rgba(255,255,255,0.9)", fontWeight: "700", fontSize: 14 }}>{addon.name}</Text>
+                          <Text style={{ color: "rgba(255,255,255,0.4)", fontSize: 11, marginTop: 1 }}>{addon.desc}</Text>
+                        </View>
+                        {isSelected && (
+                          <View style={{ backgroundColor: "#FF6B00", borderRadius: 8, padding: 2 }}>
+                            <Check size={12} color="white" strokeWidth={3} />
+                          </View>
+                        )}
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              </ScrollView>
+            </View>
+
+            <View style={{ gap: 12 }}>
+              <TouchableOpacity
+                style={{
+                  backgroundColor: "#8B5CF6",
+                  paddingVertical: 18,
+                  borderRadius: 18,
+                  alignItems: "center",
+                  shadowColor: "#8B5CF6",
+                  shadowOffset: { width: 0, height: 8 },
+                  shadowOpacity: 0.3,
+                  shadowRadius: 12,
+                }}
+                onPress={proceedToRegistration}
+              >
+                <Text style={{ color: "white", fontWeight: "900", fontSize: 16 }}>
+                  {(selectedCustomFeatures.length > 0 || selectedCoreModules.length > 0 || selectedAddons.length > 0) ? "Apply & Continue" : "Skip & Continue"}
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={{ paddingVertical: 12, alignItems: "center" }}
+                onPress={() => setCustomModalVisible(false)}
+              >
+                <Text style={{ color: "rgba(255,255,255,0.4)", fontWeight: "600" }}>Cancel</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Registration Modal */}
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={modalVisible}
+        onRequestClose={() => setModalVisible(false)}
+      >
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
+          <View style={{ flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(0,0,0,0.75)" }}>
+            <View style={{
+              backgroundColor: "#13103A",
+              borderTopLeftRadius: 36,
+              borderTopRightRadius: 36,
+              padding: 32,
+              paddingTop: 24,
+              minHeight: 520,
+              borderWidth: 1,
+              borderColor: 'rgba(255, 107, 0, 0.15)',
+              borderBottomWidth: 0,
+            }}>
+              <View style={{ width: 48, height: 5, backgroundColor: "rgba(255,255,255,0.15)", borderRadius: 3, alignSelf: "center", marginBottom: 32 }} />
+
+              <TouchableOpacity
+                style={{ position: "absolute", top: 24, right: 28, zIndex: 10, width: 32, height: 32, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: 16 }}
+                onPress={() => setModalVisible(false)}
+              >
+                <Text style={{ color: "rgba(255,255,255,0.7)", fontSize: 20, fontWeight: "600", lineHeight: 22 }}>×</Text>
+              </TouchableOpacity>
+
+              {submitted ? (
+                <View style={{ alignItems: "center", paddingVertical: 60, flex: 1, justifyContent: 'center' }}>
+                  <View style={{ width: 90, height: 90, borderRadius: 45, backgroundColor: "rgba(16, 185, 129, 0.15)", justifyContent: "center", alignItems: "center", marginBottom: 24, shadowColor: '#10B981', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.4, shadowRadius: 16 }}>
+                    <Check size={44} color="#10B981" strokeWidth={3} />
+                  </View>
+                  <Text style={{ color: "white", fontSize: 28, fontWeight: "900", textAlign: "center", marginBottom: 12, letterSpacing: -0.5 }}>Request Received!</Text>
+                  <Text style={{ color: "rgba(255,255,255,0.6)", textAlign: "center", marginBottom: 40, fontSize: 16, lineHeight: 24, paddingHorizontal: 20 }}>
+                    Thank you! Our team will reach out to you within 24 hours to set up your {selectedPlan} account.
+                  </Text>
+                  <TouchableOpacity
+                    style={{ backgroundColor: "#10B981", paddingHorizontal: 48, paddingVertical: 18, borderRadius: 20, shadowColor: '#10B981', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.3, shadowRadius: 16 }}
+                    onPress={() => setModalVisible(false)}
+                  >
+                    <Text style={{ color: "white", fontWeight: "800", fontSize: 16 }}>Return to Home</Text>
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 20 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 8 }}>
+                    <View style={{ width: 44, height: 44, borderRadius: 16, backgroundColor: 'rgba(255, 107, 0, 0.15)', alignItems: 'center', justifyContent: 'center' }}>
+                      <Building size={22} color="#FF6B00" />
+                    </View>
+                    <View>
+                      <Text style={{ color: "white", fontSize: 24, fontWeight: "900", letterSpacing: -0.5 }}>Request {selectedPlan}</Text>
+                      <Text style={{ color: "#FF6B00", fontWeight: "600", fontSize: 13, textTransform: 'uppercase', letterSpacing: 1 }}>Setup & Onboarding</Text>
+                    </View>
+                  </View>
+
+                  <Text style={{ color: "rgba(255,255,255,0.5)", marginBottom: 32, fontSize: 15, lineHeight: 22, marginTop: 8 }}>Fill out the details below, and our implementation team will contact you to start the process.</Text>
+
+                  <View style={{ gap: 20, marginBottom: 40 }}>
+                    <View>
+                      <Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: 13, fontWeight: '700', marginBottom: 8, marginLeft: 4 }}>Institution Name</Text>
+                      <TextInput
+                        style={{ backgroundColor: "rgba(255,255,255,0.04)", borderRadius: 16, padding: 18, color: "white", borderWidth: 1.5, borderColor: "rgba(255,255,255,0.08)", fontSize: 15 }}
+                        placeholder="E.g. Greenfield Academy"
+                        placeholderTextColor="rgba(255,255,255,0.25)"
+                        value={form.name}
+                        onChangeText={(t) => setForm(prev => ({ ...prev, name: t }))}
+                      />
+                    </View>
+                    <View>
+                      <Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: 13, fontWeight: '700', marginBottom: 8, marginLeft: 4 }}>Contact Email</Text>
+                      <TextInput
+                        style={{ backgroundColor: "rgba(255,255,255,0.04)", borderRadius: 16, padding: 18, color: "white", borderWidth: 1.5, borderColor: "rgba(255,255,255,0.08)", fontSize: 15 }}
+                        placeholder="admin@school.com"
+                        placeholderTextColor="rgba(255,255,255,0.25)"
+                        keyboardType="email-address"
+                        value={form.email}
+                        onChangeText={(t) => setForm(prev => ({ ...prev, email: t }))}
+                      />
+                    </View>
+                    <View>
+                      <Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: 13, fontWeight: '700', marginBottom: 8, marginLeft: 4 }}>Additional Requirements (Optional)</Text>
+                      <TextInput
+                        style={{ backgroundColor: "rgba(255,255,255,0.04)", borderRadius: 16, padding: 18, color: "white", borderWidth: 1.5, borderColor: "rgba(255,255,255,0.08)", minHeight: 100, fontSize: 15, textAlignVertical: 'top' }}
+                        placeholder="Tell us about your specific goals, student count, or any integrations needed..."
+                        placeholderTextColor="rgba(255,255,255,0.25)"
+                        multiline
+                        value={form.message}
+                        onChangeText={(t) => setForm(prev => ({ ...prev, message: t }))}
+                      />
+                    </View>
+                  </View>
+
+                  <TouchableOpacity
+                    style={{
+                      backgroundColor: "#FF6B00",
+                      paddingVertical: 20,
+                      borderRadius: 18,
+                      alignItems: "center",
+                      flexDirection: 'row',
+                      justifyContent: 'center',
+                      shadowColor: '#FF6B00',
+                      shadowOffset: { width: 0, height: 8 },
+                      shadowOpacity: 0.35,
+                      shadowRadius: 16,
+                    }}
+                    onPress={handleSignup}
+                    disabled={submitting}
+                  >
+                    {submitting ? <ActivityIndicator color="white" style={{ marginRight: 12 }} /> : null}
+                    <Text style={{ color: "white", fontWeight: "900", fontSize: 16 }}>
+                      {submitting ? "Sending Request..." : "Request Setup Now"}
+                    </Text>
+                    {!submitting && <MoveRight size={18} color="white" style={{ marginLeft: 8 }} />}
+                  </TouchableOpacity>
+                </ScrollView>
+              )}
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
+    </SafeAreaView>
   );
 }

@@ -1,4 +1,4 @@
-import { CustomPicker } from "@/components/form/CustomPicker";
+﻿import { CustomPicker } from "@/components/form/CustomPicker";
 import { FormInput } from "@/components/form/FormInput";
 import { FormSection } from "@/components/form/FormSection";
 import {
@@ -87,12 +87,12 @@ const CreateSubject = () => {
     const categoryOptions = CATEGORIES.map((cat) => ({ value: cat, label: cat }));
 
     // ── Theme tokens ──────────────────────────────────────────────────────────
-    const surface = isDark ? '#1e1e1e' : '#ffffff';
-    const bg = isDark ? '#121212' : '#f9fafb';
-    const border = isDark ? '#2c2c2c' : '#e5e7eb';
+    const surface = isDark ? '#13103A' : '#ffffff';
+    const bg = isDark ? '#0F0B2E' : '#f9fafb';
+    const border = isDark ? 'rgba(255,255,255,0.1)' : '#e5e7eb';
     const textPrimary = isDark ? '#f1f1f1' : '#111827';
     const textSecondary = isDark ? '#9ca3af' : '#6b7280';
-    const inputBg = isDark ? '#242424' : '#f9fafb';
+    const inputBg = isDark ? '#1A1650' : '#f9fafb';
 
     return (
         <View style={{ flex: 1 }}>
@@ -123,7 +123,7 @@ const CreateSubject = () => {
             >
                 {/* Drag handle */}
                 <View style={{ alignItems: 'center', paddingTop: 12, paddingBottom: 4 }}>
-                    <View style={{ width: 40, height: 4, backgroundColor: isDark ? '#2c2c2c' : '#e5e7eb', borderRadius: 2 }} />
+                    <View style={{ width: 40, height: 4, backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : '#e5e7eb', borderRadius: 2 }} />
                 </View>
 
                 {/* Modal Header */}
@@ -148,7 +148,7 @@ const CreateSubject = () => {
                     </View>
                     <TouchableOpacity
                         onPress={handleClose}
-                        style={{ backgroundColor: isDark ? '#242424' : '#f3f4f6', padding: 8, borderRadius: 12, borderWidth: 1, borderColor: border }}
+                        style={{ backgroundColor: isDark ? '#1A1650' : '#f3f4f6', padding: 8, borderRadius: 12, borderWidth: 1, borderColor: border }}
                     >
                         <Ionicons name="close" size={20} color={textSecondary} />
                     </TouchableOpacity>
@@ -239,7 +239,7 @@ const CreateSubject = () => {
                     gap: 12,
                 }}>
                     <TouchableOpacity
-                        style={{ flex: 1, paddingVertical: 14, borderRadius: 16, alignItems: 'center', backgroundColor: isDark ? '#242424' : '#f3f4f6', borderWidth: 1, borderColor: border }}
+                        style={{ flex: 1, paddingVertical: 14, borderRadius: 16, alignItems: 'center', backgroundColor: isDark ? '#1A1650' : '#f3f4f6', borderWidth: 1, borderColor: border }}
                         onPress={saveDraft}
                     >
                         <Text style={{ color: textSecondary, fontWeight: '600' }}>Save Draft</Text>

@@ -17,11 +17,13 @@ import {
   Settings,
   UserPlus,
   Users,
-  Wallet
+  Wallet,
+  Zap
 } from 'lucide-react-native';
 import React, { useCallback, useEffect, useState } from "react";
 import { ActivityIndicator, ScrollView, Text, TouchableOpacity, View, StatusBar } from "react-native";
-import { SubscriptionBanner, SubscriptionGate, OnboardingTracker, SubscriptionBadge } from "@/components/shared/SubscriptionComponents";
+import { SubscriptionBanner, SubscriptionGate, OnboardingTracker, SubscriptionBadge, AddonRequestModal, AddonRequestButton } from "@/components/shared/SubscriptionComponents";
+import { useSubscriptionTier } from "@/hooks/useSubscriptionTier";
 
 interface QuickActionProps {
   icon: any;
@@ -59,77 +61,36 @@ const QuickAction = ({ icon: Icon, label, onPress, badge }: QuickActionProps) =>
   </TouchableOpacity>
 );
 
-const DebugSessionInfo = ({ onClose }: { onClose: () => void }) => {
-  const [debugInfo, setDebugInfo] = useState<any>({ status: 'Loading...', token: '...' });
-
-  const checkSession = async () => {
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      setDebugInfo({
-        status: session ? 'Active' : 'No Session',
-        token: session?.access_token ? `${session.access_token.substring(0, 15)}...` : 'None',
-        user: session?.user?.email || 'None'
-      });
-    } catch (e: any) {
-      setDebugInfo({ status: 'Error', error: e.message });
-    }
-  };
-
-  useEffect(() => { checkSession(); }, []);
-
-  return (
-    <View className="bg-white dark:bg-[#1a1a1a] p-6 rounded-3xl m-4 border border-red-100 dark:border-red-900/30 shadow-lg">
-      <View className="flex-row justify-between items-center mb-4">
-        <Text className="text-red-800 dark:text-red-400 font-bold text-lg">Technical Diagnostics</Text>
-        <TouchableOpacity onPress={onClose} className="bg-gray-100 dark:bg-gray-800 p-2 rounded-full">
-          <Text className="text-gray-600 dark:text-gray-400 font-bold">✕</Text>
-        </TouchableOpacity>
-      </View>
-      <View className="bg-gray-50 dark:bg-gray-900 p-4 rounded-xl space-y-2">
-        <View className="flex-row justify-between">
-          <Text className="text-xs text-gray-500 font-medium">Status:</Text>
-          <Text className="text-xs text-gray-900 dark:text-white font-mono">{debugInfo.status}</Text>
-        </View>
-        <View className="flex-row justify-between">
-          <Text className="text-xs text-gray-500 font-medium">User:</Text>
-          <Text className="text-xs text-gray-900 dark:text-white font-mono">{debugInfo.user}</Text>
-        </View>
-        <View>
-          <Text className="text-xs text-gray-500 font-medium mb-1">Token:</Text>
-          <Text className="text-[10px] text-gray-400 dark:text-gray-500 font-mono" numberOfLines={2}>{debugInfo.token}</Text>
-        </View>
-      </View>
-      <TouchableOpacity
-        onPress={checkSession}
-        className="bg-red-50 dark:bg-red-950/20 p-3 rounded-xl mt-4 items-center"
-        activeOpacity={0.6}
-      >
-        <Text className="text-red-600 text-xs font-bold uppercase tracking-widest">Refresh Session Info</Text>
-      </TouchableOpacity>
-    </View>
-  );
-};
-
 export default function AdminDashboard() {
-  const { profile, isDemo, signOut, subscriptionPlan, subscriptionStatus, isMaster } = useAuth();
+  const {
+    profile,
+    isDemo,
+    subscriptionPlan,
+    subscriptionStatus,
+    isMain,
+    addonMessaging,
+    addonLibrary,
+    addonFinance,
+    addonAnalytics,
+    addonBursary
+  } = useAuth();
   const { stats, loading: statsLoading } = useDashboardStats();
   const { isDark } = useTheme();
   const [recentUsers, setRecentUsers] = useState<User[]>([]);
   const [loadingUsers, setLoadingUsers] = useState(false);
-  const [showDebug, setShowDebug] = useState(false);
+  const [requestModalVisible, setRequestModalVisible] = useState(false);
 
   const fetchRecentUsers = useCallback(async () => {
     try {
       setLoadingUsers(true);
 
       if (isDemo) {
-        // High-quality mock data for Admin Demo Mode
         const mockUsers: User[] = [
-          { id: 'u1', displayId: 'STU-101', name: 'Emily Davis', email: 'emily@demo.com', role: 'student', joinDate: new Date().toISOString() },
-          { id: 'u2', displayId: 'TEA-001', name: 'John Smith', email: 'john@demo.com', role: 'teacher', joinDate: new Date(Date.now() - 86400000).toISOString() },
-          { id: 'u3', displayId: 'STU-102', name: 'Robert Wilson', email: 'robert@demo.com', role: 'student', joinDate: new Date(Date.now() - 172800000).toISOString() },
-          { id: 'u4', displayId: 'TEA-002', name: 'Sarah Parker', email: 'sarah@demo.com', role: 'teacher', joinDate: new Date(Date.now() - 259200000).toISOString() },
-          { id: 'u5', displayId: 'ADM-001', name: 'Michael Brown', email: 'michael@demo.com', role: 'admin', joinDate: new Date(Date.now() - 345600000).toISOString() },
+          { id: 'u1', displayId: 'STU-101', name: 'Emily Davis', first_name: 'Emily', last_name: 'Davis', email: 'emily@demo.com', role: 'student', joinDate: new Date().toISOString() },
+          { id: 'u2', displayId: 'TEA-001', name: 'John Smith', first_name: 'John', last_name: 'Smith', email: 'john@demo.com', role: 'teacher', joinDate: new Date(Date.now() - 86400000).toISOString() },
+          { id: 'u3', displayId: 'STU-102', name: 'Robert Wilson', first_name: 'Robert', last_name: 'Wilson', email: 'robert@demo.com', role: 'student', joinDate: new Date(Date.now() - 172800000).toISOString() },
+          { id: 'u4', displayId: 'TEA-002', name: 'Sarah Parker', first_name: 'Sarah', last_name: 'Parker', email: 'sarah@demo.com', role: 'teacher', joinDate: new Date(Date.now() - 259200000).toISOString() },
+          { id: 'u5', displayId: 'ADM-001', name: 'Michael Brown', first_name: 'Michael', last_name: 'Brown', email: 'michael@demo.com', role: 'admin', joinDate: new Date(Date.now() - 345600000).toISOString() },
         ];
         setRecentUsers(mockUsers);
         return;
@@ -152,7 +113,9 @@ export default function AdminDashboard() {
           return {
             id: u.id,
             displayId,
-            name: u.full_name || 'Unknown User',
+            name: u.full_name || `${u.first_name || ''} ${u.last_name || ''}`.trim() || 'Unknown User',
+            first_name: u.first_name || '',
+            last_name: u.last_name || '',
             email: u.email || 'No Email',
             role: u.role,
             status: u.status,
@@ -175,31 +138,34 @@ export default function AdminDashboard() {
   }, [fetchRecentUsers, profile, isDemo]);
 
   // Theme-aware color tokens
-  const cardBg = isDark ? '#121212' : '#111827';
-  const surfaceBg = isDark ? '#1a1a1a' : '#ffffff';
-  const surfaceBorder = isDark ? '#1f2937' : '#f3f4f6';
+  const cardBg = isDark ? '#0F0B2E' : '#111827';
+  const surfaceBg = isDark ? '#13103A' : '#ffffff';
+  const surfaceBorder = isDark ? '#1A1650' : '#f3f4f6';
   const textPrimary = isDark ? '#f9fafb' : '#111827';
   const textMuted = isDark ? '#6b7280' : '#6b7280';
-  const textSubtle = isDark ? '#9ca3af' : '#9ca3af';
-  const badgeBg = isDark ? '#1f2937' : '#f9fafb';
+
+  const tier = useSubscriptionTier();
+
+  // Create a comma-separated list of active add-ons/features
+  const activeFeatures = [
+    tier.hasFinance && 'Finance',
+    tier.hasLibrary && 'Library',
+    tier.hasAnalytics && 'Analytics',
+    tier.hasMessaging && 'Messaging',
+    tier.hasBursary && 'Bursary',
+    tier.hasDiary && 'Diary',
+  ].filter(Boolean).join(', ');
 
   return (
-    <View className="flex-1 bg-white dark:bg-black">
+    <View className="flex-1 bg-white dark:bg-navy">
       <StatusBar barStyle={isDark ? "light-content" : "dark-content"} />
-      <SubscriptionBanner />
       <UnifiedHeader
         title="Welcome back,"
-        subtitle={profile?.full_name?.split(" ")[0] || "Administrator"}
+        subtitle={profile?.first_name || profile?.full_name?.split(" ")[0] || "Administrator"}
         role="Admin"
         showNotification={true}
-        showMasterBadge={isMaster}
+        showMainBadge={isMain}
       />
-
-      {showDebug && (
-        <View className="absolute inset-0 z-50 bg-black/40 justify-center p-4">
-          <DebugSessionInfo onClose={() => setShowDebug(false)} />
-        </View>
-      )}
 
       <ScrollView
         style={{ flex: 1 }}
@@ -207,68 +173,52 @@ export default function AdminDashboard() {
         contentContainerStyle={{ paddingBottom: 100, padding: 24, paddingTop: 10 }}
       >
         <View>
-          {/* Onboarding Tracker */}
           <OnboardingTracker stats={stats} />
 
-          {/* Stat Cards */}
-          {statsLoading ? (
-            <View className="flex-row mb-8">
-              <View className="flex-1 bg-gray-200 dark:bg-gray-800 h-32 rounded-3xl mr-2" />
-              <View className="flex-1 bg-gray-200 dark:bg-gray-800 h-32 rounded-3xl ml-2" />
-            </View>
-          ) : (
-            <View className="flex-row mb-10">
-              {/* Students Card */}
-              <View style={{
-                flex: 1, backgroundColor: cardBg,
-                padding: 20, borderRadius: 24, marginRight: 6,
-                shadowColor: "#000", shadowOffset: { width: 0, height: 8 },
-                shadowOpacity: 0.15, shadowRadius: 10, elevation: 8,
-                minHeight: 140, justifyContent: 'space-between',
-                borderWidth: isDark ? 1 : 0, borderColor: '#1f2937',
-              }}>
-                <View>
-                  <View style={{ backgroundColor: "rgba(255,255,255,0.1)", width: 42, height: 42, borderRadius: 12, alignItems: "center", justifyContent: "center", marginBottom: 16 }}>
-                    <IconUsers size={22} color="white" />
-                  </View>
-                  <Text style={{ color: "white", fontSize: 26, fontWeight: "700", letterSpacing: -0.5 }}>
-                    {stats.find(s => s.label === "Total Students")?.value || "0"}
-                  </Text>
+          <View className="flex-row mb-10">
+            <View style={{
+              flex: 1, backgroundColor: cardBg,
+              padding: 20, borderRadius: 24, marginRight: 6,
+              shadowColor: "#000", shadowOffset: { width: 0, height: 8 },
+              shadowOpacity: 0.15, shadowRadius: 10, elevation: 8,
+              minHeight: 140, justifyContent: 'space-between',
+              borderWidth: isDark ? 1 : 0, borderColor: '#1f2937',
+            }}>
+              <View>
+                <View style={{ backgroundColor: "rgba(255,255,255,0.1)", width: 42, height: 42, borderRadius: 12, alignItems: "center", justifyContent: "center", marginBottom: 16 }}>
+                  <IconUsers size={22} color="white" />
                 </View>
-                <Text style={{ color: "rgba(255,255,255,0.5)", fontSize: 10, fontWeight: "600", textTransform: "uppercase", letterSpacing: 1.2 }}>
-                  Total Students
+                <Text style={{ color: "white", fontSize: 26, fontWeight: "700", letterSpacing: -0.5 }}>
+                  {stats.find(s => s.label === "Total Students")?.value || "0"}
                 </Text>
               </View>
+              <Text style={{ color: "rgba(255,255,255,0.5)", fontSize: 10, fontWeight: "600", textTransform: "uppercase", letterSpacing: 1.2 }}>
+                Total Students
+              </Text>
+            </View>
 
-              {/* Revenue Card — always orange */}
-              <View style={{
-                flex: 1, backgroundColor: "#FF6B00",
-                padding: 20, borderRadius: 24, marginLeft: 6,
-                shadowColor: "#FF6B00", shadowOffset: { width: 0, height: 8 },
-                shadowOpacity: 0.25, shadowRadius: 10, elevation: 12,
-                minHeight: 140, justifyContent: 'space-between',
-              }}>
-                <View>
-                  <View style={{ backgroundColor: "rgba(255,255,255,0.2)", width: 42, height: 42, borderRadius: 12, alignItems: "center", justifyContent: "center", marginBottom: 16 }}>
-                    <IconWallet size={22} color="white" />
-                  </View>
-                  <Text style={{ color: "white", fontSize: 22, fontWeight: "700", letterSpacing: -1 }} numberOfLines={1} adjustsFontSizeToFit>
-                    {stats.find(s => s.label === "Revenue")?.value || "KES 0"}
-                  </Text>
-                  {stats.find(s => s.label === "Revenue")?.subValue && (
-                    <Text style={{ color: "rgba(255,255,255,0.8)", fontSize: 12, fontWeight: "500", marginTop: 2 }}>
-                      {stats.find(s => s.label === "Revenue")?.subValue}
-                    </Text>
-                  )}
+            <View style={{
+              flex: 1, backgroundColor: "#FF6B00",
+              padding: 20, borderRadius: 24, marginLeft: 6,
+              shadowColor: "#FF6B00", shadowOffset: { width: 0, height: 8 },
+              shadowOpacity: 0.25, shadowRadius: 10, elevation: 12,
+              minHeight: 140, justifyContent: 'space-between',
+            }}>
+              <View>
+                <View style={{ backgroundColor: "rgba(255,255,255,0.2)", width: 42, height: 42, borderRadius: 12, alignItems: "center", justifyContent: "center", marginBottom: 16 }}>
+                  <IconWallet size={22} color="white" />
                 </View>
-                <Text style={{ color: "rgba(255,255,255,0.85)", fontSize: 10, fontWeight: "600", textTransform: "uppercase", letterSpacing: 1.2 }}>
-                  Total Revenue
+                <Text style={{ color: "white", fontSize: 22, fontWeight: "700", letterSpacing: -1 }} numberOfLines={1} adjustsFontSizeToFit>
+                  {stats.find(s => s.label === "Revenue")?.value || "KES 0"}
                 </Text>
               </View>
+              <Text style={{ color: "rgba(255,255,255,0.85)", fontSize: 10, fontWeight: "600", textTransform: "uppercase", letterSpacing: 1.2 }}>
+                Total Revenue
+              </Text>
             </View>
-          )}
+          </View>
 
-          {/* Subscription Usage */}
+          {/* Enhance Your Plan Card */}
           <View style={{ marginBottom: 32 }}>
             <View style={{
               backgroundColor: surfaceBg,
@@ -276,56 +226,100 @@ export default function AdminDashboard() {
               borderRadius: 32,
               borderWidth: 1,
               borderColor: surfaceBorder,
-              shadowColor: "#000",
+              shadowColor: "#FF6B00",
               shadowOffset: { width: 0, height: 4 },
-              shadowOpacity: 0.05,
+              shadowOpacity: 0.1,
               shadowRadius: 10,
-              elevation: 2
+              elevation: 4
             }}>
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-                <View>
-                  <Text style={{ fontSize: 18, fontWeight: '800', color: textPrimary, letterSpacing: -0.5 }}>Capacity Usage</Text>
-                  <Text style={{ fontSize: 10, fontWeight: '600', color: textMuted, textTransform: 'uppercase', letterSpacing: 1 }}>{(subscriptionPlan || 'trial').toUpperCase()} PLAN</Text>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+                <View className="flex-row items-center">
+                  <View className="w-10 h-10 bg-orange-50 rounded-xl items-center justify-center mr-3">
+                    <Zap size={20} color="#FF6B00" fill="#FF6B00" />
+                  </View>
+                  <View>
+                    <Text className="text-gray-900 dark:text-white font-extrabold text-base">Enhance Your Plan</Text>
+                    <Text className="text-gray-500 dark:text-gray-400 text-[10px] font-bold uppercase tracking-widest">Get specialized modules</Text>
+                  </View>
                 </View>
-                <SubscriptionBadge />
+                <AddonRequestButton onPress={() => setRequestModalVisible(true)} />
               </View>
 
-              <View style={{ height: 10, backgroundColor: isDark ? '#333' : '#f3f4f6', borderRadius: 5, overflow: 'hidden', marginBottom: 16 }}>
-                <View style={{
-                  height: '100%',
-                  width: `${Math.min((parseInt(stats.find(s => s.label === "Total Students")?.value || "0") / (subscriptionPlan === 'trial' ? 50 : subscriptionPlan === 'basic' ? 500 : subscriptionPlan === 'pro' ? 1000 : 100000)) * 100, 100)}%`,
-                  backgroundColor: '#FF6B00',
-                  borderRadius: 5
-                }} />
-              </View>
-
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                <Text style={{ fontSize: 12, fontWeight: '600', color: textMuted }}>
-                  {stats.find(s => s.label === "Total Students")?.value || "0"} Students enrolled
-                </Text>
-                <Text style={{ fontSize: 12, fontWeight: '700', color: textPrimary }}>
-                  {subscriptionPlan === 'premium' ? 'No Limit' : `Limit: ${subscriptionPlan === 'trial' ? '50' : subscriptionPlan === 'basic' ? '500' : '1000'}`}
-                </Text>
+              <View className="flex-row items-center justify-between bg-gray-50 dark:bg-gray-800/50 p-4 rounded-2xl">
+                <View>
+                  <Text className="text-gray-400 text-[10px] font-bold uppercase mb-1">Current Base Plan</Text>
+                  <Text className="text-gray-900 dark:text-white font-bold">{tier.plan === 'premium' ? 'PREMIUM' : tier.plan === 'pro' ? 'PRO' : tier.plan === 'basic' ? 'BASIC' : tier.plan.toUpperCase()}</Text>
+                </View>
+                <View className="h-8 w-[1px] bg-gray-200 dark:bg-gray-700 mx-4" />
+                <View className="flex-1">
+                  <Text className="text-gray-400 text-[10px] font-bold uppercase mb-1">Active Modules</Text>
+                  <Text className="text-gray-900 dark:text-white text-[11px] font-bold" numberOfLines={1}>
+                    {activeFeatures || "Core Modules Only"}
+                  </Text>
+                </View>
               </View>
             </View>
           </View>
 
-          {/* Quick Actions */}
+          {/* Institution Capacity */}
+          <SubscriptionGate minPlan="basic">
+            <View style={{ marginBottom: 32 }}>
+              <View style={{
+                backgroundColor: surfaceBg,
+                padding: 24,
+                borderRadius: 32,
+                borderWidth: 1,
+                borderColor: surfaceBorder,
+                shadowColor: "#000",
+                shadowOffset: { width: 0, height: 4 },
+                shadowOpacity: 0.05,
+                shadowRadius: 10,
+                elevation: 2
+              }}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                  <View>
+                    <Text style={{ fontSize: 18, fontWeight: '800', color: textPrimary, letterSpacing: -0.5 }}>Institution Capacity</Text>
+                    <Text style={{ fontSize: 9, fontWeight: '700', color: '#FF6B00', textTransform: 'uppercase', letterSpacing: 1 }}>{subscriptionPlan === 'trial' ? 'Trial Limit' : 'Scale Usage'}</Text>
+                  </View>
+                </View>
+
+                <View style={{ height: 12, backgroundColor: isDark ? '#1A1650' : '#f3f4f6', borderRadius: 6, overflow: 'hidden', marginBottom: 16, borderWidth: 1, borderColor: surfaceBorder }}>
+                  <View style={{
+                    height: '100%',
+                    width: `${Math.min((parseInt(stats.find(s => s.label === "Total Students")?.value || "0") / (subscriptionPlan === 'trial' ? 50 : subscriptionPlan === 'basic' ? 500 : subscriptionPlan === 'pro' ? 1000 : 100000)) * 100, 100)}%`,
+                    backgroundColor: '#FF6B00',
+                    borderRadius: 6
+                  }} />
+                </View>
+
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Text style={{ fontSize: 12, fontWeight: '600', color: textMuted }}>
+                    {stats.find(s => s.label === "Total Students")?.value || "0"} Students enrolled
+                  </Text>
+                  <Text style={{ fontSize: 12, fontWeight: '700', color: textPrimary }}>
+                    {subscriptionPlan === 'premium' || subscriptionPlan === 'custom' ? 'Unlimited' : `Limit: ${subscriptionPlan === 'trial' ? '50' : subscriptionPlan === 'basic' ? '500' : '1000'}`}
+                  </Text>
+                </View>
+              </View>
+            </View>
+          </SubscriptionGate>
+
           <View className="mb-10">
             <Text className="text-lg font-bold text-gray-900 dark:text-white mb-4 px-1">Quick Actions</Text>
             <View style={{ flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between" }}>
-              <SubscriptionGate>
-                <QuickAction icon={IconUserPlus} label="Enroll User" onPress={() => router.push("/(admin)/users/create")} badge={<SubscriptionBadge />} />
-              </SubscriptionGate>
-              <QuickAction icon={IconBookOpen} label="Library" onPress={() => router.navigate("/(admin)/management/library" as any)} />
+              <QuickAction icon={IconUserPlus} label="Enroll User" onPress={() => router.push("/(admin)/users/create")} />
               <SubscriptionGate minPlan="pro">
-                <QuickAction icon={IconWallet} label="Finance" onPress={() => router.navigate("/(admin)/finance" as any)} badge={<SubscriptionBadge />} />
+                <QuickAction icon={IconBookOpen} label="Library" onPress={() => router.navigate("/(admin)/management/library" as any)} />
               </SubscriptionGate>
-              <QuickAction icon={IconBarChart3} label="Analytics" onPress={() => router.navigate("/(admin)/management/analytics" as any)} />
+              <SubscriptionGate minPlan="premium">
+                <QuickAction icon={IconWallet} label="Finance" onPress={() => router.navigate("/(admin)/finance" as any)} />
+              </SubscriptionGate>
+              <SubscriptionGate minPlan="premium">
+                <QuickAction icon={IconBarChart3} label="Analytics" onPress={() => router.navigate("/(admin)/management/analytics" as any)} />
+              </SubscriptionGate>
             </View>
           </View>
 
-          {/* Recent Users */}
           <View>
             <View className="flex-row justify-between items-end mb-5 px-1">
               <Text className="text-lg font-bold text-gray-900 dark:text-white">Recent Users</Text>
@@ -339,42 +333,50 @@ export default function AdminDashboard() {
                 <ActivityIndicator color="#FF6900" />
               </View>
             ) : recentUsers.length === 0 ? (
-              <View className="bg-white dark:bg-[#121212] p-8 rounded-3xl border border-dashed border-gray-200 dark:border-gray-800 items-center justify-center mb-6">
+              <View className="bg-white dark:bg-[#0F0B2E] p-8 rounded-3xl border border-dashed border-gray-200 dark:border-gray-800 items-center justify-center mb-6">
                 <View className="w-12 h-12 bg-gray-50 dark:bg-gray-800 rounded-full items-center justify-center mb-3">
                   <IconUsers size={24} color="#9ca3af" />
                 </View>
                 <Text className="text-gray-500 dark:text-gray-400 font-medium">No recent activity detected</Text>
-                <Text className="text-gray-400 dark:text-gray-500 text-xs mt-1 text-center">New users will appear here once they join.</Text>
               </View>
             ) : (
-              <>
-                {/* Mobile ScrollView */}
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} className="flex-row -mx-6 px-6" contentContainerStyle={{ paddingRight: 24 }}>
-                  {recentUsers.map((user) => (
-                    <View key={user.id} className="bg-white dark:bg-[#1a1a1a] p-5 rounded-3xl border border-gray-100 dark:border-gray-800 mr-4 w-72">
-                      <View className="flex-row items-center justify-between mb-4">
-                        <View className={`h-10 w-10 rounded-xl items-center justify-center ${user.role === 'student' ? 'bg-orange-50 dark:bg-orange-950/30' : user.role === 'teacher' ? 'bg-purple-50 dark:bg-purple-950/30' : 'bg-blue-50 dark:bg-blue-950/30'}`}>
-                          {user.role === 'student' ? <IconGraduationCap size={20} color="#FF6B00" /> :
-                            user.role === 'teacher' ? <IconSchool size={20} color="#8b5cf6" /> :
-                              <IconSettings size={20} color="#3b82f6" />}
-                        </View>
-                        <View className="bg-gray-50 dark:bg-gray-800 px-2 py-1 rounded-lg">
-                          <Text className="text-gray-400 dark:text-gray-500 font-bold text-[10px]">
-                            {user.joinDate ? new Date(user.joinDate).toLocaleDateString() : 'N/A'}
-                          </Text>
-                        </View>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} className="flex-row -mx-6 px-6" contentContainerStyle={{ paddingRight: 24 }}>
+                {recentUsers.map((user) => (
+                  <View key={user.id} className="bg-white dark:bg-[#1a1a1a] p-5 rounded-3xl border border-gray-100 dark:border-gray-800 mr-4 w-72">
+                    <View className="flex-row items-center justify-between mb-4">
+                      <View className={`h-10 w-10 rounded-xl items-center justify-center ${user.role === 'student' ? 'bg-orange-50 dark:bg-orange-950/30' : user.role === 'teacher' ? 'bg-purple-50 dark:bg-purple-950/30' : 'bg-blue-50 dark:bg-blue-950/30'}`}>
+                        {user.role === 'student' ? <IconGraduationCap size={20} color="#FF6B00" /> :
+                          user.role === 'teacher' ? <IconSchool size={20} color="#8b5cf6" /> :
+                            <IconSettings size={20} color="#3b82f6" />}
                       </View>
-                      <Text className="text-gray-900 dark:text-white font-bold text-base mb-1" numberOfLines={1}>{user.name}</Text>
-                      <Text className="text-gray-600 dark:text-gray-300 text-xs font-bold uppercase tracking-wider mb-1">{user.role}</Text>
-                      <Text className="text-gray-400 dark:text-gray-500 text-[10px] font-mono">{user.displayId}</Text>
+                      <View className="bg-gray-50 dark:bg-gray-800 px-2 py-1 rounded-lg">
+                        <Text className="text-gray-400 dark:text-gray-500 font-bold text-[10px]">
+                          {user.joinDate ? new Date(user.joinDate).toLocaleDateString() : 'N/A'}
+                        </Text>
+                      </View>
                     </View>
-                  ))}
-                </ScrollView>
-              </>
+                    <Text className="text-gray-900 dark:text-white font-bold text-base mb-1" numberOfLines={1}>{user.name}</Text>
+                    <Text className="text-gray-600 dark:text-gray-300 text-xs font-bold uppercase tracking-wider mb-1">{user.role}</Text>
+                    <Text className="text-gray-400 dark:text-gray-500 text-[10px] font-mono">{user.displayId}</Text>
+                  </View>
+                ))}
+              </ScrollView>
             )}
           </View>
         </View>
       </ScrollView>
+
+      <AddonRequestModal
+        visible={requestModalVisible}
+        onClose={() => setRequestModalVisible(false)}
+        currentAddons={{
+          library: addonLibrary,
+          messaging: addonMessaging,
+          finance: addonFinance,
+          analytics: addonAnalytics,
+          bursary: addonBursary,
+        }}
+      />
     </View>
   );
 }

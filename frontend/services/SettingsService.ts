@@ -56,6 +56,11 @@ export const SettingsService = {
         return response.data;
     },
 
+    adminResetPassword: async (targetUserId: string, newPassword: string): Promise<{ message: string }> => {
+        const response = await api.post('/auth/admin-reset-password', { targetUserId, newPassword });
+        return response.data;
+    },
+
     forgotPassword: async (email: string): Promise<{ message: string }> => {
         const response = await api.post('/auth/forgot-password', { email });
         return response.data;

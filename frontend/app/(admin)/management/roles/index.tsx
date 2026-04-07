@@ -1,4 +1,4 @@
-import { UnifiedHeader } from "@/components/common/UnifiedHeader";
+﻿import { UnifiedHeader } from "@/components/common/UnifiedHeader";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useRouter } from 'expo-router';
 import { Check, Lock, Shield, X } from 'lucide-react-native';
@@ -6,12 +6,12 @@ import React from 'react';
 import { Modal, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 
 const RoleCard = ({ title, description, permissions, isDefault, onEdit, isDark }: any) => {
-    const surface = isDark ? '#1e1e1e' : '#ffffff';
-    const border = isDark ? '#2c2c2c' : '#f1f5f9';
+    const surface = isDark ? '#13103A' : '#ffffff';
+    const border = isDark ? 'rgba(255,255,255,0.1)' : '#f1f5f9';
     const textPrimary = isDark ? '#f1f1f1' : '#0f172a';
     const textSecondary = isDark ? '#9ca3af' : '#64748b';
-    const chipBg = isDark ? '#242424' : '#f8fafc';
-    const chipBorder = isDark ? '#2c2c2c' : '#f1f5f9';
+    const chipBg = isDark ? '#1A1650' : '#f8fafc';
+    const chipBorder = isDark ? 'rgba(255,255,255,0.1)' : '#f1f5f9';
 
     return (
         <View style={{ backgroundColor: surface, padding: 24, borderRadius: 24, borderWidth: 1, borderColor: border, marginBottom: 20 }}>
@@ -75,8 +75,8 @@ const RoleCard = ({ title, description, permissions, isDefault, onEdit, isDark }
 };
 
 const PermissionModal = ({ visible, onClose, roleName, permissions, isDark }: any) => {
-    const surface = isDark ? '#1e1e1e' : '#ffffff';
-    const border = isDark ? '#2c2c2c' : '#f8fafc';
+    const surface = isDark ? '#13103A' : '#ffffff';
+    const border = isDark ? 'rgba(255,255,255,0.1)' : '#f8fafc';
     const textPrimary = isDark ? '#f1f1f1' : '#0f172a';
     const textSecondary = isDark ? '#9ca3af' : '#94a3b8';
 
@@ -91,16 +91,16 @@ const PermissionModal = ({ visible, onClose, roleName, permissions, isDark }: an
                             <Text style={{ fontSize: 22, fontWeight: '900', color: textPrimary }}>Manage Permissions</Text>
                             <Text style={{ color: textSecondary, fontWeight: '500', marginTop: 2 }}>{roleName}</Text>
                         </View>
-                        <TouchableOpacity onPress={onClose} style={{ backgroundColor: isDark ? '#242424' : '#f1f5f9', padding: 8, borderRadius: 999, borderWidth: 1, borderColor: isDark ? '#2c2c2c' : '#e2e8f0' }}>
+                        <TouchableOpacity onPress={onClose} style={{ backgroundColor: isDark ? '#1A1650' : '#f1f5f9', padding: 8, borderRadius: 999, borderWidth: 1, borderColor: isDark ? 'rgba(255,255,255,0.1)' : '#e2e8f0' }}>
                             <X size={20} color={textPrimary} />
                         </TouchableOpacity>
                     </View>
 
                     <ScrollView style={{ maxHeight: 384, marginBottom: 24 }}>
                         {allPerms.map((perm) => (
-                            <TouchableOpacity key={perm} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: isDark ? '#2c2c2c' : '#f8fafc' }}>
+                            <TouchableOpacity key={perm} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: isDark ? 'rgba(255,255,255,0.1)' : '#f8fafc' }}>
                                 <Text style={{ fontSize: 15, fontWeight: '600', color: permissions.includes(perm) ? textPrimary : textSecondary }}>{perm}</Text>
-                                <View style={{ width: 24, height: 24, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: permissions.includes(perm) ? '#10b981' : 'transparent', borderWidth: permissions.includes(perm) ? 0 : 2, borderColor: isDark ? '#2c2c2c' : '#e2e8f0' }}>
+                                <View style={{ width: 24, height: 24, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: permissions.includes(perm) ? '#10b981' : 'transparent', borderWidth: permissions.includes(perm) ? 0 : 2, borderColor: isDark ? 'rgba(255,255,255,0.1)' : '#e2e8f0' }}>
                                     {permissions.includes(perm) && <Check size={14} color="white" />}
                                 </View>
                             </TouchableOpacity>
@@ -130,7 +130,7 @@ export default function RolesAndPermissions() {
     ];
 
     return (
-        <View style={{ flex: 1, backgroundColor: isDark ? '#121212' : '#f9fafb' }}>
+        <View style={{ flex: 1, backgroundColor: isDark ? '#0F0B2E' : '#f9fafb' }}>
             <UnifiedHeader
                 title="Management"
                 subtitle="Permissions"

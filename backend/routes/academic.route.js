@@ -11,19 +11,23 @@ const {
     getAnnouncements
 } = require("../controllers/academic.controller");
 
+const { authorizeRoles } = require("../middleware/authRole");
+
+router.use(authMiddleware);
+
 // Materials
-router.put("/materials", authMiddleware, updateMaterials);
+router.put("/materials", authorizeRoles(["admin", "teacher"]), updateMaterials);
 
 // Assignments
-router.post("/assignments", authMiddleware, createAssignment);
-router.get("/assignments", authMiddleware, getAssignments);
+router.post("/assignments", authorizeRoles(["admin", "teacher"]), createAssignment);
+router.get("/assignments", authorizeRoles(["admin", "teacher", "student"]), getAssignments);
 
 // Submissions
-router.post("/submissions", authMiddleware, submitAssignment);
-router.put("/submissions/:id/grade", authMiddleware, gradeSubmission);
+router.post("/submissions", authorizeRoles(["student"]), submitAssignment);
+router.put("/submissions/:id/grade", authorizeRoles(["admin", "teacher"]), gradeSubmission);
 
 // Announcements
-router.post("/announcements", authMiddleware, createAnnouncement);
-router.get("/announcements", authMiddleware, getAnnouncements);
+router.post("/announcements", authorizeRoles(["admin", "teacher"]), createAnnouncement);
+router.get("/announcements", authorizeRoles(["admin", "teacher", "student", "parent"]), getAnnouncements);
 
 module.exports = router;

@@ -1,4 +1,4 @@
-import { useAuth } from "@/contexts/AuthContext";
+﻿import { useAuth } from "@/contexts/AuthContext";
 import { useTheme } from "@/contexts/ThemeContext";
 import { LibraryAPI, useLibraryAPI } from "@/services/LibraryService";
 import { AddUpdateDeleteBooksFormProps, FrontendBook, FrontendBorrowedBook } from "@/types/types";
@@ -193,7 +193,7 @@ const AddUpdateDeleteBooksForm: React.FC<AddUpdateDeleteBooksFormProps> = ({
   const renderBookItem = (book: FrontendBook, borrowed = false) => (
     <View
       key={book.id}
-      className="bg-white dark:bg-[#1a1a1a] rounded-xl p-4 mb-3 shadow-sm border border-teal-100 dark:border-teal-900"
+      className="bg-white dark:bg-navy-surface rounded-xl p-4 mb-3 shadow-sm border border-teal-100 dark:border-teal-900"
     >
       <View className="flex-row justify-between items-start mb-2">
         <View className="flex-1">
@@ -235,9 +235,9 @@ const AddUpdateDeleteBooksForm: React.FC<AddUpdateDeleteBooksFormProps> = ({
   );
 
   return (
-    <View className="flex-1 bg-mint-50 dark:bg-black">
+    <View className="flex-1 bg-mint-50 dark:bg-navy">
       {/* Header */}
-      <View className="bg-white dark:bg-[#121212] p-4 border-b border-teal-100 dark:border-gray-800">
+      <View className="bg-white dark:bg-[#0F0B2E] p-4 border-b border-teal-100 dark:border-gray-800">
         <View className="flex-row justify-between items-center">
           <Text className="text-xl font-bold text-slate-800 dark:text-white">
             Book Management
@@ -272,7 +272,7 @@ const AddUpdateDeleteBooksForm: React.FC<AddUpdateDeleteBooksFormProps> = ({
 
       {/* Search Bar */}
       <View className="px-4 py-2">
-        <View className="flex-row items-center bg-white dark:bg-[#1a1a1a] border border-teal-100 dark:border-gray-800 rounded-xl px-4 py-2 shadow-sm">
+        <View className="flex-row items-center bg-white dark:bg-navy-surface border border-teal-100 dark:border-gray-800 rounded-xl px-4 py-2 shadow-sm">
           <Ionicons name="search" size={20} color={isDark ? "#9CA3AF" : "#6B7280"} />
           <TextInput
             className="flex-1 ml-2 text-slate-800 dark:text-white"
@@ -316,7 +316,7 @@ const AddUpdateDeleteBooksForm: React.FC<AddUpdateDeleteBooksFormProps> = ({
           borrowedBooks.map((borrow) => (
             <View
               key={borrow.id}
-              className="bg-white dark:bg-[#1a1a1a] rounded-xl p-4 mb-3 shadow-sm border border-teal-100 dark:border-teal-900"
+              className="bg-white dark:bg-navy-surface rounded-xl p-4 mb-3 shadow-sm border border-teal-100 dark:border-teal-900"
             >
               <Text className="text-lg font-semibold text-slate-800 dark:text-white mb-1">
                 {borrow.bookTitle}
@@ -341,7 +341,7 @@ const AddUpdateDeleteBooksForm: React.FC<AddUpdateDeleteBooksFormProps> = ({
         animationType="slide"
         presentationStyle="pageSheet"
       >
-        <View className="flex-1 bg-white dark:bg-[#121212]">
+        <View className="flex-1 bg-white dark:bg-[#0F0B2E]">
           <View className="bg-teal-600 dark:bg-teal-900 p-4 pt-12">
             <View className="flex-row justify-between items-center">
               <Text className="text-xl font-bold text-white">
@@ -365,7 +365,7 @@ const AddUpdateDeleteBooksForm: React.FC<AddUpdateDeleteBooksFormProps> = ({
                 Book Title *
               </Text>
               <TextInput
-                className="bg-gray-50 dark:bg-[#1a1a1a] border border-gray-200 dark:border-gray-800 rounded-lg p-3 text-gray-900 dark:text-white"
+                className="bg-gray-50 dark:bg-navy-surface border border-gray-200 dark:border-gray-800 rounded-lg p-3 text-gray-900 dark:text-white"
                 value={formData.title}
                 onChangeText={(text) =>
                   setFormData({ ...formData, title: text })
@@ -381,7 +381,7 @@ const AddUpdateDeleteBooksForm: React.FC<AddUpdateDeleteBooksFormProps> = ({
                 Author *
               </Text>
               <TextInput
-                className="bg-gray-50 dark:bg-[#1a1a1a] border border-gray-200 dark:border-gray-800 rounded-lg p-3 text-gray-900 dark:text-white"
+                className="bg-gray-50 dark:bg-navy-surface border border-gray-200 dark:border-gray-800 rounded-lg p-3 text-gray-900 dark:text-white"
                 value={formData.author}
                 onChangeText={(text) =>
                   setFormData({ ...formData, author: text })
@@ -397,7 +397,7 @@ const AddUpdateDeleteBooksForm: React.FC<AddUpdateDeleteBooksFormProps> = ({
                 ISBN *
               </Text>
               <TextInput
-                className="bg-gray-50 dark:bg-[#1a1a1a] border border-gray-200 dark:border-gray-800 rounded-lg p-3 text-gray-900 dark:text-white"
+                className="bg-gray-50 dark:bg-navy-surface border border-gray-200 dark:border-gray-800 rounded-lg p-3 text-gray-900 dark:text-white"
                 value={formData.isbn}
                 onChangeText={(text) =>
                   setFormData({ ...formData, isbn: text })
@@ -413,7 +413,7 @@ const AddUpdateDeleteBooksForm: React.FC<AddUpdateDeleteBooksFormProps> = ({
                 Category
               </Text>
               <TextInput
-                className="bg-gray-50 dark:bg-[#1a1a1a] border border-gray-200 dark:border-gray-800 rounded-lg p-3 text-gray-900 dark:text-white"
+                className="bg-gray-50 dark:bg-navy-surface border border-gray-200 dark:border-gray-800 rounded-lg p-3 text-gray-900 dark:text-white"
                 value={formData.category}
                 onChangeText={(text) =>
                   setFormData({ ...formData, category: text })
@@ -429,7 +429,7 @@ const AddUpdateDeleteBooksForm: React.FC<AddUpdateDeleteBooksFormProps> = ({
                 Quantity
               </Text>
               <TextInput
-                className="bg-gray-50 dark:bg-[#1a1a1a] border border-gray-200 dark:border-gray-800 rounded-lg p-3 text-gray-900 dark:text-white"
+                className="bg-gray-50 dark:bg-navy-surface border border-gray-200 dark:border-gray-800 rounded-lg p-3 text-gray-900 dark:text-white"
                 value={formData.quantity}
                 onChangeText={(text) =>
                   setFormData({ ...formData, quantity: text })

@@ -92,3 +92,47 @@ exports.checkAndAutoUpdateRates = async () => {
         console.error("Auto-update rates error:", err);
     }
 };
+
+/**
+ * Create a new support request from a user
+ */
+exports.createSupportRequest = async (req, res) => {
+    try {
+        const { subject, description, priority } = req.body;
+        const userId = req.userId;
+        const userRole = req.userRole;
+
+        if (!subject || !description) {
+            return res.status(400).json({ error: "Subject and description are required" });
+        }
+
+        // Fetch user's institution
+        const { data: user } = await supabase
+            .from('users')
+            .select('institution_id')
+            .eq('id', userId)
+            .single();
+
+        const institutionId = user?.institution_id || null;
+
+        const { data, error } = await supabase
+            .from('support_requests')
+            .insert([{
+                user_id: userId,
+                institution_id: institutionId,
+                subject: subject,
+                description: description,
+                priority: priority || 'normal',
+                status: 'pending'
+            }])
+            .select()
+            .single();
+
+        if (error) throw error;
+
+        res.status(201).json({ message: "Support request created", request: data });
+    } catch (err) {
+        console.error("Create support request error:", err);
+        res.status(500).json({ error: "Failed to create support request" });
+    }
+};

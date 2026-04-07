@@ -19,6 +19,8 @@ type Step = 0 | 1 | 2 | 3 | 4;
 
 interface FormData {
     role: Role | null;
+    first_name: string;
+    last_name: string;
     full_name: string;
     email: string;
     phone: string;
@@ -43,6 +45,8 @@ interface FormData {
     linked_students: { student_id: string; relationship: string; name?: string }[];
     create_parent: boolean;
     parent_info: {
+        first_name: string;
+        last_name: string;
         full_name: string;
         email: string;
         phone: string;
@@ -52,7 +56,7 @@ interface FormData {
 }
 
 const initialFormData: FormData = {
-    role: null, full_name: '', email: '', phone: '', gender: '',
+    role: null, first_name: '', last_name: '', full_name: '', email: '', phone: '', gender: '',
     date_of_birth: '', address: '', institution_id: '',
     grade_level: '', academic_year: new Date().getFullYear().toString(),
     parent_contact: '', emergency_contact_name: '', emergency_contact_phone: '',
@@ -62,7 +66,7 @@ const initialFormData: FormData = {
     occupation: '', parent_address: '',
     linked_students: [],
     create_parent: false,
-    parent_info: { full_name: '', email: '', phone: '', occupation: '', address: '' },
+    parent_info: { first_name: '', last_name: '', full_name: '', email: '', phone: '', occupation: '', address: '' },
 };
 
 // ---------- Sanitizers ----------
@@ -71,7 +75,7 @@ const sanitize = (v: string) => v.replace(DANGEROUS_CHARS, '');
 const sanitizeEmail = (v: string) => v.replace(/[^a-zA-Z0-9@._+\-]/g, '');
 const sanitizePhone = (v: string) => v.replace(/[^0-9+\-\s()]/g, '');
 
-// ---------- Component ----------
+// ---------- Main Component ----------
 export default function CreateUserScreen() {
     const router = useRouter();
     const insets = useSafeAreaInsets();
@@ -92,8 +96,8 @@ export default function CreateUserScreen() {
     const loadLookupData = async () => {
         const [classRes, subjectRes, studentRes] = await Promise.all([
             supabase.from('classes').select('id, name, grade_level'),
-            supabase.from('subjects').select('id, name, teacher_id'),
-            supabase.from('students').select('id, user_id, grade_level, users:user_id(full_name)') as any,
+            supabase.from('subjects').select('id, title, teacher_id'),
+            supabase.from('students').select('id, user_id, grade_level, users:user_id(first_name, last_name, full_name)') as any,
         ]);
         if (classRes.data) setClasses(classRes.data);
         if (subjectRes.data) setSubjects(subjectRes.data);
@@ -120,19 +124,35 @@ export default function CreateUserScreen() {
         if (form.linked_students.some(ls => ls.student_id === studentId)) return;
         setForm(prev => ({ ...prev, linked_students: [...prev.linked_students, { student_id: studentId, relationship: 'guardian', name: studentName }] }));
     };
-    const removeLinkedStudent = (studentId: string) => setForm(prev => ({ ...prev, linked_students: prev.linked_students.filter(ls => ls.student_id !== studentId) }));
+    const removeLinkedStudent = (studentId: string) => setForm(prev => prev.linked_students ? ({ ...prev, linked_students: prev.linked_students.filter(ls => ls.student_id !== studentId) }) : prev);
     const updateLinkedRelationship = (studentId: string, relationship: string) =>
         setForm(prev => ({ ...prev, linked_students: prev.linked_students.map(ls => ls.student_id === studentId ? { ...ls, relationship } : ls) }));
 
     const handleSubmit = async () => {
-        if (!form.full_name.trim() || !form.email.trim()) { Alert.alert('Validation', 'Name and email are required'); return; }
+        const isParentRole = form.role === 'parent';
+        if (!form.first_name.trim() || !form.last_name.trim() || (isParentRole && !form.email.trim())) {
+            Alert.alert('Validation', `First name, last name ${isParentRole ? 'and email ' : ''}are required`);
+            return;
+        }
         setLoading(true);
         try {
             const response = await api.post('/auth/enroll-user', { ...form, parent_info: form.create_parent ? form.parent_info : undefined });
             setResult(response.data);
             setStep(4);
         } catch (err: any) {
-            Alert.alert('Error', err.message);
+            const errorData = err.response?.data;
+            if (errorData?.code === 'ADMIN_LIMIT_REACHED') {
+                Alert.alert(
+                    'Limit Reached',
+                    errorData.error,
+                    [
+                        { text: 'Cancel', style: 'cancel' },
+                        { text: 'Upgrade Plan', onPress: () => router.push('/(admin)/finance') }
+                    ]
+                );
+            } else {
+                Alert.alert('Error', err.message || 'Failed to enroll user');
+            }
         } finally {
             setLoading(false);
         }
@@ -147,102 +167,50 @@ export default function CreateUserScreen() {
 
     const canGoNext = (): boolean => {
         if (step === 0) return !!form.role;
-        if (step === 1) return !!form.full_name.trim() && !!form.email.trim();
+        if (step === 1) {
+            const isParentRole = form.role === 'parent';
+            return !!form.first_name.trim() && !!form.last_name.trim() && (isParentRole ? !!form.email.trim() : true);
+        }
         return true;
     };
     const nextStep = () => { if (step === 3) { handleSubmit(); return; } if (canGoNext()) setStep((step + 1) as Step); };
     const prevStep = () => { if (step > 0) setStep((step - 1) as Step); else router.back(); };
 
     // ---------- Theme shorthands ----------
-    const bg = isDark ? '#121212' : '#f9fafb';
-    const card = isDark ? '#1e1e1e' : '#ffffff';
-    const border = isDark ? '#2c2c2c' : '#e5e7eb';
+    const bg = isDark ? '#0F0B2E' : '#f9fafb';
+    const card = isDark ? '#13103A' : '#ffffff';
+    const border = isDark ? 'rgba(255,255,255,0.1)' : '#e5e7eb';
     const textPrimary = isDark ? '#f9fafb' : '#111827';
     const textSecondary = isDark ? '#94a3b8' : '#6b7280';
-    const inputBg = isDark ? '#1e1e1e' : '#f9fafb';
-    const inputBorder = isDark ? '#2c2c2c' : '#e5e7eb';
+    const inputBg = isDark ? '#13103A' : '#f9fafb';
+    const inputBorder = isDark ? 'rgba(255,255,255,0.1)' : '#e5e7eb';
 
-    // ---------- Role cards ----------
+    // ---------- Options ----------
     const ROLE_CARDS = [
         { role: 'student' as Role, icon: 'school-outline', label: 'Student', desc: 'Enroll a new student', color: '#10B981' },
         { role: 'teacher' as Role, icon: 'people-outline', label: 'Teacher', desc: 'Add a new teacher', color: '#3B82F6' },
         { role: 'parent' as Role, icon: 'heart-outline', label: 'Parent', desc: 'Register a parent/guardian', color: '#F59E0B' },
         { role: 'admin' as Role, icon: 'shield-outline', label: 'Admin', desc: 'Create an admin account', color: '#EF4444' },
     ];
-
     const POSITION_OPTIONS = ['teacher', 'head_of_department', 'assistant', 'class_teacher', 'dean'];
     const GENDER_OPTIONS = ['male', 'female', 'other'];
     const RELATIONSHIP_OPTIONS = ['father', 'mother', 'guardian', 'sibling', 'other'];
     const GRADE_OPTIONS = ['Form 1', 'Form 2', 'Form 3', 'Form 4', 'Grade 1', 'Grade 2', 'Grade 3', 'Grade 4', 'Grade 5', 'Grade 6', 'Grade 7', 'Grade 8'];
 
-    // ---------- Render helpers ----------
-    const renderStepIndicator = () => {
-        const labels = ['Role', 'Personal', form.role === 'admin' ? '' : 'Details', 'Review', 'Done'].filter(Boolean);
-        return (
-            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 16, paddingHorizontal: 24, backgroundColor: card, borderBottomWidth: 1, borderBottomColor: border }}>
-                {labels.map((label, i) => (
-                    <View key={i} style={{ flexDirection: 'row', alignItems: 'center' }}>
-                        <View style={{ width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center', backgroundColor: i <= step ? '#FF6B00' : (isDark ? '#2c2c2c' : '#e5e7eb') }}>
-                            {i < step
-                                ? <Ionicons name="checkmark" size={16} color="white" />
-                                : <Text style={{ fontSize: 12, fontWeight: '700', color: i <= step ? 'white' : textSecondary }}>{i + 1}</Text>
-                            }
-                        </View>
-                        {i < labels.length - 1 && <View style={{ width: 32, height: 2, backgroundColor: i < step ? '#FF6B00' : (isDark ? '#2c2c2c' : '#e5e7eb') }} />}
+    // ---------- Sub-renders ----------
+    const renderStepIndicator = () => (
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 16, paddingHorizontal: 24, backgroundColor: card, borderBottomWidth: 1, borderBottomColor: border }}>
+            {['Role', 'Personal', form.role === 'admin' ? '' : 'Details', 'Review', 'Done'].filter(Boolean).map((label, i) => (
+                <View key={i} style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    <View style={{ width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center', backgroundColor: i <= step ? '#FF6B00' : (isDark ? 'rgba(255,255,255,0.1)' : '#e5e7eb') }}>
+                        {i < step
+                            ? <Ionicons name="checkmark" size={16} color="white" />
+                            : <Text style={{ fontSize: 12, fontWeight: '700', color: i <= step ? 'white' : textSecondary }}>{i + 1}</Text>
+                        }
                     </View>
-                ))}
-            </View>
-        );
-    };
-
-    const renderInput = (label: string, key: keyof FormData, placeholder: string, opts?: { keyboardType?: any; type?: 'default' | 'email' | 'phone' }) => (
-        <View style={{ marginBottom: 16 }}>
-            <Text style={{ fontSize: 13, fontWeight: '600', color: textSecondary, marginBottom: 6 }}>{label}</Text>
-            <TextInput
-                style={{ backgroundColor: inputBg, borderWidth: 1, borderColor: inputBorder, borderRadius: 12, paddingHorizontal: 16, paddingVertical: 14, color: textPrimary, fontWeight: '500' }}
-                placeholder={placeholder}
-                value={String(form[key] || '')}
-                onChangeText={v => updateFormSanitized(key, v, opts?.type)}
-                placeholderTextColor={textSecondary}
-                keyboardType={opts?.keyboardType}
-            />
-        </View>
-    );
-
-    const renderPicker = (label: string, options: string[], selected: string, onSelect: (v: string) => void) => (
-        <View style={{ marginBottom: 16 }}>
-            <Text style={{ fontSize: 13, fontWeight: '600', color: textSecondary, marginBottom: 6 }}>{label}</Text>
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-                {options.map(opt => (
-                    <TouchableOpacity key={opt} onPress={() => onSelect(opt)}
-                        style={{ paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, borderWidth: 1, backgroundColor: selected === opt ? '#FF6B00' : card, borderColor: selected === opt ? '#FF6B00' : border }}>
-                        <Text style={{ fontSize: 13, fontWeight: '600', textTransform: 'capitalize', color: selected === opt ? 'white' : textPrimary }}>
-                            {opt.replace(/_/g, ' ')}
-                        </Text>
-                    </TouchableOpacity>
-                ))}
-            </View>
-        </View>
-    );
-
-    const renderMultiSelect = (label: string, items: any[], selectedIds: string[], toggleKey: 'class_ids' | 'subject_ids', displayFn: (item: any) => string) => (
-        <View style={{ marginBottom: 16 }}>
-            <Text style={{ fontSize: 13, fontWeight: '600', color: textSecondary, marginBottom: 6 }}>{label}</Text>
-            {items.length === 0
-                ? <Text style={{ color: textSecondary, fontSize: 13, fontStyle: 'italic' }}>No items available</Text>
-                : items.map(item => {
-                    const isSelected = selectedIds.includes(item.id);
-                    return (
-                        <TouchableOpacity key={item.id} onPress={() => toggleArrayItem(toggleKey, item.id)}
-                            style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12, borderRadius: 12, borderWidth: 1, marginBottom: 8, backgroundColor: isSelected ? '#FF6B00' : card, borderColor: isSelected ? '#FF6B00' : border }}>
-                            <View style={{ width: 20, height: 20, borderRadius: 4, borderWidth: 1, marginRight: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: isSelected ? 'white' : 'transparent', borderColor: isSelected ? 'white' : textSecondary }}>
-                                {isSelected && <Ionicons name="checkmark" size={12} color="#FF6B00" />}
-                            </View>
-                            <Text style={{ fontWeight: '500', color: isSelected ? 'white' : textPrimary }}>{displayFn(item)}</Text>
-                        </TouchableOpacity>
-                    );
-                })
-            }
+                    {i < 4 && <View style={{ width: 32, height: 2, backgroundColor: i < step ? '#FF6B00' : (isDark ? 'rgba(255,255,255,0.1)' : '#e5e7eb') }} />}
+                </View>
+            ))}
         </View>
     );
 
@@ -274,28 +242,49 @@ export default function CreateUserScreen() {
         <View style={{ padding: 24 }}>
             <Text style={{ fontSize: 24, fontWeight: '700', color: textPrimary, marginBottom: 6 }}>Personal Information</Text>
             <Text style={{ color: textSecondary, marginBottom: 24 }}>Enter the user's basic details</Text>
-            {renderInput('Full Name *', 'full_name', 'e.g. John Doe')}
-            {renderInput('Email *', 'email', 'e.g. john@school.com', { keyboardType: 'email-address', type: 'email' })}
-            {renderInput('Phone', 'phone', '+254 7XX XXX XXX', { keyboardType: 'phone-pad', type: 'phone' })}
-            {renderPicker('Gender', GENDER_OPTIONS, form.gender, v => updateForm('gender', v))}
+            <View style={{ flexDirection: 'row', gap: 12 }}>
+                <View style={{ flex: 1 }}>
+                    <RenderInput label="First Name *" value={form.first_name} onChangeText={(v: string) => updateFormSanitized('first_name', v)} placeholder="John" isDark={isDark} textPrimary={textPrimary} textSecondary={textSecondary} inputBg={inputBg} inputBorder={inputBorder} />
+                </View>
+                <View style={{ flex: 1 }}>
+                    <RenderInput label="Last Name *" value={form.last_name} onChangeText={(v: string) => updateFormSanitized('last_name', v)} placeholder="Doe" isDark={isDark} textPrimary={textPrimary} textSecondary={textSecondary} inputBg={inputBg} inputBorder={inputBorder} />
+                </View>
+            </View>
+            <RenderInput 
+                label={`Email ${form.role === 'parent' ? '*' : '(Optional)'}`} 
+                value={form.email} 
+                onChangeText={(v: string) => updateFormSanitized('email', v, 'email')} 
+                placeholder={form.role === 'parent' ? "parent@example.com" : "Auto-generated if left blank"} 
+                keyboardType="email-address" 
+                isDark={isDark} textPrimary={textPrimary} textSecondary={textSecondary} inputBg={inputBg} inputBorder={inputBorder} 
+            />
+            {form.role !== 'parent' && !form.email.trim() && (
+                <View style={{ backgroundColor: isDark ? '#1e293b' : '#f1f5f9', padding: 12, borderRadius: 12, marginBottom: 16 }}>
+                    <Text style={{ fontSize: 11, color: textSecondary }}>
+                        💡 Leaving this blank will automatically create an email: <Text style={{ fontWeight: 'bold' }}>first.last@institution.com</Text>
+                    </Text>
+                </View>
+            )}
+            <RenderInput label="Phone" value={form.phone} onChangeText={(v: string) => updateFormSanitized('phone', v, 'phone')} placeholder="+254 7XX XXX XXX" keyboardType="phone-pad" isDark={isDark} textPrimary={textPrimary} textSecondary={textSecondary} inputBg={inputBg} inputBorder={inputBorder} />
+            <RenderPicker label="Gender" options={GENDER_OPTIONS} selected={form.gender} onSelect={(v: string) => updateForm('gender', v)} isDark={isDark} textPrimary={textPrimary} textSecondary={textSecondary} border={border} card={card} />
             <DatePicker label="Date of Birth" value={form.date_of_birth} onChange={v => updateForm('date_of_birth', v)} isDark={isDark} />
-            {renderInput('Address', 'address', 'Enter physical address')}
+            <RenderInput label="Address" value={form.address} onChangeText={(v: string) => updateFormSanitized('address', v)} placeholder="Enter physical address" isDark={isDark} textPrimary={textPrimary} textSecondary={textSecondary} inputBg={inputBg} inputBorder={inputBorder} />
         </View>
     );
 
     const renderStudentDetails = () => (
         <View>
-            {renderPicker('Grade Level', GRADE_OPTIONS, form.grade_level, v => updateForm('grade_level', v))}
-            {renderInput('Academic Year', 'academic_year', '2026')}
-            {renderInput('Parent/Guardian Contact', 'parent_contact', 'Phone number', { keyboardType: 'phone-pad', type: 'phone' })}
+            <RenderPicker label="Grade Level" options={GRADE_OPTIONS} selected={form.grade_level} onSelect={(v: string) => updateForm('grade_level', v)} isDark={isDark} textPrimary={textPrimary} textSecondary={textSecondary} border={border} card={card} />
+            <RenderInput label="Academic Year" value={form.academic_year} onChangeText={(v: string) => updateFormSanitized('academic_year', v)} placeholder="2026" isDark={isDark} textPrimary={textPrimary} textSecondary={textSecondary} inputBg={inputBg} inputBorder={inputBorder} />
+            <RenderInput label="Parent/Guardian Contact" value={form.parent_contact} onChangeText={(v: string) => updateFormSanitized('parent_contact', v, 'phone')} placeholder="Phone number" keyboardType="phone-pad" isDark={isDark} textPrimary={textPrimary} textSecondary={textSecondary} inputBg={inputBg} inputBorder={inputBorder} />
 
             <View style={{ backgroundColor: isDark ? '#1c1008' : '#fff7ed', borderRadius: 12, padding: 16, marginBottom: 16 }}>
                 <Text style={{ fontSize: 13, fontWeight: '700', color: isDark ? '#fed7aa' : '#7c2d12', marginBottom: 12 }}>🆘 Emergency Contact</Text>
-                {renderInput('Name', 'emergency_contact_name', 'Emergency contact name')}
-                {renderInput('Phone', 'emergency_contact_phone', 'Emergency phone', { keyboardType: 'phone-pad', type: 'phone' })}
+                <RenderInput label="Name" value={form.emergency_contact_name} onChangeText={(v: string) => updateFormSanitized('emergency_contact_name', v)} placeholder="Emergency contact name" isDark={isDark} textPrimary={textPrimary} textSecondary={textSecondary} inputBg={inputBg} inputBorder={inputBorder} />
+                <RenderInput label="Phone" value={form.emergency_contact_phone} onChangeText={(v: string) => updateFormSanitized('emergency_contact_phone', v, 'phone')} placeholder="Emergency phone" keyboardType="phone-pad" isDark={isDark} textPrimary={textPrimary} textSecondary={textSecondary} inputBg={inputBg} inputBorder={inputBorder} />
             </View>
 
-            {renderMultiSelect('Assign to Classes', classes, form.class_ids, 'class_ids', (c: any) => `${c.name} (${c.grade_level || 'N/A'})`)}
+            <RenderMultiSelect label="Assign to Classes" items={classes} selectedIds={form.class_ids} toggleItem={(id: string) => toggleArrayItem('class_ids', id)} displayFn={(c: any) => `${c.name} (${c.grade_level || 'N/A'})`} isDark={isDark} textPrimary={textPrimary} textSecondary={textSecondary} border={border} card={card} />
 
             <View style={{ backgroundColor: isDark ? '#0f172a' : '#eff6ff', borderRadius: 16, padding: 20, marginBottom: 16, borderWidth: 1, borderColor: isDark ? '#1e3a5f' : '#bfdbfe' }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
@@ -311,7 +300,8 @@ export default function CreateUserScreen() {
                 {form.create_parent && (
                     <View>
                         {[
-                            { label: 'Parent Full Name *', key: 'full_name', placeholder: "Guardian's name", type: 'default' },
+                            { label: 'Parent First Name *', key: 'first_name', placeholder: "First name", type: 'default' },
+                            { label: 'Parent Last Name *', key: 'last_name', placeholder: "Last name", type: 'default' },
                             { label: 'Parent Email *', key: 'email', placeholder: 'parent@example.com', type: 'email' },
                             { label: 'Parent Phone', key: 'phone', placeholder: '+254...', type: 'phone' },
                             { label: 'Parent Occupation', key: 'occupation', placeholder: 'e.g. Doctor', type: 'default' },
@@ -342,16 +332,16 @@ export default function CreateUserScreen() {
         return (
             <View>
                 <Text style={{ fontSize: 18, fontWeight: '700', color: textPrimary, marginBottom: 16 }}>👨‍🏫 Teacher Details</Text>
-                {renderInput('Department', 'department', 'e.g. Mathematics')}
-                {renderInput('Qualification', 'qualification', 'e.g. B.Ed Mathematics')}
-                {renderInput('Specialization', 'specialization', 'e.g. Applied Mathematics')}
-                {renderPicker('Position', POSITION_OPTIONS, form.position, v => updateForm('position', v))}
-                {renderMultiSelect('Assign Subjects (unassigned only)', unassignedSubjects, form.subject_ids, 'subject_ids', (s: any) => s.name)}
+                <RenderInput label="Department" value={form.department} onChangeText={(v: string) => updateFormSanitized('department', v)} placeholder="e.g. Mathematics" isDark={isDark} textPrimary={textPrimary} textSecondary={textSecondary} inputBg={inputBg} inputBorder={inputBorder} />
+                <RenderInput label="Qualification" value={form.qualification} onChangeText={(v: string) => updateFormSanitized('qualification', v)} placeholder="e.g. B.Ed Mathematics" isDark={isDark} textPrimary={textPrimary} textSecondary={textSecondary} inputBg={inputBg} inputBorder={inputBorder} />
+                <RenderInput label="Specialization" value={form.specialization} onChangeText={(v: string) => updateFormSanitized('specialization', v)} placeholder="e.g. Applied Mathematics" isDark={isDark} textPrimary={textPrimary} textSecondary={textSecondary} inputBg={inputBg} inputBorder={inputBorder} />
+                <RenderPicker label="Position" options={POSITION_OPTIONS} selected={form.position} onSelect={(v: string) => updateForm('position', v)} isDark={isDark} textPrimary={textPrimary} textSecondary={textSecondary} border={border} card={card} />
+                <RenderMultiSelect label="Assign Subjects (unassigned only)" items={unassignedSubjects} selectedIds={form.subject_ids} toggleItem={(id: string) => toggleArrayItem('subject_ids', id)} displayFn={(s: any) => s.title} isDark={isDark} textPrimary={textPrimary} textSecondary={textSecondary} border={border} card={card} />
                 <View style={{ marginBottom: 16 }}>
                     <Text style={{ fontSize: 13, fontWeight: '600', color: textSecondary, marginBottom: 6 }}>Assign as Class Teacher</Text>
                     {classes.map(c => (
                         <TouchableOpacity key={c.id} onPress={() => updateForm('class_teacher_id', form.class_teacher_id === c.id ? '' : c.id)}
-                            style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12, borderRadius: 12, borderWidth: 1, marginBottom: 8, backgroundColor: form.class_teacher_id === c.id ? '#3b82f6' : card, borderColor: form.class_teacher_id === c.id ? '#3b82f6' : border }}>
+                            style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12, borderRadius: 12, borderWidth: 1, marginBottom: 8, backgroundColor: form.class_teacher_id === c.id ? '#FF6B00' : card, borderColor: form.class_teacher_id === c.id ? '#FF6B00' : border }}>
                             <Ionicons name={form.class_teacher_id === c.id ? 'radio-button-on' : 'radio-button-off'} size={18} color={form.class_teacher_id === c.id ? 'white' : textSecondary} />
                             <Text style={{ marginLeft: 12, fontWeight: '500', color: form.class_teacher_id === c.id ? 'white' : textPrimary }}>{c.name}</Text>
                         </TouchableOpacity>
@@ -363,14 +353,15 @@ export default function CreateUserScreen() {
 
     const renderParentDetails = () => {
         const filteredStudents = students.filter(s => {
-            const name = (s.users as any)?.full_name || '';
+            const u = s.users as any;
+            const name = u?.first_name ? `${u.first_name} ${u.last_name || ''}`.trim() : (u?.full_name || '');
             return name.toLowerCase().includes(studentSearch.toLowerCase()) || s.id?.toLowerCase().includes(studentSearch.toLowerCase());
         });
         return (
             <View>
                 <Text style={{ fontSize: 18, fontWeight: '700', color: textPrimary, marginBottom: 16 }}>👨‍👩‍👧 Parent Details</Text>
-                {renderInput('Occupation', 'occupation', 'e.g. Engineer')}
-                {renderInput('Home Address', 'parent_address', 'Physical address')}
+                <RenderInput label="Occupation" value={form.occupation} onChangeText={(v: string) => updateFormSanitized('occupation', v)} placeholder="e.g. Engineer" isDark={isDark} textPrimary={textPrimary} textSecondary={textSecondary} inputBg={inputBg} inputBorder={inputBorder} />
+                <RenderInput label="Home Address" value={form.parent_address} onChangeText={(v: string) => updateFormSanitized('parent_address', v)} placeholder="Physical address" isDark={isDark} textPrimary={textPrimary} textSecondary={textSecondary} inputBg={inputBg} inputBorder={inputBorder} />
                 <View style={{ marginBottom: 16 }}>
                     <Text style={{ fontSize: 13, fontWeight: '600', color: textSecondary, marginBottom: 8 }}>Link to Student(s)</Text>
                     <TextInput
@@ -388,7 +379,10 @@ export default function CreateUserScreen() {
                                         style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: border }}>
                                         <Ionicons name="person-outline" size={18} color={textSecondary} />
                                         <Text style={{ marginLeft: 8, color: textPrimary, fontWeight: '500' }}>
-                                            {(s.users as any)?.full_name || 'Unknown'}
+                                            {(() => {
+                                                const u = s.users as any;
+                                                return u?.first_name ? `${u.first_name} ${u.last_name || ''}`.trim() : (u?.full_name || 'Unknown');
+                                            })()}
                                         </Text>
                                         <Text style={{ color: textSecondary, fontSize: 11, marginLeft: 4 }}>{s.id}</Text>
                                     </TouchableOpacity>
@@ -397,10 +391,10 @@ export default function CreateUserScreen() {
                         </View>
                     )}
                     {form.linked_students.map(ls => (
-                        <View key={ls.student_id} style={{ backgroundColor: isDark ? '#1e1e1e' : '#f9fafb', borderRadius: 12, padding: 16, marginBottom: 8, borderWidth: 1, borderColor: border }}>
+                        <View key={ls.student_id} style={{ backgroundColor: isDark ? '#13103A' : '#f9fafb', borderRadius: 12, padding: 16, marginBottom: 8, borderWidth: 1, borderColor: border }}>
                             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
                                 <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                                    <Ionicons name="person" size={16} color="#3b82f6" />
+                                    <Ionicons name="person" size={16} color="#FF6B00" />
                                     <Text style={{ marginLeft: 8, fontWeight: '600', color: textPrimary }}>{ls.name}</Text>
                                     <Text style={{ color: textSecondary, fontSize: 11, marginLeft: 6 }}>{ls.student_id}</Text>
                                 </View>
@@ -411,7 +405,7 @@ export default function CreateUserScreen() {
                             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
                                 {RELATIONSHIP_OPTIONS.map(rel => (
                                     <TouchableOpacity key={rel} onPress={() => updateLinkedRelationship(ls.student_id, rel)}
-                                        style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, borderWidth: 1, backgroundColor: ls.relationship === rel ? '#111827' : card, borderColor: ls.relationship === rel ? '#111827' : border }}>
+                                        style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, borderWidth: 1, backgroundColor: ls.relationship === rel ? '#FF6B00' : card, borderColor: ls.relationship === rel ? '#FF6B00' : border }}>
                                         <Text style={{ fontSize: 12, fontWeight: '500', textTransform: 'capitalize', color: ls.relationship === rel ? 'white' : textPrimary }}>{rel}</Text>
                                     </TouchableOpacity>
                                 ))}
@@ -431,7 +425,7 @@ export default function CreateUserScreen() {
             {form.role === 'teacher' && renderTeacherDetails()}
             {form.role === 'parent' && renderParentDetails()}
             {form.role === 'admin' && (
-                <View style={{ backgroundColor: isDark ? '#1e1e1e' : '#f9fafb', borderRadius: 12, padding: 24, alignItems: 'center' }}>
+                <View style={{ backgroundColor: isDark ? '#13103A' : '#f9fafb', borderRadius: 12, padding: 24, alignItems: 'center' }}>
                     <Ionicons name="shield-checkmark" size={48} color={textSecondary} />
                     <Text style={{ color: textSecondary, marginTop: 12, textAlign: 'center' }}>No additional details needed for admin accounts</Text>
                 </View>
@@ -456,7 +450,8 @@ export default function CreateUserScreen() {
             <View style={{ backgroundColor: card, borderRadius: 16, borderWidth: 1, borderColor: border, padding: 16, marginBottom: 16 }}>
                 <Text style={{ fontSize: 11, fontWeight: '700', color: textSecondary, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>Personal</Text>
                 {renderReviewRow('Role', form.role || '')}
-                {renderReviewRow('Name', form.full_name)}
+                {renderReviewRow('First Name', form.first_name)}
+                {renderReviewRow('Last Name', form.last_name)}
                 {renderReviewRow('Email', form.email)}
                 {renderReviewRow('Phone', form.phone)}
                 {renderReviewRow('Gender', form.gender)}
@@ -477,7 +472,8 @@ export default function CreateUserScreen() {
             {form.role === 'student' && form.create_parent && (
                 <View style={{ backgroundColor: isDark ? '#0f172a' : '#eff6ff', borderRadius: 16, borderWidth: 1, borderColor: isDark ? '#1e3a5f' : '#bfdbfe', padding: 16, marginBottom: 16 }}>
                     <Text style={{ fontSize: 11, fontWeight: '700', color: '#3b82f6', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>Parent to be Created</Text>
-                    {renderReviewRow('Parent Name', form.parent_info.full_name)}
+                    {renderReviewRow('Parent First Name', form.parent_info.first_name)}
+                    {renderReviewRow('Parent Last Name', form.parent_info.last_name)}
                     {renderReviewRow('Parent Email', form.parent_info.email)}
                     {renderReviewRow('Parent Phone', form.parent_info.phone)}
                     {renderReviewRow('Occupation', form.parent_info.occupation)}
@@ -490,7 +486,7 @@ export default function CreateUserScreen() {
                     {renderReviewRow('Qualification', form.qualification)}
                     {renderReviewRow('Specialization', form.specialization)}
                     {renderReviewRow('Position', form.position?.replace(/_/g, ' '))}
-                    {renderReviewRow('Subjects', form.subject_ids.length > 0 ? form.subject_ids.map(id => subjects.find(s => s.id === id)?.name || id).join(', ') : undefined)}
+                    {renderReviewRow('Subjects', form.subject_ids.length > 0 ? form.subject_ids.map(id => subjects.find(s => s.id === id)?.title || id).join(', ') : undefined)}
                     {renderReviewRow('Class Teacher', form.class_teacher_id ? classes.find(c => c.id === form.class_teacher_id)?.name : undefined)}
                 </View>
             )}
@@ -610,7 +606,7 @@ export default function CreateUserScreen() {
                         <Text style={{ fontWeight: '700', color: textPrimary }}>{step === 0 ? 'Cancel' : 'Back'}</Text>
                     </TouchableOpacity>
                     <TouchableOpacity onPress={nextStep} disabled={!canGoNext() || loading}
-                        style={{ flex: 1, backgroundColor: canGoNext() ? '#FF6B00' : (isDark ? '#2c2c2c' : '#d1d5db'), paddingVertical: 16, borderRadius: 12, alignItems: 'center' }}>
+                        style={{ flex: 1, backgroundColor: canGoNext() ? '#FF6B00' : (isDark ? 'rgba(255,255,255,0.1)' : '#d1d5db'), paddingVertical: 16, borderRadius: 12, alignItems: 'center' }}>
                         {loading
                             ? <ActivityIndicator color="white" />
                             : <Text style={{ fontWeight: '700', color: 'white' }}>{step === 3 ? 'Confirm & Enroll' : 'Next'}</Text>
@@ -621,3 +617,55 @@ export default function CreateUserScreen() {
         </SafeAreaView>
     );
 }
+
+// ---------- Rendering Helpers ----------
+const RenderInput = ({ label, value, onChangeText, placeholder, keyboardType, isDark, textPrimary, textSecondary, inputBg, inputBorder }: any) => (
+    <View style={{ marginBottom: 16 }}>
+        <Text style={{ fontSize: 13, fontWeight: '600', color: textSecondary, marginBottom: 6 }}>{label}</Text>
+        <TextInput
+            style={{ backgroundColor: inputBg, borderWidth: 1, borderColor: inputBorder, borderRadius: 12, paddingHorizontal: 16, paddingVertical: 14, color: textPrimary, fontWeight: '500' }}
+            placeholder={placeholder}
+            value={String(value || '')}
+            onChangeText={onChangeText}
+            placeholderTextColor={textSecondary}
+            keyboardType={keyboardType}
+        />
+    </View>
+);
+
+const RenderPicker = ({ label, options, selected, onSelect, isDark, textPrimary, textSecondary, border, card }: any) => (
+    <View style={{ marginBottom: 16 }}>
+        <Text style={{ fontSize: 13, fontWeight: '600', color: textSecondary, marginBottom: 6 }}>{label}</Text>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+            {options.map((opt: string) => (
+                <TouchableOpacity key={opt} onPress={() => onSelect(opt)}
+                    style={{ paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, borderWidth: 1, backgroundColor: selected === opt ? '#FF6B00' : card, borderColor: selected === opt ? '#FF6B00' : border }}>
+                    <Text style={{ fontSize: 13, fontWeight: '600', textTransform: 'capitalize', color: selected === opt ? 'white' : textPrimary }}>
+                        {opt.replace(/_/g, ' ')}
+                    </Text>
+                </TouchableOpacity>
+            ))}
+        </View>
+    </View>
+);
+
+const RenderMultiSelect = ({ label, items, selectedIds, toggleItem, displayFn, isDark, textPrimary, textSecondary, border, card }: any) => (
+    <View style={{ marginBottom: 16 }}>
+        <Text style={{ fontSize: 13, fontWeight: '600', color: textSecondary, marginBottom: 6 }}>{label}</Text>
+        {items.length === 0
+            ? <Text style={{ color: textSecondary, fontSize: 13, fontStyle: 'italic' }}>No items available</Text>
+            : items.map((item: any) => {
+                const isSelected = selectedIds.includes(item.id);
+                return (
+                    <TouchableOpacity key={item.id} onPress={() => toggleItem(item.id)}
+                        style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12, borderRadius: 12, borderWidth: 1, marginBottom: 8, backgroundColor: isSelected ? '#FF6B00' : card, borderColor: isSelected ? '#FF6B00' : border }}>
+                        <View style={{ width: 20, height: 20, borderRadius: 4, borderWidth: 1, marginRight: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: isSelected ? 'white' : 'transparent', borderColor: isSelected ? 'white' : textSecondary }}>
+                            {isSelected && <Ionicons name="checkmark" size={12} color="#FF6B00" />}
+                        </View>
+                        <Text style={{ fontWeight: '500', color: isSelected ? 'white' : textPrimary }}>{displayFn(item)}</Text>
+                    </TouchableOpacity>
+                );
+            })
+        }
+    </View>
+);

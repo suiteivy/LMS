@@ -20,14 +20,14 @@
       "package": "com.anonymous.CloudoraLMS"
     },
     "androidStatusBar": {
-      "backgroundColor": "#000000",
-      "barStyle": "light-content",
+      "backgroundColor": "#ffffff",
+      "barStyle": "dark-content",
       "translucent": false
     },
     "web": {
       "bundler": "metro",
       "output": "static",
-      "favicon": "./assets/images/clouds.png",
+      "favicon": "./assets/images/cloudora-favicon.png",
       "title": "Cloudora LMS"
     },
     "plugins": [

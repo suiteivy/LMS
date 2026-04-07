@@ -12,26 +12,21 @@ const {
 } = require("../controllers/class.controller");
 const { authMiddleware } = require("../middleware/auth.middleware");
 
-// Inline admin-only middleware
-const adminOnly = (req, res, next) => {
-    if (req.userRole !== "admin") {
-        return res.status(403).json({ error: "Admin access required" });
-    }
-    next();
-};
+const { authorizeRoles } = require("../middleware/authRole");
 
-// All routes require authentication + admin role
+// All routes require authentication
 router.use(authMiddleware);
-router.use(adminOnly);
 
-router.get("/", getClasses);
-router.post("/", createClass);
-router.post("/auto-assign", autoAssignStudents);
+// GET routes: allow admin, master_admin, teacher
+router.get("/", authorizeRoles(["admin", "teacher", "master_admin"]), getClasses);
+router.get("/:id/students", authorizeRoles(["admin", "teacher", "master_admin"]), getClassStudents);
 
-router.put("/:id", updateClass);
-router.delete("/:id", deleteClass);
-router.get("/:id/students", getClassStudents);
-router.post("/:id/enroll", enrollStudent);
-router.delete("/:id/students/:studentId", removeStudent);
+// Mutation routes: allow admin & master_admin
+router.post("/", authorizeRoles(["admin", "master_admin"]), createClass);
+router.post("/auto-assign", authorizeRoles(["admin", "master_admin"]), autoAssignStudents);
+router.put("/:id", authorizeRoles(["admin", "master_admin"]), updateClass);
+router.delete("/:id", authorizeRoles(["admin", "master_admin"]), deleteClass);
+router.post("/:id/enroll", authorizeRoles(["admin", "master_admin"]), enrollStudent);
+router.delete("/:id/students/:studentId", authorizeRoles(["admin", "master_admin"]), removeStudent);
 
 module.exports = router;

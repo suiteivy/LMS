@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import { ActivityIndicator, Modal, Text, View } from 'react-native';
 
 interface FullScreenLoaderProps {
@@ -22,8 +22,8 @@ export const FullScreenLoader: React.FC<FullScreenLoaderProps> = ({ visible, mes
                 justifyContent: 'center',
                 alignItems: 'center',
                 zIndex: 9999
-            }} className="bg-white/90 dark:bg-black/90">
-                <View className="bg-white dark:bg-[#1a1a1a] p-6 rounded-2xl shadow-lg items-center border border-gray-100 dark:border-gray-800">
+            }} className="bg-white/90 dark:bg-navy/90">
+                <View className="bg-white dark:bg-navy-surface p-6 rounded-2xl shadow-lg items-center border border-gray-100 dark:border-gray-800">
                     <ActivityIndicator size="large" color="#f97316" />
                     {message && (
                         <Text className="mt-4 text-gray-600 dark:text-gray-300 font-medium text-sm">

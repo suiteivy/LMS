@@ -156,7 +156,7 @@ export const StatsCard: React.FC<StatsCardProps> = ({
   }
 
   return (
-    <View className={className} testID={testID}>
+    <View className={className} testID={testID} collapsable={undefined}>
       <CardContent />
     </View>
   );

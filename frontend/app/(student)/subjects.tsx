@@ -1,4 +1,4 @@
-import { FullScreenLoader } from "@/components/common/FullScreenLoader";
+﻿import { FullScreenLoader } from "@/components/common/FullScreenLoader";
 import { UnifiedHeader } from "@/components/common/UnifiedHeader";
 import { SubjectDetails } from "@/components/SubjectDetails";
 import { SubjectList } from "@/components/SubjectList";
@@ -129,7 +129,7 @@ export default function Subjects() {
 
   if (loading) {
     return (
-      <View className="flex-1 justify-center items-center bg-gray-50 dark:bg-black">
+      <View className="flex-1 justify-center items-center bg-gray-50 dark:bg-navy">
         <ActivityIndicator size="large" color="#FF6900" />
         <Text className="mt-4 text-gray-400 dark:text-gray-500 font-bold text-xs uppercase tracking-widest">Entering Classroom...</Text>
       </View>
@@ -137,7 +137,7 @@ export default function Subjects() {
   }
 
   return (
-    <View className="flex-1 bg-gray-50 dark:bg-black">
+    <View className="flex-1 bg-gray-50 dark:bg-navy">
       <UnifiedHeader
         title="Intelligence"
         subtitle={currentView === "details" ? "Details" : "Subject Portal"}
@@ -189,7 +189,7 @@ export default function Subjects() {
                         key={res.id}
                         onPress={() => openResource(res.url)}
                         activeOpacity={0.7}
-                        className="mb-4 p-6 bg-gray-50 dark:bg-[#121212] rounded-[32px] border border-gray-100 dark:border-gray-800 flex-row justify-between items-center active:bg-gray-100 dark:active:bg-gray-900"
+                        className="mb-4 p-6 bg-gray-50 dark:bg-[#0F0B2E] rounded-[32px] border border-gray-100 dark:border-gray-800 flex-row justify-between items-center active:bg-gray-100 dark:active:bg-gray-900"
                       >
                         <View className="flex-1 mr-4">
                           <Text className="font-bold text-gray-900 dark:text-white text-base tracking-tight">{res.title}</Text>

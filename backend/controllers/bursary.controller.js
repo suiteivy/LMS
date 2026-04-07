@@ -142,3 +142,107 @@ exports.updateApplicationStatus = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
+
+/** Directly approve a bursary for a specific student (Admin) */
+exports.approveBursaryForStudent = async (req, res) => {
+  try {
+    const { bursary_id, student_id, amount_awarded, notes } = req.body;
+    const { institution_id } = req;
+
+    if (req.userRole !== "admin" && req.userRole !== "bursary") {
+      return res.status(403).json({ error: "Unauthorized" });
+    }
+
+    if (!bursary_id || !student_id) {
+      return res.status(400).json({ error: "bursary_id and student_id are required" });
+    }
+
+    // Verify bursary belongs to institution
+    const { data: bursary } = await supabase
+      .from("bursaries")
+      .select("id, amount")
+      .eq("id", bursary_id)
+      .eq("institution_id", institution_id)
+      .single();
+
+    if (!bursary) return res.status(404).json({ error: "Bursary not found" });
+
+    // Upsert application: if one already exists update it, otherwise create
+    const { data: existing } = await supabase
+      .from("bursary_applications")
+      .select("id")
+      .eq("bursary_id", bursary_id)
+      .eq("student_id", student_id)
+      .maybeSingle();
+
+    let result;
+    if (existing) {
+      const { data, error } = await supabase
+        .from("bursary_applications")
+        .update({ status: "approved", amount_awarded: amount_awarded ?? bursary.amount, notes })
+        .eq("id", existing.id)
+        .select()
+        .single();
+      if (error) throw error;
+      result = data;
+    } else {
+      const { data, error } = await supabase
+        .from("bursary_applications")
+        .insert([{
+          bursary_id,
+          student_id,
+          institution_id,
+          status: "approved",
+          amount_awarded: amount_awarded ?? bursary.amount,
+          notes
+        }])
+        .select()
+        .single();
+      if (error) throw error;
+      result = data;
+    }
+
+    res.status(201).json(result);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+/** Get all approved bursaries for the logged-in student */
+exports.getMyApprovedBursaries = async (req, res) => {
+  try {
+    const { userId, institution_id } = req;
+
+    if (req.userRole !== "student") {
+      return res.status(403).json({ error: "Students only" });
+    }
+
+    // Get student record
+    const { data: student } = await supabase
+      .from("students")
+      .select("id")
+      .eq("user_id", userId)
+      .single();
+
+    if (!student) return res.status(404).json({ error: "Student profile not found" });
+
+    const { data, error } = await supabase
+      .from("bursary_applications")
+      .select(`
+        id, status, amount_awarded, notes, created_at,
+        bursary:bursaries (
+          id, title, description, amount, deadline, status
+        )
+      `)
+      .eq("student_id", student.id)
+      .eq("institution_id", institution_id)
+      .eq("status", "approved")
+      .order("created_at", { ascending: false });
+
+    if (error) throw error;
+    res.json(data);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+

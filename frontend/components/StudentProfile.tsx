@@ -29,7 +29,8 @@ export default function StudentProfile() {
   const { isDark } = useTheme();
 
   const [isEditing, setIsEditing] = useState(false);
-  const [fullName, setFullName] = useState(profile?.full_name || "");
+  const [firstName, setFirstName] = useState(profile?.first_name || "");
+  const [lastName, setLastName] = useState(profile?.last_name || "");
   const [phone, setPhone] = useState(profile?.phone || "");
   const [gender, setGender] = useState(profile?.gender || "");
   const [dob, setDob] = useState(profile?.date_of_birth || "");
@@ -47,7 +48,8 @@ export default function StudentProfile() {
 
   useEffect(() => {
     if (profile) {
-      setFullName(profile.full_name || "");
+      setFirstName(profile.first_name || "");
+      setLastName(profile.last_name || "");
       setPhone(profile.phone || "");
       setGender(profile.gender || "");
       setDob(profile.date_of_birth || "");
@@ -84,11 +86,12 @@ export default function StudentProfile() {
   };
 
   const handleUpdateProfile = async () => {
-    if (!fullName.trim()) return Alert.alert("Error", "Name cannot be empty");
+    if (!firstName.trim()) return Alert.alert("Error", "First name cannot be empty");
     setSaving(true);
     try {
       const { error } = await authService.updateProfile({
-        full_name: fullName,
+        first_name: firstName,
+        last_name: lastName,
         phone: phone || null,
         gender: (gender as any) || null,
         date_of_birth: dob || null,
@@ -113,14 +116,14 @@ export default function StudentProfile() {
 
   if (!profile) {
     return (
-      <View className="flex-1 justify-center items-center bg-gray-50 dark:bg-black">
+      <View className="flex-1 justify-center items-center bg-gray-50 dark:bg-navy">
         <ActivityIndicator size="large" color="#FF6B00" />
       </View>
     );
   }
 
   return (
-    <View className="flex-1 bg-gray-50 dark:bg-black">
+    <View className="flex-1 bg-gray-50 dark:bg-navy">
       <ScrollView
         className="flex-1"
         showsVerticalScrollIndicator={false}
@@ -139,7 +142,7 @@ export default function StudentProfile() {
             </TouchableOpacity>
           </View>
 
-          <Text className="text-gray-900 dark:text-white text-3xl font-black tracking-tighter mt-6 text-center">{profile?.full_name}</Text>
+          <Text className="text-gray-900 dark:text-white text-3xl font-black tracking-tighter mt-6 text-center">{profile?.first_name} {profile?.last_name}</Text>
           <View className="bg-[#FF6900]/10 px-4 py-1.5 rounded-full mt-2 border border-[#FF6900]/20 self-center">
             <Text className="text-[#FF6900] text-[10px] font-black uppercase tracking-[2px]">Scholar Member • ID: {profile?.id?.slice(0, 8)}</Text>
           </View>
@@ -167,7 +170,8 @@ export default function StudentProfile() {
 
               {isEditing ? (
                 <View className="bg-gray-50 dark:bg-gray-900 p-6 rounded-[32px] border border-gray-100 dark:border-gray-800 mb-8">
-                  <InfoInput label="Full Name" value={fullName} onChange={setFullName} icon={User} isDark={isDark} />
+                  <InfoInput label="First Name" value={firstName} onChange={setFirstName} icon={User} isDark={isDark} />
+                  <InfoInput label="Last Name" value={lastName} onChange={setLastName} icon={User} isDark={isDark} />
                   <InfoInput label="Contact Number" value={phone} onChange={setPhone} icon={Phone} isDark={isDark} />
                   <InfoInput label="Residential Address" value={address} onChange={setAddress} icon={MapPin} isDark={isDark} />
                   <TouchableOpacity className="bg-[#FF6900] py-4 rounded-2xl items-center mt-4 shadow-lg shadow-orange-500/20" onPress={handleUpdateProfile} disabled={saving}>
@@ -228,7 +232,7 @@ const InfoRow = ({ label, value, icon: Icon, color, isDark }: any) => (
 const InfoInput = ({ label, value, onChange, icon: Icon, isDark }: any) => (
   <View className="mb-6">
     <Text className="text-gray-400 dark:text-gray-500 text-[8px] font-bold uppercase tracking-widest mb-2 ml-1">{label}</Text>
-    <View className="flex-row items-center bg-white dark:bg-black border border-gray-200 dark:border-gray-800 rounded-2xl px-4 py-3 shadow-sm">
+    <View className="flex-row items-center bg-white dark:bg-navy border border-gray-200 dark:border-gray-800 rounded-2xl px-4 py-3 shadow-sm">
       <Icon size={16} color={isDark ? "#4B5563" : "#9CA3AF"} />
       <TextInput
         className="flex-1 ml-3 text-gray-900 dark:text-white font-bold text-xs"

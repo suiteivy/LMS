@@ -7,6 +7,8 @@ import { BookOpen, CheckCircle2, Clock, Filter, Search, X } from 'lucide-react-n
 import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, Modal, RefreshControl, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useRealtimeQuery } from '@/hooks/useRealtimeQuery';
+import { SubscriptionGate, AddonRequestButton } from "@/components/shared/SubscriptionComponents";
+import { Zap } from "lucide-react-native";
 
 export default function StudentLibrary() {
     const { studentId } = useAuth();
@@ -31,7 +33,7 @@ export default function StudentLibrary() {
         try {
             const [booksData, historyData] = await Promise.all([
                 LibraryAPI.getBooks(),
-                studentId ? LibraryAPI.getBorrowingHistory(studentId) : Promise.resolve([])
+                LibraryAPI.getBorrowingHistory()
             ]);
 
             const finalBooks = booksData.map(LibraryAPI.transformBookData);
@@ -67,9 +69,7 @@ export default function StudentLibrary() {
         }
 
         try {
-            const dueDate = new Date();
-            dueDate.setDate(dueDate.getDate() + 14);
-            await LibraryAPI.borrowBook(book.id, dueDate.toISOString() as any);
+            await LibraryAPI.borrowBook(book.id, 14);
             Alert.alert("Success", `You have successfully borrowed "${book.title}".`);
             setModalVisible(false);
             loadData();
@@ -86,13 +86,28 @@ export default function StudentLibrary() {
     );
 
     return (
-        <View className="flex-1 bg-gray-50 dark:bg-black">
+        <View className="flex-1 bg-gray-50 dark:bg-navy">
             <UnifiedHeader
                 title="Resources"
                 subtitle="Library"
                 role="Student"
                 onBack={() => router.back()}
             />
+
+            <SubscriptionGate 
+                feature="library"
+                fallback={
+                    <View className="flex-1 items-center justify-center p-8">
+                        <View className="bg-orange-50 p-8 rounded-[40px] items-center border border-orange-100 border-dashed max-w-sm">
+                            <Zap size={48} color="#FF6900" style={{ marginBottom: 20 }} />
+                            <Text className="text-xl font-bold text-gray-900 text-center mb-2">Library Locked</Text>
+                            <Text className="text-gray-500 text-center mb-8 leading-5">
+                                the Digital Library is not included in your current subscription plan.
+                            </Text>
+                        </View>
+                    </View>
+                }
+            >
 
             <View className="p-4 md:p-8">
                 {/* Search Header */}
@@ -189,7 +204,7 @@ export default function StudentLibrary() {
 
             <Modal animationType="slide" transparent visible={modalVisible}>
                 <View className="flex-1 bg-black/60 justify-end">
-                    <View className="bg-white dark:bg-[#121212] rounded-t-[50px] p-8 pb-12 border-t border-gray-100 dark:border-gray-800">
+                    <View className="bg-white dark:bg-[#0F0B2E] rounded-t-[50px] p-8 pb-12 border-t border-gray-100 dark:border-gray-800">
                         <View className="flex-row justify-between items-start mb-8">
                             <View className="flex-1 pr-6">
                                 <Text className="text-[#FF6900] font-bold text-[10px] uppercase tracking-[3px] mb-2">{selectedBook?.category}</Text>
@@ -229,6 +244,7 @@ export default function StudentLibrary() {
                 </View>
             </Modal>
 
+            </SubscriptionGate>
         </View>
     );
 }

@@ -1,4 +1,4 @@
-import { UnifiedHeader } from "@/components/common/UnifiedHeader";
+﻿import { UnifiedHeader } from "@/components/common/UnifiedHeader";
 import { useAuth } from '@/contexts/AuthContext';
 import { ThemeMode, useTheme } from '@/contexts/ThemeContext';
 import { ChevronRight, HelpCircle, LogOut, Moon, Settings, ShieldCheck, Sun, UserCircle } from 'lucide-react-native';
@@ -6,6 +6,7 @@ import React, { useState } from 'react';
 import { Alert, Platform, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 
 // Screens
+import AdminHelp from '@/components/AdminHelp';
 import AdminOverview from '@/components/AdminOverview';
 import AdminProfile from '@/components/AdminProfile';
 import AdminSettings from '@/components/AdminSettings';
@@ -16,6 +17,8 @@ import TeacherHelp from '@/components/TeacherHelp';
 import TeacherProfile from '@/components/TeacherProfile';
 import TeacherSettings from '@/components/TeacherSettings';
 import InstitutionOwnership from '@/components/InstitutionOwnership';
+import MasterAdminProfile from '@/components/MasterAdminProfile';
+import MasterAdminSettings from '@/components/MasterAdminSettings';
 import { router } from 'expo-router';
 
 type MenuItemProps = {
@@ -34,10 +37,10 @@ const MenuItem = ({ icon, label, onPress, danger, isDark }: MenuItemProps) => (
       alignItems: 'center',
       padding: 16,
       borderBottomWidth: 1,
-      borderBottomColor: isDark ? '#2c2c2c' : '#f3f4f6',
+      borderBottomColor: isDark ? 'rgba(255,255,255,0.1)' : '#f3f4f6',
       backgroundColor: danger
         ? (isDark ? 'rgba(127,29,29,0.2)' : '#fef2f2')
-        : (isDark ? '#121212' : '#ffffff'),
+        : (isDark ? '#0F0B2E' : '#ffffff'),
     }}
   >
     <View style={{ width: 32 }}>{icon}</View>
@@ -49,16 +52,16 @@ const MenuItem = ({ icon, label, onPress, danger, isDark }: MenuItemProps) => (
 );
 
 function SettingsMenu({ userRole, onNavigate }: { userRole: string; onNavigate: (screen: 'profile' | 'settings' | 'help' | 'overview' | 'ownership') => void }) {
-  const { signOut, profile, loading, displayId, isTrial, isMaster } = useAuth();
+  const { signOut, profile, loading, displayId, isTrial, isMain } = useAuth();
   const { theme, setTheme, isDark } = useTheme();
-  const roleLabel = userRole.charAt(0).toUpperCase() + userRole.slice(1);
+  const roleLabel = userRole === 'master_admin' ? 'Master Admin' : (userRole.charAt(0).toUpperCase() + userRole.slice(1));
 
-  const surface = isDark ? '#1e1e1e' : '#ffffff';
-  const border = isDark ? '#2c2c2c' : '#f3f4f6';
+  const surface = isDark ? '#13103A' : '#ffffff';
+  const border = isDark ? 'rgba(255,255,255,0.1)' : '#f3f4f6';
   const textPrimary = isDark ? '#f1f1f1' : '#111827';
   const textSecondary = isDark ? '#6b7280' : '#9ca3af';
-  const pillBg = isDark ? '#121212' : '#f9fafb';
-  const pillBorder = isDark ? '#2c2c2c' : '#f3f4f6';
+  const pillBg = isDark ? '#0F0B2E' : '#f9fafb';
+  const pillBorder = isDark ? 'rgba(255,255,255,0.1)' : '#f3f4f6';
 
   const handleLogout = async () => {
     try {
@@ -88,7 +91,7 @@ function SettingsMenu({ userRole, onNavigate }: { userRole: string; onNavigate: 
       <UnifiedHeader
         title="Account"
         subtitle="Settings"
-        role={roleLabel as "Student" | "Teacher" | "Admin" | "Parent"}
+        role={roleLabel as "Student" | "Teacher" | "Admin" | "Parent" | "Master Admin"}
         showNotification={false}
       />
 
@@ -112,11 +115,11 @@ function SettingsMenu({ userRole, onNavigate }: { userRole: string; onNavigate: 
       </View>
 
       {/* Menu Items */}
-      <ScrollView style={{ flex: 1, backgroundColor: isDark ? '#121212' : '#ffffff' }} contentContainerStyle={{ paddingBottom: 20 }}>
+      <ScrollView style={{ flex: 1, backgroundColor: isDark ? '#0F0B2E' : '#ffffff' }} contentContainerStyle={{ paddingBottom: 20 }}>
         {userRole === 'admin' && (
           <>
             <MenuItem isDark={isDark} icon={<ShieldCheck size={22} color="#8b5cf6" />} label="Admin Overview" onPress={() => onNavigate('overview')} />
-            {isMaster && (
+            {isMain && (
               <MenuItem isDark={isDark} icon={<ShieldCheck size={22} color="#f59e0b" />} label="Institution Ownership" onPress={() => onNavigate('ownership')} />
             )}
           </>
@@ -127,13 +130,14 @@ function SettingsMenu({ userRole, onNavigate }: { userRole: string; onNavigate: 
           label={isTrial ? "My Profile (Restricted)" : "My Profile"}
           onPress={() => isTrial ? Alert.alert("Demo Mode", "Profile editing is disabled in demo mode.") : onNavigate('profile')}
         />
-        {userRole !== 'admin' && (
-          <>
-            {!isTrial && (
-              <MenuItem isDark={isDark} icon={<Settings size={22} color="#6b7280" />} label="Settings" onPress={() => onNavigate('settings')} />
-            )}
-            <MenuItem isDark={isDark} icon={<HelpCircle size={22} color="#3b82f6" />} label="Help & Support" onPress={() => onNavigate('help')} />
-          </>
+        {!isTrial && (
+          <MenuItem isDark={isDark} icon={<Settings size={22} color="#6b7280" />} label="Settings" onPress={() => onNavigate('settings')} />
+        )}
+        {isTrial && userRole !== 'admin' && userRole !== 'master_admin' && (
+          <MenuItem isDark={isDark} icon={<HelpCircle size={22} color="#3b82f6" />} label="Help & Support" onPress={() => onNavigate('help')} />
+        )}
+        {!isTrial && userRole !== 'master_admin' && (
+          <MenuItem isDark={isDark} icon={<HelpCircle size={22} color="#3b82f6" />} label="Help & Support" onPress={() => onNavigate('help')} />
         )}
 
         {/* Theme toggle — all style={{}} to avoid dark: className crash on toggle */}
@@ -180,7 +184,7 @@ function SettingsMenu({ userRole, onNavigate }: { userRole: string; onNavigate: 
       </ScrollView>
 
       {/* Logout */}
-      <View style={{ padding: 24, paddingBottom: 40, borderTopWidth: 1, borderTopColor: border, backgroundColor: isDark ? '#121212' : '#ffffff' }}>
+      <View style={{ padding: 24, paddingBottom: 40, borderTopWidth: 1, borderTopColor: border, backgroundColor: isDark ? '#0F0B2E' : '#ffffff' }}>
         <TouchableOpacity
           onPress={handleLogout}
           disabled={loading}
@@ -199,7 +203,7 @@ function SettingsMenu({ userRole, onNavigate }: { userRole: string; onNavigate: 
   );
 }
 
-export function GlobalSettingsContent({ userRole = 'student' }: { userRole?: 'student' | 'teacher' | 'admin' | 'parent' }) {
+export function GlobalSettingsContent({ userRole = 'student' }: { userRole?: 'student' | 'teacher' | 'admin' | 'parent' | 'master_admin' }) {
   const [activeScreen, setActiveScreen] = useState<'menu' | 'profile' | 'settings' | 'help' | 'overview' | 'ownership'>('menu');
   const { isDark } = useTheme();
 
@@ -207,14 +211,17 @@ export function GlobalSettingsContent({ userRole = 'student' }: { userRole?: 'st
     switch (activeScreen) {
       case 'overview': return <AdminOverview />;
       case 'profile':
+        if (userRole === 'master_admin') return <MasterAdminProfile />;
         if (userRole === 'admin') return <AdminProfile />;
         if (userRole === 'teacher') return <TeacherProfile />;
         return <StudentProfile />;
       case 'settings':
+        if (userRole === 'master_admin') return <MasterAdminSettings />;
         if (userRole === 'admin') return <AdminSettings />;
         if (userRole === 'teacher') return <TeacherSettings />;
         return <StudentSettings />;
       case 'help':
+        if (userRole === 'admin') return <AdminHelp />;
         if (userRole === 'teacher') return <TeacherHelp />;
         return <StudentHelp />;
       case 'ownership':
@@ -235,15 +242,15 @@ export function GlobalSettingsContent({ userRole = 'student' }: { userRole?: 'st
     }
   };
 
-  const roleLabel = (userRole.charAt(0).toUpperCase() + userRole.slice(1)) as "Student" | "Teacher" | "Admin" | "Parent";
+  const roleLabel = userRole === 'master_admin' ? 'Master Admin' : (userRole.charAt(0).toUpperCase() + userRole.slice(1)) as "Student" | "Teacher" | "Admin" | "Parent" | "Master Admin";
 
   return (
-    <View style={{ flex: 1, backgroundColor: isDark ? '#121212' : '#ffffff' }}>
+    <View style={{ flex: 1, backgroundColor: isDark ? '#0F0B2E' : '#ffffff' }}>
       {activeScreen !== 'menu' && (
         <UnifiedHeader
           title={roleLabel}
           subtitle={getTitle()}
-          role={roleLabel}
+          role={roleLabel as any}
           showNotification={false}
           onBack={() => setActiveScreen('menu')}
         />
@@ -253,6 +260,6 @@ export function GlobalSettingsContent({ userRole = 'student' }: { userRole?: 'st
   );
 }
 
-export default function GlobalSettingsDrawer({ userRole = 'student' }: { userRole?: 'student' | 'teacher' | 'admin' | 'parent' }) {
+export default function GlobalSettingsDrawer({ userRole = 'student' }: { userRole?: 'student' | 'teacher' | 'admin' | 'parent' | 'master_admin' }) {
   return <GlobalSettingsContent userRole={userRole} />;
 }

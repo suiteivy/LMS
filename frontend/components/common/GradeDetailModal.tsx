@@ -1,4 +1,4 @@
-import { X } from 'lucide-react-native';
+﻿import { X } from 'lucide-react-native';
 import React from 'react';
 import { Modal, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 
@@ -22,7 +22,7 @@ export const GradeDetailModal = ({ visible, onClose, subjectName, lecturerName, 
     return (
         <Modal visible={visible} animationType="slide" transparent>
             <View className="flex-1 bg-black/60 justify-end">
-                <View className="bg-white dark:bg-[#121212] rounded-t-[40px] p-8 h-[80%] border-t border-gray-100 dark:border-gray-800">
+                <View className="bg-white dark:bg-[#0F0B2E] rounded-t-[40px] p-8 h-[80%] border-t border-gray-100 dark:border-gray-800">
                     <View className="flex-row justify-between items-center mb-8">
                         <Text className="text-2xl font-bold text-gray-900 dark:text-white tracking-tight">Grade Details</Text>
                         <TouchableOpacity

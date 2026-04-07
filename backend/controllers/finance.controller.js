@@ -7,7 +7,7 @@ const supabase = require("../utils/supabaseClient");
 exports.createFund = async (req, res) => {
     try {
         const { userRole, institution_id } = req;
-        if (userRole !== "admin" && userRole !== "bursary") return res.status(403).json({ error: "Unauthorized" });
+        if (!['admin', 'bursary', 'master_admin'].includes(userRole)) return res.status(403).json({ error: "Unauthorized" });
 
         const { name, description, total_amount } = req.body;
         if (!name) return res.status(400).json({ error: "Fund name is required" });
@@ -52,7 +52,7 @@ exports.getFunds = async (req, res) => {
 exports.createAllocation = async (req, res) => {
     try {
         const { userRole, institution_id } = req;
-        if (userRole !== "admin" && userRole !== "bursary") return res.status(403).json({ error: "Unauthorized" });
+        if (!['admin', 'bursary', 'master_admin'].includes(userRole)) return res.status(403).json({ error: "Unauthorized" });
 
         const { fund_id, title, description, amount, category, status } = req.body;
         if (!fund_id || !title || !amount) {
@@ -136,7 +136,7 @@ exports.getTransactions = async (req, res) => {
             .eq("institution_id", institution_id)
             .order("date", { ascending: false });
 
-        if (userRole !== "admin") {
+        if (userRole !== "admin" && userRole !== "master_admin") {
             // Non-admins can only see their own transactions
             query = query.eq("user_id", userId);
         } else if (distinct_user_id) {
@@ -165,7 +165,7 @@ exports.processTransaction = async (req, res) => {
         const { id } = req.params;
         const { userRole, institution_id } = req;
 
-        if (userRole !== 'admin' && userRole !== 'bursary') return res.status(403).json({ error: "Unauthorized" });
+        if (!['admin', 'bursary', 'master_admin'].includes(userRole)) return res.status(403).json({ error: "Unauthorized" });
 
         const { data, error } = await supabase
             .from("financial_transactions")
@@ -189,7 +189,7 @@ exports.processTransaction = async (req, res) => {
 exports.createTransaction = async (req, res) => {
     try {
         const { userRole, institution_id } = req;
-        if (userRole !== "admin") return res.status(403).json({ error: "Unauthorized" });
+        if (!['admin', 'master_admin'].includes(userRole)) return res.status(403).json({ error: "Unauthorized" });
 
         const { user_id, type, direction, amount, date, method, status, reference_id, meta } = req.body;
 
@@ -224,7 +224,7 @@ exports.createTransaction = async (req, res) => {
 exports.recordFeePayment = async (req, res) => {
     try {
         const { userRole, institution_id } = req;
-        if (userRole !== "admin") return res.status(403).json({ error: "Unauthorized" });
+        if (!['admin', 'master_admin'].includes(userRole)) return res.status(403).json({ error: "Unauthorized" });
         console.log("recordFeePayment called with body:", req.body);
         const { student_id, amount, payment_method, reference_number, notes } = req.body;
         console.log(`Recording fee payment: student_id=${student_id}, amount=${amount}, method=${payment_method}`);
@@ -250,14 +250,15 @@ exports.recordFeePayment = async (req, res) => {
                 method: payment_method,
                 meta: { notes, reference_number }
             }])
-            .select("*, users(full_name)")
+            .select("*, users(first_name, last_name, full_name)")
             .single();
 
         if (error) throw error;
         // Attach student_name to response for frontend
+        const student_name = data?.users?.first_name ? `${data.users.first_name} ${data.users.last_name || ''}`.trim() : (data?.users?.full_name || "");
         const response = {
             ...data,
-            student_name: data?.users?.full_name || ""
+            student_name
         };
         res.status(201).json(response);
     } catch (err) {
@@ -292,7 +293,7 @@ exports.getFeeStructures = async (req, res) => {
 exports.updateFeeStructure = async (req, res) => {
     try {
         const { userRole, institution_id } = req;
-        if (userRole !== 'admin' && userRole !== 'bursary') return res.status(403).json({ error: "Unauthorized" });
+        if (!['admin', 'bursary', 'master_admin'].includes(userRole)) return res.status(403).json({ error: "Unauthorized" });
 
         const { id, title, description, amount, academic_year, term, is_active } = req.body;
 
@@ -318,7 +319,7 @@ exports.updateFeeStructure = async (req, res) => {
 exports.createFeeStructure = async (req, res) => {
     try {
         const { userRole, institution_id } = req;
-        if (userRole !== 'admin' && userRole !== 'bursary') return res.status(403).json({ error: "Unauthorized" });
+        if (!['admin', 'bursary', 'master_admin'].includes(userRole)) return res.status(403).json({ error: "Unauthorized" });
 
         const { title, description, amount, academic_year, term } = req.body;
 

@@ -1,4 +1,4 @@
-import { GradeDetailModal } from "@/components/common/GradeDetailModal";
+﻿import { GradeDetailModal } from "@/components/common/GradeDetailModal";
 import { UnifiedHeader } from "@/components/common/UnifiedHeader";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/libs/supabase";
@@ -238,14 +238,14 @@ export default function Grades() {
 
     if (loading) {
         return (
-            <View className="flex-1 justify-center items-center bg-gray-50 dark:bg-black">
+            <View className="flex-1 justify-center items-center bg-gray-50 dark:bg-navy">
                 <ActivityIndicator size="large" color="#FF6900" />
             </View>
         );
     }
 
     return (
-        <View className="flex-1 bg-gray-50 dark:bg-black">
+        <View className="flex-1 bg-gray-50 dark:bg-navy">
             <UnifiedHeader
                 title="Intelligence"
                 subtitle="Performance"

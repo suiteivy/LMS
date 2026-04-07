@@ -1,4 +1,4 @@
-import { useAuth } from "@/contexts/AuthContext";
+﻿import { useAuth } from "@/contexts/AuthContext";
 import { useTheme } from "@/contexts/ThemeContext";
 import { LibraryAPI } from "@/services/LibraryService";
 import {
@@ -49,8 +49,8 @@ const LibraryAction = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const surface = isDark ? '#1e1e1e' : '#ffffff';
-  const border = isDark ? '#2c2c2c' : '#e2e8f0';
+  const surface = isDark ? '#13103A' : '#ffffff';
+  const border = isDark ? 'rgba(255,255,255,0.1)' : '#e2e8f0';
   const textSecondary = isDark ? '#9ca3af' : '#64748b';
 
   useEffect(() => { loadInitialData(); }, []);
@@ -243,7 +243,7 @@ const LibraryAction = () => {
   };
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: isDark ? '#121212' : '#f9fafb' }} edges={['top']}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: isDark ? '#0F0B2E' : '#f9fafb' }} edges={['top']}>
       <UnifiedHeader
         title="Management"
         subtitle="Library"

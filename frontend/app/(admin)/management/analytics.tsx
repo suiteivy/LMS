@@ -1,4 +1,4 @@
-import { UnifiedHeader } from "@/components/common/UnifiedHeader";
+﻿import { UnifiedHeader } from "@/components/common/UnifiedHeader";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useDashboardStats } from "@/hooks/useDashboardStats";
 import { router } from "expo-router";
@@ -8,11 +8,11 @@ import { ActivityIndicator, RefreshControl, ScrollView, Text, TouchableOpacity, 
 
 const StatCard = ({ title, value, icon: Icon, color, trend, isDark }: any) => (
     <View style={{
-        backgroundColor: isDark ? '#1e1e1e' : '#ffffff',
+        backgroundColor: isDark ? '#13103A' : '#ffffff',
         padding: 20,
         borderRadius: 24,
         borderWidth: 1,
-        borderColor: isDark ? '#2c2c2c' : '#f3f4f6',
+        borderColor: isDark ? 'rgba(255,255,255,0.1)' : '#f3f4f6',
         flex: 1,
         minWidth: 160,
         margin: 4,
@@ -46,7 +46,7 @@ export default function AnalyticsScreen() {
 
     if (loading && !refreshing) {
         return (
-            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: isDark ? '#121212' : '#f9fafb' }}>
+            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: isDark ? '#0F0B2E' : '#f9fafb' }}>
                 <ActivityIndicator size="large" color="#FF6B00" />
             </View>
         );
@@ -68,13 +68,13 @@ export default function AnalyticsScreen() {
 
     const maxRevenue = Math.max(...revenueData.map(d => d.amount), 100);
 
-    const surface = isDark ? '#1e1e1e' : '#ffffff';
-    const border = isDark ? '#2c2c2c' : '#f3f4f6';
+    const surface = isDark ? '#13103A' : '#ffffff';
+    const border = isDark ? 'rgba(255,255,255,0.1)' : '#f3f4f6';
     const textPrimary = isDark ? '#f1f1f1' : '#111827';
     const textSecondary = isDark ? '#9ca3af' : '#6b7280';
 
     return (
-        <View style={{ flex: 1, backgroundColor: isDark ? '#121212' : '#f9fafb' }}>
+        <View style={{ flex: 1, backgroundColor: isDark ? '#0F0B2E' : '#f9fafb' }}>
             <UnifiedHeader
                 title="Management"
                 subtitle="Analytics"
@@ -150,7 +150,7 @@ export default function AnalyticsScreen() {
                                     {parseInt(stats.find(s => s.label === "Total Students")?.value || "0") > 1000 ? "Medium" : "Low"}
                                 </Text>
                             </View>
-                            <View style={{ height: 8, backgroundColor: isDark ? '#2c2c2c' : '#f3f4f6', borderRadius: 999, overflow: 'hidden' }}>
+                            <View style={{ height: 8, backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : '#f3f4f6', borderRadius: 999, overflow: 'hidden' }}>
                                 <View style={{
                                     height: '100%',
                                     backgroundColor: '#3b82f6',
@@ -166,7 +166,7 @@ export default function AnalyticsScreen() {
                                 <Text style={{ fontSize: 13, color: textSecondary, fontWeight: '500' }}>Server Status</Text>
                                 <Text style={{ fontSize: 13, color: '#10b981', fontWeight: 'bold' }}>Optimal</Text>
                             </View>
-                            <View style={{ height: 8, backgroundColor: isDark ? '#2c2c2c' : '#f3f4f6', borderRadius: 999, overflow: 'hidden' }}>
+                            <View style={{ height: 8, backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : '#f3f4f6', borderRadius: 999, overflow: 'hidden' }}>
                                 <View style={{ height: '100%', backgroundColor: '#10b981', width: '100%', borderRadius: 999 }} />
                             </View>
                             <Text style={{ fontSize: 11, color: textSecondary, marginTop: 4 }}>All services operational</Text>

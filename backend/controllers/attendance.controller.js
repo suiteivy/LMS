@@ -25,7 +25,7 @@ exports.getStudentAttendance = async (req, res) => {
         // 1. Get all students enrolled in this subject
         const { data: enrollments, error: eError } = await supabase
             .from("students")
-            .select("id, users!inner(full_name, avatar_url), enrollments!inner(subject_id)")
+            .select("id, users!inner(first_name, last_name, full_name, avatar_url), enrollments!inner(subject_id)")
             .eq("institution_id", institution_id)
             .eq("enrollments.subject_id", subject_id);
 
@@ -46,6 +46,8 @@ exports.getStudentAttendance = async (req, res) => {
             return {
                 student_id: s.id,
                 name: s.users.full_name,
+                first_name: s.users.first_name,
+                last_name: s.users.last_name,
                 avatar_url: s.users.avatar_url,
                 status: record ? record.status : "pending",
                 id: record ? record.id : null,
@@ -123,7 +125,7 @@ exports.getTeacherAttendance = async (req, res) => {
         // 1. Get all teachers
         const { data: teachers, error: tError } = await supabase
             .from("teachers")
-            .select("id, users!inner(full_name, avatar_url)")
+            .select("id, users!inner(first_name, last_name, full_name, avatar_url)")
             .eq("institution_id", institution_id);
 
         if (tError) throw tError;
@@ -143,6 +145,8 @@ exports.getTeacherAttendance = async (req, res) => {
             return {
                 teacher_id: t.id,
                 name: t.users.full_name,
+                first_name: t.users.first_name,
+                last_name: t.users.last_name,
                 avatar_url: t.users.avatar_url,
                 status: record ? record.status : "pending",
                 id: record ? record.id : null,

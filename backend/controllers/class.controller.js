@@ -150,10 +150,12 @@ exports.getClassStudents = async (req, res) => {
           id,
           grade_level,
           user_id,
-          users:user_id (
-            full_name,
-            email
-          )
+            users:user_id (
+              first_name,
+              last_name,
+              full_name,
+              email
+            )
         )
       `)
             .eq("class_id", id);
@@ -165,6 +167,8 @@ exports.getClassStudents = async (req, res) => {
             student_id: enrollment.student_id,
             enrolled_at: enrollment.enrolled_at,
             full_name: enrollment.students?.users?.full_name || "Unknown",
+            first_name: enrollment.students?.users?.first_name || "",
+            last_name: enrollment.students?.users?.last_name || "",
             email: enrollment.students?.users?.email || "",
             grade_level: enrollment.students?.grade_level || "",
         }));

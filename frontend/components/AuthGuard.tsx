@@ -1,6 +1,7 @@
 import { router } from 'expo-router'
 import React, { useEffect } from 'react'
 import { ActivityIndicator, Text, View } from 'react-native'
+import { useTheme } from '../contexts/ThemeContext'
 import { useAuth } from '../contexts/AuthContext'
 
 interface AuthGuardProps {
@@ -17,6 +18,7 @@ export const AuthGuard: React.FC<AuthGuardProps> = ({
   allowedRoles
 }) => {
   const { user, profile, isInitializing } = useAuth()
+  const { isDark } = useTheme()
   const hasBeenInitialized = React.useRef(false)
   const [shouldShowOverlay, setShouldShowOverlay] = React.useState(false)
 
@@ -83,7 +85,7 @@ export const AuthGuard: React.FC<AuthGuardProps> = ({
             left: 0,
             right: 0,
             bottom: 0,
-            backgroundColor: 'white',
+            backgroundColor: isDark ? '#0F0B2E' : '#ffffff',
             zIndex: 9999,
           }}
         />

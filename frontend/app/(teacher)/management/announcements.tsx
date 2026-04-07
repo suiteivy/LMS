@@ -1,4 +1,4 @@
-import { UnifiedHeader } from "@/components/common/UnifiedHeader";
+﻿import { UnifiedHeader } from "@/components/common/UnifiedHeader";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/libs/supabase";
 import { showError, showSuccess } from "@/utils/toast";
@@ -41,7 +41,7 @@ const AnnouncementCard = ({ announcement, onDelete }: { announcement: Announceme
                 </Text>
 
                 <View className="flex-row gap-2">
-                    <TouchableOpacity className="w-10 h-10 bg-gray-50 dark:bg-[#242424] rounded-xl items-center justify-center">
+                    <TouchableOpacity className="w-10 h-10 bg-gray-50 dark:bg-[#1A1650] rounded-xl items-center justify-center">
                         <Edit2 size={16} color="#6B7280" />
                     </TouchableOpacity>
                     <TouchableOpacity
@@ -152,7 +152,7 @@ export default function AnnouncementsPage() {
     };
 
     return (
-        <View className="flex-1 bg-gray-50 dark:bg-black">
+        <View className="flex-1 bg-gray-50 dark:bg-navy">
             <UnifiedHeader
                 title="Management"
                 subtitle="Live Broadcast"
@@ -200,7 +200,7 @@ export default function AnnouncementsPage() {
             {/* Create Modal */}
             <Modal visible={showModal} animationType="slide" transparent>
                 <View className="flex-1 bg-black/50 justify-end">
-                    <View className="bg-white dark:bg-[#121212] rounded-t-[40px] p-8 pb-12 border-t border-gray-100 dark:border-gray-800">
+                    <View className="bg-white dark:bg-[#0F0B2E] rounded-t-[40px] p-8 pb-12 border-t border-gray-100 dark:border-gray-800">
                         <View className="flex-row justify-between items-center mb-8">
                             <Text className="text-2xl font-bold text-gray-900 dark:text-white tracking-tight">Post Update</Text>
                             <TouchableOpacity

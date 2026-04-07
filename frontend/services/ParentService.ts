@@ -20,4 +20,13 @@ export class ParentService {
         const response = await api.get(`/parent/student/${studentId}/finance`);
         return response.data;
     }
+
+    /** Get approved bursaries for a linked student */
+    static async getStudentBursaries(studentId: string) {
+        const response = await api.get(`/parent/student/${studentId}/bursaries`);
+        return response.data;
+    }
 }
+
+export const ParentAPI = ParentService;
+

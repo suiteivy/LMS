@@ -1,9 +1,10 @@
 import { useTheme } from "@/contexts/ThemeContext";
-import { Bell, ChevronRight, Globe, LucideIcon, User } from "lucide-react-native";
+import { Bell, ChevronRight, Globe, Lock, LucideIcon, User } from "lucide-react-native";
 import React, { ReactNode, useState } from "react";
 import { ScrollView, Switch, Text, TouchableOpacity, View } from "react-native";
 import { ProfileEdit } from "./ProfileEdit";
 import { SettingsService } from "@/services/SettingsService";
+import { ChangePasswordModal } from "./shared/ChangePasswordModal";
 
 interface SettingRowProps {
     icon: LucideIcon;
@@ -17,6 +18,7 @@ interface SettingRowProps {
 export default function StudentSettings() {
     const [notifications, setNotifications] = useState(true)
     const [showEditForm, setShowEditForm] = useState(false)
+    const [showPasswordForm, setShowPasswordForm] = useState(false)
     const { isDark } = useTheme();
 
     const SettingRow = ({ icon: Icon, title, onPress, isLast, children, isDark }: SettingRowProps) => (
@@ -36,7 +38,7 @@ export default function StudentSettings() {
     )
 
     return (
-        <ScrollView className="flex-1 bg-gray-50 dark:bg-black">
+        <ScrollView className="flex-1 bg-gray-50 dark:bg-navy">
             <View className="p-4 md:p-8 max-w-2xl mx-auto w-full">
 
                 <Text className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest ml-1 mb-2">Account</Text>
@@ -45,6 +47,11 @@ export default function StudentSettings() {
                         onPress={() => setShowEditForm(true)}
                     >
                         <SettingRow icon={User} title="Edit Profile" isDark={isDark} />
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                        onPress={() => setShowPasswordForm(true)}
+                    >
+                        <SettingRow icon={Lock} title="Change Password" isDark={isDark} />
                     </TouchableOpacity>
                     <SettingRow icon={Globe} title="Language" isLast isDark={isDark}>
                         <Text className="text-gray-400 dark:text-gray-500 mr-2">English</Text>
@@ -65,6 +72,11 @@ export default function StudentSettings() {
                 <ProfileEdit
                     visible={showEditForm}
                     onClose={() => setShowEditForm(false)}
+                />
+
+                <ChangePasswordModal
+                    visible={showPasswordForm}
+                    onClose={() => setShowPasswordForm(false)}
                 />
             </View>
         </ScrollView>

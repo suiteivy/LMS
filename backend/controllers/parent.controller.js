@@ -37,7 +37,7 @@ exports.getLinkedStudents = async (req, res) => {
         // 2. Get Students with grade_level from students table
         const { data: students, error } = await supabase
             .from("parent_students")
-            .select("student:students(id, grade_level, users(full_name, avatar_url, email))")
+            .select("student:students(id, grade_level, users(first_name, last_name, full_name, avatar_url, email))")
             .eq("parent_id", parent.id);
 
 
@@ -59,15 +59,15 @@ exports.getStudentAcademicData = async (req, res) => {
         const auth = await verifyParentStudentLink(userId, studentId);
         if (auth.error) return res.status(auth.status).json({ error: auth.error });
 
-        const {data: studentRecord} = await supabase
-        .from('students')
-        .select('user_id')
-        .eq('id', studentId)
-        .single();
+        const { data: studentRecord } = await supabase
+            .from('students')
+            .select('user_id')
+            .eq('id', studentId)
+            .single();
 
         if (!studentRecord) return res.status(404).json({ error: "Student not found" });
 
-        const studentUUID = studentRecord.user_id;           
+        const studentUUID = studentRecord.user_id;
         // Fetch Grades
         const { data: grades } = await supabase
             .from("grades")
@@ -81,7 +81,7 @@ exports.getStudentAcademicData = async (req, res) => {
             .eq("student_id", studentId)
             .order("submitted_at", { ascending: false });
 
-        res.json({ grades:grades || [], submissions:submissions || [] });
+        res.json({ grades: grades || [], submissions: submissions || [] });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
@@ -162,3 +162,36 @@ exports.getStudentFinance = async (req, res) => {
         res.status(500).json({ error: err.message });
     }
 };
+
+/** Get approved bursaries for a specific student (Parent) */
+exports.getStudentBursaries = async (req, res) => {
+    try {
+        const { userId, institution_id } = req;
+        const { studentId } = req.params;
+
+        // Verify parent-student relationship
+        const link = await verifyParentStudentLink(userId, studentId);
+        if (!link.authorized) {
+            return res.status(link.status).json({ error: link.error });
+        }
+
+        const { data, error } = await supabase
+            .from("bursary_applications")
+            .select(`
+                id, status, amount_awarded, notes, created_at,
+                bursary:bursaries (
+                    id, title, description, amount, deadline, status
+                )
+            `)
+            .eq("student_id", studentId)
+            .eq("institution_id", institution_id)
+            .eq("status", "approved")
+            .order("created_at", { ascending: false });
+
+        if (error) throw error;
+        res.json(data);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+};
+

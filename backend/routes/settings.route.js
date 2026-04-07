@@ -5,8 +5,8 @@ const settingsController = require("../controllers/settings.controller");
 const preferencesController = require("../controllers/preferences.controller");
 const { authMiddleware } = require("../middleware/auth.middleware");
 
-// Public-ish (Authenticated) read
-router.get("/currency", authMiddleware, settingsController.getCurrencyRates);
+// Public read
+router.get("/currency", settingsController.getCurrencyRates);
 
 // Admin only (Trigger update)
 router.post("/currency/update", authMiddleware, (req, res, next) => {
@@ -17,5 +17,8 @@ router.post("/currency/update", authMiddleware, (req, res, next) => {
 // User notification preferences
 router.get("/preferences", authMiddleware, preferencesController.getPreferences);
 router.put("/preferences", authMiddleware, preferencesController.updatePreferences);
+
+// Support
+router.post("/support", authMiddleware, settingsController.createSupportRequest);
 
 module.exports = router;

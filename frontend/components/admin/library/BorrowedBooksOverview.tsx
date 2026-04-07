@@ -68,7 +68,7 @@ const BorrowedBooksOverview: React.FC<BorrowedBooksOverviewProps> = ({
     const frontendBook = LibraryAPI.transformBorrowedBookData(backendBook);
     return {
       ...frontendBook,
-      borrowerPhone: backendBook.student?.phone || undefined,
+      borrowerPhone: frontendBook.borrowerPhone,
       renewalCount: backendBook.renewal_count || 0,
       maxRenewals: backendBook.max_renewals || 1,
       fineAmount: backendBook.fine_amount || undefined,
@@ -503,11 +503,25 @@ const BorrowedBooksOverview: React.FC<BorrowedBooksOverviewProps> = ({
               <Text className="text-sm font-medium text-slate-700 dark:text-gray-200 mb-1">
                 Borrower: {borrowedBook.borrowerName}
               </Text>
-              {borrowedBook.borrowerDisplayId && (
-                <Text className="text-xs text-teal-600 dark:text-teal-400 font-medium mb-1">
-                  ID: {borrowedBook.borrowerDisplayId}
-                </Text>
-              )}
+              
+              <View className="flex-row flex-wrap gap-2 mb-1">
+                {borrowedBook.borrowerDisplayId && (
+                  <Text className="text-[10px] bg-teal-50 dark:bg-teal-900/30 text-teal-600 dark:text-teal-400 font-bold px-2 py-0.5 rounded-md uppercase tracking-wider">
+                    ID: {borrowedBook.borrowerDisplayId}
+                  </Text>
+                )}
+                {borrowedBook.borrowerType === 'student' && borrowedBook.gradeLevel && (
+                  <Text className="text-[10px] bg-orange-50 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 font-bold px-2 py-0.5 rounded-md uppercase tracking-wider">
+                    Grade: {borrowedBook.gradeLevel}
+                  </Text>
+                )}
+                {borrowedBook.borrowerType === 'teacher' && borrowedBook.department && (
+                  <Text className="text-[10px] bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 font-bold px-2 py-0.5 rounded-md uppercase tracking-wider">
+                    Dept: {borrowedBook.department}
+                  </Text>
+                )}
+              </View>
+
               <Text className="text-xs text-gray-600 dark:text-gray-300 mb-1">
                 📧 {borrowedBook.borrowerEmail}
               </Text>
@@ -517,9 +531,8 @@ const BorrowedBooksOverview: React.FC<BorrowedBooksOverviewProps> = ({
                 </Text>
               )}
               {borrowedBook.renewalCount !== undefined && (
-                <Text className="text-xs text-teal-600 dark:text-teal-400">
-                  Renewals: {borrowedBook.renewalCount}/
-                  {borrowedBook.maxRenewals || 1}
+                <Text className="text-[10px] text-teal-600 dark:text-teal-400 font-bold uppercase tracking-wider mt-1">
+                  Renewals: {borrowedBook.renewalCount} / {borrowedBook.maxRenewals || 1}
                 </Text>
               )}
             </View>
@@ -658,7 +671,7 @@ const BorrowedBooksOverview: React.FC<BorrowedBooksOverviewProps> = ({
   // Show loading spinner on initial load
   if (loading && borrowedBooks.length === 0) {
     return (
-      <View className="flex-1 bg-mint-50 dark:bg-black justify-center items-center">
+      <View className="flex-1 bg-mint-50 dark:bg-navy justify-center items-center">
         <ActivityIndicator size="large" color="#0D9488" />
         <Text className="text-gray-600 dark:text-gray-300 mt-2">Loading borrowed books...</Text>
       </View>
@@ -666,17 +679,17 @@ const BorrowedBooksOverview: React.FC<BorrowedBooksOverviewProps> = ({
   }
 
   return (
-    <View className="flex-1 bg-mint-50 dark:bg-black">
+    <View className="flex-1 bg-mint-50 dark:bg-navy">
       {/* Header */}
-      <View className="bg-white dark:bg-[#121212] p-4 border-b border-teal-100 dark:border-gray-800">
+      <View className="bg-white dark:bg-[#0F0B2E] p-4 border-b border-teal-100 dark:border-gray-800">
         <Text className="text-xl font-bold text-slate-800 dark:text-white">
           Borrowed Books
         </Text>
       </View>
 
       {/* Filters & Search */}
-      <View className="bg-white dark:bg-[#121212] px-4 pb-4 border-b border-teal-100 dark:border-gray-800">
-        <View className="flex-row items-center bg-gray-50 dark:bg-[#1a1a1a] border border-teal-100 dark:border-gray-800 rounded-xl px-4 py-2 mt-2 mb-4">
+      <View className="bg-white dark:bg-[#0F0B2E] px-4 pb-4 border-b border-teal-100 dark:border-gray-800">
+        <View className="flex-row items-center bg-gray-50 dark:bg-navy-surface border border-teal-100 dark:border-gray-800 rounded-xl px-4 py-2 mt-2 mb-4">
           <Ionicons name="search" size={20} color={isDark ? "#9CA3AF" : "#6B7280"} />
           <TextInput
             className="flex-1 ml-2 text-slate-800 dark:text-white"
@@ -763,7 +776,7 @@ const BorrowedBooksOverview: React.FC<BorrowedBooksOverviewProps> = ({
         presentationStyle="pageSheet"
         onRequestClose={() => setShowReturnModal(false)}
       >
-        <View className="flex-1 bg-white dark:bg-[#121212]">
+        <View className="flex-1 bg-white dark:bg-[#0F0B2E]">
           <View className="bg-teal-600 p-4 pt-12">
             <View className="flex-row justify-between items-center">
               <Text className="text-xl font-bold text-white">
@@ -777,7 +790,7 @@ const BorrowedBooksOverview: React.FC<BorrowedBooksOverviewProps> = ({
 
           {selectedBook && (
             <ScrollView className="flex-1 p-4">
-              <View className="bg-gray-50 dark:bg-[#1a1a1a] p-4 rounded-lg mb-4">
+              <View className="bg-gray-50 dark:bg-navy-surface p-4 rounded-lg mb-4">
                 <Text className="font-semibold text-slate-800 dark:text-white mb-1">
                   {selectedBook.bookTitle}
                 </Text>

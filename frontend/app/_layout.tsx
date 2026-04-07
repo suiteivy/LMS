@@ -49,11 +49,11 @@ console.error = (...args: unknown[]) => {
 
 LogBox.ignoreLogs(["Couldn't find a navigation context"]);
 
-// Material Dark color scale
-// Background:  #121212
-// Surface:     #1e1e1e
-// Cards:       #242424
-// Borders:     #2c2c2c
+// SuiteIvy Dark color palette (matches landing page)
+// Background:  #0F0B2E  (deep navy)
+// Surface:     #13103A  (slightly lighter navy)
+// Cards:       #1A1650  (muted navy)
+// Borders:     rgba(255,255,255,0.1)  (translucent white)
 
 // ─── Root ────────────────────────────────────────────────────────────────────
 export default function RootLayout() {
@@ -65,6 +65,7 @@ export default function RootLayout() {
             <CurrencyProvider>
               <NotificationProvider>
                 <AppShell />
+                <Toast config={toastConfig} />
               </NotificationProvider>
             </CurrencyProvider>
           </AuthProvider>
@@ -87,7 +88,7 @@ function AppShell() {
       {Platform.OS === 'android' ? (
         <StatusBar
           style={isDark ? "light" : "dark"}
-          backgroundColor={isDark ? '#121212' : '#ffffff'}
+          backgroundColor={isDark ? '#0F0B2E' : '#ffffff'}
           translucent={false}
         />
       ) : (
@@ -112,48 +113,36 @@ function GlobalNotifications() {
 
 // ─── AuthHandler ─────────────────────────────────────────────────────────────
 function AuthHandler() {
-  const { loading, isInitializing, resetSessionTimer, session } = useAuth();
+  const { loading, isInitializing, isNavReady, resetSessionTimer, session, profile, isPlatformAdmin, getRoleRedirect, signOut } = useAuth();
   const { isDark } = useTheme();
   const segments = useSegments();
   const router = useRouter();
-  const [isNavigationReady, setIsNavigationReady] = React.useState(false);
 
   React.useEffect(() => {
-    if (!isNavigationReady) {
-      const timer = setTimeout(() => setIsNavigationReady(true), 1);
-      return () => clearTimeout(timer);
-    }
-  }, [isNavigationReady]);
+    if (isInitializing || !isNavReady) return;
 
-  React.useEffect(() => {
-    // 1. Wait for everything to be ready
-    if (isInitializing || !isNavigationReady) return;
-
-    const inAuthGroup = segments.some(s => s === "(auth)");
     const currentPath = `/${segments.join('/')}`;
-    const isRoot = currentPath === '/' || currentPath === '/index' || currentPath === '/(auth)';
+    const inAuthGroup = segments.some(s => s === "(auth)");
+    const isRoot = currentPath === '/' || currentPath === '/index' || currentPath === '';
 
-    // Debug logging for routing issues
-    // console.log("[AuthHandler] State:", { hasSession: !!session, inAuthGroup, isRoot, currentPath });
+    console.log(`[AuthHandler] State - Session: ${!!session}, Root: ${isRoot}, AuthGroup: ${inAuthGroup}, Path: ${currentPath}`);
 
     if (!session) {
-      // NOT LOGGED IN
-      // If we are not in auth group and not at root, we should probably go to root.
-      // BUT: Only if we aren't already there.
       if (!inAuthGroup && !isRoot) {
-        // Special case: if we just loaded and isInitializing just flipped to false,
-        // we might be in a race with the router. 
-        // Let's only redirect if we aren't in a transient state.
-        router.replace("/");
+        console.log('[AuthHandler] No session, redirecting to signIn');
+        router.replace("/(auth)/signIn");
       }
-    } else {
-      // LOGGED IN
-      // If we are in the auth group, we should go to root (which will then redirect to dashboard)
-      if (inAuthGroup) {
-        router.replace("/");
+    } else if (profile) {
+      // If at root or in auth group, redirect to role-specific dashboard
+      if (isRoot || inAuthGroup) {
+        const redirectPath = getRoleRedirect(profile, isPlatformAdmin);
+        if (redirectPath && currentPath !== redirectPath) {
+          console.log(`[AuthHandler] Redirecting to ${redirectPath}`);
+          router.replace(redirectPath as any);
+        }
       }
     }
-  }, [session, isInitializing, isNavigationReady, segments.join('|')]);
+  }, [session, profile, isInitializing, isNavReady, segments, isPlatformAdmin]);
 
   const handleInteraction = React.useCallback(() => {
     if (session) resetSessionTimer();
@@ -166,10 +155,12 @@ function AuthHandler() {
     <View
       style={{ flex: 1, backgroundColor: isDark ? '#0F0B2E' : '#ffffff' }}
       onStartShouldSetResponder={handleInteraction}
+      collapsable={undefined}
     >
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="index" />
         <Stack.Screen name="(auth)/signIn" />
+        <Stack.Screen name="(master-admin)" />
         <Stack.Screen name="(admin)" />
         <Stack.Screen name="(student)" />
         <Stack.Screen name="(teacher)" />
@@ -179,7 +170,6 @@ function AuthHandler() {
       </Stack>
 
       <GlobalNotifications />
-      <Toast config={toastConfig} />
 
       {isLoadingOverlayVisible && (
         <View
@@ -187,10 +177,9 @@ function AuthHandler() {
             position: 'absolute',
             top: 0, left: 0, right: 0, bottom: 0,
             zIndex: 100000,
-            backgroundColor: isDark ? '#121212' : '#ffffff',
           }}
         >
-          <AppLoading />
+          <AppLoading onLogout={signOut} />
         </View>
       )}
     </View>

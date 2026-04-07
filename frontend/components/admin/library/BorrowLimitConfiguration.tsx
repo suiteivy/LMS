@@ -57,15 +57,15 @@ const BorrowLimitConfiguration: React.FC<BorrowLimitConfigurationProps> = ({
   });
 
   // ── Material Dark tokens ──────────────────────────────────────────────────
-  const bg = isDark ? '#121212' : '#fff7ed';           // light green bg preserved in light
-  const surface = isDark ? '#1e1e1e' : '#ffffff';
-  const surfaceAlt = isDark ? '#242424' : '#f9fafb';
-  const border = isDark ? '#2c2c2c' : '#e2e8f0';
+  const bg = isDark ? '#0F0B2E' : '#fff7ed';           // light green bg preserved in light
+  const surface = isDark ? '#13103A' : '#ffffff';
+  const surfaceAlt = isDark ? '#1A1650' : '#f9fafb';
+  const border = isDark ? 'rgba(255,255,255,0.1)' : '#e2e8f0';
   const textPrimary = isDark ? '#f1f1f1' : '#1e293b';
   const textSecondary = isDark ? '#9ca3af' : '#64748b';
   const textMuted = isDark ? '#6b7280' : '#6b7280';
-  const inputBg = isDark ? '#242424' : '#f9fafb';
-  const inputBorder = isDark ? '#2c2c2c' : '#e2e8f0';
+  const inputBg = isDark ? '#1A1650' : '#f9fafb';
+  const inputBorder = isDark ? 'rgba(255,255,255,0.1)' : '#e2e8f0';
   const orangeBg = isDark ? 'rgba(255,107,0,0.08)' : '#fff7ed';
   const orangeBorder = isDark ? 'rgba(255,107,0,0.2)' : 'rgba(255,107,0,0.2)';
 
@@ -270,7 +270,7 @@ const BorrowLimitConfiguration: React.FC<BorrowLimitConfigurationProps> = ({
         </View>
 
         <View style={{ flexDirection: 'row' }}>
-          <TouchableOpacity style={{ flex: 1, backgroundColor: isDark ? '#242424' : '#f1f5f9', padding: 12, borderRadius: 8, marginRight: 8, alignItems: 'center' }} onPress={() => setShowAddForm(false)}>
+          <TouchableOpacity style={{ flex: 1, backgroundColor: isDark ? '#1A1650' : '#f1f5f9', padding: 12, borderRadius: 8, marginRight: 8, alignItems: 'center' }} onPress={() => setShowAddForm(false)}>
             <Text style={{ color: textSecondary, fontWeight: '500' }}>Cancel</Text>
           </TouchableOpacity>
           <TouchableOpacity style={{ flex: 1, backgroundColor: '#FF6B00', padding: 12, borderRadius: 8, marginLeft: 8, alignItems: 'center' }} onPress={handleAddRole}>
@@ -282,7 +282,7 @@ const BorrowLimitConfiguration: React.FC<BorrowLimitConfigurationProps> = ({
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: bg }}>
+    <View style={{ flex: 1, backgroundColor: bg }} collapsable={undefined}>
       {/* Header */}
       <View style={{ backgroundColor: surface, padding: 16, borderBottomWidth: 1, borderBottomColor: border }}>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
@@ -309,7 +309,7 @@ const BorrowLimitConfiguration: React.FC<BorrowLimitConfigurationProps> = ({
 
         {displayRoles.length === 0 ? (
           <View style={{ alignItems: 'center', justifyContent: 'center', paddingVertical: 48 }}>
-            <Ionicons name="people-outline" size={64} color={isDark ? '#2c2c2c' : 'rgba(255,107,0,0.2)'} />
+            <Ionicons name="people-outline" size={64} color={isDark ? 'rgba(255,255,255,0.1)' : 'rgba(255,107,0,0.2)'} />
             <Text style={{ color: textMuted, textAlign: 'center', marginTop: 16 }}>No user roles configured yet. Add your first role to get started.</Text>
           </View>
         ) : (

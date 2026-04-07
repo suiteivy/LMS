@@ -1,4 +1,4 @@
-import { UnifiedHeader } from "@/components/common/UnifiedHeader";
+﻿import { UnifiedHeader } from "@/components/common/UnifiedHeader";
 import { useAuth } from "@/contexts/AuthContext";
 import { ParentService } from "@/services/ParentService";
 import { router, useLocalSearchParams } from "expo-router";
@@ -58,7 +58,7 @@ const computeStats = (records: any[]) => {
 };
 
 export default function StudentAttendancePage() {
-  const { studentId } = useLocalSearchParams<{ studentId: string }>();
+  const { studentId, studentName } = useLocalSearchParams<{ studentId: string; studentName?: string }>();
   const { isDemo } = useAuth();
 
   const [loading, setLoading] = useState(true);
@@ -97,10 +97,10 @@ export default function StudentAttendancePage() {
   const stats = computeStats(records);
 
   return (
-    <View className="flex-1 bg-gray-50 dark:bg-black">
+    <View className="flex-1 bg-gray-50 dark:bg-navy">
       <UnifiedHeader
-        title="Intelligence"
-        subtitle="Compliance"
+        title={studentName ? `${studentName}'s Attendance` : "Compliance"}
+        subtitle="Attendance Record"
         role="Parent"
         onBack={() => router.back()}
         showNotification={false}
@@ -156,13 +156,13 @@ export default function StudentAttendancePage() {
               {/* History Section */}
               <View className="px-2 flex-row justify-between items-center mb-6">
                 <Text className="text-gray-900 dark:text-white font-bold text-xl tracking-tight">Daily Log Entry</Text>
-                <TouchableOpacity className="bg-white dark:bg-[#1a1a1a] p-2 rounded-xl border border-gray-100 dark:border-gray-800 shadow-sm">
+                <TouchableOpacity className="bg-white dark:bg-navy-surface p-2 rounded-xl border border-gray-100 dark:border-gray-800 shadow-sm">
                   <Search size={16} color="#FF6900" />
                 </TouchableOpacity>
               </View>
 
               {records.length === 0 ? (
-                <View className="bg-white dark:bg-[#1a1a1a] p-10 rounded-[32px] border border-gray-50 dark:border-gray-800 items-center">
+                <View className="bg-white dark:bg-navy-surface p-10 rounded-[32px] border border-gray-50 dark:border-gray-800 items-center">
                   <CalendarIcon size={32} color="#FF6900" />
                   <Text className="text-gray-400 dark:text-gray-500 text-xs font-bold uppercase tracking-widest mt-4 text-center">
                     No attendance records yet
@@ -173,7 +173,7 @@ export default function StudentAttendancePage() {
                   const config = getStatusConfig(item.status);
                   const subjectName = item.subject?.title ?? item.subject ?? "—";
                   return (
-                    <View key={item.id ?? idx} className="bg-white dark:bg-[#1a1a1a] p-5 rounded-[32px] mb-4 flex-row items-center border border-gray-50 dark:border-gray-800 shadow-sm">
+                    <View key={item.id ?? idx} className="bg-white dark:bg-navy-surface p-5 rounded-[32px] mb-4 flex-row items-center border border-gray-50 dark:border-gray-800 shadow-sm">
                       <View
                         style={{ backgroundColor: config.bg }}
                         className="w-12 h-12 rounded-2xl items-center justify-center mr-4"

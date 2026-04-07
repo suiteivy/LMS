@@ -23,25 +23,25 @@ export interface Allocation {
 export const FundsAPI = {
     // Get all funds
     getFunds: async () => {
-        const response = await api.get('/funds/funds');
+        const response = await api.get('/finance/funds');
         return response.data;
     },
 
     // Create Fund
     createFund: async (data: Partial<Fund>) => {
-        const response = await api.post('/funds/funds', data);
+        const response = await api.post('/finance/funds', data);
         return response.data;
     },
 
     // Get Allocations
     getAllocations: async (fundId: string) => {
-        const response = await api.get(`/funds/allocations/${fundId}`);
+        const response = await api.get(`/finance/allocations/${fundId}`);
         return response.data;
     },
 
     // Create Allocation
     createAllocation: async (data: Partial<Allocation>) => {
-        const response = await api.post('/funds/allocations', data);
+        const response = await api.post('/finance/allocations', data);
         return response.data;
     }
 };
