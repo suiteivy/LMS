@@ -1,4 +1,4 @@
-import process from "node:process";
+const process = require("node:process");
 const nodemailer = require("nodemailer");
 
 /**

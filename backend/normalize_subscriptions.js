@@ -1,4 +1,4 @@
-import process from "node:process";
+const process = require("node:process");
 const { createClient } = require('@supabase/supabase-js');
 require('dotenv').config({ path: 'c:/Projects/LMS/backend/.env' });
 

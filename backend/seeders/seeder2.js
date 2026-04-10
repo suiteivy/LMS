@@ -223,7 +223,7 @@
 
 import { createClient } from "@supabase/supabase-js";
 import dotenv from "dotenv";
-import process from "node:process";
+const process = require("node:process");
 
 dotenv.config();
 

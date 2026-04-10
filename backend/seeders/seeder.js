@@ -130,7 +130,7 @@
 import { createClient } from "@supabase/supabase-js";
 import dotenv from "dotenv";
 import { v4 as _uuidv4 } from "uuid";
-import process from "node:process";
+const process = require("node:process");
 
 dotenv.config();
 

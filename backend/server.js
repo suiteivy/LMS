@@ -1,4 +1,4 @@
-import process from "node:process";
+const process = require("node:process");
 const express = require("express");
 const cors = require("cors");
 const dotenv = require("dotenv");

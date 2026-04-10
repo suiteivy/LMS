@@ -1,4 +1,4 @@
-import process from "node:process";
+const process = require("node:process");
 // createClient removed as unused
 const supabase = require('../utils/supabaseClient.js'); // Default client (Service Role if configured, or just client)
 
