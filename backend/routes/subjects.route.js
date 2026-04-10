@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
 
-const { authMiddleware } = require("../middleware/auth.middleware");
+const { authMiddleware } = require("../middleware/auth.middleware.js");
 const {
   enrollStudentInSubject,
   getSubjects,
@@ -9,9 +9,9 @@ const {
   createSubject,
   getFilteredSubjects,
   getSubjectsByClass,
-} = require("../controllers/subject.controller");
+} = require("../controllers/subject.controller.js");
 
-const { authorizeRoles } = require("../middleware/authRole");
+const { authorizeRoles } = require("../middleware/authRole.js");
 
 router.use(authMiddleware);
 

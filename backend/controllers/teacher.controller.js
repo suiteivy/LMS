@@ -1,4 +1,4 @@
-const supabase = require("../utils/supabaseClient");
+const supabase = require("../utils/supabaseClient.js");
 
 exports.getDashboardStats = async (req, res) => {
     const startTime = Date.now();

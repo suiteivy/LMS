@@ -1,9 +1,9 @@
 // routes/settings.route.js
 const express = require("express");
 const router = express.Router();
-const settingsController = require("../controllers/settings.controller");
-const preferencesController = require("../controllers/preferences.controller");
-const { authMiddleware } = require("../middleware/auth.middleware");
+const settingsController = require("../controllers/settings.controller.js");
+const preferencesController = require("../controllers/preferences.controller.js");
+const { authMiddleware } = require("../middleware/auth.middleware.js");
 
 // Public read
 router.get("/currency", settingsController.getCurrencyRates);

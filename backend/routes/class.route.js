@@ -9,10 +9,10 @@ const {
     enrollStudent,
     removeStudent,
     autoAssignStudents,
-} = require("../controllers/class.controller");
-const { authMiddleware } = require("../middleware/auth.middleware");
+} = require("../controllers/class.controller.js");
+const { authMiddleware } = require("../middleware/auth.middleware.js");
 
-const { authorizeRoles } = require("../middleware/authRole");
+const { authorizeRoles } = require("../middleware/authRole.js");
 
 // All routes require authentication
 router.use(authMiddleware);

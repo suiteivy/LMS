@@ -1,4 +1,4 @@
-const supabase = require("../utils/supabaseClient");
+const supabase = require("../utils/supabaseClient.js");
 
 // Simple in-memory cache for profiles: userId -> { profile, timestamp }
 const profileCache = new Map();
@@ -114,7 +114,7 @@ async function authMiddleware(req, res, next) {
       email: profile.email,
       institution_id: profile.institution_id,
       role: profile.role,
-      is_main: profile.admins?.[0]?.is_main || false,
+      is_main: profile.is_main || false,
       is_platform_admin: profile.isPlatformAdmin || false
     };
 

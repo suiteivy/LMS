@@ -1,4 +1,4 @@
-const supabase = require("../utils/supabaseClient");
+const supabase = require("../utils/supabaseClient.js");
 
 exports.createNotificationInternal = async ({ userId, title, message, type = 'info', data = {} }) => {
     try {

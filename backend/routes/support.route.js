@@ -1,9 +1,9 @@
 const express = require('express');
 const router = express.Router();
-const supportController = require('../controllers/support.controller');
-const { authenticateToken } = require('../middleware/auth');
+const supportController = require('../controllers/support.controller.js');
+const { authMiddleware } = require('../middleware/auth.middleware.js');
 
-router.use(authenticateToken);
+router.use(authMiddleware);
 
 // Support tickets for users
 router.get('/tickets', supportController.getMyTickets);

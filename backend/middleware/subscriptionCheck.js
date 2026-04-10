@@ -1,4 +1,4 @@
-const supabase = require("../utils/supabaseClient");
+const supabase = require("../utils/supabaseClient.js");
 
 // In-memory cache to prevent redundant DB calls on every request
 const subscriptionCache = new Map();

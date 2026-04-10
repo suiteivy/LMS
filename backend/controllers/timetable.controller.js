@@ -1,5 +1,5 @@
 // controllers/timetable.controller.js
-const supabase = require("../utils/supabaseClient");
+const supabase = require("../utils/supabaseClient.js");
 
 // ── Shared helpers ────────────────────────────────────────────────────────────
 

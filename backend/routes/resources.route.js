@@ -1,6 +1,6 @@
 const express = require("express");
-const { createResource, getResources, deleteResource } = require("../controllers/resources.controller");
-const { authMiddleware } = require("../middleware/auth.middleware");
+const { createResource, getResources, deleteResource } = require("../controllers/resources.controller.js");
+const { authMiddleware } = require("../middleware/auth.middleware.js");
 
 const router = express.Router();
 

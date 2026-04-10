@@ -6,9 +6,9 @@ const {
     getTeacherTimetable,
     updateTimetableEntry,
     deleteTimetableEntry,
-} = require("../controllers/timetable.controller");
-const { authMiddleware } = require("../middleware/auth.middleware");
-const { authorizeRoles } = require("../middleware/authRole");
+} = require("../controllers/timetable.controller.js");
+const { authMiddleware } = require("../middleware/auth.middleware.js");
+const { authorizeRoles } = require("../middleware/authRole.js");
 
 const router = express.Router();
 

@@ -1,5 +1,5 @@
 // controllers/attendance.controller.js
-const supabase = require("../utils/supabaseClient");
+const supabase = require("../utils/supabaseClient.js");
 
 /**
  * Get Student Attendance for a class/subject on a date

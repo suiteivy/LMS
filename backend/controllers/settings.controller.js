@@ -1,5 +1,5 @@
 // controllers/settings.controller.js
-const supabase = require("../utils/supabaseClient");
+const supabase = require("../utils/supabaseClient.js");
 const axios = require("axios");
 
 /**

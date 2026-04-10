@@ -1,10 +1,10 @@
 const express = require("express");
 const router = express.Router();
-const controller = require("../controllers/diary.controller");
-const { authMiddleware } = require("../middleware/auth.middleware");
-const checkSubscription = require("../middleware/subscriptionCheck");
+const controller = require("../controllers/diary.controller.js");
+const { authMiddleware } = require("../middleware/auth.middleware.js");
+const checkSubscription = require("../middleware/subscriptionCheck.js");
 
-const { authorizeRoles } = require("../middleware/authRole");
+const { authorizeRoles } = require("../middleware/authRole.js");
 
 router.use(authMiddleware);
 router.use(checkSubscription);

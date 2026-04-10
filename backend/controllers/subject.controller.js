@@ -1,5 +1,5 @@
-const supabase = require("../utils/supabaseClient");
-const { hasPaidAtLeastHalf } = require("../utils/feeUtils");
+const supabase = require("../utils/supabaseClient.js");
+const { hasPaidAtLeastHalf } = require("../utils/feeUtils.js");
 
 // CREATE SUBJECT
 exports.createSubject = async (req, res) => {

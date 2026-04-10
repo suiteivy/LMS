@@ -6,10 +6,10 @@ const {
   getInstitutionDetails,
   updateInstitution,
   getClasses,
-} = require("../controllers/institution.controller");
-const { authMiddleware } = require("../middleware/auth.middleware");
-const { validate, schemas } = require("../middleware/inputValidator");
-const { requireAdmin } = require("../middleware/roleCheck");
+} = require("../controllers/institution.controller.js");
+const { authMiddleware } = require("../middleware/auth.middleware.js");
+const { validate, schemas } = require("../middleware/inputValidator.js");
+const { requireAdmin } = require("../middleware/roleCheck.js");
 
 // Public: List all institutions
 router.get("/", getInstitutions);

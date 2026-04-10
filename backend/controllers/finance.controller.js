@@ -1,5 +1,5 @@
 // controllers/finance.controller.js
-const supabase = require("../utils/supabaseClient");
+const supabase = require("../utils/supabaseClient.js");
 
 /**
  * Create a new Fund

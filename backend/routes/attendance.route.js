@@ -5,8 +5,9 @@ const {
     markTeacherAttendance,
     getStudentAttendance,
     markStudentAttendance
-} = require("../controllers/attendance.controller");
-const { authorizeRoles } = require("../middleware/authRole");
+} = require("../controllers/attendance.controller.js");
+const { authorizeRoles } = require("../middleware/authRole.js");
+const { authMiddleware } = require("../middleware/auth.middleware.js");
 
 router.use(authMiddleware);
 

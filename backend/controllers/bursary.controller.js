@@ -1,4 +1,4 @@
-const supabase = require("../utils/supabaseClient");
+const supabase = require("../utils/supabaseClient.js");
 
 /** List all bursaries */
 exports.listBursaries = async (req, res) => {

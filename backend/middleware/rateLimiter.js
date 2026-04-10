@@ -3,7 +3,7 @@
  * Implements IP-based and user-based rate limiting
  */
 
-const logger = require('../utils/logger');
+const logger = require('../utils/logger.js');
 
 // In-memory store for rate limiting (use Redis in production)
 const rateLimitStore = new Map();

@@ -1,4 +1,4 @@
-﻿import { UnifiedHeader } from "@/components/common/UnifiedHeader";
+import { UnifiedHeader } from "@/components/common/UnifiedHeader";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/libs/supabase";
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -268,9 +268,7 @@ export default function AssignmentsPage() {
                     const filePath = `${teacherId}/${Date.now()}.${fileExt}`;
 
                     // Robust file reading for mobile compatibility
-                    const base64 = await FileSystem.readAsStringAsync(selectedFile.uri, {
-                        encoding: FileSystem.EncodingType.Base64,
-                    });
+                    const base64 = await new FileSystem.File(selectedFile.uri).base64();
                     const fileBody = decode(base64);
 
                     const { error: uploadError } = await supabase.storage

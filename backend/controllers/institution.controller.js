@@ -1,4 +1,4 @@
-const supabase = require("../utils/supabaseClient");
+const supabase = require("../utils/supabaseClient.js");
 
 exports.createInstitution = async (req, res) => {
   // Only admins can create institutions

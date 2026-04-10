@@ -1,4 +1,4 @@
-const supabase = require('../utils/supabaseClient');
+const supabase = require('../utils/supabaseClient.js');
 
 /**
  * Get tickets for the authenticated user

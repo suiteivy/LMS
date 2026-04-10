@@ -3,7 +3,7 @@
  * Ensures users have the required role before executing protected actions
  */
 
-const logger = require('../utils/logger');
+const logger = require('../utils/logger.js');
 
 /**
  * Middleware factory for role-based access
@@ -80,7 +80,7 @@ const requirePlatformAdmin = async (req, res, next) => {
     }
 
     // Double check against platform_admins table for strict isolation
-    const supabase = require("../utils/supabaseClient");
+    const supabase = require("../utils/supabaseClient.js");
     const { data: platAdmin } = await supabase
         .from("platform_admins")
         .select("id")

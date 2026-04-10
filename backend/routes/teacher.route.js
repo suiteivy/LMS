@@ -5,8 +5,8 @@ const {
     getAnalytics,
     getEarnings,
     getStudentPerformance
-} = require("../controllers/teacher.controller");
-const { authMiddleware } = require("../middleware/auth.middleware");
+} = require("../controllers/teacher.controller.js");
+const { authMiddleware } = require("../middleware/auth.middleware.js");
 
 router.get("/dashboard/stats", authMiddleware, getDashboardStats);
 router.get("/analytics", authMiddleware, getAnalytics);

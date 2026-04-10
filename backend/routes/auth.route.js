@@ -12,12 +12,12 @@ const {
   resetPassword,
   adminResetPassword,
   transferMainAdmin,
-} = require("../controllers/auth.controller");
-const { authMiddleware } = require("../middleware/auth.middleware");
-const checkSubscription = require("../middleware/subscriptionCheck");
-const { validate, schemas } = require("../middleware/inputValidator");
-const { rateLimiters } = require("../middleware/rateLimiter");
-const { requireAdmin } = require("../middleware/roleCheck");
+} = require("../controllers/auth.controller.js");
+const { authMiddleware } = require("../middleware/auth.middleware.js");
+const checkSubscription = require("../middleware/subscriptionCheck.js");
+const { validate, schemas } = require("../middleware/inputValidator.js");
+const { rateLimiters } = require("../middleware/rateLimiter.js");
+const { requireAdmin } = require("../middleware/roleCheck.js");
 
 // Public: Login with validation
 router.post("/login", validate(schemas.login), login);

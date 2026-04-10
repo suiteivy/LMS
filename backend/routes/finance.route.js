@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
-const { authMiddleware } = require("../middleware/auth.middleware");
-const { authorizeRoles } = require("../middleware/authRole");
+const { authMiddleware } = require("../middleware/auth.middleware.js");
+const { authorizeRoles } = require("../middleware/authRole.js");
 const {
     createFund,
     getFunds,
@@ -13,7 +13,7 @@ const {
     getFeeStructures,
     updateFeeStructure,
     recordFeePayment
-} = require("../controllers/finance.controller");
+} = require("../controllers/finance.controller.js");
 
 // Funds
 router.get("/funds", authMiddleware, getFunds);
@@ -30,7 +30,7 @@ router.put("/transactions/:id/process", authMiddleware, authorizeRoles(['admin',
 
 // Fee Structures
 router.get("/fee-structures", authMiddleware, getFeeStructures);
-router.post("/fee-structures", authMiddleware, authorizeRoles(['admin', 'bursary', 'master_admin']), require("../controllers/finance.controller").createFeeStructure);
+router.post("/fee-structures", authMiddleware, authorizeRoles(['admin', 'bursary', 'master_admin']), require("../controllers/finance.controller.js").createFeeStructure);
 router.put("/fee-structures/:id", authMiddleware, authorizeRoles(['admin', 'bursary', 'master_admin']), updateFeeStructure);
 
 // Helper for Fees

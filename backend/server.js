@@ -4,22 +4,22 @@ const dotenv = require("dotenv");
 dotenv.config();
 
 // Security & Utility Middleware
-const logger = require("./utils/logger");
-const { rateLimiters } = require("./middleware/rateLimiter");
+const logger = require("./utils/logger.js");
+const { rateLimiters } = require("./middleware/rateLimiter.js");
 
-const authRoutes = require("./routes/auth.route");
-const subjectRoutes = require("./routes/subjects.route");
-const contactRoutes = require("./routes/contact.route");
-const supportRoutes = require("./routes/support.route");
-const demoRoutes = require("./routes/demo.route");
-const institutionRoutes = require("./routes/institution.route");
-const libraryRoutes = require("./routes/library.route");
-const bursaryRoutes = require("./routes/bursary.route");
-const financeRoutes = require("./routes/finance.route");
-const notificationRoutes = require("./routes/notification.route");
-const settingsRoutes = require("./routes/settings.route");
-const masterAdminRoutes = require("./routes/master_admin.route");
-const settingsController = require("./controllers/settings.controller");
+const authRoutes = require("./routes/auth.route.js");
+const subjectRoutes = require("./routes/subjects.route.js");
+const contactRoutes = require("./routes/contact.route.js");
+const supportRoutes = require("./routes/support.route.js");
+const demoRoutes = require("./routes/demo.route.js");
+const institutionRoutes = require("./routes/institution.route.js");
+const libraryRoutes = require("./routes/library.route.js");
+const bursaryRoutes = require("./routes/bursary.route.js");
+const financeRoutes = require("./routes/finance.route.js");
+const notificationRoutes = require("./routes/notification.route.js");
+const settingsRoutes = require("./routes/settings.route.js");
+const masterAdminRoutes = require("./routes/master_admin.route.js");
+const settingsController = require("./controllers/settings.controller.js");
 const morgan = require("morgan");
 
 const app = express();
@@ -44,8 +44,8 @@ app.use("/api/auth/forgot-password", rateLimiters.passwordReset);
 app.use("/api/auth/reset-password", rateLimiters.passwordReset);
 
 // Subscription Check Middleware (Trial Branch specific)
-const { authMiddleware } = require("./middleware/auth.middleware");
-const checkSubscription = require("./middleware/subscriptionCheck");
+const { authMiddleware } = require("./middleware/auth.middleware.js");
+const checkSubscription = require("./middleware/subscriptionCheck.js");
 
 // Public Routes
 app.use("/api/auth", authRoutes);
@@ -59,19 +59,19 @@ app.use("/api/library", authMiddleware, checkSubscription, libraryRoutes);
 app.use("/api/bursary", authMiddleware, checkSubscription, bursaryRoutes);
 app.use("/api/finance", authMiddleware, checkSubscription, financeRoutes);
 app.use("/api/notifications", authMiddleware, checkSubscription, notificationRoutes);
-app.use("/api/timetable", authMiddleware, checkSubscription, require("./routes/timetable.route"));
-app.use("/api/funds", authMiddleware, checkSubscription, require("./routes/finance_funds.route"));
-app.use("/api/attendance", authMiddleware, checkSubscription, require("./routes/attendance.route"));
+app.use("/api/timetable", authMiddleware, checkSubscription, require("./routes/timetable.route.js"));
+app.use("/api/funds", authMiddleware, checkSubscription, require("./routes/finance_funds.route.js"));
+app.use("/api/attendance", authMiddleware, checkSubscription, require("./routes/attendance.route.js"));
 app.use("/api/academic", authMiddleware, checkSubscription, require("./routes/academic.route.js"));
 app.use("/api/exams", authMiddleware, checkSubscription, require("./routes/exams.route.js"));
 app.use("/api/parent", authMiddleware, checkSubscription, require("./routes/parent.route.js"));
 app.use("/api/messages", authMiddleware, checkSubscription, require("./routes/messaging.route.js"));
 app.use("/api/resources", authMiddleware, checkSubscription, require("./routes/resources.route.js"));
 app.use("/api/teacher", authMiddleware, checkSubscription, require("./routes/teacher.route.js"));
-app.use("/api/student", authMiddleware, checkSubscription, require("./routes/student.route"));
-app.use("/api/classes", authMiddleware, checkSubscription, require("./routes/class.route"));
-app.use("/api/diary", authMiddleware, checkSubscription, require("./routes/diary.route"));
-app.use("/api/addon-requests", authMiddleware, require("./routes/addon_request.routes"));
+app.use("/api/student", authMiddleware, checkSubscription, require("./routes/student.route.js"));
+app.use("/api/classes", authMiddleware, checkSubscription, require("./routes/class.route.js"));
+app.use("/api/diary", authMiddleware, checkSubscription, require("./routes/diary.route.js"));
+app.use("/api/addon-requests", authMiddleware, require("./routes/addon_request.routes.js"));
 
 // Explicitly define currency route as public before using auth wrapper on settings
 app.get("/api/settings/currency", settingsController.getCurrencyRates);
@@ -81,7 +81,7 @@ app.use("/api/settings", authMiddleware, checkSubscription, settingsRoutes);
 app.use("/api/master-admin", authMiddleware, masterAdminRoutes);
 
 // Automated background jobs (Trial Branch)
-const { startTrialNudgesCron } = require('./cron/trialNudges');
+const { startTrialNudgesCron } = require('./cron/trialNudges.js');
 if (typeof startTrialNudgesCron === 'function') {
   startTrialNudgesCron();
 }
@@ -97,7 +97,7 @@ app.get("/favicon.ico", (req, res) => {
 });
 
 // Global error handler - catches all errors and returns generic messages
-app.use((err, req, res, next) => {
+app.use((err, req, res, _next) => {
   logger.error('Unhandled error in request', {
     method: req.method,
     path: req.url,
@@ -116,7 +116,7 @@ process.on('uncaughtException', (err) => {
   logger.error('Uncaught exception', { error: err, stack: err.stack });
 });
 
-process.on('unhandledRejection', (reason, p) => {
+process.on('unhandledRejection', (reason, _p) => {
   logger.error('Unhandled promise rejection', { reason: String(reason) });
 });
 

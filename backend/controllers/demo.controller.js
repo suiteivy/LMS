@@ -1,5 +1,5 @@
 const { createClient } = require('@supabase/supabase-js');
-const supabase = require('../utils/supabaseClient'); // Default client (Service Role if configured, or just client)
+const supabase = require('../utils/supabaseClient.js'); // Default client (Service Role if configured, or just client)
 
 // We need a client that can sign in (Public Anon Key) to get a session for the demo user
 // But we also need Service Role to log to trial_sessions (if RLS blocks anon insert)

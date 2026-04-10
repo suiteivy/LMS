@@ -4,7 +4,7 @@
     "slug": "CloudoraLMS",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/clouds.png",
+    "icon": "./assets/images/Cloudora-logo.png",
     "scheme": "lms",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
@@ -14,7 +14,7 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/images/clouds.png",
+        "foregroundImage": "./assets/images/Cloudora-logo.png",
         "backgroundColor": "#ffffff"
       },
       "package": "com.anonymous.CloudoraLMS"
@@ -35,13 +35,13 @@
       [
         "expo-splash-screen",
         {
-          "image": "./assets/images/clouds.png",
+          "image": "./assets/images/Cloudora-logo.png",
           "imageWidth": 250,
           "resizeMode": "contain",
           "backgroundColor": "#ffffff",
           "dark": {
             "backgroundColor": "#000000",
-            "image": "./assets/images/clouds.png"
+            "image": "./assets/images/Cloudora-logo.png"
           }
         }
       ],

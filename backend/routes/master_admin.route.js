@@ -1,9 +1,9 @@
 const express = require("express");
 const router = express.Router();
 
-const masterAdminController = require("../controllers/master_admin.controller");
+const masterAdminController = require("../controllers/master_admin.controller.js");
 
-const { requirePlatformAdmin } = require("../middleware/roleCheck");
+const { requirePlatformAdmin } = require("../middleware/roleCheck.js");
 
 // All routes require the user to be a Master Platform Admin
 router.use(requirePlatformAdmin);

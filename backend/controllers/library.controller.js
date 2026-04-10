@@ -1,5 +1,5 @@
 // controllers/library.controller.js
-const supabase = require("../utils/supabaseClient");
+const supabase = require("../utils/supabaseClient.js");
 
 /** Pull active config, fall back to sane defaults */
 async function getActiveConfig() {
@@ -445,7 +445,7 @@ exports.history = async (req, res) => {
 };
 
 /** Admin view: all loans */
-exports.getAllBorrowedBooks = async (req, res) => {
+exports.getAllBorrowedBooks = async (_req, res) => {
   try {
     console.log(`[Library] getAllBorrowedBooks triggered`);
     // Need to join students -> users to get names
@@ -556,5 +556,5 @@ exports.deleteBook = async (req, res) => {
 };
 
 exports.rejectBorrowRequest = exports.updateBorrowStatus;
-exports.sendReminder = async (req, res) => { res.json({ message: "Reminder sent" }) };
-exports.extendDueDate = async (req, res) => { res.json({ message: "Extended" }) };
+exports.sendReminder = (_req, res) => { res.json({ message: "Reminder sent" }) };
+exports.extendDueDate = (_req, res) => { res.json({ message: "Extended" }) };

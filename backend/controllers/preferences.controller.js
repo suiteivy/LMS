@@ -1,5 +1,5 @@
 // controllers/preferences.controller.js
-const supabase = require("../utils/supabaseClient");
+const supabase = require("../utils/supabaseClient.js");
 
 /**
  * Get user notification preferences

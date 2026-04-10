@@ -3,7 +3,7 @@
  * Provides strict schema-based validation for request inputs
  */
 
-const logger = require('../utils/logger');
+const logger = require('../utils/logger.js');
 
 // Validation rules for common fields
 const commonRules = {

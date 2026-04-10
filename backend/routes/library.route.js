@@ -13,9 +13,9 @@ const {
   rejectBorrowRequest,
   sendReminder,
   deleteBook,
-} = require("../controllers/library.controller");
-const { authMiddleware } = require("../middleware/auth.middleware");
-const { authorizeRoles } = require("../middleware/authRole");
+} = require("../controllers/library.controller.js");
+const { authMiddleware } = require("../middleware/auth.middleware.js");
+const { authorizeRoles } = require("../middleware/authRole.js");
 
 const router = express.Router();
 

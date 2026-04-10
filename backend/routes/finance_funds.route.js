@@ -5,9 +5,9 @@ const {
     getFunds,
     createAllocation,
     getAllocations,
-} = require("../controllers/finance.controller");
-const { authMiddleware } = require("../middleware/auth.middleware");
-const { authorizeRoles } = require("../middleware/authRole");
+} = require("../controllers/finance.controller.js");
+const { authMiddleware } = require("../middleware/auth.middleware.js");
+const { authorizeRoles } = require("../middleware/authRole.js");
 
 const router = express.Router();
 

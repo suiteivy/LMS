@@ -1,14 +1,14 @@
 const express = require("express");
 const router = express.Router();
-const { authMiddleware } = require("../middleware/auth.middleware");
-const { authorizeRoles } = require("../middleware/authRole");
+const { authMiddleware } = require("../middleware/auth.middleware.js");
+const { authorizeRoles } = require("../middleware/authRole.js");
 const {
     getLinkedStudents,
     getStudentAcademicData,
     getStudentAttendance,
     getStudentFinance,
     getStudentBursaries
-} = require("../controllers/parent.controller");
+} = require("../controllers/parent.controller.js");
 
 // All parent routes require 'parent' role (or admin)
 router.use(authMiddleware);

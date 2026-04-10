@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
-const { authMiddleware } = require("../middleware/auth.middleware");
-const { authorizeRoles } = require("../middleware/authRole");
+const { authMiddleware } = require("../middleware/auth.middleware.js");
+const { authorizeRoles } = require("../middleware/authRole.js");
 const {
   listBursaries,
   createBursary,
@@ -10,7 +10,7 @@ const {
   updateApplicationStatus,
   approveBursaryForStudent,
   getMyApprovedBursaries
-} = require("../controllers/bursary.controller");
+} = require("../controllers/bursary.controller.js");
 
 // Bursary Management
 router.get("/", authMiddleware, listBursaries);

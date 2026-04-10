@@ -1,4 +1,4 @@
-const supabase = require('../utils/supabaseClient');
+const supabase = require("./supabaseClient.js");
 
 async function hasPaidAtLeastHalf(studentId, subjectId) {
   // Get subject fee
