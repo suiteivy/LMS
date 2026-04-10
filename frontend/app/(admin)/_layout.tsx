@@ -81,7 +81,7 @@ function AdminTabs() {
                 sceneStyle: { backgroundColor: isDark ? '#0F0B2E' : "#f9fafb" },
             }}
         >
-            {/* Settings — left */}
+            {/* Settings â€” left */}
             <Tabs.Screen
                 name="settings/settings"
                 options={{
@@ -93,7 +93,7 @@ function AdminTabs() {
                 }}
             />
 
-            {/* Home — center, elevated style */}
+            {/* Home â€” center, elevated style */}
             <Tabs.Screen
                 name="index"
                 options={{
@@ -126,7 +126,7 @@ function AdminTabs() {
                 }}
             />
 
-            {/* Manage — right (paid plan only; hidden for beta) */}
+            {/* Manage â€” right (paid plan only; hidden for beta) */}
             {!isBeta && (
                 <Tabs.Screen
                     name="management/index"

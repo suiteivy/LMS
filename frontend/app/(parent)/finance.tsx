@@ -1,4 +1,4 @@
-﻿import { UnifiedHeader } from "@/components/common/UnifiedHeader";
+import { UnifiedHeader } from "@/components/common/UnifiedHeader";
 import { ParentService } from "@/services/ParentService";
 import { router, useLocalSearchParams } from "expo-router";
 import { ArrowDownLeft, ArrowUpRight, Award, CreditCard, Info, Wallet } from "lucide-react-native";
@@ -72,7 +72,7 @@ export default function StudentFinancePage() {
               Select a Child First
             </Text>
             <Text className="text-gray-400 dark:text-gray-500 text-sm text-center mt-3 leading-6">
-              Go to the Home tab and tap a child's Finance card to view their fee statement.
+              Go to the Home tab and tap a child&apos;s Finance card to view their fee statement.
             </Text>
             <TouchableOpacity
               onPress={() => router.replace("/(parent)" as any)}

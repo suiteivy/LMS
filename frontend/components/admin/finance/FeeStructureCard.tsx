@@ -53,7 +53,7 @@ export function FeeStructureCard() {
                             </View>
                             <View>
                                 <Text className="text-lg font-bold text-gray-900 dark:text-white">{fee.title}</Text>
-                                <Text className="text-gray-500 dark:text-gray-400 text-sm">{fee.academic_year || 'Current Year'} • {fee.term || 'All Terms'}</Text>
+                                <Text className="text-gray-500 dark:text-gray-400 text-sm">{fee.academic_year || 'Current Year'} â€¢ {fee.term || 'All Terms'}</Text>
                             </View>
                         </View>
 

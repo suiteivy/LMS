@@ -5,7 +5,7 @@ const axios = require("axios");
 /**
  * Get current exchange rates
  */
-exports.getCurrencyRates = async (req, res) => {
+exports.getCurrencyRates = async (_req, res) => {
     try {
         const { data, error } = await supabase
             .from("system_settings")
@@ -29,7 +29,7 @@ exports.getCurrencyRates = async (req, res) => {
 /**
  * Update exchange rates from external API
  */
-exports.updateCurrencyRates = async (req, res) => {
+exports.updateCurrencyRates = async (_req, res) => {
     try {
         console.log("[Settings] Updating currency rates...");
 
@@ -100,7 +100,7 @@ exports.createSupportRequest = async (req, res) => {
     try {
         const { subject, description, priority } = req.body;
         const userId = req.userId;
-        const userRole = req.userRole;
+        const _userRole = req.userRole;
 
         if (!subject || !description) {
             return res.status(400).json({ error: "Subject and description are required" });

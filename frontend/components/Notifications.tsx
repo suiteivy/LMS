@@ -107,7 +107,7 @@ const Notifications = ({ visible, onClose }: NotificationProps) => {
                 </View>
                 <Text style={{ color: tokens.textPrimary, fontWeight: '700', fontSize: 18 }}>Inbox Zero</Text>
                 <Text style={{ color: tokens.textMuted, marginTop: 8, textAlign: 'center', fontSize: 14, lineHeight: 20, paddingHorizontal: 40 }}>
-                  You're all caught up! New updates will appear here.
+                  You&apos;re all caught up! New updates will appear here.
                 </Text>
               </View>
             ) : (

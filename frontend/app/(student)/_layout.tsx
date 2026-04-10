@@ -15,7 +15,7 @@ import {
 import { Platform, Text, useWindowDimensions, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-// Full nav — used by sidebar on web
+// Full nav â€” used by sidebar on web
 const NAV_ITEMS: NavItem[] = [
   { name: "index", title: "Home", icon: Building, route: "/(student)" },
   { name: "subjects", title: "Subjects", icon: BookOpen, route: "/(student)/subjects" },
@@ -68,7 +68,7 @@ function StudentTabs() {
         },
       }}
     >
-      {/* Settings — left */}
+      {/* Settings â€” left */}
       <Tabs.Screen
         name="settings"
         options={{
@@ -80,7 +80,7 @@ function StudentTabs() {
         }}
       />
 
-      {/* Home — center, lifts when focused, flat when not */}
+      {/* Home â€” center, lifts when focused, flat when not */}
       <Tabs.Screen
         name="index"
         options={{
@@ -117,7 +117,7 @@ function StudentTabs() {
         }}
       />
 
-      {/* Messages — right */}
+      {/* Messages â€” right */}
       <Tabs.Screen
         name="messages"
         options={{
@@ -129,7 +129,7 @@ function StudentTabs() {
         }}
       />
 
-      {/* All other routes — hidden from tab bar but still navigable */}
+      {/* All other routes â€” hidden from tab bar but still navigable */}
       {HIDDEN_ROUTES.map((name) => (
         <Tabs.Screen key={name} name={name} options={{ href: null }} />
       ))}

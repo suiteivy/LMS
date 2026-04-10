@@ -7,7 +7,7 @@ import { Bell, CreditCard, LayoutDashboard, MessageSquare, Settings } from "luci
 import { Platform, useWindowDimensions, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-// All nav items — finance tab conditionally removed for free plan at runtime
+// All nav items â€” finance tab conditionally removed for free plan at runtime
 const ALL_NAV_ITEMS: NavItem[] = [
     { name: "index", title: "Home", icon: LayoutDashboard, route: "/(parent)" },
     { name: "finance", title: "Fees", icon: CreditCard, route: "/(parent)/finance" },

@@ -21,7 +21,7 @@ export const SubscriptionBanner = () => {
     return null;
 };
 
-// ─── Plan Hierarchy (frontend gate) ──────────────────────────────────────────
+// â”€â”€â”€ Plan Hierarchy (frontend gate) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // Mirrors PLAN_RANK in useSubscriptionTier.ts
 const PLAN_HIERARCHY: Record<string, number> = {
     'beta': 0,
@@ -135,7 +135,7 @@ export const SubscriptionStatusBadge = () => {
         const label = getPlanLabel(plan);
         switch (plan) {
             case 'premium':
-                return { bg: 'bg-purple-600/10', text: 'text-purple-600', border: 'border-purple-600/20', label: `✨ ${label}` };
+                return { bg: 'bg-purple-600/10', text: 'text-purple-600', border: 'border-purple-600/20', label: `âœ¨ ${label}` };
             case 'pro':
                 return { bg: 'bg-indigo-600/10', text: 'text-indigo-600', border: 'border-indigo-600/20', label };
             case 'custom':
@@ -209,7 +209,7 @@ export const OnboardingTracker = ({ stats }: { stats: any[] }) => {
     return (
         <View className="bg-[#1E293B] rounded-2xl p-4 mb-6 border border-slate-700 shadow-lg">
             <View className="flex-row justify-between items-center mb-3">
-                <Text className="text-white font-bold text-lg">🚀 Getting Started</Text>
+                <Text className="text-white font-bold text-lg">ðŸš€ Getting Started</Text>
                 <Text className="text-slate-400 text-sm">{completedCount} of {steps.length} completed</Text>
             </View>
             <View className="h-2 bg-slate-700 rounded-full mb-4 overflow-hidden">

@@ -56,7 +56,7 @@ const BorrowLimitConfiguration: React.FC<BorrowLimitConfigurationProps> = ({
     isActive: true,
   });
 
-  // ── Material Dark tokens ──────────────────────────────────────────────────
+  // â”€â”€ Material Dark tokens â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const bg = isDark ? '#0F0B2E' : '#fff7ed';           // light green bg preserved in light
   const surface = isDark ? '#13103A' : '#ffffff';
   const surfaceAlt = isDark ? '#1A1650' : '#f9fafb';
@@ -112,11 +112,11 @@ const BorrowLimitConfiguration: React.FC<BorrowLimitConfigurationProps> = ({
               <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: role.isActive ? '#10b981' : '#6b7280', marginRight: 8 }} />
               <View>
                 <Text style={{ fontSize: 16, fontWeight: 'bold', color: textPrimary }}>{role.name}</Text>
-                <Text style={{ fontSize: 11, color: textMuted }}>{role.maxBooks} books • {role.borrowDuration} days</Text>
+                <Text style={{ fontSize: 11, color: textMuted }}>{role.maxBooks} books â€¢ {role.borrowDuration} days</Text>
               </View>
             </View>
             <Text style={{ fontSize: 13, color: textSecondary, marginBottom: 4 }}>{role.description}</Text>
-            <Text style={{ fontSize: 11, color: '#FF6B00' }}>Max {role.maxBooks} books • {role.borrowDuration} days duration</Text>
+            <Text style={{ fontSize: 11, color: '#FF6B00' }}>Max {role.maxBooks} books â€¢ {role.borrowDuration} days duration</Text>
           </View>
           <Ionicons name={isExpanded ? "chevron-up" : "chevron-down"} size={20} color={textSecondary} />
         </TouchableOpacity>
@@ -316,7 +316,7 @@ const BorrowLimitConfiguration: React.FC<BorrowLimitConfigurationProps> = ({
           displayRoles.map(renderRoleCard)
         )}
 
-        {/* Global Settings — now fully dark mode */}
+        {/* Global Settings â€” now fully dark mode */}
         <View style={{ backgroundColor: surface, borderRadius: 12, padding: 16, marginTop: 16, borderWidth: 1, borderColor: border }}>
           <Text style={{ fontSize: 17, fontWeight: '600', color: textPrimary, marginBottom: 16 }}>Global Library Settings</Text>
 

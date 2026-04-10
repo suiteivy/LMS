@@ -1,3 +1,4 @@
+import process from "node:process";
 const express = require("express");
 const cors = require("cors");
 const dotenv = require("dotenv");
@@ -87,12 +88,12 @@ if (typeof startTrialNudgesCron === 'function') {
 }
 
 // health check
-app.get("/", (req, res) => {
+app.get("/", (_req, res) => {
   res.status(200).json({ message: "LMS API is running" });
 });
 
 // Favicon handler - prevent 404/500 errors on favicon requests
-app.get("/favicon.ico", (req, res) => {
+app.get("/favicon.ico", (_req, res) => {
   res.status(204).end();
 });
 

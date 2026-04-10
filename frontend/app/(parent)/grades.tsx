@@ -1,4 +1,4 @@
-﻿import { UnifiedHeader } from "@/components/common/UnifiedHeader";
+import { UnifiedHeader } from "@/components/common/UnifiedHeader";
 import { ParentService } from "@/services/ParentService";
 import { supabase } from "@/libs/supabase";
 import { router, useLocalSearchParams } from "expo-router";

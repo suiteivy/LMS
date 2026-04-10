@@ -1,0 +1,535 @@
+﻿
+> apps@1.0.0 lint
+> expo lint
+
+env: load .env
+env: export EXPO_PUBLIC_SUPABASE_URL EXPO_PUBLIC_SUPABASE_ANON_KEY SUPABASE_SERVICE_ROLE_KEY EXPO_PUBLIC_URL
+
+C:\Projects\LMS\frontend\app\(admin)\attendance\teachers\index.tsx
+  29:44  warning  React Hook useEffect has a missing dependency: 'loadAttendance'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  50:18  warning  'error' is defined but never used                                                                                  @typescript-eslint/no-unused-vars
+
+C:\Projects\LMS\frontend\app\(admin)\classes\create.tsx
+  1:1  warning  Unexpected Unicode BOM (Byte Order Mark)  unicode-bom
+
+C:\Projects\LMS\frontend\app\(admin)\classes\index.tsx
+    1:1   warning  Unexpected Unicode BOM (Byte Order Mark)                                                                                     unicode-bom
+   74:13  warning  'profile' is assigned a value but never used                                                                                 @typescript-eslint/no-unused-vars
+  164:8   warning  React Hook useEffect has a missing dependency: 'loadClasses'. Either include it or remove the dependency array               react-hooks/exhaustive-deps
+  184:8   warning  React Hook useEffect has missing dependencies: 'classes' and 'formName'. Either include them or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Projects\LMS\frontend\app\(admin)\finance\bursaries\[id].tsx
+   24:50   warning  React Hook useEffect has a missing dependency: 'fetchDetails'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  130:115  error    `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`                                                  react/no-unescaped-entities
+  130:135  error    `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`                                                  react/no-unescaped-entities
+
+C:\Projects\LMS\frontend\app\(admin)\finance\bursaries\create.tsx
+   1:1   warning  Unexpected Unicode BOM (Byte Order Mark)      unicode-bom
+  40:11  warning  'surface' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+C:\Projects\LMS\frontend\app\(admin)\finance\bursaries\reports.tsx
+   3:72  warning  'Calendar' is defined but never used                 @typescript-eslint/no-unused-vars
+   9:13  warning  'user' is assigned a value but never used            @typescript-eslint/no-unused-vars
+   9:19  warning  'isInitializing' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  20:11  warning  'isDark' is assigned a value but never used          @typescript-eslint/no-unused-vars
+
+C:\Projects\LMS\frontend\app\(admin)\finance\funds\index.tsx
+   4:29  warning  'DollarSign' is defined but never used                                                                        @typescript-eslint/no-unused-vars
+   4:41  warning  'PieChart' is defined but never used                                                                          @typescript-eslint/no-unused-vars
+  27:8   warning  React Hook useEffect has a missing dependency: 'loadFunds'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  65:18  warning  'error' is defined but never used                                                                             @typescript-eslint/no-unused-vars
+  84:18  warning  'error' is defined but never used                                                                             @typescript-eslint/no-unused-vars
+
+C:\Projects\LMS\frontend\app\(admin)\finance\index.tsx
+   40:8  warning  React Hook useEffect has a missing dependency: 'fetchAllData'. Either include it or remove the dependency array          react-hooks/exhaustive-deps
+  126:8  warning  React Hook React.useCallback has a missing dependency: 'fetchAllData'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Projects\LMS\frontend\app\(admin)\index.tsx
+  25:10  warning  'SubscriptionBanner' is defined but never used           @typescript-eslint/no-unused-vars
+  25:67  warning  'SubscriptionBadge' is defined but never used            @typescript-eslint/no-unused-vars
+  36:7   warning  'IconBell' is assigned a value but never used            @typescript-eslint/no-unused-vars
+  39:7   warning  'IconLayoutGrid' is assigned a value but never used      @typescript-eslint/no-unused-vars
+  41:7   warning  'IconArrowRight' is assigned a value but never used      @typescript-eslint/no-unused-vars
+  46:7   warning  'IconLogOut' is assigned a value but never used          @typescript-eslint/no-unused-vars
+  69:5   warning  'subscriptionStatus' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  77:27  warning  'statsLoading' is assigned a value but never used        @typescript-eslint/no-unused-vars
+
+C:\Projects\LMS\frontend\app\(admin)\management\analytics.tsx
+  1:1   warning  Unexpected Unicode BOM (Byte Order Mark)      unicode-bom
+  7:63  warning  'TouchableOpacity' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Projects\LMS\frontend\app\(admin)\management\index.tsx
+  1:1  warning  Unexpected Unicode BOM (Byte Order Mark)  unicode-bom
+
+C:\Projects\LMS\frontend\app\(admin)\management\roles\index.tsx
+   1:1   warning  Unexpected Unicode BOM (Byte Order Mark)     unicode-bom
+  79:11  warning  'border' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+C:\Projects\LMS\frontend\app\(admin)\management\subjects\create.tsx
+   1:1   warning  Unexpected Unicode BOM (Byte Order Mark)                                                                                               unicode-bom
+  70:8   warning  React Hook useEffect has missing dependencies: 'backdropOpacity' and 'translateY'. Either include them or remove the dependency array  react-hooks/exhaustive-deps
+  95:11  warning  'inputBg' is assigned a value but never used                                                                                           @typescript-eslint/no-unused-vars
+
+C:\Projects\LMS\frontend\app\(admin)\management\subjects\details.tsx
+  1:1  warning  Unexpected Unicode BOM (Byte Order Mark)  unicode-bom
+
+C:\Projects\LMS\frontend\app\(admin)\management\subjects\index.tsx
+  1:1   warning  Unexpected Unicode BOM (Byte Order Mark)  unicode-bom
+  6:18  warning  'useRouter' is defined but never used     @typescript-eslint/no-unused-vars
+  8:29  warning  'Text' is defined but never used          @typescript-eslint/no-unused-vars
+
+C:\Projects\LMS\frontend\app\(admin)\settings\index.tsx
+  2:63  warning  'Alert' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Projects\LMS\frontend\app\(admin)\timetable\index.tsx
+  131:23  warning  'bTeacher' is assigned a value but never used    @typescript-eslint/no-unused-vars
+  394:12  warning  'allEntries' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  530:18  warning  'e' is defined but never used                    @typescript-eslint/no-unused-vars
+  548:30  warning  'e' is defined but never used                    @typescript-eslint/no-unused-vars
+  560:18  warning  'e' is defined but never used                    @typescript-eslint/no-unused-vars
+
+C:\Projects\LMS\frontend\app\(admin)\users\[id].tsx
+  95:76  warning  React Hook useEffect has a missing dependency: 'fetchUserDetails'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Projects\LMS\frontend\app\(admin)\users\create.tsx
+  244:84  error  `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`  react/no-unescaped-entities
+
+C:\Projects\LMS\frontend\app\(admin)\users\index.tsx
+  19:11  warning  'params' is assigned a value but never used                                                                    @typescript-eslint/no-unused-vars
+  30:11  warning  'card' is assigned a value but never used                                                                      @typescript-eslint/no-unused-vars
+  39:40  warning  React Hook useEffect has a missing dependency: 'fetchUsers'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Projects\LMS\frontend\app\(auth)\admin.tsx
+   4:34  warning  'C:\Projects\LMS\frontend\node_modules\react-native\index.js' imported multiple times                                                                                                                                                        import/no-duplicates
+   5:28  warning  'C:\Projects\LMS\frontend\node_modules\react-native\index.js' imported multiple times                                                                                                                                                        import/no-duplicates
+   8:10  warning  'showTooltip' is assigned a value but never used                                                                                                                                                                                             @typescript-eslint/no-unused-vars
+   8:41  error    React Hook "useState" is called in function "admin" that is neither a React function component nor a custom React Hook function. React component names must start with an uppercase letter. React Hook names must start with the word "use"  react-hooks/rules-of-hooks
+   9:41  error    React Hook "useState" is called in function "admin" that is neither a React function component nor a custom React Hook function. React component names must start with an uppercase letter. React Hook names must start with the word "use"  react-hooks/rules-of-hooks
+  24:99  error    `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`                                                                                                                                                                              react/no-unescaped-entities
+
+C:\Projects\LMS\frontend\app\(auth)\demo.tsx
+   6:10  warning  'Ionicons' is defined but never used                                                                                                     @typescript-eslint/no-unused-vars
+  96:6   warning  React Hook useEffect has missing dependencies: 'cardAnims', 'fadeIn', and 'slideUp'. Either include them or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Projects\LMS\frontend\app\(auth)\forgot-password.tsx
+    1:10  warning  'FullScreenLoader' is defined but never used                                                                                                                     @typescript-eslint/no-unused-vars
+    6:18  warning  'Sparkles' is defined but never used                                                                                                                             @typescript-eslint/no-unused-vars
+    6:43  warning  'Mail' is defined but never used                                                                                                                                 @typescript-eslint/no-unused-vars
+   11:13  warning  'EasingRN' is defined but never used                                                                                                                             @typescript-eslint/no-unused-vars
+   20:3   warning  'Alert' is defined but never used                                                                                                                                @typescript-eslint/no-unused-vars
+   30:8   warning  'C:\Projects\LMS\frontend\node_modules\react-native-reanimated\lib\module\index.js' imported multiple times                                                      import/no-duplicates
+   31:24  warning  'C:\Projects\LMS\frontend\node_modules\react-native-reanimated\lib\module\index.js' imported multiple times                                                      import/no-duplicates
+   72:6   warning  React Hook useEffect has missing dependencies: 'duration', 'opacity', and 'translateY'. Either include them or remove the dependency array                       react-hooks/exhaustive-deps
+  287:6   warning  React Hook useEffect has missing dependencies: 'cardFade', 'cardSlide', 'field1', 'field2', and 'logoPulse'. Either include them or remove the dependency array  react-hooks/exhaustive-deps
+  491:52  error    `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`                                                                                                  react/no-unescaped-entities
+
+C:\Projects\LMS\frontend\app\(auth)\signIn.tsx
+    1:10  warning  'FullScreenLoader' is defined but never used                                                                                                                                           @typescript-eslint/no-unused-vars
+   30:3   warning  'interpolate' is defined but never used                                                                                                                                                @typescript-eslint/no-unused-vars
+   31:8   warning  'C:\Projects\LMS\frontend\node_modules\react-native-reanimated\lib\module\index.js' imported multiple times                                                                            import/no-duplicates
+   32:24  warning  'C:\Projects\LMS\frontend\node_modules\react-native-reanimated\lib\module\index.js' imported multiple times                                                                            import/no-duplicates
+   35:16  warning  'SCREEN_WIDTH' is assigned a value but never used                                                                                                                                      @typescript-eslint/no-unused-vars
+   73:6   warning  React Hook useEffect has missing dependencies: 'duration', 'opacity', and 'translateY'. Either include them or remove the dependency array                                             react-hooks/exhaustive-deps
+  253:7   warning  'PasswordStrength' is assigned a value but never used                                                                                                                                  @typescript-eslint/no-unused-vars
+  362:6   warning  React Hook useEffect has missing dependencies: 'cardFade', 'cardSlide', 'field1', 'field2', 'field3', 'logoPulse', and 'logoSpin'. Either include them or remove the dependency array  react-hooks/exhaustive-deps
+  462:9   warning  'spinDeg' is assigned a value but never used                                                                                                                                           @typescript-eslint/no-unused-vars
+
+C:\Projects\LMS\frontend\app\(bursary)\index.tsx
+  6:13  warning  'profile' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+C:\Projects\LMS\frontend\app\(master-admin)\index.tsx
+  2:79  warning  'TouchableOpacity' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Projects\LMS\frontend\app\(master-admin)\institutions.tsx
+   59:12  warning  'saving' is assigned a value but never used                                                                                                      @typescript-eslint/no-unused-vars
+  141:8   warning  React Hook useEffect has missing dependencies: 'fetchAddonRequests' and 'fetchInstitutions'. Either include them or remove the dependency array  react-hooks/exhaustive-deps
+  946:64  error    `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`                                                                                  react/no-unescaped-entities
+  946:70  error    `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`                                                                                  react/no-unescaped-entities
+
+C:\Projects\LMS\frontend\app\(master-admin)\payments.tsx
+   6:5  warning  'TouchableOpacity' is defined but never used                                                                      @typescript-eslint/no-unused-vars
+  72:8  warning  React Hook useEffect has a missing dependency: 'fetchPayments'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Projects\LMS\frontend\app\(master-admin)\support.tsx
+  16:12  warning  'statusUpdating' is assigned a value but never used                                                               @typescript-eslint/no-unused-vars
+  71:8   warning  React Hook useEffect has a missing dependency: 'fetchMessages'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Projects\LMS\frontend\app\(parent)\_layout.tsx
+  20:11  warning  'insets' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+C:\Projects\LMS\frontend\app\(parent)\announcements.tsx
+  1:1  warning  Unexpected Unicode BOM (Byte Order Mark)  unicode-bom
+
+C:\Projects\LMS\frontend\app\(parent)\attendance.tsx
+   1:1   warning  Unexpected Unicode BOM (Byte Order Mark)                                                                           unicode-bom
+  46:12  warning  'e' is defined but never used                                                                                      @typescript-eslint/no-unused-vars
+  90:6   warning  React Hook useEffect has a missing dependency: 'loadAttendance'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Projects\LMS\frontend\app\(parent)\diary.tsx
+  42:13  warning  'user' is assigned a value but never used                                                                        @typescript-eslint/no-unused-vars
+  57:8   warning  React Hook useEffect has a missing dependency: 'fetchEntries'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Projects\LMS\frontend\app\(parent)\finance.tsx
+   1:1   warning  Unexpected Unicode BOM (Byte Order Mark)                                                                                                    unicode-bom
+  50:6   warning  React Hook useEffect has missing dependencies: 'fetchBursaries' and 'fetchFinanceData'. Either include them or remove the dependency array  react-hooks/exhaustive-deps
+  75:49  error    `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`                                                                             react/no-unescaped-entities
+
+C:\Projects\LMS\frontend\app\(parent)\grades.tsx
+   1:1   warning  Unexpected Unicode BOM (Byte Order Mark)                                                                                 unicode-bom
+  19:10  warning  'performance' is assigned a value but never used                                                                         @typescript-eslint/no-unused-vars
+  81:6   warning  React Hook useEffect has a missing dependency: 'fetchPerformanceData'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Projects\LMS\frontend\app\(parent)\messages.tsx
+  1:1  warning  Unexpected Unicode BOM (Byte Order Mark)  unicode-bom
+
+C:\Projects\LMS\frontend\app\(student)\assignments.tsx
+   1:1   warning  Unexpected Unicode BOM (Byte Order Mark)                                                                                     unicode-bom
+  79:6   warning  React Hook useEffect has a missing dependency: 'fetchStudentsAssignments'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  86:14  warning  'error' is defined but never used                                                                                            @typescript-eslint/no-unused-vars
+
+C:\Projects\LMS\frontend\app\(student)\attendance.tsx
+   1:1  warning  Unexpected Unicode BOM (Byte Order Mark)                                                                            unicode-bom
+  26:8  warning  React Hook useEffect has a missing dependency: 'fetchAttendance'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Projects\LMS\frontend\app\(student)\diary.tsx
+   5:36  warning  'C:\Projects\LMS\frontend\node_modules\lucide-react-native\dist\esm\lucide-react-native.js' imported multiple times  import/no-duplicates
+   9:21  warning  'C:\Projects\LMS\frontend\node_modules\lucide-react-native\dist\esm\lucide-react-native.js' imported multiple times  import/no-duplicates
+  43:13  warning  'user' is assigned a value but never used                                                                            @typescript-eslint/no-unused-vars
+
+C:\Projects\LMS\frontend\app\(student)\finance.tsx
+   1:1   warning  Unexpected Unicode BOM (Byte Order Mark)                                                                      unicode-bom
+  27:13  warning  'studentId' is assigned a value but never used                                                                @typescript-eslint/no-unused-vars
+  37:8   warning  React Hook useEffect has a missing dependency: 'fetchData'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Projects\LMS\frontend\app\(student)\grades.tsx
+    1:1   warning  Unexpected Unicode BOM (Byte Order Mark)                                                                        unicode-bom
+   49:24  warning  'displayId' is assigned a value but never used                                                                  @typescript-eslint/no-unused-vars
+   66:8   warning  React Hook useEffect has a missing dependency: 'fetchGrades'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  192:19  warning  'subId' is assigned a value but never used                                                                      @typescript-eslint/no-unused-vars
+
+C:\Projects\LMS\frontend\app\(student)\index.tsx
+   34:11  warning  'unreadCount' is assigned a value but never used                                                                               @typescript-eslint/no-unused-vars
+   35:10  warning  'showNotification' is assigned a value but never used                                                                          @typescript-eslint/no-unused-vars
+   35:28  warning  'setShowNotification' is assigned a value but never used                                                                       @typescript-eslint/no-unused-vars
+   48:6   warning  React Hook useEffect has a missing dependency: 'fetchDashboardData'. Either include it or remove the dependency array          react-hooks/exhaustive-deps
+  166:6   warning  React Hook React.useCallback has a missing dependency: 'fetchDashboardData'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  224:99  error    `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`                                                                react/no-unescaped-entities
+
+C:\Projects\LMS\frontend\app\(student)\library.tsx
+   6:66  warning  'C:\Projects\LMS\frontend\node_modules\lucide-react-native\dist\esm\lucide-react-native.js' imported multiple times  import/no-duplicates
+  10:28  warning  'AddonRequestButton' is defined but never used                                                                       @typescript-eslint/no-unused-vars
+  11:21  warning  'C:\Projects\LMS\frontend\node_modules\lucide-react-native\dist\esm\lucide-react-native.js' imported multiple times  import/no-duplicates
+  52:8   warning  React Hook useCallback has an unnecessary dependency: 'studentId'. Either exclude it or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Projects\LMS\frontend\app\(student)\messages.tsx
+   1:1   warning  Unexpected Unicode BOM (Byte Order Mark)                                                                          unicode-bom
+  30:8   warning  React Hook useEffect has a missing dependency: 'fetchMessages'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  71:18  warning  'error' is defined but never used                                                                                 @typescript-eslint/no-unused-vars
+
+C:\Projects\LMS\frontend\app\(student)\subjects.tsx
+  1:1  warning  Unexpected Unicode BOM (Byte Order Mark)  unicode-bom
+
+C:\Projects\LMS\frontend\app\(student)\timetable.tsx
+  1:1  warning  Unexpected Unicode BOM (Byte Order Mark)  unicode-bom
+
+C:\Projects\LMS\frontend\app\(teacher)\_layout.tsx
+  35:13  warning  'isDemo' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+C:\Projects\LMS\frontend\app\(teacher)\classes.tsx
+    1:1  warning  Unexpected Unicode BOM (Byte Order Mark)                                                                         unicode-bom
+  717:8  warning  React Hook useEffect has a missing dependency: 'fetchClasses'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Projects\LMS\frontend\app\(teacher)\index.tsx
+   40:22  warning  'displayId' is assigned a value but never used                                                                         @typescript-eslint/no-unused-vars
+   40:33  warning  'signOut' is assigned a value but never used                                                                           @typescript-eslint/no-unused-vars
+  102:8   warning  React Hook useEffect has a missing dependency: 'fetchDashboardData'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  156:34  error    `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`                                                        react/no-unescaped-entities
+
+C:\Projects\LMS\frontend\app\(teacher)\library.tsx
+   6:66  warning  'C:\Projects\LMS\frontend\node_modules\lucide-react-native\dist\esm\lucide-react-native.js' imported multiple times  import/no-duplicates
+  11:21  warning  'C:\Projects\LMS\frontend\node_modules\lucide-react-native\dist\esm\lucide-react-native.js' imported multiple times  import/no-duplicates
+
+C:\Projects\LMS\frontend\app\(teacher)\management\_layout.tsx
+  1:1   warning  Unexpected Unicode BOM (Byte Order Mark)     unicode-bom
+  6:11  warning  'insets' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+C:\Projects\LMS\frontend\app\(teacher)\management\analytics.tsx
+    9:10  warning  'UnifiedHeader' is defined but never used                                                                          @typescript-eslint/no-unused-vars
+   64:13  warning  'profile' is assigned a value but never used                                                                       @typescript-eslint/no-unused-vars
+   65:12  warning  'selectedPeriod' is assigned a value but never used                                                                @typescript-eslint/no-unused-vars
+   65:28  warning  'setSelectedPeriod' is assigned a value but never used                                                             @typescript-eslint/no-unused-vars
+  162:8   warning  React Hook useEffect has a missing dependency: 'fetchAnalytics'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Projects\LMS\frontend\app\(teacher)\management\announcements.tsx
+    1:1   warning  Unexpected Unicode BOM (Byte Order Mark)                                                                                                     unicode-bom
+   76:8   warning  React Hook useEffect has missing dependencies: 'fetchAnnouncements' and 'fetchSubjects'. Either include them or remove the dependency array  react-hooks/exhaustive-deps
+  138:18  warning  'error' is defined but never used                                                                                                            @typescript-eslint/no-unused-vars
+  149:18  warning  'error' is defined but never used                                                                                                            @typescript-eslint/no-unused-vars
+
+C:\Projects\LMS\frontend\app\(teacher)\management\assignments.tsx
+  132:8  warning  React Hook useEffect has missing dependencies: 'fetchAssignments' and 'fetchSubjects'. Either include them or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Projects\LMS\frontend\app\(teacher)\management\attendance.tsx
+   1:1   warning  Unexpected Unicode BOM (Byte Order Mark)                                                                                unicode-bom
+  58:13  warning  'teacherId' is assigned a value but never used                                                                          @typescript-eslint/no-unused-vars
+  59:26  warning  'setSelectedDate' is assigned a value but never used                                                                    @typescript-eslint/no-unused-vars
+  75:8   warning  React Hook useEffect has a missing dependency: 'fetchAttendanceData'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Projects\LMS\frontend\app\(teacher)\management\diary.tsx
+   59:13  warning  'teacherId' is assigned a value but never used                                                                   @typescript-eslint/no-unused-vars
+   80:8   warning  React Hook useEffect has a missing dependency: 'fetchEntries'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  150:18  warning  'error' is defined but never used                                                                                @typescript-eslint/no-unused-vars
+  196:42  error    `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`                                                  react/no-unescaped-entities
+
+C:\Projects\LMS\frontend\app\(teacher)\management\earnings.tsx
+   1:1  warning  Unexpected Unicode BOM (Byte Order Mark)                                                                          unicode-bom
+  58:8  warning  React Hook useEffect has a missing dependency: 'fetchEarnings'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Projects\LMS\frontend\app\(teacher)\management\exam-results.tsx
+  29:8  warning  React Hook useEffect has a missing dependency: 'fetchInitialData'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Projects\LMS\frontend\app\(teacher)\management\exams.tsx
+   1:1   warning  Unexpected Unicode BOM (Byte Order Mark)             unicode-bom
+  30:25  warning  'setDescription' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  77:18  warning  'error' is defined but never used                    @typescript-eslint/no-unused-vars
+
+C:\Projects\LMS\frontend\app\(teacher)\management\grades.tsx
+    1:1   warning  Unexpected Unicode BOM (Byte Order Mark)                                                                                                                unicode-bom
+   78:13  warning  'profile' is assigned a value but never used                                                                                                            @typescript-eslint/no-unused-vars
+   97:8   warning  React Hook useEffect has a missing dependency: 'fetchSubjects'. Either include it or remove the dependency array                                        react-hooks/exhaustive-deps
+  109:8   warning  React Hook useEffect has missing dependencies: 'fetchAssignmentsForSubject' and 'fetchSubmissions'. Either include them or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Projects\LMS\frontend\app\(teacher)\management\index.tsx
+  1:1  warning  Unexpected Unicode BOM (Byte Order Mark)  unicode-bom
+
+C:\Projects\LMS\frontend\app\(teacher)\management\library.tsx
+   6:20  warning  'Calendar' is defined but never used                                                                           @typescript-eslint/no-unused-vars
+   6:30  warning  'ChevronRight' is defined but never used                                                                       @typescript-eslint/no-unused-vars
+   6:44  warning  'Plus' is defined but never used                                                                               @typescript-eslint/no-unused-vars
+   6:58  warning  'User' is defined but never used                                                                               @typescript-eslint/no-unused-vars
+   6:64  warning  'X' is defined but never used                                                                                  @typescript-eslint/no-unused-vars
+   8:36  warning  'Modal' is defined but never used                                                                              @typescript-eslint/no-unused-vars
+   8:72  warning  'TouchableOpacity' is defined but never used                                                                   @typescript-eslint/no-unused-vars
+  15:12  warning  'selectedBook' is assigned a value but never used                                                              @typescript-eslint/no-unused-vars
+  15:26  warning  'setSelectedBook' is assigned a value but never used                                                           @typescript-eslint/no-unused-vars
+  16:12  warning  'modalVisible' is assigned a value but never used                                                              @typescript-eslint/no-unused-vars
+  16:26  warning  'setModalVisible' is assigned a value but never used                                                           @typescript-eslint/no-unused-vars
+  21:8   warning  React Hook useEffect has a missing dependency: 'fetchBooks'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Projects\LMS\frontend\app\(teacher)\management\messages.tsx
+   6:39  warning  'Plus' is defined but never used                                                                                  @typescript-eslint/no-unused-vars
+  22:8   warning  React Hook useEffect has a missing dependency: 'fetchMessages'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Projects\LMS\frontend\app\(teacher)\management\resources.tsx
+  110:18  warning  'error' is defined but never used  @typescript-eslint/no-unused-vars
+  119:18  warning  'error' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Projects\LMS\frontend\app\(teacher)\management\subjects\details.tsx
+   1:1  warning  Unexpected Unicode BOM (Byte Order Mark)                                                                         unicode-bom
+  37:8  warning  React Hook useEffect has a missing dependency: 'fetchSubject'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Projects\LMS\frontend\app\(teacher)\management\submissions.tsx
+  46:13  warning  'teacherId' is assigned a value but never used                                                                @typescript-eslint/no-unused-vars
+  59:8   warning  React Hook useEffect has a missing dependency: 'fetchData'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Projects\LMS\frontend\app\(teacher)\management\timetable.tsx
+  122:36  error  `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`  react/no-unescaped-entities
+
+C:\Projects\LMS\frontend\app\(teacher)\students.tsx
+   3:28  warning  'Filter' is defined but never used                                                                                @typescript-eslint/no-unused-vars
+  42:8   warning  React Hook useEffect has a missing dependency: 'fetchStudents'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Projects\LMS\frontend\app\(teacher)\subjects.tsx
+   3:44  warning  'ChevronRight' is defined but never used                                                                             @typescript-eslint/no-unused-vars
+   3:58  warning  'Filter' is defined but never used                                                                                   @typescript-eslint/no-unused-vars
+   3:72  warning  'C:\Projects\LMS\frontend\node_modules\lucide-react-native\dist\esm\lucide-react-native.js' imported multiple times  import/no-duplicates
+   7:21  warning  'TrendingUp' is defined but never used                                                                               @typescript-eslint/no-unused-vars
+   7:33  warning  'Users' is defined but never used                                                                                    @typescript-eslint/no-unused-vars
+   7:46  warning  'C:\Projects\LMS\frontend\node_modules\lucide-react-native\dist\esm\lucide-react-native.js' imported multiple times  import/no-duplicates
+  20:11  warning  'isActive' is assigned a value but never used                                                                        @typescript-eslint/no-unused-vars
+
+C:\Projects\LMS\frontend\app\_layout.tsx
+   14:8   warning  'C:\Projects\LMS\frontend\node_modules\react-native-gesture-handler\lib\module\index.js' imported multiple times                         import/no-duplicates
+   15:40  warning  'C:\Projects\LMS\frontend\node_modules\react-native-gesture-handler\lib\module\index.js' imported multiple times                         import/no-duplicates
+  145:6   warning  React Hook React.useEffect has missing dependencies: 'getRoleRedirect' and 'router'. Either include them or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Projects\LMS\frontend\app\index.tsx
+    11:3   warning  'Coins' is defined but never used                                                                                                                 @typescript-eslint/no-unused-vars
+    43:3   warning  'useAnimatedProps' is defined but never used                                                                                                      @typescript-eslint/no-unused-vars
+    51:8   warning  'Svg' is defined but never used                                                                                                                   @typescript-eslint/no-unused-vars
+    51:23  warning  'Defs' is defined but never used                                                                                                                  @typescript-eslint/no-unused-vars
+    51:29  warning  'LinearGradient' is defined but never used                                                                                                        @typescript-eslint/no-unused-vars
+    51:45  warning  'Stop' is defined but never used                                                                                                                  @typescript-eslint/no-unused-vars
+    56:7   warning  'AnimatedCircle' is assigned a value but never used                                                                                               @typescript-eslint/no-unused-vars
+    74:6   warning  React Hook useEffect has a missing dependency: 'glow'. Either include it or remove the dependency array                                           react-hooks/exhaustive-deps
+   175:6   warning  React Hook useEffect has missing dependencies: 'animValue', 'borderAnim', and 'plan.premium'. Either include them or remove the dependency array  react-hooks/exhaustive-deps
+   244:21  error    React Hook "useAnimatedStyle" is called conditionally. React Hooks must be called in the exact same order in every component render               react-hooks/rules-of-hooks
+   554:6   warning  React Hook useEffect has a missing dependency: 'glowVal'. Either include it or remove the dependency array                                        react-hooks/exhaustive-deps
+   686:6   warning  React Hook useEffect has a missing dependency: 'calc'. Either include it or remove the dependency array                                           react-hooks/exhaustive-deps
+   704:6   warning  React Hook useEffect has a missing dependency: 'pulse'. Either include it or remove the dependency array                                          react-hooks/exhaustive-deps
+   883:20  warning  'loading' is assigned a value but never used                                                                                                      @typescript-eslint/no-unused-vars
+   883:45  warning  'profile' is assigned a value but never used                                                                                                      @typescript-eslint/no-unused-vars
+   883:54  warning  'isPlatformAdmin' is assigned a value but never used                                                                                              @typescript-eslint/no-unused-vars
+   884:9   warning  'formRef' is assigned a value but never used                                                                                                      @typescript-eslint/no-unused-vars
+   886:9   warning  'pathname' is assigned a value but never used                                                                                                     @typescript-eslint/no-unused-vars
+   900:22  warning  'setNavigating' is assigned a value but never used                                                                                                @typescript-eslint/no-unused-vars
+   901:9   warning  'pendingRoute' is assigned a value but never used                                                                                                 @typescript-eslint/no-unused-vars
+   947:6   warning  React Hook useEffect has missing dependencies: 'heroFade' and 'heroSlide'. Either include them or remove the dependency array                     react-hooks/exhaustive-deps
+   967:6   warning  React Hook useEffect has a missing dependency: 'ctaPulse'. Either include it or remove the dependency array                                       react-hooks/exhaustive-deps
+   997:6   warning  React Hook useEffect has missing dependencies: 'orb1', 'orb2', and 'orb3'. Either include them or remove the dependency array                     react-hooks/exhaustive-deps
+  1017:6   warning  React Hook useEffect has a missing dependency: 'scrollAnimation'. Either include it or remove the dependency array                                react-hooks/exhaustive-deps
+
+C:\Projects\LMS\frontend\components\AdminHelp.tsx
+    1:34   warning  'LifeBuoy' is defined but never used                             @typescript-eslint/no-unused-vars
+    1:50   warning  'MessageSquare' is defined but never used                        @typescript-eslint/no-unused-vars
+    1:65   warning  'Search' is defined but never used                               @typescript-eslint/no-unused-vars
+  165:175  error    `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`  react/no-unescaped-entities
+  165:185  error    `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`  react/no-unescaped-entities
+
+C:\Projects\LMS\frontend\components\AdminOverview.tsx
+  3:61  warning  'ShieldCheck' is defined but never used       @typescript-eslint/no-unused-vars
+  8:13  warning  'profile' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+C:\Projects\LMS\frontend\components\AdminProfile.tsx
+  10:22  warning  'user' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+C:\Projects\LMS\frontend\components\AppLoading.tsx
+   38:6  warning  React Hook useEffect has missing dependencies: 'dash' and 'spin'. Either include them or remove the dependency array                                react-hooks/exhaustive-deps
+   90:6  warning  React Hook useEffect has missing dependencies: 'delay', 'duration', 'opacity', and 'y'. Either include them or remove the dependency array          react-hooks/exhaustive-deps
+  121:6  warning  React Hook useEffect has missing dependencies: 'fade' and 'slide'. Either include them or remove the dependency array                               react-hooks/exhaustive-deps
+  195:6  warning  React Hook useEffect has missing dependencies: 'dot1', 'dot2', 'dot3', 'progress', and 'pulse'. Either include them or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Projects\LMS\frontend\components\AuthGuard.tsx
+  23:10  warning  'shouldShowOverlay' is assigned a value but never used     @typescript-eslint/no-unused-vars
+  23:29  warning  'setShouldShowOverlay' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+C:\Projects\LMS\frontend\components\DemoBanner.tsx
+  58:8  warning  React Hook useEffect has a missing dependency: 'handleExpiry'. Either include it or remove the dependency array                     react-hooks/exhaustive-deps
+  68:8  warning  React Hook useEffect has missing dependencies: 'expiryTime' and 'handleExpiry'. Either include them or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Projects\LMS\frontend\components\GlobalSettingsDrawer.tsx
+  1:1  warning  Unexpected Unicode BOM (Byte Order Mark)  unicode-bom
+
+C:\Projects\LMS\frontend\components\InstitutionOwnership.tsx
+    1:1   warning  Unexpected Unicode BOM (Byte Order Mark)                                                                        unicode-bom
+   23:8   warning  React Hook useEffect has a missing dependency: 'fetchAdmins'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+   79:34  warning  'err' is defined but never used                                                                                 @typescript-eslint/no-unused-vars
+  120:82  error    `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`                                                 react/no-unescaped-entities
+
+C:\Projects\LMS\frontend\components\LibraryActions.tsx
+  11:14  warning  'error' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Projects\LMS\frontend\components\MasterAdminSettings.tsx
+   1:10  warning  'useAuth' is defined but never used          @typescript-eslint/no-unused-vars
+   5:99  warning  'Alert' is defined but never used            @typescript-eslint/no-unused-vars
+  10:10  warning  'SettingsService' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Projects\LMS\frontend\components\Notifications.tsx
+   11:1   warning  Import in body of module; reorder to top                         import/first
+   12:1   warning  Import in body of module; reorder to top                         import/first
+   13:1   warning  Import in body of module; reorder to top                         import/first
+  110:22  error    `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`  react/no-unescaped-entities
+
+C:\Projects\LMS\frontend\components\StudentHelp.tsx
+  2:50  warning  'MessageSquare' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Projects\LMS\frontend\components\StudentProfile.tsx
+  28:36  warning  'user' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+C:\Projects\LMS\frontend\components\StudentSettings.tsx
+  6:10  warning  'SettingsService' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Projects\LMS\frontend\components\SubjectList.tsx
+    1:1   warning  Unexpected Unicode BOM (Byte Order Mark)                         unicode-bom
+  144:58  error    `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`  react/no-unescaped-entities
+
+C:\Projects\LMS\frontend\components\TeacherHelp.tsx
+  1:50  warning  'MessageSquare' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Projects\LMS\frontend\components\TeacherProfile.tsx
+  14:22  warning  'user' is assigned a value but never used                                                                            @typescript-eslint/no-unused-vars
+  24:12  warning  'loadingData' is assigned a value but never used                                                                     @typescript-eslint/no-unused-vars
+  27:12  warning  'subjects' is assigned a value but never used                                                                        @typescript-eslint/no-unused-vars
+  28:12  warning  'classes' is assigned a value but never used                                                                         @typescript-eslint/no-unused-vars
+  56:8   warning  React Hook useEffect has a missing dependency: 'fetchTeacherData'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Projects\LMS\frontend\components\TeacherSettings.tsx
+  6:10  warning  'SettingsService' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Projects\LMS\frontend\components\admin\finance\FeeStructureSection.tsx
+    1:1   warning  Unexpected Unicode BOM (Byte Order Mark)                         unicode-bom
+   30:11  warning  'isDark' is assigned a value but never used                      @typescript-eslint/no-unused-vars
+  183:72  error    `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`  react/no-unescaped-entities
+  183:78  error    `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`  react/no-unescaped-entities
+
+C:\Projects\LMS\frontend\components\admin\finance\PaymentManagementSection.tsx
+  19:8  warning  'Toast' is defined but never used                                                                                      @typescript-eslint/no-unused-vars
+  68:6  warning  React Hook useEffect has a missing dependency: 'allStudents.length'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Projects\LMS\frontend\components\admin\finance\TeacherPayoutSection.tsx
+  1:1  warning  Unexpected Unicode BOM (Byte Order Mark)  unicode-bom
+
+C:\Projects\LMS\frontend\components\admin\library\AddUpdateDeleteBooksForm.tsx
+   1:1  warning  Unexpected Unicode BOM (Byte Order Mark)                                                                                                  unicode-bom
+  58:6  warning  React Hook useEffect has missing dependencies: 'fetchBooks' and 'fetchBorrowedBooks'. Either include them or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Projects\LMS\frontend\components\admin\library\BorrowLimitConfiguration.tsx
+  62:9  warning  'surfaceAlt' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+C:\Projects\LMS\frontend\components\admin\library\BorrowedBooksOverview.tsx
+  450:9  warning  'overdueBooksCount' is assigned a value but never used   @typescript-eslint/no-unused-vars
+  453:9  warning  'activeBorrowsCount' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  456:9  warning  'dueSoonCount' is assigned a value but never used        @typescript-eslint/no-unused-vars
+
+C:\Projects\LMS\frontend\components\admin\library\LibraryAction.tsx
+   1:1   warning  Unexpected Unicode BOM (Byte Order Mark)                                                                            unicode-bom
+  56:43  warning  React Hook useEffect has a missing dependency: 'loadInitialData'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  63:14  warning  'err' is defined but never used                                                                                     @typescript-eslint/no-unused-vars
+
+C:\Projects\LMS\frontend\components\common\DebugOverlay.tsx
+  1:1  warning  Unexpected Unicode BOM (Byte Order Mark)  unicode-bom
+
+C:\Projects\LMS\frontend\components\common\FullScreenLoader.tsx
+  1:1  warning  Unexpected Unicode BOM (Byte Order Mark)  unicode-bom
+
+C:\Projects\LMS\frontend\components\common\GradeDetailModal.tsx
+  1:1  warning  Unexpected Unicode BOM (Byte Order Mark)  unicode-bom
+
+C:\Projects\LMS\frontend\components\common\UnifiedHeader.tsx
+   6:10  warning  'LogOut' is defined but never used                   @typescript-eslint/no-unused-vars
+  36:11  warning  'isDemo' is assigned a value but never used          @typescript-eslint/no-unused-vars
+  38:9   warning  'handleExitDemo' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+C:\Projects\LMS\frontend\components\common\UserCard.tsx
+  1:1  warning  Unexpected Unicode BOM (Byte Order Mark)  unicode-bom
+
+C:\Projects\LMS\frontend\components\form\IconInput.tsx
+   4:3   warning  'TextInputProps' is defined but never used                                             @typescript-eslint/no-unused-vars
+   8:8   warning  'C:\Projects\LMS\frontend\node_modules\react-native\index.js' imported multiple times  import/no-duplicates
+  11:22  warning  'C:\Projects\LMS\frontend\node_modules\react-native\index.js' imported multiple times  import/no-duplicates
+  13:24  warning  'C:\Projects\LMS\frontend\node_modules\react-native\index.js' imported multiple times  import/no-duplicates
+
+C:\Projects\LMS\frontend\components\layouts\WebSideBar.tsx
+   4:3   warning  'BookOpen' is defined but never used       @typescript-eslint/no-unused-vars
+   5:3   warning  'Building' is defined but never used       @typescript-eslint/no-unused-vars
+   8:3   warning  'CreditCard' is defined but never used     @typescript-eslint/no-unused-vars
+   9:3   warning  'Glasses' is defined but never used        @typescript-eslint/no-unused-vars
+  11:3   warning  'MessageSquare' is defined but never used  @typescript-eslint/no-unused-vars
+  12:3   warning  'PenBox' is defined but never used         @typescript-eslint/no-unused-vars
+  13:3   warning  'Settings' is defined but never used       @typescript-eslint/no-unused-vars
+  14:3   warning  'Star' is defined but never used           @typescript-eslint/no-unused-vars
+  17:10  warning  'Animated' is defined but never used       @typescript-eslint/no-unused-vars
+
+C:\Projects\LMS\frontend\components\shared\AddonRequestModal.tsx
+  12:26  warning  'Info' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Projects\LMS\frontend\components\shared\SubscriptionComponents.tsx
+  2:40  warning  'Alert' is defined but never used        @typescript-eslint/no-unused-vars
+  6:24  warning  'getPlanRank' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Projects\LMS\frontend\components\ui\AdminTooltip.tsx
+  32:6  warning  React Hook useEffect has a missing dependency: 'animation'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+Γ£û 313 problems (22 errors, 291 warnings)
+  0 errors and 53 warnings potentially fixable with the `--fix` option.
+

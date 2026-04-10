@@ -1,4 +1,5 @@
-const supabase = require("../utils/supabaseClient.js");
+import process from "node:process";
+const _supabase = require("../utils/supabaseClient.js");
 const { createClient } = require("@supabase/supabase-js");
 
 // We MUST use the service role key for platform-wide operations to bypass RLS,
@@ -10,7 +11,7 @@ const getServiceSupabase = () => {
     );
 };
 
-exports.getDashboardStats = async (req, res) => {
+exports.getDashboardStats = async (_req, res) => {
     try {
         const adminClient = getServiceSupabase();
 
@@ -42,7 +43,7 @@ exports.getDashboardStats = async (req, res) => {
     }
 };
 
-exports.getAllInstitutions = async (req, res) => {
+exports.getAllInstitutions = async (_req, res) => {
     try {
         const adminClient = getServiceSupabase();
         const { data, error } = await adminClient
@@ -377,7 +378,7 @@ exports.enrollMasterAdmin = async (req, res) => {
 /**
  * Get all support tickets
  */
-exports.getSupportRequests = async (req, res) => {
+exports.getSupportRequests = async (_req, res) => {
     try {
         const adminClient = getServiceSupabase();
         const { data, error } = await adminClient
@@ -563,7 +564,7 @@ exports.updatePlatformProfile = async (req, res) => {
 /**
  * Get all payments globally for Master Admin ledger
  */
-exports.getAllPayments = async (req, res) => {
+exports.getAllPayments = async (_req, res) => {
     try {
         const adminClient = getServiceSupabase();
         const { data, error } = await adminClient

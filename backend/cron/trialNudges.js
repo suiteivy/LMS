@@ -1,3 +1,4 @@
+import process from "node:process";
 const cron = require('node-cron');
 const { createClient } = require('@supabase/supabase-js');
 const supabaseUrl = process.env.SUPABASE_URL || process.env.EXPO_PUBLIC_SUPABASE_URL;

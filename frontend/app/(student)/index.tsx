@@ -196,7 +196,7 @@ export default function Index() {
           <View className="mb-8 px-2">
             <Text className="text-gray-400 dark:text-gray-500 font-bold text-[10px] uppercase tracking-[3px] mb-2">Academic Portal</Text>
             <Text className="text-gray-900 dark:text-white font-bold text-3xl tracking-tight">
-              Hello, {profile?.first_name || profile?.full_name?.split(' ')[0] || 'Student'} 👋
+              Hello, {profile?.first_name || profile?.full_name?.split(' ')[0] || 'Student'} ðŸ‘‹
             </Text>
             <Text className="text-gray-400 dark:text-gray-500 text-xs font-medium mt-1">ID: {displayId || 'Not Assigned'}</Text>
           </View>
@@ -221,7 +221,7 @@ export default function Index() {
 
           {/* Today's Schedule */}
           <View className="flex-row justify-between items-center mb-6 px-2">
-            <Text className="text-xl font-bold text-gray-900 dark:text-white tracking-tight">Today's Lectures</Text>
+            <Text className="text-xl font-bold text-gray-900 dark:text-white tracking-tight">Today&apos;s Lectures</Text>
             <TouchableOpacity onPress={() => router.push("/(student)/timetable" as any)}>
               <Text className="text-[#FF6900] text-[10px] font-bold uppercase tracking-widest underline">View Full</Text>
             </TouchableOpacity>

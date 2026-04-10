@@ -119,7 +119,7 @@ export default function TimetablePage() {
                         <Calendar size={48} color="#D1D5DB" />
                         <Text className="text-gray-900 font-bold text-xl mt-6">No lessons today</Text>
                         <Text className="text-gray-500 text-center mt-3 leading-relaxed">
-                            You don't have any lessons scheduled for {activeDay}.
+                            You don&apos;t have any lessons scheduled for {activeDay}.
                         </Text>
                     </View>
                 )}

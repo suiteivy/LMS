@@ -1,4 +1,4 @@
-﻿import { UnifiedHeader } from "@/components/common/UnifiedHeader";
+import { UnifiedHeader } from "@/components/common/UnifiedHeader";
 import { StudentService } from "@/services/StudentService";
 import { addDays, format, isSameDay, startOfWeek } from "date-fns";
 import { router } from "expo-router";

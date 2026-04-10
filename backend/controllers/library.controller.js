@@ -439,7 +439,7 @@ exports.history = async (req, res) => {
 
     if (error) return res.status(500).json({ error: error.message });
     res.json(data);
-  } catch (e) {
+  } catch (_e) {
     res.status(500).json({ error: "Server error" });
   }
 };

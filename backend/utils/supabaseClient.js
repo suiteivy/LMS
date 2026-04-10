@@ -1,3 +1,4 @@
+import process from "node:process";
 const { createClient } = require("@supabase/supabase-js");
 const dotenv = require("dotenv");
 
@@ -30,7 +31,7 @@ function getClient() {
 }
 
 const supabaseProxy = new Proxy({}, {
-    get: function (target, prop) {
+    get: function (_target, prop) {
         const client = getClient();
         const value = client[prop];
         if (typeof value === 'function') {

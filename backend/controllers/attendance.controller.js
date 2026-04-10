@@ -6,7 +6,7 @@ const supabase = require("../utils/supabaseClient.js");
  */
 exports.getStudentAttendance = async (req, res) => {
     try {
-        const { date, subject_id, class_id } = req.query;
+        const { date, subject_id, class_id: _class_id } = req.query;
         const { userId, userRole, institution_id } = req;
         
         if (!date || !subject_id) return res.status(400).json({ error: "Date and Subject ID required" });

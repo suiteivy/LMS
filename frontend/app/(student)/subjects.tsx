@@ -1,4 +1,4 @@
-﻿import { FullScreenLoader } from "@/components/common/FullScreenLoader";
+import { FullScreenLoader } from "@/components/common/FullScreenLoader";
 import { UnifiedHeader } from "@/components/common/UnifiedHeader";
 import { SubjectDetails } from "@/components/SubjectDetails";
 import { SubjectList } from "@/components/SubjectList";

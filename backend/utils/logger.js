@@ -3,6 +3,7 @@
  * Replaces console.log with proper structured logging
  */
 
+import process from "node:process";
 const fs = require('fs');
 const path = require('path');
 

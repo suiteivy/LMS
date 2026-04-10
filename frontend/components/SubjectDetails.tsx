@@ -77,7 +77,7 @@ export const SubjectDetails: React.FC<SubjectDetailsProps> = ({
             color={lesson.isLocked ? t.textMuted : '#f97316'}
           />
           <Text style={{ fontSize: 10, fontWeight: '600', color: t.textMuted, marginLeft: 4, textTransform: 'uppercase', letterSpacing: 1 }}>
-            {lesson.type} • {lesson.duration}
+            {lesson.type} â€¢ {lesson.duration}
           </Text>
         </View>
       </View>

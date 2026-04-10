@@ -233,7 +233,7 @@ export default function AnalyticsPage() {
 
                                         {topPerformers.length > 0 && (
                                             <View className="bg-teacherBlack p-4 rounded-2xl mt-4">
-                                                <Text className="text-white font-bold mb-3">🏆 Top Performers</Text>
+                                                <Text className="text-white font-bold mb-3">ðŸ† Top Performers</Text>
                                                 <View className="flex-row justify-between">
                                                     {topPerformers.map((student, index) => (
                                                         <View key={index} className="items-center">

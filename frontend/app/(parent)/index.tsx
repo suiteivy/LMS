@@ -241,7 +241,7 @@ function ParentDashboard({ user, logout }: any) {
                 <Text className="text-gray-900 dark:text-white font-bold text-xl tracking-tight">Academic Oversight</Text>
                 <Text className="text-gray-400 dark:text-gray-500 text-xs mt-1">
                   Viewing: {selectedStudent.users?.first_name || selectedStudent.users?.full_name?.split(' ')[0]}
-                  {linkedStudents.length > 1 ? ` · ${linkedStudents.length} children` : ''}
+                  {linkedStudents.length > 1 ? ` Â· ${linkedStudents.length} children` : ''}
                 </Text>
               </View>
 

@@ -162,7 +162,7 @@ export default function FundManager() {
                                     <View className="bg-white p-4 rounded-xl border border-gray-100 mb-3 flex-row justify-between items-center shadow-sm">
                                         <View>
                                             <Text className="text-base font-bold text-gray-800">{item.title}</Text>
-                                            <Text className="text-xs text-gray-400">{item.category} • {item.status}</Text>
+                                            <Text className="text-xs text-gray-400">{item.category} â€¢ {item.status}</Text>
                                         </View>
                                         <Text className="text-base font-bold text-green-600">${item.amount}</Text>
                                     </View>

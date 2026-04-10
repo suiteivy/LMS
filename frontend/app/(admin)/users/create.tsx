@@ -241,7 +241,7 @@ export default function CreateUserScreen() {
     const renderPersonalInfo = () => (
         <View style={{ padding: 24 }}>
             <Text style={{ fontSize: 24, fontWeight: '700', color: textPrimary, marginBottom: 6 }}>Personal Information</Text>
-            <Text style={{ color: textSecondary, marginBottom: 24 }}>Enter the user's basic details</Text>
+            <Text style={{ color: textSecondary, marginBottom: 24 }}>Enter the user&apos;s basic details</Text>
             <View style={{ flexDirection: 'row', gap: 12 }}>
                 <View style={{ flex: 1 }}>
                     <RenderInput label="First Name *" value={form.first_name} onChangeText={(v: string) => updateFormSanitized('first_name', v)} placeholder="John" isDark={isDark} textPrimary={textPrimary} textSecondary={textSecondary} inputBg={inputBg} inputBorder={inputBorder} />
@@ -261,7 +261,7 @@ export default function CreateUserScreen() {
             {form.role !== 'parent' && !form.email.trim() && (
                 <View style={{ backgroundColor: isDark ? '#1e293b' : '#f1f5f9', padding: 12, borderRadius: 12, marginBottom: 16 }}>
                     <Text style={{ fontSize: 11, color: textSecondary }}>
-                        💡 Leaving this blank will automatically create an email: <Text style={{ fontWeight: 'bold' }}>first.last@institution.com</Text>
+                        ðŸ’¡ Leaving this blank will automatically create an email: <Text style={{ fontWeight: 'bold' }}>first.last@institution.com</Text>
                     </Text>
                 </View>
             )}
@@ -279,7 +279,7 @@ export default function CreateUserScreen() {
             <RenderInput label="Parent/Guardian Contact" value={form.parent_contact} onChangeText={(v: string) => updateFormSanitized('parent_contact', v, 'phone')} placeholder="Phone number" keyboardType="phone-pad" isDark={isDark} textPrimary={textPrimary} textSecondary={textSecondary} inputBg={inputBg} inputBorder={inputBorder} />
 
             <View style={{ backgroundColor: isDark ? '#1c1008' : '#fff7ed', borderRadius: 12, padding: 16, marginBottom: 16 }}>
-                <Text style={{ fontSize: 13, fontWeight: '700', color: isDark ? '#fed7aa' : '#7c2d12', marginBottom: 12 }}>🆘 Emergency Contact</Text>
+                <Text style={{ fontSize: 13, fontWeight: '700', color: isDark ? '#fed7aa' : '#7c2d12', marginBottom: 12 }}>ðŸ†˜ Emergency Contact</Text>
                 <RenderInput label="Name" value={form.emergency_contact_name} onChangeText={(v: string) => updateFormSanitized('emergency_contact_name', v)} placeholder="Emergency contact name" isDark={isDark} textPrimary={textPrimary} textSecondary={textSecondary} inputBg={inputBg} inputBorder={inputBorder} />
                 <RenderInput label="Phone" value={form.emergency_contact_phone} onChangeText={(v: string) => updateFormSanitized('emergency_contact_phone', v, 'phone')} placeholder="Emergency phone" keyboardType="phone-pad" isDark={isDark} textPrimary={textPrimary} textSecondary={textSecondary} inputBg={inputBg} inputBorder={inputBorder} />
             </View>
@@ -331,7 +331,7 @@ export default function CreateUserScreen() {
         const unassignedSubjects = subjects.filter(s => !s.teacher_id);
         return (
             <View>
-                <Text style={{ fontSize: 18, fontWeight: '700', color: textPrimary, marginBottom: 16 }}>👨‍🏫 Teacher Details</Text>
+                <Text style={{ fontSize: 18, fontWeight: '700', color: textPrimary, marginBottom: 16 }}>ðŸ‘¨â€ðŸ« Teacher Details</Text>
                 <RenderInput label="Department" value={form.department} onChangeText={(v: string) => updateFormSanitized('department', v)} placeholder="e.g. Mathematics" isDark={isDark} textPrimary={textPrimary} textSecondary={textSecondary} inputBg={inputBg} inputBorder={inputBorder} />
                 <RenderInput label="Qualification" value={form.qualification} onChangeText={(v: string) => updateFormSanitized('qualification', v)} placeholder="e.g. B.Ed Mathematics" isDark={isDark} textPrimary={textPrimary} textSecondary={textSecondary} inputBg={inputBg} inputBorder={inputBorder} />
                 <RenderInput label="Specialization" value={form.specialization} onChangeText={(v: string) => updateFormSanitized('specialization', v)} placeholder="e.g. Applied Mathematics" isDark={isDark} textPrimary={textPrimary} textSecondary={textSecondary} inputBg={inputBg} inputBorder={inputBorder} />
@@ -359,7 +359,7 @@ export default function CreateUserScreen() {
         });
         return (
             <View>
-                <Text style={{ fontSize: 18, fontWeight: '700', color: textPrimary, marginBottom: 16 }}>👨‍👩‍👧 Parent Details</Text>
+                <Text style={{ fontSize: 18, fontWeight: '700', color: textPrimary, marginBottom: 16 }}>ðŸ‘¨â€ðŸ‘©â€ðŸ‘§ Parent Details</Text>
                 <RenderInput label="Occupation" value={form.occupation} onChangeText={(v: string) => updateFormSanitized('occupation', v)} placeholder="e.g. Engineer" isDark={isDark} textPrimary={textPrimary} textSecondary={textSecondary} inputBg={inputBg} inputBorder={inputBorder} />
                 <RenderInput label="Home Address" value={form.parent_address} onChangeText={(v: string) => updateFormSanitized('parent_address', v)} placeholder="Physical address" isDark={isDark} textPrimary={textPrimary} textSecondary={textSecondary} inputBg={inputBg} inputBorder={inputBorder} />
                 <View style={{ marginBottom: 16 }}>
@@ -499,7 +499,7 @@ export default function CreateUserScreen() {
                         <View style={{ marginTop: 8 }}>
                             <Text style={{ fontSize: 12, color: textSecondary, marginBottom: 4 }}>Linked Students:</Text>
                             {form.linked_students.map(ls => (
-                                <Text key={ls.student_id} style={{ fontSize: 13, color: textPrimary }}>• {ls.name} ({ls.relationship})</Text>
+                                <Text key={ls.student_id} style={{ fontSize: 13, color: textPrimary }}>â€¢ {ls.name} ({ls.relationship})</Text>
                             ))}
                         </View>
                     )}
@@ -565,7 +565,7 @@ export default function CreateUserScreen() {
             </View>
             <View style={{ backgroundColor: isDark ? '#1c1008' : '#fff7ed', borderRadius: 12, padding: 16, width: '100%', marginBottom: 24 }}>
                 <Text style={{ color: isDark ? '#fed7aa' : '#7c2d12', fontSize: 13, fontWeight: '500', textAlign: 'center' }}>
-                    ⚠️ Share these credentials securely. The user should change their password on first login.
+                    âš ï¸ Share these credentials securely. The user should change their password on first login.
                 </Text>
             </View>
             <View style={{ flexDirection: 'row', gap: 16, width: '100%' }}>

@@ -1,4 +1,4 @@
-﻿import { UnifiedHeader } from "@/components/common/UnifiedHeader";
+import { UnifiedHeader } from "@/components/common/UnifiedHeader";
 import { useAuth } from "@/contexts/AuthContext";
 import { SubjectAPI } from "@/services/SubjectService";
 import { TeacherAttendanceAPI } from "@/services/TeacherAttendanceService";

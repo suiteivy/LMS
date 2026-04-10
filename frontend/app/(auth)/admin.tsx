@@ -1,11 +1,9 @@
 import { CompactAdminTooltip } from "@/components/ui/AdminTooltip";
 import { Ionicons } from "@expo/vector-icons";
 import { useState } from "react";
-import { TouchableOpacity } from "react-native";
-import { Text, View } from "react-native";
+import { TouchableOpacity, Text, View } from "react-native";
 
-export default function admin() {
-  const [showTooltip, setShowTooltip] = useState(false);
+export default function AdminAuthScreen() {
   const [showCompact, setShowCompact] = useState(false);
 
   return (
@@ -21,11 +19,11 @@ export default function admin() {
           Public Access Portal
         </Text>
 
-        <Text className="text-gray-600 text-center mb-6">This version hides admin tools unless you're authorized.</Text>
+        <Text className="text-gray-600 text-center mb-6">This version hides admin tools unless you&apos;re authorized.</Text>
 
         {/* Admin Access Section */}
         <TouchableOpacity
-          onPress={() => setShowTooltip(true)}
+          onPress={() => {}}
           className="w-full py-4 px-6 border-2 border-dashed border-gray-300 rounded-lg items-center mb-4"
         >
           <View className="flex-row items-center">

@@ -48,7 +48,7 @@ const createRateLimiter = (options = {}) => {
         const windowStart = now - windowMs;
 
         // Get current request history
-        let requestHistory = rateLimitStore.get(key) || {
+        const requestHistory = rateLimitStore.get(key) || {
             count: 0,
             requests: [],
             expiresAt: now + windowMs

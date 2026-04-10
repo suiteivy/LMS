@@ -1,3 +1,4 @@
+import process from "node:process";
 const { createClient } = require('@supabase/supabase-js');
 const dotenv = require('dotenv');
 const path = require('path');
@@ -120,7 +121,7 @@ CREATE POLICY "strict_institution_isolation" ON public.institutions FOR ALL USIN
   `;
 
     try {
-        const { data, error } = await supabase.rpc('execute_sql_internal', { sql_query: migrationSql });
+        const { data: _data, error } = await supabase.rpc('execute_sql_internal', { sql_query: migrationSql });
 
         // Fallback: If execute_sql_internal RPC doesn't exist, we might need to use another way.
         // However, usually service role can do anything.

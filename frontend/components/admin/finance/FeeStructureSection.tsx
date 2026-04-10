@@ -1,4 +1,4 @@
-﻿import { useTheme } from "@/contexts/ThemeContext";
+import { useTheme } from "@/contexts/ThemeContext";
 import { FeeStructure } from "@/types/types";
 import React, { useState } from "react";
 import {
@@ -180,7 +180,7 @@ const FeeStructureSection: React.FC<FeeStructureSectionProps> = ({
       ) : feeStructures.length === 0 ? (
         <View className="flex-1 items-center justify-center py-20 border border-dashed border-gray-200 dark:border-gray-700 rounded-3xl">
           <Text className="text-gray-400 font-bold text-center">No fee structures yet</Text>
-          <Text className="text-gray-400 text-sm text-center mt-2">Tap "+ New" to create one.</Text>
+          <Text className="text-gray-400 text-sm text-center mt-2">Tap &quot;+ New&quot; to create one.</Text>
         </View>
       ) : (
         <ScrollView showsVerticalScrollIndicator={false}>

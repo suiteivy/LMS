@@ -4,9 +4,12 @@ import { CreateUserData, User, UserRole } from "@/types/types";
  * Creates a User object with proper defaults
  */
 export const createUser = (data: CreateUserData): User => {
+  const [firstName = "", lastName = ""] = (data.name || "").split(" ");
   return {
     id: generateUserId(),
     name: data.name,
+    first_name: data.first_name || firstName,
+    last_name: data.last_name || lastName,
     email: data.email,
     role: data.role,
     joinDate: new Date().toISOString(),
@@ -39,15 +42,22 @@ export const convertToUsers = (rawData: any[]): User[] => {
     if (typeof item === "string") {
       return createUser({
         name: `User ${index + 1}`,
+        first_name: "User",
+        last_name: String(index + 1),
         email: `user${index + 1}@example.com`,
         role: "student",
       });
     }
 
     // Handle case where item is an object but missing required fields
+    const firstName = item.first_name || item.name?.split(" ")[0] || `User`;
+    const lastName = item.last_name || item.name?.split(" ")[1] || `${index + 1}`;
+
     return {
       id: item.id || generateUserId(),
-      name: item.name || `User ${index + 1}`,
+      name: item.name || `${firstName} ${lastName}`,
+      first_name: firstName,
+      last_name: lastName,
       email: item.email || `user${index + 1}@example.com`,
       role: item.role || "student",
       joinDate: item.joinDate || new Date().toISOString(),

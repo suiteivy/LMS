@@ -52,10 +52,10 @@ import Svg, { Circle, Defs, LinearGradient, Stop } from 'react-native-svg';
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
-// ─── Pricing Components ──────────────────────────────────────────────────────
+// â”€â”€â”€ Pricing Components â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const AnimatedCircle = Reanimated.createAnimatedComponent(Circle);
 
-// ── Tier Tab Pill ────────────────────────────────────────────────────────────
+// â”€â”€ Tier Tab Pill â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const PackageTierTab = ({ tier, label, icon, tagline, isActive, onPress }: any) => {
   const [hovered, setHovered] = useState(false);
   const glow = useSharedValue(0);
@@ -157,11 +157,15 @@ const PackageTierTab = ({ tier, label, icon, tagline, isActive, onPress }: any) 
   );
 };
 
-// ── Plan Card within a tier ────────────────────────────────────────────────
+// â”€â”€ Plan Card within a tier â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const PlanCard = ({ plan, tierAccent, openRegistrationModal }: any) => {
   const [hovered, setHovered] = useState(false);
   const animValue = useSharedValue(0);
   const borderAnim = useSharedValue(0);
+
+  const borderStyle = useAnimatedStyle(() => ({
+    transform: [{ rotate: `${borderAnim.value * 360}deg` }]
+  }));
 
   useEffect(() => {
     animValue.value = withRepeat(
@@ -241,9 +245,7 @@ const PlanCard = ({ plan, tierAccent, openRegistrationModal }: any) => {
       {plan.premium && Platform.OS === 'web' && (
         <View style={{ position: 'absolute', top: -2, left: -2, right: -2, bottom: -2, borderRadius: 38, overflow: 'hidden' }}>
           <Reanimated.View
-            style={[useAnimatedStyle(() => ({
-              transform: [{ rotate: `${borderAnim.value * 360}deg` }]
-            })), {
+            style={[borderStyle, {
               width: '200%', height: '200%',
               position: 'absolute', top: '-50%', left: '-50%',
               //@ts-ignore
@@ -405,9 +407,9 @@ const PlanCard = ({ plan, tierAccent, openRegistrationModal }: any) => {
   );
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // Tier & plan data.....change to addons
-// ─────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const TIERS = [
   { key: 'plans', label: 'Subscription Plans', tagline: 'For schools of all sizes', description: 'Everything you need to grow your institution. Choose Basic, Pro, or Premium.', accent: '#FF6B00', icon: <Package size={16} /> },
   { key: 'custom', label: 'Custom Enterprise', tagline: 'Tailored for scale', description: 'A tailored platform deployment configured for your exact needs.', accent: '#8B5CF6', icon: <Building size={16} /> },
@@ -537,7 +539,7 @@ const TIER_PLANS: Record<TierKey, any[]> = {
 };
 
 
-// ─── Feature Card Component ─────────────────────────────────────────────────
+// â”€â”€â”€ Feature Card Component â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const FeatureCard = ({ icon, title, desc, accent, tag }: any) => {
   const hoverVal = useSharedValue(0);
   const glowVal = useSharedValue(0);
@@ -664,7 +666,7 @@ const FeatureCard = ({ icon, title, desc, accent, tag }: any) => {
   );
 };
 
-// ─── Discount Banner ────────────────────────────────────────────────────────
+// â”€â”€â”€ Discount Banner â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // Offer ends Saturday 2026-02-28 00:00:00 EAT (UTC+3)
 const OFFER_END = new Date('2026-02-28T00:00:00+03:00').getTime();
 
@@ -775,7 +777,7 @@ function DiscountBanner() {
   );
 }
 
-// ── Hover Animated Buttons ───────────────────────────────────────────────────
+// â”€â”€ Hover Animated Buttons â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const SignInButtonFloating = () => {
   const hoverVal = useSharedValue(0);
 
@@ -895,6 +897,7 @@ export default function Index() {
   const [selectedAddons, setSelectedAddons] = useState<string[]>([]);
   const [selectedCustomFeatures, setSelectedCustomFeatures] = useState<string[]>([]);
   const [selectedCoreModules, setSelectedCoreModules] = useState<string[]>([]);
+  const { expired } = useCountdown(OFFER_END);
 
   // Show AppLoading for 5s before redirecting to dashboard
   const [navigating, setNavigating] = useState(false);
@@ -1113,10 +1116,10 @@ export default function Index() {
     <SafeAreaView style={{ flex: 1, backgroundColor: "#0F0B2E" }}>
       <StatusBar barStyle="light-content" />
 
-      {/* ═══════════════ FIXED DISCOUNT BANNER ═══════════════ */}
+      {/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• FIXED DISCOUNT BANNER â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
       <DiscountBanner />
 
-      {/* ═══════════════ FLOATING TOP-RIGHT SIGN IN ═══════════════ */}
+      {/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• FLOATING TOP-RIGHT SIGN IN â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
       <Animated.View
         pointerEvents={showNav ? "none" : "auto"}
         style={{
@@ -1133,7 +1136,7 @@ export default function Index() {
         <SignInButtonFloating />
       </Animated.View>
 
-      {/* ═══════════════ FLOATING STICKY NAV ═══════════════ */}
+      {/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• FLOATING STICKY NAV â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
       <Animated.View
         pointerEvents={showNav ? "auto" : "none"}
         style={{
@@ -1209,7 +1212,7 @@ export default function Index() {
           contentContainerStyle={{ paddingBottom: 60 }}
           showsVerticalScrollIndicator={false}
         >
-          {/* ═══════════════════════ HERO SECTION ═══════════════════════ */}
+          {/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• HERO SECTION â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
           <View
             style={{
               minHeight: Dimensions.get("window").height * 0.92,
@@ -1383,7 +1386,7 @@ export default function Index() {
                 }}
               >
                 Empower your institution with a modern, cloud-based LMS.{"\n"}
-                Courses, resources, payments, analytics — all in one place.
+                Courses, resources, payments, analytics â€” all in one place.
               </Text>
 
               <View style={{ flexDirection: "row", marginTop: 32, gap: 12 }}>
@@ -1433,7 +1436,7 @@ export default function Index() {
             </Animated.View>
           </View>
 
-          {/* ═══════════════════════ FEATURES SECTION ═══════════════════════ */}
+          {/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• FEATURES SECTION â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
           <View
             ref={featuresRef}
             onLayout={(e) => handleLayout("features", e.nativeEvent.layout.y)}
@@ -1487,7 +1490,7 @@ export default function Index() {
               </View>
 
               <Text style={{ color: 'rgba(255,255,255,0.45)', fontSize: 15, textAlign: 'center', marginTop: 18, maxWidth: 520, lineHeight: 23 }}>
-                A unified platform built for every stakeholder — from admin and teachers to students and parents.
+                A unified platform built for every stakeholder â€” from admin and teachers to students and parents.
               </Text>
             </View>
 
@@ -1497,7 +1500,7 @@ export default function Index() {
                 {
                   icon: <BookOpen size={24} color="#FF8C40" />,
                   title: 'Course Management',
-                  desc: 'Create, publish and manage rich courses with videos, quizzes, and assignments — all in one editor.',
+                  desc: 'Create, publish and manage rich courses with videos, quizzes, and assignments â€” all in one editor.',
                   accent: '#FF6B00',
                   tag: 'Core',
                 },
@@ -1511,7 +1514,7 @@ export default function Index() {
                 {
                   icon: <CreditCard size={24} color="#60A5FA" />,
                   title: 'Fee & Payments',
-                  desc: 'Automate invoicing, track outstanding fees, and accept payments — with real-time dashboards.',
+                  desc: 'Automate invoicing, track outstanding fees, and accept payments â€” with real-time dashboards.',
                   accent: '#2563EB',
                   tag: 'Finance',
                 },
@@ -1543,7 +1546,7 @@ export default function Index() {
 
           </View>
 
-          {/* ═══════════════════════ PRICING SECTION ═══════════════════════ */}
+          {/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• PRICING SECTION â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
           <View
             ref={pricingRef}
             onLayout={(e) => handleLayout("pricing", e.nativeEvent.layout.y)}
@@ -1599,7 +1602,7 @@ export default function Index() {
               </Text>
             </View>
 
-            {/* ── LEVEL 1: Tier Selector ── */}
+            {/* â”€â”€ LEVEL 1: Tier Selector â”€â”€ */}
             {SCREEN_WIDTH >= 768 ? (
               /* Wide screen (>=768px): centred flex row */
               <View style={{
@@ -1672,7 +1675,7 @@ export default function Index() {
               </Text>
             </View>
 
-            {/* ── LEVEL 2: Plan Cards ── */}
+            {/* â”€â”€ LEVEL 2: Plan Cards â”€â”€ */}
             <View
               onLayout={(e) => setPricingCardsY(e.nativeEvent.layout.y + (sectionPositions['pricing'] ?? 0))}
               style={{
@@ -1778,7 +1781,7 @@ export default function Index() {
               </View>
             </View>
 
-            {/* ── Add-Ons Section ── */}
+            {/* â”€â”€ Add-Ons Section â”€â”€ */}
             <View style={{ width: '100%', marginTop: 56 }}>
               {/* Header */}
               <View style={{ alignItems: 'center', marginBottom: 28 }}>
@@ -1798,7 +1801,7 @@ export default function Index() {
                   Enhance Your Plan
                 </Text>
                 <Text style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13, textAlign: 'center', maxWidth: 460, lineHeight: 20 }}>
-                  Bolt on powerful modules to any plan — available standalone or bundled with Pro &amp; above.
+                  Bolt on powerful modules to any plan â€” available standalone or bundled with Pro &amp; above.
                 </Text>
               </View>
 
@@ -1815,7 +1818,7 @@ export default function Index() {
                     tagline: 'Add-On Module',
                     price: '$30/mo',
                     accent: '#8B5CF6',
-                    desc: 'Give your institution a fully searchable digital library — books, PDFs, videos and more.',
+                    desc: 'Give your institution a fully searchable digital library â€” books, PDFs, videos and more.',
                     features: [
                       'Unlimited uploads & categories',
                       'Student & teacher access controls',
@@ -1969,7 +1972,7 @@ export default function Index() {
           </View>
 
 
-          {/* ═══════════════════════ ACCESS PORTAL / SIGN IN ═══════════════ */}
+          {/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• ACCESS PORTAL / SIGN IN â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
           <View style={{ paddingHorizontal: 24, paddingVertical: 40, alignItems: 'center' }}>
             <View style={{
               backgroundColor: 'rgba(19, 16, 58, 0.4)',
@@ -2011,7 +2014,7 @@ export default function Index() {
             </View>
           </View>
 
-          {/* ═══════════════════════ GET IN TOUCH FOOTER ═══════════════════════ */}
+          {/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• GET IN TOUCH FOOTER â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
           <View
             ref={getInTouchRef}
             onLayout={(e) => handleLayout("getInTouch", e.nativeEvent.layout.y)}
@@ -2068,7 +2071,7 @@ export default function Index() {
 
             <View style={{ marginTop: 80, borderTopWidth: 1, borderColor: 'rgba(255,255,255,0.05)', paddingTop: 32, width: '100%', maxWidth: 1000, flexDirection: 'row', justifyContent: 'center' }}>
               <Text style={{ color: 'rgba(255,255,255,0.4)', textAlign: 'center', fontSize: 14, fontWeight: '500' }}>
-                © {new Date().getFullYear()} Cloudora Solutions. All rights reserved.
+                Â© {new Date().getFullYear()} Cloudora Solutions. All rights reserved.
               </Text>
             </View>
           </View>
@@ -2096,7 +2099,7 @@ export default function Index() {
               style={{ position: "absolute", top: 20, right: 20, zIndex: 10 }}
               onPress={() => setAddonModalVisible(false)}
             >
-              <Text style={{ color: "rgba(255,255,255,0.6)", fontSize: 24, fontWeight: "bold" }}>×</Text>
+              <Text style={{ color: "rgba(255,255,255,0.6)", fontSize: 24, fontWeight: "bold" }}>Ã—</Text>
             </TouchableOpacity>
 
             <View style={{ alignItems: 'center', marginBottom: 24 }}>
@@ -2204,7 +2207,7 @@ export default function Index() {
               style={{ position: "absolute", top: 20, right: 20, zIndex: 10 }}
               onPress={() => setCustomModalVisible(false)}
             >
-              <Text style={{ color: "rgba(255,255,255,0.6)", fontSize: 24, fontWeight: "bold" }}>×</Text>
+              <Text style={{ color: "rgba(255,255,255,0.6)", fontSize: 24, fontWeight: "bold" }}>Ã—</Text>
             </TouchableOpacity>
 
             <View style={{ alignItems: 'center', marginBottom: 24 }}>
@@ -2388,7 +2391,7 @@ export default function Index() {
                 style={{ position: "absolute", top: 24, right: 28, zIndex: 10, width: 32, height: 32, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: 16 }}
                 onPress={() => setModalVisible(false)}
               >
-                <Text style={{ color: "rgba(255,255,255,0.7)", fontSize: 20, fontWeight: "600", lineHeight: 22 }}>×</Text>
+                <Text style={{ color: "rgba(255,255,255,0.7)", fontSize: 20, fontWeight: "600", lineHeight: 22 }}>Ã—</Text>
               </TouchableOpacity>
 
               {submitted ? (

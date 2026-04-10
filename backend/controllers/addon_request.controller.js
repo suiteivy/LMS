@@ -1,3 +1,4 @@
+import process from "node:process";
 const supabase = require("../utils/supabaseClient.js");
 const { createClient } = require("@supabase/supabase-js");
 
@@ -56,7 +57,7 @@ exports.getInstitutionRequests = async (req, res) => {
     }
 };
 
-exports.getAllRequests = async (req, res) => {
+exports.getAllRequests = async (_req, res) => {
     try {
         const adminClient = getServiceSupabase();
         const { data, error } = await adminClient

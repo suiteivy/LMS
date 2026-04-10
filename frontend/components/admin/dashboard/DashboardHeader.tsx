@@ -20,10 +20,10 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({
 }) => {
   const { isDark } = useTheme();
   const sections = [
-    { id: 'overview', label: 'Dashboard', icon: '📊' },
-    { id: 'payments', label: 'Payments', icon: '💰' },
-    { id: 'payouts', label: 'Payouts', icon: '💳' },
-    { id: 'fees', label: 'Fee Structure', icon: '⚙️' },
+    { id: 'overview', label: 'Dashboard', icon: 'ðŸ“Š' },
+    { id: 'payments', label: 'Payments', icon: 'ðŸ’°' },
+    { id: 'payouts', label: 'Payouts', icon: 'ðŸ’³' },
+    { id: 'fees', label: 'Fee Structure', icon: 'âš™ï¸' },
   ] as const;
 
   // Only show header on overview page

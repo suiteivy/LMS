@@ -1,5 +1,6 @@
-﻿import { UnifiedHeader } from "@/components/common/UnifiedHeader";
+import { UnifiedHeader } from "@/components/common/UnifiedHeader";
 import { useAuth } from '@/contexts/AuthContext';
+import { UserRole } from '@/types/types';
 import { ThemeMode, useTheme } from '@/contexts/ThemeContext';
 import { ChevronRight, HelpCircle, LogOut, Moon, Settings, ShieldCheck, Sun, UserCircle } from 'lucide-react-native';
 import React, { useState } from 'react';
@@ -203,7 +204,7 @@ function SettingsMenu({ userRole, onNavigate }: { userRole: string; onNavigate: 
   );
 }
 
-export function GlobalSettingsContent({ userRole = 'student' }: { userRole?: 'student' | 'teacher' | 'admin' | 'parent' | 'master_admin' }) {
+export function GlobalSettingsContent({ userRole = 'student' }: { userRole?: UserRole }) {
   const [activeScreen, setActiveScreen] = useState<'menu' | 'profile' | 'settings' | 'help' | 'overview' | 'ownership'>('menu');
   const { isDark } = useTheme();
 
@@ -260,6 +261,6 @@ export function GlobalSettingsContent({ userRole = 'student' }: { userRole?: 'st
   );
 }
 
-export default function GlobalSettingsDrawer({ userRole = 'student' }: { userRole?: 'student' | 'teacher' | 'admin' | 'parent' | 'master_admin' }) {
+export default function GlobalSettingsDrawer({ userRole = 'student' }: { userRole?: UserRole }) {
   return <GlobalSettingsContent userRole={userRole} />;
 }

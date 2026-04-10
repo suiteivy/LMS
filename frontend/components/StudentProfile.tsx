@@ -144,7 +144,7 @@ export default function StudentProfile() {
 
           <Text className="text-gray-900 dark:text-white text-3xl font-black tracking-tighter mt-6 text-center">{profile?.first_name} {profile?.last_name}</Text>
           <View className="bg-[#FF6900]/10 px-4 py-1.5 rounded-full mt-2 border border-[#FF6900]/20 self-center">
-            <Text className="text-[#FF6900] text-[10px] font-black uppercase tracking-[2px]">Scholar Member • ID: {profile?.id?.slice(0, 8)}</Text>
+            <Text className="text-[#FF6900] text-[10px] font-black uppercase tracking-[2px]">Scholar Member â€¢ ID: {profile?.id?.slice(0, 8)}</Text>
           </View>
         </View>
 

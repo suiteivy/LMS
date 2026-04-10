@@ -1,4 +1,4 @@
-﻿import { useTheme } from '@/contexts/ThemeContext';
+import { useTheme } from '@/contexts/ThemeContext';
 import { LogEntry, logger } from '@/services/LoggingService';
 import { Ionicons } from '@expo/vector-icons';
 import React, { useEffect, useState } from 'react';

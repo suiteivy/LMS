@@ -6,7 +6,7 @@ const supabase = require("../utils/supabaseClient.js");
  */
 exports.getPreferences = async (req, res) => {
     try {
-        const { userId, institution_id } = req;
+        const { userId, institution_id: _inst_id } = req;
 
         const { data, error } = await supabase
             .from('user_preferences')

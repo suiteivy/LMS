@@ -1,4 +1,4 @@
-// (admin)/timetable/index.tsx — Dark-theme Timetable Builder
+// (admin)/timetable/index.tsx â€” Dark-theme Timetable Builder
 import { SubscriptionGate } from "@/components/shared/SubscriptionComponents";
 import { supabase } from "@/libs/supabase";
 import { ClassAPI, ClassItem as ClassData } from "@/services/ClassService";
@@ -41,7 +41,7 @@ import {
     View
 } from "react-native";
 
-// ─── Design Tokens ────────────────────────────────────────────────────────────
+// â”€â”€â”€ Design Tokens â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 const D = {
     bg: "#0D1117",
@@ -73,7 +73,7 @@ const SUBJECT_COLORS = [
     "#FF6900", "#58A6FF", "#3FB950", "#E3B341", "#BC8CFF", "#F78166", "#39D353",
 ];
 
-// ─── Types ────────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Types â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 type ConflictSeverity = "error" | "warning" | "info";
 type ConflictType =
@@ -96,7 +96,7 @@ interface Conflict {
     affectedClassIds: string[];
 }
 
-// ─── Conflict Detection Engine ────────────────────────────────────────────────
+// â”€â”€â”€ Conflict Detection Engine â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 const toMinutes = (t: string): number => {
     const [h, m] = t.split(":").map(Number);
@@ -162,7 +162,7 @@ function detectConflicts(entries: TimetableEntry[]): Conflict[] {
                     conflicts.push({
                         id: nextId(), type: "class_double_book", severity: "error", day,
                         message: `Class has overlapping subjects on ${day}`,
-                        detail: `"${aSub}" and "${bSub}" overlap — students can't be in two places at once.`,
+                        detail: `"${aSub}" and "${bSub}" overlap â€” students can't be in two places at once.`,
                         affectedEntryIds: [a.id, b.id],
                         affectedTeacherUserIds: [aTeacherId, bTeacherId].filter(Boolean),
                         affectedClassIds: [a.class_id],
@@ -171,7 +171,7 @@ function detectConflicts(entries: TimetableEntry[]): Conflict[] {
             }
         }
 
-        // Back-to-back detection (≥3 sessions for same teacher with <15min gap)
+        // Back-to-back detection (â‰¥3 sessions for same teacher with <15min gap)
         const teacherSlots: Record<string, TimetableEntry[]> = {};
         for (const s of sorted) {
             const tid = (s.subjects as any)?.teacher_id ?? "__unknown__";
@@ -203,7 +203,7 @@ function detectConflicts(entries: TimetableEntry[]): Conflict[] {
     return conflicts;
 }
 
-// ─── Notification Dispatch ────────────────────────────────────────────────────
+// â”€â”€â”€ Notification Dispatch â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 async function sendConflictNotifications(
     conflicts: Conflict[],
@@ -243,7 +243,7 @@ async function sendConflictNotifications(
 
     const rows = [...recipientSet].map(uid => ({
         user_id: uid,
-        title: "⚠️ Timetable Conflict Detected",
+        title: "âš ï¸ Timetable Conflict Detected",
         message: `${summary} found in the class timetable. Please review and resolve.`,
         type: "warning" as const,
         is_read: false,
@@ -255,7 +255,7 @@ async function sendConflictNotifications(
     return rows.length;
 }
 
-// ─── Type Icons / Labels ──────────────────────────────────────────────────────
+// â”€â”€â”€ Type Icons / Labels â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 const TYPE_META: Record<ConflictType, { label: string; icon: React.ReactNode; color: string; bg: string }> = {
     room_clash: { label: "Room Clash", color: D.red, bg: D.redDim, icon: <MapPin size={12} color={D.red} /> },
@@ -266,7 +266,7 @@ const TYPE_META: Record<ConflictType, { label: string; icon: React.ReactNode; co
     capacity_mismatch: { label: "Capacity Mismatch", color: D.blue, bg: D.blueDim, icon: <Info size={12} color={D.blue} /> },
 };
 
-// ─── ConflictPanel ────────────────────────────────────────────────────────────
+// â”€â”€â”€ ConflictPanel â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function ConflictPanel({ conflicts, onSendAll, sending, institutionType }: {
     conflicts: Conflict[];
@@ -283,7 +283,7 @@ function ConflictPanel({ conflicts, onSendAll, sending, institutionType }: {
         return (
             <View style={styles.cleanBanner}>
                 <Check size={16} color={D.green} />
-                <Text style={styles.cleanBannerText}>No conflicts — schedule looks clean ✓</Text>
+                <Text style={styles.cleanBannerText}>No conflicts â€” schedule looks clean âœ“</Text>
             </View>
         );
     }
@@ -379,7 +379,7 @@ function ConflictUpgradeNudge() {
     );
 }
 
-// ─── Main Component ───────────────────────────────────────────────────────────
+// â”€â”€â”€ Main Component â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export default function TimetableBuilder() {
     const router = useRouter();
@@ -418,7 +418,7 @@ export default function TimetableBuilder() {
         .sort((a, b) => toMinutes(a.start_time) - toMinutes(b.start_time));
     const conflictingIds = new Set(conflicts.flatMap(c => c.affectedEntryIds));
 
-    // ── Data fetching ──────────────────────────────────────────────────────────
+    // â”€â”€ Data fetching â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     const fetchAllEntries = useCallback(async () => {
         if (!institutionId) return;
@@ -484,7 +484,7 @@ export default function TimetableBuilder() {
         } catch (e) { console.error(e); }
     };
 
-    // ── CRUD ───────────────────────────────────────────────────────────────────
+    // â”€â”€ CRUD â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     const openAdd = () => {
         setEditingEntry(null);
@@ -556,13 +556,13 @@ export default function TimetableBuilder() {
         setSendingAlerts(true);
         try {
             const count = await sendConflictNotifications(conflicts, institutionType, institutionId);
-            Alert.alert("Alerts Sent ✓", `${count} notification${count !== 1 ? "s" : ""} delivered.`);
+            Alert.alert("Alerts Sent âœ“", `${count} notification${count !== 1 ? "s" : ""} delivered.`);
         } catch (e) {
             Alert.alert("Error", "Failed to send some notifications.");
         } finally { setSendingAlerts(false); }
     };
 
-    // ── Slot card colour cycling ────────────────────────────────────────────────
+    // â”€â”€ Slot card colour cycling â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     const subjectColorMap = useRef<Record<string, string>>({}).current;
     const getSubjectColor = (subjectId: string) => {
@@ -573,7 +573,7 @@ export default function TimetableBuilder() {
         return subjectColorMap[subjectId];
     };
 
-    // ─── Loading screen ───────────────────────────────────────────────────────
+    // â”€â”€â”€ Loading screen â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     if (loading) {
         return (
@@ -583,25 +583,25 @@ export default function TimetableBuilder() {
         );
     }
 
-    // ─── Render ───────────────────────────────────────────────────────────────
+    // â”€â”€â”€ Render â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     return (
         <View style={styles.root}>
-            {/* ── Header ── */}
+            {/* â”€â”€ Header â”€â”€ */}
             <View style={styles.header}>
                 <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
                     <ChevronLeft size={22} color={D.text} />
                 </TouchableOpacity>
                 <View style={{ flex: 1 }}>
                     <Text style={styles.headerTitle}>Timetable Builder</Text>
-                    <Text style={styles.headerSub}>{classes.length} class{classes.length !== 1 ? "es" : ""} · Institution-wide conflict detection</Text>
+                    <Text style={styles.headerSub}>{classes.length} class{classes.length !== 1 ? "es" : ""} Â· Institution-wide conflict detection</Text>
                 </View>
                 <TouchableOpacity onPress={fetchAllEntries} style={styles.iconBtn}>
                     <RefreshCw size={18} color={D.textSub} />
                 </TouchableOpacity>
             </View>
 
-            {/* ── Class Chips ── */}
+            {/* â”€â”€ Class Chips â”€â”€ */}
             <View style={styles.chipBar}>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipScroll}>
                     {classes.map((cls) => {
@@ -620,7 +620,7 @@ export default function TimetableBuilder() {
                 </ScrollView>
             </View>
 
-            {/* ── Conflict Panel (Pro-gated) ── */}
+            {/* â”€â”€ Conflict Panel (Pro-gated) â”€â”€ */}
             {selectedClassId && (
                 <View style={styles.conflictZone}>
                     <SubscriptionGate minPlan="pro" fallback={<ConflictUpgradeNudge />}>
@@ -634,7 +634,7 @@ export default function TimetableBuilder() {
                 </View>
             )}
 
-            {/* ── Day Tab Bar ── */}
+            {/* â”€â”€ Day Tab Bar â”€â”€ */}
             {selectedClassId && (
                 <View style={styles.dayBarWrap}>
                     <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.dayBarScroll}>
@@ -661,7 +661,7 @@ export default function TimetableBuilder() {
                 </View>
             )}
 
-            {/* ── Main Content ── */}
+            {/* â”€â”€ Main Content â”€â”€ */}
             {!selectedClassId ? (
                 <View style={styles.emptyState}>
                     <Calendar size={60} color={D.border} />
@@ -721,11 +721,11 @@ export default function TimetableBuilder() {
                                         <View style={styles.slotMeta}>
                                             <Clock size={11} color={D.textSub} />
                                             <Text style={styles.slotMetaText}>
-                                                {slot.start_time.slice(0, 5)} – {slot.end_time.slice(0, 5)}
+                                                {slot.start_time.slice(0, 5)} â€“ {slot.end_time.slice(0, 5)}
                                             </Text>
                                             {slot.room_number ? (
                                                 <>
-                                                    <Text style={styles.slotMetaDot}>·</Text>
+                                                    <Text style={styles.slotMetaDot}>Â·</Text>
                                                     <MapPin size={11} color={D.textSub} />
                                                     <Text style={styles.slotMetaText}>Room {slot.room_number}</Text>
                                                 </>
@@ -757,14 +757,14 @@ export default function TimetableBuilder() {
                 </ScrollView>
             )}
 
-            {/* ── FAB ── */}
+            {/* â”€â”€ FAB â”€â”€ */}
             {selectedClassId && (
                 <TouchableOpacity style={styles.fab} onPress={openAdd} activeOpacity={0.85}>
                     <Plus size={24} color="#fff" />
                 </TouchableOpacity>
             )}
 
-            {/* ── Add / Edit Modal ── */}
+            {/* â”€â”€ Add / Edit Modal â”€â”€ */}
             <Modal visible={isAddModalVisible} animationType="slide" transparent onRequestClose={() => setIsAddModalVisible(false)}>
                 <View style={styles.modalBackdrop}>
                     <View style={styles.modalSheet}>
@@ -774,7 +774,7 @@ export default function TimetableBuilder() {
                             <View>
                                 <Text style={styles.modalTitle}>{editingEntry ? "Edit Slot" : "Add Schedule Slot"}</Text>
                                 <Text style={styles.modalSub}>
-                                    {selectedClass?.name ?? "Selected class"} · Conflicts checked on save
+                                    {selectedClass?.name ?? "Selected class"} Â· Conflicts checked on save
                                 </Text>
                             </View>
                             <TouchableOpacity style={styles.modalCloseBtn} onPress={() => setIsAddModalVisible(false)}>
@@ -824,7 +824,7 @@ export default function TimetableBuilder() {
                                     />
                                 </View>
                                 <View style={styles.timeSeparator}>
-                                    <Text style={styles.timeSepText}>→</Text>
+                                    <Text style={styles.timeSepText}>â†’</Text>
                                 </View>
                                 <View style={{ flex: 1 }}>
                                     <Text style={styles.formLabel}>End Time</Text>
@@ -872,7 +872,7 @@ export default function TimetableBuilder() {
     );
 }
 
-// ─── Styles ───────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Styles â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 const styles = StyleSheet.create({
     root: { flex: 1, backgroundColor: D.bg },

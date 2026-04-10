@@ -26,20 +26,20 @@ export default function ReportsPage() {
     const fetchReports = async () => {
         setLoading(true);
         try {
-            const { data: bursaries } = await supabase.from('bursaries').select('*');
-            const { data: applications } = await supabase.from('bursary_applications').select('*, bursary:bursaries(amount)');
+            const { data: bursaries } = await supabase.from('bursaries').select('*') as any;
+            const { data: applications } = await supabase.from('bursary_applications').select('*, bursary:bursaries(amount)') as any;
 
             const totalBursaries = bursaries?.length || 0;
             const totalApplications = applications?.length || 0;
-            const approvedApps = applications?.filter(a => a.status === 'approved') || [];
-            const totalDisbursed = approvedApps.reduce((sum, a) => sum + (Number(a.bursary?.amount) || 0), 0);
+            const approvedApps = applications?.filter((a: any) => a.status === 'approved') || [];
+            const totalDisbursed = approvedApps.reduce((sum: any, a: any) => sum + (Number(a.bursary?.amount) || 0), 0);
             const approvalRate = totalApplications > 0 ? (approvedApps.length / totalApplications) * 100 : 0;
 
             setStats({ totalBursaries, totalApplications, totalAllocated: 0, totalDisbursed, approvalRate });
 
             const statsMap = new Map();
-            bursaries?.forEach(b => statsMap.set(b.id, { ...b, stats: { appCount: 0, approvedCount: 0, disbursed: 0 } }));
-            applications?.forEach(a => {
+            bursaries?.forEach((b: any) => statsMap.set(b.id, { ...b, stats: { appCount: 0, approvedCount: 0, disbursed: 0 } }));
+            applications?.forEach((a: any) => {
                 const bData = statsMap.get(a.bursary_id);
                 if (bData) {
                     bData.stats.appCount += 1;
@@ -97,7 +97,7 @@ export default function ReportsPage() {
                 {/* Stats Grid */}
                 <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginBottom: 24 }}>
                     {statCards.map((card, i) => (
-                        <View key={i} style={{ flexBasis: '48%', flexGrow: 1, backgroundColor: 'white', padding: 16, borderRadius: 24, borderWeight: 1, borderColor: card.cardBorder }}>
+                        <View key={i} style={{ flexBasis: '48%', flexGrow: 1, backgroundColor: 'white', padding: 16, borderRadius: 24, borderWidth: 1, borderColor: card.cardBorder }}>
                             <View style={{ backgroundColor: card.bg, width: 40, height: 40, borderRadius: 12, justifyContent: 'center', alignItems: 'center', marginBottom: 12 }}>
                                 <card.icon size={20} color={card.color} />
                             </View>

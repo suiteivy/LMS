@@ -1,4 +1,4 @@
-﻿import { useTheme } from '@/contexts/ThemeContext';
+import { useTheme } from '@/contexts/ThemeContext';
 import { Subject } from '@/types/types';
 import { BookOpen, Filter } from 'lucide-react-native';
 import React, { useState } from 'react';
@@ -141,7 +141,7 @@ export const SubjectList: React.FC<SubjectListProps> = ({
             </View>
             <Text style={{ fontSize: 19, fontWeight: 'bold', color: textPrimary, marginBottom: 8 }}>Nothing found</Text>
             <Text style={{ color: textSecondary, fontWeight: '500', textAlign: 'center', paddingHorizontal: 40 }}>
-              Try adjusting your filters to find what you're looking for.
+              Try adjusting your filters to find what you&apos;re looking for.
             </Text>
           </View>
         )}

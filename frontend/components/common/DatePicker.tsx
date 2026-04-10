@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import React, { useState } from 'react';
 import { Modal, Text, TouchableOpacity, View } from 'react-native';
 
-// The calendar grid is always 6 rows × 7 cols = 42 cells.
+// The calendar grid is always 6 rows Ã— 7 cols = 42 cells.
 // This keeps height fixed regardless of how many weeks a month spans.
 const CELL_SIZE = 36;
 const GRID_ROWS = 6;

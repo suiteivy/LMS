@@ -47,10 +47,10 @@ export default function StudentsPage() {
             const { data: subjectsData, error: subError } = await supabase
                 .from('subjects')
                 .select('id, title, class_id')
-                .eq('teacher_id', teacherId);
+                .eq('teacher_id', teacherId as string);
 
             if (subError) throw subError;
-            const subjectIds = subjectsData.map(s => s.id);
+            const subjectIds = subjectsData.map(s => s.id).filter(Boolean) as string[];
 
             const { data: enrollData, error: enrollError } = await supabase
                 .from('enrollments')

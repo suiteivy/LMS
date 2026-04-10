@@ -1,4 +1,4 @@
-﻿import { CustomPicker } from "@/components/form/CustomPicker";
+import { CustomPicker } from "@/components/form/CustomPicker";
 import { FormInput } from "@/components/form/FormInput";
 import { FormSection } from "@/components/form/FormSection";
 import {

@@ -1,4 +1,4 @@
-﻿import { UnifiedHeader } from "@/components/common/UnifiedHeader";
+import { UnifiedHeader } from "@/components/common/UnifiedHeader";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/libs/supabase";
 import { ClassService, ClassStudent } from "@/services/ClassService";
@@ -405,7 +405,7 @@ const DailyTab = ({ classId, className: cName }: { classId: string; className: s
                                         style={{ backgroundColor: `${statusColor[r.status]}22` }}
                                     >
                                         <Text style={{ color: statusColor[r.status] }} className="font-black text-base">
-                                            {r.full_name.charAt(0).toUpperCase()}
+                                            {r.full_name?.charAt(0).toUpperCase() || '?'}
                                         </Text>
                                     </View>
 

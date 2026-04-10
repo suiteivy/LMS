@@ -127,7 +127,7 @@ export default function BursaryDetailsScreen() {
 
                                 {app.justification && (
                                     <View style={{ backgroundColor: statsBg, padding: 10, borderRadius: 10, marginTop: 8, borderWidth: 1, borderColor: border }}>
-                                        <Text style={{ color: textSecondary, fontSize: 13, fontStyle: 'italic' }}>"{app.justification}"</Text>
+                                        <Text style={{ color: textSecondary, fontSize: 13, fontStyle: 'italic' }}>&quot;{app.justification}&quot;</Text>
                                     </View>
                                 )}
 

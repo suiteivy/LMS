@@ -16,7 +16,7 @@ exports.createInstitution = async (req, res) => {
   if (plan === 'trial') {
     if (!email) return res.status(400).json({ error: "Email is required for free trial signup" });
 
-    const { data: existing, error: checkError } = await supabase
+    const { data: existing, error: _checkError } = await supabase
       .from('institutions')
       .select('has_used_trial')
       .or(`name.ilike.${name},email.eq.${email}`)
@@ -60,7 +60,7 @@ exports.createInstitution = async (req, res) => {
   res.status(201).json({ message: "Institution created successfully", institution: data });
 };
 
-exports.getInstitutions = async (req, res) => {
+exports.getInstitutions = async (_req, res) => {
   const { data, error } = await supabase.from("institutions").select("*").order('name');
 
   if (error) return res.status(500).json({ error: error.message });

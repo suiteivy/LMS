@@ -1,4 +1,5 @@
-const { createClient } = require('@supabase/supabase-js');
+import process from "node:process";
+// createClient removed as unused
 const supabase = require('../utils/supabaseClient.js'); // Default client (Service Role if configured, or just client)
 
 // We need a client that can sign in (Public Anon Key) to get a session for the demo user
@@ -67,7 +68,7 @@ exports.startDemo = async (req, res) => {
         }
 
         // 3. Fetch user profile data to return same structure as normal login
-        const { data: userData, error: userError } = await supabase
+        const { data: userData, error: _userError } = await supabase
             .from("users")
             .select("full_name, role, institution_id")
             .eq("id", user.id)

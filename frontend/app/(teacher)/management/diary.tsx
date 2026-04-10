@@ -193,7 +193,7 @@ export default function TeacherDiaryPage() {
                             </View>
                             <Text className="text-xl font-bold text-gray-900 dark:text-white text-center mb-3">No Classes Assigned</Text>
                             <Text className="text-gray-500 dark:text-gray-400 text-center mb-8 leading-6">
-                                You haven't been assigned to any classes yet. Please contact your administrator to assign you a class before you can create diary entries.
+                                You haven&apos;t been assigned to any classes yet. Please contact your administrator to assign you a class before you can create diary entries.
                             </Text>
                             <TouchableOpacity
                                 className="bg-gray-100 dark:bg-gray-800 px-8 py-4 rounded-2xl active:bg-gray-200"

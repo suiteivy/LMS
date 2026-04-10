@@ -19,7 +19,7 @@ const ALL_NAV_ITEMS: NavItem[] = [
     { name: "settings", title: "Settings", icon: Settings, route: "/(teacher)/settings" },
 ];
 
-// Simplified nav for beta plan — Home + Classes + Library + Settings
+// Simplified nav for beta plan â€” Home + Classes + Library + Settings
 const BETA_NAV_ITEMS: NavItem[] = [
     { name: "index", title: "Home", icon: Building, route: "/(teacher)" },
     { name: "classes", title: "Classes", icon: School, route: "/(teacher)/classes" },

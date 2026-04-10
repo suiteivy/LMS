@@ -166,7 +166,7 @@ export default function MasterAdminSettings() {
                         <TextInput
                             style={{ backgroundColor: tokens.inputBg, color: tokens.textPrimary, borderRadius: 12, padding: 14, marginBottom: 24, borderWidth: 1, borderColor: tokens.inputBorder }}
                             secureTextEntry
-                            placeholder="••••••••"
+                            placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢"
                             placeholderTextColor={tokens.textSecondary}
                             value={enrollData.password}
                             onChangeText={(text) => setEnrollData({ ...enrollData, password: text })}

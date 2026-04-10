@@ -1,3 +1,4 @@
+import process from "node:process";
 const supabase = require("../utils/supabaseClient.js");
 const { sendEmail } = require("../utils/emailService.js");
 
@@ -198,7 +199,7 @@ exports.enrollUser = async (req, res) => {
         .eq('id', targetInstitutionId)
         .single();
 
-      const institutionDomain = inst?.email_domain;
+      const _institutionDomain = inst?.email_domain;
 
       // Normalise legacy IDs to canonical plan IDs
       const rawPlan = inst?.subscription_plan || 'trial';
@@ -967,7 +968,7 @@ exports.forgotPassword = async (req, res) => {
 
     // 0. Rate Limiting Check
     const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
-    const { data: recentRequests, error: rateError } = await supabase
+    const { data: recentRequests, error: _rateError } = await supabase
       .from('password_reset_requests')
       .select('id')
       .eq('email', email)

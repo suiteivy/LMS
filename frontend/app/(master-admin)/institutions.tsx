@@ -455,7 +455,7 @@ export default function MasterInstitutions() {
                             {item.institutions?.name}
                         </Text>
                         <Text style={{ color: themeColors.subtext, fontSize: 12, marginTop: 2 }}>
-                            Requested by: {item.users?.full_name} • {date}
+                            Requested by: {item.users?.full_name} â€¢ {date}
                         </Text>
                     </View>
                     <View style={{
@@ -943,7 +943,7 @@ export default function MasterInstitutions() {
                     <View style={{ backgroundColor: themeColors.card, borderRadius: 20, padding: 24, width: '100%', maxWidth: 400 }}>
                         <Text style={{ fontSize: 20, fontWeight: 'bold', color: themeColors.text, marginBottom: 8 }}>Grant Free Access</Text>
                         <Text style={{ color: themeColors.subtext, fontSize: 14, marginBottom: 20 }}>
-                            This provides the institution full 'Basic' features for a limited time duration without payment.
+                            This provides the institution full &apos;Basic&apos; features for a limited time duration without payment.
                         </Text>
 
                         <Text style={{ color: themeColors.text, marginBottom: 8, fontWeight: '600' }}>Duration (Days)</Text>
@@ -1047,12 +1047,12 @@ export default function MasterInstitutions() {
 
                         <View style={{ marginBottom: 24, gap: 16 }}>
                             {[
-                                { key: 'addon_library', label: '📖 Digital Library', sub: 'Enable Library Management' },
-                                { key: 'addon_bursary', label: '🏦 Bursary Module', sub: 'Financial tracking & receipts' },
-                                { key: 'addon_messaging', label: '💬 Messaging Module', sub: 'Announcements & direct chat' },
-                                { key: 'addon_diary', label: '📒 Virtual Diary', sub: 'Class entries & daily reports' },
-                                { key: 'addon_finance', label: '💰 Accounting Plus', sub: 'Advanced financial reports' },
-                                { key: 'addon_analytics', label: '📈 Performance Analytics', sub: 'Insightful progress tracking' }
+                                { key: 'addon_library', label: 'ðŸ“– Digital Library', sub: 'Enable Library Management' },
+                                { key: 'addon_bursary', label: 'ðŸ¦ Bursary Module', sub: 'Financial tracking & receipts' },
+                                { key: 'addon_messaging', label: 'ðŸ’¬ Messaging Module', sub: 'Announcements & direct chat' },
+                                { key: 'addon_diary', label: 'ðŸ“’ Virtual Diary', sub: 'Class entries & daily reports' },
+                                { key: 'addon_finance', label: 'ðŸ’° Accounting Plus', sub: 'Advanced financial reports' },
+                                { key: 'addon_analytics', label: 'ðŸ“ˆ Performance Analytics', sub: 'Insightful progress tracking' }
                             ].map((addon) => (
                                 <TouchableOpacity
                                     key={addon.key}

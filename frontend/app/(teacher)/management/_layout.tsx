@@ -1,4 +1,4 @@
-﻿import { Stack } from "expo-router";
+import { Stack } from "expo-router";
 import { View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 

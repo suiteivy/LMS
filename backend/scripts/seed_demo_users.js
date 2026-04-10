@@ -1,3 +1,4 @@
+import process from "node:process";
 const { createClient } = require('@supabase/supabase-js');
 const dotenv = require('dotenv');
 const path = require('path');

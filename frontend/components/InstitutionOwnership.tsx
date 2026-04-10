@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, ActivityIndicator, Alert } from 'react-native';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -117,7 +117,7 @@ export default function InstitutionOwnership() {
                     <Text style={{ marginLeft: 12, fontWeight: 'bold', color: '#92400E', fontSize: 16 }}>Institutional Ownership</Text>
                 </View>
                 <Text style={{ color: isDark ? '#D97706' : '#92400E', fontSize: 13, lineHeight: 20 }}>
-                    As the Main Admin, you have full control over the institution's settings and billing. You can transfer this status to another administrator below.
+                    As the Main Admin, you have full control over the institution&apos;s settings and billing. You can transfer this status to another administrator below.
                 </Text>
             </View>
 

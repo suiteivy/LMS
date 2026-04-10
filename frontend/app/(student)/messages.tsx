@@ -1,4 +1,4 @@
-﻿import { UnifiedHeader } from "@/components/common/UnifiedHeader";
+import { UnifiedHeader } from "@/components/common/UnifiedHeader";
 import { MessageService } from "@/services/MessageService";
 import { format } from "date-fns";
 import { router } from "expo-router";

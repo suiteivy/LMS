@@ -33,7 +33,7 @@ import Reanimated from "react-native-reanimated";
 const IconIonicons = Ionicons as any;
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
-// ─── Floating animated orb ──────────────────────────────────────────────────
+// â”€â”€â”€ Floating animated orb â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const FloatingOrb = ({
   size,
   color,
@@ -94,7 +94,7 @@ const FloatingOrb = ({
   );
 };
 
-// ─── Animated input field ───────────────────────────────────────────────────
+// â”€â”€â”€ Animated input field â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const AnimatedInput = ({
   icon,
   placeholder,
@@ -251,7 +251,7 @@ export default function ForgotPassword() {
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [isHierarchical, setIsHierarchical] = useState(false);
 
-  // ── Entrance animations ──
+  // â”€â”€ Entrance animations â”€â”€
   const cardFade = useRef(new Animated.Value(0)).current;
   const cardSlide = useRef(new Animated.Value(50)).current;
   const logoPulse = useRef(new Animated.Value(1)).current;
@@ -488,7 +488,7 @@ export default function ForgotPassword() {
                     <Text style={{ fontSize: 34, color: "rgba(255,255,255,0.25)", fontWeight: "300" }}>.</Text>
                   </View>
                   <Text style={{ fontSize: 14, color: "rgba(255,255,255,0.4)", textAlign: "center", lineHeight: 22, paddingHorizontal: 12 }}>
-                    Enter your email address and we'll send you a link to reset your password.
+                    Enter your email address and we&apos;ll send you a link to reset your password.
                   </Text>
                 </View>
 

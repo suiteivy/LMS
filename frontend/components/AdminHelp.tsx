@@ -162,7 +162,7 @@ export default function AdminHelp() {
                     <View style={{ marginTop: 40, padding: 20, backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : '#f8fafc', borderRadius: 20, borderWidth: 1, borderColor: themeColors.border }}>
                         <Text style={{ color: themeColors.text, fontWeight: '700', fontSize: 15, marginBottom: 8 }}>Service Level Agreement</Text>
                         <Text style={{ color: themeColors.subtext, fontSize: 13, lineHeight: 20 }}>
-                            Institution Admins receive priority assistance. Most tickets are addressed within 4-6 business hours. For critical system outages, please use the 'Emergency' priority tag in your ticket description.
+                            Institution Admins receive priority assistance. Most tickets are addressed within 4-6 business hours. For critical system outages, please use the &apos;Emergency&apos; priority tag in your ticket description.
                         </Text>
                     </View>
                 </View>

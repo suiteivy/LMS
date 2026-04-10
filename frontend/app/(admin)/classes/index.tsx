@@ -1,4 +1,4 @@
-﻿import { UnifiedHeader } from '@/components/common/UnifiedHeader';
+import { UnifiedHeader } from '@/components/common/UnifiedHeader';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { supabase } from '@/libs/supabase';
@@ -682,7 +682,7 @@ export default function AdminClassManagement() {
                                     >
                                         <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: isDark ? '#2A1A0A' : '#FFF3E8', alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
                                             <Text style={{ color: '#FF6B00', fontWeight: '700', fontSize: 14 }}>
-                                                {s.full_name.charAt(0).toUpperCase()}
+                                                {s.full_name?.charAt(0).toUpperCase() || '?'}
                                             </Text>
                                         </View>
                                         <View style={{ flex: 1 }}>

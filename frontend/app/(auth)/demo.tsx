@@ -33,7 +33,7 @@ const ROLES: RoleData[] = [
     id: 'student',
     title: "Student",
     subtitle: "Assignments, grades & library",
-    description: "Experience the student journey — submit assignments, check grades, browse the digital library, and track your progress.",
+    description: "Experience the student journey â€” submit assignments, check grades, browse the digital library, and track your progress.",
     icon: <GraduationCap size={26} color="#FF8C40" />,
     color: "#FF6B00",
     colorLight: "rgba(255,107,0,0.12)",
@@ -43,7 +43,7 @@ const ROLES: RoleData[] = [
     id: 'teacher',
     title: "Teacher",
     subtitle: "Class management & grading",
-    description: "Take command of the classroom — manage students, grade assignments, create lesson plans, and view real-time analytics.",
+    description: "Take command of the classroom â€” manage students, grade assignments, create lesson plans, and view real-time analytics.",
     icon: <BookOpen size={26} color="#34D399" />,
     color: "#10B981",
     colorLight: "rgba(16,185,129,0.12)",
@@ -53,7 +53,7 @@ const ROLES: RoleData[] = [
     id: 'parent',
     title: "Parent",
     subtitle: "Monitor progress & attendance",
-    description: "Stay connected with your child's education — track progress, view attendance reports, communicate with teachers, and manage fees.",
+    description: "Stay connected with your child's education â€” track progress, view attendance reports, communicate with teachers, and manage fees.",
     icon: <Users size={26} color="#60A5FA" />,
     color: "#3B82F6",
     colorLight: "rgba(59,130,246,0.12)",
@@ -63,7 +63,7 @@ const ROLES: RoleData[] = [
     id: 'admin',
     title: "Admin",
     subtitle: "System control & analytics",
-    description: "Full administrative control — manage users, configure settings, generate financial reports, and monitor system-wide analytics.",
+    description: "Full administrative control â€” manage users, configure settings, generate financial reports, and monitor system-wide analytics.",
     icon: <Settings size={26} color="#A78BFA" />,
     color: "#8B5CF6",
     colorLight: "rgba(139,92,246,0.12)",
@@ -186,7 +186,7 @@ export default function Demo() {
         showsVerticalScrollIndicator={false}
       >
         <View style={{ paddingHorizontal: 24, paddingTop: 8, paddingBottom: 24 }}>
-          {/* ═══════════════════ HEADER ═══════════════════ */}
+          {/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• HEADER â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
           <Animated.View style={{
             opacity: fadeIn,
             transform: [{ translateY: slideUp }],
@@ -240,7 +240,7 @@ export default function Demo() {
             </Text>
           </Animated.View>
 
-          {/* ═══════════════════ ROLE CARDS ═══════════════════ */}
+          {/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• ROLE CARDS â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
           <View style={{ gap: 16 }}>
             {ROLES.map((role, index) => {
               const cardScale = cardAnims[index].interpolate({
@@ -322,7 +322,7 @@ export default function Demo() {
             })}
           </View>
 
-          {/* ═══════════════════ INFO FOOTER ═══════════════════ */}
+          {/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• INFO FOOTER â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
           <View style={{
             marginTop: 32, alignItems: "center",
             backgroundColor: "rgba(255,255,255,0.03)",
@@ -343,14 +343,14 @@ export default function Demo() {
               color: "rgba(255,255,255,0.35)", fontSize: 12,
               textAlign: "center", lineHeight: 18,
             }}>
-              15-minute interactive session • Pre-populated data{"\n"}
-              Real features, no signup required • Data resets periodically
+              15-minute interactive session â€¢ Pre-populated data{"\n"}
+              Real features, no signup required â€¢ Data resets periodically
             </Text>
           </View>
         </View>
       </ScrollView>
 
-      {/* ═══════════════════ ROLE DETAIL MODAL ═══════════════════ */}
+      {/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• ROLE DETAIL MODAL â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
       <Modal visible={modalVisible} animationType="none" transparent={true} statusBarTranslucent>
         <View style={{
           flex: 1, justifyContent: "flex-end",

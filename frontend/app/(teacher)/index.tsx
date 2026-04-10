@@ -153,7 +153,7 @@ export default function TeacherHome() {
                     {/* --- 3. Today's Schedule --- */}
                     <View className="flex-row justify-between items-end mb-4 ">
                         <Text className="text-xl font-bold text-gray-900 dark:text-white">
-                            Today's Schedule
+                            Today&apos;s Schedule
                         </Text>
                         <TouchableOpacity onPress={() => router.push("/(teacher)/management/timetable" as any)}>
                             <Text className="text-[#FF6900] font-semibold">View All</Text>
@@ -187,7 +187,7 @@ export default function TeacherHome() {
                                         {item.subjects?.title}
                                     </Text>
                                     <Text className="text-gray-600 dark:text-gray-300 text-sm">
-                                        {item.classes?.name} {item.room_number ? `• Room ${item.room_number}` : ''}
+                                        {item.classes?.name} {item.room_number ? `â€¢ Room ${item.room_number}` : ''}
                                     </Text>
                                 </View>
                             ))}

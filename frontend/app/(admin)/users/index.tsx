@@ -103,7 +103,7 @@ export default function UsersManagementScreen() {
         }
     };
 
-    // Sanitize search input — no dangerous chars
+    // Sanitize search input â€” no dangerous chars
     const DANGEROUS_CHARS = /['"`;\\<>{}()\[\]|&$#%^*+=~]/g;
     const handleSearch = (text: string) => setSearchQuery(text.replace(DANGEROUS_CHARS, ''));
 

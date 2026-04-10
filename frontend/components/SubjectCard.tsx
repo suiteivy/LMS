@@ -159,7 +159,7 @@ export const SubjectCard: React.FC<SubjectCardProps> = ({
     );
   }
 
-  // Default variant — smaller
+  // Default variant â€” smaller
   return (
     <TouchableOpacity
       onPress={onPress}

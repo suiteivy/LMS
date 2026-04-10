@@ -436,7 +436,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         setUser(session.user);
         currentSessionRef.current = session;
       } else if (event === 'SIGNED_OUT') {
-        // IMPORTANT: Do NOT call handleLogout() here — it calls authService.signOut(),
+        // IMPORTANT: Do NOT call handleLogout() here â€” it calls authService.signOut(),
         // which emits another SIGNED_OUT event, causing an infinite loop.
         // The sign-out has already happened; just clear local state.
         if (isManualLogout.current) return; // already handled by handleLogout

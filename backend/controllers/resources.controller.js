@@ -6,7 +6,7 @@ const supabase = require("../utils/supabaseClient.js");
 exports.createResource = async (req, res) => {
     try {
         const { subject_id, title, url, type, size } = req.body;
-        const { userId, userRole, institution_id } = req;
+        const { userId, userRole, institution_id: _inst_id } = req;
 
         if (!subject_id || !title || !url || !type) {
             return res.status(400).json({ error: "Missing required fields" });
@@ -133,7 +133,7 @@ exports.deleteResource = async (req, res) => {
         const { userRole, userId } = req;
 
         // Check ownership
-        const { data: resource, error: fetchError } = await supabase.from('resources').select('*, teacher:teachers(user_id)').eq('id', id).single();
+        const { data: resource, error: _fetchError } = await supabase.from('resources').select('*, teacher:teachers(user_id)').eq('id', id).single();
 
         if (!resource) return res.status(404).json({ error: "Resource not found" });
 

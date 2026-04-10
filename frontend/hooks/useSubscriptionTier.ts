@@ -57,6 +57,8 @@ export interface SubscriptionTierInfo {
     hasAttendance: boolean;
     /** Numeric rank — higher = more capable */
     planRank: number;
+    /** True if the institution is on a free/beta/trial tier */
+    isFree: boolean;
 }
 
 /**
@@ -113,7 +115,7 @@ export function useSubscriptionTier(): SubscriptionTierInfo {
         // Attendance: Included in Pro (3) and Premium (4) OR explicitly granted as add-on
         // Specifically for Custom (5), it's only granted if the addonAttendance flag is set.
         hasAttendance: (r >= PLAN_RANK['pro'] && r !== PLAN_RANK['custom']) || addonAttendance,
-
+        isFree: r < PLAN_RANK['basic'],
         planRank: r,
     };
 }

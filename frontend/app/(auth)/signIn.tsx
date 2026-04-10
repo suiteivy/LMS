@@ -34,7 +34,7 @@ import Reanimated from "react-native-reanimated";
 const IconIonicons = Ionicons as any;
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
-// ─── Floating animated orb ──────────────────────────────────────────────────
+// â”€â”€â”€ Floating animated orb â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const FloatingOrb = ({
   size,
   color,
@@ -95,7 +95,7 @@ const FloatingOrb = ({
   );
 };
 
-// ─── Animated input field ───────────────────────────────────────────────────
+// â”€â”€â”€ Animated input field â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const AnimatedInput = ({
   icon,
   placeholder,
@@ -161,9 +161,9 @@ const AnimatedInput = ({
         {label}
       </Text>
 
-      {/* Input wrapper — positioned so the animated border overlays don't affect layout */}
+      {/* Input wrapper â€” positioned so the animated border overlays don't affect layout */}
       <View style={{ position: "relative" }}>
-        {/* Glow ring — animated opacity only */}
+        {/* Glow ring â€” animated opacity only */}
         <Animated.View
           pointerEvents="none"
           style={{
@@ -175,7 +175,7 @@ const AnimatedInput = ({
             opacity: glowOpacity,
           } as any}
         />
-        {/* Animated border ring — isolated so it doesn't conflict with backgroundColor */}
+        {/* Animated border ring â€” isolated so it doesn't conflict with backgroundColor */}
         <Animated.View
           pointerEvents="none"
           style={{
@@ -186,7 +186,7 @@ const AnimatedInput = ({
             borderColor: animatedBorderColor,
           } as any}
         />
-        {/* Plain View for content — background colour change is instant/state-driven */}
+        {/* Plain View for content â€” background colour change is instant/state-driven */}
         <View
           style={{
             height: 56,
@@ -249,7 +249,7 @@ const AnimatedInput = ({
   );
 };
 
-// ─── Password Strength Bar ──────────────────────────────────────────────────
+// â”€â”€â”€ Password Strength Bar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const PasswordStrength = ({ password }: { password: string }) => {
   if (!password) return null;
 
@@ -294,7 +294,7 @@ const PasswordStrength = ({ password }: { password: string }) => {
   );
 };
 
-// ─── Main component ──────────────────────────────────────────────────────────
+// â”€â”€â”€ Main component â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 interface FormData {
   email: string;
   password: string;
@@ -308,7 +308,7 @@ export default function SignIn() {
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const { signIn, loading: isGlobalLoading } = useAuth();
 
-  // ── Entrance animations ──
+  // â”€â”€ Entrance animations â”€â”€
   const cardFade = useRef(new Animated.Value(0)).current;
   const cardSlide = useRef(new Animated.Value(50)).current;
   const logoSpin = useRef(new Animated.Value(0)).current;
@@ -447,7 +447,7 @@ export default function SignIn() {
         return;
       }
 
-      showToast(`👋 Welcome back, ${userData.full_name || "there"}!`);
+      showToast(`ðŸ‘‹ Welcome back, ${userData.full_name || "there"}!`);
 
       // Let AuthHandler detect session change and handle the transition
     } catch (error: unknown) {
@@ -469,13 +469,13 @@ export default function SignIn() {
   return (
     <>
       <View style={{ flex: 1, backgroundColor: "#0F0B2E" }}>
-        {/* ─── Animated background orbs ─── */}
+        {/* â”€â”€â”€ Animated background orbs â”€â”€â”€ */}
         <FloatingOrb size={320} color="rgba(255,107,0,0.09)" top="-5%" left="-15%" duration={5000} delay={0} />
         <FloatingOrb size={260} color="rgba(99,102,241,0.12)" top="55%" left="60%" duration={6500} delay={500} />
         <FloatingOrb size={200} color="rgba(236,72,153,0.08)" top="30%" left="70%" duration={4500} delay={1000} />
         <FloatingOrb size={180} color="rgba(59,130,246,0.08)" top="70%" left="-5%" duration={7000} delay={300} />
 
-        {/* ─── Success toast ─── */}
+        {/* â”€â”€â”€ Success toast â”€â”€â”€ */}
         <Animated.View
           pointerEvents="none"
           style={{
@@ -523,7 +523,7 @@ export default function SignIn() {
               showsVerticalScrollIndicator={false}
               keyboardShouldPersistTaps="handled"
             >
-              {/* ─── Card ─── */}
+              {/* â”€â”€â”€ Card â”€â”€â”€ */}
               <Animated.View
                 style={{
                   opacity: cardFade,
@@ -635,7 +635,7 @@ export default function SignIn() {
                   <AnimatedInput
                     label="Password"
                     icon="lock-closed-outline"
-                    placeholder="••••••••"
+                    placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢"
                     value={formData.password}
                     onChangeText={(v: string) => handleInputChange("password", v)}
                     secureTextEntry={!showPassword}
@@ -708,7 +708,7 @@ export default function SignIn() {
                       <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
                         <ActivityIndicator size="small" color="rgba(255,255,255,0.9)" />
                         <Text style={{ color: "#ffffff", fontWeight: "700", fontSize: 17 }}>
-                          Signing in…
+                          Signing inâ€¦
                         </Text>
                       </View>
                     ) : (
@@ -726,7 +726,7 @@ export default function SignIn() {
                 <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", marginTop: 14, gap: 6 }}>
                   <IconIonicons name="lock-closed" size={11} color="rgba(255,255,255,0.25)" />
                   <Text style={{ color: "rgba(255,255,255,0.25)", fontSize: 11, fontWeight: "600" }}>
-                    256-bit encrypted · Secured by Supabase
+                    256-bit encrypted Â· Secured by Supabase
                   </Text>
                 </View>
 

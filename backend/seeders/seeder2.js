@@ -223,6 +223,7 @@
 
 import { createClient } from "@supabase/supabase-js";
 import dotenv from "dotenv";
+import process from "node:process";
 
 dotenv.config();
 
@@ -238,7 +239,7 @@ async function seed() {
   const institutions = [{ name: "Greenfield Academy" }];
 
   for (const inst of institutions) {
-    let { data, error } = await supabase
+    const { data, error: _error } = await supabase
       .from("institutions")
       .select("id")
       .eq("name", inst.name)
@@ -248,7 +249,7 @@ async function seed() {
       console.log(`✅ Institution exists: ${inst.name}`);
       inst.id = data.id;
     } else {
-      let { data: inserted, error: insertError } = await supabase
+      const { data: inserted, error: insertError } = await supabase
         .from("institutions")
         .insert(inst)
         .select()
@@ -286,7 +287,7 @@ async function seed() {
   ];
 
   for (const user of users) {
-    let { data, error } = await supabase
+    const { data, error: _error } = await supabase
       .from("users")
       .select("id")
       .eq("email", user.email)
@@ -296,7 +297,7 @@ async function seed() {
       console.log(`✅ User exists: ${user.email}`);
       user.id = data.id;
     } else {
-      let { data: inserted, error: insertError } = await supabase
+      const { data: inserted, error: insertError } = await supabase
         .from("users")
         .insert(user)
         .select()
@@ -332,7 +333,7 @@ async function seed() {
       continue;
     }
 
-    let { data, error } = await supabase
+    const { data, error: _error } = await supabase
       .from("courses")
       .select("id")
       .eq("title", course.title)
@@ -341,7 +342,7 @@ async function seed() {
     if (data) {
       console.log(`✅ Course exists: ${course.title}`);
     } else {
-      let { error: insertError } = await supabase
+      const { error: insertError } = await supabase
         .from("courses")
         .insert({
           title: course.title,
@@ -368,7 +369,7 @@ async function seed() {
   ];
 
   for (const book of books) {
-    let { data, error } = await supabase
+    const { data, error: _error } = await supabase
       .from("books")
       .select("id")
       .eq("title", book.title)
@@ -377,7 +378,7 @@ async function seed() {
     if (data) {
       console.log(`✅ Book exists: ${book.title}`);
     } else {
-      let { error: insertError } = await supabase.from("books").insert(book);
+      const { error: insertError } = await supabase.from("books").insert(book);
 
       if (insertError) {
         console.error(

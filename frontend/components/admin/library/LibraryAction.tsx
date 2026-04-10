@@ -1,4 +1,4 @@
-﻿import { useAuth } from "@/contexts/AuthContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { useTheme } from "@/contexts/ThemeContext";
 import { LibraryAPI } from "@/services/LibraryService";
 import {
@@ -32,8 +32,8 @@ const DEMO_BOOKS: FrontendBook[] = [
 ];
 
 const DEMO_BORROWED: FrontendBorrowedBook[] = [
-  { id: "101", bookTitle: "Introduction to Algorithms", author: "Cormen, Leiserson", isbn: "978-0262033848", borrowerName: "John Doe", borrowerId: "STU001", borrowerEmail: "john@example.com", borrowDate: new Date("2024-02-01"), dueDate: new Date("2024-02-15"), status: "overdue" },
-  { id: "102", bookTitle: "Advanced Calculus", author: "G.B. Thomas", isbn: "978-0201163209", borrowerName: "Jane Smith", borrowerId: "STU005", borrowerEmail: "jane@example.com", borrowDate: new Date("2024-02-10"), dueDate: new Date("2024-02-24"), status: "borrowed" },
+  { id: "101", bookTitle: "Introduction to Algorithms", author: "Cormen, Leiserson", isbn: "978-0262033848", borrowerName: "John Doe", borrowerId: "STU001", borrowerEmail: "john@example.com", borrowDate: new Date("2024-02-01"), dueDate: new Date("2024-02-15"), status: "overdue", borrowerType: "student" },
+  { id: "102", bookTitle: "Advanced Calculus", author: "G.B. Thomas", isbn: "978-0201163209", borrowerName: "Jane Smith", borrowerId: "STU005", borrowerEmail: "jane@example.com", borrowDate: new Date("2024-02-10"), dueDate: new Date("2024-02-24"), status: "borrowed", borrowerType: "student" },
 ];
 
 type LibrarySection = "overview" | "books" | "borrowed" | "config";
