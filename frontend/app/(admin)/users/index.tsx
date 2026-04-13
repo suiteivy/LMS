@@ -145,7 +145,25 @@ export default function UsersManagementScreen() {
                     </View>
                     <TouchableOpacity
                         onPress={() => router.push('/(admin)/users/create')}
-                        style={{ width: 48, height: 48, backgroundColor: '#FF6900', borderRadius: 16, alignItems: 'center', justifyContent: 'center', shadowColor: '#FF6900', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 6 }}
+                        style={{
+                            width: 48,
+                            height: 48,
+                            backgroundColor: '#FF6900',
+                            borderRadius: 16,
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            shadowColor: '#FF6900',
+                            shadowOffset: { width: 0, height: 4 },
+                            shadowOpacity: 0.3,
+                            shadowRadius: 8,
+                            boxShadow: [{
+                                offsetX: 0,
+                                offsetY: 4,
+                                blurRadius: 8,
+                                color: 'rgba(255, 105, 0, 0.3)',
+                            }],
+                            elevation: 6
+                        }}
                     >
                         <Ionicons name="add" size={28} color="white" />
                     </TouchableOpacity>

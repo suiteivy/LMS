@@ -504,6 +504,12 @@ export default function SignIn() {
             shadowOffset: { width: 0, height: 8 },
             shadowOpacity: 0.3,
             shadowRadius: 16,
+            boxShadow: [{
+              offsetX: 0,
+              offsetY: 8,
+              blurRadius: 16,
+              color: "rgba(34, 197, 94, 0.3)",
+            }],
           }}>
             <IconIonicons name="checkmark-circle" size={22} color="#4ade80" />
             <Text style={{ color: "#4ade80", fontWeight: "700", fontSize: 15 }}>
@@ -541,6 +547,12 @@ export default function SignIn() {
                     shadowOffset: { width: 0, height: 24 },
                     shadowOpacity: 0.5,
                     shadowRadius: 48,
+                    boxShadow: [{
+                      offsetX: 0,
+                      offsetY: 24,
+                      blurRadius: 48,
+                      color: "rgba(0,0,0,0.5)",
+                    }],
                   }),
                 } as any}
               >
@@ -685,11 +697,17 @@ export default function SignIn() {
                       ...(Platform.OS === "web" ? {
                         boxShadow: "0 12px 32px rgba(255,107,0,0.45), 0 2px 8px rgba(255,107,0,0.3)",
                       } : {
-                        shadowColor: "#FF6B00",
-                        shadowOffset: { width: 0, height: 10 },
-                        shadowOpacity: 0.5,
-                        shadowRadius: 20,
-                        elevation: 8,
+                      shadowColor: "#FF6B00",
+                      shadowOffset: { width: 0, height: 10 },
+                      shadowOpacity: 0.5,
+                      shadowRadius: 20,
+                      boxShadow: [{
+                        offsetX: 0,
+                        offsetY: 10,
+                        blurRadius: 20,
+                        color: "rgba(255, 107, 0, 0.5)",
+                      }],
+                      elevation: 8,
                       }),
                     } as any}
                   >

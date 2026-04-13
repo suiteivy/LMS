@@ -3,6 +3,7 @@ import { ParentService } from "@/services/ParentService";
 import { router, useLocalSearchParams } from "expo-router";
 import { ArrowDownLeft, ArrowUpRight, Award, CreditCard, Info, Wallet } from "lucide-react-native";
 import React, { useEffect, useState } from "react";
+import { useTheme } from "@/contexts/ThemeContext";
 import { ActivityIndicator, RefreshControl, ScrollView, Text, TouchableOpacity, View } from "react-native";
 
 const formatCurrency = (amount: number) =>
@@ -10,6 +11,7 @@ const formatCurrency = (amount: number) =>
 
 export default function StudentFinancePage() {
   const { studentId, studentName } = useLocalSearchParams<{ studentId: string; studentName?: string }>();
+  const { isDark } = useTheme();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [financeData, setFinanceData] = useState<any>(null);
@@ -125,7 +127,22 @@ export default function StudentFinancePage() {
         <View className="p-4 md:p-8">
 
           {/* Balance Hero */}
-          <View className="bg-gray-900 p-8 rounded-[48px] shadow-2xl mb-8">
+          <View 
+            style={{
+              boxShadow: [{
+                offsetX: 0,
+                offsetY: 15,
+                blurRadius: 30,
+                color: 'rgba(0, 0, 0, 0.3)',
+              }],
+              shadowColor: "#000",
+              shadowOffset: { width: 0, height: 15 },
+              shadowOpacity: 0.3,
+              shadowRadius: 30,
+              elevation: 20,
+            }}
+            className="bg-gray-900 p-8 rounded-[48px] mb-8"
+          >
             <View className="flex-row justify-between items-center mb-8">
               <View className="flex-1 mr-4">
                 <Text className="text-white/40 text-[10px] font-bold uppercase tracking-[3px] mb-2">Portfolio Balance</Text>
@@ -167,7 +184,22 @@ export default function StudentFinancePage() {
           {/* Status Feedback */}
           {Number(balance) > 0 && (
             <View className="p-6 rounded-[32px] mb-8 flex-row items-center border border-orange-100 dark:border-orange-900 bg-orange-50 dark:bg-orange-950/30">
-              <View className="w-10 h-10 rounded-2xl items-center justify-center bg-white shadow-sm">
+              <View 
+                style={{
+                  boxShadow: [{
+                    offsetX: 0,
+                    offsetY: 1,
+                    blurRadius: 2,
+                    color: 'rgba(0, 0, 0, 0.05)',
+                  }],
+                  shadowColor: "#000",
+                  shadowOffset: { width: 0, height: 1 },
+                  shadowOpacity: 0.05,
+                  shadowRadius: 2,
+                  elevation: 1,
+                }}
+                className="w-10 h-10 rounded-2xl items-center justify-center bg-white"
+              >
                 <Info size={20} color="#FF6900" />
               </View>
               <Text className="flex-1 ml-4 text-sm font-medium leading-tight text-gray-900 dark:text-gray-100">
@@ -179,7 +211,22 @@ export default function StudentFinancePage() {
           {/* Transaction Ledger */}
           <View className="px-2 flex-row justify-between items-center mb-6">
             <Text className="text-gray-900 dark:text-white font-bold text-xl tracking-tight">Financial Statements</Text>
-            <TouchableOpacity className="flex-row items-center bg-white dark:bg-navy-surface px-4 py-2 rounded-xl border border-gray-100 dark:border-gray-800 shadow-sm">
+            <TouchableOpacity 
+              style={{
+                boxShadow: [{
+                  offsetX: 0,
+                  offsetY: 1,
+                  blurRadius: 2,
+                  color: isDark ? 'rgba(0, 0, 0, 0.4)' : 'rgba(0, 0, 0, 0.05)',
+                }],
+                shadowColor: "#000",
+                shadowOffset: { width: 0, height: 1 },
+                shadowOpacity: isDark ? 0.4 : 0.05,
+                shadowRadius: 2,
+                elevation: 2,
+              }}
+              className="flex-row items-center bg-white dark:bg-navy-surface px-4 py-2 rounded-xl border border-gray-100 dark:border-gray-800"
+            >
               <CreditCard size={14} color="#FF6900" />
               <Text className="text-gray-900 dark:text-white text-[10px] font-bold uppercase tracking-widest ml-2">Pay Now</Text>
             </TouchableOpacity>
@@ -193,7 +240,23 @@ export default function StudentFinancePage() {
             </View>
           ) : (
             transactions.map((tx: any) => (
-              <View key={tx.id} className="bg-white dark:bg-navy-surface p-5 rounded-[32px] mb-4 flex-row items-center border border-gray-50 dark:border-gray-800 shadow-sm">
+              <View 
+                key={tx.id} 
+                style={{
+                  boxShadow: [{
+                    offsetX: 0,
+                    offsetY: 1,
+                    blurRadius: 2,
+                    color: isDark ? 'rgba(0, 0, 0, 0.4)' : 'rgba(0, 0, 0, 0.05)',
+                  }],
+                  shadowColor: "#000",
+                  shadowOffset: { width: 0, height: 1 },
+                  shadowOpacity: isDark ? 0.4 : 0.05,
+                  shadowRadius: 2,
+                  elevation: 2,
+                }}
+                className="bg-white dark:bg-navy-surface p-5 rounded-[32px] mb-4 flex-row items-center border border-gray-50 dark:border-gray-800"
+              >
                 <View className={`w-12 h-12 rounded-2xl items-center justify-center mr-4 ${tx.direction === "inflow" ? "bg-green-50" : "bg-red-50"}`}>
                   {tx.direction === "inflow"
                     ? <ArrowDownLeft size={20} color="#10B981" />
@@ -221,7 +284,23 @@ export default function StudentFinancePage() {
               <ActivityIndicator size="small" color="#FF6900" />
             ) : bursaries.length > 0 ? (
               bursaries.map((item: any) => (
-                <View key={item.id} className="bg-white dark:bg-navy-surface rounded-[28px] mb-4 border border-gray-100 dark:border-gray-800 shadow-sm overflow-hidden">
+                <View 
+                  key={item.id} 
+                  style={{
+                    boxShadow: [{
+                      offsetX: 0,
+                      offsetY: 1,
+                      blurRadius: 2,
+                      color: isDark ? 'rgba(0, 0, 0, 0.4)' : 'rgba(0, 0, 0, 0.05)',
+                    }],
+                    shadowColor: "#000",
+                    shadowOffset: { width: 0, height: 1 },
+                    shadowOpacity: isDark ? 0.4 : 0.05,
+                    shadowRadius: 2,
+                    elevation: 1,
+                  }}
+                  className="bg-white dark:bg-navy-surface rounded-[28px] mb-4 border border-gray-100 dark:border-gray-800 overflow-hidden"
+                >
                   <View className="h-1.5 bg-emerald-500" />
                   <View className="p-5">
                     <View className="flex-row justify-between items-start mb-2">

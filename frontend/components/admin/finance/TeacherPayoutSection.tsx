@@ -157,6 +157,7 @@ const TeacherPayoutSection: React.FC<TeacherPayoutSectionProps> = ({
       onPress={() => handlePayoutAction(item)}
       className="bg-white dark:bg-navy-surface rounded-lg p-4 mb-3 shadow-sm border border-gray-100 dark:border-gray-800"
       style={{
+        boxShadow: [{ offsetX: 0, offsetY: 2, blurRadius: 3, color: 'rgba(0, 0, 0, 0.1)' }],
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.1,
@@ -398,6 +399,7 @@ const TeacherPayoutSection: React.FC<TeacherPayoutSectionProps> = ({
                     className="px-4 py-3 rounded-lg mt-6"
                     style={{
                       backgroundColor: '#FF6B00',
+                      boxShadow: [{ offsetX: 0, offsetY: 2, blurRadius: 3, color: 'rgba(0, 0, 0, 0.15)' }],
                       shadowColor: '#000',
                       shadowOffset: { width: 0, height: 2 },
                       shadowOpacity: 0.15,

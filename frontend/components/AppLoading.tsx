@@ -234,6 +234,7 @@ export function AppLoading({ onLogout, message }: { onLogout?: () => void; messa
               ...(Platform.OS === 'web' ? {
                 boxShadow: '0 0 24px rgba(255,105,0,0.2)',
               } : {
+                boxShadow: [{ offsetX: 0, offsetY: 0, blurRadius: 16, color: 'rgba(255, 105, 0, 0.3)' }],
                 shadowColor: accent,
                 shadowOffset: { width: 0, height: 0 },
                 shadowOpacity: 0.3,

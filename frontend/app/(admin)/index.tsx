@@ -45,21 +45,32 @@ const IconBookOpen = BookOpen as any;
 const IconBarChart3 = BarChart3 as any;
 const IconLogOut = LogOut as any;
 
-const QuickAction = ({ icon: Icon, label, onPress, badge }: QuickActionProps) => (
-  <TouchableOpacity
-    className="w-[48%] bg-white dark:bg-[#1a1a1a] p-5 rounded-3xl border border-gray-100 dark:border-gray-800 mb-4 items-center shadow-sm active:opacity-70"
-    onPress={onPress}
-    activeOpacity={0.7}
-  >
-    <View className="bg-orange-50 dark:bg-orange-950/30 p-3 rounded-2xl mb-2">
-      <Icon size={24} color="#FF6B00" />
-    </View>
-    <View className="flex-row items-center justify-center">
-      <Text className="text-gray-900 dark:text-gray-200 font-bold text-[13px] text-center">{label}</Text>
-      {badge}
-    </View>
-  </TouchableOpacity>
-);
+const QuickAction = ({ icon: Icon, label, onPress, badge }: QuickActionProps) => {
+  const { isDark } = useTheme();
+  return (
+    <TouchableOpacity
+      className="w-[48%] bg-white dark:bg-[#1a1a1a] p-5 rounded-3xl border border-gray-100 dark:border-gray-800 mb-4 items-center active:opacity-70"
+      style={{
+        boxShadow: [{ offsetX: 0, offsetY: 2, blurRadius: 4, color: isDark ? 'rgba(0,0,0,0.4)' : 'rgba(0,0,0,0.05)' }],
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: isDark ? 0.4 : 0.05,
+        shadowRadius: 4,
+        elevation: 2,
+      }}
+      onPress={onPress}
+      activeOpacity={0.7}
+    >
+      <View className="bg-orange-50 dark:bg-orange-950/30 p-3 rounded-2xl mb-2">
+        <Icon size={24} color="#FF6B00" />
+      </View>
+      <View className="flex-row items-center justify-center">
+        <Text className="text-gray-900 dark:text-gray-200 font-bold text-[13px] text-center">{label}</Text>
+        {badge}
+      </View>
+    </TouchableOpacity>
+  );
+};
 
 export default function AdminDashboard() {
   const {
@@ -179,10 +190,21 @@ export default function AdminDashboard() {
             <View style={{
               flex: 1, backgroundColor: cardBg,
               padding: 20, borderRadius: 24, marginRight: 6,
-              shadowColor: "#000", shadowOffset: { width: 0, height: 8 },
-              shadowOpacity: 0.15, shadowRadius: 10, elevation: 8,
-              minHeight: 140, justifyContent: 'space-between',
-              borderWidth: isDark ? 1 : 0, borderColor: '#1f2937',
+              shadowColor: "#000",
+              shadowOffset: { width: 0, height: 8 },
+              shadowOpacity: 0.15,
+              shadowRadius: 10,
+              boxShadow: [{
+                offsetX: 0,
+                offsetY: 8,
+                blurRadius: 10,
+                color: 'rgba(0, 0, 0, 0.15)',
+              }],
+              elevation: 8,
+              minHeight: 140,
+              justifyContent: 'space-between',
+              borderWidth: isDark ? 1 : 0,
+              borderColor: '#1f2937',
             }}>
               <View>
                 <View style={{ backgroundColor: "rgba(255,255,255,0.1)", width: 42, height: 42, borderRadius: 12, alignItems: "center", justifyContent: "center", marginBottom: 16 }}>
@@ -200,9 +222,19 @@ export default function AdminDashboard() {
             <View style={{
               flex: 1, backgroundColor: "#FF6B00",
               padding: 20, borderRadius: 24, marginLeft: 6,
-              shadowColor: "#FF6B00", shadowOffset: { width: 0, height: 8 },
-              shadowOpacity: 0.25, shadowRadius: 10, elevation: 12,
-              minHeight: 140, justifyContent: 'space-between',
+              shadowColor: "#FF6B00",
+              shadowOffset: { width: 0, height: 8 },
+              shadowOpacity: 0.25,
+              shadowRadius: 10,
+              boxShadow: [{
+                offsetX: 0,
+                offsetY: 8,
+                blurRadius: 10,
+                color: 'rgba(255, 107, 0, 0.25)',
+              }],
+              elevation: 12,
+              minHeight: 140,
+              justifyContent: 'space-between',
             }}>
               <View>
                 <View style={{ backgroundColor: "rgba(255,255,255,0.2)", width: 42, height: 42, borderRadius: 12, alignItems: "center", justifyContent: "center", marginBottom: 16 }}>
@@ -230,6 +262,12 @@ export default function AdminDashboard() {
               shadowOffset: { width: 0, height: 4 },
               shadowOpacity: 0.1,
               shadowRadius: 10,
+              boxShadow: [{
+                offsetX: 0,
+                offsetY: 4,
+                blurRadius: 10,
+                color: 'rgba(255, 107, 0, 0.1)',
+              }],
               elevation: 4
             }}>
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
@@ -274,6 +312,12 @@ export default function AdminDashboard() {
                 shadowOffset: { width: 0, height: 4 },
                 shadowOpacity: 0.05,
                 shadowRadius: 10,
+                boxShadow: [{
+                  offsetX: 0,
+                  offsetY: 4,
+                  blurRadius: 10,
+                  color: 'rgba(0, 0, 0, 0.05)',
+                }],
                 elevation: 2
               }}>
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>

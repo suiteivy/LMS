@@ -22,8 +22,15 @@ const FAQItem = ({ question, answer, isDark }: FAQItemProps) => {
             borderColor: isDark ? 'rgba(255,255,255,0.1)' : '#f3f4f6',
             borderRadius: 16,
             overflow: 'hidden',
+            boxShadow: [{ 
+                offsetX: 0, 
+                offsetY: 1, 
+                blurRadius: 4, 
+                color: isDark ? 'rgba(0,0,0,0.5)' : 'rgba(0,0,0,0.04)' 
+            }],
             shadowColor: '#000',
-            shadowOpacity: isDark ? 0 : 0.04,
+            shadowOffset: { width: 0, height: 1 },
+            shadowOpacity: isDark ? 0.5 : 0.04,
             shadowRadius: 4,
             elevation: isDark ? 0 : 1,
         }}>
@@ -147,8 +154,15 @@ export default function StudentHelp() {
                         paddingHorizontal: 16,
                         paddingVertical: 12,
                         marginBottom: 32,
+                        boxShadow: [{ 
+                            offsetX: 0, 
+                            offsetY: 1, 
+                            blurRadius: 4, 
+                            color: isDark ? 'rgba(0,0,0,0.5)' : 'rgba(0,0,0,0.04)' 
+                        }],
                         shadowColor: '#000',
-                        shadowOpacity: isDark ? 0 : 0.04,
+                        shadowOffset: { width: 0, height: 1 },
+                        shadowOpacity: isDark ? 0.5 : 0.04,
                         shadowRadius: 4,
                         elevation: isDark ? 0 : 1,
                     }}>
@@ -183,8 +197,15 @@ export default function StudentHelp() {
                                 borderWidth: 1,
                                 borderColor: tokens.border,
                                 alignItems: 'center',
+                                boxShadow: [{ 
+                                    offsetX: 0, 
+                                    offsetY: 1, 
+                                    blurRadius: 4, 
+                                    color: isDark ? 'rgba(0,0,0,0.5)' : 'rgba(0,0,0,0.04)' 
+                                }],
                                 shadowColor: '#000',
-                                shadowOpacity: isDark ? 0 : 0.04,
+                                shadowOffset: { width: 0, height: 1 },
+                                shadowOpacity: isDark ? 0.5 : 0.04,
                                 shadowRadius: 4,
                                 elevation: isDark ? 0 : 1,
                             }}
@@ -207,8 +228,15 @@ export default function StudentHelp() {
                                 borderWidth: 1,
                                 borderColor: tokens.border,
                                 alignItems: 'center',
+                                boxShadow: [{ 
+                                    offsetX: 0, 
+                                    offsetY: 1, 
+                                    blurRadius: 4, 
+                                    color: isDark ? 'rgba(0,0,0,0.5)' : 'rgba(0,0,0,0.04)' 
+                                }],
                                 shadowColor: '#000',
-                                shadowOpacity: isDark ? 0 : 0.04,
+                                shadowOffset: { width: 0, height: 1 },
+                                shadowOpacity: isDark ? 0.5 : 0.04,
                                 shadowRadius: 4,
                                 elevation: isDark ? 0 : 1,
                             }}
@@ -308,7 +336,14 @@ export default function StudentHelp() {
                                             paddingVertical: 16,
                                             borderRadius: 20,
                                             alignItems: 'center',
+                                            boxShadow: [{ 
+                                                offsetX: 0, 
+                                                offsetY: 4, 
+                                                blurRadius: 8, 
+                                                color: 'rgba(249, 115, 22, 0.3)' 
+                                            }],
                                             shadowColor: '#f97316',
+                                            shadowOffset: { width: 0, height: 4 },
                                             shadowOpacity: 0.3,
                                             shadowRadius: 8,
                                             elevation: 4,

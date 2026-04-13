@@ -566,6 +566,12 @@ export default function AdminClassManagement() {
                                     shadowOffset: { width: 0, height: 1 },
                                     shadowOpacity: isDark ? 0.3 : 0.06,
                                     shadowRadius: 4,
+                                    boxShadow: [{
+                                        offsetX: 0,
+                                        offsetY: 1,
+                                        blurRadius: 4,
+                                        color: isDark ? 'rgba(0, 0, 0, 0.3)' : 'rgba(0, 0, 0, 0.06)',
+                                    }],
                                     elevation: 2,
                                 }}
                             >
@@ -771,7 +777,14 @@ export default function AdminClassManagement() {
                                         backgroundColor: card, borderWidth: 1.5, borderColor: '#FF6B00',
                                         borderRadius: 14, marginTop: 4, overflow: 'hidden',
                                         shadowColor: '#FF6B00', shadowOffset: { width: 0, height: 2 },
-                                        shadowOpacity: 0.15, shadowRadius: 8, elevation: 4,
+                                        shadowOpacity: 0.15, shadowRadius: 8,
+                                        boxShadow: [{
+                                            offsetX: 0,
+                                            offsetY: 2,
+                                            blurRadius: 8,
+                                            color: 'rgba(255, 107, 0, 0.15)',
+                                        }],
+                                        elevation: 4,
                                     }}>
                                         {nameSuggestions.map((suggestion, i) => (
                                             <TouchableOpacity

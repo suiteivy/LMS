@@ -1,5 +1,6 @@
 import { BaseComponentProps, StatsData } from '@/types/types';
 import { Ionicons } from '@expo/vector-icons';
+import { useTheme } from '@/contexts/ThemeContext';
 import React from 'react';
 import { Text, TouchableOpacity, View } from 'react-native';
 
@@ -22,6 +23,7 @@ export const StatsCard: React.FC<StatsCardProps> = ({
   className = "",
   testID
 }) => {
+  const { isDark } = useTheme();
   const colorSchemes = {
     blue: {
       bg: 'bg-blue-50 dark:bg-blue-900/10',
@@ -79,7 +81,20 @@ export const StatsCard: React.FC<StatsCardProps> = ({
   if (loading) {
     return (
       <View
-        className={`bg-white dark:bg-[#1a1a1a] rounded-xl p-4 shadow-sm border border-gray-200 dark:border-gray-800 mb-4 ${className}`}
+        style={{
+          boxShadow: [{
+            offsetX: 0,
+            offsetY: 1,
+            blurRadius: 2,
+            color: isDark ? 'rgba(0, 0, 0, 0.4)' : 'rgba(0, 0, 0, 0.05)',
+          }],
+          shadowColor: "#000",
+          shadowOffset: { width: 0, height: 1 },
+          shadowOpacity: isDark ? 0.4 : 0.05,
+          shadowRadius: 2,
+          elevation: 1,
+        }}
+        className={`bg-white dark:bg-[#1a1a1a] rounded-xl p-4 border border-gray-200 dark:border-gray-800 mb-4 ${className}`}
         testID={testID}
       >
         <View className="animate-pulse">
@@ -99,7 +114,22 @@ export const StatsCard: React.FC<StatsCardProps> = ({
   }
 
   const CardContent = () => (
-    <View className={`bg-white dark:bg-[#1a1a1a] rounded-xl p-4 shadow-sm border ${scheme.border} mb-4 ${scheme.bg}`}>
+    <View 
+      style={{
+        boxShadow: [{
+          offsetX: 0,
+          offsetY: 1,
+          blurRadius: 2,
+          color: isDark ? 'rgba(0, 0, 0, 0.4)' : 'rgba(0, 0, 0, 0.05)',
+        }],
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: isDark ? 0.4 : 0.05,
+        shadowRadius: 2,
+        elevation: 1,
+      }}
+      className={`bg-white dark:bg-[#1a1a1a] rounded-xl p-4 border ${scheme.border} mb-4 ${scheme.bg}`}
+    >
       <View className="flex-row items-center justify-between">
         <View className="flex-1">
           <View className="flex-row items-center space-x-3 mb-2 gap-2">

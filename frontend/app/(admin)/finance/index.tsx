@@ -209,6 +209,12 @@ export default function FinanceDashboard() {
                                 shadowOffset: { width: 0, height: 4 },
                                 shadowOpacity: isDark ? 0.4 : 0.1,
                                 shadowRadius: 8,
+                                boxShadow: [{
+                                    offsetX: 0,
+                                    offsetY: 4,
+                                    blurRadius: 8,
+                                    color: `rgba(0, 0, 0, ${isDark ? 0.4 : 0.1})`,
+                                }],
                                 elevation: 6,
                             }}
                             onPress={() => router.push('/(admin)/finance/bursaries/reports')}
@@ -227,6 +233,12 @@ export default function FinanceDashboard() {
                                 shadowOffset: { width: 0, height: 4 },
                                 shadowOpacity: 0.4,
                                 shadowRadius: 8,
+                                boxShadow: [{
+                                    offsetX: 0,
+                                    offsetY: 4,
+                                    blurRadius: 8,
+                                    color: 'rgba(255, 107, 0, 0.4)',
+                                }],
                                 elevation: 8,
                             }}
                             onPress={() => router.push('/(admin)/finance/bursaries/create')}

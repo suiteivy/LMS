@@ -17,24 +17,42 @@ interface QuickActionProps {
     badge?: React.ReactNode;
 }
 
-const QuickAction = ({ icon: Icon, label, color, onPress, badge }: QuickActionProps) => (
-    <TouchableOpacity
-        onPress={onPress}
-        style={{minHeight: 135, justifyContent: 'center', alignItems: 'center'}}
-        className="bg-white dark:bg-[#1a1a1a] p-6 rounded-3xl border border-gray-100 dark:border-gray-800 shadow-sm items-center mb-4 active:bg-gray-50 dark:active:bg-gray-900"
-    >
-        <View style={{ backgroundColor: `${color}15` }} className="p-3 rounded-2xl mb-2">
-            <Icon size={24} color={color} />
-        </View>
-        <Text className="text-gray-800 dark:text-gray-200 font-bold text-center">{label}</Text>
-        <View className="mt-1 h-5 items-center justify-center">
-            {badge && 
-            (<View className="mt-1 h-5 items-center justify-center">
-                {badge}
-            </View>)}
-        </View>
-    </TouchableOpacity>
-);
+const QuickAction = ({ icon: Icon, label, color, onPress, badge }: QuickActionProps) => {
+    const { isDark } = useTheme();
+    return (
+        <TouchableOpacity
+            onPress={onPress}
+            style={{
+                minHeight: 135, 
+                justifyContent: 'center', 
+                alignItems: 'center',
+                boxShadow: [{
+                    offsetX: 0,
+                    offsetY: 1,
+                    blurRadius: 1.5,
+                    color: isDark ? 'rgba(0, 0, 0, 0.3)' : 'rgba(0, 0, 0, 0.08)',
+                }],
+                shadowColor: "#000",
+                shadowOffset: { width: 0, height: 1 },
+                shadowOpacity: isDark ? 0.3 : 0.08,
+                shadowRadius: 1.5,
+                elevation: 1,
+            }}
+            className="bg-white dark:bg-[#1a1a1a] p-6 rounded-3xl border border-gray-100 dark:border-gray-800 items-center mb-4 active:bg-gray-50 dark:active:bg-gray-900"
+        >
+            <View style={{ backgroundColor: `${color}15` }} className="p-3 rounded-2xl mb-2">
+                <Icon size={24} color={color} />
+            </View>
+            <Text className="text-gray-800 dark:text-gray-200 font-bold text-center">{label}</Text>
+            <View className="mt-1 h-5 items-center justify-center">
+                {badge && 
+                (<View className="mt-1 h-5 items-center justify-center">
+                    {badge}
+                </View>)}
+            </View>
+        </TouchableOpacity>
+    );
+};
 
 export default function TeacherHome() {
     const { profile, displayId, signOut, isInitializing, session, isDemo } = useAuth();
@@ -128,7 +146,22 @@ export default function TeacherHome() {
                 <View>
                     {/* --- 2. Quick Status Cards --- */}
                     <View className="flex-row gap-4 mb-8">
-                        <View className="flex-1 bg-[#FF6900] p-6 rounded-3xl shadow-lg">
+                        <View 
+                            style={{
+                                boxShadow: [{
+                                    offsetX: 0,
+                                    offsetY: 8,
+                                    blurRadius: 12,
+                                    color: 'rgba(255, 105, 0, 0.3)',
+                                }],
+                                shadowColor: "#FF6900",
+                                shadowOffset: { width: 0, height: 8 },
+                                shadowOpacity: 0.3,
+                                shadowRadius: 12,
+                                elevation: 12,
+                            }}
+                            className="flex-1 bg-[#FF6900] p-6 rounded-3xl"
+                        >
                             <View className="bg-white/20 w-10 h-10 rounded-2xl items-center justify-center mb-3">
                                 <Users size={20} color="white" />
                             </View>
@@ -137,7 +170,22 @@ export default function TeacherHome() {
                                 Students
                             </Text>
                         </View>
-                        <View className="flex-1 bg-white dark:bg-[#1a1a1a] p-6 rounded-3xl border border-gray-100 dark:border-gray-800 shadow-sm">
+                        <View 
+                            style={{
+                                boxShadow: [{
+                                    offsetX: 0,
+                                    offsetY: 1,
+                                    blurRadius: 2,
+                                    color: isDark ? 'rgba(0, 0, 0, 0.4)' : 'rgba(0, 0, 0, 0.08)',
+                                }],
+                                shadowColor: "#000",
+                                shadowOffset: { width: 0, height: 1 },
+                                shadowOpacity: isDark ? 0.4 : 0.08,
+                                shadowRadius: 2,
+                                elevation: 2,
+                            }}
+                            className="flex-1 bg-white dark:bg-[#1a1a1a] p-6 rounded-3xl border border-gray-100 dark:border-gray-800"
+                        >
                             <View className="bg-orange-50 dark:bg-orange-950/30 w-10 h-10 rounded-2xl items-center justify-center mb-3">
                                 <Clock size={20} color="#FF6900" />
                             </View>
@@ -174,7 +222,23 @@ export default function TeacherHome() {
                             className="flex-row mb-6 -mx-4 px-4 pb-4"
                         >
                             {schedule.map((item: any) => (
-                                <View key={item.id} className="bg-white dark:bg-[#1a1a1a] p-5 rounded-3xl border border-gray-100 dark:border-gray-800 shadow-sm mr-4 w-64">
+                                <View 
+                                    key={item.id} 
+                                    style={{
+                                        boxShadow: [{
+                                            offsetX: 0,
+                                            offsetY: 1,
+                                            blurRadius: 2,
+                                            color: isDark ? 'rgba(0, 0, 0, 0.4)' : 'rgba(0, 0, 0, 0.08)',
+                                        }],
+                                        shadowColor: "#000",
+                                        shadowOffset: { width: 0, height: 1 },
+                                        shadowOpacity: isDark ? 0.4 : 0.08,
+                                        shadowRadius: 2,
+                                        elevation: 2,
+                                    }}
+                                    className="bg-white dark:bg-[#1a1a1a] p-5 rounded-3xl border border-gray-100 dark:border-gray-800 mr-4 w-64"
+                                >
                                     <View className="flex-row items-center mb-3">
                                         <View className="bg-orange-50 dark:bg-orange-950/30 p-2 rounded-xl mr-3">
                                             <BookOpen size={18} color="#FF6900" />

@@ -54,6 +54,7 @@ export const AddonRequestButton = ({ onPress, style }: { onPress: () => void; st
             paddingVertical: 10,
             borderRadius: 12,
             gap: 8,
+            boxShadow: [{ offsetX: 0, offsetY: 4, blurRadius: 8, color: 'rgba(255, 105, 0, 0.2)' }],
             shadowColor: '#FF6900',
             shadowOffset: { width: 0, height: 4 },
             shadowOpacity: 0.2,
@@ -172,8 +173,20 @@ export const MainAdminBadge = () => {
 
     return (
         <View
-            className="bg-amber-100 px-1.5 py-0.5 rounded flex-row items-center border border-amber-300 shadow-sm"
-            style={{ elevation: 1 }}
+            style={{
+                boxShadow: [{
+                    offsetX: 0,
+                    offsetY: 1,
+                    blurRadius: 2,
+                    color: 'rgba(0, 0, 0, 0.05)',
+                }],
+                shadowColor: "#000",
+                shadowOffset: { width: 0, height: 1 },
+                shadowOpacity: 0.05,
+                shadowRadius: 2,
+                elevation: 1,
+            }}
+            className="bg-amber-100 px-1.5 py-0.5 rounded flex-row items-center border border-amber-300"
         >
             <Ionicons name="star" size={10} color="#92400E" className="mr-1" />
             <Text className="text-amber-800 text-[9px] font-extrabold uppercase tracking-widest">
@@ -207,7 +220,22 @@ export const OnboardingTracker = ({ stats }: { stats: any[] }) => {
     const progressPercent = (completedCount / steps.length) * 100;
 
     return (
-        <View className="bg-[#1E293B] rounded-2xl p-4 mb-6 border border-slate-700 shadow-lg">
+        <View 
+            style={{
+                boxShadow: [{
+                    offsetX: 0,
+                    offsetY: 10,
+                    blurRadius: 15,
+                    color: 'rgba(0, 0, 0, 0.3)',
+                }],
+                shadowColor: "#000",
+                shadowOffset: { width: 0, height: 10 },
+                shadowOpacity: 0.3,
+                shadowRadius: 15,
+                elevation: 10,
+            }}
+            className="bg-[#1E293B] rounded-2xl p-4 mb-6 border border-slate-700"
+        >
             <View className="flex-row justify-between items-center mb-3">
                 <Text className="text-white font-bold text-lg">ðŸš€ Getting Started</Text>
                 <Text className="text-slate-400 text-sm">{completedCount} of {steps.length} completed</Text>

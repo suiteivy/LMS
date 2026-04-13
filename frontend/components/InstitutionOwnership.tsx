@@ -150,6 +150,7 @@ export default function InstitutionOwnership() {
                             borderWidth: 1,
                             borderColor: border,
                             opacity: transferring ? 0.6 : 1,
+                            boxShadow: isDark ? undefined : [{ offsetX: 0, offsetY: 2, blurRadius: 10, color: 'rgba(0, 0, 0, 0.05)' }],
                             shadowColor: "#000",
                             shadowOffset: { width: 0, height: 2 },
                             shadowOpacity: isDark ? 0 : 0.05,

@@ -81,12 +81,12 @@ export default function MasterDashboard() {
             marginBottom: 16,
             flexDirection: 'row',
             alignItems: 'center',
-            ...(Platform.OS === 'ios' ? {
-                shadowColor: '#000',
-                shadowOffset: { width: 0, height: 2 },
-                shadowOpacity: 0.1,
-                shadowRadius: 8,
-            } : { elevation: 2 })
+            boxShadow: [{ offsetX: 0, offsetY: 2, blurRadius: 8, color: 'rgba(0, 0, 0, 0.1)' }],
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 2 },
+            shadowOpacity: 0.1,
+            shadowRadius: 8,
+            elevation: 2
         }}>
             <View style={{
                 width: 48, height: 48, borderRadius: 12, backgroundColor: `${color}15`,

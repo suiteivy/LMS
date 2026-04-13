@@ -445,9 +445,12 @@ export default function MasterInstitutions() {
                 borderWidth: 1,
                 borderColor: themeColors.border,
                 marginBottom: 12,
-                ...(Platform.OS === 'ios' ? {
-                    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 8,
-                } : { elevation: 2 })
+                boxShadow: [{ offsetX: 0, offsetY: 2, blurRadius: 8, color: 'rgba(0, 0, 0, 0.1)' }],
+                shadowColor: '#000',
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.1,
+                shadowRadius: 8,
+                elevation: 2
             }}>
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
                     <View style={{ flex: 1 }}>
@@ -543,12 +546,12 @@ export default function MasterInstitutions() {
                 flexDirection: 'row',
                 alignItems: 'center',
                 justifyContent: 'space-between',
-                ...(Platform.OS === 'ios' ? {
-                    shadowColor: '#000',
-                    shadowOffset: { width: 0, height: 2 },
-                    shadowOpacity: 0.1,
-                    shadowRadius: 8,
-                } : { elevation: 2 })
+                boxShadow: [{ offsetX: 0, offsetY: 2, blurRadius: 8, color: 'rgba(0, 0, 0, 0.1)' }],
+                shadowColor: '#000',
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.1,
+                shadowRadius: 8,
+                elevation: 2
             }}>
                 <View style={{ flex: 1 }}>
                     <Text style={{ fontSize: 16, fontWeight: '700', color: themeColors.text, marginBottom: 4 }}>
@@ -749,6 +752,12 @@ export default function MasterInstitutions() {
                     shadowOffset: { width: 0, height: 4 },
                     shadowOpacity: 0.3,
                     shadowRadius: 8,
+                    boxShadow: [{
+                        offsetX: 0,
+                        offsetY: 4,
+                        blurRadius: 8,
+                        color: `${themeColors.primary}4D`,
+                    }],
                 }}
             >
                 <MaterialCommunityIcons name="plus" size={30} color="#fff" />

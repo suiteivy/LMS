@@ -147,7 +147,20 @@ function ParentDashboard({ user, logout }: any) {
                 await logout();
                 router.replace("/(auth)/signIn");
               }}
-              className="flex-row items-center bg-white dark:bg-navy-surface px-4 py-2 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm"
+              style={{
+                boxShadow: [{
+                  offsetX: 0,
+                  offsetY: 1,
+                  blurRadius: 2,
+                  color: isDark ? 'rgba(0, 0, 0, 0.4)' : 'rgba(0, 0, 0, 0.05)',
+                }],
+                shadowColor: "#000",
+                shadowOffset: { width: 0, height: 1 },
+                shadowOpacity: isDark ? 0.4 : 0.05,
+                shadowRadius: 2,
+                elevation: 1,
+              }}
+              className="flex-row items-center bg-white dark:bg-navy-surface px-4 py-2 rounded-2xl border border-gray-100 dark:border-gray-800"
             >
               <LogOut size={14} color="#ef4444" />
               <Text className="ml-2 text-red-600 font-bold text-[10px] uppercase tracking-widest">Logout</Text>
@@ -169,7 +182,22 @@ function ParentDashboard({ user, logout }: any) {
 
           {/* Child Selection Hero */}
           {selectedStudent && (
-            <View className="bg-gray-900 p-8 rounded-[48px] shadow-2xl mb-8">
+            <View 
+              style={{
+                boxShadow: [{
+                  offsetX: 0,
+                  offsetY: 15,
+                  blurRadius: 30,
+                  color: 'rgba(0, 0, 0, 0.3)',
+                }],
+                shadowColor: "#000",
+                shadowOffset: { width: 0, height: 15 },
+                shadowOpacity: 0.3,
+                shadowRadius: 30,
+                elevation: 20,
+              }}
+              className="bg-gray-900 p-8 rounded-[48px] mb-8"
+            >
               <View className="flex-row justify-between items-center mb-8">
                 <View className="flex-1 mr-4">
                   <Text className="text-white/40 text-[10px] font-bold uppercase tracking-[3px] mb-2">Child Profile</Text>
@@ -224,12 +252,14 @@ function ParentDashboard({ user, logout }: any) {
                 value={studentData.performance?.average_grade || "N/A"}
                 label="Academic Avg"
                 color="#FF6900"
+                isDark={isDark}
               />
               <MetricCard
                 icon={CheckCircle}
                 value={studentData.attendance?.overall_percentage || "N/A"}
                 label="Attendance"
                 color="#10B981"
+                isDark={isDark}
               />
             </View>
           )}
@@ -293,7 +323,22 @@ function ParentDashboard({ user, logout }: any) {
             actionLabel="Archive"
             onAction={() => router.push("/(parent)/announcements" as any)}
           />
-          <View className="bg-white dark:bg-navy-surface p-8 rounded-[40px] border border-gray-100 dark:border-gray-800 shadow-sm mb-8 items-center border-dashed">
+          <View 
+            style={{
+              boxShadow: [{
+                offsetX: 0,
+                offsetY: 1,
+                blurRadius: 2,
+                color: isDark ? 'rgba(0, 0, 0, 0.4)' : 'rgba(0, 0, 0, 0.05)',
+              }],
+              shadowColor: "#000",
+              shadowOffset: { width: 0, height: 1 },
+              shadowOpacity: isDark ? 0.4 : 0.05,
+              shadowRadius: 2,
+              elevation: 1,
+            }}
+            className="bg-white dark:bg-navy-surface p-8 rounded-[40px] border border-gray-100 dark:border-gray-800 mb-8 items-center border-dashed"
+          >
             <Bell size={28} color={isDark ? '#374151' : '#d1d5db'} />
             <Text className="text-gray-400 dark:text-gray-500 text-xs font-bold uppercase tracking-widest italic text-center mt-4">
               No unread notifications for {selectedStudent?.users?.first_name || selectedStudent?.users?.full_name?.split(" ")[0] || 'your child'}
@@ -306,8 +351,23 @@ function ParentDashboard({ user, logout }: any) {
   );
 }
 
-const MetricCard = ({ icon: Icon, value, label, color }: any) => (
-  <View className="flex-1 bg-white dark:bg-navy-surface p-6 rounded-[32px] border border-gray-50 dark:border-gray-800 shadow-sm">
+const MetricCard = ({ icon: Icon, value, label, color, isDark }: any) => (
+  <View 
+    style={{
+      boxShadow: [{
+        offsetX: 0,
+        offsetY: 1,
+        blurRadius: 2,
+        color: isDark ? 'rgba(0, 0, 0, 0.4)' : 'rgba(0, 0, 0, 0.05)',
+      }],
+      shadowColor: "#000",
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: isDark ? 0.4 : 0.05,
+      shadowRadius: 2,
+      elevation: 1,
+    }}
+    className="flex-1 bg-white dark:bg-navy-surface p-6 rounded-[32px] border border-gray-50 dark:border-gray-800"
+  >
     <View className={`w-10 h-10 rounded-2xl items-center justify-center mb-4`} style={{ backgroundColor: `${color}15` }}>
       <Icon size={20} color={color} />
     </View>
@@ -329,7 +389,20 @@ const QuickAction = ({ icon: Icon, label, color, onPress, isDark }: any) => (
   <TouchableOpacity
     onPress={onPress}
     activeOpacity={0.7}
-    className="w-[48%] bg-white dark:bg-navy-surface p-8 rounded-[40px] border border-gray-50 dark:border-gray-800 shadow-sm items-center mb-4 active:opacity-80"
+    style={{
+      boxShadow: [{
+        offsetX: 0,
+        offsetY: 1,
+        blurRadius: 2,
+        color: isDark ? 'rgba(0, 0, 0, 0.4)' : 'rgba(0, 0, 0, 0.05)',
+      }],
+      shadowColor: "#000",
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: isDark ? 0.4 : 0.05,
+      shadowRadius: 2,
+      elevation: 2,
+    }}
+    className="w-[48%] bg-white dark:bg-navy-surface p-8 rounded-[40px] border border-gray-50 dark:border-gray-800 items-center mb-4 active:opacity-80"
   >
     <View style={{ backgroundColor: isDark ? `${color}25` : `${color}10` }} className="p-4 rounded-3xl mb-3 shadow-inner">
       <Icon size={24} color={color} />

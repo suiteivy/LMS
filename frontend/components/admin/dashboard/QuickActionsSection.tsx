@@ -104,7 +104,20 @@ const QuickActionsSection: React.FC<QuickActionsSectionProps> = ({
   const renderAction = (action: QuickAction) => (
     <View key={action.id} className="w-1/2 px-2 mb-4">
       <TouchableOpacity
-        className={`rounded-xl p-4 shadow-sm border ${action.color.bg} ${action.color.border} ${action.color.active}`}
+        style={{
+          boxShadow: [{
+            offsetX: 0,
+            offsetY: 1,
+            blurRadius: 2,
+            color: isDark ? 'rgba(0, 0, 0, 0.4)' : 'rgba(0, 0, 0, 0.05)',
+          }],
+          shadowColor: "#000",
+          shadowOffset: { width: 0, height: 1 },
+          shadowOpacity: isDark ? 0.4 : 0.05,
+          shadowRadius: 2,
+          elevation: 2,
+        }}
+        className={`rounded-xl p-4 border ${action.color.bg} ${action.color.border} ${action.color.active}`}
         activeOpacity={0.7}
         onPress={() => handleActionPress(action.id)}
       >

@@ -286,7 +286,7 @@ const PlanCard = ({ plan, tierAccent, openRegistrationModal }: any) => {
         {/* Backdrop filter container (the glass effect) */}
         <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, overflow: 'hidden', borderRadius: 36, zIndex: 1 }}>
           {Platform.OS === 'web' ? (
-            <div style={{ width: '100%', height: '100%', backdropFilter: 'blur(30px)', WebkitBackdropFilter: 'blur(30px)' }} />
+            <div className="glass-blur-30" />
           ) : (
             <BlurView intensity={30} style={{ flex: 1 }} tint="dark" />
           )}
@@ -387,6 +387,12 @@ const PlanCard = ({ plan, tierAccent, openRegistrationModal }: any) => {
               shadowOffset: { width: 0, height: 10 },
               shadowOpacity: plan.popular || plan.premium ? 0.4 : 0.1,
               shadowRadius: 16,
+              boxShadow: [{
+                offsetX: 0,
+                offsetY: 10,
+                blurRadius: 16,
+                color: `rgba(${plan.accent === '#FF6B00' ? '255, 107, 0' : '0, 0, 0'}, ${plan.popular || plan.premium ? 0.4 : 0.1})`,
+              }],
             }}
             onPress={() => openRegistrationModal(plan.name)}
             activeOpacity={0.85}
@@ -560,6 +566,12 @@ const FeatureCard = ({ icon, title, desc, accent, tag }: any) => {
       { translateY: interpolate(hoverVal.value, [0, 1], [0, -10]) },
       { scale: interpolate(hoverVal.value, [0, 1], [1, 1.025]) },
     ],
+    boxShadow: [{
+      offsetX: 0,
+      offsetY: 8,
+      blurRadius: interpolate(hoverVal.value, [0, 1], [8, 28]),
+      color: `rgba(${accent === '#FF6B00' ? '255, 107, 0' : '0, 0, 0'}, ${interpolate(hoverVal.value, [0, 1], [0.08, 0.35])})`,
+    }],
     shadowOpacity: interpolate(hoverVal.value, [0, 1], [0.08, 0.35]),
     shadowRadius: interpolate(hoverVal.value, [0, 1], [8, 28]),
   }));
@@ -595,6 +607,12 @@ const FeatureCard = ({ icon, title, desc, accent, tag }: any) => {
         overflow: 'hidden',
         shadowColor: accent,
         shadowOffset: { width: 0, height: 8 },
+        boxShadow: [{
+          offsetX: 0,
+          offsetY: 8,
+          blurRadius: 16, // Matching common pattern
+          color: `${accent}20`,
+        }],
       }, cardStyle]}
       //@ts-ignore
       onPointerEnter={onHoverIn}
@@ -732,6 +750,12 @@ function DiscountBanner() {
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.6,
         shadowRadius: 8,
+        boxShadow: [{
+          offsetX: 0,
+          offsetY: 2,
+          blurRadius: 8,
+          color: 'rgba(255, 107, 0, 0.6)',
+        }],
         elevation: 8,
       }}
     >
@@ -783,6 +807,12 @@ const SignInButtonFloating = () => {
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: interpolate(hoverVal.value, [0, 1], [1, 1.05]) }],
+    boxShadow: [{
+      offsetX: 0,
+      offsetY: 4,
+      blurRadius: interpolate(hoverVal.value, [0, 1], [10, 20]),
+      color: `rgba(255, 107, 0, ${interpolate(hoverVal.value, [0, 1], [0.3, 0.6])})`,
+    }],
     shadowOpacity: interpolate(hoverVal.value, [0, 1], [0.3, 0.6]),
     shadowRadius: interpolate(hoverVal.value, [0, 1], [10, 20]),
     backgroundColor: hoverVal.value > 0.5 ? 'rgba(255, 107, 0, 0.25)' : 'rgba(255, 107, 0, 0.15)',
@@ -801,6 +831,12 @@ const SignInButtonFloating = () => {
         borderRadius: 20,
         shadowColor: "#FF6B00",
         shadowOffset: { width: 0, height: 4 },
+        boxShadow: [{
+          offsetX: 0,
+          offsetY: 4,
+          blurRadius: 8,
+          color: 'rgba(255, 107, 0, 0.2)',
+        }],
         elevation: 8,
       }, animatedStyle]}
     >
@@ -838,6 +874,12 @@ const SignInButtonMain = () => {
       { scale: interpolate(hoverVal.value, [0, 1], [1, 1.05]) },
       { translateY: interpolate(hoverVal.value, [0, 1], [0, -4]) }
     ],
+    boxShadow: [{
+      offsetX: 0,
+      offsetY: 8,
+      blurRadius: interpolate(hoverVal.value, [0, 1], [24, 32]),
+      color: `rgba(255, 107, 0, ${interpolate(hoverVal.value, [0, 1], [0.4, 0.7])})`,
+    }],
     shadowOpacity: interpolate(hoverVal.value, [0, 1], [0.4, 0.7]),
     shadowRadius: interpolate(hoverVal.value, [0, 1], [24, 32]),
   }));
@@ -855,6 +897,12 @@ const SignInButtonMain = () => {
         borderRadius: 100,
         shadowColor: '#FF6B00',
         shadowOffset: { width: 0, height: 8 },
+        boxShadow: [{
+          offsetX: 0,
+          offsetY: 8,
+          blurRadius: 24,
+          color: 'rgba(255, 107, 0, 0.4)',
+        }],
       }, animatedStyle]}
     >
       <TouchableOpacity
@@ -1162,6 +1210,12 @@ export default function Index() {
             shadowOffset: { width: 0, height: 4 },
             shadowOpacity: 0.3,
             shadowRadius: 12,
+            boxShadow: [{
+              offsetX: 0,
+              offsetY: 4,
+              blurRadius: 12,
+              color: 'rgba(0, 0, 0, 0.3)',
+            }],
             elevation: 10,
             gap: 2,
           }}
@@ -1396,6 +1450,12 @@ export default function Index() {
                       paddingHorizontal: 32, paddingVertical: 18,
                       borderRadius: 16, backgroundColor: "white",
                       elevation: 6, shadowColor: "white",
+                      boxShadow: [{
+                        offsetX: 0,
+                        offsetY: 4,
+                        blurRadius: 15,
+                        color: 'rgba(255, 255, 255, 0.3)',
+                      }],
                       flexDirection: "row", alignItems: "center",
                     }}
                     onPress={() => openRegistrationModal("Free Trial")}
@@ -1771,6 +1831,12 @@ export default function Index() {
                       shadowOffset: { width: 0, height: 8 },
                       shadowOpacity: 0.35,
                       shadowRadius: 16,
+                      boxShadow: [{
+                        offsetX: 0,
+                        offsetY: 8,
+                        blurRadius: 16,
+                        color: 'rgba(16, 185, 129, 0.35)',
+                      }],
                       minWidth: 160,
                     }}
                   >
@@ -1988,7 +2054,7 @@ export default function Index() {
             }}>
               {/* Blur background effect */}
               {Platform.OS === 'web' && (
-                <div style={{ position: 'absolute', inset: 0, backdropFilter: 'blur(20px)', zIndex: -1 }} />
+                <div className="glass-blur-20-absolute" />
               )}
 
               {/* Decorative background glowing orbs */}
@@ -2167,6 +2233,12 @@ export default function Index() {
                   shadowOffset: { width: 0, height: 8 },
                   shadowOpacity: 0.3,
                   shadowRadius: 12,
+                  boxShadow: [{
+                    offsetX: 0,
+                    offsetY: 8,
+                    blurRadius: 12,
+                    color: 'rgba(255, 107, 0, 0.3)',
+                  }],
                 }}
                 onPress={proceedToRegistration}
               >
@@ -2346,6 +2418,12 @@ export default function Index() {
                   shadowOffset: { width: 0, height: 8 },
                   shadowOpacity: 0.3,
                   shadowRadius: 12,
+                  boxShadow: [{
+                    offsetX: 0,
+                    offsetY: 8,
+                    blurRadius: 12,
+                    color: 'rgba(139, 92, 246, 0.3)',
+                  }],
                 }}
                 onPress={proceedToRegistration}
               >
@@ -2396,7 +2474,7 @@ export default function Index() {
 
               {submitted ? (
                 <View style={{ alignItems: "center", paddingVertical: 60, flex: 1, justifyContent: 'center' }}>
-                  <View style={{ width: 90, height: 90, borderRadius: 45, backgroundColor: "rgba(16, 185, 129, 0.15)", justifyContent: "center", alignItems: "center", marginBottom: 24, shadowColor: '#10B981', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.4, shadowRadius: 16 }}>
+                <View style={{ width: 90, height: 90, borderRadius: 45, backgroundColor: "rgba(16, 185, 129, 0.15)", justifyContent: "center", alignItems: "center", marginBottom: 24, shadowColor: '#10B981', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.4, shadowRadius: 16, boxShadow: [{ offsetX: 0, offsetY: 8, blurRadius: 16, color: 'rgba(16, 185, 129, 0.4)' }] }}>
                     <Check size={44} color="#10B981" strokeWidth={3} />
                   </View>
                   <Text style={{ color: "white", fontSize: 28, fontWeight: "900", textAlign: "center", marginBottom: 12, letterSpacing: -0.5 }}>Request Received!</Text>
@@ -2404,7 +2482,7 @@ export default function Index() {
                     Thank you! Our team will reach out to you within 24 hours to set up your {selectedPlan} account.
                   </Text>
                   <TouchableOpacity
-                    style={{ backgroundColor: "#10B981", paddingHorizontal: 48, paddingVertical: 18, borderRadius: 20, shadowColor: '#10B981', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.3, shadowRadius: 16 }}
+                    style={{ backgroundColor: "#10B981", paddingHorizontal: 48, paddingVertical: 18, borderRadius: 20, shadowColor: '#10B981', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.3, shadowRadius: 16, boxShadow: [{ offsetX: 0, offsetY: 8, blurRadius: 16, color: 'rgba(16, 185, 129, 0.3)' }] }}
                     onPress={() => setModalVisible(false)}
                   >
                     <Text style={{ color: "white", fontWeight: "800", fontSize: 16 }}>Return to Home</Text>
@@ -2471,6 +2549,12 @@ export default function Index() {
                       shadowOffset: { width: 0, height: 8 },
                       shadowOpacity: 0.35,
                       shadowRadius: 16,
+                      boxShadow: [{
+                        offsetX: 0,
+                        offsetY: 8,
+                        blurRadius: 16,
+                        color: 'rgba(255, 107, 0, 0.35)',
+                      }],
                     }}
                     onPress={handleSignup}
                     disabled={submitting}

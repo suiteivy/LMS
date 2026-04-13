@@ -112,7 +112,22 @@ export const UserCard: React.FC<UserCardProps> = ({
   };
 
   const renderCompactCard = () => (
-    <View className="bg-white dark:bg-[#13103A] rounded-2xl p-4 shadow-sm border border-gray-100 dark:border-[#2c2c2c] mb-4">
+    <View 
+      style={{
+        boxShadow: [{
+          offsetX: 0,
+          offsetY: 1,
+          blurRadius: 2,
+          color: isDark ? 'rgba(0, 0, 0, 0.4)' : 'rgba(0, 0, 0, 0.05)',
+        }],
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: isDark ? 0.4 : 0.05,
+        shadowRadius: 2,
+        elevation: 1,
+      }}
+      className="bg-white dark:bg-[#13103A] rounded-2xl p-4 border border-gray-100 dark:border-[#2c2c2c] mb-4"
+    >
       <View className="flex-row items-center gap-4">
         {renderAvatar(12)}
         <View className="flex-1">
@@ -133,7 +148,22 @@ export const UserCard: React.FC<UserCardProps> = ({
   );
 
   const renderDefaultCard = () => (
-    <View className="bg-white dark:bg-[#13103A] rounded-[24px] shadow-sm border border-gray-50 dark:border-[#2c2c2c] mb-3 overflow-hidden">
+    <View 
+      style={{
+        boxShadow: [{
+          offsetX: 0,
+          offsetY: 1,
+          blurRadius: 2,
+          color: isDark ? 'rgba(0, 0, 0, 0.4)' : 'rgba(0, 0, 0, 0.05)',
+        }],
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: isDark ? 0.4 : 0.05,
+        shadowRadius: 2,
+        elevation: 1,
+      }}
+      className="bg-white dark:bg-[#13103A] rounded-[24px] border border-gray-50 dark:border-[#2c2c2c] mb-3 overflow-hidden"
+    >
       <View className="p-5">
         <View className="flex-row items-center justify-between">
           {/* Left: Avatar + Info */}
@@ -192,7 +222,22 @@ export const UserCard: React.FC<UserCardProps> = ({
   );
 
   const renderDetailedCard = () => (
-    <View className="bg-white dark:bg-[#13103A] rounded-[24px] shadow-md border border-gray-50 dark:border-[#2c2c2c] mb-4 overflow-hidden">
+    <View 
+      style={{
+        boxShadow: [{
+          offsetX: 0,
+          offsetY: 2,
+          blurRadius: 4,
+          color: isDark ? 'rgba(0, 0, 0, 0.4)' : 'rgba(0, 0, 0, 0.08)',
+        }],
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: isDark ? 0.4 : 0.08,
+        shadowRadius: 4,
+        elevation: 3,
+      }}
+      className="bg-white dark:bg-[#13103A] rounded-[24px] border border-gray-50 dark:border-[#2c2c2c] mb-4 overflow-hidden"
+    >
       <View className="p-6">
         <View className="flex-row items-center justify-between">
           {/* Left: Enhanced Avatar + Detailed Info */}

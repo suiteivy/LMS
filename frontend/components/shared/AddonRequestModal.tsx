@@ -84,7 +84,7 @@ export const AddonRequestModal = ({ visible, onClose, currentAddons }: AddonRequ
     return (
         <Modal visible={visible} transparent animationType="slide">
             <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' }}>
-                <View style={{ backgroundColor: 'white', borderTopLeftRadius: 32, borderTopRightRadius: 32, padding: 24, minHeight: '60%', shadowColor: '#000', shadowOffset: { width: 0, height: -10 }, shadowOpacity: 0.1, shadowRadius: 20, elevation: 20 }}>
+                <View style={{ backgroundColor: 'white', borderTopLeftRadius: 32, borderTopRightRadius: 32, padding: 24, minHeight: '60%', boxShadow: [{ offsetX: 0, offsetY: -10, blurRadius: 20, color: 'rgba(0, 0, 0, 0.1)' }], shadowColor: '#000', shadowOffset: { width: 0, height: -10 }, shadowOpacity: 0.1, shadowRadius: 20, elevation: 20 }}>
 
                     {/* Header */}
                     <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
@@ -168,6 +168,7 @@ export const AddonRequestModal = ({ visible, onClose, currentAddons }: AddonRequ
                                 flexDirection: 'row',
                                 justifyContent: 'center',
                                 gap: 10,
+                                boxShadow: [{ offsetX: 0, offsetY: 4, blurRadius: 8, color: 'rgba(255, 107, 0, 0.2)' }],
                                 shadowColor: '#FF6B00',
                                 shadowOffset: { width: 0, height: 4 },
                                 shadowOpacity: selectedAddon ? 0.2 : 0,

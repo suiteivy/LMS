@@ -34,6 +34,12 @@ export const SubjectCard: React.FC<SubjectCardProps> = ({
   };
 
   const shadow = {
+    boxShadow: [{
+      offsetX: 0,
+      offsetY: 4,
+      blurRadius: 10,
+      color: isDark ? 'transparent' : 'rgba(0,0,0,0.05)',
+    }],
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: isDark ? 0 : 0.05,

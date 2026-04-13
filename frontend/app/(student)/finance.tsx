@@ -1,5 +1,6 @@
 import { UnifiedHeader } from "@/components/common/UnifiedHeader";
 import { useAuth } from "@/contexts/AuthContext";
+import { useTheme } from "@/contexts/ThemeContext";
 import { supabase } from "@/libs/supabase";
 import { BursaryService } from "@/services/BursaryService";
 import { StudentService } from "@/services/StudentService";
@@ -25,6 +26,7 @@ import {
 
 export default function StudentFinancePage() {
     const { studentId, isDemo } = useAuth();
+    const { isDark } = useTheme();
     const [loading, setLoading] = useState(true);
     const [financeData, setFinanceData] = useState<any>(null);
     const [bursaries, setBursaries] = useState<any[]>([]);
@@ -143,7 +145,22 @@ export default function StudentFinancePage() {
                     {activeTab === 'fees' ? (
                         <>
                             {/* Balance Hero */}
-                            <View className="bg-gray-900 p-8 rounded-[48px] shadow-2xl mb-8">
+                            <View 
+                                style={{
+                                    boxShadow: [{
+                                        offsetX: 0,
+                                        offsetY: 15,
+                                        blurRadius: 30,
+                                        color: 'rgba(0, 0, 0, 0.3)',
+                                    }],
+                                    shadowColor: "#000",
+                                    shadowOffset: { width: 0, height: 15 },
+                                    shadowOpacity: 0.3,
+                                    shadowRadius: 30,
+                                    elevation: 20,
+                                }}
+                                className="bg-gray-900 p-8 rounded-[48px] mb-8"
+                            >
                                 <View className="flex-row justify-between items-center mb-6">
                                     <View>
                                         <Text className="text-white/40 text-[10px] font-bold uppercase tracking-[3px] mb-2">Total Outstanding</Text>
@@ -176,10 +193,30 @@ export default function StudentFinancePage() {
                             </View>
 
                             {/* Status Info */}
-                            <View className={`p-6 rounded-[32px] mb-8 flex-row items-center border ${financeData?.balance > 0 ? 'bg-orange-50 dark:bg-orange-950/30 border-orange-100 dark:border-orange-900' : 'bg-green-50 dark:bg-green-950/30 border-green-100 dark:border-green-900'}`}>
-                                <View className={`w-10 h-10 rounded-2xl items-center justify-center ${financeData?.balance > 0 ? 'bg-white shadow-sm' : 'bg-green-500 shadow-lg'}`}>
-                                    <Info size={20} color={financeData?.balance > 0 ? "#FF6900" : "white"} />
-                                </View>
+                             <View className={`p-6 rounded-[32px] mb-8 flex-row items-center border ${financeData?.balance > 0 ? 'bg-orange-50 dark:bg-orange-950/30 border-orange-100 dark:border-orange-900' : 'bg-green-50 dark:bg-green-950/30 border-green-100 dark:border-green-900'}`}>
+                                 <View 
+                                     style={{
+                                         boxShadow: financeData?.balance > 0 ? [{
+                                             offsetX: 0,
+                                             offsetY: 1,
+                                             blurRadius: 2,
+                                             color: 'rgba(0, 0, 0, 0.1)',
+                                         }] : [{
+                                             offsetX: 0,
+                                             offsetY: 8,
+                                             blurRadius: 12,
+                                             color: 'rgba(16, 185, 129, 0.3)',
+                                         }],
+                                         shadowColor: financeData?.balance > 0 ? "#000" : "#10B981",
+                                         shadowOffset: financeData?.balance > 0 ? { width: 0, height: 1 } : { width: 0, height: 8 },
+                                         shadowOpacity: financeData?.balance > 0 ? 0.1 : 0.3,
+                                         shadowRadius: financeData?.balance > 0 ? 2 : 12,
+                                         elevation: financeData?.balance > 0 ? 2 : 8,
+                                     }}
+                                     className={`w-10 h-10 rounded-2xl items-center justify-center ${financeData?.balance > 0 ? 'bg-white' : 'bg-green-500'}`}
+                                 >
+                                     <Info size={20} color={financeData?.balance > 0 ? "#FF6900" : "white"} />
+                                 </View>
                                 <Text className={`flex-1 ml-4 text-sm font-medium leading-tight ${financeData?.balance > 0 ? 'text-gray-900 dark:text-gray-100' : 'text-green-900 dark:text-green-200'}`}>
                                     {financeData?.balance > 0
                                         ? `A balance of ${formatKES(financeData?.balance)} is currently due.`
@@ -190,15 +227,46 @@ export default function StudentFinancePage() {
                             {/* Transaction History */}
                             <View className="px-2 flex-row justify-between items-center mb-6">
                                 <Text className="text-gray-900 dark:text-white font-bold text-xl tracking-tight">Ledger Statements</Text>
-                                <TouchableOpacity className="flex-row items-center bg-white dark:bg-[#1a1a1a] px-4 py-2 rounded-xl border border-gray-100 dark:border-gray-700 shadow-sm">
-                                    <CreditCard size={14} color="#FF6900" />
-                                    <Text className="text-gray-900 dark:text-white text-[10px] font-bold uppercase tracking-widest ml-2">Pay Fees</Text>
-                                </TouchableOpacity>
+                                 <TouchableOpacity 
+                                     style={{
+                                         boxShadow: [{
+                                             offsetX: 0,
+                                             offsetY: 1,
+                                             blurRadius: 2,
+                                             color: isDark ? 'rgba(0, 0, 0, 0.4)' : 'rgba(0, 0, 0, 0.08)',
+                                         }],
+                                         shadowColor: "#000",
+                                         shadowOffset: { width: 0, height: 1 },
+                                         shadowOpacity: isDark ? 0.4 : 0.08,
+                                         shadowRadius: 2,
+                                         elevation: 2,
+                                     }}
+                                     className="flex-row items-center bg-white dark:bg-[#1a1a1a] px-4 py-2 rounded-xl border border-gray-100 dark:border-gray-700"
+                                 >
+                                     <CreditCard size={14} color="#FF6900" />
+                                     <Text className="text-gray-900 dark:text-white text-[10px] font-bold uppercase tracking-widest ml-2">Pay Fees</Text>
+                                 </TouchableOpacity>
                             </View>
 
                             {financeData?.transactions?.length > 0 ? (
                                 financeData.transactions.map((tx: any) => (
-                                    <View key={tx.id} className="bg-white dark:bg-[#1a1a1a] p-5 rounded-[32px] mb-4 flex-row items-center border border-gray-50 dark:border-gray-800 shadow-sm">
+                                     <View 
+                                         key={tx.id} 
+                                         style={{
+                                             boxShadow: [{
+                                                 offsetX: 0,
+                                                 offsetY: 1,
+                                                 blurRadius: 2,
+                                                 color: isDark ? 'rgba(0, 0, 0, 0.4)' : 'rgba(0, 0, 0, 0.08)',
+                                             }],
+                                             shadowColor: "#000",
+                                             shadowOffset: { width: 0, height: 1 },
+                                             shadowOpacity: isDark ? 0.4 : 0.08,
+                                             shadowRadius: 2,
+                                             elevation: 2,
+                                         }}
+                                         className="bg-white dark:bg-[#1a1a1a] p-5 rounded-[32px] mb-4 flex-row items-center border border-gray-50 dark:border-gray-800"
+                                     >
                                         <View className={`w-12 h-12 rounded-2xl items-center justify-center mr-4 ${tx.direction === 'inflow' ? 'bg-green-50' : 'bg-red-50'}`}>
                                             {tx.direction === 'inflow' ? <ArrowDownLeft size={20} color="#16a34a" /> : <ArrowUpRight size={20} color="#dc2626" />}
                                         </View>
@@ -230,7 +298,23 @@ export default function StudentFinancePage() {
                                 <ActivityIndicator size="large" color="#FF6900" />
                             ) : bursaries.length > 0 ? (
                                 bursaries.map((item: any) => (
-                                    <View key={item.id} className="bg-white dark:bg-[#1a1a1a] rounded-[32px] mb-5 border border-gray-100 dark:border-gray-800 shadow-sm overflow-hidden">
+                                     <View 
+                                         key={item.id} 
+                                         style={{
+                                             boxShadow: [{
+                                                 offsetX: 0,
+                                                 offsetY: 1,
+                                                 blurRadius: 2,
+                                                 color: isDark ? 'rgba(0, 0, 0, 0.4)' : 'rgba(0, 0, 0, 0.08)',
+                                             }],
+                                             shadowColor: "#000",
+                                             shadowOffset: { width: 0, height: 1 },
+                                             shadowOpacity: isDark ? 0.4 : 0.08,
+                                             shadowRadius: 2,
+                                             elevation: 2,
+                                         }}
+                                         className="bg-white dark:bg-[#1a1a1a] rounded-[32px] mb-5 border border-gray-100 dark:border-gray-800 overflow-hidden"
+                                     >
                                         {/* Accent bar */}
                                         <View className="h-1.5 bg-emerald-500" />
                                         <View className="p-6">

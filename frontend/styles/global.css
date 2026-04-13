@@ -2,6 +2,22 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Glass Blur Utilities */
+.glass-blur-30 {
+  width: 100%;
+  height: 100%;
+  backdrop-filter: blur(30px);
+  -webkit-backdrop-filter: blur(30px);
+}
+
+.glass-blur-20-absolute {
+  position: absolute;
+  inset: 0;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  z-index: -1;
+}
+
 /* #2C3E50
 #F1FFF8
 #A1EBE5

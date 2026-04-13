@@ -37,6 +37,7 @@ export const DebugOverlay: React.FC = () => {
         className="absolute top-10 right-0 w-12 h-12 bg-red-600 rounded-full items-center justify-center elevation-5"
         style={{
           zIndex: 999999,
+          boxShadow: [{ offsetX: 0, offsetY: 4, blurRadius: 4.65, color: 'rgba(0, 0, 0, 0.3)' }],
           shadowColor: '#000',
           shadowOffset: { width: 0, height: 4 },
           shadowOpacity: 0.3,

@@ -68,10 +68,11 @@ export default function DemoBanner() {
     }, [timeLeft]);
 
     const handleExpiry = async () => {
-        setShowExpiredModal(true);
         try {
             await AsyncStorage.removeItem('demo_expiry');
+            router.replace('/(auth)/demo');
             await logout();
+            setShowExpiredModal(true);
         } catch (error) {
             console.error("Logout failed", error);
         }
@@ -80,8 +81,8 @@ export default function DemoBanner() {
     const handleEndDemo = async () => {
         try {
             await AsyncStorage.removeItem('demo_expiry');
-            await logout();
             router.replace('/(auth)/demo');
+            await logout();
         } catch (error) {
             console.error("Logout failed", error);
         }
@@ -96,7 +97,22 @@ export default function DemoBanner() {
         <>
             {/* Banner */}
             <View className="absolute top-10 left-0 right-0 z-50 px-4 flex items-center justify-center pt-2" pointerEvents="box-none">
-                <View className="bg-orange-600/90 backdrop-blur-md rounded-full px-4 py-2 flex-row items-center shadow-lg border border-white/20">
+                <View 
+                    style={{
+                        boxShadow: [{
+                            offsetX: 0,
+                            offsetY: 4,
+                            blurRadius: 12,
+                            color: 'rgba(0, 0, 0, 0.25)',
+                        }],
+                        shadowColor: "#000",
+                        shadowOffset: { width: 0, height: 4 },
+                        shadowOpacity: 0.25,
+                        shadowRadius: 10,
+                        elevation: 10,
+                    }}
+                    className="bg-orange-600/90 backdrop-blur-md rounded-full px-4 py-2 flex-row items-center border border-white/20"
+                >
                     <Clock size={16} color="white" strokeWidth={2.5} />
                     <Text className="text-white font-bold ml-2 font-mono">
                         DEMO: {minutes}:{seconds.toString().padStart(2, '0')}

@@ -57,6 +57,12 @@ export const SubjectList: React.FC<SubjectListProps> = ({
         backgroundColor: isSelected ? accent : surface,
         borderColor: isSelected ? accent : border,
         ...(isSelected ? {
+          boxShadow: [{
+            offsetX: 0,
+            offsetY: 4,
+            blurRadius: 8,
+            color: `${accent}40`, // 40 is roughly 0.25 opacity in hex
+          }],
           shadowColor: accent,
           shadowOffset: { width: 0, height: 4 },
           shadowOpacity: 0.25,

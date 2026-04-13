@@ -3,6 +3,7 @@ import { SubscriptionBanner } from "@/components/shared/SubscriptionComponents";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSubscriptionTier } from "@/hooks/useSubscriptionTier";
 import { useNotifications } from "@/contexts/NotificationContext";
+import { useTheme } from "@/contexts/ThemeContext";
 import { supabase } from "@/libs/supabase";
 import { useRouter } from "expo-router";
 import { ArrowRight, Book, BookOpen, CalendarCheck, Clock, GraduationCap, Star, Wallet } from 'lucide-react-native';
@@ -16,20 +17,38 @@ interface QuickActionProps {
   onPress: () => void
 }
 
-const QuickAction = ({ icon: Icon, label, color, onPress }: QuickActionProps) => (
-  <TouchableOpacity
-    onPress={onPress}
-    className="w-[47%] bg-white dark:bg-[#0F0B2E] p-6 rounded-[32px] border border-gray-100 dark:border-gray-800 shadow-sm items-center mb-4 active:bg-gray-50 dark:active:bg-gray-900"
-  >
-    <View style={{ backgroundColor: `${color}10` }} className="p-3.5 rounded-2xl mb-3">
-      <Icon size={24} color={color} />
-    </View>
-    <Text className="text-gray-900 dark:text-gray-200 font-bold text-sm tracking-tight">{label}</Text>
-  </TouchableOpacity>
-);
+const QuickAction = ({ icon: Icon, label, color, onPress }: QuickActionProps) => {
+  const { isDark } = useTheme();
+  return (
+    <TouchableOpacity
+      onPress={onPress}
+      style={{
+        width: '47%',
+        boxShadow: [{
+          offsetX: 0,
+          offsetY: 1,
+          blurRadius: 2,
+          color: isDark ? 'rgba(0, 0, 0, 0.4)' : 'rgba(0, 0, 0, 0.08)',
+        }],
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: isDark ? 0.4 : 0.08,
+        shadowRadius: 2,
+        elevation: 1,
+      }}
+      className="bg-white dark:bg-[#0F0B2E] p-6 rounded-[32px] border border-gray-100 dark:border-gray-800 items-center mb-4 active:bg-gray-50 dark:active:bg-gray-900"
+    >
+      <View style={{ backgroundColor: `${color}10` }} className="p-3.5 rounded-2xl mb-3">
+        <Icon size={24} color={color} />
+      </View>
+      <Text className="text-gray-900 dark:text-gray-200 font-bold text-sm tracking-tight">{label}</Text>
+    </TouchableOpacity>
+  );
+};
 
 export default function Index() {
   const { profile, displayId, loading: authLoading, studentId, isDemo } = useAuth();
+  const { isDark } = useTheme();
   const { hasDiary } = useSubscriptionTier();
   const { unreadCount } = useNotifications();
   const [showNotification, setShowNotification] = useState(false);
@@ -203,14 +222,44 @@ export default function Index() {
 
           {/* Core Metrics */}
           <View className="flex-row gap-4 mb-8">
-            <View className="flex-1 bg-gray-900 dark:bg-[#1a1a1a] p-6 rounded-[40px] shadow-lg border border-transparent dark:border-gray-800">
+            <View 
+              style={{
+                boxShadow: [{
+                  offsetX: 0,
+                  offsetY: 10,
+                  blurRadius: 15,
+                  color: 'rgba(0, 0, 0, 0.2)',
+                }],
+                shadowColor: "#000",
+                shadowOffset: { width: 0, height: 10 },
+                shadowOpacity: 0.2,
+                shadowRadius: 15,
+                elevation: 10,
+              }}
+              className="flex-1 bg-gray-900 dark:bg-[#1a1a1a] p-6 rounded-[40px] border border-transparent dark:border-gray-800"
+            >
               <Star size={20} color="#FF6900" />
               <Text className="text-white text-3xl font-bold mt-4 tracking-tighter">
                 {gpa}
               </Text>
               <Text className="text-white/40 dark:text-gray-500 text-[8px] font-bold uppercase tracking-widest mt-1">GPA Score</Text>
             </View>
-            <View className="flex-1 bg-white dark:bg-[#1a1a1a] p-6 rounded-[40px] border border-gray-100 dark:border-gray-800 shadow-sm">
+            <View 
+              style={{
+                boxShadow: [{
+                  offsetX: 0,
+                  offsetY: 1,
+                  blurRadius: 2,
+                  color: isDark ? 'rgba(0, 0, 0, 0.4)' : 'rgba(0, 0, 0, 0.08)',
+                }],
+                shadowColor: "#000",
+                shadowOffset: { width: 0, height: 1 },
+                shadowOpacity: isDark ? 0.4 : 0.08,
+                shadowRadius: 2,
+                elevation: 2,
+              }}
+              className="flex-1 bg-white dark:bg-[#1a1a1a] p-6 rounded-[40px] border border-gray-100 dark:border-gray-800"
+            >
               <Clock size={20} color="#FF6900" />
               <Text className="text-gray-900 dark:text-white text-3xl font-bold mt-4 tracking-tighter">
                 {attendancePct}
@@ -236,7 +285,23 @@ export default function Index() {
               <View className="p-10 items-center"><ActivityIndicator color="#FF6900" /></View>
             ) : todaysSchedule.length > 0 ? (
               todaysSchedule.map((item, index) => (
-                <View key={item.id} className="bg-white dark:bg-[#1a1a1a] p-6 rounded-[32px] border border-gray-100 dark:border-gray-800 shadow-sm mr-4 w-64">
+                <View 
+                  key={item.id} 
+                  style={{
+                    boxShadow: [{
+                      offsetX: 0,
+                      offsetY: 1,
+                      blurRadius: 2,
+                      color: isDark ? 'rgba(0, 0, 0, 0.4)' : 'rgba(0, 0, 0, 0.08)',
+                    }],
+                    shadowColor: "#000",
+                    shadowOffset: { width: 0, height: 1 },
+                    shadowOpacity: isDark ? 0.4 : 0.08,
+                    shadowRadius: 2,
+                    elevation: 2,
+                  }}
+                  className="bg-white dark:bg-[#1a1a1a] p-6 rounded-[32px] border border-gray-100 dark:border-gray-800 mr-4 w-64"
+                >
                   <View className="flex-row items-center mb-4">
                     <View className={`p-2 rounded-xl mr-3 ${index % 2 === 0 ? 'bg-orange-50 dark:bg-orange-950/30' : 'bg-gray-50 dark:bg-gray-800'}`}>
                       <BookOpen size={16} color={index % 2 === 0 ? "#FF6900" : "#6B7280"} />

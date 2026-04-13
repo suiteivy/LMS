@@ -77,6 +77,12 @@ function AdminTabs() {
                     shadowOffset: { width: 0, height: -4 },
                     shadowOpacity: 0.1,
                     shadowRadius: 3,
+                    boxShadow: [{
+                        offsetX: 0,
+                        offsetY: -4,
+                        blurRadius: 3,
+                        color: 'rgba(0, 0, 0, 0.1)',
+                    }],
                 },
                 sceneStyle: { backgroundColor: isDark ? '#0F0B2E' : "#f9fafb" },
             }}
@@ -113,6 +119,12 @@ function AdminTabs() {
                                 shadowOffset: { width: 0, height: 4 },
                                 shadowOpacity: focused ? 0.35 : 0,
                                 shadowRadius: 8,
+                                boxShadow: focused ? [{
+                                    offsetX: 0,
+                                    offsetY: 4,
+                                    blurRadius: 8,
+                                    color: 'rgba(255, 107, 0, 0.35)',
+                                }] : undefined,
                                 elevation: focused ? 6 : 0,
                             }}>
                                 <Icon

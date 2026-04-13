@@ -55,6 +55,12 @@ function TeacherTabs() {
                     shadowOffset: { width: 0, height: -4 },
                     shadowOpacity: 0.1,
                     shadowRadius: 3,
+                    boxShadow: [{
+                        offsetX: 0,
+                        offsetY: -4,
+                        blurRadius: 3,
+                        color: 'rgba(0, 0, 0, 0.1)',
+                    }],
                 },
                 tabBarActiveTintColor: "#FF6B00",
                 tabBarInactiveTintColor: isDark ? "#9ca3af" : "#6b7280",

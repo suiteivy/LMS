@@ -3,6 +3,7 @@ import { UnifiedHeader } from "@/components/common/UnifiedHeader";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/libs/supabase";
 import { router } from "expo-router";
+import { useTheme } from "@/contexts/ThemeContext";
 import { Award, BarChart3, Star, TrendingUp } from "lucide-react-native";
 import { useEffect, useState } from "react";
 import { ActivityIndicator, Alert, ScrollView, Text, TouchableOpacity, View } from "react-native";
@@ -13,10 +14,11 @@ interface GradeProps {
     grade: string;
     score: number;
     credits: number;
+    isDark: boolean;
     onPress: () => void;
 }
 
-const SubjectGrade = ({ SubjectCode, SubjectName, grade, score, credits, onPress }: GradeProps) => {
+const SubjectGrade = ({ SubjectCode, SubjectName, grade, score, credits, isDark, onPress }: GradeProps) => {
     const getGradeColor = (g: string) => {
         if (g.startsWith('A')) return { text: 'text-green-600 dark:text-green-400', bg: 'bg-green-50 dark:bg-green-950/20' };
         if (g.startsWith('B')) return { text: 'text-blue-600 dark:text-blue-400', bg: 'bg-blue-50 dark:bg-blue-950/20' };
@@ -27,7 +29,20 @@ const SubjectGrade = ({ SubjectCode, SubjectName, grade, score, credits, onPress
     return (
         <TouchableOpacity
             onPress={onPress}
-            className="bg-white dark:bg-[#1a1a1a] p-5 rounded-[32px] border border-gray-50 dark:border-gray-800 mb-4 shadow-sm flex-row items-center active:bg-gray-50 dark:active:bg-gray-900"
+            style={{
+                boxShadow: [{
+                    offsetX: 0,
+                    offsetY: 1,
+                    blurRadius: 2,
+                    color: isDark ? 'rgba(0, 0, 0, 0.4)' : 'rgba(0, 0, 0, 0.05)',
+                }],
+                shadowColor: "#000",
+                shadowOffset: { width: 0, height: 1 },
+                shadowOpacity: isDark ? 0.4 : 0.05,
+                shadowRadius: 2,
+                elevation: 2,
+            }}
+            className="bg-white dark:bg-[#1a1a1a] p-5 rounded-[32px] border border-gray-50 dark:border-gray-800 mb-4 flex-row items-center active:bg-gray-50 dark:active:bg-gray-900"
         >
             <View className={`w-12 h-12 rounded-2xl items-center justify-center mr-4 ${styles.bg}`}>
                 <Text className={`font-black text-xl ${styles.text}`}>{grade === 'N/A' || grade === null ? '?' : grade}</Text>
@@ -47,6 +62,7 @@ const SubjectGrade = ({ SubjectCode, SubjectName, grade, score, credits, onPress
 
 export default function Grades() {
     const { studentId, displayId, user, isDemo } = useAuth();
+    const { isDark } = useTheme();
     const [grades, setGrades] = useState<GradeProps[]>([]);
     const [loading, setLoading] = useState(true);
     const [stats, setStats] = useState({ gpa: 0, credits: 0, totalMarks: 0, avgMark: 0, rank: 'N/A' as string | number, totalStudents: 0 });
@@ -146,6 +162,7 @@ export default function Grades() {
                     grade: letter,
                     score: Math.round(score),
                     credits: val.credits,
+                    isDark: isDark,
                     onPress: () => { }
                 };
                 gradeItem.onPress = () => fetchSubjectDetails(gradeItem);
@@ -256,7 +273,22 @@ export default function Grades() {
             <ScrollView className="flex-1" showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 150 }}>
                 <View className="p-4 md:p-8">
                     {/* GPA Hero */}
-                    <View className="bg-gray-900 dark:bg-[#1a1a1a] p-8 rounded-[48px] shadow-2xl mb-8 border border-transparent dark:border-gray-800">
+                    <View 
+                        style={{
+                            boxShadow: [{
+                                offsetX: 0,
+                                offsetY: 15,
+                                blurRadius: 30,
+                                color: 'rgba(0, 0, 0, 0.3)',
+                            }],
+                            shadowColor: "#000",
+                            shadowOffset: { width: 0, height: 15 },
+                            shadowOpacity: 0.3,
+                            shadowRadius: 30,
+                            elevation: 20,
+                        }}
+                        className="bg-gray-900 dark:bg-[#1a1a1a] p-8 rounded-[48px] mb-8 border border-transparent dark:border-gray-800"
+                    >
                         <View className="flex-row justify-between items-start mb-10">
                             <View>
                                 <Text className="text-white/40 dark:text-gray-500 text-[10px] font-bold uppercase tracking-[3px] mb-2">Academic Index</Text>
@@ -265,7 +297,22 @@ export default function Grades() {
                                     {getPerformanceStatus(stats.gpa).label}
                                 </Text>
                             </View>
-                            <View className="bg-[#FF6900] p-4 rounded-3xl shadow-lg">
+                            <View 
+                                style={{
+                                    boxShadow: [{
+                                        offsetX: 0,
+                                        offsetY: 4,
+                                        blurRadius: 10,
+                                        color: 'rgba(255, 105, 0, 0.3)',
+                                    }],
+                                    shadowColor: "#FF6900",
+                                    shadowOffset: { width: 0, height: 4 },
+                                    shadowOpacity: 0.3,
+                                    shadowRadius: 10,
+                                    elevation: 8,
+                                }}
+                                className="bg-[#FF6900] p-4 rounded-3xl"
+                            >
                                 <TrendingUp size={28} color="white" />
                             </View>
                         </View>
@@ -287,7 +334,22 @@ export default function Grades() {
                     </View>
 
                     {/* Performance Analytics Card */}
-                    <View className="bg-white dark:bg-[#1a1a1a] p-6 rounded-[32px] border border-gray-100 dark:border-gray-800 shadow-sm mb-10">
+                    <View 
+                        style={{
+                            boxShadow: [{
+                                offsetX: 0,
+                                offsetY: 1,
+                                blurRadius: 2,
+                                color: isDark ? 'rgba(0, 0, 0, 0.4)' : 'rgba(0, 0, 0, 0.05)',
+                            }],
+                            shadowColor: "#000",
+                            shadowOffset: { width: 0, height: 1 },
+                            shadowOpacity: isDark ? 0.4 : 0.05,
+                            shadowRadius: 2,
+                            elevation: 2,
+                        }}
+                        className="bg-white dark:bg-[#1a1a1a] p-6 rounded-[32px] border border-gray-100 dark:border-gray-800 mb-10"
+                    >
                         <View className="flex-row items-center mb-6">
                             <BarChart3 size={18} color="#FF6900" />
                             <Text className="text-gray-900 dark:text-white font-bold text-lg tracking-tight ml-3">Analytical Overview</Text>
@@ -316,7 +378,22 @@ export default function Grades() {
                     {/* Subject Breakdown */}
                     <View className="px-2 flex-row justify-between items-center mb-6">
                         <Text className="text-gray-900 dark:text-white font-bold text-xl tracking-tight">Transcript Records</Text>
-                        <TouchableOpacity className="flex-row items-center bg-white dark:bg-[#1a1a1a] px-4 py-2 rounded-xl border border-gray-100 dark:border-gray-800 shadow-sm overflow-hidden active:bg-gray-50 dark:active:bg-gray-900">
+                        <TouchableOpacity 
+                            style={{
+                                boxShadow: [{
+                                    offsetX: 0,
+                                    offsetY: 1,
+                                    blurRadius: 2,
+                                    color: isDark ? 'rgba(0, 0, 0, 0.4)' : 'rgba(0, 0, 0, 0.05)',
+                                }],
+                                shadowColor: "#000",
+                                shadowOffset: { width: 0, height: 1 },
+                                shadowOpacity: isDark ? 0.4 : 0.05,
+                                shadowRadius: 2,
+                                elevation: 2,
+                            }}
+                            className="flex-row items-center bg-white dark:bg-[#1a1a1a] px-4 py-2 rounded-xl border border-gray-100 dark:border-gray-800 overflow-hidden active:bg-gray-50 dark:active:bg-gray-900"
+                        >
                             <Award size={14} color="#FF6900" />
                             <Text className="text-gray-900 dark:text-gray-100 text-[10px] font-bold uppercase tracking-widest ml-2">History</Text>
                         </TouchableOpacity>
@@ -336,6 +413,7 @@ export default function Grades() {
                                 grade={g.grade}
                                 score={g.score}
                                 credits={g.credits}
+                                isDark={isDark}
                                 onPress={g.onPress}
                             />
                         ))

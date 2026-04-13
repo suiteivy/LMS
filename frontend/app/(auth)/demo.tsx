@@ -476,7 +476,14 @@ export default function Demo() {
                   justifyContent: "center",
                   shadowColor: selectedRoleData?.color || "#FF6B00",
                   shadowOffset: { width: 0, height: 8 },
-                  shadowOpacity: 0.35, shadowRadius: 20,
+                  shadowOpacity: 0.35,
+                  shadowRadius: 20,
+                  boxShadow: [{
+                    offsetX: 0,
+                    offsetY: 8,
+                    blurRadius: 20,
+                    color: `${selectedRoleData?.color || "#FF6B00"}59`, // 0.35 opacity in hex is approx 59
+                  }],
                   elevation: 8,
                 }}
               >

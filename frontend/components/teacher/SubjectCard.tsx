@@ -1,4 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
+import { useTheme } from "@/contexts/ThemeContext";
 import React from "react";
 import { Text, TouchableOpacity, View } from "react-native";
 
@@ -17,10 +18,26 @@ interface SubjectCardProps {
 }
 
 const SubjectCard: React.FC<SubjectCardProps> = ({ Subject }) => {
+    const { isDark } = useTheme();
     const isActive = Subject.status === "active";
 
     return (
-        <View className="bg-white dark:bg-[#1a1a1a] rounded-xl p-4 mb-4 shadow-sm border border-gray-50 dark:border-gray-800">
+        <View 
+            style={{
+                boxShadow: [{
+                    offsetX: 0,
+                    offsetY: 1,
+                    blurRadius: 2,
+                    color: isDark ? 'rgba(0, 0, 0, 0.4)' : 'rgba(0, 0, 0, 0.05)',
+                }],
+                shadowColor: "#000",
+                shadowOffset: { width: 0, height: 1 },
+                shadowOpacity: isDark ? 0.4 : 0.05,
+                shadowRadius: 2,
+                elevation: 1,
+            }}
+            className="bg-white dark:bg-[#1a1a1a] rounded-xl p-4 mb-4 border border-gray-50 dark:border-gray-800"
+        >
             <View className="flex-row justify-between items-start mb-3">
                 <View className="flex-1 pr-2">
                     <Text className="text-gray-900 dark:text-white font-bold text-base">

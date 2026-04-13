@@ -57,6 +57,7 @@ const Notifications = ({ visible, onClose }: NotificationProps) => {
           backgroundColor: tokens.surface,
           borderTopLeftRadius: 40,
           borderTopRightRadius: 40,
+          boxShadow: [{ offsetX: 0, offsetY: -10, blurRadius: 20, color: 'rgba(0, 0, 0, 0.1)' }],
           shadowColor: '#000',
           shadowOffset: { width: 0, height: -10 },
           shadowOpacity: 0.1,

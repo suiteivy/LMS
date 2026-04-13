@@ -234,6 +234,7 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ visibl
                                     alignItems: 'center', 
                                     flexDirection: 'row', 
                                     justifyContent: 'center', 
+                                    boxShadow: [{ offsetX: 0, offsetY: 4, blurRadius: 8, color: `${tokens.primary}33` }], // 33 is 0.2 opacity
                                     shadowColor: tokens.primary,
                                     shadowOffset: { width: 0, height: 4 },
                                     shadowOpacity: 0.2,

@@ -986,6 +986,12 @@ const styles = StyleSheet.create({
         width: 56, height: 56, borderRadius: 28,
         backgroundColor: D.accent, justifyContent: "center", alignItems: "center",
         shadowColor: D.accent, shadowOpacity: 0.4, shadowRadius: 12, shadowOffset: { width: 0, height: 4 },
+        boxShadow: [{
+            offsetX: 0,
+            offsetY: 4,
+            blurRadius: 12,
+            color: 'rgba(255, 105, 0, 0.4)',
+        }],
         elevation: 8,
     },
 

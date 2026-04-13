@@ -36,8 +36,8 @@ export const UnifiedHeader: React.FC<UnifiedHeaderProps> = ({
   const { isDemo, signOut } = useAuth();
 
   const handleExitDemo = async () => {
+    router.replace('/(auth)/demo');
     await signOut();
-    router.replace('/');
   };
 
   // Material Dark tokens

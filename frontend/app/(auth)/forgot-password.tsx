@@ -440,6 +440,12 @@ export default function ForgotPassword() {
                     shadowOffset: { width: 0, height: 24 },
                     shadowOpacity: 0.5,
                     shadowRadius: 48,
+                    boxShadow: [{
+                      offsetX: 0,
+                      offsetY: 24,
+                      blurRadius: 48,
+                      color: "rgba(0,0,0,0.5)",
+                    }],
                   }),
                 } as any}
               >
@@ -528,6 +534,12 @@ export default function ForgotPassword() {
                         shadowOffset: { width: 0, height: 10 },
                         shadowOpacity: 0.5,
                         shadowRadius: 20,
+                        boxShadow: [{
+                          offsetX: 0,
+                          offsetY: 10,
+                          blurRadius: 20,
+                          color: "rgba(255, 107, 0, 0.5)",
+                        }],
                         elevation: 8,
                       }),
                     } as any}
