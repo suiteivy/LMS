@@ -66,7 +66,7 @@ export default function MasterInstitutions() {
     const themeColors = {
         bg: isDark ? '#0F0B2E' : '#f8fafc',
         card: isDark ? '#13103A' : '#ffffff',
-        text: isDark ? '#ffffff' : '#0f172a',
+        text: isDark ? '#ffffff' : '#000000',
         subtext: isDark ? '#94a3b8' : '#64748b',
         border: isDark ? 'rgba(255,255,255,0.05)' : '#e2e8f0',
         primary: '#FF6B00'
@@ -400,6 +400,38 @@ export default function MasterInstitutions() {
         }
     };
 
+    const handleDeleteInstitution = (id: string, name: string) => {
+        const msg = `Permanently delete "${name}" and ALL its users? This cannot be undone.`;
+        const doDelete = async () => {
+            try {
+                const { data: { session } } = await supabase.auth.getSession();
+                if (!session) return;
+                const res = await fetch(`${getBackendUrl()}/api/master-admin/institutions/${id}`, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': `Bearer ${session.access_token}` }
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    Toast.show({ type: 'success', text1: 'Deleted', text2: `${name} has been deleted.` });
+                    setInstitutions(prev => prev.filter(i => i.id !== id));
+                } else {
+                    Toast.show({ type: 'error', text1: 'Error', text2: data.error || 'Failed to delete institution' });
+                }
+            } catch (err) {
+                console.error(err);
+                Toast.show({ type: 'error', text1: 'Error', text2: 'Network error' });
+            }
+        };
+        if (Platform.OS === 'web') {
+            if (window.confirm(msg)) doDelete();
+        } else {
+            Alert.alert('Delete Institution', msg, [
+                { text: 'Cancel', style: 'cancel' },
+                { text: 'Delete', style: 'destructive', onPress: doDelete }
+            ]);
+        }
+    };
+
     const handleResetAdminPassword = (userId: string, userName: string) => {
         const handler = async (pass: string) => {
             if (!pass || pass.length < 6) {
@@ -432,6 +464,7 @@ export default function MasterInstitutions() {
             );
         }
     };
+
 
     const renderRequestItem = ({ item }: { item: any }) => {
         const isPending = item.status === 'pending';
@@ -631,6 +664,14 @@ export default function MasterInstitutions() {
                         >
                             <MaterialCommunityIcons name="account-cog" size={16} color="#059669" />
                             <Text style={{ color: '#059669', fontSize: 13, fontWeight: '600' }}>Manage Admins</Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                            onPress={() => handleDeleteInstitution(item.id, item.name)}
+                            style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}
+                        >
+                            <MaterialCommunityIcons name="trash-can-outline" size={16} color="#ef4444" />
+                            <Text style={{ color: '#ef4444', fontSize: 13, fontWeight: '600' }}>Delete</Text>
                         </TouchableOpacity>
                     </View>
                 </View>
@@ -1056,12 +1097,12 @@ export default function MasterInstitutions() {
 
                         <View style={{ marginBottom: 24, gap: 16 }}>
                             {[
-                                { key: 'addon_library', label: 'ðŸ“– Digital Library', sub: 'Enable Library Management' },
-                                { key: 'addon_bursary', label: 'ðŸ¦ Bursary Module', sub: 'Financial tracking & receipts' },
-                                { key: 'addon_messaging', label: 'ðŸ’¬ Messaging Module', sub: 'Announcements & direct chat' },
-                                { key: 'addon_diary', label: 'ðŸ“’ Virtual Diary', sub: 'Class entries & daily reports' },
-                                { key: 'addon_finance', label: 'ðŸ’° Accounting Plus', sub: 'Advanced financial reports' },
-                                { key: 'addon_analytics', label: 'ðŸ“ˆ Performance Analytics', sub: 'Insightful progress tracking' }
+                                { key: 'addon_library', label: 'Digital Library', sub: 'Enable Library Management' },
+                                { key: 'addon_bursary', label: 'Bursary Module', sub: 'Financial tracking & receipts' },
+                                { key: 'addon_messaging', label: 'Messaging Module', sub: 'Announcements & direct chat' },
+                                { key: 'addon_diary', label: 'Virtual Diary', sub: 'Class entries & daily reports' },
+                                { key: 'addon_finance', label: 'Accounting Plus', sub: 'Advanced financial reports' },
+                                { key: 'addon_analytics', label: 'Performance Analytics', sub: 'Insightful progress tracking' }
                             ].map((addon) => (
                                 <TouchableOpacity
                                     key={addon.key}

@@ -262,36 +262,74 @@ exports.enrollInstitution = async (req, res) => {
             return res.status(400).json({ error: authError?.message || "Failed to create admin user." });
         }
 
-        // 3. Upsert the user profile into the public.users table linking them to the institution
+        // 3. INSERT the user profile into public.users — NOT update, there is no row yet.
+        //    This INSERT fires the `handle_user_role_entry` trigger which auto-creates the admins row.
         const { error: profileError } = await adminClient
             .from('users')
-            .update({
+            .insert({
+                id: authUser.user.id,
+                email: admin_email,
+                full_name: finalFullName,
+                first_name: fName,
+                last_name: lName,
                 role: 'admin',
                 institution_id: newInst.id,
                 status: 'approved',
-                full_name: finalFullName,
-                first_name: fName,
-                last_name: lName
-            })
-            .eq('id', authUser.user.id);
+            });
 
         if (profileError) {
-            console.error("Error updating user profile:", profileError);
-            // Clean up the institution and auth user if mapping fails
+            console.error("Error inserting user profile:", profileError);
             await adminClient.from('institutions').delete().eq('id', newInst.id);
             await adminClient.auth.admin.deleteUser(authUser.user.id);
-            return res.status(500).json({ error: "Failed to map new user profile." });
+            return res.status(500).json({ error: "Failed to create user profile: " + profileError.message });
         }
 
         return res.status(201).json({
             message: "Institution and Admin User created successfully.",
             institution_id: newInst.id,
-            user_id: authUser.user.id
+            user_id: authUser.user.id,
+            admin_email
         });
 
     } catch (error) {
         console.error("Platform Admin Enroll Error:", error);
         return res.status(500).json({ error: "Server error during enrollment." });
+    }
+};
+
+/**
+ * Delete an institution and all its associated users
+ */
+exports.deleteInstitution = async (req, res) => {
+    const { id } = req.params;
+    try {
+        const adminClient = getServiceSupabase();
+
+        // 1. Fetch all users in this institution
+        const { data: instUsers } = await adminClient
+            .from('users')
+            .select('id')
+            .eq('institution_id', id);
+
+        // 2. Delete each user from auth (cascade will handle DB rows)
+        if (instUsers && instUsers.length > 0) {
+            for (const u of instUsers) {
+                await adminClient.auth.admin.deleteUser(u.id);
+            }
+        }
+
+        // 3. Delete the institution
+        const { error: instErr } = await adminClient
+            .from('institutions')
+            .delete()
+            .eq('id', id);
+
+        if (instErr) throw instErr;
+
+        return res.status(200).json({ message: "Institution deleted successfully." });
+    } catch (error) {
+        console.error("Error deleting institution:", error);
+        return res.status(500).json({ error: "Failed to delete institution." });
     }
 };
 
@@ -329,40 +367,39 @@ exports.enrollMasterAdmin = async (req, res) => {
             return res.status(400).json({ error: authError?.message || "Failed to create user." });
         }
 
-        // Update the user profile
+        // INSERT into public.users (triggers handle_user_role_entry for master_admin role)
         const { error: profileError } = await adminClient
             .from('users')
-            .update({
+            .insert({
+                id: authUser.user.id,
+                email: email,
+                full_name: finalFullName,
+                first_name: fName,
+                last_name: lName,
                 role: 'master_admin',
                 institution_id: null,
                 status: 'approved',
-                full_name: finalFullName,
-                first_name: fName,
-                last_name: lName
-            })
-            .eq('id', authUser.user.id);
+            });
 
         if (profileError) {
-            console.error("Error updating user profile for master admin:", profileError);
+            console.error("Error inserting user profile for master admin:", profileError);
             await adminClient.auth.admin.deleteUser(authUser.user.id);
-            return res.status(500).json({ error: "Failed to map new master admin profile." });
+            return res.status(500).json({ error: "Failed to create master admin profile." });
         }
 
-        // Insert into platform_admins
+        // Insert into platform_admins — only columns that exist in the table
         const { error: paError } = await adminClient
             .from('platform_admins')
             .insert([{
                 id: authUser.user.id,
                 user_id: authUser.user.id,
                 full_name: finalFullName,
-                first_name: fName,
-                last_name: lName,
                 email: email
             }]);
 
         if (paError) {
             console.error("Error inserting into platform_admins:", paError);
-            // Attempt to gracefully continue
+            // Non-fatal — user is still functional
         }
 
         return res.status(201).json({
@@ -374,6 +411,9 @@ exports.enrollMasterAdmin = async (req, res) => {
         return res.status(500).json({ error: "Server error during master admin enrollment." });
     }
 };
+
+
+
 
 /**
  * Get all support tickets
@@ -616,6 +656,45 @@ exports.getInstitutionAnalytics = async (req, res) => {
     } catch (error) {
         console.error("Error fetching institution analytics:", error);
         res.status(500).json({ error: "Failed to fetch institution analytics" });
+    }
+};
+
+/**
+ * Get all users across all institutions (platform-wide)
+ * Supports: ?role=, &institution_id=, &search=, &page=, &limit=
+ */
+exports.getAllUsers = async (req, res) => {
+    try {
+        const adminClient = getServiceSupabase();
+        const { role, institution_id, search, page = 1, limit = 30 } = req.query;
+
+        const pageNum = Math.max(1, parseInt(page));
+        const pageSize = Math.min(100, parseInt(limit) || 30);
+        const offset = (pageNum - 1) * pageSize;
+
+        let query = adminClient
+            .from('users')
+            .select(`
+                id, first_name, last_name, full_name, email,
+                role, status, created_at, institution_id,
+                institutions:institution_id(name)
+            `)
+            .order('created_at', { ascending: false })
+            .range(offset, offset + pageSize - 1);
+
+        if (role) query = query.eq('role', role);
+        if (institution_id) query = query.eq('institution_id', institution_id);
+        if (search && search.trim()) {
+            query = query.or(`full_name.ilike.%${search.trim()}%,email.ilike.%${search.trim()}%,first_name.ilike.%${search.trim()}%,last_name.ilike.%${search.trim()}%`);
+        }
+
+        const { data, error } = await query;
+        if (error) throw error;
+
+        res.status(200).json({ users: data || [] });
+    } catch (error) {
+        console.error("Error fetching all users:", error);
+        res.status(500).json({ error: "Failed to fetch users" });
     }
 };
 

@@ -84,7 +84,7 @@ const requirePlatformAdmin = async (req, res, next) => {
     const { data: platAdmin } = await supabase
         .from("platform_admins")
         .select("id")
-        .eq("id", req.user.id)
+        .eq("user_id", req.user.id)   // ← user_id is the FK, not id (which is the table's own PK)
         .single();
 
     if (!platAdmin) {

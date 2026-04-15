@@ -21,31 +21,41 @@ const ResourceCard = ({ resource, onDelete }: { resource: Resource; onDelete: (i
         return { icon: File, color: "#9ca3af", bg: "#f3f4f6" };
     };
 
-    const typeInfo = getTypeIcon(resource.type || 'file');
-    const IconComponent = typeInfo.icon;
+    const statusMap: Record<string, { bg: string; text: string; label: string }> = {
+        pending: { bg: '#FEF3C7', text: '#92400E', label: 'Pending Review' },
+        approved: { bg: '#D1FAE5', text: '#065F46', label: 'Approved' },
+        rejected: { bg: '#FEE2E2', text: '#991B1B', label: 'Rejected' },
+    };
+    const statusInfo = statusMap[(resource as any).status || 'approved'] || statusMap.approved;
 
     return (
-        <View className="bg-white p-5 rounded-3xl border border-gray-100 mb-4 flex-row items-center shadow-sm">
-            <View style={{ backgroundColor: typeInfo.bg }} className="w-12 h-12 rounded-2xl items-center justify-center mr-4">
-                <IconComponent size={20} color={typeInfo.color} />
+        <View className="bg-white p-5 rounded-3xl border border-gray-100 mb-4 shadow-sm">
+            <View className="flex-row items-center">
+                <View style={{ backgroundColor: typeInfo.bg }} className="w-12 h-12 rounded-2xl items-center justify-center mr-4">
+                    <IconComponent size={20} color={typeInfo.color} />
+                </View>
+                <View className="flex-1">
+                    <Text className="text-gray-900 font-bold text-base leading-tight" numberOfLines={1}>{resource.title}</Text>
+                    <Text className="text-gray-400 text-[10px] font-bold uppercase tracking-wider mt-1">
+                        {resource.Subject_title || "Unknown"} • {resource.type}
+                    </Text>
+                </View>
+                <View className="flex-row gap-2">
+                    <TouchableOpacity className="w-10 h-10 bg-gray-50 rounded-xl items-center justify-center" onPress={() => Alert.alert("Download", `Opening ${resource.url}`)}>
+                        <Download size={18} color="#6B7280" />
+                    </TouchableOpacity>
+                    <TouchableOpacity className="w-10 h-10 bg-red-50 rounded-xl items-center justify-center" onPress={() => onDelete(resource.id)}>
+                        <Trash2 size={18} color="#ef4444" />
+                    </TouchableOpacity>
+                </View>
             </View>
-            <View className="flex-1">
-                <Text className="text-gray-900 font-bold text-base leading-tight" numberOfLines={1}>{resource.title}</Text>
-                <Text className="text-gray-400 text-[10px] font-bold uppercase tracking-wider mt-1">
-                    {resource.Subject_title || "Unknown"} â€¢ {resource.type}
-                </Text>
-            </View>
-            <View className="flex-row gap-2">
-                <TouchableOpacity className="w-10 h-10 bg-gray-50 rounded-xl items-center justify-center" onPress={() => Alert.alert("Download", `Opening ${resource.url}`)}>
-                    <Download size={18} color="#6B7280" />
-                </TouchableOpacity>
-                <TouchableOpacity className="w-10 h-10 bg-red-50 rounded-xl items-center justify-center" onPress={() => onDelete(resource.id)}>
-                    <Trash2 size={18} color="#ef4444" />
-                </TouchableOpacity>
+            <View style={{ backgroundColor: statusInfo.bg, alignSelf: 'flex-start', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, marginTop: 10 }}>
+                <Text style={{ color: statusInfo.text, fontSize: 11, fontWeight: '700' }}>{statusInfo.label}</Text>
             </View>
         </View>
     );
 };
+
 
 export default function ResourcesPage() {
     const { teacherId } = useAuth();

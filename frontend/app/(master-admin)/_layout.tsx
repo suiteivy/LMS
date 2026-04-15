@@ -3,7 +3,7 @@ import { NavItem, WebSidebar } from "@/components/layouts/WebSideBar";
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { Redirect, Slot, Tabs } from "expo-router";
-import { Bell, Building2, CreditCard, Headphones, LayoutDashboard, Settings } from 'lucide-react-native';
+import { Bell, Building2, CreditCard, Headphones, LayoutDashboard, Settings, Users } from 'lucide-react-native';
 import React from 'react';
 import { Platform, useWindowDimensions, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -11,13 +11,14 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 const NAV_ITEMS: NavItem[] = [
     { name: "index", title: "Dashboard", icon: LayoutDashboard, route: "/(master-admin)" },
     { name: "institutions", title: "Institutions", icon: Building2, route: "/(master-admin)/institutions" },
+    { name: "users", title: "All Users", icon: Users, route: "/(master-admin)/users" },
     { name: "payments", title: "Payments", icon: CreditCard, route: "/(master-admin)/payments" },
     { name: "notifications", title: "Notices", icon: Bell, route: "/(master-admin)/notifications" },
     { name: "support", title: "Support", icon: Headphones, route: "/(master-admin)/support" },
     { name: "settings", title: "Settings", icon: Settings, route: "/(master-admin)/settings" },
 ];
 
-const MOBILE_TAB_NAMES = ["settings", "index", "institutions"];
+const MOBILE_TAB_NAMES = ["settings", "index", "institutions", "users"];
 
 const ALL_OTHER = NAV_ITEMS
     .filter(i => !MOBILE_TAB_NAMES.includes(i.name))
@@ -127,6 +128,17 @@ function MasterAdminTabs() {
                     title: "Payments",
                     tabBarIcon: ({ size, color }) => {
                         const Icon = CreditCard as any;
+                        return <View><Icon size={size} color={color} strokeWidth={2} /></View>;
+                    },
+                }}
+            />
+
+            <Tabs.Screen
+                name="users"
+                options={{
+                    title: "Users",
+                    tabBarIcon: ({ size, color }) => {
+                        const Icon = Users as any;
                         return <View><Icon size={size} color={color} strokeWidth={2} /></View>;
                     },
                 }}

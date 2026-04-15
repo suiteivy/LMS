@@ -34,9 +34,10 @@ export default function UsersManagementScreen() {
     const inputBg = isDark ? '#13103A' : '#f9fafb';
     const inputBorder = isDark ? 'rgba(255,255,255,0.1)' : '#f3f4f6';
 
-    const { isDemo } = useAuth();
+    const { isDemo, profile } = useAuth();
+    const institutionId = profile?.institution_id;
 
-    useEffect(() => { fetchUsers(); }, [activeFilter, isDemo]);
+    useEffect(() => { fetchUsers(); }, [activeFilter, isDemo, institutionId]);
 
     const fetchUsers = async () => {
         try {
@@ -65,6 +66,9 @@ export default function UsersManagementScreen() {
                 .from('users')
                 .select(`id, first_name, last_name, email, role, created_at, students(id), teachers(id), admins(id), parents(id)`)
                 .order('created_at', { ascending: false });
+
+            // Scope to current institution
+            if (institutionId) query = query.eq('institution_id', institutionId);
             if (activeFilter !== 'all') query = query.eq('role', activeFilter);
 
             const { data, error } = await query;

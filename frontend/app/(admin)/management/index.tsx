@@ -11,7 +11,8 @@ import {
     ClipboardList,
     DoorClosedLocked,
     FileText,
-    Shield
+    Shield,
+    Upload
 } from 'lucide-react-native';
 import React from "react";
 import { ScrollView, Text, TouchableOpacity, View } from 'react-native';
@@ -74,6 +75,15 @@ export default function AdminManagement() {
     const getStatValue = (label: string) => stats.find(s => s.label === label)?.value || "0";
 
     const features = [
+        {
+            icon: Upload,
+            title: "Materials Review",
+            description: "Approve or reject teacher-uploaded resources",
+            color: "#FF6B00",
+            bgColor: "#fff0e6",
+            darkBgColor: "#3d1a00",
+            route: "/(admin)/management/materials"
+        },
         {
             icon: BarChart3,
             title: "System Analytics",
