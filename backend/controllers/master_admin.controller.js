@@ -165,6 +165,46 @@ exports.updateInstitutionDetails = async (req, res) => {
     }
 };
 
+/**
+ * Specifically update subscription status and plan
+ */
+exports.updateSubscriptionStatus = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { 
+            subscription_status, 
+            subscription_plan, 
+            subscription_cycle,
+            trial_end_date 
+        } = req.body;
+
+        const adminClient = getServiceSupabase();
+        
+        const updates = { 
+            updated_at: new Date().toISOString() 
+        };
+        
+        if (subscription_status !== undefined) updates.subscription_status = subscription_status;
+        if (subscription_plan !== undefined) updates.subscription_plan = subscription_plan;
+        if (subscription_cycle !== undefined) updates.subscription_cycle = subscription_cycle;
+        if (trial_end_date !== undefined) updates.trial_end_date = trial_end_date;
+
+        const { data: updatedInst, error } = await adminClient
+            .from('institutions')
+            .update(updates)
+            .eq('id', id)
+            .select()
+            .single();
+
+        if (error) throw error;
+
+        res.status(200).json({ message: "Subscription updated successfully", institution: updatedInst });
+    } catch (error) {
+        console.error("Error updating subscription status:", error);
+        res.status(500).json({ error: "Failed to update subscription status" });
+    }
+};
+
 exports.notifyTarget = async (req, res) => {
     const { title, message, target } = req.body;
     // Target could be 'all_admins' or a specific institution array
