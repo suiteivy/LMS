@@ -1,4 +1,5 @@
 import { DatePicker } from '@/components/common/DatePicker';
+import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { supabase } from '@/libs/supabase';
 import { api } from '@/services/api';
@@ -80,6 +81,7 @@ export default function CreateUserScreen() {
     const router = useRouter();
     const insets = useSafeAreaInsets();
     const { isDark } = useTheme();
+    const { profile } = useAuth();
 
     const [step, setStep] = useState<Step>(0);
     const [form, setForm] = useState<FormData>({ ...initialFormData });
@@ -91,13 +93,25 @@ export default function CreateUserScreen() {
     const [students, setStudents] = useState<any[]>([]);
     const [studentSearch, setStudentSearch] = useState('');
 
-    useEffect(() => { loadLookupData(); }, []);
+    useEffect(() => {
+        if (profile) loadLookupData();
+    }, [profile?.institution_id]);
 
     const loadLookupData = async () => {
+        let classQuery = supabase.from('classes').select('id, name, grade_level');
+        let subjectQuery = supabase.from('subjects').select('id, title, teacher_id');
+        let studentQuery = supabase.from('students').select('id, user_id, grade_level, users!inner(first_name, last_name, full_name, institution_id)') as any;
+
+        if (profile?.institution_id) {
+            classQuery = classQuery.eq('institution_id', profile.institution_id);
+            subjectQuery = subjectQuery.eq('institution_id', profile.institution_id);
+            studentQuery = studentQuery.eq('users.institution_id', profile.institution_id);
+        }
+
         const [classRes, subjectRes, studentRes] = await Promise.all([
-            supabase.from('classes').select('id, name, grade_level'),
-            supabase.from('subjects').select('id, title, teacher_id'),
-            supabase.from('students').select('id, user_id, grade_level, users:user_id(first_name, last_name, full_name)') as any,
+            classQuery,
+            subjectQuery,
+            studentQuery
         ]);
         if (classRes.data) setClasses(classRes.data);
         if (subjectRes.data) setSubjects(subjectRes.data);
@@ -136,7 +150,13 @@ export default function CreateUserScreen() {
         }
         setLoading(true);
         try {
-            const response = await api.post('/auth/enroll-user', { ...form, parent_info: form.create_parent ? form.parent_info : undefined });
+            const payload: any = { ...form, institution_id: profile?.institution_id || form.institution_id };
+            if (form.create_parent) {
+                payload.parent_info = form.parent_info;
+            } else {
+                delete payload.parent_info;
+            }
+            const response = await api.post('/auth/enroll-user', payload);
             setResult(response.data);
             setStep(4);
         } catch (err: any) {
@@ -331,7 +351,7 @@ export default function CreateUserScreen() {
         const unassignedSubjects = subjects.filter(s => !s.teacher_id);
         return (
             <View>
-                <Text style={{ fontSize: 18, fontWeight: '700', color: textPrimary, marginBottom: 16 }}>ðŸ‘¨â€ðŸ« Teacher Details</Text>
+                <Text style={{ fontSize: 18, fontWeight: '700', color: textPrimary, marginBottom: 16 }}> Teacher Details</Text>
                 <RenderInput label="Department" value={form.department} onChangeText={(v: string) => updateFormSanitized('department', v)} placeholder="e.g. Mathematics" isDark={isDark} textPrimary={textPrimary} textSecondary={textSecondary} inputBg={inputBg} inputBorder={inputBorder} />
                 <RenderInput label="Qualification" value={form.qualification} onChangeText={(v: string) => updateFormSanitized('qualification', v)} placeholder="e.g. B.Ed Mathematics" isDark={isDark} textPrimary={textPrimary} textSecondary={textSecondary} inputBg={inputBg} inputBorder={inputBorder} />
                 <RenderInput label="Specialization" value={form.specialization} onChangeText={(v: string) => updateFormSanitized('specialization', v)} placeholder="e.g. Applied Mathematics" isDark={isDark} textPrimary={textPrimary} textSecondary={textSecondary} inputBg={inputBg} inputBorder={inputBorder} />
@@ -359,7 +379,7 @@ export default function CreateUserScreen() {
         });
         return (
             <View>
-                <Text style={{ fontSize: 18, fontWeight: '700', color: textPrimary, marginBottom: 16 }}>ðŸ‘¨â€ðŸ‘©â€ðŸ‘§ Parent Details</Text>
+                <Text style={{ fontSize: 18, fontWeight: '700', color: textPrimary, marginBottom: 16 }}> Parent Details</Text>
                 <RenderInput label="Occupation" value={form.occupation} onChangeText={(v: string) => updateFormSanitized('occupation', v)} placeholder="e.g. Engineer" isDark={isDark} textPrimary={textPrimary} textSecondary={textSecondary} inputBg={inputBg} inputBorder={inputBorder} />
                 <RenderInput label="Home Address" value={form.parent_address} onChangeText={(v: string) => updateFormSanitized('parent_address', v)} placeholder="Physical address" isDark={isDark} textPrimary={textPrimary} textSecondary={textSecondary} inputBg={inputBg} inputBorder={inputBorder} />
                 <View style={{ marginBottom: 16 }}>
@@ -545,21 +565,30 @@ export default function CreateUserScreen() {
                             </View>
                             <Text style={{ fontWeight: '700', color: textPrimary }}>PARENT CREDENTIALS</Text>
                         </View>
-                        {[{ label: 'ID', value: result.parentResult.customId }, { label: 'Email', value: result.parentResult.email }].map(row => (
-                            <View key={row.label} style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: border }}>
-                                <Text style={{ color: textSecondary }}>{row.label}</Text>
-                                <Text style={{ fontWeight: '700', color: textPrimary }}>{row.value}</Text>
+                        {result.parentResult.error ? (
+                            <View style={{ backgroundColor: isDark ? '#450a0a' : '#fef2f2', padding: 12, borderRadius: 8, marginTop: 8 }}>
+                                <Text style={{ color: '#ef4444', fontWeight: '600' }}>Error creating parent:</Text>
+                                <Text style={{ color: '#ef4444', fontSize: 13, marginTop: 4 }}>{result.parentResult.error}</Text>
                             </View>
-                        ))}
-                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 8 }}>
-                            <Text style={{ color: textSecondary }}>Temp Password</Text>
-                            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                                <Text style={{ fontFamily: 'monospace', fontWeight: '700', fontSize: 17, color: '#3b82f6', marginRight: 8 }}>{result.parentResult.tempPassword}</Text>
-                                <TouchableOpacity onPress={() => copyToClipboard(result.parentResult.tempPassword)}>
-                                    <Ionicons name="copy-outline" size={20} color={textSecondary} />
-                                </TouchableOpacity>
-                            </View>
-                        </View>
+                        ) : (
+                            <>
+                                {[{ label: 'ID', value: result.parentResult.customId || 'N/A' }, { label: 'Email', value: result.parentResult.email }].map(row => (
+                                    <View key={row.label} style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: border }}>
+                                        <Text style={{ color: textSecondary }}>{row.label}</Text>
+                                        <Text style={{ fontWeight: '700', color: textPrimary }}>{row.value}</Text>
+                                    </View>
+                                ))}
+                                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 8 }}>
+                                    <Text style={{ color: textSecondary }}>Temp Password</Text>
+                                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                                        <Text style={{ fontFamily: 'monospace', fontWeight: '700', fontSize: 17, color: '#3b82f6', marginRight: 8 }}>{result.parentResult.tempPassword}</Text>
+                                        <TouchableOpacity onPress={() => copyToClipboard(result.parentResult.tempPassword)}>
+                                            <Ionicons name="copy-outline" size={20} color={textSecondary} />
+                                        </TouchableOpacity>
+                                    </View>
+                                </View>
+                            </>
+                        )}
                     </View>
                 )}
             </View>

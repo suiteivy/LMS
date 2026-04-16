@@ -34,7 +34,7 @@ import Reanimated from "react-native-reanimated";
 const IconIonicons = Ionicons as any;
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
-// â”€â”€â”€ Floating animated orb â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+//  Floating animated orb 
 const FloatingOrb = ({
   size,
   color,
@@ -95,7 +95,7 @@ const FloatingOrb = ({
   );
 };
 
-// â”€â”€â”€ Animated input field â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+//  Animated input field 
 const AnimatedInput = ({
   icon,
   placeholder,
@@ -249,7 +249,7 @@ const AnimatedInput = ({
   );
 };
 
-// â”€â”€â”€ Password Strength Bar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+//  Password Strength Bar 
 const PasswordStrength = ({ password }: { password: string }) => {
   if (!password) return null;
 
@@ -294,7 +294,7 @@ const PasswordStrength = ({ password }: { password: string }) => {
   );
 };
 
-// â”€â”€â”€ Main component â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+//  Main component 
 interface FormData {
   email: string;
   password: string;
@@ -308,7 +308,7 @@ export default function SignIn() {
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const { signIn, loading: isGlobalLoading } = useAuth();
 
-  // â”€â”€ Entrance animations â”€â”€
+  //  Entrance animations 
   const cardFade = useRef(new Animated.Value(0)).current;
   const cardSlide = useRef(new Animated.Value(50)).current;
   const logoSpin = useRef(new Animated.Value(0)).current;
@@ -469,13 +469,13 @@ export default function SignIn() {
   return (
     <>
       <View style={{ flex: 1, backgroundColor: "#0F0B2E" }}>
-        {/* â”€â”€â”€ Animated background orbs â”€â”€â”€ */}
+        {/*  Animated background orbs  */}
         <FloatingOrb size={320} color="rgba(255,107,0,0.09)" top="-5%" left="-15%" duration={5000} delay={0} />
         <FloatingOrb size={260} color="rgba(99,102,241,0.12)" top="55%" left="60%" duration={6500} delay={500} />
         <FloatingOrb size={200} color="rgba(236,72,153,0.08)" top="30%" left="70%" duration={4500} delay={1000} />
         <FloatingOrb size={180} color="rgba(59,130,246,0.08)" top="70%" left="-5%" duration={7000} delay={300} />
 
-        {/* â”€â”€â”€ Success toast â”€â”€â”€ */}
+        {/*  Success toast  */}
         <Animated.View
           pointerEvents="none"
           style={{
@@ -529,7 +529,7 @@ export default function SignIn() {
               showsVerticalScrollIndicator={false}
               keyboardShouldPersistTaps="handled"
             >
-              {/* â”€â”€â”€ Card â”€â”€â”€ */}
+              {/*  Card  */}
               <Animated.View
                 style={{
                   opacity: cardFade,
@@ -647,7 +647,7 @@ export default function SignIn() {
                   <AnimatedInput
                     label="Password"
                     icon="lock-closed-outline"
-                    placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢"
+                    placeholder="••••••••"
                     value={formData.password}
                     onChangeText={(v: string) => handleInputChange("password", v)}
                     secureTextEntry={!showPassword}

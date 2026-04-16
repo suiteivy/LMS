@@ -186,7 +186,7 @@ export default function Demo() {
         showsVerticalScrollIndicator={false}
       >
         <View style={{ paddingHorizontal: 24, paddingTop: 8, paddingBottom: 24 }}>
-          {/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• HEADER â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
+          {/*  HEADER  */}
           <Animated.View style={{
             opacity: fadeIn,
             transform: [{ translateY: slideUp }],
@@ -240,7 +240,7 @@ export default function Demo() {
             </Text>
           </Animated.View>
 
-          {/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• ROLE CARDS â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
+          {/*  ROLE CARDS  */}
           <View style={{ gap: 16 }}>
             {ROLES.map((role, index) => {
               const cardScale = cardAnims[index].interpolate({
@@ -322,7 +322,7 @@ export default function Demo() {
             })}
           </View>
 
-          {/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• INFO FOOTER â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
+          {/*  INFO FOOTER  */}
           <View style={{
             marginTop: 32, alignItems: "center",
             backgroundColor: "rgba(255,255,255,0.03)",
@@ -350,7 +350,7 @@ export default function Demo() {
         </View>
       </ScrollView>
 
-      {/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• ROLE DETAIL MODAL â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
+      {/*  ROLE DETAIL MODAL  */}
       <Modal visible={modalVisible} animationType="none" transparent={true} statusBarTranslucent>
         <View style={{
           flex: 1, justifyContent: "flex-end",

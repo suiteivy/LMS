@@ -107,11 +107,17 @@ export default function AdminDashboard() {
         return;
       }
 
-      const { data, error } = await supabase
+      let query = supabase
         .from("users")
         .select(`*, students(id), teachers(id), admins(id)`)
         .order("created_at", { ascending: false })
         .limit(5);
+
+      if (profile?.institution_id) {
+          query = query.eq('institution_id', profile.institution_id);
+      }
+
+      const { data, error } = await query;
 
       if (error) throw error;
 

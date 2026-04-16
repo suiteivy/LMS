@@ -1,6 +1,7 @@
 import { DatePicker } from '@/components/common/DatePicker';
 import { UserCard } from '@/components/common/UserCard';
 import { useTheme } from '@/contexts/ThemeContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/libs/supabase';
 import { api } from '@/services/api';
 import { Database } from '@/types/database';
@@ -30,6 +31,7 @@ export default function UserDetailsScreen() {
     const router = useRouter();
     const insets = useSafeAreaInsets();
     const { isDark } = useTheme();
+    const { profile } = useAuth();
 
     // Theme shorthands
     const bg = isDark ? '#121212' : '#f9fafb';
@@ -92,14 +94,31 @@ export default function UserDetailsScreen() {
         avatar: user.avatar_url || undefined
     } : null;
 
-    useEffect(() => { if (id) { fetchUserDetails(); loadLookupData(); } }, [id]);
+    useEffect(() => { 
+        if (id) { 
+            fetchUserDetails(); 
+            if (profile) loadLookupData(); 
+        } 
+    }, [id, profile?.institution_id]);
 
     const loadLookupData = async () => {
+        let classQuery = supabase.from('classes').select('id, name').order('name');
+        let subjectQuery = supabase.from('subjects').select('id, title').order('title');
+        let studentQuery = supabase.from('students').select('id, user_id, users!inner(first_name, last_name, institution_id)').order('id') as any;
+        let parentQuery = supabase.from('parents').select('id, user_id, users!inner(first_name, last_name, institution_id)').order('id') as any;
+
+        if (profile?.institution_id) {
+            classQuery = classQuery.eq('institution_id', profile.institution_id);
+            subjectQuery = subjectQuery.eq('institution_id', profile.institution_id);
+            studentQuery = studentQuery.eq('users.institution_id', profile.institution_id);
+            parentQuery = parentQuery.eq('users.institution_id', profile.institution_id);
+        }
+
         const [classRes, subjectRes, studentRes, parentRes] = await Promise.all([
-            supabase.from('classes').select('id, name').order('name'),
-            supabase.from('subjects').select('id, title').order('title'),
-            supabase.from('students').select('id, user_id, users:user_id(first_name, last_name)').order('id'),
-            supabase.from('parents').select('id, user_id, users:user_id(first_name, last_name)').order('id'),
+            classQuery,
+            subjectQuery,
+            studentQuery,
+            parentQuery
         ]);
         if (classRes.data) setClasses(classRes.data);
         if (subjectRes.data) setAllSubjects(subjectRes.data);

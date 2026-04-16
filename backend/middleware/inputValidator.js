@@ -174,8 +174,9 @@ const schemas = {
     },
 
     enrollUser: {
-        email: { ...commonRules.email, required: true },
-        full_name: { ...commonRules.name, required: true },
+        email: { ...commonRules.email, required: false },
+        first_name: { ...commonRules.name, required: true },
+        last_name: { ...commonRules.name, required: false },
         role: {
             type: 'string',
             required: true,
@@ -193,10 +194,11 @@ const schemas = {
     },
 
     updateUser: {
-        full_name: commonRules.name,
-        phone: commonRules.phone,
-        gender: { type: 'string', enum: ['male', 'female', 'other'] },
-        address: { type: 'string', maxLength: 500 }
+        first_name: { ...commonRules.name, required: false },
+        last_name: { ...commonRules.name, required: false },
+        phone: { ...commonRules.phone, required: false },
+        gender: { type: 'string', enum: ['male', 'female', 'other'], required: false },
+        address: { type: 'string', maxLength: 500, required: false }
     },
 
     idParam: {

@@ -11,7 +11,7 @@ export const useDashboardStats = () => {
     
     const { formatKES, formatUSD, rates } = useCurrency();
 
-    const { isInitializing, session, isDemo } = useAuth(); // Import useAuth to check session status
+    const { isInitializing, session, isDemo, profile } = useAuth(); // Import useAuth to check session status
 
     const fetchStats = async () => {
         setLoading(true);
@@ -43,15 +43,25 @@ export const useDashboardStats = () => {
             let subjectCount = 0;
             let totalRevenue = 0;
 
+            let studentQuery = supabase.from('users').select('*', { count: 'exact', head: true }).eq('role', 'student');
+            let teacherQuery = supabase.from('users').select('*', { count: 'exact', head: true }).eq('role', 'teacher');
+            let subjectQuery = supabase.from('subjects').select('*', { count: 'exact', head: true });
+
+            if (profile?.institution_id) {
+                studentQuery = studentQuery.eq('institution_id', profile.institution_id);
+                teacherQuery = teacherQuery.eq('institution_id', profile.institution_id);
+                subjectQuery = subjectQuery.eq('institution_id', profile.institution_id);
+            }
+
             // Fetch Counts
             const [
                 { count: students },
                 { count: teachers },
                 { count: subjects }
             ] = await Promise.all([
-                supabase.from('users').select('*', { count: 'exact', head: true }).eq('role', 'student'),
-                supabase.from('users').select('*', { count: 'exact', head: true }).eq('role', 'teacher'),
-                supabase.from('subjects').select('*', { count: 'exact', head: true })
+                studentQuery,
+                teacherQuery,
+                subjectQuery
             ]);
 
             studentCount = students || 0;
@@ -62,12 +72,18 @@ export const useDashboardStats = () => {
             const thirtyDaysAgo = new Date();
             thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-            const { data: transactions, error: transError } = await supabase
+            let transQuery = supabase
                 .from('financial_transactions')
                 .select('amount, date')
                 .eq('type', 'fee_payment')
                 .eq('direction', 'inflow')
                 .gte('date', thirtyDaysAgo.toISOString().split('T')[0]);
+
+            if (profile?.institution_id) {
+                transQuery = transQuery.eq('institution_id', profile.institution_id);
+            }
+
+            const { data: transactions, error: transError } = await transQuery;
 
             if (transError) {
                 console.error('Error fetching transactions:', transError);

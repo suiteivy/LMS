@@ -33,7 +33,7 @@ import Reanimated from "react-native-reanimated";
 const IconIonicons = Ionicons as any;
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
-// â”€â”€â”€ Floating animated orb â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+//  Floating animated orb 
 const FloatingOrb = ({
   size,
   color,
@@ -94,7 +94,7 @@ const FloatingOrb = ({
   );
 };
 
-// â”€â”€â”€ Animated input field â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+//  Animated input field 
 const AnimatedInput = ({
   icon,
   placeholder,
@@ -251,7 +251,7 @@ export default function ForgotPassword() {
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [isHierarchical, setIsHierarchical] = useState(false);
 
-  // â”€â”€ Entrance animations â”€â”€
+  //  Entrance animations 
   const cardFade = useRef(new Animated.Value(0)).current;
   const cardSlide = useRef(new Animated.Value(50)).current;
   const logoPulse = useRef(new Animated.Value(1)).current;

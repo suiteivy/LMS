@@ -281,20 +281,37 @@ exports.enrollUser = async (req, res) => {
       }
     }
 
-    // 0.5 Generate custom email if institution has a domain and role permits
+    // 0.5 Generate custom email if not provided
     let finalEmail = email;
-    if (targetInstitutionId) {
-      const { data: inst } = await supabase.from('institutions').select('email_domain').eq('id', targetInstitutionId).single();
-      if (inst?.email_domain && ['student', 'teacher', 'admin'].includes(role)) {
-        // Automatically generate: first.last@domain.edu
-        const cleanF = fName.toLowerCase().replace(/[^a-z0-9]/g, '');
-        const cleanL = (lName || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-        
-        if (cleanF && cleanL) {
-          finalEmail = `${cleanF}.${cleanL}@${inst.email_domain}`;
-        } else if (cleanF) {
-          finalEmail = `${cleanF}@${inst.email_domain}`;
+    if (!finalEmail) {
+      if (targetInstitutionId) {
+        const { data: inst } = await supabase.from('institutions').select('email_domain').eq('id', targetInstitutionId).single();
+        if (inst?.email_domain && ['student', 'teacher', 'admin'].includes(role)) {
+          // Automatically generate: first.last@domain.edu
+          const cleanF = fName.toLowerCase().replace(/[^a-z0-9]/g, '');
+          const cleanL = (lName || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+          
+          if (cleanF && cleanL) {
+            finalEmail = `${cleanF}.${cleanL}@${inst.email_domain}`;
+          } else if (cleanF) {
+            finalEmail = `${cleanF}@${inst.email_domain}`;
+          }
+        } else if (!inst?.email_domain) {
+          return res.status(400).json({
+            error: "An email is required. Auto-generation failed because this institution does not have a configured email domain.",
+            code: 'MISSING_EMAIL_DOMAIN'
+          });
+        } else {
+           return res.status(400).json({
+            error: `Email generation is not supported for role: ${role}. Please provide an email manually.`,
+            code: 'EMAIL_REQUIRED_FOR_ROLE'
+          });
         }
+      } else {
+        return res.status(400).json({
+          error: "Email is required.",
+          code: 'MISSING_EMAIL'
+        });
       }
     }
 
@@ -369,26 +386,28 @@ exports.enrollUser = async (req, res) => {
       }
 
       // Optional Atomic Parent Creation
-      if (parent_info && parent_info.email && parent_info.full_name) {
-        const parentTempPass = generateTempPassword();
+      if (parent_info && parent_info.email && (parent_info.full_name || parent_info.first_name)) {
+        try {
+          const parentTempPass = generateTempPassword();
 
-        // Create Parent Auth
-        const { data: pAuthData, error: pAuthError } = await supabase.auth.admin.createUser({
-          email: parent_info.email,
-          password: parentTempPass,
-          email_confirm: true,
-          user_metadata: { 
-            full_name: `${parent_info.first_name || ''} ${parent_info.last_name || ''}`.trim(),
-            first_name: parent_info.first_name,
-            last_name: parent_info.last_name 
-          },
-        });
+          // Create Parent Auth
+          const { data: pAuthData, error: pAuthError } = await supabase.auth.admin.createUser({
+            email: parent_info.email,
+            password: parentTempPass,
+            email_confirm: true,
+            user_metadata: { 
+              full_name: `${parent_info.first_name || ''} ${parent_info.last_name || ''}`.trim(),
+              first_name: parent_info.first_name || '',
+              last_name: parent_info.last_name || ''
+            },
+          });
 
-        if (!pAuthError) {
+          if (pAuthError) throw pAuthError;
+
           const pUid = pAuthData.user.id;
 
           // Create Parent User
-          await supabase.from("users").insert({
+          const { error: pUserError } = await supabase.from("users").insert({
             id: pUid,
             email: parent_info.email,
             full_name: `${parent_info.first_name || ''} ${parent_info.last_name || ''}`.trim(),
@@ -399,23 +418,38 @@ exports.enrollUser = async (req, res) => {
             institution_id: targetInstitutionId,
           });
 
-          await new Promise(resolve => setTimeout(resolve, 500));
+          if (pUserError) throw pUserError;
+
+          // Aggressive retry for trigger creation (up to 2 seconds)
+          let pData = null;
+          for (let i = 0; i < 4; i++) {
+            await new Promise(resolve => setTimeout(resolve, 500));
+            const { data } = await supabase.from('parents').select('id').eq('user_id', pUid).maybeSingle();
+            if (data) {
+              pData = data;
+              break;
+            }
+          }
+
+          if (!pData) {
+             throw new Error("The 'parents' record was not created fast enough by the database trigger.");
+          }
 
           // Update Parent role entry
           await supabase.from('parents').update({
             occupation: parent_info.occupation || null,
             address: parent_info.address || null,
-          }).eq('user_id', pUid);
+          }).eq('id', pData.id);
 
-          const { data: pData } = await supabase.from('parents').select('id').eq('user_id', pUid).single();
-
-          if (pData && customId) {
+          if (customId) {
             // Link parent to student
-            await supabase.from('parent_students').insert({
+            const { error: linkErr } = await supabase.from('parent_students').insert({
               parent_id: pData.id,
               student_id: customId,
               relationship: 'guardian'
             });
+
+            if (linkErr) throw linkErr;
 
             parentResult = {
               email: parent_info.email,
@@ -424,8 +458,7 @@ exports.enrollUser = async (req, res) => {
               full_name: `${parent_info.first_name || ''} ${parent_info.last_name || ''}`.trim()
             };
 
-            // Send Enrollment Email to Parent
-            // We do this asynchronously to avoid blocking the main enrollment response
+            // Send Enrollment Email to Parent (async)
             sendEmail({
               to: parent_info.email,
               subject: "Welcome to Cloudora LMS - Parent Account Details",
@@ -457,7 +490,12 @@ exports.enrollUser = async (req, res) => {
               `,
               text: `Dear ${parent_info.first_name || 'Parent'},\n\nYour parent account for Cloudora LMS has been created.\n\nLogin Credentials:\nEmail: ${parent_info.email}\nTemporary Password: ${parentTempPass}\n\nPlease change your password after your first login.`
             }).catch(e => console.error("Failed to send parent enrollment email:", e));
+          } else {
+             throw new Error("Missing Student ID to link with Parent");
           }
+        } catch (parentError) {
+          console.error("============= [ATOMIC PARENT CREATION ERROR] =============", parentError);
+          parentResult = { error: parentError.message || 'Unknown error occurred while creating parent account' };
         }
       }
     }
@@ -595,6 +633,16 @@ exports.adminUpdateUser = async (req, res) => {
     if (address !== undefined) userUpdates.address = address || null;
     if (institution_id !== undefined) userUpdates.institution_id = institution_id || req.institution_id;
     if (avatar_url !== undefined) userUpdates.avatar_url = avatar_url || null;
+
+    // Derived full_name if first_name and last_name are provided but full_name is not
+    if (full_name === undefined && (first_name !== undefined || last_name !== undefined)) {
+       // Best effort to construct it from the request body
+       const fName = first_name !== undefined ? (first_name || '') : '';
+       const lName = last_name !== undefined ? (last_name || '') : '';
+       if (fName || lName) {
+           userUpdates.full_name = `${fName} ${lName}`.trim();
+       }
+    }
 
     if (Object.keys(userUpdates).length > 0) {
       const { error } = await supabase.from('users').update(userUpdates).eq('id', id);

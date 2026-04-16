@@ -21,6 +21,7 @@ interface AuthContextType {
   subscriptionStatus: string | null
   subscriptionPlan: string | null
   trialEndDate: string | null
+  institutionName: string | null
   isMain: boolean
   isPlatformAdmin: boolean
   loading: boolean
@@ -78,6 +79,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [subscriptionStatus, setSubscriptionStatus] = useState<string | null>(null)
   const [subscriptionPlan, setSubscriptionPlan] = useState<string | null>(null)
   const [trialEndDate, setTrialEndDate] = useState<string | null>(null)
+  const [institutionName, setInstitutionName] = useState<string | null>(null)
   const [isMain, setIsMain] = useState(false)
   const [isPlatformAdmin, setIsPlatformAdmin] = useState(false)
   const [addonFlags, setAddonFlags] = useState({
@@ -148,6 +150,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setSubscriptionStatus(null);
       setSubscriptionPlan(null);
       setTrialEndDate(null);
+      setInstitutionName(null);
       setIsMain(false);
       setIsPlatformAdmin(false);
       setAddonFlags({ messaging: false, library: false, finance: false, analytics: false, bursary: false, attendance: false, diary: false });
@@ -263,7 +266,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setIsProfileLoading(true);
       const { data, error } = await supabase
         .from('users')
-        .select('*, students(id), teachers(id), admins(id), parents(id), institutions(subscription_status, subscription_plan, trial_end_date, addon_messaging, addon_library, addon_diary, addon_finance, addon_analytics, addon_bursary, addon_attendance, custom_student_limit), platform_admins(id)')
+        .select('*, students(id), teachers(id), admins(id), parents(id), institutions(name, subscription_status, subscription_plan, trial_end_date, addon_messaging, addon_library, addon_diary, addon_finance, addon_analytics, addon_bursary, addon_attendance, custom_student_limit), platform_admins(id)')
         .eq('id', userId)
         .single()
 
@@ -278,11 +281,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       let newSubscriptionStatus = null;
       let newSubscriptionPlan = null;
       let newTrialEndDate = null;
+      let newInstitutionName = null;
 
       if (userData.institutions) {
         newSubscriptionStatus = userData.institutions.subscription_status || null;
         newSubscriptionPlan = userData.institutions.subscription_plan || null;
         newTrialEndDate = userData.institutions.trial_end_date || null;
+        newInstitutionName = userData.institutions.name || null;
         setAddonFlags({
           messaging: !!userData.institutions.addon_messaging,
           library: !!userData.institutions.addon_library,
@@ -320,6 +325,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setSubscriptionStatus(newSubscriptionStatus);
       setSubscriptionPlan(newSubscriptionPlan);
       setTrialEndDate(newTrialEndDate);
+      setInstitutionName(newInstitutionName);
       setIsPlatformAdmin(isPlatformAdminFlag);
       setIsMain(isMainFlag);
       setRoleInfo(newRoleInfo);
@@ -449,6 +455,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         setSubscriptionStatus(null);
         setSubscriptionPlan(null);
         setTrialEndDate(null);
+        setInstitutionName(null);
         setIsMain(false);
         setIsPlatformAdmin(false);
         setAddonFlags({ messaging: false, library: false, finance: false, analytics: false, bursary: false, attendance: false, diary: false });
@@ -487,7 +494,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     adminId: roleInfo.adminId,
     parentId: roleInfo.parentId,
     displayId: roleInfo.displayId,
-    subscriptionStatus, subscriptionPlan, trialEndDate,
+    subscriptionStatus, subscriptionPlan, trialEndDate, institutionName,
     loading, isInitializing, isNavReady, isProfileLoading,
     signIn: handleSignIn,
     setLoading,
@@ -510,7 +517,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     addonDiary: addonFlags.diary,
     customStudentLimit,
     getRoleRedirect,
-  }), [session, user, profile, roleInfo, subscriptionStatus, subscriptionPlan, trialEndDate, loading, isInitializing, isNavReady, isProfileLoading, isDemo, isMain, isPlatformAdmin, addonFlags, customStudentLimit]);
+  }), [session, user, profile, roleInfo, subscriptionStatus, subscriptionPlan, trialEndDate, institutionName, loading, isInitializing, isNavReady, isProfileLoading, isDemo, isMain, isPlatformAdmin, addonFlags, customStudentLimit]);
 
   return (
     <AuthContext.Provider value={value}>

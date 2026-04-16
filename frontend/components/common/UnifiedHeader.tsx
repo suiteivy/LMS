@@ -33,7 +33,7 @@ export const UnifiedHeader: React.FC<UnifiedHeaderProps> = ({
   const insets = useSafeAreaInsets();
   const { setShowNotifications, unreadCount } = useNotifications();
   const { isDark } = useTheme();
-  const { isDemo, signOut } = useAuth();
+  const { isDemo, signOut, institutionName } = useAuth();
 
   const handleExitDemo = async () => {
     router.replace('/(auth)/demo');
@@ -165,6 +165,27 @@ export const UnifiedHeader: React.FC<UnifiedHeaderProps> = ({
                 }} />
               )}
             </TouchableOpacity>
+          )}
+
+          {institutionName && (
+            <View style={{
+              backgroundColor: isDark ? 'rgba(255, 105, 0, 0.12)' : '#fff7ed',
+              paddingHorizontal: 12,
+              paddingVertical: 8,
+              borderRadius: 16,
+              borderWidth: 1,
+              borderColor: isDark ? 'rgba(255, 105, 0, 0.2)' : '#ffedd5',
+            }}>
+              <Text style={{
+                fontWeight: 'bold',
+                color: '#FF6900',
+                fontSize: 10,
+                textTransform: 'uppercase',
+                letterSpacing: 1,
+              }}>
+                {institutionName}
+              </Text>
+            </View>
           )}
 
           <View style={{

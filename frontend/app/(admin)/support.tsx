@@ -115,7 +115,7 @@ export default function UserSupport() {
     const themeColors = {
         bg: isDark ? '#0F0B2E' : '#f8fafc',
         card: isDark ? '#13103A' : '#ffffff',
-        text: isDark ? '#ffffff' : '#0f172a',
+        text: isDark ? '#ffffff' : '#000000',
         subtext: isDark ? '#94a3b8' : '#64748b',
         border: isDark ? 'rgba(255,255,255,0.1)' : '#e2e8f0',
         primary: '#FF6B00',

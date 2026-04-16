@@ -13,7 +13,7 @@ exports.createClass = async (req, res) => {
         }
 
         const insertData = {
-            name,
+            display_name: name,
             institution_id: institution_id || null,
         };
         if (grade_level) insertData.grade_level = grade_level;
@@ -43,7 +43,7 @@ exports.updateClass = async (req, res) => {
         const { name, grade_level, capacity, teacher_id } = req.body;
 
         const updates = {};
-        if (name !== undefined) updates.name = name;
+        if (name !== undefined) updates.display_name = name;
         if (grade_level !== undefined) updates.grade_level = grade_level;
         if (capacity !== undefined) updates.capacity = capacity;
         if (teacher_id !== undefined) updates.teacher_id = teacher_id || null;
@@ -108,7 +108,7 @@ exports.getClasses = async (req, res) => {
             query = query.eq("institution_id", institution_id);
         }
 
-        const { data: classes, error } = await query.order("name");
+        const { data: classes, error } = await query.order("display_name");
         if (error) throw error;
 
         // Get student counts for each class

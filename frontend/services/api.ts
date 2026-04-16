@@ -21,30 +21,7 @@ import Constants from "expo-constants";
  * @returns {string} The base URL for API requests
  */
 const getBaseUrl = (): string => {
-  // First priority: Use environment variable if available
-  const envUrl: string | undefined = process.env.EXPO_PUBLIC_URL;
-
-  if (envUrl) {
-    return envUrl;
-  }
-
-  // Second priority: Dynamic IP from Expo (for physical devices / LAN)
-  // This allows the app to connect to the backend running on the same machine
-  // even when testing on a real phone or a different emulator.
-  const debuggerHost = Constants.expoConfig?.hostUri;
-  if (debuggerHost) {
-    const ip = debuggerHost.split(':')[0];
-    return `http://${ip}:4001/api`;
-  }
-
-  // Platform-specific defaults for development (Fallbacks)
-  if (Platform.OS === "android") {
-    // Android emulator uses this special IP to access host machine's localhost
-    return "http://10.0.2.2:4001/api";
-  }
-
-  // Default for web, iOS simulator, and other local platforms
-  return "http://127.0.0.1:4001/api";
+  return "http://192.168.56.1:4001/api";
 };
 
 const baseURL = getBaseUrl();
@@ -108,6 +85,10 @@ api.interceptors.response.use(
       const status = error.response.status;
       const data = error.response.data as any;
       message = data?.error || data?.message || message;
+
+      if (data?.details && Array.isArray(data.details)) {
+        message = `${message}:\n• ${data.details.join('\n• ')}`;
+      }
 
       switch (status) {
         case 400:
