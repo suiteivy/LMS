@@ -22,6 +22,7 @@ const ALL_NAV_ITEMS: NavItem[] = [
 const BETA_NAV_ITEMS: NavItem[] = [
     { name: "settings/settings", title: "Settings", icon: Settings, route: "/(admin)/settings/settings" },
     { name: "index", title: "Home", icon: House, route: "/(admin)" },
+    { name: "management/index", title: "Manage", icon: LayoutGrid, route: "/(admin)/management" },
     { name: "users/index", title: "Users", icon: Users, route: "/(admin)/users" },
     { name: "support", title: "Support", icon: Headphones, route: "/(admin)/support" },
 ];
@@ -48,7 +49,7 @@ const HIDDEN = [
 ];
 
 // Beta plan extra hidden items
-const BETA_EXTRA_HIDDEN = ["management/index", "finance/index"];
+const BETA_EXTRA_HIDDEN = ["finance/index"];
 
 function AdminTabs() {
     const insets = useSafeAreaInsets();
@@ -139,7 +140,7 @@ function AdminTabs() {
             />
 
             {/* Manage â€” right (paid plan only; hidden for beta) */}
-            {!isBeta && (
+            {true && (
                 <Tabs.Screen
                     name="management/index"
                     options={{
@@ -166,8 +167,8 @@ function AdminTabs() {
 }
 
 function AdminSidebar() {
-    const { isBeta } = useSubscriptionTier();
-    const items = isBeta ? BETA_NAV_ITEMS : ALL_NAV_ITEMS;
+    const { isBeta, showFinancials } = useSubscriptionTier();
+    const items = showFinancials ? ALL_NAV_ITEMS : BETA_NAV_ITEMS;
     return (
         <WebSidebar items={items} basePath="(admin)" role="Admin">
             <Slot />

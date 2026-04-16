@@ -43,7 +43,7 @@ function SubjectDetailsScreen() {
     // Fetch teachers and classes for dropdowns
     const [teacherRes, classRes] = await Promise.all([
       supabase.from("teachers").select("id, user_id, users:user_id(full_name)"),
-      supabase.from("classes").select("id, name").order("name"),
+      supabase.from("v_classes_detailed").select("id, name:display_name").order("display_name"),
     ]);
     if (teacherRes.data) setTeachers(teacherRes.data);
     if (classRes.data) setClasses(classRes.data);

@@ -15,11 +15,11 @@ const CACHE_TTL = 60000; // 60 seconds
 
 const PLAN_ORDER = [
   'beta',
-  'trial',
   'basic',
   'pro',
   'premium',
   'custom',
+  'trial',
 ];
 
 // Normalise legacy/shorthand plan IDs to canonical ones
@@ -57,7 +57,7 @@ function planRank(plan) {
 // ─── Student / Admin limits ───────────────────────────────────────────────────
 const PLAN_LIMITS = {
   'beta': { maxStudents: 30, maxAdmins: 1 },
-  'trial': { maxStudents: 50, maxAdmins: 1 },
+  'trial': { maxStudents: Infinity, maxAdmins: Infinity },
   'basic': { maxStudents: 900, maxAdmins: 1 },
   'pro': { maxStudents: 1000, maxAdmins: 3 },
   'premium': { maxStudents: 5000, maxAdmins: Infinity },
@@ -92,8 +92,11 @@ const RESTRICTED_FEATURES = [
   // ── Bulk ops — premium+ (Rank 4) ──
   { path: '/api/bulk', minRank: planRank('premium') },
 
-  // ── Library — pro+ (Rank 3) ──
+  // ── Library — pro+ (Rank 2) ──
   { path: '/api/library', minRank: planRank('pro') },
+
+  // ── Attendance — pro+ (Rank 2) ──
+  { path: '/api/attendance', minRank: planRank('pro') },
 
   // ── Messaging + Virtual Diary — beta+ (Rank 0) ──
   { path: '/api/messaging', minRank: planRank('beta') },
@@ -122,7 +125,7 @@ const checkSubscription = async (req, res, next) => {
     if (!institutionData || (now - institutionData.timestamp > CACHE_TTL)) {
       const { data: institution, error: instError } = await supabase
         .from('institutions')
-        .select('subscription_status, subscription_plan, trial_end_date, addon_library, addon_messaging, addon_diary, addon_bursary, addon_finance, addon_analytics, custom_student_limit')
+        .select('subscription_status, subscription_plan, trial_end_date, addon_library, addon_messaging, addon_diary, addon_bursary, addon_finance, addon_analytics, addon_attendance, custom_student_limit')
         .eq('id', institutionId)
         .single();
 
@@ -178,20 +181,29 @@ const checkSubscription = async (req, res, next) => {
       subscriptionCache.set(institutionId, institutionData);
     }
 
-    const { subscription_status, subscription_plan, addon_library, addon_messaging, addon_diary, addon_bursary, addon_finance, addon_analytics } = institutionData.data;
+    const { subscription_status, subscription_plan, addon_library, addon_messaging, addon_diary, addon_bursary, addon_finance, addon_analytics, addon_attendance } = institutionData.data;
     const fullPath = req.originalUrl || req.url || '';
     const currentRank = planRank(subscription_plan);
 
     // ── Feature gating ──────────────────────────────────────────────────────
+    // ── Trial/Bypass ────────────────────────────────────────────────────────
+    // Trials and special Beta Academy accounts (if flagged) can get full access
+    if (subscription_plan === 'trial' && subscription_status === 'active') {
+      req.institutionSubscription = subscription_status;
+      req.institutionPlan = subscription_plan;
+      return next();
+    }
+
     for (const feature of RESTRICTED_FEATURES) {
       if (fullPath.includes(feature.path)) {
         // Add-on overrides — each add-on is independently allocated by master admin
         if (feature.path === '/api/library' && addon_library) continue;
         if (feature.path === '/api/messaging' && addon_messaging) continue;
         if (feature.path === '/api/diary' && addon_diary) continue;
-        if (feature.path === '/api/bursary' && addon_bursary) continue;        // Bursary is its own add-on
+        if (feature.path === '/api/bursary' && addon_bursary) continue;
         if ((feature.path === '/api/finance' || feature.path === '/api/funds') && addon_finance) continue;
         if (feature.path.startsWith('/api/analytics') && addon_analytics) continue;
+        if (feature.path === '/api/attendance' && addon_attendance) continue;
 
         if (currentRank < feature.minRank) {
           const minPlanLabel = PLAN_ORDER[feature.minRank] || 'higher';

@@ -41,6 +41,9 @@ export default function UserDetailsScreen() {
     const textSecondary = isDark ? '#94a3b8' : '#6b7280';
     const inputBg = isDark ? '#1e1e1e' : '#f9fafb';
     const inputBorder = isDark ? '#2c2c2c' : '#e5e7eb';
+    
+    const { profile } = useAuth();
+    const instLevelLabel = (profile as any)?.institutions?.school_categories?.level_label || 'Grade';
 
     const [user, setUser] = useState<UserRow | null>(null);
     const [roleData, setRoleData] = useState<any>(null);
@@ -115,10 +118,13 @@ export default function UserDetailsScreen() {
         }
 
         const [classRes, subjectRes, studentRes, parentRes] = await Promise.all([
-            classQuery,
+        const [classRes, subjectRes, studentRes, parentRes] = await Promise.all([
+            supabase.from('v_classes_detailed').select('id, name:display_name').eq('institution_id', profile?.institution_id).order('display_name'),
             subjectQuery,
             studentQuery,
             parentQuery
+        ]);
+
         ]);
         if (classRes.data) setClasses(classRes.data);
         if (subjectRes.data) setAllSubjects(subjectRes.data);
@@ -230,7 +236,9 @@ export default function UserDetailsScreen() {
 
     const populateRoleFields = (role: string, rd: any) => {
         if (role === 'student') {
-            setGradeLevel(rd.grade_level || ''); setAcademicYear(rd.academic_year || '');
+            const levelValue = rd.grade_level ?? rd.form_level ?? '';
+            setGradeLevel(levelValue.toString()); 
+            setAcademicYear(rd.academic_year || '');
             setParentContact(rd.parent_contact || ''); setEmergencyName(rd.emergency_contact_name || '');
             setEmergencyPhone(rd.emergency_contact_phone || ''); setAdmissionDate(rd.admission_date || '');
             setClassId(rd.class_enrollments?.[0]?.class_id || null);
@@ -285,8 +293,10 @@ export default function UserDetailsScreen() {
             }
 
             if (user?.role === 'student') {
+                const numericLevel = parseInt(gradeLevel.replace(/[^0-9]/g, '')) || null;
                 Object.assign(body, {
-                    grade_level: gradeLevel || null,
+                    grade_level: (instLevelLabel === 'Grade' || instLevelLabel === 'KG') ? numericLevel : null,
+                    form_level: (instLevelLabel === 'Form') ? numericLevel : null,
                     academic_year: academicYear || null,
                     parent_contact: parentContact || null,
                     emergency_contact_name: emergencyName || null,
@@ -519,6 +529,7 @@ export default function UserDetailsScreen() {
                         <DatePicker label="Admission Date" value={admissionDate} onChange={setAdmissionDate} isDark={isDark} inline />
                         {renderField('Emergency Name', emergencyName, setEmergencyName)}
                         {renderField('Emergency Phone', emergencyPhone, setEmergencyPhone, { type: 'phone' })}
+                        {renderField(`${instLevelLabel} Level`, gradeLevel, setGradeLevel)}
                         {renderChipList('Enrolled Class', classes, classId ? [classId] : [],
                             (ids) => setClassId(ids[ids.length - 1] ?? null),
                             c => c.name, '#10b981'

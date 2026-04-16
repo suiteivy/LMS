@@ -36,7 +36,8 @@ export default function ParentIndex() {
 
 function ParentDashboard({ user, logout }: any) {
   const { isDark } = useTheme();
-  const { hasDiary } = useSubscriptionTier();
+  const levelLabel = user?.institutions?.school_categories?.level_label || 'Grade';
+  const tier = useSubscriptionTier();
   const [linkedStudents, setLinkedStudents] = useState<any[]>([]);
   const [selectedStudent, setSelectedStudent] = useState<any>(null);
   const [studentData, setStudentData] = useState<any>({});
@@ -206,7 +207,7 @@ function ParentDashboard({ user, logout }: any) {
                   </Text>
                   <View className="bg-[#FF6900]/20 self-start px-3 py-1 rounded-full mt-2">
                     <Text className="text-[#FF6900] text-[10px] font-bold tracking-widest uppercase">
-                      {selectedStudent?.grade_level ? `Grade ${selectedStudent.grade_level}` : 'No Grade'}
+                      {selectedStudent?.grade_level || selectedStudent?.form_level ? `${levelLabel} ${selectedStudent.grade_level || selectedStudent.form_level}` : `No ${levelLabel}`}
                     </Text>
                   </View>
                 </View>
@@ -231,9 +232,9 @@ function ParentDashboard({ user, logout }: any) {
                         <Text className={`font-bold text-xs ${selectedStudent?.id === stu.id ? 'text-white' : 'text-gray-400'}`}>
                           {stu.users?.first_name || stu.users?.full_name?.split(' ')[0]}
                         </Text>
-                        {stu.grade_level && (
+                        { (stu.grade_level || stu.form_level) && (
                           <Text className={`text-[9px] mt-0.5 ${selectedStudent?.id === stu.id ? 'text-white/70' : 'text-gray-600'}`}>
-                            Gr {stu.grade_level}
+                            {levelLabel.substring(0, 2)} {stu.grade_level || stu.form_level}
                           </Text>
                         )}
                       </TouchableOpacity>
@@ -290,12 +291,21 @@ function ParentDashboard({ user, logout }: any) {
                   isDark={isDark}
                   onPress={() => goTo("/(parent)/attendance")}
                 />
+                {tier.showFinancials && (
+                  <QuickAction
+                    icon={CreditCard}
+                    label="Finance"
+                    color="#059669"
+                    isDark={isDark}
+                    onPress={() => goTo("/(parent)/finance")}
+                  />
+                )}
                 <QuickAction
-                  icon={CreditCard}
-                  label="Finance"
-                  color="#059669"
+                  icon={FileText}
+                  label="Reports"
+                  color="#ec4899"
                   isDark={isDark}
-                  onPress={() => goTo("/(parent)/finance")}
+                  onPress={() => goTo("/(parent)/reports")}
                 />
                 <QuickAction
                   icon={MessageSquare}
@@ -304,7 +314,7 @@ function ParentDashboard({ user, logout }: any) {
                   isDark={isDark}
                   onPress={() => router.navigate("/(parent)/messages" as any)}
                 />
-                {hasDiary && (
+                {tier.hasDiary && (
                   <QuickAction
                     icon={BookOpen}
                     label="Class Diary"

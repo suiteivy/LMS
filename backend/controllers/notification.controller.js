@@ -8,6 +8,14 @@ exports.createNotificationInternal = async ({ userId, title, message, type = 'in
         const { data: user } = await supabase.from('users').select('institution_id').eq('id', userId).single();
         const instId = user?.institution_id;
 
+        // Calculate expiry based on type
+        let expiryDate = new Date();
+        if (type === 'warning' || type === 'error') {
+            expiryDate.setDate(expiryDate.getDate() + 14); // 14 days for important alerts
+        } else {
+            expiryDate.setDate(expiryDate.getDate() + 7); // 7 days for info/success
+        }
+
         const { error } = await supabase
             .from("notifications")
             .insert({
@@ -16,7 +24,8 @@ exports.createNotificationInternal = async ({ userId, title, message, type = 'in
                 message,
                 type,
                 data,
-                institution_id: instId
+                institution_id: instId,
+                expires_at: expiryDate.toISOString()
             });
 
         if (error) {
@@ -37,11 +46,13 @@ exports.getUserNotifications = async (req, res) => {
     try {
         const { userId, institution_id } = req;
         // Fetch unread first, then read, limit to 20 or so
+        const now = new Date().toISOString();
         const { data, error } = await supabase
             .from("notifications")
             .select("*")
             .eq("user_id", userId)
             .eq("institution_id", institution_id)
+            .or(`expires_at.is.null,expires_at.gt.${now}`)
             .order("created_at", { ascending: false })
             .limit(50);
 
@@ -103,6 +114,54 @@ exports.markAllAsRead = async (req, res) => {
         return res.json({ message: "All marked as read" });
     } catch (err) {
         console.error("markAllAsRead error:", err);
+        return res.status(500).json({ error: "Server error" });
+    }
+};
+
+/**
+ * Delete a single notification.
+ */
+exports.deleteNotification = async (req, res) => {
+    try {
+        const { userId } = req;
+        const { id } = req.params;
+
+        const { error } = await supabase
+            .from("notifications")
+            .delete()
+            .eq("id", id)
+            .eq("user_id", userId);
+
+        if (error) {
+            return res.status(500).json({ error: error.message });
+        }
+
+        return res.json({ message: "Notification deleted" });
+    } catch (err) {
+        console.error("deleteNotification error:", err);
+        return res.status(500).json({ error: "Server error" });
+    }
+};
+
+/**
+ * Delete ALL notifications for the user.
+ */
+exports.clearAllNotifications = async (req, res) => {
+    try {
+        const { userId } = req;
+
+        const { error } = await supabase
+            .from("notifications")
+            .delete()
+            .eq("user_id", userId);
+
+        if (error) {
+            return res.status(500).json({ error: error.message });
+        }
+
+        return res.json({ message: "All notifications cleared" });
+    } catch (err) {
+        console.error("clearAllNotifications error:", err);
         return res.status(500).json({ error: "Server error" });
     }
 };

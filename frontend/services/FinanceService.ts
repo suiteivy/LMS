@@ -74,4 +74,23 @@ export class FinanceService {
         const response = await api.put(`/finance/fee-structures/${id}`, feeData);
         return response.data;
     }
+
+    static async submitEvidence(evidenceData: any) {
+        const response = await api.post('/finance/fees/evidence', evidenceData);
+        return response.data;
+    }
+
+    static async getPendingPayments(): Promise<any[]> {
+        const response = await api.get('/finance/fees/pending');
+        return response.data;
+    }
+
+    static async confirmPaymentEvidence(paymentId: string, action: 'approve' | 'reject', notes: string) {
+        const response = await api.post('/finance/fees/confirm', {
+            payment_id: paymentId,
+            action,
+            admin_notes: notes
+        });
+        return response.data;
+    }
 }

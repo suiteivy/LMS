@@ -12,7 +12,10 @@ const {
     processTransaction,
     getFeeStructures,
     updateFeeStructure,
-    recordFeePayment
+    recordFeePayment,
+    submitPaymentEvidence,
+    getPendingPayments,
+    confirmPaymentEvidence
 } = require("../controllers/finance.controller.js");
 
 // Funds
@@ -35,5 +38,8 @@ router.put("/fee-structures/:id", authMiddleware, authorizeRoles(['admin', 'burs
 
 // Helper for Fees
 router.post("/fees/pay", authMiddleware, authorizeRoles(['admin', 'bursary', 'master_admin']), recordFeePayment);
+router.post("/fees/evidence", authMiddleware, submitPaymentEvidence); // Parents can submit
+router.get("/fees/pending", authMiddleware, authorizeRoles(['admin', 'bursary', 'master_admin']), getPendingPayments);
+router.post("/fees/confirm", authMiddleware, authorizeRoles(['admin', 'bursary', 'master_admin']), confirmPaymentEvidence);
 
 module.exports = router;

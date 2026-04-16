@@ -24,7 +24,8 @@ interface Teacher {
 interface SearchStudent {
     id: string;
     full_name: string;
-    grade_level: string;
+    grade_level?: number | string | null;
+    form_level?: number | string | null;
 }
 
 interface StreamClassConfig {
@@ -79,7 +80,7 @@ export default function AdminClassManagement() {
     const [showModal, setShowModal] = useState(false);
     const [editingClass, setEditingClass] = useState<ClassItem | null>(null);
     const [formName, setFormName] = useState('');
-    const [formGrade, setFormGrade] = useState('');
+    const [formLevel, setFormLevel] = useState('');
     const [formCapacity, setFormCapacity] = useState('');
     const [formTeacher, setFormTeacher] = useState('');
     const [saving, setSaving] = useState(false);
@@ -98,12 +99,12 @@ export default function AdminClassManagement() {
 
     // Auto-assign
     const [autoAssigning, setAutoAssigning] = useState(false);
-    const [autoAssignGrade, setAutoAssignGrade] = useState('');
+    const [autoAssignLevel, setAutoAssignLevel] = useState('');
     const [showAutoAssignModal, setShowAutoAssignModal] = useState(false);
 
     // Stream bulk create
     const [showStreamModal, setShowStreamModal] = useState(false);
-    const [streamGrade, setStreamGrade] = useState('');
+    const [streamLevel, setStreamLevel] = useState('');
     const [streamCount, setStreamCount] = useState(4);
     const [streamEndLetter, setStreamEndLetter] = useState('D');
     const [streamUseLetterPicker, setStreamUseLetterPicker] = useState(true);
@@ -112,9 +113,17 @@ export default function AdminClassManagement() {
 
     // Lookups
     const [teachers, setTeachers] = useState<Teacher[]>([]);
-    const [gradeFilter, setGradeFilter] = useState('');
+    const [levelFilter, setLevelFilter] = useState('');
 
-    const GRADE_OPTIONS = ['Form 1', 'Form 2', 'Form 3', 'Form 4', 'Grade 1', 'Grade 2', 'Grade 3', 'Grade 4', 'Grade 5', 'Grade 6', 'Grade 7', 'Grade 8'];
+    const instLevelLabel = (profile as any)?.institutions?.school_categories?.level_label || 'Grade';
+    const isJunior = instLevelLabel === 'Grade';
+    const isSecondary = instLevelLabel === 'Form';
+    const isKG = instLevelLabel === 'KG';
+
+    const GRADE_OPTIONS = Array.from(
+        { length: isSecondary ? 6 : (isJunior ? 7 : (isKG ? 3 : 8)) },
+        (_, i) => `${instLevelLabel} ${i + 1}`
+    );
 
     // ─── Theme helpers ─────────────────────────────────────
     const bg = isDark ? '#0F0B2E' : '#F9FAFB';
@@ -167,7 +176,7 @@ export default function AdminClassManagement() {
     const handleNameChange = (text: string) => {
         setFormName(text);
         if (text.length >= 1) {
-            const suggestions = getNameSuggestions(text, formGrade, classes);
+            const suggestions = getNameSuggestions(text, formLevel, classes);
             setNameSuggestions(suggestions);
             setShowSuggestions(suggestions.length > 0);
         } else {
@@ -177,11 +186,11 @@ export default function AdminClassManagement() {
 
     useEffect(() => {
         if (formName.length >= 1) {
-            const suggestions = getNameSuggestions(formName, formGrade, classes);
+            const suggestions = getNameSuggestions(formName, formLevel, classes);
             setNameSuggestions(suggestions);
             setShowSuggestions(suggestions.length > 0);
         }
-    }, [formGrade]);
+    }, [formLevel]);
 
     const selectSuggestion = (suggestion: string) => {
         setFormName(suggestion);
@@ -209,8 +218,8 @@ export default function AdminClassManagement() {
         }));
     };
 
-    const handleStreamGradeChange = (grade: string) => {
-        setStreamGrade(grade);
+    const handleStreamLevelChange = (grade: string) => {
+        setStreamLevel(grade);
         const count = streamUseLetterPicker
             ? STREAM_LETTERS.indexOf(streamEndLetter) + 1
             : streamCount;
@@ -221,14 +230,14 @@ export default function AdminClassManagement() {
         setStreamEndLetter(letter);
         const count = STREAM_LETTERS.indexOf(letter) + 1;
         setStreamCount(count);
-        if (streamGrade) setStreamClasses(buildStreamClasses(streamGrade, count));
+        if (streamLevel) setStreamClasses(buildStreamClasses(streamLevel, count));
     };
 
     const handleStreamCountChange = (count: number) => {
         setStreamCount(count);
         const letter = STREAM_LETTERS[count - 1];
         setStreamEndLetter(letter);
-        if (streamGrade) setStreamClasses(buildStreamClasses(streamGrade, count));
+        if (streamLevel) setStreamClasses(buildStreamClasses(streamLevel, count));
     };
 
     const updateStreamClass = (index: number, field: keyof StreamClassConfig, value: string) => {
@@ -236,8 +245,8 @@ export default function AdminClassManagement() {
     };
 
     const handleBulkCreate = async () => {
-        if (!streamGrade) {
-            Alert.alert('Validation', 'Please select a grade level');
+        if (!streamLevel) {
+            Alert.alert('Validation', 'Please select a ' + instLevelLabel.toLowerCase() + ' level');
             return;
         }
         if (streamClasses.length === 0) {
@@ -246,13 +255,14 @@ export default function AdminClassManagement() {
         }
         setBulkCreating(true);
         try {
-            const gradeNum = gradeToNumber(streamGrade);
+            const levelNum = gradeToNumber(streamLevel);
             await Promise.all(
                 streamClasses.map(cls =>
                     ClassService.createClass({
                         name: cls.name,
-                        grade_level: gradeNum !== undefined ? String(gradeNum) : undefined,
-                        capacity: cls.capacity ? parseInt(cls.capacity) : undefined,
+                        grade_level: (instLevelLabel === 'Grade' || instLevelLabel === 'KG') ? levelNum : undefined,
+                        form_level: (instLevelLabel === 'Form') ? levelNum : undefined,
+                        capacity: cls.capacity ? parseInt(cls.capacity, 10) : undefined,
                         teacher_id: cls.teacher_id || undefined,
                     })
                 )
@@ -271,7 +281,7 @@ export default function AdminClassManagement() {
     const openCreateModal = () => {
         setEditingClass(null);
         setFormName('');
-        setFormGrade('');
+        setFormLevel('');
         setFormCapacity('');
         setFormTeacher('');
         setShowSuggestions(false);
@@ -281,8 +291,9 @@ export default function AdminClassManagement() {
     const openEditModal = (cls: ClassItem) => {
         setEditingClass(cls);
         setFormName(cls.name);
-        setFormGrade(cls.grade_level || '');
-        setFormCapacity(cls.capacity ? String(cls.capacity) : '');
+        const level = cls.grade_level || cls.form_level;
+        setFormLevel(level ? `${instLevelLabel} ${level}` : '');
+        setFormCapacity(cls.capacity != null ? String(cls.capacity) : '');
         setFormTeacher(cls.teacher_id || '');
         setShowSuggestions(false);
         setShowModal(true);
@@ -295,10 +306,12 @@ export default function AdminClassManagement() {
         }
         setSaving(true);
         try {
+            const levelNum = gradeToNumber(formLevel);
             const payload: any = {
                 name: formName.trim(),
-                grade_level: formGrade ? String(gradeToNumber(formGrade)) : undefined,
-                capacity: formCapacity ? parseInt(formCapacity) : undefined,
+                grade_level: (instLevelLabel === 'Grade' || instLevelLabel === 'KG') ? levelNum : undefined,
+                form_level: (instLevelLabel === 'Form') ? levelNum : undefined,
+                capacity: formCapacity ? parseInt(formCapacity, 10) : undefined,
                 teacher_id: formTeacher || undefined,
             };
 
@@ -383,7 +396,7 @@ export default function AdminClassManagement() {
         }
         const { data } = await supabase
             .from('students')
-            .select('id, grade_level, users:user_id(full_name)') as any;
+            .select('id, grade_level, form_level, users:user_id(full_name)') as any;
 
         if (data) {
             const enrolledIds = new Set(students.map(s => s.student_id));
@@ -401,7 +414,8 @@ export default function AdminClassManagement() {
                     .map((s: any) => ({
                         id: s.id,
                         full_name: s.users?.full_name || 'Unknown',
-                        grade_level: s.grade_level || '',
+                        grade_level: s.grade_level ? String(s.grade_level) : undefined,
+                        form_level: s.form_level ? String(s.form_level) : undefined,
                     }))
             );
         }
@@ -425,13 +439,17 @@ export default function AdminClassManagement() {
 
     // ─── Auto-Assign ───────────────────────────────────────
     const handleAutoAssign = async () => {
-        if (!autoAssignGrade) {
-            Alert.alert('Validation', 'Select a grade level');
+        if (!autoAssignLevel) {
+            Alert.alert('Validation', 'Select a ' + instLevelLabel.toLowerCase() + ' level');
             return;
         }
         setAutoAssigning(true);
         try {
-            const result: AutoAssignResult = await ClassService.autoAssign(autoAssignGrade);
+            const numLevel = parseInt(autoAssignLevel.replace(/[^0-9]/g, ''), 10);
+            const result: AutoAssignResult = await ClassService.autoAssign({
+                grade_level: !isSecondary ? numLevel : undefined,
+                form_level: isSecondary ? numLevel : undefined,
+            });
             setShowAutoAssignModal(false);
             await loadClasses();
             if (selectedClass) await viewStudents(selectedClass);
@@ -449,8 +467,8 @@ export default function AdminClassManagement() {
     };
 
     // ─── Derived ───────────────────────────────────────────
-    const filteredClasses = gradeFilter
-        ? classes.filter(c => c.grade_level === gradeFilter)
+    const filteredClasses = levelFilter
+        ? classes.filter(c => c.level_label === instLevelLabel && (c.grade_level === gradeToNumber(levelFilter) || c.form_level === gradeToNumber(levelFilter)))
         : classes;
 
     const getTeacherName = (teacherId?: string) => {
@@ -488,7 +506,7 @@ export default function AdminClassManagement() {
                         <Text style={{ fontSize: 12, fontWeight: '700', color: textSecondary, textTransform: 'uppercase', letterSpacing: 1 }}>Active Streams</Text>
                         <View style={{ flexDirection: 'row', gap: 8 }}>
                             <TouchableOpacity
-                                onPress={() => { setAutoAssignGrade(''); setShowAutoAssignModal(true); }}
+                                onPress={() => { setAutoAssignLevel(''); setShowAutoAssignModal(true); }}
                                 style={{ backgroundColor: '#7C3AED', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 12, flexDirection: 'row', alignItems: 'center' }}
                             >
                                 <Ionicons name="shuffle" size={15} color="white" />
@@ -496,7 +514,7 @@ export default function AdminClassManagement() {
                             </TouchableOpacity>
 
                             <TouchableOpacity
-                                onPress={() => { setStreamGrade(''); setStreamCount(4); setStreamClasses([]); setShowStreamModal(true); }}
+                                onPress={() => { setStreamLevel(''); setStreamCount(4); setStreamClasses([]); setShowStreamModal(true); }}
                                 style={{ backgroundColor: '#FF6B00', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 12, flexDirection: 'row', alignItems: 'center' }}
                             >
                                 <Ionicons name="apps" size={15} color="white" />
@@ -513,30 +531,30 @@ export default function AdminClassManagement() {
                         </View>
                     </View>
 
-                    {/* ── Grade Filter ── */}
+                    {/* ── Level Filter ── */}
                     <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 16 }}>
                         <View style={{ flexDirection: 'row', gap: 8 }}>
                             <TouchableOpacity
-                                onPress={() => setGradeFilter('')}
+                                onPress={() => setLevelFilter('')}
                                 style={{
                                     paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20, borderWidth: 1,
-                                    backgroundColor: !gradeFilter ? '#FF6B00' : pillInactive,
-                                    borderColor: !gradeFilter ? '#FF6B00' : pillInactiveBorder,
+                                    backgroundColor: !levelFilter ? '#FF6B00' : pillInactive,
+                                    borderColor: !levelFilter ? '#FF6B00' : pillInactiveBorder,
                                 }}
                             >
-                                <Text style={{ fontSize: 12, fontWeight: '700', color: !gradeFilter ? 'white' : pillInactiveText }}>All</Text>
+                                <Text style={{ fontSize: 12, fontWeight: '700', color: !levelFilter ? 'white' : pillInactiveText }}>All</Text>
                             </TouchableOpacity>
                             {GRADE_OPTIONS.map(g => (
                                 <TouchableOpacity
                                     key={g}
-                                    onPress={() => setGradeFilter(gradeFilter === g ? '' : g)}
+                                    onPress={() => setLevelFilter(levelFilter === g ? '' : g)}
                                     style={{
                                         paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20, borderWidth: 1,
-                                        backgroundColor: gradeFilter === g ? '#FF6B00' : pillInactive,
-                                        borderColor: gradeFilter === g ? '#FF6B00' : pillInactiveBorder,
+                                        backgroundColor: levelFilter === g ? '#FF6B00' : pillInactive,
+                                        borderColor: levelFilter === g ? '#FF6B00' : pillInactiveBorder,
                                     }}
                                 >
-                                    <Text style={{ fontSize: 12, fontWeight: '700', color: gradeFilter === g ? 'white' : pillInactiveText }}>{g}</Text>
+                                    <Text style={{ fontSize: 12, fontWeight: '700', color: levelFilter === g ? 'white' : pillInactiveText }}>{g}</Text>
                                 </TouchableOpacity>
                             ))}
                         </View>
@@ -547,7 +565,7 @@ export default function AdminClassManagement() {
                         <View style={{ backgroundColor: card, padding: 32, borderRadius: 20, alignItems: 'center', borderWidth: 1.5, borderColor: border, borderStyle: 'dashed' }}>
                             <Ionicons name="school-outline" size={48} color={textMuted} />
                             <Text style={{ color: textSecondary, fontWeight: '500', marginTop: 16, textAlign: 'center' }}>
-                                {gradeFilter ? `No classes for ${gradeFilter}` : 'No classes yet. Create one to get started.'}
+                                {levelFilter ? `No classes for ${instLevelLabel} ${levelFilter}` : 'No classes yet. Create one to get started.'}
                             </Text>
                         </View>
                     ) : (
@@ -581,11 +599,11 @@ export default function AdminClassManagement() {
                                             <Ionicons name="school" size={22} color="#FF6B00" />
                                         </View>
                                         <View style={{ flex: 1 }}>
-                                            <Text style={{ color: textPrimary, fontWeight: '700', fontSize: 15 }}>{cls.name}</Text>
+                                            <Text style={{ color: textPrimary, fontWeight: '700', fontSize: 15 }}>{cls.display_name || cls.name}</Text>
                                             <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4, flexWrap: 'wrap', gap: 6 }}>
-                                                {cls.grade_level && (
+                                                {(cls.level_label || cls.grade_level) && (
                                                     <View style={{ backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : '#F3F4F6', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 20 }}>
-                                                        <Text style={{ color: textSecondary, fontSize: 11, fontWeight: '600' }}>{cls.grade_level}</Text>
+                                                        <Text style={{ color: textSecondary, fontSize: 11, fontWeight: '600' }}>{cls.level_label} {cls.grade_level || cls.form_level}</Text>
                                                     </View>
                                                 )}
                                                 <View style={{ flexDirection: 'row', alignItems: 'center' }}>
@@ -619,7 +637,7 @@ export default function AdminClassManagement() {
                             <View style={{ padding: 16, backgroundColor: sectionBg, borderBottomWidth: 1, borderBottomColor: border }}>
                                 <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
                                     <View>
-                                        <Text style={{ fontWeight: '700', color: textPrimary, fontSize: 17 }}>{selectedClass.name}</Text>
+                                        <Text style={{ fontWeight: '700', color: textPrimary, fontSize: 17 }}>{selectedClass.display_name || selectedClass.name}</Text>
                                         <Text style={{ color: textSecondary, fontSize: 13, marginTop: 2 }}>
                                             {students.length} student{students.length !== 1 ? 's' : ''} enrolled
                                         </Text>
@@ -654,10 +672,10 @@ export default function AdminClassManagement() {
                                                     <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: isDark ? '#0A2A1A' : '#ECFDF5', alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
                                                         <Ionicons name="add" size={16} color="#10B981" />
                                                     </View>
-                                                    <View style={{ flex: 1 }}>
-                                                        <Text style={{ color: textPrimary, fontWeight: '600', fontSize: 14 }}>{s.full_name}</Text>
-                                                        <Text style={{ color: textMuted, fontSize: 11 }}>{s.grade_level} · {s.id}</Text>
-                                                    </View>
+                                                     <View style={{ flex: 1 }}>
+                                                         <Text style={{ color: textPrimary, fontWeight: '600', fontSize: 14 }}>{s.full_name}</Text>
+                                                         <Text style={{ color: textMuted, fontSize: 11 }}>{instLevelLabel} {s.grade_level || s.form_level} · {s.id}</Text>
+                                                     </View>
                                                 </TouchableOpacity>
                                             ))}
                                         </View>
@@ -693,7 +711,7 @@ export default function AdminClassManagement() {
                                         </View>
                                         <View style={{ flex: 1 }}>
                                             <Text style={{ color: textPrimary, fontWeight: '600', fontSize: 14 }}>{s.full_name}</Text>
-                                            <Text style={{ color: textMuted, fontSize: 11 }}>{s.grade_level} · {s.student_id}</Text>
+                                            <Text style={{ color: textMuted, fontSize: 11 }}>{instLevelLabel} {s.grade_level || s.form_level} · {s.student_id}</Text>
                                         </View>
                                         <TouchableOpacity onPress={() => handleRemoveStudent(s)} style={{ padding: 8 }}>
                                             <Ionicons name="remove-circle-outline" size={20} color="#EF4444" />
@@ -726,22 +744,22 @@ export default function AdminClassManagement() {
 
                         <ScrollView style={{ padding: 20 }} keyboardShouldPersistTaps="handled">
 
-                            {/* Grade Level */}
+                            {/* Dynamic Level Selection */}
                             <View style={{ marginBottom: 20 }}>
-                                <Text style={{ fontSize: 13, fontWeight: '700', color: textSecondary, marginBottom: 10, textTransform: 'uppercase', letterSpacing: 0.5 }}>Grade Level</Text>
+                                <Text style={{ fontSize: 13, fontWeight: '700', color: textSecondary, marginBottom: 10, textTransform: 'uppercase', letterSpacing: 0.5 }}>{instLevelLabel} Level</Text>
                                 <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                                     <View style={{ flexDirection: 'row', gap: 8 }}>
                                         {GRADE_OPTIONS.map(g => (
                                             <TouchableOpacity
                                                 key={g}
-                                                onPress={() => setFormGrade(formGrade === g ? '' : g)}
+                                                onPress={() => setFormLevel(formLevel === g ? '' : g)}
                                                 style={{
                                                     paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, borderWidth: 1.5,
-                                                    backgroundColor: formGrade === g ? '#FF6B00' : pillInactive,
-                                                    borderColor: formGrade === g ? '#FF6B00' : pillInactiveBorder,
+                                                    backgroundColor: formLevel === g ? '#FF6B00' : pillInactive,
+                                                    borderColor: formLevel === g ? '#FF6B00' : pillInactiveBorder,
                                                 }}
                                             >
-                                                <Text style={{ fontSize: 12, fontWeight: '700', color: formGrade === g ? 'white' : pillInactiveText }}>{g}</Text>
+                                                <Text style={{ fontSize: 12, fontWeight: '700', color: formLevel === g ? 'white' : pillInactiveText }}>{g}</Text>
                                             </TouchableOpacity>
                                         ))}
                                     </View>
@@ -757,13 +775,13 @@ export default function AdminClassManagement() {
                                         borderRadius: 14, paddingHorizontal: 16, paddingVertical: 14,
                                         color: textPrimary, fontSize: 15, fontWeight: '500',
                                     }}
-                                    placeholder={formGrade ? `e.g.${formGrade} East` : 'e.g. Form 1 East'}
+                                    placeholder={formLevel ? `e.g. ${formLevel} East` : `e.g. ${instLevelLabel} 1 East`}
                                     value={formName}
                                     onChangeText={handleNameChange}
                                     placeholderTextColor={textMuted}
                                     onFocus={() => {
                                         if (formName.length >= 1) {
-                                            const s = getNameSuggestions(formName, formGrade, classes);
+                                            const s = getNameSuggestions(formName, formLevel, classes);
                                             setNameSuggestions(s);
                                             setShowSuggestions(s.length > 0);
                                         }
@@ -805,7 +823,7 @@ export default function AdminClassManagement() {
                                 )}
 
                                 {/* Quick suffix pills */}
-                                {formGrade && !formName && (
+                                {formLevel && !formName && (
                                     <View style={{ marginTop: 10 }}>
                                         <Text style={{ fontSize: 11, color: textMuted, marginBottom: 6 }}>Quick pick:</Text>
                                         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
@@ -813,14 +831,14 @@ export default function AdminClassManagement() {
                                                 {['A', 'B', 'C', 'East', 'West', 'North', 'South', 'Red', 'Blue'].map(suffix => (
                                                     <TouchableOpacity
                                                         key={suffix}
-                                                        onPress={() => selectSuggestion(`${formGrade} ${suffix} `)}
+                                                        onPress={() => selectSuggestion(`${formLevel} ${suffix} `)}
                                                         style={{
                                                             paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20,
                                                             backgroundColor: isDark ? '#2A1A0A' : '#FFF3E8',
                                                             borderWidth: 1, borderColor: isDark ? '#FF6B0040' : '#FFD0A8',
                                                         }}
                                                     >
-                                                        <Text style={{ color: '#FF6B00', fontSize: 12, fontWeight: '700' }}>{formGrade} {suffix}</Text>
+                                                        <Text style={{ color: '#FF6B00', fontSize: 12, fontWeight: '700' }}>{formLevel} {suffix}</Text>
                                                     </TouchableOpacity>
                                                 ))}
                                             </View>
@@ -906,24 +924,24 @@ export default function AdminClassManagement() {
                         <View style={{ padding: 20, borderBottomWidth: 1, borderBottomColor: border }}>
                             <Text style={{ fontSize: 20, fontWeight: '800', color: textPrimary }}>Auto-Assign Students</Text>
                             <Text style={{ color: textSecondary, fontSize: 13, marginTop: 4 }}>
-                                Distributes unassigned students evenly across classes for a grade level
+                                Distributes unassigned students evenly across classes for a ${instLevelLabel.toLowerCase()} level
                             </Text>
                         </View>
 
                         <View style={{ padding: 20 }}>
-                            <Text style={{ fontSize: 13, fontWeight: '700', color: textSecondary, marginBottom: 12, textTransform: 'uppercase', letterSpacing: 0.5 }}>Select Grade Level</Text>
+                            <Text style={{ fontSize: 13, fontWeight: '700', color: textSecondary, marginBottom: 12, textTransform: 'uppercase', letterSpacing: 0.5 }}>Select {instLevelLabel} Level</Text>
                             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 20 }}>
                                 {GRADE_OPTIONS.map(g => (
                                     <TouchableOpacity
                                         key={g}
-                                        onPress={() => setAutoAssignGrade(g)}
+                                        onPress={() => setAutoAssignLevel(g)}
                                         style={{
                                             paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, borderWidth: 1.5,
-                                            backgroundColor: autoAssignGrade === g ? '#7C3AED' : pillInactive,
-                                            borderColor: autoAssignGrade === g ? '#7C3AED' : pillInactiveBorder,
+                                            backgroundColor: autoAssignLevel === g ? '#7C3AED' : pillInactive,
+                                            borderColor: autoAssignLevel === g ? '#7C3AED' : pillInactiveBorder,
                                         }}
                                     >
-                                        <Text style={{ fontSize: 13, fontWeight: '600', color: autoAssignGrade === g ? 'white' : pillInactiveText }}>{g}</Text>
+                                        <Text style={{ fontSize: 13, fontWeight: '600', color: autoAssignLevel === g ? 'white' : pillInactiveText }}>{g}</Text>
                                     </TouchableOpacity>
                                 ))}
                             </View>
@@ -944,10 +962,10 @@ export default function AdminClassManagement() {
                                 </TouchableOpacity>
                                 <TouchableOpacity
                                     onPress={handleAutoAssign}
-                                    disabled={autoAssigning || !autoAssignGrade}
+                                    disabled={autoAssigning || !autoAssignLevel}
                                     style={{
                                         flex: 2, paddingVertical: 14, borderRadius: 14, alignItems: 'center',
-                                        backgroundColor: autoAssignGrade ? '#7C3AED' : (isDark ? '#3F3F3F' : '#D1D5DB'),
+                                        backgroundColor: autoAssignLevel ? '#7C3AED' : (isDark ? '#3F3F3F' : '#D1D5DB'),
                                     }}
                                 >
                                     {autoAssigning ? (
@@ -988,20 +1006,20 @@ export default function AdminClassManagement() {
 
                             {/* Grade Level */}
                             <View style={{ marginBottom: 20 }}>
-                                <Text style={{ fontSize: 13, fontWeight: '700', color: textSecondary, marginBottom: 10, textTransform: 'uppercase', letterSpacing: 0.5 }}>Grade Level</Text>
+                                <Text style={{ fontSize: 13, fontWeight: '700', color: textSecondary, marginBottom: 10, textTransform: 'uppercase', letterSpacing: 0.5 }}>{instLevelLabel} Level</Text>
                                 <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                                     <View style={{ flexDirection: 'row', gap: 8 }}>
                                         {GRADE_OPTIONS.map(g => (
                                             <TouchableOpacity
                                                 key={g}
-                                                onPress={() => handleStreamGradeChange(g)}
+                                                onPress={() => handleStreamLevelChange(g)}
                                                 style={{
                                                     paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, borderWidth: 1.5,
-                                                    backgroundColor: streamGrade === g ? '#0891B2' : pillInactive,
-                                                    borderColor: streamGrade === g ? '#0891B2' : pillInactiveBorder,
+                                                    backgroundColor: streamLevel === g ? '#0891B2' : pillInactive,
+                                                    borderColor: streamLevel === g ? '#0891B2' : pillInactiveBorder,
                                                 }}
                                             >
-                                                <Text style={{ fontSize: 12, fontWeight: '700', color: streamGrade === g ? 'white' : pillInactiveText }}>{g}</Text>
+                                                <Text style={{ fontSize: 12, fontWeight: '700', color: streamLevel === g ? 'white' : pillInactiveText }}>{g}</Text>
                                             </TouchableOpacity>
                                         ))}
                                     </View>
@@ -1164,9 +1182,9 @@ export default function AdminClassManagement() {
                             {/* Create button */}
                             <TouchableOpacity
                                 onPress={handleBulkCreate}
-                                disabled={bulkCreating || !streamGrade || streamClasses.length === 0}
+                                disabled={bulkCreating || !streamLevel || streamClasses.length === 0}
                                 style={{
-                                    backgroundColor: streamGrade && streamClasses.length > 0 ? '#0891B2' : (isDark ? '#3F3F3F' : '#D1D5DB'),
+                                    backgroundColor: streamLevel && streamClasses.length > 0 ? '#0891B2' : (isDark ? '#3F3F3F' : '#D1D5DB'),
                                     paddingVertical: 16, borderRadius: 16, alignItems: 'center', marginBottom: 8,
                                 }}
                             >

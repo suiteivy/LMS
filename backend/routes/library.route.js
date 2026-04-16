@@ -13,6 +13,7 @@ const {
   rejectBorrowRequest,
   sendReminder,
   deleteBook,
+  issueBook
 } = require("../controllers/library.controller.js");
 const { authMiddleware } = require("../middleware/auth.middleware.js");
 const { authorizeRoles } = require("../middleware/authRole.js");
@@ -52,6 +53,15 @@ router.post(
   authorizeRoles(["student", "teacher"]),
   borrowBook
 );
+
+// Teacher/Admin: issue to student
+router.post(
+  "/issue",
+  authMiddleware,
+  authorizeRoles(["teacher", "admin"]),
+  issueBook
+);
+
 
 // Student/Teacher/Admin: return
 router.post(

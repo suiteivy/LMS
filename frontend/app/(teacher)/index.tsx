@@ -114,8 +114,12 @@ export default function TeacherHome() {
     };
 
     useEffect(() => {
-        if (isDemo || (!isInitializing && session)) {
+        if (isInitializing) return;
+
+        if (isDemo || session) {
             fetchDashboardData();
+        } else {
+            setLoading(false);
         }
     }, [isInitializing, session, isDemo]);
 

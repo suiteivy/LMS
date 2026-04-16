@@ -1,5 +1,6 @@
 // controllers/attendance.controller.js
 const supabase = require("../utils/supabaseClient.js");
+const { createNotificationInternal } = require("./notification.controller.js");
 
 /**
  * Get Student Attendance for a class/subject on a date
@@ -86,6 +87,8 @@ exports.markStudentAttendance = async (req, res) => {
             return res.status(400).json({ error: "Missing required fields" });
         }
 
+        const markDate = date || new Date().toISOString().split('T')[0];
+
         // Upsert
         const { data, error } = await supabase
             .from("attendance")
@@ -93,7 +96,7 @@ exports.markStudentAttendance = async (req, res) => {
                 student_id,
                 subject_id,
                 class_id,
-                date: date || new Date().toISOString().split('T')[0],
+                date: markDate,
                 status,
                 notes,
                 institution_id
@@ -101,6 +104,35 @@ exports.markStudentAttendance = async (req, res) => {
             .select();
 
         if (error) throw error;
+
+        // Real-time Notification for Parents on Absence
+        if (status === 'absent') {
+            // Find student parent
+            const { data: student } = await supabase
+                .from('students')
+                .select('parent_id, users(full_name)')
+                .eq('id', student_id)
+                .single();
+
+            if (student && student.parent_id) {
+                const { data: parent } = await supabase
+                    .from('parents')
+                    .select('user_id')
+                    .eq('id', student.parent_id)
+                    .single();
+
+                if (parent) {
+                    await createNotificationInternal({
+                        userId: parent.user_id,
+                        title: 'Attendance Alert',
+                        message: `${student.users.full_name} was marked ABSENT today (${markDate}).`,
+                        type: 'warning',
+                        data: { student_id, date: markDate, type: 'attendance_absence' }
+                    });
+                }
+            }
+        }
+
         res.json(data[0]);
     } catch (err) {
         console.error("[Attendance] markStudentAttendance error:", err);

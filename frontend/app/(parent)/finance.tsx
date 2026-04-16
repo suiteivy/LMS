@@ -4,7 +4,13 @@ import { router, useLocalSearchParams } from "expo-router";
 import { ArrowDownLeft, ArrowUpRight, Award, CreditCard, Info, Wallet } from "lucide-react-native";
 import React, { useEffect, useState } from "react";
 import { useTheme } from "@/contexts/ThemeContext";
-import { ActivityIndicator, RefreshControl, ScrollView, Text, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, RefreshControl, ScrollView, Text, TouchableOpacity, View, Modal, TextInput, Alert, Image } from "react-native";
+import * as DocumentPicker from 'expo-document-picker';
+import { supabase } from "@/utils/supabase";
+import { FinanceService } from "@/services/FinanceService";
+import { X, CheckCircle2, Upload } from "lucide-react-native";
+import { BlurView } from "expo-blur";
+
 
 const formatCurrency = (amount: number) =>
   `KES ${Number(amount || 0).toLocaleString("en-KE")}`;
@@ -18,6 +24,16 @@ export default function StudentFinancePage() {
   const [bursaries, setBursaries] = useState<any[]>([]);
   const [bursaryLoading, setBursaryLoading] = useState(false);
   const [bursariesFetched, setBursariesFetched] = useState(false);
+
+  // Evidence Upload State
+  const [showUploadModal, setShowUploadModal] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const [amount, setAmount] = useState("");
+  const [reference, setReference] = useState("");
+  const [selectedFile, setSelectedFile] = useState<any>(null);
+  const [feeStructures, setFeeStructures] = useState<any[]>([]);
+  const [selectedFeeId, setSelectedFeeId] = useState("");
+
 
   const fetchFinanceData = async () => {
     if (!studentId) return;
@@ -46,10 +62,22 @@ export default function StudentFinancePage() {
     }
   };
 
+  const fetchFeeStructures = async () => {
+    try {
+      const data = await FinanceService.getFeeStructures();
+      setFeeStructures(data || []);
+      if (data && data.length > 0) setSelectedFeeId(data[0].id);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
   useEffect(() => {
     fetchFinanceData();
     fetchBursaries();
+    fetchFeeStructures();
   }, [studentId]);
+
 
   const onRefresh = () => {
     setRefreshing(true);
@@ -212,6 +240,7 @@ export default function StudentFinancePage() {
           <View className="px-2 flex-row justify-between items-center mb-6">
             <Text className="text-gray-900 dark:text-white font-bold text-xl tracking-tight">Financial Statements</Text>
             <TouchableOpacity 
+              onPress={() => setShowUploadModal(true)}
               style={{
                 boxShadow: [{
                   offsetX: 0,
@@ -228,7 +257,7 @@ export default function StudentFinancePage() {
               className="flex-row items-center bg-white dark:bg-navy-surface px-4 py-2 rounded-xl border border-gray-100 dark:border-gray-800"
             >
               <CreditCard size={14} color="#FF6900" />
-              <Text className="text-gray-900 dark:text-white text-[10px] font-bold uppercase tracking-widest ml-2">Pay Now</Text>
+              <Text className="text-gray-900 dark:text-white text-[10px] font-bold uppercase tracking-widest ml-2">Upload Evidence</Text>
             </TouchableOpacity>
           </View>
 
@@ -354,6 +383,164 @@ export default function StudentFinancePage() {
 
         </View>
       </ScrollView>
+
+      {/* Upload Evidence Modal */}
+      <Modal
+        visible={showUploadModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowUploadModal(false)}
+      >
+        <View className="flex-1 justify-end bg-black/60">
+          <BlurView intensity={20} tint={isDark ? "dark" : "light"} className="absolute inset-0" />
+          <View className="bg-white dark:bg-navy-surface rounded-t-[48px] p-8 pb-12 border-t border-gray-100 dark:border-gray-800">
+            <View className="flex-row justify-between items-center mb-8">
+              <View>
+                <Text className="text-gray-900 dark:text-white font-black text-2xl tracking-tighter">Submit Evidence</Text>
+                <Text className="text-gray-400 text-xs font-bold uppercase tracking-widest mt-1">Proof of Fee Payment</Text>
+              </View>
+              <TouchableOpacity 
+                onPress={() => setShowUploadModal(false)}
+                className="w-10 h-10 rounded-full bg-gray-100 dark:bg-gray-800 items-center justify-center"
+              >
+                <X size={20} color={isDark ? "#FFF" : "#000"} />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView showsVerticalScrollIndicator={false}>
+              <View className="space-y-6">
+                {/* Fee Structure Selection */}
+                <View>
+                  <Text className="text-gray-500 dark:text-gray-400 text-[10px] font-black uppercase tracking-[2px] mb-3 ml-1">Fee Category</Text>
+                  <View className="flex-row flex-wrap gap-2">
+                    {feeStructures.map(fee => (
+                      <TouchableOpacity
+                        key={fee.id}
+                        onPress={() => setSelectedFeeId(fee.id)}
+                        className={`px-4 py-3 rounded-2xl border ${selectedFeeId === fee.id ? 'bg-[#FF6900] border-[#FF6900]' : 'bg-gray-50 dark:bg-gray-800 border-gray-100 dark:border-gray-700'}`}
+                      >
+                        <Text className={`text-xs font-bold ${selectedFeeId === fee.id ? 'text-white' : 'text-gray-600 dark:text-gray-400'}`}>
+                          {fee.title}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </View>
+
+                {/* Amount Input */}
+                <View>
+                  <Text className="text-gray-500 dark:text-gray-400 text-[10px] font-black uppercase tracking-[2px] mb-3 ml-1">Amount Paid (KES)</Text>
+                  <TextInput
+                    value={amount}
+                    onChangeText={setAmount}
+                    placeholder="e.g. 50000"
+                    placeholderTextColor={isDark ? "#4B5563" : "#9CA3AF"}
+                    keyboardType="numeric"
+                    className="bg-gray-50 dark:bg-gray-800 p-5 rounded-2xl text-gray-900 dark:text-white font-bold"
+                  />
+                </View>
+
+                {/* Reference Input */}
+                <View className="mt-6">
+                  <Text className="text-gray-500 dark:text-gray-400 text-[10px] font-black uppercase tracking-[2px] mb-3 ml-1">Reference Number / M-PESA ID</Text>
+                  <TextInput
+                    value={reference}
+                    onChangeText={setReference}
+                    placeholder="e.g. QXJ82910XX"
+                    placeholderTextColor={isDark ? "#4B5563" : "#9CA3AF"}
+                    autoCapitalize="characters"
+                    className="bg-gray-50 dark:bg-gray-800 p-5 rounded-2xl text-gray-900 dark:text-white font-bold"
+                  />
+                </View>
+
+                {/* File Picker */}
+                <TouchableOpacity 
+                  onPress={async () => {
+                    const res = await DocumentPicker.getDocumentAsync({ type: ['image/*', 'application/pdf'] });
+                    if (!res.canceled) setSelectedFile(res.assets[0]);
+                  }}
+                  className="mt-6 border-2 border-dashed border-gray-100 dark:border-gray-800 rounded-3xl p-8 items-center justify-center bg-gray-50/50 dark:bg-gray-800/20"
+                >
+                  {selectedFile ? (
+                    <View className="items-center">
+                      <CheckCircle2 size={32} color="#10B981" />
+                      <Text className="text-gray-900 dark:text-white font-bold text-sm mt-3">{selectedFile.name}</Text>
+                      <Text className="text-gray-400 text-[10px] mt-1">Tap to change file</Text>
+                    </View>
+                  ) : (
+                    <View className="items-center">
+                      <View className="w-12 h-12 bg-[#FF6900]/10 rounded-2xl items-center justify-center mb-3">
+                        <Upload size={24} color="#FF6900" />
+                      </View>
+                      <Text className="text-gray-900 dark:text-white font-bold text-sm">Select Receipt / Proof</Text>
+                      <Text className="text-gray-400 text-[10px] mt-1">PNG, JPG or PDF (Max 5MB)</Text>
+                    </View>
+                  )}
+                </TouchableOpacity>
+
+                {/* Submit Button */}
+                <TouchableOpacity
+                  disabled={isUploading || !amount || !reference || !selectedFile}
+                  onPress={async () => {
+                    try {
+                      setIsUploading(true);
+                      
+                      // 1. Upload to Supabase Storage
+                      const fileExt = selectedFile.name.split('.').pop();
+                      const fileName = `${Date.now()}.${fileExt}`;
+                      const filePath = `${studentId}/${fileName}`;
+
+                      // Fetch the file as a blob
+                      const response = await fetch(selectedFile.uri);
+                      const blob = await response.blob();
+
+                      const { data: uploadData, error: uploadError } = await supabase.storage
+                        .from('payment_proofs')
+                        .upload(filePath, blob, { contentType: selectedFile.mimeType });
+
+                      if (uploadError) throw uploadError;
+
+                      const { data: { publicUrl } } = supabase.storage
+                        .from('payment_proofs')
+                        .getPublicUrl(filePath);
+
+                      // 2. Submit to Backend
+                      await FinanceService.submitEvidence({
+                        student_id: studentId,
+                        fee_structure_id: selectedFeeId,
+                        amount: parseFloat(amount),
+                        payment_method: 'bank_transfer',
+                        reference_number: reference,
+                        proof_url: publicUrl,
+                        notes: `M-PESA/Reference: ${reference}`
+                      });
+
+                      Alert.alert("Success", "Payment evidence submitted successfully for review.");
+                      setShowUploadModal(false);
+                      setAmount("");
+                      setReference("");
+                      setSelectedFile(null);
+                      fetchFinanceData();
+                    } catch (e: any) {
+                      console.error(e);
+                      Alert.alert("Upload Failed", e.message || "An error occurred while uploading.");
+                    } finally {
+                      setIsUploading(false);
+                    }
+                  }}
+                  className={`mt-10 p-5 rounded-2xl items-center justify-center ${isUploading || !amount || !reference || !selectedFile ? 'bg-gray-200 dark:bg-gray-800' : 'bg-[#FF6900]'}`}
+                >
+                  {isUploading ? (
+                    <ActivityIndicator color="white" />
+                  ) : (
+                    <Text className="text-white font-black text-base uppercase tracking-widest">Submit for Verification</Text>
+                  )}
+                </TouchableOpacity>
+              </View>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }

@@ -229,7 +229,7 @@ exports.getTeacherTimetable = async (req, res) => {
       .select(
         `
         id, day_of_week, start_time, end_time, room_number,
-        classes ( name ),
+        classes ( display_name ),
         subjects ( title )
         `,
       )

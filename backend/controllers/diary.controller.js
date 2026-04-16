@@ -163,3 +163,79 @@ exports.deleteEntry = async (req, res) => {
         res.status(500).json({ error: err.message });
     }
 };
+/**
+ * Sign a diary entry (Parent only)
+ */
+exports.signEntry = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { userId, userRole, institution_id } = req;
+
+        if (userRole !== 'parent') {
+            return res.status(403).json({ error: "Only parents can sign diary entries" });
+        }
+
+        const { data: parent } = await supabase.from('parents').select('id').eq('user_id', userId).single();
+        if (!parent) return res.status(404).json({ error: "Parent profile not found" });
+
+        const { data: entry } = await supabase.from('diary_entries').select('class_id').eq('id', id).single();
+        if (!entry) return res.status(404).json({ error: "Diary entry not found" });
+
+        const { data: kids } = await supabase.from('parent_students').select('student_id').eq('parent_id', parent.id);
+        const studentIds = (kids || []).map(k => k.student_id);
+        
+        const { data: enrollment } = await supabase
+            .from('class_enrollments')
+            .select('id')
+            .in('student_id', studentIds)
+            .eq('class_id', entry.class_id)
+            .limit(1)
+            .single();
+
+        if (!enrollment) {
+            return res.status(403).json({ error: "You do not have a student in this class" });
+        }
+
+        const { data, error } = await supabase
+            .from("diary_entries")
+            .update({ is_signed: true, updated_at: new Date().toISOString() })
+            .eq("id", id)
+            .eq("institution_id", institution_id)
+            .select()
+            .single();
+
+        if (error) throw error;
+        res.json(data);
+    } catch (err) {
+        console.error("signEntry error:", err);
+        res.status(500).json({ error: err.message });
+    }
+};
+
+/**
+ * Approve a diary entry (Admin only)
+ */
+exports.approveEntry = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { userRole, institution_id } = req;
+
+        if (userRole !== 'admin') {
+            return res.status(403).json({ error: "Only admins can approve diary entries" });
+        }
+
+        const { data, error } = await supabase
+            .from("diary_entries")
+            .update({ status: 'approved', updated_at: new Date().toISOString() })
+            .eq("id", id)
+            .eq("institution_id", institution_id)
+            .select()
+            .single();
+
+        if (error) throw error;
+        res.json(data);
+    } catch (err) {
+        console.error("approveEntry error:", err);
+        res.status(500).json({ error: err.message });
+    }
+};

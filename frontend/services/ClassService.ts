@@ -3,7 +3,11 @@ import { api } from './api';
 export interface ClassItem {
     id: string;
     name: string;
-    grade_level?: string;
+    grade_level?: number;
+    form_level?: number;
+    stream?: string;
+    display_name?: string;
+    level_label?: string;
     capacity?: number;
     teacher_id?: string;
     institution_id?: string;
@@ -19,7 +23,8 @@ export interface ClassStudent {
     last_name: string;
     full_name?: string;
     email: string;
-    grade_level: string;
+    grade_level?: number | string;
+    form_level?: number;
 }
 
 export interface AutoAssignResult {
@@ -37,7 +42,8 @@ export const ClassService = {
 
     async createClass(data: {
         name: string;
-        grade_level?: string;
+        grade_level?: number | null;
+        form_level?: number | null;
         capacity?: number;
         teacher_id?: string;
     }): Promise<ClassItem> {
@@ -67,8 +73,8 @@ export const ClassService = {
         await api.delete(`/classes/${classId}/students/${studentId}`);
     },
 
-    async autoAssign(gradeLevel: string): Promise<AutoAssignResult> {
-        const res = await api.post('/classes/auto-assign', { grade_level: gradeLevel });
+    async autoAssign(payload: { grade_level?: number; form_level?: number }): Promise<AutoAssignResult> {
+        const res = await api.post('/classes/auto-assign', payload);
         return res.data;
     },
 

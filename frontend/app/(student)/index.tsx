@@ -49,7 +49,7 @@ const QuickAction = ({ icon: Icon, label, color, onPress }: QuickActionProps) =>
 export default function Index() {
   const { profile, displayId, loading: authLoading, studentId, isDemo } = useAuth();
   const { isDark } = useTheme();
-  const { hasDiary } = useSubscriptionTier();
+  const { hasDiary, showFinancials } = useSubscriptionTier();
   const { unreadCount } = useNotifications();
   const [showNotification, setShowNotification] = useState(false);
   const router = useRouter();
@@ -61,10 +61,14 @@ export default function Index() {
   const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
+    if (authLoading) return;
+
     if (studentId || isDemo) {
       fetchDashboardData();
+    } else {
+      setLoadingData(false);
     }
-  }, [studentId, isDemo]);
+  }, [studentId, isDemo, authLoading]);
 
   const fetchDashboardData = async () => {
     try {
@@ -130,7 +134,7 @@ export default function Index() {
 
       if (attendanceData && attendanceData.length > 0) {
         const total = attendanceData.length;
-        const present = attendanceData.filter(r => r.status === 'present' || r.status === 'late').length;
+        const present = (attendanceData as any[]).filter((r: any) => r.status === 'present' || r.status === 'late').length;
         const pct = Math.round((present / total) * 100);
         setAttendancePct(`${pct}%`);
       } else {
@@ -148,7 +152,7 @@ export default function Index() {
         .eq('student_id', studentId);
 
       if (myClasses && myClasses.length > 0) {
-        const classIds = myClasses.map(c => c.class_id);
+        const classIds = (myClasses as any[]).map((c: any) => c.class_id);
         const { data: schedule } = await supabase
           .from('timetables')
           .select(`
@@ -365,12 +369,14 @@ export default function Index() {
               color="#22c55e"
               onPress={() => router.push("/(student)/attendance" as any)}
             />
-            <QuickAction
-              icon={Wallet}
-              label="Finances"
-              color="#FF6900"
-              onPress={() => router.push("/(student)/finance" as any)}
-            />
+            {showFinancials && (
+              <QuickAction
+                icon={Wallet}
+                label="Finances"
+                color="#FF6900"
+                onPress={() => router.push("/(student)/finance" as any)}
+              />
+            )}
             {hasDiary && (
               <QuickAction
                 icon={BookOpen}

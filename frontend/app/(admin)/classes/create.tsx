@@ -1,5 +1,6 @@
 import { UnifiedHeader } from "@/components/common/UnifiedHeader";
 import { useTheme } from "@/contexts/ThemeContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { ClassService } from "@/services/ClassService";
 import { supabase } from "@/libs/supabase";
 import { Ionicons } from "@expo/vector-icons";
@@ -22,11 +23,10 @@ interface Teacher {
     full_name: string;
 }
 
-const GRADE_LEVELS = [
-    "Pre-Primary", "Primary 1", "Primary 2", "Primary 3", "Primary 4", "Primary 5", "Primary 6",
-    "Form 1", "Form 2", "Form 3", "Form 4",
-    "Grade 9", "Grade 10", "Grade 11", "Grade 12",
-];
+const PRIMARY_LEVELS = ["Grade 1", "Grade 2", "Grade 3", "Grade 4", "Grade 5", "Grade 6"];
+const SECONDARY_LEVELS = ["Form 1", "Form 2", "Form 3", "Form 4"];
+const KG_LEVELS = ["Baby Class", "Middle Class", "Top Class"];
+const GLOBAL_LEVELS = ["Pre-Primary", ...PRIMARY_LEVELS, ...SECONDARY_LEVELS, "Grade 9", "Grade 10", "Grade 11", "Grade 12"];
 
 export default function CreateClassScreen() {
     const router = useRouter();
@@ -48,6 +48,16 @@ export default function CreateClassScreen() {
     const textPrimary = isDark ? "#f1f1f1" : "#111827";
     const textSecondary = isDark ? "#9ca3af" : "#6b7280";
     const labelColor = isDark ? "#9ca3af" : "#374151";
+    
+    const { profile } = useAuth();
+    const inst = (profile as any)?.institutions;
+    const instLevelLabel = inst?.school_categories?.level_label || 'Grade';
+    const categoryName = inst?.school_categories?.name?.toLowerCase() || '';
+
+    const levels = categoryName.includes('primary') ? PRIMARY_LEVELS 
+                 : categoryName.includes('secondary') ? SECONDARY_LEVELS
+                 : categoryName.includes('kind') ? KG_LEVELS
+                 : GLOBAL_LEVELS;
 
     useEffect(() => {
         loadTeachers();
@@ -82,9 +92,11 @@ export default function CreateClassScreen() {
 
         try {
             setLoading(true);
+            const numLevel = gradeLevel ? parseInt(gradeLevel.replace(/[^0-9]/g, '')) : undefined;
             await ClassService.createClass({
                 name: name.trim(),
-                grade_level: gradeLevel || undefined,
+                grade_level: (instLevelLabel === 'Grade' || instLevelLabel === 'KG') ? numLevel : undefined,
+                form_level: instLevelLabel === 'Form' ? numLevel : undefined,
                 capacity: capacity ? parseInt(capacity) : undefined,
                 teacher_id: teacherId || undefined,
             });
@@ -132,14 +144,13 @@ export default function CreateClassScreen() {
                     />
                 </View>
 
-                {/* Grade Level */}
                 <View style={{ marginBottom: 20 }}>
                     <Text style={{ color: labelColor, fontSize: 14, fontWeight: "600", marginBottom: 8 }}>
-                        Grade Level
+                        {instLevelLabel} Level
                     </Text>
                     <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                         <View style={{ flexDirection: "row", gap: 8 }}>
-                            {GRADE_LEVELS.map((grade) => (
+                            {levels.map((grade) => (
                                 <TouchableOpacity
                                     key={grade}
                                     onPress={() => setGradeLevel(gradeLevel === grade ? "" : grade)}

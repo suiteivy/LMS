@@ -48,7 +48,8 @@ export default function MasterInstitutions() {
         subscription_status: 'trial',
         trial_end_date: '',
         custom_student_limit: '',
-        email_domain: ''
+        email_domain: '',
+        category_id: ''
     });
     const [enrollLoading, setEnrollLoading] = useState(false);
 
@@ -62,6 +63,27 @@ export default function MasterInstitutions() {
     const [adminModalVisible, setAdminModalVisible] = useState(false);
     const [selectedInstAdmins, setSelectedInstAdmins] = useState<any[]>([]);
     const [adminLoading, setAdminLoading] = useState(false);
+    const [categories, setCategories] = useState<any[]>([]);
+    const [categoriesLoading, setCategoriesLoading] = useState(false);
+    const [isCategoryModalVisible, setIsCategoryModalVisible] = useState(false);
+    const [categoryForm, setCategoryForm] = useState({ name: '', level_label: 'Grade' });
+    const [isSavingCategory, setIsSavingCategory] = useState(false);
+
+    // Edit Institution State
+    const [editModalVisible, setEditModalVisible] = useState(false);
+    const [editForm, setEditForm] = useState<any>({});
+    const [isSavingEdit, setIsSavingEdit] = useState(false);
+
+    // Payment Recording State
+    const [paymentModalVisible, setPaymentModalVisible] = useState(false);
+    const [paymentForm, setPaymentForm] = useState({
+        amount: '',
+        method: 'manual',
+        reference_id: '',
+        notes: '',
+        date: new Date().toISOString().split('T')[0]
+    });
+    const [isSavingPayment, setIsSavingPayment] = useState(false);
 
     const themeColors = {
         bg: isDark ? '#0F0B2E' : '#f8fafc',
@@ -132,9 +154,33 @@ export default function MasterInstitutions() {
         }
     };
 
+    const fetchCategories = async () => {
+        try {
+            setCategoriesLoading(true);
+            const { data: { session } } = await supabase.auth.getSession();
+            if (!session) return;
+
+            const res = await fetch(`${getBackendUrl()}/api/master-admin/school-categories`, {
+                headers: {
+                    'Authorization': `Bearer ${session.access_token}`,
+                    'Accept': 'application/json'
+                }
+            });
+            const data = await res.json();
+            if (res.ok) {
+                setCategories(data.categories || []);
+            }
+        } catch (err) {
+            console.error(err);
+        } finally {
+            setCategoriesLoading(false);
+        }
+    };
+
     useEffect(() => {
         if (activeTab === 'institutions') {
             fetchInstitutions();
+            fetchCategories();
         } else {
             fetchAddonRequests();
         }
@@ -161,7 +207,7 @@ export default function MasterInstitutions() {
             const { data: { session } } = await supabase.auth.getSession();
             if (!session) return;
 
-            const res = await fetch(`${getBackendUrl()}/api/master-admin/institutions/${id}/subscription`, {
+            const res = await fetch(`${getBackendUrl()}/api/master-admin/institutions/${id}`, {
                 method: 'PUT',
                 headers: {
                     'Authorization': `Bearer ${session.access_token}`,
@@ -179,6 +225,83 @@ export default function MasterInstitutions() {
             }
         } catch (err) {
             console.error(err);
+        }
+    };
+
+    const handleSaveEdit = async () => {
+        if (!editForm.id) return;
+        try {
+            setIsSavingEdit(true);
+            const { data: { session } } = await supabase.auth.getSession();
+            if (!session) return;
+
+            const res = await fetch(`${getBackendUrl()}/api/master-admin/institutions/${editForm.id}`, {
+                method: 'PUT',
+                headers: {
+                    'Authorization': `Bearer ${session.access_token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(editForm)
+            });
+
+            const data = await res.json();
+            if (res.ok) {
+                Toast.show({ type: 'success', text1: 'Success', text2: 'Institution updated successfully' });
+                setEditModalVisible(false);
+                fetchInstitutions();
+            } else {
+                Toast.show({ type: 'error', text1: 'Error', text2: data.error });
+            }
+        } catch (err) {
+            console.error(err);
+            Toast.show({ type: 'error', text1: 'Error', text2: 'Failed to update institution' });
+        } finally {
+            setIsSavingEdit(false);
+        }
+    };
+
+    const handleSavePayment = async () => {
+        if (!selectedInstId || !paymentForm.amount) {
+            Toast.show({ type: 'error', text1: 'Error', text2: 'Amount is required' });
+            return;
+        }
+
+        try {
+            setIsSavingPayment(true);
+            const { data: { session } } = await supabase.auth.getSession();
+            if (!session) return;
+
+            const res = await fetch(`${getBackendUrl()}/api/master-admin/payments`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${session.access_token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    institution_id: selectedInstId,
+                    ...paymentForm
+                })
+            });
+
+            const data = await res.json();
+            if (res.ok) {
+                Toast.show({ type: 'success', text1: 'Success', text2: 'Payment recorded successfully' });
+                setPaymentModalVisible(false);
+                setPaymentForm({
+                    amount: '',
+                    method: 'manual',
+                    reference_id: '',
+                    notes: '',
+                    date: new Date().toISOString().split('T')[0]
+                });
+            } else {
+                Toast.show({ type: 'error', text1: 'Error', text2: data.error });
+            }
+        } catch (err) {
+            console.error(err);
+            Toast.show({ type: 'error', text1: 'Error', text2: 'Failed to record payment' });
+        } finally {
+            setIsSavingPayment(false);
         }
     };
 
@@ -218,7 +341,7 @@ export default function MasterInstitutions() {
                 Toast.show({ type: 'success', text1: 'Success', text2: 'Institution enrolled successfully' });
                 setEnrollModalVisible(false);
                 setEnrollForm({
-                    institution_name: '', location: '', admin_full_name: '', admin_email: '', admin_password: '', subscription_plan: 'trial', subscription_status: 'trial', trial_end_date: '', custom_student_limit: '', email_domain: ''
+                    institution_name: '', location: '', admin_full_name: '', admin_email: '', admin_password: '', subscription_plan: 'trial', subscription_status: 'trial', trial_end_date: '', custom_student_limit: '', email_domain: '', category_id: ''
                 });
                 fetchInstitutions(); // Refresh the list
             } else {
@@ -612,6 +735,12 @@ export default function MasterInstitutions() {
                                 <Text style={{ color: themeColors.primary, fontSize: 10, fontWeight: '800', textTransform: 'uppercase' }}>{item.subscription_plan}</Text>
                             </View>
                         )}
+                        {item.category_name && (
+                            <View style={{ backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : '#f1f5f9', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                                <MaterialCommunityIcons name="school-outline" size={10} color={themeColors.subtext} />
+                                <Text style={{ color: themeColors.subtext, fontSize: 10, fontWeight: '700', textTransform: 'uppercase' }}>{item.category_name}</Text>
+                            </View>
+                        )}
                     </View>
 
                     {/* Access & Addons Buttons */}
@@ -667,11 +796,35 @@ export default function MasterInstitutions() {
                         </TouchableOpacity>
 
                         <TouchableOpacity
+                            onPress={() => {
+                                setEditForm({ ...item });
+                                setEditModalVisible(true);
+                            }}
+                            style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}
+                        >
+                            <MaterialCommunityIcons name="pencil-outline" size={16} color="#3B82F6" />
+                            <Text style={{ color: '#3B82F6', fontSize: 13, fontWeight: '600' }}>Edit Details</Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                            onPress={() => {
+                                setSelectedInstId(item.id);
+                                setPaymentModalVisible(true);
+                            }}
+                            style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}
+                        >
+                            <MaterialCommunityIcons name="cash-register" size={16} color="#10b981" />
+                            <Text style={{ color: '#10b981', fontSize: 13, fontWeight: '600' }}>Record Payment</Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
                             onPress={() => handleDeleteInstitution(item.id, item.name)}
                             style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}
                         >
                             <MaterialCommunityIcons name="trash-can-outline" size={16} color="#ef4444" />
                             <Text style={{ color: '#ef4444', fontSize: 13, fontWeight: '600' }}>Delete</Text>
+                        </TouchableOpacity>
+
                         </TouchableOpacity>
                     </View>
                 </View>
@@ -708,9 +861,18 @@ export default function MasterInstitutions() {
                         <Text style={{ fontSize: 14, color: themeColors.subtext, marginTop: 2 }}>Manage accounts & subscriptions</Text>
                     </View>
                 </View>
-                <TouchableOpacity onPress={activeTab === 'institutions' ? fetchInstitutions : fetchAddonRequests}>
-                    <MaterialCommunityIcons name="refresh" size={24} color={themeColors.text} />
-                </TouchableOpacity>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 15 }}>
+                     <TouchableOpacity 
+                        onPress={() => setIsCategoryModalVisible(true)}
+                        style={{ backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#f1f5f9', padding: 8, borderRadius: 10, flexDirection: 'row', alignItems: 'center', gap: 6 }}
+                    >
+                        <MaterialCommunityIcons name="tag-outline" size={20} color={themeColors.primary} />
+                        <Text style={{ color: themeColors.text, fontWeight: '600', fontSize: 12 }}>Categories</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={activeTab === 'institutions' ? fetchInstitutions : fetchAddonRequests}>
+                        <MaterialCommunityIcons name="refresh" size={24} color={themeColors.text} />
+                    </TouchableOpacity>
+                </View>
             </View>
 
             {/* Tab Switcher */}
@@ -890,6 +1052,21 @@ export default function MasterInstitutions() {
                                 onChangeText={t => setEnrollForm(prev => ({ ...prev, email_domain: t }))}
                             />
 
+                            <Text style={{ color: themeColors.text, fontWeight: '600', marginBottom: 8 }}>School Category</Text>
+                            <View style={{ backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#f1f5f9', borderRadius: 12, marginBottom: 16 }}>
+                                <Picker
+                                    selectedValue={enrollForm.category_id}
+                                    onValueChange={(itemValue) => setEnrollForm({ ...enrollForm, category_id: itemValue })}
+                                    style={{ color: themeColors.text }}
+                                    dropdownIconColor={themeColors.text}
+                                >
+                                    <Picker.Item label="Select Category..." value="" />
+                                    {categories.map(cat => (
+                                        <Picker.Item key={cat.id} label={cat.name} value={cat.id} />
+                                    ))}
+                                </Picker>
+                            </View>
+
                             <Text style={{ color: themeColors.primary, fontWeight: 'bold', marginBottom: 8 }}>Primary Admin Details</Text>
                             <TextInput
                                 style={{ backgroundColor: themeColors.bg, color: themeColors.text, padding: 14, borderRadius: 12, borderWidth: 1, borderColor: themeColors.border, marginBottom: 16 }}
@@ -928,6 +1105,7 @@ export default function MasterInstitutions() {
                                     <Picker.Item label="Basic Plan ($100/mo)" value="basic" />
                                     <Picker.Item label="Pro Plan ($300/mo)" value="pro" />
                                     <Picker.Item label="Premium Plan ($500/mo)" value="premium" />
+                                    <Picker.Item label="Beta Partner (Full Access)" value="beta" />
                                     <Picker.Item label="Custom Enterprise" value="custom" />
                                     <Picker.Item label="Free Forever" value="free" />
                                 </Picker>
@@ -1150,6 +1328,345 @@ export default function MasterInstitutions() {
                                 style={{ flex: 1, padding: 14, borderRadius: 12, alignItems: 'center', backgroundColor: '#3B82F6', opacity: addonsLoading ? 0.7 : 1 }}
                             >
                                 {addonsLoading ? <ActivityIndicator color="#fff" /> : <Text style={{ color: '#fff', fontWeight: '600' }}>Save Add-ons</Text>}
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </View>
+            </Modal>
+
+            {/* CATEGORY MANAGEMENT MODAL */}
+            <Modal visible={isCategoryModalVisible} animationType="fade" transparent>
+                <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', padding: 20 }}>
+                    <View style={{ backgroundColor: themeColors.card, borderRadius: 24, padding: 24, width: '100%', maxWidth: 500, maxHeight: '80%' }}>
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+                            <Text style={{ fontSize: 20, fontWeight: 'bold', color: themeColors.text }}>Manage Categories</Text>
+                            <TouchableOpacity onPress={() => setIsCategoryModalVisible(false)}>
+                                <MaterialCommunityIcons name="close" size={24} color={themeColors.subtext} />
+                            </TouchableOpacity>
+                        </View>
+
+                        <ScrollView showsVerticalScrollIndicator={false}>
+                            {/* Add New Category */}
+                            <View style={{ backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : '#f8fafc', padding: 16, borderRadius: 16, marginBottom: 20 }}>
+                                <Text style={{ color: themeColors.primary, fontWeight: 'bold', marginBottom: 12 }}>Add New Category</Text>
+                                <TextInput
+                                    style={{ backgroundColor: themeColors.card, color: themeColors.text, padding: 12, borderRadius: 10, borderWidth: 1, borderColor: themeColors.border, marginBottom: 12 }}
+                                    placeholder="Category Name (e.g. Junior School)"
+                                    placeholderTextColor={themeColors.subtext}
+                                    value={categoryForm.name}
+                                    onChangeText={t => setCategoryForm(prev => ({ ...prev, name: t }))}
+                                />
+                                <TextInput
+                                    style={{ backgroundColor: themeColors.card, color: themeColors.text, padding: 12, borderRadius: 10, borderWidth: 1, borderColor: themeColors.border, marginBottom: 16 }}
+                                    placeholder="Level Label (e.g. Grade, Form, Year)"
+                                    placeholderTextColor={themeColors.subtext}
+                                    value={categoryForm.level_label}
+                                    onChangeText={t => setCategoryForm(prev => ({ ...prev, level_label: t }))}
+                                />
+                                <TouchableOpacity 
+                                    onPress={async () => {
+                                        if (!categoryForm.name || !categoryForm.level_label) return;
+                                        try {
+                                            setIsSavingCategory(true);
+                                            const { data: { session } } = await supabase.auth.getSession();
+                                            if (!session) return;
+                                            const res = await fetch(`${getBackendUrl()}/api/master-admin/categories`, {
+                                                method: 'POST',
+                                                headers: {
+                                                    'Authorization': `Bearer ${session.access_token}`,
+                                                    'Content-Type': 'application/json'
+                                                },
+                                                body: JSON.stringify(categoryForm)
+                                            });
+                                            if (res.ok) {
+                                                setCategoryForm({ name: '', level_label: 'Grade' });
+                                                fetchCategories();
+                                                Toast.show({ type: 'success', text1: 'Success', text2: 'Category added' });
+                                            }
+                                        } catch (err) {
+                                            console.error(err);
+                                        } finally {
+                                            setIsSavingCategory(false);
+                                        }
+                                    }}
+                                    disabled={isSavingCategory}
+                                    style={{ backgroundColor: themeColors.primary, padding: 12, borderRadius: 10, alignItems: 'center' }}
+                                >
+                                    {isSavingCategory ? <ActivityIndicator color="#fff" size="small" /> : <Text style={{ color: '#fff', fontWeight: 'bold' }}>Add Category</Text>}
+                                </TouchableOpacity>
+                            </View>
+
+                            {/* Existing Categories */}
+                            <Text style={{ color: themeColors.text, fontWeight: '700', marginBottom: 12 }}>Active Categories</Text>
+                            {categoriesLoading ? (
+                                <ActivityIndicator color={themeColors.primary} />
+                            ) : (
+                                <View style={{ gap: 10 }}>
+                                    {categories.map(cat => (
+                                        <View key={cat.id} style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 12, backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#fff', borderRadius: 12, borderWidth: 1, borderColor: themeColors.border }}>
+                                            <View>
+                                                <Text style={{ color: themeColors.text, fontWeight: '600' }}>{cat.name}</Text>
+                                                <Text style={{ color: themeColors.subtext, fontSize: 12 }}>Label: {cat.level_label}</Text>
+                                            </View>
+                                            <TouchableOpacity 
+                                                onPress={async () => {
+                                                    const confirmMsg = "Delete this category? Institutions using it will keep it until updated.";
+                                                    const confirmed = Platform.OS === 'web' ? window.confirm(confirmMsg) : true; // In RN, maybe use Alert.confirm
+                                                    if (!confirmed) return;
+                                                    
+                                                    try {
+                                                        const { data: { session } } = await supabase.auth.getSession();
+                                                        if (!session) return;
+                                                        const res = await fetch(`${getBackendUrl()}/api/master-admin/categories/${cat.id}`, {
+                                                            method: 'DELETE',
+                                                            headers: { 'Authorization': `Bearer ${session.access_token}` }
+                                                        });
+                                                        if (res.ok) fetchCategories();
+                                                    } catch (err) { console.error(err); }
+                                                }}
+                                                style={{ padding: 8 }}
+                                            >
+                                                <MaterialCommunityIcons name="trash-can-outline" size={20} color="#ef4444" />
+                                            </TouchableOpacity>
+                                        </View>
+                                    ))}
+                                </View>
+                            )}
+                        </ScrollView>
+                    </View>
+                </View>
+            </Modal>
+
+            {/* EDIT INSTITUTION MODAL */}
+            <Modal visible={editModalVisible} animationType="slide" transparent>
+                <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}>
+                    <View style={{ backgroundColor: themeColors.card, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, maxHeight: '90%' }}>
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                                <MaterialCommunityIcons name="pencil" size={24} color={themeColors.primary} />
+                                <Text style={{ fontSize: 20, fontWeight: 'bold', color: themeColors.text }}>Edit Institution</Text>
+                            </View>
+                            <TouchableOpacity onPress={() => setEditModalVisible(false)}>
+                                <MaterialCommunityIcons name="close" size={24} color={themeColors.subtext} />
+                            </TouchableOpacity>
+                        </View>
+
+                        <ScrollView showsVerticalScrollIndicator={false}>
+                            <Text style={{ color: themeColors.primary, fontWeight: 'bold', marginBottom: 8 }}>Institution Metadata</Text>
+                            <TextInput
+                                style={{ backgroundColor: themeColors.bg, color: themeColors.text, padding: 14, borderRadius: 12, borderWidth: 1, borderColor: themeColors.border, marginBottom: 16 }}
+                                placeholder="Institution Name"
+                                placeholderTextColor={themeColors.subtext}
+                                value={editForm.name}
+                                onChangeText={t => setEditForm((prev: any) => ({ ...prev, name: t }))}
+                            />
+                            <TextInput
+                                style={{ backgroundColor: themeColors.bg, color: themeColors.text, padding: 14, borderRadius: 12, borderWidth: 1, borderColor: themeColors.border, marginBottom: 16 }}
+                                placeholder="Location"
+                                placeholderTextColor={themeColors.subtext}
+                                value={editForm.location}
+                                onChangeText={t => setEditForm((prev: any) => ({ ...prev, location: t }))}
+                            />
+                            <TextInput
+                                style={{ backgroundColor: themeColors.bg, color: themeColors.text, padding: 14, borderRadius: 12, borderWidth: 1, borderColor: themeColors.border, marginBottom: 16 }}
+                                placeholder="Principal/Owner Name"
+                                placeholderTextColor={themeColors.subtext}
+                                value={editForm.principal_name}
+                                onChangeText={t => setEditForm((prev: any) => ({ ...prev, principal_name: t }))}
+                            />
+                            <TextInput
+                                style={{ backgroundColor: themeColors.bg, color: themeColors.text, padding: 14, borderRadius: 12, borderWidth: 1, borderColor: themeColors.border, marginBottom: 16 }}
+                                placeholder="Contact Phone"
+                                placeholderTextColor={themeColors.subtext}
+                                value={editForm.phone}
+                                onChangeText={t => setEditForm((prev: any) => ({ ...prev, phone: t }))}
+                            />
+                            <TextInput
+                                style={{ backgroundColor: themeColors.bg, color: themeColors.text, padding: 14, borderRadius: 12, borderWidth: 1, borderColor: themeColors.border, marginBottom: 16 }}
+                                placeholder="Contact Email"
+                                placeholderTextColor={themeColors.subtext}
+                                value={editForm.email}
+                                onChangeText={t => setEditForm((prev: any) => ({ ...prev, email: t }))}
+                            />
+                            <TextInput
+                                style={{ backgroundColor: themeColors.bg, color: themeColors.text, padding: 14, borderRadius: 12, borderWidth: 1, borderColor: themeColors.border, marginBottom: 16 }}
+                                placeholder="Email Domain"
+                                placeholderTextColor={themeColors.subtext}
+                                autoCapitalize="none"
+                                value={editForm.email_domain}
+                                onChangeText={t => setEditForm((prev: any) => ({ ...prev, email_domain: t }))}
+                            />
+
+                            <Text style={{ color: themeColors.primary, fontWeight: 'bold', marginBottom: 8, marginTop: 10 }}>Subscription & Limits</Text>
+                            
+                            <Text style={{ color: themeColors.text, fontSize: 13, marginBottom: 4, fontWeight: '600' }}>Plan</Text>
+                            <View style={{ backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#f1f5f9', borderRadius: 12, marginBottom: 16 }}>
+                                <Picker
+                                    selectedValue={editForm.subscription_plan}
+                                    onValueChange={(v) => setEditForm((prev: any) => ({ ...prev, subscription_plan: v }))}
+                                    style={{ color: themeColors.text }}
+                                >
+                                    <Picker.Item label="Trial" value="trial" />
+                                    <Picker.Item label="Basic" value="basic" />
+                                    <Picker.Item label="Pro" value="pro" />
+                                    <Picker.Item label="Premium" value="premium" />
+                                    <Picker.Item label="Beta Partner" value="beta" />
+                                    <Picker.Item label="Custom Enterprise" value="custom" />
+                                    <Picker.Item label="Free Forever" value="free" />
+                                </Picker>
+                            </View>
+
+                            <Text style={{ color: themeColors.text, fontSize: 13, marginBottom: 4, fontWeight: '600' }}>Status</Text>
+                            <View style={{ backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#f1f5f9', borderRadius: 12, marginBottom: 16 }}>
+                                <Picker
+                                    selectedValue={editForm.subscription_status}
+                                    onValueChange={(v) => setEditForm((prev: any) => ({ ...prev, subscription_status: v }))}
+                                    style={{ color: themeColors.text }}
+                                >
+                                    <Picker.Item label="Active" value="active" />
+                                    <Picker.Item label="Suspended" value="suspended" />
+                                    <Picker.Item label="Trialing" value="trial" />
+                                    <Picker.Item label="Expired" value="expired" />
+                                </Picker>
+                            </View>
+
+                            <Text style={{ color: themeColors.text, fontSize: 13, marginBottom: 4, fontWeight: '600' }}>Billing Cycle</Text>
+                            <View style={{ backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#f1f5f9', borderRadius: 12, marginBottom: 16 }}>
+                                <Picker
+                                    selectedValue={editForm.subscription_cycle}
+                                    onValueChange={(v) => setEditForm((prev: any) => ({ ...prev, subscription_cycle: v }))}
+                                    style={{ color: themeColors.text }}
+                                >
+                                    <Picker.Item label="Monthly" value="monthly" />
+                                    <Picker.Item label="Quarterly" value="quarterly" />
+                                    <Picker.Item label="Yearly" value="yearly" />
+                                </Picker>
+                            </View>
+
+                            <Text style={{ color: themeColors.text, fontSize: 13, marginBottom: 4, fontWeight: '600' }}>Custom Student Limit</Text>
+                            <TextInput
+                                style={{ backgroundColor: themeColors.bg, color: themeColors.text, padding: 14, borderRadius: 12, borderWidth: 1, borderColor: themeColors.border, marginBottom: 16 }}
+                                placeholder="e.g. 1000"
+                                placeholderTextColor={themeColors.subtext}
+                                keyboardType="number-pad"
+                                value={editForm.custom_student_limit?.toString() || ''}
+                                onChangeText={t => setEditForm((prev: any) => ({ ...prev, custom_student_limit: t ? parseInt(t, 10) : null }))}
+                            />
+
+                            <Text style={{ color: themeColors.text, fontSize: 13, marginBottom: 4, fontWeight: '600' }}>Plan Expiry Date (YYYY-MM-DD)</Text>
+                            <TextInput
+                                style={{ backgroundColor: themeColors.bg, color: themeColors.text, padding: 14, borderRadius: 12, borderWidth: 1, borderColor: themeColors.border, marginBottom: 24 }}
+                                placeholder="YYYY-MM-DD"
+                                placeholderTextColor={themeColors.subtext}
+                                value={editForm.trial_end_date?.split('T')[0] || ''}
+                                onChangeText={t => setEditForm((prev: any) => ({ ...prev, trial_end_date: t }))}
+                            />
+
+                            <Text style={{ color: themeColors.primary, fontWeight: 'bold', marginBottom: 12 }}>Feature Add-ons</Text>
+                            <View style={{ gap: 12, marginBottom: 30 }}>
+                                {[
+                                    { key: 'addon_library', label: 'Library Module' },
+                                    { key: 'addon_messaging', label: 'Messaging Module' },
+                                    { key: 'addon_diary', label: 'Virtual Diary' },
+                                    { key: 'addon_bursary', label: 'Bursary Tracking' },
+                                    { key: 'addon_finance', label: 'Finance Accounting' },
+                                    { key: 'addon_analytics', label: 'Advanced Analytics' },
+                                    { key: 'addon_attendance', label: 'Digital Attendance' }
+                                ].map(addon => (
+                                    <TouchableOpacity
+                                        key={addon.key}
+                                        style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : '#f8fafc', padding: 14, borderRadius: 12 }}
+                                        onPress={() => setEditForm((prev: any) => ({ ...prev, [addon.key]: !prev[addon.key] }))}
+                                    >
+                                        <Text style={{ color: themeColors.text, fontWeight: '600' }}>{addon.label}</Text>
+                                        <MaterialCommunityIcons 
+                                            name={editForm[addon.key] ? "checkbox-marked" : "checkbox-blank-outline"} 
+                                            size={24} 
+                                            color={editForm[addon.key] ? themeColors.primary : themeColors.subtext} 
+                                        />
+                                    </TouchableOpacity>
+                                ))}
+                            </View>
+
+                            <TouchableOpacity
+                                onPress={handleSaveEdit}
+                                disabled={isSavingEdit}
+                                style={{ backgroundColor: themeColors.primary, padding: 18, borderRadius: 14, alignItems: 'center', marginBottom: 40, opacity: isSavingEdit ? 0.7 : 1 }}
+                            >
+                                {isSavingEdit ? <ActivityIndicator color="#fff" /> : <Text style={{ color: '#fff', fontSize: 16, fontWeight: '800' }}>Save Changes</Text>}
+                            </TouchableOpacity>
+                        </ScrollView>
+                    </View>
+                </View>
+            </Modal>
+
+            {/* RECORD PAYMENT MODAL */}
+            <Modal visible={paymentModalVisible} animationType="fade" transparent>
+                <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', padding: 20 }}>
+                    <View style={{ backgroundColor: themeColors.card, borderRadius: 24, padding: 24, width: '100%', maxWidth: 400 }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 20 }}>
+                            <MaterialCommunityIcons name="cash-register" size={24} color={themeColors.primary} />
+                            <Text style={{ fontSize: 20, fontWeight: 'bold', color: themeColors.text }}>Record Payment</Text>
+                        </View>
+
+                        <Text style={{ color: themeColors.text, fontWeight: '600', marginBottom: 4 }}>Amount (KES)*</Text>
+                        <TextInput
+                            style={{ backgroundColor: themeColors.bg, color: themeColors.text, padding: 14, borderRadius: 12, borderWidth: 1, borderColor: themeColors.border, marginBottom: 16 }}
+                            placeholder="e.g. 50000"
+                            placeholderTextColor={themeColors.subtext}
+                            keyboardType="numeric"
+                            value={paymentForm.amount}
+                            onChangeText={t => setPaymentForm(prev => ({ ...prev, amount: t }))}
+                        />
+
+                        <Text style={{ color: themeColors.text, fontWeight: '600', marginBottom: 4 }}>Method</Text>
+                        <View style={{ backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#f1f5f9', borderRadius: 12, marginBottom: 16 }}>
+                            <Picker
+                                selectedValue={paymentForm.method}
+                                onValueChange={v => setPaymentForm(prev => ({ ...prev, method: v }))}
+                                style={{ color: themeColors.text }}
+                            >
+                                <Picker.Item label="Bank Transfer" value="bank" />
+                                <Picker.Item label="M-Pesa" value="mpesa" />
+                                <Picker.Item label="Cash" value="cash" />
+                                <Picker.Item label="Cheque" value="cheque" />
+                                <Picker.Item label="Direct Deposit" value="direct" />
+                            </Picker>
+                        </View>
+
+                        <Text style={{ color: themeColors.text, fontWeight: '600', marginBottom: 4 }}>Reference / Receipt ID</Text>
+                        <TextInput
+                            style={{ backgroundColor: themeColors.bg, color: themeColors.text, padding: 14, borderRadius: 12, borderWidth: 1, borderColor: themeColors.border, marginBottom: 16 }}
+                            placeholder="e.g. TR-982173"
+                            placeholderTextColor={themeColors.subtext}
+                            value={paymentForm.reference_id}
+                            onChangeText={t => setPaymentForm(prev => ({ ...prev, reference_id: t }))}
+                        />
+
+                        <Text style={{ color: themeColors.text, fontWeight: '600', marginBottom: 4 }}>Notes</Text>
+                        <TextInput
+                            style={{ backgroundColor: themeColors.bg, color: themeColors.text, padding: 14, borderRadius: 12, borderWidth: 1, borderColor: themeColors.border, marginBottom: 16 }}
+                            placeholder="Internal accounting notes..."
+                            placeholderTextColor={themeColors.subtext}
+                            multiline
+                            numberOfLines={2}
+                            value={paymentForm.notes}
+                            onChangeText={t => setPaymentForm(prev => ({ ...prev, notes: t }))}
+                        />
+
+                        <View style={{ flexDirection: 'row', gap: 12, marginTop: 10 }}>
+                            <TouchableOpacity
+                                onPress={() => setPaymentModalVisible(false)}
+                                style={{ flex: 1, padding: 14, borderRadius: 12, alignItems: 'center', borderWidth: 1, borderColor: themeColors.border }}
+                            >
+                                <Text style={{ color: themeColors.text, fontWeight: '600' }}>Cancel</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                onPress={handleSavePayment}
+                                disabled={isSavingPayment}
+                                style={{ flex: 1, padding: 14, borderRadius: 12, alignItems: 'center', backgroundColor: themeColors.primary, opacity: isSavingPayment ? 0.7 : 1 }}
+                            >
+                                {isSavingPayment ? <ActivityIndicator color="#fff" /> : <Text style={{ color: '#fff', fontWeight: 'bold' }}>Record</Text>}
                             </TouchableOpacity>
                         </View>
                     </View>

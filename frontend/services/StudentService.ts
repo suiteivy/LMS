@@ -16,4 +16,9 @@ export class StudentService {
         const response = await api.get('/student/me/announcements');
         return response.data;
     }
+
+    static async getStudents() {
+        const response = await api.get('/student/list');
+        return response.data;
+    }
 }

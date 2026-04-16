@@ -1,37 +1,71 @@
 const process = require("node:process");
-// createClient removed as unused
-const supabase = require('../utils/supabaseClient.js'); // Default client (Service Role if configured, or just client)
-
-// We need a client that can sign in (Public Anon Key) to get a session for the demo user
-// But we also need Service Role to log to trial_sessions (if RLS blocks anon insert)
-// The existing utils/supabaseClient seems to use SERVICE_ROLE_KEY based on backend/.env content I saw earlier?
-// Wait, backend/.env has SUPABASE_SERVICE_ROLE_KEY.
-// util definition: `const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);`?
-// I need to check `backend/utils/supabaseClient.js` content. 
-// Standard pattern: if I need to sign in *as* a user, I should use the Anon Key client, OR verify credentials and then mint a token? 
-// Supabase `signInWithPassword` returns a session.
+const supabase = require('../utils/supabaseClient.js');
+const { cloneInstitution } = require('../services/demoClone.service.js');
+const crypto = require('crypto');
 
 const DEMO_PASSWORD = 'DemoUser123!';
-
-const DEMO_EMAILS = {
-    student: 'demo.student@lms.com',
-    teacher: 'demo.teacher@lms.com',
-    parent: 'demo.parent@lms.com',
-    admin: 'demo.admin@lms.com'
-};
+const TEMPLATE_INSTITUTION_ID = 'b5bd788c-8297-4a96-b8b3-157814504fba';
 
 exports.startDemo = async (req, res) => {
     const { role } = req.body;
 
-    if (!role || !DEMO_EMAILS[role]) {
+    if (!role || !['student', 'teacher', 'parent', 'admin'].includes(role)) {
         return res.status(400).json({ error: 'Invalid or missing role' });
     }
 
-    const email = DEMO_EMAILS[role];
-
     try {
-        // 1. Sign in as the demo user to get a fresh session
-        // We use a temporary client with ANON key for this, to act like a client
+        console.log(`Starting dynamic demo session for role: ${role}`);
+        
+        // 1. Create a Unique Ephemeral User for this session
+        const sessionSuffix = crypto.randomBytes(4).toString('hex');
+        const ephemeralEmail = `demo.${role}.${sessionSuffix}@lms.demo`;
+        const fullNameMap = {
+            teacher: 'Sarah Chemutai (Demo)',
+            student: 'Kelson Otieno (Demo)',
+            parent: 'James Mwangi (Demo)',
+            admin: 'Cloudora Admin (Demo)'
+        };
+
+        const { data: authUser, error: authError } = await supabase.auth.admin.createUser({
+            email: ephemeralEmail,
+            password: DEMO_PASSWORD,
+            email_confirm: true,
+            user_metadata: { 
+                full_name: fullNameMap[role],
+                is_demo: true,
+                session_id: sessionSuffix
+            }
+        });
+
+        if (authError) throw authError;
+        const user = authUser.user;
+
+        // 2. Add to public.users (Initially orphaned, cloned later)
+        const [firstName, ...lastNameParts] = fullNameMap[role].split(' ');
+        const lastName = lastNameParts.join(' ').replace(' (Demo)', '');
+        
+        const { error: userTableError } = await supabase.from('users').insert({
+            id: user.id,
+            email: ephemeralEmail,
+            full_name: fullNameMap[role],
+            first_name: firstName,
+            last_name: lastName,
+            role: role
+        });
+        if (userTableError) throw userTableError;
+
+        // 3. Clone the Template Institution for this session
+        // We pass the new user ID to become the primary actor in the cloned data
+        const newInstitutionId = await cloneInstitution(
+            TEMPLATE_INSTITUTION_ID,
+            role === 'teacher' ? user.id : null, 
+            role === 'admin' ? user.id : null
+        );
+
+        // Update the user's institution mapping
+        await supabase.from('users').update({ institution_id: newInstitutionId }).eq('id', user.id);
+
+        // 4. Create Session for the new user
         const { createClient: createClientJs } = require('@supabase/supabase-js');
         const authClient = createClientJs(
             process.env.EXPO_PUBLIC_SUPABASE_URL,
@@ -39,73 +73,52 @@ exports.startDemo = async (req, res) => {
         );
 
         const { data: authData, error: loginError } = await authClient.auth.signInWithPassword({
-            email,
+            email: ephemeralEmail,
             password: DEMO_PASSWORD
         });
 
-        if (loginError) {
-            console.error('Demo login error:', loginError);
-            return res.status(500).json({ error: 'Failed to start demo session' });
-        }
-
+        if (loginError) throw loginError;
         const session = authData.session;
-        const user = authData.user;
 
-        // 2. Clean up any existing trial sessions for this demo user
-        await supabase.from('trial_sessions').delete().eq('demo_user_id', user.id);
-
-        // 3. Log the new session start in trial_sessions (using Service Role client)
+        // 5. Log the session in trial_sessions for cleanup tracking
         const { error: logError } = await supabase.from('trial_sessions').insert({
             role,
             demo_user_id: user.id,
+            institution_id: newInstitutionId,
             session_token: session.access_token,
-            ip_address: req.ip || req.connection.remoteAddress
+            ip_address: req.ip || req.connection.remoteAddress,
+            expires_at: new Date(Date.now() + 15 * 60 * 1000).toISOString()
         });
 
-        if (logError) {
-            console.warn('Failed to log trial session:', logError);
-            // Continue anyway, not critical for user experience
-        }
+        if (logError) console.warn('Failed to log trial session details:', logError);
 
-        // 3. Fetch user profile data to return same structure as normal login
-        const { data: userData, error: _userError } = await supabase
-            .from("users")
-            .select("full_name, role, institution_id")
-            .eq("id", user.id)
-            .single();
-
-        let customId = null;
-        if (role === 'student') {
-            const { data } = await supabase.from('students').select('id').eq('user_id', user.id).single();
-            customId = data?.id;
-        } else if (role === 'teacher') {
-            const { data } = await supabase.from('teachers').select('id').eq('user_id', user.id).single();
-            customId = data?.id;
-        } else if (role === 'parent') {
-            const { data } = await supabase.from('parents').select('id').eq('user_id', user.id).single();
-            customId = data?.id;
-        } else if (role === 'admin') {
-            const { data } = await supabase.from('admins').select('id').eq('user_id', user.id).single();
-            customId = data?.id;
-        }
-
-        // 4. Return existing session data
+        // 6. Return response
         res.status(200).json({
-            message: "Demo started successfully",
+            message: "Isolated demo session started successfully",
             token: session.access_token,
             refreshToken: session.refresh_token,
             user: {
                 uid: user.id,
                 email: user.email,
-                ...userData,
-                customId
+                full_name: fullNameMap[role],
+                role: role,
+                institution_id: newInstitutionId
             },
             isDemo: true,
-            expiresIn: 15 * 60 // 15 minutes in seconds
+            expiresIn: 15 * 60
         });
 
     } catch (err) {
-        console.error('Start demo error:', err);
-        res.status(500).json({ error: 'Internal server error' });
+        console.error('Critical Error starting demo session:', err);
+        
+        // Specific error handling for JSON/Auth issues
+        if (err.message && err.message.includes('JSON')) {
+            console.error('JSON Parsing Error Detected. Checking request body...');
+        }
+
+        res.status(500).json({ 
+            error: 'Failed to initialize private demo instance. Please try again.',
+            details: process.env.NODE_ENV === 'development' ? err.message : undefined
+        });
     }
 };

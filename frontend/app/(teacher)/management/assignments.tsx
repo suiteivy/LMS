@@ -6,23 +6,30 @@ import { decode } from "base64-arraybuffer";
 import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system';
 import { router } from "expo-router";
-import { Calendar, Edit2, Eye, FileText, Plus, Upload, Users, X } from 'lucide-react-native';
-import React, { useEffect, useState } from "react";
-import { ActivityIndicator, Alert, Modal, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Calendar, Edit2, Eye, FileText, Plus, Printer, Trash2, Upload, Users, X } from 'lucide-react-native';
+import React, { useEffect, useMemo, useState } from "react";
+import { ActivityIndicator, Alert, Modal, ScrollView, Text, TextInput, TouchableOpacity, View, Platform } from 'react-native';
+import { DiaryAPI } from "@/services/DiaryService";
+import * as Print from 'expo-print';
+import * as Sharing from 'expo-sharing';
+import { DocumentPickerAsset } from 'expo-document-picker';
 
 interface Assignment {
     id: string;
     title: string;
     Subject: string;
-    dueDate: string;
+    dueDate: string; // Visual display
+    due_date_iso: string | null; // Logic source
     submissions: number;
     totalStudents: number;
     status: "active" | "draft" | "closed";
     subject_id: string;
-    attachment_url?: string;
-    attachment_name?: string;
+    attachment_url?: string | null;
+    attachment_name?: string | null;
     weight: number;
     term: string;
+    description?: string;
+    points: number;
 }
 
 interface SubjectOption {
@@ -30,7 +37,12 @@ interface SubjectOption {
     title: string;
 }
 
-const AssignmentCard = ({ assignment, onEdit, onView }: { assignment: Assignment; onEdit: (a: Assignment) => void; onView: (a: Assignment) => void }) => {
+const AssignmentCard = ({ assignment, onEdit, onView, onDelete }: { 
+    assignment: Assignment; 
+    onEdit: (a: Assignment) => void; 
+    onView: (a: Assignment) => void;
+    onDelete: (a: Assignment) => void;
+}) => {
     const getStatusStyle = (status: string) => {
         if (status === "active") return "bg-green-50 dark:bg-green-950/20 text-green-600 dark:text-green-400 border-green-100 dark:border-green-900";
         if (status === "draft") return "bg-gray-50 dark:bg-gray-950/20 text-gray-600 dark:text-gray-400 border-gray-200 dark:border-gray-800";
@@ -48,10 +60,18 @@ const AssignmentCard = ({ assignment, onEdit, onView }: { assignment: Assignment
                     <Text className="text-gray-900 dark:text-white font-bold text-lg leading-tight">{assignment.title}</Text>
                     <Text className="text-[#FF6900] text-xs font-bold mt-1 uppercase tracking-wider">{assignment.Subject}</Text>
                 </View>
-                <View className={`px-3 py-1 rounded-full border ${getStatusStyle(assignment.status || 'active').split(' ')[0]} ${getStatusStyle(assignment.status || 'active').split(' ')[2]}`}>
-                    <Text className={`text-[10px] font-bold uppercase tracking-widest ${getStatusStyle(assignment.status || 'active').split(' ')[1]}`}>
-                        {assignment.status || 'active'}
-                    </Text>
+                <View className="flex-row items-center gap-2">
+                    <View className={`px-3 py-1 rounded-full border ${getStatusStyle(assignment.status || 'active').split(' ')[0]} ${getStatusStyle(assignment.status || 'active').split(' ')[2]}`}>
+                        <Text className={`text-[10px] font-bold uppercase tracking-widest ${getStatusStyle(assignment.status || 'active').split(' ')[1]}`}>
+                            {assignment.status || 'active'}
+                        </Text>
+                    </View>
+                    <TouchableOpacity 
+                        onPress={() => onDelete(assignment)}
+                        className="p-2 bg-red-50 dark:bg-red-950/20 rounded-full"
+                    >
+                        <Trash2 size={16} color="#EF4444" />
+                    </TouchableOpacity>
                 </View>
             </View>
 
@@ -111,18 +131,24 @@ export default function AssignmentsPage() {
     const [selectedSubjectId, setSelectedSubjectId] = useState("");
     const [dateObject, setDateObject] = useState(new Date())
     const [showDatePicker, setShowDatePicker] = useState(false)
-    const [selectedFile, setSelectedFile] = useState<any>(null);
+    const [selectedFile, setSelectedFile] = useState<DocumentPickerAsset | null>(null);
     const [uploading, setUploading] = useState(false);
     const [weight, setWeight] = useState("0");
     const [term, setTerm] = useState("");
 
-    const onDateChange = (event: any, selectedDate?: Date) => {
+    const onDateChange = (_event: any, selectedDate?: Date) => {
         setShowDatePicker(false)
         if (selectedDate) {
             setDateObject(selectedDate)
             setDueDate(selectedDate.toISOString().split('T')[0])
         }
     }
+
+    const filteredAssignments = useMemo(() => {
+        return filter === "all"
+            ? assignments
+            : assignments.filter(a => a.status === filter);
+    }, [assignments, filter]);
 
     useEffect(() => {
         if (teacherId) {
@@ -148,15 +174,28 @@ export default function AssignmentsPage() {
         if (!teacherId) return;
         try {
             setLoading(true);
-            const { data, error } = await supabase
-                .from('assignments')
-                .select(`*, subject:subjects(title, id), submissions(count)`)
+            const { data, error } = await (supabase.from('assignments') as any)
+                .select(`
+                    id, 
+                    title, 
+                    due_date, 
+                    status, 
+                    subject_id, 
+                    attachment_url, 
+                    attachment_name, 
+                    description, 
+                    total_points, 
+                    weight, 
+                    term,
+                    subject:subjects(title),
+                    submissions(count)
+                `)
                 .eq('teacher_id', teacherId)
                 .order('created_at', { ascending: false });
 
             if (error) throw error;
 
-            const subjectIds = (data || []).map((a: any) => a.subject_id);
+            const subjectIds = (data as any[] || []).map(a => a.subject_id);
             const { data: countsData } = await supabase
                 .from('enrollments')
                 .select('subject_id')
@@ -164,16 +203,17 @@ export default function AssignmentsPage() {
                 .eq('status', 'enrolled');
 
             const countsMap: Record<string, number> = {};
-            (countsData || []).forEach((e: any) => {
+            (countsData as any[] || []).forEach(e => {
                 countsMap[e.subject_id] = (countsMap[e.subject_id] || 0) + 1;
             });
 
-            const formatted = (data || []).map((a: any) => ({
+            const formatted: Assignment[] = (data || []).map((a: any) => ({
                 id: a.id,
                 title: a.title,
                 Subject: a.subject?.title || "Unknown Subject",
                 subject_id: a.subject_id,
                 dueDate: a.due_date ? new Date(a.due_date).toLocaleDateString() : "No Due Date",
+                due_date_iso: a.due_date,
                 submissions: a.submissions?.[0]?.count || 0,
                 totalStudents: countsMap[a.subject_id] || 0,
                 status: a.status || 'active',
@@ -187,7 +227,7 @@ export default function AssignmentsPage() {
 
             setAssignments(formatted);
         } catch (error) {
-            console.error(error);
+            console.error('[fetchAssignments] Error:', error);
         } finally {
             setLoading(false);
         }
@@ -196,13 +236,13 @@ export default function AssignmentsPage() {
     const handleEdit = (a: Assignment) => {
         setEditingAssignment(a);
         setTitle(a.title);
-        setDescription((a as any).description);
-        setPoints((a as any).points?.toString() || "100");
+        setDescription(a.description || "");
+        setPoints(a.points.toString());
         setSelectedSubjectId(a.subject_id);
-        const d = a.dueDate !== "No Due Date" ? new Date(a.dueDate) : new Date();
+        const d = a.due_date_iso ? new Date(a.due_date_iso) : new Date();
         setDateObject(d);
-        setDueDate(a.dueDate !== "No Due Date" ? d.toISOString().split('T')[0] : "");
-        setWeight(a.weight?.toString() || "0");
+        setDueDate(a.due_date_iso ? a.due_date_iso.split('T')[0] : "");
+        setWeight(a.weight.toString());
         setTerm(a.term || "");
         setShowModal(true);
     };
@@ -217,6 +257,49 @@ export default function AssignmentsPage() {
         setEditingAssignment(null);
         setWeight("0");
         setTerm("");
+    };
+
+    const handleDelete = async (a: Assignment) => {
+        const performDelete = async () => {
+            try {
+                setLoading(true);
+                const { error } = await (supabase.from('assignments') as any).delete().eq('id', a.id);
+                if (error) throw error;
+
+                // Attempt to remove diary entry
+                try {
+                    const { data: existingEntries } = await (supabase.from('diary_entries') as any)
+                        .select('id')
+                        .ilike('title', `%Assignment%${a.title}%`)
+                        .limit(1);
+                    const entries = existingEntries as any[];
+                    if (entries && entries.length > 0) {
+                        await DiaryAPI.deleteEntry(entries[0].id);
+                    }
+                } catch (e) { console.error('Diary entry delete error:', e); }
+
+                Alert.alert("Success", "Assignment deleted successfully");
+                fetchAssignments();
+            } catch (err: unknown) {
+                const message = err instanceof Error ? err.message : "Failed to delete assignment";
+                Alert.alert("Error", message);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        if (Platform.OS === 'web') {
+            if (confirm("Are you sure you want to delete this assignment?")) performDelete();
+        } else {
+            Alert.alert(
+                "Delete Assignment",
+                "Are you sure you want to delete this assignment? This action cannot be undone.",
+                [
+                    { text: "Cancel", style: "cancel" },
+                    { text: "Delete", style: "destructive", onPress: performDelete }
+                ]
+            );
+        }
     };
 
     const pickDocument = async () => {
@@ -268,8 +351,19 @@ export default function AssignmentsPage() {
                     const filePath = `${teacherId}/${Date.now()}.${fileExt}`;
 
                     // Robust file reading for mobile compatibility
-                    const base64 = await new FileSystem.File(selectedFile.uri).base64();
-                    const fileBody = decode(base64);
+                    let fileBody;
+                    if (Platform.OS === 'web') {
+                        // Standard web file handling
+                        const response = await fetch(selectedFile.uri);
+                        const blob = await response.blob();
+                        fileBody = blob;
+                    } else {
+                        // Expo native handling
+                        const base64 = await FileSystem.readAsStringAsync(selectedFile.uri, {
+                            encoding: 'base64',
+                        });
+                        fileBody = decode(base64);
+                    }
 
                     const { error: uploadError } = await supabase.storage
                         .from('course_materials')
@@ -287,50 +381,197 @@ export default function AssignmentsPage() {
                         attachmentUrl = urlData.publicUrl;
                         attachmentName = selectedFile.name;
                     }
-                } catch (uploadErr: any) {
+                } catch (uploadErr: unknown) {
                     console.error('[saveAssignment] File upload catch error:', uploadErr);
                     Alert.alert("Upload Warning", "Could not upload file. The assignment will be saved without the attachment.");
                 }
             }
 
+            const weightVal = parseFloat(weight) || 0;
+            if (weightVal < 0 || weightVal > 100) {
+                Alert.alert("Invalid Weight", "Weight must be between 0 and 100%");
+                setUploading(false);
+                return;
+            }
+
+            const pointsVal = parseInt(points) || 100;
+            if (pointsVal <= 0) {
+                Alert.alert("Invalid Points", "Points must be a positive number");
+                setUploading(false);
+                return;
+            }
+
             const payload = {
                 teacher_id: teacherId,
                 subject_id: selectedSubjectId,
-                title,
-                description,
-                due_date: dueDate ? new Date(dueDate).toISOString() : null,
-                total_points: parseInt(points) || 100,
+                title: title.trim(),
+                description: description.trim(),
+                due_date: dateObject.toISOString(),
+                total_points: pointsVal,
                 status: 'active' as const,
                 attachment_url: attachmentUrl,
                 attachment_name: attachmentName,
-                weight: parseFloat(weight) || 0,
-                term: term
+                weight: weightVal,
+                term: term.trim()
             };
 
             if (editingAssignment) {
                 const { teacher_id: _t, status: _s, ...updatePayload } = payload;
-                const { error } = await supabase.from('assignments')
+                const { error } = await (supabase.from('assignments') as any)
                     .update(updatePayload)
                     .eq('id', editingAssignment.id);
                 if (error) throw error;
             } else {
-                const { error } = await supabase.from('assignments').insert(payload);
+                const { error } = await (supabase.from('assignments') as any).insert(payload);
                 if (error) throw error;
+            }
+
+            // Sync to Diary
+            try {
+                const { data: subjectData } = await (supabase
+                    .from('subjects')
+                    .select('class_id')
+                    .eq('id', selectedSubjectId)
+                    .single() as unknown as Promise<{ data: { class_id: string } | null; error: any }>);
+
+                if (subjectData?.class_id) {
+                    if (editingAssignment) {
+                        const { data: existingEntries } = await (supabase.from('diary_entries') as any)
+                            .select('id')
+                            .eq('class_id', subjectData.class_id)
+                            .ilike('title', `%Assignment%${editingAssignment.title}%`)
+                            .limit(1);
+
+                        const entries = existingEntries as any[];
+                        if (entries && entries.length > 0) {
+                            await DiaryAPI.updateEntry(entries[0].id, {
+                                title: `Assignment Update: ${title}`,
+                                content: `The assignment "${title}" has been updated.\nNew Due Date: ${dueDate || 'Not set'}\nPoints: ${pointsVal}`,
+                            });
+                        }
+                    } else {
+                        await DiaryAPI.createEntry({
+                            class_id: subjectData.class_id,
+                            title: `New Assignment: ${title}`,
+                            content: `A new assignment has been published: ${title}.\nDue Date: ${dueDate || 'Not set'}\nPoints: ${pointsVal}`,
+                            entry_date: new Date().toISOString().split('T')[0]
+                        });
+                    }
+                }
+            } catch (diaryErr) {
+                console.error('[saveAssignment] Failed to sync diary:', diaryErr);
             }
 
             setShowModal(false);
             fetchAssignments();
             resetForm();
-        } catch (error: any) {
-            Alert.alert("Error", error.message || "Failed to save assignment");
+        } catch (error: unknown) {
+            const message = error instanceof Error ? error.message : "Failed to save assignment";
+            Alert.alert("Error", message);
         } finally {
             setUploading(false);
         }
     };
 
-    const filteredAssignments = filter === "all"
-        ? assignments
-        : assignments.filter(a => a.status === filter);
+    const handlePrint = async () => {
+        try {
+            const html = `
+                <html>
+                    <head>
+                        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no" />
+                        <style>
+                            @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap');
+                            body { font-family: 'Inter', sans-serif; padding: 40px; color: #1a1a1a; line-height: 1.5; }
+                            .report-header { border-bottom: 2px solid #FF6900; margin-bottom: 30px; padding-bottom: 10px; }
+                            .report-title { font-size: 24px; font-weight: 700; color: #FF6900; margin: 0; }
+                            .report-meta { font-size: 12px; color: #666; margin-top: 5px; }
+                            
+                            .summary-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; margin-bottom: 30px; }
+                            .summary-card { background: #f9fafb; padding: 15px; border-radius: 12px; border: 1px solid #eee; }
+                            .summary-label { font-size: 10px; font-weight: 700; text-transform: uppercase; color: #9ca3af; letter-spacing: 0.05em; }
+                            .summary-value { font-size: 18px; font-weight: 700; color: #111827; margin-top: 4px; }
+
+                            table { width: 100%; border-collapse: separate; border-spacing: 0; margin-top: 20px; border-radius: 12px; overflow: hidden; border: 1px solid #e5e7eb; }
+                            th { background: #f3f4f6; padding: 12px 15px; text-align: left; font-size: 10px; font-weight: 700; text-transform: uppercase; color: #6b7280; border-bottom: 1px solid #e5e7eb; }
+                            td { padding: 15px; font-size: 12px; border-bottom: 1px solid #e5e7eb; vertical-align: top; }
+                            tr:last-child td { border-bottom: none; }
+                            .title-cell { font-weight: 700; color: #111827; }
+                            .subject-cell { color: #FF6900; font-weight: 700; font-size: 11px; }
+                            .status-pill { display: inline-block; padding: 4px 10px; border-radius: 999px; font-size: 10px; font-weight: 700; text-transform: uppercase; }
+                            .status-active { background: #d1fae5; color: #065f46; }
+                            .status-draft { background: #f3f4f6; color: #374151; }
+                            .status-closed { background: #fee2e2; color: #991b1b; }
+                            
+                            .footer { margin-top: 40px; text-align: center; color: #9ca3af; font-size: 10px; border-top: 1px solid #f3f4f6; padding-top: 20px; }
+                        </style>
+                    </head>
+                    <body>
+                        <div class="report-header">
+                            <h1 class="report-title">Assignments Summary</h1>
+                            <div class="report-meta">Generated on ${new Date().toLocaleDateString()} • ${filteredAssignments.length} Assignments Found</div>
+                        </div>
+
+                        <div class="summary-grid">
+                            <div class="summary-card">
+                                <div class="summary-label">Total Submissions</div>
+                                <div class="summary-value">${assignments.reduce((acc, a) => acc + a.submissions, 0)}</div>
+                            </div>
+                            <div class="summary-card">
+                                <div class="summary-label">Active Assignments</div>
+                                <div class="summary-value">${assignments.filter(a => a.status === 'active').length}</div>
+                            </div>
+                        </div>
+
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Assignment Details</th>
+                                    <th>Subject</th>
+                                    <th>Due Date</th>
+                                    <th>Submissions</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${filteredAssignments.map(a => `
+                                    <tr>
+                                        <td>
+                                            <div class="title-cell">${a.title}</div>
+                                            <div style="font-size: 10px; color: #666; margin-top: 4px;">${a.description?.substring(0, 100) || 'No description'}${((a.description?.length || 0) > 100) ? '...' : ''}</div>
+                                        </td>
+                                        <td><div class="subject-cell">${a.Subject}</div></td>
+                                        <td>${a.dueDate}</td>
+                                        <td>${a.submissions} / ${a.totalStudents}</td>
+                                        <td><span class="status-pill status-${a.status}">${a.status}</span></td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+
+                        <div class="footer">
+                            Assignments Management Report • Confidential
+                        </div>
+                    </body>
+                </html>
+            `;
+
+            if (Platform.OS === 'web') {
+                const printWindow = window.open('', '_blank');
+                printWindow?.document.write(html);
+                printWindow?.document.close();
+                setTimeout(() => {
+                    printWindow?.print();
+                }, 500);
+            } else {
+                const { uri } = await Print.printToFileAsync({ html });
+                await Sharing.shareAsync(uri, { UTI: '.pdf', mimeType: 'application/pdf' });
+            }
+        } catch (error) {
+            console.error('Print error:', error);
+            Alert.alert("Error", "Failed to generate print document");
+        }
+    };
+
 
     return (
         <View className="flex-1 bg-gray-50 dark:bg-navy">
@@ -353,13 +594,22 @@ export default function AssignmentsPage() {
                                 {assignments.length} total assignments
                             </Text>
                         </View>
-                        <TouchableOpacity
-                            className="flex-row items-center bg-[#FF6900] px-5 py-2.5 rounded-2xl shadow-lg active:bg-orange-600"
-                            onPress={() => setShowModal(true)}
-                        >
-                            <Plus size={18} color="white" />
-                            <Text className="text-white font-bold text-xs ml-2 uppercase tracking-widest">New</Text>
-                        </TouchableOpacity>
+                        <View className="flex-row gap-2">
+                            <TouchableOpacity
+                                className="flex-row items-center bg-white dark:bg-[#1a1a1a] px-4 py-2.5 rounded-2xl border border-gray-100 dark:border-gray-800 active:bg-gray-50"
+                                onPress={handlePrint}
+                            >
+                                <Printer size={18} color={Platform.OS === 'web' ? '#6B7280' : '#FF6900'} />
+                                <Text className="text-gray-600 dark:text-gray-400 font-bold text-xs ml-2 uppercase tracking-widest">Print</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                className="flex-row items-center bg-[#FF6900] px-5 py-2.5 rounded-2xl shadow-lg active:bg-orange-600"
+                                onPress={() => setShowModal(true)}
+                            >
+                                <Plus size={18} color="white" />
+                                <Text className="text-white font-bold text-xs ml-2 uppercase tracking-widest">New</Text>
+                            </TouchableOpacity>
+                        </View>
                     </View>
 
                     {/* Stats */}
@@ -408,6 +658,7 @@ export default function AssignmentsPage() {
                                 assignment={assignment}
                                 onEdit={handleEdit}
                                 onView={(a) => router.push({ pathname: "/(teacher)/management/submissions", params: { assignmentId: a.id } } as any)}
+                                onDelete={handleDelete}
                             />
                         ))
                     )}

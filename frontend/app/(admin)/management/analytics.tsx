@@ -1,5 +1,6 @@
 import { UnifiedHeader } from "@/components/common/UnifiedHeader";
 import { useTheme } from "@/contexts/ThemeContext";
+import { useSubscriptionTier } from "@/hooks/useSubscriptionTier";
 import { useDashboardStats } from "@/hooks/useDashboardStats";
 import { router } from "expo-router";
 import { BarChart3, BookOpen, DollarSign, GraduationCap, TrendingUp, Users } from "lucide-react-native";
@@ -35,6 +36,7 @@ const StatCard = ({ title, value, icon: Icon, color, trend, isDark }: any) => (
 
 export default function AnalyticsScreen() {
     const { stats, loading, revenueData, refresh } = useDashboardStats();
+    const { showFinancials } = useSubscriptionTier();
     const { isDark } = useTheme();
     const [refreshing, setRefreshing] = useState(false);
 
@@ -91,7 +93,7 @@ export default function AnalyticsScreen() {
                 <View style={{ padding: 24 }}>
                     {/* Stats Grid */}
                     <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginHorizontal: -4, marginBottom: 24 }}>
-                        {stats.map((stat, index) => (
+                        {stats.filter(s => showFinancials || s.label !== "Revenue").map((stat, index) => (
                             <StatCard
                                 key={index}
                                 title={stat.label}
@@ -105,39 +107,41 @@ export default function AnalyticsScreen() {
                     </View>
 
                     {/* Revenue Chart */}
-                    <View style={{ backgroundColor: surface, padding: 24, borderRadius: 24, borderWidth: 1, borderColor: border, marginBottom: 24 }}>
-                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
-                            <Text style={{ fontSize: 17, fontWeight: 'bold', color: textPrimary }}>Revenue (Last 7 Days)</Text>
-                            <View style={{ backgroundColor: isDark ? 'rgba(255,107,0,0.12)' : '#fff7ed', paddingHorizontal: 12, paddingVertical: 4, borderRadius: 999 }}>
-                                <Text style={{ color: '#FF6B00', fontSize: 11, fontWeight: 'bold' }}>Live Data</Text>
+                    {showFinancials && (
+                        <View style={{ backgroundColor: surface, padding: 24, borderRadius: 24, borderWidth: 1, borderColor: border, marginBottom: 24 }}>
+                            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+                                <Text style={{ fontSize: 17, fontWeight: 'bold', color: textPrimary }}>Revenue (Last 7 Days)</Text>
+                                <View style={{ backgroundColor: isDark ? 'rgba(255,107,0,0.12)' : '#fff7ed', paddingHorizontal: 12, paddingVertical: 4, borderRadius: 999 }}>
+                                    <Text style={{ color: '#FF6B00', fontSize: 11, fontWeight: 'bold' }}>Live Data</Text>
+                                </View>
                             </View>
-                        </View>
 
-                        <View style={{ flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', height: 192, paddingHorizontal: 8 }}>
-                            {revenueData.map((data, i) => {
-                                const height = (data.amount / maxRevenue) * 100;
-                                return (
-                                    <View key={i} style={{ alignItems: 'center', flex: 1 }}>
-                                        <Text style={{ fontSize: 8, color: textSecondary, fontWeight: 'bold', marginBottom: 8 }}>${data.amount}</Text>
-                                        <View style={{
-                                            height: `${Math.max(height, 5)}%`,
-                                            width: 32,
-                                            backgroundColor: '#FF6B00',
-                                            borderTopLeftRadius: 8,
-                                            borderTopRightRadius: 8,
-                                            opacity: 0.9,
-                                        }} />
-                                        <Text style={{ color: textSecondary, fontSize: 10, marginTop: 8, fontWeight: '500' }}>{data.day}</Text>
-                                    </View>
-                                );
-                            })}
-                        </View>
-                        {revenueData.length === 0 && (
-                            <View style={{ height: 160, justifyContent: 'center', alignItems: 'center' }}>
-                                <Text style={{ color: textSecondary }}>No transaction data yet</Text>
+                            <View style={{ flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', height: 192, paddingHorizontal: 8 }}>
+                                {revenueData.map((data, i) => {
+                                    const height = (data.amount / maxRevenue) * 100;
+                                    return (
+                                        <View key={i} style={{ alignItems: 'center', flex: 1 }}>
+                                            <Text style={{ fontSize: 8, color: textSecondary, fontWeight: 'bold', marginBottom: 8 }}>${data.amount}</Text>
+                                            <View style={{
+                                                height: `${Math.max(height, 5)}%`,
+                                                width: 32,
+                                                backgroundColor: '#FF6B00',
+                                                borderTopLeftRadius: 8,
+                                                borderTopRightRadius: 8,
+                                                opacity: 0.9,
+                                            }} />
+                                            <Text style={{ color: textSecondary, fontSize: 10, marginTop: 8, fontWeight: '500' }}>{data.day}</Text>
+                                        </View>
+                                    );
+                                })}
                             </View>
-                        )}
-                    </View>
+                            {revenueData.length === 0 && (
+                                <View style={{ height: 160, justifyContent: 'center', alignItems: 'center' }}>
+                                    <Text style={{ color: textSecondary }}>No transaction data yet</Text>
+                                </View>
+                            )}
+                        </View>
+                    )}
 
                     {/* System Capacity */}
                     <View style={{ backgroundColor: surface, padding: 24, borderRadius: 24, borderWidth: 1, borderColor: border }}>

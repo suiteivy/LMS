@@ -172,6 +172,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         AsyncStorage.removeItem('demo_expiry').catch(() => { }),
         AsyncStorage.removeItem('is_demo_mode').catch(() => { }),
         AsyncStorage.removeItem('session_start_time').catch(() => { }),
+        AsyncStorage.clear().catch(() => { }), // Final wipe
       ]);
     } finally {
       // Delay resetting the flag to allow events to settle
@@ -185,6 +186,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setLoading(true);
     try {
       const result = await authService.signIn(email, password);
+      if (result.data?.session) {
+        await AsyncStorage.setItem('session_start_time', Date.now().toString());
+        await startTimeoutTimer(false);
+      }
       if (result.error) setLoading(false);
       return result;
     } catch (error) {
@@ -266,11 +271,19 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setIsProfileLoading(true);
       const { data, error } = await supabase
         .from('users')
-        .select('*, students(id), teachers(id), admins(id), parents(id), institutions(name, subscription_status, subscription_plan, trial_end_date, addon_messaging, addon_library, addon_diary, addon_finance, addon_analytics, addon_bursary, addon_attendance, custom_student_limit), platform_admins(id)')
+        .select('*, students(id), teachers(id), admins(id), parents(id), institutions(name, category_id, subscription_status, subscription_plan, trial_end_date, addon_messaging, addon_library, addon_diary, addon_finance, addon_analytics, addon_bursary, addon_attendance, custom_student_limit, school_categories(name, level_label)), platform_admins(id)')
         .eq('id', userId)
         .single()
-
-      if (error) throw error;
+      
+      if (error) {
+        console.error('[AuthContext] Profile load error:', error);
+        // If profile doesn't exist but user does, it might be a newly created user without a record yet
+        // or a legacy data issue. We'll set a minimal profile to allow partial access if possible.
+        setIsProfileLoading(false);
+        setLoading(false);
+        loadingUserId.current = null;
+        return null;
+      }
 
       const userData = data as any;
 
@@ -372,8 +385,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setIsInitializing(true);
       console.log('[AuthContext] Initializing auth...');
       try {
-        const { data: { session: initialSession } } = await supabase.auth.getSession();
-        console.log('[AuthContext] Supabase session found:', !!initialSession);
+        const sessionPromise = supabase.auth.getSession();
+        const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('getSession timeout')), 6000));
+        
+        const { data: { session: initialSession } } = await Promise.race([sessionPromise, timeoutPromise]) as any;
+        console.log('[AuthContext] Supabase session status:', initialSession ? 'Found' : 'Not Found');
 
         if (initialSession) {
           // Race protection: timeout for getUser
@@ -417,11 +433,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
     const watchdog = setTimeout(() => {
       if (isInitializing || loading) {
-        console.warn('[AuthContext] Watchdog triggered (12s limit): clearing stuck loading states');
+        console.warn(`[AuthContext] Watchdog triggered (8s limit): clearing stuck loading states. Initializing: ${isInitializing}, Loading: ${loading}`);
         setIsInitializing(false);
         setLoading(false);
       }
-    }, 12000);
+    }, 8000);
 
     initializeAuth();
 
@@ -433,8 +449,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         setSession(session);
         setUser(session.user);
         currentSessionRef.current = session;
-        const isDemoUser = session.user.email?.startsWith('demo.') || false;
         setIsDemo(isDemoUser);
+        await AsyncStorage.setItem('session_start_time', Date.now().toString());
         loadUserProfile(session.user.id);
         await startTimeoutTimer(isDemoUser);
       } else if (event === 'TOKEN_REFRESHED' && session?.user) {

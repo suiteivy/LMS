@@ -4,7 +4,7 @@ import { ResourceAPI } from "@/services/ResourceService";
 import { SubjectAPI } from "@/services/SubjectService";
 import { Database } from "@/types/database";
 import { router } from "expo-router";
-import { Download, File, FileText, Image, Link as LinkIcon, Trash2, Upload, Video, X } from 'lucide-react-native';
+import { CheckCircle2, Clock, Download, File, FileText, Image, Link as LinkIcon, Trash2, Upload, Video, X } from 'lucide-react-native';
 import React, { useEffect, useState } from "react";
 import { ActivityIndicator, Alert, Modal, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
@@ -28,8 +28,18 @@ const ResourceCard = ({ resource, onDelete }: { resource: Resource; onDelete: (i
     };
     const statusInfo = statusMap[(resource as any).status || 'approved'] || statusMap.approved;
 
+    // Approval status badge
+    const statusKey = (resource as any).status ?? 'pending';
+    const statusCfg = statusKey === 'approved'
+        ? { label: 'Approved', color: '#16a34a', bg: '#dcfce7', Icon: CheckCircle2 }
+        : { label: 'Pending',  color: '#d97706', bg: '#fef3c7', Icon: Clock };
+
+    const typeInfo = getTypeIcon(resource.type);
+    const IconComponent = typeInfo.icon;
+
     return (
         <View className="bg-white p-5 rounded-3xl border border-gray-100 mb-4 shadow-sm">
+
             <View className="flex-row items-center">
                 <View style={{ backgroundColor: typeInfo.bg }} className="w-12 h-12 rounded-2xl items-center justify-center mr-4">
                     <IconComponent size={20} color={typeInfo.color} />
@@ -40,6 +50,13 @@ const ResourceCard = ({ resource, onDelete }: { resource: Resource; onDelete: (i
                         {resource.Subject_title || "Unknown"} • {resource.type}
                     </Text>
                 </View>
+
+                {/* Status badge */}
+                <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: statusCfg.bg, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999, marginRight: 6 }}>
+                    <statusCfg.Icon size={11} color={statusCfg.color} />
+                    <Text style={{ color: statusCfg.color, fontSize: 10, fontWeight: 'bold', marginLeft: 4 }}>{statusCfg.label}</Text>
+                </View>
+
                 <View className="flex-row gap-2">
                     <TouchableOpacity className="w-10 h-10 bg-gray-50 rounded-xl items-center justify-center" onPress={() => Alert.alert("Download", `Opening ${resource.url}`)}>
                         <Download size={18} color="#6B7280" />
@@ -49,12 +66,10 @@ const ResourceCard = ({ resource, onDelete }: { resource: Resource; onDelete: (i
                     </TouchableOpacity>
                 </View>
             </View>
-            <View style={{ backgroundColor: statusInfo.bg, alignSelf: 'flex-start', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, marginTop: 10 }}>
-                <Text style={{ color: statusInfo.text, fontSize: 11, fontWeight: '700' }}>{statusInfo.label}</Text>
-            </View>
         </View>
     );
 };
+
 
 
 export default function ResourcesPage() {

@@ -30,6 +30,7 @@ interface FormData {
     address: string;
     institution_id: string;
     grade_level: string;
+    form_level: string;
     academic_year: string;
     parent_contact: string;
     emergency_contact_name: string;
@@ -59,7 +60,7 @@ interface FormData {
 const initialFormData: FormData = {
     role: null, first_name: '', last_name: '', full_name: '', email: '', phone: '', gender: '',
     date_of_birth: '', address: '', institution_id: '',
-    grade_level: '', academic_year: new Date().getFullYear().toString(),
+    grade_level: '', form_level: '', academic_year: new Date().getFullYear().toString(),
     parent_contact: '', emergency_contact_name: '', emergency_contact_phone: '',
     class_ids: [],
     department: '', qualification: '', specialization: '', position: 'teacher',
@@ -82,6 +83,14 @@ export default function CreateUserScreen() {
     const insets = useSafeAreaInsets();
     const { isDark } = useTheme();
     const { profile } = useAuth();
+<<<<<<< HEAD
+=======
+    
+    const instLevelLabel = (profile as any)?.institutions?.school_categories?.level_label || 'Grade';
+    const isJunior = instLevelLabel === 'Grade';
+    const isSecondary = instLevelLabel === 'Form';
+    const isKG = instLevelLabel === 'KG';
+>>>>>>> 11ac643 (System Audit Fixes: Resolved RLS recursion, consolidated schema.sql, fixed demo/logout 500 errors, and synchronized frontend tsconfig)
 
     const [step, setStep] = useState<Step>(0);
     const [form, setForm] = useState<FormData>({ ...initialFormData });
@@ -106,12 +115,14 @@ export default function CreateUserScreen() {
             classQuery = classQuery.eq('institution_id', profile.institution_id);
             subjectQuery = subjectQuery.eq('institution_id', profile.institution_id);
             studentQuery = studentQuery.eq('users.institution_id', profile.institution_id);
+            parentQuery = parentQuery.eq('users.institution_id', profile.institution_id);
         }
 
-        const [classRes, subjectRes, studentRes] = await Promise.all([
-            classQuery,
+        const [classRes, subjectRes, studentRes, parentRes] = await Promise.all([
+            supabase.from('v_classes_detailed').select('id, name:display_name').eq('institution_id', profile?.institution_id).order('display_name'),
             subjectQuery,
-            studentQuery
+            studentQuery,
+            parentQuery
         ]);
         if (classRes.data) setClasses(classRes.data);
         if (subjectRes.data) setSubjects(subjectRes.data);
@@ -148,14 +159,27 @@ export default function CreateUserScreen() {
             Alert.alert('Validation', `First name, last name ${isParentRole ? 'and email ' : ''}are required`);
             return;
         }
-        setLoading(true);
         try {
+<<<<<<< HEAD
             const payload: any = { ...form, institution_id: profile?.institution_id || form.institution_id };
             if (form.create_parent) {
                 payload.parent_info = form.parent_info;
             } else {
                 delete payload.parent_info;
             }
+=======
+            // Map the selected level string (e.g. "Grade 1") to numeric fields for the backend
+            const levelStr = form.grade_level || form.form_level;
+            const numLevel = levelStr ? parseInt(levelStr.replace(/[^0-9]/g, ''), 10) : null;
+            
+            const payload = {
+                ...form,
+                grade_level: !isSecondary ? numLevel : null,
+                form_level: isSecondary ? numLevel : null,
+                parent_info: form.create_parent ? form.parent_info : undefined 
+            };
+
+>>>>>>> 11ac643 (System Audit Fixes: Resolved RLS recursion, consolidated schema.sql, fixed demo/logout 500 errors, and synchronized frontend tsconfig)
             const response = await api.post('/auth/enroll-user', payload);
             setResult(response.data);
             setStep(4);
@@ -215,7 +239,11 @@ export default function CreateUserScreen() {
     const POSITION_OPTIONS = ['teacher', 'head_of_department', 'assistant', 'class_teacher', 'dean'];
     const GENDER_OPTIONS = ['male', 'female', 'other'];
     const RELATIONSHIP_OPTIONS = ['father', 'mother', 'guardian', 'sibling', 'other'];
-    const GRADE_OPTIONS = ['Form 1', 'Form 2', 'Form 3', 'Form 4', 'Grade 1', 'Grade 2', 'Grade 3', 'Grade 4', 'Grade 5', 'Grade 6', 'Grade 7', 'Grade 8'];
+    // ---------- Dynamic Level Logic ----------
+    const GRADE_OPTIONS = Array.from(
+        { length: isSecondary ? 6 : (isJunior ? 7 : (isKG ? 3 : 8)) },
+        (_, i) => `${instLevelLabel} ${i + 1}`
+    );
 
     // ---------- Sub-renders ----------
     const renderStepIndicator = () => (
@@ -294,7 +322,7 @@ export default function CreateUserScreen() {
 
     const renderStudentDetails = () => (
         <View>
-            <RenderPicker label="Grade Level" options={GRADE_OPTIONS} selected={form.grade_level} onSelect={(v: string) => updateForm('grade_level', v)} isDark={isDark} textPrimary={textPrimary} textSecondary={textSecondary} border={border} card={card} />
+            <RenderPicker label={`${instLevelLabel} Level`} options={GRADE_OPTIONS} selected={form.grade_level} onSelect={(v: string) => updateForm('grade_level', v)} isDark={isDark} textPrimary={textPrimary} textSecondary={textSecondary} border={border} card={card} />
             <RenderInput label="Academic Year" value={form.academic_year} onChangeText={(v: string) => updateFormSanitized('academic_year', v)} placeholder="2026" isDark={isDark} textPrimary={textPrimary} textSecondary={textSecondary} inputBg={inputBg} inputBorder={inputBorder} />
             <RenderInput label="Parent/Guardian Contact" value={form.parent_contact} onChangeText={(v: string) => updateFormSanitized('parent_contact', v, 'phone')} placeholder="Phone number" keyboardType="phone-pad" isDark={isDark} textPrimary={textPrimary} textSecondary={textSecondary} inputBg={inputBg} inputBorder={inputBorder} />
 
@@ -304,7 +332,7 @@ export default function CreateUserScreen() {
                 <RenderInput label="Phone" value={form.emergency_contact_phone} onChangeText={(v: string) => updateFormSanitized('emergency_contact_phone', v, 'phone')} placeholder="Emergency phone" keyboardType="phone-pad" isDark={isDark} textPrimary={textPrimary} textSecondary={textSecondary} inputBg={inputBg} inputBorder={inputBorder} />
             </View>
 
-            <RenderMultiSelect label="Assign to Classes" items={classes} selectedIds={form.class_ids} toggleItem={(id: string) => toggleArrayItem('class_ids', id)} displayFn={(c: any) => `${c.name} (${c.grade_level || 'N/A'})`} isDark={isDark} textPrimary={textPrimary} textSecondary={textSecondary} border={border} card={card} />
+            <RenderMultiSelect label="Assign to Classes" items={classes} selectedIds={form.class_ids} toggleItem={(id: string) => toggleArrayItem('class_ids', id)} displayFn={(c: any) => `${c.name} (${c.level_label || instLevelLabel} ${c.grade_level || c.form_level || 'N/A'})`} isDark={isDark} textPrimary={textPrimary} textSecondary={textSecondary} border={border} card={card} />
 
             <View style={{ backgroundColor: isDark ? '#0f172a' : '#eff6ff', borderRadius: 16, padding: 20, marginBottom: 16, borderWidth: 1, borderColor: isDark ? '#1e3a5f' : '#bfdbfe' }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
@@ -481,7 +509,7 @@ export default function CreateUserScreen() {
             {form.role === 'student' && (
                 <View style={{ backgroundColor: card, borderRadius: 16, borderWidth: 1, borderColor: border, padding: 16, marginBottom: 16 }}>
                     <Text style={{ fontSize: 11, fontWeight: '700', color: textSecondary, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>Student Details</Text>
-                    {renderReviewRow('Grade', form.grade_level)}
+                    {renderReviewRow(instLevelLabel, form.grade_level)}
                     {renderReviewRow('Academic Year', form.academic_year)}
                     {renderReviewRow('Parent Contact', form.parent_contact)}
                     {renderReviewRow('Emergency Contact', form.emergency_contact_name)}

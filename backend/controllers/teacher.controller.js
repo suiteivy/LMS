@@ -76,7 +76,7 @@ exports.getDashboardStats = async (req, res) => {
                     .select(`
                         *,
                         subjects(title),
-                        classes(name)
+                        classes(display_name)
                     `)
                     .eq('day_of_week', today)
                     .in('subject_id', subjectIds)
@@ -99,7 +99,13 @@ exports.getDashboardStats = async (req, res) => {
                 const uniqueStudents = new Set(enrollmentsResult.data.map(e => e.student_id));
                 studentsCount = uniqueStudents.size;
             }
-            schedule = scheduleResult.data || [];
+            schedule = (scheduleResult.data || []).map(item => ({
+                ...item,
+                classes: {
+                    ...item.classes,
+                    name: item.classes?.display_name
+                }
+            }));
         }
 
         const duration = Date.now() - startTime;
@@ -244,7 +250,7 @@ exports.getStudentPerformance = async (req, res) => {
         // 2. Get subjects taught by this teacher
         let subjectsQuery = supabase
             .from('subjects')
-            .select('id, title, class_id, classes(name)')
+            .select('id, title, class_id, classes(display_name)')
             .eq('teacher_id', teacher.id);
         if (institution_id) subjectsQuery = subjectsQuery.eq('institution_id', institution_id);
         const { data: subjects } = await subjectsQuery;
@@ -318,7 +324,7 @@ exports.getStudentPerformance = async (req, res) => {
             return {
                 subject_id: subject.id,
                 subject_title: subject.title,
-                class_name: subject.classes?.name || 'N/A',
+                class_name: subject.classes?.display_name || 'N/A',
                 students,
             };
         });

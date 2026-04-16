@@ -24,11 +24,12 @@ const BETA_NAV_ITEMS: NavItem[] = [
     { name: "index", title: "Home", icon: Building, route: "/(teacher)" },
     { name: "classes", title: "Classes", icon: School, route: "/(teacher)/classes" },
     { name: "library", title: "Library", icon: BookOpen, route: "/(teacher)/library" },
+    { name: "management", title: "Manage", icon: LayoutGrid, route: "/(teacher)/management" },
     { name: "settings", title: "Settings", icon: Settings, route: "/(teacher)/settings" },
 ];
 
 // Names hidden from tabs on beta plan (registered as routes but not shown)
-const BETA_HIDDEN = ["subjects", "students", "management"];
+const BETA_HIDDEN = ["subjects", "students"];
 
 function TeacherTabs() {
     const insets = useSafeAreaInsets();

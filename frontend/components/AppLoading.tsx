@@ -199,7 +199,7 @@ export function AppLoading({ onLogout, message }: { onLogout?: () => void; messa
   const progressWidth = progress.interpolate({ inputRange: [0, 1], outputRange: ['0%', '100%'] });
 
   return (
-    <View style={{ flex: 1, backgroundColor: bg }} collapsable={undefined}>
+    <View style={{ flex: 1, backgroundColor: bg }}>
       {/* Ambient background orbs */}
       <Orb size={350} color="rgba(255,105,0,0.12)" top="-10%" left="-15%" duration={5000} delay={0} />
       <Orb size={280} color="rgba(99,102,241,0.10)" top="60%" left="55%" duration={6500} delay={400} />

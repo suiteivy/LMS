@@ -144,3 +144,33 @@ exports.getMyAnnouncements = async (req, res) => {
         res.status(500).json({ error: err.message });
     }
 };
+
+/**
+ * List all students in the institution (for teachers/admins)
+ */
+exports.listStudents = async (req, res) => {
+    try {
+        const { institution_id } = req;
+        const { data, error } = await supabase
+            .from('students')
+            .select(`
+                id,
+                grade_level,
+                form_level,
+                users (
+                    first_name,
+                    last_name,
+                    full_name,
+                    avatar_url
+                )
+            `)
+            .eq('institution_id', institution_id)
+            .order('id');
+
+        if (error) throw error;
+        res.json(data || []);
+    } catch (err) {
+        console.error("List students error:", err);
+        res.status(500).json({ error: err.message });
+    }
+};

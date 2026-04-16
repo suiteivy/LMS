@@ -165,7 +165,9 @@ export interface Database {
         Row: {
           id: string;
           user_id: string;
-          grade_level: string | null;
+          grade_level: number | null;
+          form_level: number | null;
+          grade_level_legacy: string | null;
           parent_contact: string | null;
           admission_date: string | null;
           academic_year: string | null;
@@ -177,7 +179,9 @@ export interface Database {
         Insert: {
           id?: string;
           user_id: string;
-          grade_level?: string | null;
+          grade_level?: number | null;
+          form_level?: number | null;
+          grade_level_legacy?: string | null;
           parent_contact?: string | null;
           admission_date?: string | null;
           academic_year?: string | null;
@@ -189,7 +193,9 @@ export interface Database {
         Update: {
           id?: string;
           user_id?: string;
-          grade_level?: string | null;
+          grade_level?: number | null;
+          form_level?: number | null;
+          grade_level_legacy?: string | null;
           parent_contact?: string | null;
           admission_date?: string | null;
           academic_year?: string | null;
@@ -268,6 +274,7 @@ export interface Database {
           addon_messaging: boolean;
           addon_finance: boolean;
           addon_analytics: boolean;
+          category_id: string | null;
         };
         Insert: {
           id?: string;
@@ -286,6 +293,7 @@ export interface Database {
           addon_messaging?: boolean;
           addon_finance?: boolean;
           addon_analytics?: boolean;
+          category_id?: string | null;
         };
         Update: {
           id?: string;
@@ -304,6 +312,7 @@ export interface Database {
           addon_messaging?: boolean;
           addon_finance?: boolean;
           addon_analytics?: boolean;
+          category_id?: string | null;
         };
         Relationships: [];
       };
@@ -312,7 +321,9 @@ export interface Database {
           id: string;
           name: string;
           institution_id: string | null;
-          teacher_id: string | null; // Now TEXT (Custom ID)
+          teacher_id: string | null;
+          form_level: number | null;
+          stream: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -321,6 +332,8 @@ export interface Database {
           name: string;
           institution_id?: string | null;
           teacher_id?: string | null;
+          form_level?: number | null;
+          stream?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -329,6 +342,8 @@ export interface Database {
           name?: string;
           institution_id?: string | null;
           teacher_id?: string | null;
+          form_level?: number | null;
+          stream?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -568,6 +583,7 @@ export interface Database {
           fee_config: Json | null;
           materials: Json | null;
           credits: number | null;
+          progress_percent: number | null;
           created_at: string;
         };
         Insert: {
@@ -580,6 +596,7 @@ export interface Database {
           class_id?: string | null;
           fee_config?: Json | null;
           materials?: Json | null;
+          progress_percent?: number | null;
           created_at?: string;
         };
         Update: {
@@ -592,6 +609,7 @@ export interface Database {
           class_id?: string | null;
           fee_config?: Json | null;
           materials?: Json | null;
+          progress_percent?: number | null;
           created_at?: string;
         };
         Relationships: [
@@ -1204,8 +1222,46 @@ export interface Database {
           }
         ];
       };
+      school_categories: {
+        Row: {
+          id: string;
+          name: string;
+          level_label: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          name: string;
+          level_label: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          name?: string;
+          level_label?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
     };
-    Views: Record<string, never>;
+    Views: {
+      v_classes_detailed: {
+        Row: {
+          id: string;
+          name: string;
+          display_name: string;
+          grade_level: number;
+          form_level: number;
+          stream: string;
+          institution_id: string;
+          teacher_id: string;
+          level_label: string;
+        };
+      };
+    };
     Functions: Record<string, never>;
     Enums: Record<string, never>;
     CompositeTypes: Record<string, never>;

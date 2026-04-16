@@ -30,26 +30,12 @@ const StudentAttendanceRow = ({ student, onMark }: { student: Student; onMark: (
                 <Text className="text-gray-400 dark:text-gray-500 text-xs mt-0.5">ID: {student.student_id.substring(0, 8)}</Text>
             </View>
 
-            <View className="flex-row gap-2">
-                <TouchableOpacity
-                    className={`w-10 h-10 rounded-xl items-center justify-center ${student.status === "present" ? "bg-green-500 shadow-sm" : "bg-gray-50 dark:bg-[#1A1650] border border-gray-100 dark:border-gray-800"}`}
-                    onPress={() => onMark(student.student_id, "present")}
-                >
-                    <Check size={18} color={student.status === "present" ? "white" : "#9CA3AF"} />
-                </TouchableOpacity>
-                <TouchableOpacity
-                    className={`w-10 h-10 rounded-xl items-center justify-center ${student.status === "absent" ? "bg-red-500 shadow-sm" : "bg-gray-50 dark:bg-[#1A1650] border border-gray-100 dark:border-gray-800"}`}
-                    onPress={() => onMark(student.student_id, "absent")}
-                >
-                    <X size={18} color={student.status === "absent" ? "white" : "#9CA3AF"} />
-                </TouchableOpacity>
-                <TouchableOpacity
-                    className={`w-10 h-10 rounded-xl items-center justify-center ${student.status === "late" ? "bg-yellow-500 shadow-sm" : "bg-gray-50 dark:bg-[#1A1650] border border-gray-100 dark:border-gray-800"}`}
-                    onPress={() => onMark(student.student_id, "late")}
-                >
-                    <Clock size={16} color={student.status === "late" ? "white" : "#9CA3AF"} />
-                </TouchableOpacity>
-            </View>
+            <TouchableOpacity
+                className={`w-12 h-12 rounded-2xl items-center justify-center border-2 ${student.status === "present" ? "bg-green-500 border-green-500" : "bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700"}`}
+                onPress={() => onMark(student.student_id, student.status === "present" ? "absent" : "present")}
+            >
+                {student.status === "present" && <Check size={24} color="white" />}
+            </TouchableOpacity>
         </View>
     );
 };

@@ -8,7 +8,7 @@ exports.createInstitution = async (req, res) => {
       .json({ error: "Only admins can create institutions" });
   }
 
-  const { name, location, email, plan = 'trial' } = req.body;
+  const { name, location, email, plan = 'trial', category_id } = req.body;
   if (!name)
     return res.status(400).json({ error: "Institution name is required" });
 
@@ -48,7 +48,8 @@ exports.createInstitution = async (req, res) => {
       has_used_trial: plan === 'trial',
       trial_start_date: plan === 'trial' ? new Date().toISOString() : null,
       trial_end_date,
-      subscription_cycle
+      subscription_cycle,
+      category_id
     }])
     .select()
     .single();
@@ -61,7 +62,10 @@ exports.createInstitution = async (req, res) => {
 };
 
 exports.getInstitutions = async (_req, res) => {
-  const { data, error } = await supabase.from("institutions").select("*").order('name');
+  const { data, error } = await supabase
+    .from("institutions")
+    .select("*, school_categories(name)")
+    .order('name');
 
   if (error) return res.status(500).json({ error: error.message });
   res.json(data);
@@ -74,7 +78,7 @@ exports.getInstitutionDetails = async (req, res) => {
 
     const { data, error } = await supabase
       .from("institutions")
-      .select("*")
+      .select("*, school_categories(*)")
       .eq("id", institution_id)
       .single();
 
@@ -97,7 +101,7 @@ exports.updateInstitution = async (req, res) => {
     const targetId = req.params.id || institution_id;
     if (!targetId) return res.status(400).json({ error: "Target institution ID required" });
 
-    const { name, location, phone, email, type, principal_name } = req.body;
+    const { name, location, phone, email, type, principal_name, category_id } = req.body;
 
     // We allow name to be NOT NULL, but others are nullable.
     const updates = {};
@@ -107,6 +111,7 @@ exports.updateInstitution = async (req, res) => {
     if (email !== undefined) updates.email = email;
     if (type !== undefined) updates.type = type;
     if (principal_name !== undefined) updates.principal_name = principal_name;
+    if (category_id !== undefined) updates.category_id = category_id;
 
     const { data, error } = await supabase
       .from("institutions")

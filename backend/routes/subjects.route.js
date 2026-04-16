@@ -9,6 +9,7 @@ const {
   createSubject,
   getFilteredSubjects,
   getSubjectsByClass,
+  updateProgress,
 } = require("../controllers/subject.controller.js");
 
 const { authorizeRoles } = require("../middleware/authRole.js");
@@ -32,5 +33,8 @@ router.get("/:id", authorizeRoles(["admin", "teacher", "student", "parent"]), ge
 
 // Enroll in a subject
 router.post("/enroll", authorizeRoles(["admin", "teacher", "student"]), enrollStudentInSubject);
+
+// Update subject progress
+router.patch("/:id/progress", authorizeRoles(["admin", "teacher"]), updateProgress);
 
 module.exports = router;

@@ -42,6 +42,9 @@ export const useDashboardStats = () => {
             let teacherCount = 0;
             let subjectCount = 0;
             let totalRevenue = 0;
+            let presentToday = 0;
+
+            const todayStr = new Date().toISOString().split('T')[0];
 
             let studentQuery = supabase.from('users').select('*', { count: 'exact', head: true }).eq('role', 'student');
             let teacherQuery = supabase.from('users').select('*', { count: 'exact', head: true }).eq('role', 'teacher');
@@ -57,16 +60,25 @@ export const useDashboardStats = () => {
             const [
                 { count: students },
                 { count: teachers },
-                { count: subjects }
+                { count: subjects },
+                { count: present }
             ] = await Promise.all([
                 studentQuery,
                 teacherQuery,
-                subjectQuery
+                subjectQuery,
+                supabase.from('attendance').select('*', { count: 'exact', head: true })
+                    .eq('date', todayStr)
+                    .eq('status', 'present')
+                    .eq('institution_id', profile?.institution_id)
+
             ]);
 
             studentCount = students || 0;
             teacherCount = teachers || 0;
             subjectCount = subjects || 0;
+            presentToday = present || 0;
+            
+            const attendanceRate = studentCount > 0 ? Math.round((presentToday / studentCount) * 100) : 0;
 
             // Fetch Revenue & Breakdown (Last 30 days for trend, 7 days for chart)
             const thirtyDaysAgo = new Date();
@@ -83,7 +95,9 @@ export const useDashboardStats = () => {
                 transQuery = transQuery.eq('institution_id', profile.institution_id);
             }
 
-            const { data: transactions, error: transError } = await transQuery;
+            const { data: transactionsData, error: transError } = await transQuery;
+            const transactions = transactionsData as { amount: number; date: string | null }[] | null;
+
 
             if (transError) {
                 console.error('Error fetching transactions:', transError);
@@ -124,10 +138,11 @@ export const useDashboardStats = () => {
                     color: "green",
                 },
                 {
-                    label: "Subjects",
-                    value: subjectCount.toString(),
-                    icon: "book",
-                    color: "purple",
+                    label: "Attendance",
+                    value: `${attendanceRate}%`,
+                    subValue: `${presentToday} present today`,
+                    icon: "calendar",
+                    color: "orange",
                 },
                 {
                     label: "Revenue",
@@ -146,7 +161,12 @@ export const useDashboardStats = () => {
     };
 
     useEffect(() => {
-        if (isInitializing || !session) return;
+        if (isInitializing) return;
+
+        if (!session) {
+            setLoading(false);
+            return;
+        }
 
         fetchStats();
 
@@ -187,11 +207,21 @@ export const useDashboardStats = () => {
             )
             .subscribe();
 
+        const attendanceChannel = supabase
+            .channel('attendance-changes')
+            .on(
+                'postgres_changes',
+                { event: '*', schema: 'public', table: 'attendance' },
+                () => debouncedFetch()
+            )
+            .subscribe();
+
         return () => {
             if (debounceTimer) clearTimeout(debounceTimer);
             supabase.removeChannel(userChannel);
             supabase.removeChannel(subjectChannel);
             supabase.removeChannel(transactionChannel);
+            supabase.removeChannel(attendanceChannel);
         };
     }, [isInitializing, session]);
 

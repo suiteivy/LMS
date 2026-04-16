@@ -4,7 +4,10 @@ import { supabase } from "@/libs/supabase";
 import { router, useLocalSearchParams } from "expo-router";
 import { BookOpen, LayoutList, Star, TrendingUp } from "lucide-react-native";
 import React, { useEffect, useState } from "react";
-import { ActivityIndicator, RefreshControl, ScrollView, Text, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, RefreshControl, ScrollView, Text, TouchableOpacity, View, Platform } from "react-native";
+import * as Print from 'expo-print';
+import * as Sharing from 'expo-sharing';
+import { Printer } from 'lucide-react-native';
 
 const gradeColor = (g: string) => {
   if (g.startsWith("A")) return { bg: "bg-emerald-50", text: "text-emerald-700" };
@@ -76,6 +79,105 @@ export default function StudentGradesPage() {
     }
   };
 
+  const handlePrint = async () => {
+    if (!studentId || grades.length === 0) {
+        return;
+    }
+
+    try {
+        const html = `
+            <html>
+                <head>
+                    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no" />
+                    <style>
+                        @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;700&display=swap');
+                        body { font-family: 'Space Grotesk', sans-serif; padding: 50px; color: #0f172a; background: #fff; }
+                        .header { display: flex; justify-content: space-between; align-items: top; margin-bottom: 60px; border-bottom: 1px solid #e2e8f0; padding-bottom: 30px; }
+                        .school-info h1 { margin: 0; font-size: 24px; font-weight: 700; color: #FF6900; }
+                        .school-info p { margin: 5px 0 0; color: #64748b; font-size: 14px; }
+                        .student-badge { text-align: right; }
+                        .student-badge h2 { margin: 0; font-size: 28px; font-weight: 700; color: #0f172a; }
+                        .student-badge p { margin: 5px 0 0; color: #FF6900; font-weight: 700; font-size: 12px; text-transform: uppercase; letter-spacing: 1px; }
+                        .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-bottom: 50px; }
+                        .stat-card { border: 1px solid #e2e8f0; padding: 20px; border-radius: 20px; text-align: center; }
+                        .stat-label { font-size: 10px; font-weight: 700; color: #94a3b8; text-transform: uppercase; margin-bottom: 8px; }
+                        .stat-value { font-size: 24px; font-weight: 700; color: #0f172a; }
+                        .table-header { font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 2px; border-bottom: 2px solid #0f172a; padding-bottom: 10px; margin-bottom: 20px; }
+                        .grade-row { display: flex; justify-content: space-between; align-items: center; padding: 15px 0; border-bottom: 1px solid #f1f5f9; page-break-inside: avoid; }
+                        .grade-subject { flex: 1; }
+                        .subject-name { font-size: 16px; font-weight: 700; color: #1e293b; }
+                        .subject-meta { font-size: 12px; color: #94a3b8; margin-top: 2px; }
+                        .grade-result { text-align: right; min-width: 80px; }
+                        .grade-letter { font-size: 18px; font-weight: 700; color: #FF6900; }
+                        .grade-score { font-size: 11px; color: #94a3b8; font-weight: 600; }
+                        .footer { margin-top: 100px; text-align: center; font-size: 10px; color: #cbd5e1; border-top: 1px solid #f1f5f9; padding-top: 30px; }
+                        @media print { body { padding: 30px; } .stat-card { border-color: #eee; } }
+                    </style>
+                </head>
+                <body>
+                    <div class="header">
+                        <div class="school-info">
+                            <h1>LMS ACADEMY</h1>
+                            <p>Official Academic Transcript</p>
+                        </div>
+                        <div class="student-badge">
+                            <h2>${studentName || "Student"}</h2>
+                            <p>ID: ${studentId?.substring(0, 10).toUpperCase()}</p>
+                        </div>
+                    </div>
+
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-label">Academic Index</div>
+                            <div class="stat-value">${stats.gpa}</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">Attendance Rate</div>
+                            <div class="stat-value">${stats.attendance_pct}%</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">Institution Rank</div>
+                            <div class="stat-value">${(stats as any).rank}/${(stats as any).totalStudents}</div>
+                        </div>
+                    </div>
+
+                    <div class="table-header">Subject Performance Breakdown</div>
+
+                    ${grades.map(g => `
+                        <div class="grade-row">
+                            <div class="grade-subject">
+                                <div class="subject-name">${g.subject}</div>
+                                <div class="subject-meta">${g.title}</div>
+                            </div>
+                            <div class="grade-result">
+                                <div class="grade-letter">${g.grade}</div>
+                                <div class="grade-score">${g.score}%</div>
+                            </div>
+                        </div>
+                    `).join('')}
+
+                    <div class="footer">
+                        <p>THIS DOCUMENT IS A DIGITALLY GENERATED TRANSCRIPT AND IS VALID WITHOUT PHYSICAL SIGNATURE.</p>
+                        <p>CONFIDENTIAL ACADEMIC RECORD • ISSUED ON ${new Date().toLocaleDateString()}</p>
+                    </div>
+                </body>
+            </html>
+        `;
+
+        if (Platform.OS === 'web') {
+            const printWindow = window.open('', '_blank');
+            printWindow?.document.write(html);
+            printWindow?.document.close();
+            printWindow?.print();
+        } else {
+            const { uri } = await Print.printToFileAsync({ html });
+            await Sharing.shareAsync(uri, { UTI: '.pdf', mimeType: 'application/pdf' });
+        }
+    } catch (error) {
+        console.error('Print error:', error);
+    }
+  };
+
   useEffect(() => {
     fetchPerformanceData();
   }, [studentId]);
@@ -144,8 +246,11 @@ export default function StudentGradesPage() {
           {/* Transcript Breakdown */}
           <View className="px-2 flex-row justify-between items-center mb-6">
             <Text className="text-gray-900 dark:text-white font-bold text-xl tracking-tight">Academic Transcript</Text>
-            <TouchableOpacity className="bg-white dark:bg-navy-surface p-2 rounded-xl border border-gray-100 dark:border-gray-800 shadow-sm">
-              <LayoutList size={16} color="#FF6900" />
+            <TouchableOpacity
+              className="bg-white dark:bg-navy-surface p-2 rounded-xl border border-gray-100 dark:border-gray-800 shadow-sm"
+              onPress={handlePrint}
+            >
+              <Printer size={16} color="#FF6900" />
             </TouchableOpacity>
           </View>
 

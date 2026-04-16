@@ -19,4 +19,8 @@ router.get("/", authorizeRoles(["admin", "teacher", "student", "parent"]), contr
 router.put("/:id", authorizeRoles(["admin", "teacher"]), controller.updateEntry);
 router.delete("/:id", authorizeRoles(["admin", "teacher"]), controller.deleteEntry);
 
+// Signing and Approval
+router.patch("/:id/sign", authorizeRoles(["parent"]), controller.signEntry);
+router.patch("/:id/approve", authorizeRoles(["admin"]), controller.approveEntry);
+
 module.exports = router;

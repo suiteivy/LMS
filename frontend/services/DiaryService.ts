@@ -10,6 +10,8 @@ export interface DiaryEntry {
     entry_date: string;
     created_at: string;
     updated_at: string;
+    is_signed?: boolean;
+    status?: 'pending' | 'approved' | 'rejected';
     teacher?: {
         id: string;
         users: {
@@ -46,7 +48,19 @@ export const DiaryService = {
 
     async deleteEntry(id: string): Promise<void> {
         await api.delete(`/diary/${id}`);
-    }
+    },
+
+    /** Parent signs a diary entry to acknowledge it */
+    async signEntry(id: string): Promise<DiaryEntry> {
+        const res = await api.patch(`/diary/${id}/sign`);
+        return res.data;
+    },
+
+    /** Admin approves a diary entry */
+    async approveEntry(id: string): Promise<DiaryEntry> {
+        const res = await api.patch(`/diary/${id}/approve`);
+        return res.data;
+    },
 };
 
 export const DiaryAPI = DiaryService;

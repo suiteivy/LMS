@@ -1,6 +1,7 @@
 {
   "extends": "expo/tsconfig.base",
   "compilerOptions": {
+    "module": "ESNext",
     "strict": true,
     "paths": {
       "@/*": [
@@ -14,6 +15,6 @@
     ".expo/types/**/*.ts",
     "expo-env.d.ts",
     "nativewind-env.d.ts",
-    "app/(auth)/signUp.tsx",  
+    "app/(auth)/signUp.tsx"
 ]
 }

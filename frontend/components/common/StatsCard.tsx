@@ -65,6 +65,14 @@ export const StatsCard: React.FC<StatsCardProps> = ({
       text: 'text-red-800 dark:text-red-400',
       value: 'text-red-900 dark:text-white'
     },
+    orange: {
+      bg: 'bg-orange-50 dark:bg-orange-900/10',
+      border: 'border-orange-200 dark:border-orange-900/30',
+      icon: 'bg-orange-100 dark:bg-orange-900/30',
+      iconColor: '#F97316',
+      text: 'text-orange-800 dark:text-orange-300',
+      value: 'text-orange-900 dark:text-white'
+    },
     gray: {
       bg: 'bg-gray-50 dark:bg-gray-800/50',
       border: 'border-gray-200 dark:border-gray-800',
@@ -186,7 +194,7 @@ export const StatsCard: React.FC<StatsCardProps> = ({
   }
 
   return (
-    <View className={className} testID={testID} collapsable={undefined}>
+    <View className={className} testID={testID}>
       <CardContent />
     </View>
   );

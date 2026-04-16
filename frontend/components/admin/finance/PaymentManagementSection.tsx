@@ -14,9 +14,14 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  View
+  View,
+  ActivityIndicator
 } from "react-native";
+import { FinanceService } from "@/services/FinanceService";
+import { Check, X, ExternalLink, Clock } from "lucide-react-native";
+import { BlurView } from "expo-blur";
 import Toast from 'react-native-toast-message';
+
 
 interface PaymentManagementSectionProps {
   payments: Payment[];
@@ -41,31 +46,80 @@ const PaymentManagementSection: React.FC<
     notes: "",
   });
   const [searchQuery, setSearchQuery] = useState("");
+  const [viewMode, setViewMode] = useState<'list' | 'review'>('list');
+  const [pendingPayments, setPendingPayments] = useState<any[]>([]);
+  const [loadingPending, setLoadingPending] = useState(false);
+  const [reviewingId, setReviewingId] = useState<string | null>(null);
+  const [adminNotes, setAdminNotes] = useState("");
+
 
   // Student search in payment form
   const [studentSearch, setStudentSearch] = useState("");
   const [allStudents, setAllStudents] = useState<StudentOption[]>([]);
   const [showStudentDropdown, setShowStudentDropdown] = useState(false);
 
-  // Load students when modal opens
   useEffect(() => {
-    if (showForm && allStudents.length === 0) {
-      supabase
-        .from("students")
-        .select("id, user_id, users:user_id(full_name)")
-        .order("id")
-        .then(({ data }) => {
-          if (data) {
-            const mapped = data.map((s: any) => ({
-              id: s.id,
-              user_id: s.user_id,
-              full_name: (s.users as any)?.full_name || "Unknown",
-            }));
-            setAllStudents(mapped);
-          }
-        });
+    if (viewMode === 'review') {
+      fetchPendingPayments();
     }
-  }, [showForm]);
+  }, [viewMode]);
+
+  useEffect(() => {
+    fetchStudents();
+  }, []);
+
+  const fetchStudents = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('students')
+        .select('id, user_id, users(full_name)')
+        .order('id');
+      
+      if (error) throw error;
+      
+      const mapped = (data || []).map((s: any) => ({
+        id: s.id,
+        user_id: s.user_id,
+        full_name: s.users?.full_name || 'Unknown'
+      }));
+      setAllStudents(mapped);
+    } catch (e) {
+      console.error('Error fetching students:', e);
+    }
+  };
+
+  const fetchPendingPayments = async () => {
+    try {
+      setLoadingPending(true);
+      const data = await FinanceService.getPendingPayments();
+      setPendingPayments(data || []);
+    } catch (e) {
+      console.error(e);
+      Toast.show({ type: 'error', text1: 'Error', text2: 'Failed to fetch pending payments' });
+    } finally {
+      setLoadingPending(false);
+    }
+  };
+
+  const handleReview = async (id: string, action: 'approve' | 'reject') => {
+    try {
+      setReviewingId(id);
+      await FinanceService.confirmPaymentEvidence(id, action, adminNotes);
+      Toast.show({ 
+        type: 'success', 
+        text1: 'Action Completed', 
+        text2: `Payment ${action}d successfully` 
+      });
+      setAdminNotes("");
+      fetchPendingPayments();
+      if (onRefresh) onRefresh();
+    } catch (e: any) {
+      Alert.alert("Error", e.message || "Failed to process payment");
+    } finally {
+      setReviewingId(null);
+    }
+  };
+
 
   const filteredStudents = allStudents.filter(
     (s) =>
@@ -219,30 +273,56 @@ const PaymentManagementSection: React.FC<
       </View>
     </View>
   );
-
   return (
-    <View className="flex-1">
-      <View className="flex-row justify-between items-center mb-4">
-        <Text className="text-2xl font-bold text-gray-800 dark:text-white">Student Payments</Text>
+    <View className="flex-1 p-4 bg-white dark:bg-[#0F0B2E]">
+      <View className="flex-row justify-between items-center mb-6">
+        <View>
+          <Text className="text-2xl font-bold text-gray-800 dark:text-white">Finance</Text>
+          <Text className="text-gray-400 text-[10px] font-bold uppercase tracking-widest mt-1">Management Hub</Text>
+        </View>
         <TouchableOpacity
           onPress={() => setShowForm(true)}
-          className="bg-black dark:shadow-md dark:shadow-white/10 dark:bg-orange-500 px-4 py-2 rounded-lg"
+          className="bg-[#FF6B00] px-4 py-2.5 rounded-xl shadow-sm"
         >
-          <Text className="text-white dark:text-white font-medium">Record Payment</Text>
+          <Text className="text-white font-bold text-xs uppercase tracking-widest">Record Payment</Text>
         </TouchableOpacity>
       </View>
 
-      {/* Search Bar */}
-      <View className="flex-row items-center bg-gray-100 dark:bg-gray-800 rounded-xl px-4 py-3 mb-6">
-        <Ionicons name="search" size={20} color={isDark ? "#9CA3AF" : "#6B7280"} />
-        <TextInput
-          className="flex-1 ml-2 text-gray-900 dark:text-white font-medium"
-          placeholder="Search by student name, ID or reference..."
-          placeholderTextColor={isDark ? "#6B7280" : "#9CA3AF"}
-          value={searchQuery}
-          onChangeText={setSearchQuery}
-        />
+      {/* Tab Switcher */}
+      <View className="flex-row bg-gray-100 dark:bg-gray-800 p-1 rounded-2xl mb-6">
+        <TouchableOpacity 
+          onPress={() => setViewMode('list')}
+          className={`flex-1 py-3 rounded-xl items-center justify-center ${viewMode === 'list' ? 'bg-white dark:bg-gray-700 shadow-sm' : ''}`}
+        >
+          <Text className={`text-xs font-bold uppercase tracking-widest ${viewMode === 'list' ? 'text-gray-900 dark:text-white' : 'text-gray-400'}`}>Transactions</Text>
+        </TouchableOpacity>
+        <TouchableOpacity 
+          onPress={() => setViewMode('review')}
+          className={`flex-1 py-3 rounded-xl items-center justify-center flex-row ${viewMode === 'review' ? 'bg-white dark:bg-gray-700 shadow-sm' : ''}`}
+        >
+          <Text className={`text-xs font-bold uppercase tracking-widest ${viewMode === 'review' ? 'text-gray-900 dark:text-white' : 'text-gray-400'}`}>Review Proofs</Text>
+          {pendingPayments.length > 0 && (
+            <View className="bg-[#FF6B00] w-5 h-5 rounded-full items-center justify-center ml-2 border border-white dark:border-gray-900">
+              <Text className="text-white text-[9px] font-black">{pendingPayments.length}</Text>
+            </View>
+          )}
+        </TouchableOpacity>
       </View>
+
+      {viewMode === 'list' ? (
+        <>
+          {/* Search Bar */}
+          <View className="flex-row items-center bg-gray-100 dark:bg-gray-800 rounded-xl px-4 py-3 mb-6">
+            <Ionicons name="search" size={20} color={isDark ? "#9CA3AF" : "#6B7280"} />
+            <TextInput
+              className="flex-1 ml-2 text-gray-900 dark:text-white font-medium"
+              placeholder="Search by student name, ID or reference..."
+              placeholderTextColor={isDark ? "#6B7280" : "#9CA3AF"}
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+            />
+          </View>
+
       {loading ? (
         <View className="flex-1 justify-center items-center">
           <Text className="text-gray-500 dark:text-gray-400">Loading payments...</Text>
@@ -269,6 +349,93 @@ const PaymentManagementSection: React.FC<
             />
           )}
         </View>
+       )}
+      </>
+     ) : (
+        <ScrollView className="pb-20">
+          {loadingPending ? (
+            <View className="py-20 items-center">
+              <ActivityIndicator color="#FF6B00" />
+              <Text className="text-gray-400 text-xs mt-4 font-bold uppercase tracking-widest">Scanning evidence bucket...</Text>
+            </View>
+          ) : pendingPayments.length === 0 ? (
+            <EmptyState
+              title="All caught up!"
+              message="No pending payment evidence documents require review."
+              icon={Clock}
+              color="#FF6B00"
+            />
+          ) : (
+            pendingPayments.map((item) => (
+              <View 
+                key={item.id} 
+                className="bg-white dark:bg-gray-900 rounded-[32px] p-6 mb-6 border border-gray-100 dark:border-gray-800"
+              >
+                <View className="flex-row justify-between items-start mb-6">
+                  <View className="flex-1">
+                    <Text className="text-gray-900 dark:text-white font-black text-xl tracking-tighter">
+                      {item.students?.users?.full_name || "Unknown Student"}
+                    </Text>
+                    <Text className="text-[#FF6B00] text-[10px] font-black uppercase tracking-widest mt-1">
+                      {item.payment_method.replace('_', ' ')} • {item.reference_number}
+                    </Text>
+                  </View>
+                  <View className="bg-orange-50 dark:bg-orange-950/30 px-3 py-1 rounded-full border border-orange-100 dark:border-orange-900">
+                    <Text className="text-orange-700 dark:text-orange-400 text-[10px] font-black uppercase">Pending Approval</Text>
+                  </View>
+                </View>
+
+                <View className="bg-gray-50 dark:bg-gray-800/50 p-6 rounded-3xl mb-6">
+                  <View className="flex-row justify-between mb-2">
+                    <Text className="text-gray-400 text-[10px] font-bold uppercase">Requested Credit</Text>
+                    <Text className="text-gray-400 text-[10px] font-bold uppercase">Submitted On</Text>
+                  </View>
+                  <View className="flex-row justify-between items-end">
+                    <Text className="text-gray-900 dark:text-white font-black text-3xl tracking-tighter">{formatAmount(item.amount)}</Text>
+                    <Text className="text-gray-500 dark:text-gray-400 text-xs font-bold mb-1">
+                      {new Date(item.created_at).toLocaleDateString()}
+                    </Text>
+                  </View>
+                </View>
+
+                {item.proof_url && (
+                  <TouchableOpacity 
+                    onPress={() => {
+                        // In a real app, open a viewer modal or handle external link
+                        Alert.alert("Proof Document", "Review payment receipt carefully before approval.", [
+                            { text: "Open URL", onPress: () => { /* Linking.openURL(item.proof_url) */ }},
+                            { text: "Close", style: "cancel" }
+                        ]);
+                    }}
+                    className="flex-row items-center justify-center bg-gray-100 dark:bg-gray-800 p-4 rounded-2xl mb-6 border border-gray-200 dark:border-gray-700"
+                  >
+                    <ExternalLink size={16} color={isDark ? "#9CA3AF" : "#4B5563"} />
+                    <Text className="ml-2 text-gray-700 dark:text-gray-300 font-bold text-xs uppercase tracking-widest">View Attachment</Text>
+                  </TouchableOpacity>
+                )}
+
+                <View className="flex-row gap-4">
+                  <TouchableOpacity
+                    disabled={!!reviewingId}
+                    onPress={() => handleReview(item.id, 'reject')}
+                    className="flex-1 bg-red-50 dark:bg-red-950/20 p-4 rounded-2xl border border-red-100 dark:border-red-900/50 items-center flex-row justify-center"
+                  >
+                    <X size={18} color="#EF4444" />
+                    <Text className="ml-2 text-red-600 dark:text-red-400 font-black text-[10px] uppercase tracking-widest">Decline</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    disabled={!!reviewingId}
+                    onPress={() => handleReview(item.id, 'approve')}
+                    className="flex-2 bg-[#10B981] p-4 rounded-2xl items-center flex-row justify-center shadow-lg shadow-emerald-500/20"
+                  >
+                    <Check size={18} color="white" />
+                    <Text className="ml-2 text-white font-black text-[10px] uppercase tracking-widest">Approve & Credit</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            ))
+          )}
+        </ScrollView>
       )}
 
       {/* Payment Form Modal */}

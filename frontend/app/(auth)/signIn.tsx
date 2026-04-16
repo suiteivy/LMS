@@ -249,8 +249,9 @@ const AnimatedInput = ({
   );
 };
 
-//  Password Strength Bar 
+// Password Strength Bar
 const PasswordStrength = ({ password }: { password: string }) => {
+
   if (!password) return null;
 
   const getStrength = (pw: string) => {
@@ -648,6 +649,7 @@ export default function SignIn() {
                     label="Password"
                     icon="lock-closed-outline"
                     placeholder="••••••••"
+
                     value={formData.password}
                     onChangeText={(v: string) => handleInputChange("password", v)}
                     secureTextEntry={!showPassword}

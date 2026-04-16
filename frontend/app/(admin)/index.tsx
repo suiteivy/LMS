@@ -18,10 +18,11 @@ import {
   UserPlus,
   Users,
   Wallet,
-  Zap
+  Zap,
+  Calendar
 } from 'lucide-react-native';
 import React, { useCallback, useEffect, useState } from "react";
-import { ActivityIndicator, ScrollView, Text, TouchableOpacity, View, StatusBar } from "react-native";
+import { ActivityIndicator, ScrollView, Text, TouchableOpacity, View, StatusBar, DimensionValue } from "react-native";
 import { SubscriptionBanner, SubscriptionGate, OnboardingTracker, SubscriptionBadge, AddonRequestModal, AddonRequestButton } from "@/components/shared/SubscriptionComponents";
 import { useSubscriptionTier } from "@/hooks/useSubscriptionTier";
 
@@ -44,6 +45,7 @@ const IconGraduationCap = GraduationCap as any;
 const IconBookOpen = BookOpen as any;
 const IconBarChart3 = BarChart3 as any;
 const IconLogOut = LogOut as any;
+const IconCalendar = Calendar as any;
 
 const QuickAction = ({ icon: Icon, label, onPress, badge }: QuickActionProps) => {
   const { isDark } = useTheme();
@@ -165,11 +167,11 @@ export default function AdminDashboard() {
 
   // Create a comma-separated list of active add-ons/features
   const activeFeatures = [
-    tier.hasFinance && 'Finance',
+    tier.showFinancials && tier.hasFinance && 'Finance',
     tier.hasLibrary && 'Library',
     tier.hasAnalytics && 'Analytics',
     tier.hasMessaging && 'Messaging',
-    tier.hasBursary && 'Bursary',
+    tier.showFinancials && tier.hasBursary && 'Bursary',
     tier.hasDiary && 'Diary',
   ].filter(Boolean).join(', ');
 
@@ -195,7 +197,8 @@ export default function AdminDashboard() {
           <View className="flex-row mb-10">
             <View style={{
               flex: 1, backgroundColor: cardBg,
-              padding: 20, borderRadius: 24, marginRight: 6,
+              padding: 20, borderRadius: 24, 
+              marginRight: tier.showFinancials ? 6 : 0,
               shadowColor: "#000",
               shadowOffset: { width: 0, height: 8 },
               shadowOpacity: 0.15,
@@ -225,35 +228,37 @@ export default function AdminDashboard() {
               </Text>
             </View>
 
-            <View style={{
-              flex: 1, backgroundColor: "#FF6B00",
-              padding: 20, borderRadius: 24, marginLeft: 6,
-              shadowColor: "#FF6B00",
-              shadowOffset: { width: 0, height: 8 },
-              shadowOpacity: 0.25,
-              shadowRadius: 10,
-              boxShadow: [{
-                offsetX: 0,
-                offsetY: 8,
-                blurRadius: 10,
-                color: 'rgba(255, 107, 0, 0.25)',
-              }],
-              elevation: 12,
-              minHeight: 140,
-              justifyContent: 'space-between',
-            }}>
-              <View>
-                <View style={{ backgroundColor: "rgba(255,255,255,0.2)", width: 42, height: 42, borderRadius: 12, alignItems: "center", justifyContent: "center", marginBottom: 16 }}>
-                  <IconWallet size={22} color="white" />
+            {tier.showFinancials && (
+              <View style={{
+                flex: 1, backgroundColor: "#FF6B00",
+                padding: 20, borderRadius: 24, marginLeft: 6,
+                shadowColor: "#FF6B00",
+                shadowOffset: { width: 0, height: 8 },
+                shadowOpacity: 0.25,
+                shadowRadius: 10,
+                boxShadow: [{
+                  offsetX: 0,
+                  offsetY: 8,
+                  blurRadius: 10,
+                  color: 'rgba(255, 107, 0, 0.25)',
+                }],
+                elevation: 12,
+                minHeight: 140,
+                justifyContent: 'space-between',
+              }}>
+                <View>
+                  <View style={{ backgroundColor: "rgba(255,255,255,0.2)", width: 42, height: 42, borderRadius: 12, alignItems: "center", justifyContent: "center", marginBottom: 16 }}>
+                    <IconWallet size={22} color="white" />
+                  </View>
+                  <Text style={{ color: "white", fontSize: 22, fontWeight: "700", letterSpacing: -1 }} numberOfLines={1} adjustsFontSizeToFit>
+                    {stats.find(s => s.label === "Revenue")?.value || "KES 0"}
+                  </Text>
                 </View>
-                <Text style={{ color: "white", fontSize: 22, fontWeight: "700", letterSpacing: -1 }} numberOfLines={1} adjustsFontSizeToFit>
-                  {stats.find(s => s.label === "Revenue")?.value || "KES 0"}
+                <Text style={{ color: "rgba(255,255,255,0.85)", fontSize: 10, fontWeight: "600", textTransform: "uppercase", letterSpacing: 1.2 }}>
+                  Total Revenue
                 </Text>
               </View>
-              <Text style={{ color: "rgba(255,255,255,0.85)", fontSize: 10, fontWeight: "600", textTransform: "uppercase", letterSpacing: 1.2 }}>
-                Total Revenue
-              </Text>
-            </View>
+            )}
           </View>
 
           {/* Enhance Your Plan Card */}
@@ -354,6 +359,51 @@ export default function AdminDashboard() {
             </View>
           </SubscriptionGate>
 
+          {/* Today's Presence (Attendance Rate) */}
+          <View style={{ marginBottom: 32 }}>
+            <View style={{
+              backgroundColor: surfaceBg,
+              padding: 24,
+              borderRadius: 32,
+              borderWidth: 1,
+              borderColor: surfaceBorder,
+              shadowColor: "#000",
+              shadowOffset: { width: 0, height: 4 },
+              shadowOpacity: 0.05,
+              shadowRadius: 10,
+              boxShadow: [{
+                offsetX: 0,
+                offsetY: 4,
+                blurRadius: 10,
+                color: 'rgba(0, 0, 0, 0.05)',
+              }],
+              elevation: 2
+            }}>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                <View>
+                  <Text style={{ fontSize: 18, fontWeight: '800', color: textPrimary, letterSpacing: -0.5 }}>Today's Presence</Text>
+                  <Text style={{ fontSize: 9, fontWeight: '700', color: '#8b5cf6', textTransform: 'uppercase', letterSpacing: 1 }}>Real-time Engagement</Text>
+                </View>
+                <Text style={{ fontSize: 24, fontWeight: '800', color: '#8b5cf6' }}>
+                  {stats.find(s => s.label === "Attendance")?.value || "0%"}
+                </Text>
+              </View>
+
+              <View style={{ height: 12, backgroundColor: isDark ? '#1A1650' : '#f3f4f6', borderRadius: 6, overflow: 'hidden', marginBottom: 12, borderWidth: 1, borderColor: surfaceBorder }}>
+                <View style={{
+                  height: '100%',
+                  width: (stats.find(s => s.label === "Attendance")?.value || "0%") as DimensionValue,
+                  backgroundColor: '#8b5cf6',
+                  borderRadius: 6
+                }} />
+              </View>
+
+              <Text style={{ fontSize: 12, fontWeight: '600', color: textMuted }}>
+                {stats.find(s => s.label === "Attendance")?.subValue || "No data recorded today"}
+              </Text>
+            </View>
+          </View>
+
           <View className="mb-10">
             <Text className="text-lg font-bold text-gray-900 dark:text-white mb-4 px-1">Quick Actions</Text>
             <View style={{ flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between" }}>
@@ -361,12 +411,15 @@ export default function AdminDashboard() {
               <SubscriptionGate minPlan="pro">
                 <QuickAction icon={IconBookOpen} label="Library" onPress={() => router.navigate("/(admin)/management/library" as any)} />
               </SubscriptionGate>
-              <SubscriptionGate minPlan="premium">
-                <QuickAction icon={IconWallet} label="Finance" onPress={() => router.navigate("/(admin)/finance" as any)} />
-              </SubscriptionGate>
+              {tier.showFinancials && (
+                <SubscriptionGate minPlan="premium">
+                  <QuickAction icon={IconWallet} label="Finance" onPress={() => router.navigate("/(admin)/finance" as any)} />
+                </SubscriptionGate>
+              )}
               <SubscriptionGate minPlan="premium">
                 <QuickAction icon={IconBarChart3} label="Analytics" onPress={() => router.navigate("/(admin)/management/analytics" as any)} />
               </SubscriptionGate>
+              <QuickAction icon={IconCalendar} label="Attendance" onPress={() => router.push("/(admin)/attendance" as any)} />
             </View>
           </View>
 

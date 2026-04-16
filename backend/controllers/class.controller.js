@@ -5,20 +5,17 @@ const supabase = require("../utils/supabaseClient.js");
  */
 exports.createClass = async (req, res) => {
     try {
-        const { name, grade_level, capacity, teacher_id } = req.body;
+        const { grade_level, form_level, stream, capacity, teacher_id } = req.body;
         const institution_id = req.institution_id;
 
-        if (!name) {
-            return res.status(400).json({ error: "Class name is required" });
-        }
-
-        const insertData = {
-            display_name: name,
             institution_id: institution_id || null,
         };
-        if (grade_level) insertData.grade_level = grade_level;
-        if (capacity) insertData.capacity = capacity;
-        if (teacher_id) insertData.teacher_id = teacher_id;
+
+        if (grade_level !== undefined) insertData.grade_level = grade_level;
+        if (form_level !== undefined) insertData.form_level = form_level;
+        if (stream !== undefined) insertData.stream = stream;
+        if (capacity !== undefined) insertData.capacity = capacity;
+        if (teacher_id !== undefined) insertData.teacher_id = teacher_id;
 
         const { data, error } = await supabase
             .from("classes")
@@ -40,11 +37,13 @@ exports.createClass = async (req, res) => {
 exports.updateClass = async (req, res) => {
     try {
         const { id } = req.params;
-        const { name, grade_level, capacity, teacher_id } = req.body;
+        const { grade_level, form_level, stream, capacity, teacher_id } = req.body;
 
         const updates = {};
-        if (name !== undefined) updates.display_name = name;
+
         if (grade_level !== undefined) updates.grade_level = grade_level;
+        if (form_level !== undefined) updates.form_level = form_level;
+        if (stream !== undefined) updates.stream = stream;
         if (capacity !== undefined) updates.capacity = capacity;
         if (teacher_id !== undefined) updates.teacher_id = teacher_id || null;
 
@@ -103,12 +102,13 @@ exports.getClasses = async (req, res) => {
     try {
         const institution_id = req.institution_id;
 
-        let query = supabase.from("classes").select("*");
+        let query = supabase.from("v_classes_detailed").select("*");
         if (institution_id) {
             query = query.eq("institution_id", institution_id);
         }
 
-        const { data: classes, error } = await query.order("display_name");
+        const { data: classes, error } = await query.order("grade_level", { ascending: true }).order("stream", { ascending: true });
+
         if (error) throw error;
 
         // Get student counts for each class
@@ -149,6 +149,7 @@ exports.getClassStudents = async (req, res) => {
         students (
           id,
           grade_level,
+          form_level,
           user_id,
             users:user_id (
               first_name,
@@ -171,6 +172,8 @@ exports.getClassStudents = async (req, res) => {
             last_name: enrollment.students?.users?.last_name || "",
             email: enrollment.students?.users?.email || "",
             grade_level: enrollment.students?.grade_level || "",
+            form_level: enrollment.students?.form_level || "",
+            level: enrollment.students?.grade_level || enrollment.students?.form_level || "",
         }));
 
         res.json(students);
@@ -277,8 +280,8 @@ exports.autoAssignStudents = async (req, res) => {
 
         // 1. Get all classes for this grade level
         let classQuery = supabase
-            .from("classes")
-            .select("id, name, capacity")
+            .from("v_classes_detailed")
+            .select("id, display_name, capacity")
             .eq("grade_level", grade_level);
 
         if (institution_id) {
@@ -307,11 +310,20 @@ exports.autoAssignStudents = async (req, res) => {
             })
         );
 
-        // 3. Get all students of this grade not enrolled in any class
-        const { data: allStudents, error: studErr } = await supabase
+        // 3. Get all students of this grade/form not enrolled in any class
+        let studentQuery = supabase
             .from("students")
-            .select("id, grade_level")
-            .eq("grade_level", grade_level);
+            .select("id, grade_level, form_level");
+
+        if (grade_level) {
+            studentQuery = studentQuery.eq("grade_level", grade_level);
+        } else if (req.body.form_level) {
+            studentQuery = studentQuery.eq("form_level", req.body.form_level);
+        } else {
+            return res.status(400).json({ error: "grade_level or form_level is required" });
+        }
+
+        const { data: allStudents, error: studErr } = await studentQuery;
 
         if (studErr) throw studErr;
 
@@ -374,7 +386,7 @@ exports.autoAssignStudents = async (req, res) => {
 
         // Build summary
         const summary = classData.map((cls) => ({
-            class_name: cls.name,
+            class_name: cls.display_name,
             total_students: cls.current_count,
         }));
 

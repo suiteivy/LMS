@@ -10,6 +10,7 @@ import {
     ChevronRight,
     ClipboardList,
     DoorClosedLocked,
+    FileCheck2,
     FileText,
     Shield,
     Upload
@@ -155,6 +156,15 @@ export default function AdminManagement() {
             bgColor: "#fff0e6",
             darkBgColor: "#3d1a00",
             route: "/(admin)/timetable"
+        },
+        {
+            icon: FileCheck2,
+            title: "Resource Approvals",
+            description: "Review and approve teacher-uploaded resources",
+            color: "#0ea5e9",
+            bgColor: "#e0f2fe",
+            darkBgColor: "#0c2340",
+            route: "/(admin)/management/resources"
         }
     ];
 

@@ -14,6 +14,8 @@ router.get("/stats", masterAdminController.getDashboardStats);
 // Institutions Management
 router.get("/institutions", masterAdminController.getAllInstitutions);
 router.get("/institutions/:id", masterAdminController.getInstitutionDetails);
+router.put("/institutions/:id", masterAdminController.updateInstitutionDetails); // General update (metadata + subscription)
+
 router.post('/institutions', masterAdminController.enrollInstitution);
 router.put("/institutions/:id/subscription", masterAdminController.updateSubscriptionStatus);
 router.delete("/institutions/:id", masterAdminController.deleteInstitution);
@@ -23,6 +25,10 @@ router.get("/users", masterAdminController.getAllUsers);
 
 // Communications / App Updates
 router.post("/notifications", masterAdminController.notifyTarget);
+
+// Platform Payments
+router.post("/payments", masterAdminController.recordPlatformPayment); // Manual payment recording
+router.get("/payments", masterAdminController.getAllPayments); // Global ledger
 
 // Master Platform Admin profile editor
 router.put('/profile', masterAdminController.updatePlatformProfile);
@@ -41,5 +47,10 @@ router.get("/payments", masterAdminController.getAllPayments);
 
 // Institution Analytics
 router.get("/analytics/:id", masterAdminController.getInstitutionAnalytics);
+
+// School Category Management
+router.get("/school-categories", masterAdminController.getSchoolCategories);
+router.post("/school-categories", masterAdminController.upsertSchoolCategory);
+router.delete("/school-categories/:id", masterAdminController.deleteSchoolCategory);
 
 module.exports = router;

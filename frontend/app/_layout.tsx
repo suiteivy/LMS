@@ -155,7 +155,6 @@ function AuthHandler() {
     <View
       style={{ flex: 1, backgroundColor: isDark ? '#0F0B2E' : '#ffffff' }}
       onStartShouldSetResponder={handleInteraction}
-      collapsable={undefined}
     >
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="index" />

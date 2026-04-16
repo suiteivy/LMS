@@ -34,7 +34,7 @@ exports.createResource = async (req, res) => {
                 type,
                 size,
                 institution_id: req.institution_id,
-                // Teachers submit for approval; admins auto-approve
+
                 status: userRole === 'admin' ? 'approved' : 'pending'
             }])
             .select()
@@ -192,3 +192,4 @@ exports.deleteResource = async (req, res) => {
         res.status(500).json({ error: err.message });
     }
 };
+

@@ -11,6 +11,8 @@ interface NotificationContextType {
     refreshNotifications: () => Promise<void>;
     markAsRead: (id: string) => Promise<void>;
     markAllAsRead: () => Promise<void>;
+    deleteNotification: (id: string) => Promise<void>;
+    clearAll: () => Promise<void>;
     showNotifications: boolean;
     setShowNotifications: (show: boolean) => void;
 }
@@ -80,6 +82,26 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
         }
     };
 
+    const deleteNotification = async (id: string) => {
+        try {
+            setNotifications(prev => prev.filter(n => n.id !== id));
+            await NotificationAPI.deleteNotification(id);
+        } catch (error) {
+            console.error("Failed to delete notification:", error);
+            fetchNotifications();
+        }
+    };
+
+    const clearAll = async () => {
+        try {
+            setNotifications([]);
+            await NotificationAPI.clearAll();
+        } catch (error) {
+            console.error("Failed to clear all notifications:", error);
+            fetchNotifications();
+        }
+    };
+
     const unreadCount = notifications.filter(n => !n.is_read).length;
 
     return (
@@ -90,6 +112,8 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
             refreshNotifications: fetchNotifications,
             markAsRead,
             markAllAsRead,
+            deleteNotification,
+            clearAll,
             showNotifications,
             setShowNotifications
         }}>

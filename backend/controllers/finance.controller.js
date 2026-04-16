@@ -335,3 +335,97 @@ exports.createFeeStructure = async (req, res) => {
         res.status(500).json({ error: err.message });
     }
 };
+
+/**
+ * Parent: Submit Payment Evidence
+ */
+exports.submitPaymentEvidence = async (req, res) => {
+    try {
+        const { institution_id } = req;
+        const { student_id, fee_structure_id, amount, payment_method, reference_number, proof_url, notes } = req.body;
+
+        const { data, error } = await supabase
+            .from("payments")
+            .insert([{
+                institution_id,
+                student_id,
+                fee_structure_id,
+                amount,
+                payment_method,
+                reference_number,
+                proof_url,
+                admin_notes: notes,
+                status: 'pending',
+                is_evidence_confirmed: false
+            }])
+            .select()
+            .single();
+
+        if (error) throw error;
+        res.status(201).json(data);
+    } catch (err) {
+        console.error("Submit evidence error:", err);
+        res.status(500).json({ error: err.message });
+    }
+};
+
+/**
+ * Admin: Get Pending Payments
+ */
+exports.getPendingPayments = async (req, res) => {
+    try {
+        const { institution_id, userRole } = req;
+        if (!['admin', 'bursary', 'master_admin'].includes(userRole)) return res.status(403).json({ error: "Unauthorized" });
+
+        const { data, error } = await supabase
+            .from("payments")
+            .select("*, students(user_id, users(full_name))")
+            .eq("institution_id", institution_id)
+            .eq("status", "pending")
+            .order("created_at", { ascending: false });
+
+        if (error) throw error;
+        res.json(data);
+    } catch (err) {
+        console.error("Get pending payments error:", err);
+        res.status(500).json({ error: err.message });
+    }
+};
+
+/**
+ * Admin: Confirm/Reject Payment Evidence
+ */
+exports.confirmPaymentEvidence = async (req, res) => {
+    try {
+        const { userRole, institution_id, userId } = req;
+        if (!['admin', 'bursary', 'master_admin'].includes(userRole)) return res.status(403).json({ error: "Unauthorized" });
+
+        const { payment_id, action, admin_notes } = req.body;
+        const isApproved = action === 'approve';
+
+        // Get admin ID
+        const { data: admin } = await supabase.from('admins').select('id').eq('user_id', userId).single();
+
+        const { data, error } = await supabase
+            .from("payments")
+            .update({
+                status: isApproved ? 'completed' : 'failed',
+                is_evidence_confirmed: isApproved,
+                admin_notes,
+                reviewed_by: admin?.id,
+                reviewed_at: new Date().toISOString()
+            })
+            .eq("id", payment_id)
+            .eq("institution_id", institution_id)
+            .select()
+            .single();
+
+        if (error) throw error;
+        
+        res.json(data);
+    } catch (err) {
+        console.error("Confirm evidence error:", err);
+        res.status(500).json({ error: err.message });
+    }
+};
+

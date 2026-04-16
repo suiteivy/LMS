@@ -45,6 +45,7 @@ export type StatsColor =
   | "purple"
   | "yellow"
   | "red"
+  | "orange"
   | "gray";
 
 export interface StatsData {
@@ -153,6 +154,7 @@ export interface Subject {
   tags: string[];
   isEnrolled: boolean;
   progress?: number;
+  progress_percent?: number;
   lastAccessed?: string;
   lessons: Lesson[];
 }
@@ -395,7 +397,8 @@ export interface BackendBorrowedBook {
   // New backend structure: students -> users
   students?: {
     id: string;
-    grade_level?: string;
+    grade_level?: number;
+    form_level?: number;
     academic_year?: string;
     users?: {
       first_name: string;
@@ -445,7 +448,8 @@ export interface FrontendBorrowedBook {
   borrowerPhone?: string;
   borrowerType: 'student' | 'teacher' | 'user';
   // Extra Details
-  gradeLevel?: string;
+  gradeLevel?: number | string;
+  formLevel?: number;
   department?: string;
   position?: string;
   

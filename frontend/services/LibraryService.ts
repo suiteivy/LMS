@@ -103,6 +103,35 @@ export class LibraryAPI {
   }
 
   /**
+   * Issue a book to a student (Teacher/Admin only)
+   * @param {string} bookId
+   * @param {string} studentId
+   * @param {string} notes
+   * @param {number} days
+   * @returns {Promise<any>}
+   */
+  static async issueBook(
+    bookId: string,
+    studentId: string,
+    notes: string,
+    days: number = 14
+  ): Promise<any> {
+    try {
+      const response = await api.post("/library/issue", {
+        bookId,
+        studentId,
+        notes,
+        days,
+      });
+      return response.data;
+    } catch (error) {
+      console.error("Error issuing book:", error);
+      throw error;
+    }
+  }
+
+
+  /**
    * Return a borrowed book
    * @param {string} borrowId
    * @param {string} returnedAt
@@ -295,6 +324,7 @@ export class LibraryAPI {
       borrowerType: student ? 'student' : (teacher ? 'teacher' : 'user'),
       
       gradeLevel: student?.grade_level,
+      formLevel: student?.form_level,
       department: teacher?.department,
       position: teacher?.position,
 

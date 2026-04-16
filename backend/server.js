@@ -72,6 +72,7 @@ app.use("/api/teacher", authMiddleware, checkSubscription, require("./routes/tea
 app.use("/api/student", authMiddleware, checkSubscription, require("./routes/student.route.js"));
 app.use("/api/classes", authMiddleware, checkSubscription, require("./routes/class.route.js"));
 app.use("/api/diary", authMiddleware, checkSubscription, require("./routes/diary.route.js"));
+app.use("/api/reports", authMiddleware, checkSubscription, require("./routes/reports.route.js"));
 app.use("/api/addon-requests", authMiddleware, require("./routes/addon_request.routes.js"));
 
 // Explicitly define currency route as public before using auth wrapper on settings
@@ -83,9 +84,17 @@ app.use("/api/master-admin", authMiddleware, masterAdminRoutes);
 
 // Automated background jobs (Trial Branch)
 const { startTrialNudgesCron } = require('./cron/trialNudges.js');
+const { cleanupExpiredDemoSessions } = require('./services/demoCleanup.service.js');
+const cron = require('node-cron');
+
 if (typeof startTrialNudgesCron === 'function') {
   startTrialNudgesCron();
 }
+
+// Demo Cleanup: Runs every 10 minutes
+cron.schedule('*/10 * * * *', async () => {
+  await cleanupExpiredDemoSessions();
+});
 
 // health check
 app.get("/", (_req, res) => {

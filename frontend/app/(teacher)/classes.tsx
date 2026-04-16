@@ -1,6 +1,7 @@
 import { UnifiedHeader } from "@/components/common/UnifiedHeader";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/libs/supabase";
+import { AttendanceService } from "@/services/AttendanceService";
 import { ClassService, ClassStudent } from "@/services/ClassService";
 import { TimetableAPI, TimetableEntry } from "@/services/TimetableService";
 import {
@@ -440,7 +441,25 @@ const DailyTab = ({ classId, className: cName }: { classId: string; className: s
                                 </View>
                             ) : (
                                 <TouchableOpacity
-                                    onPress={save}
+                                    onPress={async () => {
+                                        setSaving(true);
+                                        try {
+                                            const records = rows.map(r => ({
+                                                student_id: r.student_id,
+                                                class_id: classId,
+                                                date: todayStr,
+                                                status: r.status,
+                                                notes: ''
+                                            }));
+                                            await AttendanceService.markAttendance(records as any);
+                                            setLocked(true);
+                                            Alert.alert("Success", "Attendance saved and locked.");
+                                        } catch (error: any) {
+                                            Alert.alert("Error", error.message);
+                                        } finally {
+                                            setSaving(false);
+                                        }
+                                    }}
                                     disabled={saving}
                                     className={`bg-[#FF6900] py-4 rounded-2xl items-center mt-4 shadow-lg ${saving ? "opacity-60" : "active:bg-orange-600"}`}
                                 >
@@ -469,20 +488,7 @@ const ByClassTab = ({ classId }: { classId: string }) => {
         const fetch = async () => {
             setLoading(true);
             try {
-                const { data, error } = await supabase
-                    .from("attendance")
-                    .select(`
-                        date,
-                        status,
-                        student:students(
-                            id,
-                            user:users(full_name, email)
-                        )
-                    `)
-                    .eq("class_id", classId)
-                    .order("date", { ascending: false });
-
-                if (error) throw error;
+                const data = await AttendanceService.getClassAttendanceHistory(classId);
 
                 const byDate: Record<string, HistorySession> = {};
                 (data ?? []).forEach((row: any) => {

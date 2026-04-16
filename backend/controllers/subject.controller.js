@@ -276,3 +276,42 @@ exports.getSubjectsByClass = async (req, res) => {
     res.status(500).json({ error: "Server error" });
   }
 };
+// UPDATE SUBJECT PROGRESS
+exports.updateProgress = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { progress_percent } = req.body;
+    const { userId, userRole, institution_id } = req;
+
+    if (userRole !== "teacher" && userRole !== "admin") {
+      return res.status(403).json({ error: "Only teachers or admins can update progress" });
+    }
+
+    // If teacher, verify they teach this subject
+    if (userRole === "teacher") {
+      const { data: teacher } = await supabase.from('teachers').select('id').eq('user_id', userId).single();
+      const { data: subject } = await supabase.from('subjects').select('teacher_id').eq('id', id).eq('institution_id', institution_id).single();
+      
+      if (!subject || subject.teacher_id !== teacher?.id) {
+        return res.status(403).json({ error: "You are not assigned to this subject" });
+      }
+    }
+
+    const { data, error } = await supabase
+      .from("subjects")
+      .update({ 
+        progress_percent: Math.min(Math.max(0, Number(progress_percent)), 100), 
+        updated_at: new Date().toISOString() 
+      })
+      .eq("id", id)
+      .eq("institution_id", institution_id)
+      .select()
+      .single();
+
+    if (error) throw error;
+    res.json(data);
+  } catch (err) {
+    console.error("updateProgress error:", err);
+    res.status(500).json({ error: err.message });
+  }
+};

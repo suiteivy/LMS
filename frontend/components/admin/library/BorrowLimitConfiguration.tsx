@@ -282,7 +282,7 @@ const BorrowLimitConfiguration: React.FC<BorrowLimitConfigurationProps> = ({
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: bg }} collapsable={undefined}>
+    <View style={{ flex: 1, backgroundColor: bg }}>
       {/* Header */}
       <View style={{ backgroundColor: surface, padding: 16, borderBottomWidth: 1, borderBottomColor: border }}>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>

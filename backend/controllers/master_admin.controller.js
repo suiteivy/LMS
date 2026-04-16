@@ -24,9 +24,8 @@ exports.getDashboardStats = async (_req, res) => {
             adminClient.from('institutions').select('*', { count: 'exact', head: true }),
             adminClient.from('institutions').select('*', { count: 'exact', head: true }).eq('subscription_status', 'active'),
             adminClient.from('users').select('*', { count: 'exact', head: true }),
-            // Proxy revenue logic: sum all completed subscription payments if tracked, 
-            // or just sum all completed payments globally
-            adminClient.from('payments').select('amount').eq('status', 'completed')
+            // Fix: Platform revenue is tracked in financial_transactions with type = 'subscription'
+            adminClient.from('financial_transactions').select('amount').eq('type', 'subscription').eq('status', 'completed')
         ]);
 
         const totalRevenue = revenueData ? revenueData.reduce((acc, curr) => acc + Number(curr.amount), 0) : 0;
@@ -92,12 +91,23 @@ exports.getInstitutionDetails = async (req, res) => {
     }
 };
 
-exports.updateSubscriptionStatus = async (req, res) => {
+/**
+ * Update general institution details, including subscription metadata
+ */
+exports.updateInstitutionDetails = async (req, res) => {
     try {
         const { id } = req.params;
         const { 
+            name,
+            location,
+            phone,
+            email,
+            principal_name,
+            email_domain,
+            category_id,
             subscription_status, 
             subscription_plan, 
+            subscription_cycle,
             trial_end_date, 
             addon_library, 
             addon_messaging, 
@@ -105,37 +115,39 @@ exports.updateSubscriptionStatus = async (req, res) => {
             addon_bursary, 
             addon_finance, 
             addon_analytics,
+            addon_attendance,
             custom_student_limit
         } = req.body;
 
-        if (
-            subscription_status === undefined && 
-            subscription_plan === undefined && 
-            trial_end_date === undefined && 
-            addon_library === undefined && 
-            addon_messaging === undefined && 
-            addon_diary === undefined &&
-            addon_bursary === undefined && 
-            addon_finance === undefined && 
-            addon_analytics === undefined &&
-            custom_student_limit === undefined
-        ) {
-            return res.status(400).json({ error: "No update fields provided." });
-        }
-
         const adminClient = getServiceSupabase();
-        const updates = {};
+        
+        // Build update object dynamically to only update provided fields
+        const updates = { updated_at: new Date().toISOString() };
+        
+        // Metadata fields
+        if (name !== undefined) updates.name = name;
+        if (location !== undefined) updates.location = location;
+        if (phone !== undefined) updates.phone = phone;
+        if (email !== undefined) updates.email = email;
+        if (principal_name !== undefined) updates.principal_name = principal_name;
+        if (email_domain !== undefined) updates.email_domain = email_domain;
+        if (category_id !== undefined) updates.category_id = category_id;
+        
+        // Subscription fields
         if (subscription_status !== undefined) updates.subscription_status = subscription_status;
         if (subscription_plan !== undefined) updates.subscription_plan = subscription_plan;
+        if (subscription_cycle !== undefined) updates.subscription_cycle = subscription_cycle;
         if (trial_end_date !== undefined) updates.trial_end_date = trial_end_date;
-        if (addon_library !== undefined) updates.addon_library = addon_library;
-        if (addon_messaging !== undefined) updates.addon_messaging = addon_messaging;
-        if (addon_diary !== undefined) updates.addon_diary = addon_diary;
-        if (addon_bursary !== undefined) updates.addon_bursary = addon_bursary;
-        if (addon_finance !== undefined) updates.addon_finance = addon_finance;
-        if (addon_analytics !== undefined) updates.addon_analytics = addon_analytics;
+        
+        // Add-ons (Ensure boolean casting for consistency)
+        if (addon_library !== undefined) updates.addon_library = !!addon_library;
+        if (addon_messaging !== undefined) updates.addon_messaging = !!addon_messaging;
+        if (addon_diary !== undefined) updates.addon_diary = !!addon_diary;
+        if (addon_bursary !== undefined) updates.addon_bursary = !!addon_bursary;
+        if (addon_finance !== undefined) updates.addon_finance = !!addon_finance;
+        if (addon_analytics !== undefined) updates.addon_analytics = !!addon_analytics;
+        if (addon_attendance !== undefined) updates.addon_attendance = !!addon_attendance;
         if (custom_student_limit !== undefined) updates.custom_student_limit = custom_student_limit;
-        updates.updated_at = new Date().toISOString();
 
         const { data: updatedInst, error } = await adminClient
             .from('institutions')
@@ -146,10 +158,10 @@ exports.updateSubscriptionStatus = async (req, res) => {
 
         if (error) throw error;
 
-        res.status(200).json({ message: "Subscription updated successfully", institution: updatedInst });
+        res.status(200).json({ message: "Institution updated successfully", institution: updatedInst });
     } catch (error) {
-        console.error("Error updating subscription:", error);
-        res.status(500).json({ error: "Failed to update subscription" });
+        console.error("Error updating institution details:", error);
+        res.status(500).json({ error: "Failed to update institution details" });
     }
 };
 
@@ -221,18 +233,21 @@ exports.enrollInstitution = async (req, res) => {
                 name: institution_name,
                 location: location || '',
                 email_domain: email_domain || (institution_name.toLowerCase().replace(/\s+/g, '') + '.edu'),
-                type: 'secondary', // Generic default
+                type: req.body.type || 'secondary', 
+                category_id: req.body.category_id || null,
                 subscription_status: req.body.subscription_status || 'trial',
                 subscription_plan: req.body.subscription_plan || 'trial',
-                has_used_trial: req.body.subscription_plan === 'trial' ? false : true,
+                subscription_cycle: req.body.subscription_cycle || 'monthly',
+                has_used_trial: (req.body.subscription_plan === 'trial' || !req.body.subscription_plan) ? false : true,
                 trial_start_date: new Date().toISOString(),
                 trial_end_date: req.body.trial_end_date || null,
-                addon_library: req.body.addon_library || false,
-                addon_messaging: req.body.addon_messaging || false,
-                addon_diary: req.body.subscription_plan === 'free' ? true : (req.body.addon_diary || false),
-                addon_bursary: req.body.addon_bursary || false,     // Bursary add-on (separate from finance)
-                addon_finance: req.body.addon_finance || false,
-                addon_analytics: req.body.addon_analytics || false,
+                addon_library: !!req.body.addon_library,
+                addon_messaging: !!req.body.addon_messaging,
+                addon_diary: req.body.subscription_plan === 'beta' ? true : !!req.body.addon_diary,
+                addon_bursary: !!req.body.addon_bursary,
+                addon_finance: !!req.body.addon_finance,
+                addon_analytics: !!req.body.addon_analytics,
+                addon_attendance: !!req.body.addon_attendance,
                 custom_student_limit: req.body.custom_student_limit || null
             }])
             .select('id')
@@ -353,7 +368,7 @@ exports.enrollMasterAdmin = async (req, res) => {
         // Create the user in Supabase Auth
         const { data: authUser, error: authError } = await adminClient.auth.admin.createUser({
             email: email,
-            password: password,
+            password: admin_password,
             email_confirm: true,
             user_metadata: { 
                 full_name: finalFullName,
@@ -399,7 +414,10 @@ exports.enrollMasterAdmin = async (req, res) => {
 
         if (paError) {
             console.error("Error inserting into platform_admins:", paError);
+<<<<<<< HEAD
             // Non-fatal — user is still functional
+=======
+>>>>>>> 11ac643 (System Audit Fixes: Resolved RLS recursion, consolidated schema.sql, fixed demo/logout 500 errors, and synchronized frontend tsconfig)
         }
 
         return res.status(201).json({
@@ -542,7 +560,6 @@ exports.addTicketMessage = async (req, res) => {
         res.status(500).json({ error: "Failed to add message" });
     }
 };
-
 
 /**
  * Updates the authenticated Platform Admin's own profile.
@@ -698,3 +715,118 @@ exports.getAllUsers = async (req, res) => {
     }
 };
 
+/**
+ * School Category Management
+ */
+
+exports.getSchoolCategories = async (_req, res) => {
+    try {
+        const adminClient = getServiceSupabase();
+        const { data, error } = await adminClient
+            .from('school_categories')
+            .select('*')
+            .order('name');
+
+        if (error) throw error;
+        res.status(200).json(data);
+    } catch (error) {
+        console.error("Error fetching school categories:", error);
+        res.status(500).json({ error: "Failed to fetch school categories" });
+    }
+};
+
+exports.upsertSchoolCategory = async (req, res) => {
+    try {
+        const { id, name, level_label } = req.body;
+        if (!name || !level_label) {
+            return res.status(400).json({ error: "Name and Level Label are required" });
+        }
+
+        const adminClient = getServiceSupabase();
+        const categoryData = { name, level_label, updated_at: new Date().toISOString() };
+        
+        let result;
+        if (id) {
+            result = await adminClient.from('school_categories').update(categoryData).eq('id', id).select().single();
+        } else {
+            result = await adminClient.from('school_categories').insert([categoryData]).select().single();
+        }
+
+        if (result.error) throw result.error;
+        res.status(200).json({ message: "Category saved successfully", category: result.data });
+    } catch (error) {
+        console.error("Error upserting school category:", error);
+        res.status(500).json({ error: "Failed to save school category" });
+    }
+};
+
+exports.deleteSchoolCategory = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const adminClient = getServiceSupabase();
+        
+        // Check if any institution uses this category
+        const { count } = await adminClient
+            .from('institutions')
+            .select('*', { count: 'exact', head: true })
+            .eq('category_id', id);
+
+        if (count > 0) {
+            return res.status(400).json({ error: "Cannot delete category being used by institutions" });
+        }
+
+        const { error } = await adminClient.from('school_categories').delete().eq('id', id);
+        if (error) throw error;
+
+        res.status(200).json({ message: "Category deleted successfully" });
+    } catch (error) {
+        console.error("Error deleting school category:", error);
+        res.status(500).json({ error: "Failed to delete school category" });
+    }
+};
+
+/**
+ * Record a manual platform-level payment (subscription revenue)
+ */
+exports.recordPlatformPayment = async (req, res) => {
+    try {
+        const { 
+            institution_id, 
+            amount, 
+            method, 
+            reference_id, 
+            notes, 
+            date 
+        } = req.body;
+
+        if (!institution_id || !amount) {
+            return res.status(400).json({ error: "Institution and amount are required." });
+        }
+
+        const adminClient = getServiceSupabase();
+
+        const { data, error } = await adminClient
+            .from('financial_transactions')
+            .insert([{
+                institution_id,
+                amount: Number(amount),
+                type: 'subscription',
+                direction: 'inflow',
+                method: method || 'manual',
+                reference_id: reference_id || `PLAT-${Date.now()}`,
+                meta: { notes: notes || 'Manual platform entry' },
+                date: date || new Date().toISOString().split('T')[0],
+                status: 'completed'
+            }])
+            .select()
+            .single();
+
+        if (error) throw error;
+
+        res.status(201).json({ message: "Platform payment recorded successfully", transaction: data });
+    } catch (error) {
+        console.error("Error recording platform payment:", error);
+        res.status(500).json({ error: "Failed to record platform payment" });
+    }
+};
+>>>>>>> 11ac643 (System Audit Fixes: Resolved RLS recursion, consolidated schema.sql, fixed demo/logout 500 errors, and synchronized frontend tsconfig)

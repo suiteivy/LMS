@@ -53,20 +53,36 @@ export const api: AxiosInstance = axios.create({
 // Request Interceptor: Inject Auth Token
 api.interceptors.request.use(
   async (config) => {
+    const startTime = Date.now();
+    const requestId = Math.random().toString(36).substring(7);
+    
+    // console.log(`[API Request ${requestId}] Starting: ${config.method?.toUpperCase()} ${config.url}`);
+    
     try {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
+      // Race protection: if getSession hangs, don't block the whole app.
+      // 5s limit for session retrieval in the interceptor.
+      const sessionPromise = supabase.auth.getSession();
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Session retrieval timeout')), 5000)
+      );
+
+      const { data: { session } } = await Promise.race([sessionPromise, timeoutPromise]) as any;
 
       if (session?.access_token) {
-        // console.log("Attaching auth token to request:", config.url);
         config.headers.Authorization = `Bearer ${session.access_token}`;
       } else {
-        console.warn(`[API] No active session found for: ${config.url}. (Initializing: ${await supabase.auth.getSession() ? 'pending' : 'no'})`);
+        // Only log warning if it's not a public route
+        if (!config.url?.includes('/auth/') && !config.url?.includes('/demo/')) {
+          console.warn(`[API ${requestId}] No active session for protected route: ${config.url}`);
+        }
       }
-    } catch (error) {
-      console.error("Error fetching session for API request:", error);
+    } catch (error: any) {
+      console.error(`[API ${requestId}] Auth Interceptor Error/Timeout for ${config.url}:`, error.message);
+      // We still return config to let the request proceed (it will likely 401, 
+      // but that's better than hanging the UI forever).
     }
+    
+    // console.log(`[API Request ${requestId}] Interceptor finished in ${Date.now() - startTime}ms`);
     return config;
   },
   (error) => {

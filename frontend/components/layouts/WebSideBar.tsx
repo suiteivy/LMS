@@ -60,7 +60,6 @@ export const WebSidebar = ({ items, basePath, role, children }: WebSidebarProps)
         paddingBottom: insets.bottom + 16,
         transition: 'width 0.2s',
       } as any}
-      collapsable={undefined}
     >
         {/* Logo / Role badge */}
         {!collapsed && (

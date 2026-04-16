@@ -27,25 +27,25 @@ const DEMO_USERS = [
     {
         role: 'student',
         email: 'demo.student@lms.com',
-        full_name: 'Demo Student',
-        data: { grade_level: 'Grade 10', academic_year: '2025' }
+        full_name: 'Kelson Otieno',
+        data: { grade_level: 10, stream: 'West' }
     },
     {
         role: 'teacher',
         email: 'demo.teacher@lms.com',
-        full_name: 'Demo Teacher',
-        data: { department: 'Science', qualification: 'PhD', specialization: 'Physics' }
+        full_name: 'Sarah Chemutai',
+        data: { department: 'Mathematics', qualification: 'MEd' }
     },
     {
         role: 'parent',
         email: 'demo.parent@lms.com',
-        full_name: 'Demo Parent',
-        data: { occupation: 'Engineer', address: '123 Demo Lane' }
+        full_name: 'James Mwangi',
+        data: { occupation: 'Financial Analyst', phone: '+254711223344' }
     },
     {
         role: 'admin',
         email: 'demo.admin@lms.com',
-        full_name: 'Demo Admin',
+        full_name: 'Admin User',
         data: {}
     }
 ];
@@ -65,8 +65,6 @@ async function seed() {
         console.log(`Processing ${userDef.role}: ${userDef.email}`);
 
         // 1. Check if user exists in Auth
-        // We can't easily "get by email" with admin API without potentially cryptic errors, 
-        // but listUsers works.
         const { data: { users }, error: listError } = await supabase.auth.admin.listUsers();
 
         if (listError) {
@@ -89,10 +87,6 @@ async function seed() {
                 continue;
             }
             authUser = created.user;
-        } else {
-            console.log(`Auth user ${userDef.email} already exists.`);
-            // Optional: Update password to ensure it's known? 
-            // await supabase.auth.admin.updateUserById(authUser.id, { password: DEMO_PASSWORD });
         }
 
         const userId = authUser.id;
@@ -102,60 +96,23 @@ async function seed() {
 
         if (!existingUser) {
             console.log(`Inserting into public.users for ${userDef.email}`);
-            const { error: insertError } = await supabase.from('users').insert({
+            await supabase.from('users').insert({
                 id: userId,
                 email: userDef.email,
                 full_name: userDef.full_name,
                 role: userDef.role,
-                institution_id: defaultInstitutionId
+                institution_id: defaultInstitutionId,
+                phone: userDef.data.phone || null
             });
-            if (insertError) {
-                console.error(`Failed to insert public user ${userDef.email}:`, insertError);
-                // If trigger auto-inserted, we might get duplicate key error? 
-                // If the trigger exists, it might have already inserted.
-                // But if we just created auth user, the trigger *should* have fired.
-                // Let's assume if existingUser is null, we need to insert OR the trigger hasn't fired yet?
-                // Actually, triggers usually fire immediately on auth.users insert IF configured.
-                // But standard Supabase doesn't have that trigger by default unless we added it.
-                // The `enrollUser` controller manually inserts into `users`. So likely NO trigger.
-            }
-        } else {
-            console.log(`Public user entry exists for ${userDef.email}`);
-            if (existingUser.role !== userDef.role) {
-                console.warn(`Role mismatch for ${userDef.email}. Expected ${userDef.role}, got ${existingUser.role}`);
-                // Fix role?
-                await supabase.from('users').update({ role: userDef.role }).eq('id', userId);
-            }
         }
 
-        // 3. Update/Insert Role Specific Tables
-        // Wait for a moment to ensure triggers (if any)
-        await new Promise(r => setTimeout(r, 500));
-
+        // 3. Role specific updates
         if (userDef.role === 'student') {
-            // Check database for student entry
-            const { data: student } = await supabase.from('students').select('id').eq('user_id', userId).single();
-            if (!student) {
-                // If manual insert needed
-                await supabase.from('students').insert({ user_id: userId, ...userDef.data });
-            }
+            await supabase.from('students').upsert({ user_id: userId, ...userDef.data, institution_id: defaultInstitutionId }, { onConflict: 'user_id' });
         } else if (userDef.role === 'teacher') {
-            const { data: teacher } = await supabase.from('teachers').select('id').eq('user_id', userId).single();
-            if (!teacher) {
-                await supabase.from('teachers').insert({ user_id: userId, ...userDef.data });
-            }
+            await supabase.from('teachers').upsert({ user_id: userId, ...userDef.data, institution_id: defaultInstitutionId }, { onConflict: 'user_id' });
         } else if (userDef.role === 'parent') {
-            const { data: parent } = await supabase.from('parents').select('id').eq('user_id', userId).single();
-            if (!parent) {
-                await supabase.from('parents').insert({ user_id: userId, ...userDef.data });
-            }
-        }
-        // Admin usually doesn't have extra table or minimal
-        else if (userDef.role === 'admin') {
-            const { data: admin } = await supabase.from('admins').select('id').eq('user_id', userId).single();
-            if (!admin) {
-                await supabase.from('admins').insert({ user_id: userId, ...userDef.data });
-            }
+            await supabase.from('parents').upsert({ user_id: userId, ...userDef.data, institution_id: defaultInstitutionId }, { onConflict: 'user_id' });
         }
     }
 

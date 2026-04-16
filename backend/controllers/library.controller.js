@@ -242,6 +242,69 @@ exports.listBooks = async (req, res) => {
   }
 };
 
+/** Issue a book to a student (Teacher/Admin only) */
+exports.issueBook = async (req, res) => {
+  try {
+    const { userRole, institution_id } = req;
+    const { bookId, studentId, notes, days = 14 } = req.body;
+
+    if (!["teacher", "admin"].includes(userRole)) {
+      return res.status(403).json({ error: "Teachers or Admins only." });
+    }
+
+    if (!bookId || !studentId) {
+      return res.status(400).json({ error: "Book ID and Student ID are required" });
+    }
+
+    const { data: item, error: itemErr } = await supabase
+      .from("books")
+      .select("*")
+      .eq("id", bookId)
+      .eq("institution_id", institution_id)
+      .single();
+
+    if (itemErr || !item) return res.status(404).json({ error: "Book not found." });
+    if (item.available_quantity <= 0) return res.status(400).json({ error: "Book out of stock" });
+
+    const { data: student, error: studentErr } = await supabase
+      .from("students")
+      .select("id")
+      .eq("id", studentId)
+      .eq("institution_id", institution_id)
+      .single();
+
+    if (studentErr || !student) return res.status(404).json({ error: "Student not found in this institution." });
+
+    const dueDate = new Date();
+    dueDate.setDate(dueDate.getDate() + Number(days));
+
+    const { data: loan, error: loanErr } = await supabase
+      .from("borrowed_books")
+      .insert([
+        {
+          book_id: bookId,
+          student_id: studentId,
+          teacher_id: userRole === "teacher" ? await getTeacherId(req.userId) : null,
+          status: 'borrowed',
+          borrowed_at: new Date().toISOString(),
+          due_date: dueDate.toISOString().slice(0, 10),
+          institution_id,
+          notes: notes || ""
+        },
+      ])
+      .select()
+      .single();
+
+    if (loanErr) return res.status(500).json({ error: loanErr.message });
+    
+    return res.status(201).json({ message: "Book issued successfully", borrow: loan });
+  } catch (e) {
+    console.error("issueBook error:", e);
+    return res.status(500).json({ error: "Server error: " + e.message });
+  }
+};
+
+
 /** Borrow a book (student) */
 exports.borrowBook = async (req, res) => {
   try {

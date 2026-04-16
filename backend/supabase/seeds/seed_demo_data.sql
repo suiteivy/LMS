@@ -1,119 +1,124 @@
 -- Seed File: seed_demo_data.sql
--- Goal: Populate demo users (student, teacher, parent, admin) with realistic data for a trial experience.
+-- Goal: Populate demo users with realistic, multi-child data and initial reports.
+-- Final Check: Ensuring all foreign keys (students.class_id) are linked.
 
--- 1. Get IDs for Demo Users
 DO $$
 DECLARE
-    v_institution_id UUID;
-    v_demo_student_user_id UUID;
-    v_demo_teacher_user_id UUID;
-    v_demo_parent_user_id UUID;
-    v_demo_admin_user_id UUID;
+    v_institution_id UUID := 'b5bd788c-8297-4a96-b8b3-157814504fba';
     
-    v_student_id UUID;
-    v_teacher_id UUID;
-    v_parent_id UUID;
+    -- User IDs (From seed_demo_users.js)
+    v_parent_user_id UUID := '5392d979-e70a-4017-a340-502ea5706d41'; -- demo.parent@lms.com
+    v_child1_user_id UUID := 'c6306d7b-ad5e-4f5b-8118-47fcd462bd25'; -- demo.student@lms.com
+    v_child2_user_id UUID := '2e5791b7-37ee-4609-a972-e5ce04ddf9e1'; -- student2@lms.com
+    v_teacher_user_id UUID := 'a9270c4b-0f35-4d3b-87b8-4dc3da990587'; -- demo.teacher@lms.com
+    v_admin_user_id UUID := 'b14cbc73-e3bf-4c0f-962a-b754a5979a84';  -- demo.admin@lms.com
     
-    v_class_id UUID;
-    v_subject_math_id UUID;
-    v_subject_eng_id UUID;
+    -- Role IDs (TEXT)
+    v_parent_id TEXT;
+    v_child1_id TEXT;
+    v_child2_id TEXT ;
+    v_teacher_id TEXT;
+    
+    -- Objects
+    v_class1_id UUID;
+    v_class2_id UUID;
+    v_math_id UUID;
+    v_eng_id UUID;
+    v_exam1_id UUID;
+    v_assign1_id UUID;
     
 BEGIN
-    -- Get Institution (Assuming one exists, pick the first one)
-    SELECT id INTO v_institution_id FROM institutions LIMIT 1;
-    
-    -- Get User IDs from auth.users (or public.users if IDs match)
-    SELECT id INTO v_demo_student_user_id FROM users WHERE email = 'demo.student@lms.com';
-    SELECT id INTO v_demo_teacher_user_id FROM users WHERE email = 'demo.teacher@lms.com';
-    SELECT id INTO v_demo_parent_user_id FROM users WHERE email = 'demo.parent@lms.com';
-    SELECT id INTO v_demo_admin_user_id FROM users WHERE email = 'demo.admin@lms.com';
+    -- 1. Update User Records (Labels & Naming Audit)
+    UPDATE public.users SET full_name = 'James Mwangi', first_name = 'James', last_name = 'Mwangi', phone = '+254711223344', institution_id = v_institution_id WHERE id = v_parent_user_id;
+    UPDATE public.users SET full_name = 'Kelson Otieno', first_name = 'Kelson', last_name = 'Otieno', institution_id = v_institution_id WHERE id = v_child1_user_id;
+    UPDATE public.users SET full_name = 'John Doe Jr.', first_name = 'John', last_name = 'Doe Jr.', institution_id = v_institution_id WHERE id = v_child2_user_id;
+    UPDATE public.users SET full_name = 'Sarah Chemutai', first_name = 'Sarah', last_name = 'Chemutai', institution_id = v_institution_id WHERE id = v_teacher_user_id;
+    UPDATE public.users SET full_name = 'Cloudora Admin', first_name = 'Cloudora', last_name = 'Admin', institution_id = v_institution_id WHERE id = v_admin_user_id;
 
-    -- Get Role-Specific IDs
-    SELECT id INTO v_student_id FROM students WHERE user_id = v_demo_student_user_id;
-    SELECT id INTO v_teacher_id FROM teachers WHERE user_id = v_demo_teacher_user_id;
-    SELECT id INTO v_parent_id FROM parents WHERE user_id = v_demo_parent_user_id;
-
-    -- ==========================================
-    -- 1. SETUP TEACHER DATA (Classes & Subjects)
-    -- ==========================================
+    -- 2. Ensure Role records exist
+    INSERT INTO public.parents (user_id, institution_id, id, occupation, phone) 
+    VALUES (v_parent_user_id, v_institution_id, 'PAR-DEMO-001', 'Financial Analyst', '+254711223344')
+    ON CONFLICT (user_id) DO UPDATE SET institution_id = EXCLUDED.institution_id, full_name = 'James Mwangi'
+    RETURNING id INTO v_parent_id;
     
-    -- Create a Class if not exists or use existing
-    INSERT INTO classes (name, grade_level, academic_year, institution_id, teacher_id)
-    VALUES ('Grade 10A', '10', '2025', v_institution_id, v_teacher_id)
-    ON CONFLICT DO NOTHING;
-    
-    SELECT id INTO v_class_id FROM classes WHERE teacher_id = v_teacher_id LIMIT 1;
+    INSERT INTO public.students (user_id, institution_id, id) 
+    VALUES (v_child1_user_id, v_institution_id, 'STU-DEMO-001')
+    ON CONFLICT (user_id) DO UPDATE SET institution_id = EXCLUDED.institution_id
+    RETURNING id INTO v_child1_id;
 
-    -- Create Subjects assigned to this teacher
-    INSERT INTO subjects (name, code, description, institution_id, teacher_id)
+    INSERT INTO public.students (user_id, institution_id, id) 
+    VALUES (v_child2_user_id, v_institution_id, 'STU-DEMO-002')
+    ON CONFLICT (user_id) DO UPDATE SET institution_id = EXCLUDED.institution_id
+    RETURNING id INTO v_child2_id;
+
+    SELECT id INTO v_teacher_id FROM public.teachers WHERE user_id = v_teacher_user_id;
+
+    -- 3. Parental Linkage
+    INSERT INTO public.parent_students (parent_id, student_id, relationship, institution_id)
     VALUES 
-        ('Mathematics', 'MATH101', 'Introduction to Algebra and Geometry', v_institution_id, v_teacher_id),
-        ('English Literature', 'ENG101', 'Classic and Modern Literature', v_institution_id, v_teacher_id)
-    ON CONFLICT DO NOTHING;
+        (v_parent_id, v_child1_id, 'Father', v_institution_id),
+        (v_parent_id, v_child2_id, 'Father', v_institution_id)
+    ON CONFLICT (parent_id, student_id) DO NOTHING;
 
-    SELECT id INTO v_subject_math_id FROM subjects WHERE code = 'MATH101' AND teacher_id = v_teacher_id;
-    SELECT id INTO v_subject_eng_id FROM subjects WHERE code = 'ENG101' AND teacher_id = v_teacher_id;
-
-    -- ==========================================
-    -- 2. SETUP STUDENT DATA (Enrollment & Grades)
-    -- ==========================================
-
-    -- Enroll Student in the Class
-    -- Enroll Student in Subjects (Required by Schema)
-    INSERT INTO enrollments (student_id, subject_id, status)
+    -- 4. Classes & Subjects
+    INSERT INTO public.classes (display_name, grade_level, stream, institution_id, teacher_id)
     VALUES 
-    (v_student_id, v_subject_math_id, 'enrolled'),
-    (v_student_id, v_subject_eng_id, 'enrolled')
-    ON CONFLICT DO NOTHING;
-    
-    -- Enroll Student in Subjects (if explicit enrollment table exists, otherwise implied by class/assignments)
-    -- Using 'student_subjects' if it exists, otherwise skipping.
-    -- Assuming a simple schema where assignments link to subjects.
+        ('Grade 10 West', 10, 'West', v_institution_id, v_teacher_id)
+    ON CONFLICT (institution_id, display_name) DO UPDATE SET teacher_id = EXCLUDED.teacher_id
+    RETURNING id INTO v_class1_id;
 
-    -- Create Assignments
-    INSERT INTO assignments (title, description, due_date, total_marks, subject_id, teacher_id, class_id)
+    INSERT INTO public.classes (display_name, grade_level, stream, institution_id, teacher_id)
     VALUES 
-        ('Algebra Quiz 1', 'Solve linear equations', NOW() + INTERVAL '2 days', 20, v_subject_math_id, v_teacher_id, v_class_id),
-        ('Essay on Macbeth', 'Analyze the theme of ambition', NOW() + INTERVAL '5 days', 50, v_subject_eng_id, v_teacher_id, v_class_id)
-    ON CONFLICT DO NOTHING;
+        ('Grade 8 East', 8, 'East', v_institution_id, v_teacher_id)
+    ON CONFLICT (institution_id, display_name) DO UPDATE SET teacher_id = EXCLUDED.teacher_id
+    RETURNING id INTO v_class2_id;
 
-    -- Insert Grades / Submissions logic if tables exist
-    -- Check for 'grades' or 'submissions' table
-    -- Inserting dummy grades for previous assignments
-    INSERT INTO grades (student_id, subject_id, assessment_type, marks_obtained, total_marks, remarks, date_recorded)
-    VALUES
-        (v_student_id, v_subject_math_id, 'Test', 85, 100, 'Excellent work', NOW() - INTERVAL '10 days'),
-        (v_student_id, v_subject_eng_id, 'Assignment', 78, 100, 'Good analysis, work on grammar', NOW() - INTERVAL '5 days');
+    -- CRITICAL FIX: Link students to their current class in the students table
+    UPDATE public.students SET class_id = v_class1_id, grade_level = 10, stream = 'West' WHERE id = v_child1_id;
+    UPDATE public.students SET class_id = v_class2_id, grade_level = 8, stream = 'East' WHERE id = v_child2_id;
 
-    -- Attendance Records
-    INSERT INTO attendance (student_id, class_id, date, status, remarks)
+    INSERT INTO public.subjects (title, institution_id, teacher_id, class_id)
     VALUES 
-        (v_student_id, v_class_id, CURRENT_DATE - INTERVAL '1 day', 'present', NULL),
-        (v_student_id, v_class_id, CURRENT_DATE - INTERVAL '2 days', 'present', NULL),
-        (v_student_id, v_class_id, CURRENT_DATE - INTERVAL '3 days', 'absent', 'Medical emergency');
+        ('Mathematics', v_institution_id, v_teacher_id, v_class1_id),
+        ('English', v_institution_id, v_teacher_id, v_class2_id)
+    ON CONFLICT (institution_id, title, class_id) DO UPDATE SET teacher_id = EXCLUDED.teacher_id;
 
-    -- Library History (if table exists)
-    -- INSERT INTO library_transactions ...
+    SELECT id INTO v_math_id FROM public.subjects WHERE title = 'Mathematics' AND institution_id = v_institution_id AND class_id = v_class1_id;
+    SELECT id INTO v_eng_id FROM public.subjects WHERE title = 'English' AND institution_id = v_institution_id AND class_id = v_class2_id;
 
-    -- ==========================================
-    -- 3. SETUP PARENT DATA (Linkage & Fees)
-    -- ==========================================
-    
-    -- Link Parent to Student
-    INSERT INTO parent_students (parent_id, student_id, relationship)
-    VALUES (v_parent_id, v_student_id, 'Mother')
-    ON CONFLICT DO NOTHING;
+    -- Enrollment (redundancy for many-to-many queries)
+    INSERT INTO public.class_enrollments (student_id, class_id, institution_id)
+    VALUES 
+        (v_child1_id, v_class1_id, v_institution_id),
+        (v_child2_id, v_class2_id, v_institution_id)
+    ON CONFLICT (student_id, class_id) DO NOTHING;
 
-    -- Fee Structure & Payments (if tables exist)
-     INSERT INTO fee_structures (institution_id, title, amount, due_date, academic_year, term)
-     VALUES (v_institution_id, 'Term 1 Tuition', 50000, NOW() + INTERVAL '30 days', '2025', 'Term 1')
-     ON CONFLICT DO NOTHING;
-    
-    -- INSERT INTO fee_payments ...
+    -- 5. Assignments & Submissions
+    INSERT INTO public.assignments (title, description, due_date, total_points, subject_id, teacher_id, class_id, status, is_published, institution_id)
+    VALUES ('Algebra Basics', 'Complete exercises on page 42 regarding basic linear equations.', NOW() + INTERVAL '3 days', 50, v_math_id, v_teacher_id, v_class1_id, 'active', true, v_institution_id)
+    RETURNING id INTO v_assign1_id;
 
-    -- ==========================================
-    -- 4. SETUP ADMIN DATA (Logs & Reports)
-    -- ==========================================
-    -- System logs are usually auto-generated, but we can insert some dummy financial records if a table exists.
+    INSERT INTO public.submissions (assignment_id, student_id, content, grade, status, institution_id)
+    VALUES (v_assign1_id, v_child1_id, 'Completed all exercises. Followed the method discussed in class.', 45, 'graded', v_institution_id)
+    ON CONFLICT (assignment_id, student_id) DO NOTHING;
+
+    -- 6. Exams & Results
+    INSERT INTO public.exams (title, date, max_score, is_published, subject_id, teacher_id, institution_id, term)
+    VALUES ('Mid-Term Math', CURRENT_DATE - INTERVAL '10 days', 100, true, v_math_id, v_teacher_id, v_institution_id, 'Term 1')
+    RETURNING id INTO v_exam1_id;
+
+    INSERT INTO public.exam_results (exam_id, student_id, score, feedback, graded_by, institution_id)
+    VALUES 
+        (v_exam1_id, v_child1_id, 92, 'Outstanding work!', v_teacher_id, v_institution_id),
+        (v_exam1_id, v_child2_id, 78, 'Good effort, keep practicing.', v_teacher_id, v_institution_id)
+    ON CONFLICT (exam_id, student_id) DO NOTHING;
+
+    -- 7. Reports
+    INSERT INTO public.academic_reports (student_id, institution_id, term, academic_year, report_type, status, data)
+    VALUES 
+        (v_child1_id, v_institution_id, 'Term 1', '2026', 'end-of-term', 'published', 
+         '{"gpa": 4.0, "position": 1, "total_students": 30, "attendance": "98%", "comments": "An exemplary student. Kelson has consistently shown high aptitude in mathematics."}'::jsonb),
+        (v_child2_id, v_institution_id, 'Term 1', '2026', 'end-of-term', 'published', 
+         '{"gpa": 3.5, "position": 5, "total_students": 30, "attendance": "94%", "comments": "Active and engaged. John Jr. should focus more on his written expression."}'::jsonb);
 
 END $$;

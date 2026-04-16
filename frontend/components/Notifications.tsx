@@ -1,4 +1,4 @@
-import { AlertCircle, Bell, CheckCircle, Info, X } from 'lucide-react-native';
+import { AlertCircle, Bell, CheckCircle, Info, Trash2, X } from 'lucide-react-native';
 import React from "react";
 import { ActivityIndicator, Modal, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { Pressable } from "react-native-gesture-handler";
@@ -13,7 +13,7 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { formatDistanceToNow } from 'date-fns';
 
 const Notifications = ({ visible, onClose }: NotificationProps) => {
-  const { notifications, unreadCount, markAllAsRead, refreshNotifications, loading } = useNotifications();
+  const { notifications, unreadCount, markAllAsRead, refreshNotifications, loading, clearAll, deleteNotification } = useNotifications();
   const { isDark } = useTheme();
 
   const tokens = {
@@ -78,18 +78,23 @@ const Notifications = ({ visible, onClose }: NotificationProps) => {
               <Text style={{ fontSize: 20, fontWeight: '700', color: tokens.textPrimary }}>
                 Notifications
               </Text>
-              {unreadCount > 0 && (
-                <View style={{ backgroundColor: '#ef4444', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 99 }}>
-                  <Text style={{ color: '#ffffff', fontSize: 12, fontWeight: '700' }}>{unreadCount}</Text>
-                </View>
-              )}
             </View>
-            <TouchableOpacity
-              onPress={onClose}
-              style={{ padding: 8, backgroundColor: tokens.closeBtn, borderRadius: 99 }}
-            >
-              <X size={20} color={tokens.textSecondary} />
-            </TouchableOpacity>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+              {notifications.length > 0 && (
+                <TouchableOpacity
+                  onPress={clearAll}
+                  style={{ padding: 8, backgroundColor: tokens.closeBtn, borderRadius: 12 }}
+                >
+                  <Text style={{ color: '#ef4444', fontSize: 10, fontWeight: '700', textTransform: 'uppercase' }}>Clear All</Text>
+                </TouchableOpacity>
+              )}
+              <TouchableOpacity
+                onPress={onClose}
+                style={{ padding: 8, backgroundColor: tokens.closeBtn, borderRadius: 99 }}
+              >
+                <X size={20} color={tokens.textSecondary} />
+              </TouchableOpacity>
+            </View>
           </View>
 
           {/* List */}
@@ -149,6 +154,12 @@ const Notifications = ({ visible, onClose }: NotificationProps) => {
                     </View>
                     <Text style={{ color: tokens.textSecondary, fontSize: 13, lineHeight: 20 }}>{item.message}</Text>
                   </View>
+                  <TouchableOpacity 
+                    onPress={() => deleteNotification(item.id)}
+                    style={{ marginLeft: 12, padding: 8, justifyContent: 'center' }}
+                  >
+                    <Trash2 size={16} color={tokens.textMuted} />
+                  </TouchableOpacity>
                 </View>
               ))
             )}

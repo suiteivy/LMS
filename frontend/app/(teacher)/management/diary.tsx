@@ -6,7 +6,10 @@ import { showError, showSuccess } from "@/utils/toast";
 import { router } from "expo-router";
 import { BookOpen, Calendar, ChevronDown, Edit2, Plus, Send, Trash2, X, Zap } from 'lucide-react-native';
 import React, { useEffect, useState } from "react";
-import { ActivityIndicator, Modal, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Modal, ScrollView, Text, TextInput, TouchableOpacity, View, Platform } from 'react-native';
+import * as Print from 'expo-print';
+import * as Sharing from 'expo-sharing';
+import { Printer } from 'lucide-react-native';
 import { SubscriptionGate, AddonRequestButton } from "@/components/shared/SubscriptionComponents";
 
 const DiaryCard = ({ entry, onDelete, onEdit }: { entry: DiaryEntry; onDelete: (id: string) => void; onEdit: (entry: DiaryEntry) => void }) => {
@@ -161,6 +164,85 @@ export default function TeacherDiaryPage() {
 
     const selectedClassName = classes.find(c => c.id === selectedClassId)?.name || "Select Class";
 
+    const handlePrint = async () => {
+        if (!selectedClassId || entries.length === 0) {
+            showError("No Data", "There are no entries to print for this class.");
+            return;
+        }
+
+        try {
+            const html = `
+                <html>
+                    <head>
+                        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no" />
+                        <style>
+                            @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap');
+                            body { font-family: 'Inter', sans-serif; padding: 40px; color: #1e293b; background: #fff; }
+                            .header { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 40px; border-bottom: 4px solid #FF6900; padding-bottom: 20px; }
+                            .header-title h1 { margin: 0; color: #FF6900; font-size: 32px; font-weight: 800; text-transform: uppercase; letter-spacing: -0.5px; }
+                            .header-title p { margin: 5px 0 0; color: #64748b; font-size: 14px; font-weight: 500; }
+                            .header-meta { text-align: right; color: #64748b; font-size: 12px; font-weight: 600; }
+                            .section-header { font-size: 18px; font-weight: 700; color: #0f172a; margin-bottom: 20px; background: #f8fafc; padding: 10px 20px; border-radius: 8px; }
+                            .entry { margin-bottom: 25px; padding: 25px; border: 1px solid #e2e8f0; border-radius: 16px; page-break-inside: avoid; position: relative; }
+                            .entry-date { position: absolute; top: -10px; right: 20px; background: #FF6900; color: white; padding: 4px 12px; border-radius: 20px; font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; }
+                            .entry-title { font-size: 18px; font-weight: 700; color: #0f172a; margin-bottom: 12px; }
+                            .entry-content { font-size: 14px; line-height: 1.6; color: #475569; white-space: pre-wrap; }
+                            .entry-footer { margin-top: 15px; padding-top: 10px; border-top: 1px dashed #e2e8f0; display: flex; justify-content: space-between; font-size: 11px; color: #94a3b8; font-weight: 600; }
+                            .footer { margin-top: 60px; text-align: center; font-size: 11px; color: #94a3b8; border-top: 1px solid #e2e8f0; padding-top: 20px; }
+                            @media print {
+                                body { padding: 20px; }
+                                .entry { border-color: #eee; }
+                            }
+                        </style>
+                    </head>
+                    <body>
+                        <div class="header">
+                            <div class="header-title">
+                                <h1>Class Diary</h1>
+                                <p>${selectedClassName}</p>
+                            </div>
+                            <div class="header-meta">
+                                <div>REPORT DATE: ${new Date().toLocaleDateString()}</div>
+                                <div>ENTRIES: ${entries.length}</div>
+                            </div>
+                        </div>
+                        
+                        <div class="section-header">Academic Activities & Observations</div>
+
+                        ${entries.map(e => `
+                            <div class="entry">
+                                <div class="entry-date">${new Date(e.entry_date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</div>
+                                <div class="entry-title">${e.title}</div>
+                                <div class="entry-content">${e.content}</div>
+                                <div class="entry-footer">
+                                    <span>Teacher: ${e.teacher?.users?.full_name || "Assigned Teacher"}</span>
+                                    <span>${new Date(e.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                                </div>
+                            </div>
+                        `).join('')}
+
+                        <div class="footer">
+                            <p>© ${new Date().getFullYear()} LMS Educational Platform • Virtual Diary System • Confidential Document</p>
+                        </div>
+                    </body>
+                </html>
+            `;
+
+            if (Platform.OS === 'web') {
+                const printWindow = window.open('', '_blank');
+                printWindow?.document.write(html);
+                printWindow?.document.close();
+                printWindow?.print();
+            } else {
+                const { uri } = await Print.printToFileAsync({ html });
+                await Sharing.shareAsync(uri, { UTI: '.pdf', mimeType: 'application/pdf' });
+            }
+        } catch (error) {
+            console.error('Print error:', error);
+            showError("Print Error", "Failed to generate diary report.");
+        }
+    };
+
     return (
         <View className="flex-1 bg-gray-50 dark:bg-navy">
             <UnifiedHeader
@@ -238,18 +320,27 @@ export default function TeacherDiaryPage() {
                                 <Text className="text-gray-400 dark:text-gray-500 font-bold text-[10px] uppercase tracking-wider">
                                     {entries.length} Entries found
                                 </Text>
-                                <TouchableOpacity
-                                    className="flex-row items-center bg-[#FF6900] px-5 py-2.5 rounded-2xl shadow-lg"
-                                    onPress={() => {
-                                        setEditingEntryId(null);
-                                        setTitle("");
-                                        setContent("");
-                                        setShowModal(true);
-                                    }}
-                                >
-                                    <Plus size={18} color="white" />
-                                    <Text className="text-white font-bold text-xs ml-2 uppercase tracking-widest">Add Entry</Text>
-                                </TouchableOpacity>
+                                <View className="flex-row gap-2">
+                                    <TouchableOpacity
+                                        className="flex-row items-center bg-white dark:bg-[#1a1a1a] px-4 py-2.5 rounded-2xl border border-gray-100 dark:border-gray-800 active:bg-gray-50"
+                                        onPress={handlePrint}
+                                    >
+                                        <Printer size={18} color={Platform.OS === 'web' ? '#6B7280' : '#FF6900'} />
+                                        <Text className="text-gray-600 dark:text-gray-400 font-bold text-xs ml-2 uppercase tracking-widest">Print</Text>
+                                    </TouchableOpacity>
+                                    <TouchableOpacity
+                                        className="flex-row items-center bg-[#FF6900] px-5 py-2.5 rounded-2xl shadow-lg active:bg-orange-600"
+                                        onPress={() => {
+                                            setEditingEntryId(null);
+                                            setTitle("");
+                                            setContent("");
+                                            setShowModal(true);
+                                        }}
+                                    >
+                                        <Plus size={18} color="white" />
+                                        <Text className="text-white font-bold text-xs ml-2 uppercase tracking-widest">Add Entry</Text>
+                                    </TouchableOpacity>
+                                </View>
                             </View>
 
                             <ScrollView className="flex-1" showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>

@@ -34,15 +34,31 @@ exports.getLinkedStudents = async (req, res) => {
         const { data: parent } = await supabase.from('parents').select('id').eq('user_id', userId).single();
         if (!parent) return res.status(404).json({ error: "Parent profile not found" });
 
-        // 2. Get Students with grade_level from students table
+        // 2. Get Students with class info
         const { data: students, error } = await supabase
             .from("parent_students")
-            .select("student:students(id, grade_level, users(first_name, last_name, full_name, avatar_url, email))")
+            .select(`
+                student:students(
+                    id, 
+                    grade_level, 
+                    display_name,
+                    institution_id,
+                    users(first_name, last_name, full_name, avatar_url, email),
+                    class_enrollments(
+                        class:classes(id, display_name)
+                    )
+                )
+            `)
             .eq("parent_id", parent.id);
 
-
         if (error) throw error;
-        res.json(students.map(s => s.student));
+        
+        const enrichedStudents = students.map(s => ({
+            ...s.student,
+            class_name: s.student.class_enrollments?.[0]?.class?.display_name || 'Unassigned'
+        }));
+
+        res.json(enrichedStudents);
     } catch (err) {
         res.status(500).json({ error: err.message });
     }

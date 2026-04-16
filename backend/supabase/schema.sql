@@ -18,6 +18,17 @@ END;
 $$ language 'plpgsql' SET search_path = public;
 
 -- ---------------------------------------------------------
+-- PART 0.1: SCHOOL CATEGORIES
+-- ---------------------------------------------------------
+CREATE TABLE school_categories (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name TEXT NOT NULL UNIQUE, -- e.g. 'Primary School', 'High School'
+    level_label TEXT NOT NULL, -- e.g. 'Grade', 'Form', 'KG'
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- ---------------------------------------------------------
 -- PART 1: CORE TABLES (UUID BASED)
 -- ---------------------------------------------------------
 
@@ -44,6 +55,7 @@ CREATE TABLE institutions (
     addon_attendance BOOLEAN NOT NULL DEFAULT false,
     email_domain TEXT,
     custom_student_limit INTEGER,
+    category_id UUID REFERENCES school_categories(id),
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -57,7 +69,7 @@ CREATE TABLE users (
     email TEXT NOT NULL UNIQUE,
     role TEXT CHECK (role IN ('admin', 'student', 'teacher', 'parent', 'bursary', 'master_admin')) NOT NULL,
     status TEXT NOT NULL DEFAULT 'approved' CHECK (status IN ('pending', 'approved', 'rejected')),
-    phone TEXT,
+    phone TEXT UNIQUE, -- Added unique constraint for identification
     gender TEXT CHECK (gender IN ('male', 'female', 'other')),
     date_of_birth DATE,
     address TEXT,
@@ -98,7 +110,7 @@ CREATE TABLE teachers (
     user_id UUID REFERENCES users(id) ON DELETE CASCADE NOT NULL UNIQUE,
     department TEXT,
     qualification TEXT,
-    position TEXT CHECK (position IN ('teacher', 'head_of_department', 'assistant', 'class_teacher', 'dean')) DEFAULT 'teacher',
+    position TEXT CHECK (position IN ('teacher', 'head_of_department', 'assistant', 'class_teacher', 'dean', 'headteacher', 'deputy_headteacher', 'subject_teacher')) DEFAULT 'teacher',
     hire_date DATE DEFAULT CURRENT_DATE,
     specialization TEXT,
     institution_id UUID REFERENCES institutions(id),
@@ -109,7 +121,9 @@ CREATE TABLE teachers (
 CREATE TABLE students (
     id TEXT PRIMARY KEY DEFAULT generate_custom_id('STU'),
     user_id UUID REFERENCES users(id) ON DELETE CASCADE NOT NULL UNIQUE,
-    grade_level TEXT,
+    grade_level_legacy TEXT,
+    grade_level INTEGER,
+    form_level INTEGER,
     academic_year TEXT,
     admission_date DATE DEFAULT CURRENT_DATE,
     fee_balance NUMERIC DEFAULT 0,
@@ -156,7 +170,11 @@ CREATE TABLE parent_students (
 -- 1. Classes
 CREATE TABLE classes (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    name TEXT NOT NULL, 
+    grade_level INTEGER,
+    form_level INTEGER,
+    stream TEXT,
+    display_name TEXT,
+    capacity INTEGER DEFAULT 40, -- Added for reporting
     institution_id UUID REFERENCES institutions(id) ON DELETE CASCADE,
     teacher_id TEXT REFERENCES teachers(id) ON DELETE SET NULL,
     created_at TIMESTAMPTZ DEFAULT NOW(),
@@ -197,6 +215,14 @@ CREATE TABLE subjects (
     fee_config JSONB DEFAULT '{}'::jsonb,
     materials JSONB DEFAULT '[]'::jsonb,
     metadata JSONB DEFAULT '{}'::jsonb,
+    category TEXT, -- e.g. 'Science', 'Arts'
+    level TEXT, -- e.g. 'Advanced', 'Standard'
+    image_url TEXT,
+    duration TEXT,
+    rating DOUBLE PRECISION DEFAULT 0,
+    reviews_count INTEGER DEFAULT 0,
+    credits INTEGER DEFAULT 0,
+    progress_percent INTEGER DEFAULT 0,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -259,6 +285,22 @@ CREATE TABLE submissions (
     submitted_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW(),
     UNIQUE(assignment_id, student_id)
+);
+
+-- 8. Academic Reports (NEW)
+CREATE TABLE academic_reports (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    student_id TEXT REFERENCES students(id) ON DELETE CASCADE,
+    institution_id UUID REFERENCES institutions(id) ON DELETE CASCADE,
+    term TEXT NOT NULL,
+    academic_year TEXT NOT NULL,
+    report_type TEXT CHECK (report_type IN ('end-of-term', 'individual', 'statistical', 'ranking')) NOT NULL,
+    data JSONB DEFAULT '{}'::jsonb,
+    file_url TEXT,
+    status TEXT DEFAULT 'draft' CHECK (status IN ('draft', 'published')),
+    created_by UUID REFERENCES users(id) ON DELETE SET NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- 8. Attendance
@@ -726,9 +768,10 @@ END $$;
 -- ---------------------------------------------------------
 
 CREATE OR REPLACE FUNCTION get_current_user_institution_id()
-RETURNS UUID LANGUAGE SQL STABLE SECURITY DEFINER SET search_path = public AS $
-  SELECT institution_id FROM users WHERE id = auth.uid();
-$;
+RETURNS UUID LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$
+  -- Non-recursive lookup: explicitly check auth.uid() first
+  SELECT institution_id FROM users WHERE id = auth.uid() LIMIT 1;
+$$;
 
 CREATE OR REPLACE FUNCTION get_current_user_role()
 RETURNS TEXT LANGUAGE SQL STABLE SECURITY DEFINER SET search_path = public AS $
@@ -772,7 +815,26 @@ $$;
 
 -- Apply strict institution isolation to all tables
 ALTER TABLE users ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "strict_institution_isolation" ON users FOR ALL USING (id = auth.uid() OR institution_id = get_current_user_institution_id() OR role = 'master_admin');
+-- Fixed recursion by checking id = auth.uid() first to short-circuit policy evaluation
+CREATE POLICY "strict_institution_isolation" ON users FOR ALL 
+USING (
+    id = auth.uid() 
+    OR (
+        institution_id = get_current_user_institution_id() 
+        AND (SELECT role FROM users WHERE id = auth.uid()) != 'master_admin'
+    )
+    OR (SELECT role FROM users WHERE id = auth.uid()) = 'master_admin'
+);
+-- Academic Reports Policy
+ALTER TABLE academic_reports ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "academic_reports_isolation" ON academic_reports FOR ALL 
+USING (
+    institution_id = get_current_user_institution_id() 
+    AND (
+        get_current_user_role() IN ('admin', 'teacher', 'master_admin') 
+        OR (status = 'published' AND student_id = current_user_student_id())
+    )
+);
 ALTER TABLE admins ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "strict_institution_isolation" ON admins FOR ALL USING (institution_id = get_current_user_institution_id() OR get_current_user_role() = 'master_admin');
 ALTER TABLE teachers ENABLE ROW LEVEL SECURITY;
@@ -884,7 +946,22 @@ CREATE TABLE password_reset_requests (
 
 CREATE INDEX idx_password_reset_email_time ON password_reset_requests(email, requested_at);
 
--- 3. Support Ticketing System
+-- 3. Trial/Demo Sessions Tracking
+CREATE TABLE trial_sessions (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    role TEXT,
+    demo_user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+    institution_id UUID REFERENCES institutions(id) ON DELETE CASCADE,
+    session_token TEXT,
+    ip_address TEXT,
+    expires_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE trial_sessions ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Trial sessions are internal-only" ON trial_sessions FOR ALL USING (false); -- Admin/System access via Service Role
+
+-- 4. Support Ticketing System
 CREATE TABLE support_tickets (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID REFERENCES users(id) ON DELETE CASCADE,
@@ -993,6 +1070,111 @@ USING (
         AND role = 'master_admin'
     )
 );
+
+
+-- ---------------------------------------------------------
+-- PART 6: TRIGGERS & BUSINESS LOGIC
+-- ---------------------------------------------------------
+
+-- 1. Level Enforcement Logic
+-- This trigger handles:
+-- a) Nullifying irrelevant level fields (Grade vs Form) based on Institution Category
+-- b) Generating display_name for classes automatically
+CREATE OR REPLACE FUNCTION fn_enforce_level_logic()
+RETURNS TRIGGER AS $$
+DECLARE
+    v_level_label TEXT;
+BEGIN
+    -- 1. Get the level label for this institution
+    SELECT sc.level_label INTO v_level_label
+    FROM institutions i
+    JOIN school_categories sc ON i.category_id = sc.id
+    WHERE i.id = NEW.institution_id;
+
+    -- 2. Enforce Level Logic (Nullify irrelevant fields)
+    IF v_level_label = 'Form' THEN
+        NEW.grade_level := NULL;
+    ELSIF v_level_label IN ('Grade', 'KG') THEN
+        NEW.form_level := NULL;
+    END IF;
+
+    -- 3. Auto-generate display_name for CLASSES
+    -- This only applies if we are inserting/updating the 'classes' table
+    IF TG_TABLE_NAME = 'classes' THEN
+        IF v_level_label = 'Form' THEN
+            NEW.display_name := 'Form ' || COALESCE(NEW.form_level::text, '?') || ' ' || COALESCE(NEW.stream, '');
+        ELSIF v_level_label = 'KG' THEN
+            NEW.display_name := 'KG ' || COALESCE(NEW.grade_level::text, '?') || ' ' || COALESCE(NEW.stream, '');
+        ELSE
+            NEW.display_name := 'Grade ' || COALESCE(NEW.grade_level::text, '?') || ' ' || COALESCE(NEW.stream, '');
+        END IF;
+        NEW.display_name := TRIM(NEW.display_name);
+    END IF;
+
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Apply logic to classes
+CREATE TRIGGER tr_classes_level_logic
+BEFORE INSERT OR UPDATE ON classes
+FOR EACH ROW EXECUTE FUNCTION fn_enforce_level_logic();
+
+-- Apply logic to students
+CREATE TRIGGER tr_students_level_logic
+BEFORE INSERT OR UPDATE ON students
+FOR EACH ROW EXECUTE FUNCTION fn_enforce_level_logic();
+
+
+-- ---------------------------------------------------------
+-- PART 7: VIEWS (REPORITNG & UI)
+-- ---------------------------------------------------------
+
+CREATE OR REPLACE VIEW v_classes_detailed AS
+ SELECT c.id,
+    c.institution_id,
+    c.created_at,
+    c.updated_at,
+    c.teacher_id,
+    c.grade_level,
+    c.form_level,
+    c.stream,
+    c.display_name,
+    i.name AS institution_name,
+    sc.name AS school_category_name,
+    sc.level_label
+   FROM classes c
+     JOIN institutions i ON c.institution_id = i.id
+     LEFT JOIN school_categories sc ON i.category_id = sc.id;
+
+CREATE OR REPLACE VIEW v_students_detailed AS
+ SELECT s.id,
+    s.user_id,
+    s.grade_level_legacy,
+    s.parent_contact,
+    s.created_at,
+    s.updated_at,
+    s.admission_date,
+    s.academic_year,
+    s.emergency_contact_name,
+    s.emergency_contact_phone,
+    s.fee_balance,
+    s.institution_id,
+    s.class_id,
+    s.grade_level,
+    s.form_level,
+    u.full_name,
+    u.email,
+    sc.level_label AS institution_level_label,
+        CASE
+            WHEN sc.level_label = 'Form' THEN 'Form ' || s.form_level::text
+            WHEN sc.level_label = 'KG' THEN 'KG ' || s.grade_level::text
+            ELSE 'Grade ' || s.grade_level::text
+        END AS level_display_name
+   FROM students s
+     JOIN users u ON s.user_id = u.id
+     JOIN institutions i ON s.institution_id = i.id
+     LEFT JOIN school_categories sc ON i.category_id = sc.id;
 
 -- 4. Transfer Main Admin Status Function
 CREATE OR REPLACE FUNCTION transfer_main_admin_status(p_old_admin_user_id UUID, p_new_admin_user_id UUID)

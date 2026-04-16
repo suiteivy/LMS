@@ -144,7 +144,7 @@ export default function MasterDashboard() {
                         />
                         <StatCard
                             title="Platform Revenue (Recorded)"
-                            value={`$${(stats.totalRevenue || 0).toLocaleString()}`}
+                            value={`KES ${(stats.totalRevenue || 0).toLocaleString()}`}
                             icon="currency-usd"
                             color={themeColors.primary}
                         />

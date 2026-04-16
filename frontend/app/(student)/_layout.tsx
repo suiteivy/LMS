@@ -36,6 +36,7 @@ const ALL_OTHER = NAV_ITEMS
   .map(i => i.name);
 const HIDDEN_ROUTES = [...ALL_OTHER, "attendance", "timetable", "announcements"];
 
+import { useSubscriptionTier } from "@/hooks/useSubscriptionTier";
 function StudentTabs() {
   const { isDark } = useTheme();
   const insets = useSafeAreaInsets();
@@ -150,8 +151,10 @@ function StudentTabs() {
 }
 
 function StudentSidebar() {
+  const { showFinancials } = useSubscriptionTier();
+  const items = showFinancials ? NAV_ITEMS : NAV_ITEMS.filter(i => i.name !== 'finance');
   return (
-    <WebSidebar items={NAV_ITEMS} basePath="(student)" role="Student">
+    <WebSidebar items={items} basePath="(student)" role="Student">
       <Slot />
     </WebSidebar>
   );
