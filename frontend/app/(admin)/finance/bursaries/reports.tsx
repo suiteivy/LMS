@@ -26,8 +26,11 @@ export default function ReportsPage() {
     const fetchReports = async () => {
         setLoading(true);
         try {
-            const { data: bursaries } = await supabase.from('bursaries').select('*');
-            const { data: applications } = await supabase.from('bursary_applications').select('*, bursary:bursaries(amount)');
+            const { data: bursariesData } = await supabase.from('bursaries').select('*');
+            const { data: applicationsData } = await supabase.from('bursary_applications').select('*, bursary:bursaries(amount)');
+
+            const bursaries = bursariesData as any[] | null;
+            const applications = applicationsData as any[] | null;
 
             const totalBursaries = bursaries?.length || 0;
             const totalApplications = applications?.length || 0;
@@ -97,7 +100,7 @@ export default function ReportsPage() {
                 {/* Stats Grid */}
                 <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginBottom: 24 }}>
                     {statCards.map((card, i) => (
-                        <View key={i} style={{ flexBasis: '48%', flexGrow: 1, backgroundColor: 'white', padding: 16, borderRadius: 24, borderWeight: 1, borderColor: card.cardBorder }}>
+                        <View key={i} style={{ flexBasis: '48%', flexGrow: 1, backgroundColor: 'white', padding: 16, borderRadius: 24, borderWidth: 1, borderColor: card.cardBorder }}>
                             <View style={{ backgroundColor: card.bg, width: 40, height: 40, borderRadius: 12, justifyContent: 'center', alignItems: 'center', marginBottom: 12 }}>
                                 <card.icon size={20} color={card.color} />
                             </View>

@@ -1,5 +1,5 @@
-﻿import { BursariesList } from '@/components/admin/finance/BursariesList';
-import { FeeStructureSection } from '@/components/admin/finance/FeeStructureSection';
+import { BursariesList } from '@/components/admin/finance/BursariesList';
+import FeeStructureSection from '@/components/admin/finance/FeeStructureSection';
 import { PaymentManagementSection } from '@/components/admin/finance/PaymentManagementSection';
 import { TeacherPayoutSection } from '@/components/admin/finance/TeacherPayoutSection';
 import { UnifiedHeader } from '@/components/common/UnifiedHeader';

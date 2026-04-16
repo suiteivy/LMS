@@ -230,8 +230,20 @@ exports.enrollInstitution = async (req, res) => {
             .single();
 
         if (instError || !newInst) {
-            console.error("Error creating institution:", instError);
-            return res.status(500).json({ error: "Failed to create institution record." });
+            console.error("Error creating institution:", {
+                error: instError,
+                payload: {
+                    name: institution_name,
+                    location: location || '',
+                    subscription_plan: req.body.subscription_plan || 'trial',
+                    subscription_status: req.body.subscription_status || 'trial'
+                }
+            });
+            return res.status(500).json({ 
+                error: "Failed to create institution record.",
+                details: instError?.message,
+                hint: "Check database constraints for subscription_plan or type."
+            });
         }
 
         // 2. Create the admin user in Supabase Auth
@@ -252,20 +264,36 @@ exports.enrollInstitution = async (req, res) => {
         // 3. Upsert the user profile into the public.users table linking them to the institution
         const { error: profileError } = await adminClient
             .from('users')
-            .update({
+            .upsert({
+                id: authUser.user.id,
+                email: admin_email,
                 role: 'admin',
                 institution_id: newInst.id,
                 status: 'approved',
+<<<<<<< Updated upstream
                 full_name: admin_full_name
             })
             .eq('id', authUser.user.id);
+=======
+                full_name: finalFullName,
+                first_name: fName,
+                last_name: lName
+            });
+>>>>>>> Stashed changes
 
         if (profileError) {
-            console.error("Error updating user profile:", profileError);
+            console.error("Error updating user profile:", {
+                error: profileError,
+                uid: authUser.user.id,
+                institution_id: newInst.id
+            });
             // Clean up the institution and auth user if mapping fails
             await adminClient.from('institutions').delete().eq('id', newInst.id);
             await adminClient.auth.admin.deleteUser(authUser.user.id);
-            return res.status(500).json({ error: "Failed to map new user profile." });
+            return res.status(500).json({ 
+                error: "Failed to map new user profile.",
+                details: profileError?.message
+            });
         }
 
         return res.status(201).json({
@@ -408,7 +436,57 @@ exports.updateSupportRequest = async (req, res) => {
     }
 };
 
+/**
+ * Remove an institution administrator with safety check
+ */
+exports.removeInstitutionAdmin = async (req, res) => {
+    try {
+        const { userId } = req.params;
+        const adminClient = getServiceSupabase();
 
+        // 1. Get the institution_id for this admin
+        const { data: user, error: userError } = await adminClient
+            .from('users')
+            .select('institution_id, role')
+            .eq('id', userId)
+            .single();
+
+        if (userError || !user) {
+            return res.status(404).json({ error: "Administrator not found." });
+        }
+
+        if (user.role !== 'admin') {
+            return res.status(400).json({ error: "Target user is not an administrator." });
+        }
+
+        // 2. Count current admins for this institution
+        const { count, error: countError } = await adminClient
+            .from('users')
+            .select('*', { count: 'exact', head: true })
+            .eq('institution_id', user.institution_id)
+            .eq('role', 'admin');
+
+        if (countError) throw countError;
+
+        // 3. Safety Check: Must have at least one admin
+        if (count <= 1) {
+            return res.status(400).json({ 
+                error: "Cannot remove the last administrator.", 
+                details: "An institution must have at least one administrator at all times." 
+            });
+        }
+
+        // 4. Perform Deletion (Cascade handles public.users and admins table)
+        const { error: deleteError } = await adminClient.auth.admin.deleteUser(userId);
+        if (deleteError) throw deleteError;
+
+        return res.status(200).json({ message: "Administrator removed successfully." });
+
+    } catch (error) {
+        console.error("Remove Admin Error:", error);
+        return res.status(500).json({ error: "Failed to remove administrator." });
+    }
+};
 /**
  * Updates the authenticated Platform Admin's own profile.
  */

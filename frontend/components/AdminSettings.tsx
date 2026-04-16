@@ -1,6 +1,6 @@
-﻿import { ProfileEdit } from "@/components/ProfileEdit";
+import { ProfileEdit } from "@/components/ProfileEdit";
 import { useTheme } from "@/contexts/ThemeContext";
-import { Bell, ChevronRight, Globe, LucideIcon, Shield, User } from "lucide-react-native";
+import { Bell, ChevronRight, Globe, Lock, LucideIcon, Shield, User } from "lucide-react-native";
 import React, { ReactNode, useState } from "react";
 import { ScrollView, Switch, Text, TouchableOpacity, View } from "react-native";
 

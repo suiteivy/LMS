@@ -678,9 +678,20 @@ exports.deleteUser = async (req, res) => {
 exports.searchUsers = async (req, res) => {
   try {
     const { q, role } = req.query;
+    const callerRole = req.userRole;
+    const callerInstitutionId = req.institution_id;
+
     let query = supabase
       .from("users")
       .select("id, full_name, email, role, avatar_url");
+
+    // Non-master-admins can only search within their own institution
+    if (callerRole !== 'master_admin') {
+      if (!callerInstitutionId) {
+        return res.status(403).json({ error: "No institution associated with this account" });
+      }
+      query = query.eq("institution_id", callerInstitutionId);
+    }
 
     if (q) {
       query = query.ilike("full_name", `%${q}%`);

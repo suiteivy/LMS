@@ -31,7 +31,7 @@ CREATE TABLE institutions (
     type TEXT CHECK (type IN ('primary', 'secondary', 'tertiary', 'vocational')),
     principal_name TEXT,
     subscription_status TEXT DEFAULT 'trial' CHECK (subscription_status IN ('trial', 'active', 'expired', 'cancelled')),
-    subscription_plan TEXT DEFAULT 'trial' CHECK (subscription_plan IN ('trial', 'beta_free', 'basic', 'pro', 'premium', 'custom')),
+    subscription_plan TEXT DEFAULT 'trial' CHECK (subscription_plan IN ('trial', 'beta', 'beta_free', 'free', 'basic', 'pro', 'premium', 'custom')),
     has_used_trial BOOLEAN DEFAULT TRUE,
     trial_start_date TIMESTAMPTZ DEFAULT NOW(),
     trial_end_date TIMESTAMPTZ DEFAULT NOW() + INTERVAL '30 days',
@@ -733,7 +733,7 @@ $$;
 
 -- Apply strict institution isolation to all tables
 ALTER TABLE users ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "strict_institution_isolation" ON users FOR ALL USING (id = auth.uid() OR institution_id = get_current_user_institution_id() OR role = 'master_admin');
+CREATE POLICY "strict_institution_isolation" ON users FOR ALL USING (id = auth.uid() OR institution_id = get_current_user_institution_id() OR is_platform_admin());
 ALTER TABLE admins ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "strict_institution_isolation" ON admins FOR ALL USING (institution_id = get_current_user_institution_id() OR get_current_user_role() = 'master_admin');
 ALTER TABLE teachers ENABLE ROW LEVEL SECURITY;

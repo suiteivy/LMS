@@ -1,5 +1,6 @@
-﻿import { AuthGuard } from "@/components/AuthGuard";
+import { AuthGuard } from "@/components/AuthGuard";
 import { NavItem, WebSidebar } from "@/components/layouts/WebSideBar";
+import { SubscriptionGate } from "@/components/shared/SubscriptionComponents";
 import { SchoolProvider } from "@/contexts/SchoolContext";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useSubscriptionTier } from "@/hooks/useSubscriptionTier";
@@ -24,13 +25,13 @@ const FREE_NAV_ITEMS: NavItem[] = [
     { name: "users/index", title: "Users", icon: Users, route: "/(admin)/users" },
 ];
 
-const MOBILE_TAB_NAMES = ["settings/settings", "index", "management/index"];
+const MOBILE_TAB_NAMES = ["settings/settings", "index", "management/index", "users/index"];
 
 const ALL_OTHER = ALL_NAV_ITEMS
     .filter(i => !MOBILE_TAB_NAMES.includes(i.name))
     .map(i => i.name);
 
-const HIDDEN = [
+const HIDDEN = Array.from(new Set([
     ...ALL_OTHER,
     "users/[id]", "users/create",
     "finance/bursaries/[id]", "finance/bursaries/create",
@@ -40,12 +41,11 @@ const HIDDEN = [
     "timetable/index", "finance/funds/index",
     "management/roles/index", "settings/index",
     "attendance/teachers/index", "finance/bursaries/reports",
-    "classes/index", "classes/create",
-    "management/subjects/details",
-];
+]));
 
-// Extra routes to hide from tabs on free plan
-const FREE_EXTRA_HIDDEN = ["management/index", "finance/index"];
+// Beta plan extra hidden items (routes hidden from tab bar for beta users)
+// Note: management/index is already in MOBILE_TAB_NAMES so it is handled via href:null below.
+const BETA_EXTRA_HIDDEN = ["finance/index"];
 
 function AdminTabs() {
     const insets = useSafeAreaInsets();
@@ -78,7 +78,7 @@ function AdminTabs() {
                 sceneStyle: { backgroundColor: isDark ? '#0F0B2E' : "#f9fafb" },
             }}
         >
-            {/* Settings — left */}
+            {/* Settings - left */}
             <Tabs.Screen
                 name="settings/settings"
                 options={{
@@ -90,7 +90,7 @@ function AdminTabs() {
                 }}
             />
 
-            {/* Home — center, elevated style */}
+            {/* Home - center, elevated style */}
             <Tabs.Screen
                 name="index"
                 options={{
@@ -123,27 +123,41 @@ function AdminTabs() {
                 }}
             />
 
-            {/* Manage — right (paid plan only; hidden for free) */}
-            {!isFree && (
-                <Tabs.Screen
-                    name="management/index"
-                    options={{
-                        title: "Manage",
-                        tabBarIcon: ({ size, color }) => {
-                            const Icon = LayoutGrid as any;
-                            return <View><Icon size={size} color={color} strokeWidth={2} /></View>;
-                        },
-                    }}
-                />
-            )}
+            {/*
+                Manage - right.
+                IMPORTANT: Always rendered to keep the navigator child count stable.
+                On beta plan we hide it from the tab bar using href:null instead of
+                conditionally omitting the element (which crashes the navigator).
+            */}
+            <Tabs.Screen
+                name="management/index"
+                options={{
+                    href: isFree ? null : '/(admin)/management',
+                    title: "Manage",
+                    tabBarIcon: ({ size, color }) => {
+                        const Icon = LayoutGrid as any;
+                        return <View><Icon size={size} color={color} strokeWidth={2} /></View>;
+                    },
+                }}
+            />
+
+            {/* Users - right.
+                Only visible on the tab bar for beta users (who don't have the full Manage tab).
+            */}
+            <Tabs.Screen
+                name="users/index"
+                options={{
+                    href: isFree ? '/(admin)/users' : null,
+                    title: "Users",
+                    tabBarIcon: ({ size, color }) => {
+                        const Icon = Users as any;
+                        return <View><Icon size={size} color={color} strokeWidth={2} /></View>;
+                    },
+                }}
+            />
 
             {/* Hidden items (routes registered but not shown in tab bar) */}
             {HIDDEN.map((name) => (
-                <Tabs.Screen key={name} name={name} options={{ href: null }} />
-            ))}
-
-            {/* Free plan extra hidden items */}
-            {isFree && FREE_EXTRA_HIDDEN.map((name) => (
                 <Tabs.Screen key={name} name={name} options={{ href: null }} />
             ))}
         </Tabs>

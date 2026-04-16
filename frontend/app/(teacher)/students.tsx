@@ -42,6 +42,7 @@ export default function StudentsPage() {
     }, [teacherId]);
 
     const fetchStudents = async () => {
+        if (!teacherId) return;
         try {
             setLoading(true);
             const { data: subjectsData, error: subError } = await supabase

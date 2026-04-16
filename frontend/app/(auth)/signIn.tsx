@@ -447,7 +447,7 @@ export default function SignIn() {
         return;
       }
 
-      showToast(`👋 Welcome back, ${userData.full_name || "there"}!`);
+      showToast(`Welcome back, ${userData.full_name || "there"}!`);
 
       // Let AuthHandler detect session change and handle the transition
     } catch (error: unknown) {
@@ -635,7 +635,7 @@ export default function SignIn() {
                   <AnimatedInput
                     label="Password"
                     icon="lock-closed-outline"
-                    placeholder="••••••••"
+                    placeholder="********"
                     value={formData.password}
                     onChangeText={(v: string) => handleInputChange("password", v)}
                     secureTextEntry={!showPassword}

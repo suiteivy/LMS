@@ -65,12 +65,12 @@ export default function RootLayout() {
             <CurrencyProvider>
               <NotificationProvider>
                 <AppShell />
-                <Toast config={toastConfig} />
               </NotificationProvider>
             </CurrencyProvider>
           </AuthProvider>
         </ThemeProvider>
       </SafeAreaProvider>
+      <Toast config={toastConfig} />
     </GestureHandlerRootView>
   );
 }

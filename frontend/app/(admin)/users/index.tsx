@@ -1,4 +1,4 @@
-﻿import { EmptyState } from '@/components/common/EmptyState';
+import { EmptyState } from '@/components/common/EmptyState';
 import { UnifiedHeader } from "@/components/common/UnifiedHeader";
 import { UserCard } from '@/components/common/UserCard';
 import { useAuth } from '@/contexts/AuthContext';
@@ -34,7 +34,7 @@ export default function UsersManagementScreen() {
     const inputBg = isDark ? '#13103A' : '#f9fafb';
     const inputBorder = isDark ? 'rgba(255,255,255,0.1)' : '#f3f4f6';
 
-    const { isDemo } = useAuth();
+    const { isDemo, profile } = useAuth();
 
     useEffect(() => { fetchUsers(); }, [activeFilter, isDemo]);
 
@@ -61,9 +61,17 @@ export default function UsersManagementScreen() {
                 return;
             }
 
+            // Guard: every admin must belong to an institution
+            if (!profile?.institution_id) {
+                console.warn('[UsersManagement] No institution_id on session — aborting fetch');
+                setUsers([]);
+                return;
+            }
+
             let query = supabase
                 .from('users')
-                .select(`id, full_name, email, role, created_at, students(id), teachers(id), admins(id), parents(id)`)
+                .select(`id, full_name, first_name, last_name, email, role, created_at, students(id), teachers(id), admins(id), parents(id)`)
+                .eq('institution_id', profile.institution_id)   // ← scope to this institution only
                 .order('created_at', { ascending: false });
             if (activeFilter !== 'all') query = query.eq('role', activeFilter);
 
@@ -82,7 +90,8 @@ export default function UsersManagementScreen() {
                         else if (u.role === 'teacher') displayId = getRoleId(u.teachers);
                         else if (u.role === 'admin') displayId = getRoleId(u.admins);
                         else if (u.role === 'parent') displayId = getRoleId(u.parents);
-                        return { id: u.id, displayId, name: u.full_name || 'Unknown User', email: u.email || 'No Email', role: u.role || 'user', joinDate: u.created_at || new Date().toISOString() } as User;
+                        const fallbackName = `${u.first_name || ''} ${u.last_name || ''}`.trim();
+                        return { id: u.id, displayId, name: u.full_name || fallbackName || 'Unknown User', email: u.email || 'No Email', role: u.role || 'user', joinDate: u.created_at || new Date().toISOString() } as User;
                     } catch { return null; }
                 }).filter((u): u is User => u !== null);
                 setUsers(formattedUsers);

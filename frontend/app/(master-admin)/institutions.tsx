@@ -6,6 +6,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { supabase } from '@/libs/supabase';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
+import { SettingsService } from '@/services/SettingsService';
 
 export default function MasterInstitutions() {
     const { isDark } = useTheme();
@@ -32,6 +33,19 @@ export default function MasterInstitutions() {
     });
     const [addonsLoading, setAddonsLoading] = useState(false);
 
+    // Analytics state
+    const [analyticsModalVisible, setAnalyticsModalVisible] = useState(false);
+    const [analyticsData, setAnalyticsData] = useState<any>(null);
+    const [analyticsLoading, setAnalyticsLoading] = useState(false);
+
+    // Admin management state
+    const [adminModalVisible, setAdminModalVisible] = useState(false);
+    const [selectedInstAdmins, setSelectedInstAdmins] = useState<any[]>([]);
+    const [adminLoading, setAdminLoading] = useState(false);
+
+    // Saving state (used in handleResetAdminPassword & handleRemoveAdmin)
+    const [saving, setSaving] = useState(false);
+
     // Enrollment State
     const [enrollModalVisible, setEnrollModalVisible] = useState(false);
     const [enrollForm, setEnrollForm] = useState({
@@ -40,10 +54,11 @@ export default function MasterInstitutions() {
         admin_full_name: '',
         admin_email: '',
         admin_password: '',
-        subscription_plan: 'trial',
-        subscription_status: 'trial',
+        subscription_plan: '',
+        subscription_status: '',
         trial_end_date: '',
-        custom_student_limit: ''
+        custom_student_limit: '',
+        email_domain: ''
     });
     const [enrollLoading, setEnrollLoading] = useState(false);
 
@@ -202,7 +217,16 @@ export default function MasterInstitutions() {
                 Toast.show({ type: 'success', text1: 'Success', text2: 'Institution enrolled successfully' });
                 setEnrollModalVisible(false);
                 setEnrollForm({
-                    institution_name: '', location: '', admin_full_name: '', admin_email: '', admin_password: '', subscription_plan: 'trial', subscription_status: 'trial', trial_end_date: '', custom_student_limit: ''
+                    institution_name: '', 
+                    location: '', 
+                    admin_full_name: '', 
+                    admin_email: '', 
+                    admin_password: '', 
+                    subscription_plan: 'trial', 
+                    subscription_status: 'trial', 
+                    trial_end_date: '', 
+                    custom_student_limit: '',
+                    email_domain: '',
                 });
                 fetchInstitutions(); // Refresh the list
             } else {
@@ -323,6 +347,137 @@ export default function MasterInstitutions() {
         } catch (err) {
             console.error(err);
             Toast.show({ type: 'error', text1: 'Error', text2: 'Failed to update request' });
+        }
+    };
+
+    const handleViewAnalytics = async (id: string) => {
+        try {
+            setSelectedInstId(id);
+            setAnalyticsModalVisible(true);
+            setAnalyticsLoading(true);
+            const { data: { session } } = await supabase.auth.getSession();
+            if (!session) return;
+
+            const res = await fetch(`${getBackendUrl()}/api/master-admin/analytics/${id}`, {
+                headers: {
+                    'Authorization': `Bearer ${session.access_token}`,
+                    'Accept': 'application/json'
+                }
+            });
+            const data = await res.json();
+            if (res.ok) {
+                setAnalyticsData(data);
+            } else {
+                Toast.show({ type: 'error', text1: 'Error', text2: data.error });
+            }
+        } catch (err) {
+            console.error(err);
+            Toast.show({ type: 'error', text1: 'Error', text2: 'Failed to fetch analytics' });
+        } finally {
+            setAnalyticsLoading(false);
+        }
+    };
+
+    const handleManageAdmins = async (id: string) => {
+        try {
+            setSelectedInstId(id);
+            setAdminModalVisible(true);
+            setAdminLoading(true);
+            const { data: { session } } = await supabase.auth.getSession();
+            if (!session) return;
+
+            const res = await fetch(`${getBackendUrl()}/api/master-admin/institutions/${id}`, {
+                headers: {
+                    'Authorization': `Bearer ${session.access_token}`,
+                    'Accept': 'application/json'
+                }
+            });
+            const data = await res.json();
+            if (res.ok) {
+                setSelectedInstAdmins(data.admins || []);
+            } else {
+                Toast.show({ type: 'error', text1: 'Error', text2: data.error });
+            }
+        } catch (err) {
+            console.error(err);
+            Toast.show({ type: 'error', text1: 'Error', text2: 'Failed to fetch admins' });
+        } finally {
+            setAdminLoading(false);
+        }
+    };
+
+    const handleResetAdminPassword = (userId: string, userName: string) => {
+        const handler = async (pass: string) => {
+            if (!pass || pass.length < 6) {
+                Toast.show({ type: 'error', text1: 'Error', text2: 'Password must be at least 6 characters' });
+                return;
+            }
+            try {
+                setSaving(true);
+                await SettingsService.adminResetPassword(userId, pass);
+                Toast.show({ type: 'success', text1: 'Success', text2: `Password for ${userName} reset successfully` });
+            } catch (err: any) {
+                Toast.show({ type: 'error', text1: 'Error', text2: err?.message || 'Failed to reset password' });
+            } finally {
+                setSaving(false);
+            }
+        };
+
+        if (Platform.OS === 'web') {
+            const pass = window.prompt(`Enter new password for ${userName}:`);
+            if (pass) handler(pass);
+        } else {
+            Alert.prompt(
+                "Reset Password",
+                `Enter new password for ${userName}:`,
+                [
+                    { text: "Cancel", style: "cancel" },
+                    { text: "Reset", onPress: (pass?: string) => pass && handler(pass) }
+                ],
+                "plain-text"
+            );
+        }
+    };
+
+    const handleRemoveAdmin = (userId: string, userName: string) => {
+        const performRemoval = async () => {
+            try {
+                setSaving(true);
+                await SettingsService.adminRemove(userId);
+                Toast.show({ type: 'success', text1: 'Success', text2: `Admin ${userName} removed successfully` });
+                
+                // Refresh list
+                if (selectedInstId) {
+                    handleManageAdmins(selectedInstId);
+                }
+            } catch (err: any) {
+                // api.ts already shows a toast, but we can add secondary handling here if needed.
+                // However, the user specifically asked to ensure this is a toast.
+                const msg = err?.message || 'Failed to remove admin';
+                Toast.show({ 
+                    type: 'error', 
+                    text1: 'Management Error', 
+                    text2: msg,
+                    visibilityTime: 4000
+                });
+            } finally {
+                setSaving(false);
+            }
+        };
+
+        const msg = `Are you sure you want to remove ${userName}? This will permanently delete their account and access.`;
+        
+        if (Platform.OS === 'web') {
+            if (window.confirm(msg)) performRemoval();
+        } else {
+            Alert.alert(
+                "Remove Administrator",
+                msg,
+                [
+                    { text: "Cancel", style: "cancel" },
+                    { text: "Remove", style: "destructive", onPress: performRemoval }
+                ]
+            );
         }
     };
 
@@ -627,6 +782,56 @@ export default function MasterInstitutions() {
                 <MaterialCommunityIcons name="plus" size={30} color="#fff" />
             </TouchableOpacity>
 
+            {/* ANALYTICS MODAL */}
+            <Modal visible={analyticsModalVisible} animationType="fade" transparent>
+                <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', padding: 20 }}>
+                    <View style={{ backgroundColor: themeColors.card, borderRadius: 24, padding: 24, width: '100%', maxWidth: 400 }}>
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+                            <Text style={{ fontSize: 20, fontWeight: 'bold', color: themeColors.text }}>Institution Stats</Text>
+                            <TouchableOpacity onPress={() => { setAnalyticsModalVisible(false); setAnalyticsData(null); }}>
+                                <MaterialCommunityIcons name="close" size={24} color={themeColors.subtext} />
+                            </TouchableOpacity>
+                        </View>
+
+                        {analyticsLoading ? (
+                            <ActivityIndicator size="large" color={themeColors.primary} style={{ marginVertical: 40 }} />
+                        ) : analyticsData ? (
+                            <View style={{ gap: 16 }}>
+                                <View style={{ flexDirection: 'row', gap: 12 }}>
+                                    <View style={{ flex: 1, backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : '#f8fafc', padding: 16, borderRadius: 16, alignItems: 'center' }}>
+                                        <Text style={{ color: themeColors.subtext, fontSize: 12, marginBottom: 4 }}>Students</Text>
+                                        <Text style={{ color: themeColors.text, fontSize: 24, fontWeight: '800' }}>{analyticsData.students}</Text>
+                                    </View>
+                                    <View style={{ flex: 1, backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : '#f8fafc', padding: 16, borderRadius: 16, alignItems: 'center' }}>
+                                        <Text style={{ color: themeColors.subtext, fontSize: 12, marginBottom: 4 }}>Teachers</Text>
+                                        <Text style={{ color: themeColors.text, fontSize: 24, fontWeight: '800' }}>{analyticsData.teachers}</Text>
+                                    </View>
+                                </View>
+                                <View style={{ flexDirection: 'row', gap: 12 }}>
+                                    <View style={{ flex: 1, backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : '#f8fafc', padding: 16, borderRadius: 16, alignItems: 'center' }}>
+                                        <Text style={{ color: themeColors.subtext, fontSize: 12, marginBottom: 4 }}>Classes</Text>
+                                        <Text style={{ color: themeColors.text, fontSize: 24, fontWeight: '800' }}>{analyticsData.classes}</Text>
+                                    </View>
+                                    <View style={{ flex: 1, backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : '#f8fafc', padding: 16, borderRadius: 16, alignItems: 'center' }}>
+                                        <Text style={{ color: themeColors.subtext, fontSize: 12, marginBottom: 4 }}>Revenue</Text>
+                                        <Text style={{ color: themeColors.primary, fontSize: 20, fontWeight: '800' }}>KES {Number(analyticsData.revenue).toLocaleString()}</Text>
+                                    </View>
+                                </View>
+
+                                <TouchableOpacity
+                                    onPress={() => { setAnalyticsModalVisible(false); setAnalyticsData(null); }}
+                                    style={{ backgroundColor: themeColors.primary, paddingVertical: 14, borderRadius: 12, alignItems: 'center', marginTop: 10 }}
+                                >
+                                    <Text style={{ color: 'white', fontWeight: 'bold' }}>Close</Text>
+                                </TouchableOpacity>
+                            </View>
+                        ) : (
+                            <Text style={{ color: themeColors.subtext, textAlign: 'center', marginVertical: 20 }}>No data available</Text>
+                        )}
+                    </View>
+                </View>
+            </Modal>
+
             {/* ENROLL MODAL */}
             <Modal visible={enrollModalVisible} animationType="slide" transparent>
                 <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}>
@@ -638,115 +843,182 @@ export default function MasterInstitutions() {
                             </TouchableOpacity>
                         </View>
 
-                        <ScrollView showsVerticalScrollIndicator={false}>
-                            <Text style={{ color: themeColors.primary, fontWeight: 'bold', marginBottom: 8, marginTop: 10 }}>Institution Details</Text>
-                            <TextInput
-                                style={{ backgroundColor: themeColors.bg, color: themeColors.text, padding: 14, borderRadius: 12, borderWidth: 1, borderColor: themeColors.border, marginBottom: 16 }}
-                                placeholder="Institution Name*"
-                                placeholderTextColor={themeColors.subtext}
-                                value={enrollForm.institution_name}
-                                onChangeText={t => setEnrollForm(prev => ({ ...prev, institution_name: t }))}
-                            />
-                            <TextInput
-                                style={{ backgroundColor: themeColors.bg, color: themeColors.text, padding: 14, borderRadius: 12, borderWidth: 1, borderColor: themeColors.border, marginBottom: 24 }}
-                                placeholder="Location (Optional)"
-                                placeholderTextColor={themeColors.subtext}
-                                value={enrollForm.location}
-                                onChangeText={t => setEnrollForm(prev => ({ ...prev, location: t }))}
-                            />
+                        <ScrollView showsVerticalScrollIndicator={false} style={{ padding: 5 }}>
 
-                            <Text style={{ color: themeColors.primary, fontWeight: 'bold', marginBottom: 8 }}>Primary Admin Details</Text>
-                            <TextInput
-                                style={{ backgroundColor: themeColors.bg, color: themeColors.text, padding: 14, borderRadius: 12, borderWidth: 1, borderColor: themeColors.border, marginBottom: 16 }}
-                                placeholder="Admin Full Name*"
-                                placeholderTextColor={themeColors.subtext}
-                                value={enrollForm.admin_full_name}
-                                onChangeText={t => setEnrollForm(prev => ({ ...prev, admin_full_name: t }))}
-                            />
-                            <TextInput
-                                style={{ backgroundColor: themeColors.bg, color: themeColors.text, padding: 14, borderRadius: 12, borderWidth: 1, borderColor: themeColors.border, marginBottom: 16 }}
-                                placeholder="Admin Email*"
-                                placeholderTextColor={themeColors.subtext}
-                                autoCapitalize="none"
-                                keyboardType="email-address"
-                                value={enrollForm.admin_email}
-                                onChangeText={t => setEnrollForm(prev => ({ ...prev, admin_email: t }))}
-                            />
-                            <TextInput
-                                style={{ backgroundColor: themeColors.bg, color: themeColors.text, padding: 14, borderRadius: 12, borderWidth: 1, borderColor: themeColors.border, marginBottom: 30 }}
-                                placeholder="Admin Password*"
-                                placeholderTextColor={themeColors.subtext}
-                                secureTextEntry
-                                value={enrollForm.admin_password}
-                                onChangeText={t => setEnrollForm(prev => ({ ...prev, admin_password: t }))}
-                            />
-
-                            <Text style={{ color: themeColors.text, fontWeight: '600', marginBottom: 8, marginTop: 16 }}>Subscription Plan</Text>
-                            <View style={{ backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#f1f5f9', borderRadius: 12, marginBottom: 16 }}>
-                                <Picker
-                                    selectedValue={enrollForm.subscription_plan}
-                                    onValueChange={(itemValue) => setEnrollForm({ ...enrollForm, subscription_plan: itemValue })}
-                                    style={{ color: themeColors.text }}
-                                    dropdownIconColor={themeColors.text}
-                                >
-                                    <Picker.Item label="14-Day Trial" value="trial" />
-                                    <Picker.Item label="Basic  —  $100/mo (up to 900 students)" value="basic_basic" />
-                                    <Picker.Item label="Pro  —  $300/mo (up to 1,000 students)" value="basic_pro" />
-                                    <Picker.Item label="Premium  —  $500/mo (5,000+ students)" value="basic_premium" />
-                                    <Picker.Item label="Custom  —  Enterprise (Scalable)" value="custom" />
-                                    <Picker.Item label="Free Access (Small School)" value="free" />
-                                </Picker>
+                            {/* Section: Institution */}
+                            <Text style={{ fontSize: 11, fontWeight: '600', letterSpacing: 1, textTransform: 'uppercase', color: themeColors.subtext, marginBottom: 10 }}>
+                                Institution details
+                            </Text>
+                            <View style={{ flexDirection: 'row', gap: 10, marginBottom: 10 }}>
+                                <View style={{ flex: 2 }}>
+                                    <Text style={{ fontSize: 12, color: themeColors.subtext, marginBottom: 4 }}>Name <Text style={{ color: themeColors.primary }}>*</Text></Text>
+                                    <TextInput
+                                        style={{ backgroundColor: themeColors.bg, color: themeColors.text, padding: 12, borderRadius: 10, borderWidth: 0.5, borderColor: themeColors.border, fontSize: 14 }}
+                                        placeholder="Alliance Highschool"
+                                        placeholderTextColor={themeColors.subtext}
+                                        value={enrollForm.institution_name}
+                                        onChangeText={t => setEnrollForm(prev => ({ ...prev, institution_name: t }))}
+                                    />
+                                </View>
+                                <View style={{ flex: 1 }}>
+                                    <Text style={{ fontSize: 12, color: themeColors.subtext, marginBottom: 4 }}>Location</Text>
+                                    <TextInput
+                                        style={{ backgroundColor: themeColors.bg, color: themeColors.text, padding: 12, borderRadius: 10, borderWidth: 0.5, borderColor: themeColors.border, fontSize: 14 }}
+                                        placeholder="Nairobi"
+                                        placeholderTextColor={themeColors.subtext}
+                                        value={enrollForm.location}
+                                        onChangeText={t => setEnrollForm(prev => ({ ...prev, location: t }))}
+                                    />
+                                </View>
+                            </View>
+                            <View style={{ marginBottom: 20 }}>
+                                <Text style={{ fontSize: 12, color: themeColors.subtext, marginBottom: 4 }}>Email domain</Text>
+                                <TextInput
+                                    style={{ backgroundColor: themeColors.bg, color: themeColors.text, padding: 12, borderRadius: 10, borderWidth: 0.5, borderColor: themeColors.border, fontSize: 14 }}
+                                    placeholder="e.g. alliance.edu"
+                                    placeholderTextColor={themeColors.subtext}
+                                    autoCapitalize="none"
+                                    value={enrollForm.email_domain}
+                                    onChangeText={t => setEnrollForm(prev => ({ ...prev, email_domain: t }))}
+                                />
                             </View>
 
-                            {(enrollForm.subscription_plan === 'free') && (
-                                <>
-                                    <Text style={{ color: themeColors.text, fontWeight: '600', marginBottom: 8 }}>Beta Expiration Date (ISO String / Optional)</Text>
+                            {/* Divider */}
+                            <View style={{ height: 0.5, backgroundColor: themeColors.border, marginBottom: 16 }} />
+
+                            {/* Section: Admin */}
+                            <Text style={{ fontSize: 11, fontWeight: '600', letterSpacing: 1, textTransform: 'uppercase', color: themeColors.subtext, marginBottom: 10 }}>
+                                Primary admin
+                            </Text>
+                            <View style={{ marginBottom: 10 }}>
+                                <Text style={{ fontSize: 12, color: themeColors.subtext, marginBottom: 4 }}>Full name <Text style={{ color: themeColors.primary }}>*</Text></Text>
+                                <TextInput
+                                    style={{ backgroundColor: themeColors.bg, color: themeColors.text, padding: 12, borderRadius: 10, borderWidth: 0.5, borderColor: themeColors.border, fontSize: 14 }}
+                                    placeholder="Jane Mwangi"
+                                    placeholderTextColor={themeColors.subtext}
+                                    value={enrollForm.admin_full_name}
+                                    onChangeText={t => setEnrollForm(prev => ({ ...prev, admin_full_name: t }))}
+                                />
+                            </View>
+                            <View style={{ flexDirection: 'row', gap: 10, marginBottom: 20 }}>
+                                <View style={{ flex: 1 }}>
+                                    <Text style={{ fontSize: 12, color: themeColors.subtext, marginBottom: 4 }}>Email <Text style={{ color: themeColors.primary }}>*</Text></Text>
                                     <TextInput
-                                        style={{ backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#f1f5f9', color: themeColors.text, borderRadius: 12, padding: 14, marginBottom: 16 }}
+                                        style={{ backgroundColor: themeColors.bg, color: themeColors.text, padding: 12, borderRadius: 10, borderWidth: 0.5, borderColor: themeColors.border, fontSize: 14 }}
+                                        placeholder="jane@alliance.edu"
+                                        placeholderTextColor={themeColors.subtext}
+                                        autoCapitalize="none"
+                                        keyboardType="email-address"
+                                        value={enrollForm.admin_email}
+                                        onChangeText={t => setEnrollForm(prev => ({ ...prev, admin_email: t }))}
+                                    />
+                                </View>
+                                <View style={{ flex: 1 }}>
+                                    <Text style={{ fontSize: 12, color: themeColors.subtext, marginBottom: 4 }}>Password <Text style={{ color: themeColors.primary }}>*</Text></Text>
+                                    <TextInput
+                                        style={{ backgroundColor: themeColors.bg, color: themeColors.text, padding: 12, borderRadius: 10, borderWidth: 0.5, borderColor: themeColors.border, fontSize: 14 }}
+                                        placeholder="••••••••"
+                                        placeholderTextColor={themeColors.subtext}
+                                        secureTextEntry
+                                        value={enrollForm.admin_password}
+                                        onChangeText={t => setEnrollForm(prev => ({ ...prev, admin_password: t }))}
+                                    />
+                                </View>
+                            </View>
+
+                            {/* Divider */}
+                            <View style={{ height: 0.5, backgroundColor: themeColors.border, marginBottom: 16 }} />
+
+                            {/* Section: Subscription */}
+                            <Text style={{ fontSize: 11, fontWeight: '600', letterSpacing: 1, textTransform: 'uppercase', color: themeColors.subtext, marginBottom: 10 }}>
+                                Subscription
+                            </Text>
+
+                            {/* Plan picker — grid of chips */}
+                            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
+                                {[
+                                    { label: 'Trial', value: 'trial', sub: '14 days' },
+                                    { label: 'Basic', value: 'basic', sub: '$100/mo' },
+                                    { label: 'Pro', value: 'pro', sub: '$300/mo' },
+                                    { label: 'Premium', value: 'premium', sub: '$500/mo' },
+                                    { label: 'Enterprise', value: 'custom', sub: 'Custom' },
+                                    { label: 'Free', value: 'free', sub: 'Forever' },
+                                ].map(plan => {
+                                    const selected = enrollForm.subscription_plan === plan.value;
+                                    return (
+                                        <TouchableOpacity
+                                            key={plan.value}
+                                            onPress={() => setEnrollForm(prev => ({ ...prev, subscription_plan: plan.value, subscription_status: plan.value === 'trial' ? 'trial' : 'active' }))}
+                                            style={{
+                                                paddingVertical: 8, paddingHorizontal: 14,
+                                                borderRadius: 10,
+                                                borderWidth: selected ? 1.5 : 0.5,
+                                                borderColor: selected ? themeColors.primary : themeColors.border,
+                                                backgroundColor: selected ? `${themeColors.primary}12` : themeColors.bg,
+                                            }}
+                                        >
+                                            <Text style={{ fontSize: 13, fontWeight: '600', color: selected ? themeColors.primary : themeColors.text }}>{plan.label}</Text>
+                                            <Text style={{ fontSize: 11, color: selected ? themeColors.primary : themeColors.subtext, marginTop: 1 }}>{plan.sub}</Text>
+                                        </TouchableOpacity>
+                                    );
+                                })}
+                            </View>
+
+                            {enrollForm.subscription_plan === 'free' && (
+                                <View style={{ marginBottom: 12 }}>
+                                    <Text style={{ fontSize: 12, color: themeColors.subtext, marginBottom: 4 }}>Expiry date <Text style={{ color: themeColors.subtext, fontWeight: '400' }}>(optional, ISO format)</Text></Text>
+                                    <TextInput
+                                        style={{ backgroundColor: themeColors.bg, color: themeColors.text, padding: 12, borderRadius: 10, borderWidth: 0.5, borderColor: themeColors.border, fontSize: 14 }}
                                         placeholder="e.g. 2026-12-31"
                                         placeholderTextColor={themeColors.subtext}
                                         value={enrollForm.trial_end_date}
-                                        onChangeText={(text) => setEnrollForm({ ...enrollForm, trial_end_date: text })}
+                                        onChangeText={t => setEnrollForm(prev => ({ ...prev, trial_end_date: t }))}
                                     />
-                                </>
+                                </View>
                             )}
 
                             {enrollForm.subscription_plan === 'custom' && (
-                                <>
-                                    <Text style={{ color: themeColors.text, fontWeight: '600', marginBottom: 8 }}>Custom Student Limit*</Text>
+                                <View style={{ marginBottom: 12 }}>
+                                    <Text style={{ fontSize: 12, color: themeColors.subtext, marginBottom: 4 }}>Custom student limit <Text style={{ color: themeColors.primary }}>*</Text></Text>
                                     <TextInput
-                                        style={{ backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#f1f5f9', color: themeColors.text, borderRadius: 12, padding: 14, marginBottom: 16 }}
+                                        style={{ backgroundColor: themeColors.bg, color: themeColors.text, padding: 12, borderRadius: 10, borderWidth: 0.5, borderColor: themeColors.border, fontSize: 14 }}
                                         placeholder="e.g. 2500"
                                         placeholderTextColor={themeColors.subtext}
                                         keyboardType="number-pad"
                                         value={enrollForm.custom_student_limit}
-                                        onChangeText={(text) => setEnrollForm({ ...enrollForm, custom_student_limit: text })}
+                                        onChangeText={t => setEnrollForm(prev => ({ ...prev, custom_student_limit: t }))}
                                     />
-                                </>
+                                </View>
                             )}
 
-                            <Text style={{ color: themeColors.text, fontWeight: '600', marginBottom: 8 }}>Subscription Status</Text>
-                            <View style={{ backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#f1f5f9', borderRadius: 12, marginBottom: 24 }}>
-                                <Picker
-                                    selectedValue={enrollForm.subscription_status}
-                                    onValueChange={(itemValue) => setEnrollForm({ ...enrollForm, subscription_status: itemValue })}
-                                    style={{ color: themeColors.text }}
-                                    dropdownIconColor={themeColors.text}
-                                >
-                                    <Picker.Item label="Active" value="active" />
-                                    <Picker.Item label="Suspended" value="suspended" />
-                                    <Picker.Item label="Trial" value="trial" />
-                                    <Picker.Item label="Expired" value="expired" />
-                                </Picker>
+                            <View style={{ marginBottom: 28 }}>
+                                <Text style={{ fontSize: 12, color: themeColors.subtext, marginBottom: 4 }}>Initial status</Text>
+                                <View style={{ backgroundColor: themeColors.bg, borderRadius: 10, borderWidth: 0.5, borderColor: themeColors.border, overflow: 'hidden' }}>
+                                    <Picker
+                                        selectedValue={enrollForm.subscription_status}
+                                        onValueChange={v => setEnrollForm(prev => ({ ...prev, subscription_status: v }))}
+                                        style={{ color: themeColors.text, backgroundColor: themeColors.bg, padding: 10 }}
+                                        dropdownIconColor={themeColors.subtext}
+                                    >
+                                        <Picker.Item label="Trial" value="trial" />
+                                        <Picker.Item label="Active" value="active" />
+                                        <Picker.Item label="Suspended" value="suspended" />
+                                        <Picker.Item label="Expired" value="expired" />
+                                    </Picker>
+                                </View>
                             </View>
 
                             <TouchableOpacity
                                 onPress={handleEnroll}
                                 disabled={enrollLoading}
-                                style={{ backgroundColor: themeColors.primary, padding: 16, borderRadius: 12, alignItems: 'center', opacity: enrollLoading ? 0.7 : 1 }}
+                                style={{ backgroundColor: themeColors.primary, padding: 14, borderRadius: 12, alignItems: 'center', opacity: enrollLoading ? 0.7 : 1 }}
                             >
-                                {enrollLoading ? <ActivityIndicator color="#fff" /> : <Text style={{ color: '#fff', fontSize: 16, fontWeight: 'bold' }}>Enroll Now</Text>}
+                                {enrollLoading
+                                    ? <ActivityIndicator color="#fff" />
+                                    : <Text style={{ color: '#fff', fontSize: 15, fontWeight: '600' }}>Enroll institution</Text>
+                                }
                             </TouchableOpacity>
+
                         </ScrollView>
                     </View>
                 </View>
@@ -786,6 +1058,65 @@ export default function MasterInstitutions() {
                                 {isSubmitting ? <ActivityIndicator color="#fff" /> : <Text style={{ color: '#fff', fontWeight: '600' }}>Grant Access</Text>}
                             </TouchableOpacity>
                         </View>
+                    </View>
+                </View>
+            </Modal>
+
+            {/* ADMIN MANAGEMENT MODAL */}
+            <Modal visible={adminModalVisible} animationType="fade" transparent>
+                <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', padding: 20 }}>
+                    <View style={{ backgroundColor: themeColors.card, borderRadius: 24, padding: 24, width: '100%', maxWidth: 450 }}>
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+                            <Text style={{ fontSize: 20, fontWeight: 'bold', color: themeColors.text }}>Institution Admins</Text>
+                            <TouchableOpacity onPress={() => { setAdminModalVisible(false); setSelectedInstAdmins([]); }}>
+                                <MaterialCommunityIcons name="close" size={24} color={themeColors.subtext} />
+                            </TouchableOpacity>
+                        </View>
+
+                        {adminLoading ? (
+                            <ActivityIndicator size="large" color={themeColors.primary} style={{ marginVertical: 40 }} />
+                        ) : selectedInstAdmins.length > 0 ? (
+                            <View style={{ gap: 12 }}>
+                                {selectedInstAdmins.map((admin) => (
+                                    <View key={admin.id} style={{
+                                        backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : '#f8fafc',
+                                        padding: 16,
+                                        borderRadius: 16,
+                                        flexDirection: 'row',
+                                        justifyContent: 'space-between',
+                                        alignItems: 'center'
+                                    }}>
+                                        <View style={{ flex: 1 }}>
+                                            <Text style={{ color: themeColors.text, fontWeight: '700', fontSize: 15 }}>{admin.full_name}</Text>
+                                            <Text style={{ color: themeColors.subtext, fontSize: 13 }}>{admin.email}</Text>
+                                        </View>
+                                        <View style={{ flexDirection: 'column', gap: 12, alignItems: 'center', justifyContent: 'center' }}>
+                                            <TouchableOpacity
+                                                onPress={() => handleResetAdminPassword(admin.id, admin.full_name)}
+                                                style={{ padding: 2, borderRadius: 10 }}
+                                            >
+                                                <Text style={{ color: themeColors.primary, fontSize: 13, fontWeight: '600' }}>Change password</Text>
+                                            </TouchableOpacity>
+                                            <TouchableOpacity
+                                                onPress={() => handleRemoveAdmin(admin.id, admin.full_name)}
+                                                style={{ padding: 2, borderRadius: 10 }}
+                                            >
+                                                <Text style={{ color: themeColors.primary, fontSize: 13, fontWeight: '600' }}>Remove admin</Text>
+                                            </TouchableOpacity>
+                                        </View>
+                                    </View>
+                                ))}
+                            </View>
+                        ) : (
+                            <Text style={{ color: themeColors.subtext, textAlign: 'center', marginVertical: 20 }}>No admin users found.</Text>
+                        )}
+
+                        <TouchableOpacity
+                            onPress={() => { setAdminModalVisible(false); setSelectedInstAdmins([]); }}
+                            style={{ backgroundColor: themeColors.primary, paddingVertical: 14, borderRadius: 12, alignItems: 'center', marginTop: 20 }}
+                        >
+                            <Text style={{ color: 'white', fontWeight: 'bold' }}>Close</Text>
+                        </TouchableOpacity>
                     </View>
                 </View>
             </Modal>

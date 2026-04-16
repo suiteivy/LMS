@@ -115,8 +115,22 @@ export const UnifiedHeader: React.FC<UnifiedHeaderProps> = ({
                 {subtitle || "Portal"}<Text style={{ color: '#FF6900' }}>.</Text>
               </Text>
             </View>
-            {showMainBadge && <MainAdminBadge />}
-            <SubscriptionStatusBadge />
+          </View>
+
+          {/* Center Badges (Absolute Centered) */}
+          <View style={{
+            position: 'absolute',
+            left: 0,
+            right: 0,
+            top: 0,
+            bottom: 0,
+            justifyContent: 'center',
+            alignItems: 'center',
+            pointerEvents: 'none',
+          }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, pointerEvents: 'auto' }}>
+              {showMainBadge && <MainAdminBadge />}
+            </View>
           </View>
         </View>
 
@@ -151,38 +165,48 @@ export const UnifiedHeader: React.FC<UnifiedHeaderProps> = ({
               )}
             </TouchableOpacity>
           )}
-
           <View style={{
             backgroundColor: surface,
             paddingHorizontal: 12,
             paddingVertical: 8,
             borderRadius: 16,
-            flexDirection: 'row',
-            alignItems: 'center',
+            flexDirection: 'column',
+            alignItems: 'stretch',
             borderWidth: 1,
             borderColor: surfaceBorder,
           }}>
-            <Ionicons
-              name={
-                role === "Student" ? "school-outline" :
-                  role === "Teacher" ? "briefcase-outline" :
-                    role === "Admin" ? "shield-checkmark-outline" :
-                      role === "Master Admin" ? "globe-outline" :
-                        "people-outline"
-              }
-              size={14}
-              color={subtleIconColor}
-            />
-            <Text style={{
-              marginLeft: 6,
-              fontWeight: 'bold',
-              color: isDark ? '#e5e5e5' : '#111827',
-              fontSize: 10,
-              textTransform: 'uppercase',
-              letterSpacing: 1,
-            }}>
-              {role}
-            </Text>
+            {/* Top section: Role */}
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}>
+              <Ionicons
+                name={
+                  role === "Student" ? "school-outline" :
+                    role === "Teacher" ? "briefcase-outline" :
+                      role === "Admin" ? "shield-checkmark-outline" :
+                        role === "Master Admin" ? "globe-outline" : 
+                          "people-outline"
+                }
+                size={14}
+                color={subtleIconColor}
+              />
+              <Text style={{
+                marginLeft: 6,
+                fontWeight: 'bold',
+                color: isDark ? '#e5e5e5' : '#111827',
+                fontSize: 10,
+                textTransform: 'uppercase',
+                letterSpacing: 1,
+              }}>
+                {role}
+              </Text>
+            </View>
+
+            {/* Divider line (like a fraction bar) */}
+            <View style={{ height: 1, backgroundColor: surfaceBorder, marginVertical: 6 }} />
+
+            {/* Bottom section: Badge */}
+            <View style={{ alignItems: 'center' }}>
+              <SubscriptionStatusBadge />
+            </View>
           </View>
         </View>
       </View>

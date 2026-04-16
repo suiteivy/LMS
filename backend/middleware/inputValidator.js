@@ -174,8 +174,10 @@ const schemas = {
     },
 
     enrollUser: {
-        email: { ...commonRules.email, required: true },
-        full_name: { ...commonRules.name, required: true },
+        email: { ...commonRules.email, required: false },
+        first_name: { ...commonRules.name, required: false },
+        last_name: { ...commonRules.name, required: false },
+        full_name: { ...commonRules.name, required: false },
         role: {
             type: 'string',
             required: true,
