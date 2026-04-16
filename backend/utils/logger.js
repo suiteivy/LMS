@@ -33,13 +33,22 @@ const writeToFile = (filePath, content) => {
 };
 
 const logger = {
-    info: (message, meta) => {
+    info: (message, meta = {}) => {
+        // Silence internal access logs completely
+        if (meta && meta.type === 'access') return; 
+        if (typeof message === 'string' && message.includes('GET /api/')) return;
+        if (typeof message === 'string' && message.includes('POST /api/')) return;
+        if (typeof message === 'string' && message.includes('PUT /api/')) return;
+        if (typeof message === 'string' && message.includes('PATCH /api/')) return;
+        if (typeof message === 'string' && message.includes('DELETE /api/')) return;
+        
         const log = formatLog('INFO', message, meta);
         console.log(log.trim());
         writeToFile(ACCESS_LOG, log);
     },
 
-    warn: (message, meta) => {
+    warn: (message, meta = {}) => {
+        if (meta && meta.type === 'access') return; // Silence internal access logs completely
         const log = formatLog('WARN', message, meta);
         console.warn(log.trim());
         writeToFile(ACCESS_LOG, log);
@@ -60,7 +69,7 @@ const logger = {
         writeToFile(ERROR_LOG, log);
     },
 
-    debug: (message, meta) => {
+    debug: (message, meta = {}) => {
         if (process.env.NODE_ENV !== 'production') {
             const log = formatLog('DEBUG', message, meta);
             console.log(log.trim());
@@ -68,7 +77,7 @@ const logger = {
     },
 
     // Authentication specific logging
-    auth: (action, meta) => {
+    auth: (action, meta = {}) => {
         const log = formatLog('AUTH', action, {
             ...meta,
             ip: meta.ip || 'unknown',

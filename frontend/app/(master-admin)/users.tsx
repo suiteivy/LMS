@@ -59,6 +59,9 @@ export default function MasterAdminUsersScreen() {
     const [search, setSearch] = useState('');
     const [roleFilter, setRoleFilter] = useState<RoleFilter>('all');
     const [institutionFilter, setInstitutionFilter] = useState<string>('all');
+    const [categoryFilter, setCategoryFilter] = useState<string>('all');
+    const [showFilters, setShowFilters] = useState(false);
+    const [categories, setCategories] = useState<{ id: string; name: string }[]>([]);
 
     // Use a ref for page to avoid it being a dep in useCallback (prevents infinite loop)
     const pageRef = useRef(1);
@@ -80,6 +83,24 @@ export default function MasterAdminUsersScreen() {
             .select('id, name')
             .order('name');
         setInstitutions(data || []);
+    };
+
+    const fetchCategories = async () => {
+        try {
+            const { data: { session } } = await supabase.auth.getSession();
+            if (!session) return;
+            
+            const res = await fetch(`${getBackendUrl()}/api/master-admin/school-categories`, {
+                headers: {
+                    'Authorization': `Bearer ${session.access_token}`,
+                    'Accept': 'application/json',
+                }
+            });
+            const data = await res.json();
+            if (res.ok) setCategories(data || []);
+        } catch (err) {
+            console.error('fetchCategories error:', err);
+        }
     };
 
     const fetchUsers = useCallback(async (reset = false) => {
@@ -111,6 +132,7 @@ export default function MasterAdminUsersScreen() {
             });
             if (roleFilter !== 'all') params.append('role', roleFilter);
             if (institutionFilter !== 'all') params.append('institution_id', institutionFilter);
+            if (categoryFilter !== 'all') params.append('category_id', categoryFilter);
             if (search.trim()) params.append('search', search.trim());
 
             const res = await fetch(`${getBackendUrl()}/api/master-admin/users?${params}`, {
@@ -132,7 +154,13 @@ export default function MasterAdminUsersScreen() {
 
             if (res.ok) {
                 const newUsers: UserItem[] = data.users || [];
-                setUsers(prev => reset ? newUsers : [...prev, ...newUsers]);
+                setUsers(prev => {
+                    const combined = reset ? newUsers : [...prev, ...newUsers];
+                    // Deduplicate by ID to prevent "duplicate key" warnings
+                    return combined.filter((u, index, self) => 
+                        index === self.findIndex((t) => t.id === u.id)
+                    );
+                });
                 const more = newUsers.length === PAGE_SIZE;
                 setHasMore(more);
                 if (!reset && more) pageRef.current = currentPage + 1;
@@ -151,14 +179,16 @@ export default function MasterAdminUsersScreen() {
 
     useEffect(() => {
         fetchInstitutions();
+        fetchCategories();
     }, []);
 
     useEffect(() => {
         fetchUsers(true);
-    }, [roleFilter, institutionFilter]);  // only reset on filter changes
+    }, [roleFilter, institutionFilter, categoryFilter]);  // only reset on filter changes
 
     const handleSearch = () => fetchUsers(true);
     const handleLoadMore = () => { if (hasMore && !loadingMore && !loading) fetchUsers(false); };
+    const toggleFilters = () => setShowFilters(!showFilters);
 
     const renderUser = ({ item }: { item: UserItem }) => {
         const roleColor = ROLE_COLORS[item.role] || '#6B7280';
@@ -249,10 +279,131 @@ export default function MasterAdminUsersScreen() {
                         </Text>
                     </View>
                 </View>
-                <TouchableOpacity onPress={() => fetchUsers(true)}>
-                    <MaterialCommunityIcons name="refresh" size={24} color={themeColors.text} />
-                </TouchableOpacity>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                    <TouchableOpacity 
+                        onPress={toggleFilters}
+                        style={{ 
+                            backgroundColor: showFilters ? themeColors.primary : `${themeColors.primary}15`,
+                            padding: 8, borderRadius: 10,
+                            borderWidth: 1, borderColor: showFilters ? themeColors.primary : `${themeColors.primary}40`
+                        }}
+                    >
+                        <MaterialCommunityIcons 
+                            name={showFilters ? "filter-variant-remove" : "filter-variant"} 
+                            size={22} 
+                            color={showFilters ? "#fff" : themeColors.primary} 
+                        />
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={() => fetchUsers(true)}>
+                        <MaterialCommunityIcons name="refresh" size={24} color={themeColors.text} />
+                    </TouchableOpacity>
+                </View>
             </View>
+
+            {/* Collapsible Filter Panel */}
+            {showFilters && (
+                <View style={{ 
+                    backgroundColor: themeColors.card, 
+                    marginHorizontal: 20, 
+                    marginBottom: 16, 
+                    borderRadius: 16, 
+                    padding: 16,
+                    borderWidth: 1,
+                    borderColor: themeColors.border,
+                    boxShadow: [{ offsetX: 0, offsetY: 4, blurRadius: 12, color: 'rgba(0, 0, 0, 0.1)' }],
+                    elevation: 4
+                }}>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                        <Text style={{ color: themeColors.text, fontWeight: '700', fontSize: 14 }}>Advanced Filters</Text>
+                        <TouchableOpacity onPress={toggleFilters}>
+                            <Text style={{ color: themeColors.primary, fontSize: 12, fontWeight: '600' }}>Close</Text>
+                        </TouchableOpacity>
+                    </View>
+
+                    {/* Role Selection */}
+                    <Text style={{ color: themeColors.subtext, fontSize: 11, fontWeight: '700', marginBottom: 10, textTransform: 'uppercase' }}>Filter by Role</Text>
+                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
+                        {ROLES.map(role => {
+                            const active = roleFilter === role;
+                            const color = role === 'all' ? themeColors.primary : (ROLE_COLORS[role] || '#6B7280');
+                            return (
+                                <TouchableOpacity key={role} onPress={() => setRoleFilter(role)} style={{
+                                    paddingHorizontal: 14, paddingVertical: 8, borderRadius: 12,
+                                    backgroundColor: active ? color : `${color}15`,
+                                    borderWidth: 1, borderColor: active ? color : `${color}30`,
+                                    minWidth: 80, alignItems: 'center'
+                                }}>
+                                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                                        {role !== 'all' && <MaterialCommunityIcons name={ROLE_ICONS[role] as any} size={14} color={active ? '#fff' : color} />}
+                                        <Text style={{ color: active ? '#fff' : color, fontWeight: '700', fontSize: 12, textTransform: 'capitalize' }}>
+                                            {role === 'all' ? 'All Roles' : role.replace('_', ' ')}
+                                        </Text>
+                                    </View>
+                                </TouchableOpacity>
+                            );
+                        })}
+                    </View>
+
+                    {/* Category Selection */}
+                    <Text style={{ color: themeColors.subtext, fontSize: 11, fontWeight: '700', marginBottom: 10, textTransform: 'uppercase', marginTop: 4 }}>School Category</Text>
+                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
+                        <TouchableOpacity onPress={() => setCategoryFilter('all')} style={{
+                            paddingHorizontal: 14, paddingVertical: 8, borderRadius: 12,
+                            backgroundColor: categoryFilter === 'all' ? themeColors.primary : themeColors.inputBg,
+                            borderWidth: 1, borderColor: categoryFilter === 'all' ? themeColors.primary : themeColors.border,
+                        }}>
+                            <Text style={{ color: categoryFilter === 'all' ? '#fff' : themeColors.subtext, fontSize: 12, fontWeight: '700' }}>All Categories</Text>
+                        </TouchableOpacity>
+                        {categories.map(cat => (
+                            <TouchableOpacity key={cat.id} onPress={() => setCategoryFilter(cat.id)} style={{
+                                paddingHorizontal: 14, paddingVertical: 8, borderRadius: 12,
+                                backgroundColor: categoryFilter === cat.id ? themeColors.primary : themeColors.inputBg,
+                                borderWidth: 1, borderColor: categoryFilter === cat.id ? themeColors.primary : themeColors.border,
+                            }}>
+                                <Text style={{ color: categoryFilter === cat.id ? '#fff' : themeColors.subtext, fontSize: 12, fontWeight: '700' }}>{cat.name}</Text>
+                            </TouchableOpacity>
+                        ))}
+                    </View>
+
+                    {/* Institution Selection */}
+                    <Text style={{ color: themeColors.subtext, fontSize: 11, fontWeight: '700', marginBottom: 10, textTransform: 'uppercase', marginTop: 4 }}>Institution</Text>
+                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                        <TouchableOpacity onPress={() => setInstitutionFilter('all')} style={{
+                            paddingHorizontal: 14, paddingVertical: 8, borderRadius: 12,
+                            backgroundColor: institutionFilter === 'all' ? themeColors.primary : themeColors.inputBg,
+                            borderWidth: 1, borderColor: institutionFilter === 'all' ? themeColors.primary : themeColors.border,
+                        }}>
+                            <Text style={{ color: institutionFilter === 'all' ? '#fff' : themeColors.subtext, fontSize: 12, fontWeight: '700' }}>All Institutions</Text>
+                        </TouchableOpacity>
+                        {institutions.slice(0, 10).map(inst => (
+                            <TouchableOpacity key={inst.id} onPress={() => setInstitutionFilter(inst.id)} style={{
+                                paddingHorizontal: 14, paddingVertical: 8, borderRadius: 12,
+                                backgroundColor: institutionFilter === inst.id ? themeColors.primary : themeColors.inputBg,
+                                borderWidth: 1, borderColor: institutionFilter === inst.id ? themeColors.primary : themeColors.border,
+                            }}>
+                                <Text style={{ color: institutionFilter === inst.id ? '#fff' : themeColors.subtext, fontSize: 12, fontWeight: '700' }}>{inst.name}</Text>
+                            </TouchableOpacity>
+                        ))}
+                        {institutions.length > 10 && (
+                            <View style={{ padding: 8 }}>
+                                <Text style={{ color: themeColors.subtext, fontSize: 10 }}>+ {institutions.length - 10} more</Text>
+                            </View>
+                        )}
+                    </View>
+                    
+                    <TouchableOpacity 
+                        onPress={() => {
+                            setRoleFilter('all');
+                            setInstitutionFilter('all');
+                            setCategoryFilter('all');
+                            setSearch('');
+                        }}
+                        style={{ marginTop: 16, alignItems: 'center', paddingVertical: 8, borderTopWidth: 1, borderTopColor: themeColors.border }}
+                    >
+                        <Text style={{ color: '#ef4444', fontSize: 12, fontWeight: '700' }}>Reset All Filters</Text>
+                    </TouchableOpacity>
+                </View>
+            )}
 
             {/* Search */}
             <View style={{ paddingHorizontal: 20, marginBottom: 12 }}>
@@ -286,50 +437,6 @@ export default function MasterAdminUsersScreen() {
                 </View>
             </View>
 
-            {/* Role Filter Chips */}
-            <ScrollView horizontal showsHorizontalScrollIndicator={false}
-                contentContainerStyle={{ paddingHorizontal: 20, gap: 8, marginBottom: 12 }}>
-                {ROLES.map(role => {
-                    const active = roleFilter === role;
-                    const color = role === 'all' ? themeColors.primary : (ROLE_COLORS[role] || '#6B7280');
-                    return (
-                        <TouchableOpacity key={role} onPress={() => setRoleFilter(role)} style={{
-                            paddingHorizontal: 14, paddingVertical: 8, borderRadius: 12,
-                            backgroundColor: active ? color : `${color}15`,
-                            borderWidth: 1, borderColor: active ? color : `${color}30`,
-                        }}>
-                            <Text style={{ color: active ? '#fff' : color, fontWeight: '700', fontSize: 12, textTransform: 'capitalize' }}>
-                                {role === 'all' ? 'All Roles' : role.replace('_', ' ')}
-                            </Text>
-                        </TouchableOpacity>
-                    );
-                })}
-            </ScrollView>
-
-            {/* Institution Filter */}
-            <ScrollView horizontal showsHorizontalScrollIndicator={false}
-                contentContainerStyle={{ paddingHorizontal: 20, gap: 8, marginBottom: 12 }}>
-                <TouchableOpacity onPress={() => setInstitutionFilter('all')} style={{
-                    paddingHorizontal: 14, paddingVertical: 7, borderRadius: 10,
-                    backgroundColor: institutionFilter === 'all' ? themeColors.primary : themeColors.inputBg,
-                    borderWidth: 1, borderColor: institutionFilter === 'all' ? themeColors.primary : themeColors.border,
-                }}>
-                    <Text style={{ color: institutionFilter === 'all' ? '#fff' : themeColors.subtext, fontSize: 12, fontWeight: '600' }}>
-                        All Institutions
-                    </Text>
-                </TouchableOpacity>
-                {institutions.map(inst => (
-                    <TouchableOpacity key={inst.id} onPress={() => setInstitutionFilter(inst.id)} style={{
-                        paddingHorizontal: 14, paddingVertical: 7, borderRadius: 10,
-                        backgroundColor: institutionFilter === inst.id ? themeColors.primary : themeColors.inputBg,
-                        borderWidth: 1, borderColor: institutionFilter === inst.id ? themeColors.primary : themeColors.border,
-                    }}>
-                        <Text style={{ color: institutionFilter === inst.id ? '#fff' : themeColors.subtext, fontSize: 12, fontWeight: '600' }} numberOfLines={1}>
-                            {inst.name}
-                        </Text>
-                    </TouchableOpacity>
-                ))}
-            </ScrollView>
 
             {/* User List */}
             {loading ? (

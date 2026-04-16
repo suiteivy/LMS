@@ -140,12 +140,22 @@ export default function MasterInstitutions() {
                     'Accept': 'application/json'
                 }
             });
-            const data = await res.json();
-            if (res.ok) {
-                setAddonRequests(data.requests || []);
-            } else {
-                Toast.show({ type: 'error', text1: 'Error', text2: data.error });
+            
+            if (!res.ok) {
+                const text = await res.text();
+                let errorMsg = "Failed to fetch addon requests";
+                try {
+                    const errorData = JSON.parse(text);
+                    errorMsg = errorData.error || errorMsg;
+                } catch (e) {
+                    // Not JSON, use generic or status text
+                }
+                Toast.show({ type: 'error', text1: 'Error', text2: errorMsg });
+                return;
             }
+
+            const data = await res.json();
+            setAddonRequests(data.requests || []);
         } catch (err) {
             console.error(err);
             Toast.show({ type: 'error', text1: 'Error', text2: "Failed to fetch requests" });
