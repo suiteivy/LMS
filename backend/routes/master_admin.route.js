@@ -43,7 +43,7 @@ router.get('/support-requests/:id/messages', masterAdminController.getTicketMess
 router.post('/support-requests/:id/messages', masterAdminController.addTicketMessage);
 
 // Global Payments Ledger
-router.get("/payments", masterAdminController.getAllPayments);
+// Redundant route removed (was duplicate of line 31)
 
 // Institution Analytics
 router.get("/analytics/:id", masterAdminController.getInstitutionAnalytics);
