@@ -69,7 +69,7 @@ export const useDashboardStats = () => {
                 supabase.from('attendance').select('*', { count: 'exact', head: true })
                     .eq('date', todayStr)
                     .eq('status', 'present')
-                    .eq('institution_id', profile?.institution_id)
+                    .eq('institution_id', profile?.institution_id || '')
 
             ]);
 

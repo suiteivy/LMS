@@ -76,6 +76,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     displayId: null as string | null
   })
 
+  // Deep comparison helper for flat objects
+  const isDataEqual = (a: any, b: any) => {
+    if (a === b) return true;
+    if (!a || !b) return false;
+    return JSON.stringify(a) === JSON.stringify(b);
+  };
+
   const [subscriptionStatus, setSubscriptionStatus] = useState<string | null>(null)
   const [subscriptionPlan, setSubscriptionPlan] = useState<string | null>(null)
   const [trialEndDate, setTrialEndDate] = useState<string | null>(null)
@@ -334,18 +341,27 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         newRoleInfo = { ...newRoleInfo, parentId: id, displayId: id };
       }
 
-      // 2. Batch State Updates
-      setSubscriptionStatus(newSubscriptionStatus);
-      setSubscriptionPlan(newSubscriptionPlan);
-      setTrialEndDate(newTrialEndDate);
-      setInstitutionName(newInstitutionName);
-      setIsPlatformAdmin(isPlatformAdminFlag);
-      setIsMain(isMainFlag);
-      setRoleInfo(newRoleInfo);
+      // 2. Batch State Updates only if changed
+      if (subscriptionStatus !== newSubscriptionStatus) setSubscriptionStatus(newSubscriptionStatus);
+      if (subscriptionPlan !== newSubscriptionPlan) setSubscriptionPlan(newSubscriptionPlan);
+      if (trialEndDate !== newTrialEndDate) setTrialEndDate(newTrialEndDate);
+      if (institutionName !== newInstitutionName) setInstitutionName(newInstitutionName);
+      if (isPlatformAdmin !== isPlatformAdminFlag) setIsPlatformAdmin(isPlatformAdminFlag);
+      if (isMain !== isMainFlag) setIsMain(isMainFlag);
+      
+      if (!isDataEqual(roleInfo, newRoleInfo)) {
+        setRoleInfo(newRoleInfo);
+      }
 
       // Setting profile LAST ensures that any effects watching 'profile' 
       // see the most current version of all other auth states.
-      setProfile(userData as UserProfile);
+      // We only update if the underlying data has changed to prevent render loops.
+      if (!isDataEqual(profile, userData)) {
+        console.log('[AuthContext] Profile data changed, updating state');
+        setProfile(userData as UserProfile);
+      } else {
+        console.log('[AuthContext] Profile data identical, skipping state update');
+      }
 
       lastLoadedUserId.current = userId;
       return userData as UserProfile;
@@ -367,7 +383,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     return null
   }
 
-  const getRoleRedirect = (userProfile: UserProfile | null, platformAdmin: boolean): string | null => {
+  const getRoleRedirect = React.useCallback((userProfile: UserProfile | null, platformAdmin: boolean): string | null => {
     if (!userProfile) return null;
     if (platformAdmin) return "/(master-admin)";
 
@@ -378,7 +394,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       case "parent": return "/(parent)";
       default: return "/(auth)/signIn";
     }
-  };
+  }, []);
 
   useEffect(() => {
     const initializeAuth = async () => {
@@ -449,6 +465,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         setSession(session);
         setUser(session.user);
         currentSessionRef.current = session;
+        const isDemoUser = session.user.email?.startsWith('demo.') || false;
         setIsDemo(isDemoUser);
         await AsyncStorage.setItem('session_start_time', Date.now().toString());
         loadUserProfile(session.user.id);

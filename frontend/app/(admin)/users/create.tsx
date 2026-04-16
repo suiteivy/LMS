@@ -83,14 +83,11 @@ export default function CreateUserScreen() {
     const insets = useSafeAreaInsets();
     const { isDark } = useTheme();
     const { profile } = useAuth();
-<<<<<<< HEAD
-=======
-    
+
     const instLevelLabel = (profile as any)?.institutions?.school_categories?.level_label || 'Grade';
     const isJunior = instLevelLabel === 'Grade';
     const isSecondary = instLevelLabel === 'Form';
     const isKG = instLevelLabel === 'KG';
->>>>>>> 11ac643 (System Audit Fixes: Resolved RLS recursion, consolidated schema.sql, fixed demo/logout 500 errors, and synchronized frontend tsconfig)
 
     const [step, setStep] = useState<Step>(0);
     const [form, setForm] = useState<FormData>({ ...initialFormData });
@@ -110,6 +107,7 @@ export default function CreateUserScreen() {
         let classQuery = supabase.from('classes').select('id, name, grade_level');
         let subjectQuery = supabase.from('subjects').select('id, title, teacher_id');
         let studentQuery = supabase.from('students').select('id, user_id, grade_level, users!inner(first_name, last_name, full_name, institution_id)') as any;
+        let parentQuery = supabase.from('parents').select('id, user_id, users!inner(first_name, last_name, full_name, institution_id)') as any;
 
         if (profile?.institution_id) {
             classQuery = classQuery.eq('institution_id', profile.institution_id);
@@ -119,7 +117,7 @@ export default function CreateUserScreen() {
         }
 
         const [classRes, subjectRes, studentRes, parentRes] = await Promise.all([
-            supabase.from('v_classes_detailed').select('id, name:display_name').eq('institution_id', profile?.institution_id).order('display_name'),
+            supabase.from('v_classes_detailed').select('id, name:display_name').eq('institution_id', profile?.institution_id || '').order('display_name'),
             subjectQuery,
             studentQuery,
             parentQuery
@@ -160,26 +158,21 @@ export default function CreateUserScreen() {
             return;
         }
         try {
-<<<<<<< HEAD
-            const payload: any = { ...form, institution_id: profile?.institution_id || form.institution_id };
-            if (form.create_parent) {
-                payload.parent_info = form.parent_info;
-            } else {
-                delete payload.parent_info;
-            }
-=======
             // Map the selected level string (e.g. "Grade 1") to numeric fields for the backend
             const levelStr = form.grade_level || form.form_level;
             const numLevel = levelStr ? parseInt(levelStr.replace(/[^0-9]/g, ''), 10) : null;
             
-            const payload = {
+            const payload: any = {
                 ...form,
+                institution_id: profile?.institution_id || form.institution_id,
                 grade_level: !isSecondary ? numLevel : null,
                 form_level: isSecondary ? numLevel : null,
                 parent_info: form.create_parent ? form.parent_info : undefined 
             };
 
->>>>>>> 11ac643 (System Audit Fixes: Resolved RLS recursion, consolidated schema.sql, fixed demo/logout 500 errors, and synchronized frontend tsconfig)
+            if (!form.create_parent) {
+                delete payload.parent_info;
+            }
             const response = await api.post('/auth/enroll-user', payload);
             setResult(response.data);
             setStep(4);

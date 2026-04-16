@@ -7,6 +7,7 @@ import { BookOpen, Calendar, ChevronRight, Plus, Search, User, X, Zap } from "lu
 import React, { useEffect, useState } from "react";
 import { ActivityIndicator, Alert, Modal, ScrollView, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { SubscriptionGate, AddonRequestButton } from "@/components/shared/SubscriptionComponents";
+import { supabase } from "@/libs/supabase";
 
 export default function TeacherLibraryPage() {
     const [books, setBooks] = useState<FrontendBook[]>([]);
@@ -37,7 +38,7 @@ export default function TeacherLibraryPage() {
             }
             const [booksData, studentsData] = await Promise.all([
                 LibraryAPI.getBooks(),
-                supabase.from('users').select('id, first_name, last_name, students(id)').eq('role', 'student').eq('institution_id', profile?.institution_id)
+                supabase.from('users').select('id, first_name, last_name, students(id)').eq('role', 'student').eq('institution_id', profile?.institution_id || '')
             ]);
             
             setBooks(booksData.map(LibraryAPI.transformBookData));
@@ -160,7 +161,6 @@ export default function TeacherLibraryPage() {
                                 ))}
                             </ScrollView>
                         )}
-                    </View>
                     </View>
                 </View>
             </SubscriptionGate>

@@ -414,10 +414,7 @@ exports.enrollMasterAdmin = async (req, res) => {
 
         if (paError) {
             console.error("Error inserting into platform_admins:", paError);
-<<<<<<< HEAD
             // Non-fatal — user is still functional
-=======
->>>>>>> 11ac643 (System Audit Fixes: Resolved RLS recursion, consolidated schema.sql, fixed demo/logout 500 errors, and synchronized frontend tsconfig)
         }
 
         return res.status(201).json({
@@ -829,4 +826,3 @@ exports.recordPlatformPayment = async (req, res) => {
         res.status(500).json({ error: "Failed to record platform payment" });
     }
 };
->>>>>>> 11ac643 (System Audit Fixes: Resolved RLS recursion, consolidated schema.sql, fixed demo/logout 500 errors, and synchronized frontend tsconfig)

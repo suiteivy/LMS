@@ -42,7 +42,6 @@ export default function UserDetailsScreen() {
     const inputBg = isDark ? '#1e1e1e' : '#f9fafb';
     const inputBorder = isDark ? '#2c2c2c' : '#e5e7eb';
     
-    const { profile } = useAuth();
     const instLevelLabel = (profile as any)?.institutions?.school_categories?.level_label || 'Grade';
 
     const [user, setUser] = useState<UserRow | null>(null);
@@ -118,13 +117,10 @@ export default function UserDetailsScreen() {
         }
 
         const [classRes, subjectRes, studentRes, parentRes] = await Promise.all([
-        const [classRes, subjectRes, studentRes, parentRes] = await Promise.all([
-            supabase.from('v_classes_detailed').select('id, name:display_name').eq('institution_id', profile?.institution_id).order('display_name'),
+            supabase.from('v_classes_detailed').select('id, name:display_name').eq('institution_id', profile?.institution_id || '').order('display_name'),
             subjectQuery,
             studentQuery,
             parentQuery
-        ]);
-
         ]);
         if (classRes.data) setClasses(classRes.data);
         if (subjectRes.data) setAllSubjects(subjectRes.data);

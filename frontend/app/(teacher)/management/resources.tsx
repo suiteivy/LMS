@@ -21,18 +21,12 @@ const ResourceCard = ({ resource, onDelete }: { resource: Resource; onDelete: (i
         return { icon: File, color: "#9ca3af", bg: "#f3f4f6" };
     };
 
-    const statusMap: Record<string, { bg: string; text: string; label: string }> = {
-        pending: { bg: '#FEF3C7', text: '#92400E', label: 'Pending Review' },
-        approved: { bg: '#D1FAE5', text: '#065F46', label: 'Approved' },
-        rejected: { bg: '#FEE2E2', text: '#991B1B', label: 'Rejected' },
-    };
-    const statusInfo = statusMap[(resource as any).status || 'approved'] || statusMap.approved;
-
-    // Approval status badge
     const statusKey = (resource as any).status ?? 'pending';
     const statusCfg = statusKey === 'approved'
         ? { label: 'Approved', color: '#16a34a', bg: '#dcfce7', Icon: CheckCircle2 }
-        : { label: 'Pending',  color: '#d97706', bg: '#fef3c7', Icon: Clock };
+        : statusKey === 'pending'
+            ? { label: 'Pending', color: '#d97706', bg: '#fef3c7', Icon: Clock }
+            : { label: 'Rejected', color: '#ef4444', bg: '#fee2e2', Icon: X };
 
     const typeInfo = getTypeIcon(resource.type);
     const IconComponent = typeInfo.icon;

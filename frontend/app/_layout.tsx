@@ -117,28 +117,58 @@ function AuthHandler() {
   const { isDark } = useTheme();
   const segments = useSegments();
   const router = useRouter();
+  
+  // Guard against redirect loops
+  const redirectCount = React.useRef(0);
+  const lastRedirectPath = React.useRef<string | null>(null);
 
   React.useEffect(() => {
     if (isInitializing || !isNavReady) return;
 
-    const currentPath = `/${segments.join('/')}`;
+    // Normalize paths: remove trailing slashes and clarify root
+    const normalizePath = (p: string) => {
+      let normalized = p.replace(/\/+$/, '') || '/';
+      if (normalized.endsWith('/index')) normalized = normalized.replace(/\/index$/, '') || '/';
+      return normalized;
+    };
+
+    const currentPath = normalizePath(`/${segments.join('/')}`);
     const inAuthGroup = segments.some(s => s === "(auth)");
-    const isRoot = currentPath === '/' || currentPath === '/index' || currentPath === '';
+    const isRoot = currentPath === '/' || currentPath === '';
 
     console.log(`[AuthHandler] State - Session: ${!!session}, Root: ${isRoot}, AuthGroup: ${inAuthGroup}, Path: ${currentPath}`);
+
+    const handleRedirect = (path: string) => {
+      const normalizedTarget = normalizePath(path);
+      if (currentPath === normalizedTarget) return;
+
+      // Loop prevention
+      if (lastRedirectPath.current === normalizedTarget) {
+        redirectCount.current++;
+        if (redirectCount.current > 5) {
+          console.error(`[AuthHandler] REDIRECT LOOP DETECTED on ${normalizedTarget}. Aborting.`);
+          return;
+        }
+      } else {
+        redirectCount.current = 0;
+        lastRedirectPath.current = normalizedTarget;
+      }
+
+      console.log(`[AuthHandler] Redirecting to ${normalizedTarget}`);
+      router.replace(normalizedTarget as any);
+    };
 
     if (!session) {
       if (!inAuthGroup && !isRoot) {
         console.log('[AuthHandler] No session, redirecting to signIn');
-        router.replace("/(auth)/signIn");
+        handleRedirect("/(auth)/signIn");
       }
     } else if (profile) {
       // If at root or in auth group, redirect to role-specific dashboard
       if (isRoot || inAuthGroup) {
         const redirectPath = getRoleRedirect(profile, isPlatformAdmin);
-        if (redirectPath && currentPath !== redirectPath) {
-          console.log(`[AuthHandler] Redirecting to ${redirectPath}`);
-          router.replace(redirectPath as any);
+        if (redirectPath) {
+          handleRedirect(redirectPath);
         }
       }
     }

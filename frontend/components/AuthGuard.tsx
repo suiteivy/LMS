@@ -17,10 +17,14 @@ export const AuthGuard: React.FC<AuthGuardProps> = ({
   requireAuth = true,
   allowedRoles
 }) => {
-  const { user, profile, isInitializing } = useAuth()
+  const { user, profile, isInitializing, getRoleRedirect, isPlatformAdmin } = useAuth()
   const { isDark } = useTheme()
   const hasBeenInitialized = React.useRef(false)
   const [shouldShowOverlay, setShouldShowOverlay] = React.useState(false)
+  
+  // Guard against redirect loops
+  const redirectCount = React.useRef(0)
+  const lastRedirectTarget = React.useRef<string | null>(null)
 
   useEffect(() => {
     if (!isInitializing) {
@@ -33,13 +37,26 @@ export const AuthGuard: React.FC<AuthGuardProps> = ({
       if (!user) {
         console.log('AuthGuard: No user found. Global AuthHandler will redirect.')
       } else if (allowedRoles && profile && !allowedRoles.includes(profile.role)) {
-        console.log(`AuthGuard: User role ${profile.role} not allowed, redirecting...`)
-        if (profile.role === 'admin') router.replace('/(admin)')
-        else if (profile.role === 'teacher') router.replace('/(teacher)')
-        else router.replace('/(student)')
+        const redirectPath = getRoleRedirect(profile, isPlatformAdmin) || '/(auth)/signIn';
+        
+        console.log(`AuthGuard: User role ${profile.role} not allowed on this route. Redirecting to ${redirectPath}...`)
+        
+        // Loop prevention
+        if (lastRedirectTarget.current === redirectPath) {
+          redirectCount.current++
+          if (redirectCount.current > 5) {
+            console.error('AuthGuard: REDIRECT LOOP DETECTED. Aborting.')
+            return
+          }
+        } else {
+          redirectCount.current = 0
+          lastRedirectTarget.current = redirectPath
+        }
+
+        router.replace(redirectPath as any)
       }
     }
-  }, [isInitializing, user, profile, requireAuth, allowedRoles])
+  }, [isInitializing, user, profile, requireAuth, allowedRoles, getRoleRedirect, isPlatformAdmin])
 
   // If we require auth and have no user, we naturally want to block the view 
   // until the redirect happens. We use an overlay to keep the component mounted.

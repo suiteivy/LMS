@@ -824,8 +824,6 @@ export default function MasterInstitutions() {
                             <MaterialCommunityIcons name="trash-can-outline" size={16} color="#ef4444" />
                             <Text style={{ color: '#ef4444', fontSize: 13, fontWeight: '600' }}>Delete</Text>
                         </TouchableOpacity>
-
-                        </TouchableOpacity>
                     </View>
                 </View>
 

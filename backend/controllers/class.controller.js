@@ -8,6 +8,7 @@ exports.createClass = async (req, res) => {
         const { grade_level, form_level, stream, capacity, teacher_id } = req.body;
         const institution_id = req.institution_id;
 
+        const insertData = {
             institution_id: institution_id || null,
         };
 

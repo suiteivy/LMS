@@ -381,7 +381,7 @@ export default function AdminDashboard() {
             }}>
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
                 <View>
-                  <Text style={{ fontSize: 18, fontWeight: '800', color: textPrimary, letterSpacing: -0.5 }}>Today's Presence</Text>
+                  <Text style={{ fontSize: 18, fontWeight: '800', color: textPrimary, letterSpacing: -0.5 }}>Today&apos;s Presence</Text>
                   <Text style={{ fontSize: 9, fontWeight: '700', color: '#8b5cf6', textTransform: 'uppercase', letterSpacing: 1 }}>Real-time Engagement</Text>
                 </View>
                 <Text style={{ fontSize: 24, fontWeight: '800', color: '#8b5cf6' }}>

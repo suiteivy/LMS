@@ -28,7 +28,7 @@ export const AttendanceService = {
     async markAttendance(records: AttendanceRecord[]) {
         const { data, error } = await supabase
             .from("attendance")
-            .upsert(records, { onConflict: "student_id,class_id,date" })
+            .upsert(records as any, { onConflict: "student_id,class_id,date" })
             .select();
 
         if (error) throw error;

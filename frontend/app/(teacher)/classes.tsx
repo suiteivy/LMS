@@ -251,9 +251,9 @@ const DailyTab = ({ classId, className: cName }: { classId: string; className: s
                     status: r.status as "present" | "absent" | "late" | "excused",
                 }));
 
-            const { error } = await supabase
+            const { data, error } = await supabase
                 .from("attendance")
-                .upsert(records, { onConflict: "student_id,class_id,date" });
+                .upsert(records as any, { onConflict: "student_id,class_id,date" });
 
             if (error) throw error;
 
@@ -444,6 +444,7 @@ const DailyTab = ({ classId, className: cName }: { classId: string; className: s
                                     onPress={async () => {
                                         setSaving(true);
                                         try {
+                                            const todayStr = isoDate(date);
                                             const records = rows.map(r => ({
                                                 student_id: r.student_id,
                                                 class_id: classId,
