@@ -79,6 +79,7 @@ export interface SubjectFormData {
   isPublic: boolean;
   allowDiscussions: boolean;
   certificateEnabled: boolean;
+  class_id?: string;
 }
 
 // ----------------------
@@ -157,6 +158,7 @@ export interface Subject {
   progress_percent?: number;
   lastAccessed?: string;
   lessons: Lesson[];
+  class_id?: string;
 }
 
 export interface Lesson {

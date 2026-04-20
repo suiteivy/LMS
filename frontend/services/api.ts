@@ -21,7 +21,29 @@ import Constants from "expo-constants";
  * @returns {string} The base URL for API requests
  */
 const getBaseUrl = (): string => {
-  return "http://192.168.56.1:4001/api";
+  // 1. Manually set environment variable has highest priority
+  if (process.env.EXPO_PUBLIC_URL) {
+    return process.env.EXPO_PUBLIC_URL;
+  }
+
+  // 2. Try to auto-detect LAN IP from Expo's hostUri (works for physical devices)
+  const hostUri = Constants.expoConfig?.hostUri;
+  if (hostUri) {
+    // hostUri usually looks like "192.168.1.10:8081"
+    const ip = hostUri.split(':')[0];
+    if (ip && ip !== 'localhost' && ip !== '127.0.0.1') {
+      return `http://${ip}:4001/api`;
+    }
+  }
+
+  // 3. Platform-specific fallbacks
+  if (Platform.OS === 'android') {
+    // 10.0.2.2 is the special alias for the host machine in Android emulators
+    return "http://10.0.2.2:4001/api";
+  }
+
+  // iOS Simulator, Web, or fallback
+  return "http://localhost:4001/api";
 };
 
 const baseURL = getBaseUrl();

@@ -4,6 +4,7 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { supabase } from '@/libs/supabase';
 import { AutoAssignResult, ClassItem, ClassService, ClassStudent } from '@/services/ClassService';
 import { Ionicons } from '@expo/vector-icons';
+import { router } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
     ActivityIndicator, Alert, Modal, Platform,
@@ -50,8 +51,9 @@ function getNameSuggestions(input: string, grade: string, existingClasses: Class
     const suggestions = new Set<string>();
 
     existingClasses.forEach(c => {
-        if (c.name.toLowerCase().includes(input.toLowerCase()) && c.name !== input) {
-            suggestions.add(c.name);
+        const className = c.name || c.display_name;
+        if (className && className.toLowerCase().includes(input.toLowerCase()) && className !== input) {
+            suggestions.add(className);
         }
     });
 
@@ -487,11 +489,12 @@ export default function AdminClassManagement() {
     }
 
     return (
-        <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: bg }}>
+        <View style={{ flex: 1, backgroundColor: bg }}>
             <UnifiedHeader
                 title="Class Management"
                 subtitle={`${classes.length} Total Streams`}
                 role="Admin"
+                onBack={() => router.back()}
                 showNotification={true}
             />
             <ScrollView
@@ -1204,6 +1207,6 @@ export default function AdminClassManagement() {
                 </View>
             </Modal>
 
-        </SafeAreaView>
+        </View>
     );
 }

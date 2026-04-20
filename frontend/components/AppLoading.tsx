@@ -11,10 +11,10 @@ import {
 import Svg, { Circle, Defs, LinearGradient, Stop } from 'react-native-svg';
 
 const PROMPTS = [
-  'Preparing your workspaceâ€¦',
-  'Syncing cloud dataâ€¦',
-  'Loading curriculum resourcesâ€¦',
-  'Almost thereâ€¦',
+  'Preparing your workspace',
+  'Syncing cloud data',
+  'Loading curriculum resources',
+  'Almost there',
   'Welcome back to Cloudora',
 ];
 

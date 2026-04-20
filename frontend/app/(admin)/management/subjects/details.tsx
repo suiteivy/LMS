@@ -79,17 +79,46 @@ function SubjectDetailsScreen() {
     try {
       const subjectId = Array.isArray(id) ? id[0] : id;
       if (!subjectId) throw new Error("Invalid subject ID");
+
+      // Check if class_id changed to trigger auto-enrollment
+      const classChanged = form.class_id !== subject.class_id && form.class_id;
+
       const { error } = await supabase
         .from("subjects")
         .update(form)
         .eq("id", subjectId);
       if (error) throw error;
+
+      // Auto-enrollment logic if stream was assigned/changed
+      if (classChanged) {
+        try {
+          const { data: studentsInClass } = await supabase
+            .from('class_enrollments')
+            .select('student_id')
+            .eq('class_id', form.class_id);
+
+          if (studentsInClass && studentsInClass.length > 0) {
+            const enrollments = studentsInClass.map(s => ({
+              student_id: s.student_id,
+              subject_id: subjectId,
+              institution_id: subject.institution_id,
+              status: 'enrolled',
+              enrollment_date: new Date().toISOString()
+            }));
+
+            await supabase.from('enrollments').upsert(enrollments, { onConflict: 'student_id,subject_id' });
+          }
+        } catch (enrollErr) {
+          console.error("Auto-enrollment failed during update:", enrollErr);
+        }
+      }
+
       setSubject(form);
       setEditing(false);
-      Alert.alert("Success", "Subject updated successfully.");
+      Alert.alert("Success", "Subject updated and stream students enrolled successfully.");
     } catch (error) {
       console.error("Error updating subject:", error);
-      Alert.alert("Error", "Failed to update subject. ");
+      Alert.alert("Error", "Failed to update subject.");
     } finally {
       setSaving(false);
     }

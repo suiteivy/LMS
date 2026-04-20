@@ -35,9 +35,8 @@ export default function UsersManagementScreen() {
     const inputBorder = isDark ? 'rgba(255,255,255,0.1)' : '#f3f4f6';
 
     const { isDemo, profile } = useAuth();
-    const institutionId = profile?.institution_id;
 
-    useEffect(() => { fetchUsers(); }, [activeFilter, isDemo, institutionId]);
+    useEffect(() => { fetchUsers(); }, [activeFilter, isDemo, profile?.institution_id]);
 
     const fetchUsers = async () => {
         try {
@@ -62,13 +61,19 @@ export default function UsersManagementScreen() {
                 return;
             }
 
+            // Guard: every admin must belong to an institution
+            if (!profile?.institution_id) {
+                console.warn('[UsersManagement] No institution_id on session — aborting fetch');
+                setUsers([]);
+                return;
+            }
+
             let query = supabase
                 .from('users')
-                .select(`id, first_name, last_name, email, role, created_at, students(id), teachers(id), admins(id), parents(id)`)
+                .select(`id, full_name, first_name, last_name, email, role, created_at, students(id), teachers(id), admins(id), parents(id)`)
+                .eq('institution_id', profile.institution_id)   // ← scope to this institution only
                 .order('created_at', { ascending: false });
 
-            // Scope to current institution
-            if (institutionId) query = query.eq('institution_id', institutionId);
             if (activeFilter !== 'all') query = query.eq('role', activeFilter);
 
             const { data, error } = await query;
@@ -86,16 +91,8 @@ export default function UsersManagementScreen() {
                         else if (u.role === 'teacher') displayId = getRoleId(u.teachers);
                         else if (u.role === 'admin') displayId = getRoleId(u.admins);
                         else if (u.role === 'parent') displayId = getRoleId(u.parents);
-                        return { 
-                            id: u.id, 
-                            displayId, 
-                            first_name: u.first_name,
-                            last_name: u.last_name,
-                            name: u.first_name ? `${u.first_name} ${u.last_name || ''}`.trim() : 'Unknown User', 
-                            email: u.email || 'No Email', 
-                            role: u.role || 'user', 
-                            joinDate: u.created_at || new Date().toISOString() 
-                        } as User;
+                        const fallbackName = `${u.first_name || ''} ${u.last_name || ''}`.trim();
+                        return { id: u.id, displayId, name: u.full_name || fallbackName || 'Unknown User', email: u.email || 'No Email', role: u.role || 'user', joinDate: u.created_at || new Date().toISOString() } as User;
                     } catch { return null; }
                 }).filter((u): u is User => u !== null);
                 setUsers(formattedUsers);

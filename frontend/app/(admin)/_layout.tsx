@@ -1,39 +1,42 @@
 import { AuthGuard } from "@/components/AuthGuard";
 import { NavItem, WebSidebar } from "@/components/layouts/WebSideBar";
+import { SubscriptionGate } from "@/components/shared/SubscriptionComponents";
 import { SchoolProvider } from "@/contexts/SchoolContext";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useSubscriptionTier } from "@/hooks/useSubscriptionTier";
 import { Slot, Tabs } from "expo-router";
-import { House, LayoutGrid, Settings, Users, Wallet, Headphones } from "lucide-react-native";
+import { House, LayoutGrid, Settings, Users, Wallet, Headphones, Bell } from "lucide-react-native";
 import { Platform, useWindowDimensions, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 // Full nav for paid plans
 const ALL_NAV_ITEMS: NavItem[] = [
-    { name: "settings/settings", title: "Settings", icon: Settings, route: "/(admin)/settings/settings" },
     { name: "index", title: "Home", icon: House, route: "/(admin)" },
     { name: "management/index", title: "Manage", icon: LayoutGrid, route: "/(admin)/management" },
     { name: "users/index", title: "Users", icon: Users, route: "/(admin)/users" },
     { name: "finance/index", title: "Finance", icon: Wallet, route: "/(admin)/finance" },
     { name: "support", title: "Support", icon: Headphones, route: "/(admin)/support" },
+    { name: "notifications", title: "Alerts", icon: Bell, route: "/(admin)/notifications" },
+    { name: "settings/settings", title: "Settings", icon: Settings, route: "/(admin)/settings/settings" },
 ];
 
 // Beta plan nav: Settings, Home, Users only (no Finance, no full Management)
 const BETA_NAV_ITEMS: NavItem[] = [
-    { name: "settings/settings", title: "Settings", icon: Settings, route: "/(admin)/settings/settings" },
     { name: "index", title: "Home", icon: House, route: "/(admin)" },
     { name: "management/index", title: "Manage", icon: LayoutGrid, route: "/(admin)/management" },
     { name: "users/index", title: "Users", icon: Users, route: "/(admin)/users" },
     { name: "support", title: "Support", icon: Headphones, route: "/(admin)/support" },
+    { name: "notifications", title: "Alerts", icon: Bell, route: "/(admin)/notifications" },
+    { name: "settings/settings", title: "Settings", icon: Settings, route: "/(admin)/settings/settings" },
 ];
 
-const MOBILE_TAB_NAMES = ["settings/settings", "index", "management/index"];
+const MOBILE_TAB_NAMES = ["index", "notifications", "settings/settings"];
 
 const ALL_OTHER = ALL_NAV_ITEMS
     .filter(i => !MOBILE_TAB_NAMES.includes(i.name))
     .map(i => i.name);
 
-const HIDDEN = [
+const HIDDEN = Array.from(new Set([
     ...ALL_OTHER,
     "users/[id]", "users/create",
     "finance/bursaries/[id]", "finance/bursaries/create",
@@ -44,17 +47,19 @@ const HIDDEN = [
     "management/roles/index", "settings/index",
     "management/classes/index", "classes/index", "classes/create", "classes/[id]", "classes/details",
     "attendance/teachers/index", "finance/bursaries/reports",
-    "classes/index", "classes/create",
-    "management/subjects/details",
-];
+]));
 
-// Beta plan extra hidden items
+// Beta plan extra hidden items (routes hidden from tab bar for beta users)
+// Note: management/index is already in MOBILE_TAB_NAMES so it is handled via href:null below.
 const BETA_EXTRA_HIDDEN = ["finance/index"];
+
+import { useNotifications } from "@/contexts/NotificationContext";
 
 function AdminTabs() {
     const insets = useSafeAreaInsets();
     const { isDark } = useTheme();
     const { isBeta } = useSubscriptionTier();
+    const { unreadCount } = useNotifications();
 
     return (
         <Tabs
@@ -88,19 +93,42 @@ function AdminTabs() {
                 sceneStyle: { backgroundColor: isDark ? '#0F0B2E' : "#f9fafb" },
             }}
         >
-            {/* Settings â€” left */}
+            {/* Notifications */}
             <Tabs.Screen
-                name="settings/settings"
+                name="notifications"
                 options={{
-                    title: "Settings",
-                    tabBarIcon: ({ size, color }) => {
-                        const Icon = Settings as any;
-                        return <View><Icon size={size} color={color} strokeWidth={2} /></View>;
+                    title: "Alerts",
+                    tabBarIcon: ({ size = 24, color }) => {
+                        const Icon = Bell as any;
+                        return (
+                            <View>
+                                <Icon size={size} color={color} strokeWidth={2} />
+                                {unreadCount > 0 && (
+                                    <View style={{
+                                        position: 'absolute',
+                                        top: -4,
+                                        right: -6,
+                                        minWidth: 16,
+                                        height: 16,
+                                        borderRadius: 8,
+                                        backgroundColor: '#FF6B00',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        borderWidth: 2,
+                                        borderColor: isDark ? '#0F0B2E' : '#ffffff',
+                                    }}>
+                                        <Text style={{ color: 'white', fontSize: 8, fontWeight: 'bold' }}>
+                                            {unreadCount > 9 ? '9+' : unreadCount}
+                                        </Text>
+                                    </View>
+                                )}
+                            </View>
+                        );
                     },
                 }}
             />
 
-            {/* Home â€” center, elevated style */}
+            {/* Home - center, elevated style */}
             <Tabs.Screen
                 name="index"
                 options={{
@@ -139,27 +167,20 @@ function AdminTabs() {
                 }}
             />
 
-            {/* Manage â€” right (paid plan only; hidden for beta) */}
-            {true && (
-                <Tabs.Screen
-                    name="management/index"
-                    options={{
-                        title: "Manage",
-                        tabBarIcon: ({ size, color }) => {
-                            const Icon = LayoutGrid as any;
-                            return <View><Icon size={size} color={color} strokeWidth={2} /></View>;
-                        },
-                    }}
-                />
-            )}
+            {/* Settings - right */}
+            <Tabs.Screen
+                name="settings/settings"
+                options={{
+                    title: "Settings",
+                    tabBarIcon: ({ size = 24, color }) => {
+                        const Icon = Settings as any;
+                        return <View><Icon size={size} color={color} strokeWidth={2} /></View>;
+                    },
+                }}
+            />
 
             {/* Hidden items (routes registered but not shown in tab bar) */}
             {HIDDEN.map((name) => (
-                <Tabs.Screen key={name} name={name} options={{ href: null }} />
-            ))}
-
-            {/* Beta plan extra hidden items */}
-            {isBeta && BETA_EXTRA_HIDDEN.map((name) => (
                 <Tabs.Screen key={name} name={name} options={{ href: null }} />
             ))}
         </Tabs>

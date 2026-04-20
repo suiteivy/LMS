@@ -4,7 +4,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useSubscriptionTier } from "@/hooks/useSubscriptionTier";
 import { Slot, Tabs } from "expo-router";
-import { BookOpen, Building, LayoutGrid, School, Settings, Users } from "lucide-react-native";
+import { BookOpen, Building, LayoutGrid, School, Settings, Users, Bell } from "lucide-react-native";
 import { Platform, useWindowDimensions, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -13,15 +13,17 @@ const ALL_NAV_ITEMS: NavItem[] = [
     { name: "index", title: "Home", icon: Building, route: "/(teacher)" },
     { name: "subjects", title: "Subjects", icon: BookOpen, route: "/(teacher)/subjects" },
     { name: "classes", title: "Classes", icon: School, route: "/(teacher)/classes" },
+    { name: "notifications", title: "Alerts", icon: Bell, route: "/(teacher)/notifications" },
     { name: "students", title: "Students", icon: Users, route: "/(teacher)/students" },
     { name: "library", title: "Library", icon: BookOpen, route: "/(teacher)/library" },
     { name: "management", title: "Manage", icon: LayoutGrid, route: "/(teacher)/management" },
     { name: "settings", title: "Settings", icon: Settings, route: "/(teacher)/settings" },
 ];
 
-// Simplified nav for beta plan â€” Home + Classes + Library + Settings
+// Simplified nav for beta plan Home + Classes + Library + Settings
 const BETA_NAV_ITEMS: NavItem[] = [
     { name: "index", title: "Home", icon: Building, route: "/(teacher)" },
+    { name: "notifications", title: "Alerts", icon: Bell, route: "/(teacher)/notifications" },
     { name: "classes", title: "Classes", icon: School, route: "/(teacher)/classes" },
     { name: "library", title: "Library", icon: BookOpen, route: "/(teacher)/library" },
     { name: "management", title: "Manage", icon: LayoutGrid, route: "/(teacher)/management" },
@@ -31,11 +33,14 @@ const BETA_NAV_ITEMS: NavItem[] = [
 // Names hidden from tabs on beta plan (registered as routes but not shown)
 const BETA_HIDDEN = ["subjects", "students"];
 
+import { useNotifications } from "@/contexts/NotificationContext";
+
 function TeacherTabs() {
     const insets = useSafeAreaInsets();
     const { isDemo } = useAuth();
     const { isDark } = useTheme();
     const { isBeta } = useSubscriptionTier();
+    const { unreadCount } = useNotifications();
 
     const NAV_ITEMS = isBeta ? BETA_NAV_ITEMS : ALL_NAV_ITEMS;
 
@@ -78,7 +83,30 @@ function TeacherTabs() {
                         href: undefined,
                         tabBarIcon: ({ size = 24, color }) => {
                             const Icon = item.icon as any;
-                            return <View><Icon size={size} color={color} strokeWidth={2} /></View>;
+                            return (
+                                <View>
+                                    <Icon size={size} color={color} strokeWidth={2} />
+                                    {item.name === "notifications" && unreadCount > 0 && (
+                                        <View style={{
+                                            position: 'absolute',
+                                            top: -4,
+                                            right: -6,
+                                            minWidth: 16,
+                                            height: 16,
+                                            borderRadius: 8,
+                                            backgroundColor: '#FF6B00',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            borderWidth: 2,
+                                            borderColor: isDark ? '#0F0B2E' : '#ffffff',
+                                        }}>
+                                            <Text style={{ color: 'white', fontSize: 8, fontWeight: 'bold' }}>
+                                                {unreadCount > 9 ? '9+' : unreadCount}
+                                            </Text>
+                                        </View>
+                                    )}
+                                </View>
+                            );
                         },
                     }}
                 />

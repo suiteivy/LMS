@@ -109,17 +109,17 @@ export default function AdminDashboard() {
         return;
       }
 
-      let query = supabase
-        .from("users")
-        .select(`*, students(id), teachers(id), admins(id)`)
-        .order("created_at", { ascending: false })
-        .limit(5);
-
-      if (profile?.institution_id) {
-          query = query.eq('institution_id', profile.institution_id);
+      if (!profile?.institution_id) {
+        setRecentUsers([]);
+        return;
       }
 
-      const { data, error } = await query;
+      const { data, error } = await supabase
+        .from("users")
+        .select(`*, students(id), teachers(id), admins(id)`)
+        .eq("institution_id", profile.institution_id)   // ← scope to this institution only
+        .order("created_at", { ascending: false })
+        .limit(5);
 
       if (error) throw error;
 
@@ -291,7 +291,6 @@ export default function AdminDashboard() {
                     <Text className="text-gray-500 dark:text-gray-400 text-[10px] font-bold uppercase tracking-widest">Get specialized modules</Text>
                   </View>
                 </View>
-                <AddonRequestButton onPress={() => setRequestModalVisible(true)} />
               </View>
 
               <View className="flex-row items-center justify-between bg-gray-50 dark:bg-gray-800/50 p-4 rounded-2xl">
@@ -307,6 +306,7 @@ export default function AdminDashboard() {
                   </Text>
                 </View>
               </View>
+              <AddonRequestButton style={{marginTop:12}} onPress={() => setRequestModalVisible(true)} />
             </View>
           </View>
 

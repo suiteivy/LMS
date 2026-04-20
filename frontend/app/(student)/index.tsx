@@ -219,7 +219,7 @@ export default function Index() {
           <View className="mb-8 px-2">
             <Text className="text-gray-400 dark:text-gray-500 font-bold text-[10px] uppercase tracking-[3px] mb-2">Academic Portal</Text>
             <Text className="text-gray-900 dark:text-white font-bold text-3xl tracking-tight">
-              Hello, {profile?.first_name || profile?.full_name?.split(' ')[0] || 'Student'} ðŸ‘‹
+              Hello, {profile?.first_name || profile?.full_name?.split(' ')[0] || 'Student'}
             </Text>
             <Text className="text-gray-400 dark:text-gray-500 text-xs font-medium mt-1">ID: {displayId || 'Not Assigned'}</Text>
           </View>
@@ -346,22 +346,16 @@ export default function Index() {
               onPress={() => router.push("/(student)/library" as any)}
             />
             <QuickAction
-              icon={Book}
-              label="Subjects"
-              color="#8b5cf6"
-              onPress={() => router.push("/(student)/subjects" as any)}
+              icon={Star}
+              label="Grades"
+              color="#eab308"
+              onPress={() => router.push("/(student)/grades" as any)}
             />
             <QuickAction
               icon={ArrowRight}
               label="Assignments"
               color="#f43f5e"
               onPress={() => router.push("/(student)/assignments" as any)}
-            />
-            <QuickAction
-              icon={Star}
-              label="Grades"
-              color="#eab308"
-              onPress={() => router.push("/(student)/grades" as any)}
             />
             <QuickAction
               icon={CalendarCheck}

@@ -18,7 +18,7 @@ const NAV_ITEMS: NavItem[] = [
     { name: "settings", title: "Settings", icon: Settings, route: "/(master-admin)/settings" },
 ];
 
-const MOBILE_TAB_NAMES = ["settings", "index", "institutions", "users"];
+const MOBILE_TAB_NAMES = ["settings", "index", "institutions", "payments"];
 
 const ALL_OTHER = NAV_ITEMS
     .filter(i => !MOBILE_TAB_NAMES.includes(i.name))

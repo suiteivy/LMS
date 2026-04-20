@@ -294,8 +294,20 @@ exports.enrollInstitution = async (req, res) => {
             .single();
 
         if (instError || !newInst) {
-            console.error("Error creating institution:", instError);
-            return res.status(500).json({ error: "Failed to create institution record." });
+            console.error("Error creating institution:", {
+                error: instError,
+                payload: {
+                    name: institution_name,
+                    location: location || '',
+                    subscription_plan: req.body.subscription_plan || 'trial',
+                    subscription_status: req.body.subscription_status || 'trial'
+                }
+            });
+            return res.status(500).json({ 
+                error: "Failed to create institution record.",
+                details: instError?.message,
+                hint: "Check database constraints for subscription_plan or type."
+            });
         }
 
         // 2. Create the admin user in Supabase Auth
@@ -321,22 +333,32 @@ exports.enrollInstitution = async (req, res) => {
         //    This INSERT fires the `handle_user_role_entry` trigger which auto-creates the admins row.
         const { error: profileError } = await adminClient
             .from('users')
-            .insert({
+            .upsert({
                 id: authUser.user.id,
                 email: admin_email,
-                full_name: finalFullName,
-                first_name: fName,
-                last_name: lName,
                 role: 'admin',
                 institution_id: newInst.id,
                 status: 'approved',
-            });
-
+                full_name: finalFullName,
+                first_name: fName,
+                last_name: lName
+            })
+            .eq('id', authUser.user.id);       
+        
+        
         if (profileError) {
-            console.error("Error inserting user profile:", profileError);
+            console.error("Error updating user profile:", {
+                error: profileError,
+                uid: authUser.user.id,
+                institution_id: newInst.id
+            });
+            // Clean up the institution and auth user if mapping fails
             await adminClient.from('institutions').delete().eq('id', newInst.id);
             await adminClient.auth.admin.deleteUser(authUser.user.id);
-            return res.status(500).json({ error: "Failed to create user profile: " + profileError.message });
+            return res.status(500).json({ 
+                error: "Failed to map new user profile.",
+                details: profileError?.message
+            });
         }
 
         return res.status(201).json({
@@ -408,7 +430,7 @@ exports.enrollMasterAdmin = async (req, res) => {
         // Create the user in Supabase Auth
         const { data: authUser, error: authError } = await adminClient.auth.admin.createUser({
             email: email,
-            password: admin_password,
+            password: password,
             email_confirm: true,
             user_metadata: { 
                 full_name: finalFullName,
@@ -540,64 +562,56 @@ exports.updateSupportRequest = async (req, res) => {
 };
 
 /**
- * Get ticket messages
+ * Remove an institution administrator with safety check
  */
-exports.getTicketMessages = async (req, res) => {
+exports.removeInstitutionAdmin = async (req, res) => {
     try {
-        const { id } = req.params;
+        const { userId } = req.params;
         const adminClient = getServiceSupabase();
-        
-        const { data, error } = await adminClient
-            .from('ticket_messages')
-            .select('*, sender:sender_id(first_name, last_name, full_name, role)')
-            .eq('ticket_id', id)
-            .order('created_at', { ascending: true });
 
-        if (error) throw error;
-        res.status(200).json({ messages: data });
-    } catch (error) {
-        console.error("Error fetching ticket messages:", error);
-        res.status(500).json({ error: "Failed to fetch ticket messages" });
-    }
-};
-
-/**
- * Add a message to a ticket
- */
-exports.addTicketMessage = async (req, res) => {
-    try {
-        const { id } = req.params;
-        const { message, is_internal } = req.body;
-        const sender_id = req.userId;
-
-        if (!message) return res.status(400).json({ error: "Message is required" });
-
-        const adminClient = getServiceSupabase();
-        const { data, error } = await adminClient
-            .from('ticket_messages')
-            .insert([{
-                ticket_id: id,
-                sender_id,
-                message,
-                is_internal: !!is_internal
-            }])
-            .select()
+        // 1. Get the institution_id for this admin
+        const { data: user, error: userError } = await adminClient
+            .from('users')
+            .select('institution_id, role')
+            .eq('id', userId)
             .single();
 
-        if (error) throw error;
+        if (userError || !user) {
+            return res.status(404).json({ error: "Administrator not found." });
+        }
 
-        // Auto-reply context: if status was 'pending', move to 'awaiting_customer' or 'in_progress'
-        await adminClient.from('support_tickets')
-            .update({ status: 'in_progress', updated_at: new Date().toISOString() })
-            .eq('id', id);
+        if (user.role !== 'admin') {
+            return res.status(400).json({ error: "Target user is not an administrator." });
+        }
 
-        res.status(201).json({ message: "Message added", data });
+        // 2. Count current admins for this institution
+        const { count, error: countError } = await adminClient
+            .from('users')
+            .select('*', { count: 'exact', head: true })
+            .eq('institution_id', user.institution_id)
+            .eq('role', 'admin');
+
+        if (countError) throw countError;
+
+        // 3. Safety Check: Must have at least one admin
+        if (count <= 1) {
+            return res.status(400).json({ 
+                error: "Cannot remove the last administrator.", 
+                details: "An institution must have at least one administrator at all times." 
+            });
+        }
+
+        // 4. Perform Deletion (Cascade handles public.users and admins table)
+        const { error: deleteError } = await adminClient.auth.admin.deleteUser(userId);
+        if (deleteError) throw deleteError;
+
+        return res.status(200).json({ message: "Administrator removed successfully." });
+
     } catch (error) {
-        console.error("Error adding ticket message:", error);
-        res.status(500).json({ error: "Failed to add message" });
+        console.error("Remove Admin Error:", error);
+        return res.status(500).json({ error: "Failed to remove administrator." });
     }
 };
-
 /**
  * Updates the authenticated Platform Admin's own profile.
  */
@@ -859,10 +873,111 @@ exports.recordPlatformPayment = async (req, res) => {
             .single();
 
         if (error) throw error;
-
         res.status(201).json({ message: "Platform payment recorded successfully", transaction: data });
     } catch (error) {
         console.error("Error recording platform payment:", error);
         res.status(500).json({ error: "Failed to record platform payment" });
     }
 };
+
+/**
+ * Get all messages for a specific support ticket (Platform Admin View)
+ */
+exports.getTicketMessages = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const adminClient = getServiceSupabase();
+
+        // Check if ticket exists
+        const { data: ticket, error: ticketError } = await adminClient
+            .from('support_tickets')
+            .select('*')
+            .eq('id', id)
+            .single();
+
+        if (ticketError || !ticket) {
+            return res.status(404).json({ error: "Ticket not found" });
+        }
+
+        const { data: messages, error: msgError } = await adminClient
+            .from('ticket_messages')
+            .select(`
+                *,
+                sender:sender_id(id, first_name, last_name, full_name, role)
+            `)
+            .eq('ticket_id', id)
+            .order('created_at', { ascending: true });
+
+        if (msgError) throw msgError;
+
+        res.status(200).json({ 
+            ticket,
+            messages: messages || [] 
+        });
+    } catch (error) {
+        console.error("Error fetching ticket messages:", error);
+        res.status(500).json({ error: "Failed to fetch ticket messages" });
+    }
+};
+
+/**
+ * Add a message to a ticket (Platform Admin View)
+ */
+exports.addTicketMessage = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { userId } = req; // From auth middleware
+        const { message, is_internal = false, status } = req.body;
+
+        if (!message) {
+            return res.status(400).json({ error: "Message content is required" });
+        }
+
+        const adminClient = getServiceSupabase();
+
+        // 1. Insert the message
+        const { data: newMessage, error: msgError } = await adminClient
+            .from('ticket_messages')
+            .insert([{
+                ticket_id: id,
+                sender_id: userId,
+                message,
+                is_internal: !!is_internal
+            }])
+            .select(`
+                *,
+                sender:sender_id(id, first_name, last_name, full_name, role)
+            `)
+            .single();
+
+        if (msgError) throw msgError;
+
+        // 2. Update ticket status and updated_at
+        const ticketUpdates = { updated_at: new Date().toISOString() };
+        if (status) {
+            ticketUpdates.status = status;
+        } else if (!is_internal) {
+            // If it's a public reply from admin, set status to 'awaiting_customer' if it was 'open'
+            ticketUpdates.status = 'awaiting_customer';
+        }
+
+        const { error: ticketError } = await adminClient
+            .from('support_tickets')
+            .update(ticketUpdates)
+            .eq('id', id);
+
+        if (ticketError) {
+            console.error("Error updating ticket status:", ticketError);
+            // Non-fatal for the message insert
+        }
+
+        res.status(201).json({ 
+            message: "Message added successfully", 
+            data: newMessage 
+        });
+    } catch (error) {
+        console.error("Error adding ticket message:", error);
+        res.status(500).json({ error: "Failed to add ticket message" });
+    }
+};
+

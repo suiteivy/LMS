@@ -29,6 +29,7 @@ export const useSubjectForm = () => {
     isPublic: true,
     allowDiscussions: true,
     certificateEnabled: true,
+    class_id: "",
   });
 
   // Track form submission status
@@ -116,9 +117,50 @@ export const useSubjectForm = () => {
         description: formData.description,
         fee_amount: parseFloat(formData.price) || 0,
         institution_id: profile?.institution_id || "",
+        class_id: formData.class_id || null,
         // @ts-ignore - Validated by backend
         metadata: metadata
       });
+
+      // Handle automatic enrollment if a class was selected
+      if (formData.class_id) {
+        try {
+          // Fetch students in this class
+          const { data: studentsInClass } = await supabase
+            .from('class_enrollments')
+            .select('student_id')
+            .eq('class_id', formData.class_id);
+
+          if (studentsInClass && studentsInClass.length > 0) {
+            // Get the newly created subject's ID (or we should get it from the response)
+            // For now, we'll fetch the most recent subject created for this institution and class
+            const { data: newSubject } = await supabase
+              .from('subjects')
+              .select('id')
+              .eq('institution_id', profile?.institution_id)
+              .eq('title', formData.title)
+              .eq('class_id', formData.class_id)
+              .order('created_at', { ascending: false })
+              .limit(1)
+              .single();
+
+            if (newSubject) {
+              const enrollments = studentsInClass.map(s => ({
+                student_id: s.student_id,
+                subject_id: newSubject.id,
+                institution_id: profile?.institution_id,
+                status: 'enrolled',
+                enrollment_date: new Date().toISOString()
+              }));
+
+              await supabase.from('enrollments').upsert(enrollments, { onConflict: 'student_id,subject_id' });
+            }
+          }
+        } catch (enrollErr) {
+          console.error("Auto-enrollment failed:", enrollErr);
+          // Don't fail the whole subject creation, but log it
+        }
+      }
 
       Alert.alert("Success", "Subject created successfully!");
       router.back();

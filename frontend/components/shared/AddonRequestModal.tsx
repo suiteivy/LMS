@@ -10,6 +10,7 @@ import {
     Alert
 } from 'react-native';
 import { X, CheckCircle, Info, Library, MessageSquare, BadgeCent, BarChart3, HelpCircle, Users, Zap } from 'lucide-react-native';
+import { useTheme } from '@/contexts/ThemeContext';
 import { api } from '@/services/api';
 import { showSuccess, showError } from '@/utils/toast';
 
@@ -20,16 +21,17 @@ interface AddonRequestModalProps {
 }
 
 const ADDON_OPTIONS = [
-    { key: 'library', label: 'ðŸ“– Digital Library', icon: Library, color: '#FF6B00', desc: 'Manage books, PDFs and student borrowing.' },
-    { key: 'messaging', label: 'ðŸ’¬ Messaging + Diary', icon: MessageSquare, color: '#8B5CF6', desc: 'Direct chat, announcements and daily logs.' },
-    { key: 'attendance', label: 'ðŸ“‹ Attendance Management', icon: Users, color: '#EC4899', desc: 'Advanced student and teacher tracking.' },
-    { key: 'feature_request', label: 'âœ¨ Feature Request', icon: Zap, color: '#F59E0B', desc: 'Describe a new feature or modification you need.' },
-    { key: 'finance', label: 'ðŸ’° Accounting Plus', icon: BadgeCent, color: '#10B981', desc: 'Advanced financial reports and fee tracking.' },
-    { key: 'analytics', label: 'ðŸ“ˆ Performance Analytics', icon: BarChart3, color: '#3B82F6', desc: 'Student progress and visual data insights.' },
-    { key: 'bursary', label: 'ðŸ¦ Bursary Module', icon: HelpCircle, color: '#F59E0B', desc: 'Financial aid tracking and disbursements.' },
+    { key: 'library', label: 'Digital Library', icon: Library, color: '#FF6B00', desc: 'Manage books, PDFs and student borrowing.' },
+    { key: 'messaging', label: 'Messaging + Diary', icon: MessageSquare, color: '#8B5CF6', desc: 'Direct chat, announcements and daily logs.' },
+    { key: 'attendance', label: 'Attendance Management', icon: Users, color: '#EC4899', desc: 'Advanced student and teacher tracking.' },
+    { key: 'feature_request', label: 'Feature Request', icon: Zap, color: '#F59E0B', desc: 'Describe a new feature or modification you need.' },
+    { key: 'finance', label: 'Accounting Plus', icon: BadgeCent, color: '#10B981', desc: 'Advanced financial reports and fee tracking.' },
+    { key: 'analytics', label: 'Performance Analytics', icon: BarChart3, color: '#3B82F6', desc: 'Student progress and visual data insights.' },
+    { key: 'bursary', label: 'Bursary Module', icon: HelpCircle, color: '#F59E0B', desc: 'Financial aid tracking and disbursements.' },
 ];
 
 export const AddonRequestModal = ({ visible, onClose, currentAddons }: AddonRequestModalProps) => {
+    const { isDark } = useTheme();
     const [selectedAddon, setSelectedAddon] = useState<string | null>(null);
     const [notes, setNotes] = useState('');
     const [loading, setLoading] = useState(false);
@@ -71,10 +73,10 @@ export const AddonRequestModal = ({ visible, onClose, currentAddons }: AddonRequ
         return (
             <Modal visible={visible} transparent animationType="fade">
                 <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', alignItems: 'center', padding: 24 }}>
-                    <View style={{ backgroundColor: 'white', borderRadius: 32, padding: 32, alignItems: 'center', width: '100%', maxWidth: 400 }}>
+                    <View style={{ backgroundColor: isDark ? '#13103A' : 'white', borderRadius: 32, padding: 32, alignItems: 'center', width: '100%', maxWidth: 400 }}>
                         <CheckCircle size={64} color="#10B981" />
-                        <Text style={{ fontSize: 24, fontWeight: '800', color: '#111827', marginTop: 24, textAlign: 'center' }}>Request Submitted!</Text>
-                        <Text style={{ fontSize: 16, color: '#6B7280', textAlign: 'center', marginTop: 12 }}>Our team will review your request and get back to you shortly via email.</Text>
+                        <Text style={{ fontSize: 24, fontWeight: '800', color: isDark ? '#F9FAFB' : '#111827', marginTop: 24, textAlign: 'center' }}>Request Submitted!</Text>
+                        <Text style={{ fontSize: 16, color: isDark ? '#9CA3AF' : '#6B7280', textAlign: 'center', marginTop: 12 }}>Our team will review your request and get back to you shortly via email.</Text>
                     </View>
                 </View>
             </Modal>
@@ -84,25 +86,25 @@ export const AddonRequestModal = ({ visible, onClose, currentAddons }: AddonRequ
     return (
         <Modal visible={visible} transparent animationType="slide">
             <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' }}>
-                <View style={{ backgroundColor: 'white', borderTopLeftRadius: 32, borderTopRightRadius: 32, padding: 24, minHeight: '60%', boxShadow: [{ offsetX: 0, offsetY: -10, blurRadius: 20, color: 'rgba(0, 0, 0, 0.1)' }], shadowColor: '#000', shadowOffset: { width: 0, height: -10 }, shadowOpacity: 0.1, shadowRadius: 20, elevation: 20 }}>
+                <View style={{ backgroundColor: isDark ? '#13103A' : 'white', borderTopLeftRadius: 32, borderTopRightRadius: 32, padding: 24, minHeight: '60%', boxShadow: [{ offsetX: 0, offsetY: -10, blurRadius: 20, color: 'rgba(0, 0, 0, 0.1)' }], shadowColor: '#000', shadowOffset: { width: 0, height: -10 }, shadowOpacity: 0.1, shadowRadius: 20, elevation: 20 }}>
 
                     {/* Header */}
                     <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
                         <View>
-                            <Text style={{ fontSize: 22, fontWeight: '900', color: '#111827' }}>Enhance Your Plan</Text>
-                            <Text style={{ fontSize: 13, color: '#6B7280', fontWeight: '500' }}>Request premium features for your institution</Text>
+                            <Text style={{ fontSize: 22, fontWeight: '900', color: isDark ? '#F9FAFB' : '#111827' }}>Enhance Your Plan</Text>
+                            <Text style={{ fontSize: 13, color: isDark ? '#9CA3AF' : '#6B7280', fontWeight: '500' }}>Request premium features for your institution</Text>
                         </View>
-                        <TouchableOpacity onPress={handleClose} style={{ backgroundColor: '#F3F4F6', padding: 8, borderRadius: 20 }}>
-                            <X size={24} color="#111827" />
+                        <TouchableOpacity onPress={handleClose} style={{ backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : '#F3F4F6', padding: 8, borderRadius: 20 }}>
+                            <X size={24} color={isDark ? '#F9FAFB' : "#111827"} />
                         </TouchableOpacity>
                     </View>
 
                     <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
-                        <Text style={{ fontSize: 14, fontWeight: '700', color: '#374151', marginBottom: 16, textTransform: 'uppercase', letterSpacing: 0.5 }}>Select a Feature</Text>
+                        <Text style={{ fontSize: 14, fontWeight: '700', color: isDark ? '#E5E7EB' : '#374151', marginBottom: 16, textTransform: 'uppercase', letterSpacing: 0.5 }}>Select a Feature</Text>
 
                         <View style={{ gap: 12 }}>
                             {ADDON_OPTIONS.map((item) => {
-                                const isOwned = currentAddons[item.key];
+                                const isOwned = Boolean(currentAddons?.[item.key]);
                                 const isSelected = selectedAddon === item.key;
                                 const Icon = item.icon;
 
@@ -116,27 +118,27 @@ export const AddonRequestModal = ({ visible, onClose, currentAddons }: AddonRequ
                                             padding: 16,
                                             borderRadius: 24,
                                             borderWidth: 2,
-                                            borderColor: isSelected ? item.color : '#F3F4F6',
-                                            backgroundColor: isOwned ? '#F9FAFB' : isSelected ? `${item.color}08` : 'white',
+                                            borderColor: isSelected ? item.color : (isDark ? 'rgba(255,255,255,0.1)' : '#F3F4F6'),
+                                            backgroundColor: isOwned ? (isDark ? '#1f2937' : '#F9FAFB') : isSelected ? `${item.color}15` : (isDark ? '#0F0B2E' : 'white'),
                                             opacity: isOwned ? 0.6 : 1
                                         }}
                                     >
-                                        <View style={{ width: 48, height: 48, borderRadius: 16, backgroundColor: isOwned ? '#E5E7EB' : `${item.color}15`, alignItems: 'center', justifyContent: 'center', marginRight: 16 }}>
-                                            <Icon size={24} color={isOwned ? '#9CA3AF' : item.color} />
+                                        <View style={{ width: 48, height: 48, borderRadius: 16, backgroundColor: isOwned ? (isDark ? 'rgba(255,255,255,0.1)' : '#E5E7EB') : `${item.color}15`, alignItems: 'center', justifyContent: 'center', marginRight: 16 }}>
+                                            <Icon size={24} color={isOwned ? (isDark ? '#6B7280' : '#9CA3AF') : item.color} />
                                         </View>
                                         <View style={{ flex: 1 }}>
                                             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                                                <Text style={{ fontSize: 16, fontWeight: '700', color: isOwned ? '#9CA3AF' : '#111827' }}>{item.label}</Text>
+                                                <Text style={{ fontSize: 16, fontWeight: '700', color: isOwned ? '#9CA3AF' : (isDark ? '#F9FAFB' : '#111827') }}>{item.label}</Text>
                                                 {isOwned && (
-                                                    <View style={{ backgroundColor: '#E5E7EB', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 }}>
-                                                        <Text style={{ fontSize: 9, fontWeight: '800', color: '#6B7280', textTransform: 'uppercase' }}>Active</Text>
+                                                    <View style={{ backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : '#E5E7EB', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 }}>
+                                                        <Text style={{ fontSize: 9, fontWeight: '800', color: isDark ? '#9CA3AF' : '#6B7280', textTransform: 'uppercase' }}>Active</Text>
                                                     </View>
                                                 )}
                                             </View>
-                                            <Text style={{ fontSize: 12, color: '#6B7280', marginTop: 2 }}>{item.desc}</Text>
+                                            <Text style={{ fontSize: 12, color: isDark ? '#9CA3AF' : '#6B7280', marginTop: 2 }}>{item.desc}</Text>
                                         </View>
                                         {!isOwned && (
-                                            <View style={{ width: 20, height: 20, borderRadius: 10, borderWidth: 2, borderColor: isSelected ? item.color : '#D1D5DB', alignItems: 'center', justifyContent: 'center' }}>
+                                            <View style={{ width: 20, height: 20, borderRadius: 10, borderWidth: 2, borderColor: isSelected ? item.color : (isDark ? 'rgba(255,255,255,0.2)' : '#D1D5DB'), alignItems: 'center', justifyContent: 'center' }}>
                                                 {isSelected && <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: item.color }} />}
                                             </View>
                                         )}
@@ -146,10 +148,11 @@ export const AddonRequestModal = ({ visible, onClose, currentAddons }: AddonRequ
                         </View>
 
                         <View style={{ marginTop: 24 }}>
-                            <Text style={{ fontSize: 14, fontWeight: '700', color: '#374151', marginBottom: 12 }}>Additional Notes (Optional)</Text>
+                            <Text style={{ fontSize: 14, fontWeight: '700', color: isDark ? '#E5E7EB' : '#374151', marginBottom: 12 }}>Additional Notes (Optional)</Text>
                             <TextInput
-                                style={{ backgroundColor: '#F9FAFB', borderWidth: 1, borderColor: '#E5E7EB', borderRadius: 20, padding: 16, fontSize: 14, minHeight: 100, textAlignVertical: 'top' }}
+                                style={{ backgroundColor: isDark ? '#0F0B2E' : '#F9FAFB', borderWidth: 1, color: isDark ? '#F9FAFB' : '#111827', borderColor: isDark ? 'rgba(255,255,255,0.1)' : '#E5E7EB', borderRadius: 20, padding: 16, fontSize: 14, minHeight: 100, textAlignVertical: 'top' }}
                                 placeholder="Tell us about your institution's specific needs..."
+                                placeholderTextColor={isDark ? "rgba(255,255,255,0.3)" : "#9CA3AF"}
                                 multiline
                                 value={notes}
                                 onChangeText={setNotes}

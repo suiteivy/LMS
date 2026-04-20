@@ -18,17 +18,17 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 // Full nav â€” used by sidebar on web
 const NAV_ITEMS: NavItem[] = [
   { name: "index", title: "Home", icon: Building, route: "/(student)" },
-  { name: "subjects", title: "Subjects", icon: BookOpen, route: "/(student)/subjects" },
+  { name: "grades", title: "Performance", icon: Star, route: "/(student)/grades" },
   { name: "library", title: "Library", icon: Glasses, route: "/(student)/library" },
   { name: "assignments", title: "Assignments", icon: PenBox, route: "/(student)/assignments" },
-  { name: "grades", title: "Grades", icon: Star, route: "/(student)/grades" },
   { name: "finance", title: "Finances", icon: CreditCard, route: "/(student)/finance" },
   { name: "messages", title: "Messages", icon: MessageSquare, route: "/(student)/messages" },
+  { name: "notifications", title: "Updates", icon: MessageSquare, route: "/(student)/notifications" },
   { name: "settings", title: "Settings", icon: Settings, route: "/(student)/settings" },
 ];
 
-// Only these three show in the mobile bottom tab bar
-const MOBILE_TAB_NAMES = ["index", "messages", "settings"];
+// Only these show in the mobile bottom tab bar
+const MOBILE_TAB_NAMES = ["index", "notifications", "grades", "settings"];
 
 // Everything else hidden (route still works, just no tab)
 const ALL_OTHER = NAV_ITEMS
@@ -130,13 +130,25 @@ function StudentTabs() {
         }}
       />
 
-      {/* Messages â€” right */}
+      {/* Notifications tab */}
       <Tabs.Screen
-        name="messages"
+        name="notifications"
         options={{
-          title: "Messages",
+          title: "Updates",
           tabBarIcon: ({ size, color }) => {
             const Icon = MessageSquare as any;
+            return <View><Icon size={size} color={color} strokeWidth={2} /></View>;
+          },
+        }}
+      />
+
+      {/* Grades tab */}
+      <Tabs.Screen
+        name="grades"
+        options={{
+          title: "Grades",
+          tabBarIcon: ({ size, color }) => {
+            const Icon = Star as any;
             return <View><Icon size={size} color={color} strokeWidth={2} /></View>;
           },
         }}

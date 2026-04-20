@@ -189,7 +189,9 @@ exports.enrollUser = async (req, res) => {
   }
 
   try {
-    const targetInstitutionId = institution_id || req.institution_id;
+    // Automatically assign institution based on admin session (Strict Scoping)
+    // Only Platform Admins can override the target institution.
+    const targetInstitutionId = req.isPlatformAdmin ? (institution_id || req.institution_id) : req.institution_id;
 
     // 0. Enforce Limits
     if (targetInstitutionId) {
@@ -263,56 +265,64 @@ exports.enrollUser = async (req, res) => {
       }
     }
 
-    // 0.2 Uniqueness Check for Name in Institution
-    if (targetInstitutionId) {
-      const { data: existingUser } = await supabase
-        .from('users')
-        .select('id')
-        .eq('institution_id', targetInstitutionId)
-        .ilike('first_name', fName)
-        .ilike('last_name', lName || '')
-        .maybeSingle();
-
-      if (existingUser) {
-        return res.status(400).json({
-          error: "A user with the same first and last name already exists in this institution. Please provide a slight variation to distinguish them.",
-          code: 'DUPLICATE_NAME'
-        });
-      }
-    }
 
     // 0.5 Generate custom email if not provided
     let finalEmail = email;
-    if (!finalEmail) {
-      if (targetInstitutionId) {
-        const { data: inst } = await supabase.from('institutions').select('email_domain').eq('id', targetInstitutionId).single();
-        if (inst?.email_domain && ['student', 'teacher', 'admin'].includes(role)) {
-          // Automatically generate: first.last@domain.edu
-          const cleanF = fName.toLowerCase().replace(/[^a-z0-9]/g, '');
-          const cleanL = (lName || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-          
-          if (cleanF && cleanL) {
-            finalEmail = `${cleanF}.${cleanL}@${inst.email_domain}`;
-          } else if (cleanF) {
-            finalEmail = `${cleanF}@${inst.email_domain}`;
-          }
-        } else if (!inst?.email_domain) {
-          return res.status(400).json({
-            error: "An email is required. Auto-generation failed because this institution does not have a configured email domain.",
-            code: 'MISSING_EMAIL_DOMAIN'
-          });
-        } else {
-           return res.status(400).json({
-            error: `Email generation is not supported for role: ${role}. Please provide an email manually.`,
-            code: 'EMAIL_REQUIRED_FOR_ROLE'
-          });
+    if (!finalEmail && targetInstitutionId) {
+      const { data: inst } = await supabase
+        .from('institutions')
+        .select('email_domain')
+        .eq('id', targetInstitutionId)
+        .single();
+      
+      if (inst?.email_domain && ['student', 'teacher', 'admin'].includes(role)) {
+        const cleanF = fName.toLowerCase().replace(/[^a-z0-9]/g, '');
+        const cleanL = (lName || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+        
+        let baseEmail = '';
+        if (cleanF && cleanL) {
+          baseEmail = `${cleanF}.${cleanL}`;
+        } else if (cleanF) {
+          baseEmail = cleanF;
         }
-      } else {
+
+        if (baseEmail) {
+          finalEmail = `${baseEmail}@${inst.email_domain}`;
+          
+          // Collision Check
+          let isAvailable = false;
+          let counter = 1;
+          while (!isAvailable) {
+            const { data: existing } = await supabase
+              .from('users')
+              .select('id')
+              .eq('email', finalEmail)
+              .maybeSingle();
+            
+            if (existing) {
+              counter++;
+              finalEmail = `${baseEmail}${counter}@${inst.email_domain}`;
+            } else {
+              isAvailable = true;
+            }
+          }
+        }
+      } else if (!inst?.email_domain) {
         return res.status(400).json({
-          error: "Email is required.",
-          code: 'MISSING_EMAIL'
+          error: "An email is required. Auto-generation failed because this institution does not have a configured email domain.",
+          code: 'MISSING_EMAIL_DOMAIN'
+        });
+      } else {
+         return res.status(400).json({
+          error: `Email generation is not supported for role: ${role}. Please provide an email manually.`,
+          code: 'EMAIL_REQUIRED_FOR_ROLE'
         });
       }
+    } else if (!finalEmail && !targetInstitutionId) {
+      return res.status(400).json({
+        error: "Email is required.",
+        code: 'MISSING_EMAIL'
+      });
     }
 
     // Validate required fields again with potentially updated email
@@ -840,9 +850,20 @@ exports.deleteUser = async (req, res) => {
 exports.searchUsers = async (req, res) => {
   try {
     const { q, role } = req.query;
+    const callerRole = req.userRole;
+    const callerInstitutionId = req.institution_id;
+
     let query = supabase
       .from("users")
       .select("id, first_name, last_name, full_name, email, role, avatar_url");
+
+    // Non-master-admins can only search within their own institution
+    if (callerRole !== 'master_admin') {
+      if (!callerInstitutionId) {
+        return res.status(403).json({ error: "No institution associated with this account" });
+      }
+      query = query.eq("institution_id", callerInstitutionId);
+    }
 
     if (q) {
       query = query.or(`first_name.ilike.%${q}%,last_name.ilike.%${q}%,full_name.ilike.%${q}%`);

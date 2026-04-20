@@ -42,7 +42,7 @@ CREATE TABLE institutions (
     type TEXT CHECK (type IN ('primary', 'secondary', 'tertiary', 'vocational')),
     principal_name TEXT,
     subscription_status TEXT DEFAULT 'trial' CHECK (subscription_status IN ('trial', 'active', 'expired', 'cancelled')),
-    subscription_plan TEXT DEFAULT 'trial' CHECK (subscription_plan IN ('trial', 'beta', 'basic', 'pro', 'premium', 'custom')),
+    subscription_plan TEXT DEFAULT 'trial' CHECK (subscription_plan IN ('trial', 'beta', 'beta_free', 'free', 'basic', 'pro', 'premium', 'custom')),
     has_used_trial BOOLEAN DEFAULT TRUE,
     trial_start_date TIMESTAMPTZ DEFAULT NOW(),
     trial_end_date TIMESTAMPTZ DEFAULT NOW() + INTERVAL '30 days',
@@ -80,10 +80,6 @@ CREATE TABLE users (
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Unique name constraint per institution
-CREATE UNIQUE INDEX IF NOT EXISTS idx_unique_user_name_per_institution 
-ON users (institution_id, LOWER(first_name), LOWER(last_name)) 
-WHERE first_name IS NOT NULL AND last_name IS NOT NULL;
 
 -- ---------------------------------------------------------
 -- PART 2: CUSTOM ID SYSTEM
@@ -815,6 +811,7 @@ $$;
 
 -- Apply strict institution isolation to all tables
 ALTER TABLE users ENABLE ROW LEVEL SECURITY;
+<<<<<<< HEAD
 -- Fixed recursion by checking id = auth.uid() first to short-circuit policy evaluation
 CREATE POLICY "strict_institution_isolation" ON users FOR ALL 
 USING (
@@ -835,6 +832,9 @@ USING (
         OR (status = 'published' AND student_id = current_user_student_id())
     )
 );
+=======
+CREATE POLICY "strict_institution_isolation" ON users FOR ALL USING (id = auth.uid() OR institution_id = get_current_user_institution_id() OR is_platform_admin());
+>>>>>>> Fix
 ALTER TABLE admins ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "strict_institution_isolation" ON admins FOR ALL USING (institution_id = get_current_user_institution_id() OR get_current_user_role() = 'master_admin');
 ALTER TABLE teachers ENABLE ROW LEVEL SECURITY;

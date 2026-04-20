@@ -18,18 +18,40 @@ export default function Subjects() {
   const [selectedSubject, setSelectedSubject] = useState<Subject | null>(null);
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [loading, setLoading] = useState(true);
-  const [enrolling, setEnrolling] = useState(false);
   const [resources, setResources] = useState<any[]>([]);
   const [resourcesLoading, setResourcesLoading] = useState(false);
   const [kesRate, setKesRate] = useState<number>(129);
+  const [studentClassId, setStudentClassId] = useState<string | null>(null);
 
   const fetchSubjects = useCallback(async () => {
     try {
       setLoading(true);
-      const { data: subjectsData, error: subjectsError } = await supabase
+
+      // determine class_id for this student
+      let classId = studentClassId;
+      if (!classId && studentId) {
+        const { data: classEnrollment } = await supabase
+          .from("class_enrollments")
+          .select("class_id")
+          .eq("student_id", studentId)
+          .single();
+        if (classEnrollment) {
+          classId = classEnrollment.class_id;
+          setStudentClassId(classId);
+        }
+      }
+
+      const query = supabase
         .from("subjects")
         .select(`*, teacher:teachers(user:users(full_name)), lessons(*)`);
+      
+      if (classId) {
+        query.eq("class_id", classId);
+      } else {
+        query.is("class_id", null);
+      }
 
+      const { data: subjectsData, error: subjectsError } = await query;
       if (subjectsError) throw subjectsError;
 
       let enrolledSubjectIds: string[] = [];
@@ -75,7 +97,7 @@ export default function Subjects() {
     } finally {
       setLoading(false);
     }
-  }, [studentId]);
+  }, [studentId, studentClassId]);
 
   useEffect(() => {
     fetchSubjects();
@@ -101,28 +123,7 @@ export default function Subjects() {
   };
 
   const handleEnroll = async () => {
-    if (!selectedSubject || !selectedSubject.id) return;
-    if (!user || !studentId) {
-      Alert.alert("Error", "You must be logged in to enroll.");
-      return;
-    }
-    setEnrolling(true);
-    try {
-      const { error } = await supabase.from('enrollments').insert({
-        student_id: studentId,
-        subject_id: selectedSubject.id,
-        status: 'enrolled',
-        enrollment_date: new Date().toISOString()
-      } as any);
-      if (error) throw error;
-      Alert.alert("Success", "You have successfully enrolled in this Subject!");
-      setSubjects(prev => prev.map(c => c.id === selectedSubject.id ? { ...c, isEnrolled: true } : c));
-      setSelectedSubject(prev => prev ? { ...prev, isEnrolled: true } : null);
-    } catch (error: any) {
-      Alert.alert("Error", "Failed to enroll. " + (error.message || ""));
-    } finally {
-      setEnrolling(false);
-    }
+    Alert.alert("Information", "Enrollment is managed by your administration.");
   };
 
   const openResource = (url: string) => Linking.openURL(url).catch(err => Alert.alert("Error", "Could not open link"));
@@ -211,7 +212,6 @@ export default function Subjects() {
           ) : null}
         </View>
       </ScrollView>
-      <FullScreenLoader visible={enrolling} message="Securing your spot..." />
     </View >
   );
 }

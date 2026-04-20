@@ -117,7 +117,10 @@ export default function CreateUserScreen() {
         }
 
         const [classRes, subjectRes, studentRes, parentRes] = await Promise.all([
-            supabase.from('v_classes_detailed').select('id, name:display_name').eq('institution_id', profile?.institution_id || '').order('display_name'),
+            supabase.from('v_classes_detailed')
+                .select('id, name:display_name, grade_level, form_level, level_label')
+                .eq('institution_id', profile?.institution_id || '')
+                .order('display_name'),
             subjectQuery,
             studentQuery,
             parentQuery
@@ -137,11 +140,37 @@ export default function CreateUserScreen() {
     const toggleArrayItem = (key: 'class_ids' | 'subject_ids', id: string) => {
         setForm(prev => {
             const arr = [...(prev[key] as string[])];
+            const isStudentClass = prev.role === 'student' && key === 'class_ids';
+            
+            // If student, enforce single selection
+            if (isStudentClass) {
+                return { ...prev, [key]: [id] };
+            }
+
             const idx = arr.indexOf(id);
             if (idx === -1) arr.push(id); else arr.splice(idx, 1);
             return { ...prev, [key]: arr };
         });
     };
+
+    // Filtered classes logic
+    const getFilteredClasses = () => {
+        const levelStr = form.grade_level || form.form_level;
+        if (!levelStr) return [];
+        
+        const numLevel = parseInt(levelStr.replace(/[^0-9]/g, ''), 10);
+        return classes.filter(c => {
+            const classLevel = isSecondary ? c.form_level : c.grade_level;
+            return classLevel === numLevel;
+        });
+    };
+
+    // Reset class when level changes
+    useEffect(() => {
+        if (form.role === 'student') {
+            setForm(prev => ({ ...prev, class_ids: [] }));
+        }
+    }, [form.grade_level, form.form_level]);
 
     const addLinkedStudent = (studentId: string, studentName: string) => {
         if (form.linked_students.some(ls => ls.student_id === studentId)) return;
@@ -302,11 +331,13 @@ export default function CreateUserScreen() {
             {form.role !== 'parent' && !form.email.trim() && (
                 <View style={{ backgroundColor: isDark ? '#1e293b' : '#f1f5f9', padding: 12, borderRadius: 12, marginBottom: 16 }}>
                     <Text style={{ fontSize: 11, color: textSecondary }}>
-                        ðŸ’¡ Leaving this blank will automatically create an email: <Text style={{ fontWeight: 'bold' }}>first.last@institution.com</Text>
+                        Leaving this blank will automatically create an email: <Text style={{ fontWeight: 'bold' }}>first.last@institution.com</Text>
                     </Text>
                 </View>
             )}
-            <RenderInput label="Phone" value={form.phone} onChangeText={(v: string) => updateFormSanitized('phone', v, 'phone')} placeholder="+254 7XX XXX XXX" keyboardType="phone-pad" isDark={isDark} textPrimary={textPrimary} textSecondary={textSecondary} inputBg={inputBg} inputBorder={inputBorder} />
+            {form.role !== 'student' && (
+                <RenderInput label="Phone" value={form.phone} onChangeText={(v: string) => updateFormSanitized('phone', v, 'phone')} placeholder="+254 7XX XXX XXX" keyboardType="phone-pad" isDark={isDark} textPrimary={textPrimary} textSecondary={textSecondary} inputBg={inputBg} inputBorder={inputBorder} />
+            )}
             <RenderPicker label="Gender" options={GENDER_OPTIONS} selected={form.gender} onSelect={(v: string) => updateForm('gender', v)} isDark={isDark} textPrimary={textPrimary} textSecondary={textSecondary} border={border} card={card} />
             <DatePicker label="Date of Birth" value={form.date_of_birth} onChange={v => updateForm('date_of_birth', v)} isDark={isDark} />
             <RenderInput label="Address" value={form.address} onChangeText={(v: string) => updateFormSanitized('address', v)} placeholder="Enter physical address" isDark={isDark} textPrimary={textPrimary} textSecondary={textSecondary} inputBg={inputBg} inputBorder={inputBorder} />
@@ -320,12 +351,59 @@ export default function CreateUserScreen() {
             <RenderInput label="Parent/Guardian Contact" value={form.parent_contact} onChangeText={(v: string) => updateFormSanitized('parent_contact', v, 'phone')} placeholder="Phone number" keyboardType="phone-pad" isDark={isDark} textPrimary={textPrimary} textSecondary={textSecondary} inputBg={inputBg} inputBorder={inputBorder} />
 
             <View style={{ backgroundColor: isDark ? '#1c1008' : '#fff7ed', borderRadius: 12, padding: 16, marginBottom: 16 }}>
-                <Text style={{ fontSize: 13, fontWeight: '700', color: isDark ? '#fed7aa' : '#7c2d12', marginBottom: 12 }}>ðŸ†˜ Emergency Contact</Text>
+                <Text style={{ fontSize: 13, fontWeight: '700', color: isDark ? '#fed7aa' : '#7c2d12', marginBottom: 12 }}>Emergency Contact</Text>
                 <RenderInput label="Name" value={form.emergency_contact_name} onChangeText={(v: string) => updateFormSanitized('emergency_contact_name', v)} placeholder="Emergency contact name" isDark={isDark} textPrimary={textPrimary} textSecondary={textSecondary} inputBg={inputBg} inputBorder={inputBorder} />
                 <RenderInput label="Phone" value={form.emergency_contact_phone} onChangeText={(v: string) => updateFormSanitized('emergency_contact_phone', v, 'phone')} placeholder="Emergency phone" keyboardType="phone-pad" isDark={isDark} textPrimary={textPrimary} textSecondary={textSecondary} inputBg={inputBg} inputBorder={inputBorder} />
             </View>
 
-            <RenderMultiSelect label="Assign to Classes" items={classes} selectedIds={form.class_ids} toggleItem={(id: string) => toggleArrayItem('class_ids', id)} displayFn={(c: any) => `${c.name} (${c.level_label || instLevelLabel} ${c.grade_level || c.form_level || 'N/A'})`} isDark={isDark} textPrimary={textPrimary} textSecondary={textSecondary} border={border} card={card} />
+            {/* Class Assignment Section */}
+            <View style={{ marginBottom: 16 }}>
+                <Text style={{ fontSize: 13, fontWeight: '700', color: textSecondary, marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.5 }}>Assign to Class (Stream) *</Text>
+                
+                {!(form.grade_level || form.form_level) ? (
+                    <View style={{ backgroundColor: isDark ? '#1e293b' : '#f8fafc', padding: 16, borderRadius: 12, borderStyle: 'dashed', borderWidth: 1, borderColor: border }}>
+                        <Text style={{ color: textSecondary, fontSize: 13, textAlign: 'center' }}>Please select a {instLevelLabel} level first</Text>
+                    </View>
+                ) : getFilteredClasses().length === 0 ? (
+                    <View style={{ backgroundColor: isDark ? '#450a0a' : '#fef2f2', padding: 16, borderRadius: 12, borderWidth: 1, borderColor: isDark ? '#991b1b' : '#fecaca' }}>
+                        <Ionicons name="alert-circle" size={20} color={isDark ? '#f87171' : '#dc2626'} style={{ marginBottom: 8 }} />
+                        <Text style={{ color: isDark ? '#fecaca' : '#991b1b', fontSize: 13, fontWeight: '600' }}>No streams found for {form.grade_level || form.form_level}</Text>
+                        <TouchableOpacity 
+                            onPress={() => router.push('/(admin)/classes')}
+                            style={{ marginTop: 12, backgroundColor: isDark ? '#991b1b' : '#dc2626', padding: 10, borderRadius: 8, alignSelf: 'flex-start' }}
+                        >
+                            <Text style={{ color: 'white', fontSize: 12, fontWeight: '700' }}>Manage Streams</Text>
+                        </TouchableOpacity>
+                    </View>
+                ) : (
+                    <View style={{ gap: 8 }}>
+                        {getFilteredClasses().map(c => (
+                            <TouchableOpacity 
+                                key={c.id} 
+                                onPress={() => toggleArrayItem('class_ids', c.id)}
+                                activeOpacity={0.7}
+                                style={{ 
+                                    flexDirection: 'row', 
+                                    alignItems: 'center', 
+                                    padding: 16, 
+                                    borderRadius: 12, 
+                                    borderWidth: 1.5, 
+                                    backgroundColor: form.class_ids.includes(c.id) ? (isDark ? '#1e3a8a' : '#eff6ff') : card,
+                                    borderColor: form.class_ids.includes(c.id) ? '#3b82f6' : border
+                                }}
+                            >
+                                <View style={{ width: 22, height: 22, borderRadius: 11, borderWidth: 2, borderColor: form.class_ids.includes(c.id) ? '#3b82f6' : border, alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
+                                    {form.class_ids.includes(c.id) && <View style={{ width: 12, height: 12, borderRadius: 6, backgroundColor: '#3b82f6' }} />}
+                                </View>
+                                <View style={{ flex: 1 }}>
+                                    <Text style={{ color: textPrimary, fontWeight: '600', fontSize: 15 }}>{c.name}</Text>
+                                    <Text style={{ color: textSecondary, fontSize: 12 }}>{c.level_label} Stream</Text>
+                                </View>
+                            </TouchableOpacity>
+                        ))}
+                    </View>
+                )}
+            </View>
 
             <View style={{ backgroundColor: isDark ? '#0f172a' : '#eff6ff', borderRadius: 16, padding: 20, marginBottom: 16, borderWidth: 1, borderColor: isDark ? '#1e3a5f' : '#bfdbfe' }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
@@ -615,7 +693,7 @@ export default function CreateUserScreen() {
             </View>
             <View style={{ backgroundColor: isDark ? '#1c1008' : '#fff7ed', borderRadius: 12, padding: 16, width: '100%', marginBottom: 24 }}>
                 <Text style={{ color: isDark ? '#fed7aa' : '#7c2d12', fontSize: 13, fontWeight: '500', textAlign: 'center' }}>
-                    âš ï¸ Share these credentials securely. The user should change their password on first login.
+                    Share these credentials securely. The user should change their password on first login.
                 </Text>
             </View>
             <View style={{ flexDirection: 'row', gap: 16, width: '100%' }}>

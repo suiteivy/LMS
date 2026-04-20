@@ -26,8 +26,11 @@ export default function ReportsPage() {
     const fetchReports = async () => {
         setLoading(true);
         try {
-            const { data: bursaries } = await supabase.from('bursaries').select('*') as any;
-            const { data: applications } = await supabase.from('bursary_applications').select('*, bursary:bursaries(amount)') as any;
+            const { data: bursariesData } = await supabase.from('bursaries').select('*');
+            const { data: applicationsData } = await supabase.from('bursary_applications').select('*, bursary:bursaries(amount)');
+
+            const bursaries = bursariesData as any[] | null;
+            const applications = applicationsData as any[] | null;
 
             const totalBursaries = bursaries?.length || 0;
             const totalApplications = applications?.length || 0;

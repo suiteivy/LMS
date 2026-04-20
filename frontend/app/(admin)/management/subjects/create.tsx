@@ -26,6 +26,8 @@ import {
     View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { supabase } from "@/libs/supabase";
+import { useAuth } from "@/contexts/AuthContext";
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 const MODAL_HEIGHT = SCREEN_HEIGHT * 0.92;
@@ -46,6 +48,27 @@ const CreateSubject = () => {
         handleSubmit,
         saveDraft,
     } = useSubjectForm();
+    const { profile } = useAuth();
+    const [classes, setClasses] = React.useState<any[]>([]);
+
+    useEffect(() => {
+        const fetchClasses = async () => {
+            const { data } = await supabase
+                .from('classes')
+                .select('id, grade_level, stream, display_name')
+                .eq('institution_id', profile?.institution_id)
+                .order('grade_level');
+            
+            if (data) {
+                const options = data.map(c => ({
+                    value: c.id,
+                    label: c.display_name || `Grade ${c.grade_level} - Stream ${c.stream}`
+                }));
+                setClasses(options);
+            }
+        };
+        fetchClasses();
+    }, [profile?.institution_id]);
 
     // ── Animation values ──────────────────────────────────────────────────────
     const translateY = useRef(new Animated.Value(MODAL_HEIGHT)).current;
@@ -184,6 +207,14 @@ const CreateSubject = () => {
                                 value={formData.level}
                                 options={LEVELS}
                                 onSelect={(value) => handleInputChange("level", value)}
+                            />
+                            <CustomPicker
+                                label="Assigned Stream"
+                                optional
+                                value={formData.class_id || ""}
+                                options={classes}
+                                onSelect={(value) => handleInputChange("class_id", value)}
+                                placeholder="Select Stream (Optional)"
                             />
                             <View style={{ marginBottom: 16 }}>
                                 <Text style={{ fontSize: 13, fontWeight: '500', color: textSecondary, marginBottom: 6 }}>Price *</Text>

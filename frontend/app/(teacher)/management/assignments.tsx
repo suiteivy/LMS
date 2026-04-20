@@ -1,12 +1,13 @@
 import { UnifiedHeader } from "@/components/common/UnifiedHeader";
 import { useAuth } from "@/contexts/AuthContext";
+import { useTheme } from "@/contexts/ThemeContext";
 import { supabase } from "@/libs/supabase";
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { decode } from "base64-arraybuffer";
 import * as DocumentPicker from 'expo-document-picker';
-import * as FileSystem from 'expo-file-system';
+import { File } from 'expo-file-system';
 import { router } from "expo-router";
-import { Calendar, Edit2, Eye, FileText, Plus, Printer, Trash2, Upload, Users, X } from 'lucide-react-native';
+import { AlignLeft, Calendar, Edit2, Eye, FileText, Plus, Printer, Target, Trophy, Trash2, Type, Upload, Users, X, BookOpen } from 'lucide-react-native';
 import React, { useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, Alert, Modal, ScrollView, Text, TextInput, TouchableOpacity, View, Platform } from 'react-native';
 import { DiaryAPI } from "@/services/DiaryService";
@@ -116,6 +117,7 @@ const AssignmentCard = ({ assignment, onEdit, onView, onDelete }: {
 
 export default function AssignmentsPage() {
     const { teacherId } = useAuth();
+    const { isDark } = useTheme();
     const [showModal, setShowModal] = useState(false);
     const [filter, setFilter] = useState<"all" | "active" | "draft" | "closed">("all");
     const [assignments, setAssignments] = useState<Assignment[]>([]);
@@ -133,7 +135,7 @@ export default function AssignmentsPage() {
     const [showDatePicker, setShowDatePicker] = useState(false)
     const [selectedFile, setSelectedFile] = useState<DocumentPickerAsset | null>(null);
     const [uploading, setUploading] = useState(false);
-    const [weight, setWeight] = useState("0");
+    const [weight, setWeight] = useState("");
     const [term, setTerm] = useState("");
 
     const onDateChange = (_event: any, selectedDate?: Date) => {
@@ -350,20 +352,10 @@ export default function AssignmentsPage() {
                     const fileExt = selectedFile.name.split('.').pop();
                     const filePath = `${teacherId}/${Date.now()}.${fileExt}`;
 
-                    // Robust file reading for mobile compatibility
-                    let fileBody;
-                    if (Platform.OS === 'web') {
-                        // Standard web file handling
-                        const response = await fetch(selectedFile.uri);
-                        const blob = await response.blob();
-                        fileBody = blob;
-                    } else {
-                        // Expo native handling
-                        const base64 = await FileSystem.readAsStringAsync(selectedFile.uri, {
-                            encoding: 'base64',
-                        });
-                        fileBody = decode(base64);
-                    }
+                    // Robust file reading for mobile compatibility with Expo 54+
+                    const file = new File(selectedFile.uri);
+                    const base64 = await file.base64();
+                    const fileBody = decode(base64);
 
                     const { error: uploadError } = await supabase.storage
                         .from('course_materials')
@@ -717,77 +709,121 @@ export default function AssignmentsPage() {
                             </View>
 
                             <View className="mb-6">
-                                <Text className="text-gray-500 dark:text-gray-400 text-[10px] font-bold uppercase tracking-wider ml-2 mb-2">Title</Text>
+                                <View className="flex-row items-center ml-2 mb-2">
+                                    <Type size={12} color="#6B7280" />
+                                    <Text className="text-gray-500 dark:text-gray-400 text-[10px] font-bold uppercase tracking-wider ml-1.5">Title</Text>
+                                </View>
                                 <TextInput
-                                    className="bg-gray-50 dark:bg-[#1a1a1a] rounded-2xl px-6 py-4 text-gray-900 dark:text-white font-bold border border-gray-100 dark:border-gray-800"
-                                    placeholder="Assignment Title"
+                                    className="bg-gray-50 dark:bg-[#1A1650] rounded-2xl px-6 py-4 text-gray-900 dark:text-white font-bold border border-gray-100 dark:border-gray-800"
+                                    placeholder="e.g. Mid-term Research Project"
                                     placeholderTextColor="#9CA3AF"
                                     value={title}
                                     onChangeText={setTitle}
+                                    style={{ minHeight: 56 }}
                                 />
                             </View>
 
                             <View className="mb-6">
-                                <Text className="text-gray-500 dark:text-gray-400 text-[10px] font-bold uppercase tracking-wider ml-2 mb-2">Description</Text>
+                                <View className="flex-row items-center ml-2 mb-2">
+                                    <AlignLeft size={12} color="#6B7280" />
+                                    <Text className="text-gray-500 dark:text-gray-400 text-[10px] font-bold uppercase tracking-wider ml-1.5">Description</Text>
+                                </View>
                                 <TextInput
-                                    className="bg-gray-50 dark:bg-[#1a1a1a] rounded-2xl px-6 py-4 text-gray-900 dark:text-white font-medium border border-gray-100 dark:border-gray-800 h-32"
-                                    placeholder="What should the students do?"
+                                    className="bg-gray-50 dark:bg-[#1A1650] rounded-2xl px-6 py-4 text-gray-900 dark:text-white font-medium border border-gray-100 dark:border-gray-800"
+                                    placeholder="Enter assignment instructions and requirements..."
                                     placeholderTextColor="#9CA3AF"
                                     multiline
                                     textAlignVertical="top"
                                     value={description}
                                     onChangeText={setDescription}
+                                    style={{ minHeight: 120 }}
                                 />
                             </View>
 
-                            <View className="flex-row gap-4 mb-8">
+                            <View className="flex-row gap-4 mb-6">
                                 <View className="flex-1">
-                                    <Text className="text-gray-500 dark:text-gray-400 text-[10px] font-bold uppercase tracking-wider ml-2 mb-2">Due Date</Text>
-                                    <TouchableOpacity
-                                        onPress={() => setShowDatePicker(true)}
-                                        className="bg-gray-50 dark:bg-[#1a1a1a] rounded-2xl px-6 py-4 flex-row justify-between items-center border border-gray-100 dark:border-gray-800"
-                                    >
-                                        <Text className={`font-bold ${dueDate ? "text-gray-900 dark:text-white" : "text-gray-300 dark:text-gray-600"}`}>
-                                            {dueDate ? dueDate : "Select date"}
-                                        </Text>
-                                        <Calendar size={18} color="#FF6900" />
-                                    </TouchableOpacity>
+                                    <View className="flex-row items-center ml-2 mb-2">
+                                        <Calendar size={12} color="#6B7280" />
+                                        <Text className="text-gray-500 dark:text-gray-400 text-[10px] font-bold uppercase tracking-wider ml-1.5">Due Date</Text>
+                                    </View>
+                                    {Platform.OS === 'web' ? (
+                                        <input
+                                            type="date"
+                                            value={dueDate}
+                                            onChange={(e) => {
+                                                const v = e.target.value;
+                                                setDueDate(v);
+                                                if (v) setDateObject(new Date(v));
+                                            }}
+                                            className="bg-gray-50 dark:bg-[#1A1650] rounded-2xl px-6 py-4 text-gray-900 dark:text-white font-bold border border-gray-100 dark:border-gray-800"
+                                            style={{ 
+                                                minHeight: 56,
+                                                colorScheme: isDark ? 'dark' : 'light',
+                                                outline: 'none',
+                                                fontFamily: 'inherit',
+                                                fontSize: '14px'
+                                            }}
+                                        />
+                                    ) : (
+                                        <TouchableOpacity
+                                            onPress={() => setShowDatePicker(true)}
+                                            className="bg-gray-50 dark:bg-[#1A1650] rounded-2xl px-6 py-4 flex-row justify-between items-center border border-gray-100 dark:border-gray-800"
+                                            style={{ minHeight: 56 }}
+                                        >
+                                            <Text className={`font-bold ${dueDate ? "text-gray-900 dark:text-white" : "text-gray-300 dark:text-gray-600"}`}>
+                                                {dueDate ? dueDate : "Select date"}
+                                            </Text>
+                                            <Calendar size={16} color="#FF6900" />
+                                        </TouchableOpacity>
+                                    )}
                                 </View>
 
                                 <View className="flex-1">
-                                    <Text className="text-gray-500 dark:text-gray-400 text-[10px] font-bold uppercase tracking-wider ml-2 mb-2">Points</Text>
+                                    <View className="flex-row items-center ml-2 mb-2">
+                                        <Target size={12} color="#6B7280" />
+                                        <Text className="text-gray-500 dark:text-gray-400 text-[10px] font-bold uppercase tracking-wider ml-1.5">Points</Text>
+                                    </View>
                                     <TextInput
-                                        className="bg-gray-50 dark:bg-[#1a1a1a] rounded-2xl px-6 py-4 text-gray-900 dark:text-white font-bold border border-gray-100 dark:border-gray-800"
+                                        className="bg-gray-50 dark:bg-[#1A1650] rounded-2xl px-6 py-4 text-gray-900 dark:text-white font-bold border border-gray-100 dark:border-gray-800"
                                         placeholder="100"
                                         placeholderTextColor="#9CA3AF"
                                         keyboardType="numeric"
                                         value={points}
                                         onChangeText={setPoints}
+                                        style={{ minHeight: 56 }}
                                     />
                                 </View>
                             </View>
 
                             <View className="flex-row gap-4 mb-8">
                                 <View className="flex-1">
-                                    <Text className="text-gray-500 dark:text-gray-400 text-[10px] font-bold uppercase tracking-wider ml-2 mb-2">Weight (%)</Text>
+                                    <View className="flex-row items-center ml-2 mb-2">
+                                        <Trophy size={12} color="#6B7280" />
+                                        <Text className="text-gray-500 dark:text-gray-400 text-[10px] font-bold uppercase tracking-wider ml-1.5">Weight (%)</Text>
+                                    </View>
                                     <TextInput
-                                        className="bg-gray-50 dark:bg-[#1a1a1a] rounded-2xl px-6 py-4 text-gray-900 dark:text-white font-bold border border-gray-100 dark:border-gray-800"
-                                        placeholder="0"
+                                        className="bg-gray-50 dark:bg-[#1A1650] rounded-2xl px-6 py-4 text-gray-900 dark:text-white font-bold border border-gray-100 dark:border-gray-800"
+                                        placeholder="e.g. 25"
                                         placeholderTextColor="#9CA3AF"
                                         keyboardType="numeric"
                                         value={weight}
                                         onChangeText={setWeight}
+                                        style={{ minHeight: 56 }}
                                     />
                                 </View>
 
                                 <View className="flex-1">
-                                    <Text className="text-gray-500 dark:text-gray-400 text-[10px] font-bold uppercase tracking-wider ml-2 mb-2">Term / Semester</Text>
+                                    <View className="flex-row items-center ml-2 mb-2">
+                                        <BookOpen size={12} color="#6B7280" />
+                                        <Text className="text-gray-500 dark:text-gray-400 text-[10px] font-bold uppercase tracking-wider ml-1.5">Term</Text>
+                                    </View>
                                     <TextInput
-                                        className="bg-gray-50 dark:bg-[#1a1a1a] rounded-2xl px-6 py-4 text-gray-900 dark:text-white font-bold border border-gray-100 dark:border-gray-800"
+                                        className="bg-gray-50 dark:bg-[#1A1650] rounded-2xl px-6 py-4 text-gray-900 dark:text-white font-bold border border-gray-100 dark:border-gray-800"
                                         placeholder="Semester 1"
                                         placeholderTextColor="#9CA3AF"
                                         value={term}
                                         onChangeText={setTerm}
+                                        style={{ minHeight: 56 }}
                                     />
                                 </View>
                             </View>

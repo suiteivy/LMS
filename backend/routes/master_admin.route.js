@@ -14,10 +14,10 @@ router.get("/stats", masterAdminController.getDashboardStats);
 // Institutions Management
 router.get("/institutions", masterAdminController.getAllInstitutions);
 router.get("/institutions/:id", masterAdminController.getInstitutionDetails);
-router.put("/institutions/:id", masterAdminController.updateInstitutionDetails); // General update (metadata + subscription)
+router.put("/institutions/:id/subscription", masterAdminController.updateSubscriptionStatus);
+router.delete("/institutions/admins/:userId", masterAdminController.removeInstitutionAdmin);
 
 router.post('/institutions', masterAdminController.enrollInstitution);
-router.put("/institutions/:id/subscription", masterAdminController.updateSubscriptionStatus);
 router.delete("/institutions/:id", masterAdminController.deleteInstitution);
 
 // Global Users View (all institutions)
@@ -41,9 +41,6 @@ router.get('/support-requests', masterAdminController.getSupportRequests);
 router.put('/support-requests/:id', masterAdminController.updateSupportRequest);
 router.get('/support-requests/:id/messages', masterAdminController.getTicketMessages);
 router.post('/support-requests/:id/messages', masterAdminController.addTicketMessage);
-
-// Global Payments Ledger
-router.get("/payments", masterAdminController.getAllPayments);
 
 // Institution Analytics
 router.get("/analytics/:id", masterAdminController.getInstitutionAnalytics);

@@ -243,7 +243,7 @@ const LibraryAction = () => {
   };
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: isDark ? '#0F0B2E' : '#f9fafb' }} edges={['top']}>
+    <View style={{ flex: 1, backgroundColor: isDark ? '#0F0B2E' : '#f9fafb' }}>
       <UnifiedHeader
         title="Management"
         subtitle="Library"
@@ -283,7 +283,7 @@ const LibraryAction = () => {
           </View>
         </View>
       )}
-    </SafeAreaView>
+    </View>
   );
 };
 

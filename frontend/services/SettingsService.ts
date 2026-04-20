@@ -61,6 +61,11 @@ export const SettingsService = {
         return response.data;
     },
 
+    adminRemove: async (targetUserId: string): Promise<{ message: string }> => {
+        const response = await api.delete(`/master-admin/institutions/admins/${targetUserId}`);
+        return response.data;
+    },
+
     forgotPassword: async (email: string): Promise<{ message: string }> => {
         const response = await api.post('/auth/forgot-password', { email });
         return response.data;

@@ -174,11 +174,16 @@ const PaymentManagementSection: React.FC<
     setShowForm(false);
   };
 
-  const formatAmount = (amount: number) => {
-    return new Intl.NumberFormat("en-KE", {
-      style: "currency",
-      currency: "KES",
-    }).format(amount);
+  const formatAmount = (amount: number | null | undefined) => {
+    if (amount === null || amount === undefined) return "KSh 0.00";
+    try {
+      return new Intl.NumberFormat("en-KE", {
+        style: "currency",
+        currency: "KES",
+      }).format(amount);
+    } catch (e) {
+      return `KSh ${amount}`;
+    }
   };
 
   const getStatusColor = (status: Payment["status"]) => {
@@ -298,9 +303,13 @@ const PaymentManagementSection: React.FC<
         </TouchableOpacity>
         <TouchableOpacity 
           onPress={() => setViewMode('review')}
-          className={`flex-1 py-3 rounded-xl items-center justify-center flex-row ${viewMode === 'review' ? 'bg-white dark:bg-gray-700 shadow-sm' : ''}`}
+          className={`flex-1 py-3 rounded-xl items-center justify-center flex-row 
+            ${viewMode === 'review' ? 'bg-white dark:bg-gray-700 shadow-sm' : ''}`}
         >
-          <Text className={`text-xs font-bold uppercase tracking-widest ${viewMode === 'review' ? 'text-gray-900 dark:text-white' : 'text-gray-400'}`}>Review Proofs</Text>
+          <Text className={`text-xs font-bold uppercase tracking-widest 
+            ${viewMode === 'review' ? 'text-gray-900 dark:text-white' : 'text-gray-400'}`}>
+            Review Receipts
+          </Text>
           {pendingPayments.length > 0 && (
             <View className="bg-[#FF6B00] w-5 h-5 rounded-full items-center justify-center ml-2 border border-white dark:border-gray-900">
               <Text className="text-white text-[9px] font-black">{pendingPayments.length}</Text>
@@ -337,7 +346,7 @@ const PaymentManagementSection: React.FC<
             ))
           ) : (
             <EmptyState
-              title={searchQuery ? "No matching payments" : "No payments recorded"}
+              title={searchQuery ? "No matching payments" : "No payments made"}
               message={searchQuery
                 ? `We couldn't find any payments matching "${searchQuery}"`
                 : "No payments have been recorded in the system yet."
@@ -352,16 +361,16 @@ const PaymentManagementSection: React.FC<
        )}
       </>
      ) : (
-        <ScrollView className="pb-20">
+        <View className="pb-20">
           {loadingPending ? (
             <View className="py-20 items-center">
               <ActivityIndicator color="#FF6B00" />
-              <Text className="text-gray-400 text-xs mt-4 font-bold uppercase tracking-widest">Scanning evidence bucket...</Text>
+              <Text className="text-gray-400 text-xs mt-4 font-bold uppercase tracking-widest">Scanning receipt bucket...</Text>
             </View>
           ) : pendingPayments.length === 0 ? (
             <EmptyState
               title="All caught up!"
-              message="No pending payment evidence documents require review."
+              message="No pending receipts require review."
               icon={Clock}
               color="#FF6B00"
             />
@@ -377,7 +386,7 @@ const PaymentManagementSection: React.FC<
                       {item.students?.users?.full_name || "Unknown Student"}
                     </Text>
                     <Text className="text-[#FF6B00] text-[10px] font-black uppercase tracking-widest mt-1">
-                      {item.payment_method.replace('_', ' ')} • {item.reference_number}
+                      {(item.payment_method || '').replace('_', ' ')} • {item.reference_number || 'No Ref'}
                     </Text>
                   </View>
                   <View className="bg-orange-50 dark:bg-orange-950/30 px-3 py-1 rounded-full border border-orange-100 dark:border-orange-900">
@@ -393,7 +402,7 @@ const PaymentManagementSection: React.FC<
                   <View className="flex-row justify-between items-end">
                     <Text className="text-gray-900 dark:text-white font-black text-3xl tracking-tighter">{formatAmount(item.amount)}</Text>
                     <Text className="text-gray-500 dark:text-gray-400 text-xs font-bold mb-1">
-                      {new Date(item.created_at).toLocaleDateString()}
+                      {item.created_at ? new Date(item.created_at).toISOString().split('T')[0] : 'N/A'}
                     </Text>
                   </View>
                 </View>
@@ -402,7 +411,7 @@ const PaymentManagementSection: React.FC<
                   <TouchableOpacity 
                     onPress={() => {
                         // In a real app, open a viewer modal or handle external link
-                        Alert.alert("Proof Document", "Review payment receipt carefully before approval.", [
+                        Alert.alert("Receipt Document", "Review payment receipt carefully before approval.", [
                             { text: "Open URL", onPress: () => { /* Linking.openURL(item.proof_url) */ }},
                             { text: "Close", style: "cancel" }
                         ]);
@@ -435,7 +444,7 @@ const PaymentManagementSection: React.FC<
               </View>
             ))
           )}
-        </ScrollView>
+        </View>
       )}
 
       {/* Payment Form Modal */}

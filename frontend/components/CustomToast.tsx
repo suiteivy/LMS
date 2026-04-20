@@ -16,7 +16,10 @@ const DismissButton = () => (
 // Define custom toast configuration
 export const toastConfig: ToastConfig = {
     success: (props) => (
-        <View className="w-[95%] sm:max-w-[400px] bg-white border-l-4 border-green-500 rounded-xl shadow-lg shadow-gray-200 flex-row items-center p-4 min-h-[60px] my-2 mx-auto">
+        <View 
+            className="w-[95%] sm:max-w-[400px] bg-white border-l-4 border-green-500 rounded-xl shadow-xl shadow-gray-200 flex-row items-center p-4 min-h-[60px] my-2 mx-auto"
+            style={{ zIndex: 1000000 }}
+        >
             <View className="w-8 h-8 rounded-full bg-green-100 items-center justify-center mr-3">
                 <Ionicons name="checkmark" size={18} color="#10B981" />
             </View>
@@ -28,7 +31,10 @@ export const toastConfig: ToastConfig = {
         </View>
     ),
     error: (props) => (
-        <View className="w-[95%] sm:max-w-[400px] bg-white border-l-4 border-red-500 rounded-xl shadow-lg shadow-gray-200 flex-row items-center p-4 min-h-[60px] my-2 mx-auto">
+        <View 
+            className="w-[95%] sm:max-w-[400px] bg-white border-l-4 border-red-500 rounded-xl shadow-xl shadow-gray-200 flex-row items-center p-4 min-h-[60px] my-2 mx-auto"
+            style={{ zIndex: 1000000 }}
+        >
             <View className="w-8 h-8 rounded-full bg-red-100 items-center justify-center mr-3">
                 <Ionicons name="alert" size={18} color="#EF4444" />
             </View>
@@ -40,7 +46,10 @@ export const toastConfig: ToastConfig = {
         </View>
     ),
     info: (props) => (
-        <View className="w-[95%] sm:max-w-[400px] bg-white border-l-4 border-blue-500 rounded-xl shadow-lg shadow-gray-200 flex-row items-center p-4 min-h-[60px] my-2 mx-auto">
+        <View 
+            className="w-[95%] sm:max-w-[400px] bg-white border-l-4 border-blue-500 rounded-xl shadow-xl shadow-gray-200 flex-row items-center p-4 min-h-[60px] my-2 mx-auto"
+            style={{ zIndex: 1000000 }}
+        >
             <View className="w-8 h-8 rounded-full bg-blue-100 items-center justify-center mr-3">
                 <Ionicons name="information" size={18} color="#3B82F6" />
             </View>

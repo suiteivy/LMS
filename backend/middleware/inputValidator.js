@@ -50,18 +50,25 @@ const commonRules = {
 const validateField = (value, rules, fieldName) => {
     const errors = [];
 
-    // Type check
-    if (rules.type && typeof value !== rules.type) {
-        errors.push(`${fieldName} must be of type ${rules.type}`);
-        return errors; // Can't validate further if wrong type
-    }
-
-    // Required check
+    // Required check first
     if (value === undefined || value === null || value === '') {
         if (rules.required) {
             errors.push(`${fieldName} is required`);
         }
         return errors;
+    }
+
+    // Type check
+    if (rules.type) {
+        if (rules.type === 'array') {
+            if (!Array.isArray(value)) {
+                errors.push(`${fieldName} must be of type array`);
+                return errors;
+            }
+        } else if (typeof value !== rules.type) {
+            errors.push(`${fieldName} must be of type ${rules.type}`);
+            return errors;
+        }
     }
 
     // String-specific validations
@@ -175,15 +182,37 @@ const schemas = {
 
     enrollUser: {
         email: { ...commonRules.email, required: false },
-        first_name: { ...commonRules.name, required: true },
+        first_name: { ...commonRules.name, required: false },
         last_name: { ...commonRules.name, required: false },
+        full_name: { ...commonRules.name, required: false },
         role: {
             type: 'string',
             required: true,
             enum: ['admin', 'student', 'teacher', 'parent', 'bursary']
         },
         institution_id: commonRules.uuid,
-        phone: commonRules.phone
+        phone: commonRules.phone,
+        gender: { type: 'string', enum: ['male', 'female', 'other'], required: false },
+        date_of_birth: { type: 'string', required: false },
+        address: { type: 'string', maxLength: 500, required: false },
+        grade_level: { type: 'number', required: false },
+        form_level: { type: 'number', required: false },
+        academic_year: { type: 'string', required: false },
+        parent_contact: { ...commonRules.phone, required: false },
+        emergency_contact_name: { ...commonRules.name, required: false },
+        emergency_contact_phone: { ...commonRules.phone, required: false },
+        class_ids: { type: 'array', required: false },
+        department: { type: 'string', required: false },
+        qualification: { type: 'string', required: false },
+        specialization: { type: 'string', required: false },
+        position: { type: 'string', required: false },
+        subject_ids: { type: 'array', required: false },
+        class_teacher_id: { ...commonRules.uuid, required: false },
+        occupation: { type: 'string', required: false },
+        parent_address: { type: 'string', maxLength: 500, required: false },
+        linked_students: { type: 'array', required: false },
+        create_parent: { type: 'boolean', required: false },
+        parent_info: { type: 'object', required: false }
     },
 
     createInstitution: {
