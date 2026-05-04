@@ -20,8 +20,8 @@ const financeRoutes = require("./routes/finance.route.js");
 const notificationRoutes = require("./routes/notification.route.js");
 const settingsRoutes = require("./routes/settings.route.js");
 const masterAdminRoutes = require("./routes/master_admin.route.js");
+const addonRequestRoutes = require("./routes/addon_request.routes.js");
 const settingsController = require("./controllers/settings.controller.js");
-const morgan = require("morgan");
 
 const app = express();
 
@@ -31,13 +31,9 @@ app.set('trust proxy', 1);
 // Middleware
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
+const { nullStringSanitizer } = require("./middleware/sanitizer.middleware.js");
+app.use(nullStringSanitizer);
 app.use(express.urlencoded({ extended: true }));
-
-// Custom morgan token for logging
-morgan.token('remote-addr', (req) => req.ip || req.connection.remoteAddress);
-app.use(morgan('combined', {
-  stream: { write: (message) => logger.info(message.trim(), { type: 'access' }) }
-}));
 
 // Apply rate limiting to public endpoints
 app.use("/api/auth", rateLimiters.auth);
@@ -73,7 +69,7 @@ app.use("/api/student", authMiddleware, checkSubscription, require("./routes/stu
 app.use("/api/classes", authMiddleware, checkSubscription, require("./routes/class.route.js"));
 app.use("/api/diary", authMiddleware, checkSubscription, require("./routes/diary.route.js"));
 app.use("/api/reports", authMiddleware, checkSubscription, require("./routes/reports.route.js"));
-app.use("/api/addon-requests", authMiddleware, require("./routes/addon_request.routes.js"));
+app.use("/api/addon-requests", authMiddleware, addonRequestRoutes);
 
 // Explicitly define currency route as public before using auth wrapper on settings
 app.get("/api/settings/currency", settingsController.getCurrencyRates);
@@ -104,6 +100,16 @@ app.get("/", (_req, res) => {
 // Favicon handler - prevent 404/500 errors on favicon requests
 app.get("/favicon.ico", (_req, res) => {
   res.status(204).end();
+});
+
+// Catch-all for undefined routes - must be after all valid routes
+app.use((req, res) => {
+  logger.warn('404 Not Found', { path: req.originalUrl, method: req.method, ip: req.ip });
+  res.status(404).json({
+    error: "The requested resource was not found.",
+    code: "NOT_FOUND",
+    path: req.originalUrl
+  });
 });
 
 // Global error handler - catches all errors and returns generic messages

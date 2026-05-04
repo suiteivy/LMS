@@ -21,29 +21,25 @@ import Constants from "expo-constants";
  * @returns {string} The base URL for API requests
  */
 const getBaseUrl = (): string => {
-  // 1. Manually set environment variable has highest priority
+  // 1. Check for explicit environment variable override
   if (process.env.EXPO_PUBLIC_URL) {
     return process.env.EXPO_PUBLIC_URL;
   }
 
-  // 2. Try to auto-detect LAN IP from Expo's hostUri (works for physical devices)
-  const hostUri = Constants.expoConfig?.hostUri;
-  if (hostUri) {
-    // hostUri usually looks like "192.168.1.10:8081"
-    const ip = hostUri.split(':')[0];
-    if (ip && ip !== 'localhost' && ip !== '127.0.0.1') {
-      return `http://${ip}:4001/api`;
+  // 2. Fallbacks for local development
+  if (__DEV__) {
+    // For Android physical devices/emulators when not using a tunnel
+    if (Platform.OS === "android") {
+      // 10.0.2.2 is the alias to the host loopback (localhost) on the Android emulator
+      return "http://10.0.2.2:4001/api";
     }
+    
+    // Default fallback (iOS simulator or local web)
+    return "http://localhost:4001/api";
   }
 
-  // 3. Platform-specific fallbacks
-  if (Platform.OS === 'android') {
-    // 10.0.2.2 is the special alias for the host machine in Android emulators
-    return "http://10.0.2.2:4001/api";
-  }
-
-  // iOS Simulator, Web, or fallback
-  return "http://localhost:4001/api";
+  // 3. Last resort fallback (historical hardcoded IP - kept as low priority)
+  return "http://192.168.56.1:4001/api";
 };
 
 const baseURL = getBaseUrl();

@@ -119,8 +119,11 @@ async function authMiddleware(req, res, next) {
     };
 
     // Convenience shorthands (ensure always set)
-    req.institution_id = profile.institution_id || null;
-    req.userId = profile.id || null;
+    // Defensive: Convert literal "null" strings to primitive null
+    const sanitizeId = (id) => (id === "null" || id === "" ? null : id);
+
+    req.institution_id = sanitizeId(profile.institution_id);
+    req.userId = sanitizeId(profile.id);
     req.userRole = profile.role || null;
     req.isMain = req.user.is_main;
     req.isPlatformAdmin = req.user.is_platform_admin;

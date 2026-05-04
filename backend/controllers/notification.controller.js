@@ -44,19 +44,50 @@ exports.createNotificationInternal = async ({ userId, title, message, type = 'in
  */
 exports.getUserNotifications = async (req, res) => {
     try {
-        const { userId, institution_id } = req;
-        // Fetch unread first, then read, limit to 20 or so
+        let { userId, institution_id } = req;
+
+        // Forced sanitization to prevent Postgres UUID syntax errors (invalid input "null")
+        if (institution_id === "null" || institution_id === "") institution_id = null;
+        if (userId === "null" || userId === "") {
+            console.error("[NotificationController] Invalid userId 'null' detected.");
+            return res.status(401).json({ error: "Invalid session" });
+        }
+
+        if (!userId) {
+            return res.status(401).json({ error: "User ID missing from request" });
+        }
+
         const now = new Date().toISOString();
-        const { data, error } = await supabase
+        let query = supabase
             .from("notifications")
-            .select("*")
-            .eq("user_id", userId)
-            .eq("institution_id", institution_id)
+            .select("*");
+
+        // --- Workaround Mechanism for Master Admins ---
+        // Master Admins are not bound to a specific institution.
+        // They should receive notifications specifically sent to them (user_id = userId)
+        // or global system-level notifications (user_id is null).
+        if (req.isPlatformAdmin) {
+            query = query.or(`user_id.eq.${userId},user_id.is.null`);
+            // We omit the institution_id filter entirely for Master Admins to avoid UUID "null" errors
+            // and ensure they see cross-institution platform alerts.
+        } else {
+            // Normal users are restricted to their own notifications within their institution context.
+            query = query.eq("user_id", userId);
+            
+            if (institution_id) {
+                query = query.eq("institution_id", institution_id);
+            } else {
+                query = query.is("institution_id", null);
+            }
+        }
+
+        const { data, error } = await query
             .or(`expires_at.is.null,expires_at.gt.${now}`)
             .order("created_at", { ascending: false })
             .limit(50);
 
         if (error) {
+            console.error("getUserNotifications Supabase error:", error);
             return res.status(500).json({ error: error.message });
         }
 

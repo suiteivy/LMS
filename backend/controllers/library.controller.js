@@ -531,6 +531,7 @@ exports.getAllBorrowedBooks = async (_req, res) => {
           users (first_name, last_name, full_name, email, phone)
         )
       `)
+      .eq('institution_id', req.institution_id)
       .order("created_at", { ascending: false });
 
     if (error) throw error;

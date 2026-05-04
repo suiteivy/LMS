@@ -24,8 +24,12 @@ exports.getDashboardStats = async (_req, res) => {
             adminClient.from('institutions').select('*', { count: 'exact', head: true }),
             adminClient.from('institutions').select('*', { count: 'exact', head: true }).eq('subscription_status', 'active'),
             adminClient.from('users').select('*', { count: 'exact', head: true }),
-            // Fix: Platform revenue is tracked in financial_transactions with type = 'subscription'
-            adminClient.from('financial_transactions').select('amount').eq('type', 'subscription').eq('status', 'completed')
+            // Platform revenue: sum of all inflows EXCEPT institutional student fee payments
+            adminClient.from('financial_transactions')
+                .select('amount')
+                .eq('direction', 'inflow')
+                .neq('type', 'fee_payment')
+                .eq('status', 'completed')
         ]);
 
         const totalRevenue = revenueData ? revenueData.reduce((acc, curr) => acc + Number(curr.amount), 0) : 0;
@@ -122,7 +126,8 @@ exports.updateInstitutionDetails = async (req, res) => {
         const adminClient = getServiceSupabase();
         
         // Build update object dynamically to only update provided fields
-        const updates = { updated_at: new Date().toISOString() };
+        // updated_at is handled by DB trigger
+        const updates = {};
         
         // Metadata fields
         if (name !== undefined) updates.name = name;
@@ -180,9 +185,8 @@ exports.updateSubscriptionStatus = async (req, res) => {
 
         const adminClient = getServiceSupabase();
         
-        const updates = { 
-            updated_at: new Date().toISOString() 
-        };
+        const updates = {};
+        // updated_at is handled by DB trigger
         
         if (subscription_status !== undefined) updates.subscription_status = subscription_status;
         if (subscription_plan !== undefined) updates.subscription_plan = subscription_plan;
@@ -734,7 +738,7 @@ exports.getInstitutionAnalytics = async (req, res) => {
 exports.getAllUsers = async (req, res) => {
     try {
         const adminClient = getServiceSupabase();
-        const { role, institution_id, search, page = 1, limit = 30 } = req.query;
+        const { role, institution_id, category_id, search, page = 1, limit = 30 } = req.query;
 
         const pageNum = Math.max(1, parseInt(page));
         const pageSize = Math.min(100, parseInt(limit) || 30);
@@ -752,6 +756,11 @@ exports.getAllUsers = async (req, res) => {
 
         if (role) query = query.eq('role', role);
         if (institution_id) query = query.eq('institution_id', institution_id);
+        if (category_id) {
+            // Filter users whose institution matches the category_id
+            // We use a dot-nested filter for the joined table
+            query = query.filter('institutions.category_id', 'eq', category_id);
+        }
         if (search && search.trim()) {
             query = query.or(`full_name.ilike.%${search.trim()}%,email.ilike.%${search.trim()}%,first_name.ilike.%${search.trim()}%,last_name.ilike.%${search.trim()}%`);
         }
@@ -778,11 +787,17 @@ exports.getSchoolCategories = async (_req, res) => {
             .select('*')
             .order('name');
 
-        if (error) throw error;
+        if (error) {
+            console.error("Supabase error fetching school categories:", error);
+            throw error;
+        }
         res.status(200).json(data);
     } catch (error) {
-        console.error("Error fetching school categories:", error);
-        res.status(500).json({ error: "Failed to fetch school categories" });
+        console.error("Error fetching school categories:", error.message || error);
+        res.status(500).json({ 
+            error: "Failed to fetch school categories",
+            details: error.message || "Unknown error"
+        });
     }
 };
 
