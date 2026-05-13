@@ -142,7 +142,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       return { error: null };
     }
 
-    console.log(`[AuthContext] handleLogout called (silent: ${silent})`);
     isManualLogout.current = true;
 
     try {
@@ -223,8 +222,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     clearTimer()
     const isActuallyDemo = isDemoSession !== undefined ? isDemoSession : isDemoRef.current;
 
-    // Duration: 15 mins for demo, 24 hours for regular users
-    const totalDurationMs = isActuallyDemo ? 15 * 60 * 1000 : 24 * 60 * 60 * 1000;
+    // Duration: 15 mins for demo, 15 mins for master admin, 24 hours for regular users
+    const isMasterAdmin = profileRef.current?.role === 'master_admin' || !!(profileRef.current as any)?.platform_admins?.[0];
+    const totalDurationMs = (isActuallyDemo || isMasterAdmin) ? 15 * 60 * 1000 : 24 * 60 * 60 * 1000;
 
     // Check for persisted start time
     let startTime = Date.now();
@@ -243,10 +243,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     const remaining = totalDurationMs - elapsed;
 
     if (remaining <= 0) {
-      console.log(`[AuthContext] Session expired (${isActuallyDemo ? 'demo' : 'regular'}). Elapsed: ${elapsed}ms`);
       await handleLogout();
     } else {
-      console.log(`[AuthContext] Timer set for ${isActuallyDemo ? 'demo' : 'regular'}. Remaining: ${Math.round(remaining / 60000)} mins`);
       timerRef.current = setTimeout(async () => {
         await handleLogout()
       }, remaining)
@@ -357,10 +355,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       // see the most current version of all other auth states.
       // We only update if the underlying data has changed to prevent render loops.
       if (!isDataEqual(profile, userData)) {
-        console.log('[AuthContext] Profile data changed, updating state');
         setProfile(userData as UserProfile);
       } else {
-        console.log('[AuthContext] Profile data identical, skipping state update');
       }
 
       lastLoadedUserId.current = userId;
@@ -399,13 +395,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   useEffect(() => {
     const initializeAuth = async () => {
       setIsInitializing(true);
-      console.log('[AuthContext] Initializing auth...');
       try {
         const sessionPromise = supabase.auth.getSession();
         const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('getSession timeout')), 6000));
         
         const { data: { session: initialSession } } = await Promise.race([sessionPromise, timeoutPromise]) as any;
-        console.log('[AuthContext] Supabase session status:', initialSession ? 'Found' : 'Not Found');
 
         if (initialSession) {
           // Race protection: timeout for getUser
@@ -415,7 +409,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           try {
             const { data: { user: validatedUser } } = await Promise.race([userPromise, timeoutPromise]) as any;
             if (validatedUser) {
-              console.log('[AuthContext] User validated:', validatedUser.email);
               setSession(initialSession);
               currentSessionRef.current = initialSession;
               setUser(validatedUser);
@@ -441,7 +434,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       } catch (error) {
         console.error('[AuthContext] Error in initializeAuth:', error);
       } finally {
-        console.log('[AuthContext] Initialization complete.');
         setIsInitializing(false);
         setLoading(false);
       }
@@ -460,7 +452,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     const navTimer = setTimeout(() => setIsNavReady(true), 1);
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log(`[AuthContext] Auth state changed: ${event}`);
       if (event === 'SIGNED_IN' && session?.user) {
         setSession(session);
         setUser(session.user);

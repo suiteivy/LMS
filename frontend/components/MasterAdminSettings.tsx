@@ -1,19 +1,20 @@
 import { useAuth } from "@/contexts/AuthContext";
 import { useTheme } from "@/contexts/ThemeContext";
-import { Lock, ShieldAlert } from "lucide-react-native";
-import React, { useState } from "react";
-import { ActivityIndicator, Modal, Platform, ScrollView, Text, TextInput, TouchableOpacity, View, Alert } from "react-native";
+import { Lock, ShieldAlert, Bell, Mail, Smartphone, AlertTriangle, AlertCircle, HelpCircle } from "lucide-react-native";
+import React, { useState, useEffect } from "react";
+import { ActivityIndicator, Modal, Platform, ScrollView, Text, TextInput, TouchableOpacity, View, Alert, Switch } from "react-native";
 import Toast from 'react-native-toast-message';
 import { supabase } from '@/libs/supabase';
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { ChangePasswordModal } from "./shared/ChangePasswordModal";
-import { SettingsService } from "@/services/SettingsService";
+import { SettingsService, UserPreferences } from "@/services/SettingsService";
 
 interface SettingRowProps {
     icon: any;
     title: string;
     onPress?: () => void;
     isLast?: boolean;
+    rightElement?: React.ReactNode;
 }
 
 export default function MasterAdminSettings() {
@@ -24,6 +25,46 @@ export default function MasterAdminSettings() {
     const [enrollModalVisible, setEnrollModalVisible] = useState(false);
     const [enrollData, setEnrollData] = useState({ full_name: "", email: "", password: "" });
     const [enrollLoading, setEnrollLoading] = useState(false);
+
+    // Notification Preferences
+    const [prefs, setPrefs] = useState<UserPreferences>({
+        push_notifications: true,
+        submission_alerts: true,
+        system_alerts: true,
+        email_notifications: true,
+        subscription_alerts: true,
+        issues_requests_alerts: true,
+        support_cases_alerts: true,
+    });
+    const [prefsLoading, setPrefsLoading] = useState(true);
+
+    useEffect(() => {
+        const loadPrefs = async () => {
+            try {
+                const data = await SettingsService.getPreferences();
+                setPrefs(data);
+            } catch (err) {
+                console.error('Failed to load preferences:', err);
+            } finally {
+                setPrefsLoading(false);
+            }
+        };
+        loadPrefs();
+    }, []);
+
+    const togglePref = async (key: keyof UserPreferences) => {
+        const newValue = !prefs[key];
+        setPrefs(prev => ({ ...prev, [key]: newValue }));
+        try {
+            await SettingsService.updatePreferences({ [key]: newValue });
+            Toast.show({ type: 'success', text1: 'Preferences Updated', text2: 'Your notification settings have been saved.', position: 'bottom' });
+        } catch (err) {
+            console.error('Failed to update preference:', err);
+            // Revert on failure
+            setPrefs(prev => ({ ...prev, [key]: !newValue }));
+            Toast.show({ type: 'error', text1: 'Update Failed', text2: 'Could not save your preferences.' });
+        }
+    };
 
     const tokens = {
         bg: isDark ? "#0F0B2E" : "#f8fafc",
@@ -86,7 +127,7 @@ export default function MasterAdminSettings() {
         }
     };
 
-    const SettingRow = ({ icon: Icon, title, onPress, isLast }: SettingRowProps) => (
+    const SettingRow = ({ icon: Icon, title, onPress, isLast, rightElement }: SettingRowProps) => (
         <TouchableOpacity
             onPress={onPress}
             disabled={!onPress}
@@ -105,7 +146,7 @@ export default function MasterAdminSettings() {
                 </View>
                 <Text style={{ color: tokens.textPrimary, fontWeight: '500', fontSize: 16 }}>{title}</Text>
             </View>
-            <MaterialCommunityIcons name="chevron-right" size={20} color={tokens.textSecondary} />
+            {rightElement ? rightElement : (onPress ? <MaterialCommunityIcons name="chevron-right" size={20} color={tokens.textSecondary} /> : null)}
         </TouchableOpacity>
     );
 
@@ -118,6 +159,45 @@ export default function MasterAdminSettings() {
                     <SettingRow icon={Lock} title="Change Password" onPress={() => setPasswordModalVisible(true)} />
                     <SettingRow icon={ShieldAlert} title="Two-Factor Authentication (Coming Soon)" isLast />
                 </View>
+
+                <Text style={{ fontSize: 12, fontWeight: 'bold', color: tokens.textSecondary, textTransform: 'uppercase', letterSpacing: 1, marginLeft: 4, marginBottom: 8 }}>Notifications Configuration</Text>
+                {prefsLoading ? (
+                    <ActivityIndicator size="small" color={tokens.primary} style={{ marginBottom: 24 }} />
+                ) : (
+                    <View style={{ backgroundColor: tokens.surface, borderRadius: 16, borderWidth: 1, borderColor: tokens.border, marginBottom: 24, overflow: 'hidden' }}>
+                        <SettingRow 
+                            icon={AlertTriangle} 
+                            title="System Alerts & Errors" 
+                            rightElement={<Switch value={prefs.system_alerts} onValueChange={() => togglePref('system_alerts')} trackColor={{ false: tokens.border, true: tokens.primary }} />} 
+                        />
+                        <SettingRow 
+                            icon={AlertCircle} 
+                            title="Subscription Alerts" 
+                            rightElement={<Switch value={prefs.subscription_alerts} onValueChange={() => togglePref('subscription_alerts')} trackColor={{ false: tokens.border, true: tokens.primary }} />} 
+                        />
+                        <SettingRow 
+                            icon={Bell} 
+                            title="Issues & Requests" 
+                            rightElement={<Switch value={prefs.issues_requests_alerts} onValueChange={() => togglePref('issues_requests_alerts')} trackColor={{ false: tokens.border, true: tokens.primary }} />} 
+                        />
+                        <SettingRow 
+                            icon={HelpCircle} 
+                            title="Support Cases" 
+                            rightElement={<Switch value={prefs.support_cases_alerts} onValueChange={() => togglePref('support_cases_alerts')} trackColor={{ false: tokens.border, true: tokens.primary }} />} 
+                        />
+                        <SettingRow 
+                            icon={Mail} 
+                            title="Email Notifications" 
+                            rightElement={<Switch value={prefs.email_notifications} onValueChange={() => togglePref('email_notifications')} trackColor={{ false: tokens.border, true: tokens.primary }} />} 
+                        />
+                        <SettingRow 
+                            icon={Smartphone} 
+                            title="Push Notifications" 
+                            isLast
+                            rightElement={<Switch value={prefs.push_notifications} onValueChange={() => togglePref('push_notifications')} trackColor={{ false: tokens.border, true: tokens.primary }} />} 
+                        />
+                    </View>
+                )}
 
                 <Text style={{ fontSize: 12, fontWeight: 'bold', color: tokens.textSecondary, textTransform: 'uppercase', letterSpacing: 1, marginLeft: 4, marginBottom: 8 }}>Administration</Text>
                 <View style={{ backgroundColor: tokens.surface, borderRadius: 16, borderWidth: 1, borderColor: tokens.border, marginBottom: 24, overflow: 'hidden' }}>

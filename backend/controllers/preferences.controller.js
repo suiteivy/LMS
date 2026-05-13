@@ -21,6 +21,9 @@ exports.getPreferences = async (req, res) => {
                 submission_alerts: true,
                 system_alerts: true,
                 email_notifications: true,
+                subscription_alerts: true,
+                issues_requests_alerts: true,
+                support_cases_alerts: true,
             });
         }
 
@@ -38,7 +41,15 @@ exports.getPreferences = async (req, res) => {
 exports.updatePreferences = async (req, res) => {
     try {
         const { userId, institution_id } = req;
-        const { push_notifications, submission_alerts, system_alerts, email_notifications } = req.body;
+        const { 
+            push_notifications, 
+            submission_alerts, 
+            system_alerts, 
+            email_notifications,
+            subscription_alerts,
+            issues_requests_alerts,
+            support_cases_alerts
+        } = req.body;
 
         const prefData = {
             user_id: userId,
@@ -49,6 +60,9 @@ exports.updatePreferences = async (req, res) => {
         if (submission_alerts !== undefined) prefData.submission_alerts = submission_alerts;
         if (system_alerts !== undefined) prefData.system_alerts = system_alerts;
         if (email_notifications !== undefined) prefData.email_notifications = email_notifications;
+        if (subscription_alerts !== undefined) prefData.subscription_alerts = subscription_alerts;
+        if (issues_requests_alerts !== undefined) prefData.issues_requests_alerts = issues_requests_alerts;
+        if (support_cases_alerts !== undefined) prefData.support_cases_alerts = support_cases_alerts;
 
         const { data, error } = await supabase
             .from('user_preferences')

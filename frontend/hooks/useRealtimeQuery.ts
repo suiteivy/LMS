@@ -25,13 +25,11 @@ export function useRealtimeQuery(
           'postgres_changes',
           { event, schema: 'public', table: tableName },
           (payload) => {
-            console.log(`[Realtime] Received ${payload.eventType} event on ${tableName}`);
             onUpdate();
           }
         )
         .subscribe((status) => {
              if (status === 'SUBSCRIBED') {
-                 console.log(`[Realtime] Successfully subscribed to ${tableName} changes`);
              } else if (status === 'CHANNEL_ERROR') {
                  console.error(`[Realtime] Error subscribing to ${tableName} changes`);
              }

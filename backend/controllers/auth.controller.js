@@ -707,7 +707,6 @@ exports.adminUpdateUser = async (req, res) => {
       if (linked_parents !== undefined) {
         const { data: studentData } = await supabase.from('students').select('id').eq('user_id', id).single();
         const customStudentId = studentData?.id;
-        console.log('[AdminUpdate] Linking parents for student:', { customStudentId, linked_parents });
 
         if (customStudentId) {
           const { error: delErr } = await supabase.from('parent_students').delete().eq('student_id', customStudentId);
@@ -715,7 +714,6 @@ exports.adminUpdateUser = async (req, res) => {
 
           if (linked_parents && linked_parents.length > 0) {
             const inserts = linked_parents.map(pid => ({ parent_id: pid, student_id: customStudentId, relationship: 'guardian' }));
-            console.log('[AdminUpdate] Inserting parent_students (student side):', inserts);
             const { error: insErr } = await supabase.from('parent_students').insert(inserts);
             if (insErr) console.error('[AdminUpdate] Insert parent_students (student side) error:', insErr);
             else console.log('[AdminUpdate] Successfully linked parents to student');
@@ -783,7 +781,6 @@ exports.adminUpdateUser = async (req, res) => {
       if (linked_students !== undefined) {
         const { data: parentData } = await supabase.from('parents').select('id').eq('user_id', id).single();
         const customParentId = parentData?.id;
-        console.log('[AdminUpdate] Linking students for parent:', { customParentId, linked_students });
 
         if (customParentId) {
           // Simple sync: delete all and re-insert
@@ -792,7 +789,6 @@ exports.adminUpdateUser = async (req, res) => {
 
           if (linked_students && linked_students.length > 0) {
             const inserts = linked_students.map(sid => ({ parent_id: customParentId, student_id: sid, relationship: 'guardian' }));
-            console.log('[AdminUpdate] Inserting parent_students:', inserts);
             const { error: insErr } = await supabase.from('parent_students').insert(inserts);
             if (insErr) console.error('[AdminUpdate] Insert parent_students error:', insErr);
           }
@@ -901,7 +897,6 @@ exports.logout = async (req, res) => {
       if (error) {
         console.warn("Error cleaning up trial session:", error);
       } else {
-        console.log(`Trial session cleaned up for demo user ${user.id}`);
       }
     }
 

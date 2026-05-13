@@ -136,7 +136,6 @@ function AuthHandler() {
     const inAuthGroup = segments.some(s => s === "(auth)");
     const isRoot = currentPath === '/' || currentPath === '';
 
-    console.log(`[AuthHandler] State - Session: ${!!session}, Root: ${isRoot}, AuthGroup: ${inAuthGroup}, Path: ${currentPath}`);
 
     const handleRedirect = (path: string) => {
       const normalizedTarget = normalizePath(path);
@@ -154,13 +153,11 @@ function AuthHandler() {
         lastRedirectPath.current = normalizedTarget;
       }
 
-      console.log(`[AuthHandler] Redirecting to ${normalizedTarget}`);
       router.replace(normalizedTarget as any);
     };
 
     if (!session) {
       if (!inAuthGroup && !isRoot) {
-        console.log('[AuthHandler] No session, redirecting to signIn');
         handleRedirect("/(auth)/signIn");
       }
     } else if (profile) {

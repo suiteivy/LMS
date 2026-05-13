@@ -52,10 +52,10 @@ import Svg, { Circle, Defs, LinearGradient, Stop } from 'react-native-svg';
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
-// â”€â”€â”€ Pricing Components â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Pricing Components
 const AnimatedCircle = Reanimated.createAnimatedComponent(Circle);
 
-// â”€â”€ Tier Tab Pill â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+//Tier Tab Pill
 const PackageTierTab = ({ tier, label, icon, tagline, isActive, onPress }: any) => {
   const [hovered, setHovered] = useState(false);
   const glow = useSharedValue(0);
@@ -157,7 +157,7 @@ const PackageTierTab = ({ tier, label, icon, tagline, isActive, onPress }: any) 
   );
 };
 
-// â”€â”€ Plan Card within a tier â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+//  Plan Card within a tier 
 const PlanCard = ({ plan, tierAccent, openRegistrationModal }: any) => {
   const [hovered, setHovered] = useState(false);
   const animValue = useSharedValue(0);
@@ -413,9 +413,9 @@ const PlanCard = ({ plan, tierAccent, openRegistrationModal }: any) => {
   );
 };
 
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// 
 // Tier & plan data.....change to addons
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// 
 const TIERS = [
   { key: 'plans', label: 'Subscription Plans', tagline: 'For schools of all sizes', description: 'Everything you need to grow your institution. Choose Basic, Pro, or Premium.', accent: '#FF6B00', icon: <Package size={16} /> },
   { key: 'custom', label: 'Custom Enterprise', tagline: 'Tailored for scale', description: 'A tailored platform deployment configured for your exact needs.', accent: '#8B5CF6', icon: <Building size={16} /> },
@@ -545,7 +545,7 @@ const TIER_PLANS: Record<TierKey, any[]> = {
 };
 
 
-// â”€â”€â”€ Feature Card Component â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Feature Card Component 
 const FeatureCard = ({ icon, title, desc, accent, tag }: any) => {
   const hoverVal = useSharedValue(0);
   const glowVal = useSharedValue(0);
@@ -684,7 +684,7 @@ const FeatureCard = ({ icon, title, desc, accent, tag }: any) => {
   );
 };
 
-// â”€â”€â”€ Discount Banner â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Discount Banner
 // Offer ends Saturday 2026-02-28 00:00:00 EAT (UTC+3)
 const OFFER_END = new Date('2026-02-28T00:00:00+03:00').getTime();
 
@@ -801,70 +801,8 @@ function DiscountBanner() {
   );
 }
 
-// â”€â”€ Hover Animated Buttons â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-const SignInButtonFloating = () => {
-  const hoverVal = useSharedValue(0);
+//Hover Animated Buttons
 
-  const animatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: interpolate(hoverVal.value, [0, 1], [1, 1.05]) }],
-    boxShadow: [{
-      offsetX: 0,
-      offsetY: 4,
-      blurRadius: interpolate(hoverVal.value, [0, 1], [10, 20]),
-      color: `rgba(255, 107, 0, ${interpolate(hoverVal.value, [0, 1], [0.3, 0.6])})`,
-    }],
-    shadowOpacity: interpolate(hoverVal.value, [0, 1], [0.3, 0.6]),
-    shadowRadius: interpolate(hoverVal.value, [0, 1], [10, 20]),
-    backgroundColor: hoverVal.value > 0.5 ? 'rgba(255, 107, 0, 0.25)' : 'rgba(255, 107, 0, 0.15)',
-  }));
-
-  const onHoverIn = () => {
-    if (Platform.OS === 'web') hoverVal.value = withTiming(1, { duration: 200, easing: Easing.out(Easing.ease) });
-  };
-  const onHoverOut = () => {
-    if (Platform.OS === 'web') hoverVal.value = withTiming(0, { duration: 250, easing: Easing.inOut(Easing.ease) });
-  };
-
-  return (
-    <Reanimated.View
-      style={[{
-        borderRadius: 20,
-        shadowColor: "#FF6B00",
-        shadowOffset: { width: 0, height: 4 },
-        boxShadow: [{
-          offsetX: 0,
-          offsetY: 4,
-          blurRadius: 8,
-          color: 'rgba(255, 107, 0, 0.2)',
-        }],
-        elevation: 8,
-      }, animatedStyle]}
-    >
-      <TouchableOpacity
-        //@ts-ignore
-        onPointerEnter={onHoverIn}
-        onPointerLeave={onHoverOut}
-        onPress={() => router.push("/(auth)/signIn")}
-        style={{
-          flexDirection: "row",
-          alignItems: "center",
-          paddingHorizontal: 16,
-          paddingVertical: 10,
-          borderRadius: 20,
-          borderWidth: 1,
-          borderColor: "rgba(255, 107, 0, 0.3)",
-          gap: 8,
-        }}
-        activeOpacity={0.8}
-      >
-        <LogIn size={16} color="#FF6B00" />
-        <Text style={{ color: "#FF8C40", fontWeight: "800", fontSize: 13, letterSpacing: 0.5 }}>
-          Sign In
-        </Text>
-      </TouchableOpacity>
-    </Reanimated.View>
-  );
-};
 
 const SignInButtonMain = () => {
   const hoverVal = useSharedValue(0);
@@ -1164,27 +1102,13 @@ export default function Index() {
     <SafeAreaView style={{ flex: 1, backgroundColor: "#0F0B2E" }}>
       <StatusBar barStyle="light-content" />
 
-      {/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• FIXED DISCOUNT BANNER â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
+      {/*FIXED DISCOUNT BANNER */}
       <DiscountBanner />
 
-      {/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• FLOATING TOP-RIGHT SIGN IN â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
-      <Animated.View
-        pointerEvents={showNav ? "none" : "auto"}
-        style={{
-          position: "absolute",
-          top: Platform.OS === "web" ? 10 : 50,
-          right: 24,
-          zIndex: 99,
-          opacity: navOpacity.interpolate({
-            inputRange: [0, 1],
-            outputRange: [1, 0],
-          }),
-        }}
-      >
-        <SignInButtonFloating />
-      </Animated.View>
+      {/*FLOATING TOP-RIGHT SIGN IN*/}
 
-      {/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• FLOATING STICKY NAV â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
+
+      {/*FLOATING STICKY NAV*/}
       <Animated.View
         pointerEvents={showNav ? "auto" : "none"}
         style={{
@@ -1266,7 +1190,7 @@ export default function Index() {
           contentContainerStyle={{ paddingBottom: 60 }}
           showsVerticalScrollIndicator={false}
         >
-          {/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• HERO SECTION â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
+          {/*  HERO SECTION  */}
           <View
             style={{
               minHeight: Dimensions.get("window").height * 0.92,
@@ -1440,7 +1364,7 @@ export default function Index() {
                 }}
               >
                 Empower your institution with a modern, cloud-based LMS.{"\n"}
-                Courses, resources, payments, analytics â€” all in one place.
+                Courses, resources, payments, analytics all in one place.
               </Text>
 
               <View style={{ flexDirection: "row", marginTop: 32, gap: 12 }}>
@@ -1496,7 +1420,7 @@ export default function Index() {
             </Animated.View>
           </View>
 
-          {/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• FEATURES SECTION â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
+          {/*  FEATURES SECTION  */}
           <View
             ref={featuresRef}
             onLayout={(e) => handleLayout("features", e.nativeEvent.layout.y)}
@@ -1550,7 +1474,7 @@ export default function Index() {
               </View>
 
               <Text style={{ color: 'rgba(255,255,255,0.45)', fontSize: 15, textAlign: 'center', marginTop: 18, maxWidth: 520, lineHeight: 23 }}>
-                A unified platform built for every stakeholder â€” from admin and teachers to students and parents.
+                A unified platform built for every stakeholder  from admin and teachers to students and parents.
               </Text>
             </View>
 
@@ -1560,7 +1484,7 @@ export default function Index() {
                 {
                   icon: <BookOpen size={24} color="#FF8C40" />,
                   title: 'Course Management',
-                  desc: 'Create, publish and manage rich courses with videos, quizzes, and assignments â€” all in one editor.',
+                  desc: 'Create, publish and manage rich courses with videos, quizzes, and assignments  all in one editor.',
                   accent: '#FF6B00',
                   tag: 'Core',
                 },
@@ -1574,7 +1498,7 @@ export default function Index() {
                 {
                   icon: <CreditCard size={24} color="#60A5FA" />,
                   title: 'Fee & Payments',
-                  desc: 'Automate invoicing, track outstanding fees, and accept payments â€” with real-time dashboards.',
+                  desc: 'Automate invoicing, track outstanding fees, and accept payments  with real-time dashboards.',
                   accent: '#2563EB',
                   tag: 'Finance',
                 },
@@ -1606,7 +1530,7 @@ export default function Index() {
 
           </View>
 
-          {/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• PRICING SECTION â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
+          {/*  PRICING SECTION  */}
           <View
             ref={pricingRef}
             onLayout={(e) => handleLayout("pricing", e.nativeEvent.layout.y)}
@@ -1662,7 +1586,7 @@ export default function Index() {
               </Text>
             </View>
 
-            {/* â”€â”€ LEVEL 1: Tier Selector â”€â”€ */}
+            {/*  LEVEL 1: Tier Selector  */}
             {SCREEN_WIDTH >= 768 ? (
               /* Wide screen (>=768px): centred flex row */
               <View style={{
@@ -1735,7 +1659,7 @@ export default function Index() {
               </Text>
             </View>
 
-            {/* â”€â”€ LEVEL 2: Plan Cards â”€â”€ */}
+            {/*  LEVEL 2: Plan Cards  */}
             <View
               onLayout={(e) => setPricingCardsY(e.nativeEvent.layout.y + (sectionPositions['pricing'] ?? 0))}
               style={{
@@ -1847,7 +1771,7 @@ export default function Index() {
               </View>
             </View>
 
-            {/* â”€â”€ Add-Ons Section â”€â”€ */}
+            {/*  Add-Ons Section  */}
             <View style={{ width: '100%', marginTop: 56 }}>
               {/* Header */}
               <View style={{ alignItems: 'center', marginBottom: 28 }}>
@@ -1867,7 +1791,7 @@ export default function Index() {
                   Enhance Your Plan
                 </Text>
                 <Text style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13, textAlign: 'center', maxWidth: 460, lineHeight: 20 }}>
-                  Bolt on powerful modules to any plan â€” available standalone or bundled with Pro &amp; above.
+                  Bolt on powerful modules to any plan  available standalone or bundled with Pro &amp; above.
                 </Text>
               </View>
 
@@ -1884,7 +1808,7 @@ export default function Index() {
                     tagline: 'Add-On Module',
                     price: '$30/mo',
                     accent: '#8B5CF6',
-                    desc: 'Give your institution a fully searchable digital library â€” books, PDFs, videos and more.',
+                    desc: 'Give your institution a fully searchable digital library  books, PDFs, videos and more.',
                     features: [
                       'Unlimited uploads & categories',
                       'Student & teacher access controls',
@@ -2038,7 +1962,7 @@ export default function Index() {
           </View>
 
 
-          {/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• ACCESS PORTAL / SIGN IN â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
+          {/*  ACCESS PORTAL / SIGN IN  */}
           <View style={{ paddingHorizontal: 24, paddingVertical: 40, alignItems: 'center' }}>
             <View style={{
               backgroundColor: 'rgba(19, 16, 58, 0.4)',
@@ -2080,7 +2004,7 @@ export default function Index() {
             </View>
           </View>
 
-          {/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• GET IN TOUCH FOOTER â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
+          {/*  GET IN TOUCH FOOTER  */}
           <View
             ref={getInTouchRef}
             onLayout={(e) => handleLayout("getInTouch", e.nativeEvent.layout.y)}
@@ -2137,7 +2061,7 @@ export default function Index() {
 
             <View style={{ marginTop: 80, borderTopWidth: 1, borderColor: 'rgba(255,255,255,0.05)', paddingTop: 32, width: '100%', maxWidth: 1000, flexDirection: 'row', justifyContent: 'center' }}>
               <Text style={{ color: 'rgba(255,255,255,0.4)', textAlign: 'center', fontSize: 14, fontWeight: '500' }}>
-                Â© {new Date().getFullYear()} Cloudora Solutions. All rights reserved.
+                © {new Date().getFullYear()} Cloudora Solutions. All rights reserved.
               </Text>
             </View>
           </View>

@@ -4,7 +4,6 @@ const supabase = require("../utils/supabaseClient.js");
 exports.listBursaries = async (req, res) => {
   try {
     const { institution_id } = req;
-    console.log(`[Bursary] listBursaries for institution: ${institution_id}`);
 
     if (!institution_id) {
       console.warn(`[Bursary] listBursaries aborted: No institution_id`);

@@ -5,7 +5,6 @@ const supabase = require('../utils/supabaseClient');
  * Finds expired trial sessions and deletes associated institutions and ephemeral auth users.
  */
 async function cleanupExpiredDemoSessions() {
-    console.log('🔄 Running Demo Session Cleanup...');
     try {
         const now = new Date().toISOString();
 
@@ -17,18 +16,15 @@ async function cleanupExpiredDemoSessions() {
 
         if (fetchError) throw fetchError;
         if (!expiredSessions || expiredSessions.length === 0) {
-            console.log('✅ No expired demo sessions found.');
             return;
         }
 
-        console.log(`🧹 Found ${expiredSessions.length} expired demo sessions. Cleaning up...`);
 
         for (const session of expiredSessions) {
             try {
                 const institutionId = session.institution_id;
                 const demoUserId = session.demo_user_id;
 
-                console.log(`🗑️ Cleaning session ${session.id} (Inst: ${institutionId}, User: ${demoUserId})`);
 
                 // 1. Delete users linked to this institution (to clear NO ACTION constraints)
                 if (institutionId) {
@@ -60,7 +56,6 @@ async function cleanupExpiredDemoSessions() {
             }
         }
 
-        console.log('🎉 Demo cleanup complete.');
     } catch (err) {
         console.error('❌ Failed to run demo cleanup:', err);
     }

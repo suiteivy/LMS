@@ -136,7 +136,6 @@ exports.addOrUpdateBook = async (req, res) => {
       // cover_url, // Not in schema 'books'
       // location   // Not in schema 'books'
     } = req.body;
-    console.log(`[Library] addOrUpdateBook: ${title}, ID: ${req.body.id || req.params.bookId}`);
     const id = req.body.id || req.params.bookId;
     const institution_id = req.institution_id;
 
@@ -221,7 +220,6 @@ exports.listBooks = async (req, res) => {
   try {
     const { institution_id } = req;
     const includeUnavailable = (req.query.includeUnavailable || "").toString().toLowerCase() === "true";
-    console.log(`[Library] listBooks for institution: ${institution_id}`);
 
     let query = supabase
       .from("books") // Changed from library_items
@@ -510,7 +508,6 @@ exports.history = async (req, res) => {
 /** Admin view: all loans */
 exports.getAllBorrowedBooks = async (_req, res) => {
   try {
-    console.log(`[Library] getAllBorrowedBooks triggered`);
     // Need to join students -> users to get names
     // And books
     const { data, error } = await supabase

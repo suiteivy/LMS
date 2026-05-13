@@ -299,6 +299,25 @@ CREATE TABLE academic_reports (
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+ALTER TABLE academic_reports ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "academic_reports_isolation" ON academic_reports
+FOR ALL USING (
+    institution_id = get_current_user_institution_id() 
+    AND (
+        get_current_user_role() IN ('admin', 'teacher', 'master_admin') 
+        OR (status = 'published' AND (
+            student_id = current_user_student_id() 
+            OR EXISTS (
+                SELECT 1 FROM parent_students ps
+                JOIN parents p ON ps.parent_id = p.id
+                WHERE ps.student_id = academic_reports.student_id 
+                AND p.user_id = auth.uid()
+            )
+        ))
+    )
+);
+
 -- 8. Attendance
 CREATE TABLE attendance (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -612,6 +631,26 @@ CREATE TABLE notifications (
     institution_id UUID REFERENCES institutions(id),
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- 3. User Preferences
+CREATE TABLE user_preferences (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID REFERENCES users(id) ON DELETE CASCADE UNIQUE,
+    institution_id UUID REFERENCES institutions(id) ON DELETE CASCADE,
+    push_notifications BOOLEAN DEFAULT true,
+    submission_alerts BOOLEAN DEFAULT true,
+    system_alerts BOOLEAN DEFAULT true,
+    email_notifications BOOLEAN DEFAULT true,
+    subscription_alerts BOOLEAN DEFAULT true,
+    issues_requests_alerts BOOLEAN DEFAULT true,
+    support_cases_alerts BOOLEAN DEFAULT true,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE user_preferences ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "strict_institution_isolation" ON user_preferences FOR ALL USING (institution_id = get_current_user_institution_id() OR get_current_user_role() = 'master_admin');
+
 
 -- ---------------------------------------------------------
 -- PART 6: VIEWS & TRIGGERS
@@ -1136,6 +1175,7 @@ CREATE OR REPLACE VIEW v_classes_detailed AS
     c.created_at,
     c.updated_at,
     c.teacher_id,
+    c.capacity,
     c.grade_level,
     c.form_level,
     c.stream,

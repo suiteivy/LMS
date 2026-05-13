@@ -131,7 +131,6 @@ export default function UserDetailsScreen() {
     const fetchUserDetails = async () => {
         try {
             setLoading(true);
-            console.log('===== [RELOAD] Fetching user details =====');
             const { data: userData, error: userError } = await supabase.from('users').select('*').eq('id', id).single();
             if (userError) throw userError;
             const typedUser = userData as UserRow;
@@ -163,7 +162,6 @@ export default function UserDetailsScreen() {
 
             if (roleQuery) {
                 const { data: rData, error: rError } = await roleQuery;
-                console.log('[RELOAD] Role data parent_students:', JSON.stringify(rData?.parent_students));
                 if (rError) console.error('[RELOAD] Role query error:', rError);
                 if (!rError && rData) {
                     const nd = Array.isArray(rData) ? rData[0] : rData;
@@ -172,27 +170,19 @@ export default function UserDetailsScreen() {
 
                     // Fallback: if the join didn't return parent_students, query directly
                     if (role === 'student' && (!nd.parent_students || nd.parent_students.length === 0) && nd.id) {
-                        console.log('[RELOAD] Fallback: querying parent_students for student', nd.id);
                         const { data: psData, error: psErr } = await supabase.from('parent_students').select('parent_id').eq('student_id', nd.id);
-                        console.log('[RELOAD] Fallback result:', JSON.stringify(psData), 'error:', psErr);
                         if (psData && psData.length > 0) {
                             const parentIds = psData.map((ps: any) => ps.parent_id);
-                            console.log('[RELOAD] Setting linkedParents to:', parentIds);
                             setLinkedParents(parentIds);
                         } else {
-                            console.log('[RELOAD] No linked parents found');
                         }
                     }
                     if (role === 'parent' && (!nd.parent_students || nd.parent_students.length === 0) && nd.id) {
-                        console.log('[RELOAD] Fallback: querying parent_students for parent', nd.id);
                         const { data: psData, error: psErr } = await supabase.from('parent_students').select('student_id').eq('parent_id', nd.id);
-                        console.log('[RELOAD] Fallback result:', JSON.stringify(psData), 'error:', psErr);
                         if (psData && psData.length > 0) {
                             const studentIds = psData.map((ps: any) => ps.student_id);
-                            console.log('[RELOAD] Setting linkedStudents to:', studentIds);
                             setLinkedStudents(studentIds);
                         } else {
-                            console.log('[RELOAD] No linked students found');
                         }
                     }
 
@@ -276,7 +266,6 @@ export default function UserDetailsScreen() {
         if (!firstName.trim()) { Alert.alert('Validation', 'First name is required'); return; }
         setSaving(true);
         try {
-            console.log('===== [SAVE] Step 1: Building request body =====');
 
             const body: any = {
                 first_name: firstName,
@@ -320,22 +309,14 @@ export default function UserDetailsScreen() {
                 });
             }
 
-            console.log('[SAVE] Step 1: Body =', JSON.stringify(body, null, 2));
-            console.log('[SAVE] Step 1: linked_parents =', linkedParents);
-            console.log('[SAVE] Step 1: linked_students =', linkedStudents);
 
-            console.log('===== [SAVE] Step 2: Sending PUT request =====');
-            console.log('[__SAVE__] class_id:', classId, 'linked_parents:', linkedParents)
             const { data } = await api.put(`/auth/admin-update-user/${id}`, body);
-            console.log('[SAVE] Step 2: Response =', JSON.stringify(data, null, 2));
 
             if (!data) throw new Error('Update failed');
             Alert.alert('Success', 'User updated successfully');
             setIsEditing(false);
 
-            console.log('===== [SAVE] Step 3: Reloading user details =====');
             await fetchUserDetails();
-            console.log('===== [SAVE] Complete =====');
         } catch (err: any) {
             console.error('[SAVE] ERROR:', err.message, JSON.stringify(err, null, 2));
             Alert.alert('Error', err.message);
@@ -389,7 +370,6 @@ export default function UserDetailsScreen() {
     };
 
     const renderChipList = (label: string, items: any[], selectedIds: string[], setSelected: (ids: string[]) => void, displayFn: (item: any) => string, accentColor: string) => {
-        console.log(`[ChipList] ${label}: ${items.length} items, ${selectedIds.length} selected`, selectedIds);
         return (
             <View style={{ marginTop: 16, paddingTop: 16, borderTopWidth: 1, borderTopColor: border }}>
                 <Text style={{ color: textSecondary, fontWeight: '500', fontSize: 13, marginBottom: 10 }}>{label}</Text>
@@ -402,7 +382,6 @@ export default function UserDetailsScreen() {
                                 onPress={() => {
                                     if (!isEditing) return;
                                     const newIds = isSelected ? selectedIds.filter(i => i !== item.id) : [...selectedIds, item.id];
-                                    console.log(`[ChipList] ${label} toggled ${item.id}: ${isSelected ? 'DESELECT' : 'SELECT'}, newIds:`, newIds);
                                     setSelected(newIds);
                                 }}
                                 disabled={!isEditing}

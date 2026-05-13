@@ -40,11 +40,8 @@ The Beta tier includes the full school-communication suite to ensure seamless co
 - **Automated Timetabling**: Basic scheduling for subjects and teachers.
 - **Profile Management**: Detailed metadata control for institutional identity.
 
----
-
-## Extendable Modular Features
-A unique capability of the Beta tier is the ability for a **Master Admin** to selectively unlock specific professional modules on a per-institution basis:
-
+### 4. Advanced Institutional Modules
+The Beta tier includes full access to the following professional modules:
 - **Finance & Accounting**: Professional bookkeeping and fee tracking.
 - **Bursary Management**: Handling of student scholarships and financial aid.
 - **Digital Library**: Cataloging and distribution of digital resources.
@@ -63,5 +60,5 @@ A unique capability of the Beta tier is the ability for a **Master Admin** to se
 ## Administrative Management
 Master Admins manage the Beta lifecycle via the platform dashboard:
 1. **Provisioning**: Assignment of the "Beta Partner" plan during institution setup.
-2. **Modular Upgrades**: Selective enabling of the features mentioned in the "Extendable" section via the Institution Edit panel.
+2. **Modular Control**: Beta bypasses most restrictions, but specific add-ons can still be managed via the Institution Edit panel.
 3. **Ledger Integration**: Ability to record custom pilot support fees or manual payments in the platform ledger.

@@ -76,7 +76,6 @@ exports.enrollStudentInSubject = async (req, res) => {
 
     // 3. Enroll (Insert into enrollments)
     // 3. Enroll (Insert into enrollments)
-    console.log(`[Enrollment] Attempting to enroll student ${student_id} in subject ${subject_id}`);
 
     const { error } = await supabase
       .from("enrollments")
@@ -99,7 +98,6 @@ exports.enrollStudentInSubject = async (req, res) => {
       throw error;
     }
 
-    console.log("[Enrollment] Success");
     res.status(200).json({ message: "Enrolled successfully" });
   } catch (err) {
     console.error("enrollStudentInSubject error:", err);

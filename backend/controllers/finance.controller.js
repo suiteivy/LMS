@@ -128,7 +128,6 @@ exports.getTransactions = async (req, res) => {
     try {
         const { institution_id, userRole, userId } = req;
         const { type, distinct_user_id } = req.query; // optional filters
-        console.log(`[Finance] getTransactions: Role=${userRole}, Type=${type}`);
 
         let query = supabase
             .from("financial_transactions")
@@ -225,9 +224,7 @@ exports.recordFeePayment = async (req, res) => {
     try {
         const { userRole, institution_id } = req;
         if (!['admin', 'master_admin'].includes(userRole)) return res.status(403).json({ error: "Unauthorized" });
-        console.log("recordFeePayment called with body:", req.body);
         const { student_id, amount, payment_method, reference_number, notes } = req.body;
-        console.log(`Recording fee payment: student_id=${student_id}, amount=${amount}, method=${payment_method}`);
         // Verify student exists and get user_id
         const { data: student, error: studentError } = await supabase.from('students').select('id,user_id').eq('id', student_id).single();
 

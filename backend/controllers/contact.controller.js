@@ -12,7 +12,6 @@ exports.submitBooking = async (req, res) => {
             return res.status(400).json({ error: "Missing required fields" });
         }
 
-        console.log(`[Booking] New submission from ${name} (${email}) for plan: ${plan}`);
         console.log(`[Email] Sending booking notification to: Support@cloudoraltd.live`);
 
         // Check if SMTP credentials exist
@@ -96,7 +95,6 @@ exports.submitBooking = async (req, res) => {
 
         // Send email
         const info = await transporter.sendMail(mailOptions);
-        console.log(`[Email] Email sent successfully: ${info.messageId}`);
 
         res.json({
             success: true,

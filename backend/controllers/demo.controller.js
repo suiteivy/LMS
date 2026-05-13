@@ -14,7 +14,6 @@ exports.startDemo = async (req, res) => {
     }
 
     try {
-        console.log(`Starting dynamic demo session for role: ${role}`);
         
         // 1. Create a Unique Ephemeral User for this session
         const sessionSuffix = crypto.randomBytes(4).toString('hex');

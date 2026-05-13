@@ -1,24 +1,3 @@
-const process = require("node:process");
-const { createClient } = require('@supabase/supabase-js');
-const dotenv = require('dotenv');
-const path = require('path');
-
-dotenv.config({ path: path.join(__dirname, '.env') });
-
-const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-if (!supabaseUrl || !supabaseKey) {
-    console.error('Missing Supabase credentials in .env');
-    process.exit(1);
-}
-
-const supabase = createClient(supabaseUrl, supabaseKey);
-
-async function runMigration() {
-    console.log('Running migration on:', supabaseUrl);
-
-    const migrationSql = `
 -- 1. Create user_preferences table
 CREATE TABLE IF NOT EXISTS user_preferences (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -83,21 +62,3 @@ CREATE VIEW v_classes_detailed AS
    FROM classes c
      JOIN institutions i ON c.institution_id = i.id
      LEFT JOIN school_categories sc ON i.category_id = sc.id;
-`;
-
-    try {
-        const { data: _data, error } = await supabase.rpc('execute_sql_internal', { sql_query: migrationSql });
-
-        if (error) {
-            console.log('Error applying migration via RPC. Trying raw query if available...');
-            throw error;
-        }
-
-        console.log('Migration successfully applied!');
-    } catch (err) {
-        console.error('Migration failed:', err.message);
-        process.exit(1);
-    }
-}
-
-runMigration();

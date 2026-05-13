@@ -31,7 +31,6 @@ exports.getCurrencyRates = async (_req, res) => {
  */
 exports.updateCurrencyRates = async (_req, res) => {
     try {
-        console.log("[Settings] Updating currency rates...");
 
         // Use open.er-api.com (Free, no key required for basic USD rates)
         const response = await axios.get("https://open.er-api.com/v6/latest/USD");
@@ -56,7 +55,6 @@ exports.updateCurrencyRates = async (_req, res) => {
 
         if (error) throw error;
 
-        console.log(`[Settings] Updated KES rate to ${kesRate}`);
         res.json(data.value);
     } catch (err) {
         console.error("Update currency rates error:", err);
@@ -81,7 +79,6 @@ exports.checkAndAutoUpdateRates = async () => {
             const hoursSinceUpdate = (now - lastUpdate) / (1000 * 60 * 60);
 
             if (hoursSinceUpdate < 24) {
-                console.log(`[Settings] Rates are fresh (${hoursSinceUpdate.toFixed(1)}h old). Skipping auto-update.`);
                 return;
             }
         }

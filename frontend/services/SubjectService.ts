@@ -65,7 +65,6 @@ export const SubjectAPI = {
     // Enroll student in a subject
     enrollStudent: async (subjectId: string): Promise<any> => {
         try {
-            console.log(`[SubjectService] Enrolling in subject: ${subjectId}`);
             const response = await api.post("/subjects/enroll", { subject_id: subjectId.toString() });
             return response.data;
         } catch (error) {

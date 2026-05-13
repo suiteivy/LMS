@@ -35,11 +35,9 @@ export const AuthGuard: React.FC<AuthGuardProps> = ({
   useEffect(() => {
     if (!isInitializing && requireAuth) {
       if (!user) {
-        console.log('AuthGuard: No user found. Global AuthHandler will redirect.')
       } else if (allowedRoles && profile && !allowedRoles.includes(profile.role)) {
         const redirectPath = getRoleRedirect(profile, isPlatformAdmin) || '/(auth)/signIn';
         
-        console.log(`AuthGuard: User role ${profile.role} not allowed on this route. Redirecting to ${redirectPath}...`)
         
         // Loop prevention
         if (lastRedirectTarget.current === redirectPath) {

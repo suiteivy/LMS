@@ -43,12 +43,6 @@ const getBaseUrl = (): string => {
 };
 
 const baseURL = getBaseUrl();
-console.log("[DEBUG] API Config:", {
-  envUrl: process.env.EXPO_PUBLIC_URL,
-  hostUri: Constants.expoConfig?.hostUri,
-  platform: Platform.OS,
-  resolvedBaseUrl: baseURL
-});
 
 /**
  * To Do:
@@ -56,8 +50,6 @@ console.log("[DEBUG] API Config:", {
  * Automatically handles different environments (production/development)
  * and platforms (iOS/Android)
  */
-// console.log("API Base URL:", baseURL);
-// console.log("Loaded EXPO_PUBLIC_URL:", process.env.EXPO_PUBLIC_URL);
 
 export const api: AxiosInstance = axios.create({
   baseURL: baseURL,
@@ -74,7 +66,6 @@ api.interceptors.request.use(
     const startTime = Date.now();
     const requestId = Math.random().toString(36).substring(7);
     
-    // console.log(`[API Request ${requestId}] Starting: ${config.method?.toUpperCase()} ${config.url}`);
     
     try {
       // Race protection: if getSession hangs, don't block the whole app.
@@ -100,7 +91,6 @@ api.interceptors.request.use(
       // but that's better than hanging the UI forever).
     }
     
-    // console.log(`[API Request ${requestId}] Interceptor finished in ${Date.now() - startTime}ms`);
     return config;
   },
   (error) => {
@@ -146,11 +136,9 @@ api.interceptors.response.use(
                 console.warn("[API] Session still exists but 401 received. Triggering signOut.");
                 supabase.auth.signOut().catch(e => console.warn("SignOut error:", e));
               } else {
-                console.log("[API] 401 received but session is already gone. Skipping signOut.");
               }
             });
           } else {
-            console.log("[API] 401 received but skipped signOut due to skipErrorToast or missing token.");
           }
           return Promise.reject({ ...error, isAuthError: true });
         case 403:

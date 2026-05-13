@@ -10,6 +10,9 @@ export interface UserPreferences {
     submission_alerts: boolean;
     system_alerts: boolean;
     email_notifications: boolean;
+    subscription_alerts?: boolean;
+    issues_requests_alerts?: boolean;
+    support_cases_alerts?: boolean;
 }
 
 export const SettingsService = {
@@ -41,6 +44,9 @@ export const SettingsService = {
                 submission_alerts: true,
                 system_alerts: true,
                 email_notifications: true,
+                subscription_alerts: true,
+                issues_requests_alerts: true,
+                support_cases_alerts: true,
             };
         }
     },

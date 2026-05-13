@@ -43,7 +43,6 @@ const logger = {
         if (typeof message === 'string' && message.includes('DELETE /api/')) return;
         
         const log = formatLog('INFO', message, meta);
-        console.log(log.trim());
         writeToFile(ACCESS_LOG, log);
     },
 
@@ -72,7 +71,6 @@ const logger = {
     debug: (message, meta = {}) => {
         if (process.env.NODE_ENV !== 'production') {
             const log = formatLog('DEBUG', message, meta);
-            console.log(log.trim());
         }
     },
 
@@ -83,7 +81,6 @@ const logger = {
             ip: meta.ip || 'unknown',
             userId: meta.userId || 'anonymous'
         });
-        console.log(log.trim());
         writeToFile(ACCESS_LOG, log);
     }
 };

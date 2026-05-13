@@ -5,7 +5,6 @@ exports.getDashboardStats = async (req, res) => {
     try {
         const { userId, userRole } = req;
         const institution_id = req.institution_id || null;
-        console.log(`[TeacherDashboard] Fetching stats for user: ${userId}, institution: ${institution_id}`);
 
         if (userRole !== 'teacher') {
             return res.status(403).json({ error: "Unauthorized" });
@@ -109,7 +108,6 @@ exports.getDashboardStats = async (req, res) => {
         }
 
         const duration = Date.now() - startTime;
-        console.log(`[TeacherDashboard] Success in ${duration}ms`);
 
         res.json({
             stats: {

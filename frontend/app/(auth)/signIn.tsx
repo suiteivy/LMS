@@ -306,7 +306,7 @@ export default function SignIn() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [formData, setFormData] = useState<FormData>({ email: "", password: "" });
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [successMsg, setSuccessMsg] = useState<string | null>(null);
+  const [toastConfig, setToastConfig] = useState<{msg: string, type: "success" | "error"} | null>(null);
   const { signIn, loading: isGlobalLoading } = useAuth();
 
   //  Entrance animations 
@@ -362,8 +362,8 @@ export default function SignIn() {
     };
   }, []);
 
-  const showToast = (msg: string) => {
-    setSuccessMsg(msg);
+  const showToast = (msg: string, type: "success" | "error" = "success") => {
+    setToastConfig({ msg, type });
     Animated.parallel([
       Animated.spring(toastY, { toValue: 0, useNativeDriver: true, friction: 7 }),
       Animated.timing(toastOpacity, { toValue: 1, duration: 300, useNativeDriver: true }),
@@ -372,8 +372,8 @@ export default function SignIn() {
       Animated.parallel([
         Animated.timing(toastY, { toValue: -80, duration: 400, useNativeDriver: true }),
         Animated.timing(toastOpacity, { toValue: 0, duration: 300, useNativeDriver: true }),
-      ]).start(() => setSuccessMsg(null));
-    }, 2500);
+      ]).start(() => setToastConfig(null));
+    }, 3000);
   };
 
   const shakeCard = () => {
@@ -448,6 +448,29 @@ export default function SignIn() {
         return;
       }
 
+      // --- Security Check: Validate Institution Status ---
+      if (userData.role !== "master_admin" && userData.institution_id) {
+        const { data: instData, error: instError } = await supabase
+          .from("institutions")
+          .select("subscription_status")
+          .eq("id", userData.institution_id)
+          .single() as { data: { subscription_status: string | null } | null; error: any };
+
+        if (instError || !instData) {
+          setErrorMessage("Could not verify institution status");
+          await supabase.auth.signOut();
+          return;
+        }
+
+        // Master admin sets status to 'suspended' when disabling an institution
+        if (instData.subscription_status === "suspended" || instData.subscription_status === "cancelled") {
+          showToast("Access Denied: Your institution's account has been disabled.", "error");
+          shakeCard();
+          await supabase.auth.signOut();
+          return;
+        }
+      }
+
       showToast(`Welcome back, ${userData.full_name || "there"}!`);
 
       // Let AuthHandler detect session change and handle the transition
@@ -476,7 +499,7 @@ export default function SignIn() {
         <FloatingOrb size={200} color="rgba(236,72,153,0.08)" top="30%" left="70%" duration={4500} delay={1000} />
         <FloatingOrb size={180} color="rgba(59,130,246,0.08)" top="70%" left="-5%" duration={7000} delay={300} />
 
-        {/*  Success toast  */}
+        {/*  Dynamic Toast  */}
         <Animated.View
           pointerEvents="none"
           style={{
@@ -492,16 +515,16 @@ export default function SignIn() {
           }}
         >
           <View style={{
-            backgroundColor: "rgba(34,197,94,0.2)",
+            backgroundColor: toastConfig?.type === 'error' ? "rgba(239,68,68,0.2)" : "rgba(34,197,94,0.2)",
             borderWidth: 1,
-            borderColor: "rgba(34,197,94,0.4)",
+            borderColor: toastConfig?.type === 'error' ? "rgba(239,68,68,0.4)" : "rgba(34,197,94,0.4)",
             borderRadius: 16,
             paddingHorizontal: 24,
             paddingVertical: 14,
             flexDirection: "row",
             alignItems: "center",
             gap: 10,
-            shadowColor: "#22c55e",
+            shadowColor: toastConfig?.type === 'error' ? "#ef4444" : "#22c55e",
             shadowOffset: { width: 0, height: 8 },
             shadowOpacity: 0.3,
             shadowRadius: 16,
@@ -509,12 +532,16 @@ export default function SignIn() {
               offsetX: 0,
               offsetY: 8,
               blurRadius: 16,
-              color: "rgba(34, 197, 94, 0.3)",
+              color: toastConfig?.type === 'error' ? "rgba(239, 68, 68, 0.3)" : "rgba(34, 197, 94, 0.3)",
             }],
           }}>
-            <IconIonicons name="checkmark-circle" size={22} color="#4ade80" />
-            <Text style={{ color: "#4ade80", fontWeight: "700", fontSize: 15 }}>
-              {successMsg}
+            <IconIonicons 
+              name={toastConfig?.type === 'error' ? "close-circle" : "checkmark-circle"} 
+              size={22} 
+              color={toastConfig?.type === 'error' ? "#f87171" : "#4ade80"} 
+            />
+            <Text style={{ color: toastConfig?.type === 'error' ? "#f87171" : "#4ade80", fontWeight: "700", fontSize: 15 }}>
+              {toastConfig?.msg}
             </Text>
           </View>
         </Animated.View>

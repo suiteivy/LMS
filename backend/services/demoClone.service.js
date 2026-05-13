@@ -9,7 +9,6 @@ const crypto = require('crypto');
  * @returns {Promise<string>} - The new institution ID.
  */
 async function cloneInstitution(templateId, teacherUserId, adminUserId) {
-    console.log(`Cloning institution ${templateId} for new demo session...`);
 
     // 1. Create New Institution
     const newInstitutionId = crypto.randomUUID();
