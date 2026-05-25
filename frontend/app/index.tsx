@@ -52,6 +52,22 @@ import Svg, { Circle, Defs, LinearGradient, Stop } from 'react-native-svg';
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
+export function priceConverter(price: string) {
+  if (price.toLowerCase() === 'custom') return price;
+  
+  // Hardcoded exchange rate
+  const exchangeRate = 130;
+  
+  // Strip '$' and commas before parsing
+  const numericPrice = price.replace(/[^0-9.]/g, '');
+  const priceInUsd = parseFloat(numericPrice);
+  
+  if (isNaN(priceInUsd)) return price;
+  
+  const priceInKsh = priceInUsd * exchangeRate;
+  return `KSH. ${priceInKsh.toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
+}
+
 // Pricing Components
 const AnimatedCircle = Reanimated.createAnimatedComponent(Circle);
 
@@ -349,7 +365,9 @@ const PlanCard = ({ plan, tierAccent, openRegistrationModal }: any) => {
 
           {/* Price */}
           <View style={{ flexDirection: 'row', alignItems: 'flex-end', marginBottom: 10 }}>
-            <Text style={{ color: 'white', fontWeight: '900', fontSize: 44 }}>{plan.price}</Text>
+            <Text style={{ color: 'white', fontWeight: '900', fontSize: 44 }}>{
+              
+            priceConverter(plan.price)}</Text>
             {plan.period ? (
               <Text style={{ color: 'rgba(255,255,255,0.4)', fontWeight: '600', fontSize: 17, marginBottom: 10, marginLeft: 4 }}>{plan.period}</Text>
             ) : null}
@@ -1369,7 +1387,7 @@ export default function Index() {
 
               <View style={{ flexDirection: "row", marginTop: 32, gap: 12 }}>
                 <Animated.View style={{ transform: [{ scale: ctaPulse }] }}>
-                  <TouchableOpacity
+                  {/* <TouchableOpacity
                     style={{
                       paddingHorizontal: 32, paddingVertical: 18,
                       borderRadius: 16, backgroundColor: "white",
@@ -1391,24 +1409,26 @@ export default function Index() {
                     }}>
                       Start Free Trial
                     </Text>
-                  </TouchableOpacity>
+                  </TouchableOpacity> */}
                 </Animated.View>
                 <TouchableOpacity
                   style={{
-                    paddingHorizontal: 24,
-                    paddingVertical: 16,
-                    borderRadius: 16,
-                    borderWidth: 1.5,
-                    borderColor: "rgba(255,255,255,0.2)",
-                    backgroundColor: "rgba(255,255,255,0.05)",
-                    flexDirection: "row",
-                    alignItems: "center",
-                  }}
+                      paddingHorizontal: 32, paddingVertical: 18,
+                      borderRadius: 16, backgroundColor: "white",
+                      elevation: 6, shadowColor: "white",
+                      boxShadow: [{
+                        offsetX: 0,
+                        offsetY: 4,
+                        blurRadius: 15,
+                        color: 'rgba(255, 255, 255, 0.3)',
+                      }],
+                      flexDirection: "row", alignItems: "center",
+                    }}
                   onPress={() => router.push("/demo" as any)}
                 >
                   <Text
                     style={{
-                      color: "rgba(255,255,255,0.9)",
+                      color: "rgba(0, 0, 0, 0.9)",
                       fontWeight: "700",
                       fontSize: 15,
                     }}
@@ -1882,7 +1902,7 @@ export default function Index() {
                                 {addon.tagline}
                               </Text>
                             </View>
-                            <Text style={{ color: 'white', fontWeight: '900', fontSize: 22 }}>{addon.price}</Text>
+                            <Text style={{ color: 'white', fontWeight: '900', fontSize: 22 }}>{priceConverter(addon.price)}</Text>
                           </View>
                         </View>
 
@@ -1961,49 +1981,6 @@ export default function Index() {
             )}
           </View>
 
-
-          {/*  ACCESS PORTAL / SIGN IN  */}
-          <View style={{ paddingHorizontal: 24, paddingVertical: 40, alignItems: 'center' }}>
-            <View style={{
-              backgroundColor: 'rgba(19, 16, 58, 0.4)',
-              borderRadius: 32,
-              padding: 48,
-              borderWidth: 1,
-              borderColor: 'rgba(255, 255, 255, 0.08)',
-              alignItems: 'center',
-              position: 'relative',
-              overflow: 'hidden',
-              width: '100%',
-              maxWidth: 1000,
-            }}>
-              {/* Blur background effect */}
-              {Platform.OS === 'web' && (
-                <div className="glass-blur-20-absolute" />
-              )}
-
-              {/* Decorative background glowing orbs */}
-              <View style={{ position: 'absolute', top: -100, right: -100, width: 300, height: 300, borderRadius: 150, backgroundColor: 'rgba(255, 107, 0, 0.08)', filter: Platform.OS === 'web' ? 'blur(60px)' : undefined }} />
-              <View style={{ position: 'absolute', bottom: -100, left: -100, width: 300, height: 300, borderRadius: 150, backgroundColor: 'rgba(139, 92, 246, 0.08)', filter: Platform.OS === 'web' ? 'blur(60px)' : undefined }} />
-
-              <View style={{
-                width: 64, height: 64, borderRadius: 24,
-                backgroundColor: 'rgba(255, 107, 0, 0.1)',
-                alignItems: 'center', justifyContent: 'center',
-                marginBottom: 24,
-                borderWidth: 1, borderColor: 'rgba(255, 107, 0, 0.2)'
-              }}>
-                <LogIn size={28} color="#FF6B00" />
-              </View>
-
-              <Text style={{ color: 'white', fontSize: 36, fontWeight: '900', marginBottom: 16, textAlign: 'center', letterSpacing: -1 }}>Access you portal</Text>
-              <Text style={{ color: 'rgba(255,255,255,0.5)', fontSize: 18, marginBottom: 40, textAlign: 'center', maxWidth: 500, lineHeight: 28 }}>
-                Connect with your institution, track your progress, and unlock your personalized learning dashboard.
-              </Text>
-
-              <SignInButtonMain />
-            </View>
-          </View>
-
           {/*  GET IN TOUCH FOOTER  */}
           <View
             ref={getInTouchRef}
@@ -2061,7 +2038,7 @@ export default function Index() {
 
             <View style={{ marginTop: 80, borderTopWidth: 1, borderColor: 'rgba(255,255,255,0.05)', paddingTop: 32, width: '100%', maxWidth: 1000, flexDirection: 'row', justifyContent: 'center' }}>
               <Text style={{ color: 'rgba(255,255,255,0.4)', textAlign: 'center', fontSize: 14, fontWeight: '500' }}>
-                © {new Date().getFullYear()} Cloudora Solutions. All rights reserved.
+                © {new Date().getFullYear()} Cloudora Limited. All rights reserved.
               </Text>
             </View>
           </View>
