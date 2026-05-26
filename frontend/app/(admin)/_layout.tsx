@@ -6,11 +6,11 @@ import { useTheme } from "@/contexts/ThemeContext";
 import { useSubscriptionTier } from "@/hooks/useSubscriptionTier";
 import { Slot, Tabs } from "expo-router";
 import { House, LayoutGrid, Settings, Users, Wallet, Headphones, Bell } from "lucide-react-native";
-import { Platform, useWindowDimensions, View } from "react-native";
+import { Platform, useWindowDimensions, View, Text } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 // Full nav for paid plans
-const ALL_NAV_ITEMS: NavItem[] = [
+export const ALL_NAV_ITEMS: NavItem[] = [
     { name: "index", title: "Home", icon: House, route: "/(admin)" },
     { name: "management/index", title: "Manage", icon: LayoutGrid, route: "/(admin)/management" },
     { name: "users/index", title: "Users", icon: Users, route: "/(admin)/users" },
@@ -21,7 +21,7 @@ const ALL_NAV_ITEMS: NavItem[] = [
 ];
 
 // Beta plan nav: Settings, Home, Users only (no Finance, no full Management)
-const BETA_NAV_ITEMS: NavItem[] = [
+export const BETA_NAV_ITEMS: NavItem[] = [
     { name: "index", title: "Home", icon: House, route: "/(admin)" },
     { name: "management/index", title: "Manage", icon: LayoutGrid, route: "/(admin)/management" },
     { name: "users/index", title: "Users", icon: Users, route: "/(admin)/users" },
@@ -32,22 +32,41 @@ const BETA_NAV_ITEMS: NavItem[] = [
 
 const MOBILE_TAB_NAMES = ["index", "notifications", "settings/settings"];
 
-const ALL_OTHER = ALL_NAV_ITEMS
-    .filter(i => !MOBILE_TAB_NAMES.includes(i.name))
-    .map(i => i.name);
+const ALL_ROUTES = [
+    "index",
+    "notifications",
+    "request-feature",
+    "support",
+    "attendance/index",
+    "attendance/students/index",
+    "attendance/teachers/index",
+    "classes/create",
+    "classes/index",
+    "finance/index",
+    "finance/bursaries/create",
+    "finance/bursaries/reports",
+    "finance/bursaries/[id]",
+    "finance/funds/index",
+    "management/analytics",
+    "management/index",
+    "management/materials",
+    "management/resources",
+    "management/library/index",
+    "management/roles/index",
+    "management/subjects/create",
+    "management/subjects/details",
+    "management/subjects/index",
+    "settings/index",
+    "settings/settings",
+    "subjects/create",
+    "subjects/index",
+    "timetable/index",
+    "users/create",
+    "users/index",
+    "users/[id]",
+];
 
-const HIDDEN = Array.from(new Set([
-    ...ALL_OTHER,
-    "users/[id]", "users/create",
-    "finance/bursaries/[id]", "finance/bursaries/create",
-    "management/analytics", "management/library/index",
-    "management/subjects/index", "management/subjects/create", "management/subjects/[id]", "management/subjects/details",
-    "subjects/index", "subjects/create", "subjects/[id]",
-    "timetable/index", "finance/funds/index",
-    "management/roles/index", "settings/index",
-    "management/classes/index", "classes/index", "classes/create", "classes/[id]", "classes/details",
-    "attendance/teachers/index", "finance/bursaries/reports",
-]));
+const HIDDEN = ALL_ROUTES.filter(name => !MOBILE_TAB_NAMES.includes(name));
 
 // Beta plan extra hidden items (routes hidden from tab bar for beta users)
 // Note: management/index is already in MOBILE_TAB_NAMES so it is handled via href:null below.
@@ -72,7 +91,7 @@ function AdminTabs() {
                     backgroundColor: isDark ? '#0F0B2E' : "#ffffff",
                     borderTopWidth: 1,
                     borderTopColor: isDark ? '#1f2937' : "#e5e7eb",
-                    height: 56 + insets.bottom,
+                    height: 70 + insets.bottom,
                     paddingBottom: insets.bottom || 6,
                     paddingTop: 6,
                     paddingHorizontal: 40,
@@ -133,6 +152,7 @@ function AdminTabs() {
                 name="index"
                 options={{
                     title: "Home",
+                    tabBarShowLabel: false,
                     tabBarIcon: ({ color, focused }) => {
                         const Icon = House as any;
                         return (

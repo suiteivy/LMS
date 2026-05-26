@@ -5,6 +5,8 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { supabase } from '@/libs/supabase';
 import { useAuth } from '@/contexts/AuthContext';
+import { router } from 'expo-router';
+import { ArrowLeft } from 'lucide-react-native';
 
 export default function UserSupport() {
     const { isDark } = useTheme();
@@ -137,9 +139,16 @@ export default function UserSupport() {
     return (
         <SafeAreaView style={{ flex: 1, backgroundColor: themeColors.bg }} edges={['top', 'left', 'right']}>
             <View style={{ padding: 20, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                <View>
-                    <Text style={{ fontSize: 24, fontWeight: '800', color: themeColors.text }}>Support</Text>
-                    <Text style={{ fontSize: 14, color: themeColors.subtext }}>How can we help you today?</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                    <View style={{ backgroundColor: themeColors.primary, width: 40, height: 40, borderRadius: 20, justifyContent: 'center', alignItems: 'center' }}>
+                        <TouchableOpacity onPress={() => router.navigate('/(admin)')}>
+                            <ArrowLeft size={20} color={themeColors.text} />
+                        </TouchableOpacity>
+                    </View>
+                    <View>
+                        <Text style={{ fontSize: 24, fontWeight: '800', color: themeColors.text }}>Support</Text>
+                        <Text style={{ fontSize: 14, color: themeColors.subtext }}>How can we help you today?</Text>
+                    </View>
                 </View>
                 <TouchableOpacity onPress={() => setIsCreating(true)} style={{ backgroundColor: themeColors.primary, paddingHorizontal: 16, paddingVertical: 10, borderRadius: 12, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                     <MaterialCommunityIcons name="plus" size={20} color="#fff" />

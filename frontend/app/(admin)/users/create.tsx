@@ -259,7 +259,7 @@ export default function CreateUserScreen() {
         { role: 'admin' as Role, icon: 'shield-outline', label: 'Admin', desc: 'Create an admin account', color: '#EF4444' },
     ];
     const POSITION_OPTIONS = ['teacher', 'head_of_department', 'assistant', 'class_teacher', 'dean'];
-    const GENDER_OPTIONS = ['male', 'female', 'other'];
+    const GENDER_OPTIONS = ['male', 'female'];
     const RELATIONSHIP_OPTIONS = ['father', 'mother', 'guardian', 'sibling', 'other'];
     // ---------- Dynamic Level Logic ----------
     const GRADE_OPTIONS = Array.from(

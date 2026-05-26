@@ -16,6 +16,7 @@ import {
 } from 'react-native';
 import { SettingsService } from '@/services/SettingsService';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import Toast from 'react-native-toast-message';
 
 type UserRow = Database['public']['Tables']['users']['Row'];
 
@@ -34,13 +35,13 @@ export default function UserDetailsScreen() {
     const { profile } = useAuth();
 
     // Theme shorthands
-    const bg = isDark ? '#121212' : '#f9fafb';
-    const card = isDark ? '#1e1e1e' : '#ffffff';
-    const border = isDark ? '#2c2c2c' : '#e5e7eb';
+    const bg = isDark ? '#111827' : '#f9fafb';
+    const card = isDark ? '#111827' : '#ffffff';
+    const border = isDark ? '#a7a7a7ff' : '#303030ff';
     const textPrimary = isDark ? '#f9fafb' : '#111827';
     const textSecondary = isDark ? '#94a3b8' : '#6b7280';
-    const inputBg = isDark ? '#1e1e1e' : '#f9fafb';
-    const inputBorder = isDark ? '#2c2c2c' : '#e5e7eb';
+    const inputBg = isDark ? '#000000ff' : '#f9fafb';
+    const inputBorder = isDark ? '#ff6b00' : '#ff6b00';
     
     const instLevelLabel = (profile as any)?.institutions?.school_categories?.level_label || 'Grade';
 
@@ -48,6 +49,9 @@ export default function UserDetailsScreen() {
     const [roleData, setRoleData] = useState<any>(null);
     const [loading, setLoading] = useState(true);
     const [isEditing, setIsEditing] = useState(false);
+    const [isResettingPassword, setIsResettingPassword] = useState(false);
+    const [newPassword, setNewPassword] = useState('');
+    const [newPasswordConfirmation, setNewPasswordConfirmation] = useState('');
     const [saving, setSaving] = useState(false);
 
     const [firstName, setFirstName] = useState('');
@@ -199,15 +203,27 @@ export default function UserDetailsScreen() {
         }
     };
 
-    const handleAdminResetPassword = async (newPassword: string | undefined | null) => {
+    const handleAdminResetPassword = async (newPassword: string | undefined | null, newPasswordConfirmation: string | undefined | null) => {
         if (!newPassword || newPassword.length < 6) {
-            Alert.alert('Error', 'Password must be at least 6 characters');
+            Toast.show({
+                type: "error",
+                text1: 'Error, Password must be at least 6 characters'
+            });
+            return;
+        }
+        if(newPassword !== newPasswordConfirmation){
+            Toast.show({
+                type: 'error',
+                text1: 'Passwords do not match',
+            });
             return;
         }
         try {
             setSaving(true);
             const res = await SettingsService.adminResetPassword(id as string, newPassword);
             Alert.alert('Success', res.message || 'Password reset successfully');
+            setIsResettingPassword(false);
+            setNewPassword('');
         } catch (err: any) {
             Alert.alert('Error', err?.response?.data?.error || err.message || 'Failed to reset password');
         } finally {
@@ -432,7 +448,7 @@ export default function UserDetailsScreen() {
 
                 {/* Action buttons */}
                 <View style={{ paddingHorizontal: 24, paddingTop: 16, gap: 12 }}>
-                    {!isEditing ? (
+                    {!isEditing && !isResettingPassword ? (
                         <>
                             <TouchableOpacity onPress={() => setIsEditing(true)}
                                 style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: '#FF6B00', paddingVertical: 14, borderRadius: 12 }}>
@@ -441,22 +457,7 @@ export default function UserDetailsScreen() {
                             </TouchableOpacity>
 
                             <TouchableOpacity 
-                                onPress={() => {
-                                    if (Platform.OS === 'web') {
-                                        const pass = window.prompt("Enter new password (min 6 chars):");
-                                        if (pass) handleAdminResetPassword(pass);
-                                    } else {
-                                        Alert.prompt(
-                                            "Reset Password",
-                                            "Enter the new password for this user:",
-                                            [
-                                                { text: "Cancel", style: "cancel" },
-                                                { text: "Reset", onPress: (pass?: string) => handleAdminResetPassword(pass) }
-                                            ],
-                                            "plain-text"
-                                        );
-                                    }
-                                }}
+                                onPress={() => setIsResettingPassword(true)}
                                 style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: isDark ? '#1e293b' : '#f1f5f9', paddingVertical: 14, borderRadius: 12, borderWidth: 1, borderColor: isDark ? '#334155' : '#e2e8f0' }}>
                                 <Ionicons name="key-outline" size={18} color={textPrimary} />
                                 <Text style={{ color: textPrimary, fontWeight: '700', marginLeft: 8 }}>Reset Password</Text>
@@ -468,6 +469,38 @@ export default function UserDetailsScreen() {
                                 <Text style={{ color: '#ef4444', fontWeight: '700', marginLeft: 8 }}>Delete User</Text>
                             </TouchableOpacity>
                         </>
+                    ) : isResettingPassword ? (
+                        <View style={{ gap: 12 }}>
+                            <View style={{ backgroundColor: card, padding: 16, borderRadius: 12, borderWidth: 1, borderColor: border, gap: 12 }}>
+                                <Text style={{ color: textPrimary, fontWeight: '600', marginBottom: 8 }}>Enter New Password</Text>
+                                <TextInput
+                                    value={newPassword}
+                                    onChangeText={setNewPassword}
+                                    placeholder="Min 6 characters"
+                                    placeholderTextColor={textSecondary}
+                                    secureTextEntry
+                                    style={{ color: textPrimary, backgroundColor: inputBg, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 10, borderWidth: 1, borderColor: inputBorder }}
+                                />
+                                <TextInput 
+                                    value={newPasswordConfirmation}
+                                    onChangeText={setNewPasswordConfirmation}
+                                    placeholder="Repeat the password"
+                                    placeholderTextColor={textSecondary}
+                                    secureTextEntry
+                                    style={{ color: textPrimary, backgroundColor: inputBg, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 10, borderWidth: 1, borderColor: inputBorder }} 
+                                />
+                            </View>
+                            <View style={{ flexDirection: 'row', gap: 12 }}>
+                                <TouchableOpacity onPress={() => { setIsResettingPassword(false); setNewPassword(''); }}
+                                    style={{ flex: 1, backgroundColor: isDark ? '#1e1e1e' : '#f3f4f6', paddingVertical: 14, borderRadius: 12, alignItems: 'center' }}>
+                                    <Text style={{ fontWeight: '700', color: textPrimary }}>Cancel</Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity onPress={() => handleAdminResetPassword(newPassword, newPasswordConfirmation)} disabled={saving}
+                                    style={{ flex: 1, backgroundColor: '#FF6B00', paddingVertical: 14, borderRadius: 12, alignItems: 'center' }}>
+                                    {saving ? <ActivityIndicator color="white" size="small" /> : <Text style={{ fontWeight: '700', color: 'white' }}>Reset Password</Text>}
+                                </TouchableOpacity>
+                            </View>
+                        </View>
                     ) : (
                         <View style={{ flexDirection: 'row', gap: 12 }}>
                             <TouchableOpacity onPress={handleCancel}

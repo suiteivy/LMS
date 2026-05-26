@@ -4,9 +4,11 @@ import { ArrowLeft, FileText, Download, Users, TrendingUp, DollarSign, Calendar 
 import { router } from "expo-router";
 import { supabase } from "@/libs/supabase";
 import { useAuth } from "@/contexts/AuthContext";
+import { useTheme } from "@/contexts/ThemeContext"; // ← add this
 
 export default function ReportsPage() {
     const { user, isInitializing } = useAuth();
+    const { isDark } = useTheme(); // ← replace hardcoded false
     const [loading, setLoading] = useState(true);
     const [stats, setStats] = useState({
         totalBursaries: 0,
@@ -16,8 +18,6 @@ export default function ReportsPage() {
         approvalRate: 0
     });
     const [bursaryStats, setBursaryStats] = useState<any[]>([]);
-
-    const isDark = false; // Using standard light theme for admin portal for now
 
     useEffect(() => {
         fetchReports();
@@ -66,33 +66,51 @@ export default function ReportsPage() {
     };
 
     const statCards = [
-        { label: 'Total Disbursed', value: `$${stats.totalDisbursed.toLocaleString()}`, icon: DollarSign, color: '#FF6B00', bg: '#fff7ed', cardBorder: '#fed7aa' },
-        { label: 'Applications', value: stats.totalApplications.toString(), icon: Users, color: '#3b82f6', bg: '#eff6ff', cardBorder: '#bfdbfe' },
-        { label: 'Approval Rate', value: `${stats.approvalRate.toFixed(1)}%`, icon: TrendingUp, color: '#10b981', bg: '#f0fdf4', cardBorder: '#bbf7d0' },
-        { label: 'Active Schemes', value: stats.totalBursaries.toString(), icon: FileText, color: '#8b5cf6', bg: '#f5f3ff', cardBorder: '#ddd6fe' },
+        { label: 'Total Disbursed', value: `$${stats.totalDisbursed.toLocaleString()}`, icon: DollarSign, color: '#FF6B00', bg: isDark ? '#2d1a0a' : '#fff7ed', cardBorder: isDark ? '#7c3412' : '#fed7aa' },
+        { label: 'Applications', value: stats.totalApplications.toString(), icon: Users, color: '#3b82f6', bg: isDark ? '#0c1a2e' : '#eff6ff', cardBorder: isDark ? '#1e3a5f' : '#bfdbfe' },
+        { label: 'Approval Rate', value: `${stats.approvalRate.toFixed(1)}%`, icon: TrendingUp, color: '#10b981', bg: isDark ? '#052e16' : '#f0fdf4', cardBorder: isDark ? '#14532d' : '#bbf7d0' },
+        { label: 'Active Schemes', value: stats.totalBursaries.toString(), icon: FileText, color: '#8b5cf6', bg: isDark ? '#1e1040' : '#f5f3ff', cardBorder: isDark ? '#4c1d95' : '#ddd6fe' },
     ];
+
+    // Theme helpers — avoids repeating ternaries in JSX
+    const bg = isDark ? '#0F0B2E' : '#f9fafb';
+    const cardBg = isDark ? '#1a1744' : '#ffffff';
+    const cardBorder = isDark ? '#2d2a5e' : '#f3f4f6';
+    const textPrimary = isDark ? '#f9fafb' : '#111827';
+    const textSecondary = isDark ? '#94a3b8' : '#6b7280';
+    const textMuted = isDark ? '#64748b' : '#9CA3AF';
+    const backBtnBg = isDark ? '#1a1744' : '#ffffff';
+    const backBtnBorder = isDark ? '#2d2a5e' : '#f3f4f6';
+    const progressTrack = isDark ? '#1f2937' : '#f9fafb';
 
     if (loading) {
         return (
-            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#f9fafb' }}>
+            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: bg }}>
                 <ActivityIndicator size="large" color="#FF6B00" />
             </View>
         );
     }
 
     return (
-        <View style={{ flex: 1, backgroundColor: '#f9fafb' }}>
-            <StatusBar barStyle="dark-content" />
-            <ScrollView className="flex-1 px-4" contentContainerStyle={{ paddingBottom: 100 }}>
+        <View style={{ flex: 1, backgroundColor: bg }}>
+            <StatusBar barStyle={isDark ? "light-content" : "dark-content"} />
+            <ScrollView style={{ flex: 1, paddingHorizontal: 16 }} contentContainerStyle={{ paddingBottom: 100 }}>
+
                 {/* Header */}
-                <View className="flex-row items-center justify-between py-6">
-                    <View className="flex-row items-center">
-                        <TouchableOpacity onPress={() => router.back()} className="w-10 h-10 items-center justify-center rounded-full bg-white border border-gray-100 mr-4">
-                            <ArrowLeft size={20} color="#1F2937" />
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 24 }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                        <TouchableOpacity
+                            onPress={() => router.navigate('/(admin)/finance')}
+                            style={{ width: 40, height: 40, alignItems: 'center', justifyContent: 'center', borderRadius: 20, backgroundColor: backBtnBg, borderWidth: 1, borderColor: backBtnBorder, marginRight: 16 }}
+                        >
+                            <ArrowLeft size={20} color={textPrimary} />
                         </TouchableOpacity>
-                        <Text className="text-xl font-black text-gray-900">Financial Reports</Text>
+                        <Text style={{ fontSize: 20, fontWeight: '900', color: textPrimary }}>Financial Reports</Text>
                     </View>
-                    <TouchableOpacity onPress={handleExport} className="w-10 h-10 items-center justify-center rounded-full bg-teacherBlack">
+                    <TouchableOpacity
+                        onPress={handleExport}
+                        style={{ width: 40, height: 40, alignItems: 'center', justifyContent: 'center', borderRadius: 20, backgroundColor: '#FF6B00' }}
+                    >
                         <Download size={20} color="white" />
                     </TouchableOpacity>
                 </View>
@@ -100,47 +118,47 @@ export default function ReportsPage() {
                 {/* Stats Grid */}
                 <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginBottom: 24 }}>
                     {statCards.map((card, i) => (
-                        <View key={i} style={{ flexBasis: '48%', flexGrow: 1, backgroundColor: 'white', padding: 16, borderRadius: 24, borderWidth: 1, borderColor: card.cardBorder }}>
-                            <View style={{ backgroundColor: card.bg, width: 40, height: 40, borderRadius: 12, justifyContent: 'center', alignItems: 'center', marginBottom: 12 }}>
+                        <View key={i} style={{ flexBasis: '48%', flexGrow: 1, backgroundColor: card.bg, padding: 16, borderRadius: 24, borderWidth: 1, borderColor: card.cardBorder }}>
+                            <View style={{ backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : card.bg, width: 40, height: 40, borderRadius: 12, justifyContent: 'center', alignItems: 'center', marginBottom: 12 }}>
                                 <card.icon size={20} color={card.color} />
                             </View>
-                            <Text style={{ color: '#9CA3AF', fontSize: 10, fontWeight: '700', textTransform: 'uppercase', marginBottom: 4 }}>{card.label}</Text>
-                            <Text style={{ color: '#111827', fontSize: 18, fontWeight: '800' }}>{card.value}</Text>
+                            <Text style={{ color: textMuted, fontSize: 10, fontWeight: '700', textTransform: 'uppercase', marginBottom: 4 }}>{card.label}</Text>
+                            <Text style={{ color: textPrimary, fontSize: 18, fontWeight: '800' }}>{card.value}</Text>
                         </View>
                     ))}
                 </View>
 
                 {/* Schemes Breakdown */}
-                <Text className="text-lg font-bold text-gray-900 mb-4">Allocation Breakdown</Text>
+                <Text style={{ fontSize: 18, fontWeight: '700', color: textPrimary, marginBottom: 16 }}>Allocation Breakdown</Text>
                 {bursaryStats.map((item, i) => (
-                    <View key={i} className="bg-white p-5 rounded-3xl border border-gray-100 mb-4">
-                        <View className="flex-row justify-between items-start mb-4">
+                    <View key={i} style={{ backgroundColor: cardBg, padding: 20, borderRadius: 24, borderWidth: 1, borderColor: cardBorder, marginBottom: 16 }}>
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
                             <View>
-                                <Text className="text-gray-900 font-bold">{item.title}</Text>
-                                <Text className="text-gray-400 text-xs">Target: {item.target_group}</Text>
+                                <Text style={{ color: textPrimary, fontWeight: '700' }}>{item.title}</Text>
+                                <Text style={{ color: textMuted, fontSize: 12 }}>Target: {item.target_group}</Text>
                             </View>
-                            <Text className="text-teacherOrange font-black">${item.amount.toLocaleString()}</Text>
+                            <Text style={{ color: '#FF6B00', fontWeight: '900' }}>${item.amount.toLocaleString()}</Text>
                         </View>
 
-                        <View className="h-2 bg-gray-50 rounded-full overflow-hidden mb-4">
+                        {/* Progress bar */}
+                        <View style={{ height: 8, backgroundColor: progressTrack, borderRadius: 999, overflow: 'hidden', marginBottom: 16 }}>
                             <View
-                                style={{ width: `${Math.min(100, (item.stats.disbursed / item.amount) * 100)}%` }}
-                                className="h-full bg-teacherOrange rounded-full"
+                                style={{ width: `${Math.min(100, (item.stats.disbursed / item.amount) * 100)}%`, height: '100%', backgroundColor: '#FF6B00', borderRadius: 999 }}
                             />
                         </View>
 
-                        <View className="flex-row justify-between items-center">
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
                             <View>
-                                <Text className="text-gray-400 text-[10px] font-bold uppercase">Apps</Text>
-                                <Text className="text-gray-900 font-bold text-xs">{item.stats.appCount}</Text>
+                                <Text style={{ color: textMuted, fontSize: 10, fontWeight: '700', textTransform: 'uppercase' }}>Apps</Text>
+                                <Text style={{ color: textPrimary, fontWeight: '700', fontSize: 12 }}>{item.stats.appCount}</Text>
                             </View>
-                            <View className="items-center">
-                                <Text className="text-gray-400 text-[10px] font-bold uppercase">Approved</Text>
-                                <Text className="text-gray-900 font-bold text-xs">{item.stats.approvedCount}</Text>
+                            <View style={{ alignItems: 'center' }}>
+                                <Text style={{ color: textMuted, fontSize: 10, fontWeight: '700', textTransform: 'uppercase' }}>Approved</Text>
+                                <Text style={{ color: textPrimary, fontWeight: '700', fontSize: 12 }}>{item.stats.approvedCount}</Text>
                             </View>
-                            <View className="items-end">
-                                <Text className="text-gray-400 text-[10px] font-bold uppercase">Disbursed</Text>
-                                <Text className="text-teacherBlack font-bold text-xs">${item.stats.disbursed.toLocaleString()}</Text>
+                            <View style={{ alignItems: 'flex-end' }}>
+                                <Text style={{ color: textMuted, fontSize: 10, fontWeight: '700', textTransform: 'uppercase' }}>Disbursed</Text>
+                                <Text style={{ color: '#FF6B00', fontWeight: '700', fontSize: 12 }}>${item.stats.disbursed.toLocaleString()}</Text>
                             </View>
                         </View>
                     </View>

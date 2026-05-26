@@ -523,11 +523,11 @@ const BorrowedBooksOverview: React.FC<BorrowedBooksOverviewProps> = ({
               </View>
 
               <Text className="text-xs text-gray-600 dark:text-gray-300 mb-1">
-                ðŸ“§ {borrowedBook.borrowerEmail}
+                {borrowedBook.borrowerEmail}
               </Text>
               {borrowedBook.borrowerPhone && (
                 <Text className="text-xs text-gray-600 dark:text-gray-300 mb-1">
-                  ðŸ“ž {borrowedBook.borrowerPhone}
+                  {borrowedBook.borrowerPhone}
                 </Text>
               )}
               {borrowedBook.renewalCount !== undefined && (

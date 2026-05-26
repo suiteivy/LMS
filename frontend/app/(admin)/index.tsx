@@ -51,25 +51,23 @@ const QuickAction = ({ icon: Icon, label, onPress, badge }: QuickActionProps) =>
   const { isDark } = useTheme();
   return (
     <TouchableOpacity
-      className="w-[48%] bg-white dark:bg-[#1a1a1a] p-5 rounded-3xl border border-gray-100 dark:border-gray-800 mb-4 items-center active:opacity-70"
+      className="bg-white dark:bg-[#1a1a1a] py-3 px-4 rounded-2xl border border-gray-100 dark:border-gray-800 flex-row items-center active:opacity-70"
       style={{
-        boxShadow: [{ offsetX: 0, offsetY: 2, blurRadius: 4, color: isDark ? 'rgba(0,0,0,0.4)' : 'rgba(0,0,0,0.05)' }],
+        boxShadow: [{ offsetX: 0, offsetY: 1, blurRadius: 3, color: isDark ? 'rgba(0,0,0,0.3)' : 'rgba(0,0,0,0.04)' }],
         shadowColor: "#000",
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: isDark ? 0.4 : 0.05,
-        shadowRadius: 4,
-        elevation: 2,
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: isDark ? 0.3 : 0.04,
+        shadowRadius: 3,
+        elevation: 1,
       }}
       onPress={onPress}
       activeOpacity={0.7}
     >
-      <View className="bg-orange-50 dark:bg-orange-950/30 p-3 rounded-2xl mb-2">
-        <Icon size={24} color="#FF6B00" />
+      <View className="bg-orange-50 dark:bg-orange-950/30 p-2 rounded-xl mr-3">
+        <Icon size={16} color="#FF6B00" />
       </View>
-      <View className="flex-row items-center justify-center">
-        <Text className="text-gray-900 dark:text-gray-200 font-bold text-[13px] text-center">{label}</Text>
-        {badge}
-      </View>
+      <Text className="text-gray-900 dark:text-gray-200 font-bold text-xs">{label}</Text>
+      {badge}
     </TouchableOpacity>
   );
 };
@@ -406,7 +404,7 @@ export default function AdminDashboard() {
 
           <View className="mb-10">
             <Text className="text-lg font-bold text-gray-900 dark:text-white mb-4 px-1">Quick Actions</Text>
-            <View style={{ flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between" }}>
+            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10 }}>
               <QuickAction icon={IconUserPlus} label="Enroll User" onPress={() => router.push("/(admin)/users/create")} />
               <SubscriptionGate minPlan="pro">
                 <QuickAction icon={IconBookOpen} label="Library" onPress={() => router.navigate("/(admin)/management/library" as any)} />

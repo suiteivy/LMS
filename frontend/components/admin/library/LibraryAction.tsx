@@ -248,7 +248,7 @@ const LibraryAction = () => {
         title="Management"
         subtitle="Library"
         role="Admin"
-        onBack={() => router.back()}
+        onBack={() => router.navigate('/management')}
       />
 
       {/* Section Tabs */}
