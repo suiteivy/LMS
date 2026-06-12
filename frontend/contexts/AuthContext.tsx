@@ -279,7 +279,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         .select('*, students(id), teachers(id), admins(id), parents(id), institutions(name, category_id, subscription_status, subscription_plan, trial_end_date, addon_messaging, addon_library, addon_diary, addon_finance, addon_analytics, addon_bursary, addon_attendance, custom_student_limit, school_categories(name, level_label)), platform_admins(id)')
         .eq('id', userId)
         .single()
-      
+
       if (error) {
         console.error('[AuthContext] Profile load error:', error);
         // If profile doesn't exist but user does, it might be a newly created user without a record yet
@@ -346,7 +346,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       if (institutionName !== newInstitutionName) setInstitutionName(newInstitutionName);
       if (isPlatformAdmin !== isPlatformAdminFlag) setIsPlatformAdmin(isPlatformAdminFlag);
       if (isMain !== isMainFlag) setIsMain(isMainFlag);
-      
+
       if (!isDataEqual(roleInfo, newRoleInfo)) {
         setRoleInfo(newRoleInfo);
       }
@@ -398,7 +398,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       try {
         const sessionPromise = supabase.auth.getSession();
         const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('getSession timeout')), 6000));
-        
+
         const { data: { session: initialSession } } = await Promise.race([sessionPromise, timeoutPromise]) as any;
 
         if (initialSession) {
@@ -466,7 +466,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         setUser(session.user);
         currentSessionRef.current = session;
       } else if (event === 'SIGNED_OUT') {
-        // IMPORTANT: Do NOT call handleLogout() here â€” it calls authService.signOut(),
+        // IMPORTANT: Do NOT call handleLogout() here   it calls authService.signOut(),
         // which emits another SIGNED_OUT event, causing an infinite loop.
         // The sign-out has already happened; just clear local state.
         if (isManualLogout.current) return; // already handled by handleLogout

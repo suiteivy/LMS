@@ -91,7 +91,7 @@ export const UserCard: React.FC<UserCardProps> = ({
     }
 
     return (
-      <View className={`${sizeClass} rounded-2xl bg-gray-100 dark:bg-gray-800 items-center justify-center border border-gray-200 dark:border-gray-700`}>
+      <View className={`${sizeClass} rounded-2xl bg-gray-100 dark:bg-gray-800 items-center justify-center border border-gray-200 dark:bg-[#111827]`}>
         <Text className="text-gray-500 dark:text-gray-400 font-bold text-lg">
           {(user.name || 'U').charAt(0).toUpperCase()}
         </Text>
@@ -126,7 +126,7 @@ export const UserCard: React.FC<UserCardProps> = ({
         shadowRadius: 2,
         elevation: 1,
       }}
-      className="bg-white dark:bg-[#13103A] rounded-2xl p-4 border border-gray-100 dark:border-[#2c2c2c] mb-4"
+      className="bg-white dark:bg-[#111827] rounded-2xl p-4 border border-gray-100 dark:border-[#2c2c2c] mb-4"
     >
       <View className="flex-row items-center gap-4">
         {renderAvatar(12)}

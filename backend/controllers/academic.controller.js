@@ -89,9 +89,22 @@ exports.createAssignment = async (req, res) => {
 exports.getAssignments = async (req, res) => {
     try {
         const { subject_id } = req.query;
-        const { institution_id } = req;
+        const { institution_id , userId, userRole} = req;
         let query = supabase.from("assignments").select("*").eq("institution_id", institution_id);
-        if (subject_id) query = query.eq("subject_id", subject_id);
+        if (subject_id) {
+            query = query.eq("subject_id", subject_id);
+        } else if (userRole === 'student'){
+            const { data: student} = await supabase 
+                .from('students')
+                .select('id', 'class_id')
+                .eq('user_id', userId)
+                .single()
+            
+            if(student) {
+                query = query.eq('class_id', student.class_id)
+            }
+        
+        }
 
         const { data, error } = await query;
         if (error) throw error;

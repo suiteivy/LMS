@@ -40,7 +40,7 @@ export const NotificationsHub = () => {
         title="Portal" 
         subtitle="Notifications" 
         role="Teacher" // This should ideally be passed in or derived from context
-        onBack={() => router.back()}
+        onBack={() => router.navigate('/(admin)')}
       />
       
       <View style={{

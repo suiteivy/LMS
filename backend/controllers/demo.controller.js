@@ -43,13 +43,16 @@ exports.startDemo = async (req, res) => {
         const [firstName, ...lastNameParts] = fullNameMap[role].split(' ');
         const lastName = lastNameParts.join(' ').replace(' (Demo)', '');
         
-        const { error: userTableError } = await supabase.from('users').insert({
+        const { error: userTableError } = 
+        await supabase.from('users').insert({
             id: user.id,
             email: ephemeralEmail,
             full_name: fullNameMap[role],
             first_name: firstName,
             last_name: lastName,
-            role: role
+            role: role,
+            status: 'approved',
+            is_demo: true
         });
         if (userTableError) throw userTableError;
 
@@ -57,8 +60,10 @@ exports.startDemo = async (req, res) => {
         // We pass the new user ID to become the primary actor in the cloned data
         const newInstitutionId = await cloneInstitution(
             TEMPLATE_INSTITUTION_ID,
-            role === 'teacher' ? user.id : null, 
-            role === 'admin' ? user.id : null
+            role === 'teacher' ? user.id : null,
+            role === 'admin'   ? user.id : null,
+            role === 'student' ? user.id : null,
+            role === 'parent'  ? user.id : null
         );
 
         // Update the user's institution mapping
@@ -121,3 +126,31 @@ exports.startDemo = async (req, res) => {
         });
     }
 };
+
+
+// cleanup db after demo session ends 
+exports.endDemo = async (req, res) => {
+    const { institution_id, user_id } = req.body
+
+    try {
+        await supabase.from('grades')
+            .delete()
+            .eq('institution_id', institution_id)
+        
+        await supabase.from('financial_transactions')
+            .delete()
+            .eq('user_id', user_id)
+        
+        await supabase.from('institutions')
+            .delete()
+            .eq('id', institution_id);
+
+        await supabase.auth.admin.deleteUser(user_id);
+
+        res.status(200).json({ message: 'Demo session cleaned up'})
+
+    } catch (error) {
+        console.error('Demo cleanup error:', error)
+        res.status(500).json({ error: 'Cleanup error' })
+    }
+}

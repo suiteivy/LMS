@@ -506,7 +506,7 @@ exports.history = async (req, res) => {
 };
 
 /** Admin view: all loans */
-exports.getAllBorrowedBooks = async (_req, res) => {
+exports.getAllBorrowedBooks = async (req, res) => {
   try {
     // Need to join students -> users to get names
     // And books

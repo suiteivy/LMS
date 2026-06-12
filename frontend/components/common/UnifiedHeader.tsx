@@ -3,9 +3,12 @@ import { useTheme } from "@/contexts/ThemeContext";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import React from "react";
-import { Text, TouchableOpacity, View, useWindowDimensions } from "react-native";
+import { Text, TouchableOpacity, View, useWindowDimensions, Modal, ScrollView, Animated } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { MainAdminBadge, SubscriptionStatusBadge } from "../shared/SubscriptionComponents";
+import { Menu, X } from "lucide-react-native";
+import { ALL_NAV_ITEMS as AdminNavItems, BETA_NAV_ITEMS as AdminBetaNavItems } from "@/app/(admin)/_layout";
+import { useSubscriptionTier } from "@/hooks/useSubscriptionTier";
 
 interface UnifiedHeaderProps {
   title: string;
@@ -42,6 +45,28 @@ export const UnifiedHeader: React.FC<UnifiedHeaderProps> = ({
   const surfaceBorder = isDark ? 'rgba(255,255,255,0.1)' : '#f3f4f6';
   const iconColor = isDark ? '#e5e5e5' : '#111827';
   const subtleIconColor = isDark ? '#9ca3af' : '#6b7280';
+  const [isMenuOpen, setIsMenuOpen] = React.useState(false);
+  const slideAnim = React.useRef(new Animated.Value(-300)).current;
+
+  const { showFinancials } = useSubscriptionTier();
+
+  const getNavItems = () => {
+    if (role === 'Admin' || role === 'Master Admin') {
+        return showFinancials ? AdminNavItems : AdminBetaNavItems;
+    }
+    return [];
+  };
+
+  const navItems = getNavItems();
+  const showHamburger = isMobile && !onBack && navItems.length > 0;
+
+  React.useEffect(() => {
+      Animated.timing(slideAnim, {
+          toValue: isMenuOpen ? 0 : -300,
+          duration: 250,
+          useNativeDriver: true,
+      }).start();
+  }, [isMenuOpen]);
 
   return (
     <View
@@ -57,6 +82,22 @@ export const UnifiedHeader: React.FC<UnifiedHeaderProps> = ({
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
         {/* Left side */}
         <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+          {showHamburger && (
+            <TouchableOpacity
+              onPress={() => setIsMenuOpen(true)}
+              style={{
+                marginRight: 16,
+                backgroundColor: surface,
+                padding: 8,
+                borderRadius: 12,
+                borderWidth: 1,
+                borderColor: surfaceBorder,
+              }}
+            >
+              <Menu size={20} color={iconColor} />
+            </TouchableOpacity>
+          )}
+
           {onBack && (
             <TouchableOpacity
               onPress={onBack}
@@ -241,6 +282,64 @@ export const UnifiedHeader: React.FC<UnifiedHeaderProps> = ({
             </View>
         )}
       </View>
+
+      {/* Slide-out Menu Modal */}
+      {showHamburger && (
+        <Modal visible={isMenuOpen} transparent animationType="none" onRequestClose={() => setIsMenuOpen(false)}>
+            <View style={{ flex: 1, flexDirection: 'row' }}>
+                <TouchableOpacity 
+                    style={{ position: 'absolute', top: 0, bottom: 0, left: 0, right: 0, backgroundColor: 'rgba(0,0,0,0.5)' }} 
+                    activeOpacity={1} 
+                    onPress={() => setIsMenuOpen(false)} 
+                />
+                <Animated.View style={{ 
+                    width: 260, 
+                    backgroundColor: surface, 
+                    height: '100%', 
+                    transform: [{ translateX: slideAnim }],
+                    paddingTop: insets.top,
+                    paddingBottom: insets.bottom,
+                    borderRightWidth: 1,
+                    borderRightColor: surfaceBorder,
+                }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: surfaceBorder }}>
+                        <Text style={{ fontSize: 18, fontWeight: 'bold', color: isDark ? '#f1f1f1' : '#111827' }}>Menu</Text>
+                        <TouchableOpacity onPress={() => setIsMenuOpen(false)} style={{ padding: 4 }}>
+                            <X size={20} color={subtleIconColor} />
+                        </TouchableOpacity>
+                    </View>
+                    <ScrollView style={{ flex: 1 }}>
+                        <View style={{ padding: 12, gap: 4 }}>
+                            {navItems.map((item, index) => {
+                                const Icon = item.icon as any;
+                                return (
+                                    <TouchableOpacity
+                                        key={index}
+                                        onPress={() => {
+                                            setIsMenuOpen(false);
+                                            router.push(item.route as any);
+                                        }}
+                                        style={{
+                                            flexDirection: 'row',
+                                            alignItems: 'center',
+                                            paddingVertical: 12,
+                                            paddingHorizontal: 16,
+                                            borderRadius: 12,
+                                        }}
+                                    >
+                                        <Icon size={20} color={iconColor} />
+                                        <Text style={{ marginLeft: 16, fontSize: 15, fontWeight: '600', color: iconColor }}>
+                                            {item.title}
+                                        </Text>
+                                    </TouchableOpacity>
+                                );
+                            })}
+                        </View>
+                    </ScrollView>
+                </Animated.View>
+            </View>
+        </Modal>
+      )}
     </View>
   );
 };

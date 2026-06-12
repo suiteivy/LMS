@@ -32,7 +32,7 @@ export default function StudentsAssignments() {
     setLoading(true)
     try {
       const { data: enrollmentData } = await supabase.from('enrollments').select('subject_id').eq('student_id', studentId);
-      const subjectIds = enrollmentData?.map(e => e.subject_id) || [];
+      const subjectIds = enrollmentData?.map((e: any) => e.subject_id) || [];
       if (subjectIds.length === 0) {
         setAssignments([]);
         setLoading(false);

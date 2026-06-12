@@ -101,17 +101,19 @@ export default function Grades() {
                 .eq('status', 'graded')
                 .eq('assignment.is_published', true);
 
-            const { data: enrollmentGrades } = await supabase
-                .from('enrollments')
-                .select(`grade, subjects(id, title, credits)`)
+            // Use exam_results instead on the non-existent grades table
+            const { data: examResults } = await supabase
+                .from('exam_results')
+                .select(`score, exam:exams!inner(subject:subjects(id, title, credits))`)
                 .eq('student_id', targetId);
 
-            const { data: reportGrades } = await supabase
-                .from('grades')
-                .select(`total_grade, subjects:subject_id(id, title, credits)`)
-                .eq('student_id', targetId);
-
-            const subjectGrades: Record<string, { total: number, count: number, name: string, credits: number, finalGrade?: string, manualScore?: number }> = {};
+            const subjectGrades: Record<string, { 
+                total: number, 
+                count: number, 
+                name: string, 
+                credits: number, 
+                finalGrade?: string, 
+                manualScore?: number }> = {};
 
             data?.forEach((sub: any) => {
                 const subjectId = sub.assignment?.subject?.id;
@@ -130,21 +132,15 @@ export default function Grades() {
                 }
             });
 
-            enrollmentGrades?.forEach((eg: any) => {
-                const subId = eg.subjects?.id;
-                if (subId) {
-                    if (!subjectGrades[subId]) subjectGrades[subId] = { total: 0, count: 0, name: eg.subjects.title, credits: eg.subjects.credits || 0 };
-                    subjectGrades[subId].finalGrade = eg.grade;
+            examResults?.forEach((er: any) => {
+                const subjectId = er.exam?.subject?.id;
+                if(subjectId){
+                    if(!subjectGrades[subjectId]){
+                        subjectGrades[subjectId] = {total: 0, count: 0, name: er.exam.subject.title, credits: er.exam.subject.credits || 0}
+                        subjectGrades[subjectId].manualScore = Number(er.score)
+                    }
                 }
-            });
-
-            reportGrades?.forEach((rg: any) => {
-                const subId = rg.subjects?.id;
-                if (subId) {
-                    if (!subjectGrades[subId]) subjectGrades[subId] = { total: 0, count: 0, name: rg.subjects?.title || "Unknown Subject", credits: rg.subjects?.credits || 0 };
-                    subjectGrades[subId].manualScore = Number(rg.total_grade);
-                }
-            });
+            })
 
             const formattedGrades: GradeProps[] = Object.entries(subjectGrades).map(([id, val]) => {
                 const score = val.manualScore ?? (val.count > 0 ? (val.total / val.count) : 0);

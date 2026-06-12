@@ -1,4 +1,4 @@
-// (admin)/timetable/index.tsx â€” Dark-theme Timetable Builder
+// (admin)/timetable/index.tsx   Dark-theme Timetable Builder
 import { SubscriptionGate } from "@/components/shared/SubscriptionComponents";
 import { supabase } from "@/libs/supabase";
 import { ClassAPI, ClassItem as ClassData } from "@/services/ClassService";
@@ -162,7 +162,7 @@ function detectConflicts(entries: TimetableEntry[]): Conflict[] {
                     conflicts.push({
                         id: nextId(), type: "class_double_book", severity: "error", day,
                         message: `Class has overlapping subjects on ${day}`,
-                        detail: `"${aSub}" and "${bSub}" overlap â€” students can't be in two places at once.`,
+                        detail: `"${aSub}" and "${bSub}" overlap   students can't be in two places at once.`,
                         affectedEntryIds: [a.id, b.id],
                         affectedTeacherUserIds: [aTeacherId, bTeacherId].filter(Boolean),
                         affectedClassIds: [a.class_id],
@@ -283,7 +283,7 @@ function ConflictPanel({ conflicts, onSendAll, sending, institutionType }: {
         return (
             <View style={styles.cleanBanner}>
                 <Check size={16} color={D.green} />
-                <Text style={styles.cleanBannerText}>No conflicts â€” schedule looks clean âœ“</Text>
+                <Text style={styles.cleanBannerText}>No conflicts   schedule looks clean âœ“</Text>
             </View>
         );
     }

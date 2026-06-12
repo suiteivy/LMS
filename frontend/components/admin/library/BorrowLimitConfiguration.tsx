@@ -316,7 +316,7 @@ const BorrowLimitConfiguration: React.FC<BorrowLimitConfigurationProps> = ({
           displayRoles.map(renderRoleCard)
         )}
 
-        {/* Global Settings â€” now fully dark mode */}
+        {/* Global Settings   now fully dark mode */}
         <View style={{ backgroundColor: surface, borderRadius: 12, padding: 16, marginTop: 16, borderWidth: 1, borderColor: border }}>
           <Text style={{ fontSize: 17, fontWeight: '600', color: textPrimary, marginBottom: 16 }}>Global Library Settings</Text>
 

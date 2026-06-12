@@ -15,20 +15,20 @@ import {
 import { Platform, Text, useWindowDimensions, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-// Full nav â€” used by sidebar on web
+// Full nav used by sidebar on web
 const NAV_ITEMS: NavItem[] = [
   { name: "index", title: "Home", icon: Building, route: "/(student)" },
   { name: "grades", title: "Performance", icon: Star, route: "/(student)/grades" },
   { name: "library", title: "Library", icon: Glasses, route: "/(student)/library" },
   { name: "assignments", title: "Assignments", icon: PenBox, route: "/(student)/assignments" },
   { name: "finance", title: "Finances", icon: CreditCard, route: "/(student)/finance" },
-  { name: "messages", title: "Messages", icon: MessageSquare, route: "/(student)/messages" },
+  { name: "diary", title: "Diary", icon: BookOpen, route: "/(student)/diary" },
   { name: "notifications", title: "Updates", icon: MessageSquare, route: "/(student)/notifications" },
   { name: "settings", title: "Settings", icon: Settings, route: "/(student)/settings" },
 ];
 
 // Only these show in the mobile bottom tab bar
-const MOBILE_TAB_NAMES = ["index", "notifications", "grades", "settings"];
+const MOBILE_TAB_NAMES = ["grades", "assignments", "index", "diary", "settings"];
 
 // Everything else hidden (route still works, just no tab)
 const ALL_OTHER = NAV_ITEMS
@@ -37,37 +37,38 @@ const ALL_OTHER = NAV_ITEMS
 const HIDDEN_ROUTES = [...ALL_OTHER, "attendance", "timetable", "announcements"];
 
 import { useSubscriptionTier } from "@/hooks/useSubscriptionTier";
+
 function StudentTabs() {
   const { isDark } = useTheme();
   const insets = useSafeAreaInsets();
 
   return (
     <Tabs
+      initialRouteName="index"
       screenOptions={{
         headerShown: false,
         tabBarActiveTintColor: "#FF6B00",
         tabBarInactiveTintColor: isDark ? "#94a3b8" : "#64748b",
-        tabBarLabelStyle: { fontSize: 11, fontWeight: "600" },
+        tabBarLabelStyle: { fontSize: 10, fontWeight: "600", letterSpacing: 0.2 },
         tabBarStyle: {
           backgroundColor: isDark ? '#0F0B2E' : "#ffffff",
           borderTopWidth: 1,
-          borderTopColor: isDark ? '#1f2937' : "#e5e7eb",
-          height: 56 + insets.bottom,
-          paddingBottom: insets.bottom || 6,
-          paddingTop: 6,
-          paddingHorizontal: 40,
-          justifyContent: "center",
-          gap: 32,
-          elevation: 8,
+          borderTopColor: isDark ? '#1f2937' : "#f1f5f9",
+          // Tighter on all screen sizes — no more sprawling gaps
+          height: 52 + insets.bottom,
+          paddingBottom: insets.bottom || 4,
+          paddingTop: 4,
+          paddingHorizontal: 8,
+          elevation: 12,
           shadowColor: "#000",
-          shadowOffset: { width: 0, height: -4 },
-          shadowOpacity: 0.1,
-          shadowRadius: 3,
+          shadowOffset: { width: 0, height: -2 },
+          shadowOpacity: isDark ? 0.3 : 0.08,
+          shadowRadius: 8,
           boxShadow: [{
             offsetX: 0,
-            offsetY: -4,
-            blurRadius: 3,
-            color: 'rgba(0, 0, 0, 0.1)',
+            offsetY: -2,
+            blurRadius: 8,
+            color: isDark ? 'rgba(0, 0, 0, 0.3)' : 'rgba(0, 0, 0, 0.06)',
           }],
         },
         sceneStyle: {
@@ -75,19 +76,29 @@ function StudentTabs() {
         },
       }}
     >
-      {/* Settings â€” left */}
       <Tabs.Screen
-        name="settings"
+        name="grades"
         options={{
-          title: "Settings",
+          title: "Grades",
           tabBarIcon: ({ size, color }) => {
-            const Icon = Settings as any;
-            return <View><Icon size={size} color={color} strokeWidth={2} /></View>;
+            const Icon = Star as any;
+            return <Icon size={size - 2} color={color} strokeWidth={2} />;
           },
         }}
       />
 
-      {/* Home â€” center, lifts when focused, flat when not */}
+      <Tabs.Screen
+        name="assignments"
+        options={{
+          title: "Tasks",
+          tabBarIcon: ({ size, color }) => {
+            const Icon = PenBox as any;
+            return <Icon size={size - 2} color={color} strokeWidth={2} />;
+          },
+        }}
+      />
+
+      {/* Home — lifted floating center button */}
       <Tabs.Screen
         name="index"
         options={{
@@ -96,65 +107,62 @@ function StudentTabs() {
             const Icon = Building as any;
             return (
               <View style={{
-                width: focused ? 48 : 28,
-                height: focused ? 48 : 28,
-                borderRadius: focused ? 24 : 6,
+                width: focused ? 44 : 26,
+                height: focused ? 44 : 26,
+                borderRadius: focused ? 22 : 8,
                 backgroundColor: focused ? "#FF6B00" : "transparent",
                 alignItems: "center",
                 justifyContent: "center",
-                marginTop: focused ? -14 : 0,
+                marginTop: focused ? -16 : 0,
                 shadowColor: "#FF6B00",
-                shadowOffset: { width: 0, height: 4 },
-                shadowOpacity: focused ? 0.35 : 0,
-                shadowRadius: 8,
+                shadowOffset: { width: 0, height: focused ? 6 : 0 },
+                shadowOpacity: focused ? 0.4 : 0,
+                shadowRadius: focused ? 10 : 0,
                 boxShadow: focused ? [{
                   offsetX: 0,
-                  offsetY: 4,
-                  blurRadius: 8,
-                  color: 'rgba(255, 107, 0, 0.35)',
+                  offsetY: 6,
+                  blurRadius: 10,
+                  color: 'rgba(255, 107, 0, 0.4)',
                 }] : undefined,
-                elevation: focused ? 6 : 0,
+                elevation: focused ? 8 : 0,
               }}>
                 <Icon
-                  size={focused ? 22 : 20}
+                  size={focused ? 20 : 18}
                   color={focused ? "#ffffff" : color}
-                  strokeWidth={2}
+                  strokeWidth={focused ? 2.5 : 2}
                 />
               </View>
             );
           },
           tabBarLabel: ({ focused, color }) =>
             focused ? null : (
-              <Text style={{ fontSize: 11, fontWeight: "600", color }}>Home</Text>
+              <Text style={{ fontSize: 10, fontWeight: "600", color, letterSpacing: 0.2 }}>Home</Text>
             ),
         }}
       />
 
-      {/* Notifications tab */}
       <Tabs.Screen
-        name="notifications"
+        name="diary"
         options={{
-          title: "Updates",
+          title: "Diary",
           tabBarIcon: ({ size, color }) => {
-            const Icon = MessageSquare as any;
-            return <View><Icon size={size} color={color} strokeWidth={2} /></View>;
+            const Icon = BookOpen as any;
+            return <Icon size={size - 2} color={color} strokeWidth={2} />;
           },
         }}
       />
 
-      {/* Grades tab */}
       <Tabs.Screen
-        name="grades"
+        name="settings"
         options={{
-          title: "Grades",
+          title: "Settings",
           tabBarIcon: ({ size, color }) => {
-            const Icon = Star as any;
-            return <View><Icon size={size} color={color} strokeWidth={2} /></View>;
+            const Icon = Settings as any;
+            return <Icon size={size - 2} color={color} strokeWidth={2} />;
           },
         }}
       />
 
-      {/* All other routes â€” hidden from tab bar but still navigable */}
       {HIDDEN_ROUTES.map((name) => (
         <Tabs.Screen key={name} name={name} options={{ href: null }} />
       ))}
@@ -174,7 +182,8 @@ function StudentSidebar() {
 
 export default function StudentLayout() {
   const { width } = useWindowDimensions();
-  const useWebLayout = Platform.OS === 'web' && width > 768;
+  // FIX: drop Platform.OS check — native tablet (iPad) at >768px also gets sidebar
+  const useWebLayout = width > 768;
 
   return (
     <AuthGuard allowedRoles={['student']}>

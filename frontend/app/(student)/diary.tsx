@@ -1,61 +1,35 @@
 import { UnifiedHeader } from "@/components/common/UnifiedHeader";
-import { useAuth } from "@/contexts/AuthContext";
-import { DiaryAPI, DiaryEntry } from "@/services/DiaryService";
+import { DiaryService, DiaryEntry } from "@/services/DiaryService";
+import { format } from "date-fns";
 import { router } from "expo-router";
-import { BookOpen, Calendar } from 'lucide-react-native';
+import { BookOpen } from "lucide-react-native";
 import React, { useEffect, useState } from "react";
-import { ActivityIndicator, ScrollView, Text, View } from 'react-native';
-import { SubscriptionGate } from "@/components/shared/SubscriptionComponents";
-import { Zap } from "lucide-react-native";
-
-const DiaryCard = ({ entry }: { entry: DiaryEntry }) => {
-    return (
-        <View className="bg-white dark:bg-[#1a1a1a] p-5 rounded-3xl border border-gray-100 dark:border-gray-800 mb-4 shadow-sm">
-            <View className="flex-row items-start mb-4">
-                <View className="bg-orange-100 dark:bg-orange-950/20 p-2.5 rounded-2xl mr-4">
-                    <BookOpen size={20} color="#FF6900" />
-                </View>
-                <View className="flex-1">
-                    <Text className="text-gray-900 dark:text-white font-bold text-lg leading-tight">{entry.title}</Text>
-                    <View className="flex-row items-center mt-1">
-                        <Calendar size={12} color="#9CA3AF" />
-                        <Text className="text-gray-400 dark:text-gray-500 text-[10px] font-bold uppercase tracking-widest ml-1">
-                            {new Date(entry.entry_date).toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' })}
-                        </Text>
-                    </View>
-                </View>
-            </View>
-
-            <Text className="text-gray-600 dark:text-gray-400 text-sm leading-5">
-                {entry.content}
-            </Text>
-
-            <View className="flex-row justify-between items-center pt-4 mt-4 border-t border-gray-50 dark:border-gray-800">
-                <Text className="text-gray-400 dark:text-gray-500 text-[10px] uppercase tracking-widest">
-                    Teacher: {entry.teacher?.users?.full_name || "School Office"}
-                </Text>
-            </View>
-        </View>
-    );
-};
+import { useRealtimeQuery } from "@/hooks/useRealtimeQuery";
+import { ActivityIndicator, Alert, ScrollView, Text, View } from "react-native";
 
 export default function StudentDiaryPage() {
-    const { user } = useAuth();
-    const [loading, setLoading] = useState(true);
     const [entries, setEntries] = useState<DiaryEntry[]>([]);
+    const [loading, setLoading] = useState(true);
+
+    // Listen to realtime changes on the diary_entries table
+    useRealtimeQuery('diary_entries', () => {
+        if (!loading) {
+            fetchEntries();
+        }
+    });
 
     useEffect(() => {
         fetchEntries();
     }, []);
 
     const fetchEntries = async () => {
-        setLoading(true);
         try {
-            // DiaryAPI.getEntries without params will use the student's assigned class on the backend
-            const data = await DiaryAPI.getEntries();
+            setLoading(true);
+            const data = await DiaryService.getEntries();
             setEntries(data);
         } catch (error) {
-            console.error("Error fetching diary entries:", error);
+            console.error(error);
+            Alert.alert("Error", "Failed to fetch diary entries");
         } finally {
             setLoading(false);
         }
@@ -64,50 +38,68 @@ export default function StudentDiaryPage() {
     return (
         <View className="flex-1 bg-gray-50 dark:bg-navy">
             <UnifiedHeader
-                title="My Diary"
-                subtitle="Class Activities"
+                title="Academic"
+                subtitle="Diary"
                 role="Student"
-                onBack={() => router.push("/(student)")}
+                onBack={() => router.back()}
             />
-
-            <SubscriptionGate 
-                feature="diary"
-                fallback={
-                    <View className="flex-1 items-center justify-center p-8">
-                        <View className="bg-orange-50 p-8 rounded-[40px] items-center border border-orange-100 border-dashed max-w-sm">
-                            <Zap size={48} color="#FF6900" style={{ marginBottom: 20 }} />
-                            <Text className="text-xl font-bold text-gray-900 text-center mb-2">Diary Locked</Text>
-                            <Text className="text-gray-500 text-center mb-8 leading-5">
-                                The Virtual Diary is not included in your current subscription plan.
-                            </Text>
-                        </View>
-                    </View>
-                }
-            >
 
             <View className="p-4 md:p-8 flex-1">
                 <View className="flex-row justify-between items-center mb-6 px-2">
-                    <Text className="text-gray-400 dark:text-gray-500 font-bold text-[10px] uppercase tracking-wider">
-                        {entries.length} Entries found
-                    </Text>
+                    <Text className="text-gray-900 dark:text-white font-bold text-2xl tracking-tighter">Class Diary</Text>
                 </View>
 
                 {loading ? (
                     <ActivityIndicator size="large" color="#FF6900" className="mt-8" />
-                ) : entries.length === 0 ? (
-                    <View className="bg-white dark:bg-[#1a1a1a] p-12 rounded-[40px] items-center border border-gray-100 dark:border-gray-800 border-dashed">
-                        <BookOpen size={48} color="#E5E7EB" style={{ opacity: 0.3 }} />
-                        <Text className="text-gray-400 dark:text-gray-500 font-bold text-center mt-6 tracking-tight">No diary entries for your class.</Text>
-                    </View>
                 ) : (
-                    <ScrollView className="flex-1" showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
-                        {entries.map((entry) => (
-                            <DiaryCard key={entry.id} entry={entry} />
-                        ))}
+                    <ScrollView
+                        className="flex-1"
+                        showsVerticalScrollIndicator={false}
+                        contentContainerStyle={{ paddingBottom: 200 }}
+                    >
+                        {entries.length > 0 ? (
+                            entries.map((item) => {
+                                const teacherName = item.teacher?.users?.full_name || 'Teacher';
+                                return (
+                                    <View
+                                        key={item.id}
+                                        className="p-5 mb-4 rounded-[32px] bg-white dark:bg-[#1a1a1a] border border-gray-50 dark:border-gray-800 shadow-sm"
+                                    >
+                                        <View className="flex-row items-center mb-4">
+                                            <View className="w-12 h-12 rounded-2xl bg-orange-50 dark:bg-orange-950/30 items-center justify-center mr-4">
+                                                <BookOpen size={24} color="#FF6900" />
+                                            </View>
+                                            <View className="flex-1">
+                                                <Text className="text-gray-900 dark:text-white font-bold text-lg tracking-tight mb-0.5">{item.title}</Text>
+                                                <View className="flex-row items-center justify-between">
+                                                    <Text className="text-gray-500 dark:text-gray-400 text-xs font-medium">By {teacherName}</Text>
+                                                    <Text className="text-[#FF6900] text-[10px] font-bold uppercase tracking-widest">
+                                                        {format(new Date(item.entry_date), 'MMM dd, yyyy')}
+                                                    </Text>
+                                                </View>
+                                            </View>
+                                        </View>
+                                        <View className="bg-gray-50 dark:bg-gray-800/50 p-4 rounded-2xl">
+                                            <Text className="text-gray-700 dark:text-gray-300 text-sm leading-relaxed">{item.content}</Text>
+                                        </View>
+                                        
+                                        <View className="mt-4 flex-row justify-end items-center">
+                                            <Text className={`text-[10px] font-bold uppercase tracking-widest ${item.is_signed ? 'text-green-500' : 'text-orange-500'}`}>
+                                                {item.is_signed ? 'Signed by Parent' : 'Pending Parent Signature'}
+                                            </Text>
+                                        </View>
+                                    </View>
+                                );
+                            })
+                        ) : (
+                            <View className="bg-white dark:bg-[#1a1a1a] p-20 rounded-[48px] items-center border border-gray-100 dark:border-gray-700 border-dashed mt-8">
+                                <BookOpen size={64} color="#E5E7EB" style={{ opacity: 0.3 }} />
+                                <Text className="text-gray-400 dark:text-gray-500 font-bold text-center mt-6">No Diary Entries Yet</Text>
+                            </View>
+                        )}
                     </ScrollView>
                 )}
             </View>
-            </SubscriptionGate>
         </View>
     );
 }

@@ -5,7 +5,7 @@ import { useTheme } from "@/contexts/ThemeContext";
 import { useSubscriptionTier } from "@/hooks/useSubscriptionTier";
 import { Slot, Tabs } from "expo-router";
 import { BookOpen, Building, LayoutGrid, School, Settings, Users, Bell } from "lucide-react-native";
-import { Platform, useWindowDimensions, View } from "react-native";
+import { Platform, useWindowDimensions, View, Text } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 // Full nav items for paid plans

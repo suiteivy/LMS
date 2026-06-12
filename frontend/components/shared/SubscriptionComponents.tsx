@@ -136,7 +136,7 @@ export const SubscriptionStatusBadge = () => {
         const label = getPlanLabel(plan);
         switch (plan) {
             case 'premium':
-                return { bg: 'bg-purple-600/10', text: 'text-purple-600', border: 'border-purple-600/20', label: `âœ¨ ${label}` };
+                return { bg: 'bg-purple-600/10', text: 'text-purple-600', border: 'border-purple-600/20', label: `${label}` };
             case 'pro':
                 return { bg: 'bg-indigo-600/10', text: 'text-indigo-600', border: 'border-indigo-600/20', label };
             case 'custom':

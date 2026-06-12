@@ -20,17 +20,17 @@ export const SubjectCard: React.FC<SubjectCardProps> = ({
   const { isDark } = useTheme();
 
   const t = {
-    surface:       isDark ? '#1a1a1a' : '#ffffff',
-    border:        isDark ? '#1f2937' : '#f3f4f6',
-    textPrimary:   isDark ? '#ffffff' : '#111827',
+    surface: isDark ? '#1a1a1a' : '#ffffff',
+    border: isDark ? '#1f2937' : '#f3f4f6',
+    textPrimary: isDark ? '#ffffff' : '#111827',
     textSecondary: isDark ? '#9ca3af' : '#6b7280',
-    textMuted:     isDark ? '#6b7280' : '#9ca3af',
-    divider:       isDark ? '#1f2937' : '#f9fafb',
-    ratingBg:      isDark ? 'rgba(249,115,22,0.15)' : '#fff7ed',
-    instructorBg:  isDark ? '#1f2937' : '#f3f4f6',
+    textMuted: isDark ? '#6b7280' : '#9ca3af',
+    divider: isDark ? '#1f2937' : '#f9fafb',
+    ratingBg: isDark ? 'rgba(249,115,22,0.15)' : '#fff7ed',
+    instructorBg: isDark ? '#1f2937' : '#f3f4f6',
     instructorBorder: isDark ? 'rgba(249,115,22,0.2)' : '#fff7ed',
-    levelBg:       isDark ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.9)',
-    levelText:     isDark ? '#ffffff' : '#111827',
+    levelBg: isDark ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.9)',
+    levelText: isDark ? '#ffffff' : '#111827',
   };
 
   const shadow = {
@@ -165,7 +165,7 @@ export const SubjectCard: React.FC<SubjectCardProps> = ({
     );
   }
 
-  // Default variant â€” smaller
+  // Default variant   smaller
   return (
     <TouchableOpacity
       onPress={onPress}
