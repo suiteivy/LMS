@@ -617,7 +617,7 @@ export default function SignIn() {
                       <GraduationCap size={18} color="#FF6B00" />
                     </Animated.View>
                     <Text style={{ color: "rgba(255,255,255,0.4)", fontWeight: "700", textTransform: "uppercase", letterSpacing: 3, fontSize: 10 }}>
-                      SuiteIvy
+                      Cloudora
                     </Text>
                   </View>
                 </View>
@@ -767,44 +767,6 @@ export default function SignIn() {
                     )}
                   </TouchableOpacity>
                 </Animated.View>
-
-                {/* Security note */}
-                <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", marginTop: 14, gap: 6 }}>
-                  <IconIonicons name="lock-closed" size={11} color="rgba(255,255,255,0.25)" />
-                  <Text style={{ color: "rgba(255,255,255,0.25)", fontSize: 11, fontWeight: "600" }}>
-                    256-bit encrypted Â· Secured by Supabase
-                  </Text>
-                </View>
-
-                {/* Divider */}
-                <View style={{ flexDirection: "row", alignItems: "center", marginVertical: 28 }}>
-                  <View style={{ flex: 1, height: 1, backgroundColor: "rgba(255,255,255,0.08)" }} />
-                  <Text style={{ color: "rgba(255,255,255,0.25)", fontSize: 11, fontWeight: "700", marginHorizontal: 16, letterSpacing: 1 }}>OR</Text>
-                  <View style={{ flex: 1, height: 1, backgroundColor: "rgba(255,255,255,0.08)" }} />
-                </View>
-
-                {/* Demo CTA */}
-                <TouchableOpacity
-                  style={{
-                    height: 52,
-                    borderRadius: 16,
-                    borderWidth: 1.5,
-                    borderColor: "rgba(255,255,255,0.1)",
-                    backgroundColor: "rgba(255,255,255,0.04)",
-                    justifyContent: "center",
-                    alignItems: "center",
-                    flexDirection: "row",
-                    gap: 10,
-                  }}
-                  onPress={() => router.push("/demo" as any)}
-                  activeOpacity={0.75}
-                >
-                  <Sparkles size={16} color="#FF6B00" />
-                  <Text style={{ color: "rgba(255,255,255,0.75)", fontWeight: "700", fontSize: 14 }}>
-                    Try Interactive Demo
-                  </Text>
-                </TouchableOpacity>
-
               </Animated.View>
             </ScrollView>
           </KeyboardAvoidingView>
