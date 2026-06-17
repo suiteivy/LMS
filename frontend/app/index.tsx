@@ -1166,12 +1166,7 @@ export default function Index() {
             { label: "Features", onPress: () => scrollToSection("features") },
             { label: "Pricing", onPress: () => scrollToSection("pricing") },
             { label: "Contact", onPress: () => scrollToSection("getInTouch") },
-            {
-              label: "Sign In",
-              onPress: () => router.push("/(auth)/signIn"),
-              accent: true,
-            },
-          ].map((item) => (
+          ].map((item: { label: string; onPress: () => void; accent?: boolean }) => (
             <TouchableOpacity
               key={item.label}
               onPress={item.onPress}
