@@ -28,7 +28,7 @@ export const AttendanceService = {
     async markAttendance(records: AttendanceRecord[]) {
         const { data, error } = await supabase
             .from("attendance")
-            .upsert(records as any, { onConflict: "student_id,class_id,date" })
+            .upsert(records as any, { onConflict: "student_id,subject_id,date" })
             .select();
 
         if (error) throw error;
@@ -53,7 +53,8 @@ export const AttendanceService = {
         return data;
     },
 
-    async getTeacherAttendance(date: string) {
+    async getTeacherAttendance(date: string, institutionId: string) {
+        if (!institutionId) throw new Error("institutionId is required for security");
         const { data, error } = await supabase
             .from("teacher_attendance")
             .select(`
@@ -63,20 +64,23 @@ export const AttendanceService = {
                     user:users(full_name, avatar_url)
                 )
             `)
-            .eq("date", date);
+            .eq("date", date)
+            .eq("institution_id", institutionId);
 
         if (error) throw error;
         return data;
     },
 
-    async getInstitutionAttendanceStats(date: string) {
+    async getInstitutionAttendanceStats(date: string, institutionId: string) {
+        if (!institutionId) throw new Error("institutionId is required for security");
         const { data, error } = await supabase
             .from("attendance")
             .select(`
                 status,
                 class:classes(name, grade_level, form_level)
             `)
-            .eq("date", date);
+            .eq("date", date)
+            .eq("institution_id", institutionId);
 
         if (error) throw error;
         return data;

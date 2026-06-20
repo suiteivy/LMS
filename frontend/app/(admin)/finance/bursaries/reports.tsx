@@ -6,9 +6,12 @@ import { supabase } from "@/libs/supabase";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTheme } from "@/contexts/ThemeContext"; // ← add this
 
+import { useSubscriptionTier } from "@/hooks/useSubscriptionTier";
+
 export default function ReportsPage() {
     const { user, isInitializing } = useAuth();
     const { isDark } = useTheme(); // ← replace hardcoded false
+    const tier = useSubscriptionTier();
     const [loading, setLoading] = useState(true);
     const [stats, setStats] = useState({
         totalBursaries: 0,
@@ -20,8 +23,12 @@ export default function ReportsPage() {
     const [bursaryStats, setBursaryStats] = useState<any[]>([]);
 
     useEffect(() => {
+        if (!tier.hasBursary) {
+            router.replace('/(admin)');
+            return;
+        }
         fetchReports();
-    }, []);
+    }, [tier.hasBursary]);
 
     const fetchReports = async () => {
         setLoading(true);
@@ -82,6 +89,10 @@ export default function ReportsPage() {
     const backBtnBg = isDark ? '#1a1744' : '#ffffff';
     const backBtnBorder = isDark ? '#2d2a5e' : '#f3f4f6';
     const progressTrack = isDark ? '#1f2937' : '#f9fafb';
+
+    if (!tier.hasBursary) {
+        return null;
+    }
 
     if (loading) {
         return (

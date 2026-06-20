@@ -112,7 +112,7 @@ export default function ManagementIndex() {
         {
             icon: MessageSquare,
             title: "Direct Connect",
-            description: "Chat with students and parents",
+            description: "Chat with students and Parents/Guardians",
             color: "#0891b2",
             bgColor: "#ecfeff",
             route: "/(teacher)/management/messages"

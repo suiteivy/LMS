@@ -4,6 +4,7 @@ import { SubjectFormData } from "../types/types";
 import { SubjectAPI } from "../services/SubjectService";
 import { useAuth } from "../contexts/AuthContext";
 import { useRouter } from "expo-router";
+import { supabase } from "../libs/supabase";
 
 // hook to manage Subject form state and actions
 export const useSubjectForm = () => {
@@ -30,6 +31,7 @@ export const useSubjectForm = () => {
     allowDiscussions: true,
     certificateEnabled: true,
     class_id: "",
+    teacher_ids: [],
   });
 
   // Track form submission status
@@ -81,9 +83,9 @@ export const useSubjectForm = () => {
 
   // Validate required form fields
   const validateForm = () => {
-    const { title, description, category, price } = formData;
-    if (!title || !description || !category || !price) {
-      Alert.alert("Error", "Please fill in all required fields (Title, Description, Category, Price)");
+    const { title, description, category } = formData;
+    if (!title || !description || !category) {
+      Alert.alert("Error", "Please fill in all required fields (Title, Description, Category)");
       return false;
     }
     return true;
@@ -117,7 +119,8 @@ export const useSubjectForm = () => {
         description: formData.description,
         fee_amount: parseFloat(formData.price) || 0,
         institution_id: profile?.institution_id || "",
-        class_id: formData.class_id || null,
+        class_id: formData.class_id || undefined,
+        teacher_ids: formData.teacher_ids || [],
         // @ts-ignore - Validated by backend
         metadata: metadata
       });
@@ -126,16 +129,14 @@ export const useSubjectForm = () => {
       if (formData.class_id) {
         try {
           // Fetch students in this class
-          const { data: studentsInClass } = await supabase
-            .from('class_enrollments')
+          const { data: studentsInClass } = await (supabase.from('class_enrollments') as any)
             .select('student_id')
             .eq('class_id', formData.class_id);
 
           if (studentsInClass && studentsInClass.length > 0) {
             // Get the newly created subject's ID (or we should get it from the response)
             // For now, we'll fetch the most recent subject created for this institution and class
-            const { data: newSubject } = await supabase
-              .from('subjects')
+            const { data: newSubject } = await (supabase.from('subjects') as any)
               .select('id')
               .eq('institution_id', profile?.institution_id)
               .eq('title', formData.title)
@@ -145,7 +146,7 @@ export const useSubjectForm = () => {
               .single();
 
             if (newSubject) {
-              const enrollments = studentsInClass.map(s => ({
+              const enrollments = studentsInClass.map((s: any) => ({
                 student_id: s.student_id,
                 subject_id: newSubject.id,
                 institution_id: profile?.institution_id,
@@ -153,7 +154,7 @@ export const useSubjectForm = () => {
                 enrollment_date: new Date().toISOString()
               }));
 
-              await supabase.from('enrollments').upsert(enrollments, { onConflict: 'student_id,subject_id' });
+              await (supabase.from('enrollments') as any).upsert(enrollments, { onConflict: 'student_id,subject_id' });
             }
           }
         } catch (enrollErr) {

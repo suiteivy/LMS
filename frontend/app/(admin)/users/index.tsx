@@ -36,30 +36,11 @@ export default function UsersManagementScreen() {
 
     const { isDemo, profile } = useAuth();
 
-    useEffect(() => { fetchUsers(); }, [activeFilter, isDemo, profile?.institution_id]);
+    useEffect(() => { fetchUsers(); }, [activeFilter, profile?.institution_id]);
 
     const fetchUsers = async () => {
         try {
             setLoading(true);
-
-            if (isDemo) {
-                // High-quality mock data for Admin Demo Mode
-                const mockUsers: User[] = [
-                    { id: 'u1', displayId: 'STU-101', first_name: 'Emily', last_name: 'Davis', name: 'Emily Davis', email: 'emily@demo.com', role: 'student', joinDate: new Date().toISOString() },
-                    { id: 'u2', displayId: 'TEA-001', first_name: 'John', last_name: 'Smith', name: 'John Smith', email: 'john@demo.com', role: 'teacher', joinDate: new Date(Date.now() - 86400000).toISOString() },
-                    { id: 'u3', displayId: 'STU-102', first_name: 'Robert', last_name: 'Wilson', name: 'Robert Wilson', email: 'robert@demo.com', role: 'student', joinDate: new Date(Date.now() - 172800000).toISOString() },
-                    { id: 'u4', displayId: 'TEA-002', first_name: 'Sarah', last_name: 'Parker', name: 'Sarah Parker', email: 'sarah@demo.com', role: 'teacher', joinDate: new Date(Date.now() - 259200000).toISOString() },
-                    { id: 'u5', displayId: 'ADM-001', first_name: 'Michael', last_name: 'Brown', name: 'Michael Brown', email: 'michael@demo.com', role: 'admin', joinDate: new Date(Date.now() - 345600000).toISOString() },
-                    { id: 'u6', displayId: 'PAR-001', first_name: 'David', last_name: 'Jones', name: 'David Jones', email: 'david@demo.com', role: 'parent', joinDate: new Date(Date.now() - 432000000).toISOString() },
-                ];
-
-                const filtered = activeFilter === 'all'
-                    ? mockUsers
-                    : mockUsers.filter(u => u.role === activeFilter);
-
-                setUsers(filtered);
-                return;
-            }
 
             // Guard: every admin must belong to an institution
             if (!profile?.institution_id) {

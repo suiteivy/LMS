@@ -95,17 +95,17 @@ export function useSubscriptionTier(): SubscriptionTierInfo {
         isBeta,
         isPaid: r >= PLAN_RANK['basic'] || isBeta,
 
-        // Finance: Included in Premium (4) OR explicitly granted as add-on OR Beta bypass
-        hasFinance: r >= PLAN_RANK['premium'] || addonFinance || isBeta,
+        // Finance: Included in Premium (4) OR explicitly granted as add-on
+        hasFinance: r >= PLAN_RANK['premium'] || addonFinance,
 
-        // Bursary: Included in Premium (4) OR explicitly granted as add-on OR Beta bypass
-        hasBursary: r >= PLAN_RANK['premium'] || addonBursary || isBeta,
+        // Bursary: Included in Premium (4) OR explicitly granted as add-on
+        hasBursary: r >= PLAN_RANK['premium'] || addonBursary,
 
         // Student Module: Always enabled for authenticated students
         hasStudentModule: true,
 
-        // Analytics: Included in Premium (4) OR explicitly granted as add-on OR Beta bypass
-        hasAnalytics: r >= PLAN_RANK['premium'] || addonAnalytics || isBeta,
+        // Analytics: Included in Premium (4) OR explicitly granted as add-on
+        hasAnalytics: r >= PLAN_RANK['premium'] || addonAnalytics,
 
         // Messaging: Included in Beta (0)+ OR explicitly granted as add-on
         hasMessaging: r >= PLAN_RANK['beta'] || addonMessaging,
@@ -113,13 +113,13 @@ export function useSubscriptionTier(): SubscriptionTierInfo {
         // Diary: Included in Beta (0)+ OR explicitly granted as add-on
         hasDiary: r >= PLAN_RANK['beta'] || addonDiary,
 
-        // Library: Included in Pro (3)+ OR explicitly granted as add-on OR Beta bypass
-        hasLibrary: r >= PLAN_RANK['pro'] || addonLibrary || isBeta,
+        // Library: Included in Pro (3)+ OR explicitly granted as add-on
+        hasLibrary: r >= PLAN_RANK['pro'] || addonLibrary,
 
-        // Attendance: Included in Pro (3) and Premium (4) OR explicitly granted as add-on OR Beta bypass
-        hasAttendance: (r >= PLAN_RANK['pro'] && r !== PLAN_RANK['custom']) || addonAttendance || isBeta,
+        // Attendance: Included in Pro (3) and Premium (4) OR explicitly granted as add-on
+        hasAttendance: (r >= PLAN_RANK['pro'] && r !== PLAN_RANK['custom']) || addonAttendance,
         isFree: r < PLAN_RANK['basic'] && !isBeta,
-        planRank: isBeta ? 100 : r, // Elevate rank for Beta to pass most gates
-        showFinancials: true, // Enable financials for Beta to ensure full feature parity
+        planRank: isBeta ? 100 : r, // Elevate rank for Beta to pass plan-level gates
+        showFinancials: r >= PLAN_RANK['premium'] || !!addonFinance,
     };
 }

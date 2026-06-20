@@ -1,5 +1,6 @@
 import { UnifiedHeader } from "@/components/common/UnifiedHeader";
 import { useAuth } from "@/contexts/AuthContext";
+import { useRealtimeQuery } from "@/hooks/useRealtimeQuery";
 import { SubjectAPI } from "@/services/SubjectService";
 import { TeacherAttendanceAPI } from "@/services/TeacherAttendanceService";
 import { router } from "expo-router";
@@ -17,6 +18,7 @@ interface Student {
 interface SubjectOption {
     id: string;
     title: string;
+    class_id?: string;
 }
 
 const StudentAttendanceRow = ({ student, onMark }: { student: Student; onMark: (id: string, status: Student["status"]) => void }) => {
@@ -60,6 +62,13 @@ export default function AttendancePage() {
         }
     }, [selectedSubjectId, selectedDate]);
 
+    // Live updates for attendance changes
+    useRealtimeQuery('attendance', () => {
+        if (selectedSubjectId) {
+            fetchAttendanceData();
+        }
+    });
+
     const fetchTeacherSubjects = async () => {
         try {
             setLoading(true);
@@ -99,10 +108,14 @@ export default function AttendancePage() {
         setSaving(true);
         try {
             const dateStr = selectedDate.toISOString().split('T')[0];
+            const currentSubject = subjects.find(s => s.id === selectedSubjectId);
+            const classId = currentSubject?.class_id;
+
             const promises = students.map(s =>
                 TeacherAttendanceAPI.markStudentAttendance({
                     student_id: s.student_id,
                     subject_id: selectedSubjectId,
+                    class_id: classId,
                     status: s.status,
                     date: dateStr
                 })

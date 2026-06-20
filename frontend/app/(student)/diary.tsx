@@ -85,7 +85,7 @@ export default function StudentDiaryPage() {
                                         
                                         <View className="mt-4 flex-row justify-end items-center">
                                             <Text className={`text-[10px] font-bold uppercase tracking-widest ${item.is_signed ? 'text-green-500' : 'text-orange-500'}`}>
-                                                {item.is_signed ? 'Signed by Parent' : 'Pending Parent Signature'}
+                                                {item.is_signed ? 'Signed by Parent/Guardian' : 'Pending Parent/Guardian Signature'}
                                             </Text>
                                         </View>
                                     </View>

@@ -5,7 +5,7 @@ import { showError, showSuccess } from "@/utils/toast";
 import { router } from "expo-router";
 import { Edit2, Megaphone, Plus, Send, Trash2, X } from 'lucide-react-native';
 import React, { useEffect, useState } from "react";
-import { ActivityIndicator, Modal, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, Modal, Platform, RefreshControl, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 interface Announcement {
     id: string;
@@ -57,11 +57,16 @@ const AnnouncementCard = ({ announcement, onDelete }: { announcement: Announceme
 };
 
 export default function AnnouncementsPage() {
-    const { teacherId } = useAuth();
+    const { teacherId, profile } = useAuth();
     const [showModal, setShowModal] = useState(false);
     const [loading, setLoading] = useState(true);
+    const [refreshing, setRefreshing] = useState(false);
     const [announcements, setAnnouncements] = useState<Announcement[]>([]);
     const [Subjects, setSubjects] = useState<{ id: string; title: string }[]>([]);
+
+    // Delete Confirmation State
+    const [deleteModalVisible, setDeleteModalVisible] = useState(false);
+    const [announcementToDelete, setAnnouncementToDelete] = useState<string | null>(null);
 
     // Form
     const [title, setTitle] = useState("");
@@ -81,12 +86,11 @@ export default function AnnouncementsPage() {
         if (data) setSubjects(data);
     };
 
-    const fetchAnnouncements = async () => {
+    const fetchAnnouncements = async (showSilent = false) => {
         if (!teacherId) return;
-        setLoading(true);
+        if (!showSilent) setLoading(true);
         try {
-            const { data, error } = await supabase
-                .from('announcements')
+            const { data, error } = await (supabase.from('announcements') as any)
                 .select(`*, Subject:subjects(title)`)
                 .eq('teacher_id', teacherId)
                 .order('created_at', { ascending: false });
@@ -120,11 +124,12 @@ export default function AnnouncementsPage() {
         }
 
         try {
-            const { error } = await supabase.from('announcements').insert({
+            const { error } = await (supabase.from('announcements') as any).insert({
                 teacher_id: teacherId,
                 subject_id: selectedSubjectId,
                 title,
-                message
+                message,
+                institution_id: profile?.institution_id
             });
 
             if (error) throw error;
@@ -140,15 +145,30 @@ export default function AnnouncementsPage() {
         }
     };
 
-    const deleteAnnouncement = async (id: string) => {
+    const handleDeleteAnnouncement = (id: string) => {
+        setAnnouncementToDelete(id);
+        setDeleteModalVisible(true);
+    };
+
+    const confirmDeleteAnnouncement = async () => {
+        if (!announcementToDelete) return;
         try {
-            const { error } = await supabase.from('announcements').delete().eq('id', id);
+            const { error } = await (supabase.from('announcements') as any).delete().eq('id', announcementToDelete);
             if (error) throw error;
-            setAnnouncements(prev => prev.filter(a => a.id !== id));
+            setAnnouncements(prev => prev.filter(a => a.id !== announcementToDelete));
             showSuccess("Success", "Announcement deleted");
         } catch (error) {
             showError("Error", "Failed to delete announcement");
+        } finally {
+            setDeleteModalVisible(false);
+            setAnnouncementToDelete(null);
         }
+    };
+
+    const onRefresh = async () => {
+        setRefreshing(true);
+        await Promise.all([fetchAnnouncements(true), fetchSubjects()]);
+        setRefreshing(false);
     };
 
     return (
@@ -163,6 +183,9 @@ export default function AnnouncementsPage() {
                 className="flex-1"
                 showsVerticalScrollIndicator={false}
                 contentContainerStyle={{ paddingBottom: 100 }}
+                refreshControl={
+                    <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={["#FF6900"]} tintColor="#FF6900" />
+                }
             >
                 <View className="p-4 md:p-8">
                     {/* Header Row */}
@@ -180,7 +203,7 @@ export default function AnnouncementsPage() {
                             <Text className="text-white font-bold text-xs ml-2 uppercase tracking-widest">New</Text>
                         </TouchableOpacity>
                     </View>
-
+ 
                     {/* Announcements List */}
                     {loading ? (
                         <ActivityIndicator size="large" color="#FF6900" className="mt-8" />
@@ -191,7 +214,7 @@ export default function AnnouncementsPage() {
                         </View>
                     ) : (
                         announcements.map((announcement) => (
-                            <AnnouncementCard key={announcement.id} announcement={announcement} onDelete={deleteAnnouncement} />
+                            <AnnouncementCard key={announcement.id} announcement={announcement} onDelete={handleDeleteAnnouncement} />
                         ))
                     )}
                 </View>
@@ -255,6 +278,43 @@ export default function AnnouncementsPage() {
                             <Send size={18} color="white" />
                             <Text className="text-white font-bold text-lg ml-3">Broadcast</Text>
                         </TouchableOpacity>
+                    </View>
+                </View>
+            </Modal>
+
+            {/* Delete Confirmation Modal */}
+            <Modal visible={deleteModalVisible} animationType="fade" transparent>
+                <View className="flex-1 bg-black/60 justify-center items-center px-4">
+                    <View className="bg-white dark:bg-[#0F0B2E] rounded-[32px] p-6 w-full max-w-sm border border-gray-100 dark:border-gray-800 shadow-2xl animate-fade-in">
+                        <View className="items-center mb-6">
+                            <View className="w-16 h-16 bg-red-50 dark:bg-red-950/20 rounded-full items-center justify-center mb-4">
+                                <Trash2 size={28} color="#ef4444" />
+                            </View>
+                            <Text className="text-gray-950 dark:text-white font-black text-lg tracking-tight text-center">
+                                Delete Announcement
+                            </Text>
+                            <Text className="text-gray-500 dark:text-gray-400 text-xs font-medium text-center mt-2 leading-5">
+                                Are you sure you want to permanently delete this announcement? This action cannot be undone.
+                            </Text>
+                        </View>
+
+                        <View className="flex-row gap-3">
+                            <TouchableOpacity
+                                className="flex-1 py-3.5 bg-gray-50 dark:bg-gray-800 rounded-xl items-center border border-gray-100 dark:border-gray-700 active:opacity-90"
+                                onPress={() => {
+                                    setDeleteModalVisible(false);
+                                    setAnnouncementToDelete(null);
+                                }}
+                            >
+                                <Text className="text-gray-600 dark:text-gray-300 font-extrabold text-xs uppercase tracking-wider">Cancel</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                className="flex-1 py-3.5 bg-red-500 rounded-xl items-center active:bg-red-600 shadow-md shadow-red-500/20"
+                                onPress={confirmDeleteAnnouncement}
+                            >
+                                <Text className="text-white font-extrabold text-xs uppercase tracking-wider">Delete</Text>
+                            </TouchableOpacity>
+                        </View>
                     </View>
                 </View>
             </Modal>

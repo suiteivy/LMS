@@ -87,6 +87,9 @@ export default function UserDetailsScreen() {
     const [students, setStudents] = useState<any[]>([]);
     const [allParents, setAllParents] = useState<any[]>([]);
     const [allSubjects, setAllSubjects] = useState<any[]>([]);
+    const [studentGrades, setStudentGrades] = useState<any[]>([]);
+    const [studentReports, setStudentReports] = useState<any[]>([]);
+    const [loadingAcademics, setLoadingAcademics] = useState(false);
 
     const mappedUser: User | null = user ? {
         id: user.id, 
@@ -108,9 +111,10 @@ export default function UserDetailsScreen() {
     }, [id, profile?.institution_id]);
 
     const loadLookupData = async () => {
+        if (!profile?.institution_id) return;
         let classQuery = supabase.from('classes').select('id, name').order('name');
         let subjectQuery = supabase.from('subjects').select('id, title').order('title');
-        let studentQuery = supabase.from('students').select('id, user_id, users!inner(first_name, last_name, institution_id)').order('id') as any;
+        let studentQuery = supabase.from('students').select('id, user_id, users!inner(first_name, last_name, institution_id), parent_students(parent_id, parents(users(first_name, last_name, full_name)))').order('id') as any;
         let parentQuery = supabase.from('parents').select('id, user_id, users!inner(first_name, last_name, institution_id)').order('id') as any;
 
         if (profile?.institution_id) {
@@ -133,9 +137,18 @@ export default function UserDetailsScreen() {
     };
 
     const fetchUserDetails = async () => {
+        if (!profile?.institution_id) {
+            setLoading(false);
+            return;
+        }
         try {
             setLoading(true);
-            const { data: userData, error: userError } = await supabase.from('users').select('*').eq('id', id).single();
+            const { data: userData, error: userError } = await supabase
+                .from('users')
+                .select('*')
+                .eq('id', id)
+                .eq('institution_id', profile.institution_id)
+                .single();
             if (userError) throw userError;
             const typedUser = userData as UserRow;
             setUser(typedUser);
@@ -180,6 +193,10 @@ export default function UserDetailsScreen() {
                             setLinkedParents(parentIds);
                         } else {
                         }
+                    }
+                    // Fetch grades and reports for student profile view
+                    if (role === 'student' && nd.id) {
+                        fetchStudentGradesAndReports(nd.id);
                     }
                     if (role === 'parent' && (!nd.parent_students || nd.parent_students.length === 0) && nd.id) {
                         const { data: psData, error: psErr } = await supabase.from('parent_students').select('student_id').eq('parent_id', nd.id);
@@ -252,6 +269,78 @@ export default function UserDetailsScreen() {
         } else if (role === 'parent') {
             setOccupation(rd.occupation || ''); setParentAddress(rd.address || '');
             setLinkedStudents(rd.parent_students?.map((ps: any) => ps.student_id) || []);
+        }
+    };
+
+    const fetchStudentGradesAndReports = async (studentRecordId: string) => {
+        try {
+            setLoadingAcademics(true);
+
+            // Fetch graded submissions (assignment grades)
+            const { data: submissionsData } = await supabase
+                .from('submissions')
+                .select(`grade, assignment:assignments!inner(title, is_published, subject:subjects(title, id, credits))`)
+                .eq('student_id', studentRecordId)
+                .eq('status', 'graded')
+                .eq('assignment.is_published', true);
+
+            // Fetch exam results
+            const { data: examResults } = await supabase
+                .from('exam_results')
+                .select(`score, exam:exams!inner(subject:subjects(id, title, credits))`)
+                .eq('student_id', studentRecordId);
+
+            // Aggregate by subject
+            const subjectMap: Record<string, { total: number; count: number; name: string; credits: number; manualScore?: number }> = {};
+
+            submissionsData?.forEach((sub: any) => {
+                const subjectId = sub.assignment?.subject?.id;
+                const score = Number(sub.grade);
+                if (subjectId && !isNaN(score)) {
+                    if (!subjectMap[subjectId]) {
+                        subjectMap[subjectId] = { total: 0, count: 0, name: sub.assignment.subject.title, credits: sub.assignment.subject.credits || 0 };
+                    }
+                    subjectMap[subjectId].total += score;
+                    subjectMap[subjectId].count += 1;
+                }
+            });
+
+            examResults?.forEach((er: any) => {
+                const subjectId = er.exam?.subject?.id;
+                if (subjectId) {
+                    if (!subjectMap[subjectId]) {
+                        subjectMap[subjectId] = { total: 0, count: 0, name: er.exam.subject.title, credits: er.exam.subject.credits || 0 };
+                    }
+                    subjectMap[subjectId].manualScore = Number(er.score);
+                }
+            });
+
+            const formattedGrades = Object.entries(subjectMap).map(([id, val]) => {
+                const score = val.manualScore ?? (val.count > 0 ? (val.total / val.count) : 0);
+                let letter = 'N/A';
+                if (score >= 90) letter = 'A';
+                else if (score >= 80) letter = 'B';
+                else if (score >= 70) letter = 'C';
+                else if (score >= 60) letter = 'D';
+                else if (score > 0) letter = 'F';
+                return { subjectName: val.name, subjectCode: 'ACAD-' + id.substring(0, 4).toUpperCase(), grade: letter, score: Math.round(score), credits: val.credits };
+            });
+
+            setStudentGrades(formattedGrades);
+
+            // Fetch academic reports
+            const { data: reportsData } = await supabase
+                .from('academic_reports')
+                .select('*')
+                .eq('student_id', studentRecordId)
+                .eq('institution_id', profile?.institution_id || '')
+                .order('created_at', { ascending: false });
+
+            setStudentReports(reportsData || []);
+        } catch (error) {
+            console.error('[GRADES] Error fetching student grades/reports:', error);
+        } finally {
+            setLoadingAcademics(false);
         }
     };
 
@@ -385,23 +474,36 @@ export default function UserDetailsScreen() {
         );
     };
 
-    const renderChipList = (label: string, items: any[], selectedIds: string[], setSelected: (ids: string[]) => void, displayFn: (item: any) => string, accentColor: string) => {
+    const renderChipList = (label: string, items: any[], selectedIds: string[], setSelected: (ids: string[]) => void, displayFn: (item: any) => string, accentColor: string, maxSelect?: number, disableFn?: (item: any) => boolean) => {
         return (
             <View style={{ marginTop: 16, paddingTop: 16, borderTopWidth: 1, borderTopColor: border }}>
                 <Text style={{ color: textSecondary, fontWeight: '500', fontSize: 13, marginBottom: 10 }}>{label}</Text>
                 <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
                     {items.map(item => {
                         const isSelected = selectedIds.includes(item.id);
+                        const isDisabled = disableFn ? disableFn(item) : false;
                         if (!isEditing && !isSelected) return null;
                         return (
                             <TouchableOpacity key={item.id}
                                 onPress={() => {
                                     if (!isEditing) return;
-                                    const newIds = isSelected ? selectedIds.filter(i => i !== item.id) : [...selectedIds, item.id];
+                                    if (isDisabled && !isSelected) return;
+                                    let newIds: string[];
+                                    if (isSelected) {
+                                        newIds = selectedIds.filter(i => i !== item.id);
+                                    } else {
+                                        if (maxSelect === 1) {
+                                            newIds = [item.id];
+                                        } else if (maxSelect && selectedIds.length >= maxSelect) {
+                                            newIds = [...selectedIds.slice(1), item.id];
+                                        } else {
+                                            newIds = [...selectedIds, item.id];
+                                        }
+                                    }
                                     setSelected(newIds);
                                 }}
-                                disabled={!isEditing}
-                                style={{ paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10, borderWidth: 1, backgroundColor: isSelected ? accentColor + '20' : (isDark ? '#1e1e1e' : '#f9fafb'), borderColor: isSelected ? accentColor : border }}>
+                                disabled={!isEditing || (isDisabled && !isSelected)}
+                                style={{ paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10, borderWidth: 1, backgroundColor: isSelected ? accentColor + '20' : (isDark ? '#1e1e1e' : '#f9fafb'), borderColor: isSelected ? accentColor : border, opacity: isDisabled && !isSelected ? 0.4 : 1 }}>
                                 <Text style={{ fontSize: 12, fontWeight: '600', color: isSelected ? accentColor : textSecondary }}>{displayFn(item)}</Text>
                             </TouchableOpacity>
                         );
@@ -542,7 +644,115 @@ export default function UserDetailsScreen() {
                             (ids) => setClassId(ids[ids.length - 1] ?? null),
                             c => c.name, '#10b981'
                         )}
-                        {renderChipList('Linked Parents', allParents, linkedParents, setLinkedParents, p => p.users ? `${p.users.first_name || ''} ${p.users.last_name || ''}`.trim() : p.id, '#6366f1')}
+                        {renderChipList('Linked Parents/Guardians', allParents, linkedParents, setLinkedParents, p => p.users ? `${p.users.first_name || ''} ${p.users.last_name || ''}`.trim() : p.id, '#6366f1', 1)}
+                    </View>
+                )}
+
+                {/* Student Grades & Academic Performance */}
+                {user.role === 'student' && roleData && (
+                    <View style={{ marginHorizontal: 24, marginTop: 16, backgroundColor: card, borderRadius: 16, borderWidth: 1, borderColor: border, padding: 16 }}>
+                        <Text style={{ fontSize: 11, fontWeight: '700', color: '#8b5cf6', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 12 }}>📊 Grades & Academic Performance</Text>
+
+                        {loadingAcademics ? (
+                            <ActivityIndicator size="small" color="#FF6B00" style={{ marginVertical: 20 }} />
+                        ) : (
+                            <>
+                                {/* GPA Summary Row */}
+                                {studentGrades.length > 0 && (
+                                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', backgroundColor: isDark ? '#1a1a2e' : '#f8fafc', borderRadius: 12, padding: 16, marginBottom: 16, borderWidth: 1, borderColor: border }}>
+                                        <View style={{ alignItems: 'center', flex: 1 }}>
+                                            <Text style={{ fontSize: 9, fontWeight: '700', color: textSecondary, textTransform: 'uppercase', letterSpacing: 1 }}>Est. GPA</Text>
+                                            <Text style={{ fontSize: 22, fontWeight: '900', color: '#FF6B00', marginTop: 4 }}>
+                                                {(studentGrades.reduce((a, c) => a + c.score, 0) / studentGrades.length / 25).toFixed(2)}
+                                            </Text>
+                                        </View>
+                                        <View style={{ width: 1, backgroundColor: border }} />
+                                        <View style={{ alignItems: 'center', flex: 1 }}>
+                                            <Text style={{ fontSize: 9, fontWeight: '700', color: textSecondary, textTransform: 'uppercase', letterSpacing: 1 }}>Credits</Text>
+                                            <Text style={{ fontSize: 22, fontWeight: '900', color: textPrimary, marginTop: 4 }}>
+                                                {studentGrades.reduce((a, c) => a + c.credits, 0)}
+                                            </Text>
+                                        </View>
+                                        <View style={{ width: 1, backgroundColor: border }} />
+                                        <View style={{ alignItems: 'center', flex: 1 }}>
+                                            <Text style={{ fontSize: 9, fontWeight: '700', color: textSecondary, textTransform: 'uppercase', letterSpacing: 1 }}>Avg Score</Text>
+                                            <Text style={{ fontSize: 22, fontWeight: '900', color: textPrimary, marginTop: 4 }}>
+                                                {Math.round(studentGrades.reduce((a, c) => a + c.score, 0) / studentGrades.length)}%
+                                            </Text>
+                                        </View>
+                                    </View>
+                                )}
+
+                                {/* Subject Grades List */}
+                                {studentGrades.length > 0 ? (
+                                    studentGrades.map((g, idx) => (
+                                        <View key={idx} style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 10, borderBottomWidth: idx < studentGrades.length - 1 ? 1 : 0, borderBottomColor: border }}>
+                                            <View style={{
+                                                width: 36, height: 36, borderRadius: 10, alignItems: 'center', justifyContent: 'center', marginRight: 12,
+                                                backgroundColor: g.grade.startsWith('A') ? '#10b98120' : g.grade.startsWith('B') ? '#3b82f620' : g.grade.startsWith('C') ? '#f59e0b20' : '#ef444420'
+                                            }}>
+                                                <Text style={{
+                                                    fontWeight: '900', fontSize: 14,
+                                                    color: g.grade.startsWith('A') ? '#10b981' : g.grade.startsWith('B') ? '#3b82f6' : g.grade.startsWith('C') ? '#f59e0b' : '#ef4444'
+                                                }}>{g.grade}</Text>
+                                            </View>
+                                            <View style={{ flex: 1 }}>
+                                                <Text style={{ color: textPrimary, fontWeight: '600', fontSize: 13 }}>{g.subjectName}</Text>
+                                                <Text style={{ color: textSecondary, fontSize: 10, marginTop: 2 }}>{g.credits} Credits</Text>
+                                            </View>
+                                            <Text style={{ color: textPrimary, fontWeight: '700', fontSize: 14 }}>{g.score}%</Text>
+                                        </View>
+                                    ))
+                                ) : (
+                                    <View style={{ paddingVertical: 24, alignItems: 'center' }}>
+                                        <Ionicons name="school-outline" size={32} color={textSecondary} style={{ opacity: 0.4 }} />
+                                        <Text style={{ color: textSecondary, fontSize: 12, marginTop: 8, fontStyle: 'italic' }}>No graded submissions yet</Text>
+                                    </View>
+                                )}
+                            </>
+                        )}
+                    </View>
+                )}
+
+                {/* Academic Reports */}
+                {user.role === 'student' && roleData && !loadingAcademics && studentReports.length > 0 && (
+                    <View style={{ marginHorizontal: 24, marginTop: 16, backgroundColor: card, borderRadius: 16, borderWidth: 1, borderColor: border, padding: 16 }}>
+                        <Text style={{ fontSize: 11, fontWeight: '700', color: '#ec4899', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 12 }}>📄 Academic Reports</Text>
+                        {studentReports.map((report: any, idx: number) => {
+                            const rData = report.data || {};
+                            return (
+                                <View key={report.id || idx} style={{ paddingVertical: 12, borderBottomWidth: idx < studentReports.length - 1 ? 1 : 0, borderBottomColor: border }}>
+                                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                                        <View style={{ flex: 1 }}>
+                                            <Text style={{ color: '#FF6B00', fontSize: 9, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1 }}>
+                                                {report.report_type?.replace(/-/g, ' ') || 'Report'}
+                                            </Text>
+                                            <Text style={{ color: textPrimary, fontWeight: '700', fontSize: 15, marginTop: 2 }}>
+                                                {report.term} {report.academic_year}
+                                            </Text>
+                                        </View>
+                                        <View style={{
+                                            paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8,
+                                            backgroundColor: report.status === 'published' ? '#10b98120' : '#f59e0b20'
+                                        }}>
+                                            <Text style={{
+                                                fontSize: 10, fontWeight: '700', textTransform: 'uppercase',
+                                                color: report.status === 'published' ? '#10b981' : '#f59e0b'
+                                            }}>{report.status}</Text>
+                                        </View>
+                                    </View>
+                                    {(rData.gpa || rData.position) && (
+                                        <View style={{ flexDirection: 'row', gap: 16, marginTop: 8 }}>
+                                            {rData.gpa && <Text style={{ color: textSecondary, fontSize: 11 }}>GPA: <Text style={{ fontWeight: '700', color: textPrimary }}>{rData.gpa}</Text></Text>}
+                                            {rData.position && <Text style={{ color: textSecondary, fontSize: 11 }}>Rank: <Text style={{ fontWeight: '700', color: textPrimary }}>{rData.position}/{rData.total_students || '-'}</Text></Text>}
+                                        </View>
+                                    )}
+                                    {rData.comments && (
+                                        <Text style={{ color: textSecondary, fontSize: 11, fontStyle: 'italic', marginTop: 6 }}>&quot;{rData.comments}&quot;</Text>
+                                    )}
+                                </View>
+                            );
+                        })}
                     </View>
                 )}
 
@@ -567,10 +777,27 @@ export default function UserDetailsScreen() {
                 {/* Parent */}
                 {user.role === 'parent' && roleData && (
                     <View style={{ marginHorizontal: 24, marginTop: 16, backgroundColor: card, borderRadius: 16, borderWidth: 1, borderColor: border, padding: 16 }}>
-                        <Text style={{ fontSize: 11, fontWeight: '700', color: '#f59e0b', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 4 }}>👨‍👩‍👧 Parent Details</Text>
+                        <Text style={{ fontSize: 11, fontWeight: '700', color: '#f59e0b', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 4 }}>👨‍👩‍👧 Parent/Guardian Details</Text>
                         {renderField('Occupation', occupation, setOccupation)}
                         {renderField('Address', parentAddress, setParentAddress)}
-                        {renderChipList('Linked Children', students, linkedStudents, setLinkedStudents, s => s.users ? `${s.users.first_name || ''} ${s.users.last_name || ''}`.trim() : s.id, '#f59e0b')}
+                        {renderChipList(
+                            'Linked Children',
+                            students,
+                            linkedStudents,
+                            setLinkedStudents,
+                            s => {
+                                const parentInfo = s.parent_students?.[0]?.parents?.users;
+                                const parentName = parentInfo ? (`${parentInfo.first_name || ''} ${parentInfo.last_name || ''}`.trim() || parentInfo.full_name) : null;
+                                const baseName = s.users ? `${s.users.first_name || ''} ${s.users.last_name || ''}`.trim() : s.id;
+                                return parentName && !linkedStudents.includes(s.id) ? `${baseName} (Linked: ${parentName})` : baseName;
+                            },
+                            '#f59e0b',
+                            undefined,
+                            s => {
+                                const isLinkedToOther = s.parent_students && s.parent_students.length > 0 && s.parent_students[0].parent_id !== roleData?.id;
+                                return !!isLinkedToOther;
+                            }
+                        )}
                     </View>
                 )}
 

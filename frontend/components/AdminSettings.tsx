@@ -46,7 +46,7 @@ export default function AdminSettings() {
                     <TouchableOpacity
                         onPress={() => setShowEditForm(true)}
                     >
-                        <SettingRow icon={User} title="Edit Admin Profile" />
+                        <SettingRow icon={User} title="Edit Profile" />
                     </TouchableOpacity>
                     <SettingRow icon={Lock} title="Change Password" onPress={() => setShowPasswordForm(true)} />
                     <SettingRow icon={Globe} title="Language" isLast >

@@ -1,5 +1,6 @@
 import { UnifiedHeader } from "@/components/common/UnifiedHeader";
 import { useTheme } from "@/contexts/ThemeContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from '@/libs/supabase';
 import { Subject } from '@/types/types';
 import { Ionicons } from '@expo/vector-icons';
@@ -11,6 +12,7 @@ import { SubjectList } from '@/components/SubjectList';
 
 export default function SubjectsIndex() {
     const { isDark } = useTheme();
+    const { profile } = useAuth();
     const [subjects, setSubjects] = useState<Subject[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState("");
@@ -31,29 +33,62 @@ export default function SubjectsIndex() {
         s.description?.toLowerCase().includes(searchQuery.toLowerCase())
     );
 
-    useEffect(() => { fetchSubjects(); }, []);
+    useEffect(() => { fetchSubjects(); }, [profile?.institution_id]);
 
     const fetchSubjects = async () => {
         try {
-            const { data, error } = await supabase.from('subjects').select('*').order('title');
+            if (!profile?.institution_id) {
+                setSubjects([]);
+                setLoading(false);
+                return;
+            }
+            const { data, error } = await supabase
+                .from('subjects')
+                .select(`
+                    *,
+                    subject_teachers(
+                        teacher_id,
+                        teachers(
+                            id,
+                            user_id,
+                            users:user_id(
+                                first_name,
+                                last_name,
+                                full_name
+                            )
+                        )
+                    )
+                `)
+                .eq('institution_id', profile.institution_id)
+                .order('title');
             if (error) throw error;
-            const safeSubjects = (data || []).map((item: any) => ({
-                ...item,
-                instructor: item.instructor || { name: 'Unknown Instructor' },
-                lessons: item.lessons || [],
-                tags: item.tags || [],
-                isEnrolled: item.isEnrolled || false,
-                rating: item.rating || 0,
-                reviewsCount: item.reviewsCount || 0,
-                studentsCount: item.studentsCount || 0,
-                price: item.price || 0,
-                level: item.level || 'beginner',
-                image: item.image || `https://placehold.co/600x400?text=${encodeURIComponent(item.title)}`,
-                description: item.description || '',
-                shortDescription: item.shortDescription || '',
-                category: item.category || 'General',
-                duration: item.duration || '0 weeks',
-            })) as Subject[];
+            const safeSubjects = (data || []).map((item: any) => {
+                const assignedTeachers = item.subject_teachers
+                    ? item.subject_teachers.map((st: any) => ({
+                        id: st.teacher_id,
+                        name: st.teachers?.users?.full_name || st.teacher_id
+                      }))
+                    : [];
+                const firstTeacherName = assignedTeachers.length > 0 ? assignedTeachers[0].name : 'Unknown Instructor';
+                return {
+                    ...item,
+                    instructor: { name: firstTeacherName },
+                    instructors: assignedTeachers,
+                    lessons: item.lessons || [],
+                    tags: item.tags || [],
+                    isEnrolled: item.isEnrolled || false,
+                    rating: item.rating || 0,
+                    reviewsCount: item.reviewsCount || 0,
+                    studentsCount: item.studentsCount || 0,
+                    price: item.price || 0,
+                    level: item.level || 'beginner',
+                    image: item.image || `https://placehold.co/600x400?text=${encodeURIComponent(item.title)}`,
+                    description: item.description || '',
+                    shortDescription: item.shortDescription || '',
+                    category: item.category || 'General',
+                    duration: item.duration || '0 weeks',
+                };
+            }) as Subject[];
             setSubjects(safeSubjects);
         } catch (error) {
             console.error('Error fetching subjects:', error);

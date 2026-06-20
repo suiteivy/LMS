@@ -14,71 +14,71 @@ export const useDashboardStats = () => {
     const { isInitializing, session, isDemo, profile } = useAuth(); // Import useAuth to check session status
 
     const fetchStats = async () => {
+        if (!profile?.institution_id) {
+            setStats([]);
+            setRevenueData([]);
+            setLoading(false);
+            return;
+        }
         setLoading(true);
         try {
-            if (isDemo) {
-                // High-quality mock data for Admin Demo Mode
-                const mockStats: StatsData[] = [
-                    { label: "Total Students", value: "1,240", icon: "users", color: "blue" },
-                    { label: "Teachers", value: "86", icon: "school", color: "green" },
-                    { label: "Subjects", value: "42", icon: "book", color: "purple" },
-                    { label: "Revenue", value: "KES 2,450,000", subValue: "$18,500", icon: "wallet", color: "yellow" },
-                ];
-                setStats(mockStats);
-                
-                const mockRevenue = Array.from({ length: 7 }, (_, i) => {
-                    const d = new Date();
-                    d.setDate(d.getDate() - (6 - i));
-                    return {
-                        day: d.toISOString().split('T')[0].split('-').slice(1).reverse().join('/'),
-                        amount: 50000 + Math.random() * 20000
-                    };
-                });
-                setRevenueData(mockRevenue);
-                return;
-            }
-
             let studentCount = 0;
             let teacherCount = 0;
             let subjectCount = 0;
             let totalRevenue = 0;
             let presentToday = 0;
 
-            const todayStr = new Date().toISOString().split('T')[0];
+            const getLocalDateString = (d: Date) => {
+                const year = d.getFullYear();
+                const month = String(d.getMonth() + 1).padStart(2, '0');
+                const day = String(d.getDate()).padStart(2, '0');
+                return `${year}-${month}-${day}`;
+            };
+            const todayStr = getLocalDateString(new Date());
 
             let studentQuery = supabase.from('users').select('*', { count: 'exact', head: true }).eq('role', 'student');
             let teacherQuery = supabase.from('users').select('*', { count: 'exact', head: true }).eq('role', 'teacher');
             let subjectQuery = supabase.from('subjects').select('*', { count: 'exact', head: true });
 
-            if (profile?.institution_id) {
-                studentQuery = studentQuery.eq('institution_id', profile.institution_id);
-                teacherQuery = teacherQuery.eq('institution_id', profile.institution_id);
-                subjectQuery = subjectQuery.eq('institution_id', profile.institution_id);
-            }
+            studentQuery = studentQuery.eq('institution_id', profile.institution_id);
+            teacherQuery = teacherQuery.eq('institution_id', profile.institution_id);
+            subjectQuery = subjectQuery.eq('institution_id', profile.institution_id);
 
             // Fetch Counts
             const [
                 { count: students },
                 { count: teachers },
                 { count: subjects },
-                { count: present }
+                { count: totalAttendanceEntries },
+                { count: presentCount },
+                { count: lateCount }
             ] = await Promise.all([
                 studentQuery,
                 teacherQuery,
                 subjectQuery,
                 supabase.from('attendance').select('*', { count: 'exact', head: true })
                     .eq('date', todayStr)
+                    .eq('institution_id', profile?.institution_id || ''),
+                supabase.from('attendance').select('*', { count: 'exact', head: true })
+                    .eq('date', todayStr)
                     .eq('status', 'present')
+                    .eq('institution_id', profile?.institution_id || ''),
+                supabase.from('attendance').select('*', { count: 'exact', head: true })
+                    .eq('date', todayStr)
+                    .eq('status', 'late')
                     .eq('institution_id', profile?.institution_id || '')
-
             ]);
 
             studentCount = students || 0;
             teacherCount = teachers || 0;
             subjectCount = subjects || 0;
-            presentToday = present || 0;
+            presentToday = (presentCount || 0) + (lateCount || 0);
             
             const attendanceRate = studentCount > 0 ? Math.round((presentToday / studentCount) * 100) : 0;
+            const absentCount = Math.max(0, studentCount - presentToday);
+            const subValue = (totalAttendanceEntries && totalAttendanceEntries > 0)
+                ? `${presentToday} present today (${absentCount} absent)`
+                : "No data recorded today";
 
             // Fetch Revenue & Breakdown (Last 30 days for trend, 7 days for chart)
             const thirtyDaysAgo = new Date();
@@ -89,11 +89,8 @@ export const useDashboardStats = () => {
                 .select('amount, date')
                 .eq('type', 'fee_payment')
                 .eq('direction', 'inflow')
+                .eq('institution_id', profile.institution_id)
                 .gte('date', thirtyDaysAgo.toISOString().split('T')[0]);
-
-            if (profile?.institution_id) {
-                transQuery = transQuery.eq('institution_id', profile.institution_id);
-            }
 
             const { data: transactionsData, error: transError } = await transQuery;
             const transactions = transactionsData as { amount: number; date: string | null }[] | null;
@@ -140,7 +137,7 @@ export const useDashboardStats = () => {
                 {
                     label: "Attendance",
                     value: `${attendanceRate}%`,
-                    subValue: `${presentToday} present today`,
+                    subValue: subValue,
                     icon: "calendar",
                     color: "orange",
                 },

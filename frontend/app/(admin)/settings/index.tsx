@@ -4,7 +4,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/libs/supabase";
 import { User, Phone, Mail, Shield, LogOut, ChevronRight, Save, Zap, Star } from "lucide-react-native";
 import { showSuccess, showError } from "@/utils/toast";
-import { AddonRequestModal } from "@/components/shared/SubscriptionComponents";
+import { AddonRequestModal, AddonRequestButton } from "@/components/shared/SubscriptionComponents";
 import { getPlanLabel } from "@/services/SubscriptionService";
 
 export default function SettingsScreen() {
@@ -34,12 +34,19 @@ export default function SettingsScreen() {
         bursary: addonBursary,
     };
 
+    const activeFeatures = [
+        addonFinance && 'Finance',
+        addonLibrary && 'Library',
+        addonAnalytics && 'Analytics',
+        addonMessaging && 'Messaging',
+        addonBursary && 'Bursary',
+    ].filter(Boolean).join(', ');
+
     const handleUpdateProfile = async () => {
         if (!profile) return;
         setLoading(true);
         try {
-            const { error } = await supabase
-                .from("users")
+            const { error } = await (supabase.from("users") as any)
                 .update({
                     full_name: fullName,
                     phone: phone,
@@ -137,17 +144,17 @@ export default function SettingsScreen() {
                     </TouchableOpacity>
                 </View>
 
-                {/* Subscription & Features Section */}
-                <Text className="text-lg font-bold text-gray-900 mb-3 px-1">Institution Plan</Text>
+                {/* Enhance Your Plan Card */}
+                <Text className="text-lg font-bold text-gray-900 mb-3 px-1">Enhance Your Plan</Text>
                 <View className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100 mb-6">
                     <View className="flex-row items-center justify-between mb-4">
                         <View className="flex-row items-center">
-                            <View className="w-12 h-12 bg-purple-50 rounded-2xl items-center justify-center mr-3">
-                                <Star size={24} color="#8B5CF6" />
+                            <View className="w-10 h-10 bg-orange-50 rounded-xl items-center justify-center mr-3">
+                                <Zap size={20} color="#FF6B00" fill="#FF6B00" />
                             </View>
                             <View>
-                                <Text className="text-gray-500 text-[10px] font-bold uppercase tracking-wider">Current Tier</Text>
-                                <Text className="text-lg font-bold text-gray-900">{getPlanLabel(subscriptionPlan || 'trial')}</Text>
+                                <Text className="text-gray-900 font-extrabold text-base">Enhance Your Plan</Text>
+                                <Text className="text-gray-500 text-[10px] font-bold uppercase tracking-widest">Get specialized modules</Text>
                             </View>
                         </View>
                         <View className={`px-3 py-1 rounded-full ${subscriptionStatus === 'active' || subscriptionStatus === 'trial' ? 'bg-green-50' : 'bg-red-50'}`}>
@@ -157,29 +164,23 @@ export default function SettingsScreen() {
                         </View>
                     </View>
 
-                    <View className="bg-gray-50 rounded-2xl p-4 mb-4">
-                        <Text className="text-gray-900 font-bold text-sm mb-2">Active Add-on Features:</Text>
-                        <View className="flex-row flex-wrap gap-2">
-                            {Object.values(activeAddons).some(v => v) ? (
-                                Object.entries(activeAddons).map(([k, v]) => v && (
-                                    <View key={k} className="bg-white px-3 py-1.5 rounded-xl border border-gray-100 shadow-sm flex-row items-center">
-                                        <Zap size={12} color="#FF6900" />
-                                        <Text className="text-gray-700 text-xs font-bold ml-1 capitalize">{k}</Text>
-                                    </View>
-                                ))
-                            ) : (
-                                <Text className="text-gray-400 text-xs italic">No additional features active yet.</Text>
-                            )}
+                    <View className="flex-row items-center justify-between bg-gray-50 p-4 rounded-2xl mb-4">
+                        <View>
+                            <Text className="text-gray-400 text-[10px] font-bold uppercase mb-1">Current Base Plan</Text>
+                            <Text className="text-gray-900 font-bold">
+                                {subscriptionPlan === 'premium' ? 'PREMIUM' : subscriptionPlan === 'pro' ? 'PRO' : subscriptionPlan === 'basic' ? 'BASIC' : String(subscriptionPlan || 'TRIAL').toUpperCase()}
+                            </Text>
+                        </View>
+                        <View className="h-8 w-[1px] bg-gray-200 mx-4" />
+                        <View className="flex-1">
+                            <Text className="text-gray-400 text-[10px] font-bold uppercase mb-1">Active Modules</Text>
+                            <Text className="text-gray-900 text-[11px] font-bold" numberOfLines={1}>
+                                {activeFeatures || "Core Modules Only"}
+                            </Text>
                         </View>
                     </View>
 
-                    <TouchableOpacity
-                        className="bg-orange-500 py-4 rounded-2xl flex-row justify-center items-center shadow-md active:opacity-90"
-                        onPress={() => setRequestModalVisible(true)}
-                    >
-                        <Zap size={20} color="white" fill="white" />
-                        <Text className="text-white font-bold text-lg ml-2">Request Features</Text>
-                    </TouchableOpacity>
+                    <AddonRequestButton style={{ width: '100%', justifyContent: 'center' }} onPress={() => setRequestModalVisible(true)} />
                 </View>
 
                 {/* Account Actions */}

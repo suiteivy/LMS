@@ -5,8 +5,9 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import { format } from 'date-fns';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ActivityIndicator, Alert, Platform, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { useSubscriptionTier } from "@/hooks/useSubscriptionTier";
 
 const Field = ({ label, children, labelColor }: { label: string; children: React.ReactNode, labelColor: string }) => (
     <View style={{ marginBottom: 24 }}>
@@ -29,6 +30,14 @@ const createInputStyle = (inputBg: string, border: string, textPrimary: string) 
 export default function CreateBursaryScreen() {
     const router = useRouter();
     const { isDark } = useTheme();
+    const tier = useSubscriptionTier();
+
+    useEffect(() => {
+        if (!tier.hasBursary) {
+            router.replace('/(admin)');
+        }
+    }, [tier.hasBursary]);
+
     const [loading, setLoading] = useState(false);
     const [title, setTitle] = useState('');
     const [description, setDescription] = useState('');
@@ -36,6 +45,10 @@ export default function CreateBursaryScreen() {
     const [requirements, setRequirements] = useState('');
     const [deadline, setDeadline] = useState(new Date());
     const [showDatePicker, setShowDatePicker] = useState(false);
+
+    if (!tier.hasBursary) {
+        return null;
+    }
 
     const surface = isDark ? '#13103A' : '#ffffff';
     const border = isDark ? 'rgba(255,255,255,0.1)' : '#e5e7eb';

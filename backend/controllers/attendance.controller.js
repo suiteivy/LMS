@@ -89,13 +89,23 @@ exports.markStudentAttendance = async (req, res) => {
 
         const markDate = date || new Date().toISOString().split('T')[0];
 
+        let targetClassId = class_id;
+        if (!targetClassId) {
+            const { data: subjectRow } = await supabase
+                .from("subjects")
+                .select("class_id")
+                .eq("id", subject_id)
+                .single();
+            targetClassId = subjectRow?.class_id || null;
+        }
+
         // Upsert
         const { data, error } = await supabase
             .from("attendance")
             .upsert({
                 student_id,
                 subject_id,
-                class_id,
+                class_id: targetClassId,
                 date: markDate,
                 status,
                 notes,

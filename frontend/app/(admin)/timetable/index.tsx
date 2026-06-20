@@ -1,4 +1,4 @@
-// (admin)/timetable/index.tsx   Dark-theme Timetable Builder
+// (admin)/timetable/index.tsx   Theme-aware Timetable Builder
 import { SubscriptionGate } from "@/components/shared/SubscriptionComponents";
 import { supabase } from "@/libs/supabase";
 import { ClassAPI, ClassItem as ClassData } from "@/services/ClassService";
@@ -7,6 +7,9 @@ import { CreateTimetableDto, TimetableAPI, TimetableEntry } from "@/services/Tim
 import { showError, showSuccess } from "@/utils/toast";
 import { Picker } from "@react-native-picker/picker";
 import { useRouter } from "expo-router";
+import { useTheme } from "@/contexts/ThemeContext";
+import { useRealtimeQuery } from "@/hooks/useRealtimeQuery";
+import { UnifiedHeader } from "@/components/common/UnifiedHeader";
 import {
     AlertOctagon,
     Bell,
@@ -41,39 +44,17 @@ import {
     View
 } from "react-native";
 
-// â”€â”€â”€ Design Tokens â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-
-const D = {
-    bg: "#0D1117",
-    surface: "#161B22",
-    surface2: "#21262D",
-    border: "#30363D",
-    borderLight: "#21262D",
-    text: "#E6EDF3",
-    textSub: "#8B949E",
-    textMuted: "#484F58",
-    accent: "#FF6900",
-    accentDim: "rgba(255,105,0,0.15)",
-    red: "#F85149",
-    redDim: "rgba(248,81,73,0.15)",
-    amber: "#E3B341",
-    amberDim: "rgba(227,179,65,0.15)",
-    blue: "#58A6FF",
-    blueDim: "rgba(88,166,255,0.12)",
-    green: "#3FB950",
-    greenDim: "rgba(63,185,80,0.12)",
-    pill: "#238636",
-} as const;
+// ─── Constants ────────────────────────────────────────────────────────────────
 
 const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"] as const;
 const DAY_SHORT = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
 // Colour palette for subject cards (cycles)
 const SUBJECT_COLORS = [
-    "#FF6900", "#58A6FF", "#3FB950", "#E3B341", "#BC8CFF", "#F78166", "#39D353",
+    "#FF6900", "#3B82F6", "#22C55E", "#F59E0B", "#A78BFA", "#F87171", "#10B981",
 ];
 
-// â”€â”€â”€ Types â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Types ────────────────────────────────────────────────────────────────────
 
 type ConflictSeverity = "error" | "warning" | "info";
 type ConflictType =
@@ -96,7 +77,7 @@ interface Conflict {
     affectedClassIds: string[];
 }
 
-// â”€â”€â”€ Conflict Detection Engine â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Conflict Detection Engine ────────────────────────────────────────────────
 
 const toMinutes = (t: string): number => {
     const [h, m] = t.split(":").map(Number);
@@ -162,7 +143,7 @@ function detectConflicts(entries: TimetableEntry[]): Conflict[] {
                     conflicts.push({
                         id: nextId(), type: "class_double_book", severity: "error", day,
                         message: `Class has overlapping subjects on ${day}`,
-                        detail: `"${aSub}" and "${bSub}" overlap   students can't be in two places at once.`,
+                        detail: `"${aSub}" and "${bSub}" overlap - students can't be in two places at once.`,
                         affectedEntryIds: [a.id, b.id],
                         affectedTeacherUserIds: [aTeacherId, bTeacherId].filter(Boolean),
                         affectedClassIds: [a.class_id],
@@ -171,7 +152,7 @@ function detectConflicts(entries: TimetableEntry[]): Conflict[] {
             }
         }
 
-        // Back-to-back detection (â‰¥3 sessions for same teacher with <15min gap)
+        // Back-to-back detection (≥3 consecutive sessions with <15 min gaps)
         const teacherSlots: Record<string, TimetableEntry[]> = {};
         for (const s of sorted) {
             const tid = (s.subjects as any)?.teacher_id ?? "__unknown__";
@@ -203,7 +184,7 @@ function detectConflicts(entries: TimetableEntry[]): Conflict[] {
     return conflicts;
 }
 
-// â”€â”€â”€ Notification Dispatch â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Notification Dispatch ────────────────────────────────────────────────────
 
 async function sendConflictNotifications(
     conflicts: Conflict[],
@@ -243,47 +224,47 @@ async function sendConflictNotifications(
 
     const rows = [...recipientSet].map(uid => ({
         user_id: uid,
-        title: "âš ï¸ Timetable Conflict Detected",
+        title: "⚠️ Timetable Conflict Detected",
         message: `${summary} found in the class timetable. Please review and resolve.`,
         type: "warning" as const,
         is_read: false,
         created_at: new Date().toISOString(),
     }));
     if (rows.length === 0) return 0;
-    const { error } = await supabase.from("notifications").insert(rows);
+    const { error } = await (supabase.from("notifications") as any).insert(rows);
     if (error) throw error;
     return rows.length;
 }
 
-// â”€â”€â”€ Type Icons / Labels â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── ConflictPanel ────────────────────────────────────────────────────────────
 
-const TYPE_META: Record<ConflictType, { label: string; icon: React.ReactNode; color: string; bg: string }> = {
-    room_clash: { label: "Room Clash", color: D.red, bg: D.redDim, icon: <MapPin size={12} color={D.red} /> },
-    teacher_double_book: { label: "Teacher Conflict", color: D.red, bg: D.redDim, icon: <User size={12} color={D.red} /> },
-    class_double_book: { label: "Class Double-Book", color: D.red, bg: D.redDim, icon: <BookOpen size={12} color={D.red} /> },
-    back_to_back: { label: "Back-to-Back", color: D.amber, bg: D.amberDim, icon: <Clock size={12} color={D.amber} /> },
-    room_unavailable: { label: "Room Unavailable", color: D.amber, bg: D.amberDim, icon: <MapPin size={12} color={D.amber} /> },
-    capacity_mismatch: { label: "Capacity Mismatch", color: D.blue, bg: D.blueDim, icon: <Info size={12} color={D.blue} /> },
-};
-
-// â”€â”€â”€ ConflictPanel â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-
-function ConflictPanel({ conflicts, onSendAll, sending, institutionType }: {
+function ConflictPanel({ conflicts, onSendAll, sending, institutionType, colors, styles }: {
     conflicts: Conflict[];
     onSendAll: () => void;
     sending: boolean;
     institutionType: string | null;
+    colors: any;
+    styles: any;
 }) {
     const [expanded, setExpanded] = useState(true);
     const errors = conflicts.filter(c => c.severity === "error").length;
     const warnings = conflicts.filter(c => c.severity === "warning").length;
     const isTertiary = institutionType === "tertiary";
 
+    const typeMeta: Record<ConflictType, { label: string; icon: React.ReactNode; color: string; bg: string }> = {
+        room_clash: { label: "Room Clash", color: colors.red, bg: colors.redDim, icon: <MapPin size={12} color={colors.red} /> },
+        teacher_double_book: { label: "Teacher Conflict", color: colors.red, bg: colors.redDim, icon: <User size={12} color={colors.red} /> },
+        class_double_book: { label: "Class Double-Book", color: colors.red, bg: colors.redDim, icon: <BookOpen size={12} color={colors.red} /> },
+        back_to_back: { label: "Back-to-Back", color: colors.amber, bg: colors.amberDim, icon: <Clock size={12} color={colors.amber} /> },
+        room_unavailable: { label: "Room Unavailable", color: colors.amber, bg: colors.amberDim, icon: <MapPin size={12} color={colors.amber} /> },
+        capacity_mismatch: { label: "Capacity Mismatch", color: colors.blue, bg: colors.blueDim, icon: <Info size={12} color={colors.blue} /> },
+    };
+
     if (conflicts.length === 0) {
         return (
             <View style={styles.cleanBanner}>
-                <Check size={16} color={D.green} />
-                <Text style={styles.cleanBannerText}>No conflicts   schedule looks clean âœ“</Text>
+                <Check size={16} color={colors.green} />
+                <Text style={styles.cleanBannerText}>No conflicts - schedule looks clean ✓</Text>
             </View>
         );
     }
@@ -293,23 +274,23 @@ function ConflictPanel({ conflicts, onSendAll, sending, institutionType }: {
             <TouchableOpacity style={styles.conflictHeader} onPress={() => setExpanded(v => !v)} activeOpacity={0.7}>
                 <View style={styles.conflictHeaderLeft}>
                     <View style={styles.conflictIconBox}>
-                        <Shield size={14} color={D.red} />
+                        <Shield size={14} color={colors.red} />
                     </View>
                     <Text style={styles.conflictTitle}>
                         {conflicts.length} Conflict{conflicts.length > 1 ? "s" : ""} Detected
                     </Text>
                     {errors > 0 && (
-                        <View style={[styles.badge, { backgroundColor: D.red }]}>
+                        <View style={[styles.badge, { backgroundColor: colors.red }]}>
                             <Text style={styles.badgeText}>{errors} ERR</Text>
                         </View>
                     )}
                     {warnings > 0 && (
-                        <View style={[styles.badge, { backgroundColor: D.amber }]}>
+                        <View style={[styles.badge, { backgroundColor: colors.amber }]}>
                             <Text style={styles.badgeText}>{warnings} WARN</Text>
                         </View>
                     )}
                 </View>
-                {expanded ? <ChevronUp size={16} color={D.textSub} /> : <ChevronDown size={16} color={D.textSub} />}
+                {expanded ? <ChevronUp size={16} color={colors.textSub} /> : <ChevronDown size={16} color={colors.textSub} />}
             </TouchableOpacity>
 
             {expanded && (
@@ -317,7 +298,7 @@ function ConflictPanel({ conflicts, onSendAll, sending, institutionType }: {
                     <View style={styles.divider} />
                     <ScrollView style={{ maxHeight: 260 }} showsVerticalScrollIndicator={false}>
                         {conflicts.map((c, idx) => {
-                            const meta = TYPE_META[c.type];
+                            const meta = typeMeta[c.type];
                             return (
                                 <View key={c.id} style={[styles.conflictItem, idx < conflicts.length - 1 && styles.conflictItemBorder]}>
                                     <View style={[styles.conflictItemStrip, { backgroundColor: meta.color }]} />
@@ -364,7 +345,7 @@ function ConflictPanel({ conflicts, onSendAll, sending, institutionType }: {
     );
 }
 
-function ConflictUpgradeNudge() {
+function ConflictUpgradeNudge({ styles }: { styles: any }) {
     return (
         <View style={styles.upgradeNudge}>
             <View style={styles.upgradeIconBox}>
@@ -379,10 +360,38 @@ function ConflictUpgradeNudge() {
     );
 }
 
-// â”€â”€â”€ Main Component â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function TimetableBuilder() {
     const router = useRouter();
+    const { isDark } = useTheme();
+
+    // Derive theme-based palette
+    const colors = React.useMemo(() => {
+        return {
+            bg: isDark ? "#0F0B2E" : "#f9fafb",
+            surface: isDark ? "#13103A" : "#ffffff",
+            surface2: isDark ? "#1A1650" : "#f3f4f6",
+            border: isDark ? "rgba(255,255,255,0.1)" : "#E5E7EB",
+            borderLight: isDark ? "rgba(255,255,255,0.05)" : "#f3f4f6",
+            text: isDark ? "#ffffff" : "#111827",
+            textSub: isDark ? "rgba(255,255,255,0.6)" : "#4b5563",
+            textMuted: isDark ? "rgba(255,255,255,0.4)" : "#9ca3af",
+            accent: "#FF6900",
+            accentDim: "rgba(255,105,0,0.15)",
+            red: "#EF4444",
+            redDim: "rgba(239,68,68,0.15)",
+            amber: "#F59E0B",
+            amberDim: "rgba(245,158,11,0.15)",
+            blue: "#3B82F6",
+            blueDim: "rgba(59,130,246,0.12)",
+            green: "#22C55E",
+            greenDim: "rgba(34,197,94,0.12)",
+            pill: isDark ? "#10B981" : "#059669",
+        };
+    }, [isDark]);
+
+    const styles = React.useMemo(() => getStyles(colors), [colors]);
 
     // Data state
     const [loading, setLoading] = useState(true);
@@ -418,7 +427,7 @@ export default function TimetableBuilder() {
         .sort((a, b) => toMinutes(a.start_time) - toMinutes(b.start_time));
     const conflictingIds = new Set(conflicts.flatMap(c => c.affectedEntryIds));
 
-    // â”€â”€ Data fetching â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── Data fetching ─────────────────────────────────────────────────────────
 
     const fetchAllEntries = useCallback(async () => {
         if (!institutionId) return;
@@ -435,14 +444,22 @@ export default function TimetableBuilder() {
         }
     }, [institutionId]);
 
+    // Live Updates for Timetable changes
+    useRealtimeQuery('timetables', () => {
+        fetchAllEntries();
+        if (selectedClassId) {
+            fetchClassTimetable(selectedClassId);
+        }
+    });
+
     useEffect(() => {
         const loadInstitution = async () => {
             const { data: { session } } = await supabase.auth.getSession();
             if (!session) return;
-            const { data: user } = await supabase.from("users").select("institution_id").eq("id", session.user.id).single();
+            const { data: user } = await (supabase.from("users") as any).select("institution_id").eq("id", session.user.id).single();
             if (user?.institution_id) {
                 setInstitutionId(user.institution_id);
-                const { data: inst } = await supabase.from("institutions").select("type").eq("id", user.institution_id).single();
+                const { data: inst } = await (supabase.from("institutions") as any).select("type").eq("id", user.institution_id).single();
                 setInstitutionType(inst?.type ?? null);
             }
         };
@@ -484,7 +501,7 @@ export default function TimetableBuilder() {
         } catch (e) { console.error(e); }
     };
 
-    // â”€â”€ CRUD â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── CRUD ──────────────────────────────────────────────────────────────────
 
     const openAdd = () => {
         setEditingEntry(null);
@@ -556,13 +573,13 @@ export default function TimetableBuilder() {
         setSendingAlerts(true);
         try {
             const count = await sendConflictNotifications(conflicts, institutionType, institutionId);
-            Alert.alert("Alerts Sent âœ“", `${count} notification${count !== 1 ? "s" : ""} delivered.`);
+            Alert.alert("Alerts Sent ✓", `${count} notification${count !== 1 ? "s" : ""} delivered.`);
         } catch (e) {
             Alert.alert("Error", "Failed to send some notifications.");
         } finally { setSendingAlerts(false); }
     };
 
-    // â”€â”€ Slot card colour cycling â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── Slot card colour cycling ──────────────────────────────────────────────
 
     const subjectColorMap = useRef<Record<string, string>>({}).current;
     const getSubjectColor = (subjectId: string) => {
@@ -573,35 +590,34 @@ export default function TimetableBuilder() {
         return subjectColorMap[subjectId];
     };
 
-    // â”€â”€â”€ Loading screen â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── Loading screen ────────────────────────────────────────────────────────
 
     if (loading) {
         return (
             <View style={styles.centered}>
-                <ActivityIndicator size="large" color={D.accent} />
+                <ActivityIndicator size="large" color={colors.accent} />
             </View>
         );
     }
 
-    // â”€â”€â”€ Render â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── Render ────────────────────────────────────────────────────────────────
 
     return (
         <View style={styles.root}>
-            {/* â”€â”€ Header â”€â”€ */}
-            <View style={styles.header}>
-                <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-                    <ChevronLeft size={22} color={D.text} />
-                </TouchableOpacity>
-                <View style={{ flex: 1 }}>
-                    <Text style={styles.headerTitle}>Timetable Builder</Text>
-                    <Text style={styles.headerSub}>{classes.length} class{classes.length !== 1 ? "es" : ""} Â· Institution-wide conflict detection</Text>
-                </View>
-                <TouchableOpacity onPress={fetchAllEntries} style={styles.iconBtn}>
-                    <RefreshCw size={18} color={D.textSub} />
-                </TouchableOpacity>
-            </View>
+            {/* ── Header ── */}
+            <UnifiedHeader
+                title="Management"
+                subtitle="Timetable Builder"
+                role="Admin"
+                onBack={() => router.back()}
+                rightActions={
+                    <TouchableOpacity onPress={fetchAllEntries} style={styles.iconBtn}>
+                        <RefreshCw size={18} color={colors.textSub} />
+                    </TouchableOpacity>
+                }
+            />
 
-            {/* â”€â”€ Class Chips â”€â”€ */}
+            {/* ── Class Chips ── */}
             <View style={styles.chipBar}>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipScroll}>
                     {classes.map((cls) => {
@@ -620,21 +636,23 @@ export default function TimetableBuilder() {
                 </ScrollView>
             </View>
 
-            {/* â”€â”€ Conflict Panel (Pro-gated) â”€â”€ */}
+            {/* ── Conflict Panel (Pro-gated) ── */}
             {selectedClassId && (
                 <View style={styles.conflictZone}>
-                    <SubscriptionGate minPlan="pro" fallback={<ConflictUpgradeNudge />}>
+                    <SubscriptionGate minPlan="pro" fallback={<ConflictUpgradeNudge styles={styles} />}>
                         <ConflictPanel
                             conflicts={conflicts}
                             onSendAll={handleSendAlerts}
                             sending={sendingAlerts}
                             institutionType={institutionType}
+                            colors={colors}
+                            styles={styles}
                         />
                     </SubscriptionGate>
                 </View>
             )}
 
-            {/* â”€â”€ Day Tab Bar â”€â”€ */}
+            {/* ── Day Tab Bar ── */}
             {selectedClassId && (
                 <View style={styles.dayBarWrap}>
                     <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.dayBarScroll}>
@@ -661,16 +679,16 @@ export default function TimetableBuilder() {
                 </View>
             )}
 
-            {/* â”€â”€ Main Content â”€â”€ */}
+            {/* ── Main Content ── */}
             {!selectedClassId ? (
                 <View style={styles.emptyState}>
-                    <Calendar size={60} color={D.border} />
+                    <Calendar size={60} color={colors.border} />
                     <Text style={styles.emptyTitle}>No Class Selected</Text>
                     <Text style={styles.emptySub}>Choose a class above to view and build its timetable</Text>
                 </View>
             ) : fetchingTimetable ? (
                 <View style={styles.centered}>
-                    <ActivityIndicator color={D.accent} />
+                    <ActivityIndicator color={colors.accent} />
                 </View>
             ) : (
                 <ScrollView
@@ -680,7 +698,7 @@ export default function TimetableBuilder() {
                 >
                     {/* Day header */}
                     <View style={styles.dayHeader}>
-                        <Calendar size={15} color={D.accent} />
+                        <Calendar size={15} color={colors.accent} />
                         <Text style={styles.dayHeaderText}>{selectedDay}</Text>
                         <View style={styles.dayHeaderLine} />
                         <Text style={styles.daySlotCount}>{daySlots.length} slot{daySlots.length !== 1 ? "s" : ""}</Text>
@@ -688,10 +706,10 @@ export default function TimetableBuilder() {
 
                     {daySlots.length === 0 ? (
                         <View style={styles.emptyDay}>
-                            <Clock size={36} color={D.border} />
+                            <Clock size={36} color={colors.border} />
                             <Text style={styles.emptyDayText}>No sessions for {selectedDay}</Text>
                             <TouchableOpacity style={styles.emptyDayBtn} onPress={openAdd}>
-                                <Plus size={14} color={D.accent} />
+                                <Plus size={14} color={colors.accent} />
                                 <Text style={styles.emptyDayBtnText}>Add slot</Text>
                             </TouchableOpacity>
                         </View>
@@ -704,7 +722,7 @@ export default function TimetableBuilder() {
                                     key={slot.id}
                                     style={[styles.slotCard, hasConflict && styles.slotCardConflict]}
                                 >
-                                    <View style={[styles.slotStrip, { backgroundColor: hasConflict ? D.red : color }]} />
+                                    <View style={[styles.slotStrip, { backgroundColor: hasConflict ? colors.red : color }]} />
                                     <View style={{ flex: 1, paddingLeft: 12 }}>
                                         <View style={styles.slotTopRow}>
                                             <Text style={styles.slotSubject} numberOfLines={1}>
@@ -712,21 +730,21 @@ export default function TimetableBuilder() {
                                             </Text>
                                             {hasConflict && (
                                                 <View style={styles.conflictBadge}>
-                                                    <AlertOctagon size={10} color={D.red} />
+                                                    <AlertOctagon size={10} color={colors.red} />
                                                     <Text style={styles.conflictBadgeText}>CONFLICT</Text>
                                                 </View>
                                             )}
                                         </View>
 
                                         <View style={styles.slotMeta}>
-                                            <Clock size={11} color={D.textSub} />
+                                            <Clock size={11} color={colors.textSub} />
                                             <Text style={styles.slotMetaText}>
-                                                {slot.start_time.slice(0, 5)} â€“ {slot.end_time.slice(0, 5)}
+                                                {slot.start_time.slice(0, 5)} – {slot.end_time.slice(0, 5)}
                                             </Text>
                                             {slot.room_number ? (
                                                 <>
-                                                    <Text style={styles.slotMetaDot}>Â·</Text>
-                                                    <MapPin size={11} color={D.textSub} />
+                                                    <Text style={styles.slotMetaDot}>·</Text>
+                                                    <MapPin size={11} color={colors.textSub} />
                                                     <Text style={styles.slotMetaText}>Room {slot.room_number}</Text>
                                                 </>
                                             ) : null}
@@ -742,10 +760,10 @@ export default function TimetableBuilder() {
 
                                     <View style={styles.slotActions}>
                                         <TouchableOpacity style={styles.slotActionBtn} onPress={() => openEdit(slot)}>
-                                            <Edit3 size={15} color={D.textSub} />
+                                            <Edit3 size={15} color={colors.textSub} />
                                         </TouchableOpacity>
                                         <TouchableOpacity style={[styles.slotActionBtn, styles.deleteBtn]} onPress={() => handleDelete(slot.id)}>
-                                            <Trash2 size={15} color={D.red} />
+                                            <Trash2 size={15} color={colors.red} />
                                         </TouchableOpacity>
                                     </View>
                                 </View>
@@ -757,98 +775,93 @@ export default function TimetableBuilder() {
                 </ScrollView>
             )}
 
-            {/* â”€â”€ FAB â”€â”€ */}
+            {/* ── FAB ── */}
             {selectedClassId && (
                 <TouchableOpacity style={styles.fab} onPress={openAdd} activeOpacity={0.85}>
                     <Plus size={24} color="#fff" />
                 </TouchableOpacity>
             )}
 
-            {/* â”€â”€ Add / Edit Modal â”€â”€ */}
+            {/* ── Add / Edit Modal ── */}
             <Modal visible={isAddModalVisible} animationType="slide" transparent onRequestClose={() => setIsAddModalVisible(false)}>
                 <View style={styles.modalBackdrop}>
                     <View style={styles.modalSheet}>
-                        {/* Modal Header */}
                         <View style={styles.modalHandle} />
                         <View style={styles.modalHeader}>
                             <View>
                                 <Text style={styles.modalTitle}>{editingEntry ? "Edit Slot" : "Add Schedule Slot"}</Text>
                                 <Text style={styles.modalSub}>
-                                    {selectedClass?.name ?? "Selected class"} Â· Conflicts checked on save
+                                    {selectedClass?.name ?? "Selected class"} · Conflicts checked on save
                                 </Text>
                             </View>
                             <TouchableOpacity style={styles.modalCloseBtn} onPress={() => setIsAddModalVisible(false)}>
-                                <X size={20} color={D.textSub} />
+                                <X size={20} color={colors.textSub} />
                             </TouchableOpacity>
                         </View>
 
                         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.modalBody}>
-                            {/* Day picker */}
                             <Text style={styles.formLabel}>Day of Week</Text>
                             <View style={styles.pickerWrap}>
                                 <Picker
                                     selectedValue={newSlot.day_of_week}
                                     onValueChange={(v) => setNewSlot({ ...newSlot, day_of_week: v as any })}
-                                    style={{ color: D.text }}
-                                    dropdownIconColor={D.textSub}
-                                    itemStyle={{ color: D.text }}
+                                    style={{ color: colors.text }}
+                                    dropdownIconColor={colors.textSub}
+                                    itemStyle={{ color: colors.text }}
                                 >
-                                    {DAYS.map(day => <Picker.Item key={day} label={day} value={day} color={D.text} />)}
+                                    {DAYS.map(day => <Picker.Item key={day} label={day} value={day} color={colors.text} />)}
                                 </Picker>
                             </View>
 
-                            {/* Subject picker */}
                             <Text style={styles.formLabel}>Subject</Text>
                             <View style={styles.pickerWrap}>
                                 <Picker
                                     selectedValue={newSlot.subject_id}
                                     onValueChange={(v) => setNewSlot({ ...newSlot, subject_id: v })}
-                                    style={{ color: D.text }}
-                                    dropdownIconColor={D.textSub}
+                                    style={{ color: colors.text }}
+                                    dropdownIconColor={colors.textSub}
+                                    itemStyle={{ color: colors.text }}
                                 >
-                                    <Picker.Item label="Select subject..." value="" color={D.textSub} />
-                                    {subjects.map(s => <Picker.Item key={s.id} label={s.title} value={s.id} color={D.text} />)}
+                                    <Picker.Item label="Select subject..." value="" color={colors.textMuted} />
+                                    {subjects.map(s => <Picker.Item key={s.id} label={s.title} value={s.id} color={colors.text} />)}
                                 </Picker>
                             </View>
 
-                            {/* Time row */}
                             <View style={styles.timeRow}>
                                 <View style={{ flex: 1 }}>
                                     <Text style={styles.formLabel}>Start Time</Text>
                                     <TextInput
                                         style={styles.input}
                                         placeholder="08:00"
-                                        placeholderTextColor={D.textMuted}
+                                        placeholderTextColor={colors.textMuted}
                                         value={newSlot.start_time}
                                         onChangeText={(v) => setNewSlot({ ...newSlot, start_time: v })}
                                     />
                                 </View>
                                 <View style={styles.timeSeparator}>
-                                    <Text style={styles.timeSepText}>â†’</Text>
+                                    <Text style={styles.timeSepText}>→</Text>
                                 </View>
                                 <View style={{ flex: 1 }}>
                                     <Text style={styles.formLabel}>End Time</Text>
                                     <TextInput
                                         style={styles.input}
                                         placeholder="09:00"
-                                        placeholderTextColor={D.textMuted}
+                                        placeholderTextColor={colors.textMuted}
                                         value={newSlot.end_time}
                                         onChangeText={(v) => setNewSlot({ ...newSlot, end_time: v })}
                                     />
                                 </View>
                             </View>
 
-                            {/* Room */}
                             <Text style={styles.formLabel}>Room <Text style={styles.optional}>(optional)</Text></Text>
                             <TextInput
                                 style={[styles.input, { marginBottom: 24 }]}
                                 placeholder="e.g. Room 101, Lab A, Lecture Hall 2"
-                                placeholderTextColor={D.textMuted}
+                                placeholderTextColor={colors.textMuted}
                                 value={newSlot.room_number ?? ""}
                                 onChangeText={(v) => setNewSlot({ ...newSlot, room_number: v })}
                             />
 
-                            {/* Save button */}
                             <TouchableOpacity
                                 style={[styles.saveBtn, saving && { opacity: 0.6 }]}
                                 onPress={handleSave}
@@ -872,147 +885,149 @@ export default function TimetableBuilder() {
     );
 }
 
-// â”€â”€â”€ Styles â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Styles ──────────────────────────────────────────────────────────────────
 
-const styles = StyleSheet.create({
-    root: { flex: 1, backgroundColor: D.bg },
-    centered: { flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: D.bg },
+function getStyles(colors: any) {
+    return StyleSheet.create({
+        root: { flex: 1, backgroundColor: colors.bg },
+        centered: { flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: colors.bg },
 
-    // Header
-    header: {
-        flexDirection: "row", alignItems: "center", paddingTop: 56, paddingBottom: 14,
-        paddingHorizontal: 16, backgroundColor: D.surface, borderBottomWidth: 1, borderBottomColor: D.border,
-    },
-    backBtn: { marginRight: 12, width: 36, height: 36, borderRadius: 18, backgroundColor: D.surface2, justifyContent: "center", alignItems: "center" },
-    headerTitle: { fontSize: 20, fontWeight: "900", color: D.text, letterSpacing: -0.5 },
-    headerSub: { fontSize: 12, color: D.textSub, marginTop: 2 },
-    iconBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: D.surface2, justifyContent: "center", alignItems: "center" },
+        // Header
+        header: {
+            flexDirection: "row", alignItems: "center", paddingTop: 56, paddingBottom: 14,
+            paddingHorizontal: 16, backgroundColor: colors.surface, borderBottomWidth: 1, borderBottomColor: colors.border,
+        },
+        backBtn: { marginRight: 12, width: 36, height: 36, borderRadius: 18, backgroundColor: colors.surface2, justifyContent: "center", alignItems: "center" },
+        headerTitle: { fontSize: 20, fontWeight: "900", color: colors.text, letterSpacing: -0.5 },
+        headerSub: { fontSize: 12, color: colors.textSub, marginTop: 2 },
+        iconBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: colors.surface2, justifyContent: "center", alignItems: "center" },
 
-    // Class chips
-    chipBar: { backgroundColor: D.surface, borderBottomWidth: 1, borderBottomColor: D.border, paddingVertical: 10 },
-    chipScroll: { paddingHorizontal: 16, gap: 8, flexDirection: "row" },
-    chip: { paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20, backgroundColor: D.surface2, borderWidth: 1, borderColor: D.border },
-    chipActive: { backgroundColor: D.accent, borderColor: D.accent },
-    chipText: { fontSize: 13, fontWeight: "700", color: D.textSub },
-    chipTextActive: { color: "#fff" },
+        // Class chips
+        chipBar: { backgroundColor: colors.surface, borderBottomWidth: 1, borderBottomColor: colors.border, paddingVertical: 10 },
+        chipScroll: { paddingHorizontal: 16, gap: 8, flexDirection: "row" },
+        chip: { paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20, backgroundColor: colors.surface2, borderWidth: 1, borderColor: colors.border },
+        chipActive: { backgroundColor: colors.accent, borderColor: colors.accent },
+        chipText: { fontSize: 13, fontWeight: "700", color: colors.textSub },
+        chipTextActive: { color: "#fff" },
 
-    // Conflict zone
-    conflictZone: { paddingHorizontal: 14, paddingTop: 12 },
+        // Conflict zone
+        conflictZone: { paddingHorizontal: 14, paddingTop: 12 },
 
-    // Conflict panel
-    conflictPanel: { backgroundColor: D.surface, borderRadius: 14, borderWidth: 1, borderColor: D.border, overflow: "hidden", marginBottom: 4 },
-    conflictHeader: { flexDirection: "row", alignItems: "center", padding: 12 },
-    conflictHeaderLeft: { flex: 1, flexDirection: "row", alignItems: "center", gap: 8 },
-    conflictIconBox: { width: 26, height: 26, borderRadius: 8, backgroundColor: D.redDim, justifyContent: "center", alignItems: "center" },
-    conflictTitle: { fontSize: 13, fontWeight: "800", color: D.text, flex: 1 },
-    badge: { paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 },
-    badgeText: { fontSize: 9, fontWeight: "900", color: "#fff" },
-    divider: { height: 1, backgroundColor: D.border },
-    conflictItem: { flexDirection: "row", alignItems: "flex-start", paddingVertical: 10, paddingRight: 14 },
-    conflictItemBorder: { borderBottomWidth: 1, borderBottomColor: D.borderLight },
-    conflictItemStrip: { width: 3, borderRadius: 2, alignSelf: "stretch", marginLeft: 12 },
-    conflictItemRow: { flexDirection: "row", alignItems: "center", marginBottom: 3, gap: 6 },
-    typePill: { flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 },
-    typePillText: { fontSize: 9, fontWeight: "800", textTransform: "uppercase" },
-    conflictDay: { fontSize: 9, fontWeight: "700", color: D.textMuted, marginLeft: "auto" },
-    conflictMsg: { fontSize: 12, fontWeight: "700", color: D.text, marginBottom: 2 },
-    conflictDetail: { fontSize: 11, color: D.textSub, lineHeight: 16 },
-    conflictFooter: { padding: 12 },
-    alertBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, backgroundColor: D.red, borderRadius: 12, paddingVertical: 12 },
-    alertBtnText: { fontSize: 13, fontWeight: "900", color: "#fff" },
-    conflictFooterNote: { fontSize: 10, color: D.textMuted, textAlign: "center", marginTop: 6 },
+        // Conflict panel
+        conflictPanel: { backgroundColor: colors.surface, borderRadius: 14, borderWidth: 1, borderColor: colors.border, overflow: "hidden", marginBottom: 4 },
+        conflictHeader: { flexDirection: "row", alignItems: "center", padding: 12 },
+        conflictHeaderLeft: { flex: 1, flexDirection: "row", alignItems: "center", gap: 8 },
+        conflictIconBox: { width: 26, height: 26, borderRadius: 8, backgroundColor: colors.redDim, justifyContent: "center", alignItems: "center" },
+        conflictTitle: { fontSize: 13, fontWeight: "800", color: colors.text, flex: 1 },
+        badge: { paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 },
+        badgeText: { fontSize: 9, fontWeight: "900", color: "#fff" },
+        divider: { height: 1, backgroundColor: colors.border },
+        conflictItem: { flexDirection: "row", alignItems: "flex-start", paddingVertical: 10, paddingRight: 14 },
+        conflictItemBorder: { borderBottomWidth: 1, borderBottomColor: colors.borderLight },
+        conflictItemStrip: { width: 3, borderRadius: 2, alignSelf: "stretch", marginLeft: 12 },
+        conflictItemRow: { flexDirection: "row", alignItems: "center", marginBottom: 3, gap: 6 },
+        typePill: { flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 },
+        typePillText: { fontSize: 9, fontWeight: "800", textTransform: "uppercase" },
+        conflictDay: { fontSize: 9, fontWeight: "700", color: colors.textMuted, marginLeft: "auto" },
+        conflictMsg: { fontSize: 12, fontWeight: "700", color: colors.text, marginBottom: 2 },
+        conflictDetail: { fontSize: 11, color: colors.textSub, lineHeight: 16 },
+        conflictFooter: { padding: 12 },
+        alertBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, backgroundColor: colors.red, borderRadius: 12, paddingVertical: 12 },
+        alertBtnText: { fontSize: 13, fontWeight: "900", color: "#fff" },
+        conflictFooterNote: { fontSize: 10, color: colors.textMuted, textAlign: "center", marginTop: 6 },
 
-    // Clean banner
-    cleanBanner: { flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: D.greenDim, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 10, borderWidth: 1, borderColor: "rgba(63,185,80,0.25)", marginBottom: 4 },
-    cleanBannerText: { fontSize: 13, fontWeight: "700", color: D.green, flex: 1 },
+        // Clean banner
+        cleanBanner: { flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: colors.greenDim, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 10, borderWidth: 1, borderColor: "rgba(63,185,80,0.25)", marginBottom: 4 },
+        cleanBannerText: { fontSize: 13, fontWeight: "700", color: colors.green, flex: 1 },
 
-    // Upgrade nudge
-    upgradeNudge: { flexDirection: "row", alignItems: "center", gap: 10, backgroundColor: "rgba(167,139,250,0.1)", borderRadius: 12, padding: 12, borderWidth: 1, borderColor: "rgba(167,139,250,0.2)", marginBottom: 4 },
-    upgradeIconBox: { width: 36, height: 36, borderRadius: 10, backgroundColor: "rgba(167,139,250,0.15)", justifyContent: "center", alignItems: "center" },
-    upgradeTitle: { fontSize: 13, fontWeight: "800", color: "#A78BFA" },
-    upgradeSub: { fontSize: 11, color: D.textSub, marginTop: 2 },
-    proBadge: { backgroundColor: "#7C3AED", paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 },
-    proBadgeText: { fontSize: 9, fontWeight: "900", color: "#fff", letterSpacing: 1 },
+        // Upgrade nudge
+        upgradeNudge: { flexDirection: "row", alignItems: "center", gap: 10, backgroundColor: "rgba(167,139,250,0.1)", borderRadius: 12, padding: 12, borderWidth: 1, borderColor: "rgba(167,139,250,0.2)", marginBottom: 4 },
+        upgradeIconBox: { width: 36, height: 36, borderRadius: 10, backgroundColor: "rgba(167,139,250,0.15)", justifyContent: "center", alignItems: "center" },
+        upgradeTitle: { fontSize: 13, fontWeight: "800", color: "#A78BFA" },
+        upgradeSub: { fontSize: 11, color: colors.textSub, marginTop: 2 },
+        proBadge: { backgroundColor: "#7C3AED", paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 },
+        proBadgeText: { fontSize: 9, fontWeight: "900", color: "#fff", letterSpacing: 1 },
 
-    // Day bar
-    dayBarWrap: { backgroundColor: D.surface, borderBottomWidth: 1, borderBottomColor: D.border, paddingVertical: 8 },
-    dayBarScroll: { paddingHorizontal: 14, gap: 6, flexDirection: "row" },
-    dayTab: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 10, backgroundColor: D.surface2, alignItems: "center", position: "relative" },
-    dayTabActive: { backgroundColor: D.accentDim, borderWidth: 1, borderColor: "rgba(255,105,0,0.4)" },
-    dayTabText: { fontSize: 13, fontWeight: "700", color: D.textSub },
-    dayTabTextActive: { color: D.accent },
-    dayDot: { position: "absolute", top: 4, right: 4, width: 6, height: 6, borderRadius: 3, backgroundColor: D.red },
+        // Day bar
+        dayBarWrap: { backgroundColor: colors.surface, borderBottomWidth: 1, borderBottomColor: colors.border, paddingVertical: 8 },
+        dayBarScroll: { paddingHorizontal: 14, gap: 6, flexDirection: "row" },
+        dayTab: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 10, backgroundColor: colors.surface2, alignItems: "center", position: "relative" },
+        dayTabActive: { backgroundColor: colors.accentDim, borderWidth: 1, borderColor: "rgba(255,105,0,0.4)" },
+        dayTabText: { fontSize: 13, fontWeight: "700", color: colors.textSub },
+        dayTabTextActive: { color: colors.accent },
+        dayDot: { position: "absolute", top: 4, right: 4, width: 6, height: 6, borderRadius: 3, backgroundColor: colors.red },
 
-    // Slot list
-    slotList: { paddingHorizontal: 14, paddingTop: 14 },
-    dayHeader: { flexDirection: "row", alignItems: "center", marginBottom: 14, gap: 8 },
-    dayHeaderText: { fontSize: 16, fontWeight: "900", color: D.text },
-    dayHeaderLine: { flex: 1, height: 1, backgroundColor: D.border },
-    daySlotCount: { fontSize: 11, color: D.textMuted, fontWeight: "600" },
+        // Slot list
+        slotList: { paddingHorizontal: 14, paddingTop: 14 },
+        dayHeader: { flexDirection: "row", alignItems: "center", marginBottom: 14, gap: 8 },
+        dayHeaderText: { fontSize: 16, fontWeight: "900", color: colors.text },
+        dayHeaderLine: { flex: 1, height: 1, backgroundColor: colors.border },
+        daySlotCount: { fontSize: 11, color: colors.textMuted, fontWeight: "600" },
 
-    // Slot card
-    slotCard: {
-        flexDirection: "row", alignItems: "center", backgroundColor: D.surface,
-        borderRadius: 14, borderWidth: 1, borderColor: D.border, marginBottom: 10, overflow: "hidden",
-        paddingVertical: 12, paddingRight: 10,
-    },
-    slotCardConflict: { borderColor: "rgba(248,81,73,0.4)", backgroundColor: "rgba(248,81,73,0.05)" },
-    slotStrip: { width: 4, alignSelf: "stretch", borderRadius: 2 },
-    slotTopRow: { flexDirection: "row", alignItems: "center", marginBottom: 5, gap: 8 },
-    slotSubject: { fontSize: 15, fontWeight: "800", color: D.text, flex: 1 },
-    slotMeta: { flexDirection: "row", alignItems: "center", gap: 4, marginBottom: 4 },
-    slotMetaText: { fontSize: 11, color: D.textSub },
-    slotMetaDot: { fontSize: 11, color: D.textMuted },
-    slotTeacherRow: { flexDirection: "row", alignItems: "center", gap: 4 },
-    slotTeacher: { fontSize: 11, fontWeight: "600" },
-    conflictBadge: { flexDirection: "row", alignItems: "center", gap: 3, backgroundColor: D.redDim, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6, borderWidth: 1, borderColor: "rgba(248,81,73,0.3)" },
-    conflictBadgeText: { fontSize: 8, fontWeight: "900", color: D.red },
-    slotActions: { flexDirection: "column", gap: 6, marginLeft: 8 },
-    slotActionBtn: { width: 32, height: 32, borderRadius: 8, backgroundColor: D.surface2, justifyContent: "center", alignItems: "center" },
-    deleteBtn: { backgroundColor: D.redDim },
+        // Slot card
+        slotCard: {
+            flexDirection: "row", alignItems: "center", backgroundColor: colors.surface,
+            borderRadius: 14, borderWidth: 1, borderColor: colors.border, marginBottom: 10, overflow: "hidden",
+            paddingVertical: 12, paddingRight: 10,
+        },
+        slotCardConflict: { borderColor: "rgba(248,81,73,0.4)", backgroundColor: "rgba(248,81,73,0.05)" },
+        slotStrip: { width: 4, alignSelf: "stretch", borderRadius: 2 },
+        slotTopRow: { flexDirection: "row", alignItems: "center", marginBottom: 5, gap: 8 },
+        slotSubject: { fontSize: 15, fontWeight: "800", color: colors.text, flex: 1 },
+        slotMeta: { flexDirection: "row", alignItems: "center", gap: 4, marginBottom: 4 },
+        slotMetaText: { fontSize: 11, color: colors.textSub },
+        slotMetaDot: { fontSize: 11, color: colors.textMuted },
+        slotTeacherRow: { flexDirection: "row", alignItems: "center", gap: 4 },
+        slotTeacher: { fontSize: 11, fontWeight: "600" },
+        conflictBadge: { flexDirection: "row", alignItems: "center", gap: 3, backgroundColor: colors.redDim, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6, borderWidth: 1, borderColor: "rgba(248,81,73,0.3)" },
+        conflictBadgeText: { fontSize: 8, fontWeight: "900", color: colors.red },
+        slotActions: { flexDirection: "column", gap: 6, marginLeft: 8 },
+        slotActionBtn: { width: 32, height: 32, borderRadius: 8, backgroundColor: colors.surface2, justifyContent: "center", alignItems: "center" },
+        deleteBtn: { backgroundColor: colors.redDim },
 
-    // Empty states
-    emptyState: { flex: 1, justifyContent: "center", alignItems: "center", gap: 8 },
-    emptyTitle: { fontSize: 18, fontWeight: "800", color: D.textSub },
-    emptySub: { fontSize: 13, color: D.textMuted, textAlign: "center", paddingHorizontal: 40 },
-    emptyDay: { alignItems: "center", paddingTop: 40, gap: 10 },
-    emptyDayText: { fontSize: 14, color: D.textSub, fontWeight: "600" },
-    emptyDayBtn: { flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: D.accentDim, paddingHorizontal: 16, paddingVertical: 8, borderRadius: 10, borderWidth: 1, borderColor: "rgba(255,105,0,0.3)" },
-    emptyDayBtnText: { fontSize: 13, fontWeight: "700", color: D.accent },
+        // Empty states
+        emptyState: { flex: 1, justifyContent: "center", alignItems: "center", gap: 8 },
+        emptyTitle: { fontSize: 18, fontWeight: "800", color: colors.textSub },
+        emptySub: { fontSize: 13, color: colors.textMuted, textAlign: "center", paddingHorizontal: 40 },
+        emptyDay: { alignItems: "center", paddingTop: 40, gap: 10 },
+        emptyDayText: { fontSize: 14, color: colors.textSub, fontWeight: "600" },
+        emptyDayBtn: { flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: colors.accentDim, paddingHorizontal: 16, paddingVertical: 8, borderRadius: 10, borderWidth: 1, borderColor: "rgba(255,105,0,0.3)" },
+        emptyDayBtnText: { fontSize: 13, fontWeight: "700", color: colors.accent },
 
-    // FAB
-    fab: {
-        position: "absolute", bottom: 28, right: 20,
-        width: 56, height: 56, borderRadius: 28,
-        backgroundColor: D.accent, justifyContent: "center", alignItems: "center",
-        shadowColor: D.accent, shadowOpacity: 0.4, shadowRadius: 12, shadowOffset: { width: 0, height: 4 },
-        boxShadow: [{
-            offsetX: 0,
-            offsetY: 4,
-            blurRadius: 12,
-            color: 'rgba(255, 105, 0, 0.4)',
-        }],
-        elevation: 8,
-    },
+        // FAB
+        fab: {
+            position: "absolute", bottom: 28, right: 20,
+            width: 56, height: 56, borderRadius: 28,
+            backgroundColor: colors.accent, justifyContent: "center", alignItems: "center",
+            shadowColor: colors.accent, shadowOpacity: 0.4, shadowRadius: 12, shadowOffset: { width: 0, height: 4 },
+            boxShadow: [{
+                offsetX: 0,
+                offsetY: 4,
+                blurRadius: 12,
+                color: 'rgba(255, 105, 0, 0.4)',
+            }],
+            elevation: 8,
+        },
 
-    // Modal
-    modalBackdrop: { flex: 1, backgroundColor: "rgba(0,0,0,0.7)", justifyContent: "flex-end" },
-    modalSheet: { backgroundColor: D.surface, borderTopLeftRadius: 28, borderTopRightRadius: 28, paddingBottom: 36, maxHeight: "90%" },
-    modalHandle: { width: 36, height: 4, backgroundColor: D.border, borderRadius: 2, alignSelf: "center", marginTop: 10 },
-    modalHeader: { flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", paddingHorizontal: 20, paddingTop: 16, paddingBottom: 12, borderBottomWidth: 1, borderBottomColor: D.border },
-    modalTitle: { fontSize: 20, fontWeight: "900", color: D.text },
-    modalSub: { fontSize: 12, color: D.textSub, marginTop: 3 },
-    modalCloseBtn: { width: 34, height: 34, borderRadius: 17, backgroundColor: D.surface2, justifyContent: "center", alignItems: "center" },
-    modalBody: { paddingHorizontal: 20, paddingTop: 18 },
+        // Modal
+        modalBackdrop: { flex: 1, backgroundColor: "rgba(0,0,0,0.7)", justifyContent: "flex-end" },
+        modalSheet: { backgroundColor: colors.surface, borderTopLeftRadius: 28, borderTopRightRadius: 28, paddingBottom: 36, maxHeight: "90%" },
+        modalHandle: { width: 36, height: 4, backgroundColor: colors.border, borderRadius: 2, alignSelf: "center", marginTop: 10 },
+        modalHeader: { flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", paddingHorizontal: 20, paddingTop: 16, paddingBottom: 12, borderBottomWidth: 1, borderBottomColor: colors.border },
+        modalTitle: { fontSize: 20, fontWeight: "900", color: colors.text },
+        modalSub: { fontSize: 12, color: colors.textSub, marginTop: 3 },
+        modalCloseBtn: { width: 34, height: 34, borderRadius: 17, backgroundColor: colors.surface2, justifyContent: "center", alignItems: "center" },
+        modalBody: { paddingHorizontal: 20, paddingTop: 18 },
 
-    // Form
-    formLabel: { fontSize: 11, fontWeight: "700", color: D.textSub, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 6 },
-    optional: { fontWeight: "400", color: D.textMuted, textTransform: "none" },
-    pickerWrap: { backgroundColor: D.surface2, borderRadius: 12, borderWidth: 1, borderColor: D.border, marginBottom: 16, overflow: "hidden" },
-    input: { backgroundColor: D.surface2, borderRadius: 12, borderWidth: 1, borderColor: D.border, paddingHorizontal: 14, paddingVertical: 14, fontSize: 15, fontWeight: "600", color: D.text, marginBottom: 16 },
-    timeRow: { flexDirection: "row", alignItems: "flex-end", gap: 8 },
-    timeSeparator: { paddingBottom: 14 },
-    timeSepText: { fontSize: 18, color: D.textMuted, fontWeight: "300" },
-    saveBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, backgroundColor: D.accent, borderRadius: 14, paddingVertical: 16 },
-    saveBtnText: { fontSize: 16, fontWeight: "900", color: "#fff" },
-});
+        // Form
+        formLabel: { fontSize: 11, fontWeight: "700", color: colors.textSub, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 6 },
+        optional: { fontWeight: "400", color: colors.textMuted, textTransform: "none" },
+        pickerWrap: { backgroundColor: colors.surface2, borderRadius: 12, borderWidth: 1, borderColor: colors.border, marginBottom: 16, overflow: "hidden" },
+        input: { backgroundColor: colors.surface2, borderRadius: 12, borderWidth: 1, borderColor: colors.border, paddingHorizontal: 14, paddingVertical: 14, fontSize: 15, fontWeight: "600", color: colors.text, marginBottom: 16 },
+        timeRow: { flexDirection: "row", alignItems: "flex-end", gap: 8 },
+        timeSeparator: { paddingBottom: 14 },
+        timeSepText: { fontSize: 18, color: colors.textMuted, fontWeight: "300" },
+        saveBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, backgroundColor: colors.accent, borderRadius: 14, paddingVertical: 16 },
+        saveBtnText: { fontSize: 16, fontWeight: "900", color: "#fff" },
+    });
+}

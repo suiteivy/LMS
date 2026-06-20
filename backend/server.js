@@ -51,6 +51,7 @@ app.use("/api/support", supportRoutes);
 app.use("/api/demo", demoRoutes);
 // Gated Routes (Trial Branch)
 app.use("/api/subjects", authMiddleware, checkSubscription, subjectRoutes);
+app.use("/api/roles", authMiddleware, checkSubscription, require("./routes/role.route.js"));
 app.use("/api/institutions", authMiddleware, checkSubscription, institutionRoutes);
 app.use("/api/library", authMiddleware, checkSubscription, libraryRoutes);
 app.use("/api/bursary", authMiddleware, checkSubscription, bursaryRoutes);

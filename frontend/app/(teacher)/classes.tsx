@@ -4,6 +4,8 @@ import { supabase } from "@/libs/supabase";
 import { AttendanceService } from "@/services/AttendanceService";
 import { ClassService, ClassStudent } from "@/services/ClassService";
 import { TimetableAPI, TimetableEntry } from "@/services/TimetableService";
+import { useRealtimeQuery } from "@/hooks/useRealtimeQuery";
+import { TeacherAttendanceAPI } from "@/services/TeacherAttendanceService";
 import {
     BookOpen,
     Calendar,
@@ -175,7 +177,7 @@ const DailyTab = ({ classId, className: cName }: { classId: string; className: s
 
     // Derive schedule entries for the selected day
     const todayName = JS_DAY_TO_TT[date.getDay()];
-    const sessionsToday = schedule.filter((e) => e.day_of_week === todayName);
+    const sessionsToday = React.useMemo(() => schedule.filter((e) => e.day_of_week === todayName), [schedule, todayName]);
     const hasClass = sessionsToday.length > 0;
 
     const shiftDay = (n: number) => {
@@ -195,12 +197,19 @@ const DailyTab = ({ classId, className: cName }: { classId: string; className: s
         try {
             const students = await ClassService.getClassStudents(classId);
             const dateStr = isoDate(date);
+            const subjectId = sessionsToday[0]?.subject_id;
 
-            const { data: existing } = await supabase
+            let query = supabase
                 .from("attendance")
                 .select("student_id, status")
                 .eq("class_id", classId)
                 .eq("date", dateStr);
+
+            if (subjectId) {
+                query = query.eq("subject_id", subjectId);
+            }
+
+            const { data: existing } = await query;
 
             const existingMap: Record<string, AttendanceStatus> = {};
             (existing ?? []).forEach((r: any) => {
@@ -220,9 +229,14 @@ const DailyTab = ({ classId, className: cName }: { classId: string; className: s
         } finally {
             setLoading(false);
         }
-    }, [classId, date, hasClass]);
+    }, [classId, date, hasClass, sessionsToday]);
 
     useEffect(() => { loadData(); }, [loadData]);
+
+    // Live updates for attendance changes
+    useRealtimeQuery('attendance', () => {
+        loadData();
+    });
 
     const mark = (student_id: string, status: AttendanceStatus) => {
         if (locked) return;
@@ -239,28 +253,30 @@ const DailyTab = ({ classId, className: cName }: { classId: string; className: s
             return;
         }
 
+        const subjectId = sessionsToday[0]?.subject_id;
+        if (!subjectId) {
+            Alert.alert("Error", "No scheduled subject for this date.");
+            return;
+        }
+
         setSaving(true);
         try {
             const dateStr = isoDate(date);
-            const records = rows
-                .filter((r) => r.status !== "unmarked")
-                .map((r) => ({
+            const promises = rows.map((r) =>
+                TeacherAttendanceAPI.markStudentAttendance({
                     student_id: r.student_id,
+                    subject_id: subjectId,
                     class_id: classId,
-                    date: dateStr,
                     status: r.status as "present" | "absent" | "late" | "excused",
-                }));
+                    date: dateStr,
+                })
+            );
 
-            const { data, error } = await supabase
-                .from("attendance")
-                .upsert(records as any, { onConflict: "student_id,class_id,date" });
-
-            if (error) throw error;
-
+            await Promise.all(promises);
             setLocked(true);
             Alert.alert("Saved & Locked", "Attendance has been saved and is now read-only for this date.");
         } catch (e) {
-            console.error("save attendance:", e);
+            console.error("save attendance error:", e);
             Alert.alert("Error", "Failed to save attendance. Please try again.");
         } finally {
             setSaving(false);
@@ -441,26 +457,7 @@ const DailyTab = ({ classId, className: cName }: { classId: string; className: s
                                 </View>
                             ) : (
                                 <TouchableOpacity
-                                    onPress={async () => {
-                                        setSaving(true);
-                                        try {
-                                            const todayStr = isoDate(date);
-                                            const records = rows.map(r => ({
-                                                student_id: r.student_id,
-                                                class_id: classId,
-                                                date: todayStr,
-                                                status: r.status,
-                                                notes: ''
-                                            }));
-                                            await AttendanceService.markAttendance(records as any);
-                                            setLocked(true);
-                                            Alert.alert("Success", "Attendance saved and locked.");
-                                        } catch (error: any) {
-                                            Alert.alert("Error", error.message);
-                                        } finally {
-                                            setSaving(false);
-                                        }
-                                    }}
+                                    onPress={save}
                                     disabled={saving}
                                     className={`bg-[#FF6900] py-4 rounded-2xl items-center mt-4 shadow-lg ${saving ? "opacity-60" : "active:bg-orange-600"}`}
                                 >

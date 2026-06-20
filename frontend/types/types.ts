@@ -80,6 +80,7 @@ export interface SubjectFormData {
   allowDiscussions: boolean;
   certificateEnabled: boolean;
   class_id?: string;
+  teacher_ids?: string[];
 }
 
 // ----------------------
@@ -145,6 +146,10 @@ export interface Subject {
     name: string;
     avatar?: string;
   };
+  instructors?: {
+    name: string;
+    avatar?: string;
+  }[];
   price: number;
   originalPrice?: number;
   duration: string;

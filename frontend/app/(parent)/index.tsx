@@ -125,8 +125,8 @@ function ParentDashboard({ user, logout }: any) {
     <View className="flex-1 bg-white dark:bg-navy">
       <UnifiedHeader
         title="Intelligence"
-        subtitle="Parent Portal"
-        role="Parent"
+        subtitle="Parent/Guardian Portal"
+        role="Parent/Guardian"
         showNotification={true}
       />
       <SubscriptionBanner />

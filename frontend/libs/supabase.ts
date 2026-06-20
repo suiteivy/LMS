@@ -129,8 +129,7 @@ export const authService = {
 
       if (!user) throw new Error("No user found");
 
-      const { data, error } = await supabase
-        .from("users")
+      const { data, error } = await (supabase.from("users") as any)
         .update(updates)
         .eq("id", user.id)
         .select()
@@ -154,8 +153,7 @@ export const authService = {
 
       if (!user) throw new Error("No user found");
 
-      const { data, error } = await supabase
-        .from(table)
+      const { data, error } = await (supabase.from(table) as any)
         .update(updates)
         .eq("user_id", user.id)
         .select()

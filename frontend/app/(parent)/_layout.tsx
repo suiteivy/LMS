@@ -79,7 +79,7 @@ function ParentSidebar() {
         ? ALL_NAV_ITEMS.filter(i => i.name !== "finance")
         : ALL_NAV_ITEMS;
     return (
-        <WebSidebar items={items} basePath="(parent)" role="Parent">
+        <WebSidebar items={items} basePath="(parent)" role="Parent/Guardian">
             <Slot />
         </WebSidebar>
     );

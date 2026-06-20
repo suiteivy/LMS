@@ -451,7 +451,7 @@ const TIER_PLANS: Record<TierKey, any[]> = {
       features: [
         'Student module',
         'Teacher module',
-        'Parent module',
+        'Parent/Guardian module',
         'Up to 900 students',
         'One-time setup: $20'
       ],
@@ -467,7 +467,7 @@ const TIER_PLANS: Record<TierKey, any[]> = {
       features: [
         'Student module',
         'Teacher module',
-        'Parent module',
+        'Parent/Guardian module',
         'Library add-on included',
         'Messaging + Diary included',
         'Up to 1,000 students',
@@ -486,7 +486,7 @@ const TIER_PLANS: Record<TierKey, any[]> = {
       features: [
         'Student module',
         'Teacher module',
-        'Parent module',
+        'Parent/Guardian module',
         'All add-ons included',
         '5,000+ students',
         'Priority support',
@@ -1489,7 +1489,7 @@ export default function Index() {
               </View>
 
               <Text style={{ color: 'rgba(255,255,255,0.45)', fontSize: 15, textAlign: 'center', marginTop: 18, maxWidth: 520, lineHeight: 23 }}>
-                A unified platform built for every stakeholder  from admin and teachers to students and parents.
+                A unified platform built for every stakeholder  from admin and teachers to students and Parents/Guardians.
               </Text>
             </View>
 
@@ -1527,7 +1527,7 @@ export default function Index() {
                 {
                   icon: <Users size={24} color="#F472B6" />,
                   title: 'User Management',
-                  desc: 'Onboard and manage admins, teachers, students, and parents with role-based access control.',
+                  desc: 'Onboard and manage admins, teachers, students, and Parents/Guardians with role-based access control.',
                   accent: '#DB2777',
                   tag: 'Admin',
                 },
@@ -1853,7 +1853,7 @@ export default function Index() {
                     tagline: 'Add-On Module',
                     price: '$10/mo',
                     accent: '#10B981',
-                    desc: 'Real-time in-app messaging between teachers, students and parents. Keep communication within the platform.',
+                    desc: 'Real-time in-app messaging between teachers, students and Parents/Guardians. Keep communication within the platform.',
                     features: [
                       'Direct & group messaging',
                       'Announcements & broadcasts',
@@ -2197,7 +2197,7 @@ export default function Index() {
                 {/* Core Modules Section */}
                 <Text style={{ color: "rgba(255,255,255,0.4)", fontSize: 11, fontWeight: "800", letterSpacing: 1.5, textTransform: "uppercase", marginBottom: 12, marginLeft: 4 }}>Core Modules</Text>
                 <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 24, justifyContent: 'flex-start' }}>
-                  {['Student module', 'Teacher module', 'Parent module'].map((mod) => {
+                  {['Student module', 'Teacher module', 'Parent/Guardian module'].map((mod) => {
                     const isSelected = selectedCoreModules.includes(mod);
                     return (
                       <TouchableOpacity

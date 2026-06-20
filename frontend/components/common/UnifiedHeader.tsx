@@ -13,7 +13,7 @@ import { useSubscriptionTier } from "@/hooks/useSubscriptionTier";
 interface UnifiedHeaderProps {
   title: string;
   subtitle?: string;
-  role: "Student" | "Teacher" | "Admin" | "Parent" | "Master Admin";
+  role: "Student" | "Teacher" | "Admin" | "Parent/Guardian" | "Master Admin";
   showNotification?: boolean;
   onNotificationPress?: () => void;
   onBack?: () => void;
@@ -197,7 +197,6 @@ export const UnifiedHeader: React.FC<UnifiedHeaderProps> = ({
                     </Text>
                   </View>
                 )}
-                <SubscriptionStatusBadge />
               </View>
             )}
           </View>
@@ -234,43 +233,32 @@ export const UnifiedHeader: React.FC<UnifiedHeaderProps> = ({
               paddingHorizontal: 12,
               paddingVertical: 8,
               borderRadius: 16,
-              flexDirection: 'column',
-              alignItems: 'stretch',
+              flexDirection: 'row',
+              alignItems: 'center',
               borderWidth: 1,
               borderColor: surfaceBorder,
             }}>
-              {/* Top section: Role */}
-              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}>
-                <Ionicons
-                  name={
-                    role === "Student" ? "school-outline" :
-                      role === "Teacher" ? "briefcase-outline" :
-                        role === "Admin" ? "shield-checkmark-outline" :
-                          role === "Master Admin" ? "globe-outline" : 
-                            "people-outline"
-                  }
-                  size={14}
-                  color={subtleIconColor}
-                />
-                <Text style={{
-                  marginLeft: 6,
-                  fontWeight: 'bold',
-                  color: isDark ? '#e5e5e5' : '#111827',
-                  fontSize: 10,
-                  textTransform: 'uppercase',
-                  letterSpacing: 1,
-                }}>
-                  {role}
-                </Text>
-              </View>
-
-              {/* Divider line (like a fraction bar) */}
-              <View style={{ height: 1, backgroundColor: surfaceBorder, marginVertical: 6 }} />
-
-              {/* Bottom section: Badge */}
-              <View style={{ alignItems: 'center' }}>
-                <SubscriptionStatusBadge />
-              </View>
+              <Ionicons
+                name={
+                  role === "Student" ? "school-outline" :
+                    role === "Teacher" ? "briefcase-outline" :
+                      role === "Admin" ? "shield-checkmark-outline" :
+                        role === "Master Admin" ? "globe-outline" : 
+                          "people-outline"
+                }
+                size={14}
+                color={subtleIconColor}
+              />
+              <Text style={{
+                marginLeft: 6,
+                fontWeight: 'bold',
+                color: isDark ? '#e5e5e5' : '#111827',
+                fontSize: 10,
+                textTransform: 'uppercase',
+                letterSpacing: 1,
+              }}>
+                {role}
+              </Text>
             </View>
           </View>
         )}

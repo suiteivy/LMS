@@ -6,11 +6,13 @@ import { format } from 'date-fns';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { useSubscriptionTier } from "@/hooks/useSubscriptionTier";
 
 export default function BursaryDetailsScreen() {
     const { id } = useLocalSearchParams<{ id: string }>();
     const router = useRouter();
     const { isDark } = useTheme();
+    const tier = useSubscriptionTier();
     const [bursary, setBursary] = useState<any>(null);
     const [applications, setApplications] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
@@ -21,7 +23,13 @@ export default function BursaryDetailsScreen() {
     const textSecondary = isDark ? '#9ca3af' : '#6b7280';
     const statsBg = isDark ? '#242424' : '#f9fafb';
 
-    useEffect(() => { if (id) fetchDetails(); }, [id]);
+    useEffect(() => {
+        if (!tier.hasBursary) {
+            router.replace('/(admin)');
+            return;
+        }
+        if (id) fetchDetails();
+    }, [id, tier.hasBursary]);
 
     const fetchDetails = async () => {
         try {
@@ -46,6 +54,10 @@ export default function BursaryDetailsScreen() {
             Alert.alert('Error', error.message);
         }
     };
+
+    if (!tier.hasBursary) {
+        return null;
+    }
 
     if (loading) {
         return (

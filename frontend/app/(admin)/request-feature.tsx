@@ -96,7 +96,7 @@ export default function RequestFeaturePage() {
             >
                 <Text className="text-gray-900 dark:text-white font-black text-xl mb-2 tracking-tight">Expand Your Platform</Text>
                 <Text className="text-gray-400 dark:text-gray-500 text-sm mb-8 leading-5">
-                    Select a module or feature you'd like to add to your institution. Our team will review and get in touch.
+                    {"Select a module or feature you'd like to add to your institution. Our team will review and get in touch."}
                 </Text>
 
                 <View className="gap-4">
@@ -202,7 +202,7 @@ export default function RequestFeaturePage() {
                             Request Received!
                         </Text>
                         <Text className="text-gray-400 dark:text-gray-500 text-sm text-center leading-6 mb-10">
-                            Thank you for your request, we'll keep in touch. Your requested features will be reviewed and added soon.
+                            {"Thank you for your request, we'll keep in touch. Your requested features will be reviewed and added soon."}
                         </Text>
                         <TouchableOpacity
                             onPress={() => {

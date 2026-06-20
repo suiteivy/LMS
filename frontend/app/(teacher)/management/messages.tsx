@@ -26,8 +26,8 @@ export default function MessagingPage() {
             setLoading(true);
             if (isDemo) {
                 const mockMessages = [
-                    { id: '1', sender_id: 'parent-1', receiver_id: 'teacher-1', subject: 'Homework Query', body: 'Hello, I wanted to ask about the math homework.', created_at: new Date().toISOString(), sender: { full_name: 'John Parent' }, receiver: { full_name: 'Sarah Teacher' } },
-                    { id: '2', sender_id: 'teacher-1', receiver_id: 'parent-2', subject: 'Progress Update', body: 'Your child is doing great in science.', created_at: new Date().toISOString(), sender: { full_name: 'Sarah Teacher' }, receiver: { full_name: 'Mary Parent' } }
+                    { id: '1', sender_id: 'parent-1', receiver_id: 'teacher-1', subject: 'Homework Query', body: 'Hello, I wanted to ask about the math homework.', created_at: new Date().toISOString(), sender: { full_name: 'John Parent/Guardian' }, receiver: { full_name: 'Sarah Teacher' } },
+                    { id: '2', sender_id: 'teacher-1', receiver_id: 'parent-2', subject: 'Progress Update', body: 'Your child is doing great in science.', created_at: new Date().toISOString(), sender: { full_name: 'Sarah Teacher' }, receiver: { full_name: 'Mary Parent/Guardian' } }
                 ];
                 setMessages(mockMessages);
                 return;

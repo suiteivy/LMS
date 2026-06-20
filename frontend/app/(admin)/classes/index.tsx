@@ -882,19 +882,26 @@ export default function AdminClassManagement() {
                                         >
                                             <Text style={{ fontSize: 14, fontWeight: '600', color: !formTeacher ? 'white' : textSecondary }}>None</Text>
                                         </TouchableOpacity>
-                                        {teachers.map(t => (
-                                            <TouchableOpacity
-                                                key={t.id}
-                                                onPress={() => setFormTeacher(formTeacher === t.id ? '' : t.id)}
-                                                style={{
-                                                    paddingHorizontal: 16, paddingVertical: 12, borderRadius: 14, borderWidth: 1.5,
-                                                    backgroundColor: formTeacher === t.id ? '#FF6B00' : pillInactive,
-                                                    borderColor: formTeacher === t.id ? '#FF6B00' : pillInactiveBorder,
-                                                }}
-                                            >
-                                                <Text style={{ fontSize: 14, fontWeight: '600', color: formTeacher === t.id ? 'white' : textPrimary }}>{t.full_name}</Text>
-                                            </TouchableOpacity>
-                                        ))}
+                                        {teachers.map(t => {
+                                            const assignedClass = classes.find(c => c.teacher_id === t.id && c.id !== editingClass?.id);
+                                            return (
+                                                <TouchableOpacity
+                                                    key={t.id}
+                                                    onPress={() => setFormTeacher(formTeacher === t.id ? '' : t.id)}
+                                                    disabled={!!assignedClass}
+                                                    style={{
+                                                        paddingHorizontal: 16, paddingVertical: 12, borderRadius: 14, borderWidth: 1.5,
+                                                        backgroundColor: formTeacher === t.id ? '#FF6B00' : (assignedClass ? (isDark ? 'rgba(255,255,255,0.05)' : '#f3f4f6') : pillInactive),
+                                                        borderColor: formTeacher === t.id ? '#FF6B00' : pillInactiveBorder,
+                                                        opacity: assignedClass ? 0.5 : 1,
+                                                    }}
+                                                >
+                                                    <Text style={{ fontSize: 14, fontWeight: '600', color: formTeacher === t.id ? 'white' : (assignedClass ? textSecondary : textPrimary) }}>
+                                                        {t.full_name} {assignedClass ? `(Class Teacher of ${assignedClass.name})` : ''}
+                                                    </Text>
+                                                </TouchableOpacity>
+                                            );
+                                        })}
                                     </View>
                                 </ScrollView>
                             </View>
@@ -1161,19 +1168,28 @@ export default function AdminClassManagement() {
                                                         >
                                                             <Text style={{ fontSize: 12, fontWeight: '600', color: !cls.teacher_id ? 'white' : textSecondary }}>None</Text>
                                                         </TouchableOpacity>
-                                                        {teachers.map(t => (
-                                                            <TouchableOpacity
-                                                                key={t.id}
-                                                                onPress={() => updateStreamClass(index, 'teacher_id', cls.teacher_id === t.id ? '' : t.id)}
-                                                                style={{
-                                                                    paddingHorizontal: 12, paddingVertical: 7, borderRadius: 10, borderWidth: 1,
-                                                                    backgroundColor: cls.teacher_id === t.id ? '#0891B2' : pillInactive,
-                                                                    borderColor: cls.teacher_id === t.id ? '#0891B2' : pillInactiveBorder,
-                                                                }}
-                                                            >
-                                                                <Text style={{ fontSize: 12, fontWeight: '600', color: cls.teacher_id === t.id ? 'white' : textPrimary }}>{t.full_name}</Text>
-                                                            </TouchableOpacity>
-                                                        ))}
+                                                        {teachers.map(t => {
+                                                            const alreadyAssignedClass = classes.find(c => c.teacher_id === t.id);
+                                                            const assignedInBulkIndex = streamClasses.findIndex((sc, sIdx) => sc.teacher_id === t.id && sIdx !== index);
+                                                            const isUnavailable = !!alreadyAssignedClass || assignedInBulkIndex !== -1;
+                                                            return (
+                                                                <TouchableOpacity
+                                                                    key={t.id}
+                                                                    onPress={() => updateStreamClass(index, 'teacher_id', cls.teacher_id === t.id ? '' : t.id)}
+                                                                    disabled={isUnavailable}
+                                                                    style={{
+                                                                        paddingHorizontal: 12, paddingVertical: 7, borderRadius: 10, borderWidth: 1,
+                                                                        backgroundColor: cls.teacher_id === t.id ? '#0891B2' : (isUnavailable ? (isDark ? 'rgba(255,255,255,0.05)' : '#f3f4f6') : pillInactive),
+                                                                        borderColor: cls.teacher_id === t.id ? '#0891B2' : pillInactiveBorder,
+                                                                        opacity: isUnavailable ? 0.5 : 1,
+                                                                    }}
+                                                                >
+                                                                    <Text style={{ fontSize: 12, fontWeight: '600', color: cls.teacher_id === t.id ? 'white' : (isUnavailable ? textSecondary : textPrimary) }}>
+                                                                        {t.full_name} {alreadyAssignedClass ? `(${alreadyAssignedClass.name})` : (assignedInBulkIndex !== -1 ? `(Selected)` : '')}
+                                                                    </Text>
+                                                                </TouchableOpacity>
+                                                            );
+                                                        })}
                                                     </View>
                                                 </ScrollView>
                                             </View>

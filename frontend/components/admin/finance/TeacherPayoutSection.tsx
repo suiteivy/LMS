@@ -18,68 +18,6 @@ interface TeacherPayoutSectionProps {
   onRefresh?: () => void;
 }
 
-// Mock/Placeholder data for testing
-const PLACEHOLDER_PAYOUTS: TeacherPayout[] = [
-  {
-    id: '1',
-    teacher_id: 'TEA-2024-001',
-    teacher_name: 'Sarah Johnson',
-    teacher_display_id: 'TEA-2024-001',
-    amount: 25000,
-    hours_taught: 40,
-    rate_per_hour: 625,
-    period_start: '2024-07-01',
-    period_end: '2024-07-31',
-    status: 'pending',
-  },
-  {
-    id: '2',
-    teacher_id: 'TEA-2024-002',
-    teacher_name: 'Michael Chen',
-    amount: 30000,
-    hours_taught: 48,
-    rate_per_hour: 625,
-    period_start: '2024-07-01',
-    period_end: '2024-07-31',
-    status: 'processing',
-  },
-  {
-    id: '3',
-    teacher_id: 'TEA-2024-003',
-    teacher_name: 'Emma Davis',
-    amount: 18750,
-    hours_taught: 30,
-    rate_per_hour: 625,
-    period_start: '2024-06-01',
-    period_end: '2024-06-30',
-    status: 'paid',
-    payment_date: '2024-07-05',
-  },
-  {
-    id: '4',
-    teacher_id: 'TEA-2024-004',
-    teacher_name: 'James Wilson',
-    amount: 22500,
-    hours_taught: 36,
-    rate_per_hour: 625,
-    period_start: '2024-07-01',
-    period_end: '2024-07-31',
-    status: 'pending',
-  },
-  {
-    id: '5',
-    teacher_id: 'TEA-2024-005',
-    teacher_name: 'Lisa Rodriguez',
-    amount: 31250,
-    hours_taught: 50,
-    rate_per_hour: 625,
-    period_start: '2024-06-01',
-    period_end: '2024-06-30',
-    status: 'paid',
-    payment_date: '2024-07-03',
-  },
-];
-
 const TeacherPayoutSection: React.FC<TeacherPayoutSectionProps> = ({
   payouts,
   loading = false,
@@ -91,13 +29,11 @@ const TeacherPayoutSection: React.FC<TeacherPayoutSectionProps> = ({
   const [showDetails, setShowDetails] = useState(false);
   const [displayPayouts, setDisplayPayouts] = useState<TeacherPayout[]>([]);
 
-  // Use placeholder data if no payouts provided
   useEffect(() => {
-    if (payouts && payouts.length > 0) {
+    if (payouts) {
       setDisplayPayouts(payouts);
     } else {
-      // Use placeholder data for demonstration
-      setDisplayPayouts(PLACEHOLDER_PAYOUTS);
+      setDisplayPayouts([]);
     }
   }, [payouts]);
 

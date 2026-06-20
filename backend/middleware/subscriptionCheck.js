@@ -197,13 +197,13 @@ const checkSubscription = async (req, res, next) => {
     for (const feature of RESTRICTED_FEATURES) {
       if (fullPath.includes(feature.path)) {
         // Add-on overrides — each add-on is independently allocated by master admin
-        if (feature.path === '/api/library' && addon_library) continue;
-        if (feature.path === '/api/messaging' && addon_messaging) continue;
-        if (feature.path === '/api/diary' && addon_diary) continue;
-        if (feature.path === '/api/bursary' && addon_bursary) continue;
-        if ((feature.path === '/api/finance' || feature.path === '/api/funds') && addon_finance) continue;
+        if (feature.path.startsWith('/api/library') && addon_library) continue;
+        if (feature.path.startsWith('/api/messaging') && addon_messaging) continue;
+        if (feature.path.startsWith('/api/diary') && addon_diary) continue;
+        if (feature.path.startsWith('/api/bursary') && addon_bursary) continue;
+        if ((feature.path.startsWith('/api/finance') || feature.path.startsWith('/api/funds')) && addon_finance) continue;
         if (feature.path.startsWith('/api/analytics') && addon_analytics) continue;
-        if (feature.path === '/api/attendance' && addon_attendance) continue;
+        if (feature.path.startsWith('/api/attendance') && addon_attendance) continue;
 
         if (currentRank < feature.minRank) {
           const minPlanLabel = PLAN_ORDER[feature.minRank] || 'higher';

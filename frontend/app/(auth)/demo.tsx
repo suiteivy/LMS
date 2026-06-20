@@ -51,7 +51,7 @@ const ROLES: RoleData[] = [
   },
   {
     id: 'parent',
-    title: "Parent",
+    title: "Parent/Guardian",
     subtitle: "Monitor progress & attendance",
     description: "Stay connected with your child's education track progress, view attendance reports, communicate with teachers, and manage fees.",
     icon: <Users size={26} color="#60A5FA" />,

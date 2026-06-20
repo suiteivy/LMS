@@ -112,9 +112,6 @@ export const SubscriptionStatusBadge = () => {
     const { subscriptionPlan, subscriptionStatus, isTrial, profile } = useAuth();
     const plan = normalisePlan(subscriptionPlan);
 
-    // Hide for non-admins
-    if (profile?.role !== 'admin' && profile?.role !== 'master_admin') return null;
-
     if (subscriptionStatus === 'expired' || subscriptionStatus === 'cancelled') {
         return (
             <View className="bg-red-500/10 px-2 py-0.5 rounded-full border border-red-500/20">

@@ -50,25 +50,46 @@ const CreateSubject = () => {
     } = useSubjectForm();
     const { profile } = useAuth();
     const [classes, setClasses] = React.useState<any[]>([]);
+    const [teachers, setTeachers] = React.useState<any[]>([]);
 
     useEffect(() => {
         const fetchClasses = async () => {
-            const { data } = await supabase
-                .from('classes')
+            const { data } = await (supabase.from('classes') as any)
                 .select('id, grade_level, stream, display_name')
-                .eq('institution_id', profile?.institution_id)
+                .eq('institution_id', profile?.institution_id || '')
                 .order('grade_level');
             
             if (data) {
-                const options = data.map(c => ({
+                const options = data.map((c: any) => ({
                     value: c.id,
                     label: c.display_name || `Grade ${c.grade_level} - Stream ${c.stream}`
                 }));
                 setClasses(options);
             }
         };
+        const fetchTeachers = async () => {
+            const { data } = await supabase
+                .from("teachers")
+                .select("id, user_id, users:user_id(full_name, institution_id)")
+                .eq("institution_id", profile?.institution_id || '');
+            if (data) {
+                setTeachers(data);
+            }
+        };
         fetchClasses();
+        fetchTeachers();
     }, [profile?.institution_id]);
+
+    const handleTeacherToggle = (teacherId: string) => {
+        const currentIds = formData.teacher_ids || [];
+        let updatedIds;
+        if (currentIds.includes(teacherId)) {
+            updatedIds = currentIds.filter((id) => id !== teacherId);
+        } else {
+            updatedIds = [...currentIds, teacherId];
+        }
+        handleInputChange("teacher_ids", updatedIds);
+    };
 
     // ── Animation values ──────────────────────────────────────────────────────
     const translateY = useRef(new Animated.Value(MODAL_HEIGHT)).current;
@@ -210,16 +231,50 @@ const CreateSubject = () => {
                             />
                             <CustomPicker
                                 label="Assigned Stream"
-                                optional
                                 value={formData.class_id || ""}
                                 options={classes}
                                 onSelect={(value) => handleInputChange("class_id", value)}
                                 placeholder="Select Stream (Optional)"
                             />
+
+                            {/* Assigned Teachers Checkbox List */}
                             <View style={{ marginBottom: 16 }}>
-                                <Text style={{ fontSize: 13, fontWeight: '500', color: textSecondary, marginBottom: 6 }}>Price *</Text>
-                                <IconInput iconName="logo-usd" value={formData.price} onChangeText={(text) => handleInputChange("price", text)} placeholder="0.00" keyboardType="numeric" />
+                                <Text style={{ fontSize: 13, fontWeight: '500', color: textSecondary, marginBottom: 6 }}>Assigned Teachers</Text>
+                                <View style={{ backgroundColor: inputBg, borderRadius: 12, padding: 12, borderWidth: 1, borderColor: border }}>
+                                    {teachers.map((t) => {
+                                        const isSelected = (formData.teacher_ids || []).includes(t.id);
+                                        return (
+                                            <TouchableOpacity
+                                                key={t.id}
+                                                onPress={() => handleTeacherToggle(t.id)}
+                                                style={{
+                                                    flexDirection: 'row',
+                                                    alignItems: 'center',
+                                                    paddingVertical: 10,
+                                                    borderBottomWidth: 1,
+                                                    borderBottomColor: border,
+                                                }}
+                                            >
+                                                <Ionicons
+                                                    name={isSelected ? "checkbox" : "square-outline"}
+                                                    size={20}
+                                                    color={isSelected ? "#FF6B00" : textSecondary}
+                                                    style={{ marginRight: 10 }}
+                                                />
+                                                <Text style={{ color: textPrimary, fontSize: 14, fontWeight: '500' }}>
+                                                    {t.users?.full_name || t.id}
+                                                </Text>
+                                            </TouchableOpacity>
+                                        );
+                                    })}
+                                    {teachers.length === 0 && (
+                                        <Text style={{ color: textSecondary, fontSize: 13, textAlign: 'center', paddingVertical: 10 }}>
+                                            No teachers available
+                                        </Text>
+                                    )}
+                                </View>
                             </View>
+
                             <FormInput label="Short Description" value={formData.shortDescription} onChangeText={(text) => handleInputChange("shortDescription", text)} placeholder="Brief description for Subject preview" maxLength={150} />
                             <FormInput label="Full Description" required value={formData.description} onChangeText={(text) => handleInputChange("description", text)} placeholder="Detailed Subject description" multiline numberOfLines={6} textAlignVertical="top" style={{ minHeight: 120 }} />
                         </FormSection>

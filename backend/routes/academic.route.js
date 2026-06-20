@@ -8,7 +8,8 @@ const {
     submitAssignment,
     gradeSubmission,
     createAnnouncement,
-    getAnnouncements
+    getAnnouncements,
+    deleteAnnouncement
 } = require("../controllers/academic.controller.js");
 
 const { authorizeRoles } = require("../middleware/authRole.js");
@@ -29,5 +30,6 @@ router.put("/submissions/:id/grade", authorizeRoles(["admin", "teacher"]), grade
 // Announcements
 router.post("/announcements", authorizeRoles(["admin", "teacher"]), createAnnouncement);
 router.get("/announcements", authorizeRoles(["admin", "teacher", "student", "parent"]), getAnnouncements);
+router.delete("/announcements/:id", authorizeRoles(["admin", "teacher"]), deleteAnnouncement);
 
 module.exports = router;

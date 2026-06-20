@@ -1,8 +1,10 @@
 import { UnifiedHeader } from "@/components/common/UnifiedHeader";
 import { useTheme } from "@/contexts/ThemeContext";
 import { AttendanceService } from "@/services/AttendanceService";
-import DateTimePicker from '@react-native-community/datetimepicker';
+import { DatePicker } from '@/components/common/DatePicker';
+import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "expo-router";
+import { useRealtimeQuery } from "@/hooks/useRealtimeQuery";
 import { Calendar as CalendarIcon, CheckCircle2, XCircle, Clock, Search, School } from "lucide-react-native";
 import { useEffect, useState } from "react";
 import { ActivityIndicator, Alert, ScrollView, Text, TouchableOpacity, View, TextInput } from "react-native";
@@ -18,9 +20,9 @@ interface Stats {
 export default function AdminStudentAttendance() {
     const router = useRouter();
     const { isDark } = useTheme();
+    const { profile } = useAuth();
     const [loading, setLoading] = useState(true);
     const [date, setDate] = useState(new Date());
-    const [showDatePicker, setShowDatePicker] = useState(false);
     const [stats, setStats] = useState<Stats>({ total: 0, present: 0, absent: 0, late: 0, percentage: 0 });
     const [classBreakdown, setClassBreakdown] = useState<any[]>([]);
     const [searchQuery, setSearchQuery] = useState('');
@@ -30,20 +32,31 @@ export default function AdminStudentAttendance() {
     const textPrimary = isDark ? '#f1f1f1' : '#111827';
     const textSecondary = isDark ? '#9ca3af' : '#6b7280';
 
-    useEffect(() => { loadInstitutionStats(); }, [date]);
+    useEffect(() => { loadInstitutionStats(); }, [date, profile?.institution_id]);
+
+    // Live updates for student attendance changes
+    useRealtimeQuery('attendance', () => {
+        loadInstitutionStats();
+    });
 
     const loadInstitutionStats = async () => {
+        if (!profile?.institution_id) {
+            setStats({ total: 0, present: 0, absent: 0, late: 0, percentage: 0 });
+            setClassBreakdown([]);
+            setLoading(false);
+            return;
+        }
         setLoading(true);
         try {
             const dateStr = date.toISOString().split('T')[0];
-            const data = await AttendanceService.getInstitutionAttendanceStats(dateStr);
+            const data = await AttendanceService.getInstitutionAttendanceStats(dateStr, profile.institution_id);
             
             // Calculate Stats
             const present = data.filter((a: any) => a.status === 'present').length;
             const absent = data.filter((a: any) => a.status === 'absent').length;
             const late = data.filter((a: any) => a.status === 'late').length;
             const total = data.length;
-            const percentage = total > 0 ? Math.round((present / total) * 100) : 0;
+            const percentage = total > 0 ? Math.round(((present + late) / total) * 100) : 0;
 
             setStats({ total, present, absent, late, percentage });
 
@@ -52,12 +65,13 @@ export default function AdminStudentAttendance() {
             data.forEach((a: any) => {
                 const className = a.class?.name || "Unassigned";
                 if (!breakdownMap.has(className)) {
-                    breakdownMap.set(className, { name: className, present: 0, absent: 0, total: 0 });
+                    breakdownMap.set(className, { name: className, present: 0, absent: 0, late: 0, total: 0 });
                 }
                 const entry = breakdownMap.get(className);
                 entry.total++;
                 if (a.status === 'present') entry.present++;
                 if (a.status === 'absent') entry.absent++;
+                if (a.status === 'late') entry.late++;
             });
             setClassBreakdown(Array.from(breakdownMap.values()));
 
@@ -67,11 +81,6 @@ export default function AdminStudentAttendance() {
         } finally {
             setLoading(false);
         }
-    };
-
-    const onDateChange = (event: any, selectedDate?: Date) => {
-        setShowDatePicker(false);
-        if (selectedDate) setDate(selectedDate);
     };
 
     const filteredBreakdown = classBreakdown.filter(c => 
@@ -88,29 +97,19 @@ export default function AdminStudentAttendance() {
                 showNotification={false}
             />
 
-            {showDatePicker && (
-                <DateTimePicker value={date} mode="date" display="default" onChange={onDateChange} />
-            )}
-
             <ScrollView style={{ flex: 1, padding: 20 }}>
                 {/* Date Selector */}
                 <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
-                    <TouchableOpacity
-                        onPress={() => setShowDatePicker(true)}
-                        style={{
-                            flexDirection: 'row', alignItems: 'center',
-                            backgroundColor: surface,
-                            paddingHorizontal: 16, paddingVertical: 10,
-                            borderRadius: 14, borderWidth: 1, borderColor: border,
-                        }}
-                    >
-                        <CalendarIcon size={18} color="#FF6B00" />
-                        <Text style={{ color: textPrimary, fontWeight: '700', fontSize: 13, marginLeft: 8 }}>
-                            {date.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
-                        </Text>
-                    </TouchableOpacity>
+                    <View style={{ flex: 1, marginRight: 12 }}>
+                        <DatePicker
+                            label="Attendance Date"
+                            value={date.toISOString().split('T')[0]}
+                            onChange={(d) => setDate(new Date(d))}
+                            isDark={isDark}
+                        />
+                    </View>
 
-                    <View style={{ backgroundColor: '#FF6B00', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20 }}>
+                    <View style={{ backgroundColor: '#FF6B00', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, alignSelf: 'center', marginTop: 14 }}>
                         <Text style={{ color: 'white', fontWeight: '800', fontSize: 12 }}>{stats.percentage}% Present</Text>
                     </View>
                 </View>
@@ -164,9 +163,10 @@ export default function AdminStudentAttendance() {
                                         <Text style={{ fontSize: 12, color: textSecondary, marginTop: 2 }}>{c.total} Students Marked</Text>
                                     </View>
                                     <View style={{ alignItems: 'flex-end' }}>
-                                        <Text style={{ fontSize: 16, fontWeight: '800', color: '#10b981' }}>{Math.round((c.present / c.total) * 100)}%</Text>
+                                        <Text style={{ fontSize: 16, fontWeight: '800', color: '#10b981' }}>{Math.round(((c.present + c.late) / c.total) * 100)}%</Text>
                                         <View style={{ flexDirection: 'row', gap: 8, marginTop: 4 }}>
                                             <Text style={{ fontSize: 11, color: '#ef4444' }}>{c.absent} Abs</Text>
+                                            <Text style={{ fontSize: 11, color: '#f59e0b' }}>{c.late} Late</Text>
                                             <Text style={{ fontSize: 11, color: '#10b981' }}>{c.present} Pre</Text>
                                         </View>
                                     </View>

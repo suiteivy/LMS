@@ -153,11 +153,11 @@ export const SubjectDetails: React.FC<SubjectDetailsProps> = ({
 
         {/* Content */}
         <View style={{ backgroundColor: t.bg, marginTop: -24, borderTopLeftRadius: 32, borderTopRightRadius: 32, paddingHorizontal: 24, paddingTop: 32, paddingBottom: 160 }}>
-          {/* Price + Enroll */}
+          {/* Enroll */}
           <View style={{
             flexDirection: 'row',
             alignItems: 'center',
-            justifyContent: 'space-between',
+            justifyContent: 'center',
             marginBottom: 28,
             backgroundColor: t.detailsBg,
             padding: 20,
@@ -165,17 +165,12 @@ export const SubjectDetails: React.FC<SubjectDetailsProps> = ({
             borderWidth: 1,
             borderColor: t.border,
           }}>
-            <View>
-              <Text style={{ fontSize: 9, fontWeight: '600', color: t.textMuted, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 4 }}>Tuition Fee</Text>
-              <Text style={{ fontSize: 26, fontWeight: '700', color: t.textPrimary }}>
-                {Subject.price === 0 ? "FREE" : `${Math.round(Subject.price * kesRate).toLocaleString()} KSh`}
-              </Text>
-            </View>
             <TouchableOpacity
               onPress={onEnroll}
               disabled={enrolling || Subject.isEnrolled}
               style={{
-                paddingHorizontal: 24,
+                flex: 1,
+                alignItems: 'center',
                 paddingVertical: 16,
                 borderRadius: 18,
                 backgroundColor: Subject.isEnrolled ? (isDark ? '#374151' : '#111827') : '#f97316',

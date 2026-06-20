@@ -1,5 +1,6 @@
 import { UnifiedHeader } from "@/components/common/UnifiedHeader";
 import { useTheme } from "@/contexts/ThemeContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/libs/supabase";
 import { Subject } from "@/types/types";
 import { Ionicons } from "@expo/vector-icons";
@@ -18,6 +19,7 @@ import { Picker } from "@react-native-picker/picker";
 
 function SubjectDetailsScreen() {
   const { isDark } = useTheme();
+  const { profile } = useAuth();
   const { id } = useLocalSearchParams();
   const [subject, setSubject] = useState<Subject | null>(null);
   const [loading, setLoading] = useState(true);
@@ -27,6 +29,10 @@ function SubjectDetailsScreen() {
   const [teachers, setTeachers] = useState<any[]>([]);
   const [classes, setClasses] = useState<any[]>([]);
 
+  const assignedTeacherNames = teachers
+    .filter((t) => (form.teacher_ids || []).includes(t.id))
+    .map((t) => t.users?.full_name || t.id)
+    .join(", ");
   // const surface = isDark ? "#13103A" : "#ffffff";
   const border = isDark ? "rgba(255,255,255,0.1)" : "#f3f4f6";
   const inputBg = isDark ? "#1A1650" : "#f3f4f6";
@@ -40,16 +46,21 @@ function SubjectDetailsScreen() {
   }, [id]);
 
   const loadLookupData = async () => {
+    if (!profile?.institution_id) return;
     // Fetch teachers and classes for dropdowns
     const [teacherRes, classRes] = await Promise.all([
-      supabase.from("teachers").select("id, user_id, users:user_id(full_name)"),
-      supabase.from("v_classes_detailed").select("id, name:display_name").order("display_name"),
+      supabase.from("teachers").select("id, user_id, users:user_id(full_name, institution_id)").eq("institution_id", profile.institution_id),
+      supabase.from("v_classes_detailed").select("id, name:display_name").eq("institution_id", profile.institution_id).order("display_name"),
     ]);
     if (teacherRes.data) setTeachers(teacherRes.data);
     if (classRes.data) setClasses(classRes.data);
   };
 
   const fetchSubject = async () => {
+    if (!profile?.institution_id) {
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     try {
       // id from useLocalSearchParams can be string | string[] | undefined
@@ -57,12 +68,22 @@ function SubjectDetailsScreen() {
       if (!subjectId) throw new Error("Invalid subject ID");
       const { data, error } = await supabase
         .from("subjects")
-        .select("*")
+        .select(`
+          *,
+          subject_teachers(
+            teacher_id
+          )
+        `)
         .eq("id", subjectId)
+        .eq("institution_id", profile.institution_id)
         .single();
       if (error) throw error;
-      setSubject(data as Subject);
-      setForm(data);
+      
+      const subjectData = data as any;
+      const teacherIds = subjectData.subject_teachers ? subjectData.subject_teachers.map((st: any) => st.teacher_id) : [];
+      const populatedSubject = { ...subjectData, teacher_ids: teacherIds };
+      setSubject(populatedSubject as any);
+      setForm(populatedSubject);
     } catch {
       Alert.alert("Error", "Failed to load subject details.");
     } finally {
@@ -74,7 +95,19 @@ function SubjectDetailsScreen() {
     setForm((prev: any) => ({ ...prev, [key]: value }));
   };
 
+  const handleTeacherToggle = (teacherId: string) => {
+    const currentIds = form.teacher_ids || [];
+    let updatedIds;
+    if (currentIds.includes(teacherId)) {
+      updatedIds = currentIds.filter((tid: string) => tid !== teacherId);
+    } else {
+      updatedIds = [...currentIds, teacherId];
+    }
+    handleChange("teacher_ids", updatedIds);
+  };
+
   const handleSave = async () => {
+    if (!subject) return;
     setSaving(true);
     try {
       const subjectId = Array.isArray(id) ? id[0] : id;
@@ -83,30 +116,54 @@ function SubjectDetailsScreen() {
       // Check if class_id changed to trigger auto-enrollment
       const classChanged = form.class_id !== subject.class_id && form.class_id;
 
-      const { error } = await supabase
-        .from("subjects")
-        .update(form)
-        .eq("id", subjectId);
+      // Extract DB writable fields
+      const { teacher_ids, subject_teachers, ...subjectUpdateData } = form;
+      
+      // Update primary teacher_id column in subjects table for legacy compatibility
+      subjectUpdateData.teacher_id = (teacher_ids && teacher_ids.length > 0) ? teacher_ids[0] : null;
+
+      const { error } = await (supabase.from("subjects") as any)
+        .update(subjectUpdateData)
+        .eq("id", subjectId)
+        .eq("institution_id", profile?.institution_id || '');
       if (error) throw error;
+
+      // Update subject_teachers join table
+      const { error: deleteError } = await supabase
+        .from("subject_teachers")
+        .delete()
+        .eq("subject_id", subjectId);
+      if (deleteError) throw deleteError;
+
+      if (teacher_ids && teacher_ids.length > 0) {
+        const newAssignments = teacher_ids.map((tid: string) => ({
+          subject_id: subjectId,
+          teacher_id: tid,
+          institution_id: profile?.institution_id || ''
+        }));
+        const { error: insertError } = await supabase
+          .from("subject_teachers")
+          .insert(newAssignments);
+        if (insertError) throw insertError;
+      }
 
       // Auto-enrollment logic if stream was assigned/changed
       if (classChanged) {
         try {
-          const { data: studentsInClass } = await supabase
-            .from('class_enrollments')
+          const { data: studentsInClass } = await (supabase.from('class_enrollments') as any)
             .select('student_id')
             .eq('class_id', form.class_id);
 
           if (studentsInClass && studentsInClass.length > 0) {
-            const enrollments = studentsInClass.map(s => ({
+            const enrollments = studentsInClass.map((s: any) => ({
               student_id: s.student_id,
               subject_id: subjectId,
-              institution_id: subject.institution_id,
+              institution_id: (subject as any).institution_id,
               status: 'enrolled',
               enrollment_date: new Date().toISOString()
             }));
 
-            await supabase.from('enrollments').upsert(enrollments, { onConflict: 'student_id,subject_id' });
+            await (supabase.from('enrollments') as any).upsert(enrollments, { onConflict: 'student_id,subject_id' });
           }
         } catch (enrollErr) {
           console.error("Auto-enrollment failed during update:", enrollErr);
@@ -288,49 +345,7 @@ function SubjectDetailsScreen() {
             onChangeText={(v) => handleChange("duration", v)}
           />
 
-          {/* Price */}
-          <Text style={{ color: textMuted, fontSize: 13, marginBottom: 4 }}>
-            Price
-          </Text>
-          <TextInput
-            style={{
-              backgroundColor: inputBg,
-              color: textPrimary,
-              borderRadius: 8,
-              borderWidth: 1,
-              borderColor: border,
-              padding: 10,
-              marginBottom: 12,
-            }}
-            value={form.price?.toString() || ""}
-            editable={editing}
-            keyboardType="numeric"
-            onChangeText={(v) =>
-              handleChange("price", v.replace(/[^0-9.]/g, ""))
-            }
-          />
 
-          {/* Fee Amount */}
-          <Text style={{ color: textMuted, fontSize: 13, marginBottom: 4 }}>
-            Fee Amount
-          </Text>
-          <TextInput
-            style={{
-              backgroundColor: inputBg,
-              color: textPrimary,
-              borderRadius: 8,
-              borderWidth: 1,
-              borderColor: border,
-              padding: 10,
-              marginBottom: 12,
-            }}
-            value={form.fee_amount?.toString() || ""}
-            editable={editing}
-            keyboardType="numeric"
-            onChangeText={(v) =>
-              handleChange("fee_amount", v.replace(/[^0-9.]/g, ""))
-            }
-          />
 
           {/* Materials */}
           <Text style={{ color: textMuted, fontSize: 13, marginBottom: 4 }}>
@@ -360,35 +375,51 @@ function SubjectDetailsScreen() {
             }
           />
 
-          {/* Teacher Dropdown */}
-          <Text style={{ color: textMuted, fontSize: 13, marginBottom: 4 }}>
-            Assigned Teacher
+          {/* Teachers Section */}
+          <Text style={{ color: textMuted, fontSize: 13, marginBottom: 6 }}>
+            Assigned Teachers
           </Text>
-          <View
-            style={{
-              backgroundColor: inputBg,
-              borderRadius: 8,
-              borderWidth: 1,
-              borderColor: border,
-              marginBottom: 12,
-            }}
-          >
-            <Picker
-              enabled={editing}
-              selectedValue={form.teacher_id || ""}
-              onValueChange={(v) => handleChange("teacher_id", v)}
-              style={{ color: textPrimary }}
-            >
-              <Picker.Item label="Select teacher" value="" />
-              {teachers.map((t) => (
-                <Picker.Item
-                  key={t.id}
-                  label={t.users?.full_name || t.id}
-                  value={t.id}
-                />
-              ))}
-            </Picker>
-          </View>
+          {editing ? (
+            <View style={{ backgroundColor: inputBg, borderRadius: 12, padding: 12, borderWidth: 1, borderColor: border, marginBottom: 12 }}>
+              {teachers.map((t) => {
+                const isSelected = (form.teacher_ids || []).includes(t.id);
+                return (
+                  <TouchableOpacity
+                    key={t.id}
+                    onPress={() => handleTeacherToggle(t.id)}
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      paddingVertical: 10,
+                      borderBottomWidth: 1,
+                      borderBottomColor: border,
+                    }}
+                  >
+                    <Ionicons
+                      name={isSelected ? "checkbox" : "square-outline"}
+                      size={20}
+                      color={isSelected ? "#FF6B00" : textMuted}
+                      style={{ marginRight: 10 }}
+                    />
+                    <Text style={{ color: textPrimary, fontSize: 14, fontWeight: '500' }}>
+                      {t.users?.full_name || t.id}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+              {teachers.length === 0 && (
+                <Text style={{ color: textMuted, fontSize: 13, textAlign: 'center', paddingVertical: 10 }}>
+                  No teachers available
+                </Text>
+              )}
+            </View>
+          ) : (
+            <View style={{ backgroundColor: inputBg, borderRadius: 12, padding: 12, borderWidth: 1, borderColor: border, marginBottom: 12 }}>
+              <Text style={{ color: textPrimary, fontSize: 14, fontWeight: '500' }}>
+                {assignedTeacherNames || "No teachers assigned"}
+              </Text>
+            </View>
+          )}
 
           {/* Class Dropdown */}
           <Text style={{ color: textMuted, fontSize: 13, marginBottom: 4 }}>

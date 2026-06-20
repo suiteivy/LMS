@@ -3,9 +3,11 @@ import { useState, useEffect } from "react";
 import { useRouter } from "expo-router";
 import { ChevronLeft, Plus, DollarSign, PieChart, Wallet } from "lucide-react-native";
 import { FundsAPI, Fund, Allocation } from "@/services/FundsService";
+import { useSubscriptionTier } from "@/hooks/useSubscriptionTier";
 
 export default function FundManager() {
     const router = useRouter();
+    const tier = useSubscriptionTier();
     const [loading, setLoading] = useState(true);
     const [funds, setFunds] = useState<Fund[]>([]);
     const [selectedFund, setSelectedFund] = useState<Fund | null>(null);
@@ -23,8 +25,12 @@ export default function FundManager() {
     const [allocCategory, setAllocCategory] = useState("General");
 
     useEffect(() => {
+        if (!tier.hasFinance) {
+            router.replace('/(admin)');
+            return;
+        }
         loadFunds();
-    }, []);
+    }, [tier.hasFinance]);
 
     useEffect(() => {
         if (selectedFund) {
@@ -85,6 +91,10 @@ export default function FundManager() {
             Alert.alert("Error", "Failed to allocate");
         }
     };
+
+    if (!tier.hasFinance) {
+        return null;
+    }
 
     return (
         <View className="flex-1 bg-gray-50">

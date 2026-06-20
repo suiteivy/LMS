@@ -5,6 +5,7 @@ import { ThemeMode, useTheme } from '@/contexts/ThemeContext';
 import { ChevronRight, HelpCircle, LogOut, Moon, Settings, ShieldCheck, Sun, UserCircle } from 'lucide-react-native';
 import React, { useState } from 'react';
 import { Alert, Platform, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { SubscriptionStatusBadge } from '@/components/shared/SubscriptionComponents';
 
 // Screens
 import AdminHelp from '@/components/AdminHelp';
@@ -55,7 +56,7 @@ const MenuItem = ({ icon, label, onPress, danger, isDark }: MenuItemProps) => (
 function SettingsMenu({ userRole, onNavigate }: { userRole: string; onNavigate: (screen: 'profile' | 'settings' | 'help' | 'overview' | 'ownership') => void }) {
   const { signOut, profile, loading, displayId, isTrial, isMain } = useAuth();
   const { theme, setTheme, isDark } = useTheme();
-  const roleLabel = userRole === 'master_admin' ? 'Master Admin' : (userRole.charAt(0).toUpperCase() + userRole.slice(1));
+  const roleLabel = userRole === 'master_admin' ? 'Master Admin' : userRole === 'parent' ? 'Parent/Guardian' : (userRole.charAt(0).toUpperCase() + userRole.slice(1));
 
   const surface = isDark ? '#13103A' : '#ffffff';
   const border = isDark ? 'rgba(255,255,255,0.1)' : '#f3f4f6';
@@ -92,7 +93,7 @@ function SettingsMenu({ userRole, onNavigate }: { userRole: string; onNavigate: 
       <UnifiedHeader
         title="Account"
         subtitle="Settings"
-        role={roleLabel as "Student" | "Teacher" | "Admin" | "Parent" | "Master Admin"}
+        role={roleLabel as "Student" | "Teacher" | "Admin" | "Parent/Guardian" | "Master Admin"}
         showNotification={false}
       />
 
@@ -104,13 +105,16 @@ function SettingsMenu({ userRole, onNavigate }: { userRole: string; onNavigate: 
               {profile?.full_name?.charAt(0) || 'U'}
             </Text>
           </View>
-          <View style={{ flex: 1 }}>
-            <Text style={{ fontWeight: '700', color: textPrimary, fontSize: 18, textTransform: 'uppercase', letterSpacing: -0.5 }}>
-              {profile?.full_name || 'User'}
-            </Text>
-            <Text style={{ color: textSecondary, fontSize: 12, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.5, marginTop: 2 }}>
-              ID: {displayId || '...'}
-            </Text>
+          <View style={{ flex: 1, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontWeight: '700', color: textPrimary, fontSize: 18, textTransform: 'uppercase', letterSpacing: -0.5 }}>
+                {profile?.full_name || 'User'}
+              </Text>
+              <Text style={{ color: textSecondary, fontSize: 12, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.5, marginTop: 2 }}>
+                ID: {displayId || '...'}
+              </Text>
+            </View>
+            <SubscriptionStatusBadge />
           </View>
         </View>
       </View>
@@ -243,7 +247,7 @@ export function GlobalSettingsContent({ userRole = 'student' }: { userRole?: Use
     }
   };
 
-  const roleLabel = userRole === 'master_admin' ? 'Master Admin' : (userRole.charAt(0).toUpperCase() + userRole.slice(1)) as "Student" | "Teacher" | "Admin" | "Parent" | "Master Admin";
+  const roleLabel = userRole === 'master_admin' ? 'Master Admin' : userRole === 'parent' ? 'Parent/Guardian' : (userRole.charAt(0).toUpperCase() + userRole.slice(1)) as "Student" | "Teacher" | "Admin" | "Parent/Guardian" | "Master Admin";
 
   return (
     <View style={{ flex: 1, backgroundColor: isDark ? '#0F0B2E' : '#ffffff' }}>

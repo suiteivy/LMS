@@ -1,17 +1,12 @@
 import { UnifiedHeader } from "@/components/common/UnifiedHeader";
 import { useTheme } from "@/contexts/ThemeContext";
 import { TeacherAttendance, TeacherAttendanceAPI } from "@/services/TeacherAttendanceService";
-import DateTimePicker from '@react-native-community/datetimepicker';
+import { DatePicker } from '@/components/common/DatePicker';
 import { useRouter } from "expo-router";
+import { useRealtimeQuery } from "@/hooks/useRealtimeQuery";
 import { Calendar as CalendarIcon, Check, Clock, X } from "lucide-react-native";
 import { useEffect, useState } from "react";
 import { ActivityIndicator, Alert, Image, ScrollView, Text, TouchableOpacity, View } from "react-native";
-
-const DEMO_ATTENDANCE: TeacherAttendance[] = [
-    { id: "ATT1", teacher_id: "T1", status: "present", date: new Date().toISOString(), notes: "", teachers: { id: "T1", users: { first_name: "Isaac", last_name: "Newton", full_name: "Isaac Newton", avatar_url: undefined } } },
-    { id: "ATT2", teacher_id: "T2", status: "absent", date: new Date().toISOString(), notes: "On medical leave", teachers: { id: "T2", users: { first_name: "Marie", last_name: "Curie", full_name: "Marie Curie", avatar_url: undefined } } },
-    { id: "ATT3", teacher_id: "T3", status: "late", date: new Date().toISOString(), notes: "Arrived at 8:15 AM", teachers: { id: "T3", users: { first_name: "Albert", last_name: "Einstein", full_name: "Albert Einstein", avatar_url: undefined } } },
-];
 
 export default function TeacherAttendancePage() {
     const router = useRouter();
@@ -19,7 +14,6 @@ export default function TeacherAttendancePage() {
     const [loading, setLoading] = useState(true);
     const [attendance, setAttendance] = useState<TeacherAttendance[]>([]);
     const [date, setDate] = useState(new Date());
-    const [showDatePicker, setShowDatePicker] = useState(false);
 
     const surface = isDark ? '#13103A' : '#ffffff';
     const border = isDark ? 'rgba(255,255,255,0.1)' : '#f3f4f6';
@@ -28,12 +22,24 @@ export default function TeacherAttendancePage() {
 
     useEffect(() => { loadAttendance(); }, [date]);
 
+    // Live updates for teacher attendance changes
+    useRealtimeQuery('teacher_attendance', () => {
+        loadAttendance();
+    });
+
+    const getLocalDateString = (d: Date) => {
+        const year = d.getFullYear();
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    };
+
     const loadAttendance = async () => {
         setLoading(true);
         try {
-            const dateStr = date.toISOString().split('T')[0];
+            const dateStr = getLocalDateString(date);
             const data = await TeacherAttendanceAPI.getAttendance(dateStr);
-            setAttendance(data.length > 0 ? data : DEMO_ATTENDANCE);
+            setAttendance(data);
         } catch (error: any) {
             console.error(error);
             Alert.alert("Error", "Failed to load attendance");
@@ -45,17 +51,12 @@ export default function TeacherAttendancePage() {
     const handleMark = async (teacherId: string, status: string) => {
         try {
             setAttendance(prev => prev.map(a => a.teacher_id === teacherId ? { ...a, status: status as any } : a));
-            const dateStr = date.toISOString().split('T')[0];
+            const dateStr = getLocalDateString(date);
             await TeacherAttendanceAPI.markAttendance({ teacher_id: teacherId, date: dateStr, status, notes: "" });
         } catch (error) {
             Alert.alert("Error", "Failed to update status");
             loadAttendance();
         }
-    };
-
-    const onDateChange = (event: any, selectedDate?: Date) => {
-        setShowDatePicker(false);
-        if (selectedDate) setDate(selectedDate);
     };
 
     const statusConfig = (status: string) => {
@@ -77,53 +78,49 @@ export default function TeacherAttendancePage() {
                 showNotification={false}
             />
 
-            {showDatePicker && (
-                <DateTimePicker value={date} mode="date" display="default" onChange={onDateChange} />
-            )}
+            {/* DatePicker is always mounted to prevent unmounting/failing to select on load updates */}
+            <View style={{ paddingHorizontal: 20, paddingTop: 20 }}>
+                <DatePicker
+                    label="Attendance Date"
+                    value={getLocalDateString(date)}
+                    onChange={(d) => setDate(new Date(d))}
+                    isDark={isDark}
+                />
+            </View>
 
             {loading ? (
                 <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
                     <ActivityIndicator size="large" color="#FF6B00" />
                 </View>
             ) : (
-                <ScrollView style={{ flex: 1, padding: 20 }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
-                    <TouchableOpacity
-                        onPress={() => setShowDatePicker(true)}
-                        style={{
-                            flexDirection: 'row', alignItems: 'center',
-                            backgroundColor: isDark ? 'rgba(255,107,0,0.12)' : '#fff7ed',
-                            paddingHorizontal: 12, paddingVertical: 8,
-                            borderRadius: 12, borderWidth: 1,
-                            borderColor: isDark ? 'rgba(255,107,0,0.2)' : '#fed7aa',
-                        }}
-                    >
-                        <CalendarIcon size={16} color="#FF6B00" />
-                        <Text style={{ color: '#FF6B00', fontWeight: 'bold', fontSize: 12, marginLeft: 6 }}>
-                            {date.toLocaleDateString()}
-                        </Text>
-                    </TouchableOpacity>
-                </View>
-                    {attendance.map(item => {
+                <ScrollView style={{ flex: 1, paddingHorizontal: 20, paddingTop: 10 }}>
+                    {attendance.map((item: any) => {
                         const config = statusConfig(item.status);
                         return (
                             <View key={item.teacher_id} style={{ backgroundColor: surface, padding: 16, borderRadius: 16, borderWidth: 1, borderColor: border, marginBottom: 12, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
                                 {/* Avatar + Name */}
                                 <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, marginRight: 12 }}>
                                     <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: isDark ? '#1A1650' : '#f3f4f6', marginRight: 12, overflow: 'hidden', flexShrink: 0 }}>
-                                        {item.teachers?.users?.avatar_url ? (
-                                            <Image source={{ uri: item.teachers.users.avatar_url }} style={{ width: '100%', height: '100%' }} />
+                                        {item.teachers?.users?.avatar_url || item.avatar_url ? (
+                                            <Image source={{ uri: item.teachers?.users?.avatar_url || item.avatar_url }} style={{ width: '100%', height: '100%' }} />
                                         ) : (
                                             <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: isDark ? 'rgba(255,107,0,0.12)' : '#fff7ed' }}>
                                                 <Text style={{ color: '#FF6B00', fontWeight: 'bold', fontSize: 16 }}>
-                                                    {item.teachers?.users?.first_name?.charAt(0) || item.teachers?.users?.full_name?.charAt(0) || "T"}
+                                                    {item.teachers?.users?.first_name?.charAt(0) 
+                                                        || item.teachers?.users?.full_name?.charAt(0) 
+                                                        || item.first_name?.charAt(0) 
+                                                        || item.name?.charAt(0) 
+                                                        || "T"}
                                                 </Text>
                                             </View>
                                         )}
                                     </View>
                                     <View style={{ flex: 1 }}>
                                         <Text style={{ fontSize: 15, fontWeight: 'bold', color: textPrimary }} numberOfLines={1}>
-                                            {item.teachers?.users?.first_name ? `${item.teachers.users.first_name} ${item.teachers.users.last_name || ''}`.trim() : (item.teachers?.users?.full_name || "Unknown Teacher")}
+                                            {item.teachers?.users?.first_name 
+                                                ? `${item.teachers.users.first_name} ${item.teachers.users.last_name || ''}`.trim() 
+                                                : (item.teachers?.users?.full_name 
+                                                    || (item.first_name ? `${item.first_name} ${item.last_name || ''}`.trim() : (item.name || "Unknown Teacher")))}
                                         </Text>
                                         <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
                                             <View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: config.dot, marginRight: 6 }} />

@@ -82,7 +82,7 @@ export default function CreateUserScreen() {
     const router = useRouter();
     const insets = useSafeAreaInsets();
     const { isDark } = useTheme();
-    const { profile } = useAuth();
+    const { profile, subscriptionPlan } = useAuth();
 
     const instLevelLabel = (profile as any)?.institutions?.school_categories?.level_label || 'Grade';
     const isJunior = instLevelLabel === 'Grade';
@@ -98,6 +98,7 @@ export default function CreateUserScreen() {
     const [subjects, setSubjects] = useState<any[]>([]);
     const [students, setStudents] = useState<any[]>([]);
     const [studentSearch, setStudentSearch] = useState('');
+    const [roleCounts, setRoleCounts] = useState({ student: 0, admin: 0, teacher: 0, parent: 0 });
 
     useEffect(() => {
         if (profile) loadLookupData();
@@ -106,7 +107,7 @@ export default function CreateUserScreen() {
     const loadLookupData = async () => {
         let classQuery = supabase.from('classes').select('id, name, grade_level');
         let subjectQuery = supabase.from('subjects').select('id, title, teacher_id');
-        let studentQuery = supabase.from('students').select('id, user_id, grade_level, users!inner(first_name, last_name, full_name, institution_id)') as any;
+        let studentQuery = supabase.from('students').select('id, user_id, grade_level, users!inner(first_name, last_name, full_name, institution_id), parent_students(parents(users(full_name)))') as any;
         let parentQuery = supabase.from('parents').select('id, user_id, users!inner(first_name, last_name, full_name, institution_id)') as any;
 
         if (profile?.institution_id) {
@@ -116,18 +117,28 @@ export default function CreateUserScreen() {
             parentQuery = parentQuery.eq('users.institution_id', profile.institution_id);
         }
 
-        const [classRes, subjectRes, studentRes, parentRes] = await Promise.all([
+        const [classRes, subjectRes, studentRes, parentRes, studentCountRes, adminCountRes, teacherCountRes, parentCountRes] = await Promise.all([
             supabase.from('v_classes_detailed')
                 .select('id, name:display_name, grade_level, form_level, level_label')
                 .eq('institution_id', profile?.institution_id || '')
                 .order('display_name'),
             subjectQuery,
             studentQuery,
-            parentQuery
+            parentQuery,
+            supabase.from('users').select('*', { count: 'exact', head: true }).eq('institution_id', profile?.institution_id || '').eq('role', 'student'),
+            supabase.from('users').select('*', { count: 'exact', head: true }).eq('institution_id', profile?.institution_id || '').eq('role', 'admin'),
+            supabase.from('users').select('*', { count: 'exact', head: true }).eq('institution_id', profile?.institution_id || '').eq('role', 'teacher'),
+            supabase.from('users').select('*', { count: 'exact', head: true }).eq('institution_id', profile?.institution_id || '').eq('role', 'parent')
         ]);
         if (classRes.data) setClasses(classRes.data);
         if (subjectRes.data) setSubjects(subjectRes.data);
         if (studentRes.data) setStudents(studentRes.data);
+        setRoleCounts({
+            student: studentCountRes.count || 0,
+            admin: adminCountRes.count || 0,
+            teacher: teacherCountRes.count || 0,
+            parent: parentCountRes.count || 0
+        });
     };
 
     const updateForm = (key: keyof FormData, value: any) => setForm(prev => ({ ...prev, [key]: value }));
@@ -255,7 +266,7 @@ export default function CreateUserScreen() {
     const ROLE_CARDS = [
         { role: 'student' as Role, icon: 'school-outline', label: 'Student', desc: 'Enroll a new student', color: '#10B981' },
         { role: 'teacher' as Role, icon: 'people-outline', label: 'Teacher', desc: 'Add a new teacher', color: '#3B82F6' },
-        { role: 'parent' as Role, icon: 'heart-outline', label: 'Parent', desc: 'Register a parent/guardian', color: '#F59E0B' },
+        { role: 'parent' as Role, icon: 'heart-outline', label: 'Parent/Guardian', desc: 'Register a parent/guardian', color: '#F59E0B' },
         { role: 'admin' as Role, icon: 'shield-outline', label: 'Admin', desc: 'Create an admin account', color: '#EF4444' },
     ];
     const POSITION_OPTIONS = ['teacher', 'head_of_department', 'assistant', 'class_teacher', 'dean'];
@@ -284,6 +295,48 @@ export default function CreateUserScreen() {
         </View>
     );
 
+    const getRemainingSlotsText = (role: Role) => {
+        const rawPlan = subscriptionPlan || 'trial';
+        const mapping: Record<string, string> = {
+            beta_free: 'beta',
+            basic_basic: 'basic',
+            basic_pro: 'pro',
+            basic_premium: 'premium',
+            enterprise_basic: 'custom',
+            enterprise_pro: 'custom',
+            enterprise_premium: 'custom',
+            custom_basic: 'custom',
+            custom_pro: 'custom',
+            custom_premium: 'custom'
+        };
+        const canonicalPlan = mapping[rawPlan.toLowerCase()] || rawPlan.toLowerCase() || 'trial';
+        const PLAN_LIMITS: Record<string, { student: number; admin: number }> = {
+            beta: { student: 30, admin: 1 },
+            trial: { student: 50, admin: 1 },
+            basic: { student: 900, admin: 1 },
+            pro: { student: 1000, admin: 3 },
+            premium: { student: 5000, admin: Infinity },
+            custom: { student: Infinity, admin: Infinity },
+        };
+        const limits = PLAN_LIMITS[canonicalPlan] ?? { student: 50, admin: 1 };
+
+        if (role === 'student') {
+            const limit = limits.student;
+            const current = roleCounts.student;
+            if (limit === Infinity) return 'Unlimited slots';
+            const remaining = Math.max(0, limit - current);
+            return `${remaining} of ${limit} slots remaining`;
+        }
+        if (role === 'admin') {
+            const limit = limits.admin;
+            const current = roleCounts.admin;
+            if (limit === Infinity) return 'Unlimited slots';
+            const remaining = Math.max(0, limit - current);
+            return `${remaining} of ${limit} slots remaining`;
+        }
+        return 'Unlimited slots';
+    };
+
     const renderRoleSelection = () => (
         <View style={{ padding: 24 }}>
             <Text style={{ fontSize: 24, fontWeight: '700', color: textPrimary, marginBottom: 6 }}>Select Role</Text>
@@ -297,6 +350,9 @@ export default function CreateUserScreen() {
                     <View style={{ flex: 1 }}>
                         <Text style={{ fontSize: 17, fontWeight: '700', color: textPrimary }}>{roleCard.label}</Text>
                         <Text style={{ fontSize: 13, color: textSecondary }}>{roleCard.desc}</Text>
+                        <Text style={{ fontSize: 11, fontWeight: '700', color: '#FF6B00', marginTop: 4 }}>
+                            {getRemainingSlotsText(roleCard.role)}
+                        </Text>
                     </View>
                     {form.role === roleCard.role && (
                         <View style={{ width: 24, height: 24, borderRadius: 12, backgroundColor: '#FF6B00', alignItems: 'center', justifyContent: 'center' }}>
@@ -324,7 +380,7 @@ export default function CreateUserScreen() {
                 label={`Email ${form.role === 'parent' ? '*' : '(Optional)'}`} 
                 value={form.email} 
                 onChangeText={(v: string) => updateFormSanitized('email', v, 'email')} 
-                placeholder={form.role === 'parent' ? "parent@example.com" : "Auto-generated if left blank"} 
+                placeholder={form.role === 'parent' ? "parent_guardian@example.com" : "Auto-generated if left blank"} 
                 keyboardType="email-address" 
                 isDark={isDark} textPrimary={textPrimary} textSecondary={textSecondary} inputBg={inputBg} inputBorder={inputBorder} 
             />
@@ -408,7 +464,7 @@ export default function CreateUserScreen() {
             <View style={{ backgroundColor: isDark ? '#0f172a' : '#eff6ff', borderRadius: 16, padding: 20, marginBottom: 16, borderWidth: 1, borderColor: isDark ? '#1e3a5f' : '#bfdbfe' }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
                     <View style={{ flex: 1, marginRight: 12 }}>
-                        <Text style={{ fontWeight: '700', fontSize: 15, color: isDark ? '#93c5fd' : '#1e3a8a' }}>Create Parent Account</Text>
+                        <Text style={{ fontWeight: '700', fontSize: 15, color: isDark ? '#93c5fd' : '#1e3a8a' }}>Create Parent/Guardian Account</Text>
                         <Text style={{ fontSize: 12, color: isDark ? '#60a5fa' : '#3b82f6' }}>Simultaneously register and link a guardian</Text>
                     </View>
                     <TouchableOpacity onPress={() => updateForm('create_parent', !form.create_parent)}
@@ -419,11 +475,11 @@ export default function CreateUserScreen() {
                 {form.create_parent && (
                     <View>
                         {[
-                            { label: 'Parent First Name *', key: 'first_name', placeholder: "First name", type: 'default' },
-                            { label: 'Parent Last Name *', key: 'last_name', placeholder: "Last name", type: 'default' },
-                            { label: 'Parent Email *', key: 'email', placeholder: 'parent@example.com', type: 'email' },
-                            { label: 'Parent Phone', key: 'phone', placeholder: '+254...', type: 'phone' },
-                            { label: 'Parent Occupation', key: 'occupation', placeholder: 'e.g. Doctor', type: 'default' },
+                            { label: 'Parent/Guardian First Name *', key: 'first_name', placeholder: "First name", type: 'default' },
+                            { label: 'Parent/Guardian Last Name *', key: 'last_name', placeholder: "Last name", type: 'default' },
+                            { label: 'Parent/Guardian Email *', key: 'email', placeholder: 'parent_guardian@example.com', type: 'email' },
+                            { label: 'Parent/Guardian Phone', key: 'phone', placeholder: '+254...', type: 'phone' },
+                            { label: 'Parent/Guardian Occupation', key: 'occupation', placeholder: 'e.g. Doctor', type: 'default' },
                         ].map(f => (
                             <View key={f.key} style={{ marginBottom: 12 }}>
                                 <Text style={{ fontSize: 13, fontWeight: '600', color: isDark ? '#93c5fd' : '#1e40af', marginBottom: 6 }}>{f.label}</Text>
@@ -478,7 +534,7 @@ export default function CreateUserScreen() {
         });
         return (
             <View>
-                <Text style={{ fontSize: 18, fontWeight: '700', color: textPrimary, marginBottom: 16 }}> Parent Details</Text>
+                <Text style={{ fontSize: 18, fontWeight: '700', color: textPrimary, marginBottom: 16 }}> Parent/Guardian Details</Text>
                 <RenderInput label="Occupation" value={form.occupation} onChangeText={(v: string) => updateFormSanitized('occupation', v)} placeholder="e.g. Engineer" isDark={isDark} textPrimary={textPrimary} textSecondary={textSecondary} inputBg={inputBg} inputBorder={inputBorder} />
                 <RenderInput label="Home Address" value={form.parent_address} onChangeText={(v: string) => updateFormSanitized('parent_address', v)} placeholder="Physical address" isDark={isDark} textPrimary={textPrimary} textSecondary={textSecondary} inputBg={inputBg} inputBorder={inputBorder} />
                 <View style={{ marginBottom: 16 }}>
@@ -493,19 +549,27 @@ export default function CreateUserScreen() {
                     {studentSearch.length > 0 && (
                         <View style={{ backgroundColor: card, borderWidth: 1, borderColor: border, borderRadius: 12, maxHeight: 160, overflow: 'hidden', marginBottom: 12 }}>
                             <ScrollView nestedScrollEnabled>
-                                {filteredStudents.slice(0, 10).map(s => (
-                                    <TouchableOpacity key={s.id} onPress={() => { addLinkedStudent(s.id, (s.users as any)?.full_name || s.id); setStudentSearch(''); }}
-                                        style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: border }}>
-                                        <Ionicons name="person-outline" size={18} color={textSecondary} />
-                                        <Text style={{ marginLeft: 8, color: textPrimary, fontWeight: '500' }}>
-                                            {(() => {
-                                                const u = s.users as any;
-                                                return u?.first_name ? `${u.first_name} ${u.last_name || ''}`.trim() : (u?.full_name || 'Unknown');
-                                            })()}
-                                        </Text>
-                                        <Text style={{ color: textSecondary, fontSize: 11, marginLeft: 4 }}>{s.id}</Text>
-                                    </TouchableOpacity>
-                                ))}
+                                {filteredStudents.slice(0, 10).map(s => {
+                                    const parentInfo = s.parent_students?.[0]?.parents?.users;
+                                    const parentName = parentInfo ? (`${parentInfo.first_name || ''} ${parentInfo.last_name || ''}`.trim() || parentInfo.full_name) : null;
+                                    return (
+                                        <TouchableOpacity 
+                                            key={s.id} 
+                                            onPress={() => { addLinkedStudent(s.id, (s.users as any)?.full_name || s.id); setStudentSearch(''); }}
+                                            disabled={!!parentName}
+                                            style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: border, opacity: parentName ? 0.5 : 1 }}>
+                                            <Ionicons name="person-outline" size={18} color={textSecondary} />
+                                            <Text style={{ marginLeft: 8, color: textPrimary, fontWeight: '500', flex: 1 }}>
+                                                {(() => {
+                                                    const u = s.users as any;
+                                                    return u?.first_name ? `${u.first_name} ${u.last_name || ''}`.trim() : (u?.full_name || 'Unknown');
+                                                })()}
+                                                {parentName ? ` (Linked to: ${parentName})` : ''}
+                                            </Text>
+                                            <Text style={{ color: textSecondary, fontSize: 11, marginLeft: 4 }}>{s.id}</Text>
+                                        </TouchableOpacity>
+                                    );
+                                })}
                             </ScrollView>
                         </View>
                     )}
@@ -590,11 +654,11 @@ export default function CreateUserScreen() {
             )}
             {form.role === 'student' && form.create_parent && (
                 <View style={{ backgroundColor: isDark ? '#0f172a' : '#eff6ff', borderRadius: 16, borderWidth: 1, borderColor: isDark ? '#1e3a5f' : '#bfdbfe', padding: 16, marginBottom: 16 }}>
-                    <Text style={{ fontSize: 11, fontWeight: '700', color: '#3b82f6', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>Parent to be Created</Text>
-                    {renderReviewRow('Parent First Name', form.parent_info.first_name)}
-                    {renderReviewRow('Parent Last Name', form.parent_info.last_name)}
-                    {renderReviewRow('Parent Email', form.parent_info.email)}
-                    {renderReviewRow('Parent Phone', form.parent_info.phone)}
+                    <Text style={{ fontSize: 11, fontWeight: '700', color: '#3b82f6', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>Parent/Guardian to be Created</Text>
+                    {renderReviewRow('Parent/Guardian First Name', form.parent_info.first_name)}
+                    {renderReviewRow('Parent/Guardian Last Name', form.parent_info.last_name)}
+                    {renderReviewRow('Parent/Guardian Email', form.parent_info.email)}
+                    {renderReviewRow('Parent/Guardian Phone', form.parent_info.phone)}
                     {renderReviewRow('Occupation', form.parent_info.occupation)}
                 </View>
             )}
@@ -611,7 +675,7 @@ export default function CreateUserScreen() {
             )}
             {form.role === 'parent' && (
                 <View style={{ backgroundColor: card, borderRadius: 16, borderWidth: 1, borderColor: border, padding: 16, marginBottom: 16 }}>
-                    <Text style={{ fontSize: 11, fontWeight: '700', color: textSecondary, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>Parent Details</Text>
+                    <Text style={{ fontSize: 11, fontWeight: '700', color: textSecondary, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>Parent/Guardian Details</Text>
                     {renderReviewRow('Occupation', form.occupation)}
                     {renderReviewRow('Address', form.parent_address)}
                     {form.linked_students.length > 0 && (
@@ -662,11 +726,11 @@ export default function CreateUserScreen() {
                             <View style={{ width: 24, height: 24, borderRadius: 12, backgroundColor: isDark ? '#1e3a5f' : '#eff6ff', alignItems: 'center', justifyContent: 'center', marginRight: 8 }}>
                                 <Ionicons name="heart" size={12} color="#3b82f6" />
                             </View>
-                            <Text style={{ fontWeight: '700', color: textPrimary }}>PARENT CREDENTIALS</Text>
+                            <Text style={{ fontWeight: '700', color: textPrimary }}>PARENT/GUARDIAN CREDENTIALS</Text>
                         </View>
                         {result.parentResult.error ? (
                             <View style={{ backgroundColor: isDark ? '#450a0a' : '#fef2f2', padding: 12, borderRadius: 8, marginTop: 8 }}>
-                                <Text style={{ color: '#ef4444', fontWeight: '600' }}>Error creating parent:</Text>
+                                <Text style={{ color: '#ef4444', fontWeight: '600' }}>Error creating Parent/Guardian:</Text>
                                 <Text style={{ color: '#ef4444', fontSize: 13, marginTop: 4 }}>{result.parentResult.error}</Text>
                             </View>
                         ) : (

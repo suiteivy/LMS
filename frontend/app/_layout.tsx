@@ -44,10 +44,22 @@ console.error = (...args: unknown[]) => {
   const first = args[0];
   const msg = first instanceof Error ? first.message : String(first ?? '');
   if (msg.includes("Couldn't find a navigation context")) return;
+  if (msg.includes("non-boolean attribute") && msg.includes("collapsable")) return;
   _origConsoleError(...args);
 };
 
-LogBox.ignoreLogs(["Couldn't find a navigation context"]);
+const _origConsoleWarn = console.warn.bind(console);
+console.warn = (...args: unknown[]) => {
+  const first = args[0];
+  const msg = first instanceof Error ? first.message : String(first ?? '');
+  if (msg.includes("non-boolean attribute") && msg.includes("collapsable")) return;
+  _origConsoleWarn(...args);
+};
+
+LogBox.ignoreLogs([
+  "Couldn't find a navigation context",
+  "Received `false` for a non-boolean attribute `collapsable`"
+]);
 
 // SuiteIvy Dark color palette (matches landing page)
 // Background:  #0F0B2E  (deep navy)

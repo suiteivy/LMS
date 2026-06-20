@@ -208,7 +208,7 @@ export default function ParentDiaryPage() {
                                     </div>
                                     <div class="entry-content">${e.content}</div>
                                     <div class="entry-footer">
-                                        Reported by Teacher: ${e.teacher?.users?.full_name || "School Authority"} • ${e.is_signed ? 'Acknowleged by Parent' : 'Pending Acknowledgement'}
+                                        Reported by Teacher: ${e.teacher?.users?.full_name || "School Authority"} • ${e.is_signed ? 'Acknowledged by Parent/Guardian' : 'Pending Acknowledgement'}
                                     </div>
                                 </div>
                             `).join('')}
@@ -242,7 +242,7 @@ export default function ParentDiaryPage() {
             <UnifiedHeader
                 title="Class Diary"
                 subtitle="Daily Activities"
-                role="Parent"
+                role="Parent/Guardian"
                 onBack={() => router.push("/(parent)")}
             />
 

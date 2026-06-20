@@ -234,3 +234,27 @@ exports.getAnnouncements = async (req, res) => {
         res.status(500).json({ error: err.message });
     }
 };
+
+exports.deleteAnnouncement = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { institution_id, userRole } = req;
+
+        let query = supabase
+            .from("announcements")
+            .delete()
+            .eq("id", id);
+
+        // Enforce institution boundary unless master_admin
+        if (userRole !== 'master_admin') {
+            query = query.eq("institution_id", institution_id);
+        }
+
+        const { error } = await query;
+
+        if (error) throw error;
+        res.status(200).json({ message: "Announcement deleted successfully" });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+};

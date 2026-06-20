@@ -87,13 +87,48 @@ async function authMiddleware(req, res, next) {
 
       const isMain = profileData.admins?.[0]?.is_main || false;
 
+      // Query custom roles and permissions
+      const { data: userRolesData } = await supabase
+        .from('user_roles')
+        .select(`
+          roles (
+            name,
+            role_permissions (
+              permissions (
+                name
+              )
+            )
+          )
+        `)
+        .eq('user_id', user.id);
+
+      const customRoles = [];
+      const permissions = [];
+
+      if (userRolesData) {
+        userRolesData.forEach(ur => {
+          if (ur.roles) {
+            customRoles.push(ur.roles.name);
+            if (ur.roles.role_permissions) {
+              ur.roles.role_permissions.forEach(rp => {
+                if (rp.permissions) {
+                  permissions.push(rp.permissions.name);
+                }
+              });
+            }
+          }
+        });
+      }
+
       profile = {
         id: profileData.id,
         email: profileData.email,
         institution_id: profileData.institution_id,
         role: profileData.role,
         is_main: isMain,
-        isPlatformAdmin: isPlatformAdmin
+        isPlatformAdmin: isPlatformAdmin,
+        customRoles,
+        permissions
       };
 
       // Update cache
@@ -114,6 +149,8 @@ async function authMiddleware(req, res, next) {
       email: profile.email,
       institution_id: profile.institution_id,
       role: profile.role,
+      roles: profile.customRoles || [],
+      permissions: profile.permissions || [],
       is_main: profile.is_main || false,
       is_platform_admin: profile.isPlatformAdmin || false
     };

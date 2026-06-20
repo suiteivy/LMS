@@ -4,7 +4,7 @@ const { hasPaidAtLeastHalf } = require("../utils/feeUtils.js");
 // CREATE SUBJECT
 exports.createSubject = async (req, res) => {
   try {
-    const { title, description, fee_amount, teacher_id, fee_config, materials, metadata } = req.body;
+    const { title, description, fee_amount, teacher_id, teacher_ids, fee_config, materials, metadata } = req.body;
     let teacherId;
     const institution_id = req.institution_id;
 
@@ -20,7 +20,7 @@ exports.createSubject = async (req, res) => {
       teacherId = teacher.id;
     }
     if (req.userRole === "admin") {
-      teacherId = teacher_id;
+      teacherId = teacher_id || (teacher_ids && teacher_ids.length > 0 ? teacher_ids[0] : null);
     }
 
     if (!title || !fee_amount) {
@@ -41,6 +41,27 @@ exports.createSubject = async (req, res) => {
     ]).select().single();
 
     if (error) return res.status(500).json({ error: error.message });
+
+    // Populate subject_teachers many-to-many table
+    const allTeacherIds = Array.from(new Set([
+      ...(teacherId ? [teacherId] : []),
+      ...(teacher_ids || [])
+    ]));
+
+    if (allTeacherIds.length > 0) {
+      const records = allTeacherIds.map(tid => ({
+        subject_id: data.id,
+        teacher_id: tid,
+        institution_id
+      }));
+      const { error: assocError } = await supabase
+        .from("subject_teachers")
+        .insert(records);
+      if (assocError && assocError.code !== '23505') {
+        console.error("Error creating subject teacher associations:", assocError);
+      }
+    }
+
     res.status(201).json({ message: "Subject created", data });
   } catch (err) {
     console.error("createSubject error:", err);
@@ -114,7 +135,19 @@ exports.getSubjects = async (req, res) => {
       .from("subjects")
       .select(`
         *,
-        teacher:teachers(user:users(first_name, last_name, full_name))
+        teacher:teachers(user:users(first_name, last_name, full_name)),
+        subject_teachers(
+          teacher_id,
+          teachers(
+            id,
+            user_id,
+            users:user_id(
+              first_name,
+              last_name,
+              full_name
+            )
+          )
+        )
       `)
       .eq("institution_id", institution_id)
       .order('title');
@@ -141,7 +174,7 @@ exports.getFilteredSubjects = async (req, res) => {
         .json({ error: "Missing institution context" });
     }
 
-    if (!["admin", "teacher", "student"].includes(userRole)) {
+    if (!["admin", "teacher", "student", "parent"].includes(userRole)) {
       return res.status(403).json({ error: "Unauthorized role" });
     }
 
@@ -152,7 +185,21 @@ exports.getFilteredSubjects = async (req, res) => {
       // All subjects in the institution
       ({ data, error } = await supabase
         .from("subjects")
-        .select("*")
+        .select(`
+          *,
+          subject_teachers(
+            teacher_id,
+            teachers(
+              id,
+              user_id,
+              users:user_id(
+                first_name,
+                last_name,
+                full_name
+              )
+            )
+          )
+        `)
         .eq("institution_id", institution_id));
     } else if (userRole === "teacher") {
       const { data: teacher, error: tError } = await supabase.from('teachers').select('id').eq('user_id', userId).single();
@@ -164,24 +211,59 @@ exports.getFilteredSubjects = async (req, res) => {
 
       const teacherId = teacher.id;
 
+      // Find subjects where teacher is in subject_teachers
+      const { data: subjectIdsData } = await supabase
+        .from("subject_teachers")
+        .select("subject_id")
+        .eq("teacher_id", teacherId);
+
+      const subjectIds = (subjectIdsData || []).map(s => s.subject_id);
+
       ({ data, error } = await supabase
         .from("subjects")
-        .select("*")
+        .select(`
+          *,
+          subject_teachers(
+            teacher_id,
+            teachers(
+              id,
+              user_id,
+              users:user_id(
+                first_name,
+                last_name,
+                full_name
+              )
+            )
+          )
+        `)
         .eq("institution_id", institution_id)
-        .eq("teacher_id", teacherId));
-    } else if (userRole === "student") {
-      // Subjects where student is enrolled
-      const { data: student } = await supabase.from('students').select('id').eq('user_id', userId).single();
+        .or(`teacher_id.eq.${teacherId}${subjectIds.length > 0 ? `,id.in.(${subjectIds.join(',')})` : ''}`));
+    } else if (userRole === "student" || userRole === "parent") {
+      // For student or parent, get student enrollments
+      let studentId;
+      if (userRole === "student") {
+        const { data: student } = await supabase.from('students').select('id').eq('user_id', userId).single();
+        if (student) studentId = student.id;
+      } else {
+        // Parent: get first student's enrollments for simplicity, or all students linked to the parent
+        const { data: parent } = await supabase.from('parents').select('id').eq('user_id', userId).single();
+        if (parent) {
+          const { data: children } = await supabase.from('parent_students').select('student_id').eq('parent_id', parent.id);
+          if (children && children.length > 0) {
+            studentId = children[0].student_id; // For simplicity, pick first child
+          }
+        }
+      }
 
-      if (!student) {
+      if (!studentId) {
         return res.json([]);
       }
 
       const { data: enrollments, error: enrError } = await supabase
         .from("enrollments")
         .select("subject_id")
-        .eq("student_id", student.id)
-        .eq("status", "enrolled"); // Only active enrollments?
+        .eq("student_id", studentId)
+        .eq("status", "enrolled");
 
       if (enrError) throw enrError;
 
@@ -191,7 +273,21 @@ exports.getFilteredSubjects = async (req, res) => {
 
       ({ data, error } = await supabase
         .from("subjects")
-        .select("*")
+        .select(`
+          *,
+          subject_teachers(
+            teacher_id,
+            teachers(
+              id,
+              user_id,
+              users:user_id(
+                first_name,
+                last_name,
+                full_name
+              )
+            )
+          )
+        `)
         .in("id", subjectIds)
         .eq("institution_id", institution_id));
     }
@@ -210,42 +306,31 @@ exports.getFilteredSubjects = async (req, res) => {
 // GET SUBJECT BY ID
 exports.getSubjectById = async (req, res) => {
   const { id } = req.params;
-  const { userRole: _userRole, institution_id, userId: _userId } = req;
+  const { institution_id } = req;
 
   try {
     const { data: subject, error: subjectError } = await supabase
       .from("subjects")
-      .select("*")
+      .select(`
+        *,
+        subject_teachers(
+          teacher_id,
+          teachers(
+            id,
+            user_id,
+            users:user_id(
+              first_name,
+              last_name,
+              full_name
+            )
+          )
+        )
+      `)
       .eq("id", id)
       .eq("institution_id", institution_id)
       .single();
 
     if (subjectError) return res.status(404).json({ error: "Subject not found" });
-
-    // Authorization check
-    // Authorization check omitted (dead code)
-
-    // Optional: Allow viewing details even if not enrolled?
-    // User requirement: "Unauthorized access to subject" implies restriction.
-    // I will enable restriction but maybe allow basic viewing?
-    // Previous code had strict check. I'll maintain it.
-
-    // However, for 'enrollment' flow, student needs to Fetch Subject to see Fee Amount?
-    // If getting Subject Detail requires enrollment, how do they enroll?
-    // Usually `getSubjects` lists available. `getSubjectById` lists details.
-    // Maybe `getSubjectById` should be open for `student` to check Fee?
-    // The previous code had:
-    // if (userRole === "student" && !subject.students?.includes(req.userId)) ...
-    // So it BLOCKED students if not enrolled.
-    // I will checking if `req.path` or purpose matters.
-    // The previous code allowed ADMIN/TEACHER.
-
-    // I will remove the strict block for STUDENTS so they can see fee info to enroll?
-    // Or assume there's a separate "Subject Listing" (getSubjects) that works.
-    // If I block here, they can't see details page to click "Enroll".
-    // I will ALLOW students to view subject details (to enroll).
-
-    // if (!authorized) return res.status(403).json({ error: "Unauthorized access to subject" });
 
     res.json(subject);
   } catch (err) {

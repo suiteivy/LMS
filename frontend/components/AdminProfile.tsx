@@ -138,21 +138,6 @@ export default function AdminProfile() {
                                     <Text style={{ color: "#fecaca", fontWeight: "500", marginTop: 2 }}>
                                         System Administrator
                                     </Text>
-                                    <View style={{
-                                        flexDirection: "row",
-                                        alignItems: "center",
-                                        marginTop: 8,
-                                        backgroundColor: isDark ? "rgba(255,255,255,0.1)" : "#fff1f2",
-                                        alignSelf: "flex-start",
-                                        paddingHorizontal: 12,
-                                        paddingVertical: 4,
-                                        borderRadius: 99,
-                                    }}>
-                                        <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: "#22c55e", marginRight: 6 }} />
-                                        <Text style={{ fontSize: 11, fontWeight: "700", textTransform: "uppercase", color: isDark ? "#86efac" : "#15803d" }}>
-                                            {profile.status}
-                                        </Text>
-                                    </View>
                                 </View>
 
                                 {/* Avatar + edit buttons */}

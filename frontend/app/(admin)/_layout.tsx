@@ -5,7 +5,7 @@ import { SchoolProvider } from "@/contexts/SchoolContext";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useSubscriptionTier } from "@/hooks/useSubscriptionTier";
 import { Slot, Tabs } from "expo-router";
-import { House, LayoutGrid, Settings, Users, Wallet, Headphones, Bell } from "lucide-react-native";
+import { House, LayoutGrid, Settings, Users, Wallet, MessageSquare, Bell } from "lucide-react-native";
 import { Platform, useWindowDimensions, View, Text } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -15,7 +15,7 @@ export const ALL_NAV_ITEMS: NavItem[] = [
     { name: "management/index", title: "Manage", icon: LayoutGrid, route: "/(admin)/management" },
     { name: "users/index", title: "Users", icon: Users, route: "/(admin)/users" },
     { name: "finance/index", title: "Finance", icon: Wallet, route: "/(admin)/finance" },
-    { name: "support", title: "Support", icon: Headphones, route: "/(admin)/support" },
+    { name: "communication/index", title: "Communication", icon: MessageSquare, route: "/(admin)/communication" },
     { name: "notifications", title: "Alerts", icon: Bell, route: "/(admin)/notifications" },
     { name: "settings/settings", title: "Settings", icon: Settings, route: "/(admin)/settings/settings" },
 ];
@@ -25,7 +25,7 @@ export const BETA_NAV_ITEMS: NavItem[] = [
     { name: "index", title: "Home", icon: House, route: "/(admin)" },
     { name: "management/index", title: "Manage", icon: LayoutGrid, route: "/(admin)/management" },
     { name: "users/index", title: "Users", icon: Users, route: "/(admin)/users" },
-    { name: "support", title: "Support", icon: Headphones, route: "/(admin)/support" },
+    { name: "communication/index", title: "Communication", icon: MessageSquare, route: "/(admin)/communication" },
     { name: "notifications", title: "Alerts", icon: Bell, route: "/(admin)/notifications" },
     { name: "settings/settings", title: "Settings", icon: Settings, route: "/(admin)/settings/settings" },
 ];
@@ -36,7 +36,7 @@ const ALL_ROUTES = [
     "index",
     "notifications",
     "request-feature",
-    "support",
+    "communication/index",
     "attendance/index",
     "attendance/students/index",
     "attendance/teachers/index",

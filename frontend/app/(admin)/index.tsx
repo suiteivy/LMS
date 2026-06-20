@@ -95,18 +95,6 @@ export default function AdminDashboard() {
     try {
       setLoadingUsers(true);
 
-      if (isDemo) {
-        const mockUsers: User[] = [
-          { id: 'u1', displayId: 'STU-101', name: 'Emily Davis', first_name: 'Emily', last_name: 'Davis', email: 'emily@demo.com', role: 'student', joinDate: new Date().toISOString() },
-          { id: 'u2', displayId: 'TEA-001', name: 'John Smith', first_name: 'John', last_name: 'Smith', email: 'john@demo.com', role: 'teacher', joinDate: new Date(Date.now() - 86400000).toISOString() },
-          { id: 'u3', displayId: 'STU-102', name: 'Robert Wilson', first_name: 'Robert', last_name: 'Wilson', email: 'robert@demo.com', role: 'student', joinDate: new Date(Date.now() - 172800000).toISOString() },
-          { id: 'u4', displayId: 'TEA-002', name: 'Sarah Parker', first_name: 'Sarah', last_name: 'Parker', email: 'sarah@demo.com', role: 'teacher', joinDate: new Date(Date.now() - 259200000).toISOString() },
-          { id: 'u5', displayId: 'ADM-001', name: 'Michael Brown', first_name: 'Michael', last_name: 'Brown', email: 'michael@demo.com', role: 'admin', joinDate: new Date(Date.now() - 345600000).toISOString() },
-        ];
-        setRecentUsers(mockUsers);
-        return;
-      }
-
       if (!profile?.institution_id) {
         setRecentUsers([]);
         return;
@@ -146,13 +134,13 @@ export default function AdminDashboard() {
     } finally {
       setLoadingUsers(false);
     }
-  }, [isDemo]);
+  }, [profile?.institution_id]);
 
   useEffect(() => {
-    if (isDemo || profile) {
+    if (profile) {
       fetchRecentUsers();
     }
-  }, [fetchRecentUsers, profile, isDemo]);
+  }, [fetchRecentUsers, profile]);
 
   // Theme-aware color tokens
   const cardBg = isDark ? '#0F0B2E' : '#111827';
@@ -259,54 +247,7 @@ export default function AdminDashboard() {
             )}
           </View>
 
-          {/* Enhance Your Plan Card */}
-          <View style={{ marginBottom: 32 }}>
-            <View style={{
-              backgroundColor: surfaceBg,
-              padding: 24,
-              borderRadius: 32,
-              borderWidth: 1,
-              borderColor: surfaceBorder,
-              shadowColor: "#FF6B00",
-              shadowOffset: { width: 0, height: 4 },
-              shadowOpacity: 0.1,
-              shadowRadius: 10,
-              boxShadow: [{
-                offsetX: 0,
-                offsetY: 4,
-                blurRadius: 10,
-                color: 'rgba(255, 107, 0, 0.1)',
-              }],
-              elevation: 4
-            }}>
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-                <View className="flex-row items-center">
-                  <View className="w-10 h-10 bg-orange-50 rounded-xl items-center justify-center mr-3">
-                    <Zap size={20} color="#FF6B00" fill="#FF6B00" />
-                  </View>
-                  <View>
-                    <Text className="text-gray-900 dark:text-white font-extrabold text-base">Enhance Your Plan</Text>
-                    <Text className="text-gray-500 dark:text-gray-400 text-[10px] font-bold uppercase tracking-widest">Get specialized modules</Text>
-                  </View>
-                </View>
-              </View>
 
-              <View className="flex-row items-center justify-between bg-gray-50 dark:bg-gray-800/50 p-4 rounded-2xl">
-                <View>
-                  <Text className="text-gray-400 text-[10px] font-bold uppercase mb-1">Current Base Plan</Text>
-                  <Text className="text-gray-900 dark:text-white font-bold">{tier.plan === 'premium' ? 'PREMIUM' : tier.plan === 'pro' ? 'PRO' : tier.plan === 'basic' ? 'BASIC' : tier.plan.toUpperCase()}</Text>
-                </View>
-                <View className="h-8 w-[1px] bg-gray-200 dark:bg-gray-700 mx-4" />
-                <View className="flex-1">
-                  <Text className="text-gray-400 text-[10px] font-bold uppercase mb-1">Active Modules</Text>
-                  <Text className="text-gray-900 dark:text-white text-[11px] font-bold" numberOfLines={1}>
-                    {activeFeatures || "Core Modules Only"}
-                  </Text>
-                </View>
-              </View>
-              <AddonRequestButton style={{marginTop:12}} onPress={() => setRequestModalVisible(true)} />
-            </View>
-          </View>
 
           {/* Institution Capacity */}
           <SubscriptionGate minPlan="basic">
@@ -406,15 +347,13 @@ export default function AdminDashboard() {
             <Text className="text-lg font-bold text-gray-900 dark:text-white mb-4 px-1">Quick Actions</Text>
             <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10 }}>
               <QuickAction icon={IconUserPlus} label="Enroll User" onPress={() => router.push("/(admin)/users/create")} />
-              <SubscriptionGate minPlan="pro">
+              <SubscriptionGate feature="library">
                 <QuickAction icon={IconBookOpen} label="Library" onPress={() => router.navigate("/(admin)/management/library" as any)} />
               </SubscriptionGate>
-              {tier.showFinancials && (
-                <SubscriptionGate minPlan="premium">
-                  <QuickAction icon={IconWallet} label="Finance" onPress={() => router.navigate("/(admin)/finance" as any)} />
-                </SubscriptionGate>
-              )}
-              <SubscriptionGate minPlan="premium">
+              <SubscriptionGate feature="finance">
+                <QuickAction icon={IconWallet} label="Finance" onPress={() => router.navigate("/(admin)/finance" as any)} />
+              </SubscriptionGate>
+              <SubscriptionGate feature="analytics">
                 <QuickAction icon={IconBarChart3} label="Analytics" onPress={() => router.navigate("/(admin)/management/analytics" as any)} />
               </SubscriptionGate>
               <QuickAction icon={IconCalendar} label="Attendance" onPress={() => router.push("/(admin)/attendance" as any)} />
