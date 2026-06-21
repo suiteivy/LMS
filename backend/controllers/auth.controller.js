@@ -967,7 +967,7 @@ exports.adminResetPassword = async (req, res) => {
     const { targetUserId, newPassword } = req.body;
     const adminId = req.userId;
     const adminRole = req.userRole;
-    const adminInstId = req.institutionId;
+    const adminInstId = req.institution_id;
 
     if (!targetUserId || !newPassword) {
       return res.status(400).json({ error: "Target user ID and new password are required" });
@@ -1104,7 +1104,7 @@ exports.forgotPassword = async (req, res) => {
               user_id: ma.id,
               title: "Admin Password Reset Request",
               message: `Administrator ${userData.full_name} from a Beta Tier institution has requested a password reset.`,
-              type: 'critical',
+              type: 'error',
               data: { target_user_id: userData.id, target_name: userData.full_name, institution_id: userData.institution_id }
             }));
             await supabase.from('notifications').insert(notifications);

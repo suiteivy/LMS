@@ -8,10 +8,10 @@ const router = express.Router();
 
 router.use(authMiddleware);
 
-router.post("/", createResource);
-router.get("/", getResources);
-router.get("/pending", getPendingResources);
-router.patch("/:id/approve", authorizeRoles(["admin"]), approveResource);
-router.delete("/:id", deleteResource);
+router.post("/", authorizeRoles(["admin", "teacher", "master_admin"]), createResource);
+router.get("/", authorizeRoles(["admin", "teacher", "student", "parent", "master_admin"]), getResources);
+router.get("/pending", authorizeRoles(["admin", "master_admin"]), getPendingResources);
+router.patch("/:id/approve", authorizeRoles(["admin", "master_admin"]), approveResource);
+router.delete("/:id", authorizeRoles(["admin", "teacher", "master_admin"]), deleteResource);
 
 module.exports = router;

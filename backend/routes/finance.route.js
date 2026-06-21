@@ -19,11 +19,11 @@ const {
 } = require("../controllers/finance.controller.js");
 
 // Funds
-router.get("/funds", authMiddleware, getFunds);
+router.get("/funds", authMiddleware, authorizeRoles(['admin', 'bursary', 'master_admin']), getFunds);
 router.post("/funds", authMiddleware, authorizeRoles(['admin', 'bursary', 'master_admin']), createFund);
 
 // Allocations
-router.get("/allocations", authMiddleware, getAllocations);
+router.get("/allocations", authMiddleware, authorizeRoles(['admin', 'bursary', 'master_admin']), getAllocations);
 router.post("/allocations", authMiddleware, authorizeRoles(['admin', 'bursary', 'master_admin']), createAllocation);
 
 // Transactions (Unified Replacement for Payments/Payouts)

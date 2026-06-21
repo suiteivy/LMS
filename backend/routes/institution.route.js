@@ -8,23 +8,26 @@ const {
   getClasses,
 } = require("../controllers/institution.controller.js");
 const { authMiddleware } = require("../middleware/auth.middleware.js");
+const { authorizeRoles } = require("../middleware/authRole.js");
 const { validate, schemas } = require("../middleware/inputValidator.js");
-const { requireAdmin } = require("../middleware/roleCheck.js");
 
-// Public: List all institutions
-router.get("/", getInstitutions);
+// All routes require authentication
+router.use(authMiddleware);
 
-// Protected: Create new institution (requires admin)
-router.post("/", authMiddleware, requireAdmin, validate(schemas.createInstitution), createInstitution);
+// Get own institution details
+router.get("/details", getInstitutionDetails);
 
-// Protected: Get own institution details
-router.get("/details", authMiddleware, getInstitutionDetails);
+// Get classes
+router.get("/classes", getClasses);
 
-// Protected: Update institution
-router.put("/", authMiddleware, requireAdmin, validate(schemas.updateUser), updateInstitution);
-router.put("/:id", authMiddleware, requireAdmin, validate(schemas.idParam), updateInstitution);
+// List all institutions (Master Admin only)
+router.get("/", authorizeRoles(["master_admin"]), getInstitutions);
 
-// Protected: Get classes
-router.get("/classes", authMiddleware, getClasses);
+// Create new institution (Master Admin only)
+router.post("/", authorizeRoles(["master_admin"]), validate(schemas.createInstitution), createInstitution);
+
+// Update institution
+router.put("/", authorizeRoles(["admin", "master_admin"]), validate(schemas.updateUser), updateInstitution);
+router.put("/:id", authorizeRoles(["admin", "master_admin"]), validate(schemas.idParam), updateInstitution);
 
 module.exports = router;

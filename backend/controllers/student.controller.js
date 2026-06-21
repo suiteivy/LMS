@@ -117,22 +117,20 @@ exports.getMyAnnouncements = async (req, res) => {
 
         const subjectIds = enrollments?.map(e => e.subject_id).filter(Boolean) || [];
 
-        // 3. Fetch announcements (resources of type 'announcement') for those subjects
+        // 3. Fetch announcements for those subjects or general announcements (subject_id is null)
         let query = supabase
-            .from('resources')
+            .from('announcements')
             .select(`
-                id, title, description, created_at, updated_at,
+                id, title, description:message, created_at, updated_at,
                 subjects ( id, title, teacher_id, teachers(users(first_name, last_name, full_name)) )
             `)
-            .eq('type', 'announcement')
             .eq('institution_id', institution_id)
             .order('created_at', { ascending: false });
 
         if (subjectIds.length > 0) {
-            query = query.in('subject_id', subjectIds);
+            query = query.or(`subject_id.is.null,subject_id.in.(${subjectIds.map(id => `"${id}"`).join(',')})`);
         } else {
-            // No enrollments, return empty
-            return res.json([]);
+            query = query.is('subject_id', null);
         }
 
         const { data, error } = await query;

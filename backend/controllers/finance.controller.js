@@ -135,8 +135,8 @@ exports.getTransactions = async (req, res) => {
             .eq("institution_id", institution_id)
             .order("date", { ascending: false });
 
-        if (userRole !== "admin" && userRole !== "master_admin") {
-            // Non-admins can only see their own transactions
+        if (userRole !== "admin" && userRole !== "master_admin" && userRole !== "bursary") {
+            // Non-admins/bursaries can only see their own transactions
             query = query.eq("user_id", userId);
         } else if (distinct_user_id) {
             // Admin filtering by specific user

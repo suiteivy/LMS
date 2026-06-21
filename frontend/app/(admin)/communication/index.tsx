@@ -241,17 +241,6 @@ export default function CommunicationPage() {
 
             if (msgError) throw msgError;
 
-            // 2. Insert notification alert for parent
-            await (supabase.from("notifications") as any)
-                .insert({
-                    user_id: selectedParent.id,
-                    title: `✉️ Message from Administrator`,
-                    message: content.length > 80 ? content.substring(0, 80) + "..." : content,
-                    type: "message",
-                    is_read: false,
-                    institution_id: profile.institution_id
-                });
-
             showSuccess("Message Sent", "Transmission completed successfully.");
             setSentSuccess(true);
             setScreen("list");

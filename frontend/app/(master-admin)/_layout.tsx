@@ -170,7 +170,7 @@ export default function MasterAdminLayout() {
     }
 
     // Protection: must be logged in and either a master admin or a platform admin
-    const isAllowed = session && (profile?.role === 'admin' || isPlatformAdmin);
+    const isAllowed = session && isPlatformAdmin;
 
     if (!isAllowed) {
         return <Redirect href="/(auth)/signIn" />;

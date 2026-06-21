@@ -15,7 +15,7 @@ const {
 // Bursary Management
 router.get("/", authMiddleware, listBursaries);
 router.post("/", authMiddleware, authorizeRoles(['admin', 'bursary']), createBursary);
-router.get("/:id", authMiddleware, getBursaryDetails);
+router.get("/:id", authMiddleware, authorizeRoles(['admin', 'bursary']), getBursaryDetails);
 
 // Applications
 router.post("/apply", authMiddleware, authorizeRoles(['student']), applyForBursary);

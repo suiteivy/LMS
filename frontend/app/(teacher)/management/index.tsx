@@ -79,8 +79,8 @@ export default function ManagementIndex() {
         },
         {
             icon: Megaphone,
-            title: "Broadcasting",
-            description: "Post updates to your classes",
+            title: "Announcements",
+            description: "View school announcements and updates",
             color: "#ec4899",
             bgColor: "#fce7f3",
             route: "/(teacher)/management/announcements"

@@ -44,7 +44,7 @@ export const WebSidebar = ({ items, basePath, role, children }: WebSidebarProps)
   const bg = isDark ? '#0F0B2E' : '#f9fafb';
 
   // Determine active route from segments
-  const activeSegment = segments[segments.length - 1] ?? 'index';
+  const currentPath = segments.length > 0 ? '/' + segments.join('/') : '/';
 
   const sidebarWidth = collapsed ? 64 : 220;
 
@@ -86,7 +86,10 @@ export const WebSidebar = ({ items, basePath, role, children }: WebSidebarProps)
         <View style={{ flex: 1, gap: 4, paddingHorizontal: collapsed ? 8 : 12 }}>
           {items.map((item) => {
             const Icon = item.icon;
-            const isActive = activeSegment === item.name || (item.name === 'index' && activeSegment === basePath);
+            const isRootRoute = item.route === `/${basePath}`;
+            const isActive = isRootRoute 
+              ? (currentPath === `/${basePath}` || currentPath === `/${basePath}/index`)
+              : (currentPath === item.route || currentPath.startsWith(item.route + '/'));
             return (
               <TouchableOpacity
                 key={item.name}

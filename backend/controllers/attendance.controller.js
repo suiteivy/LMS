@@ -117,28 +117,31 @@ exports.markStudentAttendance = async (req, res) => {
 
         // Real-time Notification for Parents on Absence
         if (status === 'absent') {
-            // Find student parent
+            // Find student's name
             const { data: student } = await supabase
                 .from('students')
-                .select('parent_id, users(full_name)')
+                .select('users(full_name)')
                 .eq('id', student_id)
                 .single();
 
-            if (student && student.parent_id) {
-                const { data: parent } = await supabase
-                    .from('parents')
-                    .select('user_id')
-                    .eq('id', student.parent_id)
-                    .single();
+            // Find all parents linked to this student
+            const { data: parentRelations } = await supabase
+                .from('parent_students')
+                .select('parent_id, parents(user_id)')
+                .eq('student_id', student_id);
 
-                if (parent) {
-                    await createNotificationInternal({
-                        userId: parent.user_id,
-                        title: 'Attendance Alert',
-                        message: `${student.users.full_name} was marked ABSENT today (${markDate}).`,
-                        type: 'warning',
-                        data: { student_id, date: markDate, type: 'attendance_absence' }
-                    });
+            if (parentRelations && parentRelations.length > 0) {
+                const studentName = student?.users?.full_name || 'Your child';
+                for (const relation of parentRelations) {
+                    if (relation.parents && relation.parents.user_id) {
+                        await createNotificationInternal({
+                            userId: relation.parents.user_id,
+                            title: 'Attendance Alert',
+                            message: `${studentName} was marked ABSENT today (${markDate}).`,
+                            type: 'warning',
+                            data: { student_id, date: markDate, type: 'attendance_absence' }
+                        });
+                    }
                 }
             }
         }

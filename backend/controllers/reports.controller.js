@@ -52,8 +52,17 @@ exports.getReports = async (req, res) => {
                 // Return all reports for all linked students
                 query = query.in('student_id', linkedIds).eq('status', 'published');
             }
+        } else if (user.role === 'student') {
+            // Get student ID
+            const { data: student } = await supabase.from('students').select('id').eq('user_id', user.id).single();
+            if (!student) return res.status(404).json({ success: false, message: "Student profile not found" });
+
+            if (studentId && studentId !== student.id) {
+                return res.status(403).json({ success: false, message: "Access denied: You can only view your own reports" });
+            }
+            query = query.eq('student_id', student.id).eq('status', 'published');
         } else if (studentId) {
-            // Non-parent role (admin/teacher) requesting studentId
+            // Non-parent/student role (admin/teacher) requesting studentId
             query = query.eq('student_id', studentId);
         }
 
@@ -86,6 +95,36 @@ exports.getReportById = async (req, res) => {
             .single();
 
         if (error) throw error;
+        if (!data) return res.status(404).json({ success: false, message: "Report not found" });
+
+        // Scoping checks for Student and Parent
+        if (user.role === 'student') {
+            const { data: student } = await supabase.from('students').select('id').eq('user_id', user.id).single();
+            if (!student || data.student_id !== student.id) {
+                return res.status(403).json({ success: false, message: "Access denied" });
+            }
+            if (data.status !== 'published') {
+                return res.status(403).json({ success: false, message: "Report is not yet published" });
+            }
+        } else if (user.role === 'parent') {
+            const { data: parent } = await supabase.from('parents').select('id').eq('user_id', user.id).single();
+            if (!parent) return res.status(404).json({ success: false, message: "Parent profile not found" });
+
+            const { data: link } = await supabase
+                .from('parent_students')
+                .select('id')
+                .eq('parent_id', parent.id)
+                .eq('student_id', data.student_id)
+                .maybeSingle();
+
+            if (!link) {
+                return res.status(403).json({ success: false, message: "Access denied: Student not linked to parent" });
+            }
+            if (data.status !== 'published') {
+                return res.status(403).json({ success: false, message: "Report is not yet published" });
+            }
+        }
+
         res.json({ success: true, data });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });

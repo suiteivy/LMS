@@ -28,8 +28,8 @@ router.post("/submissions", authorizeRoles(["student"]), submitAssignment);
 router.put("/submissions/:id/grade", authorizeRoles(["admin", "teacher"]), gradeSubmission);
 
 // Announcements
-router.post("/announcements", authorizeRoles(["admin", "teacher"]), createAnnouncement);
+router.post("/announcements", authorizeRoles(["admin"]), createAnnouncement);
 router.get("/announcements", authorizeRoles(["admin", "teacher", "student", "parent"]), getAnnouncements);
-router.delete("/announcements/:id", authorizeRoles(["admin", "teacher"]), deleteAnnouncement);
+router.delete("/announcements/:id", authorizeRoles(["admin"]), deleteAnnouncement);
 
 module.exports = router;

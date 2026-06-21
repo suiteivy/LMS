@@ -7,10 +7,14 @@ const {
     getStudentPerformance
 } = require("../controllers/teacher.controller.js");
 const { authMiddleware } = require("../middleware/auth.middleware.js");
+const { authorizeRoles } = require("../middleware/authRole.js");
 
-router.get("/dashboard/stats", authMiddleware, getDashboardStats);
-router.get("/analytics", authMiddleware, getAnalytics);
-router.get("/earnings", authMiddleware, getEarnings);
-router.get("/students/performance", authMiddleware, getStudentPerformance);
+router.use(authMiddleware);
+router.use(authorizeRoles(["teacher"]));
+
+router.get("/dashboard/stats", getDashboardStats);
+router.get("/analytics", getAnalytics);
+router.get("/earnings", getEarnings);
+router.get("/students/performance", getStudentPerformance);
 
 module.exports = router;

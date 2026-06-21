@@ -471,7 +471,11 @@ exports.history = async (req, res) => {
     const { studentId } = req.params; // If admin viewing specific student
     let targetStudentId = studentId;
 
-    if (!targetStudentId) {
+    if (targetStudentId) {
+      if (req.userRole !== 'admin' && req.userRole !== 'teacher' && req.userRole !== 'master_admin') {
+        return res.status(403).json({ error: "Access denied. Insufficient permissions." });
+      }
+    } else {
       // If student or teacher viewing own history
       const sId = await getStudentId(req.userId);
       const tId = await getTeacherId(req.userId);

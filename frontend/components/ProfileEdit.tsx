@@ -3,6 +3,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { Camera, CheckCircle2, ChevronLeft, X } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, Image, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface EditFormProps {
   visible: boolean
@@ -74,6 +75,8 @@ const AuthView = ({ onBack, isVerified, authCode, onAuthChange }: any) => {
 }
 
 export const ProfileEdit = ({ visible, onClose, currentUser, onUpdate }: EditFormProps) => {
+  const { profile, refreshProfile } = useAuth();
+
   const [loading, setLoading] = useState(false)
   const [authCode, setAuthCode] = useState('')
   const [isVerified, setIsVerified] = useState(false)
@@ -81,17 +84,26 @@ export const ProfileEdit = ({ visible, onClose, currentUser, onUpdate }: EditFor
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
 
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [phone, setPhone] = useState('');
+  const [email, setEmail] = useState('');
+
   useEffect(() => {
     if (!visible) {
       setCurrentView('profile')
       setLoading(false)
       setIsVerified(false)
       setAuthCode('')
-    } else {
-      // Pre-fill
-      if (currentUser?.avatar_url) setAvatarUrl(currentUser.avatar_url);
+    } else if (profile) {
+      // Pre-fill from database via context profile
+      setFirstName(profile.first_name || '');
+      setLastName(profile.last_name || '');
+      setPhone(profile.phone || '');
+      setEmail(profile.email || '');
+      setAvatarUrl(profile.avatar_url || null);
     }
-  }, [visible, currentUser])
+  }, [visible, profile])
 
   const pickImage = async () => {
     try {
@@ -179,18 +191,37 @@ export const ProfileEdit = ({ visible, onClose, currentUser, onUpdate }: EditFor
   };
 
   const handleSave = async () => {
-    if (!currentUser?.id) return;
+    if (!profile?.id) return;
     setLoading(true);
     try {
       const updates: any = {
-        updated_at: new Date(),
-        avatar_url: avatarUrl
+        first_name: firstName.trim(),
+        last_name: lastName.trim(),
+        full_name: `${firstName.trim()} ${lastName.trim()}`.trim(),
+        phone: phone.trim() || null,
+        avatar_url: avatarUrl,
+        updated_at: new Date()
       };
 
-      const { error } = await supabase.from('users').update(updates).eq('id', currentUser.id);
+      const { error } = await (supabase.from('users') as any).update(updates).eq('id', profile.id);
       if (error) throw error;
 
-      Alert.alert("Success", "Profile updated");
+      // Keep Auth metadata in sync
+      const { error: authError } = await supabase.auth.updateUser({
+        data: {
+          first_name: firstName.trim(),
+          last_name: lastName.trim(),
+          full_name: `${firstName.trim()} ${lastName.trim()}`.trim()
+        }
+      });
+      if (authError) {
+        console.warn("Auth user metadata sync warning:", authError.message);
+      }
+
+      // Refresh context profile
+      await refreshProfile();
+
+      Alert.alert("Success", "Profile updated successfully");
       if (onUpdate) onUpdate();
       onClose();
     } catch (error: any) {
@@ -260,7 +291,7 @@ export const ProfileEdit = ({ visible, onClose, currentUser, onUpdate }: EditFor
                           <Image source={{ uri: avatarUrl }} className="w-full h-full" />
                         ) : (
                           <Text className="text-gray-400 text-2xl font-bold">
-                            {currentUser?.first_name?.charAt(0) || currentUser?.full_name?.charAt(0) || "U"}
+                            {firstName?.charAt(0) || profile?.full_name?.charAt(0) || "U"}
                           </Text>
                         )}
                       </View>
@@ -277,11 +308,51 @@ export const ProfileEdit = ({ visible, onClose, currentUser, onUpdate }: EditFor
                     <View className="space-y-4">
                       <View>
                         <Text className="text-sm font-semibold text-gray-700 mb-2">
-                          Display Name
+                          First Name
                         </Text>
-                        <View className="bg-gray-50 p-4 rounded-2xl border border-gray-100">
+                        <TextInput
+                          className="bg-gray-50 p-4 rounded-2xl border border-gray-100 text-gray-900"
+                          placeholder="First Name"
+                          placeholderTextColor="#9ca3af"
+                          value={firstName}
+                          onChangeText={setFirstName}
+                        />
+                      </View>
+
+                      <View>
+                        <Text className="text-sm font-semibold text-gray-700 mb-2">
+                          Last Name
+                        </Text>
+                        <TextInput
+                          className="bg-gray-50 p-4 rounded-2xl border border-gray-100 text-gray-900"
+                          placeholder="Last Name"
+                          placeholderTextColor="#9ca3af"
+                          value={lastName}
+                          onChangeText={setLastName}
+                        />
+                      </View>
+
+                      <View>
+                        <Text className="text-sm font-semibold text-gray-700 mb-2">
+                          Mobile Number
+                        </Text>
+                        <TextInput
+                          className="bg-gray-50 p-4 rounded-2xl border border-gray-100 text-gray-900"
+                          placeholder="Mobile Number"
+                          placeholderTextColor="#9ca3af"
+                          keyboardType="phone-pad"
+                          value={phone}
+                          onChangeText={setPhone}
+                        />
+                      </View>
+
+                      <View>
+                        <Text className="text-sm font-semibold text-gray-700 mb-2">
+                          Email Address (Assigned)
+                        </Text>
+                        <View className="bg-gray-100 p-4 rounded-2xl border border-gray-200">
                           <Text className="text-gray-500 text-base">
-                            {currentUser?.first_name} {currentUser?.last_name}
+                            {email}
                           </Text>
                         </View>
                       </View>
