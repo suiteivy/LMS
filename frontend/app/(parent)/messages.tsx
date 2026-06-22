@@ -117,7 +117,7 @@ export default function ParentMessagingPage() {
       <UnifiedHeader
         title="Intelligence"
         subtitle="Secure Inbox"
-        role="Parent"
+        role="Parent/Guardian"
         showNotification={false}
         onBack={screen !== "list" ? () => { setScreen("list"); setViewItem(null); } : () => router.back()}
       />

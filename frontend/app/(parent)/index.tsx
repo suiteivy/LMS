@@ -8,6 +8,7 @@ import {
   BookOpen,
   Calendar,
   CheckCircle,
+  Clock,
   CreditCard,
   FileText,
   LogOut,
@@ -313,6 +314,13 @@ function ParentDashboard({ user, logout }: any) {
                   color="#0891b2"
                   isDark={isDark}
                   onPress={() => router.navigate("/(parent)/messages" as any)}
+                />
+                <QuickAction
+                  icon={Clock}
+                  label="Timetable"
+                  color="#eab308"
+                  isDark={isDark}
+                  onPress={() => goTo("/(parent)/timetable")}
                 />
                 {tier.hasDiary && (
                   <QuickAction

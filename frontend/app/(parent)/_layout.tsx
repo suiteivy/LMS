@@ -69,6 +69,9 @@ function ParentTabs() {
             )}
             <Tabs.Screen name="grades" options={{ href: null, headerShown: false }} />
             <Tabs.Screen name="attendance" options={{ href: null, headerShown: false }} />
+            <Tabs.Screen name="reports" options={{ href: null, headerShown: false }} />
+            <Tabs.Screen name="diary" options={{ href: null, headerShown: false }} />
+            <Tabs.Screen name="timetable" options={{ href: null, headerShown: false }} />
         </Tabs>
     );
 }

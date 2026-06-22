@@ -55,6 +55,7 @@ exports.getLinkedStudents = async (req, res) => {
         
         const enrichedStudents = students.map(s => ({
             ...s.student,
+            class_id: s.student.class_enrollments?.[0]?.class?.id || null,
             class_name: s.student.class_enrollments?.[0]?.class?.display_name || 'Unassigned'
         }));
 
