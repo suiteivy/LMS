@@ -322,8 +322,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const lastLoadedUserId = useRef<string | null>(null);
   const loadingUserId = useRef<string | null>(null);
 
-  const loadUserProfile = async (userId: string): Promise<UserProfile | null> => {
-    if ((lastLoadedUserId.current === userId && profile && !loading) || loadingUserId.current === userId) {
+  const loadUserProfile = async (userId: string, force: boolean = false): Promise<UserProfile | null> => {
+    if (!force && ((lastLoadedUserId.current === userId && profile && !loading) || loadingUserId.current === userId)) {
       if (loading) setLoading(false);
       return profile;
     }
@@ -443,7 +443,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   }
 
   const refreshProfile = async (): Promise<UserProfile | null> => {
-    if (user) return await loadUserProfile(user.id)
+    if (user) return await loadUserProfile(user.id, true)
     return null
   }
 

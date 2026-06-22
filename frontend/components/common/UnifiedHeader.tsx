@@ -36,6 +36,7 @@ export const UnifiedHeader: React.FC<UnifiedHeaderProps> = ({
   const { isDark } = useTheme();
   const { institutionName } = useAuth();
   const { width } = useWindowDimensions();
+  const { unreadCount, setShowNotifications } = useNotifications();
 
   const isMobile = width < 768;
 
@@ -200,10 +201,7 @@ export const UnifiedHeader: React.FC<UnifiedHeaderProps> = ({
                  )}
                  {/* Bell Icon for Notifications */}
                  <TouchableOpacity
-                   onPress={() => {
-                     // This will be handled by the parent component
-                     console.log('Bell icon pressed');
-                   }}
+                   onPress={() => setShowNotifications(true)}
                    style={{
                      marginLeft: 8,
                      backgroundColor: surface,
@@ -213,9 +211,28 @@ export const UnifiedHeader: React.FC<UnifiedHeaderProps> = ({
                      borderColor: surfaceBorder,
                      alignItems: 'center',
                      justifyContent: 'center',
+                     position: 'relative',
                    }}
                  >
                    <Ionicons name="notifications-outline" size={16} color={subtleIconColor} />
+                   {unreadCount > 0 && (
+                     <View style={{
+                       position: 'absolute',
+                       top: -2,
+                       right: -2,
+                       backgroundColor: '#ef4444',
+                       borderRadius: 99,
+                       minWidth: 16,
+                       height: 16,
+                       alignItems: 'center',
+                       justifyContent: 'center',
+                       paddingHorizontal: 4,
+                     }}>
+                       <Text style={{ color: '#fff', fontSize: 9, fontWeight: '700' }}>
+                         {unreadCount > 99 ? '99+' : unreadCount}
+                       </Text>
+                     </View>
+                   )}
                  </TouchableOpacity>
                </View>
             )}
@@ -226,6 +243,41 @@ export const UnifiedHeader: React.FC<UnifiedHeaderProps> = ({
         {!isMobile && (
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
             {rightActions}
+
+            {/* Bell Icon for Notifications (Desktop) */}
+            <TouchableOpacity
+              onPress={() => setShowNotifications(true)}
+              style={{
+                backgroundColor: surface,
+                padding: 8,
+                borderRadius: 12,
+                borderWidth: 1,
+                borderColor: surfaceBorder,
+                alignItems: 'center',
+                justifyContent: 'center',
+                position: 'relative',
+              }}
+            >
+              <Ionicons name="notifications-outline" size={18} color={subtleIconColor} />
+              {unreadCount > 0 && (
+                <View style={{
+                  position: 'absolute',
+                  top: -3,
+                  right: -3,
+                  backgroundColor: '#ef4444',
+                  borderRadius: 99,
+                  minWidth: 18,
+                  height: 18,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  paddingHorizontal: 5,
+                }}>
+                  <Text style={{ color: '#fff', fontSize: 10, fontWeight: '700' }}>
+                    {unreadCount > 99 ? '99+' : unreadCount}
+                  </Text>
+                </View>
+              )}
+            </TouchableOpacity>
             
             {institutionName && (
               <View style={{

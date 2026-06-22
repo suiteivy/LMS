@@ -111,7 +111,7 @@ export default function StudentProfile() {
 
       await refreshProfile();
       // Refresh student details using the existing loadStudentData function
-      loadStudentData();
+      await loadStudentData();
 
       setIsEditing(false);
       Alert.alert("Success", "Profile updated successfully");

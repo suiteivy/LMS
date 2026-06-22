@@ -13,7 +13,7 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { formatDistanceToNow } from 'date-fns';
 
 const Notifications = ({ visible, onClose }: NotificationProps) => {
-  const { notifications, unreadCount, markAllAsRead, refreshNotifications, loading, clearAll, deleteNotification } = useNotifications();
+  const { notifications, unreadCount, markAsRead, markAllAsRead, refreshNotifications, loading, clearAll, deleteNotification } = useNotifications();
   const { isDark } = useTheme();
 
   const tokens = {
@@ -122,11 +122,8 @@ const Notifications = ({ visible, onClose }: NotificationProps) => {
                   key={item.id}
                   activeOpacity={0.7}
                   onPress={() => {
-                    // Mark as read when clicked
                     if (!item.is_read) {
-                      // We need to call markAsRead, but it's not exported from the context
-                      // For now, we'll just log it
-                      console.log('Marking notification as read:', item.id);
+                      markAsRead(item.id);
                     }
                   }}
                   style={{
