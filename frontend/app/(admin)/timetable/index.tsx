@@ -391,7 +391,7 @@ export default function TimetableBuilder() {
         };
     }, [isDark]);
 
-    const styles = React.useMemo(() => getStyles(colors), [colors]);
+    const styles = React.useMemo(() => getStyles(colors), [colors]) as any;
 
     // Data state
     const [loading, setLoading] = useState(true);
@@ -443,6 +443,20 @@ export default function TimetableBuilder() {
             console.error("fetchAllEntries:", e);
         }
     }, [institutionId]);
+
+    const handleRefresh = async () => {
+        try {
+            const classList = await ClassAPI.getClasses();
+            setClasses(classList);
+        } catch (e) {
+            console.error("handleRefresh getClasses:", e);
+        }
+        await fetchAllEntries();
+        if (selectedClassId) {
+            await fetchClassTimetable(selectedClassId);
+            await fetchClassSubjects(selectedClassId);
+        }
+    };
 
     // Live Updates for Timetable changes
     useRealtimeQuery('timetables', () => {
@@ -611,7 +625,7 @@ export default function TimetableBuilder() {
                 role="Admin"
                 onBack={() => router.back()}
                 rightActions={
-                    <TouchableOpacity onPress={fetchAllEntries} style={styles.iconBtn}>
+                    <TouchableOpacity onPress={handleRefresh} style={styles.iconBtn}>
                         <RefreshCw size={18} color={colors.textSub} />
                     </TouchableOpacity>
                 }
@@ -629,7 +643,7 @@ export default function TimetableBuilder() {
                                 onPress={() => setSelectedClassId(cls.id)}
                                 activeOpacity={0.7}
                             >
-                                <Text style={[styles.chipText, active && styles.chipTextActive]}>{cls.name}</Text>
+                                <Text style={[styles.chipText, active && styles.chipTextActive]}>{cls.display_name || cls.name}</Text>
                             </TouchableOpacity>
                         );
                     })}
@@ -741,13 +755,9 @@ export default function TimetableBuilder() {
                                             <Text style={styles.slotMetaText}>
                                                 {slot.start_time.slice(0, 5)} – {slot.end_time.slice(0, 5)}
                                             </Text>
-                                            {slot.room_number ? (
-                                                <>
-                                                    <Text style={styles.slotMetaDot}>·</Text>
-                                                    <MapPin size={11} color={colors.textSub} />
-                                                    <Text style={styles.slotMetaText}>Room {slot.room_number}</Text>
-                                                </>
-                                            ) : null}
+                                            {slot.room_number ? <Text style={styles.slotMetaDot}>·</Text> : null}
+                                            {slot.room_number ? <MapPin size={11} color={colors.textSub} /> : null}
+                                            {slot.room_number ? <Text style={styles.slotMetaText}>Room {slot.room_number}</Text> : null}
                                         </View>
 
                                         <View style={styles.slotTeacherRow}>
@@ -791,7 +801,7 @@ export default function TimetableBuilder() {
                             <View>
                                 <Text style={styles.modalTitle}>{editingEntry ? "Edit Slot" : "Add Schedule Slot"}</Text>
                                 <Text style={styles.modalSub}>
-                                    {selectedClass?.name ?? "Selected class"} · Conflicts checked on save
+                                    {selectedClass?.display_name || selectedClass?.name || "Selected class"} · Conflicts checked on save
                                 </Text>
                             </View>
                             <TouchableOpacity style={styles.modalCloseBtn} onPress={() => setIsAddModalVisible(false)}>

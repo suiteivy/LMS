@@ -397,14 +397,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setIsInitializing(true);
       try {
         const sessionPromise = supabase.auth.getSession();
-        const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('getSession timeout')), 6000));
+        const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('getSession timeout')), 15000));
 
         const { data: { session: initialSession } } = await Promise.race([sessionPromise, timeoutPromise]) as any;
 
         if (initialSession) {
           // Race protection: timeout for getUser
           const userPromise = supabase.auth.getUser();
-          const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('getUser timeout')), 8000));
+          const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('getUser timeout')), 15000));
 
           try {
             const { data: { user: validatedUser } } = await Promise.race([userPromise, timeoutPromise]) as any;
@@ -441,11 +441,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
     const watchdog = setTimeout(() => {
       if (isInitializing || loading) {
-        console.warn(`[AuthContext] Watchdog triggered (8s limit): clearing stuck loading states. Initializing: ${isInitializing}, Loading: ${loading}`);
+        console.warn(`[AuthContext] Watchdog triggered (20s limit): clearing stuck loading states. Initializing: ${isInitializing}, Loading: ${loading}`);
         setIsInitializing(false);
         setLoading(false);
       }
-    }, 8000);
+    }, 20000);
 
     initializeAuth();
 

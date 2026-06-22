@@ -41,7 +41,6 @@ exports.getLinkedStudents = async (req, res) => {
                 student:students(
                     id, 
                     grade_level, 
-                    display_name,
                     institution_id,
                     users(first_name, last_name, full_name, avatar_url, email),
                     class_enrollments(
@@ -195,7 +194,7 @@ exports.getStudentBursaries = async (req, res) => {
         const { data, error } = await supabase
             .from("bursary_applications")
             .select(`
-                id, status, amount_awarded, notes, created_at,
+                id, status, amount_awarded, notes, applied_at,
                 bursary:bursaries (
                     id, title, description, amount, deadline, status
                 )
@@ -203,7 +202,7 @@ exports.getStudentBursaries = async (req, res) => {
             .eq("student_id", studentId)
             .eq("institution_id", institution_id)
             .eq("status", "approved")
-            .order("created_at", { ascending: false });
+            .order("applied_at", { ascending: false });
 
         if (error) throw error;
         res.json(data);
