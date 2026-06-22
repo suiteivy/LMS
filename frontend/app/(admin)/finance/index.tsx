@@ -12,6 +12,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { RefreshControl, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { useRealtimeQuery } from '@/hooks/useRealtimeQuery';
 
 const TABS = [
     { key: 'payments', label: 'Payments' },
@@ -34,10 +35,6 @@ export default function FinanceDashboard() {
 
     const { isDemo, profile } = useAuth();
     const tier = useSubscriptionTier();
-
-    useEffect(() => {
-        fetchAllData();
-    }, [isDemo]);
 
     const fetchAllData = async () => {
         try {
@@ -70,17 +67,8 @@ export default function FinanceDashboard() {
                 FinanceService.getFeeStructures()
             ]);
 
-            const transformedPayments = (paymentsData as any[])?.map(p => ({
-                ...p,
-                student_name: p.student?.user?.full_name,
-                student_display_id: p.student?.id
-            })) || [];
-
-            const transformedPayouts = (payoutsData as any[])?.map(p => ({
-                ...p,
-                teacher_name: p.teacher?.user?.full_name,
-                teacher_display_id: p.teacher?.id
-            })) || [];
+            const transformedPayments = paymentsData || [];
+            const transformedPayouts = payoutsData || [];
 
             setPayments(transformedPayments);
             setPayouts(transformedPayouts);
@@ -91,6 +79,15 @@ export default function FinanceDashboard() {
             setLoading(false);
         }
     };
+
+    useEffect(() => {
+        fetchAllData();
+    }, [isDemo]);
+
+    // Real-time synchronization
+    useRealtimeQuery('financial_transactions', fetchAllData);
+    useRealtimeQuery('payments', fetchAllData);
+    useRealtimeQuery('teacher_payouts', fetchAllData);
 
     const handlePaymentSubmit = async (paymentData: Omit<Payment, "id">) => {
         try {

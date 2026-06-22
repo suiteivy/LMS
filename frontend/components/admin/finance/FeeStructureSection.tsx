@@ -1,6 +1,7 @@
 import { useTheme } from "@/contexts/ThemeContext";
 import { FeeStructure } from "@/types/types";
 import React, { useState } from "react";
+import { formatCurrency } from "@/utils/currency";
 import {
   Alert,
   Modal,
@@ -97,7 +98,7 @@ const FeeStructureSection: React.FC<FeeStructureSectionProps> = ({
   };
 
   const formatAmount = (amount: number) =>
-    new Intl.NumberFormat("en-KE", { style: "currency", currency: "KES" }).format(amount ?? 0);
+    formatCurrency(amount ?? 0);
 
   const renderFeeStructureItem = ({ item }: { item: FeeStructure }) => {
     // Support both old (Subject_name / base_fee) and new (title / amount) shapes
@@ -225,7 +226,7 @@ const FeeStructureSection: React.FC<FeeStructureSectionProps> = ({
           />
 
           {/* Amount */}
-          <Text className="text-gray-700 dark:text-gray-300 font-bold mb-2 uppercase text-[10px] tracking-widest">Amount (KES) *</Text>
+          <Text className="text-gray-700 dark:text-gray-300 font-bold mb-2 uppercase text-[10px] tracking-widest">Amount (KSh) *</Text>
           <TextInput
             value={formData.amount}
             onChangeText={v => setFormData(p => ({ ...p, amount: v }))}

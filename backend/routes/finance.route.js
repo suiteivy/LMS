@@ -23,7 +23,7 @@ router.get("/funds", authMiddleware, authorizeRoles(['admin', 'bursary', 'master
 router.post("/funds", authMiddleware, authorizeRoles(['admin', 'bursary', 'master_admin']), createFund);
 
 // Allocations
-router.get("/allocations", authMiddleware, authorizeRoles(['admin', 'bursary', 'master_admin']), getAllocations);
+router.get("/allocations/:fund_id", authMiddleware, authorizeRoles(['admin', 'bursary', 'master_admin']), getAllocations);
 router.post("/allocations", authMiddleware, authorizeRoles(['admin', 'bursary', 'master_admin']), createAllocation);
 
 // Transactions (Unified Replacement for Payments/Payouts)

@@ -14,18 +14,26 @@ export class FinanceService {
         const response = await api.get(url);
 
         // Map FinancialTransaction -> Payment
-        return response.data.map((tx: any) => ({
-            id: tx.id,
-            student_id: tx.students?.id || tx.user_id,
-            student_name: tx.users?.first_name || tx.users?.full_name || 'Unknown',
-            student_display_id: tx.students?.id || tx.user_id,
-            amount: tx.amount,
-            payment_date: tx.date || tx.created_at,
-            payment_method: tx.method || tx.payment_method,
-            status: tx.status,
-            reference_number: tx.meta?.reference_number,
-            notes: tx.meta?.notes
-        }));
+        return response.data.map((tx: any) => {
+            const userObj = tx.users;
+            const student_name = userObj?.first_name 
+                ? `${userObj.first_name} ${userObj.last_name || ''}`.trim() 
+                : (userObj?.full_name || 'Unknown');
+            const student_id = userObj?.students?.[0]?.id || tx.user_id;
+            
+            return {
+                id: tx.id,
+                student_id,
+                student_name,
+                student_display_id: student_id,
+                amount: tx.amount,
+                payment_date: tx.date || tx.created_at,
+                payment_method: tx.method || tx.payment_method,
+                status: tx.status,
+                reference_number: tx.meta?.reference_number,
+                notes: tx.meta?.notes
+            };
+        });
     }
 
     static async recordPayment(paymentData: any) {
@@ -41,18 +49,26 @@ export class FinanceService {
         const response = await api.get(url);
 
         // Map FinancialTransaction -> TeacherPayout
-        return response.data.map((tx: any) => ({
-            id: tx.id,
-            teacher_id: tx.users?.teachers?.[0]?.id || tx.user_id,
-            teacher_name: tx.users?.first_name || tx.users?.full_name || 'Unknown',
-            teacher_display_id: tx.users?.teachers?.[0]?.id,
-            amount: tx.amount,
-            period_start: tx.date, // Approximate
-            period_end: tx.date,
-            status: tx.status,
-            payment_date: tx.date || tx.created_at,
-            // Meta fields if needed
-        }));
+        return response.data.map((tx: any) => {
+            const userObj = tx.users;
+            const teacher_name = userObj?.first_name 
+                ? `${userObj.first_name} ${userObj.last_name || ''}`.trim() 
+                : (userObj?.full_name || 'Unknown');
+            const teacher_id = userObj?.teachers?.[0]?.id || tx.user_id;
+
+            return {
+                id: tx.id,
+                teacher_id,
+                teacher_name,
+                teacher_display_id: teacher_id,
+                amount: tx.amount,
+                period_start: tx.date, // Approximate
+                period_end: tx.date,
+                status: tx.status,
+                payment_date: tx.date || tx.created_at,
+                // Meta fields if needed
+            };
+        });
     }
 
     static async processPayout(payoutId: string) {

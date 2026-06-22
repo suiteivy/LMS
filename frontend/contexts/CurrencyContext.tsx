@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { formatCurrency } from '../utils/currency';
 import { SettingsService, ExchangeRates } from '@/services/SettingsService';
 import { useAuth } from './AuthContext';
 
@@ -44,12 +45,7 @@ export const CurrencyProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     };
 
     const formatKES = (amount: number) => {
-        return new Intl.NumberFormat('en-KE', {
-            style: 'currency',
-            currency: 'KES',
-            minimumFractionDigits: 0,
-            maximumFractionDigits: 0,
-        }).format(amount).replace('KES', 'KSh');
+        return formatCurrency(amount);
     };
 
     const formatUSD = (amount: number) => {

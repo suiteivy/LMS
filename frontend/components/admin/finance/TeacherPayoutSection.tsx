@@ -1,5 +1,6 @@
 import { useTheme } from '@/contexts/ThemeContext';
 import React, { useEffect, useState } from 'react';
+import { formatCurrency } from '@/utils/currency';
 import {
   Alert,
   Modal,
@@ -38,10 +39,7 @@ const TeacherPayoutSection: React.FC<TeacherPayoutSectionProps> = ({
   }, [payouts]);
 
   const formatAmount = (amount: number) => {
-    return new Intl.NumberFormat('en-KE', {
-      style: 'currency',
-      currency: 'KES',
-    }).format(amount);
+    return formatCurrency(amount);
   };
 
   const getStatusColor = (status: TeacherPayout['status']) => {

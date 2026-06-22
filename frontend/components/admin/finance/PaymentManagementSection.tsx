@@ -1,5 +1,6 @@
 import { EmptyState } from "@/components/common/EmptyState";
 import { useTheme } from "@/contexts/ThemeContext";
+import { formatCurrency } from "@/utils/currency";
 import { supabase } from "@/libs/supabase";
 import { Payment } from "@/types/types";
 import { Ionicons } from "@expo/vector-icons";
@@ -176,14 +177,7 @@ const PaymentManagementSection: React.FC<
 
   const formatAmount = (amount: number | null | undefined) => {
     if (amount === null || amount === undefined) return "KSh 0.00";
-    try {
-      return new Intl.NumberFormat("en-KE", {
-        style: "currency",
-        currency: "KES",
-      }).format(amount);
-    } catch (e) {
-      return `KSh ${amount}`;
-    }
+    return formatCurrency(amount);
   };
 
   const getStatusColor = (status: Payment["status"]) => {
@@ -584,7 +578,7 @@ const PaymentManagementSection: React.FC<
 
               <View>
                 <Text className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Amount (KES) *
+                  Amount (KSh) *
                 </Text>
                 <TextInput
                   value={formData.amount}

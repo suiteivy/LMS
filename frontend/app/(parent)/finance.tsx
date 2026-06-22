@@ -10,10 +10,11 @@ import { supabase } from "@/utils/supabase";
 import { FinanceService } from "@/services/FinanceService";
 import { X, CheckCircle2, Upload } from "lucide-react-native";
 import { BlurView } from "expo-blur";
+import { formatCurrency } from "@/utils/currency";
+import { useRealtimeQuery } from "@/hooks/useRealtimeQuery";
 
 
-const formatCurrency = (amount: number) =>
-  `KES ${Number(amount || 0).toLocaleString("en-KE")}`;
+// Standard formatCurrency utility imported from @/utils/currency
 
 export default function StudentFinancePage() {
   const { studentId, studentName } = useLocalSearchParams<{ studentId: string; studentName?: string }>();
@@ -78,6 +79,10 @@ export default function StudentFinancePage() {
     fetchFeeStructures();
   }, [studentId]);
 
+  // Real-time synchronization for parent fee statement screen
+  useRealtimeQuery('financial_transactions', fetchFinanceData);
+  useRealtimeQuery('payments', fetchFinanceData);
+
 
   const onRefresh = () => {
     setRefreshing(true);
@@ -91,7 +96,7 @@ export default function StudentFinancePage() {
         <UnifiedHeader
           title={studentName ? `${studentName}'s Finance` : "Finance"}
           subtitle="Fee Statement"
-          role="Parent"
+          role="Parent/Guardian"
           onBack={() => router.back()}
           showNotification={false}
         />
@@ -139,7 +144,7 @@ export default function StudentFinancePage() {
       <UnifiedHeader
         title={studentName ? `${studentName}'s Finance` : "Finance"}
         subtitle="Fee Statement"
-        role="Parent"
+        role="Parent/Guardian"
         onBack={() => router.back()}
         showNotification={false}
       />
@@ -429,7 +434,7 @@ export default function StudentFinancePage() {
 
                 {/* Amount Input */}
                 <View>
-                  <Text className="text-gray-500 dark:text-gray-400 text-[10px] font-black uppercase tracking-[2px] mb-3 ml-1">Amount Paid (KES)</Text>
+                  <Text className="text-gray-500 dark:text-gray-400 text-[10px] font-black uppercase tracking-[2px] mb-3 ml-1">Amount Paid (KSh)</Text>
                   <TextInput
                     value={amount}
                     onChangeText={setAmount}

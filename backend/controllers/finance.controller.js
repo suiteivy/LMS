@@ -131,7 +131,22 @@ exports.getTransactions = async (req, res) => {
 
         let query = supabase
             .from("financial_transactions")
-            .select("*")
+            .select(`
+                *,
+                users (
+                    id,
+                    first_name,
+                    last_name,
+                    full_name,
+                    role,
+                    students (
+                        id
+                    ),
+                    teachers (
+                        id
+                    )
+                )
+            `)
             .eq("institution_id", institution_id)
             .order("date", { ascending: false });
 
@@ -166,6 +181,17 @@ exports.processTransaction = async (req, res) => {
 
         if (!['admin', 'bursary', 'master_admin'].includes(userRole)) return res.status(403).json({ error: "Unauthorized" });
 
+        const { data: tx, error: fetchError } = await supabase
+            .from("financial_transactions")
+            .select("*")
+            .eq("id", id)
+            .eq("institution_id", institution_id)
+            .single();
+
+        if (fetchError || !tx) {
+            return res.status(404).json({ error: "Transaction not found" });
+        }
+
         const { data, error } = await supabase
             .from("financial_transactions")
             .update({ status: 'completed', updated_at: new Date().toISOString() })
@@ -175,6 +201,19 @@ exports.processTransaction = async (req, res) => {
             .single();
 
         if (error) throw error;
+
+        if (data.type === 'salary_payout' && data.reference_id) {
+            await supabase
+                .from('teacher_payouts')
+                .update({ 
+                    status: 'paid', 
+                    payout_date: new Date().toISOString(),
+                    updated_at: new Date().toISOString()
+                })
+                .eq('id', data.reference_id)
+                .eq('institution_id', institution_id);
+        }
+
         res.json(data);
     } catch (err) {
         console.error("Process transaction error:", err);
@@ -225,8 +264,12 @@ exports.recordFeePayment = async (req, res) => {
         const { userRole, institution_id } = req;
         if (!['admin', 'master_admin'].includes(userRole)) return res.status(403).json({ error: "Unauthorized" });
         const { student_id, amount, payment_method, reference_number, notes } = req.body;
-        // Verify student exists and get user_id
-        const { data: student, error: studentError } = await supabase.from('students').select('id,user_id').eq('id', student_id).single();
+        // Verify student exists and get details including institution_id
+        const { data: student, error: studentError } = await supabase
+            .from('students')
+            .select('id, user_id, institution_id, fee_balance')
+            .eq('id', student_id)
+            .single();
 
         if (studentError) {
             console.error("Student lookup error:", studentError);
@@ -237,22 +280,37 @@ exports.recordFeePayment = async (req, res) => {
         if (student.institution_id !== institution_id) return res.status(403).json({ error: "Access denied: Student belongs to another institution" });
 
         const { data, error } = await supabase
-            .from("financial_transactions")
+            .from("payments")
             .insert([{
                 institution_id,
-                user_id: student.user_id,
-                type: 'fee_payment',
-                direction: 'inflow',
+                student_id,
                 amount,
-                method: payment_method,
-                meta: { notes, reference_number }
+                payment_method,
+                reference_number,
+                payment_date: new Date().toISOString(),
+                status: 'completed',
+                is_evidence_confirmed: true,
+                admin_notes: notes
             }])
-            .select("*, users(first_name, last_name, full_name)")
+            .select(`
+                *,
+                students (
+                    users (
+                        first_name,
+                        last_name,
+                        full_name
+                    )
+                )
+            `)
             .single();
 
         if (error) throw error;
-        // Attach student_name to response for frontend
-        const student_name = data?.users?.first_name ? `${data.users.first_name} ${data.users.last_name || ''}`.trim() : (data?.users?.full_name || "");
+        
+        const userObj = data?.students?.users;
+        const student_name = userObj?.first_name 
+            ? `${userObj.first_name} ${userObj.last_name || ''}`.trim() 
+            : (userObj?.full_name || "");
+            
         const response = {
             ...data,
             student_name
@@ -399,6 +457,22 @@ exports.confirmPaymentEvidence = async (req, res) => {
 
         const { payment_id, action, admin_notes } = req.body;
         const isApproved = action === 'approve';
+
+        // Get payment first to check current status and prevent double approvals
+        const { data: payment, error: fetchPaymentError } = await supabase
+            .from("payments")
+            .select("status")
+            .eq("id", payment_id)
+            .eq("institution_id", institution_id)
+            .single();
+
+        if (fetchPaymentError || !payment) {
+            return res.status(404).json({ error: "Payment not found" });
+        }
+
+        if (payment.status === 'completed') {
+            return res.status(400).json({ error: "Payment has already been approved" });
+        }
 
         // Get admin ID
         const { data: admin } = await supabase.from('admins').select('id').eq('user_id', userId).single();
