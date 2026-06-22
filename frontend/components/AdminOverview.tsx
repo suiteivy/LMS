@@ -1,12 +1,18 @@
 import { useAuth } from "@/contexts/AuthContext";
+import { useNotifications } from "@/contexts/NotificationContext";
 import { useTheme } from "@/contexts/ThemeContext";
-import { Activity, AlertCircle, CheckCircle, Clock, Server, ShieldCheck, Users } from "lucide-react-native";
+import { formatDistanceToNow } from 'date-fns';
+import { Activity, AlertCircle, Bell, CheckCircle, Clock, Info, Server, Users } from "lucide-react-native";
 import React from "react";
 import { ScrollView, Text, View } from "react-native";
 
 export default function AdminOverview() {
     const { profile } = useAuth();
     const { isDark } = useTheme();
+    const { notifications } = useNotifications();
+
+    // Show the 5 most recent notifications as system alerts
+    const recentAlerts = notifications.slice(0, 5);
 
     const tokens = {
         bg: isDark ? "#000000" : "#ffffff",
@@ -84,6 +90,14 @@ export default function AdminOverview() {
         );
     };
 
+    const getAlertIcon = (type: string) => {
+        if (type === 'success') return <CheckCircle size={18} color="#16a34a" />;
+        if (type === 'error')   return <AlertCircle size={18} color="#ef4444" />;
+        if (type === 'warning') return <AlertCircle size={18} color="#f59e0b" />;
+        if (type === 'info')    return <Info size={18} color="#3b82f6" />;
+        return <Bell size={18} color={tokens.textMuted} />;
+    };
+
     return (
         <View style={{ flex: 1, backgroundColor: tokens.bg }}>
             <ScrollView style={{ flex: 1, backgroundColor: tokens.bg }}>
@@ -99,7 +113,7 @@ export default function AdminOverview() {
                         <StatCard icon={Users}    label="Active Sessions" value="1"           colorKey="orange" />
                     </View>
 
-                    {/* System Alerts */}
+                    {/* System Alerts — real data from notifications */}
                     <Text style={{ fontSize: 18, fontWeight: "700", color: tokens.textPrimary, marginBottom: 16, paddingHorizontal: 4 }}>
                         System Alerts
                     </Text>
@@ -117,29 +131,43 @@ export default function AdminOverview() {
                             elevation: isDark ? 0 : 2,
                         }}
                     >
-                        <View
-                            style={{
-                                flexDirection: "row",
-                                alignItems: "center",
-                                marginBottom: 12,
-                                paddingBottom: 12,
-                                borderBottomWidth: 1,
-                                borderBottomColor: tokens.divider,
-                            }}
-                        >
-                            <CheckCircle size={18} color="#16a34a" />
-                            <Text style={{ color: tokens.textSecondary, fontWeight: "500", marginLeft: 12, flex: 1 }}>
-                                System update completed successfully
-                            </Text>
-                            <Text style={{ color: tokens.textMuted, fontSize: 12 }}>2h ago</Text>
-                        </View>
-                        <View style={{ flexDirection: "row", alignItems: "center" }}>
-                            <AlertCircle size={18} color="#f59e0b" />
-                            <Text style={{ color: tokens.textSecondary, fontWeight: "500", marginLeft: 12, flex: 1 }}>
-                                New login detected from current device
-                            </Text>
-                            <Text style={{ color: tokens.textMuted, fontSize: 12 }}>Just now</Text>
-                        </View>
+                        {recentAlerts.length === 0 ? (
+                            <View style={{ flexDirection: "row", alignItems: "center", paddingVertical: 8 }}>
+                                <CheckCircle size={18} color="#16a34a" />
+                                <Text style={{ color: tokens.textSecondary, fontWeight: "500", marginLeft: 12, flex: 1 }}>
+                                    All systems running smoothly — no recent alerts
+                                </Text>
+                            </View>
+                        ) : (
+                            recentAlerts.map((alert, index) => (
+                                <View
+                                    key={alert.id}
+                                    style={{
+                                        flexDirection: "row",
+                                        alignItems: "center",
+                                        ...(index < recentAlerts.length - 1 ? {
+                                            marginBottom: 12,
+                                            paddingBottom: 12,
+                                            borderBottomWidth: 1,
+                                            borderBottomColor: tokens.divider,
+                                        } : {}),
+                                    }}
+                                >
+                                    {getAlertIcon(alert.type)}
+                                    <View style={{ flex: 1, marginLeft: 12 }}>
+                                        <Text style={{ color: tokens.textPrimary, fontWeight: "600", fontSize: 13 }}>
+                                            {alert.title}
+                                        </Text>
+                                        <Text style={{ color: tokens.textSecondary, fontSize: 12, marginTop: 2 }} numberOfLines={1}>
+                                            {alert.message}
+                                        </Text>
+                                    </View>
+                                    <Text style={{ color: tokens.textMuted, fontSize: 11, marginLeft: 8 }}>
+                                        {formatDistanceToNow(new Date(alert.created_at), { addSuffix: true })}
+                                    </Text>
+                                </View>
+                            ))
+                        )}
                     </View>
 
                     {/* Footer */}

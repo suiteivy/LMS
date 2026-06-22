@@ -402,7 +402,7 @@ export default function MasterInstitutions() {
 
             const data = await res.json();
             if (res.ok) {
-                Toast.show({ type: 'success', text1: 'Free Access Granted', text2: `Free access granted for ${freeDays} days.` });
+                Toast.show({ type: 'success', text1: 'Beta Access Granted', text2: `Beta access granted for ${freeDays} days.` });
                 setFreeModalVisible(false);
                 fetchInstitutions(); // refresh list to show updated plan
             } else {
@@ -410,7 +410,7 @@ export default function MasterInstitutions() {
             }
         } catch (err) {
             console.error(err);
-            Toast.show({ type: 'error', text1: 'Error', text2: 'Failed to grant free access' });
+            Toast.show({ type: 'error', text1: 'Error', text2: 'Failed to grant Beta access' });
         } finally {
             setIsSubmitting(false);
         }
@@ -822,7 +822,7 @@ export default function MasterInstitutions() {
                             style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}
                         >
                             <MaterialCommunityIcons name="star-circle-outline" size={16} color={themeColors.primary} />
-                            <Text style={{ color: themeColors.primary, fontSize: 13, fontWeight: '600' }}>Grant Free Access</Text>
+                            <Text style={{ color: themeColors.primary, fontSize: 13, fontWeight: '600' }}>Grant Beta Access</Text>
                         </TouchableOpacity>
 
                         {/* Manage Add-ons: visible for all paid plans */}
@@ -1279,7 +1279,7 @@ export default function MasterInstitutions() {
             <Modal visible={freeModalVisible} animationType="fade" transparent>
                 <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', padding: 20 }}>
                     <View style={{ backgroundColor: themeColors.card, borderRadius: 20, padding: 24, width: '100%', maxWidth: 400 }}>
-                        <Text style={{ fontSize: 20, fontWeight: 'bold', color: themeColors.text, marginBottom: 8 }}>Grant Free Access</Text>
+                        <Text style={{ fontSize: 20, fontWeight: 'bold', color: themeColors.text, marginBottom: 8 }}>Grant Beta Access</Text>
                         <Text style={{ color: themeColors.subtext, fontSize: 14, marginBottom: 20 }}>
                             This provides the institution full &apos;Basic&apos; features for a limited time duration without payment.
                         </Text>

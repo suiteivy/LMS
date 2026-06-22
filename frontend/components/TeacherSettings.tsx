@@ -1,9 +1,10 @@
 import { useTheme } from "@/contexts/ThemeContext";
+import { SettingsService, UserPreferences } from "@/services/SettingsService";
 import { Bell, ChevronRight, ClipboardCheck, Globe, Lock, LucideIcon, User } from "lucide-react-native";
-import React, { ReactNode, useState } from "react";
-import { ScrollView, Switch, Text, TouchableOpacity, View } from "react-native";
+import React, { ReactNode, useEffect, useState } from "react";
+import { ActivityIndicator, ScrollView, Switch, Text, TouchableOpacity, View } from "react-native";
+import Toast from 'react-native-toast-message';
 import { ProfileEdit } from "./ProfileEdit";
-import { SettingsService } from "@/services/SettingsService";
 import { ChangePasswordModal } from "./shared/ChangePasswordModal";
 
 interface SettingRowProps {
@@ -16,11 +17,45 @@ interface SettingRowProps {
 }
 
 export default function TeacherSettings() {
-    const [notifications, setNotifications] = useState(true)
-    const [submissionAlerts, setSubmissionAlerts] = useState(true)
     const [showEditForm, setShowEditForm] = useState(false)
     const [showPasswordForm, setShowPasswordForm] = useState(false)
     const { isDark } = useTheme();
+
+    // Notification preferences — loaded from and persisted to backend
+    const [prefs, setPrefs] = useState<UserPreferences>({
+        push_notifications: true,
+        submission_alerts: true,
+        system_alerts: true,
+        email_notifications: true,
+    });
+    const [prefsLoading, setPrefsLoading] = useState(true);
+
+    useEffect(() => {
+        const loadPrefs = async () => {
+            try {
+                const data = await SettingsService.getPreferences();
+                setPrefs(data);
+            } catch (err) {
+                console.error('Failed to load preferences:', err);
+            } finally {
+                setPrefsLoading(false);
+            }
+        };
+        loadPrefs();
+    }, []);
+
+    const togglePref = async (key: keyof UserPreferences) => {
+        const newValue = !prefs[key];
+        setPrefs(prev => ({ ...prev, [key]: newValue }));
+        try {
+            await SettingsService.updatePreferences({ [key]: newValue });
+            Toast.show({ type: 'success', text1: 'Preferences Updated', text2: 'Your notification settings have been saved.', position: 'bottom' });
+        } catch (err) {
+            console.error('Failed to update preference:', err);
+            setPrefs(prev => ({ ...prev, [key]: !newValue }));
+            Toast.show({ type: 'error', text1: 'Update Failed', text2: 'Could not save your preferences.' });
+        }
+    };
 
     const SettingRow = ({ icon: Icon, title, onPress, isLast, children, isDark }: SettingRowProps) => (
         <TouchableOpacity
@@ -60,24 +95,28 @@ export default function TeacherSettings() {
                 </View>
 
                 <Text className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest ml-1 mb-2">Teaching Preferences</Text>
-                <View className="bg-white dark:bg-[#1a1a1a] rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm mb-6 overflow-hidden">
-                    <SettingRow icon={Bell} title="General Notifications" isDark={isDark}>
-                        <Switch
-                            value={notifications}
-                            onValueChange={setNotifications}
-                            trackColor={{ false: isDark ? "#374151" : "#e5e7eb", true: "#f97316" }}
-                            thumbColor="#ffffff"
-                        />
-                    </SettingRow>
-                    <SettingRow icon={ClipboardCheck} title="Submission Alerts" isLast isDark={isDark}>
-                        <Switch
-                            value={submissionAlerts}
-                            onValueChange={setSubmissionAlerts}
-                            trackColor={{ false: isDark ? "#374151" : "#e5e7eb", true: "#f97316" }}
-                            thumbColor="#ffffff"
-                        />
-                    </SettingRow>
-                </View>
+                {prefsLoading ? (
+                    <ActivityIndicator size="small" color="#FF6B00" style={{ marginBottom: 24 }} />
+                ) : (
+                    <View className="bg-white dark:bg-[#1a1a1a] rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm mb-6 overflow-hidden">
+                        <SettingRow icon={Bell} title="General Notifications" isDark={isDark}>
+                            <Switch
+                                value={prefs.push_notifications}
+                                onValueChange={() => togglePref('push_notifications')}
+                                trackColor={{ false: isDark ? "#374151" : "#e5e7eb", true: "#f97316" }}
+                                thumbColor="#ffffff"
+                            />
+                        </SettingRow>
+                        <SettingRow icon={ClipboardCheck} title="Submission Alerts" isLast isDark={isDark}>
+                            <Switch
+                                value={prefs.submission_alerts}
+                                onValueChange={() => togglePref('submission_alerts')}
+                                trackColor={{ false: isDark ? "#374151" : "#e5e7eb", true: "#f97316" }}
+                                thumbColor="#ffffff"
+                            />
+                        </SettingRow>
+                    </View>
+                )}
 
                 <ProfileEdit
                     visible={showEditForm}
