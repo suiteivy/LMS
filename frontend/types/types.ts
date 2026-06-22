@@ -439,6 +439,7 @@ export interface BackendBorrowedBook {
   due_date: string;
   returned_at?: string; // Changed from return_date
   status: "borrowed" | "overdue" | "returned" | "waiting" | "ready_for_pickup" | "rejected";
+  notes?: string;
 }
 
 export interface FrontendBorrowedBook {
@@ -464,6 +465,7 @@ export interface FrontendBorrowedBook {
   dueDate: Date;
   returnDate?: Date;
   status: "borrowed" | "overdue" | "returned" | "waiting" | "ready_for_pickup" | "rejected";
+  notes?: string;
 }
 
 export interface AddBookRequest {

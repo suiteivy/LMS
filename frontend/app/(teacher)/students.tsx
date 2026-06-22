@@ -45,13 +45,13 @@ export default function StudentsPage() {
         if (!teacherId) return;
         try {
             setLoading(true);
-            const { data: subjectsData, error: subError } = await supabase
+            const { data: subjectsData, error: subError } = (await supabase
                 .from('subjects')
                 .select('id, title, class_id')
-                .eq('teacher_id', teacherId as string);
+                .eq('teacher_id', teacherId as string)) as any;
 
             if (subError) throw subError;
-            const subjectIds = subjectsData.map(s => s.id).filter(Boolean) as string[];
+            const subjectIds = (subjectsData as any[]).map(s => s.id).filter(Boolean) as string[];
 
             const { data: enrollData, error: enrollError } = await supabase
                 .from('enrollments')
@@ -70,7 +70,7 @@ export default function StudentsPage() {
             if (enrollError) throw enrollError;
 
             const mappedStudents: Student[] = (enrollData || []).map((enroll: any) => {
-                const sub = subjectsData.find(s => s.id === enroll.subject_id);
+                const sub = (subjectsData as any[]).find((s: any) => s.id === enroll.subject_id);
                 return {
                     id: enroll.student?.id,
                     name: enroll.student?.user?.full_name || "Unknown",

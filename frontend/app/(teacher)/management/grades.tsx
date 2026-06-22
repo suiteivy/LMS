@@ -42,7 +42,7 @@ const GradeRow = ({ student, onGrade }: { student: StudentGrade; onGrade: (stude
                     <Text className="text-[#FF6900] text-[10px] font-bold uppercase tracking-wider">ID: {student.student_display_id}</Text>
                 )}
                 <Text className="text-gray-400 dark:text-gray-500 text-xs mt-0.5" numberOfLines={1}>
-                    {student.assignment_title} • {student.Subject_title}
+                    {student.assignment_title}{' \u2022 '}{student.Subject_title}
                 </Text>
             </View>
 
@@ -110,10 +110,10 @@ export default function GradesPage() {
 
     const fetchSubjects = async () => {
         if (!teacherId) return;
-        const { data } = await supabase
+        const { data } = (await supabase
             .from('subjects')
             .select('id, title')
-            .eq('teacher_id', teacherId);
+            .eq('teacher_id', teacherId)) as any;
         if (data) setSubjects(data);
     };
 
@@ -121,15 +121,15 @@ export default function GradesPage() {
         const subject = subjects.find(s => s.title === selectedSubject);
         if (!subject) return;
 
-        const { data } = await supabase
+        const { data } = (await supabase
             .from('assignments')
             .select('id, title, is_published')
-            .eq('subject_id', subject.id);
+            .eq('subject_id', subject.id)) as any;
 
         if (data) {
             setAssignments(data);
             if (selectedAssignmentId !== "All Assignments") {
-                const current = data.find(a => a.id === selectedAssignmentId);
+                const current = (data as any[]).find(a => a.id === selectedAssignmentId);
                 if (current) setIsPublished(current.is_published);
             }
         }
@@ -219,8 +219,8 @@ export default function GradesPage() {
         }
 
         try {
-            const { error } = await supabase
-                .from('submissions')
+            const { error } = await (supabase
+                .from('submissions') as any)
                 .update({
                     grade: score,
                     feedback: feedbackInput,
@@ -250,8 +250,8 @@ export default function GradesPage() {
 
         try {
             setUpdatingVisibility(true);
-            const { error } = await supabase
-                .from('assignments')
+            const { error } = await (supabase
+                .from('assignments') as any)
                 .update({ is_published: !isPublished })
                 .eq('id', selectedAssignmentId);
 

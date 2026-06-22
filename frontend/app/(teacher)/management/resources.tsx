@@ -41,7 +41,7 @@ const ResourceCard = ({ resource, onDelete }: { resource: Resource; onDelete: (i
                 <View className="flex-1">
                     <Text className="text-gray-900 font-bold text-base leading-tight" numberOfLines={1}>{resource.title}</Text>
                     <Text className="text-gray-400 text-[10px] font-bold uppercase tracking-wider mt-1">
-                        {resource.Subject_title || "Unknown"} • {resource.type}
+                        {resource.Subject_title || "Unknown"}{' \u2022 '}{resource.type}
                     </Text>
                 </View>
 

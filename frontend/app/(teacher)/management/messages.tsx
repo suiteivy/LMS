@@ -32,6 +32,8 @@ export default function MessagingPage() {
 
     // Compose state
     const [contacts, setContacts] = useState<any[]>([]);
+    const [initialContacts, setInitialContacts] = useState<any[]>([]);
+    const [loadingContacts, setLoadingContacts] = useState(false);
     const [contactSearchQuery, setContactSearchQuery] = useState("");
     const [selectedReceiver, setSelectedReceiver] = useState<any>(null);
     const [messageSubject, setMessageSubject] = useState("");
@@ -39,6 +41,24 @@ export default function MessagingPage() {
     const [sending, setSending] = useState(false);
 
     const { profile, isDemo } = useAuth();
+
+    const fetchInitialContacts = async () => {
+        try {
+            setLoadingContacts(true);
+            const [admins, teachers, parents] = await Promise.all([
+                MessageService.searchUsers('', 'admin'),
+                MessageService.searchUsers('', 'teacher'),
+                MessageService.searchUsers('', 'parent')
+            ]);
+            const combined = [...(admins || []), ...(teachers || []), ...(parents || [])];
+            setInitialContacts(combined);
+            setContacts(combined);
+        } catch (error) {
+            console.error("Error fetching initial contacts:", error);
+        } finally {
+            setLoadingContacts(false);
+        }
+    };
 
     const fetchMessages = async () => {
         try {
@@ -70,6 +90,7 @@ export default function MessagingPage() {
 
     useEffect(() => {
         fetchMessages();
+        fetchInitialContacts();
     }, [isDemo]);
 
     const onRefresh = () => {
@@ -79,19 +100,22 @@ export default function MessagingPage() {
 
     useEffect(() => {
         const searchContacts = async () => {
-            if (contactSearchQuery.length > 2) {
-                try {
-                    const res = await MessageService.searchUsers(contactSearchQuery);
-                    setContacts(res || []);
-                } catch (error) {
-                    console.error("Error searching users:", error);
-                }
-            } else {
-                setContacts([]);
+            const query = contactSearchQuery.trim();
+            if (query === "") {
+                setContacts(initialContacts);
+                return;
+            }
+            try {
+                const res = await MessageService.searchUsers(query);
+                // Filter contacts to only allow admins, teachers, and parents for teacher
+                const filtered = (res || []).filter((u: any) => u.role === 'admin' || u.role === 'teacher' || u.role === 'parent');
+                setContacts(filtered);
+            } catch (error) {
+                console.error("Error searching users:", error);
             }
         };
         searchContacts();
-    }, [contactSearchQuery]);
+    }, [contactSearchQuery, initialContacts]);
 
     const handleSendMessage = async () => {
         if (!selectedReceiver || !messageContent.trim()) return;
@@ -212,21 +236,29 @@ export default function MessagingPage() {
                                             onChangeText={setContactSearchQuery}
                                         />
                                     </View>
-                                    {contacts.map((item) => (
-                                        <TouchableOpacity
-                                            key={item.id}
-                                            className="flex-row items-center p-4 mb-2 bg-gray-50/50 dark:bg-gray-800/50 rounded-2xl border border-gray-100 dark:border-gray-800"
-                                            onPress={() => { setSelectedReceiver(item); setContactSearchQuery(""); }}
-                                        >
-                                            <View className="bg-white dark:bg-gray-900 p-2 rounded-xl border border-gray-100 dark:border-gray-800 mr-3">
-                                                <User size={20} color="#FF6900" />
-                                            </View>
-                                            <View>
-                                                <Text className="text-gray-900 dark:text-white font-bold text-sm">{item.full_name}</Text>
-                                                <Text className="text-gray-400 dark:text-gray-500 text-[8px] font-bold uppercase tracking-widest">{item.role}</Text>
-                                            </View>
-                                        </TouchableOpacity>
-                                    ))}
+                                    {loadingContacts ? (
+                                        <ActivityIndicator size="small" color="#FF6900" className="py-4" />
+                                    ) : contacts.length === 0 ? (
+                                        <View className="items-center py-8">
+                                            <Text className="text-gray-400 dark:text-gray-500 font-bold uppercase tracking-widest text-[9px] text-center">No matches found</Text>
+                                        </View>
+                                    ) : (
+                                        contacts.map((item) => (
+                                            <TouchableOpacity
+                                                key={item.id}
+                                                className="flex-row items-center p-4 mb-2 bg-gray-50/50 dark:bg-gray-800/50 rounded-2xl border border-gray-100 dark:border-gray-800"
+                                                onPress={() => { setSelectedReceiver(item); setContactSearchQuery(""); }}
+                                            >
+                                                <View className="bg-white dark:bg-gray-900 p-2 rounded-xl border border-gray-100 dark:border-gray-800 mr-3">
+                                                    <User size={20} color="#FF6900" />
+                                                </View>
+                                                <View>
+                                                    <Text className="text-gray-900 dark:text-white font-bold text-sm">{item.full_name}</Text>
+                                                    <Text className="text-gray-400 dark:text-gray-500 text-[8px] font-bold uppercase tracking-widest">{item.role}</Text>
+                                                </View>
+                                            </TouchableOpacity>
+                                        ))
+                                    )}
                                 </View>
                             ) : (
                                 <View className="bg-gray-900 dark:bg-[#1a1a1a] p-8 rounded-[40px] mb-8 shadow-xl">

@@ -380,7 +380,7 @@ const PaymentManagementSection: React.FC<
                       {item.students?.users?.full_name || "Unknown Student"}
                     </Text>
                     <Text className="text-[#FF6B00] text-[10px] font-black uppercase tracking-widest mt-1">
-                      {(item.payment_method || '').replace('_', ' ')} • {item.reference_number || 'No Ref'}
+                      {(item.payment_method || '').replace('_', ' ')}{' \u2022 '}{item.reference_number || 'No Ref'}
                     </Text>
                   </View>
                   <View className="bg-orange-50 dark:bg-orange-950/30 px-3 py-1 rounded-full border border-orange-100 dark:border-orange-900">

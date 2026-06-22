@@ -500,7 +500,7 @@ export default function AssignmentsPage() {
                     <body>
                         <div class="report-header">
                             <h1 class="report-title">Assignments Summary</h1>
-                            <div class="report-meta">Generated on ${new Date().toLocaleDateString()} • ${filteredAssignments.length} Assignments Found</div>
+                            <div class="report-meta">Generated on ${new Date().toLocaleDateString()} \u2022 ${filteredAssignments.length} Assignments Found</div>
                         </div>
 
                         <div class="summary-grid">
@@ -541,7 +541,7 @@ export default function AssignmentsPage() {
                         </table>
 
                         <div class="footer">
-                            Assignments Management Report • Confidential
+                            Assignments Management Report \u2022 Confidential
                         </div>
                     </body>
                 </html>
@@ -749,6 +749,8 @@ export default function AssignmentsPage() {
                                     {Platform.OS === 'web' ? (
                                         <input
                                             type="date"
+                                            aria-label="Due Date"
+                                            title="Due Date"
                                             value={dueDate}
                                             onChange={(e) => {
                                                 const v = e.target.value;

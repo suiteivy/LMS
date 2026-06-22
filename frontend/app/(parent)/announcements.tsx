@@ -54,9 +54,9 @@ export default function StudentAnnouncementsPage() {
   return (
     <View className="flex-1 bg-gray-50 dark:bg-navy">
       <UnifiedHeader
-        title="Intelligence"
+        title="Announcements"
         subtitle="Archives"
-        role="Parent"
+        role="Parent/Guardian"
         onBack={() => router.back()}
         showNotification={false}
       />

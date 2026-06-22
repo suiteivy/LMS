@@ -260,7 +260,7 @@ export default function Grades() {
     return (
         <View className="flex-1 bg-gray-50 dark:bg-navy">
             <UnifiedHeader
-                title="Intelligence"
+                title="Grades"
                 subtitle="Performance"
                 role="Student"
                 onBack={() => router.back()}

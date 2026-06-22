@@ -111,7 +111,7 @@ api.interceptors.response.use(
       message = data?.error || data?.message || message;
 
       if (data?.details && Array.isArray(data.details)) {
-        message = `${message}:\n• ${data.details.join('\n• ')}`;
+        message = `${message}:\n\u2022 ${data.details.join('\n\u2022 ')}`;
       }
 
       switch (status) {

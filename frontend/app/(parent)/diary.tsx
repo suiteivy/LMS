@@ -2,7 +2,7 @@ import { UnifiedHeader } from "@/components/common/UnifiedHeader";
 import { useAuth } from "@/contexts/AuthContext";
 import { DiaryAPI, DiaryEntry } from "@/services/DiaryService";
 import { ParentAPI } from "@/services/ParentService";
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import { BookOpen, Calendar, CheckCircle2, ChevronDown, Circle, User } from 'lucide-react-native';
 import React, { useEffect, useState } from "react";
 import { ActivityIndicator, Alert, ScrollView, Text, TouchableOpacity, View, Platform } from 'react-native';
@@ -89,6 +89,7 @@ const DiaryCard = ({ entry, onSign }: { entry: DiaryEntry; onSign: (id: string) 
 
 export default function ParentDiaryPage() {
     const { user } = useAuth();
+    const { studentId: paramStudentId } = useLocalSearchParams<{ studentId?: string }>();
     const [loading, setLoading] = useState(true);
     const [entries, setEntries] = useState<DiaryEntry[]>([]);
     const [students, setStudents] = useState<any[]>([]);
@@ -98,6 +99,12 @@ export default function ParentDiaryPage() {
     useEffect(() => {
         fetchLinkedStudents();
     }, []);
+
+    useEffect(() => {
+        if (paramStudentId && students.some(s => s.id === paramStudentId)) {
+            setSelectedStudentId(paramStudentId);
+        }
+    }, [paramStudentId, students]);
 
     useEffect(() => {
         if (selectedStudentId) {
@@ -110,7 +117,10 @@ export default function ParentDiaryPage() {
             const data = await ParentAPI.getLinkedStudents();
             setStudents(data);
             if (data && data.length > 0) {
-                setSelectedStudentId(data[0].student_id || data[0].students?.id);
+                const initialId = paramStudentId && data.some((s: any) => s.id === paramStudentId)
+                    ? paramStudentId
+                    : data[0].id;
+                setSelectedStudentId(initialId);
             }
         } catch (error) {
             console.error("Error fetching linked students:", error);
@@ -139,7 +149,7 @@ export default function ParentDiaryPage() {
         }
     };
 
-    const selectedStudentName = students.find(s => s.student_id === selectedStudentId || s.students?.id === selectedStudentId)?.students?.users?.full_name || "Select Student";
+    const selectedStudentName = students.find(s => s.id === selectedStudentId)?.users?.full_name || "Select Student";
 
     const handlePrint = async () => {
         if (!selectedStudentId || entries.length === 0) {
@@ -208,7 +218,7 @@ export default function ParentDiaryPage() {
                                     </div>
                                     <div class="entry-content">${e.content}</div>
                                     <div class="entry-footer">
-                                        Reported by Teacher: ${e.teacher?.users?.full_name || "School Authority"} • ${e.is_signed ? 'Acknowledged by Parent/Guardian' : 'Pending Acknowledgement'}
+                                        Reported by Teacher: ${e.teacher?.users?.full_name || "School Authority"} \u2022 ${e.is_signed ? 'Acknowledged by Parent/Guardian' : 'Pending Acknowledgement'}
                                     </div>
                                 </div>
                             `).join('')}
@@ -265,14 +275,14 @@ export default function ParentDiaryPage() {
                             <View className="absolute top-16 left-0 right-0 bg-white dark:bg-[#1a1a1a] border border-gray-100 dark:border-gray-800 rounded-[32px] shadow-2xl z-20 overflow-hidden">
                                 {students.map(s => (
                                     <TouchableOpacity
-                                        key={s.student_id || s.students?.id}
+                                        key={s.id}
                                         className="px-6 py-4 border-b border-gray-50 dark:border-gray-900 active:bg-gray-50 dark:active:bg-gray-900"
                                         onPress={() => {
-                                            setSelectedStudentId(s.student_id || s.students?.id);
+                                            setSelectedStudentId(s.id);
                                             setShowStudentDropdown(false);
                                         }}
                                     >
-                                        <Text className="text-gray-900 dark:text-gray-100 font-bold text-sm">{s.students?.users?.full_name}</Text>
+                                        <Text className="text-gray-900 dark:text-gray-100 font-bold text-sm">{s.users?.full_name}</Text>
                                     </TouchableOpacity>
                                 ))}
                             </View>

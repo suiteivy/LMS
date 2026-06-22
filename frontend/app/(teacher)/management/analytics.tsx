@@ -89,14 +89,14 @@ export default function AnalyticsPage() {
             const data = await TeacherAPI.getAnalytics();
             setSubjectAnalytics(data);
 
-            const { data: Subjects, error: SubjectsError } = await supabase
+            const { data: Subjects, error: SubjectsError } = (await supabase
                 .from('subjects')
                 .select('id, title, class_id')
-                .eq('teacher_id', (teacherId as string));
+                .eq('teacher_id', (teacherId as string))) as any;
 
             if (SubjectsError) throw SubjectsError;
 
-            const classIds = Subjects.map(s => s.class_id).filter(Boolean);
+            const classIds = (Subjects as any[]).map(s => s.class_id).filter(Boolean);
             if (classIds.length === 0) {
                 setTopPerformers([]);
                 setLoading(false);

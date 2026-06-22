@@ -83,7 +83,8 @@ export default function AdminDashboard() {
     addonLibrary,
     addonFinance,
     addonAnalytics,
-    addonBursary
+    addonBursary,
+    logout
   } = useAuth();
   const { stats, loading: statsLoading } = useDashboardStats();
   const { isDark } = useTheme();
@@ -166,7 +167,7 @@ export default function AdminDashboard() {
       <StatusBar barStyle={isDark ? "light-content" : "dark-content"} />
       <UnifiedHeader
         title="Welcome back,"
-        subtitle={profile?.first_name || profile?.full_name?.split(" ")[0] || "Administrator"}
+        subtitle={profile?.full_name || "Administrator"}
         role="Admin"
         showNotification={true}
         showMainBadge={isMain}
@@ -178,6 +179,32 @@ export default function AdminDashboard() {
         contentContainerStyle={{ paddingBottom: 100, padding: 24, paddingTop: 10 }}
       >
         <View>
+          {/* Log out link */}
+          <View className="flex-row justify-end mb-6 px-2">
+            <TouchableOpacity
+              onPress={async () => {
+                await logout();
+                router.replace("/(auth)/signIn");
+              }}
+              style={{
+                boxShadow: [{
+                  offsetX: 0,
+                  offsetY: 1,
+                  blurRadius: 2,
+                  color: isDark ? 'rgba(0, 0, 0, 0.4)' : 'rgba(0, 0, 0, 0.05)',
+                }],
+                shadowColor: "#000",
+                shadowOffset: { width: 0, height: 1 },
+                shadowOpacity: isDark ? 0.4 : 0.05,
+                shadowRadius: 2,
+                elevation: 1,
+              }}
+              className="flex-row items-center bg-white dark:bg-[#1a1a2e] px-4 py-2 rounded-2xl border border-gray-100 dark:border-gray-800"
+            >
+              <IconLogOut size={14} color="#ef4444" />
+              <Text className="ml-2 text-red-600 font-bold text-[10px] uppercase tracking-widest">Logout</Text>
+            </TouchableOpacity>
+          </View>
           <OnboardingTracker stats={stats} />
 
           <View className="flex-row mb-10">

@@ -130,7 +130,7 @@ export default function ManagementIndex() {
     return (
         <View className="flex-1 bg-gray-50 dark:bg-navy">
             <UnifiedHeader
-                title="Intelligence"
+                title="Management"
                 subtitle="Management"
                 role="Teacher"
                 onBack={() => router.back()}

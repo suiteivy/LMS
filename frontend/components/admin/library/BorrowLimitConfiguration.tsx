@@ -112,11 +112,11 @@ const BorrowLimitConfiguration: React.FC<BorrowLimitConfigurationProps> = ({
               <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: role.isActive ? '#10b981' : '#6b7280', marginRight: 8 }} />
               <View>
                 <Text style={{ fontSize: 16, fontWeight: 'bold', color: textPrimary }}>{role.name}</Text>
-                <Text style={{ fontSize: 11, color: textMuted }}>{role.maxBooks} books â€¢ {role.borrowDuration} days</Text>
+                <Text style={{ fontSize: 11, color: textMuted }}>{role.maxBooks} books{' \u2022 '}{role.borrowDuration} days</Text>
               </View>
             </View>
             <Text style={{ fontSize: 13, color: textSecondary, marginBottom: 4 }}>{role.description}</Text>
-            <Text style={{ fontSize: 11, color: '#FF6B00' }}>Max {role.maxBooks} books â€¢ {role.borrowDuration} days duration</Text>
+            <Text style={{ fontSize: 11, color: '#FF6B00' }}>Max {role.maxBooks} books{' \u2022 '}{role.borrowDuration} days duration</Text>
           </View>
           <Ionicons name={isExpanded ? "chevron-up" : "chevron-down"} size={20} color={textSecondary} />
         </TouchableOpacity>

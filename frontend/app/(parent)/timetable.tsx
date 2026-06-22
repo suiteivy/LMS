@@ -51,7 +51,7 @@ export default function ParentStudentTimetablePage() {
     return (
         <View className="flex-1 bg-gray-50 dark:bg-navy">
             <UnifiedHeader
-                title="Intelligence"
+                title="Timetable"
                 subtitle="Portal"
                 role="Parent/Guardian"
                 onBack={() => router.back()}

@@ -43,7 +43,7 @@ export default function StudentLibraryPage() {
         <UnifiedHeader
           title="Library"
           subtitle="Resource Access"
-          role="Parent"
+          role="Parent/Guardian"
           onBack={() => router.back()}
           showNotification={false}
         />
@@ -76,7 +76,7 @@ export default function StudentLibraryPage() {
       <UnifiedHeader
         title={studentName ? `${studentName}'s Library` : "Library"}
         subtitle="Borrowed Books"
-        role="Parent"
+        role="Parent/Guardian"
         onBack={() => router.back()}
         showNotification={false}
       />

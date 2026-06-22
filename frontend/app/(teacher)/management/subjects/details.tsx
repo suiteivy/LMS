@@ -380,7 +380,7 @@ function TeacherSubjectDetailsScreen() {
                                     </View>
                                     <View style={{ flex: 1, marginLeft: 16 }}>
                                         <Text style={{ color: textPrimary, fontWeight: "bold", fontSize: 14 }} numberOfLines={1}>{res.title}</Text>
-                                        <Text style={{ color: textMuted, fontSize: 11, marginTop: 2 }}>{res.size} • {res.status}</Text>
+                                        <Text style={{ color: textMuted, fontSize: 11, marginTop: 2 }}>{res.size}{' \u2022 '}{res.status}</Text>
                                     </View>
                                     <TouchableOpacity 
                                         onPress={() => handleDeleteResource(res.id)}

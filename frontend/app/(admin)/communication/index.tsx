@@ -661,7 +661,7 @@ export default function CommunicationPage() {
     return (
         <View className="flex-1" style={{ backgroundColor: bgContainer }}>
             <UnifiedHeader
-                title="Intelligence"
+                title="Communication"
                 subtitle="Communication"
                 role="Admin"
                 onBack={screen !== "list" ? () => { setScreen("list"); setSelectedParent(null); } : () => router.push("/(admin)")}

@@ -334,6 +334,7 @@ export class LibraryAPI {
         ? new Date(backendBorrow.returned_at)
         : undefined,
       status: backendBorrow.status,
+      notes: backendBorrow.notes,
     };
   }
 }

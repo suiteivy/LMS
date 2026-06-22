@@ -101,7 +101,7 @@ export default function StudentAttendancePage() {
       <UnifiedHeader
         title={studentName ? `${studentName}'s Attendance` : "Compliance"}
         subtitle="Attendance Record"
-        role="Parent"
+        role="Parent/Guardian"
         onBack={() => router.back()}
         showNotification={false}
       />

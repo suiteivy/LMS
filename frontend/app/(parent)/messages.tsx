@@ -29,8 +29,27 @@ export default function ParentMessagingPage() {
 
   const [searchQuery, setSearchQuery] = useState("");
   const [contacts, setContacts] = useState<any[]>([]);
+  const [initialContacts, setInitialContacts] = useState<any[]>([]);
+  const [loadingContacts, setLoadingContacts] = useState(false);
   const [selectedReceiver, setSelectedReceiver] = useState<any>(null);
   const [messageContent, setMessageContent] = useState("");
+
+  const fetchInitialContacts = async () => {
+    try {
+      setLoadingContacts(true);
+      const [admins, teachers] = await Promise.all([
+        MessageService.searchUsers('', 'admin'),
+        MessageService.searchUsers('', 'teacher')
+      ]);
+      const combined = [...(admins || []), ...(teachers || [])];
+      setInitialContacts(combined);
+      setContacts(combined);
+    } catch (error) {
+      console.error("Error fetching initial contacts:", error);
+    } finally {
+      setLoadingContacts(false);
+    }
+  };
 
   const fetchData = async () => {
     try {
@@ -50,6 +69,7 @@ export default function ParentMessagingPage() {
 
   useEffect(() => {
     fetchData();
+    fetchInitialContacts();
   }, []);
 
   const onRefresh = () => {
@@ -59,19 +79,22 @@ export default function ParentMessagingPage() {
 
   useEffect(() => {
     const searchContacts = async () => {
-      if (searchQuery.length > 2) {
-        try {
-          const res = await MessageService.searchUsers(searchQuery);
-          setContacts(res || []);
-        } catch (error) {
-          console.error("Error searching users:", error);
-        }
-      } else {
-        setContacts([]);
+      const query = searchQuery.trim();
+      if (query === "") {
+        setContacts(initialContacts);
+        return;
+      }
+      try {
+        const res = await MessageService.searchUsers(query);
+        // Only show admins and teachers
+        const filtered = (res || []).filter((u: any) => u.role === 'admin' || u.role === 'teacher');
+        setContacts(filtered);
+      } catch (error) {
+        console.error("Error searching users:", error);
       }
     };
     searchContacts();
-  }, [searchQuery]);
+  }, [searchQuery, initialContacts]);
 
   const handleSendMessage = async () => {
     if (!selectedReceiver || !messageContent.trim()) return;
@@ -115,7 +138,7 @@ export default function ParentMessagingPage() {
   return (
     <View className="flex-1 bg-gray-50 dark:bg-navy">
       <UnifiedHeader
-        title="Intelligence"
+        title="Messaging"
         subtitle="Secure Inbox"
         role="Parent/Guardian"
         showNotification={false}
@@ -156,21 +179,29 @@ export default function ParentMessagingPage() {
                     onChangeText={setSearchQuery}
                   />
                 </View>
-                {contacts.map((item) => (
-                  <TouchableOpacity
-                    key={item.id}
-                    className="flex-row items-center p-4 mb-2 bg-gray-50/50 dark:bg-gray-800/50 rounded-2xl border border-gray-100 dark:border-gray-800"
-                    onPress={() => { setSelectedReceiver(item); setSearchQuery(""); }}
-                  >
-                    <View className="bg-white dark:bg-gray-900 p-2 rounded-xl border border-gray-100 dark:border-gray-800 mr-3">
-                      <UserCircle size={20} color="#FF6900" />
-                    </View>
-                    <View>
-                      <Text className="text-gray-900 dark:text-white font-bold text-sm">{item.full_name}</Text>
-                      <Text className="text-gray-400 dark:text-gray-500 text-[8px] font-bold uppercase tracking-widest">{item.role}</Text>
-                    </View>
-                  </TouchableOpacity>
-                ))}
+                {loadingContacts ? (
+                  <ActivityIndicator size="small" color="#FF6900" className="py-4" />
+                ) : contacts.length === 0 ? (
+                  <View className="items-center py-8">
+                    <Text className="text-gray-400 dark:text-gray-500 font-bold uppercase tracking-widest text-[9px] text-center">No matches found</Text>
+                  </View>
+                ) : (
+                  contacts.map((item) => (
+                    <TouchableOpacity
+                      key={item.id}
+                      className="flex-row items-center p-4 mb-2 bg-gray-50/50 dark:bg-gray-800/50 rounded-2xl border border-gray-100 dark:border-gray-800"
+                      onPress={() => { setSelectedReceiver(item); setSearchQuery(""); }}
+                    >
+                      <View className="bg-white dark:bg-gray-900 p-2 rounded-xl border border-gray-100 dark:border-gray-800 mr-3">
+                        <UserCircle size={20} color="#FF6900" />
+                      </View>
+                      <View>
+                        <Text className="text-gray-900 dark:text-white font-bold text-sm">{item.full_name}</Text>
+                        <Text className="text-gray-400 dark:text-gray-500 text-[8px] font-bold uppercase tracking-widest">{item.role}</Text>
+                      </View>
+                    </TouchableOpacity>
+                  ))
+                )}
               </View>
             ) : (
               <View className="bg-gray-900 dark:bg-[#1a1a1a] p-8 rounded-[40px] mb-8 shadow-xl">

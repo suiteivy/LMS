@@ -110,6 +110,7 @@ function ParentDashboard({ user, logout }: any) {
       params: {
         studentId: selectedStudent.id,
         studentName: selectedStudent.users?.full_name || '',
+        classId: selectedStudent.class_id || '',
       },
     });
   };
@@ -125,8 +126,8 @@ function ParentDashboard({ user, logout }: any) {
   return (
     <View className="flex-1 bg-white dark:bg-navy">
       <UnifiedHeader
-        title="Intelligence"
-        subtitle="Parent/Guardian Portal"
+        title="Welcome back"
+        subtitle={user?.full_name || "Parent Portal"}
         role="Parent/Guardian"
         showNotification={true}
       />
@@ -309,13 +310,6 @@ function ParentDashboard({ user, logout }: any) {
                   onPress={() => goTo("/(parent)/reports")}
                 />
                 <QuickAction
-                  icon={MessageSquare}
-                  label="Messaging"
-                  color="#0891b2"
-                  isDark={isDark}
-                  onPress={() => router.navigate("/(parent)/messages" as any)}
-                />
-                <QuickAction
                   icon={Clock}
                   label="Timetable"
                   color="#eab308"
@@ -328,7 +322,7 @@ function ParentDashboard({ user, logout }: any) {
                     label="Class Diary"
                     color="#f59e0b"
                     isDark={isDark}
-                    onPress={() => router.push("/(parent)/diary" as any)}
+                    onPress={() => goTo("/(parent)/diary")}
                   />
                 )}
               </View>

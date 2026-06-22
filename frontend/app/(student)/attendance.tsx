@@ -85,7 +85,7 @@ export default function AttendancePage() {
     return (
         <View className="flex-1 bg-gray-50 dark:bg-navy">
             <UnifiedHeader
-                title="Intelligence"
+                title="Attendance"
                 subtitle="Attendance"
                 role="Student"
                 onBack={() => router.back()}

@@ -131,8 +131,8 @@ export default function SubmissionsPage() {
         }
 
         try {
-            const { error } = await supabase
-                .from('submissions')
+            const { error } = await (supabase
+                .from('submissions') as any)
                 .update({
                     grade: score,
                     feedback: feedbackInput,

@@ -222,7 +222,7 @@ export default function TeacherDiaryPage() {
                         `).join('')}
 
                         <div class="footer">
-                            <p>© ${new Date().getFullYear()} LMS Educational Platform • Virtual Diary System • Confidential Document</p>
+                            <p>© ${new Date().getFullYear()} LMS Educational Platform \u2022 Virtual Diary System \u2022 Confidential Document</p>
                         </div>
                     </body>
                 </html>

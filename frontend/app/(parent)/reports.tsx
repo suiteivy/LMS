@@ -48,7 +48,7 @@ export default function ReportsScreen() {
             <UnifiedHeader
                 title="Academic Reports"
                 subtitle={studentName || "Student Progress"}
-                role="Parent"
+                role="Parent/Guardian"
                 onBack={() => router.back()}
             />
 

@@ -15,6 +15,7 @@ import {
   GraduationCap,
   Star,
   Wallet,
+  LogOut,
 } from 'lucide-react-native';
 import React, { useEffect, useState } from "react";
 import {
@@ -240,7 +241,7 @@ const SectionHeader = ({ title, actionLabel, onAction, isDark }: SectionHeaderPr
 // ─── Main Screen ─────────────────────────────────────────────────────────────
 
 export default function Index() {
-  const { profile, displayId, loading: authLoading, studentId, isDemo } = useAuth();
+  const { profile, displayId, loading: authLoading, studentId, isDemo, logout } = useAuth();
   const { isDark } = useTheme();
   const { hasDiary, showFinancials } = useSubscriptionTier();
   const { unreadCount } = useNotifications();
@@ -387,8 +388,8 @@ export default function Index() {
   return (
     <View style={{ flex: 1, backgroundColor: isDark ? '#0F0B2E' : '#f8fafc' }}>
       <UnifiedHeader
-        title="Intelligence"
-        subtitle="Dashboard"
+        title="Dashboard"
+        subtitle={profile?.full_name || "Student Portal"}
         role="Student"
         showNotification={true}
       />
@@ -408,6 +409,32 @@ export default function Index() {
         }
       >
         <View style={{ padding: 20 }}>
+          {/* Log out link */}
+          <View className="flex-row justify-end mb-6 px-2">
+            <TouchableOpacity
+              onPress={async () => {
+                await logout();
+                router.replace("/(auth)/signIn");
+              }}
+              style={{
+                boxShadow: [{
+                  offsetX: 0,
+                  offsetY: 1,
+                  blurRadius: 2,
+                  color: isDark ? 'rgba(0, 0, 0, 0.4)' : 'rgba(0, 0, 0, 0.05)',
+                }],
+                shadowColor: "#000",
+                shadowOffset: { width: 0, height: 1 },
+                shadowOpacity: isDark ? 0.4 : 0.05,
+                shadowRadius: 2,
+                elevation: 1,
+              }}
+              className="flex-row items-center bg-white dark:bg-[#1a1a2e] px-4 py-2 rounded-2xl border border-gray-100 dark:border-gray-800"
+            >
+              <LogOut size={14} color="#ef4444" />
+              <Text className="ml-2 text-red-600 font-bold text-[10px] uppercase tracking-widest">Logout</Text>
+            </TouchableOpacity>
+          </View>
 
           {/* ── Welcome ───────────────────────────────────────────────── */}
           <View style={{ marginBottom: 24 }}>

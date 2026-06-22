@@ -682,7 +682,7 @@ export default function CreateUserScreen() {
                         <View style={{ marginTop: 8 }}>
                             <Text style={{ fontSize: 12, color: textSecondary, marginBottom: 4 }}>Linked Students:</Text>
                             {form.linked_students.map(ls => (
-                                <Text key={ls.student_id} style={{ fontSize: 13, color: textPrimary }}>â€¢ {ls.name} ({ls.relationship})</Text>
+                                <Text key={ls.student_id} style={{ fontSize: 13, color: textPrimary }}>{"\u2022 "} {ls.name} ({ls.relationship})</Text>
                             ))}
                         </View>
                     )}

@@ -683,7 +683,7 @@ export default function MasterInstitutions() {
                             {item.institutions?.name}
                         </Text>
                         <Text style={{ color: themeColors.subtext, fontSize: 12, marginTop: 2 }}>
-                            Requested by: {item.users?.full_name} â€¢ {date}
+                            Requested by: {item.users?.full_name}{' \u2022 '}{date}
                         </Text>
                     </View>
                     <View style={{
@@ -1168,7 +1168,7 @@ export default function MasterInstitutions() {
                                     <Text style={{ fontSize: 12, color: themeColors.subtext, marginBottom: 4 }}>Password <Text style={{ color: themeColors.primary }}>*</Text></Text>
                                     <TextInput
                                         style={{ backgroundColor: themeColors.bg, color: themeColors.text, padding: 12, borderRadius: 10, borderWidth: 0.5, borderColor: themeColors.border, fontSize: 14 }}
-                                        placeholder="••••••••"
+                                        placeholder="********"
                                         placeholderTextColor={themeColors.subtext}
                                         secureTextEntry
                                         value={enrollForm.admin_password}

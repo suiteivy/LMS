@@ -79,7 +79,7 @@ router.get("/history/:studentId", authMiddleware, history);
 router.get(
   "/borrowed",
   authMiddleware,
-  authorizeRoles(["admin"]),
+  authorizeRoles(["admin", "teacher"]),
   getAllBorrowedBooks
 );
 

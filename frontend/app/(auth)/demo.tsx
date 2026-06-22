@@ -343,8 +343,8 @@ export default function Demo() {
               color: "rgba(255,255,255,0.35)", fontSize: 12,
               textAlign: "center", lineHeight: 18,
             }}>
-              15-minute interactive session â€¢ Pre-populated data{"\n"}
-              Real features, no signup required â€¢ Data resets periodically
+              15-minute interactive session{" \u2022 "}Pre-populated data{"\n"}
+              Real features, no signup required{" \u2022 "}Data resets periodically
             </Text>
           </View>
         </View>

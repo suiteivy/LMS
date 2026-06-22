@@ -88,11 +88,11 @@ export default function TeacherProfile() {
             }
 
             // Fetch Teacher Details
-            const { data: teacherData, error: teacherError } = await supabase
+            const { data: teacherData, error: teacherError } = (await supabase
                 .from('teachers')
                 .select('department, hire_date')
                 .eq('id', teacherId)
-                .single();
+                .single()) as any;
 
             if (!teacherError && teacherData) {
                 setTeacherDetails({
@@ -183,7 +183,7 @@ export default function TeacherProfile() {
 
                     <Text className="text-gray-900 dark:text-white text-3xl font-black tracking-tighter mt-6 text-center">{profile?.first_name} {profile?.last_name}</Text>
                     <View className="bg-[#FF6900]/10 px-4 py-1.5 rounded-full mt-2 border border-[#FF6900]/20 self-center">
-                        <Text className="text-[#FF6900] text-[10px] font-black uppercase tracking-[2px]">Faculty Member â€¢ ID: {teacherId?.slice(0, 8)}</Text>
+                        <Text className="text-[#FF6900] text-[10px] font-black uppercase tracking-[2px]">Faculty Member \u00B7 ID: {teacherId?.slice(0, 8)}</Text>
                     </View>
                 </View>
 

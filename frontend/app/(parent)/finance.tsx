@@ -183,7 +183,7 @@ export default function StudentFinancePage() {
                   {formatCurrency(balance)}
                 </Text>
                 <View className="bg-[#FF6900]/20 self-start px-3 py-1 rounded-full mt-2">
-                  <Text className="text-[#FF6900] text-[10px] font-bold tracking-widest uppercase">{paidPct}% Liquidated</Text>
+                  <Text className="text-[#FF6900] text-[10px] font-bold tracking-widest uppercase">{paidPct}% Paid</Text>
                 </View>
               </View>
               <View className="w-16 h-16 rounded-full bg-white/5 items-center justify-center border border-white/10">

@@ -158,7 +158,7 @@ export default function StudentGradesPage() {
 
                     <div class="footer">
                         <p>THIS DOCUMENT IS A DIGITALLY GENERATED TRANSCRIPT AND IS VALID WITHOUT PHYSICAL SIGNATURE.</p>
-                        <p>CONFIDENTIAL ACADEMIC RECORD • ISSUED ON ${new Date().toLocaleDateString()}</p>
+                        <p>CONFIDENTIAL ACADEMIC RECORD \u2022 ISSUED ON ${new Date().toLocaleDateString()}</p>
                     </div>
                 </body>
             </html>
@@ -199,7 +199,7 @@ export default function StudentGradesPage() {
       <UnifiedHeader
         title={studentName ? `${studentName}'s Report` : "Performance"}
         subtitle="Academic Report"
-        role="Parent"
+        role="Parent/Guardian"
         onBack={() => router.back()}
         showNotification={false}
       />

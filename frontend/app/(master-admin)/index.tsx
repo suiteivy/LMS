@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, ScrollView, RefreshControl, ActivityIndicator, Platform, TouchableOpacity } from 'react-native';
 import { useTheme } from '@/contexts/ThemeContext';
+import { useAuth } from '@/contexts/AuthContext';
+import { router } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { supabase } from '@/libs/supabase';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -11,6 +13,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function MasterDashboard() {
     const { isDark } = useTheme();
+    const { logout } = useAuth();
     const [refreshing, setRefreshing] = useState(false);
     const [stats, setStats] = useState<any>(null);
     const [loading, setLoading] = useState(true);
@@ -120,6 +123,32 @@ export default function MasterDashboard() {
                 contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 40 }}
                 refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={themeColors.primary} />}
             >
+                {/* Log out link */}
+                <View className="flex-row justify-end mb-6 px-2">
+                    <TouchableOpacity
+                        onPress={async () => {
+                            await logout();
+                            router.replace("/(auth)/signIn");
+                        }}
+                        style={{
+                            boxShadow: [{
+                                offsetX: 0,
+                                offsetY: 1,
+                                blurRadius: 2,
+                                color: isDark ? 'rgba(0, 0, 0, 0.4)' : 'rgba(0, 0, 0, 0.05)',
+                            }],
+                            shadowColor: "#000",
+                            shadowOffset: { width: 0, height: 1 },
+                            shadowOpacity: isDark ? 0.4 : 0.05,
+                            shadowRadius: 2,
+                            elevation: 1,
+                        }}
+                        className="flex-row items-center bg-white dark:bg-[#13103A] px-4 py-2 rounded-2xl border border-gray-100 dark:border-gray-800"
+                    >
+                        <MaterialCommunityIcons name="logout" size={14} color="#ef4444" />
+                        <Text style={{ marginLeft: 8, color: '#ef4444', fontWeight: 'bold', fontSize: 10, letterSpacing: 1, textTransform: 'uppercase' }}>Logout</Text>
+                    </TouchableOpacity>
+                </View>
                 <Text style={{ fontSize: 18, fontWeight: '700', color: themeColors.text, marginBottom: 16 }}>Overview</Text>
 
                 {stats ? (

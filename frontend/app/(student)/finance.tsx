@@ -116,7 +116,7 @@ export default function StudentFinancePage() {
     return (
         <View className="flex-1 bg-gray-50 dark:bg-navy">
             <UnifiedHeader
-                title="Intelligence"
+                title="Finance"
                 subtitle="Finances"
                 role="Student"
                 onBack={() => router.back()}
@@ -186,7 +186,7 @@ export default function StudentFinancePage() {
                                         <Text className="text-white font-bold text-base">{formatKES(financeData?.total_fees || 0)}</Text>
                                     </View>
                                     <View className="flex-1 border-l border-white/10 pl-4">
-                                        <Text className="text-white/30 text-[8px] font-bold uppercase tracking-widest mb-1">Liquidated</Text>
+                                        <Text className="text-white/30 text-[8px] font-bold uppercase tracking-widest mb-1">Paid</Text>
                                         <Text className="text-emerald-400 font-bold text-base">{formatKES(financeData?.paid_amount || 0)}</Text>
                                     </View>
                                 </View>

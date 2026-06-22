@@ -164,10 +164,10 @@ export default function AdminMaterialsScreen() {
                         {item.title}
                     </Text>
                     <Text style={{ color: themeColors.subtext, fontSize: 12, marginTop: 2 }}>
-                        {subject} • {teacher}
+                        {subject}{' \u2022 '}{teacher}
                     </Text>
                     <Text style={{ color: themeColors.subtext, fontSize: 11, marginTop: 2 }}>
-                        {date} • {item.type.toUpperCase()}
+                        {date}{' \u2022 '}{item.type.toUpperCase()}
                     </Text>
                 </View>
 

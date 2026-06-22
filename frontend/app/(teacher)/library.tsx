@@ -44,7 +44,7 @@ export default function TeacherLibrary() {
             const [booksData, historyData, allBorrowed, studentsData] = await Promise.all([
                 LibraryAPI.getBooks(),
                 teacherId ? LibraryAPI.getBorrowingHistory(teacherId) : Promise.resolve([]),
-                LibraryAPI.getAllBorrowedBooks(),
+                LibraryAPI.getAllBorrowedBooks().catch((err) => { console.warn("Could not fetch borrowed books:", err); return []; }),
                 StudentService.getStudents()
             ]);
 
