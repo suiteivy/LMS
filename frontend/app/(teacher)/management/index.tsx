@@ -11,8 +11,11 @@ import {
     MessageSquare,
     Wallet
 } from 'lucide-react-native';
-import { ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { ScrollView, Text, TouchableOpacity, View, ActivityIndicator } from 'react-native';
 import { useSubscriptionTier } from "@/hooks/useSubscriptionTier";
+import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/libs/supabase";
+import React, { useEffect, useState } from "react";
 
 interface FeatureCardProps {
     icon: any;
@@ -51,6 +54,75 @@ const FeatureCard = ({ icon: Icon, title, description, color, bgColor, route, ba
 
 export default function ManagementIndex() {
     const { hasDiary } = useSubscriptionTier();
+    const { teacherId, isDemo } = useAuth();
+    const [pendingCount, setPendingCount] = useState<number | null>(null);
+    const [submittedCount, setSubmittedCount] = useState<number | null>(null);
+    const [statsLoading, setStatsLoading] = useState(true);
+
+    useEffect(() => {
+        if (teacherId || isDemo) {
+            fetchSubmissionStats();
+        } else {
+            setStatsLoading(false);
+        }
+    }, [teacherId, isDemo]);
+
+    const fetchSubmissionStats = async () => {
+        try {
+            setStatsLoading(true);
+            if (isDemo) {
+                setPendingCount(12);
+                setSubmittedCount(28);
+                return;
+            }
+
+            if (!isDemo && !teacherId) {
+                setPendingCount(0);
+                setSubmittedCount(0);
+                return;
+            }
+
+            const { data: assignmentsData, error: assignmentsError } = await supabase
+                .from('assignments')
+                .select('id')
+                .eq('teacher_id', teacherId!);
+
+            if (assignmentsError) throw assignmentsError;
+
+            const assignmentIds = (assignmentsData || []).map((a: any) => a.id);
+
+            if (assignmentIds.length === 0) {
+                setPendingCount(0);
+                setSubmittedCount(0);
+                return;
+            }
+
+            const { count: pending, error: pendingErr } = await supabase
+                .from('submissions')
+                .select('id', { count: 'exact', head: true })
+                .in('assignment_id', assignmentIds)
+                .neq('status', 'graded');
+
+            if (pendingErr) throw pendingErr;
+
+            const { count: submitted, error: submittedErr } = await supabase
+                .from('submissions')
+                .select('id', { count: 'exact', head: true })
+                .in('assignment_id', assignmentIds);
+
+            if (submittedErr) throw submittedErr;
+
+            setPendingCount(pending || 0);
+            setSubmittedCount(submitted || 0);
+        } catch (error) {
+            console.error("Error fetching submission stats:", error);
+            setPendingCount(0);
+            setSubmittedCount(0);
+        } finally {
+            setStatsLoading(false);
+        }
+    };
+
     const features: FeatureCardProps[] = [
         {
             icon: GraduationCap,
@@ -149,13 +221,21 @@ export default function ManagementIndex() {
 
                     {/* Quick Stats Row */}
                     <View className="flex-row gap-4 mb-8">
-                        <View className="flex-1 bg-gray-900 dark:bg-navy-surface p-6 rounded-[32px] shadow-lg border border-transparent dark:border-gray-800">
+                        <View className="flex-1 bg-gray-900 dark:bg-navy-surface p-6 rounded-[32px] shadow-lg border border-transparent dark:border-gray-800 justify-center">
                             <Text className="text-white/40 dark:text-gray-500 text-[8px] font-bold uppercase tracking-widest">Pending</Text>
-                            <Text className="text-white text-3xl font-bold mt-1">12</Text>
+                            {statsLoading ? (
+                                <ActivityIndicator size="small" color="white" className="mt-2" style={{ alignSelf: 'flex-start' }} />
+                            ) : (
+                                <Text className="text-white text-3xl font-bold mt-1">{pendingCount ?? 0}</Text>
+                            )}
                         </View>
-                        <View className="flex-1 bg-white dark:bg-navy-surface p-6 rounded-[32px] border border-gray-100 dark:border-gray-800 shadow-sm">
+                        <View className="flex-1 bg-white dark:bg-navy-surface p-6 rounded-[32px] border border-gray-100 dark:border-gray-800 shadow-sm justify-center">
                             <Text className="text-gray-400 dark:text-gray-500 text-[8px] font-bold uppercase tracking-widest">Submitted</Text>
-                            <Text className="text-gray-900 dark:text-white text-3xl font-bold mt-1">28</Text>
+                            {statsLoading ? (
+                                <ActivityIndicator size="small" color="#FF6900" className="mt-2" style={{ alignSelf: 'flex-start' }} />
+                            ) : (
+                                <Text className="text-gray-900 dark:text-white text-3xl font-bold mt-1">{submittedCount ?? 0}</Text>
+                            )}
                         </View>
                     </View>
 

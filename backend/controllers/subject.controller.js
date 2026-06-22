@@ -373,9 +373,23 @@ exports.updateProgress = async (req, res) => {
     // If teacher, verify they teach this subject
     if (userRole === "teacher") {
       const { data: teacher } = await supabase.from('teachers').select('id').eq('user_id', userId).single();
-      const { data: subject } = await supabase.from('subjects').select('teacher_id').eq('id', id).eq('institution_id', institution_id).single();
+      if (!teacher) return res.status(403).json({ error: "Teacher profile not found" });
+
+      const { data: subject } = await supabase.from('subjects').select('id, teacher_id').eq('id', id).eq('institution_id', institution_id).single();
+      if (!subject) return res.status(404).json({ error: "Subject not found" });
       
-      if (!subject || subject.teacher_id !== teacher?.id) {
+      let isAssigned = (subject.teacher_id === teacher.id);
+      if (!isAssigned) {
+        const { data: assoc } = await supabase
+          .from('subject_teachers')
+          .select('id')
+          .eq('subject_id', id)
+          .eq('teacher_id', teacher.id)
+          .maybeSingle();
+        if (assoc) isAssigned = true;
+      }
+
+      if (!isAssigned) {
         return res.status(403).json({ error: "You are not assigned to this subject" });
       }
     }

@@ -3,7 +3,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from "@/contexts/ThemeContext";
 import { TeacherAPI } from "@/services/TeacherService";
 import { router } from "expo-router";
-import { ArrowRight, BookOpen, Calendar, Clock, GraduationCap, MessageSquare, School, Users, LogOut } from 'lucide-react-native';
+import { ArrowRight, BookOpen, Calendar, Clock, GraduationCap, MessageSquare, School, Users, LogOut, ShieldAlert } from 'lucide-react-native';
 import React, { useEffect, useState } from "react";
 import { ActivityIndicator, RefreshControl, ScrollView, Text, TouchableOpacity, View, StatusBar } from 'react-native';
 import { SubscriptionBanner, SubscriptionGate, SubscriptionBadge } from '@/components/shared/SubscriptionComponents';
@@ -62,6 +62,14 @@ export default function TeacherHome() {
     const [refreshing, setRefreshing] = useState(false);
     const { isDark } = useTheme();
 
+    // Switcher/Role state
+    const [roles, setRoles] = useState<string[]>([]);
+    const [classTeacherOf, setClassTeacherOf] = useState<any[]>([]);
+    const [assignedSubjects, setAssignedSubjects] = useState<any[]>([]);
+    const [mode, setMode] = useState<'subject' | 'class'>('subject');
+    const [selectedSubjectTitle, setSelectedSubjectTitle] = useState<string>('');
+    const [selectedClassId, setSelectedClassId] = useState<string>('');
+
     const fetchDashboardData = async () => {
         if (!isDemo && (isInitializing || !session)) return;
 
@@ -99,12 +107,69 @@ export default function TeacherHome() {
                         room_number: 'CS Lab 101'
                     }
                 ]);
+
+                const mockRoles = ['Subject Teacher', 'Class Teacher', 'Head of Department'];
+                const mockCT = [{ id: 'class-demo-1', display_name: 'Grade 12A', grade_level: 'Grade 12', stream: 'A' }];
+                const mockAssigned = [
+                    {
+                        id: "subj-demo-1",
+                        title: "Advanced Mathematics",
+                        class: { id: "class-demo-1", display_name: "Grade 12A" },
+                        timetable: [
+                            { day_of_week: "Monday", start_time: "08:00:00", end_time: "09:30:00", room_number: "Lecture Hall A" },
+                            { day_of_week: "Wednesday", start_time: "08:00:00", end_time: "09:30:00", room_number: "Lecture Hall A" }
+                        ]
+                    },
+                    {
+                        id: "subj-demo-2",
+                        title: "Theoretical Physics",
+                        class: { id: "class-demo-2", display_name: "Grade 12B" },
+                        timetable: [
+                            { day_of_week: "Tuesday", start_time: "10:00:00", end_time: "11:30:00", room_number: "Science Lab 2" }
+                        ]
+                    },
+                    {
+                        id: "subj-demo-3",
+                        title: "Advanced Mathematics",
+                        class: { id: "class-demo-2", display_name: "Grade 12B" },
+                        timetable: [
+                            { day_of_week: "Thursday", start_time: "08:00:00", end_time: "09:30:00", room_number: "Lecture Hall B" }
+                        ]
+                    }
+                ];
+
+                setRoles(mockRoles);
+                setClassTeacherOf(mockCT);
+                setAssignedSubjects(mockAssigned);
+
+                // Initialize switcher selectors
+                setSelectedSubjectTitle("Advanced Mathematics");
+                setSelectedClassId("class-demo-1");
                 return;
             }
 
             const data = await TeacherAPI.getDashboardStats();
             setStats(data.stats);
             setSchedule(data.schedule);
+            const fetchedRoles = data.roles || [];
+            setRoles(fetchedRoles);
+            setClassTeacherOf(data.classTeacherOf || []);
+            
+            // If Class Teacher but not Subject Teacher, default to class mode
+            if (!fetchedRoles.includes('Subject Teacher') && fetchedRoles.includes('Class Teacher')) {
+                setMode('class');
+            }
+            
+            const fetchedSubjects = data.assignedSubjects || [];
+            setAssignedSubjects(fetchedSubjects);
+            
+            if (fetchedSubjects.length > 0) {
+                const initialSubject = fetchedSubjects[0];
+                setSelectedSubjectTitle(initialSubject.title);
+                if (initialSubject.class) {
+                    setSelectedClassId(initialSubject.class.id);
+                }
+            }
         } catch (error) {
             console.error("Error fetching dashboard data:", error);
         } finally {
@@ -128,6 +193,19 @@ export default function TeacherHome() {
         fetchDashboardData();
     };
 
+    const handleSelectSubject = (title: string) => {
+        setSelectedSubjectTitle(title);
+        const classesForSub = assignedSubjects.filter(s => s.title === title).map(s => s.class).filter(Boolean);
+        if (classesForSub.length > 0) {
+            setSelectedClassId(classesForSub[0].id);
+        } else {
+            setSelectedClassId('');
+        }
+    };
+
+    const uniqueSubjectTitles = Array.from(new Set(assignedSubjects.map(s => s.title)));
+    const activeAssignment = assignedSubjects.find(s => s.title === selectedSubjectTitle && s.class?.id === selectedClassId);
+
     return (
         <View className="flex-1 bg-white dark:bg-navy">
             <StatusBar barStyle={isDark ? "light-content" : "dark-content"} />
@@ -148,8 +226,15 @@ export default function TeacherHome() {
                 }
             >
                 <View>
-                    {/* Log out link */}
-                    <View className="flex-row justify-end mb-6 px-2">
+                    {/* Log out link & Role Badges */}
+                    <View className="flex-row justify-between items-center mb-6 px-2 flex-wrap gap-2">
+                        <View className="flex-row gap-1.5 flex-wrap">
+                            {roles.map(r => (
+                                <View key={r} className="bg-orange-500/10 px-3 py-1 rounded-xl border border-orange-500/20">
+                                    <Text className="text-[#FF6900] text-[10px] font-bold uppercase tracking-wider">{r}</Text>
+                                </View>
+                            ))}
+                        </View>
                         <TouchableOpacity
                             onPress={async () => {
                                 await logout();
@@ -174,6 +259,7 @@ export default function TeacherHome() {
                             <Text className="ml-2 text-red-600 font-bold text-[10px] uppercase tracking-widest">Logout</Text>
                         </TouchableOpacity>
                     </View>
+
                     {/* --- 2. Quick Status Cards --- */}
                     <View className="flex-row gap-4 mb-8">
                         <View 
@@ -197,7 +283,7 @@ export default function TeacherHome() {
                             </View>
                             <Text className="text-white text-3xl font-bold">{stats?.studentsCount || 0}</Text>
                             <Text className="text-white/80 text-xs font-semibold uppercase tracking-wider">
-                                Students
+                                Students Taught
                             </Text>
                         </View>
                         <View 
@@ -228,7 +314,152 @@ export default function TeacherHome() {
                         </View>
                     </View>
 
-                    {/* --- 3. Today's Schedule --- */}
+                    {/* --- 3. Switcher Card (Subjects / Classes / CT Mode) --- */}
+                    <View className="bg-white dark:bg-[#1a1a1a] rounded-[32px] border border-gray-100 dark:border-gray-800 p-5 mb-8 shadow-sm">
+                        {/* Mode Selector - Tabs */}
+                        {roles.includes('Class Teacher') && (
+                            <View className="flex-row bg-gray-105 dark:bg-navy/80 rounded-2xl p-1 mb-5">
+                                <TouchableOpacity 
+                                    onPress={() => setMode('subject')}
+                                    className={`flex-1 py-2.5 rounded-xl items-center ${mode === 'subject' ? 'bg-[#FF6900]' : 'bg-transparent'}`}
+                                >
+                                    <Text className={`font-bold text-xs uppercase tracking-wider ${mode === 'subject' ? 'text-white' : 'text-gray-500 dark:text-gray-400'}`}>
+                                        Subject Teacher Mode
+                                    </Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity 
+                                    onPress={() => setMode('class')}
+                                    className={`flex-1 py-2.5 rounded-xl items-center ${mode === 'class' ? 'bg-[#FF6900]' : 'bg-transparent'}`}
+                                >
+                                    <Text className={`font-bold text-xs uppercase tracking-wider ${mode === 'class' ? 'text-white' : 'text-gray-500 dark:text-gray-400'}`}>
+                                        Class Teacher Mode
+                                    </Text>
+                                </TouchableOpacity>
+                            </View>
+                        )}
+
+                        {mode === 'subject' ? (
+                            <View>
+                                {/* Subject Selector Pills */}
+                                <Text className="text-gray-400 dark:text-gray-550 text-[10px] font-bold uppercase tracking-wider mb-2">My Subjects</Text>
+                                <ScrollView horizontal showsHorizontalScrollIndicator={false} className="flex-row mb-4">
+                                    {uniqueSubjectTitles.map((title) => (
+                                        <TouchableOpacity
+                                            key={title}
+                                            onPress={() => handleSelectSubject(title)}
+                                            className={`px-4 py-2 rounded-xl mr-2 border ${
+                                                selectedSubjectTitle === title 
+                                                    ? 'bg-orange-50 dark:bg-[#FF6900]/10 border-[#FF6900]' 
+                                                    : 'bg-gray-50 dark:bg-navy/40 border-gray-100 dark:border-gray-800'
+                                            }`}
+                                        >
+                                            <Text className={`text-xs font-bold ${selectedSubjectTitle === title ? 'text-[#FF6900]' : 'text-gray-750 dark:text-gray-300'}`}>
+                                                {title}
+                                            </Text>
+                                        </TouchableOpacity>
+                                    ))}
+                                </ScrollView>
+
+                                {/* Class Selector Pills */}
+                                {selectedSubjectTitle ? (
+                                    <>
+                                        <Text className="text-gray-400 dark:text-gray-550 text-[10px] font-bold uppercase tracking-wider mb-2">Classes Taught</Text>
+                                        <ScrollView horizontal showsHorizontalScrollIndicator={false} className="flex-row mb-4">
+                                            {assignedSubjects
+                                                .filter(s => s.title === selectedSubjectTitle)
+                                                .map(s => s.class)
+                                                .filter(Boolean)
+                                                .map((cls) => (
+                                                    <TouchableOpacity
+                                                        key={cls.id}
+                                                        onPress={() => setSelectedClassId(cls.id)}
+                                                        className={`px-4 py-2 rounded-xl mr-2 border ${
+                                                            selectedClassId === cls.id 
+                                                                ? 'bg-orange-50 dark:bg-[#FF6900]/10 border-[#FF6900]' 
+                                                                : 'bg-gray-50 dark:bg-navy/40 border-gray-100 dark:border-gray-800'
+                                                        }`}
+                                                    >
+                                                        <Text className={`text-xs font-bold ${selectedClassId === cls.id ? 'text-[#FF6900]' : 'text-gray-750 dark:text-gray-300'}`}>
+                                                            {cls.display_name}
+                                                        </Text>
+                                                    </TouchableOpacity>
+                                                ))
+                                            }
+                                        </ScrollView>
+                                    </>
+                                ) : null}
+
+                                {/* Timetable slots */}
+                                <View className="mt-2 border-t border-gray-100 dark:border-gray-800 pt-4">
+                                    <Text className="text-gray-400 dark:text-gray-550 text-[10px] font-bold uppercase tracking-wider mb-3">Weekly Timetable Schedule</Text>
+                                    {activeAssignment?.timetable && activeAssignment.timetable.length > 0 ? (
+                                        activeAssignment.timetable.map((slot: any, idx: number) => (
+                                            <View key={idx} className="flex-row items-center gap-3 bg-gray-50 dark:bg-navy/20 border border-gray-100 dark:border-gray-800 p-3 rounded-2xl mb-2">
+                                                <View className="bg-orange-500/10 p-2 rounded-xl">
+                                                    <Clock size={14} color="#FF6900" />
+                                                </View>
+                                                <View className="flex-1">
+                                                    <Text className="text-gray-900 dark:text-white font-bold text-xs">{slot.day_of_week}</Text>
+                                                    <Text className="text-gray-450 dark:text-gray-500 text-[10px]">{slot.start_time} - {slot.end_time}</Text>
+                                                </View>
+                                                {slot.room_number && (
+                                                    <View className="bg-gray-100 dark:bg-navy px-2 py-1 rounded-lg">
+                                                        <Text className="text-gray-500 dark:text-gray-400 text-[10px] font-semibold">Room {slot.room_number}</Text>
+                                                    </View>
+                                                )}
+                                            </View>
+                                        ))
+                                    ) : (
+                                        <View className="items-center justify-center py-6 bg-gray-50 dark:bg-navy/20 rounded-2xl border border-dashed border-gray-200 dark:border-gray-800">
+                                            <Text className="text-gray-400 dark:text-gray-500 text-xs font-semibold">No timetable slots scheduled</Text>
+                                        </View>
+                                    )}
+                                </View>
+                            </View>
+                        ) : (
+                            /* Class Teacher Dashboard Mode */
+                            <View>
+                                <Text className="text-gray-400 dark:text-gray-550 text-[10px] font-bold uppercase tracking-wider mb-2">Designated Classes</Text>
+                                {classTeacherOf && classTeacherOf.length > 0 ? (
+                                    classTeacherOf.map((cls) => (
+                                        <View key={cls.id} className="bg-orange-50/20 dark:bg-orange-950/10 border border-orange-100/20 dark:border-gray-800 p-4 rounded-3xl mb-3">
+                                            <View className="flex-row items-center gap-3 mb-3">
+                                                <View className="bg-orange-500/10 p-2 rounded-xl">
+                                                    <School size={16} color="#FF6900" />
+                                                </View>
+                                                <View>
+                                                    <Text className="text-gray-900 dark:text-white font-black text-sm">{cls.display_name}</Text>
+                                                    <Text className="text-gray-450 dark:text-gray-500 text-[10px]">Class Teacher Designated Scoping</Text>
+                                                </View>
+                                            </View>
+                                            
+                                            <View className="flex-row gap-2 mt-2">
+                                                <TouchableOpacity 
+                                                    onPress={() => router.push("/(teacher)/classes" as any)}
+                                                    className="flex-1 bg-white dark:bg-[#1a1a1a] border border-gray-200 dark:border-gray-800 py-2.5 rounded-xl items-center active:bg-gray-50 dark:active:bg-gray-900"
+                                                >
+                                                    <Text className="text-gray-700 dark:text-gray-200 font-bold text-xs">Attendance & Roster</Text>
+                                                </TouchableOpacity>
+                                                
+                                                <TouchableOpacity 
+                                                    onPress={() => router.push("/(teacher)/students" as any)}
+                                                    className="flex-1 bg-[#FF6900] py-2.5 rounded-xl items-center active:bg-orange-600"
+                                                >
+                                                    <Text className="text-white font-bold text-xs">Student Profiles</Text>
+                                                </TouchableOpacity>
+                                            </View>
+                                        </View>
+                                    ))
+                                ) : (
+                                    <View className="items-center justify-center py-6 bg-gray-50 dark:bg-[#1a1a1a] rounded-2xl border border-dashed border-gray-200 dark:border-gray-800">
+                                        <Text className="text-gray-400 dark:text-gray-550 text-xs font-semibold">No assigned classes as Class Teacher</Text>
+                                    </View>
+                                )}
+                            </View>
+                        )}
+                    </View>
+
+                    {/* --- 4. Today's Schedule --- */}
                     <View className="flex-row justify-between items-end mb-4 ">
                         <Text className="text-xl font-bold text-gray-900 dark:text-white">
                             Today&apos;s Schedule
@@ -243,7 +474,7 @@ export default function TeacherHome() {
                     ) : schedule.length === 0 ? (
                         <View className="bg-white dark:bg-[#1a1a1a] p-8 rounded-3xl border border-dashed border-gray-200 dark:border-gray-800 items-center justify-center mb-6">
                             <Calendar size={32} color="#D1D5DB" />
-                            <Text className="text-gray-400 dark:text-gray-500 mt-2 font-medium">No classes today</Text>
+                            <Text className="text-gray-400 dark:text-gray-550 mt-2 font-medium">No classes today</Text>
                         </View>
                     ) : (
                         <ScrollView
@@ -280,7 +511,7 @@ export default function TeacherHome() {
                                     <Text className="text-gray-900 dark:text-white font-bold text-lg mb-1" numberOfLines={1}>
                                         {item.subjects?.title}
                                     </Text>
-                                    <Text className="text-gray-600 dark:text-gray-300 text-sm">
+                                    <Text className="text-gray-650 dark:text-gray-300 text-sm">
                                         {item.classes?.name} {item.room_number ? ` \u00B7 Room ${item.room_number}` : ''}
                                     </Text>
                                 </View>
@@ -288,7 +519,7 @@ export default function TeacherHome() {
                         </ScrollView>
                     )}
 
-                    {/* --- 4. Quick Actions Grid --- */}
+                    {/* --- 5. Quick Actions Grid --- */}
                     <View className="mt-2">
                         <Text className="text-xl font-bold text-gray-900 dark:text-white mb-4">
                             Quick Actions
@@ -309,7 +540,6 @@ export default function TeacherHome() {
                                         label="Classes"
                                         color="#8b5cf6"
                                         onPress={() => router.push("/(teacher)/classes" as any)}
-                                        badge={<SubscriptionBadge />}
                                     />
                                 </SubscriptionGate>
                             </View>
@@ -328,7 +558,6 @@ export default function TeacherHome() {
                                         label="Messages"
                                         color="#0891b2"
                                         onPress={() => router.push("/(teacher)/management/messages" as any)}
-                                        badge={<SubscriptionBadge />}
                                     />
                                 </SubscriptionGate>
                             </View>

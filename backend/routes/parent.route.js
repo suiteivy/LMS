@@ -7,7 +7,8 @@ const {
     getStudentAcademicData,
     getStudentAttendance,
     getStudentFinance,
-    getStudentBursaries
+    getStudentBursaries,
+    updateLinkedStudentProfile
 } = require("../controllers/parent.controller.js");
 
 // All parent routes require 'parent' role (or admin)
@@ -19,6 +20,7 @@ router.get("/student/:studentId/performance", getStudentAcademicData);
 router.get("/student/:studentId/attendance", getStudentAttendance);
 router.get("/student/:studentId/finance", getStudentFinance);
 router.get("/student/:studentId/bursaries", getStudentBursaries);
+router.put("/student/:studentId/profile", updateLinkedStudentProfile);
 
 module.exports = router;
 

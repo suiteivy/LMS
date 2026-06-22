@@ -2,6 +2,8 @@ import { UnifiedHeader } from "@/components/common/UnifiedHeader";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/libs/supabase";
 import { router } from "expo-router";
+import { SubjectAPI } from "@/services/SubjectService";
+
 import { Check, Download, Edit2, Search, X } from 'lucide-react-native';
 import React, { useEffect, useState } from "react";
 import { ActivityIndicator, Alert, Modal, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
@@ -110,11 +112,13 @@ export default function GradesPage() {
 
     const fetchSubjects = async () => {
         if (!teacherId) return;
-        const { data } = (await supabase
-            .from('subjects')
-            .select('id, title')
-            .eq('teacher_id', teacherId)) as any;
-        if (data) setSubjects(data);
+        try {
+            const data = await SubjectAPI.getFilteredSubjects();
+            if (data) setSubjects(data.map(s => ({ id: s.id, title: s.title })));
+        } catch (error) {
+            console.error("Error fetching filtered subjects in grades:", error);
+            setSubjects([]);
+        }
     };
 
     const fetchAssignmentsForSubject = async () => {
@@ -140,6 +144,15 @@ export default function GradesPage() {
 
         try {
             setLoading(true);
+            const dataSubjects = await SubjectAPI.getFilteredSubjects();
+            const assignedSubjectIds = (dataSubjects || []).map(s => s.id);
+            
+            if (assignedSubjectIds.length === 0) {
+                setSubmissions([]);
+                setLoading(false);
+                return;
+            }
+
             let query = supabase
                 .from('submissions')
                 .select(`
@@ -156,13 +169,14 @@ export default function GradesPage() {
                         title,
                         total_points,
                         teacher_id,
+                        subject_id,
                         subject:subjects!inner(
                             id,
                             title
                         )
                     )
                 `)
-                .eq('assignment.teacher_id', teacherId);
+                .in('assignment.subject_id', assignedSubjectIds);
 
             if (selectedSubject !== "All Subjects") {
                 query = query.eq('assignment.subject.title', selectedSubject);
@@ -196,6 +210,7 @@ export default function GradesPage() {
             setLoading(false);
         }
     };
+
 
     const handleGradeClick = (student: StudentGrade) => {
         setCurrentSubmission(student);

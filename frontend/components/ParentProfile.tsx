@@ -1,16 +1,19 @@
 import { useAuth } from "@/contexts/AuthContext";
 import { useTheme } from "@/contexts/ThemeContext";
-import { authService, supabase } from "@/libs/supabase";
+import { authService } from "@/libs/supabase";
+import { ParentService } from "@/services/ParentService";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { router } from "expo-router";
 import {
   Calendar,
-  Camera,
+  ChevronRight,
   GraduationCap,
-  Library,
   Mail,
   MapPin,
   Phone,
   User,
-  UserCircle
+  UserCircle,
+  Users
 } from "lucide-react-native";
 import React, { useEffect, useState } from "react";
 import {
@@ -25,8 +28,22 @@ import {
   View
 } from "react-native";
 
-export default function StudentProfile() {
-  const { profile, refreshProfile, user } = useAuth();
+interface LinkedStudent {
+  id: string;
+  grade_level: string | null;
+  users: {
+    first_name: string;
+    last_name: string;
+    full_name: string;
+    avatar_url: string | null;
+    email: string;
+  };
+  class_name?: string;
+  class_id?: string | null;
+}
+
+export default function ParentProfile() {
+  const { profile, refreshProfile } = useAuth();
   const { isDark } = useTheme();
 
   const [isEditing, setIsEditing] = useState(false);
@@ -36,16 +53,11 @@ export default function StudentProfile() {
   const [gender, setGender] = useState(profile?.gender || "");
   const [dob, setDob] = useState(profile?.date_of_birth || "");
   const [address, setAddress] = useState(profile?.address || "");
-  const [emergencyName, setEmergencyName] = useState("");
-  const [emergencyPhone, setEmergencyPhone] = useState("");
   const [saving, setSaving] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
-  const [studentDetails, setStudentDetails] = useState<{ grade_level: string | null; academic_year: string | null; admission_date: string | null }>({
-    grade_level: null,
-    academic_year: null,
-    admission_date: null
-  });
+  const [linkedStudents, setLinkedStudents] = useState<LinkedStudent[]>([]);
+  const [loadingStudents, setLoadingStudents] = useState(true);
 
   useEffect(() => {
     if (profile) {
@@ -59,30 +71,25 @@ export default function StudentProfile() {
   }, [profile]);
 
   useEffect(() => {
-    const loadStudentData = async () => {
-      if (!profile?.id) return;
-      const { data } = (await supabase
-        .from('students')
-        .select('emergency_contact_name, emergency_contact_phone, grade_level, academic_year, admission_date')
-        .eq('user_id', profile.id)
-        .maybeSingle()) as any;
+    fetchLinkedStudents();
+  }, []);
 
-      if (data) {
-        setEmergencyName(data.emergency_contact_name || "");
-        setEmergencyPhone(data.emergency_contact_phone || "");
-        setStudentDetails({
-          grade_level: data.grade_level,
-          academic_year: data.academic_year,
-          admission_date: data.admission_date
-        });
-      }
-    };
-    loadStudentData();
-  }, [profile?.id]);
+  const fetchLinkedStudents = async () => {
+    try {
+      setLoadingStudents(true);
+      const data = await ParentService.getLinkedStudents();
+      setLinkedStudents(data || []);
+    } catch (error) {
+      console.error("Error fetching linked students:", error);
+    } finally {
+      setLoadingStudents(false);
+    }
+  };
 
   const handleRefresh = async () => {
     setRefreshing(true);
     await refreshProfile();
+    await fetchLinkedStudents();
     setRefreshing(false);
   };
 
@@ -99,12 +106,6 @@ export default function StudentProfile() {
         address: address || null,
       });
       if (error) throw error;
-
-      await authService.updateRoleProfile('students', {
-        emergency_contact_name: emergencyName || null,
-        emergency_contact_phone: emergencyPhone || null,
-      });
-
       await refreshProfile();
       setIsEditing(false);
       Alert.alert("Success", "Profile updated successfully");
@@ -112,6 +113,15 @@ export default function StudentProfile() {
       Alert.alert("Error", error.message);
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleSelectChild = async (student: LinkedStudent) => {
+    try {
+      await AsyncStorage.setItem('parent_active_student_id', student.id);
+      router.push("/(parent)" as any);
+    } catch (error) {
+      console.error("Error selecting child:", error);
     }
   };
 
@@ -142,14 +152,15 @@ export default function StudentProfile() {
                 <UserCircle size={80} color={isDark ? "#374151" : "#F3F4F6"} />
               )}
             </View>
-            <TouchableOpacity className="absolute -bottom-2 -right-2 bg-[#FF6900] p-3 rounded-2xl shadow-lg border-2 border-gray-50 dark:border-gray-900">
-              <Camera size={18} color="white" />
-            </TouchableOpacity>
           </View>
 
-          <Text className="text-gray-900 dark:text-white text-3xl font-black tracking-tighter mt-6 text-center">{profile?.first_name} {profile?.last_name}</Text>
+          <Text className="text-gray-900 dark:text-white text-3xl font-black tracking-tighter mt-6 text-center">
+            {profile?.first_name} {profile?.last_name}
+          </Text>
           <View className="bg-[#FF6900]/10 px-4 py-1.5 rounded-full mt-2 border border-[#FF6900]/20 self-center">
-            <Text className="text-[#FF6900] text-[10px] font-black uppercase tracking-[2px]">Scholar Member \u00B7 ID: {profile?.id?.slice(0, 8)}</Text>
+            <Text className="text-[#FF6900] text-[10px] font-black uppercase tracking-[2px]">
+              Parent/Guardian · ID: {profile?.id?.slice(0, 8)}
+            </Text>
           </View>
         </View>
 
@@ -159,17 +170,23 @@ export default function StudentProfile() {
             {/* Section Header */}
             <View className="flex-row items-center mb-10">
               <View className="bg-[#FF6900] w-1.5 h-6 rounded-full mr-4 shadow-sm" />
-              <Text className="text-gray-900 dark:text-white font-black text-2xl tracking-tight uppercase">Intelligence Profile</Text>
+              <Text className="text-gray-900 dark:text-white font-black text-2xl tracking-tight uppercase">
+                Personal Profile
+              </Text>
             </View>
 
             <View>
               <View className="flex-row justify-between items-center mb-8">
-                <Text className="text-gray-900 dark:text-white font-black text-xl tracking-tighter">Core Information</Text>
+                <Text className="text-gray-900 dark:text-white font-black text-xl tracking-tighter">
+                  Core Information
+                </Text>
                 <TouchableOpacity
                   onPress={() => setIsEditing(!isEditing)}
                   className="bg-orange-50 dark:bg-orange-950/30 px-5 py-2.5 rounded-2xl border border-orange-100 dark:border-orange-900/30"
                 >
-                  <Text className="text-[#FF6900] font-bold text-[10px] uppercase tracking-widest">{isEditing ? 'Cancel' : 'Modify'}</Text>
+                  <Text className="text-[#FF6900] font-bold text-[10px] uppercase tracking-widest">
+                    {isEditing ? 'Cancel' : 'Modify'}
+                  </Text>
                 </TouchableOpacity>
               </View>
 
@@ -179,8 +196,44 @@ export default function StudentProfile() {
                   <InfoInput label="Last Name" value={lastName} onChange={setLastName} icon={User} isDark={isDark} />
                   <InfoInput label="Contact Number" value={phone} onChange={setPhone} icon={Phone} isDark={isDark} />
                   <InfoInput label="Residential Address" value={address} onChange={setAddress} icon={MapPin} isDark={isDark} />
-                  <TouchableOpacity className="bg-[#FF6900] py-4 rounded-2xl items-center mt-4 shadow-lg shadow-orange-500/20" onPress={handleUpdateProfile} disabled={saving}>
-                    {saving ? <ActivityIndicator color="white" /> : <Text className="text-white font-black text-xs uppercase tracking-[2px]">Save Changes</Text>}
+                  <InfoInput label="Date of Birth (YYYY-MM-DD)" value={dob} onChange={setDob} icon={Calendar} isDark={isDark} />
+
+                  {/* Gender Selector */}
+                  <View className="mb-6">
+                    <Text className="text-gray-400 dark:text-gray-500 text-[8px] font-bold uppercase tracking-widest mb-2 ml-1">
+                      Gender
+                    </Text>
+                    <View className="flex-row gap-2">
+                      {(['male', 'female', 'other'] as const).map((option) => (
+                        <TouchableOpacity
+                          key={option}
+                          onPress={() => setGender(option)}
+                          className={`flex-1 py-3 rounded-2xl border items-center ${
+                            gender === option
+                              ? 'bg-orange-50 dark:bg-orange-950/30 border-[#FF6900]'
+                              : 'bg-white dark:bg-navy border-gray-200 dark:border-gray-800'
+                          }`}
+                        >
+                          <Text className={`font-bold text-xs capitalize ${
+                            gender === option ? 'text-[#FF6900]' : 'text-gray-500'
+                          }`}>{option}</Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  </View>
+
+                  <TouchableOpacity
+                    className="bg-[#FF6900] py-4 rounded-2xl items-center mt-4 shadow-lg shadow-orange-500/20"
+                    onPress={handleUpdateProfile}
+                    disabled={saving}
+                  >
+                    {saving ? (
+                      <ActivityIndicator color="white" />
+                    ) : (
+                      <Text className="text-white font-black text-xs uppercase tracking-[2px]">
+                        Save Changes
+                      </Text>
+                    )}
                   </TouchableOpacity>
                 </View>
               ) : (
@@ -203,17 +256,67 @@ export default function StudentProfile() {
               )}
             </View>
 
-            {/* Academic Standing Section */}
+            {/* Children Overview Section */}
             <View className="mt-12 pt-12 border-t border-gray-50 dark:border-gray-800">
               <View className="flex-row items-center mb-8">
                 <View className="bg-purple-500 w-1.5 h-6 rounded-full mr-4 shadow-sm" />
-                <Text className="text-gray-900 dark:text-white font-black text-xl tracking-tight uppercase">Academic Placement</Text>
+                <Text className="text-gray-900 dark:text-white font-black text-xl tracking-tight uppercase">
+                  Linked Children
+                </Text>
               </View>
-              <View>
-                <InfoRow label="Class Designation" value={`Grade ${studentDetails.grade_level || 'N/A'}`} icon={GraduationCap} color="#ec4899" isDark={isDark} />
-                <InfoRow label="Academic Year" value={studentDetails.academic_year || 'Not Set'} icon={Library} color="#8b5cf6" isDark={isDark} />
-                <InfoRow label="Admission Date" value={studentDetails.admission_date || 'N/A'} icon={Calendar} color="#4b5563" isDark={isDark} />
-              </View>
+
+              {loadingStudents ? (
+                <ActivityIndicator size="small" color="#FF6900" className="my-6" />
+              ) : linkedStudents.length === 0 ? (
+                <View className="items-center justify-center py-8 bg-gray-50 dark:bg-gray-900 rounded-3xl border border-dashed border-gray-200 dark:border-gray-800">
+                  <Users size={32} color="#D1D5DB" />
+                  <Text className="text-gray-400 dark:text-gray-500 mt-2 font-medium">
+                    No linked children found
+                  </Text>
+                </View>
+              ) : (
+                linkedStudents.map((student) => (
+                  <TouchableOpacity
+                    key={student.id}
+                    onPress={() => handleSelectChild(student)}
+                    className="bg-gray-50 dark:bg-gray-900 p-5 rounded-3xl border border-gray-100 dark:border-gray-800 mb-3 active:opacity-70"
+                  >
+                    <View className="flex-row items-center">
+                      <View className="w-14 h-14 rounded-2xl bg-white dark:bg-navy items-center justify-center border border-gray-100 dark:border-gray-800 overflow-hidden mr-4">
+                        {student.users?.avatar_url ? (
+                          <Image
+                            source={{ uri: student.users.avatar_url }}
+                            className="w-full h-full"
+                            resizeMode="cover"
+                          />
+                        ) : (
+                          <Text className="text-gray-400 text-xl font-bold">
+                            {student.users?.first_name?.charAt(0) || '?'}
+                          </Text>
+                        )}
+                      </View>
+                      <View className="flex-1">
+                        <Text className="text-gray-900 dark:text-white font-bold text-base tracking-tight">
+                          {student.users?.full_name || 'Unknown'}
+                        </Text>
+                        <View className="flex-row items-center gap-2 mt-1">
+                          <View className="bg-purple-50 dark:bg-purple-950/20 px-2 py-0.5 rounded-lg">
+                            <Text className="text-purple-600 dark:text-purple-400 text-[10px] font-bold">
+                              {student.class_name || 'Unassigned'}
+                            </Text>
+                          </View>
+                          {student.grade_level && (
+                            <Text className="text-gray-400 dark:text-gray-500 text-[10px] font-semibold">
+                              Grade {student.grade_level}
+                            </Text>
+                          )}
+                        </View>
+                      </View>
+                      <ChevronRight size={18} color="#9ca3af" />
+                    </View>
+                  </TouchableOpacity>
+                ))
+              )}
             </View>
           </View>
         </View>

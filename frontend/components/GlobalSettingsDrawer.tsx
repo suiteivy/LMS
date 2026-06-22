@@ -2,9 +2,9 @@ import { UnifiedHeader } from "@/components/common/UnifiedHeader";
 import { useAuth } from '@/contexts/AuthContext';
 import { UserRole } from '@/types/types';
 import { ThemeMode, useTheme } from '@/contexts/ThemeContext';
-import { ChevronRight, HelpCircle, LogOut, Moon, Settings, ShieldCheck, Sun, UserCircle } from 'lucide-react-native';
+import { ChevronRight, HelpCircle, LogOut, Moon, Settings, ShieldCheck, Sun, UserCircle, Laptop, AlertTriangle } from 'lucide-react-native';
 import React, { useState } from 'react';
-import { Alert, Platform, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, Image, Platform, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { SubscriptionStatusBadge } from '@/components/shared/SubscriptionComponents';
 
 // Screens
@@ -14,6 +14,7 @@ import AdminProfile from '@/components/AdminProfile';
 import AdminSettings from '@/components/AdminSettings';
 import StudentHelp from '@/components/StudentHelp';
 import StudentProfile from '@/components/StudentProfile';
+import ParentProfile from '@/components/ParentProfile';
 import StudentSettings from '@/components/StudentSettings';
 import TeacherHelp from '@/components/TeacherHelp';
 import TeacherProfile from '@/components/TeacherProfile';
@@ -21,6 +22,7 @@ import TeacherSettings from '@/components/TeacherSettings';
 import InstitutionOwnership from '@/components/InstitutionOwnership';
 import MasterAdminProfile from '@/components/MasterAdminProfile';
 import MasterAdminSettings from '@/components/MasterAdminSettings';
+import ActiveSessions from '@/components/ActiveSessions';
 import { router } from 'expo-router';
 
 type MenuItemProps = {
@@ -53,7 +55,7 @@ const MenuItem = ({ icon, label, onPress, danger, isDark }: MenuItemProps) => (
   </TouchableOpacity>
 );
 
-function SettingsMenu({ userRole, onNavigate }: { userRole: string; onNavigate: (screen: 'profile' | 'settings' | 'help' | 'overview' | 'ownership') => void }) {
+function SettingsMenu({ userRole, onNavigate }: { userRole: string; onNavigate: (screen: 'profile' | 'settings' | 'help' | 'overview' | 'ownership' | 'sessions') => void }) {
   const { signOut, profile, loading, displayId, isTrial, isMain } = useAuth();
   const { theme, setTheme, isDark } = useTheme();
   const roleLabel = userRole === 'master_admin' ? 'Master Admin' : userRole === 'parent' ? 'Parent/Guardian' : (userRole.charAt(0).toUpperCase() + userRole.slice(1));
@@ -100,10 +102,14 @@ function SettingsMenu({ userRole, onNavigate }: { userRole: string; onNavigate: 
       {/* Profile summary */}
       <View style={{ paddingHorizontal: 24, paddingVertical: 24, borderBottomWidth: 1, borderBottomColor: border, backgroundColor: surface }}>
         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-          <View style={{ width: 48, height: 48, borderRadius: 16, alignItems: 'center', justifyContent: 'center', marginRight: 16, backgroundColor: isDark ? '#1f2937' : '#f3f4f6', borderWidth: 1, borderColor: border }}>
-            <Text style={{ color: textPrimary, fontWeight: '700', fontSize: 18 }}>
-              {profile?.full_name?.charAt(0) || 'U'}
-            </Text>
+          <View style={{ width: 48, height: 48, borderRadius: 16, alignItems: 'center', justifyContent: 'center', marginRight: 16, backgroundColor: isDark ? '#1f2937' : '#f3f4f6', borderWidth: 1, borderColor: border, overflow: 'hidden' }}>
+            {profile?.avatar_url ? (
+              <Image source={{ uri: profile.avatar_url }} style={{ width: 48, height: 48 }} resizeMode="cover" />
+            ) : (
+              <Text style={{ color: textPrimary, fontWeight: '700', fontSize: 18 }}>
+                {profile?.full_name?.charAt(0) || 'U'}
+              </Text>
+            )}
           </View>
           <View style={{ flex: 1, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
             <View style={{ flex: 1 }}>
@@ -137,6 +143,9 @@ function SettingsMenu({ userRole, onNavigate }: { userRole: string; onNavigate: 
         />
         {!isTrial && (
           <MenuItem isDark={isDark} icon={<Settings size={22} color="#6b7280" />} label="Settings" onPress={() => onNavigate('settings')} />
+        )}
+        {!isTrial && (
+          <MenuItem isDark={isDark} icon={<Laptop size={22} color="#10b981" />} label="Device Sessions" onPress={() => onNavigate('sessions')} />
         )}
         {isTrial && userRole !== 'admin' && userRole !== 'master_admin' && (
           <MenuItem isDark={isDark} icon={<HelpCircle size={22} color="#3b82f6" />} label="Help & Support" onPress={() => onNavigate('help')} />
@@ -209,8 +218,9 @@ function SettingsMenu({ userRole, onNavigate }: { userRole: string; onNavigate: 
 }
 
 export function GlobalSettingsContent({ userRole = 'student' }: { userRole?: UserRole }) {
-  const [activeScreen, setActiveScreen] = useState<'menu' | 'profile' | 'settings' | 'help' | 'overview' | 'ownership'>('menu');
+  const [activeScreen, setActiveScreen] = useState<'menu' | 'profile' | 'settings' | 'help' | 'overview' | 'ownership' | 'sessions'>('menu');
   const { isDark } = useTheme();
+  const { isSessionExpiring, dismissSessionWarning } = useAuth();
 
   const renderContent = () => {
     switch (activeScreen) {
@@ -219,6 +229,7 @@ export function GlobalSettingsContent({ userRole = 'student' }: { userRole?: Use
         if (userRole === 'master_admin') return <MasterAdminProfile />;
         if (userRole === 'admin') return <AdminProfile />;
         if (userRole === 'teacher') return <TeacherProfile />;
+        if (userRole === 'parent') return <ParentProfile />;
         return <StudentProfile />;
       case 'settings':
         if (userRole === 'master_admin') return <MasterAdminSettings />;
@@ -231,6 +242,12 @@ export function GlobalSettingsContent({ userRole = 'student' }: { userRole?: Use
         return <StudentHelp />;
       case 'ownership':
         return <InstitutionOwnership />;
+      case 'sessions':
+        return (
+          <View style={{ flex: 1, padding: 24 }}>
+            <ActiveSessions />
+          </View>
+        );
       default:
         return <SettingsMenu userRole={userRole} onNavigate={setActiveScreen} />;
     }
@@ -243,6 +260,7 @@ export function GlobalSettingsContent({ userRole = 'student' }: { userRole?: Use
       case 'settings': return 'Settings';
       case 'help': return 'Help & Support';
       case 'ownership': return 'Institution Ownership';
+      case 'sessions': return 'Device Sessions';
       default: return '';
     }
   };
@@ -251,6 +269,20 @@ export function GlobalSettingsContent({ userRole = 'student' }: { userRole?: Use
 
   return (
     <View style={{ flex: 1, backgroundColor: isDark ? '#0F0B2E' : '#ffffff' }}>
+      {isSessionExpiring && (
+        <View style={{ backgroundColor: '#fff7ed', borderColor: '#ffedd5', borderWidth: 1, padding: 16, margin: 16, borderRadius: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', elevation: 2 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, marginRight: 8 }}>
+            <AlertTriangle size={20} color="#f97316" style={{ marginRight: 12 }} />
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontWeight: 'black', color: '#ea580c', fontSize: 13 }}>Session Expiring</Text>
+              <Text style={{ color: '#c2410c', fontSize: 11, marginTop: 2 }}>Your session will expire in 15 minutes due to security policy.</Text>
+            </View>
+          </View>
+          <TouchableOpacity onPress={dismissSessionWarning} style={{ paddingHorizontal: 12, paddingVertical: 6, backgroundColor: '#ffedd5', borderRadius: 8 }}>
+            <Text style={{ fontSize: 10, fontWeight: 'bold', color: '#c2410c' }}>Dismiss</Text>
+          </TouchableOpacity>
+        </View>
+      )}
       {activeScreen !== 'menu' && (
         <UnifiedHeader
           title={roleLabel}

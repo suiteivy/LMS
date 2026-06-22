@@ -140,6 +140,49 @@ exports.getClasses = async (req, res) => {
 exports.getClassStudents = async (req, res) => {
     try {
         const { id } = req.params;
+        const { userId, userRole } = req;
+
+        let isClassTeacher = false;
+        let allowedSubjectIds = [];
+
+        if (userRole === 'teacher') {
+            const { data: teacher } = await supabase.from('teachers').select('id').eq('user_id', userId).single();
+            if (!teacher) return res.status(404).json({ error: "Teacher profile not found" });
+
+            // Check if designated Class Teacher for this class
+            const { data: cls } = await supabase
+                .from('classes')
+                .select('teacher_id')
+                .eq('id', id)
+                .single();
+
+            if (cls && cls.teacher_id === teacher.id) {
+                isClassTeacher = true;
+            }
+
+            // Find subjects where teacher is primary or assistant for this class
+            const { data: primarySubjects } = await supabase
+                .from('subjects')
+                .select('id')
+                .eq('class_id', id)
+                .eq('teacher_id', teacher.id);
+            
+            const primarySubjectIds = (primarySubjects || []).map(s => s.id);
+
+            const { data: assocSubjects } = await supabase
+                .from('subject_teachers')
+                .select('subject_id, subject:subjects!inner(class_id)')
+                .eq('teacher_id', teacher.id)
+                .eq('subject.class_id', id);
+
+            const assocSubjectIds = (assocSubjects || []).map(s => s.subject_id);
+
+            allowedSubjectIds = [...new Set([...primarySubjectIds, ...assocSubjectIds])];
+
+            if (!isClassTeacher && allowedSubjectIds.length === 0) {
+                return res.status(403).json({ error: "Access denied: You do not teach or manage this class" });
+            }
+        }
 
         const { data, error } = await supabase
             .from("class_enrollments")
@@ -164,7 +207,7 @@ exports.getClassStudents = async (req, res) => {
 
         if (error) throw error;
 
-        const students = (data || []).map((enrollment) => ({
+        let students = (data || []).map((enrollment) => ({
             enrollment_id: enrollment.id,
             student_id: enrollment.student_id,
             enrolled_at: enrollment.enrolled_at,
@@ -176,6 +219,18 @@ exports.getClassStudents = async (req, res) => {
             form_level: enrollment.students?.form_level || "",
             level: enrollment.students?.grade_level || enrollment.students?.form_level || "",
         }));
+
+        // Filter roster for subject-teacher scoped visibility
+        if (userRole === 'teacher' && !isClassTeacher) {
+            const { data: studentEnrollments } = await supabase
+                .from('enrollments')
+                .select('student_id')
+                .in('subject_id', allowedSubjectIds)
+                .eq('status', 'enrolled');
+
+            const enrolledStudentIds = new Set((studentEnrollments || []).map(se => se.student_id));
+            students = students.filter(s => enrolledStudentIds.has(s.student_id));
+        }
 
         res.json(students);
     } catch (err) {

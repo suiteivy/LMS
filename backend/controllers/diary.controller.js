@@ -32,21 +32,37 @@ exports.createEntry = async (req, res) => {
             return res.status(403).json({ error: "Unauthorized" });
         }
 
+        // 2. Fetch all students currently enrolled in the class
+        const { data: classStudents, error: studentError } = await supabase
+            .from('class_enrollments')
+            .select('student_id')
+            .eq('class_id', class_id);
+
+        if (studentError) throw studentError;
+
+        if (!classStudents || classStudents.length === 0) {
+            return res.status(400).json({ error: "No students enrolled in this class." });
+        }
+
+        // 3. Insert individual diary entries for each student
+        const diaryRows = classStudents.map(student => ({
+            institution_id,
+            class_id,
+            teacher_id: effectiveTeacherId,
+            student_id: student.student_id,
+            title,
+            content,
+            entry_date: entry_date || new Date().toISOString().split('T')[0],
+            status: 'approved'
+        }));
+
         const { data, error } = await supabase
             .from("diary_entries")
-            .insert([{
-                institution_id,
-                class_id,
-                teacher_id: effectiveTeacherId,
-                title,
-                content,
-                entry_date: entry_date || new Date().toISOString().split('T')[0]
-            }])
-            .select()
-            .single();
+            .insert(diaryRows)
+            .select();
 
         if (error) throw error;
-        res.status(201).json(data);
+        res.status(201).json(data && data.length > 0 ? data[0] : null);
     } catch (err) {
         console.error("Error creating diary entry:", err);
         res.status(500).json({ error: err.message });
@@ -62,8 +78,9 @@ exports.getEntries = async (req, res) => {
         const { userId, userRole, institution_id } = req;
 
         let targetClassId = class_id;
+        let targetStudentId = student_id;
 
-        // If student or parent, we might need to resolve the class_id
+        // If student or parent, we might need to resolve the class_id and student_id
         if (userRole === 'student') {
             const { data: student } = await supabase.from('students').select('id').eq('user_id', userId).single();
             if (!student) return res.status(404).json({ error: "Student profile not found" });
@@ -71,33 +88,116 @@ exports.getEntries = async (req, res) => {
             const { data: enrollment } = await supabase.from('class_enrollments').select('class_id').eq('student_id', student.id).single();
             if (!enrollment) return res.status(404).json({ error: "Student not enrolled in any class" });
             targetClassId = enrollment.class_id;
+            targetStudentId = student.id;
         } else if (userRole === 'parent') {
             if (!student_id) return res.status(400).json({ error: "Student ID required for parents" });
 
             // Verify parent-student linkage
             const { data: parent } = await supabase.from('parents').select('id').eq('user_id', userId).single();
+            if (!parent) return res.status(404).json({ error: "Parent profile not found" });
+
             const { data: linkage } = await supabase.from('parent_students').select('id').eq('parent_id', parent.id).eq('student_id', student_id).single();
             if (!linkage) return res.status(403).json({ error: "Access denied: Not linked to this student" });
 
             const { data: enrollment } = await supabase.from('class_enrollments').select('class_id').eq('student_id', student_id).single();
             if (!enrollment) return res.status(404).json({ error: "Student not enrolled in any class" });
             targetClassId = enrollment.class_id;
+            targetStudentId = student_id;
         }
 
-        if (!targetClassId) return res.status(400).json({ error: "Class ID is required" });
+        if (!targetClassId && !targetStudentId) {
+            return res.status(400).json({ error: "Class ID or Student ID is required" });
+        }
 
-        const { data, error } = await supabase
-            .from("diary_entries")
-            .select(`
-                *,
-                teacher:teachers(id, users(first_name, last_name, full_name))
-            `)
-            .eq("class_id", targetClassId)
+        // Fetch diary entries. If targetStudentId is available, filter by student_id or class notes.
+        let query = supabase.from("diary_entries").select(`
+            *,
+            teacher:teachers(id, users(first_name, last_name, full_name)),
+            assignment:assignments(
+                id,
+                title,
+                description,
+                due_date,
+                total_points,
+                attachment_url,
+                attachment_name,
+                grades_released,
+                subject:subjects(id, title)
+            )
+        `);
+
+        if (targetStudentId) {
+            // Fetch entries targeted to this student OR class-wide entries with student_id IS NULL
+            query = query.or(`student_id.eq.${targetStudentId},and(student_id.is.null,class_id.eq.${targetClassId})`);
+        } else {
+            query = query.eq("class_id", targetClassId);
+        }
+
+        const { data, error } = await query
             .eq("institution_id", institution_id)
             .order("entry_date", { ascending: false });
 
         if (error) throw error;
-        res.json(data);
+
+        // Fetch submissions for any assignment-linked diary entries
+        const assignmentIds = (data || []).filter(e => e.assignment_id).map(e => e.assignment_id);
+        let submissions = [];
+        if (assignmentIds.length > 0 && targetStudentId) {
+            const { data: subs } = await supabase
+                .from('submissions')
+                .select('id, assignment_id, grade, feedback, status')
+                .eq('student_id', targetStudentId)
+                .in('assignment_id', assignmentIds);
+            submissions = subs || [];
+        }
+
+        const enriched = (data || []).map(entry => {
+            if (!entry.assignment_id || !entry.assignment) {
+                return entry;
+            }
+
+            const assignment = entry.assignment;
+            const submission = submissions.find(s => s.assignment_id === entry.assignment_id);
+
+            let status = 'Pending';
+            let grade = null;
+            let feedback = null;
+
+            if (submission) {
+                if (submission.status === 'graded') {
+                    if (assignment.grades_released) {
+                        status = 'Graded';
+                        grade = submission.grade;
+                        feedback = submission.feedback;
+                    } else {
+                        status = 'Submitted';
+                    }
+                } else {
+                    status = 'Submitted';
+                }
+            } else {
+                const dueDate = assignment.due_date ? new Date(assignment.due_date) : null;
+                if (dueDate && dueDate < new Date()) {
+                    status = 'Overdue';
+                } else {
+                    status = 'Pending';
+                }
+            }
+
+            return {
+                ...entry,
+                assignment: {
+                    ...assignment,
+                    subject_name: assignment.subject?.title || 'Unknown Subject',
+                    due_date_formatted: assignment.due_date ? new Date(assignment.due_date).toLocaleString() : 'No due date',
+                    status,
+                    grade,
+                    feedback
+                }
+            };
+        });
+
+        res.json(enriched);
     } catch (err) {
         console.error("Error fetching diary entries:", err);
         res.status(500).json({ error: err.message });

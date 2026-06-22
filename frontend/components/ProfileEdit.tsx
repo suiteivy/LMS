@@ -1,6 +1,6 @@
-import { supabase } from '@/libs/supabase'; // Adjust path if needed, usually in lib or services
+import { supabase, authService } from '@/libs/supabase'; // Adjust path if needed, usually in lib or services
 import * as ImagePicker from 'expo-image-picker';
-import { Camera, CheckCircle2, ChevronLeft, X } from 'lucide-react-native';
+import { Camera, X } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, Image, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useAuth } from '@/contexts/AuthContext';
@@ -12,75 +12,15 @@ interface EditFormProps {
   onUpdate?: () => void // Callback after update
 }
 
-const AuthView = ({ onBack, isVerified, authCode, onAuthChange }: any) => {
-  return (
-    <View>
-      <TouchableOpacity onPress={onBack} className="flex-row items-center mb-6">
-        <ChevronLeft size={20} color="#FF6B00" />
-        <Text className="text-orange-500 font-bold ml-1">Back to Profile</Text>
-      </TouchableOpacity>
+const ALLOWED_EXTENSIONS = ['jpg', 'jpeg', 'png', 'webp'];
+const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 
-      <Text className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4">
-        Security Verification
-      </Text>
-
-      <View className="space-y-4">
-        <View>
-          <Text className="text-sm font-semibold text-gray-700 mb-2">Enter Authentication code</Text>
-          <View className="relative">
-            <TextInput
-              className={`bg-gray-50 p-4 rounded-2xl border ${isVerified ? 'border-orange-500' : 'border-gray-100'} text-gray-900`}
-              placeholder="Enter 6-digit code (123456)"
-              placeholderTextColor="#9ca3af"
-              keyboardType="number-pad"
-              maxLength={6}
-              value={authCode}
-              onChangeText={onAuthChange}
-            />
-            {isVerified && (
-              <View className="absolute right-4 top-4">
-                <CheckCircle2 size={24} color="#10b981" />
-              </View>
-            )}
-          </View>
-        </View>
-
-        {/* These fields only unlock if isVerified is true */}
-        <View className={isVerified ? 'opacity-100' : 'opacity-40'}>
-          <View className="mb-4">
-            <Text className="text-sm font-semibold text-gray-700 mb-2">New Password</Text>
-            <TextInput
-              editable={isVerified}
-              className="bg-gray-50 p-4 rounded-2xl border border-gray-100 text-gray-900"
-              placeholder="*******"
-              secureTextEntry
-              autoCapitalize='none'
-            />
-          </View>
-
-          <View>
-            <Text className="text-sm font-semibold text-gray-700 mb-2">Confirm New Password</Text>
-            <TextInput
-              editable={isVerified}
-              className="bg-gray-50 p-4 rounded-2xl border border-gray-100 text-gray-900"
-              placeholder="*******"
-              secureTextEntry
-              autoCapitalize='none'
-            />
-          </View>
-        </View>
-      </View>
-    </View>
-  );
-}
+const GENDER_OPTIONS = ['male', 'female', 'other'] as const;
 
 export const ProfileEdit = ({ visible, onClose, currentUser, onUpdate }: EditFormProps) => {
   const { profile, refreshProfile } = useAuth();
 
-  const [loading, setLoading] = useState(false)
-  const [authCode, setAuthCode] = useState('')
-  const [isVerified, setIsVerified] = useState(false)
-  const [currentView, setCurrentView] = useState<'profile' | 'auth'>('profile')
+  const [loading, setLoading] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
 
@@ -88,13 +28,13 @@ export const ProfileEdit = ({ visible, onClose, currentUser, onUpdate }: EditFor
   const [lastName, setLastName] = useState('');
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
+  const [address, setAddress] = useState('');
+  const [gender, setGender] = useState('');
+  const [dateOfBirth, setDateOfBirth] = useState('');
 
   useEffect(() => {
     if (!visible) {
-      setCurrentView('profile')
-      setLoading(false)
-      setIsVerified(false)
-      setAuthCode('')
+      setLoading(false);
     } else if (profile) {
       // Pre-fill from database via context profile
       setFirstName(profile.first_name || '');
@@ -102,8 +42,11 @@ export const ProfileEdit = ({ visible, onClose, currentUser, onUpdate }: EditFor
       setPhone(profile.phone || '');
       setEmail(profile.email || '');
       setAvatarUrl(profile.avatar_url || null);
+      setAddress(profile.address || '');
+      setGender(profile.gender || '');
+      setDateOfBirth(profile.date_of_birth || '');
     }
-  }, [visible, profile])
+  }, [visible, profile]);
 
   const pickImage = async () => {
     try {
@@ -146,6 +89,14 @@ export const ProfileEdit = ({ visible, onClose, currentUser, onUpdate }: EditFor
         throw new Error('Invalid image URI');
       }
 
+      // Validate file extension
+      const uriParts = uri.split('.');
+      const fileExt = uriParts.length > 1 ? uriParts.pop()?.toLowerCase() : '';
+      if (!fileExt || !ALLOWED_EXTENSIONS.includes(fileExt)) {
+        Alert.alert('Invalid File Type', `Only ${ALLOWED_EXTENSIONS.join(', ')} files are allowed.`);
+        return;
+      }
+
       // Fetch the image as an array buffer
       const response = await fetch(uri);
       if (!response.ok) {
@@ -158,20 +109,20 @@ export const ProfileEdit = ({ visible, onClose, currentUser, onUpdate }: EditFor
         throw new Error('Image buffer is empty');
       }
 
-      // Get file extension with fallback
-      const uriParts = uri.split('.');
-      const fileExt = uriParts.length > 1 ? uriParts.pop()?.toLowerCase() : 'jpg';
-      const validExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
-      const safeExt = validExtensions.includes(fileExt || '') ? fileExt : 'jpg';
+      // Validate file size
+      if (arrayBuffer.byteLength > MAX_FILE_SIZE) {
+        Alert.alert('File Too Large', 'Profile pictures must be under 5MB. Please choose a smaller image.');
+        return;
+      }
 
-      const fileName = `${Date.now()}.${safeExt}`;
+      const fileName = `${Date.now()}.${fileExt}`;
       const filePath = `${fileName}`;
 
       // This requires 'avatars' bucket to be public or authorized
       const { error: uploadError } = await supabase.storage
         .from('avatars')
         .upload(filePath, arrayBuffer, {
-          contentType: `image/${safeExt}`,
+          contentType: `image/${fileExt === 'jpg' ? 'jpeg' : fileExt}`,
           upsert: true
         });
 
@@ -183,8 +134,7 @@ export const ProfileEdit = ({ visible, onClose, currentUser, onUpdate }: EditFor
       setAvatarUrl(data.publicUrl);
     } catch (error: any) {
       console.error('Avatar upload error:', error);
-      // Silently fail - don't alert user, just don't update avatar
-      return;
+      Alert.alert('Upload Error', 'Failed to upload avatar. Please try again.');
     } finally {
       setUploading(false);
     }
@@ -200,10 +150,12 @@ export const ProfileEdit = ({ visible, onClose, currentUser, onUpdate }: EditFor
         full_name: `${firstName.trim()} ${lastName.trim()}`.trim(),
         phone: phone.trim() || null,
         avatar_url: avatarUrl,
-        updated_at: new Date()
+        address: address.trim() || null,
+        gender: gender || null,
+        date_of_birth: dateOfBirth || null,
       };
 
-      const { error } = await (supabase.from('users') as any).update(updates).eq('id', profile.id);
+      const { error } = await authService.updateProfile(updates);
       if (error) throw error;
 
       // Keep Auth metadata in sync
@@ -230,23 +182,6 @@ export const ProfileEdit = ({ visible, onClose, currentUser, onUpdate }: EditFor
       setLoading(false);
     }
   };
-
-  const handleRequestCode = () => {
-    setLoading(true)
-    setTimeout(() => {
-      setLoading(false)
-      setCurrentView('auth')
-    }, 2000)
-  }
-
-  const handleAuthCodeChange = (text: string) => {
-    setAuthCode(text)
-    if (text === '123456') {
-      setIsVerified(true)
-    } else {
-      setIsVerified(false)
-    }
-  }
 
   return (
     <Modal
@@ -281,133 +216,157 @@ export const ProfileEdit = ({ visible, onClose, currentUser, onUpdate }: EditFor
             className="flex-1"
           >
             <ScrollView className="p-6" showsVerticalScrollIndicator={false}>
-              {currentView === "profile" ? (
-                <View>
-                  {/* Avatar Section */}
-                  <View className="items-center mb-8">
-                    <TouchableOpacity onPress={pickImage} className="relative">
-                      <View className="w-24 h-24 rounded-full bg-gray-100 overflow-hidden items-center justify-center border-4 border-white shadow-sm">
-                        {avatarUrl ? (
-                          <Image source={{ uri: avatarUrl }} className="w-full h-full" />
-                        ) : (
-                          <Text className="text-gray-400 text-2xl font-bold">
-                            {firstName?.charAt(0) || profile?.full_name?.charAt(0) || "U"}
-                          </Text>
-                        )}
-                      </View>
-                      <View className="absolute bottom-0 right-0 bg-orange-500 p-2 rounded-full border-2 border-white">
-                        {uploading ? <ActivityIndicator size="small" color="white" /> : <Camera size={14} color="white" />}
-                      </View>
-                    </TouchableOpacity>
-                  </View>
-
-                  <View className="mb-8">
-                    <Text className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4">
-                      Identity
-                    </Text>
-                    <View className="space-y-4">
-                      <View>
-                        <Text className="text-sm font-semibold text-gray-700 mb-2">
-                          First Name
-                        </Text>
-                        <TextInput
-                          className="bg-gray-50 p-4 rounded-2xl border border-gray-100 text-gray-900"
-                          placeholder="First Name"
-                          placeholderTextColor="#9ca3af"
-                          value={firstName}
-                          onChangeText={setFirstName}
-                        />
-                      </View>
-
-                      <View>
-                        <Text className="text-sm font-semibold text-gray-700 mb-2">
-                          Last Name
-                        </Text>
-                        <TextInput
-                          className="bg-gray-50 p-4 rounded-2xl border border-gray-100 text-gray-900"
-                          placeholder="Last Name"
-                          placeholderTextColor="#9ca3af"
-                          value={lastName}
-                          onChangeText={setLastName}
-                        />
-                      </View>
-
-                      <View>
-                        <Text className="text-sm font-semibold text-gray-700 mb-2">
-                          Mobile Number
-                        </Text>
-                        <TextInput
-                          className="bg-gray-50 p-4 rounded-2xl border border-gray-100 text-gray-900"
-                          placeholder="Mobile Number"
-                          placeholderTextColor="#9ca3af"
-                          keyboardType="phone-pad"
-                          value={phone}
-                          onChangeText={setPhone}
-                        />
-                      </View>
-
-                      <View>
-                        <Text className="text-sm font-semibold text-gray-700 mb-2">
-                          Email Address (Assigned)
-                        </Text>
-                        <View className="bg-gray-100 p-4 rounded-2xl border border-gray-200">
-                          <Text className="text-gray-500 text-base">
-                            {email}
-                          </Text>
-                        </View>
-                      </View>
-                    </View>
-                  </View>
-
-                  <View className="pt-6 border-t border-gray-100">
-                    <Text className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4">
-                      Security
-                    </Text>
-                    <View className="bg-orange-50 p-5 rounded-2xl mb-6 border border-orange-100">
-                      <Text className="text-gray-900 text-sm leading-5">
-                        To change your password, we will send a 6-digit code to
-                        your email.
-                      </Text>
-                    </View>
-                    <TouchableOpacity
-                      disabled={loading}
-                      className="bg-white border-2 border-orange-500 p-4 rounded-2xl items-center"
-                      onPress={handleRequestCode}
-                    >
-                      {loading ? (
-                        <ActivityIndicator color="#ff6900" />
+              <View>
+                {/* Avatar Section */}
+                <View className="items-center mb-8">
+                  <TouchableOpacity onPress={pickImage} className="relative">
+                    <View className="w-24 h-24 rounded-full bg-gray-100 overflow-hidden items-center justify-center border-4 border-white shadow-sm">
+                      {avatarUrl ? (
+                        <Image source={{ uri: avatarUrl }} className="w-full h-full" />
                       ) : (
-                        <Text className="text-orange-500 font-bold text-base">
-                          Request Verification Code
+                        <Text className="text-gray-400 text-2xl font-bold">
+                          {firstName?.charAt(0) || profile?.full_name?.charAt(0) || "U"}
                         </Text>
                       )}
-                    </TouchableOpacity>
+                    </View>
+                    <View className="absolute bottom-0 right-0 bg-orange-500 p-2 rounded-full border-2 border-white">
+                      {uploading ? <ActivityIndicator size="small" color="white" /> : <Camera size={14} color="white" />}
+                    </View>
+                  </TouchableOpacity>
+                  <Text className="text-gray-400 text-xs mt-2">JPG, PNG or WebP · Max 5MB</Text>
+                </View>
+
+                <View className="mb-8">
+                  <Text className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4">
+                    Identity
+                  </Text>
+                  <View className="space-y-4">
+                    <View>
+                      <Text className="text-sm font-semibold text-gray-700 mb-2">
+                        First Name
+                      </Text>
+                      <TextInput
+                        className="bg-gray-50 p-4 rounded-2xl border border-gray-100 text-gray-900"
+                        placeholder="First Name"
+                        placeholderTextColor="#9ca3af"
+                        value={firstName}
+                        onChangeText={setFirstName}
+                      />
+                    </View>
+
+                    <View>
+                      <Text className="text-sm font-semibold text-gray-700 mb-2">
+                        Last Name
+                      </Text>
+                      <TextInput
+                        className="bg-gray-50 p-4 rounded-2xl border border-gray-100 text-gray-900"
+                        placeholder="Last Name"
+                        placeholderTextColor="#9ca3af"
+                        value={lastName}
+                        onChangeText={setLastName}
+                      />
+                    </View>
+
+                    <View>
+                      <Text className="text-sm font-semibold text-gray-700 mb-2">
+                        Mobile Number
+                      </Text>
+                      <TextInput
+                        className="bg-gray-50 p-4 rounded-2xl border border-gray-100 text-gray-900"
+                        placeholder="Mobile Number"
+                        placeholderTextColor="#9ca3af"
+                        keyboardType="phone-pad"
+                        value={phone}
+                        onChangeText={setPhone}
+                      />
+                    </View>
+
+                    <View>
+                      <Text className="text-sm font-semibold text-gray-700 mb-2">
+                        Email Address (Assigned)
+                      </Text>
+                      <View className="bg-gray-100 p-4 rounded-2xl border border-gray-200">
+                        <Text className="text-gray-500 text-base">
+                          {email}
+                        </Text>
+                      </View>
+                    </View>
                   </View>
                 </View>
-              ) : (
-                <AuthView
-                  onBack={() => setCurrentView("profile")}
-                  isVerified={isVerified}
-                  authCode={authCode}
-                  onAuthChange={handleAuthCodeChange}
-                />
-              )}
 
-              {/* Universal Footer Buttons */}
-              <View className="mt-10 mb-10 space-y-3">
+                {/* Personal Details Section */}
+                <View className="mb-8">
+                  <Text className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4">
+                    Personal Details
+                  </Text>
+                  <View className="space-y-4">
+                    <View>
+                      <Text className="text-sm font-semibold text-gray-700 mb-2">
+                        Residence / Address
+                      </Text>
+                      <TextInput
+                        className="bg-gray-50 p-4 rounded-2xl border border-gray-100 text-gray-900"
+                        placeholder="Enter your address"
+                        placeholderTextColor="#9ca3af"
+                        value={address}
+                        onChangeText={setAddress}
+                      />
+                    </View>
+
+                    <View>
+                      <Text className="text-sm font-semibold text-gray-700 mb-2">
+                        Gender
+                      </Text>
+                      <View className="flex-row gap-2">
+                        {GENDER_OPTIONS.map((option) => (
+                          <TouchableOpacity
+                            key={option}
+                            onPress={() => setGender(option)}
+                            className={`flex-1 p-4 rounded-2xl border items-center ${
+                              gender === option
+                                ? 'bg-orange-50 border-orange-500'
+                                : 'bg-gray-50 border-gray-100'
+                            }`}
+                          >
+                            <Text className={`font-semibold capitalize text-sm ${
+                              gender === option ? 'text-orange-600' : 'text-gray-500'
+                            }`}>
+                              {option}
+                            </Text>
+                          </TouchableOpacity>
+                        ))}
+                      </View>
+                    </View>
+
+                    <View>
+                      <Text className="text-sm font-semibold text-gray-700 mb-2">
+                        Date of Birth
+                      </Text>
+                      <TextInput
+                        className="bg-gray-50 p-4 rounded-2xl border border-gray-100 text-gray-900"
+                        placeholder="YYYY-MM-DD"
+                        placeholderTextColor="#9ca3af"
+                        value={dateOfBirth}
+                        onChangeText={setDateOfBirth}
+                      />
+                    </View>
+                  </View>
+                </View>
+              </View>
+
+              {/* Footer Buttons */}
+              <View className="mt-4 mb-10 space-y-3">
                 <TouchableOpacity
-                  disabled={(currentView === "auth" && !isVerified) || loading}
-                  onPress={currentView === "profile" ? handleSave : undefined}
-                  className={`p-4 rounded-2xl items-center ${(currentView === "auth" && !isVerified) || loading
+                  disabled={loading}
+                  onPress={handleSave}
+                  className={`p-4 rounded-2xl items-center ${loading
                     ? "bg-gray-100"
                     : "bg-orange-500 shadow-md active:opacity-90"}`}
                 >
                   {loading ? (
                     <ActivityIndicator color="white" />
                   ) : (
-                    <Text className={`font-bold text-lg 
-                        ${currentView === "auth" && !isVerified
-                        ? 'text-gray-500' : 'text-white'}`}>
+                    <Text className="font-bold text-lg text-white">
                       Save Changes
                     </Text>
                   )}

@@ -12,13 +12,33 @@ exports.updateMaterials = async (req, res) => {
 
         // 1. If teacher, verify they teach this subject
         if (userRole === 'teacher') {
+            const { data: teacher } = await supabase
+                .from('teachers')
+                .select('id')
+                .eq('user_id', userId)
+                .single();
+            if (!teacher) return res.status(403).json({ error: "Teacher profile not found" });
+
             const { data: subject } = await supabase
                 .from('subjects')
-                .select('teacher_id, teachers(user_id)')
+                .select('id, teacher_id')
                 .eq('id', subject_id)
                 .single();
 
-            if (!subject || subject.teachers?.user_id !== userId) {
+            if (!subject) return res.status(404).json({ error: "Subject not found" });
+
+            let isAssigned = (subject.teacher_id === teacher.id);
+            if (!isAssigned) {
+                const { data: assoc } = await supabase
+                    .from('subject_teachers')
+                    .select('id')
+                    .eq('subject_id', subject_id)
+                    .eq('teacher_id', teacher.id)
+                    .maybeSingle();
+                if (assoc) isAssigned = true;
+            }
+
+            if (!isAssigned) {
                 return res.status(403).json({ error: "Access denied: You do not teach this subject" });
             }
         } else if (userRole !== 'admin') {
@@ -44,7 +64,7 @@ exports.updateMaterials = async (req, res) => {
  */
 exports.createAssignment = async (req, res) => {
     try {
-        const { subject_id, teacher_id: bodyTeacherId, title, description, due_date, weight, term, is_published } = req.body;
+        const { subject_id, teacher_id: bodyTeacherId, title, description, due_date, weight, term, is_published, student_id } = req.body;
         const { userId, userRole, institution_id } = req;
 
         let effectiveTeacherId = bodyTeacherId;
@@ -54,9 +74,22 @@ exports.createAssignment = async (req, res) => {
             const { data: teacher } = await supabase.from('teachers').select('id').eq('user_id', userId).single();
             if (!teacher) return res.status(404).json({ error: "Teacher profile not found" });
             
-            // Ensure teacher teaches this subject
-            const { data: subject } = await supabase.from('subjects').select('id').eq('id', subject_id).eq('teacher_id', teacher.id).single();
-            if (!subject) return res.status(403).json({ error: "Access denied: You do not teach this subject" });
+            // Ensure teacher teaches this subject (primary or assistant)
+            const { data: subject } = await supabase.from('subjects').select('id, teacher_id').eq('id', subject_id).single();
+            if (!subject) return res.status(404).json({ error: "Subject not found" });
+
+            let isAssigned = (subject.teacher_id === teacher.id);
+            if (!isAssigned) {
+                const { data: assoc } = await supabase
+                    .from('subject_teachers')
+                    .select('id')
+                    .eq('subject_id', subject_id)
+                    .eq('teacher_id', teacher.id)
+                    .maybeSingle();
+                if (assoc) isAssigned = true;
+            }
+
+            if (!isAssigned) return res.status(403).json({ error: "Access denied: You do not teach this subject" });
             
             effectiveTeacherId = teacher.id;
         } else if (userRole !== 'admin') {
@@ -74,7 +107,8 @@ exports.createAssignment = async (req, res) => {
                 institution_id,
                 weight: weight || 0,
                 term,
-                is_published: is_published !== undefined ? is_published : true
+                is_published: is_published !== undefined ? is_published : true,
+                student_id: student_id || null
             }])
             .select()
             .single();
@@ -91,19 +125,26 @@ exports.getAssignments = async (req, res) => {
         const { subject_id } = req.query;
         const { institution_id , userId, userRole} = req;
         let query = supabase.from("assignments").select("*").eq("institution_id", institution_id);
-        if (subject_id) {
-            query = query.eq("subject_id", subject_id);
-        } else if (userRole === 'student'){
-            const { data: student} = await supabase 
-                .from('students')
-                .select('id', 'class_id')
-                .eq('user_id', userId)
-                .single()
-            
-            if(student) {
-                query = query.eq('class_id', student.class_id)
-            }
         
+        if (userRole === 'student'){
+            const { data: student } = await supabase 
+                .from('students')
+                .select('id, class_id')
+                .eq('user_id', userId)
+                .single();
+            
+            if (student) {
+                if (subject_id) {
+                    query = query.eq("subject_id", subject_id);
+                } else if (student.class_id) {
+                    query = query.eq('class_id', student.class_id);
+                }
+                query = query.or(`student_id.is.null,student_id.eq.${student.id}`);
+            }
+        } else {
+            if (subject_id) {
+                query = query.eq("subject_id", subject_id);
+            }
         }
 
         const { data, error } = await query;
@@ -170,15 +211,37 @@ exports.gradeSubmission = async (req, res) => {
             const { data: teacher } = await supabase.from('teachers').select('id').eq('user_id', userId).single();
             if (!teacher) return res.status(404).json({ error: "Teacher profile not found" });
 
-            // Ensure this teacher owns the subject of the assignment of this submission
+            // Get the submission and its subject
             const { data: submission } = await supabase
                 .from('submissions')
-                .select('assignment:assignments(subject:subjects(teacher_id))')
+                .select('assignment:assignments(subject_id)')
                 .eq('id', id)
                 .single();
 
-            if (!submission || submission.assignment?.subject?.teacher_id !== teacher.id) {
-                return res.status(403).json({ error: "Access denied: You are not the teacher of this subject" });
+            if (!submission || !submission.assignment?.subject_id) {
+                return res.status(404).json({ error: "Submission or assignment not found" });
+            }
+
+            const subjectId = submission.assignment.subject_id;
+            const { data: subject } = await supabase
+                .from('subjects')
+                .select('teacher_id')
+                .eq('id', subjectId)
+                .single();
+
+            let isAssigned = (subject?.teacher_id === teacher.id);
+            if (!isAssigned) {
+                const { data: assoc } = await supabase
+                    .from('subject_teachers')
+                    .select('id')
+                    .eq('subject_id', subjectId)
+                    .eq('teacher_id', teacher.id)
+                    .maybeSingle();
+                if (assoc) isAssigned = true;
+            }
+
+            if (!isAssigned) {
+                return res.status(403).json({ error: "Access denied: You do not teach this subject" });
             }
         } else if (userRole !== 'admin') {
             return res.status(403).json({ error: "Unauthorized" });

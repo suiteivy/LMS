@@ -123,4 +123,15 @@ export const TeacherAPI = {
       throw error;
     }
   },
+
+  getStudentDetails: async (studentId: string): Promise<any> => {
+    try {
+      const response = await api.get(`/teacher/students/${studentId}/details`);
+      return response.data;
+    } catch (error) {
+      console.error("Get student details error", error);
+      throw error;
+    }
+  },
 };
+

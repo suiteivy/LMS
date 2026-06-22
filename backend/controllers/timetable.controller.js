@@ -26,7 +26,7 @@ async function checkConflicts(
   let query = supabase
     .from("timetables")
     .select(
-      "id, class_id, subject_id, start_time, end_time, room_number, subjects(teacher_id)",
+      "id, class_id, subject_id, start_time, end_time, room_number",
     )
     .eq("institution_id", institution_id)
     .eq("day_of_week", day_of_week);
@@ -39,13 +39,21 @@ async function checkConflicts(
   const ns = toMin(start_time);
   const ne = toMin(end_time);
 
-  // Fetch teacher_id for the incoming subject
-  const { data: subjectRow } = await supabase
+  // Fetch all teacher IDs for the incoming subject (primary + assistants)
+  const { data: primaryRow } = await supabase
     .from("subjects")
     .select("teacher_id")
     .eq("id", subject_id)
     .single();
-  const incomingTeacherId = subjectRow?.teacher_id ?? null;
+  const { data: assocRows } = await supabase
+    .from("subject_teachers")
+    .select("teacher_id")
+    .eq("subject_id", subject_id);
+  
+  const incomingTeacherIds = new Set([
+    ...(primaryRow?.teacher_id ? [primaryRow.teacher_id] : []),
+    ...(assocRows || []).map(r => r.teacher_id).filter(Boolean)
+  ]);
 
   for (const e of existing) {
     const es = toMin(e.start_time);
@@ -72,13 +80,30 @@ async function checkConflicts(
     }
 
     // Teacher double-booking (institution-wide)
-    const existingTeacherId = e.subjects?.teacher_id ?? null;
-    if (
-      incomingTeacherId &&
-      existingTeacherId &&
-      incomingTeacherId === existingTeacherId &&
-      e.class_id !== class_id
-    ) {
+    const { data: existingPrimary } = await supabase
+      .from("subjects")
+      .select("teacher_id")
+      .eq("id", e.subject_id)
+      .single();
+    const { data: existingAssoc } = await supabase
+      .from("subject_teachers")
+      .select("teacher_id")
+      .eq("subject_id", e.subject_id);
+
+    const existingTeacherIds = [
+      ...(existingPrimary?.teacher_id ? [existingPrimary.teacher_id] : []),
+      ...(existingAssoc || []).map(r => r.teacher_id).filter(Boolean)
+    ];
+
+    let hasTeacherConflict = false;
+    for (const tid of existingTeacherIds) {
+      if (incomingTeacherIds.has(tid)) {
+        hasTeacherConflict = true;
+        break;
+      }
+    }
+
+    if (hasTeacherConflict && e.class_id !== class_id) {
       issues.push(
         `The assigned teacher is already teaching another class at overlapping times on ${day_of_week}`,
       );
@@ -208,16 +233,27 @@ exports.getTeacherTimetable = async (req, res) => {
     if (!teacherId)
       return res.status(400).json({ error: "Teacher ID required" });
 
-    // Step 1: Get subject IDs taught by this teacher
-    const { data: subjectRows, error: subjectError } = await supabase
+    // Step 1: Get subject IDs taught by this teacher (primary or assistant)
+    const { data: primarySubjectRows, error: primarySubjectError } = await supabase
       .from("subjects")
       .select("id")
       .eq("teacher_id", teacherId)
       .eq("institution_id", institution_id);
 
-    if (subjectError) throw subjectError;
+    if (primarySubjectError) throw primarySubjectError;
 
-    const subjectIds = (subjectRows || []).map((s) => s.id);
+    const { data: assocSubjectRows, error: assocSubjectError } = await supabase
+      .from("subject_teachers")
+      .select("subject_id")
+      .eq("teacher_id", teacherId)
+      .eq("institution_id", institution_id);
+
+    if (assocSubjectError) throw assocSubjectError;
+
+    const primarySubjectIds = (primarySubjectRows || []).map((s) => s.id);
+    const assocSubjectIds = (assocSubjectRows || []).map((s) => s.subject_id);
+
+    const subjectIds = [...new Set([...primarySubjectIds, ...assocSubjectIds])];
 
     if (subjectIds.length === 0) {
       return res.json([]); // Teacher has no assigned subjects yet

@@ -125,7 +125,7 @@ function GlobalNotifications() {
 
 // AuthHandler 
 function AuthHandler() {
-  const { loading, isInitializing, isNavReady, resetSessionTimer, session, profile, isPlatformAdmin, getRoleRedirect, signOut } = useAuth();
+  const { loading, isInitializing, isNavReady, resetSessionTimer, session, profile, isPlatformAdmin, getRoleRedirect, signOut, wasDemo, clearWasDemo } = useAuth();
   const { isDark } = useTheme();
   const segments = useSegments();
   const router = useRouter();
@@ -170,7 +170,12 @@ function AuthHandler() {
 
     if (!session) {
       if (!inAuthGroup && !isRoot) {
-        handleRedirect("/(auth)/signIn");
+        if (wasDemo) {
+          handleRedirect("/");
+          clearWasDemo();
+        } else {
+          handleRedirect("/(auth)/signIn");
+        }
       }
     } else if (profile) {
       // If at root or in auth group, redirect to role-specific dashboard

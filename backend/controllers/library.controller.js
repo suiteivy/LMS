@@ -368,8 +368,8 @@ exports.borrowBook = async (req, res) => {
       .insert([
         {
           book_id: bookId, // Changed from item_id
-          student_id,
-          teacher_id,
+          student_id: studentId,
+          teacher_id: teacherId,
           status: 'borrowed',
           borrowed_at: new Date().toISOString(), // Changed from borrow_date
           due_date: dueDate.toISOString().slice(0, 10),

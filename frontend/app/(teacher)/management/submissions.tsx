@@ -25,6 +25,7 @@ interface JoinedAssignment {
     teacher_id: string;
     title: string;
     total_points: number;
+    grades_released: boolean;
     subject: {
         title: string;
         id: string;
@@ -111,6 +112,30 @@ export default function SubmissionsPage() {
         }
     };
 
+    const toggleGradesReleased = async () => {
+        if (!assignment) return;
+        const newStatus = !assignment.grades_released;
+        try {
+            const { error } = await (supabase
+                .from('assignments') as any)
+                .update({ grades_released: newStatus })
+                .eq('id', assignment.id);
+
+            if (error) throw error;
+
+            setAssignment(prev => prev ? { ...prev, grades_released: newStatus } : null);
+            Alert.alert(
+                "Success", 
+                newStatus 
+                    ? "Grades have been released and are now visible to parents and students." 
+                    : "Grades have been hidden from student and parent diaries."
+            );
+        } catch (error) {
+            console.error("Error toggling grade release:", error);
+            Alert.alert("Error", "Failed to update grade release status");
+        }
+    };
+
     const handleGradeClick = (entry: SubmissionEntry) => {
         if (entry.status === 'missing') {
             Alert.alert("No Submission", "This student hasn't submitted the assignment yet.");
@@ -189,22 +214,41 @@ export default function SubmissionsPage() {
                     <View className="p-4 md:p-8">
                         {/* Assignment Info Header */}
                         <View className="bg-gray-900 p-8 rounded-[40px] mb-8 shadow-xl">
-                            <Text className="text-white/60 text-[10px] font-bold uppercase tracking-[3px] mb-2">{assignment?.subject?.title}</Text>
+                            <View className="flex-row justify-between items-start mb-2">
+                                <Text className="text-white/60 text-[10px] font-bold uppercase tracking-[3px] mt-1">{assignment?.subject?.title}</Text>
+                                <View className={`px-3 py-1 rounded-full border ${assignment?.grades_released ? 'bg-green-950/40 border-green-800' : 'bg-gray-800 border-gray-700'}`}>
+                                    <Text className={`text-[9px] font-extrabold uppercase tracking-widest ${assignment?.grades_released ? 'text-green-400' : 'text-gray-400'}`}>
+                                        Grades: {assignment?.grades_released ? "Released" : "Hidden"}
+                                    </Text>
+                                </View>
+                            </View>
+                            
                             <Text className="text-white text-2xl font-bold tracking-tight mb-6">{assignment?.title}</Text>
 
-                            <View className="flex-row gap-6">
-                                <View className="flex-row items-center">
-                                    <View className="bg-white/10 p-1.5 rounded-lg mr-2">
-                                        <FileText size={14} color="white" />
+                            <View className="flex-row justify-between items-center">
+                                <View className="flex-row gap-6">
+                                    <View className="flex-row items-center">
+                                        <View className="bg-white/10 p-1.5 rounded-lg mr-2">
+                                            <FileText size={14} color="white" />
+                                        </View>
+                                        <Text className="text-white/80 text-xs font-bold">Max: {assignment?.total_points}</Text>
                                     </View>
-                                    <Text className="text-white/80 text-xs font-bold">Max: {assignment?.total_points}</Text>
-                                </View>
-                                <View className="flex-row items-center">
-                                    <View className="bg-white/10 p-1.5 rounded-lg mr-2">
-                                        <User size={14} color="white" />
+                                    <View className="flex-row items-center">
+                                        <View className="bg-white/10 p-1.5 rounded-lg mr-2">
+                                            <User size={14} color="white" />
+                                        </View>
+                                        <Text className="text-white/80 text-xs font-bold">{submissions.length} Students</Text>
                                     </View>
-                                    <Text className="text-white/80 text-xs font-bold">{submissions.length} Students</Text>
                                 </View>
+
+                                <TouchableOpacity
+                                    onPress={toggleGradesReleased}
+                                    className={`px-4 py-2.5 rounded-2xl ${assignment?.grades_released ? 'bg-gray-800' : 'bg-[#FF6900]'}`}
+                                >
+                                    <Text className="text-white text-xs font-bold">
+                                        {assignment?.grades_released ? "Hide Grades" : "Release Grades"}
+                                    </Text>
+                                </TouchableOpacity>
                             </View>
                         </View>
 

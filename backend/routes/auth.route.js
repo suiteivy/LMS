@@ -12,6 +12,10 @@ const {
   resetPassword,
   adminResetPassword,
   transferMainAdmin,
+  getActiveSessions,
+  revokeSession,
+  revokeAllOtherSessions,
+  pingSession,
 } = require("../controllers/auth.controller.js");
 const { authMiddleware } = require("../middleware/auth.middleware.js");
 const checkSubscription = require("../middleware/subscriptionCheck.js");
@@ -64,6 +68,12 @@ router.post("/logout", authMiddleware, logout);
 // Password management
 router.put("/change-password", authMiddleware, changePassword);
 router.post("/admin-reset-password", authMiddleware, adminResetPassword);
+
+// Session management
+router.get("/sessions", authMiddleware, getActiveSessions);
+router.post("/sessions/revoke", authMiddleware, revokeSession);
+router.post("/sessions/revoke-others", authMiddleware, revokeAllOtherSessions);
+router.post("/ping", authMiddleware, pingSession);
 
 // Main Admin Management
 router.post(

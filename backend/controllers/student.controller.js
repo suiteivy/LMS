@@ -148,8 +148,59 @@ exports.getMyAnnouncements = async (req, res) => {
  */
 exports.listStudents = async (req, res) => {
     try {
-        const { institution_id } = req;
-        const { data, error } = await supabase
+        const { userId, userRole, institution_id } = req;
+
+        let allowedStudentIds = null;
+
+        if (userRole === 'teacher') {
+            const { data: teacher } = await supabase.from('teachers').select('id').eq('user_id', userId).single();
+            if (!teacher) return res.status(404).json({ error: "Teacher profile not found" });
+
+            // A. Students in classes where this teacher is Class Teacher
+            const { data: ctClasses } = await supabase
+                .from('classes')
+                .select('id')
+                .eq('teacher_id', teacher.id);
+            
+            const ctClassIds = (ctClasses || []).map(c => c.id);
+            let ctStudentIds = [];
+            if (ctClassIds.length > 0) {
+                const { data: ctEnrollments } = await supabase
+                    .from('class_enrollments')
+                    .select('student_id')
+                    .in('class_id', ctClassIds);
+                ctStudentIds = (ctEnrollments || []).map(e => e.student_id);
+            }
+
+            // B. Students enrolled in subjects where this teacher is primary or assistant
+            const { data: primarySubjects } = await supabase
+                .from('subjects')
+                .select('id')
+                .eq('teacher_id', teacher.id);
+            const primarySubjectIds = (primarySubjects || []).map(s => s.id);
+
+            const { data: assocSubjects } = await supabase
+                .from('subject_teachers')
+                .select('subject_id')
+                .eq('teacher_id', teacher.id);
+            const assocSubjectIds = (assocSubjects || []).map(s => s.subject_id);
+
+            const subjectIds = [...new Set([...primarySubjectIds, ...assocSubjectIds])];
+
+            let stStudentIds = [];
+            if (subjectIds.length > 0) {
+                const { data: stEnrollments } = await supabase
+                    .from('enrollments')
+                    .select('student_id')
+                    .in('subject_id', subjectIds)
+                    .eq('status', 'enrolled');
+                stStudentIds = (stEnrollments || []).map(e => e.student_id);
+            }
+
+            allowedStudentIds = [...new Set([...ctStudentIds, ...stStudentIds])];
+        }
+
+        let query = supabase
             .from('students')
             .select(`
                 id,
@@ -162,8 +213,17 @@ exports.listStudents = async (req, res) => {
                     avatar_url
                 )
             `)
-            .eq('institution_id', institution_id)
-            .order('id');
+            .eq('institution_id', institution_id);
+
+        if (userRole === 'teacher') {
+            if (allowedStudentIds && allowedStudentIds.length > 0) {
+                query = query.in('id', allowedStudentIds);
+            } else {
+                return res.json([]);
+            }
+        }
+
+        const { data, error } = await query.order('id');
 
         if (error) throw error;
         res.json(data || []);

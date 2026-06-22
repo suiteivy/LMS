@@ -1,6 +1,7 @@
 import axios, { AxiosError, AxiosInstance, InternalAxiosRequestConfig } from "axios";
 import { Platform } from "react-native";
 import { showError } from "../utils/toast";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 // Extend Axios request config to support a per-request flag that suppresses
 // the global error toast (useful for background fetches that have silent fallbacks).
@@ -123,6 +124,13 @@ api.interceptors.response.use(
           message = "Please sign in again.";
 
           const skipSignOut = (error.config as InternalAxiosRequestConfig & { skipErrorToast?: boolean })?.skipErrorToast;
+
+          const errorCode = data?.code;
+          if (errorCode === 'SESSION_IDLE_TIMEOUT') {
+            AsyncStorage.setItem('logout_reason', 'inactivity').catch(() => {});
+          } else if (errorCode === 'SESSION_TIMEOUT' || errorCode === 'SESSION_REVOKED') {
+            AsyncStorage.setItem('logout_reason', 'timeout').catch(() => {});
+          }
 
           // Trigger global sign-out to clear state and redirect
           // We do NOT show a toast here to avoid spam/race conditions during logout.

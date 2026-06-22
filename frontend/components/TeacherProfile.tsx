@@ -5,7 +5,7 @@ import { Database } from "@/types/database";
 import { showError, showSuccess } from "@/utils/toast";
 import { BookOpen, Calendar, Camera, GraduationCap, Layers, Mail, MapPin, Phone, User, UserCircle, Users } from "lucide-react-native";
 import React, { useEffect, useState } from "react";
-import { ActivityIndicator, RefreshControl, ScrollView, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, Image, RefreshControl, ScrollView, Text, TextInput, TouchableOpacity, View } from "react-native";
 
 type Subject = Database['public']['Tables']['subjects']['Row'];
 type Class = Database['public']['Tables']['classes']['Row'];
@@ -174,7 +174,11 @@ export default function TeacherProfile() {
                 <View className="items-center mt-8 mb-4">
                     <View className="relative">
                         <View className="w-32 h-32 rounded-[40px] bg-white dark:bg-gray-800 items-center justify-center border-4 border-gray-100 dark:border-gray-800 shadow-2xl overflow-hidden">
-                            <UserCircle size={80} color={isDark ? "#374151" : "#F3F4F6"} />
+                            {profile?.avatar_url ? (
+                                <Image source={{ uri: profile.avatar_url }} className="w-full h-full" resizeMode="cover" />
+                            ) : (
+                                <UserCircle size={80} color={isDark ? "#374151" : "#F3F4F6"} />
+                            )}
                         </View>
                         <TouchableOpacity className="absolute -bottom-2 -right-2 bg-[#FF6900] p-3 rounded-2xl shadow-lg border-2 border-gray-50 dark:border-gray-900">
                             <Camera size={18} color="white" />

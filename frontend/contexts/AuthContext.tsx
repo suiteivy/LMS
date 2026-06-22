@@ -6,6 +6,7 @@ import { router } from 'expo-router'
 import React, { createContext, useContext, useEffect, useRef, useState } from 'react'
 import { AppState, AppStateStatus, Platform } from 'react-native'
 import Toast from 'react-native-toast-message'
+import { api } from '@/services/api'
 
 type UserProfile = Database['public']['Tables']['users']['Row']
 
@@ -29,6 +30,8 @@ interface AuthContextType {
   isInitializing: boolean
   isNavReady: boolean
   isProfileLoading: boolean
+  isSessionExpiring: boolean
+  dismissSessionWarning: () => void
   signIn: (email: string, password: string) => Promise<{ data: any; error: any }>
   signOut: () => Promise<{ error: any }>
   logout: () => Promise<{ error: any }>
@@ -37,6 +40,8 @@ interface AuthContextType {
   resetSessionTimer: () => void
   startDemo: (role: string) => Promise<{ data: any; error: any }>
   isDemo: boolean
+  wasDemo: boolean
+  clearWasDemo: () => void
   isTrial: boolean
   addonMessaging: boolean
   addonLibrary: boolean
@@ -108,8 +113,20 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   useEffect(() => { isInitializingRef.current = isInitializing; }, [isInitializing]);
   useEffect(() => { isNavReadyRef.current = isNavReady; }, [isNavReady]);
   const [isDemo, setIsDemo] = useState(false)
+  const [wasDemo, setWasDemo] = useState(false)
+
+  const clearWasDemo = React.useCallback(() => {
+    setWasDemo(false);
+  }, []);
+
+  const [isSessionExpiring, setIsSessionExpiring] = useState(false);
+  const [sessionWarningDismissed, setSessionWarningDismissed] = useState(false);
 
   const timerRef = useRef<any>(null)
+  const timerWarningRef = useRef<any>(null)
+  const idleTimeoutRef = useRef<any>(null)
+  const lastPingTime = useRef<number>(0)
+
   const appState = useRef(AppState.currentState);
   const lastActive = useRef(Date.now());
   const isManualLogout = useRef(false);
@@ -127,6 +144,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     if (timerRef.current) {
       clearTimeout(timerRef.current)
       timerRef.current = null
+    }
+    if (timerWarningRef.current) {
+      clearTimeout(timerWarningRef.current)
+      timerWarningRef.current = null
+    }
+    if (idleTimeoutRef.current) {
+      clearTimeout(idleTimeoutRef.current)
+      idleTimeoutRef.current = null
     }
   }
 
@@ -148,6 +173,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setSession(null);
       setUser(null);
       setProfile(null);
+      setIsSessionExpiring(false);
+      setSessionWarningDismissed(false);
       currentSessionRef.current = null;
       userRef.current = null;
       profileRef.current = null;
@@ -214,17 +241,40 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     return result;
   }
 
+  const dismissSessionWarning = () => {
+    setSessionWarningDismissed(true);
+    setIsSessionExpiring(false);
+  };
+
   const resetSessionTimer = async () => {
-    if (session) await startTimeoutTimer()
-  }
+    if (!session) return;
+    
+    // 1. Reset client-side idle timer (10 minutes)
+    if (idleTimeoutRef.current) {
+      clearTimeout(idleTimeoutRef.current);
+    }
+    
+    idleTimeoutRef.current = setTimeout(async () => {
+      console.warn("[AuthContext] Local idle timeout triggered (10 minutes inactivity)");
+      await AsyncStorage.setItem('logout_reason', 'inactivity');
+      await handleLogout();
+    }, 10 * 60 * 1000); // 10 minutes
+
+    // 2. Throttled keep-alive ping to backend (at most once every 1 minute)
+    const now = Date.now();
+    if (now - lastPingTime.current > 60000) {
+      lastPingTime.current = now;
+      api.post('/auth/ping', {}, { skipErrorToast: true }).catch(() => {});
+    }
+  };
 
   const startTimeoutTimer = async (isDemoSession?: boolean) => {
-    clearTimer()
+    clearTimer();
     const isActuallyDemo = isDemoSession !== undefined ? isDemoSession : isDemoRef.current;
 
-    // Duration: 15 mins for demo, 15 mins for master admin, 24 hours for regular users
+    // Absolute timeout: 15 mins for demo, 15 mins for master admin, 10 hours for regular users
     const isMasterAdmin = profileRef.current?.role === 'master_admin' || !!(profileRef.current as any)?.platform_admins?.[0];
-    const totalDurationMs = (isActuallyDemo || isMasterAdmin) ? 15 * 60 * 1000 : 24 * 60 * 60 * 1000;
+    const totalDurationMs = (isActuallyDemo || isMasterAdmin) ? 15 * 60 * 1000 : 10 * 60 * 60 * 1000;
 
     // Check for persisted start time
     let startTime = Date.now();
@@ -243,13 +293,31 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     const remaining = totalDurationMs - elapsed;
 
     if (remaining <= 0) {
+      await AsyncStorage.setItem('logout_reason', 'timeout');
       await handleLogout();
     } else {
+      // Set absolute expiry timeout
       timerRef.current = setTimeout(async () => {
-        await handleLogout()
-      }, remaining)
+        console.warn("[AuthContext] Absolute session timeout triggered");
+        await AsyncStorage.setItem('logout_reason', 'timeout');
+        await handleLogout();
+      }, remaining);
+
+      // Warning timeout: 15 minutes before 10-hour limit, or 2 minutes before 15-minute limit
+      const warningThresholdMs = (isActuallyDemo || isMasterAdmin) ? 2 * 60 * 1000 : 15 * 60 * 1000;
+
+      if (remaining > warningThresholdMs) {
+        timerWarningRef.current = setTimeout(() => {
+          setIsSessionExpiring(true);
+        }, remaining - warningThresholdMs);
+      } else {
+        setIsSessionExpiring(true);
+      }
     }
-  }
+
+    // Also reset/start the local idle timeout on start
+    await resetSessionTimer();
+  };
 
   const lastLoadedUserId = useRef<string | null>(null);
   const loadingUserId = useRef<string | null>(null);
@@ -414,6 +482,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
               setUser(validatedUser);
               const isDemoUser = validatedUser.email?.startsWith('demo.') || false;
               setIsDemo(isDemoUser);
+              if (isDemoUser) {
+                setWasDemo(true);
+              }
               await loadUserProfile(validatedUser.id);
               await startTimeoutTimer(isDemoUser);
             } else {
@@ -458,6 +529,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         currentSessionRef.current = session;
         const isDemoUser = session.user.email?.startsWith('demo.') || false;
         setIsDemo(isDemoUser);
+        if (isDemoUser) {
+          setWasDemo(true);
+        }
         await AsyncStorage.setItem('session_start_time', Date.now().toString());
         loadUserProfile(session.user.id);
         await startTimeoutTimer(isDemoUser);
@@ -474,6 +548,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         setSession(null);
         setUser(null);
         setProfile(null);
+        setIsSessionExpiring(false);
+        setSessionWarningDismissed(false);
         setRoleInfo({ studentId: null, teacherId: null, adminId: null, parentId: null, displayId: null });
         setIsDemo(false);
         setSubscriptionStatus(null);
@@ -489,9 +565,27 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         clearTimer();
         currentSessionRef.current = null;
         lastLoadedUserId.current = null;
-        if (!silent) {
-          Toast.show({ type: 'success', text1: 'Logged Out', text2: 'You have been logged out successfully.', position: 'bottom' });
-        }
+        
+        AsyncStorage.getItem('logout_reason').then((reason) => {
+          if (reason === 'inactivity') {
+            Toast.show({ type: 'info', text1: 'Logged Out', text2: "You've been logged out due to inactivity.", position: 'bottom' });
+          } else if (reason === 'timeout') {
+            Toast.show({ type: 'info', text1: 'Session Expired', text2: 'Your session has expired.', position: 'bottom' });
+          } else {
+            if (!silent) {
+              if (isDemoRef.current) {
+                Toast.show({ type: 'info', text1: 'Session ended', text2: 'Demo session ended.', position: 'bottom' });
+              } else {
+                Toast.show({ type: 'success', text1: 'Logged Out', text2: 'You have been logged out successfully.', position: 'bottom' });
+              }
+            }
+          }
+          AsyncStorage.removeItem('logout_reason').catch(() => {});
+        }).catch(() => {
+          if (!silent) {
+            Toast.show({ type: 'success', text1: 'Logged Out', text2: 'You have been logged out successfully.', position: 'bottom' });
+          }
+        });
       }
     });
 
@@ -520,6 +614,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     displayId: roleInfo.displayId,
     subscriptionStatus, subscriptionPlan, trialEndDate, institutionName,
     loading, isInitializing, isNavReady, isProfileLoading,
+    isSessionExpiring,
+    dismissSessionWarning,
     signIn: handleSignIn,
     setLoading,
     signOut: handleLogout,
@@ -529,6 +625,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     resetSessionTimer,
     startDemo: handleStartDemo,
     isDemo,
+    wasDemo,
+    clearWasDemo,
     isTrial: subscriptionStatus === 'trial' || subscriptionPlan === 'trial',
     isMain,
     isPlatformAdmin,
@@ -541,7 +639,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     addonDiary: addonFlags.diary,
     customStudentLimit,
     getRoleRedirect,
-  }), [session, user, profile, roleInfo, subscriptionStatus, subscriptionPlan, trialEndDate, institutionName, loading, isInitializing, isNavReady, isProfileLoading, isDemo, isMain, isPlatformAdmin, addonFlags, customStudentLimit]);
+  }), [session, user, profile, roleInfo, subscriptionStatus, subscriptionPlan, trialEndDate, institutionName, loading, isInitializing, isNavReady, isProfileLoading, isSessionExpiring, sessionWarningDismissed, isDemo, wasDemo, clearWasDemo, isMain, isPlatformAdmin, addonFlags, customStudentLimit]);
 
   return (
     <AuthContext.Provider value={value}>

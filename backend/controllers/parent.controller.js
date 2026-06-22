@@ -211,3 +211,59 @@ exports.getStudentBursaries = async (req, res) => {
     }
 };
 
+
+/**
+ * Update a linked student's profile (Parent or Admin)
+ */
+exports.updateLinkedStudentProfile = async (req, res) => {
+    try {
+        const { studentId } = req.params;
+        const { userId } = req;
+
+        // Verify parent-student link
+        const auth = await verifyParentStudentLink(userId, studentId);
+        if (auth.error) return res.status(auth.status).json({ error: auth.error });
+
+        const { first_name, last_name, gender, date_of_birth, address, phone } = req.body;
+
+        // Get student's user_id from the students table
+        const { data: student, error: fetchErr } = await supabase
+            .from('students')
+            .select('user_id')
+            .eq('id', studentId)
+            .single();
+
+        if (fetchErr || !student) {
+            return res.status(404).json({ error: "Student record not found" });
+        }
+
+        // Build update payload - only include fields that were sent
+        const updates = {};
+        if (first_name !== undefined) updates.first_name = first_name.trim();
+        if (last_name !== undefined) updates.last_name = last_name.trim();
+        if (gender !== undefined) updates.gender = gender;
+        if (date_of_birth !== undefined) updates.date_of_birth = date_of_birth;
+        if (address !== undefined) updates.address = address;
+        if (phone !== undefined) updates.phone = phone;
+
+        // Compute full_name if name parts are provided
+        if (updates.first_name || updates.last_name) {
+            const fn = updates.first_name || '';
+            const ln = updates.last_name || '';
+            updates.full_name = (fn + ' ' + ln).trim();
+        }
+
+        updates.updated_at = new Date().toISOString();
+
+        const { error: updateErr } = await supabase
+            .from('users')
+            .update(updates)
+            .eq('id', student.user_id);
+
+        if (updateErr) throw updateErr;
+
+        res.json({ message: "Student profile updated successfully" });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+};

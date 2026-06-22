@@ -142,10 +142,18 @@ export default function AdminProfile() {
 
                                 {/* Avatar + edit buttons */}
                                 <View style={{ position: "relative", elevation: 8, zIndex: 10 }}>
-                                    <Image
-                                        source={{ uri: "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&w=200" }}
-                                        style={{ width: 96, height: 96, borderRadius: 16, borderWidth: 4, borderColor: "#ffffff", backgroundColor: "#d1d5db" }}
-                                    />
+                                    {profile?.avatar_url ? (
+                                        <Image
+                                            source={{ uri: profile.avatar_url }}
+                                            style={{ width: 96, height: 96, borderRadius: 16, borderWidth: 4, borderColor: "#ffffff", backgroundColor: "#d1d5db" }}
+                                        />
+                                    ) : (
+                                        <View style={{ width: 96, height: 96, borderRadius: 16, borderWidth: 4, borderColor: "#ffffff", backgroundColor: isDark ? "#374151" : "#e5e7eb", alignItems: "center", justifyContent: "center" }}>
+                                            <Text style={{ fontSize: 32, fontWeight: "800", color: isDark ? "#9ca3af" : "#6b7280" }}>
+                                                {profile?.first_name?.charAt(0) || 'A'}
+                                            </Text>
+                                        </View>
+                                    )}
                                     <TouchableOpacity
                                         style={{
                                             position: "absolute",

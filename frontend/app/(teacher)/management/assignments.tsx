@@ -11,7 +11,9 @@ import { AlignLeft, Calendar, Edit2, Eye, FileText, Plus, Printer, Target, Troph
 import React, { useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, Alert, Modal, ScrollView, Text, TextInput, TouchableOpacity, View, Platform } from 'react-native';
 import { DiaryAPI } from "@/services/DiaryService";
+import { SubjectAPI } from "@/services/SubjectService";
 import * as Print from 'expo-print';
+
 import * as Sharing from 'expo-sharing';
 import { DocumentPickerAsset } from 'expo-document-picker';
 
@@ -161,16 +163,15 @@ export default function AssignmentsPage() {
 
     const fetchSubjects = async () => {
         if (!teacherId) return;
-        // First try subjects assigned to this teacher
-        const { data: mySubjects } = await supabase.from('subjects').select('id, title').eq('teacher_id', teacherId);
-        if (mySubjects && mySubjects.length > 0) {
-            setSubjects(mySubjects);
-            return;
+        try {
+            const data = await SubjectAPI.getFilteredSubjects();
+            setSubjects((data || []).map(s => ({ id: s.id, title: s.title })));
+        } catch (error) {
+            console.error("Error fetching filtered subjects:", error);
+            setSubjects([]);
         }
-        // Fallback: show all available subjects so the teacher can still create assignments
-        const { data: allSubjects } = await supabase.from('subjects').select('id, title').order('title');
-        if (allSubjects) setSubjects(allSubjects);
     };
+
 
     const fetchAssignments = async () => {
         if (!teacherId) return;

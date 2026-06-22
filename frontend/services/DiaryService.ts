@@ -20,6 +20,26 @@ export interface DiaryEntry {
             full_name?: string;
         };
     };
+    assignment_id?: string | null;
+    assignment?: {
+        id: string;
+        title: string;
+        description: string;
+        due_date: string;
+        total_points?: number;
+        attachment_url?: string | null;
+        attachment_name?: string | null;
+        grades_released?: boolean;
+        subject_name: string;
+        due_date_formatted: string;
+        status: 'Pending' | 'Submitted' | 'Graded' | 'Overdue';
+        grade?: number | null;
+        feedback?: string | null;
+        subject?: {
+            id: string;
+            title: string;
+        };
+    };
 }
 
 export const DiaryService = {

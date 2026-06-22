@@ -723,7 +723,7 @@ export default function TeacherClasses() {
     const fetchClasses = async () => {
         if (!teacherId) return;
         try {
-            // Teachers are linked to classes through subjects (subjects.teacher_id → subjects.class_id)
+            // 1. Fetch class IDs from subjects taught by the teacher
             const { data: subjectData, error: subjectError } = await supabase
                 .from('subjects')
                 .select('class_id')
@@ -731,8 +731,19 @@ export default function TeacherClasses() {
 
             if (subjectError) throw subjectError;
 
-            // Deduplicate class IDs
-            const classIds = [...new Set((subjectData ?? []).map((s: any) => s.class_id).filter(Boolean))];
+            // 2. Fetch classes where this teacher is the designated Class Teacher
+            const { data: ctData, error: ctError } = await supabase
+                .from('classes')
+                .select('id')
+                .eq('teacher_id', teacherId);
+
+            if (ctError) throw ctError;
+
+            const subjectClassIds = (subjectData ?? []).map((s: any) => s.class_id).filter(Boolean);
+            const ctClassIds = (ctData ?? []).map((c: any) => c.id).filter(Boolean);
+
+            // Deduplicate the combined list of class IDs
+            const classIds = [...new Set([...subjectClassIds, ...ctClassIds])];
 
             if (classIds.length === 0) {
                 setClasses([]);
@@ -747,15 +758,20 @@ export default function TeacherClasses() {
 
             if (error) throw error;
 
-            const typedData = data as ClassItem[];
-
             const classesWithCounts = await Promise.all(
-                typedData.map(async (cls) => {
+                (data || []).map(async (cls: any) => {
                     const { count } = await supabase
-                        .from('students')
+                        .from('class_enrollments')
                         .select('id', { count: 'exact', head: true })
                         .eq('class_id', cls.id);
-                    return { ...cls, student_count: count || 0 };
+                    return {
+                        id: cls.id,
+                        name: cls.display_name || "",
+                        teacher_id: cls.teacher_id,
+                        institution_id: cls.institution_id,
+                        created_at: cls.created_at,
+                        student_count: count || 0
+                    };
                 })
             );
 

@@ -1207,3 +1207,123 @@ exports.transferMainAdmin = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
+
+/**
+ * Get all active sessions for the current user
+ */
+exports.getActiveSessions = async (req, res) => {
+  try {
+    const currentUserId = req.userId;
+    const currentSessionId = req.sessionId;
+
+    const { data: sessions, error } = await supabase
+      .from('user_sessions')
+      .select('*')
+      .eq('user_id', currentUserId)
+      .eq('is_revoked', false)
+      .gt('expires_at', new Date().toISOString())
+      .order('last_active_at', { ascending: false });
+
+    if (error) throw error;
+
+    // Filter out sessions that have exceeded the 10-minute idle timeout
+    const now = Date.now();
+    const tenMinutesMs = 10 * 60 * 1000;
+    const activeSessions = [];
+
+    for (const session of sessions) {
+      const lastActive = new Date(session.last_active_at).getTime();
+      if (now - lastActive > tenMinutesMs) {
+        // Automatically mark as revoked/expired in the background
+        (async () => {
+          try {
+            const { error: revokeErr } = await supabase.from('user_sessions')
+              .update({ is_revoked: true })
+              .eq('id', session.id);
+            if (revokeErr) {
+              console.error("Error auto-revoking idle session in controller:", revokeErr.message);
+            }
+          } catch (e) {
+            console.error("Error auto-revoking idle session in controller:", e.message);
+          }
+        })();
+      } else {
+        activeSessions.push({
+          id: session.id,
+          device_type: session.device_type,
+          os_name: session.os_name,
+          ip_address: session.ip_address,
+          location: session.location,
+          login_at: session.login_at,
+          last_active_at: session.last_active_at,
+          is_current: session.session_id === currentSessionId
+        });
+      }
+    }
+
+    res.json(activeSessions);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+/**
+ * Revoke a specific session
+ */
+exports.revokeSession = async (req, res) => {
+  try {
+    const { id } = req.body;
+    const currentUserId = req.userId;
+
+    if (!id) {
+      return res.status(400).json({ error: "Session ID is required" });
+    }
+
+    const { error } = await supabase
+      .from('user_sessions')
+      .update({ is_revoked: true })
+      .eq('id', id)
+      .eq('user_id', currentUserId);
+
+    if (error) throw error;
+
+    res.json({ message: "Session revoked successfully" });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+/**
+ * Revoke all sessions except the current one
+ */
+exports.revokeAllOtherSessions = async (req, res) => {
+  try {
+    const currentUserId = req.userId;
+    const currentSessionId = req.sessionId;
+
+    if (!currentSessionId) {
+      return res.status(400).json({ error: "No active session ID" });
+    }
+
+    const { error } = await supabase
+      .from('user_sessions')
+      .update({ is_revoked: true })
+      .eq('user_id', currentUserId)
+      .neq('session_id', currentSessionId);
+
+    if (error) throw error;
+
+    res.json({ message: "All other sessions revoked successfully" });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+/**
+ * Simple ping endpoint to reset backend last_active_at timer
+ */
+exports.pingSession = async (req, res) => {
+  // Middleware handles updating last_active_at automatically
+  res.json({ success: true });
+};
+

@@ -32,6 +32,19 @@ export class ParentService {
         const response = await api.get(`/reports?studentId=${studentId}`);
         return response.data;
     }
+
+    /** Update a linked student's profile (name, gender, dob, address, phone) */
+    static async updateStudentProfile(studentId: string, data: {
+        first_name?: string;
+        last_name?: string;
+        gender?: string;
+        date_of_birth?: string;
+        address?: string;
+        phone?: string;
+    }) {
+        const response = await api.put(`/parent/student/${studentId}/profile`, data);
+        return response.data;
+    }
 }
 
 export const ParentAPI = ParentService;
