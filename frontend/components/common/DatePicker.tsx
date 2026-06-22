@@ -7,7 +7,7 @@ import { Modal, Text, TouchableOpacity, View } from 'react-native';
 const CELL_SIZE = 36;
 const GRID_ROWS = 6;
 
-export function DatePicker({
+export default function DatePicker({
     label,
     value,
     onChange,
@@ -70,6 +70,15 @@ export function DatePicker({
         ? parsed.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
         : null;
 
+    // Helper to format date for display in inline mode
+    const formatDateForDisplay = (date: Date | null) => {
+        if (!date) return null;
+        const day = date.getDate();
+        const month = date.toLocaleString('default', { month: 'short' });
+        const year = date.getFullYear();
+        return `${month} ${day}, ${year}`;
+    };
+
     const selectedDay = parsed?.getMonth() === viewMonth && parsed?.getFullYear() === viewYear
         ? parsed.getDate()
         : null;
@@ -86,7 +95,7 @@ export function DatePicker({
             <View style={{ flex: 1, flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center', gap: 8 }}>
                 <TouchableOpacity onPress={() => setVisible(true)}>
                     <Text style={{ color: displayValue ? calText : mutedText, fontStyle: displayValue ? 'normal' : 'italic', fontSize: 13, fontWeight: '500' }}>
-                        {displayValue ?? 'Tap to set'}
+                        {displayValue ? formatDateForDisplay(parsed) ?? 'Tap to set' : 'Tap to set'}
                     </Text>
                 </TouchableOpacity>
                 {value ? (
@@ -114,7 +123,7 @@ export function DatePicker({
                 }}
             >
                 <Text style={{ color: displayValue ? calText : mutedText, fontWeight: '500' }}>
-                    {displayValue ?? 'Select date'}
+                    {displayValue ? formatDateForDisplay(parsed) ?? 'Select date' : 'Select date'}
                 </Text>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                     {value ? (
@@ -143,7 +152,7 @@ export function DatePicker({
                         onPress={() => {}}
                     >
                         {/* Month navigation */}
-                        <View style={{ flexDirection: 'row', alignItems: 'center', justifyComposite: 'space-between', justifyContent: 'space-between', marginBottom: 12 }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
                             <TouchableOpacity onPress={prevMonth} style={{ padding: 6 }}>
                                 <Ionicons name="chevron-back" size={20} color={calText} />
                             </TouchableOpacity>

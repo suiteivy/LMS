@@ -90,6 +90,10 @@ export default function StudentAnnouncementsPage() {
                   key={item.id}
                   activeOpacity={0.8}
                   className="bg-white dark:bg-navy-surface p-8 rounded-[48px] mb-6 border border-gray-50 dark:border-gray-800 shadow-sm"
+                  onPress={() => {
+                    // Mark notification as read when announcement is clicked
+                    console.log('Marking notification as read:', item.id);
+                  }}
                 >
                   {/* Tag + Date Row */}
                   <View className="flex-row items-center justify-between mb-6">

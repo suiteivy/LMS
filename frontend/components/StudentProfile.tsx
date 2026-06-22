@@ -24,6 +24,7 @@ import {
   TouchableOpacity,
   View
 } from "react-native";
+import DatePicker from '@/components/common/DatePicker';
 
 export default function StudentProfile() {
   const { profile, refreshProfile, user } = useAuth();
@@ -40,6 +41,8 @@ export default function StudentProfile() {
   const [emergencyPhone, setEmergencyPhone] = useState("");
   const [saving, setSaving] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+
+  const DatePicker = require('@/components/common/DatePicker').default;
 
   const [studentDetails, setStudentDetails] = useState<{ grade_level: string | null; academic_year: string | null; admission_date: string | null }>({
     grade_level: null,
@@ -58,25 +61,26 @@ export default function StudentProfile() {
     }
   }, [profile]);
 
-  useEffect(() => {
-    const loadStudentData = async () => {
-      if (!profile?.id) return;
-      const { data } = (await supabase
-        .from('students')
-        .select('emergency_contact_name, emergency_contact_phone, grade_level, academic_year, admission_date')
-        .eq('user_id', profile.id)
-        .maybeSingle()) as any;
+  const loadStudentData = async () => {
+    if (!profile?.id) return;
+    const { data } = (await supabase
+      .from('students')
+      .select('emergency_contact_name, emergency_contact_phone, grade_level, academic_year, admission_date')
+      .eq('user_id', profile.id)
+      .maybeSingle()) as any;
 
-      if (data) {
-        setEmergencyName(data.emergency_contact_name || "");
-        setEmergencyPhone(data.emergency_contact_phone || "");
-        setStudentDetails({
-          grade_level: data.grade_level,
-          academic_year: data.academic_year,
-          admission_date: data.admission_date
-        });
-      }
-    };
+    if (data) {
+      setEmergencyName(data.emergency_contact_name || "");
+      setEmergencyPhone(data.emergency_contact_phone || "");
+      setStudentDetails({
+        grade_level: data.grade_level,
+        academic_year: data.academic_year,
+        admission_date: data.admission_date
+      });
+    }
+  };
+
+  useEffect(() => {
     loadStudentData();
   }, [profile?.id]);
 
@@ -106,6 +110,9 @@ export default function StudentProfile() {
       });
 
       await refreshProfile();
+      // Refresh student details using the existing loadStudentData function
+      loadStudentData();
+
       setIsEditing(false);
       Alert.alert("Success", "Profile updated successfully");
     } catch (error: any) {
@@ -175,13 +182,48 @@ export default function StudentProfile() {
 
               {isEditing ? (
                 <View className="bg-gray-50 dark:bg-gray-900 p-6 rounded-[32px] border border-gray-100 dark:border-gray-800 mb-8">
-                  <InfoInput label="First Name" value={firstName} onChange={setFirstName} icon={User} isDark={isDark} />
-                  <InfoInput label="Last Name" value={lastName} onChange={setLastName} icon={User} isDark={isDark} />
-                  <InfoInput label="Contact Number" value={phone} onChange={setPhone} icon={Phone} isDark={isDark} />
-                  <InfoInput label="Residential Address" value={address} onChange={setAddress} icon={MapPin} isDark={isDark} />
-                  <TouchableOpacity className="bg-[#FF6900] py-4 rounded-2xl items-center mt-4 shadow-lg shadow-orange-500/20" onPress={handleUpdateProfile} disabled={saving}>
-                    {saving ? <ActivityIndicator color="white" /> : <Text className="text-white font-black text-xs uppercase tracking-[2px]">Save Changes</Text>}
-                  </TouchableOpacity>
+                    <InfoInput label="First Name" value={firstName} onChange={setFirstName} icon={User} isDark={isDark} />
+                    <InfoInput label="Last Name" value={lastName} onChange={setLastName} icon={User} isDark={isDark} />
+                    <InfoInput label="Contact Number" value={phone} onChange={setPhone} icon={Phone} isDark={isDark} />
+                    <InfoInput label="Residential Address" value={address} onChange={setAddress} icon={MapPin} isDark={isDark} />
+
+                    <View className="mb-6">
+                      <Text className="text-sm font-semibold text-gray-700 mb-2">Gender</Text>
+                      <View className="flex-row gap-2">
+                        {(['male', 'female', 'other'] as const).map((option) => (
+                          <TouchableOpacity
+                            key={option}
+                            onPress={() => setGender(option)}
+                            className={`flex-1 p-4 rounded-2xl border items-center ${
+                              gender === option
+                                ? 'bg-orange-50 border-[#FF6900]'
+                                : 'bg-white dark:bg-navy border-gray-200 dark:border-gray-800'
+                            }`}
+                          >
+                            <Text className={`font-bold text-xs capitalize ${
+                              gender === option ? 'text-[#FF6900]' : 'text-gray-500'
+                            }`}>{option}</Text>
+                          </TouchableOpacity>
+                        ))}
+                      </View>
+                    </View>
+
+                    <View className="mb-6">
+                      <Text className="text-sm font-semibold text-gray-700 mb-2">Date of Birth</Text>
+                      <View className="bg-gray-50 dark:bg-navy border border-gray-200 dark:border-gray-800 rounded-2xl px-4 py-3 shadow-sm">
+                        <DatePicker
+                          label="Date of Birth"
+                          value={dob}
+                          onChange={setDob}
+                          isDark={isDark}
+                          inline={true}
+                        />
+                      </View>
+                    </View>
+
+                    <TouchableOpacity className="bg-[#FF6900] py-4 rounded-2xl items-center mt-4 shadow-lg shadow-orange-500/20" onPress={handleUpdateProfile} disabled={saving}>
+                      {saving ? <ActivityIndicator color="white" /> : <Text className="text-white font-black text-xs uppercase tracking-[2px]">Save Changes</Text>}
+                    </TouchableOpacity>
                 </View>
               ) : (
                 <View>

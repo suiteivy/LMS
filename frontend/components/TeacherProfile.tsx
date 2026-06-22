@@ -6,6 +6,7 @@ import { showError, showSuccess } from "@/utils/toast";
 import { BookOpen, Calendar, Camera, GraduationCap, Layers, Mail, MapPin, Phone, User, UserCircle, Users } from "lucide-react-native";
 import React, { useEffect, useState } from "react";
 import { ActivityIndicator, Image, RefreshControl, ScrollView, Text, TextInput, TouchableOpacity, View } from "react-native";
+import DatePicker from '@/components/common/DatePicker';
 
 type Subject = Database['public']['Tables']['subjects']['Row'];
 type Class = Database['public']['Tables']['classes']['Row'];
@@ -144,6 +145,7 @@ export default function TeacherProfile() {
             if (error) throw error;
 
             await refreshProfile();
+            await fetchTeacherData();
             setIsEditing(false);
             showSuccess("Success", "Profile updated successfully");
         } catch (error: any) {
@@ -215,11 +217,43 @@ export default function TeacherProfile() {
                                 <View className="bg-gray-50 dark:bg-gray-900 p-6 rounded-[32px] border border-gray-100 dark:border-gray-800 mb-8">
                                     <InfoInput label="First Name" value={firstName} onChange={setFirstName} icon={User} isDark={isDark} />
                                     <InfoInput label="Last Name" value={lastName} onChange={setLastName} icon={User} isDark={isDark} />
-                                    <InfoInput label="Contact Number" value={phone} onChange={setPhone} icon={Phone} isDark={isDark} />
-                                    <InfoInput label="Staff Address" value={address} onChange={setAddress} icon={MapPin} isDark={isDark} />
-                                    <TouchableOpacity className="bg-[#FF6900] py-4 rounded-2xl items-center mt-4 shadow-lg shadow-orange-500/20" onPress={handleUpdateProfile} disabled={saving}>
-                                        {saving ? <ActivityIndicator color="white" /> : <Text className="text-white font-black text-xs uppercase tracking-[2px]">Save Changes</Text>}
-                                    </TouchableOpacity>
+                                     <InfoInput label="Contact Number" value={phone} onChange={setPhone} icon={Phone} isDark={isDark} />
+                                     <InfoInput label="Staff Address" value={address} onChange={setAddress} icon={MapPin} isDark={isDark} />
+                                     <View className="mb-6">
+                                         <Text className="text-sm font-semibold text-gray-700 mb-2">Gender</Text>
+                                         <View className="flex-row gap-2">
+                                             {(['male', 'female', 'other'] as const).map((option) => (
+                                                 <TouchableOpacity
+                                                     key={option}
+                                                     onPress={() => setGender(option)}
+                                                     className={`flex-1 p-4 rounded-2xl border items-center ${
+                                                         gender === option
+                                                             ? 'bg-orange-50 border-[#FF6900]'
+                                                             : 'bg-white dark:bg-navy border-gray-200 dark:border-gray-800'
+                                                     }`}
+                                                 >
+                                                     <Text className={`font-bold text-xs capitalize ${
+                                                         gender === option ? 'text-[#FF6900]' : 'text-gray-500'
+                                                     }`}>{option}</Text>
+                                                 </TouchableOpacity>
+                                             ))}
+                                         </View>
+                                     </View>
+                                     <View className="mb-6">
+                                         <Text className="text-sm font-semibold text-gray-700 mb-2">Date of Birth</Text>
+                                         <View className="bg-gray-50 dark:bg-navy border border-gray-200 dark:border-gray-800 rounded-2xl px-4 py-3 shadow-sm">
+                                             <DatePicker
+                                                 label="Date of Birth"
+                                                 value={dob}
+                                                 onChange={setDob}
+                                                 isDark={isDark}
+                                                 inline={true}
+                                             />
+                                         </View>
+                                     </View>
+                                     <TouchableOpacity className="bg-[#FF6900] py-4 rounded-2xl items-center mt-4 shadow-lg shadow-orange-500/20" onPress={handleUpdateProfile} disabled={saving}>
+                                         {saving ? <ActivityIndicator color="white" /> : <Text className="text-white font-black text-xs uppercase tracking-[2px]">Save Changes</Text>}
+                                     </TouchableOpacity>
                                 </View>
                             ) : (
                                 <View>

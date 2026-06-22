@@ -27,6 +27,7 @@ import {
   TouchableOpacity,
   View
 } from "react-native";
+import DatePicker from '@/components/common/DatePicker';
 
 interface LinkedStudent {
   id: string;
@@ -55,6 +56,8 @@ export default function ParentProfile() {
   const [address, setAddress] = useState(profile?.address || "");
   const [saving, setSaving] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+
+  const DatePicker = require('@/components/common/DatePicker').default;
 
   const [linkedStudents, setLinkedStudents] = useState<LinkedStudent[]>([]);
   const [loadingStudents, setLoadingStudents] = useState(true);
@@ -107,6 +110,7 @@ export default function ParentProfile() {
       });
       if (error) throw error;
       await refreshProfile();
+      await fetchLinkedStudents();
       setIsEditing(false);
       Alert.alert("Success", "Profile updated successfully");
     } catch (error: any) {
@@ -195,8 +199,19 @@ export default function ParentProfile() {
                   <InfoInput label="First Name" value={firstName} onChange={setFirstName} icon={User} isDark={isDark} />
                   <InfoInput label="Last Name" value={lastName} onChange={setLastName} icon={User} isDark={isDark} />
                   <InfoInput label="Contact Number" value={phone} onChange={setPhone} icon={Phone} isDark={isDark} />
-                  <InfoInput label="Residential Address" value={address} onChange={setAddress} icon={MapPin} isDark={isDark} />
-                  <InfoInput label="Date of Birth (YYYY-MM-DD)" value={dob} onChange={setDob} icon={Calendar} isDark={isDark} />
+                   <InfoInput label="Residential Address" value={address} onChange={setAddress} icon={MapPin} isDark={isDark} />
+                   <View className="mb-6">
+                     <Text className="text-sm font-semibold text-gray-700 mb-2">Date of Birth</Text>
+                     <View className="bg-gray-50 dark:bg-navy border border-gray-200 dark:border-gray-800 rounded-2xl px-4 py-3 shadow-sm">
+                       <DatePicker
+                         label="Date of Birth"
+                         value={dob}
+                         onChange={setDob}
+                         isDark={isDark}
+                         inline={true}
+                       />
+                     </View>
+                   </View>
 
                   {/* Gender Selector */}
                   <View className="mb-6">

@@ -1,5 +1,6 @@
 import { useAuth } from "@/contexts/AuthContext";
 import { useTheme } from "@/contexts/ThemeContext";
+import { useNotifications } from "@/contexts/NotificationContext";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import React from "react";
@@ -177,27 +178,46 @@ export const UnifiedHeader: React.FC<UnifiedHeaderProps> = ({
                   }}>
                     {role}
                   </Text>
-                </View>
-                {institutionName && (
-                  <View style={{
-                    backgroundColor: isDark ? 'rgba(255, 105, 0, 0.12)' : '#fff7ed',
-                    paddingHorizontal: 8,
-                    paddingVertical: 4,
-                    borderRadius: 6,
-                    borderWidth: 1,
-                    borderColor: isDark ? 'rgba(255, 105, 0, 0.2)' : '#ffedd5',
-                  }}>
-                    <Text style={{
-                      fontWeight: 'bold',
-                      color: '#FF6900',
-                      fontSize: 8,
-                      textTransform: 'uppercase',
-                    }}>
-                      {institutionName}
-                    </Text>
-                  </View>
-                )}
-              </View>
+            </View>
+                 {institutionName && (
+                   <View style={{
+                     backgroundColor: isDark ? 'rgba(255, 105, 0, 0.12)' : '#fff7ed',
+                     paddingHorizontal: 8,
+                     paddingVertical: 4,
+                     borderRadius: 6,
+                     borderWidth: 1,
+                     borderColor: isDark ? 'rgba(255, 105, 0, 0.2)' : '#ffedd5',
+                   }}>
+                     <Text style={{
+                       fontWeight: 'bold',
+                       color: '#FF6900',
+                       fontSize: 8,
+                       textTransform: 'uppercase',
+                     }}>
+                       {institutionName}
+                     </Text>
+                   </View>
+                 )}
+                 {/* Bell Icon for Notifications */}
+                 <TouchableOpacity
+                   onPress={() => {
+                     // This will be handled by the parent component
+                     console.log('Bell icon pressed');
+                   }}
+                   style={{
+                     marginLeft: 8,
+                     backgroundColor: surface,
+                     padding: 6,
+                     borderRadius: 10,
+                     borderWidth: 1,
+                     borderColor: surfaceBorder,
+                     alignItems: 'center',
+                     justifyContent: 'center',
+                   }}
+                 >
+                   <Ionicons name="notifications-outline" size={16} color={subtleIconColor} />
+                 </TouchableOpacity>
+               </View>
             )}
           </View>
         </View>

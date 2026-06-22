@@ -4,6 +4,7 @@ import { Camera, X } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, Image, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useAuth } from '@/contexts/AuthContext';
+import DatePicker from '@/components/common/DatePicker';
 
 interface EditFormProps {
   visible: boolean
@@ -31,6 +32,8 @@ export const ProfileEdit = ({ visible, onClose, currentUser, onUpdate }: EditFor
   const [address, setAddress] = useState('');
   const [gender, setGender] = useState('');
   const [dateOfBirth, setDateOfBirth] = useState('');
+
+  const DatePicker = require('@/components/common/DatePicker').default;
 
   useEffect(() => {
     if (!visible) {
@@ -342,13 +345,15 @@ export const ProfileEdit = ({ visible, onClose, currentUser, onUpdate }: EditFor
                       <Text className="text-sm font-semibold text-gray-700 mb-2">
                         Date of Birth
                       </Text>
-                      <TextInput
-                        className="bg-gray-50 p-4 rounded-2xl border border-gray-100 text-gray-900"
-                        placeholder="YYYY-MM-DD"
-                        placeholderTextColor="#9ca3af"
-                        value={dateOfBirth}
-                        onChangeText={setDateOfBirth}
-                      />
+                      <View className="bg-gray-50 p-4 rounded-2xl border border-gray-100 text-gray-900">
+                        <DatePicker
+                          label="Date of Birth"
+                          value={dateOfBirth}
+                          onChange={setDateOfBirth}
+                          isDark={false}
+                          inline={true}
+                        />
+                      </View>
                     </View>
                   </View>
                 </View>
