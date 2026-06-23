@@ -1,7 +1,10 @@
 import { FullScreenLoader } from "@/components/common/FullScreenLoader";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/libs/supabase";
+import { safeSignOut } from "@/utils/safeSignOut";
+import { LogoutReason, LOGOUT_MESSAGES } from "@/types/logout";
 import { getAuthErrorMessage, validateEmail } from "@/utils/validation";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { Shield, Sparkles, GraduationCap } from "lucide-react-native";
@@ -307,6 +310,7 @@ export default function SignIn() {
   const [formData, setFormData] = useState<FormData>({ email: "", password: "" });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [toastConfig, setToastConfig] = useState<{msg: string, type: "success" | "error"} | null>(null);
+  const [logoutReason, setLogoutReason] = useState<LogoutReason | null>(null);
   const { signIn, loading: isGlobalLoading } = useAuth();
 
   //  Entrance animations 
@@ -355,6 +359,14 @@ export default function SignIn() {
       ])
     );
     pulse.start();
+
+    // Read persisted logout reason for banner display
+    AsyncStorage.getItem('logout_reason').then((raw) => {
+      if (raw && raw in LOGOUT_MESSAGES) {
+        setLogoutReason(raw as LogoutReason);
+        AsyncStorage.removeItem('logout_reason').catch(() => {});
+      }
+    }).catch(() => {});
 
     return () => {
       spin.stop();
@@ -458,7 +470,7 @@ export default function SignIn() {
 
         if (instError || !instData) {
           setErrorMessage("Could not verify institution status");
-          await supabase.auth.signOut();
+          await safeSignOut('local', LogoutReason.AUTH_ERROR_403, true);
           return;
         }
 
@@ -466,7 +478,7 @@ export default function SignIn() {
         if (instData.subscription_status === "suspended" || instData.subscription_status === "cancelled") {
           showToast("Access Denied: Your institution's account has been disabled.", "error");
           shakeCard();
-          await supabase.auth.signOut();
+          await safeSignOut('local', LogoutReason.INSTITUTION_SUSPENDED, true);
           return;
         }
       }
@@ -653,6 +665,72 @@ export default function SignIn() {
                   }}>
                     <IconIonicons name="alert-circle" size={20} color="#f87171" />
                     <Text style={{ color: "#fca5a5", fontWeight: "600", flex: 1, fontSize: 13 }}>{errorMessage}</Text>
+                  </Animated.View>
+                )}
+
+                {/* Logout reason banner */}
+                {logoutReason && (
+                  <Animated.View style={{
+                    backgroundColor: logoutReason === LogoutReason.INSTITUTION_SUSPENDED
+                      ? "rgba(239,68,68,0.12)"
+                      : logoutReason === LogoutReason.REVOKED_BY_OTHER_DEVICE || logoutReason === LogoutReason.ADMIN_REVOKED_ALL
+                        ? "rgba(251,146,60,0.12)"
+                        : "rgba(99,102,241,0.12)",
+                    borderWidth: 1,
+                    borderColor: logoutReason === LogoutReason.INSTITUTION_SUSPENDED
+                      ? "rgba(239,68,68,0.3)"
+                      : logoutReason === LogoutReason.REVOKED_BY_OTHER_DEVICE || logoutReason === LogoutReason.ADMIN_REVOKED_ALL
+                        ? "rgba(251,146,60,0.3)"
+                        : "rgba(99,102,241,0.3)",
+                    padding: 14,
+                    borderRadius: 14,
+                    marginBottom: 20,
+                    flexDirection: "row",
+                    alignItems: "flex-start",
+                    gap: 10,
+                  }}>
+                    <IconIonicons
+                      name={
+                        logoutReason === LogoutReason.INSTITUTION_SUSPENDED ? "ban"
+                          : logoutReason === LogoutReason.REVOKED_BY_OTHER_DEVICE ? "phone-portrait-outline"
+                            : logoutReason === LogoutReason.ADMIN_REVOKED_ALL ? "shield-checkmark-outline"
+                              : "time-outline"
+                      }
+                      size={20}
+                      color={
+                        logoutReason === LogoutReason.INSTITUTION_SUSPENDED ? "#f87171"
+                          : logoutReason === LogoutReason.REVOKED_BY_OTHER_DEVICE || logoutReason === LogoutReason.ADMIN_REVOKED_ALL
+                            ? "#fb923c"
+                            : "#818cf8"
+                      }
+                    />
+                    <View style={{ flex: 1 }}>
+                      <Text style={{
+                        color: logoutReason === LogoutReason.INSTITUTION_SUSPENDED
+                          ? "#fca5a5"
+                          : logoutReason === LogoutReason.REVOKED_BY_OTHER_DEVICE || logoutReason === LogoutReason.ADMIN_REVOKED_ALL
+                            ? "#fed7aa"
+                            : "#c7d2fe",
+                        fontWeight: "700",
+                        fontSize: 13,
+                        marginBottom: 2,
+                      }}>
+                        {LOGOUT_MESSAGES[logoutReason]?.title ?? "Signed Out"}
+                      </Text>
+                      <Text style={{
+                        color: "rgba(255,255,255,0.45)",
+                        fontSize: 12,
+                        lineHeight: 18,
+                      }}>
+                        {LOGOUT_MESSAGES[logoutReason]?.body ?? "You have been signed out."}
+                      </Text>
+                    </View>
+                    <TouchableOpacity
+                      onPress={() => setLogoutReason(null)}
+                      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                    >
+                      <IconIonicons name="close" size={16} color="rgba(255,255,255,0.3)" />
+                    </TouchableOpacity>
                   </Animated.View>
                 )}
 

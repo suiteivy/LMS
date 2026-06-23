@@ -67,6 +67,7 @@ exports.getMyTimetable = async (req, res) => {
             .from('class_enrollments')
             .select('class_id')
             .eq('student_id', student.id)
+            .eq('status', 'enrolled')
             .maybeSingle();
 
         if (enrollError || !enrollment) {
@@ -109,11 +110,12 @@ exports.getMyAnnouncements = async (req, res) => {
 
         if (!student) return res.status(404).json({ error: "Student profile not found" });
 
-        // 2. Get subject IDs from enrollments
+        // 2. Get subject IDs from enrollments (only active enrollments)
         const { data: enrollments } = await supabase
             .from('enrollments')
             .select('subject_id')
-            .eq('student_id', student.id);
+            .eq('student_id', student.id)
+            .eq('status', 'enrolled');
 
         const subjectIds = enrollments?.map(e => e.subject_id).filter(Boolean) || [];
 
@@ -168,7 +170,8 @@ exports.listStudents = async (req, res) => {
                 const { data: ctEnrollments } = await supabase
                     .from('class_enrollments')
                     .select('student_id')
-                    .in('class_id', ctClassIds);
+                    .in('class_id', ctClassIds)
+                    .eq('status', 'enrolled');
                 ctStudentIds = (ctEnrollments || []).map(e => e.student_id);
             }
 

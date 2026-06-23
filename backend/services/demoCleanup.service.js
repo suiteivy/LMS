@@ -14,7 +14,13 @@ async function cleanupExpiredDemoSessions() {
             .select('id, demo_user_id, institution_id')
             .lt('expires_at', now);
 
-        if (fetchError) throw fetchError;
+        if (fetchError) {
+            // Table may not exist yet — not a fatal error
+            if (fetchError.message?.includes('does not exist') || fetchError.code === '42P01') {
+                return;
+            }
+            throw fetchError;
+        }
         if (!expiredSessions || expiredSessions.length === 0) {
             return;
         }

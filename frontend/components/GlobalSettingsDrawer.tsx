@@ -202,13 +202,13 @@ function SettingsMenu({ userRole, onNavigate }: { userRole: string; onNavigate: 
         <TouchableOpacity
           onPress={handleLogout}
           disabled={loading}
-          style={{ flexDirection: 'row', alignItems: 'center', padding: 20, borderRadius: 24, backgroundColor: isDark ? 'rgba(239,68,68,0.08)' : '#fef2f2', borderWidth: 1, borderColor: isDark ? 'rgba(239,68,68,0.2)' : '#fecaca' }}
+          style={{ flexDirection: 'row', alignItems: 'center', padding: 16, borderRadius: 12, backgroundColor: isDark ? 'rgba(239,68,68,0.08)' : '#fef2f2', alignSelf: 'flex-start' }}
         >
-          <View style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: isDark ? 'rgba(239,68,68,0.15)' : '#ffffff', alignItems: 'center', justifyContent: 'center' }}>
-            <LogOut size={20} color="#ef4444" />
+          <View style={{ width: 32, height: 32, borderRadius: 8, backgroundColor: isDark ? 'rgba(239,68,68,0.15)' : '#ffffff', alignItems: 'center', justifyContent: 'center' }}>
+            <LogOut size={16} color="#ef4444" />
           </View>
-          <View style={{ marginLeft: 16 }}>
-            <Text style={{ fontWeight: 'bold', color: '#ef4444', letterSpacing: -0.5 }}>Logout</Text>
+          <View style={{ marginLeft: 12 }}>
+            <Text style={{ fontWeight: '600', color: '#ef4444', fontSize: 16, letterSpacing: -0.5 }}>Logout</Text>
             <Text style={{ color: isDark ? 'rgba(239,68,68,0.5)' : '#f87171', fontSize: 8, fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: 1.5, marginTop: 2 }}>End active session</Text>
           </View>
         </TouchableOpacity>

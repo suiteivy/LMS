@@ -1,4 +1,8 @@
 const supabase = require("../utils/supabaseClient.js");
+const {
+    sendInAppNotificationWithHistory,
+    retryScheduledNotificationDeliveries,
+} = require('../services/notificationDelivery.service.js');
 
 exports.createNotificationInternal = async ({ userId, title, message, type = 'info', data = {} }) => {
     try {
@@ -16,23 +20,18 @@ exports.createNotificationInternal = async ({ userId, title, message, type = 'in
             expiryDate.setDate(expiryDate.getDate() + 7); // 7 days for info/success
         }
 
-        const { error } = await supabase
-            .from("notifications")
-            .insert({
-                user_id: userId,
-                title,
-                message,
-                type,
-                data,
-                institution_id: instId,
-                expires_at: expiryDate.toISOString()
-            });
+        const result = await sendInAppNotificationWithHistory({
+            user_id: userId,
+            title,
+            message,
+            type,
+            data,
+            expires_at: expiryDate.toISOString(),
+            institution_id: instId,
+            maxRetries: 3,
+        });
 
-        if (error) {
-            console.error("Failed to create notification:", error);
-            return false;
-        }
-        return true;
+        return result.ok;
     } catch (err) {
         console.error("Error creating notification:", err);
         return false;
@@ -194,5 +193,60 @@ exports.clearAllNotifications = async (req, res) => {
     } catch (err) {
         console.error("clearAllNotifications error:", err);
         return res.status(500).json({ error: "Server error" });
+    }
+};
+
+/**
+ * Delivery attempt history (admin / master_admin)
+ */
+exports.getDeliveryAttempts = async (req, res) => {
+    try {
+        const { userRole, institution_id } = req;
+        const { status, limit = 100 } = req.query;
+
+        if (!['admin', 'master_admin'].includes(userRole)) {
+            return res.status(403).json({ error: 'Access denied' });
+        }
+
+        let query = supabase
+            .from('notification_delivery_attempts')
+            .select('*')
+            .order('created_at', { ascending: false })
+            .limit(Number(limit) || 100);
+
+        if (userRole !== 'master_admin') {
+            query = query.eq('institution_id', institution_id);
+        }
+        if (status) {
+            query = query.eq('status', status);
+        }
+
+        const { data, error } = await query;
+        if (error) throw error;
+
+        return res.json({ success: true, data: data || [] });
+    } catch (err) {
+        console.error('getDeliveryAttempts error:', err);
+        return res.status(500).json({ error: 'Server error' });
+    }
+};
+
+/**
+ * Trigger retry worker manually (admin / master_admin)
+ */
+exports.runNotificationRetryNow = async (req, res) => {
+    try {
+        const { userRole } = req;
+        const { limit = 50 } = req.body || {};
+
+        if (!['admin', 'master_admin'].includes(userRole)) {
+            return res.status(403).json({ error: 'Access denied' });
+        }
+
+        const result = await retryScheduledNotificationDeliveries({ limit: Number(limit) || 50 });
+        return res.json({ success: true, data: result });
+    } catch (err) {
+        console.error('runNotificationRetryNow error:', err);
+        return res.status(500).json({ error: 'Server error' });
     }
 };

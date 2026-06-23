@@ -1,6 +1,7 @@
 // controllers/attendance.controller.js
 const supabase = require("../utils/supabaseClient.js");
 const { createNotificationInternal } = require("./notification.controller.js");
+const { authorizeTeacherForSubject } = require("../middleware/resolveTeacher.js");
 
 /**
  * Get Student Attendance for a class/subject on a date
@@ -14,16 +15,13 @@ exports.getStudentAttendance = async (req, res) => {
 
         // Authorization: If teacher, verify they teach this subject
         if (userRole === 'teacher') {
-            const { data: teacher } = await supabase.from('teachers').select('id').eq('user_id', userId).single();
-            if (!teacher) return res.status(404).json({ error: "Teacher profile not found" });
-            
-            const { data: subject } = await supabase.from('subjects').select('id').eq('id', subject_id).eq('teacher_id', teacher.id).single();
-            if (!subject) return res.status(403).json({ error: "Access denied: You do not teach this subject" });
+            const result = await authorizeTeacherForSubject(userId, subject_id, res);
+            if (!result) return;
         } else if (!['admin', 'bursary'].includes(userRole)) {
             return res.status(403).json({ error: "Unauthorized" });
         }
 
-        // 1. Get all students enrolled in this subject
+        // 1. Get all students enrolled in this subject (via enrollments)
         const { data: enrollments, error: eError } = await supabase
             .from("students")
             .select("id, users!inner(first_name, last_name, full_name, avatar_url), enrollments!inner(subject_id)")
@@ -31,6 +29,37 @@ exports.getStudentAttendance = async (req, res) => {
             .eq("enrollments.subject_id", subject_id);
 
         if (eError) throw eError;
+
+        // Also get students enrolled via class_enrollments (class → subject link)
+        let classEnrolledStudents = [];
+        const { data: subjectRow } = await supabase
+            .from('subjects')
+            .select('class_id')
+            .eq('id', subject_id)
+            .single();
+
+        if (subjectRow?.class_id) {
+            const { data: classEnrolls } = await supabase
+                .from('class_enrollments')
+                .select('student_id')
+                .eq('class_id', subjectRow.class_id);
+            classEnrolledStudents = (classEnrolls || []).map(e => e.student_id);
+        }
+
+        // Merge student IDs from both enrollment sources
+        const enrollmentStudentIds = new Set((enrollments || []).map(s => s.id));
+        (classEnrolledStudents || []).forEach(id => enrollmentStudentIds.add(id));
+
+        // Fetch student details for class-enrolled students not already in enrollments
+        let allStudents = [...(enrollments || [])];
+        const newIds = [...enrollmentStudentIds].filter(id => !enrollmentStudentIds.has(id) || !allStudents.find(s => s.id === id));
+        if (newIds.length > 0) {
+            const { data: extraStudents } = await supabase
+                .from('students')
+                .select('id, users!inner(first_name, last_name, full_name, avatar_url)')
+                .in('id', newIds);
+            if (extraStudents) allStudents = [...allStudents, ...extraStudents];
+        }
 
         // 2. Get attendance records for date and subject
         const { data: attendance, error: aError } = await supabase
@@ -41,8 +70,8 @@ exports.getStudentAttendance = async (req, res) => {
 
         if (aError) throw aError;
 
-        // Merge logic
-        const result = enrollments.map(s => {
+        // Merge logic — use unified student list
+        const result = allStudents.map(s => {
             const record = attendance?.find(a => a.student_id === s.id);
             return {
                 student_id: s.id,
@@ -71,14 +100,9 @@ exports.markStudentAttendance = async (req, res) => {
         const { student_id, subject_id, class_id, date, status, notes } = req.body;
         const { userId, userRole, institution_id } = req;
 
-        // Authorization helper
         if (userRole === 'teacher') {
-            const { data: teacher } = await supabase.from('teachers').select('id').eq('user_id', userId).single();
-            if (!teacher) return res.status(404).json({ error: "Teacher profile not found" });
-            
-            // Ensure teacher teaches this subject
-            const { data: subject } = await supabase.from('subjects').select('id').eq('id', subject_id).eq('teacher_id', teacher.id).single();
-            if (!subject) return res.status(403).json({ error: "Access denied: You do not teach this subject" });
+            const result = await authorizeTeacherForSubject(userId, subject_id, res);
+            if (!result) return;
         } else if (!['admin', 'bursary'].includes(userRole)) {
             return res.status(403).json({ error: "Unauthorized" });
         }

@@ -1,4 +1,5 @@
 const supabase = require("../utils/supabaseClient.js");
+const { authorizeTeacherForSubject, isStudentEnrolledInClass } = require("../middleware/resolveTeacher.js");
 
 /**
  * Exams Management
@@ -10,26 +11,9 @@ exports.createExam = async (req, res) => {
 
         let effectiveTeacherId = teacher_id;
         if (userRole === 'teacher') {
-            const { data: teacher } = await supabase.from('teachers').select('id').eq('user_id', userId).single();
-            if (!teacher) return res.status(404).json({ error: "Teacher profile not found" });
-
-            // Ensure teacher teaches this subject
-            const { data: subject } = await supabase.from('subjects').select('id, teacher_id').eq('id', subject_id).single();
-            if (!subject) return res.status(404).json({ error: "Subject not found" });
-
-            let isAssigned = (subject.teacher_id === teacher.id);
-            if (!isAssigned) {
-                const { data: assoc } = await supabase
-                    .from('subject_teachers')
-                    .select('id')
-                    .eq('subject_id', subject_id)
-                    .eq('teacher_id', teacher.id)
-                    .maybeSingle();
-                if (assoc) isAssigned = true;
-            }
-
-            if (!isAssigned) return res.status(403).json({ error: "Access denied: You do not teach this subject" });
-            effectiveTeacherId = teacher.id;
+            const result = await authorizeTeacherForSubject(userId, subject_id, res);
+            if (!result) return;
+            effectiveTeacherId = result.teacherId;
         } else if (userRole !== 'admin') {
             return res.status(403).json({ error: "Unauthorized" });
         }
@@ -92,35 +76,17 @@ exports.recordExamResult = async (req, res) => {
 
         let effectiveTeacherId = graded_by;
         if (userRole === 'teacher') {
-            const { data: teacher } = await supabase.from('teachers').select('id').eq('user_id', userId).single();
-            if (!teacher) return res.status(404).json({ error: "Teacher profile not found" });
-
-            let isAssigned = (subject.teacher_id === teacher.id);
-            if (!isAssigned) {
-                const { data: assoc } = await supabase
-                    .from('subject_teachers')
-                    .select('id')
-                    .eq('subject_id', subjectId)
-                    .eq('teacher_id', teacher.id)
-                    .maybeSingle();
-                if (assoc) isAssigned = true;
-            }
-
-            if (!isAssigned) return res.status(403).json({ error: "Access denied: You do not teach the subject of this exam" });
-            effectiveTeacherId = teacher.id;
+            const result = await authorizeTeacherForSubject(userId, subjectId, res);
+            if (!result) return;
+            effectiveTeacherId = result.teacherId;
         } else if (userRole !== 'admin') {
             return res.status(403).json({ error: "Unauthorized" });
         }
 
         // Validate student enrollment in the subject's class
         if (subject.class_id) {
-            const { data: classEnrollment } = await supabase
-                .from('class_enrollments')
-                .select('id')
-                .eq('class_id', subject.class_id)
-                .eq('student_id', student_id)
-                .maybeSingle();
-            if (!classEnrollment) {
+            const enrolled = await isStudentEnrolledInClass(student_id, subject.class_id);
+            if (!enrolled) {
                 return res.status(400).json({ error: "Access denied: Student is not enrolled in the class for this subject" });
             }
         }

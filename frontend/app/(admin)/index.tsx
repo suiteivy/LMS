@@ -10,6 +10,7 @@ import {
   BarChart3,
   Bell,
   BookOpen,
+  ClipboardList,
   GraduationCap,
   LayoutGrid,
   LogOut,
@@ -18,7 +19,7 @@ import {
   UserPlus,
   Users,
   Wallet,
-  Zap,
+  RefreshCw,
   Calendar
 } from 'lucide-react-native';
 import React, { useCallback, useEffect, useState } from "react";
@@ -46,6 +47,8 @@ const IconBookOpen = BookOpen as any;
 const IconBarChart3 = BarChart3 as any;
 const IconLogOut = LogOut as any;
 const IconCalendar = Calendar as any;
+const IconClipboardList = ClipboardList as any;
+const IconRefreshCw = RefreshCw as any;
 
 const QuickAction = ({ icon: Icon, label, onPress, badge }: QuickActionProps) => {
   const { isDark } = useTheme();
@@ -86,11 +89,12 @@ export default function AdminDashboard() {
     addonBursary,
     logout
   } = useAuth();
-  const { stats, loading: statsLoading } = useDashboardStats();
+  const { stats, loading: statsLoading, refresh: refreshStats } = useDashboardStats();
   const { isDark } = useTheme();
   const [recentUsers, setRecentUsers] = useState<User[]>([]);
   const [loadingUsers, setLoadingUsers] = useState(false);
   const [requestModalVisible, setRequestModalVisible] = useState(false);
+  const [refreshingOverview, setRefreshingOverview] = useState(false);
 
   const fetchRecentUsers = useCallback(async () => {
     try {
@@ -143,6 +147,15 @@ export default function AdminDashboard() {
     }
   }, [fetchRecentUsers, profile]);
 
+  const handleRefreshOverview = useCallback(async () => {
+    setRefreshingOverview(true);
+    try {
+      await Promise.all([refreshStats(), fetchRecentUsers()]);
+    } finally {
+      setRefreshingOverview(false);
+    }
+  }, [refreshStats, fetchRecentUsers]);
+
   // Theme-aware color tokens
   const cardBg = isDark ? '#0F0B2E' : '#111827';
   const surfaceBg = isDark ? '#13103A' : '#ffffff';
@@ -180,7 +193,33 @@ export default function AdminDashboard() {
       >
         <View>
           {/* Log out link */}
-          <View className="flex-row justify-end mb-6 px-2">
+          <View className="flex-row justify-end mb-6 px-2" style={{ gap: 8 }}>
+            <TouchableOpacity
+              onPress={handleRefreshOverview}
+              disabled={refreshingOverview}
+              style={{
+                boxShadow: [{
+                  offsetX: 0,
+                  offsetY: 1,
+                  blurRadius: 2,
+                  color: isDark ? 'rgba(0, 0, 0, 0.4)' : 'rgba(0, 0, 0, 0.05)',
+                }],
+                shadowColor: "#000",
+                shadowOffset: { width: 0, height: 1 },
+                shadowOpacity: isDark ? 0.4 : 0.05,
+                shadowRadius: 2,
+                elevation: 1,
+                opacity: refreshingOverview ? 0.7 : 1,
+              }}
+              className="flex-row items-center bg-white dark:bg-[#1a1a2e] px-4 py-2 rounded-2xl border border-gray-100 dark:border-gray-800"
+            >
+              {refreshingOverview ? (
+                <ActivityIndicator size="small" color="#FF6B00" />
+              ) : (
+                <IconRefreshCw size={14} color="#FF6B00" />
+              )}
+              <Text className="ml-2 text-orange-500 font-bold text-[10px] uppercase tracking-widest">Refresh</Text>
+            </TouchableOpacity>
             <TouchableOpacity
               onPress={async () => {
                 await logout();
@@ -384,6 +423,7 @@ export default function AdminDashboard() {
                 <QuickAction icon={IconBarChart3} label="Analytics" onPress={() => router.navigate("/(admin)/management/analytics" as any)} />
               </SubscriptionGate>
               <QuickAction icon={IconCalendar} label="Attendance" onPress={() => router.push("/(admin)/attendance" as any)} />
+              <QuickAction icon={IconClipboardList} label="Results & Cards" onPress={() => router.push("/(admin)/results" as any)} />
             </View>
           </View>
 

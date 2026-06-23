@@ -57,6 +57,8 @@ To set up the database, run the following SQL scripts in the Supabase SQL Editor
 
 1. **Schema**: `backend/supabase/schema.sql` (Creates tables and RLS policies)
 2. **Triggers**: `backend/supabase/triggers.sql` (Adds essential database logic)
+3. **Term lock support**: `backend/supabase/Migrations/20260623_add_terms_locked_at.sql`
+4. **Promotion + notification delivery history**: `backend/supabase/Migrations/20260623_add_promotion_cycles_and_notification_delivery_history.sql`
 
 ---
 
@@ -97,6 +99,25 @@ To set up the database, run the following SQL scripts in the Supabase SQL Editor
 - `/api/finance`: Payments, payouts, and earnings tracking.
 - `/api/bursary`: Bursary applications and status tracking.
 - `/api/funds`: Management of specific institution funds.
+
+### 🚀 Promotions (`/api/promotions`)
+- `GET /cycles`: List promotion cycles.
+- `POST /cycles`: Create a promotion cycle.
+- `GET /cycles/:id/decisions`: List per-student decisions.
+- `POST /cycles/:id/preview`: Build eligibility preview and persist decisions.
+- `POST /cycles/:id/execute`: Execute promotion for eligible students.
+
+### 🔔 Notifications (`/api/notifications`)
+- `GET /delivery-attempts`: Delivery history and retry state for notifications.
+- `POST /retry-now`: Manually run retry worker for scheduled failures.
+
+Automatic retry worker:
+- The backend runs a cron worker every 5 minutes to retry scheduled notification deliveries.
+- Manual trigger script: `npm run notification:retry`
+
+Testing:
+- `npm test` runs backend node:test suites.
+- Current suite includes promotion eligibility service coverage and notification retry worker contract check.
 
 ---
 

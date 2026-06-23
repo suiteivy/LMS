@@ -59,6 +59,29 @@ export default function ReportsScreen() {
                     <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={["#FF6900"]} />
                 }
             >
+                <TouchableOpacity
+                    onPress={() =>
+                        router.push({
+                            pathname: '/(parent)/report-cards' as any,
+                            params: { studentId, studentName },
+                        })
+                    }
+                    style={{
+                        backgroundColor: '#FF6900',
+                        borderRadius: 18,
+                        paddingVertical: 12,
+                        paddingHorizontal: 16,
+                        marginBottom: 16,
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: 8,
+                    }}
+                >
+                    <FileText size={16} color="#FFFFFF" />
+                    <Text style={{ color: '#FFFFFF', fontWeight: '700' }}>Open Report Cards Module</Text>
+                </TouchableOpacity>
+
                 {reports.length === 0 ? (
                     <View className="py-20 items-center">
                         <FileText size={48} color={isDark ? '#374151' : '#d1d5db'} />

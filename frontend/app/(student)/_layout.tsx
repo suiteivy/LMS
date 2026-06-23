@@ -3,6 +3,7 @@ import { NavItem, WebSidebar } from "@/components/layouts/WebSideBar";
 import { useTheme } from "@/contexts/ThemeContext";
 import { Slot, Tabs } from "expo-router";
 import {
+  Bell,
   BookOpen,
   Building,
   CreditCard,
@@ -28,23 +29,41 @@ const NAV_ITEMS: NavItem[] = [
 ];
 
 // Only these show in the mobile bottom tab bar
-const MOBILE_TAB_NAMES = ["grades", "assignments", "index", "diary", "settings"];
+const MOBILE_TAB_NAMES = ["grades", "assignments", "index", "notifications", "settings"];
 
 // Everything else hidden (route still works, just no tab)
 const ALL_OTHER = NAV_ITEMS
   .filter(i => !MOBILE_TAB_NAMES.includes(i.name))
   .map(i => i.name);
-const HIDDEN_ROUTES = [...ALL_OTHER, "attendance", "timetable", "announcements"];
+const HIDDEN_ROUTES = [...ALL_OTHER, "attendance", "timetable", "announcements", "grades-enhanced", "report-cards", "analytics"];
 
 import { useSubscriptionTier } from "@/hooks/useSubscriptionTier";
+import { useNotifications } from "@/contexts/NotificationContext";
+import { NotificationBellDropdown } from "@/components/common/NotificationBellDropdown";
+import { useRouter } from "expo-router";
+import { useState } from "react";
 
 function StudentTabs() {
   const { isDark } = useTheme();
   const insets = useSafeAreaInsets();
+  const { unreadCount } = useNotifications();
+  const [showNotifDropdown, setShowNotifDropdown] = useState(false);
+  const router = useRouter();
+
+  const tabBarHeight = 52 + insets.bottom;
 
   return (
+    <View style={{ flex: 1 }}>
     <Tabs
       initialRouteName="index"
+      screenListeners={({ route }: { route: any }) => ({
+        tabPress: (e: any) => {
+          if (route.name === "notifications") {
+            e.preventDefault();
+            setShowNotifDropdown((v) => !v);
+          }
+        },
+      })}
       screenOptions={{
         headerShown: false,
         tabBarActiveTintColor: "#FF6B00",
@@ -163,10 +182,55 @@ function StudentTabs() {
         }}
       />
 
+      <Tabs.Screen
+        name="notifications"
+        options={{
+          title: "Updates",
+          tabBarItemStyle: { width: 72 },
+          tabBarLabelStyle: { fontSize: 10, fontWeight: "600" },
+          tabBarIcon: ({ size = 22, color, focused }) => {
+            const iconColor = showNotifDropdown ? "#FF6B00" : focused ? "#FF6B00" : color;
+            return (
+              <View>
+                <Bell size={size} color={iconColor} strokeWidth={2} />
+                {unreadCount > 0 && (
+                  <View
+                    style={{
+                      position: "absolute",
+                      top: -4,
+                      right: -6,
+                      minWidth: 16,
+                      height: 16,
+                      borderRadius: 8,
+                      backgroundColor: "#FF6B00",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      borderWidth: 2,
+                      borderColor: isDark ? "#0F0B2E" : "#ffffff",
+                    }}
+                  >
+                    <Text style={{ color: "white", fontSize: 8, fontWeight: "bold" }}>
+                      {unreadCount > 9 ? "9+" : unreadCount}
+                    </Text>
+                  </View>
+                )}
+              </View>
+            );
+          },
+        }}
+      />
+
       {HIDDEN_ROUTES.map((name) => (
         <Tabs.Screen key={name} name={name} options={{ href: null }} />
       ))}
     </Tabs>
+    <NotificationBellDropdown
+      visible={showNotifDropdown}
+      onClose={() => setShowNotifDropdown(false)}
+      onViewAll={() => router.push("/(student)/notifications")}
+      tabBarHeight={tabBarHeight}
+    />
+    </View>
   );
 }
 

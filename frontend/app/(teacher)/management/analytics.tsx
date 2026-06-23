@@ -5,8 +5,10 @@ import { router } from "expo-router";
 import { supabase } from "@/libs/supabase";
 import { useAuth } from "@/contexts/AuthContext";
 import { TeacherAPI } from "@/services/TeacherService";
+import { GradingAPI } from "@/services/GradingService";
 import { SubscriptionBanner, SubscriptionGate, AddonRequestButton } from "@/components/shared/SubscriptionComponents";
 import { UnifiedHeader } from "@/components/common/UnifiedHeader";
+import { TrendChart, SubjectTrendCard } from "@/components/common/TrendChart";
 
 interface SubjectAnalytics {
     id: string;
@@ -66,6 +68,7 @@ export default function AnalyticsPage() {
     const [subjectAnalytics, setSubjectAnalytics] = useState<SubjectAnalytics[]>([]);
     const [loading, setLoading] = useState(true);
     const [topPerformers, setTopPerformers] = useState<any[]>([]);
+    const [trends, setTrends] = useState<any>({ terms: [], subjects: [] });
 
     const fetchAnalytics = async () => {
         setLoading(true);
@@ -88,6 +91,12 @@ export default function AnalyticsPage() {
 
             const data = await TeacherAPI.getAnalytics();
             setSubjectAnalytics(data);
+
+            // Fetch performance trends for first subject (overview)
+            if (data.length > 0) {
+                const trendData = await GradingAPI.getPerformanceTrends({}).catch(() => ({ terms: [], subjects: [] }));
+                setTrends(trendData);
+            }
 
             const { data: Subjects, error: SubjectsError } = (await supabase
                 .from('subjects')
@@ -230,6 +239,24 @@ export default function AnalyticsPage() {
                                         {subjectAnalytics.map((Subject) => (
                                             <SubjectAnalyticsCard key={Subject.id} Subject={Subject} />
                                         ))}
+
+                                        {/* Performance Trends Across Terms */}
+                                        {trends.terms && trends.terms.length > 0 && (
+                                            <View className="mt-6">
+                                                <Text className="text-lg font-bold text-gray-900 mb-3">Performance Trends</Text>
+                                                <TrendChart
+                                                    title="Class Average by Term"
+                                                    data={trends.terms.map((t: any) => {
+                                                        const avg = t.subjects?.length > 0
+                                                            ? t.subjects.reduce((s: number, sub: any) => s + (sub.average || 0), 0) / t.subjects.length
+                                                            : 0;
+                                                        return { label: t.term_name, value: Math.round(avg * 10) / 10 };
+                                                    })}
+                                                    color="#FF6B00"
+                                                    height={140}
+                                                />
+                                            </View>
+                                        )}
 
                                         {topPerformers.length > 0 && (
                                             <View className="bg-teacherBlack p-4 rounded-2xl mt-4">

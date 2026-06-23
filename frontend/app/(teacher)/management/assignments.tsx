@@ -53,8 +53,15 @@ const AssignmentCard = ({ assignment, onEdit, onView, onDelete }: {
     };
 
     const progressPercent = assignment.totalStudents > 0
-        ? (assignment.submissions / assignment.totalStudents) * 100
+        ? Math.min((assignment.submissions / assignment.totalStudents) * 100, 100)
         : 0;
+
+    // Data integrity: flag if submissions exceed enrolled students
+    const hasIntegrityWarning = assignment.submissions > 0 && assignment.totalStudents === 0;
+    // Cap numerator at denominator for display — orphaned submissions don't inflate the fraction
+    const displaySubmissions = assignment.totalStudents > 0
+        ? Math.min(assignment.submissions, assignment.totalStudents)
+        : assignment.submissions;
 
     return (
         <View className="bg-white dark:bg-[#1a1a1a] p-5 rounded-3xl border border-gray-100 dark:border-gray-800 mb-4 shadow-sm">
@@ -84,9 +91,12 @@ const AssignmentCard = ({ assignment, onEdit, onView, onDelete }: {
                     <Text className="text-gray-500 dark:text-gray-400 text-xs font-bold ml-1.5">{assignment.dueDate}</Text>
                 </View>
                 <View className="flex-row items-center">
-                    <Users size={14} color="#6B7280" />
-                    <Text className="text-gray-500 dark:text-gray-400 text-xs font-bold ml-1.5">
-                        {assignment.submissions}/{assignment.totalStudents} submitted
+                    <Users size={14} color={hasIntegrityWarning ? "#F59E0B" : "#6B7280"} />
+                    <Text className={`text-xs font-bold ml-1.5 ${hasIntegrityWarning ? 'text-amber-500' : 'text-gray-500 dark:text-gray-400'}`}>
+                        {hasIntegrityWarning
+                            ? `${assignment.submissions} submitted (enrollment data missing)`
+                            : `${displaySubmissions}/${assignment.totalStudents} submitted`
+                        }
                     </Text>
                 </View>
             </View>
@@ -190,35 +200,85 @@ export default function AssignmentsPage() {
                     total_points, 
                     weight, 
                     term,
-                    subject:subjects(title),
-                    submissions(count)
+                    subject:subjects(title, class_id)
                 `)
                 .eq('teacher_id', teacherId)
                 .order('created_at', { ascending: false });
 
             if (error) throw error;
 
-            const subjectIds = (data as any[] || []).map(a => a.subject_id);
-            const { data: countsData } = await supabase
-                .from('enrollments')
-                .select('subject_id')
-                .in('subject_id', subjectIds)
-                .eq('status', 'enrolled');
+            const assignments = (data as any[] || []);
+            const assignmentIds = assignments.map(a => a.id);
+            const subjectIds = [...new Set(assignments.map(a => a.subject_id).filter(Boolean))];
+            const classIds = [...new Set(assignments.map(a => a.subject?.class_id).filter(Boolean))];
 
-            const countsMap: Record<string, number> = {};
-            (countsData as any[] || []).forEach(e => {
-                countsMap[e.subject_id] = (countsMap[e.subject_id] || 0) + 1;
-            });
+            // Enrollment count per subject — query BOTH enrollment tables
+            const enrollmentCountsMap: Record<string, number> = {};
+            if (subjectIds.length > 0) {
+                // 1. Direct subject enrollments
+                const { data: enrollmentsData } = await supabase
+                    .from('enrollments')
+                    .select('subject_id')
+                    .in('subject_id', subjectIds)
+                    .eq('status', 'enrolled');
 
-            const formatted: Assignment[] = (data || []).map((a: any) => ({
+                (enrollmentsData as any[] || []).forEach(e => {
+                    enrollmentCountsMap[e.subject_id] = (enrollmentCountsMap[e.subject_id] || 0) + 1;
+                });
+
+                // 2. Class-based enrollments (student → class → subject)
+                if (classIds.length > 0) {
+                    const { data: classEnrollmentsData } = await supabase
+                        .from('class_enrollments')
+                        .select('student_id, class_id');
+
+                    // Build a map: class_id → list of student_ids
+                    const classStudentMap: Record<string, Set<string>> = {};
+                    (classEnrollmentsData as any[] || []).forEach(ce => {
+                        if (!classStudentMap[ce.class_id]) {
+                            classStudentMap[ce.class_id] = new Set();
+                        }
+                        classStudentMap[ce.class_id].add(ce.student_id);
+                    });
+
+                    // For each subject, count unique students from its class
+                    assignments.forEach(a => {
+                        const classId = a.subject?.class_id;
+                        if (classId && classStudentMap[classId]) {
+                            const existingCount = enrollmentCountsMap[a.subject_id] || 0;
+                            const classCount = classStudentMap[classId].size;
+                            // Use the higher of the two counts (avoid double-counting)
+                            enrollmentCountsMap[a.subject_id] = Math.max(existingCount, classCount);
+                        }
+                    });
+                }
+            }
+
+            // Submission count per assignment — only count non-missing, non-pending statuses
+            const submissionCountsMap: Record<string, number> = {};
+            if (assignmentIds.length > 0) {
+                const { data: submissionsData } = await supabase
+                    .from('submissions')
+                    .select('assignment_id, status')
+                    .in('assignment_id', assignmentIds);
+
+                const SUBMITTED_STATUSES = ['submitted', 'graded', 'late'];
+                (submissionsData as any[] || []).forEach(s => {
+                    if (SUBMITTED_STATUSES.includes(s.status)) {
+                        submissionCountsMap[s.assignment_id] = (submissionCountsMap[s.assignment_id] || 0) + 1;
+                    }
+                });
+            }
+
+            const formatted: Assignment[] = assignments.map((a: any) => ({
                 id: a.id,
                 title: a.title,
                 Subject: a.subject?.title || "Unknown Subject",
                 subject_id: a.subject_id,
                 dueDate: a.due_date ? new Date(a.due_date).toLocaleDateString() : "No Due Date",
                 due_date_iso: a.due_date,
-                submissions: a.submissions?.[0]?.count || 0,
-                totalStudents: countsMap[a.subject_id] || 0,
+                submissions: submissionCountsMap[a.id] || 0,
+                totalStudents: enrollmentCountsMap[a.subject_id] || 0,
                 status: a.status || 'active',
                 attachment_url: a.attachment_url,
                 attachment_name: a.attachment_name,
@@ -507,11 +567,11 @@ export default function AssignmentsPage() {
                         <div class="summary-grid">
                             <div class="summary-card">
                                 <div class="summary-label">Total Submissions</div>
-                                <div class="summary-value">${assignments.reduce((acc, a) => acc + a.submissions, 0)}</div>
+                                <div class="summary-value">${filteredAssignments.reduce((acc, a) => acc + Math.min(a.submissions, a.totalStudents || Infinity), 0)}</div>
                             </div>
                             <div class="summary-card">
                                 <div class="summary-label">Active Assignments</div>
-                                <div class="summary-value">${assignments.filter(a => a.status === 'active').length}</div>
+                                <div class="summary-value">${filteredAssignments.filter(a => a.status === 'active').length}</div>
                             </div>
                         </div>
 
@@ -534,7 +594,7 @@ export default function AssignmentsPage() {
                                         </td>
                                         <td><div class="subject-cell">${a.Subject}</div></td>
                                         <td>${a.dueDate}</td>
-                                        <td>${a.submissions} / ${a.totalStudents}</td>
+                                        <td>${a.totalStudents > 0 ? Math.min(a.submissions, a.totalStudents) : a.submissions} / ${a.totalStudents}</td>
                                         <td><span class="status-pill status-${a.status}">${a.status}</span></td>
                                     </tr>
                                 `).join('')}

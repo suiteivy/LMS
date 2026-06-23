@@ -22,6 +22,8 @@ export default function ManagementLayout() {
                 <Stack.Screen name="earnings" />
                 <Stack.Screen name="resources" />
                 <Stack.Screen name="diary" />
+                <Stack.Screen name="grade-entry" />
+                <Stack.Screen name="report-cards" />
             </Stack>
         </View>
     );

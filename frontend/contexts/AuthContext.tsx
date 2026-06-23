@@ -3,10 +3,12 @@ import { Database } from '@/types/database'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { Session, User } from '@supabase/supabase-js'
 import { router } from 'expo-router'
-import React, { createContext, useContext, useEffect, useRef, useState } from 'react'
+import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react'
 import { AppState, AppStateStatus, Platform } from 'react-native'
 import Toast from 'react-native-toast-message'
 import { api } from '@/services/api'
+import { safeSignOut } from '@/utils/safeSignOut'
+import { LogoutReason, LOGOUT_MESSAGES } from '@/types/logout'
 
 type UserProfile = Database['public']['Tables']['users']['Row']
 
@@ -125,6 +127,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const timerRef = useRef<any>(null)
   const timerWarningRef = useRef<any>(null)
   const idleTimeoutRef = useRef<any>(null)
+  const heartbeatRef = useRef<any>(null)
+  const realtimeChannelRef = useRef<any>(null)
   const lastPingTime = useRef<number>(0)
 
   const appState = useRef(AppState.currentState);
@@ -155,7 +159,36 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   }
 
-  const handleLogout = async (silent: boolean = false) => {
+  const clearHeartbeat = useCallback(() => {
+    if (heartbeatRef.current) {
+      clearInterval(heartbeatRef.current);
+      heartbeatRef.current = null;
+    }
+  }, []);
+
+  /** Start the 10-second heartbeat that resets idle timer + pings backend. */
+  const startHeartbeat = useCallback(() => {
+    clearHeartbeat();
+    heartbeatRef.current = setInterval(() => {
+      // Reset idle timeout on any user activity
+      if (idleTimeoutRef.current) {
+        clearTimeout(idleTimeoutRef.current);
+      }
+      idleTimeoutRef.current = setTimeout(async () => {
+        console.warn("[AuthContext] Local idle timeout triggered (10 minutes inactivity)");
+        await handleLogout(false, LogoutReason.INACTIVITY_TIMEOUT);
+      }, 10 * 60 * 1000);
+
+      // Throttled keep-alive ping to backend (at most once every 1 minute)
+      const now = Date.now();
+      if (now - lastPingTime.current > 60000) {
+        lastPingTime.current = now;
+        api.post('/auth/ping', {}, { skipErrorToast: true }).catch(() => {});
+      }
+    }, 10 * 1000); // every 10 seconds
+  }, [clearHeartbeat]);
+
+  const handleLogout = async (silent: boolean = false, reason: LogoutReason = LogoutReason.USER_INITIATED) => {
     // Prevent recursion if already logging out or already logged out
     if (isManualLogout.current) return { error: null };
 
@@ -170,6 +203,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     isManualLogout.current = true;
 
     try {
+      // Clear all local state first (before signOut call, in case Supabase throws)
       setSession(null);
       setUser(null);
       setProfile(null);
@@ -191,22 +225,23 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setLoading(false);
       setIsInitializing(false);
       clearTimer();
+      clearHeartbeat();
 
-      if (!silent) {
-        if (isDemoRef.current) {
-          Toast.show({ type: 'info', text1: 'Session ended', text2: 'Demo session ended.', position: 'bottom' });
-        } else {
-          Toast.show({ type: 'success', text1: 'Logged Out', text2: 'You have been logged out successfully.', position: 'bottom' });
-        }
+      // Unsubscribe from Realtime session revocation channel
+      if (realtimeChannelRef.current) {
+        supabase.removeChannel(realtimeChannelRef.current);
+        realtimeChannelRef.current = null;
       }
 
-      await Promise.all([
-        authService.signOut().catch(e => console.warn('[AuthContext] authService.signOut error:', e)),
-        AsyncStorage.removeItem('demo_expiry').catch(() => { }),
-        AsyncStorage.removeItem('is_demo_mode').catch(() => { }),
-        AsyncStorage.removeItem('session_start_time').catch(() => { }),
-        AsyncStorage.clear().catch(() => { }), // Final wipe
-      ]);
+      // Use centralized safeSignOut – never fails, persists reason, shows toast
+      await safeSignOut('local', reason, silent || isDemoRef.current);
+
+      // Final AsyncStorage wipe (safeSignOut already clears demo keys)
+      try { await AsyncStorage.clear(); } catch { /* non-critical */ }
+
+      if (!silent && isDemoRef.current) {
+        Toast.show({ type: 'info', text1: 'Session ended', text2: 'Demo session ended.', position: 'bottom' });
+      }
     } finally {
       // Delay resetting the flag to allow events to settle
       setTimeout(() => { isManualLogout.current = false; }, 1000);
@@ -248,24 +283,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const resetSessionTimer = async () => {
     if (!session) return;
-    
-    // 1. Reset client-side idle timer (10 minutes)
-    if (idleTimeoutRef.current) {
-      clearTimeout(idleTimeoutRef.current);
-    }
-    
-    idleTimeoutRef.current = setTimeout(async () => {
-      console.warn("[AuthContext] Local idle timeout triggered (10 minutes inactivity)");
-      await AsyncStorage.setItem('logout_reason', 'inactivity');
-      await handleLogout();
-    }, 10 * 60 * 1000); // 10 minutes
-
-    // 2. Throttled keep-alive ping to backend (at most once every 1 minute)
-    const now = Date.now();
-    if (now - lastPingTime.current > 60000) {
-      lastPingTime.current = now;
-      api.post('/auth/ping', {}, { skipErrorToast: true }).catch(() => {});
-    }
+    // Start the heartbeat interval which handles idle timeout + backend ping
+    startHeartbeat();
   };
 
   const startTimeoutTimer = async (isDemoSession?: boolean) => {
@@ -293,14 +312,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     const remaining = totalDurationMs - elapsed;
 
     if (remaining <= 0) {
-      await AsyncStorage.setItem('logout_reason', 'timeout');
-      await handleLogout();
+      await handleLogout(false, LogoutReason.SESSION_TIMEOUT);
     } else {
       // Set absolute expiry timeout
       timerRef.current = setTimeout(async () => {
         console.warn("[AuthContext] Absolute session timeout triggered");
-        await AsyncStorage.setItem('logout_reason', 'timeout');
-        await handleLogout();
+        await handleLogout(false, LogoutReason.SESSION_TIMEOUT);
       }, remaining);
 
       // Warning timeout: 15 minutes before 10-hour limit, or 2 minutes before 15-minute limit
@@ -535,12 +552,37 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         await AsyncStorage.setItem('session_start_time', Date.now().toString());
         loadUserProfile(session.user.id);
         await startTimeoutTimer(isDemoUser);
+
+        // Subscribe to Realtime for live session revocation from other devices
+        if (realtimeChannelRef.current) {
+          supabase.removeChannel(realtimeChannelRef.current);
+        }
+        const channel = supabase
+          .channel(`session-revocation:${session.user.id}`)
+          .on('postgres_changes', {
+            event: 'UPDATE',
+            schema: 'public',
+            table: 'user_sessions',
+            filter: `user_id=eq.${session.user.id}`,
+          }, (payload) => {
+            const updated = payload.new as any;
+            if (updated?.is_revoked === true && !isManualLogout.current) {
+              console.warn('[AuthContext] Session revoked by another device/admin');
+              // Persist reason then clear state — safeSignOut will be a no-op since
+              // Supabase already invalidated the session on the server side.
+              AsyncStorage.setItem('logout_reason', LogoutReason.REVOKED_BY_OTHER_DEVICE).then(() => {
+                handleLogout(true, LogoutReason.REVOKED_BY_OTHER_DEVICE);
+              });
+            }
+          })
+          .subscribe();
+        realtimeChannelRef.current = channel;
       } else if (event === 'TOKEN_REFRESHED' && session?.user) {
         setSession(session);
         setUser(session.user);
         currentSessionRef.current = session;
       } else if (event === 'SIGNED_OUT') {
-        // IMPORTANT: Do NOT call handleLogout() here   it calls authService.signOut(),
+        // IMPORTANT: Do NOT call handleLogout() here — it calls authService.signOut(),
         // which emits another SIGNED_OUT event, causing an infinite loop.
         // The sign-out has already happened; just clear local state.
         if (isManualLogout.current) return; // already handled by handleLogout
@@ -563,27 +605,30 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         setLoading(false);
         setIsInitializing(false);
         clearTimer();
+        clearHeartbeat();
+        if (realtimeChannelRef.current) {
+          supabase.removeChannel(realtimeChannelRef.current);
+          realtimeChannelRef.current = null;
+        }
         currentSessionRef.current = null;
         lastLoadedUserId.current = null;
         
-        AsyncStorage.getItem('logout_reason').then((reason) => {
-          if (reason === 'inactivity') {
-            Toast.show({ type: 'info', text1: 'Logged Out', text2: "You've been logged out due to inactivity.", position: 'bottom' });
-          } else if (reason === 'timeout') {
-            Toast.show({ type: 'info', text1: 'Session Expired', text2: 'Your session has expired.', position: 'bottom' });
-          } else {
-            if (!silent) {
-              if (isDemoRef.current) {
-                Toast.show({ type: 'info', text1: 'Session ended', text2: 'Demo session ended.', position: 'bottom' });
-              } else {
-                Toast.show({ type: 'success', text1: 'Logged Out', text2: 'You have been logged out successfully.', position: 'bottom' });
-              }
-            }
+        // Read persisted logout reason and show the appropriate toast
+        AsyncStorage.getItem('logout_reason').then((rawReason) => {
+          const reason = (rawReason as LogoutReason) || LogoutReason.UNKNOWN;
+          const msg = LOGOUT_MESSAGES[reason] ?? LOGOUT_MESSAGES[LogoutReason.UNKNOWN];
+          if (!silent) {
+            Toast.show({
+              type: reason === LogoutReason.INSTITUTION_SUSPENDED ? 'error' : 'info',
+              text1: msg.title,
+              text2: msg.body,
+              position: 'bottom',
+            });
           }
           AsyncStorage.removeItem('logout_reason').catch(() => {});
         }).catch(() => {
           if (!silent) {
-            Toast.show({ type: 'success', text1: 'Logged Out', text2: 'You have been logged out successfully.', position: 'bottom' });
+            Toast.show({ type: 'info', text1: 'Logged Out', text2: 'You have been logged out.', position: 'bottom' });
           }
         });
       }
@@ -598,8 +643,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
     return () => {
       subscription.unsubscribe()
+      if (realtimeChannelRef.current) {
+        supabase.removeChannel(realtimeChannelRef.current);
+        realtimeChannelRef.current = null;
+      }
       appStateSubscription.remove()
       clearTimer()
+      clearHeartbeat()
       clearTimeout(watchdog)
       clearTimeout(navTimer)
     }

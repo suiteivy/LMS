@@ -8,6 +8,8 @@ import { ActivityIndicator, RefreshControl, ScrollView, Text, TouchableOpacity, 
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import { Printer } from 'lucide-react-native';
+import { getPerformanceLabel } from "@/utils/getPerformanceLabel";
+import { GradingAPI } from "@/services/GradingService";
 
 const gradeColor = (g: string) => {
   if (g.startsWith("A")) return { bg: "bg-emerald-50", text: "text-emerald-700" };
@@ -22,16 +24,19 @@ export default function StudentGradesPage() {
   const [performance, setPerformance] = useState<any>(null);
   const [grades, setGrades] = useState<any[]>([]);
   const [stats, setStats] = useState({ gpa: "0.0", attendance_pct: "0", standing: "N/A" });
+  const [gradingScales, setGradingScales] = useState<any[]>([]);
 
   const fetchPerformanceData = async () => {
     if (!studentId) return;
     try {
-      const [performanceData, attendance] = await Promise.all([
+      const [performanceData, attendance, scales] = await Promise.all([
         ParentService.getStudentPerformance(studentId),
-        ParentService.getStudentAttendance(studentId)
+        ParentService.getStudentAttendance(studentId),
+        GradingAPI.getGradingScales().catch(() => []),
       ]);
 
       setPerformance(performanceData);
+      setGradingScales(Array.isArray(scales) ? scales : []);
 
       const allSubmissions = [
         ...(performanceData.submissions || []),
@@ -63,10 +68,13 @@ export default function StudentGradesPage() {
       // Fetch Rank
       const { data: rankData }: any = await (supabase.rpc as any)('get_student_rank', { p_student_id: studentId });
 
+      // Derive standing from grading scale instead of hardcoded thresholds
+      const perf = getPerformanceLabel(avg, Array.isArray(scales) ? scales : []);
+
       setStats({
         gpa,
         attendance_pct: attendancePct,
-        standing: Number(gpa) >= 3.5 ? "Excellent" : Number(gpa) >= 3.0 ? "Good" : "Probation",
+        standing: perf.label,
         rank: rankData?.rank || 'N/A',
         totalStudents: rankData?.total_students || 0
       } as any);

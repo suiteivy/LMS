@@ -1,6 +1,6 @@
 import axios, { AxiosError, AxiosInstance, InternalAxiosRequestConfig } from "axios";
 import { Platform } from "react-native";
-import { showError } from "../utils/toast";
+import { showError, showWarning, showInfo } from "../utils/toast";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 // Extend Axios request config to support a per-request flag that suppresses
@@ -8,12 +8,53 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 declare module 'axios' {
   interface AxiosRequestConfig {
     skipErrorToast?: boolean;
+    retryable?: boolean;
   }
 }
 
 import { supabase } from "@/libs/supabase";
+import { safeSignOut } from "@/utils/safeSignOut";
+import { LogoutReason } from "@/types/logout";
 
 import Constants from "expo-constants";
+
+// --- Offline detection & retry ---
+let _isOffline = false;
+const offlineListeners: Array<(offline: boolean) => void> = [];
+
+export const isOffline = () => _isOffline;
+export const onOfflineChange = (cb: (offline: boolean) => void) => {
+  offlineListeners.push(cb);
+  return () => {
+    const idx = offlineListeners.indexOf(cb);
+    if (idx >= 0) offlineListeners.splice(idx, 1);
+  };
+};
+
+const _setOffline = (val: boolean) => {
+  if (_isOffline === val) return;
+  _isOffline = val;
+  offlineListeners.forEach((cb) => cb(val));
+};
+
+if (typeof window !== 'undefined') {
+  window.addEventListener('online', () => _setOffline(false));
+  window.addEventListener('offline', () => _setOffline(true));
+  _isOffline = !navigator.onLine;
+}
+
+let _lastNetworkToast = 0;
+const NETWORK_TOAST_COOLDOWN = 5000;
+let _pendingRetry: (() => Promise<any>) | null = null;
+
+export const getPendingRetry = () => _pendingRetry;
+export const clearPendingRetry = () => { _pendingRetry = null; };
+export const retryLastRequest = async () => {
+  const fn = _pendingRetry;
+  if (!fn) return;
+  _pendingRetry = null;
+  return fn();
+};
 
 /**
  * To Do:
@@ -101,10 +142,15 @@ api.interceptors.request.use(
 
 // Response Interceptor for Global Error Handling
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    // Clear offline state on any successful response
+    _setOffline(false);
+    return response;
+  },
   (error: AxiosError) => {
     let title = "Error";
     let message = "An unexpected error occurred";
+    let severity: 'error' | 'warning' | 'info' = 'error';
 
     if (error.response) {
       const status = error.response.status;
@@ -126,23 +172,21 @@ api.interceptors.response.use(
           const skipSignOut = (error.config as InternalAxiosRequestConfig & { skipErrorToast?: boolean })?.skipErrorToast;
 
           const errorCode = data?.code;
+          let logoutReason = LogoutReason.UNKNOWN;
           if (errorCode === 'SESSION_IDLE_TIMEOUT') {
-            AsyncStorage.setItem('logout_reason', 'inactivity').catch(() => {});
+            logoutReason = LogoutReason.INACTIVITY_TIMEOUT;
           } else if (errorCode === 'SESSION_TIMEOUT' || errorCode === 'SESSION_REVOKED') {
-            AsyncStorage.setItem('logout_reason', 'timeout').catch(() => {});
+            logoutReason = LogoutReason.SESSION_TIMEOUT;
+          } else if (error.response?.status === 401) {
+            logoutReason = LogoutReason.TOKEN_EXPIRED;
           }
 
-          // Trigger global sign-out to clear state and redirect
-          // We do NOT show a toast here to avoid spam/race conditions during logout.
-          // Only sign out if this was a critical request (not marked skipErrorToast)
-          // AND it actually attempted to use a token (if no Authorization header was present
-          //   it means it was a premature request, not an invalid session).
           if (!skipSignOut && error.config?.headers?.Authorization) {
-            console.warn("[API] 401 received with token. Checking session before triggering global signOut.");
+            console.warn("[API] 401 received with token. Checking session before triggering safeSignOut.");
             supabase.auth.getSession().then(({ data: { session } }) => {
               if (session) {
-                console.warn("[API] Session still exists but 401 received. Triggering signOut.");
-                supabase.auth.signOut().catch(e => console.warn("SignOut error:", e));
+                console.warn("[API] Session still exists but 401 received. Triggering safeSignOut.");
+                safeSignOut('local', logoutReason, true).catch(e => console.warn("safeSignOut error:", e));
               } else {
               }
             });
@@ -152,30 +196,69 @@ api.interceptors.response.use(
         case 403:
           title = "Permission Denied";
           message = "You don't have access to this resource.";
+          severity = 'info';
           break;
         case 404:
           title = "Not Found";
-          // Only use default if no specific message came from backend
           if (!data?.error && !data?.message) {
             message = "The requested resource was not found.";
           }
+          severity = 'info';
+          break;
+        case 429:
+          title = "Too Many Requests";
+          message = "You're doing that too often. Please wait a moment.";
+          severity = 'warning';
           break;
         case 500:
           title = "Server Error";
-          // Only overwrite if no specific message came from backend
           if (!data?.error && !data?.message) {
             message = "Something went wrong on our end.";
           }
           break;
+        case 502:
+        case 503:
+        case 504:
+          title = "Service Unavailable";
+          message = "The server is temporarily unavailable. Please try again shortly.";
+          severity = 'warning';
+          // Store retry function for these transient errors
+          if (error.config) {
+            const cfg = { ...error.config };
+            _pendingRetry = () => api.request(cfg);
+          }
+          break;
       }
     } else if (error.request) {
+      // Network / no response
+      _setOffline(true);
+
       if (error.code === 'ECONNABORTED') {
-        title = "Timeout Error";
-        message = "The request took too long to respond. Please try again.";
+        title = "Request Timeout";
+        message = "The request took too long. Check your connection and try again.";
+        severity = 'warning';
+      } else if (error.code === 'ERR_NETWORK' || error.message?.includes('Network Error')) {
+        title = "No Internet Connection";
+        message = "You appear to be offline. Please check your network and try again.";
+        severity = 'warning';
       } else {
-        title = "Network Error";
-        message = `Could not connect to the server at ${baseURL}. Please ensure the backend is running.`;
+        title = "Connection Failed";
+        message = "Could not reach the server. Please check your connection.";
+        severity = 'warning';
       }
+
+      // Store retry function
+      if (error.config) {
+        const cfg = { ...error.config };
+        _pendingRetry = () => api.request(cfg);
+      }
+
+      // Deduplicate network toasts
+      const now = Date.now();
+      if (now - _lastNetworkToast < NETWORK_TOAST_COOLDOWN) {
+        return Promise.reject({ ...error, message, title, safeData: null });
+      }
+      _lastNetworkToast = now;
     } else {
       message = error.message;
     }
@@ -189,7 +272,13 @@ api.interceptors.response.use(
     // and the caller hasn't opted out via `skipErrorToast: true`.
     const skipToast = (error.config as InternalAxiosRequestConfig & { skipErrorToast?: boolean })?.skipErrorToast;
     if (error.message !== 'canceled' && error.response?.status !== 401 && !skipToast) {
-      showError(title, message);
+      if (severity === 'warning') {
+        showWarning(title, message);
+      } else if (severity === 'info') {
+        showInfo(title, message);
+      } else {
+        showError(title, message);
+      }
     }
 
     // Return a structured error object instead of just rejecting with AxiosError

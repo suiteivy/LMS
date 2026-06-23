@@ -1,4 +1,4 @@
-import React, { createContext, ReactNode, useContext, useEffect, useState } from 'react';
+import React, { createContext, ReactNode, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { NotificationAPI } from '../services/NotificationService';
 import { Notification } from '../types/types';
 import { useAuth } from './AuthContext';
@@ -25,20 +25,21 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
     const [loading, setLoading] = useState(false);
     const [showNotifications, setShowNotifications] = useState(false);
 
-    const fetchNotifications = async () => {
+    const fetchNotifications = useCallback(async () => {
         if (!session) return;
         try {
+            setLoading(true);
             const data = await NotificationAPI.getUserNotifications();
             setNotifications(data);
         } catch (error) {
             console.error("Failed to fetch notifications:", error);
+        } finally {
+            setLoading(false);
         }
-    };
+    }, [session]);
 
     // Listen to realtime changes on the notifications table
-    useRealtimeQuery('notifications', () => {
-        fetchNotifications();
-    });
+    useRealtimeQuery('notifications', fetchNotifications);
 
     const lastToken = React.useRef<string | null>(null);
 

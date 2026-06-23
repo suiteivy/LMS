@@ -60,6 +60,9 @@ const ALL_ROUTES = [
     "settings/settings",
     "subjects/create",
     "subjects/index",
+    "academic-setup/index",
+    "results/index",
+    "results/promotions",
     "timetable/index",
     "users/create",
     "users/index",
@@ -73,55 +76,75 @@ const HIDDEN = ALL_ROUTES.filter(name => !MOBILE_TAB_NAMES.includes(name));
 const BETA_EXTRA_HIDDEN = ["finance/index"];
 
 import { useNotifications } from "@/contexts/NotificationContext";
+import { NotificationBellDropdown } from "@/components/common/NotificationBellDropdown";
+import { useState } from "react";
+import { useRouter } from "expo-router";
 
 function AdminTabs() {
     const insets = useSafeAreaInsets();
     const { isDark } = useTheme();
     const { isBeta } = useSubscriptionTier();
     const { unreadCount } = useNotifications();
+    const [showNotifDropdown, setShowNotifDropdown] = useState(false);
+    const router = useRouter();
+
+    const tabBarHeight = 70 + insets.bottom;
 
     return (
-        <Tabs
-            screenOptions={{
-                headerShown: false,
-                tabBarActiveTintColor: "#FF6B00",
-                tabBarInactiveTintColor: isDark ? "#94a3b8" : "#64748b",
-                tabBarLabelStyle: { fontSize: 11, fontWeight: "600" },
-                tabBarStyle: {
-                    backgroundColor: isDark ? '#0F0B2E' : "#ffffff",
-                    borderTopWidth: 1,
-                    borderTopColor: isDark ? '#1f2937' : "#e5e7eb",
-                    height: 70 + insets.bottom,
-                    paddingBottom: insets.bottom || 6,
-                    paddingTop: 6,
-                    paddingHorizontal: 40,
-                    justifyContent: "center",
-                    gap: 32,
-                    elevation: 8,
-                    shadowColor: "#000",
-                    shadowOffset: { width: 0, height: -4 },
-                    shadowOpacity: 0.1,
-                    shadowRadius: 3,
-                    boxShadow: [{
-                        offsetX: 0,
-                        offsetY: -4,
-                        blurRadius: 3,
-                        color: 'rgba(0, 0, 0, 0.1)',
-                    }],
-                },
-                sceneStyle: { backgroundColor: isDark ? '#0F0B2E' : "#f9fafb" },
-            }}
-        >
-            {/* Notifications */}
+        <View style={{ flex: 1 }}>
+            <Tabs
+                screenListeners={({ route }: { route: any }) => ({
+                    tabPress: (e: any) => {
+                        if (route.name === "notifications") {
+                            e.preventDefault();
+                            setShowNotifDropdown((v) => !v);
+                        }
+                    },
+                })}
+                screenOptions={{
+                    headerShown: false,
+                    tabBarActiveTintColor: "#FF6B00",
+                    tabBarInactiveTintColor: isDark ? "#94a3b8" : "#64748b",
+                    tabBarLabelStyle: { fontSize: 11, fontWeight: "600" },
+                    tabBarStyle: {
+                        backgroundColor: isDark ? '#0F0B2E' : "#ffffff",
+                        borderTopWidth: 1,
+                        borderTopColor: isDark ? '#1f2937' : "#e5e7eb",
+                        height: tabBarHeight,
+                        paddingBottom: insets.bottom || 6,
+                        paddingTop: 6,
+                        paddingHorizontal: 40,
+                        justifyContent: "center",
+                        gap: 32,
+                        elevation: 8,
+                        shadowColor: "#000",
+                        shadowOffset: { width: 0, height: -4 },
+                        shadowOpacity: 0.1,
+                        shadowRadius: 3,
+                        boxShadow: [{
+                            offsetX: 0,
+                            offsetY: -4,
+                            blurRadius: 3,
+                            color: 'rgba(0, 0, 0, 0.1)',
+                        }],
+                    },
+                    sceneStyle: { backgroundColor: isDark ? '#0F0B2E' : "#f9fafb" },
+                }}
+            >
+            {/* Notifications — tab registered, press intercepted by listeners */}
             <Tabs.Screen
                 name="notifications"
                 options={{
                     title: "Alerts",
-                    tabBarIcon: ({ size = 24, color }) => {
+                    tabBarItemStyle: { width: 72 },
+                    tabBarLabelStyle: { fontSize: 10, fontWeight: "600" },
+                    tabBarIcon: ({ size = 24, color, focused }) => {
                         const Icon = Bell as any;
+                        const isOpen = showNotifDropdown;
+                        const iconColor = isOpen ? "#FF6B00" : focused ? "#FF6B00" : color;
                         return (
                             <View>
-                                <Icon size={size} color={color} strokeWidth={2} />
+                                <Icon size={size} color={iconColor} strokeWidth={2} />
                                 {unreadCount > 0 && (
                                     <View style={{
                                         position: 'absolute',
@@ -203,7 +226,15 @@ function AdminTabs() {
             {HIDDEN.map((name) => (
                 <Tabs.Screen key={name} name={name} options={{ href: null }} />
             ))}
-        </Tabs>
+            </Tabs>
+
+            <NotificationBellDropdown
+                visible={showNotifDropdown}
+                onClose={() => setShowNotifDropdown(false)}
+                onViewAll={() => router.push("/(admin)/notifications")}
+                tabBarHeight={tabBarHeight}
+            />
+        </View>
     );
 }
 

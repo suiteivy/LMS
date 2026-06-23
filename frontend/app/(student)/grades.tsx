@@ -104,8 +104,9 @@ export default function Grades() {
             // Use exam_results instead on the non-existent grades table
             const { data: examResults } = await supabase
                 .from('exam_results')
-                .select(`score, exam:exams!inner(subject:subjects(id, title, credits))`)
-                .eq('student_id', targetId);
+                .select(`score, exam:exams!inner(subject:subjects(id, title, credits), is_published)`)
+                .eq('student_id', targetId)
+                .eq('exam.is_published', true);
 
             const subjectGrades: Record<string, { 
                 total: number, 
@@ -370,6 +371,34 @@ export default function Grades() {
                             </View>
                         </View>
                     </View>
+
+                    {/* Report Cards Navigation */}
+                    <TouchableOpacity
+                        onPress={() => router.push('/(student)/report-cards' as any)}
+                        style={{
+                            boxShadow: [{
+                                offsetX: 0,
+                                offsetY: 1,
+                                blurRadius: 2,
+                                color: isDark ? 'rgba(0, 0, 0, 0.4)' : 'rgba(0, 0, 0, 0.05)',
+                            }],
+                            shadowColor: "#000",
+                            shadowOffset: { width: 0, height: 1 },
+                            shadowOpacity: isDark ? 0.4 : 0.05,
+                            shadowRadius: 2,
+                            elevation: 2,
+                        }}
+                        className="bg-white dark:bg-[#1a1a1a] p-5 rounded-[32px] border border-gray-100 dark:border-gray-800 mb-6 flex-row items-center active:bg-gray-50 dark:active:bg-gray-900"
+                    >
+                        <View style={{ backgroundColor: isDark ? '#2e1065' : '#ede9fe', padding: 12, borderRadius: 12, marginRight: 16 }}>
+                            <Award size={24} color="#8b5cf6" />
+                        </View>
+                        <View className="flex-1">
+                            <Text className="text-gray-900 dark:text-white font-bold text-base">Report Cards</Text>
+                            <Text className="text-gray-400 dark:text-gray-500 text-xs">View official report cards and GPA</Text>
+                        </View>
+                        <Text className="text-[#FF6900] font-bold text-xs">VIEW</Text>
+                    </TouchableOpacity>
 
                     {/* Subject Breakdown */}
                     <View className="px-2 flex-row justify-between items-center mb-6">

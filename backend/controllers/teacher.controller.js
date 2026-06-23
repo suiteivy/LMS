@@ -1,4 +1,5 @@
 const supabase = require("../utils/supabaseClient.js");
+const { resolveTeacher } = require("../middleware/resolveTeacher.js");
 
 exports.getDashboardStats = async (req, res) => {
     const startTime = Date.now();
@@ -122,7 +123,8 @@ exports.getDashboardStats = async (req, res) => {
             const { data: ctEnrollments } = await supabase
                 .from('class_enrollments')
                 .select('student_id')
-                .in('class_id', classTeacherOf.map(c => c.id));
+                .in('class_id', classTeacherOf.map(c => c.id))
+                .eq('status', 'enrolled');
             (ctEnrollments || []).forEach(e => uniqueStudentIds.add(e.student_id));
         }
         const studentsCount = uniqueStudentIds.size;
@@ -329,17 +331,43 @@ exports.getStudentPerformance = async (req, res) => {
 
         const subjectIds = subjects.map(s => s.id);
 
-        // 3. Get enrollments for those subjects
+        // 3. Get enrollments for those subjects (active only)
         const { data: enrollments } = await supabase
             .from('enrollments')
             .select(`
                 id, student_id, subject_id,
                 students ( id, user_id, grade_level, users(first_name, last_name, full_name, email, avatar_url) )
             `)
-            .in('subject_id', subjectIds);
+            .in('subject_id', subjectIds)
+            .eq('status', 'enrolled');
+
+        // Also get students from class_enrollments for the same subjects
+        const classIds = [...new Set(subjects.map(s => s.class_id).filter(Boolean))];
+        let classEnrolledStudents = [];
+        if (classIds.length > 0) {
+            const { data: ceData } = await supabase
+                .from('class_enrollments')
+                .select(`
+                    student_id, class_id,
+                    students ( id, user_id, grade_level, users(first_name, last_name, full_name, email, avatar_url) )
+                `)
+                .in('class_id', classIds);
+            // Only include students not already in direct enrollments
+            const directStudentIds = new Set((enrollments || []).map(e => e.student_id));
+            classEnrolledStudents = (ceData || [])
+                .filter(ce => !directStudentIds.has(ce.student_id))
+                .map(ce => ({
+                    id: ce.student_id,
+                    student_id: ce.student_id,
+                    subject_id: null,
+                    students: ce.students
+                }));
+        }
+
+        const allEnrollments = [...(enrollments || []), ...classEnrolledStudents];
 
         // 4. Get submissions/grades for those students in those subjects
-        const studentIds = [...new Set((enrollments || []).map(e => e.student_id).filter(Boolean))];
+        const studentIds = [...new Set(allEnrollments.map(e => e.student_id).filter(Boolean))];
 
         let submissions = [];
         if (studentIds.length > 0) {
@@ -356,7 +384,7 @@ exports.getStudentPerformance = async (req, res) => {
 
         // 5. Build response grouped by subject
         const performance = subjects.map(subject => {
-            const subjectEnrollments = (enrollments || []).filter(e => e.subject_id === subject.id);
+            const subjectEnrollments = allEnrollments.filter(e => e.subject_id === subject.id);
             const students = subjectEnrollments.map(enrollment => {
                 const studentSubs = submissions.filter(
                     s => s.student_id === enrollment.student_id && s.assignments?.subject_id === subject.id
@@ -444,6 +472,7 @@ exports.getStudentDetails = async (req, res) => {
             .from('class_enrollments')
             .select('class_id, classes!inner(teacher_id)')
             .eq('student_id', studentId)
+            .eq('status', 'enrolled')
             .maybeSingle();
 
         const isClassTeacher = !!(classEnrollment && classEnrollment.classes?.teacher_id === teacherId);
@@ -582,5 +611,97 @@ exports.getStudentDetails = async (req, res) => {
     } catch (err) {
         console.error("[TeacherStudentDetails] Error:", err);
         res.status(500).json({ error: err.message });
+    }
+};
+
+// GET subject-class combinations for a teacher (grade-entry dropdown)
+exports.getSubjectClasses = async (req, res) => {
+    try {
+        const { userId, institution_id } = req;
+        const { subject_id } = req.query;
+
+        const { data: teacher, error: tErr } = await supabase
+            .from("teachers")
+            .select("id")
+            .eq("user_id", userId)
+            .single();
+        if (tErr || !teacher) return res.status(404).json({ error: "Teacher profile not found" });
+
+        let query = supabase
+            .from("subjects")
+            .select("id, title, class_id, classes(id, display_name, grade_level, form_level, stream)")
+            .eq("teacher_id", teacher.id);
+        if (institution_id) query = query.eq("institution_id", institution_id);
+        if (subject_id) query = query.eq("id", subject_id);
+
+        const { data: primary, error: pErr } = await query;
+        if (pErr) throw pErr;
+
+        // Also include subjects via subject_teachers
+        const { data: assoc } = await supabase
+            .from("subject_teachers")
+            .select("subject_id, subject:subjects(id, title, class_id, classes(id, display_name, grade_level, form_level, stream))")
+            .eq("teacher_id", teacher.id);
+
+        const map = new Map();
+        (primary || []).forEach((s) => map.set(s.id, s));
+        (assoc || []).map((a) => a.subject).filter(Boolean).forEach((s) => map.set(s.id, s));
+
+        const results = Array.from(map.values()).map((s) => ({
+            subject_id: s.id,
+            subject_title: s.title,
+            class_id: s.class_id,
+            class_name: s.classes?.display_name || (s.classes?.form_level ? `Form ${s.classes.form_level}` : "") + (s.classes?.stream ? ` ${s.classes.stream}` : ""),
+            class_display_name: s.classes?.display_name,
+            grade_level: s.classes?.grade_level,
+            form_level: s.classes?.form_level,
+            stream: s.classes?.stream,
+        }));
+
+        return res.json({ success: true, data: results });
+    } catch (err) {
+        console.error("getSubjectClasses error:", err);
+        res.status(500).json({ error: "Server error" });
+    }
+};
+
+// GET students enrolled in a class (grade-entry student list)
+exports.listClassStudents = async (req, res) => {
+    try {
+        const { class_id } = req.query;
+        const { institution_id } = req;
+
+        if (!class_id) return res.status(400).json({ error: "class_id is required" });
+
+        const { data: enrollments, error: eErr } = await supabase
+            .from("class_enrollments")
+            .select("student_id, students(id, user_id, users(first_name, last_name, full_name), id_number, admission_number)")
+            .eq("class_id", class_id)
+            .eq("institution_id", institution_id);
+
+        if (eErr) throw eErr;
+
+        const students = (enrollments || [])
+            .map((e) => {
+                const s = e.students;
+                if (!s) return null;
+                const user = s.users;
+                const fullName = user?.full_name || `${user?.first_name || ""} ${user?.last_name || ""}`.trim() || "Unknown";
+                return {
+                    id: s.id,
+                    student_id: s.id,
+                    full_name: fullName,
+                    name: fullName,
+                    student_name: fullName,
+                    display_id: s.id_number || s.admission_number || s.id,
+                    student_display_id: s.id_number || s.admission_number || s.id,
+                };
+            })
+            .filter(Boolean);
+
+        return res.json({ success: true, data: students });
+    } catch (err) {
+        console.error("listClassStudents error:", err);
+        res.status(500).json({ error: "Server error" });
     }
 };

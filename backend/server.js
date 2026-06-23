@@ -70,6 +70,12 @@ app.use("/api/student", authMiddleware, checkSubscription, require("./routes/stu
 app.use("/api/classes", authMiddleware, checkSubscription, require("./routes/class.route.js"));
 app.use("/api/diary", authMiddleware, checkSubscription, require("./routes/diary.route.js"));
 app.use("/api/reports", authMiddleware, checkSubscription, require("./routes/reports.route.js"));
+app.use("/api/assessment-types", authMiddleware, checkSubscription, require("./routes/assessmentTypes.route.js"));
+app.use("/api/academic-years", authMiddleware, checkSubscription, require("./routes/academicYears.route.js"));
+app.use("/api/grading-scales", authMiddleware, checkSubscription, require("./routes/gradingScales.route.js"));
+app.use("/api/grade-entries", authMiddleware, checkSubscription, require("./routes/gradeEntries.route.js"));
+app.use("/api/report-cards", authMiddleware, checkSubscription, require("./routes/reportCards.route.js"));
+app.use("/api/promotions", authMiddleware, checkSubscription, require("./routes/promotion.route.js"));
 app.use("/api/addon-requests", authMiddleware, addonRequestRoutes);
 
 // Explicitly define currency route as public before using auth wrapper on settings
@@ -83,10 +89,23 @@ app.use("/api/master-admin", authMiddleware, masterAdminRoutes);
 const { startTrialNudgesCron } = require('./cron/trialNudges.js');
 const { cleanupExpiredDemoSessions } = require('./services/demoCleanup.service.js');
 const cron = require('node-cron');
+const { retryScheduledNotificationDeliveries } = require('./services/notificationDelivery.service.js');
 
 if (typeof startTrialNudgesCron === 'function') {
   startTrialNudgesCron();
 }
+
+// Notification retry worker: every 5 minutes
+cron.schedule('*/5 * * * *', async () => {
+  try {
+    const result = await retryScheduledNotificationDeliveries({ limit: 100 });
+    if ((result?.processed || 0) > 0) {
+      logger.info('Notification retry worker processed jobs', result);
+    }
+  } catch (error) {
+    logger.error('Notification retry worker failed', { error: error?.message || String(error) });
+  }
+});
 
 // Demo Cleanup: Runs every 10 minutes
 cron.schedule('*/10 * * * *', async () => {

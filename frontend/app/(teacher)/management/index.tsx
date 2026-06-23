@@ -9,6 +9,8 @@ import {
     GraduationCap,
     Megaphone,
     MessageSquare,
+    PenLine,
+    Award,
     Wallet
 } from 'lucide-react-native';
 import { ScrollView, Text, TouchableOpacity, View, ActivityIndicator } from 'react-native';
@@ -77,6 +79,24 @@ export default function ManagementIndex() {
             }
 
             if (!isDemo && !teacherId) {
+                setPendingCount(0);
+                setSubmittedCount(0);
+                return;
+            }
+
+            // Guard: verify teacher has assigned subjects before querying submissions
+            const { data: primarySubjects } = await supabase
+                .from('subjects')
+                .select('id')
+                .eq('teacher_id', teacherId!);
+
+            const { data: assocSubjects } = await supabase
+                .from('subject_teachers')
+                .select('subject_id')
+                .eq('teacher_id', teacherId!);
+
+            const hasSubjects = (primarySubjects || []).length > 0 || (assocSubjects || []).length > 0;
+            if (!hasSubjects) {
                 setPendingCount(0);
                 setSubmittedCount(0);
                 return;
@@ -180,6 +200,22 @@ export default function ManagementIndex() {
             color: "#eab308",
             bgColor: "#fef9c3",
             route: "/(teacher)/management/resources"
+        },
+        {
+            icon: PenLine,
+            title: "Grade Entry",
+            description: "Enter and manage grades for your subjects",
+            color: "#3b82f6",
+            bgColor: "#dbeafe",
+            route: "/(teacher)/management/grade-entry"
+        },
+        {
+            icon: Award,
+            title: "Report Cards",
+            description: "View and manage student report cards",
+            color: "#8b5cf6",
+            bgColor: "#ede9fe",
+            route: "/(teacher)/management/report-cards"
         },
         {
             icon: MessageSquare,

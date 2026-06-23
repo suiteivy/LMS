@@ -4,6 +4,7 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { ParentService } from '@/services/ParentService';
 import { router } from 'expo-router';
 import {
+  Award,
   Bell,
   BookOpen,
   Calendar,
@@ -308,6 +309,20 @@ function ParentDashboard({ user, logout }: any) {
                   color="#ec4899"
                   isDark={isDark}
                   onPress={() => goTo("/(parent)/reports")}
+                />
+                <QuickAction
+                  icon={Award}
+                  label="Report Cards"
+                  color="#8b5cf6"
+                  isDark={isDark}
+                  onPress={() => goTo("/(parent)/report-cards")}
+                />
+                <QuickAction
+                  icon={TrendingUp}
+                  label="Analytics"
+                  color="#f97316"
+                  isDark={isDark}
+                  onPress={() => goTo("/(parent)/analytics")}
                 />
                 <QuickAction
                   icon={Clock}

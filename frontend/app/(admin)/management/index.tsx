@@ -12,6 +12,7 @@ import {
     DoorClosedLocked,
     FileCheck2,
     FileText,
+    GraduationCap,
     Shield,
     Upload
 } from 'lucide-react-native';
@@ -165,6 +166,24 @@ export default function AdminManagement() {
             bgColor: "#e0f2fe",
             darkBgColor: "#0c2340",
             route: "/(admin)/management/resources"
+        },
+        {
+            icon: GraduationCap,
+            title: "Academic Setup",
+            description: "Manage academic years, terms, grading scales, and assessment types",
+            color: "#8b5cf6",
+            bgColor: "#ede9fe",
+            darkBgColor: "#2e1065",
+            route: "/(admin)/academic-setup"
+        },
+        {
+            icon: ClipboardList,
+            title: "Results & Report Cards",
+            description: "Grade completeness, publish, and release report cards",
+            color: "#f59e0b",
+            bgColor: "#fef3c7",
+            darkBgColor: "#3d3000",
+            route: "/(admin)/results"
         }
     ];
 
@@ -184,22 +203,6 @@ export default function AdminManagement() {
                 <View style={{ padding: 16 }}>
                     {/* Quick Stats Row */}
                     <View style={{ flexDirection: 'row', gap: 12, marginBottom: 24 }}>
-                        {/* System Status */}
-                        <View style={{
-                            flex: 1, padding: 16, borderRadius: 24,
-                            backgroundColor: isDark ? '#13103A' : '#111827',
-                            borderWidth: isDark ? 1 : 0,
-                            borderColor: 'rgba(255,255,255,0.1)',
-                        }}>
-                            <Text style={{ color: '#6b7280', fontSize: 10, fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: 1 }}>
-                                System Status
-                            </Text>
-                            <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
-                                <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#10b981', marginRight: 8 }} />
-                                <Text style={{ color: 'white', fontSize: 17, fontWeight: 'bold' }}>Healthy</Text>
-                            </View>
-                        </View>
-
                         {/* Total Students */}
                         <View style={{ flex: 1, padding: 16, borderRadius: 24, backgroundColor: '#2563eb' }}>
                             <Text style={{ color: '#bfdbfe', fontSize: 10, fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: 1 }}>

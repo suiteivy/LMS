@@ -29,6 +29,7 @@ interface JoinedAssignment {
     subject: {
         title: string;
         id: string;
+        class_id?: string;
     } | null;
 }
 
@@ -52,6 +53,7 @@ export default function SubmissionsPage() {
     const [currentEntry, setCurrentEntry] = useState<SubmissionEntry | null>(null);
     const [gradeInput, setGradeInput] = useState("");
     const [feedbackInput, setFeedbackInput] = useState("");
+    const [canGrade, setCanGrade] = useState(false);
 
     useEffect(() => {
         if (assignmentId) {
@@ -64,7 +66,7 @@ export default function SubmissionsPage() {
             setLoading(true);
             const { data: assignmentData, error: assignmentError } = await supabase
                 .from('assignments')
-                .select('*, subject:subjects(title, id)')
+                .select('*, subject:subjects(title, id, class_id)')
                 .eq('id', assignmentId)
                 .single();
 
@@ -72,6 +74,28 @@ export default function SubmissionsPage() {
             const typedAssignment = assignmentData as unknown as JoinedAssignment;
             setAssignment(typedAssignment);
 
+            // Determine if current teacher can grade this assignment's subject
+            // Primary teacher of the assignment OR assistant teacher on the subject → can grade
+            let isAllowed = false;
+            if (teacherId) {
+                if (typedAssignment.teacher_id === teacherId) {
+                    isAllowed = true;
+                } else {
+                    const { data: assoc } = await supabase
+                        .from('subject_teachers')
+                        .select('id')
+                        .eq('teacher_id', teacherId)
+                        .eq('subject_id', typedAssignment.subject_id)
+                        .maybeSingle();
+                    if (assoc) isAllowed = true;
+                }
+            }
+            setCanGrade(isAllowed);
+
+            // Fetch enrolled students from BOTH enrollment tables
+            const enrolledStudentMap = new Map<string, JoinedEnrollment>();
+
+            // 1. Direct subject enrollments
             const { data: enrollmentData, error: enrollError } = await supabase
                 .from('enrollments')
                 .select(`student_id, student:students(id, user:users(full_name))`)
@@ -80,6 +104,38 @@ export default function SubmissionsPage() {
 
             if (enrollError) throw enrollError;
 
+            (enrollmentData as any[] || []).forEach(e => {
+                enrolledStudentMap.set(e.student_id, e as unknown as JoinedEnrollment);
+            });
+
+            // 2. Class-based enrollments (student → class → subject)
+            const classId = typedAssignment.subject?.class_id;
+            if (classId) {
+                const { data: classEnrollmentsData } = await supabase
+                    .from('class_enrollments')
+                    .select('student_id')
+                    .eq('class_id', classId);
+
+                // Get student IDs not already found via direct enrollments
+                const newStudentIds = (classEnrollmentsData as any[] || [])
+                    .map((ce: any) => ce.student_id)
+                    .filter((sid: string) => !enrolledStudentMap.has(sid));
+
+                if (newStudentIds.length > 0) {
+                    const { data: newStudents } = await supabase
+                        .from('students')
+                        .select('id, user:users(full_name)')
+                        .in('id', newStudentIds);
+
+                    (newStudents as any[] || []).forEach((s: any) => {
+                        enrolledStudentMap.set(s.id, {
+                            student_id: s.id,
+                            student: s
+                        } as unknown as JoinedEnrollment);
+                    });
+                }
+            }
+
             const { data: submissionData, error: subError } = await supabase
                 .from('submissions')
                 .select('*')
@@ -87,16 +143,38 @@ export default function SubmissionsPage() {
 
             if (subError) throw subError;
 
-            const typedEnrollments = (enrollmentData || []) as unknown as JoinedEnrollment[];
+            const typedEnrollments = [...enrolledStudentMap.values()];
             const typedSubmissions = (submissionData || []) as TypedSubmission[];
 
-            const merged: SubmissionEntry[] = typedEnrollments.map(enroll => {
-                const sub = typedSubmissions.find(s => s.student_id === enroll.student_id);
+            // Build a lookup of enrolled students for name resolution
+            const enrollmentMap = new Map<string, JoinedEnrollment>();
+            typedEnrollments.forEach(enroll => {
+                enrollmentMap.set(enroll.student_id, enroll);
+            });
+
+            // Collect all unique student IDs from both enrollments and submissions
+            const allStudentIds = new Set<string>();
+            typedEnrollments.forEach(e => allStudentIds.add(e.student_id));
+            typedSubmissions.forEach(s => allStudentIds.add(s.student_id));
+
+            // Build merged list from ALL students (enrolled + submitted)
+            const merged: SubmissionEntry[] = [...allStudentIds].map(studentId => {
+                const enroll = enrollmentMap.get(studentId);
+                const sub = typedSubmissions.find(s => s.student_id === studentId);
+
+                // Determine status: if no enrollment record, still show the submission
+                let status: SubmissionEntry['status'];
+                if (sub) {
+                    status = (sub.status as SubmissionEntry['status']) || 'submitted';
+                } else {
+                    status = 'missing';
+                }
+
                 return {
                     id: sub?.id || null,
-                    student_id: enroll.student_id,
-                    student_name: enroll.student?.user?.full_name || "Unknown Student",
-                    status: (sub?.status as any) || (sub ? 'submitted' : 'missing'),
+                    student_id: studentId,
+                    student_name: enroll?.student?.user?.full_name || sub?.student_id || "Unknown Student",
+                    status,
                     score: sub?.grade || null,
                     submittedAt: sub?.submitted_at ? new Date(sub.submitted_at).toLocaleDateString() : null,
                     feedback: sub?.feedback
@@ -322,32 +400,39 @@ export default function SubmissionsPage() {
                         <View className="mb-6">
                             <Text className="text-gray-500 text-sm font-bold mb-2 ml-2">Grade (Max: {assignment?.total_points})</Text>
                             <TextInput
-                                className="bg-gray-50 rounded-2xl px-6 py-4 text-gray-900 font-bold text-lg border border-gray-100"
+                                className={`rounded-2xl px-6 py-4 text-gray-900 font-bold text-lg border border-gray-100 ${canGrade ? 'bg-gray-50' : 'bg-gray-100'}`}
                                 placeholder="0.0"
                                 keyboardType="numeric"
                                 value={gradeInput}
-                                onChangeText={setGradeInput}
+                                onChangeText={canGrade ? setGradeInput : undefined}
+                                editable={canGrade}
                             />
+                            {!canGrade && (
+                                <Text className="text-gray-400 text-xs mt-1 ml-2">Read-only — only the subject teacher can grade</Text>
+                            )}
                         </View>
 
                         <View className="mb-8">
                             <Text className="text-gray-500 text-sm font-bold mb-2 ml-2">Feedback</Text>
                             <TextInput
-                                className="bg-gray-50 rounded-2xl px-6 py-4 text-gray-900 h-32 border border-gray-100"
+                                className={`rounded-2xl px-6 py-4 text-gray-900 h-32 border border-gray-100 ${canGrade ? 'bg-gray-50' : 'bg-gray-100'}`}
                                 placeholder="Write feedback here..."
                                 multiline
                                 textAlignVertical="top"
                                 value={feedbackInput}
-                                onChangeText={setFeedbackInput}
+                                onChangeText={canGrade ? setFeedbackInput : undefined}
+                                editable={canGrade}
                             />
                         </View>
 
-                        <TouchableOpacity
-                            className="bg-[#FF6900] py-5 rounded-2xl items-center shadow-lg active:bg-orange-600"
-                            onPress={submitGrade}
-                        >
-                            <Text className="text-white font-bold text-lg">Submit Review</Text>
-                        </TouchableOpacity>
+                        {canGrade && (
+                            <TouchableOpacity
+                                className="bg-[#FF6900] py-5 rounded-2xl items-center shadow-lg active:bg-orange-600"
+                                onPress={submitGrade}
+                            >
+                                <Text className="text-white font-bold text-lg">Submit Review</Text>
+                            </TouchableOpacity>
+                        )}
                     </View>
                 </View>
             </Modal>

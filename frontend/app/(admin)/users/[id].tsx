@@ -1,4 +1,4 @@
-import { DatePicker } from '@/components/common/DatePicker';
+import DatePicker from '@/components/common/DatePicker';
 import { UserCard } from '@/components/common/UserCard';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -25,6 +25,22 @@ const DANGEROUS_CHARS = /['"`;\\<>{}()\[\]|&$#%^*+=~]/g;
 const sanitize = (v: string) => v.replace(DANGEROUS_CHARS, '');
 const sanitizeEmail = (v: string) => v.replace(/[^a-zA-Z0-9@._+\-]/g, '');
 const sanitizePhone = (v: string) => v.replace(/[^0-9+\-\s()]/g, '');
+
+const calculateAgeFromDob = (dob: string): number | null => {
+    if (!dob) return null;
+    const birthDate = new Date(dob);
+    if (Number.isNaN(birthDate.getTime())) return null;
+
+    const today = new Date();
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const monthDiff = today.getMonth() - birthDate.getMonth();
+
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+        age -= 1;
+    }
+
+    return age >= 0 ? age : null;
+};
 
 export default function UserDetailsScreen() {
     const { id: idParam } = useLocalSearchParams();
@@ -90,6 +106,8 @@ export default function UserDetailsScreen() {
     const [studentGrades, setStudentGrades] = useState<any[]>([]);
     const [studentReports, setStudentReports] = useState<any[]>([]);
     const [loadingAcademics, setLoadingAcademics] = useState(false);
+
+    const computedAge = calculateAgeFromDob(dob);
 
     const mappedUser: User | null = user ? {
         id: user.id, 
@@ -629,6 +647,7 @@ export default function UserDetailsScreen() {
                     {renderField('Phone', phone, setPhone, { type: 'phone' })}
                     {renderGenderPicker()}
                     <DatePicker label="Date of Birth" value={dob} onChange={setDob} isDark={isDark} inline />
+                    {renderReadOnly('Age', computedAge !== null ? `${computedAge} years` : 'Not set')}
                     {renderField('Address', address, setAddress)}
                 </View>
 

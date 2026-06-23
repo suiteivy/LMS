@@ -58,7 +58,9 @@ exports.updateCurrencyRates = async (_req, res) => {
         res.json(data.value);
     } catch (err) {
         console.error("Update currency rates error:", err);
-        res.status(500).json({ error: err.message });
+        if (res && typeof res.status === "function") {
+            res.status(500).json({ error: err.message });
+        }
     }
 };
 
@@ -83,8 +85,9 @@ exports.checkAndAutoUpdateRates = async () => {
             }
         }
 
-        // Trigger update
-        await exports.updateCurrencyRates({}, { json: () => { } });
+        // Trigger update with stub res (no HTTP context)
+        const stubRes = { status: () => ({ json: () => {} }), json: () => {} };
+        await exports.updateCurrencyRates({}, stubRes);
     } catch (err) {
         console.error("Auto-update rates error:", err);
     }

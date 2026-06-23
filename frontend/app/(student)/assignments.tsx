@@ -31,9 +31,20 @@ export default function StudentsAssignments() {
     if (!studentId) return
     setLoading(true)
     try {
-      const { data: enrollmentData } = await supabase.from('enrollments').select('subject_id').eq('student_id', studentId);
-      const subjectIds = enrollmentData?.map((e: any) => e.subject_id) || [];
-      if (subjectIds.length === 0) {
+      // Get subject IDs from both enrollment tables
+      const { data: enrollmentData } = await supabase.from('enrollments').select('subject_id').eq('student_id', studentId).eq('status', 'enrolled');
+      const subjectIds = new Set((enrollmentData || []).map((e: any) => e.subject_id));
+
+      // Also get class-based enrollments → subjects
+      const { data: classEnrollments } = await supabase.from('class_enrollments').select('class_id').eq('student_id', studentId);
+      const classIds = (classEnrollments || []).map((ce: any) => ce.class_id);
+      if (classIds.length > 0) {
+        const { data: classSubjects } = await supabase.from('subjects').select('id').in('class_id', classIds);
+        (classSubjects || []).forEach((s: any) => subjectIds.add(s.id));
+      }
+
+      const subjectIdArray = [...subjectIds];
+      if (subjectIdArray.length === 0) {
         setAssignments([]);
         setLoading(false);
         return;
@@ -42,7 +53,8 @@ export default function StudentsAssignments() {
       const { data, error } = await supabase
         .from("assignments")
         .select(`*, subject:subjects(title), submissions(*)`)
-        .in('subject_id', subjectIds);
+        .in('subject_id', subjectIdArray)
+        .eq('is_published', true);
 
       if (error) throw error
       if (data) {

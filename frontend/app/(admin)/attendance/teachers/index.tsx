@@ -1,7 +1,7 @@
 import { UnifiedHeader } from "@/components/common/UnifiedHeader";
 import { useTheme } from "@/contexts/ThemeContext";
 import { TeacherAttendance, TeacherAttendanceAPI } from "@/services/TeacherAttendanceService";
-import { DatePicker } from '@/components/common/DatePicker';
+import DatePicker from '@/components/common/DatePicker';
 import { useRouter } from "expo-router";
 import { useRealtimeQuery } from "@/hooks/useRealtimeQuery";
 import { Calendar as CalendarIcon, Check, Clock, X } from "lucide-react-native";

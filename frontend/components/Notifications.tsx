@@ -1,7 +1,8 @@
 import { AlertCircle, Bell, CheckCircle, Info, Trash2, X } from 'lucide-react-native';
 import React from "react";
-import { ActivityIndicator, Modal, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Modal, ScrollView, Text, TouchableOpacity, useWindowDimensions, View } from 'react-native';
 import { Pressable } from "react-native-gesture-handler";
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 interface NotificationProps {
   visible: boolean;
@@ -15,6 +16,9 @@ import { formatDistanceToNow } from 'date-fns';
 const Notifications = ({ visible, onClose }: NotificationProps) => {
   const { notifications, unreadCount, markAsRead, markAllAsRead, refreshNotifications, loading, clearAll, deleteNotification } = useNotifications();
   const { isDark } = useTheme();
+  const { width } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
+  const panelWidth = Math.min(360, width - 24);
 
   const tokens = {
     surface:      isDark ? '#1a1a1a' : '#ffffff',
@@ -38,32 +42,36 @@ const Notifications = ({ visible, onClose }: NotificationProps) => {
 
   return (
     <Modal
-      animationType="slide"
+      animationType="fade"
       transparent={true}
       visible={visible}
       onRequestClose={onClose}
       onShow={refreshNotifications}
     >
-      <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)' }}>
+      <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.25)' }}>
         <Pressable
           style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
           onPress={onClose}
         />
 
-        {/* Modal Container */}
+        {/* Compact dropdown container */}
         <View style={{
-          marginTop: 'auto',
-          height: '85%',
+          position: 'absolute',
+          top: insets.top + 56,
+          right: 12,
+          width: panelWidth,
+          maxHeight: '72%',
           backgroundColor: tokens.surface,
-          borderTopLeftRadius: 40,
-          borderTopRightRadius: 40,
-          boxShadow: [{ offsetX: 0, offsetY: -10, blurRadius: 20, color: 'rgba(0, 0, 0, 0.1)' }],
+          borderRadius: 14,
+          boxShadow: [{ offsetX: 0, offsetY: 8, blurRadius: 18, color: 'rgba(0, 0, 0, 0.18)' }],
           shadowColor: '#000',
-          shadowOffset: { width: 0, height: -10 },
-          shadowOpacity: 0.1,
-          shadowRadius: 20,
-          elevation: 20,
+          shadowOffset: { width: 0, height: 8 },
+          shadowOpacity: 0.18,
+          shadowRadius: 18,
+          elevation: 16,
           overflow: 'hidden',
+          borderWidth: 1,
+          borderColor: tokens.border,
         }}>
           {/* Header */}
           <View style={{
@@ -75,7 +83,7 @@ const Notifications = ({ visible, onClose }: NotificationProps) => {
             borderBottomColor: tokens.border,
           }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-              <Text style={{ fontSize: 20, fontWeight: '700', color: tokens.textPrimary }}>
+              <Text style={{ fontSize: 16, fontWeight: '700', color: tokens.textPrimary }}>
                 Notifications
               </Text>
             </View>
@@ -98,7 +106,7 @@ const Notifications = ({ visible, onClose }: NotificationProps) => {
           </View>
 
           {/* List */}
-          <ScrollView style={{ flex: 1, padding: 16 }} showsVerticalScrollIndicator={false}>
+          <ScrollView style={{ flex: 1, padding: 12 }} showsVerticalScrollIndicator={false}>
             {loading && notifications.length === 0 ? (
               <View style={{ padding: 40, alignItems: 'center' }}>
                 <ActivityIndicator color="#FF6900" />
@@ -172,11 +180,11 @@ const Notifications = ({ visible, onClose }: NotificationProps) => {
 
             {notifications.length > 0 && !loading && (
               <TouchableOpacity
-                style={{
-                  marginTop: 16,
-                  marginBottom: 80,
-                  paddingVertical: 16,
-                  backgroundColor: tokens.surfaceAlt,
+                  style={{
+                    marginTop: 12,
+                    marginBottom: 12,
+                    paddingVertical: 16,
+                    backgroundColor: tokens.surfaceAlt,
                   borderRadius: 16,
                   alignItems: 'center',
                   borderWidth: 1,

@@ -642,6 +642,9 @@ CREATE TABLE notifications (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- Term lock metadata for grade/report immutability
+
+
 -- 3. User Preferences
 CREATE TABLE user_preferences (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -860,7 +863,6 @@ $$;
 
 -- Apply strict institution isolation to all tables
 ALTER TABLE users ENABLE ROW LEVEL SECURITY;
-<<<<<<< HEAD
 -- Fixed recursion by checking id = auth.uid() first to short-circuit policy evaluation
 CREATE POLICY "strict_institution_isolation" ON users FOR ALL 
 USING (
@@ -881,9 +883,6 @@ USING (
         OR (status = 'published' AND student_id = current_user_student_id())
     )
 );
-=======
-CREATE POLICY "strict_institution_isolation" ON users FOR ALL USING (id = auth.uid() OR institution_id = get_current_user_institution_id() OR is_platform_admin());
->>>>>>> Fix
 ALTER TABLE admins ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "strict_institution_isolation" ON admins FOR ALL USING (institution_id = get_current_user_institution_id() OR get_current_user_role() = 'master_admin');
 ALTER TABLE teachers ENABLE ROW LEVEL SECURITY;

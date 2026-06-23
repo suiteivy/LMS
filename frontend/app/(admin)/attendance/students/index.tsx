@@ -1,7 +1,7 @@
 import { UnifiedHeader } from "@/components/common/UnifiedHeader";
 import { useTheme } from "@/contexts/ThemeContext";
 import { AttendanceService } from "@/services/AttendanceService";
-import { DatePicker } from '@/components/common/DatePicker';
+import DatePicker from '@/components/common/DatePicker';
 import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "expo-router";
 import { useRealtimeQuery } from "@/hooks/useRealtimeQuery";

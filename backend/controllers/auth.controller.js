@@ -1,6 +1,7 @@
 const process = require("node:process");
 const supabase = require("../utils/supabaseClient.js");
 const { sendEmail } = require("../utils/emailService.js");
+const { sendBulkInAppNotificationsWithHistory } = require('../services/notificationDelivery.service.js');
 
 // Generate a random 8-character temporary password
 const generateTempPassword = () => {
@@ -21,7 +22,7 @@ exports.login = async (req, res) => {
   }
   try {
     // Use a fresh client to avoid polluting global state
-    const { createClient } = require("@supabase/supabase-js");
+const { createClient } = require("@supabase/supabase-js");
     const scopedClient = createClient(
       process.env.SUPABASE_URL || process.env.EXPO_PUBLIC_SUPABASE_URL,
       process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY, // Use Anon Key for login check
@@ -1085,7 +1086,7 @@ exports.forgotPassword = async (req, res) => {
               institution_id: userData.institution_id,
               data: { target_user_id: userData.id, target_name: userData.full_name }
             }));
-            await supabase.from('notifications').insert(notifications);
+            await sendBulkInAppNotificationsWithHistory(notifications);
           }
 
           return res.status(200).json({ 
@@ -1107,7 +1108,7 @@ exports.forgotPassword = async (req, res) => {
               type: 'error',
               data: { target_user_id: userData.id, target_name: userData.full_name, institution_id: userData.institution_id }
             }));
-            await supabase.from('notifications').insert(notifications);
+            await sendBulkInAppNotificationsWithHistory(notifications);
           }
 
           return res.status(200).json({ 

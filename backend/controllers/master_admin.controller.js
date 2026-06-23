@@ -1,6 +1,7 @@
 const process = require("node:process");
 const _supabase = require("../utils/supabaseClient.js");
 const { createClient } = require("@supabase/supabase-js");
+const { sendBulkInAppNotificationsWithHistory } = require('../services/notificationDelivery.service.js');
 
 // We MUST use the service role key for platform-wide operations to bypass RLS,
 // since normal user tokens are strictly scoped to their institution.
@@ -230,11 +231,25 @@ exports.notifyTarget = async (req, res) => {
                 title,
                 message,
                 type: 'info',
-                is_read: false
+                is_read: false,
+                institution_id: target && target !== 'all_admins' ? target : null
             }));
 
-            const { error: insertErr } = await adminClient.from('notifications').insert(notifications);
-            if (insertErr) throw insertErr;
+            const deliveryResult = await sendBulkInAppNotificationsWithHistory(
+              notifications.map((n) => ({
+                user_id: n.user_id,
+                title: n.title,
+                message: n.message,
+                type: n.type,
+                data: { source: 'master_admin_notify_target' },
+                institution_id: n.institution_id,
+              }))
+            );
+
+            const hasFailures = deliveryResult.some((r) => !r.ok);
+            if (hasFailures) {
+              console.error('Some notifications failed in notifyTarget', deliveryResult.filter((r) => !r.ok));
+            }
         }
 
         return res.status(200).json({ message: "Notifications dispatched successfully", count: admins?.length || 0 });
@@ -995,4 +1010,3 @@ exports.addTicketMessage = async (req, res) => {
         res.status(500).json({ error: "Failed to add ticket message" });
     }
 };
-

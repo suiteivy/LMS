@@ -1,4 +1,4 @@
-import { DatePicker } from '@/components/common/DatePicker';
+import DatePicker from '@/components/common/DatePicker';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { supabase } from '@/libs/supabase';
@@ -57,6 +57,22 @@ interface FormData {
     };
 }
 
+const calculateAgeFromDob = (dob: string): number | null => {
+    if (!dob) return null;
+    const birthDate = new Date(dob);
+    if (Number.isNaN(birthDate.getTime())) return null;
+
+    const today = new Date();
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const monthDiff = today.getMonth() - birthDate.getMonth();
+
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+        age -= 1;
+    }
+
+    return age >= 0 ? age : null;
+};
+
 const initialFormData: FormData = {
     role: null, first_name: '', last_name: '', full_name: '', email: '', phone: '', gender: '',
     date_of_birth: '', address: '', institution_id: '',
@@ -99,6 +115,8 @@ export default function CreateUserScreen() {
     const [students, setStudents] = useState<any[]>([]);
     const [studentSearch, setStudentSearch] = useState('');
     const [roleCounts, setRoleCounts] = useState({ student: 0, admin: 0, teacher: 0, parent: 0 });
+
+    const computedAge = calculateAgeFromDob(form.date_of_birth);
 
     useEffect(() => {
         if (profile) loadLookupData();
@@ -396,6 +414,11 @@ export default function CreateUserScreen() {
             )}
             <RenderPicker label="Gender" options={GENDER_OPTIONS} selected={form.gender} onSelect={(v: string) => updateForm('gender', v)} isDark={isDark} textPrimary={textPrimary} textSecondary={textSecondary} border={border} card={card} />
             <DatePicker label="Date of Birth" value={form.date_of_birth} onChange={v => updateForm('date_of_birth', v)} isDark={isDark} />
+            <View style={{ marginTop: -10, marginBottom: 16 }}>
+                <Text style={{ color: textSecondary, fontSize: 12 }}>
+                    Age: <Text style={{ color: textPrimary, fontWeight: '700' }}>{computedAge !== null ? `${computedAge} years` : 'Set date of birth to calculate'}</Text>
+                </Text>
+            </View>
             <RenderInput label="Address" value={form.address} onChangeText={(v: string) => updateFormSanitized('address', v)} placeholder="Enter physical address" isDark={isDark} textPrimary={textPrimary} textSecondary={textSecondary} inputBg={inputBg} inputBorder={inputBorder} />
         </View>
     );
@@ -639,6 +662,7 @@ export default function CreateUserScreen() {
                 {renderReviewRow('Phone', form.phone)}
                 {renderReviewRow('Gender', form.gender)}
                 {renderReviewRow('Date of Birth', form.date_of_birth)}
+                {renderReviewRow('Age', computedAge !== null ? `${computedAge} years` : '')}
                 {renderReviewRow('Address', form.address)}
             </View>
             {form.role === 'student' && (

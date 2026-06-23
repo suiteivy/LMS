@@ -1,6 +1,7 @@
 const { createClient } = require('@supabase/supabase-js');
 const dotenv = require('dotenv');
 const path = require('path');
+const { isTeacherAssignedToSubject, resolveTeacher } = require('../middleware/resolveTeacher.js');
 
 dotenv.config({ path: path.join(__dirname, '../.env') });
 
@@ -143,6 +144,46 @@ exports.createReport = async (req, res) => {
             return res.status(403).json({ success: false, message: 'Unauthorized' });
         }
 
+        // Teachers: scope to their assigned class+subject
+        if (user.role === 'teacher') {
+            const teacher = await resolveTeacher(user.id, user.institution_id);
+            if (!teacher) {
+                return res.status(403).json({ success: false, message: 'Teacher profile not found' });
+            }
+
+            // Get student's class from class_enrollments
+            const { data: studentEnrollment } = await supabase
+                .from('class_enrollments')
+                .select('class_id')
+                .eq('student_id', studentId)
+                .maybeSingle();
+
+            if (!studentEnrollment) {
+                return res.status(404).json({ success: false, message: 'Student not enrolled in any class' });
+            }
+
+            // Check teacher is assigned to at least one subject in that class
+            const { data: teacherSubjects } = await supabase
+                .from('teacher_subjects')
+                .select('id')
+                .eq('teacher_id', teacher.id);
+
+            const teacherSubjectIds = (teacherSubjects || []).map(ts => ts.id);
+            if (teacherSubjectIds.length === 0) {
+                return res.status(403).json({ success: false, message: 'No subject assignments found' });
+            }
+
+            const { data: classSubjects } = await supabase
+                .from('subjects')
+                .select('id')
+                .eq('class_id', studentEnrollment.class_id)
+                .in('id', teacherSubjectIds);
+
+            if (!classSubjects || classSubjects.length === 0) {
+                return res.status(403).json({ success: false, message: 'Not authorized to create reports for students in this class' });
+            }
+        }
+
         const { data: report, error } = await supabase
             .from('academic_reports')
             .insert({
@@ -174,6 +215,62 @@ exports.updateReport = async (req, res) => {
         const updateData = req.body;
         const user = req.user;
 
+        if (!['admin', 'teacher', 'master_admin'].includes(user.role)) {
+            return res.status(403).json({ success: false, message: 'Unauthorized' });
+        }
+
+        // Teachers: scope to their assigned class+subject
+        if (user.role === 'teacher') {
+            const teacher = await resolveTeacher(user.id, user.institution_id);
+            if (!teacher) {
+                return res.status(403).json({ success: false, message: 'Teacher profile not found' });
+            }
+
+            // Fetch the report to get student_id
+            const { data: report } = await supabase
+                .from('academic_reports')
+                .select('student_id')
+                .eq('id', id)
+                .eq('institution_id', user.institution_id)
+                .maybeSingle();
+
+            if (!report) {
+                return res.status(404).json({ success: false, message: 'Report not found' });
+            }
+
+            // Get student's class from class_enrollments
+            const { data: studentEnrollment } = await supabase
+                .from('class_enrollments')
+                .select('class_id')
+                .eq('student_id', report.student_id)
+                .maybeSingle();
+
+            if (!studentEnrollment) {
+                return res.status(404).json({ success: false, message: 'Student not enrolled in any class' });
+            }
+
+            // Check teacher is assigned to at least one subject in that class
+            const { data: teacherSubjects } = await supabase
+                .from('teacher_subjects')
+                .select('id')
+                .eq('teacher_id', teacher.id);
+
+            const teacherSubjectIds = (teacherSubjects || []).map(ts => ts.id);
+            if (teacherSubjectIds.length === 0) {
+                return res.status(403).json({ success: false, message: 'No subject assignments found' });
+            }
+
+            const { data: classSubjects } = await supabase
+                .from('subjects')
+                .select('id')
+                .eq('class_id', studentEnrollment.class_id)
+                .in('id', teacherSubjectIds);
+
+            if (!classSubjects || classSubjects.length === 0) {
+                return res.status(403).json({ success: false, message: 'Not authorized to update reports for students in this class' });
+            }
+        }
+
         const { data, error } = await supabase
             .from('academic_reports')
             .update({
@@ -199,6 +296,59 @@ exports.deleteReport = async (req, res) => {
     try {
         const { id } = req.params;
         const user = req.user;
+
+        if (!['admin', 'teacher', 'master_admin'].includes(user.role)) {
+            return res.status(403).json({ success: false, message: 'Unauthorized' });
+        }
+
+        // Teachers: scope to their assigned class+subject
+        if (user.role === 'teacher') {
+            const teacher = await resolveTeacher(user.id, user.institution_id);
+            if (!teacher) {
+                return res.status(403).json({ success: false, message: 'Teacher profile not found' });
+            }
+
+            const { data: report } = await supabase
+                .from('academic_reports')
+                .select('student_id')
+                .eq('id', id)
+                .eq('institution_id', user.institution_id)
+                .maybeSingle();
+
+            if (!report) {
+                return res.status(404).json({ success: false, message: 'Report not found' });
+            }
+
+            const { data: studentEnrollment } = await supabase
+                .from('class_enrollments')
+                .select('class_id')
+                .eq('student_id', report.student_id)
+                .maybeSingle();
+
+            if (!studentEnrollment) {
+                return res.status(404).json({ success: false, message: 'Student not enrolled in any class' });
+            }
+
+            const { data: teacherSubjects } = await supabase
+                .from('teacher_subjects')
+                .select('id')
+                .eq('teacher_id', teacher.id);
+
+            const teacherSubjectIds = (teacherSubjects || []).map(ts => ts.id);
+            if (teacherSubjectIds.length === 0) {
+                return res.status(403).json({ success: false, message: 'No subject assignments found' });
+            }
+
+            const { data: classSubjects } = await supabase
+                .from('subjects')
+                .select('id')
+                .eq('class_id', studentEnrollment.class_id)
+                .in('id', teacherSubjectIds);
+
+            if (!classSubjects || classSubjects.length === 0) {
+                return res.status(403).json({ success: false, message: 'Not authorized to delete reports for students in this class' });
+            }
+        }
 
         const { error } = await supabase
             .from('academic_reports')
