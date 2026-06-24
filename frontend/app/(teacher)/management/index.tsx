@@ -1,4 +1,5 @@
 import { UnifiedHeader } from "@/components/common/UnifiedHeader";
+import { HelpTooltip } from "@/components/settings/HelpTooltip";
 import { router } from "expo-router";
 import {
     BarChart3,
@@ -27,9 +28,11 @@ interface FeatureCardProps {
     bgColor: string;
     route: string;
     badge?: string;
+    tooltipId?: any;
+    tier: any;
 }
 
-const FeatureCard = ({ icon: Icon, title, description, color, bgColor, route, badge }: FeatureCardProps) => {
+const FeatureCard = ({ icon: Icon, title, description, color, bgColor, route, badge, tooltipId, tier }: FeatureCardProps) => {
     return (
         <TouchableOpacity
             className="bg-white dark:bg-navy-surface p-5 rounded-[32px] border border-gray-100 dark:border-gray-800 shadow-sm mb-4 flex-row items-center active:bg-gray-50"
@@ -41,6 +44,7 @@ const FeatureCard = ({ icon: Icon, title, description, color, bgColor, route, ba
             <View className="flex-1">
                 <View className="flex-row items-center">
                     <Text className="text-gray-900 dark:text-gray-100 font-bold text-base tracking-tight">{title}</Text>
+                    {tooltipId ? <HelpTooltip id={tooltipId} role="teacher" tier={tier} onLearnMore={(a) => router.push({ pathname: '/(teacher)/settings', params: { manual: '1', anchor: a || 'reports-ops' } } as any)} /> : null}
                     {badge && (
                         <View className="ml-2 bg-[#FF6900] px-2 py-0.5 rounded-full">
                             <Text className="text-white text-[8px] font-bold uppercase">{badge}</Text>
@@ -55,7 +59,8 @@ const FeatureCard = ({ icon: Icon, title, description, color, bgColor, route, ba
 };
 
 export default function ManagementIndex() {
-    const { hasDiary } = useSubscriptionTier();
+    const tier = useSubscriptionTier();
+    const { hasDiary, hasAnalytics } = tier;
     const { teacherId, isDemo } = useAuth();
     const [pendingCount, setPendingCount] = useState<number | null>(null);
     const [submittedCount, setSubmittedCount] = useState<number | null>(null);
@@ -151,7 +156,8 @@ export default function ManagementIndex() {
             color: "#FF6900",
             bgColor: "#f3f4f6",
             route: "/(teacher)/management/grades",
-            badge: "Action Required"
+            badge: "Action Required",
+            tooltipId: 'teacher.manage.performance'
         },
         {
             icon: ClipboardList,
@@ -159,7 +165,8 @@ export default function ManagementIndex() {
             description: "Assignments and submissions",
             color: "#f97316",
             bgColor: "#ffedd5",
-            route: "/(teacher)/management/assignments"
+            route: "/(teacher)/management/assignments",
+            tooltipId: 'teacher.manage.coursework'
         },
         {
             icon: CalendarCheck,
@@ -167,7 +174,8 @@ export default function ManagementIndex() {
             description: "Mark and track student attendance",
             color: "#8b5cf6",
             bgColor: "#ede9fe",
-            route: "/(teacher)/management/attendance"
+            route: "/(teacher)/management/attendance",
+            tooltipId: 'teacher.manage.registrar'
         },
         {
             icon: Megaphone,
@@ -175,15 +183,20 @@ export default function ManagementIndex() {
             description: "View school announcements and updates",
             color: "#ec4899",
             bgColor: "#fce7f3",
-            route: "/(teacher)/management/announcements"
+            route: "/(teacher)/management/announcements",
+            tooltipId: 'teacher.manage.announcements'
         },
         {
             icon: BarChart3,
             title: "Insights",
-            description: "Track performance and statistics",
+            description: hasAnalytics
+                ? "Track performance and statistics"
+                : "Requires Analytics add-on",
             color: "#3b82f6",
             bgColor: "#dbeafe",
-            route: "/(teacher)/management/analytics"
+            route: hasAnalytics ? "/(teacher)/management/analytics" : "/(admin)/request-feature",
+            badge: hasAnalytics ? undefined : "Add-on",
+            tooltipId: 'teacher.manage.insights'
         },
         {
             icon: Wallet,
@@ -191,7 +204,8 @@ export default function ManagementIndex() {
             description: "View payment history and earnings",
             color: "#22c55e",
             bgColor: "#dcfce7",
-            route: "/(teacher)/management/earnings"
+            route: "/(teacher)/management/earnings",
+            tooltipId: 'teacher.manage.finance'
         },
         {
             icon: BookOpen,
@@ -199,7 +213,8 @@ export default function ManagementIndex() {
             description: "Upload and manage Subject materials",
             color: "#eab308",
             bgColor: "#fef9c3",
-            route: "/(teacher)/management/resources"
+            route: "/(teacher)/management/resources",
+            tooltipId: 'teacher.manage.resources'
         },
         {
             icon: PenLine,
@@ -207,7 +222,8 @@ export default function ManagementIndex() {
             description: "Enter and manage grades for your subjects",
             color: "#3b82f6",
             bgColor: "#dbeafe",
-            route: "/(teacher)/management/grade-entry"
+            route: "/(teacher)/management/grade-entry",
+            tooltipId: 'teacher.manage.grade_entry'
         },
         {
             icon: Award,
@@ -215,7 +231,8 @@ export default function ManagementIndex() {
             description: "View and manage student report cards",
             color: "#8b5cf6",
             bgColor: "#ede9fe",
-            route: "/(teacher)/management/report-cards"
+            route: "/(teacher)/management/report-cards",
+            tooltipId: 'teacher.manage.report_cards'
         },
         {
             icon: MessageSquare,
@@ -223,7 +240,8 @@ export default function ManagementIndex() {
             description: "Chat with students and Parents/Guardians",
             color: "#0891b2",
             bgColor: "#ecfeff",
-            route: "/(teacher)/management/messages"
+            route: "/(teacher)/management/messages",
+            tooltipId: 'teacher.manage.messages'
         },
         ...(hasDiary ? [{
             icon: BookOpen,
@@ -231,7 +249,8 @@ export default function ManagementIndex() {
             description: "Log daily classroom activities",
             color: "#f59e0b",
             bgColor: "#fef3c7",
-            route: "/(teacher)/management/diary"
+            route: "/(teacher)/management/diary",
+            tooltipId: 'teacher.manage.diary'
         }] : [])
     ];
 
@@ -280,7 +299,7 @@ export default function ManagementIndex() {
                         <Text className="text-gray-400 font-bold text-[10px] uppercase tracking-widest">Management Suite</Text>
                     </View>
                     {features.map((feature, index) => (
-                        <FeatureCard key={index} {...feature} />
+                        <FeatureCard key={index} {...feature} tier={tier} />
                     ))}
                 </View>
             </ScrollView>

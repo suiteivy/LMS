@@ -164,41 +164,16 @@ export const SubjectCard: React.FC<SubjectCardProps> = ({
         borderColor: t.border,
         marginBottom: 16,
         overflow: 'hidden',
+        padding: 14,
         ...shadow,
       }}
     >
-      <View style={{ position: 'relative' }}>
-        <Image source={{ uri: Subject.image }} style={{ width: '100%', height: 130 }} resizeMode="cover" />
-        <View style={{ position: 'absolute', bottom: 10, left: 10, backgroundColor: t.levelBg, paddingHorizontal: 10, paddingVertical: 3, borderRadius: 99 }}>
-          <Text style={{ fontSize: 9, fontWeight: '700', color: '#f97316', textTransform: 'uppercase', letterSpacing: 1 }}>{Subject.level}</Text>
-        </View>
-      </View>
-
-      <View style={{ padding: 14 }}>
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-          <Text style={{ fontSize: 9, fontWeight: '600', color: t.textMuted, textTransform: 'uppercase', letterSpacing: 1 }}>{Subject.category}</Text>
-          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-            <Ionicons name="people" size={12} color="#f97316" />
-            <Text style={{ fontSize: 11, fontWeight: '700', color: t.textPrimary, marginLeft: 4 }}>{Subject.studentsCount}</Text>
-          </View>
-        </View>
-
-        <Text style={{ fontWeight: '700', fontSize: 15, color: t.textPrimary, marginBottom: 6 }} numberOfLines={2}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+        <Text style={{ fontWeight: '700', fontSize: 15, color: t.textPrimary, flex: 1, marginRight: 10 }} numberOfLines={2}>
           {Subject.title}
         </Text>
-
-        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 10 }}>
-          <Ionicons name="time-outline" size={12} color={t.textMuted} />
-          <Text style={{ fontSize: 11, color: t.textSecondary, marginLeft: 4 }}>{Subject.duration}</Text>
-          <View style={{ width: 3, height: 3, borderRadius: 99, backgroundColor: t.textMuted, marginHorizontal: 6 }} />
-          <Ionicons name="star" size={12} color="#f97316" />
-          <Text style={{ fontSize: 11, fontWeight: '700', color: t.textPrimary, marginLeft: 4 }}>{Subject.rating}</Text>
-        </View>
-
-        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', borderTopWidth: 1, borderTopColor: t.divider, paddingTop: 10 }}>
-          <View style={{ backgroundColor: '#f97316', width: 36, height: 36, borderRadius: 12, alignItems: 'center', justifyContent: 'center' }}>
-            <Ionicons name="chevron-forward" size={18} color="white" />
-          </View>
+        <View style={{ backgroundColor: '#f97316', width: 34, height: 34, borderRadius: 10, alignItems: 'center', justifyContent: 'center' }}>
+          <Ionicons name="chevron-forward" size={16} color="white" />
         </View>
       </View>
     </TouchableOpacity>

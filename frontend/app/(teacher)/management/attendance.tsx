@@ -1,6 +1,8 @@
 import { UnifiedHeader } from "@/components/common/UnifiedHeader";
+import { HelpTooltip } from "@/components/settings/HelpTooltip";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRealtimeQuery } from "@/hooks/useRealtimeQuery";
+import { useSubscriptionTier } from "@/hooks/useSubscriptionTier";
 import { SubjectAPI } from "@/services/SubjectService";
 import { TeacherAttendanceAPI } from "@/services/TeacherAttendanceService";
 import { router } from "expo-router";
@@ -44,6 +46,7 @@ const StudentAttendanceRow = ({ student, onMark }: { student: Student; onMark: (
 
 export default function AttendancePage() {
     const { teacherId } = useAuth();
+    const tier = useSubscriptionTier();
     const [selectedDate, setSelectedDate] = useState(new Date());
     const [selectedSubjectId, setSelectedSubjectId] = useState<string>("");
     const [subjects, setSubjects] = useState<SubjectOption[]>([]);
@@ -132,6 +135,9 @@ export default function AttendancePage() {
     };
 
     const selectedSubjectName = subjects.find(s => s.id === selectedSubjectId)?.title || "Select Subject";
+    const openManual = (anchor?: string) => {
+        router.push({ pathname: '/(teacher)/settings', params: { manual: '1', anchor: anchor || 'attendance-ops' } } as any);
+    };
 
     return (
         <View className="flex-1 bg-gray-50 dark:bg-navy">
@@ -150,12 +156,19 @@ export default function AttendancePage() {
                             <Text className="text-gray-700 dark:text-gray-200 font-bold text-xs ml-2">{selectedDate.toDateString()}</Text>
                         </View>
                         <View>
-                            <Text className="text-gray-400 dark:text-gray-500 font-bold text-[10px] uppercase tracking-wider">{students.length} students total</Text>
+                            <View className="flex-row items-center">
+                                <Text className="text-gray-400 dark:text-gray-500 font-bold text-[10px] uppercase tracking-wider">{students.length} students total</Text>
+                                <HelpTooltip id="teacher.manage.registrar" role="teacher" tier={tier} onLearnMore={openManual} />
+                            </View>
                         </View>
                     </View>
 
                     {/* Subject Selection */}
                     <View className="mb-8 relative z-10">
+                        <View className="flex-row items-center mb-2">
+                            <Text className="text-gray-500 dark:text-gray-400 text-[10px] font-bold uppercase tracking-wider">Subject Filter</Text>
+                            <HelpTooltip id="teacher.manage.registrar" role="teacher" tier={tier} onLearnMore={openManual} />
+                        </View>
                         <TouchableOpacity
                             className="bg-white dark:bg-[#1a1a1a] rounded-3xl px-6 py-4 border border-gray-100 dark:border-gray-800 flex-row items-center justify-between shadow-sm active:bg-gray-50 dark:active:bg-gray-900"
                             onPress={() => setShowSubjectDropdown(!showSubjectDropdown)}
@@ -183,7 +196,10 @@ export default function AttendancePage() {
                     </View>
 
                     {/* Student List */}
-                    <Text className="text-xl font-bold text-gray-900 dark:text-white mb-4 px-2 tracking-tight">Student List</Text>
+                    <View className="flex-row items-center mb-4 px-2">
+                        <Text className="text-xl font-bold text-gray-900 dark:text-white tracking-tight">Student List</Text>
+                        <HelpTooltip id="teacher.manage.registrar" role="teacher" tier={tier} onLearnMore={openManual} />
+                    </View>
 
                     {loading ? (
                         <ActivityIndicator size="large" color="#FF6900" className="mt-8" />
@@ -207,7 +223,7 @@ export default function AttendancePage() {
                             onPress={saveAttendance}
                             disabled={saving}
                         >
-                            {saving ? <ActivityIndicator color="white" /> : <Text className="text-white font-bold text-lg">Save Attendance</Text>}
+                            {saving ? <ActivityIndicator color="white" /> : <View className="flex-row items-center"><Text className="text-white font-bold text-lg">Save Attendance</Text><HelpTooltip id="teacher.manage.registrar" role="teacher" tier={tier} onLearnMore={openManual} /></View>}
                         </TouchableOpacity>
                     )}
                 </View>

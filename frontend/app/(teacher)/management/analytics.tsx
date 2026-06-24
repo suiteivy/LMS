@@ -9,6 +9,8 @@ import { GradingAPI } from "@/services/GradingService";
 import { SubscriptionBanner, SubscriptionGate, AddonRequestButton } from "@/components/shared/SubscriptionComponents";
 import { UnifiedHeader } from "@/components/common/UnifiedHeader";
 import { TrendChart, SubjectTrendCard } from "@/components/common/TrendChart";
+import { HelpTooltip } from "@/components/settings/HelpTooltip";
+import { useSubscriptionTier } from "@/hooks/useSubscriptionTier";
 
 interface SubjectAnalytics {
     id: string;
@@ -64,11 +66,15 @@ const SubjectAnalyticsCard = ({ Subject }: { Subject: SubjectAnalytics }) => {
 
 export default function AnalyticsPage() {
     const { profile, teacherId, isDemo } = useAuth();
+    const tier = useSubscriptionTier();
     const [selectedPeriod, setSelectedPeriod] = useState("All Time");
     const [subjectAnalytics, setSubjectAnalytics] = useState<SubjectAnalytics[]>([]);
     const [loading, setLoading] = useState(true);
     const [topPerformers, setTopPerformers] = useState<any[]>([]);
     const [trends, setTrends] = useState<any>({ terms: [], subjects: [] });
+    const openManual = (anchor?: string) => {
+        router.push({ pathname: '/(teacher)/settings', params: { manual: '1', anchor: anchor || 'promotion-engine' } } as any);
+    };
 
     const fetchAnalytics = async () => {
         setLoading(true);
@@ -217,6 +223,10 @@ export default function AnalyticsPage() {
                         >
                             <View>
                                 {/* Overview Stats */}
+                                <View className="flex-row items-center mb-3">
+                                    <Text className="text-gray-700 text-sm font-bold">Overview Metrics</Text>
+                                    <HelpTooltip id="teacher.manage.insights" role="teacher" tier={tier} onLearnMore={openManual} />
+                                </View>
                                 <View className="flex-row gap-3 mb-6">
                                     <StatBox icon={Users} label="Total Students" value={totalStudents.toString()} color="#FF6B00" bgColor="#fff7ed" />
                                     <StatBox icon={TrendingUp} label="Avg Completion" value={`${avgCompletion}%`} color="#1a1a1a" bgColor="#f3f4f6" />
@@ -235,7 +245,10 @@ export default function AnalyticsPage() {
                                             <Text className="text-gray-400 text-sm mt-3 font-medium">Analytics metrics derived from live submissions</Text>
                                         </View>
 
-                                        <Text className="text-lg font-bold text-gray-900 mb-3">Subject Breakdown</Text>
+                                        <View className="flex-row items-center mb-3">
+                                            <Text className="text-lg font-bold text-gray-900">Subject Breakdown</Text>
+                                            <HelpTooltip id="teacher.manage.performance" role="teacher" tier={tier} onLearnMore={openManual} />
+                                        </View>
                                         {subjectAnalytics.map((Subject) => (
                                             <SubjectAnalyticsCard key={Subject.id} Subject={Subject} />
                                         ))}
@@ -243,7 +256,10 @@ export default function AnalyticsPage() {
                                         {/* Performance Trends Across Terms */}
                                         {trends.terms && trends.terms.length > 0 && (
                                             <View className="mt-6">
-                                                <Text className="text-lg font-bold text-gray-900 mb-3">Performance Trends</Text>
+                                                <View className="flex-row items-center mb-3">
+                                                    <Text className="text-lg font-bold text-gray-900">Performance Trends</Text>
+                                                    <HelpTooltip id="teacher.manage.insights" role="teacher" tier={tier} onLearnMore={openManual} />
+                                                </View>
                                                 <TrendChart
                                                     title="Class Average by Term"
                                                     data={trends.terms.map((t: any) => {

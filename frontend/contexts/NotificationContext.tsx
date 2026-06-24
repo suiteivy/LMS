@@ -31,7 +31,11 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
             setLoading(true);
             const data = await NotificationAPI.getUserNotifications();
             setNotifications(data);
-        } catch (error) {
+        } catch (error: any) {
+            // Avoid noisy logs for expected auth expiry/session invalidation paths.
+            if (error?.isAuthError || error?.response?.status === 401) {
+                return;
+            }
             console.error("Failed to fetch notifications:", error);
         } finally {
             setLoading(false);

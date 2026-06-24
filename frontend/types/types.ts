@@ -80,6 +80,7 @@ export interface SubjectFormData {
   allowDiscussions: boolean;
   certificateEnabled: boolean;
   class_id?: string;
+  class_ids?: string[];
   teacher_ids?: string[];
 }
 

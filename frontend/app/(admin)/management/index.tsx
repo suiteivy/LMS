@@ -1,4 +1,6 @@
 import { UnifiedHeader } from "@/components/common/UnifiedHeader";
+import { HelpTooltip } from "@/components/settings/HelpTooltip";
+import { useSubscriptionTier } from "@/hooks/useSubscriptionTier";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useDashboardStats } from "@/hooks/useDashboardStats";
 import { router } from "expo-router";
@@ -14,7 +16,6 @@ import {
     FileText,
     GraduationCap,
     Shield,
-    Upload
 } from 'lucide-react-native';
 import React from "react";
 import { ScrollView, Text, TouchableOpacity, View } from 'react-native';
@@ -29,9 +30,11 @@ interface FeatureCardProps {
     route: string;
     badge?: string;
     isDark: boolean;
+    tooltipId?: any;
+    tier: any;
 }
 
-const FeatureCard = ({ icon: Icon, title, description, color, bgColor, darkBgColor, route, badge, isDark }: FeatureCardProps) => (
+const FeatureCard = ({ icon: Icon, title, description, color, bgColor, darkBgColor, route, badge, isDark, tooltipId, tier }: FeatureCardProps) => (
     <TouchableOpacity
         style={{
             backgroundColor: isDark ? '#13103A' : '#ffffff',
@@ -58,6 +61,7 @@ const FeatureCard = ({ icon: Icon, title, description, color, bgColor, darkBgCol
         <View style={{ flex: 1 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                 <Text style={{ color: isDark ? '#f1f1f1' : '#111827', fontWeight: 'bold', fontSize: 15 }}>{title}</Text>
+                {tooltipId ? <HelpTooltip id={tooltipId} role="admin" tier={tier} onLearnMore={(a) => router.push({ pathname: '/(admin)/settings/settings', params: { manual: '1', anchor: a || 'reports-ops' } } as any)} /> : null}
                 {badge && (
                     <View style={{ marginLeft: 8, backgroundColor: '#ef4444', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 999 }}>
                         <Text style={{ color: 'white', fontSize: 11, fontWeight: 'bold' }}>{badge}</Text>
@@ -73,27 +77,23 @@ const FeatureCard = ({ icon: Icon, title, description, color, bgColor, darkBgCol
 export default function AdminManagement() {
     const { stats, loading } = useDashboardStats();
     const { isDark } = useTheme();
+    const tier = useSubscriptionTier();
 
     const getStatValue = (label: string) => stats.find(s => s.label === label)?.value || "0";
 
     const features = [
         {
-            icon: Upload,
-            title: "Materials Review",
-            description: "Approve or reject teacher-uploaded resources",
-            color: "#FF6B00",
-            bgColor: "#fff0e6",
-            darkBgColor: "#3d1a00",
-            route: "/(admin)/management/materials"
-        },
-        {
             icon: BarChart3,
             title: "System Analytics",
-            description: "View system-wide performance and stats",
+            description: tier.hasAnalytics
+                ? "View system-wide performance and stats"
+                : "Requires Analytics add-on to unlock advanced insights",
             color: "#3b82f6",
             bgColor: "#dbeafe",
             darkBgColor: "#1e3a5f",
-            route: "/(admin)/management/analytics"
+            route: tier.hasAnalytics ? "/(admin)/management/analytics" : "/(admin)/request-feature",
+            badge: tier.hasAnalytics ? undefined : "Add-on",
+            tooltipId: 'admin.manage.analytics'
         },
         {
             icon: BookOpen,
@@ -102,7 +102,8 @@ export default function AdminManagement() {
             color: "#eab308",
             bgColor: "#fef9c3",
             darkBgColor: "#3d3000",
-            route: "/(admin)/management/library"
+            route: "/(admin)/management/library",
+            tooltipId: 'admin.manage.library'
         },
         {
             icon: ClipboardList,
@@ -111,7 +112,8 @@ export default function AdminManagement() {
             color: "#8b5cf6",
             bgColor: "#ede9fe",
             darkBgColor: "#2e1065",
-            route: "/(admin)/management/subjects"
+            route: "/(admin)/management/subjects",
+            tooltipId: 'admin.manage.subjects'
         },
         {
             icon: Shield,
@@ -120,7 +122,8 @@ export default function AdminManagement() {
             color: "#ec4899",
             bgColor: "#fce7f3",
             darkBgColor: "#4a0028",
-            route: "/(admin)/management/roles"
+            route: "/(admin)/management/roles",
+            tooltipId: 'admin.manage.roles'
         },
         {
             icon: FileText,
@@ -129,7 +132,8 @@ export default function AdminManagement() {
             color: "#64748b",
             bgColor: "#f1f5f9",
             darkBgColor: "#1e2a35",
-            route: "/(admin)/finance/bursaries/reports"
+            route: "/(admin)/finance/bursaries/reports",
+            tooltipId: 'admin.manage.reports'
         },
         {
             icon: CalendarCheck,
@@ -138,7 +142,8 @@ export default function AdminManagement() {
             color: "#10b981",
             bgColor: "#d1fae5",
             darkBgColor: "#052e16",
-            route: "/(admin)/attendance/teachers"
+            route: "/(admin)/attendance/teachers",
+            tooltipId: 'admin.manage.attendance'
         },
         {
             icon: DoorClosedLocked,
@@ -147,7 +152,8 @@ export default function AdminManagement() {
             color: "#10b981",
             bgColor: "#d1fae5",
             darkBgColor: "#052e16",
-            route: "/(admin)/classes"
+            route: "/(admin)/classes",
+            tooltipId: 'admin.manage.classes'
         },
         {
             icon: Calendar,
@@ -156,7 +162,8 @@ export default function AdminManagement() {
             color: "#FF6900",
             bgColor: "#fff0e6",
             darkBgColor: "#3d1a00",
-            route: "/(admin)/timetable"
+            route: "/(admin)/timetable",
+            tooltipId: 'admin.manage.timetable'
         },
         {
             icon: FileCheck2,
@@ -165,7 +172,8 @@ export default function AdminManagement() {
             color: "#0ea5e9",
             bgColor: "#e0f2fe",
             darkBgColor: "#0c2340",
-            route: "/(admin)/management/resources"
+            route: "/(admin)/management/resources",
+            tooltipId: 'admin.manage.resources'
         },
         {
             icon: GraduationCap,
@@ -174,7 +182,8 @@ export default function AdminManagement() {
             color: "#8b5cf6",
             bgColor: "#ede9fe",
             darkBgColor: "#2e1065",
-            route: "/(admin)/academic-setup"
+            route: "/(admin)/academic-setup",
+            tooltipId: 'admin.manage.academic_setup'
         },
         {
             icon: ClipboardList,
@@ -183,7 +192,8 @@ export default function AdminManagement() {
             color: "#f59e0b",
             bgColor: "#fef3c7",
             darkBgColor: "#3d3000",
-            route: "/(admin)/results"
+            route: "/(admin)/results",
+            tooltipId: 'admin.manage.results'
         }
     ];
 
@@ -229,7 +239,7 @@ export default function AdminManagement() {
                         System Tools
                     </Text>
                     {features.map((feature, index) => (
-                        <FeatureCard key={index} {...feature} isDark={isDark} />
+                        <FeatureCard key={index} {...feature} isDark={isDark} tier={tier} />
                     ))}
                 </View>
             </ScrollView>

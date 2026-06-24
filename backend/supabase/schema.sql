@@ -233,6 +233,16 @@ CREATE TABLE subject_teachers (
     UNIQUE(subject_id, teacher_id)
 );
 
+-- 3.2 Subject Classes (Many-to-Many join table)
+CREATE TABLE subject_classes (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    subject_id UUID REFERENCES subjects(id) ON DELETE CASCADE,
+    class_id UUID REFERENCES classes(id) ON DELETE CASCADE,
+    institution_id UUID REFERENCES institutions(id) ON DELETE CASCADE,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE(subject_id, class_id)
+);
+
 -- 4. Lessons
 CREATE TABLE lessons (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -901,6 +911,8 @@ ALTER TABLE subjects ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "strict_institution_isolation" ON subjects FOR ALL USING (institution_id = get_current_user_institution_id() OR get_current_user_role() = 'master_admin');
 ALTER TABLE subject_teachers ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "strict_institution_isolation" ON subject_teachers FOR ALL USING (institution_id = get_current_user_institution_id() OR get_current_user_role() = 'master_admin');
+ALTER TABLE subject_classes ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "strict_institution_isolation" ON subject_classes FOR ALL USING (institution_id = get_current_user_institution_id() OR get_current_user_role() = 'master_admin');
 ALTER TABLE lessons ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "strict_institution_isolation" ON lessons FOR ALL USING (institution_id = get_current_user_institution_id() OR get_current_user_role() = 'master_admin');
 ALTER TABLE timetables ENABLE ROW LEVEL SECURITY;

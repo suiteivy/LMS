@@ -1,5 +1,6 @@
 import { UnifiedHeader } from "@/components/common/UnifiedHeader";
 import { useAuth } from "@/contexts/AuthContext";
+import { useTheme } from "@/contexts/ThemeContext";
 import { supabase } from "@/libs/supabase";
 import { Database } from "@/types/database";
 import { router, useLocalSearchParams } from "expo-router";
@@ -46,6 +47,7 @@ interface JoinedEnrollment {
 export default function SubmissionsPage() {
     const { assignmentId } = useLocalSearchParams<{ assignmentId: string }>();
     const { teacherId } = useAuth();
+    const { isDark } = useTheme();
     const [loading, setLoading] = useState(true);
     const [assignment, setAssignment] = useState<JoinedAssignment | null>(null);
     const [submissions, setSubmissions] = useState<SubmissionEntry[]>([]);
@@ -74,8 +76,6 @@ export default function SubmissionsPage() {
             const typedAssignment = assignmentData as unknown as JoinedAssignment;
             setAssignment(typedAssignment);
 
-            // Determine if current teacher can grade this assignment's subject
-            // Primary teacher of the assignment OR assistant teacher on the subject → can grade
             let isAllowed = false;
             if (teacherId) {
                 if (typedAssignment.teacher_id === teacherId) {
@@ -92,10 +92,8 @@ export default function SubmissionsPage() {
             }
             setCanGrade(isAllowed);
 
-            // Fetch enrolled students from BOTH enrollment tables
             const enrolledStudentMap = new Map<string, JoinedEnrollment>();
 
-            // 1. Direct subject enrollments
             const { data: enrollmentData, error: enrollError } = await supabase
                 .from('enrollments')
                 .select(`student_id, student:students(id, user:users(full_name))`)
@@ -108,7 +106,6 @@ export default function SubmissionsPage() {
                 enrolledStudentMap.set(e.student_id, e as unknown as JoinedEnrollment);
             });
 
-            // 2. Class-based enrollments (student → class → subject)
             const classId = typedAssignment.subject?.class_id;
             if (classId) {
                 const { data: classEnrollmentsData } = await supabase
@@ -116,7 +113,6 @@ export default function SubmissionsPage() {
                     .select('student_id')
                     .eq('class_id', classId);
 
-                // Get student IDs not already found via direct enrollments
                 const newStudentIds = (classEnrollmentsData as any[] || [])
                     .map((ce: any) => ce.student_id)
                     .filter((sid: string) => !enrolledStudentMap.has(sid));
@@ -146,23 +142,19 @@ export default function SubmissionsPage() {
             const typedEnrollments = [...enrolledStudentMap.values()];
             const typedSubmissions = (submissionData || []) as TypedSubmission[];
 
-            // Build a lookup of enrolled students for name resolution
             const enrollmentMap = new Map<string, JoinedEnrollment>();
             typedEnrollments.forEach(enroll => {
                 enrollmentMap.set(enroll.student_id, enroll);
             });
 
-            // Collect all unique student IDs from both enrollments and submissions
             const allStudentIds = new Set<string>();
             typedEnrollments.forEach(e => allStudentIds.add(e.student_id));
             typedSubmissions.forEach(s => allStudentIds.add(s.student_id));
 
-            // Build merged list from ALL students (enrolled + submitted)
             const merged: SubmissionEntry[] = [...allStudentIds].map(studentId => {
                 const enroll = enrollmentMap.get(studentId);
                 const sub = typedSubmissions.find(s => s.student_id === studentId);
 
-                // Determine status: if no enrollment record, still show the submission
                 let status: SubmissionEntry['status'];
                 if (sub) {
                     status = (sub.status as SubmissionEntry['status']) || 'submitted';
@@ -203,9 +195,9 @@ export default function SubmissionsPage() {
 
             setAssignment(prev => prev ? { ...prev, grades_released: newStatus } : null);
             Alert.alert(
-                "Success", 
-                newStatus 
-                    ? "Grades have been released and are now visible to parents and students." 
+                "Success",
+                newStatus
+                    ? "Grades have been released and are now visible to parents and students."
                     : "Grades have been hidden from student and parent diaries."
             );
         } catch (error) {
@@ -276,7 +268,7 @@ export default function SubmissionsPage() {
     };
 
     return (
-        <View className="flex-1 bg-gray-50">
+        <View className={`flex-1 ${isDark ? 'bg-[#0F0B2E]' : 'bg-gray-50'}`}>
             <UnifiedHeader
                 title="Review"
                 subtitle="Submissions"
@@ -290,7 +282,6 @@ export default function SubmissionsPage() {
             ) : (
                 <ScrollView className="flex-1" showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
                     <View className="p-4 md:p-8">
-                        {/* Assignment Info Header */}
                         <View className="bg-gray-900 p-8 rounded-[40px] mb-8 shadow-xl">
                             <View className="flex-row justify-between items-start mb-2">
                                 <Text className="text-white/60 text-[10px] font-bold uppercase tracking-[3px] mt-1">{assignment?.subject?.title}</Text>
@@ -300,7 +291,7 @@ export default function SubmissionsPage() {
                                     </Text>
                                 </View>
                             </View>
-                            
+
                             <Text className="text-white text-2xl font-bold tracking-tight mb-6">{assignment?.title}</Text>
 
                             <View className="flex-row justify-between items-center">
@@ -330,28 +321,28 @@ export default function SubmissionsPage() {
                             </View>
                         </View>
 
-                        <Text className="text-xl font-bold text-gray-900 mb-6 px-2 tracking-tight">Student Submissions</Text>
+                        <Text className={`text-xl font-bold ${isDark ? 'text-white' : 'text-gray-900'} mb-6 px-2 tracking-tight`}>Student Submissions</Text>
 
                         {submissions.map((entry) => (
-                            <View key={entry.student_id} className="bg-white p-5 rounded-3xl border border-gray-100 mb-4 flex-row items-center shadow-sm">
+                            <View key={entry.student_id} className={`${isDark ? 'bg-[#13103A] border-white/10' : 'bg-white border-gray-100'} p-5 rounded-3xl border mb-4 flex-row items-center shadow-sm`}>
                                 <View className="w-12 h-12 rounded-2xl bg-orange-100 items-center justify-center mr-4">
                                     <Text className="text-[#FF6900] font-bold text-xl">{entry.student_name.charAt(0)}</Text>
                                 </View>
 
                                 <View className="flex-1">
-                                    <Text className="text-gray-900 font-bold text-base">{entry.student_name}</Text>
+                                    <Text className={`${isDark ? 'text-white' : 'text-gray-900'} font-bold text-base`}>{entry.student_name}</Text>
                                     <View className="flex-row items-center mt-1.5">
                                         <StatusBadge status={entry.status} />
                                         {entry.submittedAt && (
-                                            <Text className="text-gray-400 text-[10px] font-bold ml-3 uppercase tracking-wider">{entry.submittedAt}</Text>
+                                            <Text className={`${isDark ? 'text-gray-300' : 'text-gray-400'} text-[10px] font-bold ml-3 uppercase tracking-wider`}>{entry.submittedAt}</Text>
                                         )}
                                     </View>
                                 </View>
 
                                 <View className="items-end mr-4">
                                     <View className="flex-row items-baseline">
-                                        <Text className="text-gray-900 font-bold text-lg">{entry.score !== null ? entry.score : "--"}</Text>
-                                        <Text className="text-gray-400 text-xs font-bold">/{assignment?.total_points}</Text>
+                                        <Text className={`${isDark ? 'text-white' : 'text-gray-900'} font-bold text-lg`}>{entry.score !== null ? entry.score : "--"}</Text>
+                                        <Text className={`${isDark ? 'text-gray-300' : 'text-gray-400'} text-xs font-bold`}>/{assignment?.total_points}</Text>
                                     </View>
                                 </View>
 
@@ -372,36 +363,36 @@ export default function SubmissionsPage() {
                 </ScrollView>
             )}
 
-            {/* Grading Modal */}
             <Modal visible={gradingModalVisible} animationType="slide" transparent>
                 <View className="flex-1 bg-black/50 justify-end">
-                    <View className="bg-white rounded-t-[40px] p-8 pb-12">
+                    <View className={`${isDark ? 'bg-[#13103A]' : 'bg-white'} rounded-t-[40px] p-8 pb-12`}>
                         <View className="flex-row justify-between items-center mb-8">
-                            <Text className="text-2xl font-bold text-gray-900 tracking-tight">Review Work</Text>
+                            <Text className={`text-2xl font-bold ${isDark ? 'text-white' : 'text-gray-900'} tracking-tight`}>Review Work</Text>
                             <TouchableOpacity
-                                className="w-10 h-10 bg-gray-50 rounded-full items-center justify-center"
+                                className={`${isDark ? 'bg-white/10' : 'bg-gray-50'} w-10 h-10 rounded-full items-center justify-center`}
                                 onPress={() => setGradingModalVisible(false)}
                             >
                                 <X size={20} color="#6B7280" />
                             </TouchableOpacity>
                         </View>
 
-                        <View className="mb-6 bg-gray-50 p-6 rounded-3xl border border-gray-100">
+                        <View className={`${isDark ? 'bg-white/10 border-white/10' : 'bg-gray-50 border-gray-100'} mb-6 p-6 rounded-3xl border`}>
                             <View className="mb-4">
-                                <Text className="text-gray-400 text-[10px] font-bold uppercase tracking-wider mb-1">Student</Text>
-                                <Text className="text-gray-900 font-bold text-lg">{currentEntry?.student_name}</Text>
+                                <Text className={`${isDark ? 'text-gray-300' : 'text-gray-400'} text-[10px] font-bold uppercase tracking-wider mb-1`}>Student</Text>
+                                <Text className={`${isDark ? 'text-white' : 'text-gray-900'} font-bold text-lg`}>{currentEntry?.student_name}</Text>
                             </View>
                             <View>
-                                <Text className="text-gray-400 text-[10px] font-bold uppercase tracking-wider mb-1">Status</Text>
+                                <Text className={`${isDark ? 'text-gray-300' : 'text-gray-400'} text-[10px] font-bold uppercase tracking-wider mb-1`}>Status</Text>
                                 <Text className="text-[#FF6900] font-bold text-base uppercase tracking-widest">{currentEntry?.status}</Text>
                             </View>
                         </View>
 
                         <View className="mb-6">
-                            <Text className="text-gray-500 text-sm font-bold mb-2 ml-2">Grade (Max: {assignment?.total_points})</Text>
+                            <Text className={`${isDark ? 'text-gray-200' : 'text-gray-500'} text-sm font-bold mb-2 ml-2`}>Grade (Max: {assignment?.total_points})</Text>
                             <TextInput
-                                className={`rounded-2xl px-6 py-4 text-gray-900 font-bold text-lg border border-gray-100 ${canGrade ? 'bg-gray-50' : 'bg-gray-100'}`}
+                                className={`rounded-2xl px-6 py-4 ${isDark ? 'text-white border-white/10' : 'text-gray-900 border-gray-100'} font-bold text-lg border ${canGrade ? (isDark ? 'bg-white/10' : 'bg-gray-50') : 'bg-gray-100'}`}
                                 placeholder="0.0"
+                                placeholderTextColor={isDark ? '#9CA3AF' : '#6B7280'}
                                 keyboardType="numeric"
                                 value={gradeInput}
                                 onChangeText={canGrade ? setGradeInput : undefined}
@@ -413,10 +404,11 @@ export default function SubmissionsPage() {
                         </View>
 
                         <View className="mb-8">
-                            <Text className="text-gray-500 text-sm font-bold mb-2 ml-2">Feedback</Text>
+                            <Text className={`${isDark ? 'text-gray-200' : 'text-gray-500'} text-sm font-bold mb-2 ml-2`}>Feedback</Text>
                             <TextInput
-                                className={`rounded-2xl px-6 py-4 text-gray-900 h-32 border border-gray-100 ${canGrade ? 'bg-gray-50' : 'bg-gray-100'}`}
+                                className={`rounded-2xl px-6 py-4 ${isDark ? 'text-white border-white/10' : 'text-gray-900 border-gray-100'} h-32 border ${canGrade ? (isDark ? 'bg-white/10' : 'bg-gray-50') : 'bg-gray-100'}`}
                                 placeholder="Write feedback here..."
+                                placeholderTextColor={isDark ? '#9CA3AF' : '#6B7280'}
                                 multiline
                                 textAlignVertical="top"
                                 value={feedbackInput}

@@ -56,6 +56,8 @@ const QuickAction = ({ icon: Icon, label, onPress, badge }: QuickActionProps) =>
     <TouchableOpacity
       className="bg-white dark:bg-[#1a1a1a] py-3 px-4 rounded-2xl border border-gray-100 dark:border-gray-800 flex-row items-center active:opacity-70"
       style={{
+        width: '48.5%',
+        minHeight: 56,
         boxShadow: [{ offsetX: 0, offsetY: 1, blurRadius: 3, color: isDark ? 'rgba(0,0,0,0.3)' : 'rgba(0,0,0,0.04)' }],
         shadowColor: "#000",
         shadowOffset: { width: 0, height: 1 },
@@ -411,7 +413,7 @@ export default function AdminDashboard() {
 
           <View className="mb-10">
             <Text className="text-lg font-bold text-gray-900 dark:text-white mb-4 px-1">Quick Actions</Text>
-            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10 }}>
+            <View style={{ flexDirection: "row", flexWrap: "wrap", justifyContent: 'space-between', rowGap: 10 }}>
               <QuickAction icon={IconUserPlus} label="Enroll User" onPress={() => router.push("/(admin)/users/create")} />
               <SubscriptionGate feature="library">
                 <QuickAction icon={IconBookOpen} label="Library" onPress={() => router.navigate("/(admin)/management/library" as any)} />

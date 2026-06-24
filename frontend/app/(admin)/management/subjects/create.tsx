@@ -91,6 +91,15 @@ const CreateSubject = () => {
         handleInputChange("teacher_ids", updatedIds);
     };
 
+    const handleClassToggle = (classId: string) => {
+        const current = new Set<string>([...(formData.class_ids || []), ...(formData.class_id ? [formData.class_id] : [])]);
+        if (current.has(classId)) current.delete(classId);
+        else current.add(classId);
+        const next = Array.from(current);
+        handleInputChange("class_ids", next);
+        handleInputChange("class_id", next[0] || "");
+    };
+
     // ── Animation values ──────────────────────────────────────────────────────
     const translateY = useRef(new Animated.Value(MODAL_HEIGHT)).current;
     const backdropOpacity = useRef(new Animated.Value(0)).current;
@@ -229,13 +238,35 @@ const CreateSubject = () => {
                                 options={LEVELS}
                                 onSelect={(value) => handleInputChange("level", value)}
                             />
-                            <CustomPicker
-                                label="Assigned Stream"
-                                value={formData.class_id || ""}
-                                options={classes}
-                                onSelect={(value) => handleInputChange("class_id", value)}
-                                placeholder="Select Stream (Optional)"
-                            />
+                            <View style={{ marginBottom: 16 }}>
+                                <Text style={{ fontSize: 13, fontWeight: '500', color: textSecondary, marginBottom: 6 }}>Assigned Classes</Text>
+                                <View style={{ backgroundColor: inputBg, borderRadius: 12, padding: 12, borderWidth: 1, borderColor: border }}>
+                                    {classes.map((c) => {
+                                        const selected = new Set<string>([...(formData.class_ids || []), ...(formData.class_id ? [formData.class_id] : [])]);
+                                        const isSelected = selected.has(c.value);
+                                        return (
+                                            <TouchableOpacity
+                                                key={c.value}
+                                                onPress={() => handleClassToggle(c.value)}
+                                                style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: border }}
+                                            >
+                                                <Ionicons
+                                                    name={isSelected ? 'checkbox' : 'square-outline'}
+                                                    size={20}
+                                                    color={isSelected ? '#FF6B00' : textSecondary}
+                                                    style={{ marginRight: 10 }}
+                                                />
+                                                <Text style={{ color: textPrimary, fontSize: 14, fontWeight: '500' }}>{c.label}</Text>
+                                            </TouchableOpacity>
+                                        );
+                                    })}
+                                    {classes.length === 0 && (
+                                        <Text style={{ color: textSecondary, fontSize: 13, textAlign: 'center', paddingVertical: 10 }}>
+                                            No classes available
+                                        </Text>
+                                    )}
+                                </View>
+                            </View>
 
                             {/* Assigned Teachers Checkbox List */}
                             <View style={{ marginBottom: 16 }}>

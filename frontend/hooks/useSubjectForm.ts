@@ -31,6 +31,7 @@ export const useSubjectForm = () => {
     allowDiscussions: true,
     certificateEnabled: true,
     class_id: "",
+    class_ids: [],
     teacher_ids: [],
   });
 
@@ -114,48 +115,43 @@ export const useSubjectForm = () => {
         certificateEnabled: formData.certificateEnabled,
       };
 
-      await SubjectAPI.createSubject({
+      const created = await SubjectAPI.createSubject({
         title: formData.title,
         description: formData.description,
         fee_amount: parseFloat(formData.price) || 0,
         institution_id: profile?.institution_id || "",
         class_id: formData.class_id || undefined,
+        class_ids: formData.class_ids || [],
         teacher_ids: formData.teacher_ids || [],
         // @ts-ignore - Validated by backend
         metadata: metadata
       });
 
       // Handle automatic enrollment if a class was selected
-      if (formData.class_id) {
+      const targetClassIds = Array.from(new Set([
+        ...(formData.class_id ? [formData.class_id] : []),
+        ...((formData.class_ids || []).filter(Boolean) as string[]),
+      ]));
+
+      if (targetClassIds.length > 0) {
         try {
-          // Fetch students in this class
+          // Fetch students in selected classes
           const { data: studentsInClass } = await (supabase.from('class_enrollments') as any)
             .select('student_id')
-            .eq('class_id', formData.class_id);
+            .in('class_id', targetClassIds);
 
           if (studentsInClass && studentsInClass.length > 0) {
-            // Get the newly created subject's ID (or we should get it from the response)
-            // For now, we'll fetch the most recent subject created for this institution and class
-            const { data: newSubject } = await (supabase.from('subjects') as any)
-              .select('id')
-              .eq('institution_id', profile?.institution_id)
-              .eq('title', formData.title)
-              .eq('class_id', formData.class_id)
-              .order('created_at', { ascending: false })
-              .limit(1)
-              .single();
+            const uniqueStudentIds = Array.from(new Set((studentsInClass as any[]).map((s: any) => s.student_id)));
 
-            if (newSubject) {
-              const enrollments = studentsInClass.map((s: any) => ({
-                student_id: s.student_id,
-                subject_id: newSubject.id,
-                institution_id: profile?.institution_id,
-                status: 'enrolled',
-                enrollment_date: new Date().toISOString()
-              }));
+            const enrollments = uniqueStudentIds.map((studentId: string) => ({
+              student_id: studentId,
+              subject_id: created.id,
+              institution_id: profile?.institution_id,
+              status: 'enrolled',
+              enrollment_date: new Date().toISOString()
+            }));
 
-              await (supabase.from('enrollments') as any).upsert(enrollments, { onConflict: 'student_id,subject_id' });
-            }
+            await (supabase.from('enrollments') as any).upsert(enrollments, { onConflict: 'student_id,subject_id' });
           }
         } catch (enrollErr) {
           console.error("Auto-enrollment failed:", enrollErr);

@@ -1,14 +1,13 @@
 import { useTheme } from '@/contexts/ThemeContext';
 import { Subject } from '@/types/types';
 import { BookOpen, Filter } from 'lucide-react-native';
-import React, { useState } from 'react';
+import React from 'react';
 import { ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { SubjectCard } from './SubjectCard';
 
 interface SubjectListProps {
   subjects: Subject[];
   title?: string;
-  showFilters?: boolean;
   variant?: 'default' | 'compact' | 'featured';
   onPressSubject: (subject: Subject) => void;
   kesRate?: number;
@@ -17,25 +16,12 @@ interface SubjectListProps {
 export const SubjectList: React.FC<SubjectListProps> = ({
   subjects,
   title = "Subjects",
-  showFilters = false,
   variant = 'default',
   onPressSubject,
   kesRate = 129,
 }) => {
   const { isDark } = useTheme();
-  const [selectedFilter, setSelectedFilter] = useState<string>('all');
-  const [selectedLevel, setSelectedLevel] = useState<string>('all');
-
-  const categories = ['all', 'Literacy', 'Mathematics', 'Science', 'Creative Arts'];
-  const levels = ['all', 'beginner', 'intermediate', 'advanced'];
-
-  const filteredSubjects = subjects.filter(subject => {
-    const categoryMatch = selectedFilter === 'all' ||
-      subject.category?.toLowerCase() === selectedFilter.toLowerCase() ||
-      (selectedFilter === 'Science' && subject.category?.includes('Science'));
-    const levelMatch = selectedLevel === 'all' || subject.level === selectedLevel;
-    return categoryMatch && levelMatch;
-  });
+  const filteredSubjects = subjects;
 
   // ── tokens ────────────────────────────────────────────────────────────────
   const textPrimary = isDark ? '#f1f1f1' : '#111827';
@@ -43,45 +29,6 @@ export const SubjectList: React.FC<SubjectListProps> = ({
   const surface = isDark ? '#13103A' : '#ffffff';
   const border = isDark ? 'rgba(255,255,255,0.1)' : '#f3f4f6';
   const accent = '#FF6B00';
-
-  const FilterChip = ({ label, isSelected, onPress }: { label: string; isSelected: boolean; onPress: () => void }) => (
-    <TouchableOpacity
-      onPress={onPress}
-      activeOpacity={0.7}
-      style={{
-        paddingHorizontal: 20,
-        paddingVertical: 10,
-        borderRadius: 999,
-        marginRight: 10,
-        borderWidth: 1,
-        backgroundColor: isSelected ? accent : surface,
-        borderColor: isSelected ? accent : border,
-        ...(isSelected ? {
-          boxShadow: [{
-            offsetX: 0,
-            offsetY: 4,
-            blurRadius: 8,
-            color: `${accent}40`, // 40 is roughly 0.25 opacity in hex
-          }],
-          shadowColor: accent,
-          shadowOffset: { width: 0, height: 4 },
-          shadowOpacity: 0.25,
-          shadowRadius: 8,
-          elevation: 4,
-        } : {}),
-      }}
-    >
-      <Text style={{
-        fontSize: 11,
-        fontWeight: 'bold',
-        textTransform: 'uppercase',
-        letterSpacing: 1.5,
-        color: isSelected ? '#ffffff' : textSecondary,
-      }}>
-        {label}
-      </Text>
-    </TouchableOpacity>
-  );
 
   return (
     <View style={{ flex: 1, paddingHorizontal: 16 }}>
@@ -100,31 +47,6 @@ export const SubjectList: React.FC<SubjectListProps> = ({
           DISCOVER {filteredSubjects.length} PREMIUM COURSES
         </Text>
       </View>
-
-      {/* Filters */}
-      {showFilters && (
-        <View style={{ marginBottom: 24 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
-            <View style={{ width: 3, height: 18, backgroundColor: accent, borderRadius: 2, marginRight: 10 }} />
-            <Text style={{ fontSize: 11, fontWeight: 'bold', color: textSecondary, textTransform: 'uppercase', letterSpacing: 2 }}>Categories</Text>
-          </View>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 20 }}>
-            {categories.map((category) => (
-              <FilterChip key={category} label={category} isSelected={selectedFilter === category} onPress={() => setSelectedFilter(category)} />
-            ))}
-          </ScrollView>
-
-          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
-            <View style={{ width: 3, height: 18, backgroundColor: isDark ? '#f1f1f1' : '#111827', borderRadius: 2, marginRight: 10 }} />
-            <Text style={{ fontSize: 11, fontWeight: 'bold', color: textSecondary, textTransform: 'uppercase', letterSpacing: 2 }}>Skill Level</Text>
-          </View>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-            {levels.map((level) => (
-              <FilterChip key={level} label={level} isSelected={selectedLevel === level} onPress={() => setSelectedLevel(level)} />
-            ))}
-          </ScrollView>
-        </View>
-      )}
 
       {/* Results */}
       <View style={{ flex: 1 }}>

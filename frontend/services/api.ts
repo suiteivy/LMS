@@ -167,7 +167,7 @@ api.interceptors.response.use(
           break;
         case 401:
           title = "Unauthorized";
-          message = "Please sign in again.";
+          message = data?.error || data?.message || "Please sign in again.";
 
           const skipSignOut = (error.config as InternalAxiosRequestConfig & { skipErrorToast?: boolean })?.skipErrorToast;
 
@@ -181,16 +181,15 @@ api.interceptors.response.use(
             logoutReason = LogoutReason.TOKEN_EXPIRED;
           }
 
-          if (!skipSignOut && error.config?.headers?.Authorization) {
-            console.warn("[API] 401 received with token. Checking session before triggering safeSignOut.");
+          const shouldForceSignOut = ['SESSION_IDLE_TIMEOUT', 'SESSION_TIMEOUT', 'SESSION_REVOKED'].includes(errorCode);
+
+          if (!skipSignOut && shouldForceSignOut && error.config?.headers?.Authorization) {
+            console.warn(`[API] 401 ${errorCode} received. Checking session before triggering safeSignOut.`);
             supabase.auth.getSession().then(({ data: { session } }) => {
               if (session) {
-                console.warn("[API] Session still exists but 401 received. Triggering safeSignOut.");
                 safeSignOut('local', logoutReason, true).catch(e => console.warn("safeSignOut error:", e));
-              } else {
               }
             });
-          } else {
           }
           return Promise.reject({ ...error, isAuthError: true });
         case 403:

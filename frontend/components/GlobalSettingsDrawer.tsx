@@ -11,7 +11,7 @@ import { SubscriptionStatusBadge } from '@/components/shared/SubscriptionCompone
 import AdminHelp from '@/components/AdminHelp';
 import AdminOverview from '@/components/AdminOverview';
 import AdminProfile from '@/components/AdminProfile';
-import AdminSettings from '@/components/AdminSettings';
+import AdminSettings from './AdminSettings';
 import StudentHelp from '@/components/StudentHelp';
 import StudentProfile from '@/components/StudentProfile';
 import ParentProfile from '@/components/ParentProfile';

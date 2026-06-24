@@ -10,8 +10,10 @@ import {
 } from "react-native";
 import { ArrowLeft, TrendingUp, BarChart3, Award, BookOpen } from "lucide-react-native";
 import { router } from "expo-router";
+import { AddonRequestButton, SubscriptionGate } from "@/components/shared/SubscriptionComponents";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTheme } from "@/contexts/ThemeContext";
+import { useSubscriptionTier } from "@/hooks/useSubscriptionTier";
 import { ParentService } from "@/services/ParentService";
 import { GradingAPI } from "@/services/GradingService";
 import { getPerformanceLabel } from "@/utils/getPerformanceLabel";
@@ -21,6 +23,7 @@ import { UnifiedHeader } from "@/components/common/UnifiedHeader";
 export default function ParentAnalyticsPage() {
   const { profile } = useAuth();
   const { isDark } = useTheme();
+  const { hasAnalytics } = useSubscriptionTier();
   const [linkedStudents, setLinkedStudents] = useState<any[]>([]);
   const [selectedStudent, setSelectedStudent] = useState<any>(null);
   const [trends, setTrends] = useState<any>({ terms: [], subjects: [] });
@@ -148,10 +151,22 @@ export default function ParentAnalyticsPage() {
             </ScrollView>
           )}
 
-          {loading ? (
-            <ActivityIndicator size="large" color="#FF6B00" className="mt-12" />
-          ) : (
-            <View>
+          <SubscriptionGate
+            feature="analytics"
+            fallback={
+              <View className="bg-white dark:bg-[#1a1a1a] p-6 rounded-2xl border border-gray-100 dark:border-gray-800 items-center mt-6">
+                <Text className="text-gray-900 dark:text-white font-bold text-base mb-1">Analytics Locked</Text>
+                <Text className="text-gray-400 dark:text-gray-500 text-sm text-center mb-4">
+                  Analytics add-on is not enabled for your institution.
+                </Text>
+                <AddonRequestButton onPress={() => router.push('/(admin)/request-feature' as any)} />
+              </View>
+            }
+          >
+            {loading ? (
+              <ActivityIndicator size="large" color="#FF6B00" className="mt-12" />
+            ) : (
+              <View>
               {/* GPA Overview Cards */}
               <View className="flex-row gap-3 mb-6">
                 <View className="flex-1 bg-white p-4 rounded-2xl border border-gray-100">
@@ -245,8 +260,9 @@ export default function ParentAnalyticsPage() {
                   </Text>
                 </View>
               )}
-            </View>
-          )}
+              </View>
+            )}
+          </SubscriptionGate>
         </View>
       </ScrollView>
     </View>

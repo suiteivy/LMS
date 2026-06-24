@@ -15,7 +15,6 @@ import {
   ScrollView,
   Alert,
 } from "react-native";
-import { Picker } from "@react-native-picker/picker";
 
 function SubjectDetailsScreen() {
   const { isDark } = useTheme();
@@ -113,8 +112,15 @@ function SubjectDetailsScreen() {
       const subjectId = Array.isArray(id) ? id[0] : id;
       if (!subjectId) throw new Error("Invalid subject ID");
 
-      // Check if class_id changed to trigger auto-enrollment
-      const classChanged = form.class_id !== subject.class_id && form.class_id;
+      const prevClassIds = Array.from(new Set<string>([
+        ...(Array.isArray((subject as any)?.metadata?.class_ids) ? (subject as any).metadata.class_ids : []),
+        ...((subject as any)?.class_id ? [(subject as any).class_id] : []),
+      ]));
+      const nextClassIds = Array.from(new Set<string>([
+        ...(Array.isArray((form as any)?.metadata?.class_ids) ? (form as any).metadata.class_ids : []),
+        ...(form.class_id ? [form.class_id] : []),
+      ]));
+      const classChanged = JSON.stringify(prevClassIds.sort()) !== JSON.stringify(nextClassIds.sort());
 
       // Extract DB writable fields
       const { teacher_ids, subject_teachers, ...subjectUpdateData } = form;
@@ -147,16 +153,17 @@ function SubjectDetailsScreen() {
         if (insertError) throw insertError;
       }
 
-      // Auto-enrollment logic if stream was assigned/changed
-      if (classChanged) {
+      // Auto-enrollment logic if classes were assigned/changed
+      if (classChanged && nextClassIds.length > 0) {
         try {
           const { data: studentsInClass } = await (supabase.from('class_enrollments') as any)
             .select('student_id')
-            .eq('class_id', form.class_id);
+            .in('class_id', nextClassIds);
 
           if (studentsInClass && studentsInClass.length > 0) {
-            const enrollments = studentsInClass.map((s: any) => ({
-              student_id: s.student_id,
+            const uniqueStudentIds = Array.from(new Set((studentsInClass as any[]).map((s: any) => s.student_id)));
+            const enrollments = uniqueStudentIds.map((studentId: string) => ({
+              student_id: studentId,
               subject_id: subjectId,
               institution_id: (subject as any).institution_id,
               status: 'enrolled',
@@ -288,93 +295,6 @@ function SubjectDetailsScreen() {
             onChangeText={(v) => handleChange("description", v)}
           />
 
-          {/* Category */}
-          <Text style={{ color: textMuted, fontSize: 13, marginBottom: 4 }}>
-            Category
-          </Text>
-          <TextInput
-            style={{
-              backgroundColor: inputBg,
-              color: textPrimary,
-              borderRadius: 8,
-              borderWidth: 1,
-              borderColor: border,
-              padding: 10,
-              marginBottom: 12,
-            }}
-            value={form.category}
-            editable={editing}
-            onChangeText={(v) => handleChange("category", v)}
-          />
-
-          {/* Level */}
-          <Text style={{ color: textMuted, fontSize: 13, marginBottom: 4 }}>
-            Level
-          </Text>
-          <TextInput
-            style={{
-              backgroundColor: inputBg,
-              color: textPrimary,
-              borderRadius: 8,
-              borderWidth: 1,
-              borderColor: border,
-              padding: 10,
-              marginBottom: 12,
-            }}
-            value={form.level}
-            editable={editing}
-            onChangeText={(v) => handleChange("level", v)}
-          />
-
-          {/* Duration */}
-          <Text style={{ color: textMuted, fontSize: 13, marginBottom: 4 }}>
-            Duration
-          </Text>
-          <TextInput
-            style={{
-              backgroundColor: inputBg,
-              color: textPrimary,
-              borderRadius: 8,
-              borderWidth: 1,
-              borderColor: border,
-              padding: 10,
-              marginBottom: 12,
-            }}
-            value={form.duration}
-            editable={editing}
-            onChangeText={(v) => handleChange("duration", v)}
-          />
-
-
-
-          {/* Materials */}
-          <Text style={{ color: textMuted, fontSize: 13, marginBottom: 4 }}>
-            Materials (comma separated)
-          </Text>
-          <TextInput
-            style={{
-              backgroundColor: inputBg,
-              color: textPrimary,
-              borderRadius: 8,
-              borderWidth: 1,
-              borderColor: border,
-              padding: 10,
-              marginBottom: 12,
-            }}
-            value={
-              Array.isArray(form.materials)
-                ? form.materials.join(", ")
-                : form.materials || ""
-            }
-            editable={editing}
-            onChangeText={(v) =>
-              handleChange(
-                "materials",
-                v.split(",").map((s: string) => s.trim()),
-              )
-            }
-          />
-
           {/* Teachers Section */}
           <Text style={{ color: textMuted, fontSize: 13, marginBottom: 6 }}>
             Assigned Teachers
@@ -421,59 +341,58 @@ function SubjectDetailsScreen() {
             </View>
           )}
 
-          {/* Class Dropdown */}
+          {/* Classes Dropdown (multi-link via metadata.class_ids + legacy class_id) */}
           <Text style={{ color: textMuted, fontSize: 13, marginBottom: 4 }}>
-            Assigned Class
+            Assigned Classes
           </Text>
-          <View
-            style={{
-              backgroundColor: inputBg,
-              borderRadius: 8,
-              borderWidth: 1,
-              borderColor: border,
-              marginBottom: 12,
-            }}
-          >
-            <Picker
-              enabled={editing}
-              selectedValue={form.class_id || ""}
-              onValueChange={(v) => handleChange("class_id", v)}
-              style={{ color: textPrimary }}
-            >
-              <Picker.Item label="Select class" value="" />
-              {classes.map((c) => (
-                <Picker.Item key={c.id} label={c.name} value={c.id} />
-              ))}
-            </Picker>
-          </View>
-
-          {/* Metadata (JSON) */}
-          <Text style={{ color: textMuted, fontSize: 13, marginBottom: 4 }}>
-            Metadata (JSON)
-          </Text>
-          <TextInput
-            style={{
-              backgroundColor: inputBg,
-              color: textPrimary,
-              borderRadius: 8,
-              borderWidth: 1,
-              borderColor: border,
-              padding: 10,
-              marginBottom: 12,
-              minHeight: 40,
-              textAlignVertical: "top",
-            }}
-            value={form.metadata ? JSON.stringify(form.metadata, null, 2) : ""}
-            editable={editing}
-            multiline
-            onChangeText={(v) => {
-              try {
-                handleChange("metadata", v ? JSON.parse(v) : {});
-              } catch {
-                // ignore parse error
-              }
-            }}
-          />
+          {editing ? (
+            <View style={{ backgroundColor: inputBg, borderRadius: 12, padding: 12, borderWidth: 1, borderColor: border, marginBottom: 12 }}>
+              {classes.map((c) => {
+                const classIds = new Set<string>([
+                  ...(Array.isArray(form?.metadata?.class_ids) ? form.metadata.class_ids : []),
+                  ...(form.class_id ? [form.class_id] : []),
+                ]);
+                const isSelected = classIds.has(c.id);
+                return (
+                  <TouchableOpacity
+                    key={c.id}
+                    onPress={() => {
+                      const next = new Set(classIds);
+                      if (isSelected) next.delete(c.id); else next.add(c.id);
+                      const arr = Array.from(next);
+                      handleChange('class_id', arr[0] || null);
+                      handleChange('metadata', { ...(form.metadata || {}), class_ids: arr });
+                    }}
+                    style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: border }}
+                  >
+                    <Ionicons
+                      name={isSelected ? 'checkbox' : 'square-outline'}
+                      size={20}
+                      color={isSelected ? '#FF6B00' : textMuted}
+                      style={{ marginRight: 10 }}
+                    />
+                    <Text style={{ color: textPrimary, fontSize: 14, fontWeight: '500' }}>{c.name}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+              {classes.length === 0 ? (
+                <Text style={{ color: textMuted, fontSize: 13, textAlign: 'center', paddingVertical: 10 }}>No classes available</Text>
+              ) : null}
+            </View>
+          ) : (
+            <View style={{ backgroundColor: inputBg, borderRadius: 12, padding: 12, borderWidth: 1, borderColor: border, marginBottom: 12 }}>
+              <Text style={{ color: textPrimary, fontSize: 14, fontWeight: '500' }}>
+                {(() => {
+                  const classIds = Array.from(new Set<string>([
+                    ...(Array.isArray(form?.metadata?.class_ids) ? form.metadata.class_ids : []),
+                    ...(form.class_id ? [form.class_id] : []),
+                  ]));
+                  const names = classes.filter((c) => classIds.includes(c.id)).map((c) => c.name);
+                  return names.length > 0 ? names.join(', ') : 'No classes assigned';
+                })()}
+              </Text>
+            </View>
+          )}
 
           {/* Edit/Save Buttons */}
           {editing && (

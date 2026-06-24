@@ -1,7 +1,9 @@
 import { GradeDetailModal } from "@/components/common/GradeDetailModal";
 import { UnifiedHeader } from "@/components/common/UnifiedHeader";
+import { AddonRequestButton, SubscriptionGate } from "@/components/shared/SubscriptionComponents";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTheme } from "@/contexts/ThemeContext";
+import { useSubscriptionTier } from "@/hooks/useSubscriptionTier";
 import { GradingAPI } from "@/services/GradingService";
 import { router } from "expo-router";
 import {
@@ -618,8 +620,10 @@ const GradingScaleLegend = ({
 // ---------------------------------------------------------------------------
 
 export default function GradesEnhanced() {
-  const { studentId, user, isDemo } = useAuth();
   const { isDark } = useTheme();
+  const { hasAnalytics } = useSubscriptionTier();
+  const { studentId, user, isDemo } = useAuth();
+  
 
   const [loading, setLoading] = useState(true);
   const [gradeEntries, setGradeEntries] = useState<GradeEntry[]>([]);
@@ -914,26 +918,45 @@ export default function GradesEnhanced() {
           </ShadowCard>
 
           {/* View Trends Link */}
-          <TouchableOpacity
-            onPress={() => router.push("/(student)/analytics" as any)}
-            className="flex-row items-center justify-between bg-white dark:bg-[#1a1a1a] p-4 rounded-2xl border border-gray-100 dark:border-gray-800 mb-6"
-            activeOpacity={0.7}
-          >
-            <View className="flex-row items-center">
-              <View className="w-10 h-10 rounded-xl bg-orange-50 dark:bg-orange-950 items-center justify-center mr-3">
-                <TrendingUp size={18} color="#FF6B00" />
+          {hasAnalytics ? (
+            <TouchableOpacity
+              onPress={() => router.push("/(student)/analytics" as any)}
+              className="flex-row items-center justify-between bg-white dark:bg-[#1a1a1a] p-4 rounded-2xl border border-gray-100 dark:border-gray-800 mb-6"
+              activeOpacity={0.7}
+            >
+              <View className="flex-row items-center">
+                <View className="w-10 h-10 rounded-xl bg-orange-50 dark:bg-orange-950 items-center justify-center mr-3">
+                  <TrendingUp size={18} color="#FF6B00" />
+                </View>
+                <View>
+                  <Text className="text-gray-900 dark:text-white font-bold text-sm">Performance Trends</Text>
+                  <Text className="text-gray-400 dark:text-gray-500 text-xs">View grade trends across terms</Text>
+                </View>
               </View>
-              <View>
-                <Text className="text-gray-900 dark:text-white font-bold text-sm">Performance Trends</Text>
-                <Text className="text-gray-400 dark:text-gray-500 text-xs">View grade trends across terms</Text>
+              <View className="w-8 h-8 rounded-full bg-gray-50 dark:bg-gray-800 items-center justify-center">
+                <View style={{ transform: [{ rotate: "-90deg" }] }}>
+                  <ChevronDown size={16} color="#9ca3af" />
+                </View>
               </View>
+            </TouchableOpacity>
+          ) : (
+            <View
+              style={{
+                backgroundColor: isDark ? '#1a1a1a' : '#fff7ed',
+                borderColor: isDark ? '#374151' : '#fed7aa',
+                borderWidth: 1,
+                borderRadius: 16,
+                padding: 14,
+                marginBottom: 24,
+              }}
+            >
+              <Text className="text-gray-900 dark:text-white font-bold text-sm mb-1">Performance Trends Locked</Text>
+              <Text className="text-gray-400 dark:text-gray-500 text-xs mb-3">
+                Analytics add-on is not enabled for your institution.
+              </Text>
+              <AddonRequestButton onPress={() => router.push('/(admin)/request-feature' as any)} />
             </View>
-            <View className="w-8 h-8 rounded-full bg-gray-50 dark:bg-gray-800 items-center justify-center">
-              <View style={{ transform: [{ rotate: "-90deg" }] }}>
-                <ChevronDown size={16} color="#9ca3af" />
-              </View>
-            </View>
-          </TouchableOpacity>
+          )}
 
           {/* Subject Breakdown */}
           <View className="px-2 flex-row justify-between items-center mb-4">

@@ -322,7 +322,13 @@ function ParentDashboard({ user, logout }: any) {
                   label="Analytics"
                   color="#f97316"
                   isDark={isDark}
-                  onPress={() => goTo("/(parent)/analytics")}
+                  onPress={() => {
+                    if (tier.hasAnalytics) {
+                      goTo("/(parent)/analytics");
+                    } else {
+                      router.push("/(admin)/request-feature" as any);
+                    }
+                  }}
                 />
                 <QuickAction
                   icon={Clock}

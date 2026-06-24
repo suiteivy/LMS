@@ -154,7 +154,6 @@ export default function SubjectsIndex() {
                 <SubjectList
                     subjects={filteredSubjects}
                     onPressSubject={handleSubjectPress}
-                    showFilters={true}
                 />
             </View>
         </ScrollView>

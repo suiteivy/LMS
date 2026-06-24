@@ -1,5 +1,5 @@
 import { UnifiedHeader } from "@/components/common/UnifiedHeader";
-import { SubscriptionBanner } from "@/components/shared/SubscriptionComponents";
+import { AddonRequestButton, SubscriptionBanner, SubscriptionGate } from "@/components/shared/SubscriptionComponents";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSubscriptionTier } from "@/hooks/useSubscriptionTier";
 import { useNotifications } from "@/contexts/NotificationContext";
@@ -553,6 +553,59 @@ export default function Index() {
               ))}
             </View>
           </View>
+
+          {/* ── Performance Trends (add-on gated institution-wide) ───── */}
+          <SubscriptionGate
+            feature="analytics"
+            fallback={
+              <View
+                style={{
+                  backgroundColor: isDark ? '#1a1a2e' : '#fff7ed',
+                  borderColor: isDark ? '#1f2937' : '#fed7aa',
+                  borderWidth: 1,
+                  borderRadius: 20,
+                  padding: 16,
+                  marginTop: 8,
+                  marginBottom: 12,
+                }}
+              >
+                <Text style={{ color: isDark ? '#f1f5f9' : '#111827', fontWeight: '800', fontSize: 14, marginBottom: 4 }}>
+                  Performance Trends Locked
+                </Text>
+                <Text style={{ color: isDark ? '#94a3b8' : '#6b7280', fontSize: 12, marginBottom: 12 }}>
+                  Your institution has not enabled the Analytics add-on yet.
+                </Text>
+                <AddonRequestButton onPress={() => router.push('/(admin)/request-feature' as any)} />
+              </View>
+            }
+          >
+            <TouchableOpacity
+              onPress={() => router.push("/(student)/analytics" as any)}
+              activeOpacity={0.75}
+              style={{
+                marginTop: 8,
+                marginBottom: 12,
+                padding: 16,
+                borderRadius: 20,
+                backgroundColor: isDark ? '#0F0B2E' : '#ffffff',
+                borderWidth: 1,
+                borderColor: isDark ? '#1f2937' : '#f1f5f9',
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+              }}
+            >
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <View style={{ backgroundColor: 'rgba(255,105,0,0.12)', padding: 10, borderRadius: 12, marginRight: 10 }}>
+                  <ArrowRight size={16} color="#FF6900" />
+                </View>
+                <View>
+                  <Text style={{ color: isDark ? '#f1f5f9' : '#111827', fontWeight: '700', fontSize: 13 }}>Performance Trends</Text>
+                  <Text style={{ color: isDark ? '#64748b' : '#94a3b8', fontSize: 11 }}>View longitudinal analytics</Text>
+                </View>
+              </View>
+            </TouchableOpacity>
+          </SubscriptionGate>
 
         </View>
       </ScrollView>

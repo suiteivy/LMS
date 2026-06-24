@@ -1,5 +1,7 @@
 import { UnifiedHeader } from "@/components/common/UnifiedHeader";
+import { HelpTooltip } from "@/components/settings/HelpTooltip";
 import { useAuth } from "@/contexts/AuthContext";
+import { useSubscriptionTier } from "@/hooks/useSubscriptionTier";
 import { api } from "@/services/api";
 import { GradingAPI } from "@/services/GradingService";
 import { showError, showSuccess } from "@/utils/toast";
@@ -292,6 +294,10 @@ function matchCsvRows(rows: CsvRow[], students: StudentRecord[]): CsvRow[] {
 
 export default function GradeEntryPage() {
     const { teacherId } = useAuth();
+    const tier = useSubscriptionTier();
+    const openManual = (anchor?: string) => {
+        router.push({ pathname: '/(teacher)/settings', params: { manual: '1', anchor: anchor || 'grading-ops' } } as any);
+    };
 
     // ── Filter state ──
     const [subjects, setSubjects] = useState<SubjectOption[]>([]);
@@ -878,6 +884,10 @@ export default function GradeEntryPage() {
             >
                 <View className="p-4 md:p-8">
                     {/* ── Summary Stats ── */}
+                    <View className="flex-row items-center mb-2 px-1">
+                        <Text className="text-gray-500 dark:text-gray-400 text-[10px] font-bold uppercase tracking-wider">Grade Entry Summary</Text>
+                        <HelpTooltip id="teacher.manage.grade_entry" role="teacher" tier={tier} onLearnMore={openManual} />
+                    </View>
                     <View className="flex-row gap-3 mb-6">
                         <View className="flex-1 bg-[#FF6900] p-4 rounded-3xl shadow-sm">
                             <Text className="text-orange-100 text-[10px] font-bold uppercase tracking-wider">Graded</Text>
@@ -901,6 +911,7 @@ export default function GradeEntryPage() {
                         <View className="flex-row items-center mb-3">
                             <Filter size={14} color="#FF6900" />
                             <Text className="text-gray-900 dark:text-white font-bold text-sm ml-2 tracking-tight">Filters</Text>
+                            <HelpTooltip id="teacher.manage.grade_entry" role="teacher" tier={tier} onLearnMore={openManual} />
                         </View>
 
                         <DropdownSelector
@@ -962,6 +973,12 @@ export default function GradeEntryPage() {
 
                     {/* ── Sync Buttons ── */}
                     {selectedSubjectId && selectedClassId && (
+                        <View className="flex-row items-center mb-2 px-1">
+                            <Text className="text-gray-500 dark:text-gray-400 text-[10px] font-bold uppercase tracking-wider">Data Sync</Text>
+                            <HelpTooltip id="teacher.manage.grade_entry" role="teacher" tier={tier} onLearnMore={openManual} />
+                        </View>
+                    )}
+                    {selectedSubjectId && selectedClassId && (
                         <View className="flex-row gap-3 mb-6">
                             <TouchableOpacity
                                 className={`flex-1 bg-white dark:bg-[#1a1a1a] py-3.5 rounded-2xl border border-gray-100 dark:border-gray-800 flex-row items-center justify-center shadow-sm active:bg-gray-50 dark:active:bg-gray-900 ${(syncing || isSelectedTermLocked) ? "opacity-50" : ""}`}
@@ -992,6 +1009,12 @@ export default function GradeEntryPage() {
                     )}
 
                     {/* ── Import CSV Button ── */}
+                    {selectedClassId && selectedTermId && selectedAssessmentTypeId && (
+                        <View className="flex-row items-center mb-2 px-1">
+                            <Text className="text-gray-500 dark:text-gray-400 text-[10px] font-bold uppercase tracking-wider">Bulk Import</Text>
+                            <HelpTooltip id="teacher.manage.grade_entry" role="teacher" tier={tier} onLearnMore={openManual} />
+                        </View>
+                    )}
                     {selectedClassId && selectedTermId && selectedAssessmentTypeId && (
                         <TouchableOpacity
                             className={`bg-white dark:bg-[#1a1a1a] py-3.5 rounded-2xl border border-gray-100 dark:border-gray-800 flex-row items-center justify-center shadow-sm mb-6 active:bg-gray-50 dark:active:bg-gray-900 ${isSelectedTermLocked ? "opacity-50" : ""}`}
@@ -1144,9 +1167,12 @@ export default function GradeEntryPage() {
             {gradeEntries.length > 0 && (
                 <View className="absolute bottom-0 left-0 right-0 bg-white/90 dark:bg-[#0F0B2E]/95 border-t border-gray-100 dark:border-gray-800 px-4 py-4 pb-8">
                     <View className="flex-row items-center justify-between mb-3">
-                        <Text className="text-gray-500 dark:text-gray-400 font-bold text-[10px] uppercase tracking-wider">
-                            {gradedCount}/{totalStudents} graded
-                        </Text>
+                        <View className="flex-row items-center">
+                            <Text className="text-gray-500 dark:text-gray-400 font-bold text-[10px] uppercase tracking-wider">
+                                {gradedCount}/{totalStudents} graded
+                            </Text>
+                            <HelpTooltip id="teacher.manage.grade_entry" role="teacher" tier={tier} onLearnMore={openManual} />
+                        </View>
                         <Text className="text-gray-500 dark:text-gray-400 font-bold text-[10px] uppercase tracking-wider">
                             {existingCount} saved
                         </Text>

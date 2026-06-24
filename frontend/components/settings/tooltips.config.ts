@@ -1,0 +1,359 @@
+import type { AccessFeatureKey, SettingsRole } from './access';
+
+export type TooltipTargetId =
+  | 'settings.profile.full_name'
+  | 'settings.profile.phone'
+  | 'settings.profile.email'
+  | 'promotion.cycle_name'
+  | 'promotion.cycle_select'
+  | 'promotion.term'
+  | 'promotion.from_class'
+  | 'promotion.to_class'
+  | 'promotion.min_average'
+  | 'promotion.min_attendance'
+  | 'promotion.preview'
+  | 'promotion.execute'
+  | 'promotion.reload'
+  | 'admin.manage.analytics'
+  | 'admin.manage.library'
+  | 'admin.manage.subjects'
+  | 'admin.manage.roles'
+  | 'admin.manage.reports'
+  | 'admin.manage.attendance'
+  | 'admin.manage.classes'
+  | 'admin.manage.timetable'
+  | 'admin.manage.resources'
+  | 'admin.manage.academic_setup'
+  | 'admin.manage.results'
+  | 'teacher.manage.performance'
+  | 'teacher.manage.coursework'
+  | 'teacher.manage.registrar'
+  | 'teacher.manage.announcements'
+  | 'teacher.manage.insights'
+  | 'teacher.manage.finance'
+  | 'teacher.manage.resources'
+  | 'teacher.manage.grade_entry'
+  | 'teacher.manage.report_cards'
+  | 'teacher.manage.messages'
+  | 'teacher.manage.diary'
+  | 'settings.notifications.general'
+  | 'settings.notifications.submission'
+  | 'settings.notifications.priority'
+  | 'settings.language'
+  | 'settings.password';
+
+export interface TooltipEntry {
+  id: TooltipTargetId;
+  title: string;
+  text: string;
+  learnMoreAnchor?: string;
+  feature?: AccessFeatureKey;
+  roles?: SettingsRole[];
+}
+
+const ROLE_DEFAULT: SettingsRole[] = ['admin', 'teacher'];
+
+export const SETTINGS_TOOLTIPS: Record<TooltipTargetId, TooltipEntry> = {
+  'settings.profile.full_name': {
+    id: 'settings.profile.full_name',
+    title: 'Full name',
+    text: 'Shown in dashboards, reports, and notifications. Keep it consistent with official records.',
+    learnMoreAnchor: 'reports-ops',
+    roles: ROLE_DEFAULT,
+  },
+  'settings.profile.phone': {
+    id: 'settings.profile.phone',
+    title: 'Phone number',
+    text: 'Used for account recovery and urgent contact flows where enabled by your institution.',
+    learnMoreAnchor: 'reports-ops',
+    roles: ROLE_DEFAULT,
+  },
+  'settings.profile.email': {
+    id: 'settings.profile.email',
+    title: 'Email (read-only)',
+    text: 'Primary login identity. Contact an administrator to change this safely.',
+    learnMoreAnchor: 'reports-ops',
+    roles: ROLE_DEFAULT,
+  },
+  'promotion.cycle_name': {
+    id: 'promotion.cycle_name',
+    title: 'Cycle name',
+    text: 'Name this run clearly so audits can trace decisions and promotion outcomes later.',
+    learnMoreAnchor: 'promotion-engine',
+    feature: 'promotion',
+    roles: ROLE_DEFAULT,
+  },
+  'promotion.cycle_select': {
+    id: 'promotion.cycle_select',
+    title: 'Cycle selector',
+    text: 'Pick the cycle whose preview, decisions, and execution actions you want to run.',
+    learnMoreAnchor: 'promotion-engine',
+    feature: 'promotion',
+    roles: ROLE_DEFAULT,
+  },
+  'promotion.term': {
+    id: 'promotion.term',
+    title: 'Promotion term',
+    text: 'Promotion evaluates grades and attendance for this term only, then locks decisions to it.',
+    learnMoreAnchor: 'promotion-engine',
+    feature: 'promotion',
+    roles: ROLE_DEFAULT,
+  },
+  'promotion.from_class': {
+    id: 'promotion.from_class',
+    title: 'From class',
+    text: 'Only students currently in this class are evaluated in this promotion cycle.',
+    learnMoreAnchor: 'promotion-engine',
+    feature: 'promotion',
+    roles: ROLE_DEFAULT,
+  },
+  'promotion.to_class': {
+    id: 'promotion.to_class',
+    title: 'To class',
+    text: 'Eligible students move here when the cycle executes. This cannot match the source class.',
+    learnMoreAnchor: 'promotion-engine',
+    feature: 'promotion',
+    roles: ROLE_DEFAULT,
+  },
+  'promotion.min_average': {
+    id: 'promotion.min_average',
+    title: 'Minimum average',
+    text: 'Student average must meet this threshold before any manual override is considered.',
+    learnMoreAnchor: 'promotion-engine',
+    feature: 'promotion',
+    roles: ROLE_DEFAULT,
+  },
+  'promotion.min_attendance': {
+    id: 'promotion.min_attendance',
+    title: 'Minimum attendance',
+    text: 'Attendance percentage gate. If below threshold, student is retained unless explicitly overridden.',
+    learnMoreAnchor: 'promotion-engine',
+    feature: 'promotion',
+    roles: ROLE_DEFAULT,
+  },
+  'promotion.preview': {
+    id: 'promotion.preview',
+    title: 'Preview decisions',
+    text: 'Runs decision logic without moving students so you can validate outcomes before execution.',
+    learnMoreAnchor: 'promotion-engine',
+    feature: 'promotion',
+    roles: ROLE_DEFAULT,
+  },
+  'promotion.execute': {
+    id: 'promotion.execute',
+    title: 'Execute cycle',
+    text: 'Moves only eligible students and records final statuses. Use after preview is reviewed.',
+    learnMoreAnchor: 'promotion-engine',
+    feature: 'promotion',
+    roles: ROLE_DEFAULT,
+  },
+  'promotion.reload': {
+    id: 'promotion.reload',
+    title: 'Reload cycles',
+    text: 'Refreshes cycle and decision state from the server after external edits or execution.',
+    learnMoreAnchor: 'promotion-engine',
+    feature: 'promotion',
+    roles: ROLE_DEFAULT,
+  },
+  'admin.manage.analytics': {
+    id: 'admin.manage.analytics',
+    title: 'System Analytics',
+    text: 'Institution-level trends for academics, engagement, and operations over time.',
+    learnMoreAnchor: 'promotion-engine',
+    feature: 'analytics',
+    roles: ['admin'],
+  },
+  'admin.manage.library': {
+    id: 'admin.manage.library',
+    title: 'Library Management',
+    text: 'Catalog and control learning resources, circulation, and availability rules.',
+    learnMoreAnchor: 'reports-ops',
+    feature: 'library',
+    roles: ['admin'],
+  },
+  'admin.manage.subjects': {
+    id: 'admin.manage.subjects',
+    title: 'Subjects & Curricula',
+    text: 'Defines subject structure used by grading, timetables, and report card pipelines.',
+    learnMoreAnchor: 'grading-ops',
+    feature: 'grading',
+    roles: ['admin'],
+  },
+  'admin.manage.roles': {
+    id: 'admin.manage.roles',
+    title: 'Roles & Permissions',
+    text: 'Controls who can access sensitive workflows and institution-level operations.',
+    learnMoreAnchor: 'reports-ops',
+    roles: ['admin'],
+  },
+  'admin.manage.reports': {
+    id: 'admin.manage.reports',
+    title: 'Reports & Logs',
+    text: 'Audit history and operational reports for accountability and follow-up actions.',
+    learnMoreAnchor: 'reports-ops',
+    feature: 'reports',
+    roles: ['admin'],
+  },
+  'admin.manage.attendance': {
+    id: 'admin.manage.attendance',
+    title: 'Attendance Management',
+    text: 'Monitors participation signals used in risk alerts and promotion eligibility.',
+    learnMoreAnchor: 'attendance-ops',
+    feature: 'attendance',
+    roles: ['admin'],
+  },
+  'admin.manage.classes': {
+    id: 'admin.manage.classes',
+    title: 'Class Management',
+    text: 'Class structure determines enrollment scope for grading, attendance, and promotions.',
+    learnMoreAnchor: 'promotion-engine',
+    roles: ['admin'],
+  },
+  'admin.manage.timetable': {
+    id: 'admin.manage.timetable',
+    title: 'Timetable Builder',
+    text: 'Schedules classes and avoids conflicts across teachers, rooms, and subjects.',
+    learnMoreAnchor: 'reports-ops',
+    roles: ['admin'],
+  },
+  'admin.manage.resources': {
+    id: 'admin.manage.resources',
+    title: 'Resource Approvals',
+    text: 'Moderates uploaded content before it becomes visible to learners and staff.',
+    learnMoreAnchor: 'reports-ops',
+    roles: ['admin'],
+  },
+  'admin.manage.academic_setup': {
+    id: 'admin.manage.academic_setup',
+    title: 'Academic Setup',
+    text: 'Sets years, terms, grading scales, and assessments used by promotion decisions.',
+    learnMoreAnchor: 'grading-ops',
+    roles: ['admin'],
+  },
+  'admin.manage.results': {
+    id: 'admin.manage.results',
+    title: 'Results & Report Cards',
+    text: 'Publishes outcomes, completeness states, and parent/student release visibility.',
+    learnMoreAnchor: 'reports-ops',
+    feature: 'reports',
+    roles: ['admin'],
+  },
+  'teacher.manage.performance': {
+    id: 'teacher.manage.performance',
+    title: 'Performance',
+    text: 'Tracks class outcomes, grading quality, and readiness for report publishing.',
+    learnMoreAnchor: 'grading-ops',
+    feature: 'grading',
+    roles: ['teacher'],
+  },
+  'teacher.manage.coursework': {
+    id: 'teacher.manage.coursework',
+    title: 'Coursework',
+    text: 'Controls assignment lifecycle from creation to submission and grading status.',
+    learnMoreAnchor: 'grading-ops',
+    roles: ['teacher'],
+  },
+  'teacher.manage.registrar': {
+    id: 'teacher.manage.registrar',
+    title: 'Registrar',
+    text: 'Daily attendance entry affects student engagement and downstream promotion checks.',
+    learnMoreAnchor: 'attendance-ops',
+    feature: 'attendance',
+    roles: ['teacher'],
+  },
+  'teacher.manage.announcements': {
+    id: 'teacher.manage.announcements',
+    title: 'Announcements',
+    text: 'Institution broadcast feed for policy updates, reminders, and urgent notices.',
+    learnMoreAnchor: 'reports-ops',
+    roles: ['teacher'],
+  },
+  'teacher.manage.insights': {
+    id: 'teacher.manage.insights',
+    title: 'Insights',
+    text: 'Performance analytics for trends, intervention timing, and class-level risk patterns.',
+    learnMoreAnchor: 'promotion-engine',
+    feature: 'analytics',
+    roles: ['teacher'],
+  },
+  'teacher.manage.finance': {
+    id: 'teacher.manage.finance',
+    title: 'Finance',
+    text: 'Displays teacher-linked financial records where institution finance visibility is enabled.',
+    learnMoreAnchor: 'billing-ops',
+    feature: 'billing',
+    roles: ['teacher'],
+  },
+  'teacher.manage.resources': {
+    id: 'teacher.manage.resources',
+    title: 'Academic Vault',
+    text: 'Store and version teaching resources with institution moderation controls.',
+    learnMoreAnchor: 'reports-ops',
+    roles: ['teacher'],
+  },
+  'teacher.manage.grade_entry': {
+    id: 'teacher.manage.grade_entry',
+    title: 'Grade Entry',
+    text: 'Direct score input path that feeds weighted grade calculations and report cards.',
+    learnMoreAnchor: 'grading-ops',
+    roles: ['teacher'],
+  },
+  'teacher.manage.report_cards': {
+    id: 'teacher.manage.report_cards',
+    title: 'Report Cards',
+    text: 'Validate term completeness before parent/student release and archival.',
+    learnMoreAnchor: 'reports-ops',
+    feature: 'reports',
+    roles: ['teacher'],
+  },
+  'teacher.manage.messages': {
+    id: 'teacher.manage.messages',
+    title: 'Direct Connect',
+    text: 'Role-based communication channel with students and guardians for interventions.',
+    learnMoreAnchor: 'reports-ops',
+    feature: 'messaging',
+    roles: ['teacher'],
+  },
+  'teacher.manage.diary': {
+    id: 'teacher.manage.diary',
+    title: 'Virtual Diary',
+    text: 'Daily instructional log for continuity, handoffs, and classroom evidence trails.',
+    learnMoreAnchor: 'reports-ops',
+    roles: ['teacher'],
+  },
+  'settings.notifications.general': {
+    id: 'settings.notifications.general',
+    title: 'General notifications',
+    text: 'Controls routine app alerts for your role and daily workflow events.',
+    learnMoreAnchor: 'attendance-ops',
+    roles: ROLE_DEFAULT,
+  },
+  'settings.notifications.submission': {
+    id: 'settings.notifications.submission',
+    title: 'Submission alerts',
+    text: 'Notifies when coursework submissions are created, updated, or require grading action.',
+    learnMoreAnchor: 'grading-ops',
+    roles: ['teacher'],
+  },
+  'settings.notifications.priority': {
+    id: 'settings.notifications.priority',
+    title: 'Priority alerts',
+    text: 'Critical notices like system incidents and urgent operational warnings.',
+    learnMoreAnchor: 'reports-ops',
+    roles: ['admin'],
+  },
+  'settings.language': {
+    id: 'settings.language',
+    title: 'Language',
+    text: 'Changes text language where translations are available across supported modules.',
+    learnMoreAnchor: 'reports-ops',
+    roles: ROLE_DEFAULT,
+  },
+  'settings.password': {
+    id: 'settings.password',
+    title: 'Password',
+    text: 'Update login credentials. This signs out other sessions depending on security policy.',
+    learnMoreAnchor: 'reports-ops',
+    roles: ROLE_DEFAULT,
+  },
+};

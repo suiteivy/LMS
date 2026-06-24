@@ -8,6 +8,7 @@ export interface SubjectData {
     institution_id: string;
     teacher_id?: string;
     class_id?: string;
+    class_ids?: string[];
     teacher_ids?: string[];
     teachers?: {
         users: {

@@ -1,6 +1,8 @@
 import { UnifiedHeader } from "@/components/common/UnifiedHeader";
+import { HelpTooltip } from "@/components/settings/HelpTooltip";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTheme } from "@/contexts/ThemeContext";
+import { useSubscriptionTier } from "@/hooks/useSubscriptionTier";
 import { supabase } from "@/libs/supabase";
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { decode } from "base64-arraybuffer";
@@ -130,6 +132,7 @@ const AssignmentCard = ({ assignment, onEdit, onView, onDelete }: {
 export default function AssignmentsPage() {
     const { teacherId } = useAuth();
     const { isDark } = useTheme();
+    const tier = useSubscriptionTier();
     const [showModal, setShowModal] = useState(false);
     const [filter, setFilter] = useState<"all" | "active" | "draft" | "closed">("all");
     const [assignments, setAssignments] = useState<Assignment[]>([]);
@@ -149,6 +152,9 @@ export default function AssignmentsPage() {
     const [uploading, setUploading] = useState(false);
     const [weight, setWeight] = useState("");
     const [term, setTerm] = useState("");
+    const openManual = (anchor?: string) => {
+        router.push({ pathname: '/(teacher)/settings', params: { manual: '1', anchor: anchor || 'grading-ops' } } as any);
+    };
 
     const onDateChange = (_event: any, selectedDate?: Date) => {
         setShowDatePicker(false)
@@ -643,9 +649,12 @@ export default function AssignmentsPage() {
                     {/* Header Row */}
                     <View className="flex-row justify-between items-center mb-6 px-2">
                         <View>
-                            <Text className="text-gray-400 dark:text-gray-500 font-bold text-[10px] uppercase tracking-wider">
-                                {assignments.length} total assignments
-                            </Text>
+                            <View className="flex-row items-center">
+                                <Text className="text-gray-400 dark:text-gray-500 font-bold text-[10px] uppercase tracking-wider">
+                                    {assignments.length} total assignments
+                                </Text>
+                                <HelpTooltip id="teacher.manage.coursework" role="teacher" tier={tier} onLearnMore={openManual} />
+                            </View>
                         </View>
                         <View className="flex-row gap-2">
                             <TouchableOpacity
@@ -682,6 +691,10 @@ export default function AssignmentsPage() {
                     </View>
 
                     {/* Filter Tabs */}
+                    <View className="flex-row items-center mb-2 px-1">
+                        <Text className="text-gray-500 dark:text-gray-400 text-[10px] font-bold uppercase tracking-wider">Assignment Status</Text>
+                        <HelpTooltip id="teacher.manage.coursework" role="teacher" tier={tier} onLearnMore={openManual} />
+                    </View>
                     <View className="flex-row bg-white dark:bg-[#1a1a1a] rounded-2xl p-1.5 mb-8 border border-gray-100 dark:border-gray-800 shadow-sm">
                         {(["all", "active", "draft", "closed"] as const).map((tab) => (
                             <TouchableOpacity
@@ -727,6 +740,7 @@ export default function AssignmentsPage() {
                                 <Text className="text-3xl font-bold text-gray-900 dark:text-white tracking-tight">
                                     {editingAssignment ? "Edit" : "Create"}
                                 </Text>
+                                <HelpTooltip id="teacher.manage.coursework" role="teacher" tier={tier} onLearnMore={openManual} />
                                 <TouchableOpacity
                                     className="w-10 h-10 bg-gray-50 dark:bg-[#1a1a1a] rounded-full items-center justify-center"
                                     onPress={() => { setShowModal(false); resetForm(); }}
@@ -773,6 +787,7 @@ export default function AssignmentsPage() {
                                 <View className="flex-row items-center ml-2 mb-2">
                                     <Type size={12} color="#6B7280" />
                                     <Text className="text-gray-500 dark:text-gray-400 text-[10px] font-bold uppercase tracking-wider ml-1.5">Title</Text>
+                                    <HelpTooltip id="teacher.manage.coursework" role="teacher" tier={tier} onLearnMore={openManual} />
                                 </View>
                                 <TextInput
                                     className="bg-gray-50 dark:bg-[#1A1650] rounded-2xl px-6 py-4 text-gray-900 dark:text-white font-bold border border-gray-100 dark:border-gray-800"
@@ -788,6 +803,7 @@ export default function AssignmentsPage() {
                                 <View className="flex-row items-center ml-2 mb-2">
                                     <AlignLeft size={12} color="#6B7280" />
                                     <Text className="text-gray-500 dark:text-gray-400 text-[10px] font-bold uppercase tracking-wider ml-1.5">Description</Text>
+                                    <HelpTooltip id="teacher.manage.coursework" role="teacher" tier={tier} onLearnMore={openManual} />
                                 </View>
                                 <TextInput
                                     className="bg-gray-50 dark:bg-[#1A1650] rounded-2xl px-6 py-4 text-gray-900 dark:text-white font-medium border border-gray-100 dark:border-gray-800"
@@ -845,6 +861,7 @@ export default function AssignmentsPage() {
                                     <View className="flex-row items-center ml-2 mb-2">
                                         <Target size={12} color="#6B7280" />
                                         <Text className="text-gray-500 dark:text-gray-400 text-[10px] font-bold uppercase tracking-wider ml-1.5">Points</Text>
+                                        <HelpTooltip id="teacher.manage.coursework" role="teacher" tier={tier} onLearnMore={openManual} />
                                     </View>
                                     <TextInput
                                         className="bg-gray-50 dark:bg-[#1A1650] rounded-2xl px-6 py-4 text-gray-900 dark:text-white font-bold border border-gray-100 dark:border-gray-800"
@@ -863,6 +880,7 @@ export default function AssignmentsPage() {
                                     <View className="flex-row items-center ml-2 mb-2">
                                         <Trophy size={12} color="#6B7280" />
                                         <Text className="text-gray-500 dark:text-gray-400 text-[10px] font-bold uppercase tracking-wider ml-1.5">Weight (%)</Text>
+                                        <HelpTooltip id="teacher.manage.coursework" role="teacher" tier={tier} onLearnMore={openManual} />
                                     </View>
                                     <TextInput
                                         className="bg-gray-50 dark:bg-[#1A1650] rounded-2xl px-6 py-4 text-gray-900 dark:text-white font-bold border border-gray-100 dark:border-gray-800"
@@ -879,6 +897,7 @@ export default function AssignmentsPage() {
                                     <View className="flex-row items-center ml-2 mb-2">
                                         <BookOpen size={12} color="#6B7280" />
                                         <Text className="text-gray-500 dark:text-gray-400 text-[10px] font-bold uppercase tracking-wider ml-1.5">Term</Text>
+                                        <HelpTooltip id="teacher.manage.coursework" role="teacher" tier={tier} onLearnMore={openManual} />
                                     </View>
                                     <TextInput
                                         className="bg-gray-50 dark:bg-[#1A1650] rounded-2xl px-6 py-4 text-gray-900 dark:text-white font-bold border border-gray-100 dark:border-gray-800"

@@ -1,10 +1,55 @@
 const supabase = require("../utils/supabaseClient.js");
 const { hasPaidAtLeastHalf } = require("../utils/feeUtils.js");
 
+const normalizeClassIds = (class_ids = [], class_id = null) => {
+  return Array.from(new Set([...(class_ids || []).filter(Boolean), ...(class_id ? [class_id] : [])]));
+};
+
+const hydrateSubjectClassIds = (subject) => {
+  const legacyClassIds = normalizeClassIds(subject?.metadata?.class_ids || [], subject?.class_id);
+  return { ...subject, class_ids: legacyClassIds };
+};
+
+const enrichSubjectsWithClassIds = async (subjects = [], institution_id) => {
+  if (!subjects || subjects.length === 0) return [];
+
+  const subjectIds = subjects.map((s) => s.id).filter(Boolean);
+  if (subjectIds.length === 0) return subjects.map(hydrateSubjectClassIds);
+
+  const { data: links, error } = await supabase
+    .from("subject_classes")
+    .select("subject_id,class_id")
+    .eq("institution_id", institution_id)
+    .in("subject_id", subjectIds);
+
+  if (error) {
+    // Migration not yet applied; keep legacy behavior.
+    if (error.code === "42P01") {
+      return subjects.map(hydrateSubjectClassIds);
+    }
+    throw error;
+  }
+
+  const classMap = new Map();
+  for (const link of links || []) {
+    if (!classMap.has(link.subject_id)) classMap.set(link.subject_id, []);
+    classMap.get(link.subject_id).push(link.class_id);
+  }
+
+  return subjects.map((subject) => {
+    const joinClassIds = classMap.get(subject.id) || [];
+    const legacyClassIds = normalizeClassIds(subject?.metadata?.class_ids || [], subject?.class_id);
+    return {
+      ...subject,
+      class_ids: Array.from(new Set([...joinClassIds, ...legacyClassIds])),
+    };
+  });
+};
+
 // CREATE SUBJECT
 exports.createSubject = async (req, res) => {
   try {
-    const { title, description, fee_amount, teacher_id, teacher_ids, fee_config, materials, metadata } = req.body;
+    const { title, description, fee_amount, teacher_id, teacher_ids, class_ids, fee_config, materials, metadata } = req.body;
     let teacherId;
     const institution_id = req.institution_id;
 
@@ -27,20 +72,44 @@ exports.createSubject = async (req, res) => {
       return res.status(400).json({ error: "Title and fee amount are required" });
     }
 
+    const normalizedClassIds = normalizeClassIds(class_ids, null);
+    const primaryClassId = normalizedClassIds.length > 0 ? normalizedClassIds[0] : null;
+
     const { data, error } = await supabase.from("subjects").insert([
       {
         title,
         description,
         fee_amount: Number(fee_amount),
         teacher_id: teacherId,
+        class_id: primaryClassId,
         institution_id,
         fee_config: fee_config || {},
         materials: materials || [],
-        metadata: metadata || {}
+        metadata: {
+          ...(metadata || {}),
+          class_ids: normalizedClassIds,
+        }
       },
     ]).select().single();
 
     if (error) return res.status(500).json({ error: error.message });
+
+    if (normalizedClassIds.length > 0) {
+      const subjectClassRecords = normalizedClassIds.map((cid) => ({
+        subject_id: data.id,
+        class_id: cid,
+        institution_id,
+      }));
+
+      const { error: subjectClassesError } = await supabase
+        .from("subject_classes")
+        .insert(subjectClassRecords);
+
+      if (subjectClassesError && subjectClassesError.code !== "23505" && subjectClassesError.code !== "42P01") {
+        await supabase.from("subjects").delete().eq("id", data.id).eq("institution_id", institution_id);
+        return res.status(500).json({ error: subjectClassesError.message });
+      }
+    }
 
     // Populate subject_teachers many-to-many table
     const allTeacherIds = Array.from(new Set([
@@ -62,7 +131,7 @@ exports.createSubject = async (req, res) => {
       }
     }
 
-    res.status(201).json({ message: "Subject created", data });
+    res.status(201).json({ message: "Subject created", data: { ...data, class_ids: normalizedClassIds } });
   } catch (err) {
     console.error("createSubject error:", err);
     res.status(500).json({ error: "Server error" });
@@ -156,7 +225,8 @@ exports.getSubjects = async (req, res) => {
       return res.status(500).json({ error: error.message });
     }
 
-    return res.json(data);
+    const subjects = await enrichSubjectsWithClassIds(data || [], institution_id);
+    return res.json(subjects);
   } catch (err) {
     console.error("getSubjects error:", err);
     res.status(500).json({ error: "Server error" });
@@ -296,7 +366,8 @@ exports.getFilteredSubjects = async (req, res) => {
       return res.status(500).json({ error: error.message });
     }
 
-    return res.json(data);
+    const subjects = await enrichSubjectsWithClassIds(data || [], institution_id);
+    return res.json(subjects);
   } catch (err) {
     console.error("getFilteredSubjects error:", err);
     res.status(500).json({ error: "Server error" });
@@ -332,7 +403,8 @@ exports.getSubjectById = async (req, res) => {
 
     if (subjectError) return res.status(404).json({ error: "Subject not found" });
 
-    res.json(subject);
+    const [enriched] = await enrichSubjectsWithClassIds([subject], institution_id);
+    res.json(enriched || hydrateSubjectClassIds(subject));
   } catch (err) {
     console.error("getSubjectById error:", err);
     res.status(500).json({ error: "Server error" });
@@ -345,15 +417,51 @@ exports.getSubjectsByClass = async (req, res) => {
   const { institution_id } = req;
 
   try {
+    const { data: links, error: linksError } = await supabase
+      .from("subject_classes")
+      .select("subject_id")
+      .eq("institution_id", institution_id)
+      .eq("class_id", classId);
+
+    if (linksError && linksError.code !== "42P01") {
+      return res.status(500).json({ error: linksError.message });
+    }
+
+    if (linksError && linksError.code === "42P01") {
+      const { data: subjects, error } = await supabase
+        .from("subjects")
+        .select("*")
+        .eq("institution_id", institution_id)
+        .order("title");
+
+      if (error) return res.status(500).json({ error: error.message });
+
+      const filtered = (subjects || []).filter((s) => {
+        if (s.class_id === classId) return true;
+        const ids = s?.metadata?.class_ids;
+        return Array.isArray(ids) && ids.includes(classId);
+      });
+      return res.json(filtered.map(hydrateSubjectClassIds));
+    }
+
     const { data: subjects, error } = await supabase
       .from("subjects")
       .select("*")
       .eq("institution_id", institution_id)
-      .eq("class_id", classId)
-      .order('title');
+      .order("title");
 
     if (error) return res.status(500).json({ error: error.message });
-    res.json(subjects);
+
+    const linkedIds = new Set((links || []).map((l) => l.subject_id).filter(Boolean));
+    const filtered = (subjects || []).filter((s) => {
+      if (linkedIds.has(s.id)) return true;
+      if (s.class_id === classId) return true;
+      const ids = s?.metadata?.class_ids;
+      return Array.isArray(ids) && ids.includes(classId);
+    });
+
+    const enriched = await enrichSubjectsWithClassIds(filtered, institution_id);
+    res.json(enriched);
   } catch (err) {
     console.error("getSubjectsByClass error:", err);
     res.status(500).json({ error: "Server error" });
