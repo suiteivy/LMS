@@ -11,8 +11,7 @@ import {
     Megaphone,
     MessageSquare,
     PenLine,
-    Award,
-    Wallet
+    Award
 } from 'lucide-react-native';
 import { ScrollView, Text, TouchableOpacity, View, ActivityIndicator } from 'react-native';
 import { useSubscriptionTier } from "@/hooks/useSubscriptionTier";
@@ -29,7 +28,7 @@ interface FeatureCardProps {
     route: string;
     badge?: string;
     tooltipId?: any;
-    tier: any;
+    tier?: any;
 }
 
 const FeatureCard = ({ icon: Icon, title, description, color, bgColor, route, badge, tooltipId, tier }: FeatureCardProps) => {
@@ -197,15 +196,6 @@ export default function ManagementIndex() {
             route: hasAnalytics ? "/(teacher)/management/analytics" : "/(admin)/request-feature",
             badge: hasAnalytics ? undefined : "Add-on",
             tooltipId: 'teacher.manage.insights'
-        },
-        {
-            icon: Wallet,
-            title: "Finance",
-            description: "View payment history and earnings",
-            color: "#22c55e",
-            bgColor: "#dcfce7",
-            route: "/(teacher)/management/earnings",
-            tooltipId: 'teacher.manage.finance'
         },
         {
             icon: BookOpen,

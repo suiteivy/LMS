@@ -7,6 +7,7 @@ const logger = require('../utils/logger.js');
 
 // In-memory store for rate limiting (use Redis in production)
 const rateLimitStore = new Map();
+const rateLimitLogStore = new Map();
 
 // Cleanup interval - remove expired entries every 5 minutes
 setInterval(() => {
@@ -16,7 +17,23 @@ setInterval(() => {
             rateLimitStore.delete(key);
         }
     }
+
+    for (const [key, value] of rateLimitLogStore.entries()) {
+        if (value < now) {
+            rateLimitLogStore.delete(key);
+        }
+    }
 }, 5 * 60 * 1000);
+
+const shouldEmitRateLimitLog = (key, cooldownMs = 30 * 1000) => {
+    const now = Date.now();
+    const nextAllowed = rateLimitLogStore.get(key) || 0;
+    if (nextAllowed > now) {
+        return false;
+    }
+    rateLimitLogStore.set(key, now + cooldownMs);
+    return true;
+};
 
 /**
  * Create a rate limiter middleware
@@ -58,20 +75,27 @@ const createRateLimiter = (options = {}) => {
         requestHistory.requests = requestHistory.requests.filter(t => t > windowStart);
         requestHistory.count = requestHistory.requests.length;
 
+        const oldestRequest = requestHistory.requests[0] || now;
+        const retryAfterMs = Math.max(0, (oldestRequest + windowMs) - now);
+        const retryAfterSeconds = Math.max(1, Math.ceil(retryAfterMs / 1000));
+
         // Check if limit exceeded
         if (requestHistory.count >= maxRequests) {
-            logger.warn('Rate limit exceeded', {
-                ip,
-                userId,
-                key: keyPrefix,
-                count: requestHistory.count,
-                limit: maxRequests
-            });
+            if (shouldEmitRateLimitLog(key)) {
+                logger.warn('Rate limit exceeded', {
+                    ip,
+                    userId,
+                    key: keyPrefix,
+                    count: requestHistory.count,
+                    limit: maxRequests,
+                    retryAfterSeconds,
+                });
+            }
 
             return res.status(429).json({
                 error: 'Too many requests. Please try again later.',
                 code: 'RATE_LIMIT_EXCEEDED',
-                retryAfter: Math.ceil(windowMs / 1000)
+                retryAfter: retryAfterSeconds,
             });
         }
 
@@ -92,12 +116,12 @@ const createRateLimiter = (options = {}) => {
 
 // Pre-configured rate limiters
 const rateLimiters = {
-    // Strict limit for auth endpoints (login, password reset)
-    auth: createRateLimiter({
+    // Public auth endpoints (relaxed to reduce dev/user friction)
+    authPublic: createRateLimiter({
         windowMs: 15 * 60 * 1000, // 15 minutes
-        maxRequests: 20,
-        keyPrefix: 'auth',
-        differentiateByUser: true
+        maxRequests: 120,
+        keyPrefix: 'auth-public',
+        differentiateByUser: false
     }),
 
     // Very strict limit for password reset (3 per hour per email)
@@ -113,6 +137,14 @@ const rateLimiters = {
         windowMs: 60 * 1000, // 1 minute
         maxRequests: 100,
         keyPrefix: 'api'
+    }),
+
+    // Relaxed but user-scoped limit for searchable directories/chat pickers
+    search: createRateLimiter({
+        windowMs: 60 * 1000, // 1 minute
+        maxRequests: 240,
+        keyPrefix: 'search',
+        differentiateByUser: true
     }),
 
     // Strict limit for write operations

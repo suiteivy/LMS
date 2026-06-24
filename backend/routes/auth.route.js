@@ -67,7 +67,12 @@ router.delete(
 );
 
 // Generic auth routes
-router.get("/search-users", authMiddleware, searchUsers);
+router.get(
+  "/search-users",
+  authMiddleware,
+  rateLimiters.search,
+  searchUsers,
+);
 router.post("/logout", authMiddleware, logout);
 
 // Password management

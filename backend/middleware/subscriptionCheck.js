@@ -100,6 +100,7 @@ const RESTRICTED_FEATURES = [
 
   // ── Messaging + Virtual Diary — beta+ (Rank 0) ──
   { path: '/api/messaging', minRank: planRank('beta') },
+  { path: '/api/messages', minRank: planRank('beta') },
   { path: '/api/diary', minRank: planRank('beta') },
 ];
 
@@ -198,7 +199,7 @@ const checkSubscription = async (req, res, next) => {
       if (fullPath.includes(feature.path)) {
         // Add-on overrides — each add-on is independently allocated by master admin
         if (feature.path.startsWith('/api/library') && addon_library) continue;
-        if (feature.path.startsWith('/api/messaging') && addon_messaging) continue;
+        if ((feature.path.startsWith('/api/messaging') || feature.path.startsWith('/api/messages')) && addon_messaging) continue;
         if (feature.path.startsWith('/api/diary') && addon_diary) continue;
         if (feature.path.startsWith('/api/bursary') && addon_bursary) continue;
         if ((feature.path.startsWith('/api/finance') || feature.path.startsWith('/api/funds')) && addon_finance) continue;

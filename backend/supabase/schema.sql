@@ -1,6 +1,7 @@
 -- ==========================================
 -- LMS SYSTEM MASTER SCHEMA
--- Consolidated: 2026-02-11
+-- Consolidated: 2026-06-25
+-- Includes messaging delivery/idempotency hardening
 -- ==========================================
 
 -- ---------------------------------------------------------
@@ -628,20 +629,76 @@ CREATE TABLE teacher_attendance (
 -- PART 6: COMMUNICATION MODULE
 -- ---------------------------------------------------------
 
--- 1. Messages
+-- 1. Conversations
+CREATE TABLE conversations (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    type TEXT NOT NULL DEFAULT 'DIRECT' CHECK (type IN ('DIRECT', 'GROUP')),
+    institution_id UUID NOT NULL REFERENCES institutions(id) ON DELETE CASCADE,
+    direct_key TEXT,
+    last_message_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE UNIQUE INDEX idx_conversations_direct_unique
+    ON conversations(institution_id, direct_key);
+
+CREATE INDEX idx_conversations_institution_last_message
+    ON conversations(institution_id, last_message_at DESC);
+
+-- 2. Conversation participants
+CREATE TABLE conversation_participants (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    conversation_id UUID NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    joined_at TIMESTAMPTZ DEFAULT NOW(),
+    deleted_at TIMESTAMPTZ,
+    last_delivered_at TIMESTAMPTZ,
+    last_read_at TIMESTAMPTZ,
+    is_typing BOOLEAN DEFAULT false,
+    UNIQUE (conversation_id, user_id)
+);
+
+CREATE INDEX idx_conversation_participants_user_deleted
+    ON conversation_participants(user_id, deleted_at);
+
+-- 3. Messages
 CREATE TABLE messages (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    conversation_id UUID REFERENCES conversations(id) ON DELETE CASCADE,
     sender_id UUID REFERENCES users(id) ON DELETE CASCADE,
     receiver_id UUID REFERENCES users(id) ON DELETE CASCADE,
     subject TEXT,
     content TEXT NOT NULL,
     is_read BOOLEAN DEFAULT false,
+    edited_at TIMESTAMPTZ,
+    deleted_for_everyone_at TIMESTAMPTZ,
+    hidden_for_user_ids UUID[] DEFAULT ARRAY[]::UUID[],
+    client_request_id TEXT,
     institution_id UUID REFERENCES institutions(id),
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 2. Notifications
+CREATE INDEX idx_messages_conversation_created
+    ON messages(conversation_id, created_at DESC);
+
+CREATE UNIQUE INDEX idx_messages_sender_conversation_client_request
+    ON messages(conversation_id, sender_id, client_request_id)
+    WHERE client_request_id IS NOT NULL;
+
+-- 4. Message edit history
+CREATE TABLE message_edit_history (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    message_id UUID NOT NULL REFERENCES messages(id) ON DELETE CASCADE,
+    content TEXT NOT NULL,
+    edited_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX idx_message_edit_history_message
+    ON message_edit_history(message_id);
+
+-- 5. Notifications
 CREATE TABLE notifications (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID REFERENCES users(id) ON DELETE CASCADE,
@@ -657,7 +714,7 @@ CREATE TABLE notifications (
 -- Term lock metadata for grade/report immutability
 
 
--- 3. User Preferences
+-- 6. User Preferences
 CREATE TABLE user_preferences (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID REFERENCES users(id) ON DELETE CASCADE UNIQUE,

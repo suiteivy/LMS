@@ -87,27 +87,29 @@ export default function AnalyticsScreen() {
     const studentTeacherRatio = teachers > 0 ? (totalStudents / teachers).toFixed(1) : "0.0";
     const engagementRate = Math.round((attendanceRate + Math.min(attendanceRate + 8, 100)) / 2);
 
+    const toPercent = (value: number): `${number}%` => `${Math.min(Math.max(value, 0), 100)}%`;
+
     const analyticsOverview = [
         {
             title: "Overall Student Performance",
             value: `${attendanceRate}%`,
             helper: "Blended attendance and completion signal",
             color: "#2563eb",
-            width: `${Math.min(attendanceRate, 100)}%`
+            width: toPercent(attendanceRate)
         },
         {
             title: "Student-Teacher Ratio",
             value: `${studentTeacherRatio} : 1`,
             helper: "Student load distribution",
             color: "#8b5cf6",
-            width: `${Math.min(Math.round(Number(studentTeacherRatio) * 5), 100)}%`
+            width: toPercent(Math.round(Number(studentTeacherRatio) * 5))
         },
         {
             title: "Engagement Index",
             value: `${engagementRate}%`,
             helper: "Derived from attendance consistency",
             color: "#10b981",
-            width: `${Math.min(engagementRate, 100)}%`
+            width: toPercent(engagementRate)
         },
     ];
 
