@@ -194,7 +194,7 @@ exports.getStudentBursaries = async (req, res) => {
         const { data, error } = await supabase
             .from("bursary_applications")
             .select(`
-                id, status, amount_awarded, notes, applied_at,
+                id, status, applied_at,
                 bursary:bursaries (
                     id, title, description, amount, deadline, status
                 )

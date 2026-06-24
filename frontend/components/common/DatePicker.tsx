@@ -7,35 +7,28 @@ import { Modal, Text, TouchableOpacity, View } from 'react-native';
 const CELL_SIZE = 36;
 const GRID_ROWS = 6;
 
-export default function DatePicker({
+export function DatePicker({
     label,
     value,
     onChange,
     isDark,
     inline = false, // if true, renders as a row field (for detail screens)
-    minAge, // optional minimum age
 }: {
     label: string;
     value: string;
     onChange: (d: string) => void;
     isDark: boolean;
     inline?: boolean;
-    minAge?: number;
 }) {
     const [visible, setVisible] = useState(false);
     const today = new Date();
     const parsed = value ? new Date(value + 'T00:00:00') : null;
 
-    // Constrain maximum selectable date
-    const maxDate = minAge
-        ? new Date(today.getFullYear() - minAge, today.getMonth(), today.getDate())
-        : today;
+    const [viewYear, setViewYear] = useState(parsed?.getFullYear() ?? today.getFullYear() - 10);
+    const [viewMonth, setViewMonth] = useState(parsed?.getMonth() ?? today.getMonth());
 
-    const [viewYear, setViewYear] = useState(parsed?.getFullYear() ?? maxDate.getFullYear() - 10);
-    const [viewMonth, setViewMonth] = useState(parsed?.getMonth() ?? maxDate.getMonth());
-
-    const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-    const DAYS = ['Su','Mo','Tu','We','Th','Fr','Sa'];
+    const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const DAYS = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
 
     const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
     const firstDay = new Date(viewYear, viewMonth, 1).getDay();
@@ -58,10 +51,6 @@ export default function DatePicker({
         else setViewMonth(m => m - 1);
     };
     const nextMonth = () => {
-        // limit navigation beyond maxDate month/year
-        if (viewYear > maxDate.getFullYear() || (viewYear === maxDate.getFullYear() && viewMonth >= maxDate.getMonth())) {
-            return;
-        }
         if (viewMonth === 11) { setViewMonth(0); setViewYear(y => y + 1); }
         else setViewMonth(m => m + 1);
     };
@@ -69,15 +58,6 @@ export default function DatePicker({
     const displayValue = parsed
         ? parsed.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
         : null;
-
-    // Helper to format date for display in inline mode
-    const formatDateForDisplay = (date: Date | null) => {
-        if (!date) return null;
-        const day = date.getDate();
-        const month = date.toLocaleString('default', { month: 'short' });
-        const year = date.getFullYear();
-        return `${month} ${day}, ${year}`;
-    };
 
     const selectedDay = parsed?.getMonth() === viewMonth && parsed?.getFullYear() === viewYear
         ? parsed.getDate()
@@ -90,20 +70,13 @@ export default function DatePicker({
     const yearBtnText = isDark ? '#e5e7eb' : '#374151';
 
     const trigger = inline ? (
-        <View style={{ flexDirection: 'row', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: isDark ? '#1f2937' : '#f9fafb', alignItems: 'center' }}>
+        <View style={{ flexDirection: 'row', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: isDark ? '#1f2937' : '#f9fafb' }}>
             <Text style={{ width: '40%', color: mutedText, fontWeight: '500', fontSize: 13 }}>{label}</Text>
-            <View style={{ flex: 1, flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center', gap: 8 }}>
-                <TouchableOpacity onPress={() => setVisible(true)}>
-                    <Text style={{ color: displayValue ? calText : mutedText, fontStyle: displayValue ? 'normal' : 'italic', fontSize: 13, fontWeight: '500' }}>
-                        {displayValue ? formatDateForDisplay(parsed) ?? 'Tap to set' : 'Tap to set'}
-                    </Text>
-                </TouchableOpacity>
-                {value ? (
-                    <TouchableOpacity onPress={() => onChange("")}>
-                        <Ionicons name="close-circle" size={16} color={mutedText} />
-                    </TouchableOpacity>
-                ) : null}
-            </View>
+            <TouchableOpacity onPress={() => setVisible(true)} style={{ flex: 1, alignItems: 'flex-end' }}>
+                <Text style={{ color: displayValue ? calText : mutedText, fontStyle: displayValue ? 'normal' : 'italic', fontSize: 13, fontWeight: '500' }}>
+                    {displayValue ?? 'Tap to set'}
+                </Text>
+            </TouchableOpacity>
         </View>
     ) : (
         <View style={{ marginBottom: 16 }}>
@@ -123,16 +96,9 @@ export default function DatePicker({
                 }}
             >
                 <Text style={{ color: displayValue ? calText : mutedText, fontWeight: '500' }}>
-                    {displayValue ? formatDateForDisplay(parsed) ?? 'Select date' : 'Select date'}
+                    {displayValue ?? 'Select date'}
                 </Text>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                    {value ? (
-                        <TouchableOpacity onPress={(e) => { e.stopPropagation(); onChange(""); }} style={{ padding: 4 }}>
-                            <Ionicons name="close-circle" size={16} color={mutedText} />
-                        </TouchableOpacity>
-                    ) : null}
-                    <Ionicons name="calendar-outline" size={18} color={mutedText} />
-                </View>
+                <Ionicons name="calendar-outline" size={18} color={mutedText} />
             </TouchableOpacity>
         </View>
     );
@@ -149,7 +115,7 @@ export default function DatePicker({
                     <TouchableOpacity
                         activeOpacity={1}
                         style={{ backgroundColor: calBg, borderRadius: 20, padding: 20, width: 320 }}
-                        onPress={() => {}}
+                        onPress={() => { }}
                     >
                         {/* Month navigation */}
                         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
@@ -159,11 +125,7 @@ export default function DatePicker({
                             <Text style={{ fontWeight: '700', fontSize: 15, color: calText }}>
                                 {MONTHS[viewMonth]} {viewYear}
                             </Text>
-                            <TouchableOpacity
-                                onPress={nextMonth}
-                                style={{ padding: 6, opacity: (viewYear > maxDate.getFullYear() || (viewYear === maxDate.getFullYear() && viewMonth >= maxDate.getMonth())) ? 0.3 : 1 }}
-                                disabled={viewYear > maxDate.getFullYear() || (viewYear === maxDate.getFullYear() && viewMonth >= maxDate.getMonth())}
-                            >
+                            <TouchableOpacity onPress={nextMonth} style={{ padding: 6 }}>
                                 <Ionicons name="chevron-forward" size={20} color={calText} />
                             </TouchableOpacity>
                         </View>
@@ -173,20 +135,10 @@ export default function DatePicker({
                             <TouchableOpacity onPress={() => setViewYear(y => y - 1)} style={{ backgroundColor: yearBtnBg, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 4 }}>
                                 <Text style={{ color: yearBtnText, fontWeight: '600', fontSize: 12 }}>{viewYear - 1}</Text>
                             </TouchableOpacity>
-                            <View style={{ backgroundColor: '#FF6B00', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 4 }}>
+                            <View style={{ backgroundColor: '#FF6900', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 4 }}>
                                 <Text style={{ color: 'white', fontWeight: '700', fontSize: 12 }}>{viewYear}</Text>
                             </View>
-                            <TouchableOpacity
-                                disabled={viewYear + 1 > maxDate.getFullYear()}
-                                onPress={() => setViewYear(y => y + 1)}
-                                style={{
-                                    backgroundColor: yearBtnBg,
-                                    borderRadius: 8,
-                                    paddingHorizontal: 12,
-                                    paddingVertical: 4,
-                                    opacity: viewYear + 1 > maxDate.getFullYear() ? 0.3 : 1
-                                }}
-                            >
+                            <TouchableOpacity onPress={() => setViewYear(y => y + 1)} style={{ backgroundColor: yearBtnBg, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 4 }}>
                                 <Text style={{ color: yearBtnText, fontWeight: '600', fontSize: 12 }}>{viewYear + 1}</Text>
                             </TouchableOpacity>
                         </View>
@@ -201,31 +153,26 @@ export default function DatePicker({
                         {/* Fixed 6-row grid */}
                         <View style={{ flexDirection: 'row', flexWrap: 'wrap', height: CELL_SIZE * GRID_ROWS }}>
                             {cells.map((day, i) => {
-                                if (!day) return <View key={`e-${i}`} style={{ width: `${100/7}%`, height: CELL_SIZE }} />;
-                                
-                                const cellDate = new Date(viewYear, viewMonth, day);
-                                const isDisabled = cellDate > maxDate;
+                                if (!day) return <View key={`e-${i}`} style={{ width: `${100 / 7}%`, height: CELL_SIZE }} />;
                                 const isSelected = selectedDay === day;
                                 const isToday = day === today.getDate() && viewMonth === today.getMonth() && viewYear === today.getFullYear();
-                                
                                 return (
                                     <TouchableOpacity
                                         key={`d-${day}-${i}`}
-                                        disabled={isDisabled}
                                         onPress={() => handleSelect(day)}
-                                        style={{ width: `${100/7}%`, height: CELL_SIZE, alignItems: 'center', justifyContent: 'center', opacity: isDisabled ? 0.25 : 1 }}
+                                        style={{ width: `${100 / 7}%`, height: CELL_SIZE, alignItems: 'center', justifyContent: 'center' }}
                                     >
                                         <View style={{
                                             width: 30, height: 30, borderRadius: 15,
                                             alignItems: 'center', justifyContent: 'center',
-                                            backgroundColor: isSelected ? '#FF6B00' : isToday ? (isDark ? '#431407' : '#fff7ed') : 'transparent',
+                                            backgroundColor: isSelected ? '#FF6900' : isToday ? (isDark ? '#431407' : '#fff7ed') : 'transparent',
                                             borderWidth: isToday && !isSelected ? 1 : 0,
-                                            borderColor: '#FF6B00',
+                                            borderColor: '#FF6900',
                                         }}>
                                             <Text style={{
                                                 fontSize: 13,
                                                 fontWeight: isSelected || isToday ? '700' : '400',
-                                                color: isSelected ? 'white' : isToday ? '#FF6B00' : calText,
+                                                color: isSelected ? 'white' : isToday ? '#FF6900' : calText,
                                             }}>
                                                 {day}
                                             </Text>
@@ -235,21 +182,13 @@ export default function DatePicker({
                             })}
                         </View>
 
-                        {/* Cancel & Clear Actions */}
-                        <View style={{ flexDirection: 'row', gap: 12, marginTop: 12 }}>
-                            <TouchableOpacity
-                                onPress={() => setVisible(false)}
-                                style={{ flex: 1, paddingVertical: 10, alignItems: 'center', backgroundColor: isDark ? '#374151' : '#f3f4f6', borderRadius: 12 }}
-                            >
-                                <Text style={{ color: mutedText, fontWeight: '600' }}>Cancel</Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity
-                                onPress={() => { onChange(""); setVisible(false); }}
-                                style={{ flex: 1, paddingVertical: 10, alignItems: 'center', backgroundColor: isDark ? 'rgba(239,68,68,0.1)' : '#fef2f2', borderRadius: 12, borderWidth: 1, borderColor: isDark ? 'rgba(239,68,68,0.2)' : '#fecaca' }}
-                            >
-                                <Text style={{ color: '#ef4444', fontWeight: '600' }}>Clear</Text>
-                            </TouchableOpacity>
-                        </View>
+                        {/* Cancel */}
+                        <TouchableOpacity
+                            onPress={() => setVisible(false)}
+                            style={{ marginTop: 12, paddingVertical: 10, alignItems: 'center', backgroundColor: isDark ? '#374151' : '#f3f4f6', borderRadius: 12 }}
+                        >
+                            <Text style={{ color: mutedText, fontWeight: '600' }}>Cancel</Text>
+                        </TouchableOpacity>
                     </TouchableOpacity>
                 </TouchableOpacity>
             </Modal>

@@ -46,14 +46,14 @@ export function FeeStructureCard() {
                 </View>
             ) : (
                 feeStructures.map((fee) => (
-                    <View key={fee.id} className="bg-white dark:bg-[#1a1a1a] p-5 rounded-2xl mb-4 shadow-sm border border-gray-100 dark:border-gray-800">
+                    <View key={fee.id} className="bg-[#F6F8FA] dark:bg-[#161B22] p-5 rounded-lg mb-4 border border-[#D0D7DE] dark:border-[#21262D]">
                         <View className="flex-row items-center mb-4">
                             <View className="w-10 h-10 bg-teal-50 dark:bg-teal-900/20 rounded-full items-center justify-center mr-3">
                                 <Ionicons name="school-outline" size={20} color={isDark ? "#2DD4BF" : "#0f766e"} />
                             </View>
                             <View>
                                 <Text className="text-lg font-bold text-gray-900 dark:text-white">{fee.title}</Text>
-                                <Text className="text-gray-500 dark:text-gray-400 text-sm">{fee.academic_year || 'Current Year'}{' \u2022 '}{fee.term || 'All Terms'}</Text>
+                                <Text className="text-gray-500 dark:text-gray-400 text-sm">{fee.academic_year || 'Current Year'} {fee.term || 'All Terms'}</Text>
                             </View>
                         </View>
 
@@ -65,9 +65,9 @@ export function FeeStructureCard() {
                             {fee.description || 'Standard tuition fees covering standard curriculum and facility usage.'}
                         </Text>
 
-                        <View className="flex-row items-center justify-between pt-4 border-t border-gray-100 dark:border-gray-800">
+                        <View className="flex-row items-center justify-between pt-4 border-t border-[#D0D7DE] dark:border-[#21262D]">
                             <View>
-                                <Text className="text-xs text-gray-400 dark:text-gray-500 font-bold uppercase tracking-wider">Due Date</Text>
+                                <Text className="text-xs text-gray-500 dark:text-gray-400 font-bold uppercase tracking-wider">Due Date</Text>
                                 <Text className="text-gray-900 dark:text-white font-medium">
                                     {fee.due_date || 'Flexible'}
                                 </Text>

@@ -61,7 +61,7 @@ export default function StudentTimetablePage() {
                                 key={index}
                                 activeOpacity={0.7}
                                 onPress={() => setSelectedDay(date)}
-                                className={`mr-4 p-5 rounded-[28px] items-center min-w-[75px] shadow-sm border ${isSelected ? 'bg-gray-900 border-gray-900' : 'bg-white dark:bg-navy-surface border-gray-100 dark:border-gray-800'}`}
+                                className={`mr-4 p-5 rounded-[28px] items-center min-w-[75px] shadow-sm border ${isSelected ? 'bg-gray-900 border-gray-900' : 'bg-[#FFFFFF] dark:bg-[#0D1117]-surface border-[#D0D7DE] dark:border-[#21262D]'}`}
                             >
                                 <Text className={`text-[10px] font-bold uppercase tracking-widest mb-1.5 ${isSelected ? 'text-white/40' : 'text-gray-400'}`}>
                                     {format(date, 'EEE')}
@@ -80,7 +80,7 @@ export default function StudentTimetablePage() {
 
             <ScrollView className="flex-1 px-4 md:px-8" showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 150 }}>
                 <View className="px-2 mb-6 flex-row justify-between items-center">
-                    <Text className="text-gray-400 dark:text-gray-500 font-bold text-[10px] uppercase tracking-[3px]">
+                    <Text className="text-gray-500 dark:text-gray-400 font-bold text-[10px] uppercase tracking-[3px]">
                         {format(selectedDay, 'MMMM d, yyyy')}
                     </Text>
                     <View className="bg-orange-50 px-3 py-1 rounded-full">
@@ -100,10 +100,10 @@ export default function StudentTimetablePage() {
                             </View>
 
                             {/* Class Card */}
-                            <View className="flex-1 bg-white dark:bg-navy-surface p-6 rounded-[32px] border border-gray-50 dark:border-gray-800 shadow-sm">
+                            <View className="flex-1 bg-[#FFFFFF] dark:bg-[#0D1117]-surface p-6 rounded-xl border border-[#D0D7DE] dark:border-[#21262D] shadow-sm">
                                 <View className="flex-row justify-between items-start mb-4">
-                                    <View className="bg-blue-50 px-3 py-1 rounded-xl">
-                                        <Text className="text-blue-600 text-[8px] font-bold uppercase tracking-widest">
+                                    <View className="bg-gray-100 dark:bg-gray-800 px-3 py-1 rounded-xl">
+                                        <Text className="text-gray-900 dark:text-white text-[8px] font-bold uppercase tracking-widest">
                                             {entry.subjects?.title || 'Academic Unit'}
                                         </Text>
                                     </View>
@@ -119,8 +119,8 @@ export default function StudentTimetablePage() {
                                     {entry.subjects?.title}
                                 </Text>
 
-                                <View className="flex-row items-center border-t border-gray-50 dark:border-gray-800 pt-4">
-                                    <View className="w-10 h-10 rounded-2xl bg-orange-50 items-center justify-center mr-3">
+                                <View className="flex-row items-center border-t border-[#D0D7DE] dark:border-[#21262D] pt-4">
+                                    <View className="w-10 h-10 rounded-xl bg-orange-50 items-center justify-center mr-3">
                                         <User size={18} color="#FF6900" />
                                     </View>
                                     <View>
@@ -134,7 +134,7 @@ export default function StudentTimetablePage() {
                         </View>
                     ))
                 ) : (
-                    <View className="bg-white dark:bg-navy-surface p-20 rounded-[48px] items-center border border-gray-100 dark:border-gray-700 border-dashed mt-4">
+                    <View className="bg-[#FFFFFF] dark:bg-[#0D1117]-surface p-20 rounded-xl items-center border border-[#D0D7DE] dark:border-[#21262D] border-dashed mt-4">
                         <Calendar size={48} color="#E5E7EB" />
                         <Text className="text-gray-400 font-bold text-center mt-6">No Academic Sessions</Text>
                     </View>

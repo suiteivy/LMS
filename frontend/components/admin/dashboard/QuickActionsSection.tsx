@@ -4,160 +4,156 @@ import React from "react";
 import { Text, TouchableOpacity, View } from "react-native";
 
 interface QuickAction {
-  id: string;
-  title: string;
-  icon: string;
-  color: {
-    bg: string;
-    border: string;
-    active: string;
-    iconBg: string;
-    iconColor: string;
-    textColor: string;
-  };
+    id: string;
+    title: string;
+    icon: string;
+    color: {
+        bg: string;
+        border: string;
+        active: string;
+        iconBg: string;
+        iconColor: string;
+        textColor: string;
+    };
 }
 
 interface QuickActionsSectionProps {
-  onActionPress?: (action: string) => void;
-  actions?: QuickAction[];
+    onActionPress?: (action: string) => void;
+    actions?: QuickAction[];
 }
 
 const QuickActionsSection: React.FC<QuickActionsSectionProps> = ({
-  onActionPress,
-  actions,
+    onActionPress,
+    actions,
 }) => {
-  const { isDark } = useTheme();
-  const defaultActions: QuickAction[] = [
-    {
-      id: "add-user",
-      title: "Add User",
-      icon: "person-add",
-      color: {
-        bg: "bg-white dark:bg-[#1a1a1a]",
-        border: "border-slate-200 dark:border-gray-800",
-        active: "active:bg-slate-50 dark:active:bg-gray-800",
-        iconBg: "bg-slate-100 dark:bg-gray-800",
-        iconColor: isDark ? "#fff" : "#2C3E50",
-        textColor: isDark ? "text-gray-100" : "text-slate-800",
-      },
-    },
-    {
-      id: "add-Subject",
-      title: "Add Subject",
-      icon: "book-outline",
-      color: {
-        bg: "bg-white dark:bg-[#1a1a1a]",
-        border: "border-slate-200 dark:border-gray-800",
-        active: "active:bg-teal-50 dark:active:bg-gray-800",
-        iconBg: "bg-slate-100 dark:bg-gray-800",
-        iconColor: isDark ? "#fff" : "#2C3E50",
-        textColor: isDark ? "text-gray-100" : "text-slate-800",
-      },
-    },
-    {
-      id: "library",
-      title: "Library",
-      icon: "library-outline",
-      color: {
-        bg: "bg-white dark:bg-[#1a1a1a]",
-        border: "border-slate-200 dark:border-gray-800",
-        active: "active:bg-mint-50 dark:active:bg-gray-800",
-        iconBg: "bg-slate-100 dark:bg-gray-800",
-        iconColor: isDark ? "#fff" : "#2C3E50",
-        textColor: isDark ? "text-gray-100" : "text-slate-800",
-      },
-    },
-    {
-      id: "analytics",
-      title: "Analytics",
-      icon: "analytics-outline",
-      color: {
-        bg: "bg-white dark:bg-[#1a1a1a]",
-        border: "border-slate-200 dark:border-gray-800",
-        active: "active:bg-teal-50 dark:active:bg-gray-800",
-        iconBg: "bg-slate-100 dark:bg-gray-800",
-        iconColor: isDark ? "#fff" : "#2C3E50",
-        textColor: isDark ? "text-gray-100" : "text-slate-800",
-      },
-    },
-    {
-      id: "settings",
-      title: "Settings",
-      icon: "settings-outline",
-      color: {
-        bg: "bg-white dark:bg-[#1a1a1a]",
-        border: "border-slate-200 dark:border-gray-800",
-        active: "active:bg-slate-50 dark:active:bg-gray-800",
-        iconBg: "bg-slate-100 dark:bg-gray-800",
-        iconColor: isDark ? "#fff" : "#2C3E50",
-        textColor: isDark ? "text-gray-100" : "text-slate-800",
-      },
-    },
-  ];
+    const { isDark } = useTheme();
+    const defaultActions: QuickAction[] = [
+        {
+            id: "add-user",
+            title: "Add User",
+            icon: "person-add",
+            color: {
+                bg: "bg-[#F6F8FA] dark:bg-[#161B22]",
+                border: "border-slate-200 dark:border-gray-800",
+                active: "active:bg-slate-50 dark:active:bg-gray-800",
+                iconBg: "bg-slate-100 dark:bg-gray-800",
+                iconColor: isDark ? "#fff" : "#2C3E50",
+                textColor: isDark ? "text-gray-100" : "text-slate-800",
+            },
+        },
+        {
+            id: "add-Subject",
+            title: "Add Subject",
+            icon: "book-outline",
+            color: {
+                bg: "bg-[#F6F8FA] dark:bg-[#161B22]",
+                border: "border-slate-200 dark:border-gray-800",
+                active: "active:bg-teal-50 dark:active:bg-gray-800",
+                iconBg: "bg-slate-100 dark:bg-gray-800",
+                iconColor: isDark ? "#fff" : "#2C3E50",
+                textColor: isDark ? "text-gray-100" : "text-slate-800",
+            },
+        },
+        {
+            id: "library",
+            title: "Library",
+            icon: "library-outline",
+            color: {
+                bg: "bg-[#F6F8FA] dark:bg-[#161B22]",
+                border: "border-slate-200 dark:border-gray-800",
+                active: "active:bg-mint-50 dark:active:bg-gray-800",
+                iconBg: "bg-slate-100 dark:bg-gray-800",
+                iconColor: isDark ? "#fff" : "#2C3E50",
+                textColor: isDark ? "text-gray-100" : "text-slate-800",
+            },
+        },
+        {
+            id: "analytics",
+            title: "Analytics",
+            icon: "analytics-outline",
+            color: {
+                bg: "bg-[#F6F8FA] dark:bg-[#161B22]",
+                border: "border-slate-200 dark:border-gray-800",
+                active: "active:bg-teal-50 dark:active:bg-gray-800",
+                iconBg: "bg-slate-100 dark:bg-gray-800",
+                iconColor: isDark ? "#fff" : "#2C3E50",
+                textColor: isDark ? "text-gray-100" : "text-slate-800",
+            },
+        },
+        {
+            id: "settings",
+            title: "Settings",
+            icon: "settings-outline",
+            color: {
+                bg: "bg-[#F6F8FA] dark:bg-[#161B22]",
+                border: "border-slate-200 dark:border-gray-800",
+                active: "active:bg-slate-50 dark:active:bg-gray-800",
+                iconBg: "bg-slate-100 dark:bg-gray-800",
+                iconColor: isDark ? "#fff" : "#2C3E50",
+                textColor: isDark ? "text-gray-100" : "text-slate-800",
+            },
+        },
+    ];
 
-  const displayActions = actions || defaultActions;
+    const displayActions = actions || defaultActions;
 
-  const handleActionPress = (actionId: string) => {
-    onActionPress?.(actionId);
-  };
+    const handleActionPress = (actionId: string) => {
+        onActionPress?.(actionId);
+    };
 
-  const renderAction = (action: QuickAction) => (
-    <View key={action.id} className="w-1/2 px-2 mb-4">
-      <TouchableOpacity
-        style={{
-          boxShadow: [{
-            offsetX: 0,
-            offsetY: 1,
-            blurRadius: 2,
-            color: isDark ? 'rgba(0, 0, 0, 0.4)' : 'rgba(0, 0, 0, 0.05)',
-          }],
-          shadowColor: "#000",
-          shadowOffset: { width: 0, height: 1 },
-          shadowOpacity: isDark ? 0.4 : 0.05,
-          shadowRadius: 2,
-          elevation: 2,
-        }}
-        className={`rounded-xl p-4 border ${action.color.bg} ${action.color.border} ${action.color.active}`}
-        activeOpacity={0.7}
-        onPress={() => handleActionPress(action.id)}
-      >
-        <View className="items-center">
-          <View
-            className={`w-12 h-12 rounded-full items-center justify-center mb-2`}
-            style={{
-              backgroundColor: action.color.iconBg,
-              borderColor: action.color.border,
-              borderWidth: 1,
-            }}
-          >
-            <Ionicons
-              name={action.icon as any}
-              size={24}
-              color={action.color.iconColor}
-            />
-          </View>
-          <Text
-            className={`font-medium text-sm text-center`}
-            style={{ color: action.color.textColor }}
-          >
-            {action.title}
-          </Text>
+    const renderAction = (action: QuickAction) => (
+        <View key={action.id} className="w-1/2 px-2 mb-4">
+            <TouchableOpacity
+                style={{
+                    boxShadow: [{
+                        offsetX: 0,
+                        offsetY: 1,
+                        blurRadius: 2,
+                        color: isDark ? 'rgba(0, 0, 0, 0.4)' : 'rgba(0, 0, 0, 0.05)',
+                    }],
+                    shadowOpacity: isDark ? 0.4 : 0.05,
+                }}
+                className={`rounded-xl p-4 border ${action.color.bg} ${action.color.border} ${action.color.active}`}
+                activeOpacity={0.7}
+                onPress={() => handleActionPress(action.id)}
+            >
+                <View className="items-center">
+                    <View
+                        className={`w-12 h-12 rounded-full items-center justify-center mb-2`}
+                        style={{
+                            backgroundColor: action.color.iconBg,
+                            borderColor: action.color.border,
+                            borderWidth: 1,
+                        }}
+                    >
+                        <Ionicons
+                            name={action.icon as any}
+                            size={24}
+                            color={action.color.iconColor}
+                        />
+                    </View>
+                    <Text
+                        className={`font-medium text-sm text-center`}
+                        style={{ color: action.color.textColor }}
+                    >
+                        {action.title}
+                    </Text>
+                </View>
+            </TouchableOpacity>
         </View>
-      </TouchableOpacity>
-    </View>
-  );
+    );
 
-  return (
-    <View className="mt-4 mb-6">
-      <Text className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-        Quick Actions
-      </Text>
+    return (
+        <View className="mt-4 mb-6">
+            <Text className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+                Quick Actions
+            </Text>
 
-      <View className="flex-row flex-wrap -mx-2">
-        {displayActions.map(renderAction)}
-      </View>
-    </View>
-  );
+            <View className="flex-row flex-wrap -mx-2">
+                {displayActions.map(renderAction)}
+            </View>
+        </View>
+    );
 };
 
 

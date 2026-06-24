@@ -27,7 +27,7 @@ import {
   TouchableOpacity,
   View
 } from "react-native";
-import DatePicker from '@/components/common/DatePicker';
+import {DatePicker} from '@/components/common/DatePicker';
 
 interface LinkedStudent {
   id: string;

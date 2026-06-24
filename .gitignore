@@ -25,6 +25,8 @@ ios/
 
 # Supabase
 .supabase/
+mcp_config.json
+/mcp_config.json
 
 .kilocode
 LMS Tasks.txt
@@ -32,6 +34,9 @@ LMS Tasks.txt
 
 LMS Tasks.txt
 backend/logs/
+
+.agents/
+.agents
 
 
 /frontend/.antigravityignore

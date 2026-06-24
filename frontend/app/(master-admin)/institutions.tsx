@@ -139,7 +139,7 @@ export default function MasterInstitutions() {
                     'Accept': 'application/json'
                 }
             });
-            
+
             if (!res.ok) {
                 const text = await res.text();
                 let errorMsg = "Failed to fetch addon requests";
@@ -350,14 +350,14 @@ export default function MasterInstitutions() {
                 Toast.show({ type: 'success', text1: 'Success', text2: 'Institution enrolled successfully' });
                 setEnrollModalVisible(false);
                 setEnrollForm({
-                    institution_name: '', 
-                    location: '', 
-                    admin_full_name: '', 
-                    admin_email: '', 
-                    admin_password: '', 
-                    subscription_plan: 'trial', 
-                    subscription_status: 'trial', 
-                    trial_end_date: '', 
+                    institution_name: '',
+                    location: '',
+                    admin_full_name: '',
+                    admin_email: '',
+                    admin_password: '',
+                    subscription_plan: 'trial',
+                    subscription_status: 'trial',
+                    trial_end_date: '',
                     custom_student_limit: '',
                     email_domain: '',
                 });
@@ -518,14 +518,14 @@ export default function MasterInstitutions() {
             try {
                 const { data: { session } } = await supabase.auth.getSession();
                 if (!session) return;
-                
+
                 const res = await fetch(`${getBackendUrl()}/api/master-admin/institutions/${id}`, {
                     method: 'DELETE',
                     headers: {
                         'Authorization': `Bearer ${session.access_token}`,
                     }
                 });
-                
+
                 if (res.ok) {
                     Toast.show({ type: 'success', text1: 'Success', text2: 'Institution deleted successfully' });
                     fetchInstitutions();
@@ -622,7 +622,7 @@ export default function MasterInstitutions() {
                 setSaving(true);
                 await SettingsService.adminRemove(userId);
                 Toast.show({ type: 'success', text1: 'Success', text2: `Admin ${userName} removed successfully` });
-                
+
                 // Refresh list
                 if (selectedInstId) {
                     handleManageAdmins(selectedInstId);
@@ -631,9 +631,9 @@ export default function MasterInstitutions() {
                 // api.ts already shows a toast, but we can add secondary handling here if needed.
                 // However, the user specifically asked to ensure this is a toast.
                 const msg = err?.message || 'Failed to remove admin';
-                Toast.show({ 
-                    type: 'error', 
-                    text1: 'Management Error', 
+                Toast.show({
+                    type: 'error',
+                    text1: 'Management Error',
                     text2: msg,
                     visibilityTime: 4000
                 });
@@ -643,7 +643,7 @@ export default function MasterInstitutions() {
         };
 
         const msg = `Are you sure you want to remove ${userName}? This will permanently delete their account and access.`;
-        
+
         if (Platform.OS === 'web') {
             if (window.confirm(msg)) performRemoval();
         } else {
@@ -672,18 +672,14 @@ export default function MasterInstitutions() {
                 marginBottom: 12,
                 boxShadow: [{ offsetX: 0, offsetY: 2, blurRadius: 8, color: 'rgba(0, 0, 0, 0.1)' }],
                 shadowColor: '#000',
-                shadowOffset: { width: 0, height: 2 },
-                shadowOpacity: 0.1,
-                shadowRadius: 8,
-                elevation: 2
-            }}>
+                }}>
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
                     <View style={{ flex: 1 }}>
                         <Text style={{ fontSize: 16, fontWeight: '700', color: themeColors.text }}>
                             {item.institutions?.name}
                         </Text>
                         <Text style={{ color: themeColors.subtext, fontSize: 12, marginTop: 2 }}>
-                            Requested by: {item.users?.full_name}{' \u2022 '}{date}
+                            Requested by: {item.users?.full_name}  {date}
                         </Text>
                     </View>
                     <View style={{
@@ -773,11 +769,7 @@ export default function MasterInstitutions() {
                 justifyContent: 'space-between',
                 boxShadow: [{ offsetX: 0, offsetY: 2, blurRadius: 8, color: 'rgba(0, 0, 0, 0.1)' }],
                 shadowColor: '#000',
-                shadowOffset: { width: 0, height: 2 },
-                shadowOpacity: 0.1,
-                shadowRadius: 8,
-                elevation: 2
-            }}>
+                }}>
                 <View style={{ flex: 1 }}>
                     <Text style={{ fontSize: 16, fontWeight: '700', color: themeColors.text, marginBottom: 4 }}>
                         {item.name}
@@ -929,7 +921,7 @@ export default function MasterInstitutions() {
                     </View>
                 </View>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 15 }}>
-                     <TouchableOpacity 
+                    <TouchableOpacity
                         onPress={() => setIsCategoryModalVisible(true)}
                         style={{ backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#f1f5f9', padding: 8, borderRadius: 10, flexDirection: 'row', alignItems: 'center', gap: 6 }}
                     >
@@ -1017,11 +1009,7 @@ export default function MasterInstitutions() {
                     borderRadius: 28,
                     justifyContent: 'center',
                     alignItems: 'center',
-                    elevation: 5,
                     shadowColor: themeColors.primary,
-                    shadowOffset: { width: 0, height: 4 },
-                    shadowOpacity: 0.3,
-                    shadowRadius: 8,
                     boxShadow: [{
                         offsetX: 0,
                         offsetY: 4,
@@ -1481,7 +1469,7 @@ export default function MasterInstitutions() {
                                     value={categoryForm.level_label}
                                     onChangeText={t => setCategoryForm(prev => ({ ...prev, level_label: t }))}
                                 />
-                                <TouchableOpacity 
+                                <TouchableOpacity
                                     onPress={async () => {
                                         if (!categoryForm.name || !categoryForm.level_label) return;
                                         try {
@@ -1526,12 +1514,12 @@ export default function MasterInstitutions() {
                                                 <Text style={{ color: themeColors.text, fontWeight: '600' }}>{cat.name}</Text>
                                                 <Text style={{ color: themeColors.subtext, fontSize: 12 }}>Label: {cat.level_label}</Text>
                                             </View>
-                                            <TouchableOpacity 
+                                            <TouchableOpacity
                                                 onPress={async () => {
                                                     const confirmMsg = "Delete this category? Institutions using it will keep it until updated.";
                                                     const confirmed = Platform.OS === 'web' ? window.confirm(confirmMsg) : true; // In RN, maybe use Alert.confirm
                                                     if (!confirmed) return;
-                                                    
+
                                                     try {
                                                         const { data: { session } } = await supabase.auth.getSession();
                                                         if (!session) return;
@@ -1616,7 +1604,7 @@ export default function MasterInstitutions() {
                             />
 
                             <Text style={{ color: themeColors.primary, fontWeight: 'bold', marginBottom: 8, marginTop: 10 }}>Subscription & Limits</Text>
-                            
+
                             <Text style={{ color: themeColors.text, fontSize: 13, marginBottom: 4, fontWeight: '600' }}>Plan</Text>
                             <View style={{ backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#f1f5f9', borderRadius: 12, marginBottom: 16 }}>
                                 <Picker
@@ -1697,10 +1685,10 @@ export default function MasterInstitutions() {
                                         onPress={() => setEditForm((prev: any) => ({ ...prev, [addon.key]: !prev[addon.key] }))}
                                     >
                                         <Text style={{ color: themeColors.text, fontWeight: '600' }}>{addon.label}</Text>
-                                        <MaterialCommunityIcons 
-                                            name={editForm[addon.key] ? "checkbox-marked" : "checkbox-blank-outline"} 
-                                            size={24} 
-                                            color={editForm[addon.key] ? themeColors.primary : themeColors.subtext} 
+                                        <MaterialCommunityIcons
+                                            name={editForm[addon.key] ? "checkbox-marked" : "checkbox-blank-outline"}
+                                            size={24}
+                                            color={editForm[addon.key] ? themeColors.primary : themeColors.subtext}
                                         />
                                     </TouchableOpacity>
                                 ))}

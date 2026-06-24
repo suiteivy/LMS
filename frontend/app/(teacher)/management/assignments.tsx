@@ -3,6 +3,7 @@ import { HelpTooltip } from "@/components/settings/HelpTooltip";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useSubscriptionTier } from "@/hooks/useSubscriptionTier";
+import Toast from 'react-native-toast-message';
 import { supabase } from "@/libs/supabase";
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { decode } from "base64-arraybuffer";
@@ -66,31 +67,30 @@ const AssignmentCard = ({ assignment, onEdit, onView, onDelete }: {
         : assignment.submissions;
 
     return (
-        <View className="bg-white dark:bg-[#1a1a1a] p-5 rounded-3xl border border-gray-100 dark:border-gray-800 mb-4 shadow-sm">
-            <View className="flex-row justify-between items-start mb-4">
+        <View className="bg-[#F6F8FA] dark:bg-[#161B22] p-4 rounded-xl border border-[#D0D7DE] dark:border-[#21262D] mb-3">
+            <View className="flex-row justify-between items-start mb-3">
                 <View className="flex-1 pr-3">
                     <Text className="text-gray-900 dark:text-white font-bold text-lg leading-tight">{assignment.title}</Text>
-                    <Text className="text-[#FF6900] text-xs font-bold mt-1 uppercase tracking-wider">{assignment.Subject}</Text>
+                    <Text className="text-[#FF6900] text-[10px] font-bold mt-1 uppercase tracking-widest">{assignment.Subject}</Text>
                 </View>
                 <View className="flex-row items-center gap-2">
-                    <View className={`px-3 py-1 rounded-full border ${getStatusStyle(assignment.status || 'active').split(' ')[0]} ${getStatusStyle(assignment.status || 'active').split(' ')[2]}`}>
-                        <Text className={`text-[10px] font-bold uppercase tracking-widest ${getStatusStyle(assignment.status || 'active').split(' ')[1]}`}>
-                            {assignment.status || 'active'}
-                        </Text>
-                    </View>
+                    <Text className={`text-[10px] font-bold uppercase tracking-widest ${assignment.status === 'active' ? 'text-green-600 dark:text-green-400' : 'text-gray-500 dark:text-gray-400'}`}>
+                        {assignment.status || 'active'}
+                    </Text>
                     <TouchableOpacity 
                         onPress={() => onDelete(assignment)}
-                        className="p-2 bg-red-50 dark:bg-red-950/20 rounded-full"
+                        activeOpacity={0.7}
+                        className="p-1.5 bg-[#EAEEF2] dark:bg-[#1C2128] rounded-lg"
                     >
-                        <Trash2 size={16} color="#EF4444" />
+                        <Trash2 size={14} color="#EF4444" />
                     </TouchableOpacity>
                 </View>
             </View>
 
-            <View className="flex-row mb-5 gap-4">
+            <View className="flex-row mb-4 gap-4">
                 <View className="flex-row items-center">
-                    <Calendar size={14} color="#6B7280" />
-                    <Text className="text-gray-500 dark:text-gray-400 text-xs font-bold ml-1.5">{assignment.dueDate}</Text>
+                    <Calendar size={14} color="#FF6900" />
+                    <Text className="text-gray-900 dark:text-white text-xs font-bold ml-1.5">{assignment.dueDate}</Text>
                 </View>
                 <View className="flex-row items-center">
                     <Users size={14} color={hasIntegrityWarning ? "#F59E0B" : "#6B7280"} />
@@ -103,26 +103,23 @@ const AssignmentCard = ({ assignment, onEdit, onView, onDelete }: {
                 </View>
             </View>
 
-            {/* Progress Bar */}
-            <View className="h-2 bg-gray-100 dark:bg-[#1A1650] rounded-full overflow-hidden mb-5">
-                <View className="h-full bg-[#FF6900] rounded-full" style={{ width: `${progressPercent}%` }} />
-            </View>
-
             {/* Actions */}
-            <View className="flex-row justify-end gap-2">
+            <View className="flex-row justify-end gap-2 mt-1">
                 <TouchableOpacity
-                    className="flex-row items-center px-4 py-2 bg-gray-50 dark:bg-[#1A1650] rounded-xl"
+                    className="flex-row items-center px-4 py-2 bg-[#EAEEF2] dark:bg-[#1C2128] rounded-lg"
                     onPress={() => onView(assignment)}
+                    activeOpacity={0.7}
                 >
-                    <Eye size={16} color="#6B7280" />
-                    <Text className="text-gray-600 dark:text-gray-400 text-xs ml-2 font-bold">View</Text>
+                    <Eye size={14} color="#9CA3AF" />
+                    <Text className="text-gray-900 dark:text-white text-xs ml-2 font-bold">View</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
-                    className="flex-row items-center px-4 py-2 bg-orange-50 dark:bg-orange-950/20 rounded-xl"
+                    className="flex-row items-center px-4 py-2 bg-[#FF6900] rounded-lg"
                     onPress={() => onEdit(assignment)}
+                    activeOpacity={0.7}
                 >
-                    <Edit2 size={16} color="#FF6900" />
-                    <Text className="text-[#FF6900] text-xs ml-2 font-bold">Edit</Text>
+                    <Edit2 size={14} color="white" />
+                    <Text className="text-white text-xs ml-2 font-bold">Edit</Text>
                 </TouchableOpacity>
             </View>
         </View>
@@ -130,7 +127,7 @@ const AssignmentCard = ({ assignment, onEdit, onView, onDelete }: {
 };
 
 export default function AssignmentsPage() {
-    const { teacherId } = useAuth();
+    const { teacherId, isDemo } = useAuth();
     const { isDark } = useTheme();
     const tier = useSubscriptionTier();
     const [showModal, setShowModal] = useState(false);
@@ -330,12 +327,20 @@ export default function AssignmentsPage() {
 
     const handleDelete = async (a: Assignment) => {
         const performDelete = async () => {
+            if (isDemo) {
+                setAssignments(prev => prev.filter(item => item.id !== a.id));
+                Toast.show({
+                    type: 'success',
+                    text1: 'Done',
+                    text2: 'Changes saved.'
+                });
+                return;
+            }
             try {
                 setLoading(true);
                 const { error } = await (supabase.from('assignments') as any).delete().eq('id', a.id);
                 if (error) throw error;
 
-                // Attempt to remove diary entry
                 try {
                     const { data: existingEntries } = await (supabase.from('diary_entries') as any)
                         .select('id')
@@ -401,11 +406,54 @@ export default function AssignmentsPage() {
             return;
         }
 
+        if (isDemo) {
+            const pointsVal = parseInt(points) || 100;
+            const weightVal = parseFloat(weight) || 0;
+            if (editingAssignment) {
+                setAssignments(prev => prev.map(a => a.id === editingAssignment.id ? {
+                    ...a,
+                    title: title.trim(),
+                    description: description.trim(),
+                    dueDate: dateObject.toLocaleDateString(),
+                    due_date_iso: dateObject.toISOString(),
+                    points: pointsVal,
+                    weight: weightVal,
+                    term: term.trim(),
+                    subject_id: selectedSubjectId,
+                    Subject: Subjects.find(s => s.id === selectedSubjectId)?.title || a.Subject
+                } : a));
+            } else {
+                const newAssign: Assignment = {
+                    id: Math.random().toString(),
+                    title: title.trim(),
+                    description: description.trim(),
+                    dueDate: dateObject.toLocaleDateString(),
+                    due_date_iso: dateObject.toISOString(),
+                    points: pointsVal,
+                    weight: weightVal,
+                    term: term.trim(),
+                    subject_id: selectedSubjectId,
+                    Subject: Subjects.find(s => s.id === selectedSubjectId)?.title || "Selected Subject",
+                    submissions: 0,
+                    totalStudents: 0,
+                    status: 'active'
+                };
+                setAssignments(prev => [newAssign, ...prev]);
+            }
+            setShowModal(false);
+            resetForm();
+            Toast.show({
+                type: 'success',
+                text1: 'Done',
+                text2: 'Changes saved.'
+            });
+            return;
+        }
+
         setUploading(true);
         let attachmentUrl = editingAssignment?.attachment_url || null;
         let attachmentName = editingAssignment?.attachment_name || null;
 
-        // Check auth session first
         const { data: { session } } = await supabase.auth.getSession();
         if (!session) {
             Alert.alert("Session Expired", "Please log out and log back in.");
@@ -419,7 +467,6 @@ export default function AssignmentsPage() {
                     const fileExt = selectedFile.name.split('.').pop();
                     const filePath = `${teacherId}/${Date.now()}.${fileExt}`;
 
-                    // Robust file reading for mobile compatibility with Expo 54+
                     const file = new File(selectedFile.uri);
                     const base64 = await file.base64();
                     const fileBody = decode(base64);
@@ -485,7 +532,6 @@ export default function AssignmentsPage() {
                 if (error) throw error;
             }
 
-            // Sync to Diary
             try {
                 const { data: subjectData } = await (supabase
                     .from('subjects')
@@ -633,7 +679,7 @@ export default function AssignmentsPage() {
 
 
     return (
-        <View className="flex-1 bg-gray-50 dark:bg-navy">
+        <View className="flex-1 bg-[#FFFFFF] dark:bg-[#0D1117]">
             <UnifiedHeader
                 title="Management"
                 subtitle="Assignments"
@@ -643,11 +689,11 @@ export default function AssignmentsPage() {
             <ScrollView
                 className="flex-1"
                 showsVerticalScrollIndicator={false}
-                contentContainerStyle={{ paddingBottom: 100 }}
+                contentContainerStyle={{ paddingBottom: 60 }}
             >
-                <View className="p-4 md:p-8">
+                <View className="px-5 pt-4">
                     {/* Header Row */}
-                    <View className="flex-row justify-between items-center mb-6 px-2">
+                    <View className="flex-row justify-between items-center mb-6">
                         <View>
                             <View className="flex-row items-center">
                                 <Text className="text-gray-400 dark:text-gray-500 font-bold text-[10px] uppercase tracking-wider">
@@ -658,33 +704,35 @@ export default function AssignmentsPage() {
                         </View>
                         <View className="flex-row gap-2">
                             <TouchableOpacity
-                                className="flex-row items-center bg-white dark:bg-[#1a1a1a] px-4 py-2.5 rounded-2xl border border-gray-100 dark:border-gray-800 active:bg-gray-50"
+                                className="flex-row items-center bg-[#F6F8FA] dark:bg-[#161B22] px-3 py-2 rounded-lg border border-[#D0D7DE] dark:border-[#21262D]"
                                 onPress={handlePrint}
+                                activeOpacity={0.7}
                             >
-                                <Printer size={18} color={Platform.OS === 'web' ? '#6B7280' : '#FF6900'} />
-                                <Text className="text-gray-600 dark:text-gray-400 font-bold text-xs ml-2 uppercase tracking-widest">Print</Text>
+                                <Printer size={16} color="#FF6900" />
+                                <Text className="text-gray-900 dark:text-white font-bold text-xs ml-2 uppercase tracking-widest">Print</Text>
                             </TouchableOpacity>
                             <TouchableOpacity
-                                className="flex-row items-center bg-[#FF6900] px-5 py-2.5 rounded-2xl shadow-lg active:bg-orange-600"
+                                className="flex-row items-center bg-[#FF6900] px-3 py-2 rounded-lg"
                                 onPress={() => setShowModal(true)}
+                                activeOpacity={0.7}
                             >
-                                <Plus size={18} color="white" />
+                                <Plus size={16} color="white" />
                                 <Text className="text-white font-bold text-xs ml-2 uppercase tracking-widest">New</Text>
                             </TouchableOpacity>
                         </View>
                     </View>
 
                     {/* Stats */}
-                    <View className="flex-row gap-4 mb-8">
-                        <View className="flex-1 bg-gray-900 dark:bg-[#1a1a1a] p-5 rounded-[32px] shadow-xl border border-transparent dark:border-gray-800">
-                            <Text className="text-white/60 dark:text-gray-500 text-[10px] font-bold uppercase tracking-wider">Active</Text>
-                            <Text className="text-white text-3xl font-bold mt-2">
+                    <View className="flex-row gap-4 mb-6">
+                        <View className="flex-1 bg-[#F6F8FA] dark:bg-[#161B22] p-4 rounded-xl border border-[#D0D7DE] dark:border-[#21262D]">
+                            <Text className="text-gray-500 dark:text-gray-400 text-[10px] font-bold uppercase tracking-widest">Active</Text>
+                            <Text className="text-gray-900 dark:text-white text-2xl font-black mt-1">
                                 {assignments.filter(a => a.status === "active").length}
                             </Text>
                         </View>
-                        <View className="flex-1 bg-white dark:bg-[#1a1a1a] p-5 rounded-[32px] border border-gray-100 dark:border-gray-800 shadow-sm">
-                            <Text className="text-gray-400 dark:text-gray-500 text-[10px] font-bold uppercase tracking-wider">Submissions</Text>
-                            <Text className="text-gray-900 dark:text-white text-3xl font-bold mt-2">
+                        <View className="flex-1 bg-[#F6F8FA] dark:bg-[#161B22] p-4 rounded-xl border border-[#D0D7DE] dark:border-[#21262D]">
+                            <Text className="text-gray-500 dark:text-gray-400 text-[10px] font-bold uppercase tracking-widest">Submissions</Text>
+                            <Text className="text-gray-900 dark:text-white text-2xl font-black mt-1">
                                 {assignments.reduce((acc, a) => acc + a.submissions, 0)}
                             </Text>
                         </View>
@@ -699,11 +747,12 @@ export default function AssignmentsPage() {
                         {(["all", "active", "draft", "closed"] as const).map((tab) => (
                             <TouchableOpacity
                                 key={tab}
-                                className={`flex-1 py-3 rounded-xl ${filter === tab ? "bg-[#FF6900] shadow-sm" : ""}`}
+                                className={`mr-6 pb-2 border-b-2 ${filter === tab ? "border-[#FF6900]" : "border-transparent"}`}
                                 onPress={() => setFilter(tab)}
+                                activeOpacity={0.7}
                             >
-                                <Text className={`text-center font-bold text-[10px] uppercase tracking-widest ${filter === tab ? "text-white" : "text-gray-400 dark:text-gray-500"}`}>
-                                    {tab}
+                                <Text className={`font-bold ${filter === tab ? "text-[#FF6900]" : "text-gray-500 dark:text-gray-400"}`}>
+                                    {tab.charAt(0).toUpperCase() + tab.slice(1)}
                                 </Text>
                             </TouchableOpacity>
                         ))}
@@ -713,9 +762,9 @@ export default function AssignmentsPage() {
                     {loading ? (
                         <ActivityIndicator size="large" color="#FF6900" className="mt-8" />
                     ) : filteredAssignments.length === 0 ? (
-                        <View className="bg-white dark:bg-[#1a1a1a] p-12 rounded-[40px] items-center border border-gray-100 dark:border-gray-800 border-dashed">
-                            <FileText size={48} color="#E5E7EB" style={{ opacity: 0.3 }} />
-                            <Text className="text-gray-400 dark:text-gray-500 font-bold text-center mt-6 tracking-tight">No assignments found</Text>
+                        <View className="bg-[#F6F8FA] dark:bg-[#161B22] p-8 rounded-xl items-center border border-[#D0D7DE] dark:border-[#21262D]">
+                            <FileText size={40} color={isDark ? "#4B5563" : "#9CA3AF"} />
+                            <Text className="text-gray-500 dark:text-gray-400 font-bold text-xs uppercase tracking-widest mt-3">No assignments found</Text>
                         </View>
                     ) : (
                         filteredAssignments.map((assignment) => (
@@ -733,28 +782,28 @@ export default function AssignmentsPage() {
 
             {/* Create/Edit Assignment Modal */}
             <Modal visible={showModal} animationType="slide" transparent>
-                <View className="flex-1 bg-black/50 justify-end">
-                    <View className="bg-white dark:bg-[#0F0B2E] rounded-t-[40px] p-8 h-[85%] border-t border-gray-100 dark:border-gray-800">
+                <View className="flex-1 bg-black/70 justify-end">
+                    <View className="bg-[#FFFFFF] dark:bg-[#0D1117] rounded-t-3xl p-6 h-[85%] border-t border-[#D0D7DE] dark:border-[#21262D]">
                         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
-                            <View className="flex-row justify-between items-center mb-10">
-                                <Text className="text-3xl font-bold text-gray-900 dark:text-white tracking-tight">
-                                    {editingAssignment ? "Edit" : "Create"}
+                            <View className="flex-row justify-between items-center mb-6">
+                                <Text className="text-xl font-bold text-gray-900 dark:text-white">
+                                    {editingAssignment ? "Edit Assignment" : "New Assignment"}
                                 </Text>
                                 <HelpTooltip id="teacher.manage.coursework" role="teacher" tier={tier} onLearnMore={openManual} />
                                 <TouchableOpacity
-                                    className="w-10 h-10 bg-gray-50 dark:bg-[#1a1a1a] rounded-full items-center justify-center"
+                                    className="w-10 h-10 bg-[#F6F8FA] dark:bg-[#1C2128] rounded-xl items-center justify-center border border-[#D0D7DE] dark:border-[#21262D]"
                                     onPress={() => { setShowModal(false); resetForm(); }}
                                 >
-                                    <X size={20} color="#6B7280" />
+                                    <X size={20} color="#9CA3AF" />
                                 </TouchableOpacity>
                             </View>
 
-                            <View style={{ marginBottom: 24 }}>
-                                <Text style={{ color: '#6B7280', fontSize: 10, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1.5, marginLeft: 8, marginBottom: 8 }}>Subject</Text>
+                            <View className="mb-6">
+                                <Text className="text-gray-500 dark:text-gray-400 text-[10px] font-bold uppercase tracking-widest mb-3 ml-1">Subject</Text>
                                 {Subjects.length === 0 ? (
-                                    <View style={{ backgroundColor: '#fefce8', padding: 16, borderRadius: 16, borderWidth: 1, borderColor: '#fde68a' }}>
-                                        <Text style={{ color: '#a16207', fontSize: 12, fontWeight: '700', textAlign: 'center' }}>
-                                            No subjects available. Ask your admin to assign subjects to you.
+                                    <View className="bg-[#F6F8FA] dark:bg-[#161B22] p-4 rounded-xl border border-[#D0D7DE] dark:border-[#21262D]">
+                                        <Text className="text-gray-500 dark:text-gray-400 font-bold text-xs uppercase tracking-widest text-center">
+                                            No subjects available.
                                         </Text>
                                     </View>
                                 ) : (
@@ -764,18 +813,11 @@ export default function AssignmentsPage() {
                                             return (
                                                 <TouchableOpacity
                                                     key={c.id}
-                                                    onPress={() => { console.log('[Subject] Selected:', c.id, c.title); setSelectedSubjectId(c.id); }}
-                                                    style={{
-                                                        marginRight: 12,
-                                                        paddingHorizontal: 24,
-                                                        paddingVertical: 12,
-                                                        borderRadius: 16,
-                                                        borderWidth: 1,
-                                                        backgroundColor: isSelected ? '#FF6900' : '#f9fafb',
-                                                        borderColor: isSelected ? '#FF6900' : '#f3f4f6',
-                                                    }}
+                                                    onPress={() => setSelectedSubjectId(c.id)}
+                                                    activeOpacity={0.7}
+                                                    className={`mr-3 px-5 py-2.5 rounded-lg border ${isSelected ? "bg-[#FF6900] border-[#FF6900]" : "bg-[#F6F8FA] dark:bg-[#1C2128] border-[#D0D7DE] dark:border-[#21262D]"}`}
                                                 >
-                                                    <Text style={{ fontWeight: '700', fontSize: 12, color: isSelected ? '#ffffff' : '#6B7280' }}>{c.title}</Text>
+                                                    <Text className={`font-bold text-xs ${isSelected ? "text-white" : "text-gray-900 dark:text-gray-400"}`}>{c.title}</Text>
                                                 </TouchableOpacity>
                                             );
                                         })}
@@ -783,46 +825,52 @@ export default function AssignmentsPage() {
                                 )}
                             </View>
 
+<<<<<<< Updated upstream
                             <View className="mb-6">
                                 <View className="flex-row items-center ml-2 mb-2">
                                     <Type size={12} color="#6B7280" />
                                     <Text className="text-gray-500 dark:text-gray-400 text-[10px] font-bold uppercase tracking-wider ml-1.5">Title</Text>
                                     <HelpTooltip id="teacher.manage.coursework" role="teacher" tier={tier} onLearnMore={openManual} />
                                 </View>
+=======
+                            <View className="mb-5">
+                                <Text className="text-gray-500 dark:text-gray-400 text-[10px] font-bold uppercase tracking-widest ml-1 mb-2">Title</Text>
+>>>>>>> Stashed changes
                                 <TextInput
-                                    className="bg-gray-50 dark:bg-[#1A1650] rounded-2xl px-6 py-4 text-gray-900 dark:text-white font-bold border border-gray-100 dark:border-gray-800"
+                                    className="bg-[#F6F8FA] dark:bg-[#161B22] rounded-xl px-5 py-4 text-gray-900 dark:text-white font-bold border border-[#D0D7DE] dark:border-[#21262D]"
                                     placeholder="e.g. Mid-term Research Project"
                                     placeholderTextColor="#9CA3AF"
                                     value={title}
                                     onChangeText={setTitle}
-                                    style={{ minHeight: 56 }}
                                 />
                             </View>
 
+<<<<<<< Updated upstream
                             <View className="mb-6">
                                 <View className="flex-row items-center ml-2 mb-2">
                                     <AlignLeft size={12} color="#6B7280" />
                                     <Text className="text-gray-500 dark:text-gray-400 text-[10px] font-bold uppercase tracking-wider ml-1.5">Description</Text>
                                     <HelpTooltip id="teacher.manage.coursework" role="teacher" tier={tier} onLearnMore={openManual} />
                                 </View>
+=======
+                            <View className="mb-5">
+                                <Text className="text-gray-500 dark:text-gray-400 text-[10px] font-bold uppercase tracking-widest ml-1 mb-2">Description</Text>
+>>>>>>> Stashed changes
                                 <TextInput
-                                    className="bg-gray-50 dark:bg-[#1A1650] rounded-2xl px-6 py-4 text-gray-900 dark:text-white font-medium border border-gray-100 dark:border-gray-800"
-                                    placeholder="Enter assignment instructions and requirements..."
+                                    className="bg-[#F6F8FA] dark:bg-[#161B22] rounded-xl px-5 py-4 text-gray-900 dark:text-white font-medium border border-[#D0D7DE] dark:border-[#21262D]"
+                                    placeholder="Enter assignment instructions..."
                                     placeholderTextColor="#9CA3AF"
                                     multiline
                                     textAlignVertical="top"
                                     value={description}
                                     onChangeText={setDescription}
-                                    style={{ minHeight: 120 }}
+                                    style={{ minHeight: 100 }}
                                 />
                             </View>
 
-                            <View className="flex-row gap-4 mb-6">
+                            <View className="flex-row gap-3 mb-5">
                                 <View className="flex-1">
-                                    <View className="flex-row items-center ml-2 mb-2">
-                                        <Calendar size={12} color="#6B7280" />
-                                        <Text className="text-gray-500 dark:text-gray-400 text-[10px] font-bold uppercase tracking-wider ml-1.5">Due Date</Text>
-                                    </View>
+                                    <Text className="text-gray-500 dark:text-gray-400 text-[10px] font-bold uppercase tracking-widest ml-1 mb-2">Due Date</Text>
                                     {Platform.OS === 'web' ? (
                                         <input
                                             type="date"
@@ -834,9 +882,9 @@ export default function AssignmentsPage() {
                                                 setDueDate(v);
                                                 if (v) setDateObject(new Date(v));
                                             }}
-                                            className="bg-gray-50 dark:bg-[#1A1650] rounded-2xl px-6 py-4 text-gray-900 dark:text-white font-bold border border-gray-100 dark:border-gray-800"
+                                            className="bg-[#F6F8FA] dark:bg-[#161B22] rounded-xl px-5 py-4 text-gray-900 dark:text-white font-bold border border-[#D0D7DE] dark:border-[#21262D]"
                                             style={{ 
-                                                minHeight: 56,
+                                                minHeight: 52,
                                                 colorScheme: isDark ? 'dark' : 'light',
                                                 outline: 'none',
                                                 fontFamily: 'inherit',
@@ -846,11 +894,11 @@ export default function AssignmentsPage() {
                                     ) : (
                                         <TouchableOpacity
                                             onPress={() => setShowDatePicker(true)}
-                                            className="bg-gray-50 dark:bg-[#1A1650] rounded-2xl px-6 py-4 flex-row justify-between items-center border border-gray-100 dark:border-gray-800"
-                                            style={{ minHeight: 56 }}
+                                            className="bg-[#F6F8FA] dark:bg-[#161B22] rounded-xl px-5 py-4 flex-row justify-between items-center border border-[#D0D7DE] dark:border-[#21262D]"
+                                            style={{ minHeight: 52 }}
                                         >
-                                            <Text className={`font-bold ${dueDate ? "text-gray-900 dark:text-white" : "text-gray-300 dark:text-gray-600"}`}>
-                                                {dueDate ? dueDate : "Select date"}
+                                            <Text className={`font-bold ${dueDate ? "text-gray-900 dark:text-white" : "text-gray-400 dark:text-gray-500"}`}>
+                                                {dueDate ? dueDate : "Select"}
                                             </Text>
                                             <Calendar size={16} color="#FF6900" />
                                         </TouchableOpacity>
@@ -858,54 +906,64 @@ export default function AssignmentsPage() {
                                 </View>
 
                                 <View className="flex-1">
+<<<<<<< Updated upstream
                                     <View className="flex-row items-center ml-2 mb-2">
                                         <Target size={12} color="#6B7280" />
                                         <Text className="text-gray-500 dark:text-gray-400 text-[10px] font-bold uppercase tracking-wider ml-1.5">Points</Text>
                                         <HelpTooltip id="teacher.manage.coursework" role="teacher" tier={tier} onLearnMore={openManual} />
                                     </View>
+=======
+                                    <Text className="text-gray-500 dark:text-gray-400 text-[10px] font-bold uppercase tracking-widest ml-1 mb-2">Points</Text>
+>>>>>>> Stashed changes
                                     <TextInput
-                                        className="bg-gray-50 dark:bg-[#1A1650] rounded-2xl px-6 py-4 text-gray-900 dark:text-white font-bold border border-gray-100 dark:border-gray-800"
+                                        className="bg-[#F6F8FA] dark:bg-[#161B22] rounded-xl px-5 py-4 text-gray-900 dark:text-white font-bold border border-[#D0D7DE] dark:border-[#21262D]"
                                         placeholder="100"
                                         placeholderTextColor="#9CA3AF"
                                         keyboardType="numeric"
                                         value={points}
                                         onChangeText={setPoints}
-                                        style={{ minHeight: 56 }}
+                                        style={{ minHeight: 52 }}
                                     />
                                 </View>
                             </View>
 
-                            <View className="flex-row gap-4 mb-8">
+                            <View className="flex-row gap-3 mb-6">
                                 <View className="flex-1">
+<<<<<<< Updated upstream
                                     <View className="flex-row items-center ml-2 mb-2">
                                         <Trophy size={12} color="#6B7280" />
                                         <Text className="text-gray-500 dark:text-gray-400 text-[10px] font-bold uppercase tracking-wider ml-1.5">Weight (%)</Text>
                                         <HelpTooltip id="teacher.manage.coursework" role="teacher" tier={tier} onLearnMore={openManual} />
                                     </View>
+=======
+                                    <Text className="text-gray-500 dark:text-gray-400 text-[10px] font-bold uppercase tracking-widest ml-1 mb-2">Weight (%)</Text>
+>>>>>>> Stashed changes
                                     <TextInput
-                                        className="bg-gray-50 dark:bg-[#1A1650] rounded-2xl px-6 py-4 text-gray-900 dark:text-white font-bold border border-gray-100 dark:border-gray-800"
-                                        placeholder="e.g. 25"
+                                        className="bg-[#F6F8FA] dark:bg-[#161B22] rounded-xl px-5 py-4 text-gray-900 dark:text-white font-bold border border-[#D0D7DE] dark:border-[#21262D]"
+                                        placeholder="25"
                                         placeholderTextColor="#9CA3AF"
                                         keyboardType="numeric"
                                         value={weight}
                                         onChangeText={setWeight}
-                                        style={{ minHeight: 56 }}
                                     />
                                 </View>
 
                                 <View className="flex-1">
+<<<<<<< Updated upstream
                                     <View className="flex-row items-center ml-2 mb-2">
                                         <BookOpen size={12} color="#6B7280" />
                                         <Text className="text-gray-500 dark:text-gray-400 text-[10px] font-bold uppercase tracking-wider ml-1.5">Term</Text>
                                         <HelpTooltip id="teacher.manage.coursework" role="teacher" tier={tier} onLearnMore={openManual} />
                                     </View>
+=======
+                                    <Text className="text-gray-500 dark:text-gray-400 text-[10px] font-bold uppercase tracking-widest ml-1 mb-2">Term</Text>
+>>>>>>> Stashed changes
                                     <TextInput
-                                        className="bg-gray-50 dark:bg-[#1A1650] rounded-2xl px-6 py-4 text-gray-900 dark:text-white font-bold border border-gray-100 dark:border-gray-800"
-                                        placeholder="Semester 1"
+                                        className="bg-[#F6F8FA] dark:bg-[#161B22] rounded-xl px-5 py-4 text-gray-900 dark:text-white font-bold border border-[#D0D7DE] dark:border-[#21262D]"
+                                        placeholder="Term 1"
                                         placeholderTextColor="#9CA3AF"
                                         value={term}
                                         onChangeText={setTerm}
-                                        style={{ minHeight: 56 }}
                                     />
                                 </View>
                             </View>
@@ -920,38 +978,39 @@ export default function AssignmentsPage() {
                                 />
                             )}
 
-                            <View className="mb-10">
-                                <Text className="text-gray-500 dark:text-gray-400 text-[10px] font-bold uppercase tracking-wider ml-2 mb-2">Attachments</Text>
+                            <View className="mb-8">
+                                <Text className="text-gray-500 dark:text-gray-400 text-[10px] font-bold uppercase tracking-widest ml-1 mb-2">Attachments</Text>
                                 <TouchableOpacity
                                     onPress={pickDocument}
-                                    className={`flex-row items-center justify-center border-dashed border-2 rounded-[32px] p-8 ${selectedFile ? 'border-green-500 bg-green-50 dark:bg-green-950/20' : 'border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-[#1a1a1a]'}`}
+                                    activeOpacity={0.7}
+                                    className={`flex-row items-center justify-center border-dashed border-2 rounded-xl p-6 ${selectedFile ? 'border-green-500 bg-green-50 dark:bg-green-950/20' : 'border-[#D0D7DE] dark:border-[#21262D] bg-[#F6F8FA] dark:bg-[#161B22]'}`}
                                 >
                                     {selectedFile ? (
                                         <View className="items-center">
-                                            <FileText size={32} color="#10B981" />
-                                            <Text className="text-green-900 dark:text-green-400 font-bold mt-3 text-center px-4">{selectedFile.name}</Text>
-                                            <Text className="text-green-600 dark:text-green-400/60 text-[10px] font-bold uppercase tracking-widest mt-1">Tap to change</Text>
+                                            <FileText size={24} color="#10B981" />
+                                            <Text className="text-green-900 dark:text-green-400 font-bold mt-2 text-center">{selectedFile.name}</Text>
                                         </View>
                                     ) : (
                                         <View className="items-center">
-                                            <Upload size={32} color="#D1D5DB" />
-                                            <Text className="text-gray-500 dark:text-gray-400 font-bold mt-3">Upload Material</Text>
-                                            <Text className="text-gray-400 dark:text-gray-500 text-[10px] font-bold uppercase tracking-widest mt-1">PDF, DOCX, Images</Text>
+                                            <Upload size={24} color="#9CA3AF" />
+                                            <Text className="text-gray-900 dark:text-white font-bold mt-2">Upload Material</Text>
+                                            <Text className="text-gray-500 dark:text-gray-400 text-[10px] font-bold uppercase tracking-widest mt-1">PDF, DOCX, Images</Text>
                                         </View>
                                     )}
                                 </TouchableOpacity>
                             </View>
 
                             <TouchableOpacity
-                                className={`bg-[#FF6900] py-5 rounded-2xl items-center shadow-lg active:bg-orange-600 ${uploading ? 'opacity-70' : ''}`}
+                                className={`bg-[#FF6900] py-4 rounded-xl items-center ${uploading ? 'opacity-70' : ''}`}
                                 onPress={saveAssignment}
                                 disabled={uploading}
+                                activeOpacity={0.7}
                             >
                                 {uploading ? (
                                     <ActivityIndicator color="white" />
                                 ) : (
                                     <Text className="text-white font-bold text-lg">
-                                        {editingAssignment ? "Update Assignment" : "Publish Assignment"}
+                                        {editingAssignment ? "Update" : "Publish"}
                                     </Text>
                                 )}
                             </TouchableOpacity>

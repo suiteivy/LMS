@@ -48,80 +48,35 @@ export default function MasterDashboard() {
         }
     };
 
+    const onRefresh = async () => {
+        setRefreshing(true);
+        await fetchStats();
+    };
+
     useEffect(() => {
         fetchStats();
     }, []);
 
-    const themeColors = {
-        bg: isDark ? '#0F0B2E' : '#f8fafc',
-        card: isDark ? '#13103A' : '#ffffff',
-        text: isDark ? '#ffffff' : '#0f172a',
-        subtext: isDark ? '#94a3b8' : '#64748b',
-        border: isDark ? 'rgba(255,255,255,0.05)' : '#e2e8f0',
-        primary: '#FF6B00'
-    };
-
-    const onRefresh = () => {
-        setRefreshing(true);
-        fetchStats();
-    };
-
-    if (loading) {
-        return (
-            <View style={{ flex: 1, backgroundColor: themeColors.bg, justifyContent: 'center', alignItems: 'center' }}>
-                <ActivityIndicator size="large" color={themeColors.primary} />
-            </View>
-        );
-    }
-
-    const StatCard = ({ title, value, icon, color = themeColors.primary }: any) => (
-        <View style={{
-            backgroundColor: themeColors.card,
-            padding: 20,
-            borderRadius: 16,
-            borderWidth: 1,
-            borderColor: themeColors.border,
-            marginBottom: 16,
-            flexDirection: 'row',
-            alignItems: 'center',
-            boxShadow: [{ offsetX: 0, offsetY: 2, blurRadius: 8, color: 'rgba(0, 0, 0, 0.1)' }],
-            shadowColor: '#000',
-            shadowOffset: { width: 0, height: 2 },
-            shadowOpacity: 0.1,
-            shadowRadius: 8,
-            elevation: 2
-        }}>
-            <View style={{
-                width: 48, height: 48, borderRadius: 12, backgroundColor: `${color}15`,
-                alignItems: 'center', justifyContent: 'center', marginRight: 16
-            }}>
-                <MaterialCommunityIcons name={icon} size={24} color={color} />
-            </View>
-            <View>
-                <Text style={{ fontSize: 13, fontWeight: '600', color: themeColors.subtext, marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5 }}>{title}</Text>
-                <Text style={{ fontSize: 28, fontWeight: '800', color: themeColors.text }}>{value}</Text>
-            </View>
-        </View>
-    );
-
     return (
-        <SafeAreaView style={{ flex: 1, backgroundColor: themeColors.bg }} edges={['top', 'left', 'right']}>
+        <SafeAreaView className="flex-1 bg-[#FFFFFF] dark:bg-[#0D1117]" edges={['top', 'left', 'right']}>
             {/* Header */}
-            <View style={{ paddingHorizontal: 20, paddingTop: 10, paddingBottom: 20 }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-                    <View style={{ backgroundColor: `${themeColors.primary}20`, padding: 8, borderRadius: 10 }}>
-                        <MaterialCommunityIcons name="shield-crown" size={24} color={themeColors.primary} />
+            <View className="px-5 pt-3 pb-5">
+                <View className="flex-row items-center gap-3">
+                    <View className="mr-2">
+                        <MaterialCommunityIcons name="shield-crown" size={24} color="#FF6900" />
                     </View>
                     <View>
-                        <Text style={{ fontSize: 24, fontWeight: '800', color: themeColors.text }}>Platform Admin</Text>
-                        <Text style={{ fontSize: 14, color: themeColors.subtext, marginTop: 2 }}>Global Platform Control</Text>
+                        <Text className="text-gray-900 dark:text-white text-2xl font-black">Platform Admin</Text>
+                        <Text className="text-gray-500 dark:text-gray-400 text-xs uppercase tracking-widest mt-1">Global Platform Control</Text>
                     </View>
                 </View>
             </View>
 
             <ScrollView
-                contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 40 }}
-                refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={themeColors.primary} />}
+                className="flex-1"
+                showsVerticalScrollIndicator={false}
+                contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 60 }}
+                refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#FF6900" colors={["#FF6900"]} />}
             >
                 {/* Log out link */}
                 <View className="flex-row justify-end mb-6 px-2">
@@ -149,45 +104,39 @@ export default function MasterDashboard() {
                         <Text style={{ marginLeft: 8, color: '#ef4444', fontWeight: 'bold', fontSize: 10, letterSpacing: 1, textTransform: 'uppercase' }}>Logout</Text>
                     </TouchableOpacity>
                 </View>
-                <Text style={{ fontSize: 18, fontWeight: '700', color: themeColors.text, marginBottom: 16 }}>Overview</Text>
+                <Text style={{ fontSize: 18, fontWeight: '700', color: isDark ? '#ffffff' : '#111827', marginBottom: 16 }}>Overview</Text>
 
                 {stats ? (
-                    <>
-                        <StatCard
-                            title="Registered Institutions"
-                            value={stats.totalInstitutions || 0}
-                            icon="domain"
-                            color="#3b82f6"
-                        />
-                        <StatCard
-                            title="Active Subscriptions"
-                            value={stats.activeSubscriptions || 0}
-                            icon="check-decagram"
-                            color="#10b981"
-                        />
-                        <StatCard
-                            title="Total Users"
-                            value={stats.totalUsers || 0}
-                            icon="account-group"
-                            color="#8b5cf6"
-                        />
-                        <StatCard
-                            title="Platform Revenue (Recorded)"
-                            value={`KES ${(stats.totalRevenue || 0).toLocaleString()}`}
-                            icon="currency-usd"
-                            color={themeColors.primary}
-                        />
-                    </>
+                    <View className="flex-row flex-wrap justify-between">
+                        <View className="w-[48%] mb-6">
+                            <Text className="text-gray-500 dark:text-gray-400 text-xs uppercase tracking-widest mb-1">Institutions</Text>
+                            <Text className="text-gray-900 dark:text-white text-3xl font-black">{stats.totalInstitutions || 0}</Text>
+                        </View>
+                        <View className="w-[48%] mb-6">
+                            <Text className="text-gray-500 dark:text-gray-400 text-xs uppercase tracking-widest mb-1">Subscriptions</Text>
+                            <Text className="text-gray-900 dark:text-white text-3xl font-black">{stats.activeSubscriptions || 0}</Text>
+                        </View>
+                        <View className="w-[48%] mb-6">
+                            <Text className="text-gray-500 dark:text-gray-400 text-xs uppercase tracking-widest mb-1">Total Users</Text>
+                            <Text className="text-gray-900 dark:text-white text-3xl font-black">{stats.totalUsers || 0}</Text>
+                        </View>
+                        <View className="w-[48%] mb-6">
+                            <Text className="text-gray-500 dark:text-gray-400 text-xs uppercase tracking-widest mb-1">Revenue</Text>
+                            <Text className="text-gray-900 dark:text-white text-3xl font-black" adjustsFontSizeToFit numberOfLines={1}>
+                                KES {(stats.totalRevenue || 0).toLocaleString()}
+                            </Text>
+                        </View>
+                    </View>
                 ) : (
-                    <Text style={{ color: themeColors.subtext }}>Failed to load stats.</Text>
+                    <Text className="text-gray-500 dark:text-gray-400 text-sm">Failed to load stats.</Text>
                 )}
 
-                <View style={{ marginTop: 24, backgroundColor: themeColors.card, borderRadius: 16, padding: 20, borderWidth: 1, borderColor: themeColors.border }}>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 16 }}>
-                        <MaterialCommunityIcons name="information" size={24} color={themeColors.primary} style={{ marginRight: 8 }} />
-                        <Text style={{ fontSize: 16, fontWeight: '700', color: themeColors.text }}>Master Platform Admin Privileges</Text>
+                <View className="bg-[#F6F8FA] dark:bg-[#161B22] border border-[#D0D7DE] dark:border-[#21262D] rounded-xl p-5 mt-4">
+                    <View className="flex-row items-center mb-3">
+                        <MaterialCommunityIcons name="information" size={20} color="#FF6900" style={{ marginRight: 8 }} />
+                        <Text className="text-gray-900 dark:text-white font-bold text-base">Admin Privileges</Text>
                     </View>
-                    <Text style={{ color: themeColors.subtext, lineHeight: 22 }}>
+                    <Text className="text-gray-500 dark:text-gray-400 text-sm">
                         You have full read access to all registered institutions on the platform. Manage subscriptions, dispatch app updates, and oversee global operations from the bottom tabs.
                     </Text>
                 </View>

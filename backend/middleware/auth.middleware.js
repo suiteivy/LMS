@@ -322,6 +322,14 @@ async function authMiddleware(req, res, next) {
       return res.status(403).json({ error: "User role not found in profile" });
     }
 
+    req.isDemo = !!(user.user_metadata?.id_demo)
+    if(req.isDemo) {
+      req.institution_id = process.env.TEMPLATE_INSTITUTION_ID
+      if(req.userRole === 'teacher') {
+        req.teacherId = process.env.TEMPLATE_TEACHER_ID
+      }
+    }
+
     next();
   } catch (err) {
     console.error("authMiddleware unexpected error:", err);
@@ -330,3 +338,9 @@ async function authMiddleware(req, res, next) {
 }
 
 module.exports = { authMiddleware };
+
+function clearUserCache(userId) {
+  profileCache.delete(userId);
+}
+
+module.exports = { authMiddleware, clearUserCache };

@@ -1,5 +1,7 @@
 import { UnifiedHeader } from "@/components/common/UnifiedHeader";
 import { ParentService } from "@/services/ParentService";
+import { useAuth } from "@/contexts/AuthContext";
+import Toast from 'react-native-toast-message';
 import { router, useLocalSearchParams } from "expo-router";
 import { ArrowDownLeft, ArrowUpRight, Award, CreditCard, Info, Wallet } from "lucide-react-native";
 import React, { useEffect, useState } from "react";
@@ -18,6 +20,7 @@ import { useRealtimeQuery } from "@/hooks/useRealtimeQuery";
 
 export default function StudentFinancePage() {
   const { studentId, studentName } = useLocalSearchParams<{ studentId: string; studentName?: string }>();
+  const { isDemo } = useAuth();
   const { isDark } = useTheme();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -101,17 +104,17 @@ export default function StudentFinancePage() {
           showNotification={false}
         />
         <View className="flex-1 items-center justify-center p-8">
-          <View className="bg-white dark:bg-navy-surface p-10 rounded-[40px] border border-gray-100 dark:border-gray-800 items-center" style={{ width: '100%' }}>
+          <View className="bg-[#FFFFFF] dark:bg-[#0D1117]-surface p-10 rounded-xl border border-[#D0D7DE] dark:border-[#21262D] items-center" style={{ width: '100%' }}>
             <CreditCard size={40} color="#FF6900" style={{ opacity: 0.6 }} />
             <Text className="text-gray-900 dark:text-white font-bold text-lg text-center mt-6 tracking-tight">
               Select a Child First
             </Text>
-            <Text className="text-gray-400 dark:text-gray-500 text-sm text-center mt-3 leading-6">
+            <Text className="text-gray-500 dark:text-gray-400 text-sm text-center mt-3 leading-6">
               Go to the Home tab and tap a child&apos;s Finance card to view their fee statement.
             </Text>
             <TouchableOpacity
               onPress={() => router.replace("/(parent)" as any)}
-              className="mt-8 bg-[#FF6900] px-8 py-4 rounded-2xl"
+              className="mt-8 bg-[#FF6900] px-8 py-4 rounded-xl"
             >
               <Text className="text-white font-bold text-sm">Go to Home</Text>
             </TouchableOpacity>
@@ -168,13 +171,8 @@ export default function StudentFinancePage() {
                 blurRadius: 30,
                 color: 'rgba(0, 0, 0, 0.3)',
               }],
-              shadowColor: "#000",
-              shadowOffset: { width: 0, height: 15 },
-              shadowOpacity: 0.3,
-              shadowRadius: 30,
-              elevation: 20,
-            }}
-            className="bg-gray-900 p-8 rounded-[48px] mb-8"
+              }}
+            className="bg-gray-900 p-8 rounded-xl mb-8"
           >
             <View className="flex-row justify-between items-center mb-8">
               <View className="flex-1 mr-4">
@@ -192,7 +190,7 @@ export default function StudentFinancePage() {
             </View>
 
             {/* Progress Visual */}
-            <View className="bg-white/5 p-6 rounded-[32px] border border-white/5 mb-8">
+            <View className="bg-white/5 p-6 rounded-xl border border-white/5 mb-8">
               <View className="flex-row justify-between mb-3 px-1">
                 <Text className="text-white/40 text-[8px] font-bold uppercase tracking-widest">Fee Progress</Text>
                 <Text className="text-emerald-400 text-[8px] font-bold uppercase tracking-widest">Active Standing</Text>
@@ -216,7 +214,7 @@ export default function StudentFinancePage() {
 
           {/* Status Feedback */}
           {Number(balance) > 0 && (
-            <View className="p-6 rounded-[32px] mb-8 flex-row items-center border border-orange-100 dark:border-orange-900 bg-orange-50 dark:bg-orange-950/30">
+            <View className="p-6 rounded-xl mb-8 flex-row items-center border border-orange-100 dark:border-orange-900 bg-orange-50 dark:bg-orange-950/30">
               <View 
                 style={{
                   boxShadow: [{
@@ -225,13 +223,8 @@ export default function StudentFinancePage() {
                     blurRadius: 2,
                     color: 'rgba(0, 0, 0, 0.05)',
                   }],
-                  shadowColor: "#000",
-                  shadowOffset: { width: 0, height: 1 },
-                  shadowOpacity: 0.05,
-                  shadowRadius: 2,
-                  elevation: 1,
-                }}
-                className="w-10 h-10 rounded-2xl items-center justify-center bg-white"
+                  }}
+                className="w-10 h-10 rounded-xl items-center justify-center bg-white"
               >
                 <Info size={20} color="#FF6900" />
               </View>
@@ -253,13 +246,9 @@ export default function StudentFinancePage() {
                   blurRadius: 2,
                   color: isDark ? 'rgba(0, 0, 0, 0.4)' : 'rgba(0, 0, 0, 0.05)',
                 }],
-                shadowColor: "#000",
-                shadowOffset: { width: 0, height: 1 },
                 shadowOpacity: isDark ? 0.4 : 0.05,
-                shadowRadius: 2,
-                elevation: 2,
-              }}
-              className="flex-row items-center bg-white dark:bg-navy-surface px-4 py-2 rounded-xl border border-gray-100 dark:border-gray-800"
+                }}
+              className="flex-row items-center bg-[#FFFFFF] dark:bg-[#0D1117]-surface px-4 py-2 rounded-xl border border-[#D0D7DE] dark:border-[#21262D]"
             >
               <CreditCard size={14} color="#FF6900" />
               <Text className="text-gray-900 dark:text-white text-[10px] font-bold uppercase tracking-widest ml-2">Upload Evidence</Text>
@@ -267,8 +256,8 @@ export default function StudentFinancePage() {
           </View>
 
           {transactions.length === 0 ? (
-            <View className="bg-white dark:bg-navy-surface p-8 rounded-[40px] border border-dashed border-gray-100 dark:border-gray-800 items-center mb-8">
-              <Text className="text-gray-400 dark:text-gray-500 text-xs font-bold uppercase tracking-widest italic text-center">
+            <View className="bg-[#FFFFFF] dark:bg-[#0D1117]-surface p-8 rounded-xl border border-dashed border-[#D0D7DE] dark:border-[#21262D] items-center mb-8">
+              <Text className="text-gray-500 dark:text-gray-400 text-xs font-bold uppercase tracking-widest italic text-center">
                 No transactions recorded yet
               </Text>
             </View>
@@ -283,15 +272,11 @@ export default function StudentFinancePage() {
                     blurRadius: 2,
                     color: isDark ? 'rgba(0, 0, 0, 0.4)' : 'rgba(0, 0, 0, 0.05)',
                   }],
-                  shadowColor: "#000",
-                  shadowOffset: { width: 0, height: 1 },
                   shadowOpacity: isDark ? 0.4 : 0.05,
-                  shadowRadius: 2,
-                  elevation: 2,
-                }}
-                className="bg-white dark:bg-navy-surface p-5 rounded-[32px] mb-4 flex-row items-center border border-gray-50 dark:border-gray-800"
+                  }}
+                className="bg-[#FFFFFF] dark:bg-[#0D1117]-surface p-5 rounded-xl mb-4 flex-row items-center border border-[#D0D7DE] dark:border-[#21262D]"
               >
-                <View className={`w-12 h-12 rounded-2xl items-center justify-center mr-4 ${tx.direction === "inflow" ? "bg-green-50" : "bg-red-50"}`}>
+                <View className={`w-12 h-12 rounded-xl items-center justify-center mr-4 ${tx.direction === "inflow" ? "bg-green-50" : "bg-red-50"}`}>
                   {tx.direction === "inflow"
                     ? <ArrowDownLeft size={20} color="#10B981" />
                     : <ArrowUpRight size={20} color="#F43F5E" />}
@@ -327,13 +312,9 @@ export default function StudentFinancePage() {
                       blurRadius: 2,
                       color: isDark ? 'rgba(0, 0, 0, 0.4)' : 'rgba(0, 0, 0, 0.05)',
                     }],
-                    shadowColor: "#000",
-                    shadowOffset: { width: 0, height: 1 },
                     shadowOpacity: isDark ? 0.4 : 0.05,
-                    shadowRadius: 2,
-                    elevation: 1,
-                  }}
-                  className="bg-white dark:bg-navy-surface rounded-[28px] mb-4 border border-gray-100 dark:border-gray-800 overflow-hidden"
+                    }}
+                  className="bg-[#FFFFFF] dark:bg-[#0D1117]-surface rounded-[28px] mb-4 border border-[#D0D7DE] dark:border-[#21262D] overflow-hidden"
                 >
                   <View className="h-1.5 bg-emerald-500" />
                   <View className="p-5">
@@ -348,7 +329,7 @@ export default function StudentFinancePage() {
                       <Text className="text-gray-500 dark:text-gray-400 text-xs mb-3 leading-5">{item.bursary.description}</Text>
                     )}
 
-                    <View className="bg-gray-900 rounded-2xl p-4 flex-row justify-between items-center">
+                    <View className="bg-gray-900 rounded-xl p-4 flex-row justify-between items-center">
                       <View>
                         <Text className="text-white/40 text-[9px] font-bold uppercase tracking-widest mb-1">Amount Awarded</Text>
                         <Text className="text-white text-2xl font-black">{formatCurrency(item.amount_awarded || item.bursary?.amount || 0)}</Text>
@@ -379,7 +360,7 @@ export default function StudentFinancePage() {
                 </View>
               ))
             ) : (
-              <View className="bg-white dark:bg-navy-surface p-8 rounded-[40px] border border-dashed border-gray-100 dark:border-gray-800 items-center">
+              <View className="bg-[#FFFFFF] dark:bg-[#0D1117]-surface p-8 rounded-xl border border-dashed border-[#D0D7DE] dark:border-[#21262D] items-center">
                 <Award size={36} color="#E5E7EB" />
                 <Text className="text-gray-400 text-sm font-bold text-center mt-4">No approved bursaries</Text>
               </View>
@@ -398,7 +379,7 @@ export default function StudentFinancePage() {
       >
         <View className="flex-1 justify-end bg-black/60">
           <BlurView intensity={20} tint={isDark ? "dark" : "light"} className="absolute inset-0" />
-          <View className="bg-white dark:bg-navy-surface rounded-t-[48px] p-8 pb-12 border-t border-gray-100 dark:border-gray-800">
+          <View className="bg-[#FFFFFF] dark:bg-[#0D1117]-surface rounded-t-[48px] p-8 pb-12 border-t border-[#D0D7DE] dark:border-[#21262D]">
             <View className="flex-row justify-between items-center mb-8">
               <View>
                 <Text className="text-gray-900 dark:text-white font-black text-2xl tracking-tighter">Submit Evidence</Text>
@@ -422,7 +403,7 @@ export default function StudentFinancePage() {
                       <TouchableOpacity
                         key={fee.id}
                         onPress={() => setSelectedFeeId(fee.id)}
-                        className={`px-4 py-3 rounded-2xl border ${selectedFeeId === fee.id ? 'bg-[#FF6900] border-[#FF6900]' : 'bg-gray-50 dark:bg-gray-800 border-gray-100 dark:border-gray-700'}`}
+                        className={`px-4 py-3 rounded-xl border ${selectedFeeId === fee.id ? 'bg-[#FF6900] border-[#FF6900]' : 'bg-gray-50 dark:bg-gray-800 border-[#D0D7DE] dark:border-[#21262D]'}`}
                       >
                         <Text className={`text-xs font-bold ${selectedFeeId === fee.id ? 'text-white' : 'text-gray-600 dark:text-gray-400'}`}>
                           {fee.title}
@@ -441,7 +422,7 @@ export default function StudentFinancePage() {
                     placeholder="e.g. 50000"
                     placeholderTextColor={isDark ? "#4B5563" : "#9CA3AF"}
                     keyboardType="numeric"
-                    className="bg-gray-50 dark:bg-gray-800 p-5 rounded-2xl text-gray-900 dark:text-white font-bold"
+                    className="bg-gray-50 dark:bg-gray-800 p-5 rounded-xl text-gray-900 dark:text-white font-bold"
                   />
                 </View>
 
@@ -454,7 +435,7 @@ export default function StudentFinancePage() {
                     placeholder="e.g. QXJ82910XX"
                     placeholderTextColor={isDark ? "#4B5563" : "#9CA3AF"}
                     autoCapitalize="characters"
-                    className="bg-gray-50 dark:bg-gray-800 p-5 rounded-2xl text-gray-900 dark:text-white font-bold"
+                    className="bg-gray-50 dark:bg-gray-800 p-5 rounded-xl text-gray-900 dark:text-white font-bold"
                   />
                 </View>
 
@@ -464,7 +445,7 @@ export default function StudentFinancePage() {
                     const res = await DocumentPicker.getDocumentAsync({ type: ['image/*', 'application/pdf'] });
                     if (!res.canceled) setSelectedFile(res.assets[0]);
                   }}
-                  className="mt-6 border-2 border-dashed border-gray-100 dark:border-gray-800 rounded-3xl p-8 items-center justify-center bg-gray-50/50 dark:bg-gray-800/20"
+                  className="mt-6 border-2 border-dashed border-[#D0D7DE] dark:border-[#21262D] rounded-xl p-8 items-center justify-center bg-gray-50/50 dark:bg-gray-800/20"
                 >
                   {selectedFile ? (
                     <View className="items-center">
@@ -474,7 +455,7 @@ export default function StudentFinancePage() {
                     </View>
                   ) : (
                     <View className="items-center">
-                      <View className="w-12 h-12 bg-[#FF6900]/10 rounded-2xl items-center justify-center mb-3">
+                      <View className="w-12 h-12 bg-[#FF6900]/10 rounded-xl items-center justify-center mb-3">
                         <Upload size={24} color="#FF6900" />
                       </View>
                       <Text className="text-gray-900 dark:text-white font-bold text-sm">Select Receipt / Proof</Text>
@@ -487,6 +468,30 @@ export default function StudentFinancePage() {
                 <TouchableOpacity
                   disabled={isUploading || !amount || !reference || !selectedFile}
                   onPress={async () => {
+                    if (isDemo) {
+                      const newTx = {
+                        id: Math.random().toString(),
+                        amount: parseFloat(amount),
+                        direction: 'inflow',
+                        type: 'Fee Payment (Pending Verification)',
+                        date: new Date().toISOString(),
+                        description: `Evidence Submitted (Ref: ${reference})`
+                      };
+                      setFinanceData((prev: any) => ({
+                        ...prev,
+                        transactions: [newTx, ...(prev?.transactions || [])]
+                      }));
+                      setShowUploadModal(false);
+                      setAmount("");
+                      setReference("");
+                      setSelectedFile(null);
+                      Toast.show({
+                        type: 'success',
+                        text1: 'Done',
+                        text2: 'Changes saved.'
+                      });
+                      return;
+                    }
                     try {
                       setIsUploading(true);
                       
@@ -533,7 +538,7 @@ export default function StudentFinancePage() {
                       setIsUploading(false);
                     }
                   }}
-                  className={`mt-10 p-5 rounded-2xl items-center justify-center ${isUploading || !amount || !reference || !selectedFile ? 'bg-gray-200 dark:bg-gray-800' : 'bg-[#FF6900]'}`}
+                  className={`mt-10 p-5 rounded-xl items-center justify-center ${isUploading || !amount || !reference || !selectedFile ? 'bg-gray-200 dark:bg-gray-800' : 'bg-[#FF6900]'}`}
                 >
                   {isUploading ? (
                     <ActivityIndicator color="white" />

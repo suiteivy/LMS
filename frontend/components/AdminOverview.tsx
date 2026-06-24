@@ -58,9 +58,7 @@ export default function AdminOverview() {
                     marginBottom: 16,
                     marginHorizontal: 4,
                     boxShadow: isDark ? undefined : [{ offsetX: 0, offsetY: 0, blurRadius: 4, color: 'rgba(0, 0, 0, 0.05)' }],
-                    shadowColor: "#000",
                     shadowOpacity: isDark ? 0 : 0.05,
-                    shadowRadius: 4,
                     elevation: isDark ? 0 : 2,
                 }}
             >
@@ -125,9 +123,7 @@ export default function AdminOverview() {
                             borderColor: tokens.border,
                             padding: 16,
                             boxShadow: isDark ? undefined : [{ offsetX: 0, offsetY: 0, blurRadius: 4, color: 'rgba(0, 0, 0, 0.05)' }],
-                            shadowColor: "#000",
                             shadowOpacity: isDark ? 0 : 0.05,
-                            shadowRadius: 4,
                             elevation: isDark ? 0 : 2,
                         }}
                     >

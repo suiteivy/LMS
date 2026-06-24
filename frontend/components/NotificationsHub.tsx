@@ -16,22 +16,21 @@ export const NotificationsHub = () => {
   }, []);
 
   const tokens = {
-    surface:      isDark ? '#0F0B2E' : '#ffffff',
-    surfaceAlt:   isDark ? '#1A1650' : '#f9fafb',
-    border:       isDark ? 'rgba(255,255,255,0.1)' : '#f3f4f6',
-    textPrimary:  isDark ? '#ffffff' : '#111827',
-    textSecondary:isDark ? '#9ca3af' : '#6b7280',
-    textMuted:    isDark ? '#6b7280' : '#9ca3af',
-    unreadBg:     isDark ? 'rgba(255,105,0,0.1)' : 'rgba(255,247,237,0.8)',
-    unreadBorder: isDark ? 'rgba(255,105,0,0.2)' : '#fed7aa',
-    readBorder:   isDark ? 'rgba(255,255,255,0.05)' : '#f9fafb',
+    surface:      isDark ? '#0D1117' : '#FFFFFF',
+    surfaceAlt:   isDark ? '#161B22' : '#F6F8FA',
+    border:       isDark ? '#21262D' : '#D0D7DE',
+    textPrimary:  isDark ? '#FFFFFF' : '#111827',
+    textSecondary:isDark ? '#9CA3AF' : '#6B7280',
+    textMuted:    isDark ? '#4B5563' : '#9CA3AF',
+    unreadBg:     isDark ? 'rgba(255, 105, 0, 0.1)' : '#FFF3EB',
+    unreadBorder: isDark ? 'rgba(255, 105, 0, 0.3)' : '#FFB085',
   };
 
   const iconBg = (type: string) => {
-    if (type === 'error')   return isDark ? 'rgba(127,29,29,0.3)'  : '#fef2f2';
-    if (type === 'success') return isDark ? 'rgba(6,78,59,0.3)'    : '#f0fdf4';
-    if (type === 'warning') return isDark ? 'rgba(120,53,15,0.3)'  : '#fffbeb';
-    return isDark ? 'rgba(30,58,138,0.3)' : '#eff6ff';
+    if (type === 'error')   return isDark ? 'rgba(239, 68, 68, 0.2)'  : '#fef2f2';
+    if (type === 'success') return isDark ? 'rgba(16, 185, 129, 0.2)' : '#f0fdf4';
+    if (type === 'warning') return isDark ? 'rgba(245, 158, 11, 0.2)' : '#fffbeb';
+    return isDark ? 'rgba(59, 130, 246, 0.2)' : '#eff6ff';
   };
 
   return (
@@ -40,27 +39,28 @@ export const NotificationsHub = () => {
         title="Portal" 
         subtitle="Notifications" 
         role="Teacher" // This should ideally be passed in or derived from context
-        onBack={() => router.navigate('/(admin)')}
+        onBack={() => router.back()}
       />
       
       <View style={{
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        paddingHorizontal: 24,
+        paddingHorizontal: 20,
         paddingVertical: 16,
         borderBottomWidth: 1,
         borderBottomColor: tokens.border,
       }}>
-        <Text style={{ fontSize: 14, fontWeight: '700', color: tokens.textSecondary, textTransform: 'uppercase', letterSpacing: 1 }}>
+        <Text style={{ fontSize: 12, fontWeight: '700', color: tokens.textSecondary, textTransform: 'uppercase', letterSpacing: 1 }}>
             Recent Activities
         </Text>
         {notifications.length > 0 && (
           <TouchableOpacity
             onPress={clearAll}
+            activeOpacity={0.7}
             style={{ paddingHorizontal: 12, paddingVertical: 6, backgroundColor: isDark ? 'rgba(239, 68, 68, 0.1)' : '#fef2f2', borderRadius: 8 }}
           >
-            <Text style={{ color: '#ef4444', fontSize: 10, fontWeight: '700', textTransform: 'uppercase' }}>Clear All</Text>
+            <Text style={{ color: '#ef4444', fontSize: 10, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1 }}>Clear All</Text>
           </TouchableOpacity>
         )}
       </View>
@@ -79,11 +79,11 @@ export const NotificationsHub = () => {
           </View>
         ) : notifications.length === 0 ? (
           <View style={{ padding: 64, alignItems: 'center' }}>
-            <View style={{ backgroundColor: tokens.surfaceAlt, padding: 32, borderRadius: 99, marginBottom: 20 }}>
-              <Bell size={64} color={tokens.textMuted} strokeWidth={1.5} />
+            <View style={{ backgroundColor: tokens.surfaceAlt, padding: 32, borderRadius: 24, marginBottom: 20, borderWidth: 1, borderColor: tokens.border }}>
+              <Bell size={40} color={tokens.textMuted} strokeWidth={2} />
             </View>
-            <Text style={{ color: tokens.textPrimary, fontWeight: '700', fontSize: 20 }}>All Caught Up!</Text>
-            <Text style={{ color: tokens.textMuted, marginTop: 12, textAlign: 'center', fontSize: 15, lineHeight: 22, paddingHorizontal: 20 }}>
+            <Text style={{ color: tokens.textPrimary, fontWeight: '900', fontSize: 20 }}>All Caught Up!</Text>
+            <Text style={{ color: tokens.textMuted, marginTop: 12, textAlign: 'center', fontSize: 14, lineHeight: 22, paddingHorizontal: 20 }}>
               Your notification center is clear. New updates will appear here in real-time.
             </Text>
           </View>
@@ -94,38 +94,33 @@ export const NotificationsHub = () => {
                 key={item.id}
                 style={{
                   flexDirection: 'row',
-                  padding: 20,
-                  marginBottom: 16,
-                  borderRadius: 24,
+                  padding: 16,
+                  marginBottom: 12,
+                  borderRadius: 12,
                   borderWidth: 1,
-                  backgroundColor: item.is_read ? tokens.surface : tokens.unreadBg,
+                  backgroundColor: item.is_read ? tokens.surfaceAlt : tokens.unreadBg,
                   borderColor: item.is_read ? tokens.border : tokens.unreadBorder,
-                  shadowColor: "#000",
-                  shadowOffset: { width: 0, height: 2 },
-                  shadowOpacity: item.is_read ? 0 : 0.05,
-                  shadowRadius: 4,
-                  elevation: item.is_read ? 0 : 2,
                 }}
               >
                 <View style={{ marginRight: 16, marginTop: 2 }}>
                   <View style={{
-                    width: 44,
-                    height: 44,
-                    borderRadius: 14,
+                    width: 40,
+                    height: 40,
+                    borderRadius: 10,
                     alignItems: 'center',
                     justifyContent: 'center',
                     backgroundColor: iconBg(item.type),
                   }}>
-                    {item.type === 'info'    && <Info size={22} color="#3b82f6" />}
-                    {item.type === 'success' && <CheckCircle size={22} color="#10b981" />}
-                    {item.type === 'warning' && <AlertCircle size={22} color="#f59e0b" />}
-                    {item.type === 'error'   && <AlertCircle size={22} color="#ef4444" />}
+                    {item.type === 'info'    && <Info size={20} color="#3b82f6" />}
+                    {item.type === 'success' && <CheckCircle size={20} color="#10b981" />}
+                    {item.type === 'warning' && <AlertCircle size={20} color="#f59e0b" />}
+                    {item.type === 'error'   && <AlertCircle size={20} color="#ef4444" />}
                   </View>
                 </View>
                 <View style={{ flex: 1 }}>
                   <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
                     <Text style={{ fontWeight: '700', fontSize: 15, color: tokens.textPrimary }}>{item.title}</Text>
-                    <Text style={{ fontSize: 9, color: tokens.textMuted, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                    <Text style={{ fontSize: 10, color: tokens.textMuted, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5 }}>
                       {formatDistanceToNow(new Date(item.created_at), { addSuffix: true })}
                     </Text>
                   </View>
@@ -133,9 +128,10 @@ export const NotificationsHub = () => {
                 </View>
                 <TouchableOpacity 
                   onPress={() => deleteNotification(item.id)}
+                  activeOpacity={0.7}
                   style={{ marginLeft: 12, padding: 8, justifyContent: 'center' }}
                 >
-                  <Trash2 size={18} color={tokens.textMuted} />
+                  <Trash2 size={16} color={tokens.textMuted} />
                 </TouchableOpacity>
               </View>
             ))}
@@ -143,13 +139,14 @@ export const NotificationsHub = () => {
             <TouchableOpacity
               style={{
                 marginTop: 24,
-                paddingVertical: 18,
+                paddingVertical: 16,
                 backgroundColor: tokens.surfaceAlt,
-                borderRadius: 20,
+                borderRadius: 12,
                 alignItems: 'center',
                 borderWidth: 1,
                 borderColor: tokens.border,
               }}
+              activeOpacity={0.7}
               onPress={markAllAsRead}
             >
               <Text style={{ color: tokens.textPrimary, fontWeight: '700', fontSize: 12, textTransform: 'uppercase', letterSpacing: 2 }}>

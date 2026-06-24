@@ -1,7 +1,6 @@
 import { useTheme } from "@/contexts/ThemeContext";
 import { FeeStructure } from "@/types/types";
 import React, { useState } from "react";
-import { formatCurrency } from "@/utils/currency";
 import {
   Alert,
   Modal,
@@ -97,8 +96,8 @@ const FeeStructureSection: React.FC<FeeStructureSectionProps> = ({
     setShowForm(false);
   };
 
-  const formatAmount = (amount: number) =>
-    formatCurrency(amount ?? 0);
+ const formatAmount = (amount: number) =>
+ new Intl.NumberFormat("en-KE", { style:"currency", currency:"KES" }).format(amount ?? 0);
 
   const renderFeeStructureItem = ({ item }: { item: FeeStructure }) => {
     // Support both old (Subject_name / base_fee) and new (title / amount) shapes
@@ -109,7 +108,7 @@ const FeeStructureSection: React.FC<FeeStructureSectionProps> = ({
     const displayDesc = (item as any).description;
 
     return (
-      <View className="bg-white dark:bg-navy-surface rounded-3xl p-6 mb-6 shadow-xl shadow-slate-200/50 dark:shadow-none border border-slate-100 dark:border-gray-800">
+      <View className="bg-[#FFFFFF] dark:bg-[#0D1117]-surface rounded-xl p-6 mb-6 shadow-xl shadow-slate-200/50 dark:shadow-none border border-slate-100 dark:border-gray-800">
         {/* Header */}
         <View className="flex-row justify-between items-start mb-5">
           <View className="flex-1 mr-3">
@@ -124,7 +123,7 @@ const FeeStructureSection: React.FC<FeeStructureSectionProps> = ({
                 <Text className="text-xs font-medium text-green-800 dark:text-green-400">Active</Text>
               </View>
             ) : (
-              <View className="px-2 py-1 bg-gray-100 dark:bg-gray-800 rounded-full">
+              <View className="px-2 py-1 bg-[#EAEEF2] dark:bg-[#1C2128] rounded-full">
                 <Text className="text-xs font-medium text-gray-600 dark:text-gray-400">Inactive</Text>
               </View>
             )}
@@ -135,7 +134,7 @@ const FeeStructureSection: React.FC<FeeStructureSectionProps> = ({
         </View>
 
         {/* Amount Block */}
-        <View className="bg-[#111827] rounded-3xl p-6 mb-5 border border-slate-800">
+        <View className="bg-[#111827] rounded-xl p-6 mb-5 border border-slate-800">
           <View className="flex-row justify-between items-center">
             <Text className="text-slate-400 text-sm font-semibold">Fee Amount</Text>
             <Text className="text-white text-2xl font-black">{formatAmount(displayAmount)}</Text>
@@ -144,7 +143,7 @@ const FeeStructureSection: React.FC<FeeStructureSectionProps> = ({
           {(displayTerm || displayYear) && (
             <View className="flex-row gap-3 mt-4 pt-4 border-t border-slate-800">
               {displayTerm && (
-                <View className="bg-orange-500/10 px-3 py-1 rounded-full border border-orange-500/20">
+                <View className="bg-[#FF6900]/10 px-3 py-1 rounded-full border border-orange-500/20">
                   <Text className="text-orange-400 text-xs font-bold">{displayTerm}</Text>
                 </View>
               )}
@@ -179,7 +178,7 @@ const FeeStructureSection: React.FC<FeeStructureSectionProps> = ({
           <Text className="text-gray-400 text-sm">Loading fee structures…</Text>
         </View>
       ) : feeStructures.length === 0 ? (
-        <View className="flex-1 items-center justify-center py-20 border border-dashed border-gray-200 dark:border-gray-700 rounded-3xl">
+        <View className="flex-1 items-center justify-center py-20 border border-dashed border-[#D0D7DE] dark:border-[#21262D] rounded-xl">
           <Text className="text-gray-400 font-bold text-center">No fee structures yet</Text>
           <Text className="text-gray-400 text-sm text-center mt-2">Tap &quot;+ New&quot; to create one.</Text>
         </View>
@@ -193,12 +192,12 @@ const FeeStructureSection: React.FC<FeeStructureSectionProps> = ({
 
       {/* ── Create / Edit Modal ── */}
       <Modal visible={showForm} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => { setShowForm(false); resetForm(); }}>
-        <ScrollView className="flex-1 bg-white dark:bg-navy" contentContainerStyle={{ padding: 24, paddingBottom: 80 }}>
+        <ScrollView className="flex-1 bg-[#FFFFFF] dark:bg-[#0D1117]" contentContainerStyle={{ padding: 24, paddingBottom: 80 }}>
           <View className="flex-row justify-between items-center mb-8">
             <Text className="text-gray-900 dark:text-white font-black text-2xl">
               {editingStructure ? "Edit Fee Structure" : "New Fee Structure"}
             </Text>
-            <TouchableOpacity onPress={() => { setShowForm(false); resetForm(); }} className="bg-gray-100 dark:bg-gray-800 w-10 h-10 rounded-full items-center justify-center">
+            <TouchableOpacity onPress={() => { setShowForm(false); resetForm(); }} className="bg-[#EAEEF2] dark:bg-[#1C2128] w-10 h-10 rounded-full items-center justify-center">
               <Text className="text-gray-600 dark:text-gray-400 font-bold text-lg">✕</Text>
             </TouchableOpacity>
           </View>
@@ -210,7 +209,7 @@ const FeeStructureSection: React.FC<FeeStructureSectionProps> = ({
             onChangeText={v => setFormData(p => ({ ...p, title: v }))}
             placeholder="e.g. Grade 10 Annual Fees"
             placeholderTextColor="#9CA3AF"
-            className="bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl px-4 py-4 text-gray-900 dark:text-white font-medium mb-5"
+            className="bg-[#EAEEF2] dark:bg-[#1C2128] border border-[#D0D7DE] dark:border-[#21262D] rounded-lg px-4 py-4 text-gray-900 dark:text-white font-medium mb-5"
           />
 
           {/* Description */}
@@ -222,18 +221,18 @@ const FeeStructureSection: React.FC<FeeStructureSectionProps> = ({
             placeholderTextColor="#9CA3AF"
             multiline
             numberOfLines={2}
-            className="bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl px-4 py-4 text-gray-900 dark:text-white font-medium mb-5"
+            className="bg-[#EAEEF2] dark:bg-[#1C2128] border border-[#D0D7DE] dark:border-[#21262D] rounded-lg px-4 py-4 text-gray-900 dark:text-white font-medium mb-5"
           />
 
           {/* Amount */}
-          <Text className="text-gray-700 dark:text-gray-300 font-bold mb-2 uppercase text-[10px] tracking-widest">Amount (KSh) *</Text>
+          <Text className="text-gray-700 dark:text-gray-300 font-bold mb-2 uppercase text-[10px] tracking-widest">Amount (KES) *</Text>
           <TextInput
             value={formData.amount}
             onChangeText={v => setFormData(p => ({ ...p, amount: v }))}
             placeholder="0.00"
             keyboardType="numeric"
             placeholderTextColor="#9CA3AF"
-            className="bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl px-4 py-4 text-gray-900 dark:text-white font-medium mb-5"
+            className="bg-[#EAEEF2] dark:bg-[#1C2128] border border-[#D0D7DE] dark:border-[#21262D] rounded-lg px-4 py-4 text-gray-900 dark:text-white font-medium mb-5"
           />
 
           {/* Academic Year */}
@@ -244,7 +243,7 @@ const FeeStructureSection: React.FC<FeeStructureSectionProps> = ({
             placeholder="2025"
             keyboardType="numeric"
             placeholderTextColor="#9CA3AF"
-            className="bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl px-4 py-4 text-gray-900 dark:text-white font-medium mb-5"
+            className="bg-[#EAEEF2] dark:bg-[#1C2128] border border-[#D0D7DE] dark:border-[#21262D] rounded-lg px-4 py-4 text-gray-900 dark:text-white font-medium mb-5"
           />
 
           {/* Term picker */}
@@ -254,7 +253,7 @@ const FeeStructureSection: React.FC<FeeStructureSectionProps> = ({
               <TouchableOpacity
                 key={t}
                 onPress={() => setFormData(p => ({ ...p, term: t }))}
-                className={`px-4 py-2 rounded-xl border ${formData.term === t ? 'bg-gray-900 border-gray-900' : 'bg-gray-100 dark:bg-gray-800 border-gray-200 dark:border-gray-700'}`}
+                className={`px-4 py-2 rounded-xl border ${formData.term === t ? 'bg-gray-900 border-gray-900' : 'bg-[#EAEEF2] dark:bg-[#1C2128] border-[#D0D7DE] dark:border-[#21262D]'}`}
               >
                 <Text className={`text-xs font-bold ${formData.term === t ? 'text-white' : 'text-gray-700 dark:text-gray-300'}`}>{t}</Text>
               </TouchableOpacity>
@@ -262,28 +261,28 @@ const FeeStructureSection: React.FC<FeeStructureSectionProps> = ({
           </View>
 
           {/* Active toggle */}
-          <View className="flex-row items-center justify-between bg-gray-50 dark:bg-gray-900 rounded-2xl px-4 py-4 mb-8 border border-gray-200 dark:border-gray-700">
+          <View className="flex-row items-center justify-between bg-[#EAEEF2] dark:bg-[#1C2128] rounded-lg px-4 py-4 mb-8 border border-[#D0D7DE] dark:border-[#21262D]">
             <Text className="text-gray-900 dark:text-white font-bold">Active</Text>
             <Switch
               value={formData.is_active}
               onValueChange={v => setFormData(p => ({ ...p, is_active: v }))}
-              trackColor={{ false: '#374151', true: '#FF6900' }}
-              thumbColor="white"
+              trackColor={{ false: isDark ? "#21262D" : "#D0D7DE", true: "#FF6900" }}
+              thumbColor="#ffffff"
             />
           </View>
 
           {/* Submit */}
           <TouchableOpacity
             onPress={handleSubmit}
-            className="bg-gray-900 py-5 rounded-2xl items-center"
+            className="bg-gray-900 py-5 rounded-lg items-center"
           >
             <Text className="text-white font-black text-base uppercase tracking-widest">
               {editingStructure ? "Save Changes" : "Create Fee Structure"}
             </Text>
           </TouchableOpacity>
-        </ScrollView>
-      </Modal>
-    </View>
+        </ScrollView >
+      </Modal >
+    </View >
   );
 };
 

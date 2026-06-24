@@ -12,12 +12,12 @@ import { HelpTooltip } from "./settings/HelpTooltip";
 import { SettingsWithManual } from "./settings/SettingsWithManual";
 
 interface SettingRowProps {
-    icon: LucideIcon;
-    title: string;
-    onPress?: () => void;
-    isLast?: boolean;
-    children?: ReactNode;
-    isDark?: boolean;
+ icon: LucideIcon;
+ title: string;
+ onPress?: () => void;
+ isLast?: boolean;
+ children?: ReactNode;
+ isDark?: boolean;
 }
 
 export default function TeacherSettings() {
@@ -83,13 +83,13 @@ export default function TeacherSettings() {
         <TouchableOpacity
             onPress={onPress}
             disabled={!onPress}
-            className={`flex-row items-center justify-between p-4 ${!isLast ? 'border-b border-gray-100 dark:border-gray-800' : ''}`}
+            className={`flex-row items-center justify-between p-4 ${!isLast ? 'border-b border-[#D0D7DE] dark:border-[#21262D]' : ''}`}
         >
             <View className="flex-row items-center flex-1">
-                <View className="p-2 bg-gray-50 dark:bg-gray-900 rounded-lg mr-3">
+                <View className="p-2 bg-[#E5E7EB] dark:bg-[#21262D] rounded-xl mr-3">
                     <Icon size={20} color="#FF6B00" />
                 </View>
-                <Text className="text-gray-700 dark:text-gray-200 font-medium text-base">{title}</Text>
+                <Text className="text-gray-900 dark:text-white font-medium text-base">{title}</Text>
             </View>
             {children ? children : <ChevronRight size={18} color={isDark ? "#4B5563" : "#9ca3af"} />}
         </TouchableOpacity>
@@ -121,11 +121,11 @@ export default function TeacherSettings() {
                     </SettingRow>
                 </View>
 
-                <Text className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest ml-1 mb-2">Teaching Preferences</Text>
+                <Text className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest ml-1 mb-2">Teaching Preferences</Text>
                 {prefsLoading ? (
                     <ActivityIndicator size="small" color="#FF6B00" style={{ marginBottom: 24 }} />
                 ) : (
-                    <View className="bg-white dark:bg-[#1a1a1a] rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm mb-6 overflow-hidden">
+                    <View className="bg-[#F6F8FA] dark:bg-[#161B22] rounded-3xl border border-[#D0D7DE] dark:border-[#21262D] mb-6 overflow-hidden">
                         <SettingRow icon={Bell} title="General Notifications" isDark={isDark}>
                             <HelpTooltip id="settings.notifications.general" role="teacher" tier={tier} onLearnMore={openManual} />
                             <Switch
@@ -147,10 +147,10 @@ export default function TeacherSettings() {
                     </View>
                 )}
 
-                <ProfileEdit
-                    visible={showEditForm}
-                    onClose={() => setShowEditForm(false)}
-                />
+ <ProfileEdit
+ visible={showEditForm}
+ onClose={() => setShowEditForm(false)}
+ />
 
                 <ChangePasswordModal
                     visible={showPasswordForm}

@@ -32,11 +32,11 @@ function SubjectDetailsScreen() {
     .filter((t) => (form.teacher_ids || []).includes(t.id))
     .map((t) => t.users?.full_name || t.id)
     .join(", ");
-  // const surface = isDark ? "#13103A" : "#ffffff";
-  const border = isDark ? "rgba(255,255,255,0.1)" : "#f3f4f6";
-  const inputBg = isDark ? "#1A1650" : "#f3f4f6";
-  const textPrimary = isDark ? "#f1f1f1" : "#111827";
-  const textMuted = isDark ? "#9ca3af" : "#9ca3af";
+  // const surface = isDark ? "#161B22" : "#F6F8FA";
+  const border = isDark ? "#21262D" : "#D0D7DE";
+  const inputBg = isDark ? "#0D1117" : "#FFFFFF";
+  const textPrimary = isDark ? "#FFFFFF" : "#111827";
+  const textMuted = isDark ? "#9ca3af" : "#6b7280";
 
   useEffect(() => {
     fetchSubject();
@@ -195,7 +195,7 @@ function SubjectDetailsScreen() {
           flex: 1,
           justifyContent: "center",
           alignItems: "center",
-          backgroundColor: isDark ? "#0F0B2E" : "#f9fafb",
+          backgroundColor: isDark ? "#0D1117" : "#FFFFFF"
         }}
       >
         <ActivityIndicator size="large" color="#FF6B00" />
@@ -210,7 +210,7 @@ function SubjectDetailsScreen() {
           flex: 1,
           justifyContent: "center",
           alignItems: "center",
-          backgroundColor: isDark ? "#0F0B2E" : "#f9fafb",
+          backgroundColor: isDark ? "#0D1117" : "#FFFFFF"
         }}
       >
         <Text style={{ color: textPrimary }}>Subject not found.</Text>
@@ -220,10 +220,11 @@ function SubjectDetailsScreen() {
 
   return (
     <ScrollView
-      style={{ flex: 1, backgroundColor: isDark ? "#0F0B2E" : "#f9fafb" }}
+      style={{ flex: 1, backgroundColor: isDark ? "#0D1117" : "#FFFFFF" }}
+      contentContainerStyle={{ paddingBottom: 100 }}
     >
       <View
-        style={{ flex: 1, backgroundColor: isDark ? "#0F0B2E" : "#f9fafb" }}
+        style={{ flex: 1, backgroundColor: isDark ? "#0D1117" : "#FFFFFF" }}
       >
         <UnifiedHeader
           title="Subject Details"

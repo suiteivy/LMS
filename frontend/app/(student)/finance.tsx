@@ -123,7 +123,7 @@ export default function StudentFinancePage() {
             />
 
             {/* Tab Selector */}
-            <View className="flex-row mx-4 mt-4 mb-2 bg-white dark:bg-[#1a1a1a] rounded-2xl p-1 border border-gray-100 dark:border-gray-800">
+            <View className="flex-row mx-4 mt-4 mb-2 bg-[#FFFFFF] dark:bg-[#0D1117] rounded-xl p-1 border border-[#D0D7DE] dark:border-[#21262D]">
                 {([
                     { key: 'fees', label: 'Fees & Payments', icon: CreditCard },
                     { key: 'bursaries', label: 'Bursaries', icon: Award },
@@ -153,13 +153,8 @@ export default function StudentFinancePage() {
                                         blurRadius: 30,
                                         color: 'rgba(0, 0, 0, 0.3)',
                                     }],
-                                    shadowColor: "#000",
-                                    shadowOffset: { width: 0, height: 15 },
-                                    shadowOpacity: 0.3,
-                                    shadowRadius: 30,
-                                    elevation: 20,
-                                }}
-                                className="bg-gray-900 p-8 rounded-[48px] mb-8"
+                                    }}
+                                className="bg-gray-900 p-8 rounded-xl mb-8"
                             >
                                 <View className="flex-row justify-between items-center mb-6">
                                     <View>
@@ -193,7 +188,7 @@ export default function StudentFinancePage() {
                             </View>
 
                             {/* Status Info */}
-                             <View className={`p-6 rounded-[32px] mb-8 flex-row items-center border ${financeData?.balance > 0 ? 'bg-orange-50 dark:bg-orange-950/30 border-orange-100 dark:border-orange-900' : 'bg-green-50 dark:bg-green-950/30 border-green-100 dark:border-green-900'}`}>
+                             <View className={`p-6 rounded-xl mb-8 flex-row items-center border ${financeData?.balance > 0 ? 'bg-orange-50 dark:bg-orange-950/30 border-orange-100 dark:border-orange-900' : 'bg-green-50 dark:bg-green-950/30 border-green-100 dark:border-green-900'}`}>
                                  <View 
                                      style={{
                                          boxShadow: financeData?.balance > 0 ? [{
@@ -213,7 +208,7 @@ export default function StudentFinancePage() {
                                          shadowRadius: financeData?.balance > 0 ? 2 : 12,
                                          elevation: financeData?.balance > 0 ? 2 : 8,
                                      }}
-                                     className={`w-10 h-10 rounded-2xl items-center justify-center ${financeData?.balance > 0 ? 'bg-white' : 'bg-green-500'}`}
+                                     className={`w-10 h-10 rounded-xl items-center justify-center ${financeData?.balance > 0 ? 'bg-white' : 'bg-green-500'}`}
                                  >
                                      <Info size={20} color={financeData?.balance > 0 ? "#FF6900" : "white"} />
                                  </View>
@@ -235,13 +230,9 @@ export default function StudentFinancePage() {
                                              blurRadius: 2,
                                              color: isDark ? 'rgba(0, 0, 0, 0.4)' : 'rgba(0, 0, 0, 0.08)',
                                          }],
-                                         shadowColor: "#000",
-                                         shadowOffset: { width: 0, height: 1 },
                                          shadowOpacity: isDark ? 0.4 : 0.08,
-                                         shadowRadius: 2,
-                                         elevation: 2,
-                                     }}
-                                     className="flex-row items-center bg-white dark:bg-[#1a1a1a] px-4 py-2 rounded-xl border border-gray-100 dark:border-gray-700"
+                                         }}
+                                     className="flex-row items-center bg-[#FFFFFF] dark:bg-[#0D1117] px-4 py-2 rounded-xl border border-[#D0D7DE] dark:border-[#21262D]"
                                  >
                                      <CreditCard size={14} color="#FF6900" />
                                      <Text className="text-gray-900 dark:text-white text-[10px] font-bold uppercase tracking-widest ml-2">Pay Fees</Text>
@@ -259,15 +250,11 @@ export default function StudentFinancePage() {
                                                  blurRadius: 2,
                                                  color: isDark ? 'rgba(0, 0, 0, 0.4)' : 'rgba(0, 0, 0, 0.08)',
                                              }],
-                                             shadowColor: "#000",
-                                             shadowOffset: { width: 0, height: 1 },
                                              shadowOpacity: isDark ? 0.4 : 0.08,
-                                             shadowRadius: 2,
-                                             elevation: 2,
-                                         }}
-                                         className="bg-white dark:bg-[#1a1a1a] p-5 rounded-[32px] mb-4 flex-row items-center border border-gray-50 dark:border-gray-800"
+                                             }}
+                                         className="bg-[#FFFFFF] dark:bg-[#0D1117] p-5 rounded-xl mb-4 flex-row items-center border border-[#D0D7DE] dark:border-[#21262D]"
                                      >
-                                        <View className={`w-12 h-12 rounded-2xl items-center justify-center mr-4 ${tx.direction === 'inflow' ? 'bg-green-50' : 'bg-red-50'}`}>
+                                        <View className={`w-12 h-12 rounded-xl items-center justify-center mr-4 ${tx.direction === 'inflow' ? 'bg-green-50' : 'bg-red-50'}`}>
                                             {tx.direction === 'inflow' ? <ArrowDownLeft size={20} color="#16a34a" /> : <ArrowUpRight size={20} color="#dc2626" />}
                                         </View>
                                         <View className="flex-1">
@@ -283,7 +270,7 @@ export default function StudentFinancePage() {
                                     </View>
                                 ))
                             ) : (
-                                <View className="bg-white dark:bg-[#1a1a1a] p-20 rounded-[48px] items-center border border-gray-100 dark:border-gray-700 border-dashed mt-4">
+                                <View className="bg-[#FFFFFF] dark:bg-[#0D1117] p-20 rounded-xl items-center border border-[#D0D7DE] dark:border-[#21262D] border-dashed mt-4">
                                     <Receipt size={48} color="#E5E7EB" />
                                     <Text className="text-gray-400 font-bold text-center mt-6">Void Transaction Hub</Text>
                                 </View>
@@ -307,13 +294,9 @@ export default function StudentFinancePage() {
                                                  blurRadius: 2,
                                                  color: isDark ? 'rgba(0, 0, 0, 0.4)' : 'rgba(0, 0, 0, 0.08)',
                                              }],
-                                             shadowColor: "#000",
-                                             shadowOffset: { width: 0, height: 1 },
                                              shadowOpacity: isDark ? 0.4 : 0.08,
-                                             shadowRadius: 2,
-                                             elevation: 2,
-                                         }}
-                                         className="bg-white dark:bg-[#1a1a1a] rounded-[32px] mb-5 border border-gray-100 dark:border-gray-800 overflow-hidden"
+                                             }}
+                                         className="bg-[#FFFFFF] dark:bg-[#0D1117] rounded-xl mb-5 border border-[#D0D7DE] dark:border-[#21262D] overflow-hidden"
                                      >
                                         {/* Accent bar */}
                                         <View className="h-1.5 bg-emerald-500" />
@@ -332,7 +315,7 @@ export default function StudentFinancePage() {
                                             )}
 
                                             {/* Award amount */}
-                                            <View className="bg-gray-900 rounded-3xl p-5 mb-4 flex-row justify-between items-center">
+                                            <View className="bg-gray-900 rounded-xl p-5 mb-4 flex-row justify-between items-center">
                                                 <View>
                                                     <Text className="text-white/40 text-[9px] font-bold uppercase tracking-widest mb-1">Amount Awarded</Text>
                                                     <Text className="text-white text-3xl font-black">{formatKES(item.amount_awarded || item.bursary?.amount || 0)}</Text>
@@ -354,8 +337,8 @@ export default function StudentFinancePage() {
                                                     </View>
                                                 )}
                                                 {item.notes && (
-                                                    <View className="bg-blue-50 dark:bg-blue-950/30 px-4 py-2 rounded-xl flex-row items-center gap-2">
-                                                        <Text className="text-xs text-blue-700 dark:text-blue-400 font-medium">{item.notes}</Text>
+                                                    <View className="bg-gray-100 dark:bg-gray-800 px-4 py-2 rounded-xl flex-row items-center gap-2">
+                                                        <Text className="text-xs text-gray-900 dark:text-gray-100 font-medium">{item.notes}</Text>
                                                     </View>
                                                 )}
                                             </View>
@@ -363,7 +346,7 @@ export default function StudentFinancePage() {
                                     </View>
                                 ))
                             ) : (
-                                <View className="bg-white dark:bg-[#1a1a1a] p-20 rounded-[48px] items-center border border-gray-100 dark:border-gray-700 border-dashed mt-4">
+                                <View className="bg-[#FFFFFF] dark:bg-[#0D1117] p-20 rounded-xl items-center border border-[#D0D7DE] dark:border-[#21262D] border-dashed mt-4">
                                     <Award size={48} color="#E5E7EB" />
                                     <Text className="text-gray-400 font-bold text-center mt-6">No approved bursaries yet</Text>
                                     <Text className="text-gray-400 text-sm text-center mt-2">Bursary approvals from your institution will appear here.</Text>

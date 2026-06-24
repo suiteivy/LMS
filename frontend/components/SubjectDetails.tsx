@@ -102,10 +102,7 @@ export const SubjectDetails: React.FC<SubjectDetailsProps> = ({
             borderRadius: 16,
             boxShadow: [{ offsetX: 0, offsetY: 0, blurRadius: 8, color: 'rgba(0,0,0,0.1)' }],
             shadowColor: '#000',
-            shadowOpacity: 0.1,
-            shadowRadius: 8,
-            elevation: 4
-          }}
+            }}
         >
           <Ionicons name="chevron-back" size={24} color="#111827" />
         </TouchableOpacity>
@@ -115,10 +112,7 @@ export const SubjectDetails: React.FC<SubjectDetailsProps> = ({
           borderRadius: 16,
           boxShadow: [{ offsetX: 0, offsetY: 0, blurRadius: 8, color: 'rgba(0,0,0,0.1)' }],
           shadowColor: '#000',
-          shadowOpacity: 0.1,
-          shadowRadius: 8,
-          elevation: 4
-        }}>
+          }}>
           <Ionicons name="share-social-outline" size={24} color="#111827" />
         </View>
       </View>
@@ -181,10 +175,7 @@ export const SubjectDetails: React.FC<SubjectDetailsProps> = ({
                   color: Subject.isEnrolled ? 'rgba(0,0,0,0.25)' : 'rgba(249,115,22,0.25)',
                 }],
                 shadowColor: Subject.isEnrolled ? '#000' : '#f97316',
-                shadowOpacity: 0.25,
-                shadowRadius: 12,
-                elevation: 4,
-              }}
+                }}
             >
               <Text style={{ color: '#ffffff', fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1, fontSize: 11 }}>
                 {enrolling ? "PROCESSING..." : Subject.isEnrolled ? "CONTINUE" : "ENROLL NOW"}
@@ -212,7 +203,6 @@ export const SubjectDetails: React.FC<SubjectDetailsProps> = ({
                   }],
                   shadowColor: activeTab === tab ? (isDark ? '#fff' : '#000') : 'transparent',
                   shadowOpacity: activeTab === tab ? 0.06 : 0,
-                  shadowRadius: 4,
                   elevation: activeTab === tab && !isDark ? 1 : 0,
                 }}
               >
@@ -266,10 +256,7 @@ export const SubjectDetails: React.FC<SubjectDetailsProps> = ({
                   marginBottom: 20,
                   boxShadow: [{ offsetX: 0, offsetY: 0, blurRadius: 12, color: 'rgba(0,0,0,0.06)' }],
                   shadowColor: '#000',
-                  shadowOpacity: 0.06,
-                  shadowRadius: 12,
-                  elevation: 3
-                }}>
+                  }}>
                   <Ionicons name="chatbubbles" size={30} color="#f97316" />
                 </View>
                 <Text style={{ fontSize: 18, fontWeight: '700', color: t.textPrimary, marginBottom: 8 }}>No Reviews Yet</Text>

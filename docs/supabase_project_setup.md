@@ -24,7 +24,7 @@ This guide will walk you through setting up a Supabase project for the Learning 
 
 1. **Access Project Settings**
    - Once your project is created, go to the project dashboard
-   - Click on the gear icon (âš™ï¸) in the left sidebar to access settings
+   - Click on the gear icon in the left sidebar to access settings
    - Select "API" from the settings menu
 
 2. **Copy Project URL and API Keys**

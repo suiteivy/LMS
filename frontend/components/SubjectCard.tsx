@@ -41,9 +41,7 @@ export const SubjectCard: React.FC<SubjectCardProps> = ({
       color: isDark ? 'transparent' : 'rgba(0,0,0,0.05)',
     }],
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
     shadowOpacity: isDark ? 0 : 0.05,
-    shadowRadius: 10,
     elevation: isDark ? 0 : 2,
   };
 

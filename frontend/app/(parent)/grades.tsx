@@ -222,14 +222,14 @@ export default function StudentGradesPage() {
       >
         <View className="p-4 md:p-8">
           {/* GPA Hero Section */}
-          <View className="bg-gray-900 p-8 rounded-[48px] shadow-2xl mb-8">
+          <View className="bg-gray-900 p-8 rounded-xl shadow-2xl mb-8">
             <View className="flex-row justify-between items-start mb-10">
               <View>
                 <Text className="text-white/40 text-[10px] font-bold uppercase tracking-[3px] mb-2">Cumulative Index</Text>
                 <Text className="text-white text-6xl font-black tracking-tighter">{stats.gpa}</Text>
                 <Text className="text-[#FF6900] text-xs font-bold mt-2 uppercase tracking-widest">{stats.standing} Standing</Text>
               </View>
-              <View className="bg-[#FF6900] p-4 rounded-3xl shadow-lg">
+              <View className="bg-[#FF6900] p-4 rounded-xl shadow-lg">
                 <TrendingUp size={28} color="white" />
               </View>
             </View>
@@ -255,7 +255,7 @@ export default function StudentGradesPage() {
           <View className="px-2 flex-row justify-between items-center mb-6">
             <Text className="text-gray-900 dark:text-white font-bold text-xl tracking-tight">Academic Transcript</Text>
             <TouchableOpacity
-              className="bg-white dark:bg-navy-surface p-2 rounded-xl border border-gray-100 dark:border-gray-800 shadow-sm"
+              className="bg-[#FFFFFF] dark:bg-[#0D1117]-surface p-2 rounded-xl border border-[#D0D7DE] dark:border-[#21262D] shadow-sm"
               onPress={handlePrint}
             >
               <Printer size={16} color="#FF6900" />
@@ -263,18 +263,18 @@ export default function StudentGradesPage() {
           </View>
 
           {grades.length === 0 ? (
-            <View className="bg-white dark:bg-navy-surface p-12 rounded-[40px] items-center border border-gray-100 dark:border-gray-800 border-dashed mt-4">
+            <View className="bg-[#FFFFFF] dark:bg-[#0D1117]-surface p-12 rounded-xl items-center border border-[#D0D7DE] dark:border-[#21262D] border-dashed mt-4">
               <Star size={48} color="#E5E7EB" style={{ opacity: 0.3 }} />
-              <Text className="text-gray-400 dark:text-gray-500 font-bold text-center mt-6">No records found</Text>
+              <Text className="text-gray-500 dark:text-gray-400 font-bold text-center mt-6">No records found</Text>
             </View>
           ) : (
             grades.map((result: any) => {
               const gc = gradeColor(result.grade);
               return (
-                <View key={result.id} className="bg-white dark:bg-navy-surface p-6 rounded-[32px] mb-4 border border-gray-50 dark:border-gray-800 shadow-sm">
+                <View key={result.id} className="bg-[#FFFFFF] dark:bg-[#0D1117]-surface p-6 rounded-xl mb-4 border border-[#D0D7DE] dark:border-[#21262D] shadow-sm">
                   <View className="flex-row justify-between items-center mb-6">
                     <View className="flex-row items-center flex-1">
-                      <View className="w-10 h-10 rounded-2xl bg-orange-50 items-center justify-center mr-3">
+                      <View className="w-10 h-10 rounded-xl bg-orange-50 items-center justify-center mr-3">
                         <BookOpen size={18} color="#FF6900" />
                       </View>
                       <View>
@@ -291,7 +291,7 @@ export default function StudentGradesPage() {
                   </View>
 
                   {result.feedback && (
-                    <View className="bg-gray-50 dark:bg-gray-800 p-5 rounded-2xl border border-gray-100 dark:border-gray-700">
+                    <View className="bg-gray-50 dark:bg-gray-800 p-5 rounded-xl border border-[#D0D7DE] dark:border-[#21262D]">
                       <View className="flex-row items-center mb-3">
                         <Star size={14} color="#FF6900" />
                         <Text className="text-gray-400 text-[8px] font-bold uppercase tracking-widest ml-2">Faculty Evaluation</Text>

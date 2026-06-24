@@ -26,6 +26,8 @@ import React, { useCallback, useEffect, useState } from "react";
 import { ActivityIndicator, ScrollView, Text, TouchableOpacity, View, StatusBar, DimensionValue } from "react-native";
 import { SubscriptionBanner, SubscriptionGate, OnboardingTracker, SubscriptionBadge, AddonRequestModal, AddonRequestButton } from "@/components/shared/SubscriptionComponents";
 import { useSubscriptionTier } from "@/hooks/useSubscriptionTier";
+import { Zap } from "lucide-react";
+
 
 interface QuickActionProps {
   icon: any;
@@ -67,12 +69,13 @@ const QuickAction = ({ icon: Icon, label, onPress, badge }: QuickActionProps) =>
       }}
       onPress={onPress}
       activeOpacity={0.7}
+      // className="flex-1 bg-[#F6F8FA] dark:bg-[#161B22] border border-[#D0D7DE] dark:border-[#21262D] rounded-xl p-4 mr-3 mb-3 min-w-[140px]"
     >
-      <View className="bg-orange-50 dark:bg-orange-950/30 p-2 rounded-xl mr-3">
-        <Icon size={16} color="#FF6B00" />
+      <View className="flex-row items-center mb-3">
+        <Icon size={20} color="#FF6900" />
+        {badge && <View className="ml-2">{badge}</View>}
       </View>
-      <Text className="text-gray-900 dark:text-gray-200 font-bold text-xs">{label}</Text>
-      {badge}
+      <Text className="text-gray-900 dark:text-white font-bold">{label}</Text>
     </TouchableOpacity>
   );
 };
@@ -178,7 +181,7 @@ export default function AdminDashboard() {
   ].filter(Boolean).join(', ');
 
   return (
-    <View className="flex-1 bg-white dark:bg-navy">
+    <View className="flex-1 bg-[#FFFFFF] dark:bg-[#0D1117]">
       <StatusBar barStyle={isDark ? "light-content" : "dark-content"} />
       <UnifiedHeader
         title="Welcome back,"
@@ -189,9 +192,9 @@ export default function AdminDashboard() {
       />
 
       <ScrollView
-        style={{ flex: 1 }}
+        className="flex-1"
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 100, padding: 24, paddingTop: 10 }}
+        contentContainerStyle={{ paddingBottom: 60, paddingHorizontal: 20, paddingTop: 16 }}
       >
         <View>
           {/* Log out link */}
@@ -248,40 +251,114 @@ export default function AdminDashboard() {
           </View>
           <OnboardingTracker stats={stats} />
 
-          <View className="flex-row mb-10">
-            <View style={{
-              flex: 1, backgroundColor: cardBg,
-              padding: 20, borderRadius: 24, 
-              marginRight: tier.showFinancials ? 6 : 0,
-              shadowColor: "#000",
-              shadowOffset: { width: 0, height: 8 },
-              shadowOpacity: 0.15,
-              shadowRadius: 10,
-              boxShadow: [{
-                offsetX: 0,
-                offsetY: 8,
-                blurRadius: 10,
-                color: 'rgba(0, 0, 0, 0.15)',
-              }],
-              elevation: 8,
-              minHeight: 140,
-              justifyContent: 'space-between',
-              borderWidth: isDark ? 1 : 0,
-              borderColor: '#1f2937',
-            }}>
-              <View>
-                <View style={{ backgroundColor: "rgba(255,255,255,0.1)", width: 42, height: 42, borderRadius: 12, alignItems: "center", justifyContent: "center", marginBottom: 16 }}>
-                  <IconUsers size={22} color="white" />
-                </View>
-                <Text style={{ color: "white", fontSize: 26, fontWeight: "700", letterSpacing: -0.5 }}>
-                  {stats.find(s => s.label === "Total Students")?.value || "0"}
-                </Text>
-              </View>
-              <Text style={{ color: "rgba(255,255,255,0.5)", fontSize: 10, fontWeight: "600", textTransform: "uppercase", letterSpacing: 1.2 }}>
-                Total Students
+        </View>
+        {/* ── Inline Stats ─────────────────────────────────────────── */}
+        <View className="flex-row gap-8 mb-6 mt-2">
+          <View>
+            <Text className="text-gray-500 dark:text-gray-400 text-xs uppercase tracking-widest mb-1">
+              Total Students
+            </Text>
+            <Text className="text-gray-900 dark:text-white text-3xl font-black">
+              {stats.find(s => s.label === "Total Students")?.value || "0"}
+            </Text>
+          </View>
+          {tier.showFinancials && (
+            <View>
+              <Text className="text-gray-500 dark:text-gray-400 text-xs uppercase tracking-widest mb-1">
+                Total Revenue
+              </Text>
+              <Text className="text-gray-900 dark:text-white text-3xl font-black" numberOfLines={1} adjustsFontSizeToFit>
+                {stats.find(s => s.label === "Revenue")?.value || "KES 0"}
               </Text>
             </View>
+          )}
+        </View>
 
+        {/* Enhance Your Plan Card */}
+        <View className="bg-[#F6F8FA] dark:bg-[#161B22] border border-[#D0D7DE] dark:border-[#21262D] rounded-xl p-5 mb-6">
+          <View className="flex-row justify-between items-center mb-4">
+            <View className="flex-row items-center">
+              <View className="mr-3">
+                <Zap size={20} color="#FF6900" fill="#FF6900" />
+              </View>
+              <View>
+                <Text className="text-gray-900 dark:text-white font-bold text-base">Enhance Your Plan</Text>
+                <Text className="text-gray-500 dark:text-gray-400 text-[10px] font-bold uppercase tracking-widest mt-1">Get specialized modules</Text>
+              </View>
+            </View>
+          </View>
+
+          <View className="flex-row items-center justify-between border-t border-[#D0D7DE] dark:border-[#21262D] pt-4">
+            <View>
+              <Text className="text-gray-500 dark:text-gray-400 text-[10px] font-bold uppercase mb-1">Current Base Plan</Text>
+              <Text className="text-gray-900 dark:text-white font-bold">{tier.plan === 'premium' ? 'PREMIUM' : tier.plan === 'pro' ? 'PRO' : tier.plan === 'basic' ? 'BASIC' : tier.plan.toUpperCase()}</Text>
+            </View>
+            <View className="h-8 w-[1px] bg-[#D0D7DE] dark:bg-[#21262D] mx-4" />
+            <View className="flex-1">
+              <Text className="text-gray-500 dark:text-gray-400 text-[10px] font-bold uppercase mb-1">Active Modules</Text>
+              <Text className="text-gray-900 dark:text-white font-bold text-xs" numberOfLines={1}>
+                {activeFeatures || "Core Modules Only"}
+              </Text>
+            </View>
+          </View>
+          <AddonRequestButton style={{marginTop:16}} onPress={() => setRequestModalVisible(true)} />
+        </View>
+
+        {/* Institution Capacity */}
+        <SubscriptionGate minPlan="basic">
+          <View className="bg-[#F6F8FA] dark:bg-[#161B22] border border-[#D0D7DE] dark:border-[#21262D] rounded-xl p-5 mb-6">
+            <View className="flex-row justify-between items-end mb-4">
+              <View>
+                <Text className="text-gray-900 dark:text-white font-bold text-lg">Institution Capacity</Text>
+                <Text className="text-gray-500 dark:text-gray-400 text-[10px] font-bold uppercase tracking-widest mt-1">
+                  {subscriptionPlan === 'trial' ? 'Trial Limit' : 'Scale Usage'}
+                </Text>
+              </View>
+            </View>
+
+            <View className="h-3 bg-[#E5E7EB] dark:bg-[#374151] rounded-full overflow-hidden mb-3">
+              <View className="h-full bg-[#FF6900] rounded-full" style={{ width: `${Math.min((parseInt(stats.find(s => s.label === "Total Students")?.value || "0") / (subscriptionPlan === 'trial' ? 50 : subscriptionPlan === 'basic' ? 500 : subscriptionPlan === 'pro' ? 1000 : 100000)) * 100, 100)}%` }} />
+            </View>
+
+            <View className="flex-row justify-between items-center">
+              <Text className="text-gray-500 dark:text-gray-400 font-bold text-xs">
+                {stats.find(s => s.label === "Total Students")?.value || "0"} Students enrolled
+              </Text>
+              <Text className="text-gray-900 dark:text-white font-bold text-xs">
+                {subscriptionPlan === 'premium' || subscriptionPlan === 'custom' ? 'Unlimited' : `Limit: ${subscriptionPlan === 'trial' ? '50' : subscriptionPlan === 'basic' ? '500' : '1000'}`}
+              </Text>
+            </View>
+          </View>
+        </SubscriptionGate>
+
+        {/* Today's Presence (Attendance Rate) */}
+        <View className="bg-[#F6F8FA] dark:bg-[#161B22] border border-[#D0D7DE] dark:border-[#21262D] rounded-xl p-5 mb-6">
+          <View className="flex-row justify-between items-center mb-4">
+            <View>
+              <Text className="text-gray-900 dark:text-white font-bold text-lg">Today&apos;s Presence</Text>
+              <Text className="text-gray-500 dark:text-gray-400 text-[10px] font-bold uppercase tracking-widest mt-1">Real-time Engagement</Text>
+            </View>
+            <Text className="text-gray-900 dark:text-white text-2xl font-black">
+              {stats.find(s => s.label === "Attendance")?.value || "0%"}
+            </Text>
+          </View>
+
+          <View className="h-3 bg-[#E5E7EB] dark:bg-[#374151] rounded-full overflow-hidden mb-3">
+            <View className="h-full bg-[#FF6900] rounded-full" style={{ width: (stats.find(s => s.label === "Attendance")?.value || "0%") as DimensionValue }} />
+          </View>
+
+          <Text className="text-gray-500 dark:text-gray-400 font-bold text-xs">
+            {stats.find(s => s.label === "Attendance")?.subValue || "No data recorded today"}
+          </Text>
+        </View>
+
+        <View className="mb-6">
+          <Text className="text-lg font-bold text-gray-900 dark:text-white mb-3">Quick Actions</Text>
+          <View className="flex-row flex-wrap -mr-3">
+            <QuickAction icon={IconUserPlus} label="Enroll User" onPress={() => router.push("/(admin)/users/create")} />
+            <SubscriptionGate minPlan="pro">
+              <QuickAction icon={IconBookOpen} label="Library" onPress={() => router.navigate("/(admin)/management/library" as any)} />
+            </SubscriptionGate>
             {tier.showFinancials && (
               <View style={{
                 flex: 1, backgroundColor: "#FF6B00",
@@ -471,7 +548,51 @@ export default function AdminDashboard() {
                 ))}
               </ScrollView>
             )}
+            <SubscriptionGate minPlan="premium">
+              <QuickAction icon={IconBarChart3} label="Analytics" onPress={() => router.navigate("/(admin)/management/analytics" as any)} />
+            </SubscriptionGate>
+            <QuickAction icon={IconCalendar} label="Attendance" onPress={() => router.push("/(admin)/attendance" as any)} />
           </View>
+        </View>
+
+        <View>
+          <View className="flex-row justify-between items-end mb-3">
+            <Text className="text-lg font-bold text-gray-900 dark:text-white">Recent Users</Text>
+            <TouchableOpacity onPress={() => router.navigate("/(admin)/users")} activeOpacity={0.7}>
+              <Text className="text-[#FF6900] font-bold text-sm">View All</Text>
+            </TouchableOpacity>
+          </View>
+
+          {loadingUsers ? (
+            <ActivityIndicator color="#FF6900" className="my-6" />
+          ) : recentUsers.length === 0 ? (
+            <View className="bg-[#F6F8FA] dark:bg-[#161B22] border border-[#D0D7DE] dark:border-[#21262D] rounded-xl p-6 items-center justify-center mb-6">
+              <IconUsers size={40} color={isDark ? "#4B5563" : "#9CA3AF"} />
+              <Text className="text-gray-500 dark:text-gray-400 mt-2 text-xs uppercase tracking-widest font-bold">No recent activity</Text>
+            </View>
+          ) : (
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} className="flex-row mb-6 -mx-5 px-5">
+              {recentUsers.map((user) => (
+                <View key={user.id} className="bg-[#F6F8FA] dark:bg-[#161B22] border border-[#D0D7DE] dark:border-[#21262D] rounded-xl p-4 mr-3 min-w-[220px]">
+                  <View className="flex-row items-center justify-between mb-3">
+                    <View className="flex-row items-center">
+                      <View className="mr-2">
+                        {user.role === 'student' ? <IconGraduationCap size={16} color="#FF6900" /> :
+                          user.role === 'teacher' ? <IconSchool size={16} color="#FF6900" /> :
+                            <IconSettings size={16} color="#FF6900" />}
+                      </View>
+                      <Text className="text-gray-500 dark:text-gray-400 font-bold text-xs uppercase tracking-widest">{user.role}</Text>
+                    </View>
+                    <Text className="text-gray-500 dark:text-gray-400 font-bold text-[10px]">
+                      {user.joinDate ? new Date(user.joinDate).toLocaleDateString() : 'N/A'}
+                    </Text>
+                  </View>
+                  <Text className="text-gray-900 dark:text-white font-bold text-base mb-1" numberOfLines={1}>{user.name}</Text>
+                  <Text className="text-gray-500 dark:text-gray-400 text-sm font-mono">{user.displayId}</Text>
+                </View>
+              ))}
+            </ScrollView>
+          )}
         </View>
       </ScrollView>
 

@@ -126,22 +126,14 @@ export default function Demo() {
     setModalVisible(false);
 
     try {
-      const { error } = await startDemo(selectedRoleData.id);
+      const { error, data } = await startDemo(selectedRoleData.id);
+      console.log('[handleDemoLogin] error:', error, 'data:', data)
 
       if (error) {
         Alert.alert("Demo Access Failed", "Could not start the demo session. Please try again.");
         setIsLoading(false);
         return;
       }
-
-      const routes: Record<RoleType, string> = {
-        admin: '/(admin)',
-        teacher: '/(teacher)',
-        student: '/(student)',
-        parent: '/(parent)'
-      };
-
-      router.replace(routes[selectedRoleData.id] as any);
 
     } catch (error: any) {
       console.error(error.message);
@@ -475,17 +467,13 @@ export default function Demo() {
                   alignItems: "center", flexDirection: "row",
                   justifyContent: "center",
                   shadowColor: selectedRoleData?.color || "#FF6B00",
-                  shadowOffset: { width: 0, height: 8 },
-                  shadowOpacity: 0.35,
-                  shadowRadius: 20,
                   boxShadow: [{
                     offsetX: 0,
                     offsetY: 8,
                     blurRadius: 20,
                     color: `${selectedRoleData?.color || "#FF6B00"}59`, // 0.35 opacity in hex is approx 59
                   }],
-                  elevation: 8,
-                }}
+                  }}
               >
                 <Play size={18} color="white" fill="white" />
                 <Text style={{

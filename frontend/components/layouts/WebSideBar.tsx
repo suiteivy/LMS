@@ -1,20 +1,12 @@
 import { useTheme } from "@/contexts/ThemeContext";
 import { router, useSegments } from "expo-router";
 import {
-  BookOpen,
-  Building,
   ChevronLeft,
   ChevronRight,
-  CreditCard,
-  Glasses,
-  LucideIcon,
-  MessageSquare,
-  PenBox,
-  Settings,
-  Star,
+  LucideIcon
 } from "lucide-react-native";
 import React, { useState } from "react";
-import { Animated, Text, TouchableOpacity, View } from "react-native";
+import { Text, TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export interface NavItem {
@@ -37,16 +29,17 @@ export const WebSidebar = ({ items, basePath, role, children }: WebSidebarProps)
   const segments = useSegments();
   const [collapsed, setCollapsed] = useState(false);
 
-  const surface = isDark ? '#13103A' : '#ffffff';
-  const border = isDark ? 'rgba(255,255,255,0.1)' : '#e5e7eb';
-  const textPrimary = isDark ? '#f1f1f1' : '#111827';
-  const textSecondary = isDark ? '#9ca3af' : '#64748b';
-  const bg = isDark ? '#0F0B2E' : '#f9fafb';
+  // FotMob specific color tokens
+  const surface = isDark ? '#161B22' : '#F6F8FA';
+  const border = isDark ? '#21262D' : '#D0D7DE';
+  const textPrimary = isDark ? '#FFFFFF' : '#111827';
+  const textSecondary = isDark ? '#9CA3AF' : '#6B7280';
+  const bg = isDark ? '#0D1117' : '#FFFFFF';
 
   // Determine active route from segments
   const currentPath = segments.length > 0 ? '/' + segments.join('/') : '/';
 
-  const sidebarWidth = collapsed ? 64 : 220;
+  const sidebarWidth = collapsed ? 72 : 240;
 
   return (
     <View style={{ flex: 1, flexDirection: 'row', backgroundColor: bg }}>
@@ -56,26 +49,26 @@ export const WebSidebar = ({ items, basePath, role, children }: WebSidebarProps)
         backgroundColor: surface,
         borderRightWidth: 1,
         borderRightColor: border,
-        paddingTop: insets.top + 16,
-        paddingBottom: insets.bottom + 16,
+        paddingTop: insets.top + 20,
+        paddingBottom: insets.bottom + 20,
         transition: 'width 0.2s',
       } as any}
     >
         {/* Logo / Role badge */}
         {!collapsed && (
-          <View style={{ paddingHorizontal: 20, marginBottom: 24 }}>
-            <Text style={{ fontSize: 11, fontWeight: '800', color: '#FF6B00', textTransform: 'uppercase', letterSpacing: 2 }}>
+          <View style={{ paddingHorizontal: 24, marginBottom: 32 }}>
+            <Text style={{ fontSize: 10, fontWeight: '800', color: '#FF6900', textTransform: 'uppercase', letterSpacing: 2 }}>
               {role}
             </Text>
-            <Text style={{ fontSize: 18, fontWeight: 'bold', color: textPrimary, marginTop: 2 }}>
+            <Text style={{ fontSize: 20, fontWeight: '900', color: textPrimary, marginTop: 2 }}>
               Portal
             </Text>
           </View>
         )}
         {collapsed && (
-          <View style={{ alignItems: 'center', marginBottom: 24 }}>
-            <View style={{ width: 32, height: 32, backgroundColor: '#FF6B00', borderRadius: 8, alignItems: 'center', justifyContent: 'center' }}>
-              <Text style={{ color: 'white', fontWeight: '900', fontSize: 14 }}>
+          <View style={{ alignItems: 'center', marginBottom: 32 }}>
+            <View style={{ width: 40, height: 40, backgroundColor: '#FF6900', borderRadius: 12, alignItems: 'center', justifyContent: 'center' }}>
+              <Text style={{ color: 'white', fontWeight: '900', fontSize: 16 }}>
                 {role.charAt(0)}
               </Text>
             </View>
@@ -83,7 +76,7 @@ export const WebSidebar = ({ items, basePath, role, children }: WebSidebarProps)
         )}
 
         {/* Nav items */}
-        <View style={{ flex: 1, gap: 4, paddingHorizontal: collapsed ? 8 : 12 }}>
+        <View style={{ flex: 1, gap: 8, paddingHorizontal: collapsed ? 12 : 16 }}>
           {items.map((item) => {
             const Icon = item.icon;
             const isRootRoute = item.route === `/${basePath}`;
@@ -94,34 +87,35 @@ export const WebSidebar = ({ items, basePath, role, children }: WebSidebarProps)
               <TouchableOpacity
                 key={item.name}
                 onPress={() => router.push(item.route as any)}
+                activeOpacity={0.7}
                 style={{
                   flexDirection: 'row',
                   alignItems: 'center',
-                  paddingVertical: 10,
-                  paddingHorizontal: collapsed ? 8 : 12,
+                  paddingVertical: 12,
+                  paddingHorizontal: collapsed ? 12 : 16,
                   borderRadius: 12,
-                  backgroundColor: isActive ? (isDark ? 'rgba(255,107,0,0.12)' : '#fff7ed') : 'transparent',
+                  backgroundColor: isActive ? (isDark ? 'rgba(255, 105, 0, 0.1)' : '#FFF3EB') : 'transparent',
                   justifyContent: collapsed ? 'center' : 'flex-start',
                 }}
               >
                 <Icon
                   size={20}
-                  color={isActive ? '#FF6B00' : textSecondary}
+                  color={isActive ? '#FF6900' : textSecondary}
                   strokeWidth={isActive ? 2.5 : 2}
                 />
                 {!collapsed && (
                   <Text style={{
-                    marginLeft: 12,
+                    marginLeft: 14,
                     fontSize: 14,
-                    fontWeight: isActive ? '700' : '500',
-                    color: isActive ? '#FF6B00' : textSecondary,
+                    fontWeight: isActive ? '700' : '600',
+                    color: isActive ? '#FF6900' : textSecondary,
                   }}>
                     {item.title}
                   </Text>
                 )}
                 {/* Active indicator */}
                 {isActive && !collapsed && (
-                  <View style={{ position: 'absolute', right: 12, width: 6, height: 6, borderRadius: 3, backgroundColor: '#FF6B00' }} />
+                  <View style={{ position: 'absolute', right: 16, width: 6, height: 6, borderRadius: 3, backgroundColor: '#FF6900' }} />
                 )}
               </TouchableOpacity>
             );
@@ -131,24 +125,25 @@ export const WebSidebar = ({ items, basePath, role, children }: WebSidebarProps)
         {/* Collapse toggle */}
         <TouchableOpacity
           onPress={() => setCollapsed(c => !c)}
+          activeOpacity={0.7}
           style={{
-            marginHorizontal: collapsed ? 8 : 12,
-            marginTop: 8,
-            padding: 10,
+            marginHorizontal: collapsed ? 12 : 16,
+            marginTop: 16,
+            padding: 12,
             borderRadius: 12,
             borderWidth: 1,
             borderColor: border,
             alignItems: 'center',
             justifyContent: 'center',
             flexDirection: 'row',
-            backgroundColor: isDark ? '#1A1650' : '#f9fafb',
+            backgroundColor: isDark ? '#0D1117' : '#FFFFFF',
           }}
         >
           {collapsed
-            ? <ChevronRight size={16} color={textSecondary} />
+            ? <ChevronRight size={18} color={textSecondary} />
             : <>
-                <ChevronLeft size={16} color={textSecondary} />
-                <Text style={{ marginLeft: 8, fontSize: 12, color: textSecondary, fontWeight: '600' }}>Collapse</Text>
+                <ChevronLeft size={18} color={textSecondary} />
+                <Text style={{ marginLeft: 8, fontSize: 12, color: textSecondary, fontWeight: '700' }}>Collapse</Text>
               </>
           }
         </TouchableOpacity>

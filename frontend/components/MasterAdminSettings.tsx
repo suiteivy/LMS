@@ -74,7 +74,7 @@ export default function MasterAdminSettings() {
         textSecondary: isDark ? "#94a3b8" : "#64748b",
         inputBg: isDark ? "rgba(255,255,255,0.05)" : "#f1f5f9",
         inputBorder: isDark ? "rgba(255,255,255,0.1)" : "#e2e8f0",
-        primary: "#FF6B00",
+        primary: "#FF6900",
     };
 
     const getBackendUrl = () => {
@@ -142,7 +142,7 @@ export default function MasterAdminSettings() {
         >
             <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
                 <View style={{ padding: 8, backgroundColor: isDark ? 'rgba(255,107,0,0.1)' : '#fff7ed', borderRadius: 8, marginRight: 12 }}>
-                    <Icon size={20} color="#FF6B00" />
+                    <Icon size={20} color="#FF6900" />
                 </View>
                 <Text style={{ color: tokens.textPrimary, fontWeight: '500', fontSize: 16 }}>{title}</Text>
             </View>
@@ -165,36 +165,36 @@ export default function MasterAdminSettings() {
                     <ActivityIndicator size="small" color={tokens.primary} style={{ marginBottom: 24 }} />
                 ) : (
                     <View style={{ backgroundColor: tokens.surface, borderRadius: 16, borderWidth: 1, borderColor: tokens.border, marginBottom: 24, overflow: 'hidden' }}>
-                        <SettingRow 
-                            icon={AlertTriangle} 
-                            title="System Alerts & Errors" 
-                            rightElement={<Switch value={prefs.system_alerts} onValueChange={() => togglePref('system_alerts')} trackColor={{ false: tokens.border, true: tokens.primary }} />} 
+                        <SettingRow
+                            icon={AlertTriangle}
+                            title="System Alerts & Errors"
+                            rightElement={<Switch value={prefs.system_alerts} onValueChange={() => togglePref('system_alerts')} trackColor={{ false: isDark ? "#21262D" : "#D0D7DE", true: "#FF6900" }} />}
                         />
-                        <SettingRow 
-                            icon={AlertCircle} 
-                            title="Subscription Alerts" 
-                            rightElement={<Switch value={prefs.subscription_alerts} onValueChange={() => togglePref('subscription_alerts')} trackColor={{ false: tokens.border, true: tokens.primary }} />} 
+                        <SettingRow
+                            icon={AlertCircle}
+                            title="Subscription Alerts"
+                            rightElement={<Switch value={prefs.subscription_alerts} onValueChange={() => togglePref('subscription_alerts')} trackColor={{ false: isDark ? "#21262D" : "#D0D7DE", true: "#FF6900" }} />}
                         />
-                        <SettingRow 
-                            icon={Bell} 
-                            title="Issues & Requests" 
-                            rightElement={<Switch value={prefs.issues_requests_alerts} onValueChange={() => togglePref('issues_requests_alerts')} trackColor={{ false: tokens.border, true: tokens.primary }} />} 
+                        <SettingRow
+                            icon={Bell}
+                            title="Issues & Requests"
+                            rightElement={<Switch value={prefs.issues_requests_alerts} onValueChange={() => togglePref('issues_requests_alerts')} trackColor={{ false: isDark ? "#21262D" : "#D0D7DE", true: "#FF6900" }} />}
                         />
-                        <SettingRow 
-                            icon={HelpCircle} 
-                            title="Support Cases" 
-                            rightElement={<Switch value={prefs.support_cases_alerts} onValueChange={() => togglePref('support_cases_alerts')} trackColor={{ false: tokens.border, true: tokens.primary }} />} 
+                        <SettingRow
+                            icon={HelpCircle}
+                            title="Support Cases"
+                            rightElement={<Switch value={prefs.support_cases_alerts} onValueChange={() => togglePref('support_cases_alerts')} trackColor={{ false: isDark ? "#21262D" : "#D0D7DE", true: "#FF6900" }} />}
                         />
-                        <SettingRow 
-                            icon={Mail} 
-                            title="Email Notifications" 
-                            rightElement={<Switch value={prefs.email_notifications} onValueChange={() => togglePref('email_notifications')} trackColor={{ false: tokens.border, true: tokens.primary }} />} 
+                        <SettingRow
+                            icon={Mail}
+                            title="Email Notifications"
+                            rightElement={<Switch value={prefs.email_notifications} onValueChange={() => togglePref('email_notifications')} trackColor={{ false: isDark ? "#21262D" : "#D0D7DE", true: "#FF6900" }} />}
                         />
-                        <SettingRow 
-                            icon={Smartphone} 
-                            title="Push Notifications" 
+                        <SettingRow
+                            icon={Smartphone}
+                            title="Push Notifications"
                             isLast
-                            rightElement={<Switch value={prefs.push_notifications} onValueChange={() => togglePref('push_notifications')} trackColor={{ false: tokens.border, true: tokens.primary }} />} 
+                            rightElement={<Switch value={prefs.push_notifications} onValueChange={() => togglePref('push_notifications')} trackColor={{ false: isDark ? "#21262D" : "#D0D7DE", true: "#FF6900" }} />}
                         />
                     </View>
                 )}
@@ -206,9 +206,9 @@ export default function MasterAdminSettings() {
 
             </View>
 
-            <ChangePasswordModal 
-                visible={passwordModalVisible} 
-                onClose={() => setPasswordModalVisible(false)} 
+            <ChangePasswordModal
+                visible={passwordModalVisible}
+                onClose={() => setPasswordModalVisible(false)}
             />
 
             {/* Enroll Master Admin Modal */}
@@ -246,7 +246,7 @@ export default function MasterAdminSettings() {
                         <TextInput
                             style={{ backgroundColor: tokens.inputBg, color: tokens.textPrimary, borderRadius: 12, padding: 14, marginBottom: 24, borderWidth: 1, borderColor: tokens.inputBorder }}
                             secureTextEntry
-                            placeholder="********"
+                            placeholder=""
                             placeholderTextColor={tokens.textSecondary}
                             value={enrollData.password}
                             onChangeText={(text) => setEnrollData({ ...enrollData, password: text })}

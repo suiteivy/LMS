@@ -140,12 +140,12 @@ const CreateSubject = () => {
     const categoryOptions = CATEGORIES.map((cat) => ({ value: cat, label: cat }));
 
     // ── Theme tokens ──────────────────────────────────────────────────────────
-    const surface = isDark ? '#13103A' : '#ffffff';
-    const bg = isDark ? '#0F0B2E' : '#f9fafb';
-    const border = isDark ? 'rgba(255,255,255,0.1)' : '#e5e7eb';
-    const textPrimary = isDark ? '#f1f1f1' : '#111827';
+    const surface = isDark ? '#161B22' : '#F6F8FA';
+    const bg = isDark ? '#0D1117' : '#FFFFFF';
+    const border = isDark ? '#21262D' : '#D0D7DE';
+    const textPrimary = isDark ? '#FFFFFF' : '#111827';
     const textSecondary = isDark ? '#9ca3af' : '#6b7280';
-    const inputBg = isDark ? '#1A1650' : '#f9fafb';
+    const inputBg = isDark ? '#0D1117' : '#FFFFFF';
 
     return (
         <View style={{ flex: 1 }}>

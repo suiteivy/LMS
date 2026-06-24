@@ -1,196 +1,292 @@
 import { useAuth } from '@/contexts/AuthContext';
+import { authService } from '@/libs/supabase';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
-import { Clock, X } from 'lucide-react-native';
-import React, { useEffect, useState } from 'react';
-import { Modal, Text, TouchableOpacity, View } from 'react-native';
+import { AlertTriangle, Clock, LogOut, Rocket, X, Zap } from 'lucide-react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import {
+    Animated,
+    Modal,
+    Platform,
+    Text,
+    TouchableOpacity,
+    View,
+} from 'react-native';
+
+const TOTAL_SECONDS = 15 * 60;
+
+function formatTime(secs: number) {
+    const m = Math.floor(secs / 60);
+    const s = secs % 60;
+    return `${m}:${s.toString().padStart(2, '0')}`;
+}
+
+/** Banner bg/text shifts from amber → red as time runs out */
+function getBannerStyle(timeLeft: number) {
+    if (timeLeft <= 60) {
+        return {
+            bg: '#fef2f2',
+            border: '#fecaca',
+            iconColor: '#ef4444',
+            text: '#7f1d1d',
+            subText: '#991b1b',
+            btnBg: '#1c1c1c',
+            btnText: '#fff',
+        };
+    }
+    if (timeLeft <= 120) {
+        return {
+            bg: '#fff7ed',
+            border: '#fed7aa',
+            iconColor: '#f97316',
+            text: '#7c2d12',
+            subText: '#9a3412',
+            btnBg: '#1c1c1c',
+            btnText: '#fff',
+        };
+    }
+    // default amber
+    return {
+        bg: '#fffbeb',
+        border: '#fde68a',
+        iconColor: '#d97706',
+        text: '#78350f',
+        subText: '#92400e',
+        btnBg: '#1c1c1c',
+        btnText: '#fff',
+    };
+}
+
+function getBannerMessage(timeLeft: number) {
+    if (timeLeft <= 60) return 'Demo ending now — sign up to keep access to all features & your data.';
+    if (timeLeft <= 120) return 'Less than 2 minutes left — create an account before your session expires.';
+    return 'Demo mode — unlock full features, all dashboards & real institution data.';
+}
 
 export default function DemoBanner() {
-    const { isDemo, logout, session } = useAuth();
+    const { isDemo, logout, session, user, profile } = useAuth();
     const [expiryTime, setExpiryTime] = useState<number | null>(null);
-    const [timeLeft, setTimeLeft] = useState(0);
+    const [timeLeft, setTimeLeft] = useState(TOTAL_SECONDS);
     const [showWarningModal, setShowWarningModal] = useState(false);
     const [showExpiredModal, setShowExpiredModal] = useState(false);
+    const [isCleaning, setIsCleaning] = useState(false);
     const router = useRouter();
+
+    const opacity = useRef(new Animated.Value(0)).current;
 
     useEffect(() => {
         if (!isDemo) return;
+        Animated.timing(opacity, { toValue: 1, duration: 350, useNativeDriver: true }).start();
+    }, [isDemo]);
 
+    useEffect(() => {
+        if (!isDemo) return;
         const loadTimer = async () => {
             try {
-                let expiry = null;
                 const expiryStr = await AsyncStorage.getItem('demo_expiry');
-
-                if (expiryStr) {
-                    expiry = parseInt(expiryStr, 10);
-                } else {
-                    expiry = Date.now() + 15 * 60 * 1000;
-                    await AsyncStorage.setItem('demo_expiry', expiry.toString());
-                }
-
+                let expiry = expiryStr ? parseInt(expiryStr, 10) : Date.now() + TOTAL_SECONDS * 1000;
+                if (!expiryStr) await AsyncStorage.setItem('demo_expiry', expiry.toString());
                 setExpiryTime(expiry);
-                const remaining = Math.floor((expiry - Date.now()) / 1000);
-                setTimeLeft(remaining > 0 ? remaining : 0);
+                setTimeLeft(Math.max(0, Math.floor((expiry - Date.now()) / 1000)));
             } catch (e) {
-                console.error("Failed to load trial timer", e);
+                console.error('Failed to load trial timer', e);
             }
         };
-
         loadTimer();
     }, [isDemo]);
 
     useEffect(() => {
         if (!expiryTime) return;
-
         const interval = setInterval(() => {
             const remaining = Math.floor((expiryTime - Date.now()) / 1000);
-
             if (remaining <= 0) {
                 setTimeLeft(0);
                 clearInterval(interval);
                 handleExpiry();
             } else {
                 setTimeLeft(remaining);
+                if (remaining === 120) setShowWarningModal(true);
             }
         }, 1000);
-
         return () => clearInterval(interval);
     }, [expiryTime]);
 
-    // Separate effect for warning
-    useEffect(() => {
-        if (timeLeft === 120) {
-            setShowWarningModal(true);
+    const callCleanup = async () => {
+        try {
+            const institutionId = (profile as any)?.institution_id;
+            const userId = user?.id;
+            if (institutionId && userId) await authService.endDemoSession(institutionId, userId);
+        } catch (e) {
+            console.warn('Demo cleanup non-fatal:', e);
         }
-        if (timeLeft === 0 && expiryTime) {
-            handleExpiry();
-        }
-    }, [timeLeft]);
+    };
 
     const handleExpiry = async () => {
+        if (isCleaning) return;
+        setIsCleaning(true);
         try {
+            await callCleanup();
             await AsyncStorage.removeItem('demo_expiry');
-            router.replace('/(auth)/demo');
-            await logout();
             setShowExpiredModal(true);
-        } catch (error) {
-            console.error("Logout failed", error);
+            await logout();
+            router.replace('/(auth)/demo');
+        } catch (e) {
+            console.error('Expiry logout failed', e);
+        } finally {
+            setIsCleaning(false);
         }
     };
 
     const handleEndDemo = async () => {
+        if (isCleaning) return;
+        setIsCleaning(true);
         try {
+            await callCleanup();
             await AsyncStorage.removeItem('demo_expiry');
-            router.replace('/(auth)/demo');
             await logout();
-        } catch (error) {
-            console.error("Logout failed", error);
+            router.replace('/(auth)/demo');
+        } catch (e) {
+            console.error('Exit demo failed', e);
+        } finally {
+            setIsCleaning(false);
         }
     };
 
     if (!isDemo || !session) return null;
 
-    const minutes = Math.floor(timeLeft / 60);
-    const seconds = timeLeft % 60;
+    const s = getBannerStyle(timeLeft);
+    const msg = getBannerMessage(timeLeft);
 
     return (
         <>
-            {/* Banner */}
-            <View className="absolute top-10 left-0 right-0 z-50 px-4 flex items-center justify-center pt-2" pointerEvents="box-none">
-                <View 
-                    style={{
-                        boxShadow: [{
-                            offsetX: 0,
-                            offsetY: 4,
-                            blurRadius: 12,
-                            color: 'rgba(0, 0, 0, 0.25)',
-                        }],
-                        shadowColor: "#000",
-                        shadowOffset: { width: 0, height: 4 },
-                        shadowOpacity: 0.25,
-                        shadowRadius: 10,
-                        elevation: 10,
-                    }}
-                    className="bg-orange-600/90 backdrop-blur-md rounded-full px-4 py-2 flex-row items-center border border-white/20"
-                >
-                    <Clock size={16} color="white" strokeWidth={2.5} />
-                    <Text className="text-white font-bold ml-2 font-mono">
-                        DEMO: {minutes}:{seconds.toString().padStart(2, '0')}
+            {/* ── Top Banner ─────────────────────────────────────────────── */}
+            <Animated.View
+                style={{
+                    zIndex: 9999,
+                    opacity,
+                    paddingTop: Platform.OS === 'ios' ? 44 : 10,
+                    backgroundColor: s.bg,
+                    borderBottomWidth: 1,
+                    borderBottomColor: s.border,
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    paddingHorizontal: 14,
+                    paddingBottom: 10,
+                }}
+            >
+                {/* Left: icon + message */}
+                <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, gap: 8, marginRight: 10 }}>
+                    <AlertTriangle size={16} color={s.iconColor} strokeWidth={2.5} />
+                    <Text style={{ color: s.text, fontSize: 12.5, fontWeight: '500', flex: 1, lineHeight: 18 }} numberOfLines={1}>
+                        <Text style={{ fontWeight: '700' }}>{formatTime(timeLeft)} left</Text>
+                        {' '}on your demo —{' '}{msg.split('—')[1]?.trim()}
                     </Text>
-                    <View className="w-px h-4 bg-white/30 mx-3" />
-                    <TouchableOpacity onPress={handleEndDemo} activeOpacity={0.8}>
-                        <Text className="text-white font-bold text-xs uppercase">Exit</Text>
+                </View>
+
+                {/* Right: CTA + close */}
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                    <TouchableOpacity
+                        onPress={handleEndDemo}
+                        activeOpacity={0.85}
+                        disabled={isCleaning}
+                        style={{
+                            backgroundColor: s.btnBg,
+                            borderRadius: 8,
+                            paddingHorizontal: 12,
+                            paddingVertical: 7,
+                            flexDirection: 'row',
+                            alignItems: 'center',
+                            gap: 5,
+                        }}
+                    >
+                        <Text style={{ color: "white", fontSize: 12, fontWeight: '700' }}> Exit </Text>
+                        <X size={15} color="white" strokeWidth={2.5} />
                     </TouchableOpacity>
                 </View>
-            </View>
+            </Animated.View>
 
-            {/* 2 Minute Warning Modal */}
+            {/* ── 2-Min Warning Modal ─────────────────────────────────────── */}
             <Modal visible={showWarningModal} transparent animationType="fade">
-                <View className="flex-1 bg-black/60 items-center justify-center px-6">
-                    <View className="bg-white dark:bg-[#1a1a1a] rounded-3xl p-6 w-full border border-gray-100 dark:border-gray-800">
-                        <View className="items-end mb-2">
-                            <TouchableOpacity onPress={() => setShowWarningModal(false)}>
-                                <X size={20} color="#9ca3af" />
-                            </TouchableOpacity>
-                        </View>
-                        <View className="bg-orange-100 dark:bg-orange-950/40 w-14 h-14 rounded-2xl items-center justify-center mb-4 self-center">
-                            <Clock size={28} color="#FF6900" />
-                        </View>
-                        <Text className="text-gray-900 dark:text-white text-xl font-bold text-center mb-2">
-                            2 Minutes Left
-                        </Text>
-                        <Text className="text-gray-500 dark:text-gray-400 text-sm text-center mb-6">
-                            Your demo session is almost up! Sign up to keep access to all features.
-                        </Text>
-                        <TouchableOpacity
-                            className="bg-[#FF6900] rounded-2xl py-4 items-center mb-3"
-                            onPress={() => {
-                                setShowWarningModal(false);
-                                handleEndDemo();
-                            }}
-                        >
-                            <Text className="text-white font-bold text-base">Create an Account</Text>
+                <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.65)', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24 }}>
+                    <View style={{
+                        backgroundColor: '#0f172a', borderRadius: 24, padding: 28, width: '100%',
+                        borderWidth: 1, borderColor: 'rgba(249,115,22,0.3)',
+                    }}>
+                        <TouchableOpacity onPress={() => setShowWarningModal(false)} style={{ alignSelf: 'flex-end', marginBottom: 12 }}>
+                            <View style={{ backgroundColor: 'rgba(255,255,255,0.07)', borderRadius: 20, padding: 6 }}>
+                                <X size={15} color="#94a3b8" />
+                            </View>
                         </TouchableOpacity>
+
+                        <View style={{ alignSelf: 'center', marginBottom: 18 }}>
+                            <View style={{ width: 68, height: 68, borderRadius: 20, backgroundColor: 'rgba(249,115,22,0.12)', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(249,115,22,0.3)' }}>
+                                <Clock size={30} color="#f97316" />
+                            </View>
+                        </View>
+
+                        {/* Live countdown badge */}
+                        <View style={{ alignSelf: 'center', backgroundColor: 'rgba(249,115,22,0.12)', borderRadius: 100, paddingHorizontal: 14, paddingVertical: 5, marginBottom: 14, borderWidth: 1, borderColor: 'rgba(249,115,22,0.25)' }}>
+                            <Text style={{ color: '#f97316', fontWeight: '800', fontSize: 13, fontVariant: ['tabular-nums'] }}>
+                                ⏱ {formatTime(timeLeft)} remaining
+                            </Text>
+                        </View>
+
+                        <Text style={{ color: '#f1f5f9', fontSize: 20, fontWeight: '800', textAlign: 'center', marginBottom: 8 }}>
+                            Almost Out of Time
+                        </Text>
+                        <Text style={{ color: '#94a3b8', fontSize: 13.5, textAlign: 'center', lineHeight: 22, marginBottom: 26 }}>
+                            Your demo session ends in 2 minutes. Create an account to keep full access.
+                        </Text>
+
                         <TouchableOpacity
-                            className="py-3 items-center"
-                            onPress={() => setShowWarningModal(false)}
+                            style={{ backgroundColor: '#6366f1', borderRadius: 14, paddingVertical: 15, alignItems: 'center', marginBottom: 10, flexDirection: 'row', justifyContent: 'center', gap: 8 }}
+                            onPress={() => { setShowWarningModal(false); handleEndDemo(); }}
                         >
-                            <Text className="text-gray-400 dark:text-gray-500 font-medium text-sm">Continue Demo</Text>
+                            <Rocket size={17} color="#fff" />
+                            <Text style={{ color: '#fff', fontWeight: '800', fontSize: 15 }}>Create Free Account</Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity style={{ paddingVertical: 12, alignItems: 'center' }} onPress={() => setShowWarningModal(false)}>
+                            <Text style={{ color: '#475569', fontWeight: '600', fontSize: 13 }}>Continue Demo</Text>
                         </TouchableOpacity>
                     </View>
                 </View>
             </Modal>
 
-            {/* Expired Modal */}
+            {/* ── Expired Modal ───────────────────────────────────────────── */}
             <Modal visible={showExpiredModal} transparent animationType="fade">
-                <View className="flex-1 bg-black/60 items-center justify-center px-6">
-                    <View className="bg-white dark:bg-[#1a1a1a] rounded-3xl p-6 w-full border border-gray-100 dark:border-gray-800">
-                        <View className="bg-red-100 dark:bg-red-950/40 w-14 h-14 rounded-2xl items-center justify-center mb-4 self-center">
-                            <Clock size={28} color="#f43f5e" />
+                <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.75)', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24 }}>
+                    <View style={{
+                        backgroundColor: '#0f172a', borderRadius: 24, padding: 28, width: '100%',
+                        borderWidth: 1, borderColor: 'rgba(239,68,68,0.3)',
+                    }}>
+                        <View style={{ alignSelf: 'center', marginBottom: 18 }}>
+                            <View style={{ width: 68, height: 68, borderRadius: 20, backgroundColor: 'rgba(239,68,68,0.1)', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(239,68,68,0.3)' }}>
+                                <Zap size={30} color="#ef4444" />
+                            </View>
                         </View>
-                        <Text className="text-gray-900 dark:text-white text-xl font-bold text-center mb-2">
+
+                        <Text style={{ color: '#f1f5f9', fontSize: 20, fontWeight: '800', textAlign: 'center', marginBottom: 8 }}>
                             Demo Ended
                         </Text>
-                        <Text className="text-gray-500 dark:text-gray-400 text-sm text-center mb-6">
-                            Your 15-minute trial has ended. We hope you enjoyed the tour!
+                        <Text style={{ color: '#94a3b8', fontSize: 13.5, textAlign: 'center', lineHeight: 22, marginBottom: 26 }}>
+                            Your 15-minute trial is up. Sign up to unlock the full Cloudora experience.
                         </Text>
+
                         <TouchableOpacity
-                            className="bg-[#FF6900] rounded-2xl py-4 items-center mb-3"
-                            onPress={() => {
-                                setShowExpiredModal(false);
-                                router.replace('/(auth)/demo');
-                            }}
+                            style={{ backgroundColor: '#6366f1', borderRadius: 14, paddingVertical: 15, alignItems: 'center', marginBottom: 10, flexDirection: 'row', justifyContent: 'center', gap: 8 }}
+                            onPress={() => { setShowExpiredModal(false); router.replace('/(auth)/demo'); }}
                         >
-                            <Text className="text-white font-bold text-base">Create an Account</Text>
+                            <Rocket size={17} color="#fff" />
+                            <Text style={{ color: '#fff', fontWeight: '800', fontSize: 15 }}>Create Free Account</Text>
                         </TouchableOpacity>
+
                         <TouchableOpacity
-                            className="py-3 items-center"
-                            onPress={() => {
-                                setShowExpiredModal(false);
-                                router.replace('/(auth)/demo');
-                            }}
+                            style={{ paddingVertical: 12, alignItems: 'center' }}
+                            onPress={() => { setShowExpiredModal(false); router.replace('/(auth)/demo'); }}
                         >
-                            <Text className="text-gray-400 dark:text-gray-500 font-medium text-sm">Back to Demo Page</Text>
+                            <Text style={{ color: '#475569', fontWeight: '600', fontSize: 13 }}>Back to Demo Page</Text>
                         </TouchableOpacity>
                     </View>
                 </View>

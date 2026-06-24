@@ -56,11 +56,11 @@ export default function StudentsPage() {
     const [modalVisible, setModalVisible] = useState(false);
     const [detailsTab, setDetailsTab] = useState<'info' | 'attendance' | 'performance'>('info');
 
-    useEffect(() => {
-        if (teacherId) {
-            fetchStudents();
-        }
-    }, [teacherId]);
+ useEffect(() => {
+ if (teacherId) {
+ fetchStudents();
+ }
+ }, [teacherId]);
 
     const fetchStudents = async () => {
         try {

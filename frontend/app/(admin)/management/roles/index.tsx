@@ -7,12 +7,12 @@ import { Modal, ScrollView, Text, TouchableOpacity, View, ActivityIndicator, Tex
 import { RoleAPI, CustomRole, Permission } from "@/services/RoleService";
 
 const RoleCard = ({ role, onEdit, onDelete, isDark }: { role: CustomRole; onEdit: (role: CustomRole) => void; onDelete: (id: string) => void; isDark: boolean }) => {
-    const surface = isDark ? '#13103A' : '#ffffff';
-    const border = isDark ? 'rgba(255,255,255,0.1)' : '#f1f5f9';
-    const textPrimary = isDark ? '#f1f1f1' : '#0f172a';
-    const textSecondary = isDark ? '#9ca3af' : '#64748b';
-    const chipBg = isDark ? '#1A1650' : '#f8fafc';
-    const chipBorder = isDark ? 'rgba(255,255,255,0.1)' : '#f1f5f9';
+    const surface = isDark ? '#161B22' : '#F6F8FA';
+    const border = isDark ? '#21262D' : '#D0D7DE';
+    const textPrimary = isDark ? '#FFFFFF' : '#111827';
+    const textSecondary = isDark ? '#9ca3af' : '#6b7280';
+    const chipBg = isDark ? '#161B22' : '#F6F8FA';
+    const chipBorder = isDark ? '#21262D' : '#D0D7DE';
 
     return (
         <View style={{ backgroundColor: surface, padding: 24, borderRadius: 24, borderWidth: 1, borderColor: border, marginBottom: 20 }}>
@@ -83,11 +83,11 @@ const RoleCard = ({ role, onEdit, onDelete, isDark }: { role: CustomRole; onEdit
 };
 
 const PermissionModal = ({ visible, onClose, role, availablePermissions, onSave, isDark }: any) => {
-    const surface = isDark ? '#13103A' : '#ffffff';
-    const border = isDark ? 'rgba(255,255,255,0.1)' : '#f8fafc';
-    const textPrimary = isDark ? '#f1f1f1' : '#0f172a';
-    const textSecondary = isDark ? '#9ca3af' : '#94a3b8';
-    const inputBg = isDark ? '#1A1650' : '#f3f4f6';
+    const surface = isDark ? '#161B22' : '#F6F8FA';
+    const border = isDark ? '#21262D' : '#D0D7DE';
+    const textPrimary = isDark ? '#FFFFFF' : '#111827';
+    const textSecondary = isDark ? '#9ca3af' : '#6b7280';
+    const inputBg = isDark ? '#0D1117' : '#FFFFFF';
 
     const [name, setName] = useState('');
     const [description, setDescription] = useState('');
@@ -267,7 +267,7 @@ export default function RolesAndPermissions() {
     };
 
     return (
-        <View style={{ flex: 1, backgroundColor: isDark ? '#0F0B2E' : '#f9fafb' }}>
+        <View className="flex-1 bg-[#FFFFFF] dark:bg-[#0D1117]">
             <UnifiedHeader
                 title="Management"
                 subtitle="Permissions"

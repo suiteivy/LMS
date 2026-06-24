@@ -1,0 +1,4 @@
+Be extremely concise. Do not explain basic concepts.
+Provide only code diffs or the specific lines that changed.
+Never rewrite a whole file unless requested.
+If you need more context, ask before scanning the full workspace.

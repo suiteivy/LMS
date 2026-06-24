@@ -21,7 +21,7 @@ export const SubscriptionBanner = () => {
     return null;
 };
 
-// â”€â”€â”€ Plan Hierarchy (frontend gate) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+//  Plan Hierarchy (frontend gate) 
 // Mirrors PLAN_RANK in useSubscriptionTier.ts
 const PLAN_HIERARCHY: Record<string, number> = {
     'beta': 0,
@@ -56,10 +56,6 @@ export const AddonRequestButton = ({ onPress, style }: { onPress: () => void; st
             gap: 8,
             boxShadow: [{ offsetX: 0, offsetY: 4, blurRadius: 8, color: 'rgba(255, 105, 0, 0.2)' }],
             shadowColor: '#FF6900',
-            shadowOffset: { width: 0, height: 4 },
-            shadowOpacity: 0.2,
-            shadowRadius: 8,
-            elevation: 4
         }, style]}
     >
         <Zap size={16} color="white" />
@@ -76,7 +72,7 @@ export const SubscriptionGate = ({ children, fallback, minPlan, feature, classNa
     const tier = useSubscriptionTier();
 
     const isExpired = subscriptionStatus === 'expired' || subscriptionStatus === 'cancelled' || subscriptionStatus === 'over_limit';
-    
+
     // 1. Check feature-specific gate if provided
     let hasAccess = true;
     if (feature) {
@@ -112,6 +108,9 @@ export const SubscriptionStatusBadge = () => {
     const { subscriptionPlan, subscriptionStatus, isTrial, profile } = useAuth();
     const plan = normalisePlan(subscriptionPlan);
 
+    // Hide for non-admins
+    if (profile?.role !== 'admin' && profile?.role !== 'master_admin') return null;
+
     if (subscriptionStatus === 'expired' || subscriptionStatus === 'cancelled') {
         return (
             <View className="bg-red-500/10 px-2 py-0.5 rounded-full border border-red-500/20">
@@ -122,8 +121,8 @@ export const SubscriptionStatusBadge = () => {
 
     if (isTrial) {
         return (
-            <View className="bg-orange-500/10 px-2 py-0.5 rounded-full border border-orange-500/20">
-                <Text className="text-orange-500 text-[10px] font-bold uppercase tracking-wider">Trial Mode</Text>
+            <View className="bg-[#FF6900]/10 px-2 py-0.5 rounded-full border border-orange-500/20">
+                <Text className="text-[#FF6900] text-[10px] font-bold uppercase tracking-wider">Trial Mode</Text>
             </View>
         );
     }
@@ -177,11 +176,6 @@ export const MainAdminBadge = () => {
                     blurRadius: 2,
                     color: 'rgba(0, 0, 0, 0.05)',
                 }],
-                shadowColor: "#000",
-                shadowOffset: { width: 0, height: 1 },
-                shadowOpacity: 0.05,
-                shadowRadius: 2,
-                elevation: 1,
             }}
             className="bg-amber-100 px-1.5 py-0.5 rounded flex-row items-center border border-amber-300"
         >
@@ -217,7 +211,7 @@ export const OnboardingTracker = ({ stats }: { stats: any[] }) => {
     const progressPercent = (completedCount / steps.length) * 100;
 
     return (
-        <View 
+        <View
             style={{
                 boxShadow: [{
                     offsetX: 0,
@@ -225,13 +219,8 @@ export const OnboardingTracker = ({ stats }: { stats: any[] }) => {
                     blurRadius: 15,
                     color: 'rgba(0, 0, 0, 0.3)',
                 }],
-                shadowColor: "#000",
-                shadowOffset: { width: 0, height: 10 },
-                shadowOpacity: 0.3,
-                shadowRadius: 15,
-                elevation: 10,
             }}
-            className="bg-[#1E293B] rounded-2xl p-4 mb-6 border border-slate-700"
+            className="bg-[#1E293B] rounded-lg p-4 mb-6 border border-slate-700"
         >
             <View className="flex-row justify-between items-center mb-3">
                 <Text className="text-white font-bold text-lg">ðŸš€ Getting Started</Text>

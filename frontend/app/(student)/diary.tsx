@@ -81,7 +81,7 @@ export default function StudentDiaryPage() {
                                 return (
                                     <View
                                         key={item.id}
-                                        className="p-5 mb-4 rounded-[32px] bg-white dark:bg-[#1a1a1a] border border-gray-50 dark:border-gray-800 shadow-sm"
+                                        className="p-5 mb-4 rounded-xl bg-[#FFFFFF] dark:bg-[#0D1117] border border-[#D0D7DE] dark:border-[#21262D] shadow-sm"
                                     >
                                         <View className="flex-row items-start mb-4">
                                             <View className={`w-12 h-12 rounded-2xl items-center justify-center mr-4 ${assignment ? 'bg-indigo-50 dark:bg-indigo-950/20' : 'bg-orange-50 dark:bg-orange-950/30'}`}>
@@ -199,9 +199,9 @@ export default function StudentDiaryPage() {
                                 );
                             })
                         ) : (
-                            <View className="bg-white dark:bg-[#1a1a1a] p-20 rounded-[48px] items-center border border-gray-100 dark:border-gray-700 border-dashed mt-8">
+                            <View className="bg-[#FFFFFF] dark:bg-[#0D1117] p-20 rounded-xl items-center border border-[#D0D7DE] dark:border-[#21262D] border-dashed mt-8">
                                 <BookOpen size={64} color="#E5E7EB" style={{ opacity: 0.3 }} />
-                                <Text className="text-gray-400 dark:text-gray-500 font-bold text-center mt-6">No Diary Entries Yet</Text>
+                                <Text className="text-gray-500 dark:text-gray-400 font-bold text-center mt-6">No Diary Entries Yet</Text>
                             </View>
                         )}
                     </ScrollView>

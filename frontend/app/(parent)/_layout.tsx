@@ -11,7 +11,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 const ALL_NAV_ITEMS: NavItem[] = [
     { name: "index", title: "Home", icon: LayoutDashboard, route: "/(parent)" },
     { name: "finance", title: "Fees", icon: CreditCard, route: "/(parent)/finance" },
-    { name: "messages", title: "Chat", icon: MessageSquare, route: "/(parent)/messages" },
+    { name: "messages", title: "Diary", icon: MessageSquare, route: "/(parent)/messages" },
     { name: "announcements", title: "Updates", icon: Bell, route: "/(parent)/announcements" },
     { name: "settings", title: "Settings", icon: Settings, route: "/(parent)/settings" },
 ];
@@ -22,6 +22,7 @@ import { useState } from "react";
 import { useRouter } from "expo-router";
 
 function ParentTabs() {
+    const HIDDEN_ROUTES = ["diary", "library", "reports"];
     const insets = useSafeAreaInsets();
     const { isDark } = useTheme();
     const { isFree } = useSubscriptionTier();

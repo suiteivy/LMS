@@ -122,7 +122,7 @@ export default function StudentAttendancePage() {
           ) : (
             <>
               {/* Attendance Hero */}
-              <View className="bg-gray-900 p-8 rounded-[48px] shadow-2xl mb-8">
+              <View className="bg-gray-900 p-8 rounded-xl shadow-2xl mb-8">
                 <View className="flex-row justify-between items-center mb-10">
                   <View>
                     <Text className="text-white/40 text-[10px] font-bold uppercase tracking-[3px] mb-2">Academic Presence</Text>
@@ -156,15 +156,15 @@ export default function StudentAttendancePage() {
               {/* History Section */}
               <View className="px-2 flex-row justify-between items-center mb-6">
                 <Text className="text-gray-900 dark:text-white font-bold text-xl tracking-tight">Daily Log Entry</Text>
-                <TouchableOpacity className="bg-white dark:bg-navy-surface p-2 rounded-xl border border-gray-100 dark:border-gray-800 shadow-sm">
+                <TouchableOpacity className="bg-[#FFFFFF] dark:bg-[#0D1117]-surface p-2 rounded-xl border border-[#D0D7DE] dark:border-[#21262D] shadow-sm">
                   <Search size={16} color="#FF6900" />
                 </TouchableOpacity>
               </View>
 
               {records.length === 0 ? (
-                <View className="bg-white dark:bg-navy-surface p-10 rounded-[32px] border border-gray-50 dark:border-gray-800 items-center">
+                <View className="bg-[#FFFFFF] dark:bg-[#0D1117]-surface p-10 rounded-xl border border-[#D0D7DE] dark:border-[#21262D] items-center">
                   <CalendarIcon size={32} color="#FF6900" />
-                  <Text className="text-gray-400 dark:text-gray-500 text-xs font-bold uppercase tracking-widest mt-4 text-center">
+                  <Text className="text-gray-500 dark:text-gray-400 text-xs font-bold uppercase tracking-widest mt-4 text-center">
                     No attendance records yet
                   </Text>
                 </View>
@@ -173,10 +173,10 @@ export default function StudentAttendancePage() {
                   const config = getStatusConfig(item.status);
                   const subjectName = item.subject?.title ?? item.subject ?? "—";
                   return (
-                    <View key={item.id ?? idx} className="bg-white dark:bg-navy-surface p-5 rounded-[32px] mb-4 flex-row items-center border border-gray-50 dark:border-gray-800 shadow-sm">
+                    <View key={item.id ?? idx} className="bg-[#FFFFFF] dark:bg-[#0D1117]-surface p-5 rounded-xl mb-4 flex-row items-center border border-[#D0D7DE] dark:border-[#21262D] shadow-sm">
                       <View
                         style={{ backgroundColor: config.bg }}
-                        className="w-12 h-12 rounded-2xl items-center justify-center mr-4"
+                        className="w-12 h-12 rounded-xl items-center justify-center mr-4"
                       >
                         <StatusIcon name={config.iconName} />
                       </View>

@@ -170,7 +170,7 @@ export default function CreateUserScreen() {
         setForm(prev => {
             const arr = [...(prev[key] as string[])];
             const isStudentClass = prev.role === 'student' && key === 'class_ids';
-            
+
             // If student, enforce single selection
             if (isStudentClass) {
                 return { ...prev, [key]: [id] };
@@ -186,7 +186,7 @@ export default function CreateUserScreen() {
     const getFilteredClasses = () => {
         const levelStr = form.grade_level || form.form_level;
         if (!levelStr) return [];
-        
+
         const numLevel = parseInt(levelStr.replace(/[^0-9]/g, ''), 10);
         return classes.filter(c => {
             const classLevel = isSecondary ? c.form_level : c.grade_level;
@@ -219,13 +219,13 @@ export default function CreateUserScreen() {
             // Map the selected level string (e.g. "Grade 1") to numeric fields for the backend
             const levelStr = form.grade_level || form.form_level;
             const numLevel = levelStr ? parseInt(levelStr.replace(/[^0-9]/g, ''), 10) : null;
-            
+
             const payload: any = {
                 ...form,
                 institution_id: profile?.institution_id || form.institution_id,
                 grade_level: !isSecondary ? numLevel : null,
                 form_level: isSecondary ? numLevel : null,
-                parent_info: form.create_parent ? form.parent_info : undefined 
+                parent_info: form.create_parent ? form.parent_info : undefined
             };
 
             if (!form.create_parent) {
@@ -438,7 +438,7 @@ export default function CreateUserScreen() {
             {/* Class Assignment Section */}
             <View style={{ marginBottom: 16 }}>
                 <Text style={{ fontSize: 13, fontWeight: '700', color: textSecondary, marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.5 }}>Assign to Class (Stream) *</Text>
-                
+
                 {!(form.grade_level || form.form_level) ? (
                     <View style={{ backgroundColor: isDark ? '#1e293b' : '#f8fafc', padding: 16, borderRadius: 12, borderStyle: 'dashed', borderWidth: 1, borderColor: border }}>
                         <Text style={{ color: textSecondary, fontSize: 13, textAlign: 'center' }}>Please select a {instLevelLabel} level first</Text>
@@ -447,7 +447,7 @@ export default function CreateUserScreen() {
                     <View style={{ backgroundColor: isDark ? '#450a0a' : '#fef2f2', padding: 16, borderRadius: 12, borderWidth: 1, borderColor: isDark ? '#991b1b' : '#fecaca' }}>
                         <Ionicons name="alert-circle" size={20} color={isDark ? '#f87171' : '#dc2626'} style={{ marginBottom: 8 }} />
                         <Text style={{ color: isDark ? '#fecaca' : '#991b1b', fontSize: 13, fontWeight: '600' }}>No streams found for {form.grade_level || form.form_level}</Text>
-                        <TouchableOpacity 
+                        <TouchableOpacity
                             onPress={() => router.push('/(admin)/classes')}
                             style={{ marginTop: 12, backgroundColor: isDark ? '#991b1b' : '#dc2626', padding: 10, borderRadius: 8, alignSelf: 'flex-start' }}
                         >
@@ -457,16 +457,16 @@ export default function CreateUserScreen() {
                 ) : (
                     <View style={{ gap: 8 }}>
                         {getFilteredClasses().map(c => (
-                            <TouchableOpacity 
-                                key={c.id} 
+                            <TouchableOpacity
+                                key={c.id}
                                 onPress={() => toggleArrayItem('class_ids', c.id)}
                                 activeOpacity={0.7}
-                                style={{ 
-                                    flexDirection: 'row', 
-                                    alignItems: 'center', 
-                                    padding: 16, 
-                                    borderRadius: 12, 
-                                    borderWidth: 1.5, 
+                                style={{
+                                    flexDirection: 'row',
+                                    alignItems: 'center',
+                                    padding: 16,
+                                    borderRadius: 12,
+                                    borderWidth: 1.5,
                                     backgroundColor: form.class_ids.includes(c.id) ? (isDark ? '#1e3a8a' : '#eff6ff') : card,
                                     borderColor: form.class_ids.includes(c.id) ? '#3b82f6' : border
                                 }}

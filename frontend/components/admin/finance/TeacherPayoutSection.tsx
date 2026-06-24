@@ -19,6 +19,68 @@ interface TeacherPayoutSectionProps {
   onRefresh?: () => void;
 }
 
+// Mock/Placeholder data for testing
+const PLACEHOLDER_PAYOUTS: TeacherPayout[] = [
+  {
+    id: '1',
+    teacher_id: 'TEA-2024-001',
+    teacher_name: 'Sarah Johnson',
+    teacher_display_id: 'TEA-2024-001',
+    amount: 25000,
+    hours_taught: 40,
+    rate_per_hour: 625,
+    period_start: '2024-07-01',
+    period_end: '2024-07-31',
+    status: 'pending',
+  },
+  {
+    id: '2',
+    teacher_id: 'TEA-2024-002',
+    teacher_name: 'Michael Chen',
+    amount: 30000,
+    hours_taught: 48,
+    rate_per_hour: 625,
+    period_start: '2024-07-01',
+    period_end: '2024-07-31',
+    status: 'processing',
+  },
+  {
+    id: '3',
+    teacher_id: 'TEA-2024-003',
+    teacher_name: 'Emma Davis',
+    amount: 18750,
+    hours_taught: 30,
+    rate_per_hour: 625,
+    period_start: '2024-06-01',
+    period_end: '2024-06-30',
+    status: 'paid',
+    payment_date: '2024-07-05',
+  },
+  {
+    id: '4',
+    teacher_id: 'TEA-2024-004',
+    teacher_name: 'James Wilson',
+    amount: 22500,
+    hours_taught: 36,
+    rate_per_hour: 625,
+    period_start: '2024-07-01',
+    period_end: '2024-07-31',
+    status: 'pending',
+  },
+  {
+    id: '5',
+    teacher_id: 'TEA-2024-005',
+    teacher_name: 'Lisa Rodriguez',
+    amount: 31250,
+    hours_taught: 50,
+    rate_per_hour: 625,
+    period_start: '2024-06-01',
+    period_end: '2024-06-30',
+    status: 'paid',
+    payment_date: '2024-07-03',
+  },
+];
+
 const TeacherPayoutSection: React.FC<TeacherPayoutSectionProps> = ({
   payouts,
   loading = false,
@@ -30,16 +92,21 @@ const TeacherPayoutSection: React.FC<TeacherPayoutSectionProps> = ({
   const [showDetails, setShowDetails] = useState(false);
   const [displayPayouts, setDisplayPayouts] = useState<TeacherPayout[]>([]);
 
+  // Use placeholder data if no payouts provided
   useEffect(() => {
-    if (payouts) {
+    if (payouts && payouts.length > 0) {
       setDisplayPayouts(payouts);
     } else {
-      setDisplayPayouts([]);
+      // Use placeholder data for demonstration
+      setDisplayPayouts(PLACEHOLDER_PAYOUTS);
     }
   }, [payouts]);
 
   const formatAmount = (amount: number) => {
-    return formatCurrency(amount);
+    return new Intl.NumberFormat('en-KE', {
+      style: 'currency',
+      currency: 'KES',
+    }).format(amount);
   };
 
   const getStatusColor = (status: TeacherPayout['status']) => {
@@ -51,7 +118,7 @@ const TeacherPayoutSection: React.FC<TeacherPayoutSectionProps> = ({
       case 'pending':
         return 'bg-yellow-100 dark:bg-yellow-950/30 text-yellow-800 dark:text-yellow-400';
       default:
-        return 'bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200';
+        return 'bg-[#EAEEF2] dark:bg-[#1C2128] text-gray-800 dark:text-gray-200';
     }
   };
 
@@ -89,7 +156,7 @@ const TeacherPayoutSection: React.FC<TeacherPayoutSectionProps> = ({
   const renderPayoutItem = ({ item }: { item: TeacherPayout }) => (
     <TouchableOpacity
       onPress={() => handlePayoutAction(item)}
-      className="bg-white dark:bg-navy-surface rounded-lg p-4 mb-3 shadow-sm border border-gray-100 dark:border-gray-800"
+      className="bg-[#FFFFFF] dark:bg-[#0D1117]-surface rounded-lg p-4 mb-3 border border-[#D0D7DE] dark:border-[#21262D]"
       style={{
         boxShadow: [{ offsetX: 0, offsetY: 2, blurRadius: 3, color: 'rgba(0, 0, 0, 0.1)' }],
         shadowColor: '#000',
@@ -105,7 +172,7 @@ const TeacherPayoutSection: React.FC<TeacherPayoutSectionProps> = ({
             {item.teacher_name}
           </Text>
           {item.teacher_display_id && (
-            <Text className="text-xs text-[#FF6B00] font-medium">
+            <Text className="text-xs text-[#FF6900] font-medium">
               ID: {item.teacher_display_id}
             </Text>
           )}
@@ -116,13 +183,13 @@ const TeacherPayoutSection: React.FC<TeacherPayoutSectionProps> = ({
       </View>
 
       <View className="space-y-2">
-        <Text className="text-2xl font-bold text-[#FF6B00] mb-2">
+        <Text className="text-2xl font-bold text-[#FF6900] mb-2">
           {formatAmount(item.amount)}
         </Text>
 
         <View className="flex-row justify-between">
           <Text className="text-sm text-gray-600 dark:text-gray-400">Hours Taught:</Text>
-          <Text className="text-sm font-medium text-gray-900 dark:text-gray-100">
+          <Text className="text-sm font-medium text-gray-900 dark:text-white">
             {item.hours_taught} hrs
           </Text>
         </View>
@@ -153,8 +220,8 @@ const TeacherPayoutSection: React.FC<TeacherPayoutSectionProps> = ({
       </View>
 
       {item.status === 'pending' && (
-        <View className="mt-3 pt-3 border-t border-gray-100 dark:border-gray-800">
-          <Text className="text-[#FF6B00] text-sm font-medium text-center">
+        <View className="mt-3 pt-3 border-t border-[#D0D7DE] dark:border-[#21262D]">
+          <Text className="text-[#FF6900] text-sm font-medium text-center">
             Tap to process payout
           </Text>
         </View>
@@ -168,7 +235,7 @@ const TeacherPayoutSection: React.FC<TeacherPayoutSectionProps> = ({
   const totalPaid = calculateTotalPaid();
 
   return (
-    <View className="flex-1 bg-gray-50 dark:bg-navy">
+    <View className="flex-1 bg-[#FFFFFF] dark:bg-[#0D1117]">
       <Text className="text-2xl font-bold text-gray-800 dark:text-white mb-2 ml-4 mt-2">Teachers Payouts</Text>
       <View className="p-4">
         {/* Summary Cards */}
@@ -216,7 +283,7 @@ const TeacherPayoutSection: React.FC<TeacherPayoutSectionProps> = ({
                 ]
               );
             }}
-            className="bg-[#FF6B00] px-4 py-3 rounded-lg mb-4 shadow-sm dark:shadow-md dark:shadow-orange-950/20"
+            className="bg-[#FF6900] px-4 py-3 rounded-lg mb-4 dark: dark:shadow-orange-950/20"
           >
             <Text className="text-white font-semibold text-center text-base">
               Process All Pending Payouts ({formatAmount(totalPending)})
@@ -262,7 +329,7 @@ const TeacherPayoutSection: React.FC<TeacherPayoutSectionProps> = ({
         animationType="slide"
         presentationStyle="pageSheet"
       >
-        <View className="flex-1 bg-white dark:bg-[#0F0B2E]">
+        <View className="flex-1 bg-[#FFFFFF] dark:bg-[#0D1117]">
           <View className="flex-row justify-between items-center p-4 border-b border-gray-200 dark:border-gray-800">
             <TouchableOpacity onPress={() => setShowDetails(false)}>
               <Text className="text-blue-600 dark:text-blue-400 text-lg font-medium">Close</Text>
@@ -273,7 +340,7 @@ const TeacherPayoutSection: React.FC<TeacherPayoutSectionProps> = ({
 
           {selectedPayout && (
             <ScrollView className="flex-1 p-4">
-              <View className="bg-white dark:bg-navy-surface rounded-lg border border-gray-200 dark:border-gray-800 p-4 mb-4">
+              <View className="bg-[#FFFFFF] dark:bg-[#0D1117]-surface rounded-lg border border-gray-200 dark:border-gray-800 p-4 mb-4">
                 <Text className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
                   {selectedPayout.teacher_name}
                 </Text>
@@ -283,31 +350,31 @@ const TeacherPayoutSection: React.FC<TeacherPayoutSectionProps> = ({
                 </View>
 
                 <View className="space-y-3">
-                  <View className="flex-row justify-between py-3 border-b border-gray-100 dark:border-gray-800">
+                  <View className="flex-row justify-between py-3 border-b border-[#D0D7DE] dark:border-[#21262D]">
                     <Text className="text-gray-600 dark:text-gray-400 text-base">Amount</Text>
                     <Text className="text-xl font-bold text-blue-600 dark:text-blue-400">
                       {formatAmount(selectedPayout.amount)}
                     </Text>
                   </View>
 
-                  <View className="flex-row justify-between py-3 border-b border-gray-100 dark:border-gray-800">
+                  <View className="flex-row justify-between py-3 border-b border-[#D0D7DE] dark:border-[#21262D]">
                     <Text className="text-gray-600 dark:text-gray-400 text-base">Hours Taught</Text>
                     <Text className="font-medium text-base dark:text-gray-200">{selectedPayout.hours_taught} hours</Text>
                   </View>
 
-                  <View className="flex-row justify-between py-3 border-b border-gray-100 dark:border-gray-800">
+                  <View className="flex-row justify-between py-3 border-b border-[#D0D7DE] dark:border-[#21262D]">
                     <Text className="text-gray-600 dark:text-gray-400 text-base">Hourly Rate</Text>
                     <Text className="font-medium text-base dark:text-gray-200">{formatAmount(selectedPayout.rate_per_hour || 0)}</Text>
                   </View>
 
-                  <View className="flex-row justify-between py-3 border-b border-gray-100 dark:border-gray-800">
+                  <View className="flex-row justify-between py-3 border-b border-[#D0D7DE] dark:border-[#21262D]">
                     <Text className="text-gray-600 dark:text-gray-400 text-base">Period Start</Text>
                     <Text className="font-medium text-base dark:text-gray-200">
                       {new Date(selectedPayout.period_start).toLocaleDateString()}
                     </Text>
                   </View>
 
-                  <View className="flex-row justify-between py-3 border-b border-gray-100 dark:border-gray-800">
+                  <View className="flex-row justify-between py-3 border-b border-[#D0D7DE] dark:border-[#21262D]">
                     <Text className="text-gray-600 dark:text-gray-400 text-base">Period End</Text>
                     <Text className="font-medium text-base dark:text-gray-200">
                       {new Date(selectedPayout.period_end).toLocaleDateString()}
@@ -315,7 +382,7 @@ const TeacherPayoutSection: React.FC<TeacherPayoutSectionProps> = ({
                   </View>
 
                   {selectedPayout.payment_date && (
-                    <View className="flex-row justify-between py-3 border-b border-gray-100 dark:border-gray-800">
+                    <View className="flex-row justify-between py-3 border-b border-[#D0D7DE] dark:border-[#21262D]">
                       <Text className="text-gray-600 dark:text-gray-400 text-base">Payment Date</Text>
                       <Text className="font-medium text-base dark:text-gray-200">
                         {new Date(selectedPayout.payment_date).toLocaleDateString()}
@@ -332,7 +399,7 @@ const TeacherPayoutSection: React.FC<TeacherPayoutSectionProps> = ({
                     }}
                     className="px-4 py-3 rounded-lg mt-6"
                     style={{
-                      backgroundColor: '#FF6B00',
+                      backgroundColor: '#FF6900',
                       boxShadow: [{ offsetX: 0, offsetY: 2, blurRadius: 3, color: 'rgba(0, 0, 0, 0.15)' }],
                       shadowColor: '#000',
                       shadowOffset: { width: 0, height: 2 },

@@ -245,8 +245,8 @@ export const SettingsToggle: React.FC<SettingsToggleProps> = ({
       <Switch
         value={value}
         onValueChange={onValueChange}
-        trackColor={{ false: "#D1D5DB", true: "#1ABC9C" }}
-        thumbColor="#FFFFFF"
+        trackColor={{ false: "#21262D", true: "#FF6900" }}
+        thumbColor="#ffffff"
       />
     </View>
   );

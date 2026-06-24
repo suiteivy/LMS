@@ -1,22 +1,25 @@
 const supabase = require("../utils/supabaseClient.js");
 const { resolveTeacher } = require("../middleware/resolveTeacher.js");
 
+
 exports.getDashboardStats = async (req, res) => {
     const startTime = Date.now();
     try {
         const { userId, userRole } = req;
         const institution_id = req.institution_id || null;
-
+        
         if (userRole !== 'teacher') {
             return res.status(403).json({ error: "Unauthorized" });
         }
-
-        // 1. Get Teacher ID and full details
+        
+        // 1. Get Teacher ID
+        // Note: We filter by user_id only — institution_id is not stored on the teachers
+        // row created by the DB trigger (it lives on the users table).
         const { data: teacher, error: tError } = await supabase
-            .from('teachers')
-            .select('*, users!inner(*)')
-            .eq('user_id', userId)
-            .single();
+        .from('teachers')
+        .select('id')
+        .eq('user_id', userId)
+        .single();
 
         if (tError || !teacher) {
             console.error(`[TeacherDashboard] Teacher profile not found for userId=${userId}, institution=${institution_id}:`, tError);
@@ -203,8 +206,8 @@ exports.getAnalytics = async (req, res) => {
             .from('subjects')
             .select('id, title, class_id')
             .eq('teacher_id', teacherId);
-
-        if (!subjects) return res.json([]);
+            
+            if (!subjects) return res.json([]);
 
         // 2. Fetch Analytics for each subject
         const analytics = await Promise.all(subjects.map(async (subject) => {
@@ -430,6 +433,7 @@ exports.getStudentPerformance = async (req, res) => {
         console.error("[TeacherStudentPerformance] Error:", err);
         res.status(500).json({ error: err.message });
     }
+    
 };
 
 /**

@@ -4,7 +4,6 @@ import { Camera, X } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, Image, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useAuth } from '@/contexts/AuthContext';
-import DatePicker from '@/components/common/DatePicker';
 
 interface EditFormProps {
   visible: boolean
@@ -325,15 +324,13 @@ export const ProfileEdit = ({ visible, onClose, currentUser, onUpdate }: EditFor
                           <TouchableOpacity
                             key={option}
                             onPress={() => setGender(option)}
-                            className={`flex-1 p-4 rounded-2xl border items-center ${
-                              gender === option
+                            className={`flex-1 p-4 rounded-2xl border items-center ${gender === option
                                 ? 'bg-orange-50 border-orange-500'
                                 : 'bg-gray-50 border-gray-100'
-                            }`}
+                              }`}
                           >
-                            <Text className={`font-semibold capitalize text-sm ${
-                              gender === option ? 'text-orange-600' : 'text-gray-500'
-                            }`}>
+                            <Text className={`font-semibold capitalize text-sm ${gender === option ? 'text-orange-600' : 'text-gray-500'
+                              }`}>
                               {option}
                             </Text>
                           </TouchableOpacity>

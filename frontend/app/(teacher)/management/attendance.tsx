@@ -6,9 +6,11 @@ import { useSubscriptionTier } from "@/hooks/useSubscriptionTier";
 import { SubjectAPI } from "@/services/SubjectService";
 import { TeacherAttendanceAPI } from "@/services/TeacherAttendanceService";
 import { router } from "expo-router";
-import { Calendar, Check, ChevronDown, Clock, X } from 'lucide-react-native';
+import { ChevronDown } from "lucide-react";
+import { Calendar, Check } from 'lucide-react-native';
 import React, { useEffect, useState } from "react";
 import { ActivityIndicator, Alert, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import Toast from 'react-native-toast-message';
 
 interface Student {
     student_id: string;
@@ -25,28 +27,33 @@ interface SubjectOption {
 
 const StudentAttendanceRow = ({ student, onMark }: { student: Student; onMark: (id: string, status: Student["status"]) => void }) => {
     return (
-        <View className="bg-white dark:bg-[#1a1a1a] p-4 rounded-3xl border border-gray-100 dark:border-gray-800 mb-3 flex-row items-center shadow-sm">
-            <View className="w-12 h-12 rounded-2xl bg-orange-100 dark:bg-orange-950/30 items-center justify-center mr-4">
-                <Text className="text-[#FF6900] font-bold text-lg">{student.name.charAt(0)}</Text>
+        <View className="bg-[#F6F8FA] dark:bg-[#161B22] p-4 rounded-xl border border-[#D0D7DE] dark:border-[#21262D] mb-3 flex-row items-center">
+            <View className="w-10 h-10 rounded-xl bg-[#EAEEF2] dark:bg-[#1C2128] items-center justify-center mr-3">
+                <Text className="text-gray-900 dark:text-white font-black text-base">
+                    {(student.name || "U").charAt(0)}
+                </Text>
             </View>
             <View className="flex-1">
-                <Text className="text-gray-900 dark:text-gray-100 font-bold text-base">{student.name}</Text>
-                <Text className="text-gray-400 dark:text-gray-500 text-xs mt-0.5">ID: {student.student_id.substring(0, 8)}</Text>
+                <Text className="text-gray-900 dark:text-white font-bold text-base">{student.name}</Text>
+                <Text className="text-gray-500 dark:text-gray-400 text-[10px] font-bold uppercase tracking-widest mt-0.5">
+                    ID: {student.student_id.substring(0, 8)}
+                </Text>
             </View>
 
             <TouchableOpacity
-                className={`w-12 h-12 rounded-2xl items-center justify-center border-2 ${student.status === "present" ? "bg-green-500 border-green-500" : "bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700"}`}
+                activeOpacity={0.7}
+                className={`w-10 h-10 rounded-xl items-center justify-center ${student.status === "present" ? "bg-[#FF6900]" : "bg-[#EAEEF2] dark:bg-[#1C2128]"}`}
                 onPress={() => onMark(student.student_id, student.status === "present" ? "absent" : "present")}
             >
-                {student.status === "present" && <Check size={24} color="white" />}
+                {student.status === "present" && <Check size={18} color="white" />}
             </TouchableOpacity>
         </View>
     );
 };
 
 export default function AttendancePage() {
-    const { teacherId } = useAuth();
     const tier = useSubscriptionTier();
+    const { teacherId, isDemo } = useAuth();
     const [selectedDate, setSelectedDate] = useState(new Date());
     const [selectedSubjectId, setSelectedSubjectId] = useState<string>("");
     const [subjects, setSubjects] = useState<SubjectOption[]>([]);
@@ -108,6 +115,14 @@ export default function AttendancePage() {
 
     const saveAttendance = async () => {
         if (!selectedSubjectId) return;
+        if (isDemo) {
+            Toast.show({
+                type: 'success',
+                text1: 'Done',
+                text2: 'Changes saved.'
+            });
+            return;
+        }
         setSaving(true);
         try {
             const dateStr = selectedDate.toISOString().split('T')[0];
@@ -140,20 +155,22 @@ export default function AttendancePage() {
     };
 
     return (
-        <View className="flex-1 bg-gray-50 dark:bg-navy">
+        <View className="flex-1 bg-[#FFFFFF] dark:bg-[#0D1117]">
             <UnifiedHeader
                 title="Management"
                 subtitle="Attendance"
                 role="Teacher"
                 onBack={() => router.push("/(teacher)/management")}
             />
-            <ScrollView className="flex-1" showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
-                <View className="p-4 md:p-8">
+            <ScrollView className="flex-1" showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 60 }}>
+                <View className="px-5 pt-4">
                     {/* Date and Summary */}
-                    <View className="flex-row justify-between items-center mb-6 px-2">
-                        <View className="flex-row items-center border border-gray-100 dark:border-gray-800 bg-white dark:bg-[#1a1a1a] px-4 py-2 rounded-2xl shadow-sm">
-                            <Calendar size={14} color="#FF6900" />
-                            <Text className="text-gray-700 dark:text-gray-200 font-bold text-xs ml-2">{selectedDate.toDateString()}</Text>
+                    <View className="flex-row justify-between items-center mb-6">
+                        <View className="flex-row items-center bg-[#F6F8FA] dark:bg-[#161B22] px-4 py-3 rounded-xl border border-[#D0D7DE] dark:border-[#21262D]">
+                            <Calendar size={16} color="#FF6900" />
+                            <Text className="text-gray-900 dark:text-white font-bold text-sm ml-2">
+                                {selectedDate.toDateString()}
+                            </Text>
                         </View>
                         <View>
                             <View className="flex-row items-center">
@@ -204,8 +221,8 @@ export default function AttendancePage() {
                     {loading ? (
                         <ActivityIndicator size="large" color="#FF6900" className="mt-8" />
                     ) : students.length === 0 ? (
-                        <View className="bg-white dark:bg-[#1a1a1a] p-12 rounded-[40px] items-center border border-gray-100 dark:border-gray-800 border-dashed">
-                            <Text className="text-gray-400 dark:text-gray-500 font-bold text-center tracking-tight">No students found for this subject.</Text>
+                        <View className="bg-[#F6F8FA] dark:bg-[#161B22] p-8 rounded-xl items-center border border-[#D0D7DE] dark:border-[#21262D]">
+                            <Text className="text-gray-500 dark:text-gray-400 font-bold text-xs uppercase tracking-widest">No students found</Text>
                         </View>
                     ) : (
                         students.map((student) => (
@@ -219,11 +236,18 @@ export default function AttendancePage() {
 
                     {!loading && students.length > 0 && (
                         <TouchableOpacity
-                            className={`bg-[#FF6900] py-5 rounded-2xl items-center mt-8 shadow-lg active:bg-orange-600 ${saving ? 'opacity-50' : ''}`}
+                            activeOpacity={0.7}
+                            className={`bg-[#FF6900] py-4 rounded-xl items-center mt-6 ${saving ? 'opacity-50' : ''}`}
                             onPress={saveAttendance}
                             disabled={saving}
                         >
-                            {saving ? <ActivityIndicator color="white" /> : <View className="flex-row items-center"><Text className="text-white font-bold text-lg">Save Attendance</Text><HelpTooltip id="teacher.manage.registrar" role="teacher" tier={tier} onLearnMore={openManual} /></View>}
+                            {saving ? 
+                                <ActivityIndicator color="white" /> : 
+                                <View className="flex-row items-center">
+                                    <Text className="text-white font-bold text-lg">Save Attendance</Text>
+                                    <HelpTooltip id="teacher.manage.registrar" role="teacher" tier={tier} onLearnMore={openManual} />
+                                </View>
+                            }
                         </TouchableOpacity>
                     )}
                 </View>

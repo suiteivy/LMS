@@ -311,8 +311,7 @@ export default function MasterAdminUsersScreen() {
                     borderWidth: 1,
                     borderColor: themeColors.border,
                     boxShadow: [{ offsetX: 0, offsetY: 4, blurRadius: 12, color: 'rgba(0, 0, 0, 0.1)' }],
-                    elevation: 4
-                }}>
+                    }}>
                     <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
                         <Text style={{ color: themeColors.text, fontWeight: '700', fontSize: 14 }}>Advanced Filters</Text>
                         <TouchableOpacity onPress={toggleFilters}>

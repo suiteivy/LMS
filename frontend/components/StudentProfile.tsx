@@ -24,7 +24,7 @@ import {
   TouchableOpacity,
   View
 } from "react-native";
-import DatePicker from '@/components/common/DatePicker';
+import { DatePicker } from '@/components/common/DatePicker';
 
 export default function StudentProfile() {
   const { profile, refreshProfile, user } = useAuth();
@@ -41,8 +41,6 @@ export default function StudentProfile() {
   const [emergencyPhone, setEmergencyPhone] = useState("");
   const [saving, setSaving] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
-
-  const DatePicker = require('@/components/common/DatePicker').default;
 
   const [studentDetails, setStudentDetails] = useState<{ grade_level: string | null; academic_year: string | null; admission_date: string | null }>({
     grade_level: null,
@@ -124,8 +122,8 @@ export default function StudentProfile() {
 
   if (!profile) {
     return (
-      <View className="flex-1 justify-center items-center bg-gray-50 dark:bg-navy">
-        <ActivityIndicator size="large" color="#FF6B00" />
+      <View className="flex-1 justify-center items-center bg-[#FFFFFF] dark:bg-[#0D1117]">
+        <ActivityIndicator size="large" color="#FF6900" />
       </View>
     );
   }
@@ -162,10 +160,10 @@ export default function StudentProfile() {
 
         {/* Main Content */}
         <View className="px-6 pb-32">
-          <View className="bg-white dark:bg-[#1a1a1a] rounded-[48px] p-8 shadow-xl border border-gray-100 dark:border-gray-800">
+          <View className="bg-[#F6F8FA] dark:bg-[#161B22] rounded-xl p-8 shadow-xl border border-[#D0D7DE] dark:border-[#21262D]">
             {/* Section Header */}
             <View className="flex-row items-center mb-10">
-              <View className="bg-[#FF6900] w-1.5 h-6 rounded-full mr-4 shadow-sm" />
+              <View className="bg-[#FF6900] w-1.5 h-6 rounded-full mr-4" />
               <Text className="text-gray-900 dark:text-white font-black text-2xl tracking-tight uppercase">Intelligence Profile</Text>
             </View>
 
@@ -174,7 +172,7 @@ export default function StudentProfile() {
                 <Text className="text-gray-900 dark:text-white font-black text-xl tracking-tighter">Core Information</Text>
                 <TouchableOpacity
                   onPress={() => setIsEditing(!isEditing)}
-                  className="bg-orange-50 dark:bg-orange-950/30 px-5 py-2.5 rounded-2xl border border-orange-100 dark:border-orange-900/30"
+                  className="bg-orange-50 dark:bg-orange-950/30 px-5 py-2.5 rounded-lg border border-orange-100 dark:border-orange-900/30"
                 >
                   <Text className="text-[#FF6900] font-bold text-[10px] uppercase tracking-widest">{isEditing ? 'Cancel' : 'Modify'}</Text>
                 </TouchableOpacity>
@@ -182,48 +180,46 @@ export default function StudentProfile() {
 
               {isEditing ? (
                 <View className="bg-gray-50 dark:bg-gray-900 p-6 rounded-[32px] border border-gray-100 dark:border-gray-800 mb-8">
-                    <InfoInput label="First Name" value={firstName} onChange={setFirstName} icon={User} isDark={isDark} />
-                    <InfoInput label="Last Name" value={lastName} onChange={setLastName} icon={User} isDark={isDark} />
-                    <InfoInput label="Contact Number" value={phone} onChange={setPhone} icon={Phone} isDark={isDark} />
-                    <InfoInput label="Residential Address" value={address} onChange={setAddress} icon={MapPin} isDark={isDark} />
+                  <InfoInput label="First Name" value={firstName} onChange={setFirstName} icon={User} isDark={isDark} />
+                  <InfoInput label="Last Name" value={lastName} onChange={setLastName} icon={User} isDark={isDark} />
+                  <InfoInput label="Contact Number" value={phone} onChange={setPhone} icon={Phone} isDark={isDark} />
+                  <InfoInput label="Residential Address" value={address} onChange={setAddress} icon={MapPin} isDark={isDark} />
 
-                    <View className="mb-6">
-                      <Text className="text-sm font-semibold text-gray-700 mb-2">Gender</Text>
-                      <View className="flex-row gap-2">
-                        {(['male', 'female', 'other'] as const).map((option) => (
-                          <TouchableOpacity
-                            key={option}
-                            onPress={() => setGender(option)}
-                            className={`flex-1 p-4 rounded-2xl border items-center ${
-                              gender === option
-                                ? 'bg-orange-50 border-[#FF6900]'
-                                : 'bg-white dark:bg-navy border-gray-200 dark:border-gray-800'
+                  <View className="mb-6">
+                    <Text className="text-sm font-semibold text-gray-700 mb-2">Gender</Text>
+                    <View className="flex-row gap-2">
+                      {(['male', 'female', 'other'] as const).map((option) => (
+                        <TouchableOpacity
+                          key={option}
+                          onPress={() => setGender(option)}
+                          className={`flex-1 p-4 rounded-2xl border items-center ${gender === option
+                              ? 'bg-orange-50 border-[#FF6900]'
+                              : 'bg-white dark:bg-navy border-gray-200 dark:border-gray-800'
                             }`}
-                          >
-                            <Text className={`font-bold text-xs capitalize ${
-                              gender === option ? 'text-[#FF6900]' : 'text-gray-500'
+                        >
+                          <Text className={`font-bold text-xs capitalize ${gender === option ? 'text-[#FF6900]' : 'text-gray-500'
                             }`}>{option}</Text>
-                          </TouchableOpacity>
-                        ))}
-                      </View>
+                        </TouchableOpacity>
+                      ))}
                     </View>
+                  </View>
 
-                    <View className="mb-6">
-                      <Text className="text-sm font-semibold text-gray-700 mb-2">Date of Birth</Text>
-                      <View className="bg-gray-50 dark:bg-navy border border-gray-200 dark:border-gray-800 rounded-2xl px-4 py-3 shadow-sm">
-                        <DatePicker
-                          label="Date of Birth"
-                          value={dob}
-                          onChange={setDob}
-                          isDark={isDark}
-                          inline={true}
-                        />
-                      </View>
+                  <View className="mb-6">
+                    <Text className="text-sm font-semibold text-gray-700 mb-2">Date of Birth</Text>
+                    <View className="bg-gray-50 dark:bg-navy border border-gray-200 dark:border-gray-800 rounded-2xl px-4 py-3 shadow-sm">
+                      <DatePicker
+                        label="Date of Birth"
+                        value={dob}
+                        onChange={setDob}
+                        isDark={isDark}
+                        inline={true}
+                      />
                     </View>
+                  </View>
 
-                    <TouchableOpacity className="bg-[#FF6900] py-4 rounded-2xl items-center mt-4 shadow-lg shadow-orange-500/20" onPress={handleUpdateProfile} disabled={saving}>
-                      {saving ? <ActivityIndicator color="white" /> : <Text className="text-white font-black text-xs uppercase tracking-[2px]">Save Changes</Text>}
-                    </TouchableOpacity>
+                  <TouchableOpacity className="bg-[#FF6900] py-4 rounded-2xl items-center mt-4 shadow-lg shadow-orange-500/20" onPress={handleUpdateProfile} disabled={saving}>
+                    {saving ? <ActivityIndicator color="white" /> : <Text className="text-white font-black text-xs uppercase tracking-[2px]">Save Changes</Text>}
+                  </TouchableOpacity>
                 </View>
               ) : (
                 <View>
@@ -246,15 +242,15 @@ export default function StudentProfile() {
             </View>
 
             {/* Academic Standing Section */}
-            <View className="mt-12 pt-12 border-t border-gray-50 dark:border-gray-800">
+            <View className="mt-12 pt-12 border-t border-[#D0D7DE] dark:border-[#21262D]">
               <View className="flex-row items-center mb-8">
-                <View className="bg-purple-500 w-1.5 h-6 rounded-full mr-4 shadow-sm" />
+                <View className="bg-purple-500 w-1.5 h-6 rounded-full mr-4" />
                 <Text className="text-gray-900 dark:text-white font-black text-xl tracking-tight uppercase">Academic Placement</Text>
               </View>
               <View>
-                <InfoRow label="Class Designation" value={`Grade ${studentDetails.grade_level || 'N/A'}`} icon={GraduationCap} color="#ec4899" isDark={isDark} />
-                <InfoRow label="Academic Year" value={studentDetails.academic_year || 'Not Set'} icon={Library} color="#8b5cf6" isDark={isDark} />
-                <InfoRow label="Admission Date" value={studentDetails.admission_date || 'N/A'} icon={Calendar} color="#4b5563" isDark={isDark} />
+                <InfoRow label="Class Designation" value={`Grade ${studentDetails.grade_level || 'N/A'}`} icon={GraduationCap} color="#6B7280" isDark={isDark} />
+                <InfoRow label="Academic Year" value={studentDetails.academic_year || 'Not Set'} icon={Library} color="#6B7280" isDark={isDark} />
+                <InfoRow label="Admission Date" value={studentDetails.admission_date || 'N/A'} icon={Calendar} color="#6B7280" isDark={isDark} />
               </View>
             </View>
           </View>
@@ -266,11 +262,11 @@ export default function StudentProfile() {
 
 const InfoRow = ({ label, value, icon: Icon, color, isDark }: any) => (
   <View className="flex-row items-center mb-6">
-    <View className="w-12 h-12 rounded-2xl items-center justify-center mr-4" style={{ backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : `${color}10` }}>
+    <View className="w-12 h-12 rounded-lg items-center justify-center mr-4" style={{ backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : `${color}10` }}>
       <Icon size={20} color={color} />
     </View>
     <View className="flex-1">
-      <Text className="text-gray-400 dark:text-gray-500 text-[8px] font-bold uppercase tracking-widest mb-0.5">{label}</Text>
+      <Text className="text-gray-500 dark:text-gray-400 text-[8px] font-bold uppercase tracking-widest mb-0.5">{label}</Text>
       <Text className="text-gray-900 dark:text-white font-bold text-base tracking-tight" numberOfLines={1}>{value}</Text>
     </View>
   </View>
@@ -278,8 +274,8 @@ const InfoRow = ({ label, value, icon: Icon, color, isDark }: any) => (
 
 const InfoInput = ({ label, value, onChange, icon: Icon, isDark }: any) => (
   <View className="mb-6">
-    <Text className="text-gray-400 dark:text-gray-500 text-[8px] font-bold uppercase tracking-widest mb-2 ml-1">{label}</Text>
-    <View className="flex-row items-center bg-white dark:bg-navy border border-gray-200 dark:border-gray-800 rounded-2xl px-4 py-3 shadow-sm">
+    <Text className="text-gray-500 dark:text-gray-400 text-[8px] font-bold uppercase tracking-widest mb-2 ml-1">{label}</Text>
+    <View className="flex-row items-center bg-[#FFFFFF] dark:bg-[#0D1117] border border-[#D0D7DE] dark:border-[#21262D] rounded-lg px-4 py-3">
       <Icon size={16} color={isDark ? "#4B5563" : "#9CA3AF"} />
       <TextInput
         className="flex-1 ml-3 text-gray-900 dark:text-white font-bold text-xs"

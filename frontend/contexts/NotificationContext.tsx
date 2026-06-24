@@ -1,4 +1,9 @@
+<<<<<<< Updated upstream
 import React, { createContext, ReactNode, useCallback, useContext, useEffect, useRef, useState } from 'react';
+=======
+import React, { createContext, ReactNode, useContext, useEffect, useState } from 'react';
+import Toast from 'react-native-toast-message';
+>>>>>>> Stashed changes
 import { NotificationAPI } from '../services/NotificationService';
 import { Notification } from '../types/types';
 import { useAuth } from './AuthContext';
@@ -20,7 +25,7 @@ interface NotificationContextType {
 const NotificationContext = createContext<NotificationContextType | undefined>(undefined);
 
 export const NotificationProvider = ({ children }: { children: ReactNode }) => {
-    const { session } = useAuth();
+    const { session, isDemo } = useAuth();
     const [notifications, setNotifications] = useState<Notification[]>([]);
     const [loading, setLoading] = useState(false);
     const [showNotifications, setShowNotifications] = useState(false);
@@ -70,6 +75,14 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
         try {
             // Optimistic update
             setNotifications(prev => prev.map(n => n.id === id ? { ...n, is_read: true } : n));
+            if (isDemo) {
+                Toast.show({
+                    type: 'success',
+                    text1: 'Done',
+                    text2: 'Changes saved.'
+                });
+                return;
+            }
             await NotificationAPI.markAsRead(id);
         } catch (error) {
             console.error("Failed to mark as read:", error);
@@ -80,6 +93,14 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
     const markAllAsRead = async () => {
         try {
             setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
+            if (isDemo) {
+                Toast.show({
+                    type: 'success',
+                    text1: 'Done',
+                    text2: 'Changes saved.'
+                });
+                return;
+            }
             await NotificationAPI.markAllAsRead();
         } catch (error) {
             console.error("Failed to mark all as read:", error);
@@ -90,6 +111,14 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
     const deleteNotification = async (id: string) => {
         try {
             setNotifications(prev => prev.filter(n => n.id !== id));
+            if (isDemo) {
+                Toast.show({
+                    type: 'success',
+                    text1: 'Done',
+                    text2: 'Changes saved.'
+                });
+                return;
+            }
             await NotificationAPI.deleteNotification(id);
         } catch (error) {
             console.error("Failed to delete notification:", error);
@@ -100,6 +129,14 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
     const clearAll = async () => {
         try {
             setNotifications([]);
+            if (isDemo) {
+                Toast.show({
+                    type: 'success',
+                    text1: 'Done',
+                    text2: 'Changes saved.'
+                });
+                return;
+            }
             await NotificationAPI.clearAll();
         } catch (error) {
             console.error("Failed to clear all notifications:", error);

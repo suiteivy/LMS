@@ -22,26 +22,19 @@ interface StudentGrade {
 }
 
 const GradeRow = ({ student, onGrade }: { student: StudentGrade; onGrade: (student: StudentGrade) => void }) => {
-    const getStatusColor = (status: string) => {
-        if (status === "graded") return "bg-green-50 dark:bg-green-950/20 text-green-600 dark:text-green-400 border-green-100 dark:border-green-900";
-        if (status === "pending" || status === "submitted") return "bg-yellow-50 dark:bg-yellow-950/20 text-yellow-600 dark:text-yellow-400 border-yellow-100 dark:border-yellow-900";
-        if (status === "late") return "bg-red-50 dark:bg-red-950/20 text-red-600 dark:text-red-400 border-red-100 dark:border-red-900";
-        return "bg-blue-50 dark:bg-blue-950/20 text-blue-600 dark:text-blue-400 border-blue-100 dark:border-blue-900";
-    };
-
     return (
-        <View className="bg-white dark:bg-[#1a1a1a] p-4 rounded-3xl border border-gray-100 dark:border-gray-800 mb-3 flex-row items-center shadow-sm">
-            <View className="w-12 h-12 rounded-2xl bg-orange-100 dark:bg-orange-950/30 items-center justify-center mr-3">
-                <Text className="text-[#FF6900] font-bold text-lg">
+        <View className="bg-[#F6F8FA] dark:bg-[#161B22] p-4 rounded-xl border border-[#D0D7DE] dark:border-[#21262D] mb-3 flex-row items-center">
+            <View className="w-10 h-10 rounded-xl bg-[#EAEEF2] dark:bg-[#1C2128] items-center justify-center mr-3">
+                <Text className="text-gray-900 dark:text-white font-black text-base">
                     {(student.student_name || "U").charAt(0)}
                 </Text>
             </View>
 
             {/* Info */}
             <View className="flex-1">
-                <Text className="text-gray-900 dark:text-gray-100 font-bold text-base">{student.student_name}</Text>
+                <Text className="text-gray-900 dark:text-white font-bold text-base">{student.student_name}</Text>
                 {student.student_display_id && (
-                    <Text className="text-[#FF6900] text-[10px] font-bold uppercase tracking-wider">ID: {student.student_display_id}</Text>
+                    <Text className="text-gray-500 dark:text-gray-400 text-[10px] font-bold uppercase tracking-widest mt-0.5">ID: {student.student_display_id}</Text>
                 )}
                 <Text className="text-gray-400 dark:text-gray-500 text-xs mt-0.5" numberOfLines={1}>
                     {student.assignment_title}{' \u2022 '}{student.Subject_title}
@@ -51,23 +44,22 @@ const GradeRow = ({ student, onGrade }: { student: StudentGrade; onGrade: (stude
             {/* Score */}
             <View className="items-end mr-4">
                 <View className="flex-row items-baseline">
-                    <Text className="text-gray-900 dark:text-gray-100 font-bold text-lg">{student.score !== null ? student.score : "--"}</Text>
-                    <Text className="text-gray-400 dark:text-gray-500 text-xs font-bold">/{student.maxScore}</Text>
+                    <Text className="text-gray-900 dark:text-white font-black text-lg">{student.score !== null ? student.score : "--"}</Text>
+                    <Text className="text-gray-500 dark:text-gray-400 text-xs font-bold">/{student.maxScore}</Text>
                 </View>
-                <View className={`px-2 py-0.5 rounded-full mt-1 border ${getStatusColor(student.status || 'pending').split(' ')[0]} ${getStatusColor(student.status || 'pending').split(' ')[2]}`}>
-                    <Text className={`text-[8px] font-bold uppercase tracking-widest ${getStatusColor(student.status || 'pending').split(' ')[1]}`}>
-                        {student.status || 'pending'}
-                    </Text>
-                </View>
+                <Text className={`text-[10px] font-bold uppercase tracking-widest mt-1 ${student.status === 'graded' ? 'text-green-600' : 'text-[#FF6900]'}`}>
+                    {student.status || 'pending'}
+                </Text>
             </View>
 
             {/* Grade Button */}
             <TouchableOpacity
-                className={`w-10 h-10 rounded-xl items-center justify-center ${student.status === "graded" ? "bg-gray-100 dark:bg-[#1A1650]" : "bg-[#FF6900] shadow-sm active:bg-orange-600"}`}
+                activeOpacity={0.7}
+                className={`w-10 h-10 rounded-xl items-center justify-center ${student.status === "graded" ? "bg-[#EAEEF2] dark:bg-[#1C2128]" : "bg-[#FF6900]"}`}
                 onPress={() => onGrade(student)}
             >
                 {student.status === "graded" ? (
-                    <Check size={18} color="#6B7280" />
+                    <Check size={18} color="#9CA3AF" />
                 ) : (
                     <Edit2 size={18} color="white" />
                 )}
@@ -289,7 +281,7 @@ export default function GradesPage() {
     const pendingCount = submissions.filter(s => s.status !== "graded").length;
 
     return (
-        <View className="flex-1 bg-gray-50 dark:bg-navy">
+        <View className="flex-1 bg-[#FFFFFF] dark:bg-[#0D1117]">
             <UnifiedHeader
                 title="Management"
                 subtitle="Grade Book"
@@ -299,55 +291,50 @@ export default function GradesPage() {
             <ScrollView
                 className="flex-1"
                 showsVerticalScrollIndicator={false}
-                contentContainerStyle={{ paddingBottom: 100 }}
+                contentContainerStyle={{ paddingBottom: 60 }}
             >
-                <View className="p-4 md:p-8">
-                    {/* Summary row */}
-                    <View className="flex-row justify-between items-center mb-6 px-2">
-                        <View>
-                            <Text className="text-gray-500 dark:text-gray-400 font-semibold text-xs uppercase tracking-widest">
-                                {pendingCount} pending submissions
-                            </Text>
+                <View className="px-5 pt-4">
+                    {/* Inline Stats */}
+                    <View className="flex-row justify-between items-center mb-6">
+                        <View className="flex-row gap-8">
+                            <View>
+                                <Text className="text-gray-500 dark:text-gray-400 text-xs uppercase tracking-widest mb-1">Graded</Text>
+                                <Text className="text-gray-900 dark:text-white text-3xl font-black">
+                                    {submissions.filter(s => s.status === "graded").length}
+                                </Text>
+                            </View>
+                            <View>
+                                <Text className="text-gray-500 dark:text-gray-400 text-xs uppercase tracking-widest mb-1">Pending</Text>
+                                <Text className="text-gray-900 dark:text-white text-3xl font-black">
+                                    {pendingCount}
+                                </Text>
+                            </View>
                         </View>
-                        <TouchableOpacity className="p-2.5 bg-white dark:bg-[#1a1a1a] rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm active:bg-gray-50 dark:active:bg-gray-900">
-                            <Download size={18} color="#FF6900" />
+                        <TouchableOpacity activeOpacity={0.7} className="p-3 bg-[#F6F8FA] dark:bg-[#161B22] rounded-xl border border-[#D0D7DE] dark:border-[#21262D]">
+                            <Download size={20} color="#FF6900" />
                         </TouchableOpacity>
                     </View>
 
-                    {/* Quick Stats */}
-                    <View className="flex-row gap-3 mb-6">
-                        <View className="flex-1 bg-green-500 p-4 rounded-3xl shadow-sm">
-                            <Text className="text-green-100 text-[10px] font-bold uppercase tracking-wider">Graded</Text>
-                            <Text className="text-white text-2xl font-bold mt-1">
-                                {submissions.filter(s => s.status === "graded").length}
-                            </Text>
-                        </View>
-                        <View className="flex-1 bg-orange-500 p-4 rounded-3xl shadow-sm">
-                            <Text className="text-orange-100 text-[10px] font-bold uppercase tracking-wider">Pending</Text>
-                            <Text className="text-white text-2xl font-bold mt-1">
-                                {submissions.filter(s => s.status !== "graded").length}
-                            </Text>
-                        </View>
-                    </View>
-
                     {/* Subject Filter */}
-                    <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-6 -mx-1">
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-6 -mx-5 px-5">
                         <TouchableOpacity
-                            className={`px-5 py-2.5 rounded-2xl mx-1 border ${selectedSubject === "All Subjects" ? "bg-[#FF6900] border-[#FF6900]" : "bg-white dark:bg-[#1a1a1a] border-gray-100 dark:border-gray-800 shadow-sm"}`}
+                            className={`mr-6 pb-2 border-b-2 ${selectedSubject === "All Subjects" ? "border-[#FF6900]" : "border-transparent"}`}
                             onPress={() => setSelectedSubject("All Subjects")}
+                            activeOpacity={0.7}
                         >
-                            <Text className={`font-bold text-xs ${selectedSubject === "All Subjects" ? "text-white" : "text-gray-500 dark:text-gray-400"}`}>All Subjects</Text>
+                            <Text className={`font-bold ${selectedSubject === "All Subjects" ? "text-[#FF6900]" : "text-gray-500 dark:text-gray-400"}`}>All Subjects</Text>
                         </TouchableOpacity>
                         {subjects.map((sub) => (
                             <TouchableOpacity
                                 key={sub.id}
-                                className={`px-5 py-2.5 rounded-2xl mx-1 border ${selectedSubject === sub.title ? "bg-[#FF6900] border-[#FF6900]" : "bg-white dark:bg-[#1a1a1a] border-gray-100 dark:border-gray-800 shadow-sm"}`}
+                                className={`mr-6 pb-2 border-b-2 ${selectedSubject === sub.title ? "border-[#FF6900]" : "border-transparent"}`}
                                 onPress={() => {
                                     setSelectedSubject(sub.title);
                                     setSelectedAssignmentId("All Assignments");
                                 }}
+                                activeOpacity={0.7}
                             >
-                                <Text className={`font-bold text-xs ${selectedSubject === sub.title ? "text-white" : "text-gray-500 dark:text-gray-400"}`}>{sub.title}</Text>
+                                <Text className={`font-bold ${selectedSubject === sub.title ? "text-[#FF6900]" : "text-gray-500 dark:text-gray-400"}`}>{sub.title}</Text>
                             </TouchableOpacity>
                         ))}
                     </ScrollView>
@@ -355,43 +342,46 @@ export default function GradesPage() {
                     {/* Assignment Filter & Toggle */}
                     {selectedSubject !== "All Subjects" && assignments.length > 0 && (
                         <View className="mb-6">
-                            <Text className="text-gray-500 dark:text-gray-400 text-[10px] font-bold uppercase tracking-wider ml-1 mb-2">Select Assignment</Text>
-                            <ScrollView horizontal showsHorizontalScrollIndicator={false} className="-mx-1 mb-4">
+                            <Text className="text-gray-500 dark:text-gray-400 text-xs uppercase tracking-widest mb-3">Select Assignment</Text>
+                            <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-4 -mx-5 px-5">
                                 <TouchableOpacity
-                                    className={`px-5 py-2.5 rounded-2xl mx-1 border ${selectedAssignmentId === "All Assignments" ? "bg-gray-900 border-gray-900" : "bg-white dark:bg-[#1a1a1a] border-gray-100 dark:border-gray-800 shadow-sm"}`}
+                                    className={`mr-6 pb-2 border-b-2 ${selectedAssignmentId === "All Assignments" ? "border-[#FF6900]" : "border-transparent"}`}
                                     onPress={() => setSelectedAssignmentId("All Assignments")}
+                                    activeOpacity={0.7}
                                 >
-                                    <Text className={`font-bold text-xs ${selectedAssignmentId === "All Assignments" ? "text-white" : "text-gray-500 dark:text-gray-400"}`}>All Assignments</Text>
+                                    <Text className={`font-bold ${selectedAssignmentId === "All Assignments" ? "text-[#FF6900]" : "text-gray-500 dark:text-gray-400"}`}>All</Text>
                                 </TouchableOpacity>
                                 {assignments.map((asgn) => (
                                     <TouchableOpacity
                                         key={asgn.id}
-                                        className={`px-5 py-2.5 rounded-2xl mx-1 border ${selectedAssignmentId === asgn.id ? "bg-gray-900 border-gray-900" : "bg-white dark:bg-[#1a1a1a] border-gray-100 dark:border-gray-800 shadow-sm"}`}
+                                        className={`mr-6 pb-2 border-b-2 ${selectedAssignmentId === asgn.id ? "border-[#FF6900]" : "border-transparent"}`}
                                         onPress={() => {
                                             setSelectedAssignmentId(asgn.id);
                                             setIsPublished(asgn.is_published);
                                         }}
+                                        activeOpacity={0.7}
                                     >
-                                        <Text className={`font-bold text-xs ${selectedAssignmentId === asgn.id ? "text-white" : "text-gray-500 dark:text-gray-400"}`}>{asgn.title}</Text>
+                                        <Text className={`font-bold ${selectedAssignmentId === asgn.id ? "text-[#FF6900]" : "text-gray-500 dark:text-gray-400"}`}>{asgn.title}</Text>
                                     </TouchableOpacity>
                                 ))}
                             </ScrollView>
 
                             {selectedAssignmentId !== "All Assignments" && (
-                                <View className="bg-white dark:bg-[#1a1a1a] p-4 rounded-3xl border border-gray-100 dark:border-gray-800 flex-row justify-between items-center">
+                                <View className="bg-[#F6F8FA] dark:bg-[#161B22] p-4 rounded-xl border border-[#D0D7DE] dark:border-[#21262D] flex-row justify-between items-center">
                                     <View>
                                         <Text className="text-gray-900 dark:text-white font-bold text-sm">Student Visibility</Text>
-                                        <Text className="text-gray-400 dark:text-gray-500 text-xs">Students can see their marks for this work</Text>
+                                        <Text className="text-gray-500 dark:text-gray-400 text-xs">Students can see their marks</Text>
                                     </View>
                                     <TouchableOpacity
                                         onPress={togglePublication}
                                         disabled={updatingVisibility}
-                                        className={`px-4 py-2 rounded-xl border ${isPublished ? "bg-green-50 border-green-100" : "bg-red-50 border-red-100"}`}
+                                        activeOpacity={0.7}
+                                        className={`px-4 py-2 rounded-lg border ${isPublished ? "bg-green-50 dark:bg-green-950 border-green-200 dark:border-green-800" : "bg-[#F6F8FA] dark:bg-[#1C2128] border-[#D0D7DE] dark:border-[#21262D]"}`}
                                     >
                                         {updatingVisibility ? (
-                                            <ActivityIndicator size="small" color={isPublished ? "#059669" : "#DC2626"} />
+                                            <ActivityIndicator size="small" color={isPublished ? "#059669" : "#FF6900"} />
                                         ) : (
-                                            <Text className={`font-bold text-xs uppercase tracking-wider ${isPublished ? "text-green-600" : "text-red-600"}`}>
+                                            <Text className={`font-bold text-xs uppercase tracking-widest ${isPublished ? "text-green-600 dark:text-green-400" : "text-gray-500 dark:text-gray-400"}`}>
                                                 {isPublished ? "Published" : "Hidden"}
                                             </Text>
                                         )}
@@ -402,10 +392,10 @@ export default function GradesPage() {
                     )}
 
                     {/* Search */}
-                    <View className="flex-row items-center bg-white dark:bg-[#1a1a1a] rounded-2xl px-4 py-3 mb-6 border border-gray-100 dark:border-gray-800 shadow-sm">
+                    <View className="flex-row items-center bg-[#F6F8FA] dark:bg-[#161B22] rounded-xl px-4 py-3 mb-6 border border-[#D0D7DE] dark:border-[#21262D]">
                         <Search size={18} color="#9CA3AF" />
                         <TextInput
-                            className="flex-1 ml-3 text-gray-900 dark:text-gray-100 font-medium"
+                            className="flex-1 ml-3 text-gray-900 dark:text-white font-medium"
                             placeholder="Search students or assignments..."
                             placeholderTextColor="#9CA3AF"
                             value={searchQuery}
@@ -414,13 +404,13 @@ export default function GradesPage() {
                     </View>
 
                     {/* Grade List */}
-                    <Text className="text-lg font-bold text-gray-900 dark:text-white mb-4 px-1 tracking-tight">All Submissions</Text>
+                    <Text className="text-lg font-bold text-gray-900 dark:text-white mb-3">All Submissions</Text>
 
                     {loading ? (
                         <ActivityIndicator size="large" color="#FF6900" className="mt-8" />
                     ) : filteredStudents.length === 0 ? (
-                        <View className="bg-white dark:bg-[#1a1a1a] p-10 rounded-3xl items-center border border-gray-100 dark:border-gray-800 border-dashed">
-                            <Text className="text-gray-500 dark:text-gray-400 font-bold text-center">No submissions found</Text>
+                        <View className="bg-[#F6F8FA] dark:bg-[#161B22] p-8 rounded-xl items-center border border-[#D0D7DE] dark:border-[#21262D]">
+                            <Text className="text-gray-500 dark:text-gray-400 font-bold text-xs uppercase tracking-widest">No submissions found</Text>
                         </View>
                     ) : (
                         filteredStudents.map((student) => (
@@ -432,34 +422,35 @@ export default function GradesPage() {
 
             {/* Grading Modal */}
             <Modal visible={gradingModalVisible} animationType="slide" transparent>
-                <View className="flex-1 bg-black/50 justify-end">
-                    <View className="bg-white dark:bg-[#0F0B2E] rounded-t-[40px] p-8 pb-12 border-t border-gray-100 dark:border-gray-800">
-                        <View className="flex-row justify-between items-center mb-8">
-                            <Text className="text-2xl font-bold text-gray-900 dark:text-white tracking-tight">Grade Submission</Text>
+                <View className="flex-1 bg-black/70 justify-end">
+                    <View className="bg-[#FFFFFF] dark:bg-[#0D1117] rounded-t-3xl p-6 pb-12 border-t border-[#D0D7DE] dark:border-[#21262D]">
+                        <View className="flex-row justify-between items-center mb-6">
+                            <Text className="text-xl font-bold text-gray-900 dark:text-white">Grade Submission</Text>
                             <TouchableOpacity
-                                className="w-10 h-10 bg-gray-50 dark:bg-[#1a1a1a] rounded-full items-center justify-center"
+                                className="w-10 h-10 bg-[#F6F8FA] dark:bg-[#1C2128] rounded-xl items-center justify-center border border-[#D0D7DE] dark:border-[#21262D]"
                                 onPress={() => setGradingModalVisible(false)}
+                                activeOpacity={0.7}
                             >
-                                <X size={20} color="#6B7280" />
+                                <X size={20} color="#9CA3AF" />
                             </TouchableOpacity>
                         </View>
 
-                        <View className="mb-6 bg-gray-50 dark:bg-[#1a1a1a] p-6 rounded-3xl border border-gray-100 dark:border-gray-800">
+                        <View className="mb-6 bg-[#F6F8FA] dark:bg-[#161B22] p-5 rounded-xl border border-[#D0D7DE] dark:border-[#21262D]">
                             <View className="mb-4">
-                                <Text className="text-gray-400 dark:text-gray-500 text-[10px] font-bold uppercase tracking-wider mb-1">Student</Text>
-                                <Text className="text-gray-900 dark:text-white font-bold text-lg">{currentSubmission?.student_name}</Text>
+                                <Text className="text-gray-500 dark:text-gray-400 text-xs font-bold uppercase tracking-widest mb-1">Student</Text>
+                                <Text className="text-gray-900 dark:text-white font-bold text-base">{currentSubmission?.student_name}</Text>
                             </View>
 
                             <View>
-                                <Text className="text-gray-400 dark:text-gray-500 text-[10px] font-bold uppercase tracking-wider mb-1">Assignment</Text>
+                                <Text className="text-gray-500 dark:text-gray-400 text-xs font-bold uppercase tracking-widest mb-1">Assignment</Text>
                                 <Text className="text-gray-900 dark:text-white font-bold text-base">{currentSubmission?.assignment_title}</Text>
                             </View>
                         </View>
 
-                        <View className="mb-6">
-                            <Text className="text-gray-500 dark:text-gray-400 text-sm font-bold mb-2 ml-2">Score (Max: {currentSubmission?.maxScore})</Text>
+                        <View className="mb-5">
+                            <Text className="text-gray-500 dark:text-gray-400 text-xs uppercase tracking-widest font-bold mb-2">Score (Max: {currentSubmission?.maxScore})</Text>
                             <TextInput
-                                className="bg-gray-50 dark:bg-[#1a1a1a] rounded-2xl px-5 py-4 text-gray-900 dark:text-white font-bold text-lg border border-gray-100 dark:border-gray-800"
+                                className="bg-[#F6F8FA] dark:bg-[#161B22] rounded-xl px-5 py-4 text-gray-900 dark:text-white font-bold text-lg border border-[#D0D7DE] dark:border-[#21262D]"
                                 placeholder="0.0"
                                 placeholderTextColor="#9CA3AF"
                                 keyboardType="numeric"
@@ -468,10 +459,10 @@ export default function GradesPage() {
                             />
                         </View>
 
-                        <View className="mb-8">
-                            <Text className="text-gray-500 dark:text-gray-400 text-sm font-bold mb-2 ml-2">Feedback</Text>
+                        <View className="mb-6">
+                            <Text className="text-gray-500 dark:text-gray-400 text-xs uppercase tracking-widest font-bold mb-2">Feedback</Text>
                             <TextInput
-                                className="bg-gray-50 dark:bg-[#1a1a1a] rounded-2xl px-5 py-4 text-gray-900 dark:text-white h-32 border border-gray-100 dark:border-gray-800"
+                                className="bg-[#F6F8FA] dark:bg-[#161B22] rounded-xl px-5 py-4 text-gray-900 dark:text-white h-28 border border-[#D0D7DE] dark:border-[#21262D]"
                                 placeholder="Add comments here..."
                                 placeholderTextColor="#9CA3AF"
                                 multiline
@@ -482,8 +473,9 @@ export default function GradesPage() {
                         </View>
 
                         <TouchableOpacity
-                            className="bg-[#FF6900] py-5 rounded-2xl items-center shadow-lg active:bg-orange-600"
+                            className="bg-[#FF6900] py-4 rounded-xl items-center"
                             onPress={submitGrade}
+                            activeOpacity={0.7}
                         >
                             <Text className="text-white font-bold text-lg">Save Grade</Text>
                         </TouchableOpacity>

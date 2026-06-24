@@ -6,7 +6,7 @@ export default function ManagementLayout() {
     const insets = useSafeAreaInsets();
 
     return (
-        <View style={{ flex: 1 }} className="bg-gray-50 dark:bg-navy">
+        <View style={{ flex: 1 }} className="bg-[#FFFFFF] dark:bg-[#0D1117]">
             <Stack
                 screenOptions={{
                     headerShown: false,

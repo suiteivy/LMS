@@ -11,26 +11,22 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 // Full nav items for paid plans
 const ALL_NAV_ITEMS: NavItem[] = [
     { name: "index", title: "Home", icon: Building, route: "/(teacher)" },
-    { name: "subjects", title: "Subjects", icon: BookOpen, route: "/(teacher)/subjects" },
-    { name: "classes", title: "Classes", icon: School, route: "/(teacher)/classes" },
     { name: "notifications", title: "Alerts", icon: Bell, route: "/(teacher)/notifications" },
-    { name: "students", title: "Students", icon: Users, route: "/(teacher)/students" },
-    { name: "library", title: "Library", icon: BookOpen, route: "/(teacher)/library" },
     { name: "management", title: "Manage", icon: LayoutGrid, route: "/(teacher)/management" },
     { name: "settings", title: "Settings", icon: Settings, route: "/(teacher)/settings" },
 ];
 
-// Simplified nav for beta plan Home + Classes + Library + Settings
+// Simplified nav for beta plan
 const BETA_NAV_ITEMS: NavItem[] = [
     { name: "index", title: "Home", icon: Building, route: "/(teacher)" },
     { name: "notifications", title: "Alerts", icon: Bell, route: "/(teacher)/notifications" },
-    { name: "classes", title: "Classes", icon: School, route: "/(teacher)/classes" },
-    { name: "library", title: "Library", icon: BookOpen, route: "/(teacher)/library" },
     { name: "management", title: "Manage", icon: LayoutGrid, route: "/(teacher)/management" },
     { name: "settings", title: "Settings", icon: Settings, route: "/(teacher)/settings" },
 ];
 
-// Names hidden from tabs on beta plan (registered as routes but not shown)
+// Routes accessible via Manage — registered but hidden from tab bar
+const MANAGE_SUB_ROUTES = ["subjects", "classes", "students", "library"];
+// Beta plan additionally hides subjects/students
 const BETA_HIDDEN = ["subjects", "students"];
 
 import { useNotifications } from "@/contexts/NotificationContext";
@@ -147,7 +143,8 @@ function TeacherTabs() {
                 );
             })}
             {/* On free plan, hide paid-only tabs from nav but register them as routes */}
-            {isBeta && BETA_HIDDEN.map(name => (
+            {/* Register Manage sub-routes as hidden screens (accessible but not in tab bar) */}
+            {MANAGE_SUB_ROUTES.map(name => (
                 <Tabs.Screen key={name} name={name} options={{ href: null, headerShown: false }} />
             ))}
             </Tabs>
@@ -165,8 +162,7 @@ function TeacherTabs() {
 function TeacherSidebar() {
     const { isDemo } = useAuth();
     const { isBeta } = useSubscriptionTier();
-    const baseItems = isBeta ? BETA_NAV_ITEMS : ALL_NAV_ITEMS;
-    const items = baseItems.filter(i => !(i.name === "settings" && isDemo));
+    const items = isBeta ? BETA_NAV_ITEMS : ALL_NAV_ITEMS;
     return (
         <WebSidebar items={items} basePath="(teacher)" role="Teacher">
             <Slot />

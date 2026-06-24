@@ -128,7 +128,7 @@ export default function FundManager() {
                                 <TouchableOpacity
                                     key={fund.id}
                                     onPress={() => setSelectedFund(fund)}
-                                    className={`w-64 p-5 rounded-2xl border ${selectedFund?.id === fund.id ? 'bg-orange-600 border-orange-600' : 'bg-white border-gray-100'} shadow-sm mr-4`}
+                                    className={`w-64 p-5 rounded-xl border ${selectedFund?.id === fund.id ? 'bg-orange-600 border-orange-600' : 'bg-white border-gray-100'} shadow-sm mr-4`}
                                 >
                                     <Text className={`text-lg font-bold mb-1 ${selectedFund?.id === fund.id ? 'text-white' : 'text-gray-800'}`}>{fund.name}</Text>
                                     <Text className={`text-xs mb-3 ${selectedFund?.id === fund.id ? 'text-orange-100' : 'text-gray-500'}`}>Total: ${fund.total_amount}</Text>
@@ -192,7 +192,7 @@ export default function FundManager() {
             {/* Create Fund Modal */}
             <Modal visible={createFundModal} animationType="slide" transparent>
                 <View className="flex-1 bg-black/50 justify-center px-6">
-                    <View className="bg-white rounded-2xl p-6">
+                    <View className="bg-white rounded-xl p-6">
                         <Text className="text-xl font-bold mb-4">Create New Budget Fund</Text>
                         <TextInput
                             placeholder="Fund Name (e.g. Q1 Maintenance)"
@@ -222,7 +222,7 @@ export default function FundManager() {
             {/* Create Allocation Modal */}
             <Modal visible={createAllocationModal} animationType="slide" transparent>
                 <View className="flex-1 bg-black/50 justify-center px-6">
-                    <View className="bg-white rounded-2xl p-6">
+                    <View className="bg-white rounded-xl p-6">
                         <Text className="text-xl font-bold mb-4">Allocate Expense</Text>
                         <TextInput
                             placeholder="Title (e.g. Repair Roof)"

@@ -78,9 +78,9 @@ export default function StudentAnnouncementsPage() {
           </View>
 
           {announcements.length === 0 ? (
-            <View className="bg-white dark:bg-navy-surface p-12 rounded-[40px] items-center border border-gray-100 dark:border-gray-800 border-dashed mt-4">
+            <View className="bg-[#FFFFFF] dark:bg-[#0D1117]-surface p-12 rounded-xl items-center border border-[#D0D7DE] dark:border-[#21262D] border-dashed mt-4">
               <Bell size={48} color="#E5E7EB" style={{ opacity: 0.3 }} />
-              <Text className="text-gray-400 dark:text-gray-500 font-bold text-center mt-6">No announcements recorded</Text>
+              <Text className="text-gray-500 dark:text-gray-400 font-bold text-center mt-6">No announcements recorded</Text>
             </View>
           ) : (
             announcements.map((item) => {
@@ -89,21 +89,17 @@ export default function StudentAnnouncementsPage() {
                 <TouchableOpacity
                   key={item.id}
                   activeOpacity={0.8}
-                  className="bg-white dark:bg-navy-surface p-8 rounded-[48px] mb-6 border border-gray-50 dark:border-gray-800 shadow-sm"
-                  onPress={() => {
-                    // Mark notification as read when announcement is clicked
-                    console.log('Marking notification as read:', item.id);
-                  }}
+                  className="bg-[#FFFFFF] dark:bg-[#0D1117]-surface p-8 rounded-xl mb-6 border border-[#D0D7DE] dark:border-[#21262D] shadow-sm"
                 >
                   {/* Tag + Date Row */}
                   <View className="flex-row items-center justify-between mb-6">
                     <View className="flex-row items-center">
-                      <View className={`${config.bg} dark:bg-gray-800 p-3 rounded-2xl shadow-sm`}>
+                      <View className={`${config.bg} dark:bg-gray-800 p-3 rounded-xl shadow-sm`}>
                         {config.icon}
                       </View>
                       <View className="ml-4">
                         <Text className="text-gray-900 dark:text-white font-bold text-sm tracking-tight">{config.tag}</Text>
-                        <Text className="text-gray-400 dark:text-gray-500 text-[10px] font-bold uppercase tracking-widest mt-0.5">{new Date(item.created_at).toLocaleDateString()}</Text>
+                        <Text className="text-gray-500 dark:text-gray-400 text-[10px] font-bold uppercase tracking-widest mt-0.5">{new Date(item.created_at).toLocaleDateString()}</Text>
                       </View>
                     </View>
                     <ChevronRight size={16} color="#D1D5DB" />
@@ -114,14 +110,14 @@ export default function StudentAnnouncementsPage() {
                   <Text className="text-gray-500 dark:text-gray-400 text-sm leading-[22px] mb-8 font-medium">{item.message}</Text>
 
                   {/* Author (Simplified for notifications) */}
-                  <View className="pt-6 border-t border-gray-50 dark:border-gray-800 flex-row items-center justify-between">
+                  <View className="pt-6 border-t border-[#D0D7DE] dark:border-[#21262D] flex-row items-center justify-between">
                     <View className="flex-row items-center">
-                      <View className="bg-gray-50 dark:bg-gray-800 w-10 h-10 rounded-full items-center justify-center border border-gray-100 dark:border-gray-700 mr-3">
+                      <View className="bg-gray-50 dark:bg-gray-800 w-10 h-10 rounded-full items-center justify-center border border-[#D0D7DE] dark:border-[#21262D] mr-3">
                         <MessageSquare size={14} color="#FF6900" />
                       </View>
                       <View>
                         <Text className="text-gray-900 dark:text-white text-xs font-bold tracking-tight">System Notification</Text>
-                        <Text className="text-gray-400 dark:text-gray-500 text-[8px] font-bold uppercase tracking-widest mt-0.5">{item.type}</Text>
+                        <Text className="text-gray-500 dark:text-gray-400 text-[8px] font-bold uppercase tracking-widest mt-0.5">{item.type}</Text>
                       </View>
                     </View>
                   </View>

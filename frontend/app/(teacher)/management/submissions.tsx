@@ -7,6 +7,7 @@ import { router, useLocalSearchParams } from "expo-router";
 import { Check, Edit2, FileText, User, X } from 'lucide-react-native';
 import React, { useEffect, useState } from "react";
 import { ActivityIndicator, Alert, Modal, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import Toast from 'react-native-toast-message';
 
 type TypedSubmission = Database['public']['Tables']['submissions']['Row'];
 
@@ -46,8 +47,8 @@ interface JoinedEnrollment {
 
 export default function SubmissionsPage() {
     const { assignmentId } = useLocalSearchParams<{ assignmentId: string }>();
-    const { teacherId } = useAuth();
     const { isDark } = useTheme();
+    const { teacherId, isDemo } = useAuth();
     const [loading, setLoading] = useState(true);
     const [assignment, setAssignment] = useState<JoinedAssignment | null>(null);
     const [submissions, setSubmissions] = useState<SubmissionEntry[]>([]);
@@ -218,16 +219,33 @@ export default function SubmissionsPage() {
     };
 
     const submitGrade = async () => {
-        if (!currentEntry || !currentEntry.id) return;
+        if (!currentEntry) return;
         const score = parseFloat(gradeInput);
         if (isNaN(score) || score > (assignment?.total_points || 100)) {
             Alert.alert("Invalid Score", `Max points: ${assignment?.total_points || 100}`);
             return;
         }
 
+        if (isDemo) {
+            setSubmissions(prev => prev.map(s =>
+                s.student_id === currentEntry.student_id
+                    ? { ...s, score: score, feedback: feedbackInput, status: 'graded' }
+                    : s
+            ));
+            setGradingModalVisible(false);
+            Toast.show({
+                type: 'success',
+                text1: 'Done',
+                text2: 'Changes saved.'
+            });
+            return;
+        }
+
+        if (!currentEntry.id) return;
+
         try {
-            const { error } = await (supabase
-                .from('submissions') as any)
+            const { error } = await (supabase as any)
+                .from('submissions')
                 .update({
                     grade: score,
                     feedback: feedbackInput,
@@ -267,6 +285,10 @@ export default function SubmissionsPage() {
         );
     };
 
+    const pendingCount = submissions.filter(s => s.status === 'missing').length;
+    const submittedCount = submissions.filter(s => s.status === 'submitted' || s.status === 'late').length;
+    const reviewedCount = submissions.filter(s => s.status === 'graded').length;
+
     return (
         <View className={`flex-1 ${isDark ? 'bg-[#0F0B2E]' : 'bg-gray-50'}`}>
             <UnifiedHeader
@@ -280,6 +302,7 @@ export default function SubmissionsPage() {
                     <ActivityIndicator size="large" color="#FF6900" />
                 </View>
             ) : (
+                // Specific assignment view
                 <ScrollView className="flex-1" showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
                     <View className="p-4 md:p-8">
                         <View className="bg-gray-900 p-8 rounded-[40px] mb-8 shadow-xl">
@@ -347,7 +370,7 @@ export default function SubmissionsPage() {
                                 </View>
 
                                 <TouchableOpacity
-                                    className={`w-10 h-10 rounded-xl items-center justify-center ${entry.status === "missing" ? "bg-gray-100" : "bg-[#FF6900] shadow-sm active:bg-orange-600"}`}
+                                    className={`w-10 h-10 rounded-xl items-center justify-center ${entry.status === "missing" ? "bg-gray-100" : "bg-[#FF6900] active:bg-orange-600"}`}
                                     onPress={() => handleGradeClick(entry)}
                                     disabled={entry.status === 'missing'}
                                 >
@@ -382,22 +405,17 @@ export default function SubmissionsPage() {
                                 <Text className={`${isDark ? 'text-white' : 'text-gray-900'} font-bold text-lg`}>{currentEntry?.student_name}</Text>
                             </View>
                             <View>
-                                <Text className={`${isDark ? 'text-gray-300' : 'text-gray-400'} text-[10px] font-bold uppercase tracking-wider mb-1`}>Status</Text>
-                                <Text className="text-[#FF6900] font-bold text-base uppercase tracking-widest">{currentEntry?.status}</Text>
+                                <Text className={`${isDark ? 'text-gray-200' : 'text-gray-500'} text-sm font-bold mb-2 ml-2`}>Grade (Max: {assignment?.total_points})</Text>
+                                <TextInput
+                                    className={`rounded-2xl px-6 py-4 ${isDark ? 'text-white border-white/10' : 'text-gray-900 border-gray-100'} font-bold text-lg border ${canGrade ? (isDark ? 'bg-white/10' : 'bg-gray-50') : 'bg-gray-100'}`}
+                                    placeholder="0.0"
+                                    placeholderTextColor={isDark ? '#9CA3AF' : '#6B7280'}
+                                    keyboardType="numeric"
+                                    value={gradeInput}
+                                    onChangeText={canGrade ? setGradeInput : undefined}
+                                    editable={canGrade}
+                                />
                             </View>
-                        </View>
-
-                        <View className="mb-6">
-                            <Text className={`${isDark ? 'text-gray-200' : 'text-gray-500'} text-sm font-bold mb-2 ml-2`}>Grade (Max: {assignment?.total_points})</Text>
-                            <TextInput
-                                className={`rounded-2xl px-6 py-4 ${isDark ? 'text-white border-white/10' : 'text-gray-900 border-gray-100'} font-bold text-lg border ${canGrade ? (isDark ? 'bg-white/10' : 'bg-gray-50') : 'bg-gray-100'}`}
-                                placeholder="0.0"
-                                placeholderTextColor={isDark ? '#9CA3AF' : '#6B7280'}
-                                keyboardType="numeric"
-                                value={gradeInput}
-                                onChangeText={canGrade ? setGradeInput : undefined}
-                                editable={canGrade}
-                            />
                             {!canGrade && (
                                 <Text className="text-gray-400 text-xs mt-1 ml-2">Read-only — only the subject teacher can grade</Text>
                             )}

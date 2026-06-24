@@ -402,9 +402,7 @@ const PlanCard = ({ plan, tierAccent, openRegistrationModal }: any) => {
               borderWidth: 1.5,
               borderColor: plan.popular || plan.premium ? 'rgba(255,255,255,0.2)' : `${plan.accent}55`,
               shadowColor: plan.accent,
-              shadowOffset: { width: 0, height: 10 },
               shadowOpacity: plan.popular || plan.premium ? 0.4 : 0.1,
-              shadowRadius: 16,
               boxShadow: [{
                 offsetX: 0,
                 offsetY: 10,
@@ -624,7 +622,6 @@ const FeatureCard = ({ icon, title, desc, accent, tag }: any) => {
         borderColor: 'rgba(255,255,255,0.08)',
         overflow: 'hidden',
         shadowColor: accent,
-        shadowOffset: { width: 0, height: 8 },
         boxShadow: [{
           offsetX: 0,
           offsetY: 8,
@@ -765,17 +762,13 @@ function DiscountBanner() {
         flexWrap: 'wrap',
         // subtle glow shadow
         shadowColor: '#FF6B00',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.6,
-        shadowRadius: 8,
         boxShadow: [{
           offsetX: 0,
           offsetY: 2,
           blurRadius: 8,
           color: 'rgba(255, 107, 0, 0.6)',
         }],
-        elevation: 8,
-      }}
+        }}
     >
       {/* Left: sparkle + offer text */}
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
@@ -852,7 +845,6 @@ const SignInButtonMain = () => {
       style={[{
         borderRadius: 100,
         shadowColor: '#FF6B00',
-        shadowOffset: { width: 0, height: 8 },
         boxShadow: [{
           offsetX: 0,
           offsetY: 8,
@@ -1148,17 +1140,12 @@ export default function Index() {
             paddingVertical: 6,
             borderWidth: 1,
             borderColor: "rgba(255,255,255,0.1)",
-            shadowColor: "#000",
-            shadowOffset: { width: 0, height: 4 },
-            shadowOpacity: 0.3,
-            shadowRadius: 12,
             boxShadow: [{
               offsetX: 0,
               offsetY: 4,
               blurRadius: 12,
               color: 'rgba(0, 0, 0, 0.3)',
             }],
-            elevation: 10,
             gap: 2,
           }}
         >
@@ -1386,7 +1373,6 @@ export default function Index() {
                     style={{
                       paddingHorizontal: 32, paddingVertical: 18,
                       borderRadius: 16, backgroundColor: "white",
-                      elevation: 6, shadowColor: "white",
                       boxShadow: [{
                         offsetX: 0,
                         offsetY: 4,
@@ -1410,7 +1396,6 @@ export default function Index() {
                   style={{
                       paddingHorizontal: 32, paddingVertical: 18,
                       borderRadius: 16, backgroundColor: "white",
-                      elevation: 6, shadowColor: "white",
                       boxShadow: [{
                         offsetX: 0,
                         offsetY: 4,
@@ -1767,9 +1752,6 @@ export default function Index() {
                       backgroundColor: '#10B981',
                       alignItems: 'center',
                       shadowColor: '#10B981',
-                      shadowOffset: { width: 0, height: 8 },
-                      shadowOpacity: 0.35,
-                      shadowRadius: 16,
                       boxShadow: [{
                         offsetX: 0,
                         offsetY: 8,
@@ -2125,10 +2107,6 @@ export default function Index() {
                   paddingVertical: 18,
                   borderRadius: 18,
                   alignItems: "center",
-                  shadowColor: "#FF6B00",
-                  shadowOffset: { width: 0, height: 8 },
-                  shadowOpacity: 0.3,
-                  shadowRadius: 12,
                   boxShadow: [{
                     offsetX: 0,
                     offsetY: 8,
@@ -2310,10 +2288,6 @@ export default function Index() {
                   paddingVertical: 18,
                   borderRadius: 18,
                   alignItems: "center",
-                  shadowColor: "#8B5CF6",
-                  shadowOffset: { width: 0, height: 8 },
-                  shadowOpacity: 0.3,
-                  shadowRadius: 12,
                   boxShadow: [{
                     offsetX: 0,
                     offsetY: 8,
@@ -2370,7 +2344,7 @@ export default function Index() {
 
               {submitted ? (
                 <View style={{ alignItems: "center", paddingVertical: 60, flex: 1, justifyContent: 'center' }}>
-                <View style={{ width: 90, height: 90, borderRadius: 45, backgroundColor: "rgba(16, 185, 129, 0.15)", justifyContent: "center", alignItems: "center", marginBottom: 24, shadowColor: '#10B981', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.4, shadowRadius: 16, boxShadow: [{ offsetX: 0, offsetY: 8, blurRadius: 16, color: 'rgba(16, 185, 129, 0.4)' }] }}>
+                <View style={{ width: 90, height: 90, borderRadius: 45, backgroundColor: "rgba(16, 185, 129, 0.15)", justifyContent: "center", alignItems: "center", marginBottom: 24, shadowColor: '#10B981', boxShadow: [{ offsetX: 0, offsetY: 8, blurRadius: 16, color: 'rgba(16, 185, 129, 0.4)' }] }}>
                     <Check size={44} color="#10B981" strokeWidth={3} />
                   </View>
                   <Text style={{ color: "white", fontSize: 28, fontWeight: "900", textAlign: "center", marginBottom: 12, letterSpacing: -0.5 }}>Request Received!</Text>
@@ -2378,7 +2352,7 @@ export default function Index() {
                     Thank you! Our team will reach out to you within 24 hours to set up your {selectedPlan} account.
                   </Text>
                   <TouchableOpacity
-                    style={{ backgroundColor: "#10B981", paddingHorizontal: 48, paddingVertical: 18, borderRadius: 20, shadowColor: '#10B981', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.3, shadowRadius: 16, boxShadow: [{ offsetX: 0, offsetY: 8, blurRadius: 16, color: 'rgba(16, 185, 129, 0.3)' }] }}
+                    style={{ backgroundColor: "#10B981", paddingHorizontal: 48, paddingVertical: 18, borderRadius: 20, shadowColor: '#10B981', boxShadow: [{ offsetX: 0, offsetY: 8, blurRadius: 16, color: 'rgba(16, 185, 129, 0.3)' }] }}
                     onPress={() => setModalVisible(false)}
                   >
                     <Text style={{ color: "white", fontWeight: "800", fontSize: 16 }}>Return to Home</Text>
@@ -2442,9 +2416,6 @@ export default function Index() {
                       flexDirection: 'row',
                       justifyContent: 'center',
                       shadowColor: '#FF6B00',
-                      shadowOffset: { width: 0, height: 8 },
-                      shadowOpacity: 0.35,
-                      shadowRadius: 16,
                       boxShadow: [{
                         offsetX: 0,
                         offsetY: 8,

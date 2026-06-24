@@ -436,10 +436,6 @@ export default function ForgotPassword() {
                     backdropFilter: "blur(24px)",
                     boxShadow: "0 32px 80px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.06) inset",
                   } : {
-                    shadowColor: "#000",
-                    shadowOffset: { width: 0, height: 24 },
-                    shadowOpacity: 0.5,
-                    shadowRadius: 48,
                     boxShadow: [{
                       offsetX: 0,
                       offsetY: 24,
@@ -481,7 +477,7 @@ export default function ForgotPassword() {
                       <GraduationCap size={18} color="#FF6B00" />
                     </Animated.View>
                     <Text style={{ color: "rgba(255,255,255,0.4)", fontWeight: "700", textTransform: "uppercase", letterSpacing: 3, fontSize: 10 }}>
-                      SuiteIvy
+                      Cloudora
                     </Text>
                   </View>
                 </View>
@@ -530,18 +526,13 @@ export default function ForgotPassword() {
                       ...(Platform.OS === "web" ? {
                         boxShadow: "0 12px 32px rgba(255,107,0,0.45), 0 2px 8px rgba(255,107,0,0.3)",
                       } : {
-                        shadowColor: "#FF6B00",
-                        shadowOffset: { width: 0, height: 10 },
-                        shadowOpacity: 0.5,
-                        shadowRadius: 20,
                         boxShadow: [{
                           offsetX: 0,
                           offsetY: 10,
                           blurRadius: 20,
                           color: "rgba(255, 107, 0, 0.5)",
                         }],
-                        elevation: 8,
-                      }),
+                        }),
                     } as any}
                   >
                     {loading ? (

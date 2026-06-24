@@ -50,12 +50,12 @@ export default function AdminMaterialsScreen() {
     const [allResources, setAllResources] = useState<ResourceItem[]>([]);
 
     const themeColors = {
-        bg: isDark ? '#0F0B2E' : '#f8fafc',
-        card: isDark ? '#13103A' : '#ffffff',
-        text: isDark ? '#ffffff' : '#111827',
-        subtext: isDark ? '#94a3b8' : '#6b7280',
-        border: isDark ? 'rgba(255,255,255,0.07)' : '#e5e7eb',
-        inputBg: isDark ? '#1a1645' : '#f9fafb',
+        bg: isDark ? '#0D1117' : '#FFFFFF',
+        card: isDark ? '#161B22' : '#F6F8FA',
+        text: isDark ? '#FFFFFF' : '#111827',
+        subtext: isDark ? '#9ca3af' : '#6b7280',
+        border: isDark ? '#21262D' : '#D0D7DE',
+        inputBg: isDark ? '#0D1117' : '#FFFFFF',
         primary: '#FF6B00',
     };
 

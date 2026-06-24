@@ -364,7 +364,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         .select('*, students(id), teachers(id), admins(id), parents(id), institutions(name, category_id, subscription_status, subscription_plan, trial_end_date, addon_messaging, addon_library, addon_diary, addon_finance, addon_analytics, addon_bursary, addon_attendance, custom_student_limit, school_categories(name, level_label)), platform_admins(id)')
         .eq('id', userId)
         .single()
-
+      const result = data as any
+      console.log('[loadUserProfile] data:', result?.role, result?.institution_id, 'error:', error?.message)
       if (error) {
         console.error('[AuthContext] Profile load error:', error);
         // If profile doesn't exist but user does, it might be a newly created user without a record yet

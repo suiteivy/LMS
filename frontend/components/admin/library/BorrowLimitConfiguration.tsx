@@ -57,7 +57,7 @@ const BorrowLimitConfiguration: React.FC<BorrowLimitConfigurationProps> = ({
   });
 
   // â”€â”€ Material Dark tokens â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-  const bg = isDark ? '#0F0B2E' : '#fff7ed';           // light green bg preserved in light
+  const bg = isDark ? '#0F0B2E' : '#fff7ed'; // light green bg preserved in light
   const surface = isDark ? '#13103A' : '#ffffff';
   const surfaceAlt = isDark ? '#1A1650' : '#f9fafb';
   const border = isDark ? 'rgba(255,255,255,0.1)' : '#e2e8f0';
@@ -92,7 +92,7 @@ const BorrowLimitConfiguration: React.FC<BorrowLimitConfigurationProps> = ({
   };
 
   const handleDeleteRole = (roleId: string, roleName: string) => {
-    Alert.alert("Delete Role", `Are you sure you want to delete the "${roleName}" role?`, [
+    Alert.alert("Delete Role", `Are you sure you want to delete the"${roleName}" role?`, [
       { text: "Cancel", style: "cancel" },
       { text: "Delete", style: "destructive", onPress: () => onDeleteRole?.(roleId) },
     ]);
@@ -112,11 +112,11 @@ const BorrowLimitConfiguration: React.FC<BorrowLimitConfigurationProps> = ({
               <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: role.isActive ? '#10b981' : '#6b7280', marginRight: 8 }} />
               <View>
                 <Text style={{ fontSize: 16, fontWeight: 'bold', color: textPrimary }}>{role.name}</Text>
-                <Text style={{ fontSize: 11, color: textMuted }}>{role.maxBooks} books{' \u2022 '}{role.borrowDuration} days</Text>
+                <Text style={{ fontSize: 11, color: textMuted }}>{role.maxBooks} books {role.borrowDuration} days</Text>
               </View>
             </View>
             <Text style={{ fontSize: 13, color: textSecondary, marginBottom: 4 }}>{role.description}</Text>
-            <Text style={{ fontSize: 11, color: '#FF6B00' }}>Max {role.maxBooks} books{' \u2022 '}{role.borrowDuration} days duration</Text>
+            <Text style={{ fontSize: 11, color: '#FF6900' }}>Max {role.maxBooks} books {role.borrowDuration} days duration</Text>
           </View>
           <Ionicons name={isExpanded ? "chevron-up" : "chevron-down"} size={20} color={textSecondary} />
         </TouchableOpacity>
@@ -173,7 +173,7 @@ const BorrowLimitConfiguration: React.FC<BorrowLimitConfigurationProps> = ({
 
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
                   <Text style={{ fontSize: 13, color: textSecondary }}>Allow Renewals</Text>
-                  <Switch value={role.canRenew} onValueChange={(value) => handleUpdateRole(role.id, "canRenew", value)} thumbColor={role.canRenew ? "#FF6B00" : "#f4f3f4"} trackColor={{ false: "#767577", true: "rgba(255,107,0,0.2)" }} />
+                  <Switch value={role.canRenew} onValueChange={(value) => handleUpdateRole(role.id, "canRenew", value)} thumbColor="#ffffff" trackColor={{ false: isDark ? "#21262D" : "#D0D7DE", true: "#FF6900" }} />
                 </View>
 
                 {role.canRenew && (
@@ -200,7 +200,7 @@ const BorrowLimitConfiguration: React.FC<BorrowLimitConfigurationProps> = ({
 
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
                   <Text style={{ fontSize: 13, color: textSecondary }}>Active Role</Text>
-                  <Switch value={role.isActive} onValueChange={(value) => handleUpdateRole(role.id, "isActive", value)} thumbColor={role.isActive ? "#FF6B00" : "#f4f3f4"} trackColor={{ false: "#767577", true: "rgba(255,107,0,0.2)" }} />
+                  <Switch value={role.isActive} onValueChange={(value) => handleUpdateRole(role.id, "isActive", value)} thumbColor="#ffffff" trackColor={{ false: isDark ? "#21262D" : "#D0D7DE", true: "#FF6900" }} />
                 </View>
               </View>
 
@@ -253,7 +253,7 @@ const BorrowLimitConfiguration: React.FC<BorrowLimitConfigurationProps> = ({
 
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
             <Text style={{ fontSize: 13, color: textSecondary }}>Allow Renewals</Text>
-            <Switch value={newRole.canRenew} onValueChange={(value) => setNewRole({ ...newRole, canRenew: value })} thumbColor={newRole.canRenew ? "#FF6B00" : "#f4f3f4"} trackColor={{ false: "#767577", true: "rgba(255,107,0,0.2)" }} />
+            <Switch value={newRole.canRenew} onValueChange={(value) => setNewRole({ ...newRole, canRenew: value })} thumbColor="#ffffff" trackColor={{ false: isDark ? "#21262D" : "#D0D7DE", true: "#FF6900" }} />
           </View>
 
           {newRole.canRenew && (
@@ -273,7 +273,7 @@ const BorrowLimitConfiguration: React.FC<BorrowLimitConfigurationProps> = ({
           <TouchableOpacity style={{ flex: 1, backgroundColor: isDark ? '#1A1650' : '#f1f5f9', padding: 12, borderRadius: 8, marginRight: 8, alignItems: 'center' }} onPress={() => setShowAddForm(false)}>
             <Text style={{ color: textSecondary, fontWeight: '500' }}>Cancel</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={{ flex: 1, backgroundColor: '#FF6B00', padding: 12, borderRadius: 8, marginLeft: 8, alignItems: 'center' }} onPress={handleAddRole}>
+          <TouchableOpacity style={{ flex: 1, backgroundColor: '#FF6900', padding: 12, borderRadius: 8, marginLeft: 8, alignItems: 'center' }} onPress={handleAddRole}>
             <Text style={{ color: 'white', fontWeight: '500' }}>Add Role</Text>
           </TouchableOpacity>
         </View>
@@ -287,15 +287,15 @@ const BorrowLimitConfiguration: React.FC<BorrowLimitConfigurationProps> = ({
       <View style={{ backgroundColor: surface, padding: 16, borderBottomWidth: 1, borderBottomColor: border }}>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
           <Text style={{ fontSize: 19, fontWeight: 'bold', color: textPrimary }}>Borrow Limit Configuration</Text>
-          <TouchableOpacity style={{ backgroundColor: '#FF6B00', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 8 }} onPress={() => setShowAddForm(true)}>
+          <TouchableOpacity style={{ backgroundColor: '#FF6900', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 8 }} onPress={() => setShowAddForm(true)}>
             <Text style={{ color: 'white', fontWeight: '500' }}>Add Role</Text>
           </TouchableOpacity>
         </View>
 
         <View style={{ backgroundColor: orangeBg, borderWidth: 1, borderColor: orangeBorder, padding: 12, borderRadius: 8 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
-            <Ionicons name="information-circle" size={16} color="#FF6B00" />
-            <Text style={{ fontSize: 13, fontWeight: '600', color: isDark ? '#FF6B00' : '#c2410c', marginLeft: 6 }}>Configuration Tips</Text>
+            <Ionicons name="information-circle" size={16} color="#FF6900" />
+            <Text style={{ fontSize: 13, fontWeight: '600', color: isDark ? '#FF6900' : '#c2410c', marginLeft: 6 }}>Configuration Tips</Text>
           </View>
           <Text style={{ fontSize: 12, color: isDark ? '#9ca3af' : '#c2410c' }}>
             Set different borrowing limits for different user types. Changes will apply to new borrows immediately.
@@ -316,7 +316,7 @@ const BorrowLimitConfiguration: React.FC<BorrowLimitConfigurationProps> = ({
           displayRoles.map(renderRoleCard)
         )}
 
-        {/* Global Settings   now fully dark mode */}
+        {/* Global Settings now fully dark mode */}
         <View style={{ backgroundColor: surface, borderRadius: 12, padding: 16, marginTop: 16, borderWidth: 1, borderColor: border }}>
           <Text style={{ fontSize: 17, fontWeight: '600', color: textPrimary, marginBottom: 16 }}>Global Library Settings</Text>
 
@@ -343,11 +343,11 @@ const BorrowLimitConfiguration: React.FC<BorrowLimitConfigurationProps> = ({
               <Text style={{ fontSize: 13, fontWeight: '500', color: textSecondary, marginBottom: 2 }}>Auto-reminder Emails</Text>
               <Text style={{ fontSize: 11, color: textMuted }}>Send automatic reminders for due books</Text>
             </View>
-            <Switch value={globalSettings.autoReminders} onValueChange={(value) => setGlobalSettings({ ...globalSettings, autoReminders: value })} thumbColor={globalSettings.autoReminders ? "#FF6B00" : "#f4f3f4"} trackColor={{ false: "#767577", true: "rgba(255,107,0,0.2)" }} />
+            <Switch value={globalSettings.autoReminders} onValueChange={(value) => setGlobalSettings({ ...globalSettings, autoReminders: value })} thumbColor="#ffffff" trackColor={{ false: isDark ? "#21262D" : "#D0D7DE", true: "#FF6900" }} />
           </View>
 
           <TouchableOpacity
-            style={{ backgroundColor: '#FF6B00', padding: 12, borderRadius: 8, alignItems: 'center' }}
+            style={{ backgroundColor: '#FF6900', padding: 12, borderRadius: 8, alignItems: 'center' }}
             onPress={() => Alert.alert("Settings Saved", "Global settings have been updated successfully")}
           >
             <Text style={{ color: 'white', fontWeight: '500' }}>Save Global Settings</Text>

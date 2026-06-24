@@ -5,7 +5,7 @@ import { SchoolProvider } from "@/contexts/SchoolContext";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useSubscriptionTier } from "@/hooks/useSubscriptionTier";
 import { Slot, Tabs } from "expo-router";
-import { House, LayoutGrid, Settings, Users, Wallet, MessageSquare, Bell } from "lucide-react-native";
+import { House, LayoutGrid, Settings, Users, Wallet, MessageSquare, Bell, Layout } from "lucide-react-native";
 import { Platform, useWindowDimensions, View, Text } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -30,7 +30,7 @@ export const BETA_NAV_ITEMS: NavItem[] = [
     { name: "settings/settings", title: "Settings", icon: Settings, route: "/(admin)/settings/settings" },
 ];
 
-const MOBILE_TAB_NAMES = ["index", "notifications", "settings/settings"];
+const MOBILE_TAB_NAMES = ["index", "management/index", "notifications", "settings/settings"];
 
 const ALL_ROUTES = [
     "index",
@@ -170,43 +170,16 @@ function AdminTabs() {
                 }}
             />
 
-            {/* Home - center, elevated style */}
+
+            {/* Management */}
             <Tabs.Screen
-                name="index"
+                name="management/index"
                 options={{
-                    title: "Home",
-                    tabBarShowLabel: false,
-                    tabBarIcon: ({ color, focused }) => {
-                        const Icon = House as any;
-                        return (
-                            <View style={{
-                                width: focused ? 48 : 28,
-                                height: focused ? 48 : 28,
-                                borderRadius: focused ? 24 : 6,
-                                backgroundColor: focused ? "#FF6B00" : "transparent",
-                                alignItems: "center",
-                                justifyContent: "center",
-                                marginTop: focused ? -14 : 0,
-                                shadowColor: "#FF6B00",
-                                shadowOffset: { width: 0, height: 4 },
-                                shadowOpacity: focused ? 0.35 : 0,
-                                shadowRadius: 8,
-                                boxShadow: focused ? [{
-                                    offsetX: 0,
-                                    offsetY: 4,
-                                    blurRadius: 8,
-                                    color: 'rgba(255, 107, 0, 0.35)',
-                                }] : undefined,
-                                elevation: focused ? 6 : 0,
-                            }}>
-                                <Icon
-                                    size={focused ? 22 : 20}
-                                    color={focused ? "#ffffff" : color}
-                                    strokeWidth={2}
-                                />
-                            </View>
-                        );
-                    },
+                    title: "Management",
+                    tabBarIcon: ({ size = 24, color }) => {
+                        const Icon = Layout as any
+                        return <View><Icon size={size} color={color} strokeWidth={2} /></View>
+                    }
                 }}
             />
 

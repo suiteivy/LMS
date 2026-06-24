@@ -44,14 +44,10 @@ const DiaryCard = ({ entry, onSign }: { entry: DiaryEntry; onSign: (id: string) 
     const statusStyle = assignment ? getStatusColor(assignment.status) : null;
 
     return (
-        <View className="bg-white dark:bg-[#1a1a1a] p-5 rounded-3xl border border-gray-100 dark:border-gray-800 mb-4 shadow-sm">
+        <View className="bg-[#FFFFFF] dark:bg-[#0D1117] p-5 rounded-xl border border-[#D0D7DE] dark:border-[#21262D] mb-4 shadow-sm">
             <View className="flex-row items-start mb-4">
-                <View className={`p-2.5 rounded-2xl mr-4 ${assignment ? 'bg-indigo-50 dark:bg-indigo-950/20' : 'bg-orange-100 dark:bg-orange-950/20'}`}>
-                    {assignment ? (
-                        <FileText size={20} color="#6366F1" />
-                    ) : (
-                        <BookOpen size={20} color="#FF6900" />
-                    )}
+                <View className="bg-orange-100 dark:bg-orange-950/20 p-2.5 rounded-xl mr-4">
+                    <BookOpen size={20} color="#FF6900" />
                 </View>
                 <View className="flex-1">
                     <View className="flex-row items-center flex-wrap gap-2 mb-1.5">
@@ -421,7 +417,7 @@ export default function ParentDiaryPage() {
                 {students.length > 1 && (
                     <View className="mb-6 relative z-10">
                         <TouchableOpacity
-                            className="bg-white dark:bg-[#1a1a1a] rounded-3xl px-6 py-4 border border-gray-100 dark:border-gray-800 flex-row items-center justify-between shadow-sm"
+                            className="bg-[#FFFFFF] dark:bg-[#0D1117] rounded-xl px-6 py-4 border border-[#D0D7DE] dark:border-[#21262D] flex-row items-center justify-between shadow-sm"
                             onPress={() => setShowStudentDropdown(!showStudentDropdown)}
                         >
                             <View className="flex-row items-center">
@@ -432,7 +428,7 @@ export default function ParentDiaryPage() {
                         </TouchableOpacity>
 
                         {showStudentDropdown && (
-                            <View className="absolute top-16 left-0 right-0 bg-white dark:bg-[#1a1a1a] border border-gray-100 dark:border-gray-800 rounded-[32px] shadow-2xl z-20 overflow-hidden">
+                            <View className="absolute top-16 left-0 right-0 bg-[#FFFFFF] dark:bg-[#0D1117] border border-[#D0D7DE] dark:border-[#21262D] rounded-xl shadow-2xl z-20 overflow-hidden">
                                 {students.map(s => (
                                     <TouchableOpacity
                                         key={s.id}
@@ -621,11 +617,11 @@ export default function ParentDiaryPage() {
                 {/* List */}
                 <ScrollView className="flex-1" showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
                     <View className="flex-row justify-between items-center mb-6 px-2">
-                        <Text className="text-gray-400 dark:text-gray-500 font-bold text-[10px] uppercase tracking-wider">
-                            {filteredEntries.length} Entries found
+                        <Text className="text-gray-500 dark:text-gray-400 font-bold text-[10px] uppercase tracking-wider">
+                            {entries.length} Entries found
                         </Text>
                         <TouchableOpacity
-                            className="flex-row items-center bg-white dark:bg-[#1a1a1a] px-4 py-2.5 rounded-2xl border border-gray-100 dark:border-gray-800 active:bg-gray-50 shadow-sm"
+                            className="flex-row items-center bg-[#FFFFFF] dark:bg-[#0D1117] px-4 py-2.5 rounded-xl border border-[#D0D7DE] dark:border-[#21262D] active:bg-gray-50 shadow-sm"
                             onPress={handlePrint}
                         >
                             <Printer size={16} color={Platform.OS === 'web' ? '#6B7280' : '#FF6900'} />
@@ -635,10 +631,10 @@ export default function ParentDiaryPage() {
 
                     {loading ? (
                         <ActivityIndicator size="large" color="#FF6900" className="mt-8" />
-                    ) : filteredEntries.length === 0 ? (
-                        <View className="bg-white dark:bg-[#1a1a1a] p-12 rounded-[40px] items-center border border-gray-100 dark:border-gray-800 border-dashed">
+                    ) : entries.length === 0 ? (
+                        <View className="bg-[#FFFFFF] dark:bg-[#0D1117] p-12 rounded-xl items-center border border-[#D0D7DE] dark:border-[#21262D] border-dashed">
                             <BookOpen size={48} color="#E5E7EB" style={{ opacity: 0.3 }} />
-                            <Text className="text-gray-400 dark:text-gray-500 font-bold text-center mt-6 tracking-tight">No diary entries matching current filters.</Text>
+                            <Text className="text-gray-500 dark:text-gray-400 font-bold text-center mt-6 tracking-tight">No diary entries for this student.</Text>
                         </View>
                     ) : (
                         filteredEntries.map((entry) => (

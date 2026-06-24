@@ -164,9 +164,9 @@ const AnimatedInput = ({
         {label}
       </Text>
 
-      {/* Input wrapper â€” positioned so the animated border overlays don't affect layout */}
+      {/* Input wrapper   positioned so the animated border overlays don't affect layout */}
       <View style={{ position: "relative" }}>
-        {/* Glow ring â€” animated opacity only */}
+        {/* Glow ring   animated opacity only */}
         <Animated.View
           pointerEvents="none"
           style={{
@@ -178,7 +178,7 @@ const AnimatedInput = ({
             opacity: glowOpacity,
           } as any}
         />
-        {/* Animated border ring â€” isolated so it doesn't conflict with backgroundColor */}
+        {/* Animated border ring   isolated so it doesn't conflict with backgroundColor */}
         <Animated.View
           pointerEvents="none"
           style={{
@@ -189,7 +189,7 @@ const AnimatedInput = ({
             borderColor: animatedBorderColor,
           } as any}
         />
-        {/* Plain View for content â€” background colour change is instant/state-driven */}
+        {/* Plain View for content   background colour change is instant/state-driven */}
         <View
           style={{
             height: 56,
@@ -537,9 +537,6 @@ export default function SignIn() {
             alignItems: "center",
             gap: 10,
             shadowColor: toastConfig?.type === 'error' ? "#ef4444" : "#22c55e",
-            shadowOffset: { width: 0, height: 8 },
-            shadowOpacity: 0.3,
-            shadowRadius: 16,
             boxShadow: [{
               offsetX: 0,
               offsetY: 8,
@@ -547,10 +544,10 @@ export default function SignIn() {
               color: toastConfig?.type === 'error' ? "rgba(239, 68, 68, 0.3)" : "rgba(34, 197, 94, 0.3)",
             }],
           }}>
-            <IconIonicons 
-              name={toastConfig?.type === 'error' ? "close-circle" : "checkmark-circle"} 
-              size={22} 
-              color={toastConfig?.type === 'error' ? "#f87171" : "#4ade80"} 
+            <IconIonicons
+              name={toastConfig?.type === 'error' ? "close-circle" : "checkmark-circle"}
+              size={22}
+              color={toastConfig?.type === 'error' ? "#f87171" : "#4ade80"}
             />
             <Text style={{ color: toastConfig?.type === 'error' ? "#f87171" : "#4ade80", fontWeight: "700", fontSize: 15 }}>
               {toastConfig?.msg}
@@ -583,10 +580,6 @@ export default function SignIn() {
                     backdropFilter: "blur(24px)",
                     boxShadow: "0 32px 80px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.06) inset",
                   } : {
-                    shadowColor: "#000",
-                    shadowOffset: { width: 0, height: 24 },
-                    shadowOpacity: 0.5,
-                    shadowRadius: 48,
                     boxShadow: [{
                       offsetX: 0,
                       offsetY: 24,
@@ -803,18 +796,13 @@ export default function SignIn() {
                       ...(Platform.OS === "web" ? {
                         boxShadow: "0 12px 32px rgba(255,107,0,0.45), 0 2px 8px rgba(255,107,0,0.3)",
                       } : {
-                      shadowColor: "#FF6B00",
-                      shadowOffset: { width: 0, height: 10 },
-                      shadowOpacity: 0.5,
-                      shadowRadius: 20,
-                      boxShadow: [{
-                        offsetX: 0,
-                        offsetY: 10,
-                        blurRadius: 20,
-                        color: "rgba(255, 107, 0, 0.5)",
-                      }],
-                      elevation: 8,
-                      }),
+                        boxShadow: [{
+                          offsetX: 0,
+                          offsetY: 10,
+                          blurRadius: 20,
+                          color: "rgba(255, 107, 0, 0.5)",
+                        }],
+                        }),
                     } as any}
                   >
                     {/* Shimmer overlay */}

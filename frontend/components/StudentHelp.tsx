@@ -29,9 +29,7 @@ const FAQItem = ({ question, answer, isDark }: FAQItemProps) => {
                 color: isDark ? 'rgba(0,0,0,0.5)' : 'rgba(0,0,0,0.04)' 
             }],
             shadowColor: '#000',
-            shadowOffset: { width: 0, height: 1 },
             shadowOpacity: isDark ? 0.5 : 0.04,
-            shadowRadius: 4,
             elevation: isDark ? 0 : 1,
         }}>
             <TouchableOpacity
@@ -161,9 +159,7 @@ export default function StudentHelp() {
                             color: isDark ? 'rgba(0,0,0,0.5)' : 'rgba(0,0,0,0.04)' 
                         }],
                         shadowColor: '#000',
-                        shadowOffset: { width: 0, height: 1 },
                         shadowOpacity: isDark ? 0.5 : 0.04,
-                        shadowRadius: 4,
                         elevation: isDark ? 0 : 1,
                     }}>
                         <Search size={20} color={tokens.textMuted} />
@@ -204,9 +200,7 @@ export default function StudentHelp() {
                                     color: isDark ? 'rgba(0,0,0,0.5)' : 'rgba(0,0,0,0.04)' 
                                 }],
                                 shadowColor: '#000',
-                                shadowOffset: { width: 0, height: 1 },
                                 shadowOpacity: isDark ? 0.5 : 0.04,
-                                shadowRadius: 4,
                                 elevation: isDark ? 0 : 1,
                             }}
                         >
@@ -235,9 +229,7 @@ export default function StudentHelp() {
                                     color: isDark ? 'rgba(0,0,0,0.5)' : 'rgba(0,0,0,0.04)' 
                                 }],
                                 shadowColor: '#000',
-                                shadowOffset: { width: 0, height: 1 },
                                 shadowOpacity: isDark ? 0.5 : 0.04,
-                                shadowRadius: 4,
                                 elevation: isDark ? 0 : 1,
                             }}
                         >
@@ -343,11 +335,7 @@ export default function StudentHelp() {
                                                 color: 'rgba(249, 115, 22, 0.3)' 
                                             }],
                                             shadowColor: '#f97316',
-                                            shadowOffset: { width: 0, height: 4 },
-                                            shadowOpacity: 0.3,
-                                            shadowRadius: 8,
-                                            elevation: 4,
-                                        }}
+                                            }}
                                         onPress={() => {
                                             Linking.openURL('mailto:Support@cloudoraltd@gmail.com');
                                             setSelectedTab(null);

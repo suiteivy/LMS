@@ -7,29 +7,20 @@ import { useDashboardStats } from "@/hooks/useDashboardStats";
 import { router } from "expo-router";
 import { BarChart3, BookOpen, DollarSign, GraduationCap, TrendingUp, Users, Zap } from "lucide-react-native";
 import React, { useState } from "react";
-import { ActivityIndicator, RefreshControl, ScrollView, Text, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, DimensionValue, RefreshControl, ScrollView, Text, TouchableOpacity, View } from "react-native";
 
 const StatCard = ({ title, value, icon: Icon, color, trend, isDark }: any) => (
-    <View style={{
-        backgroundColor: isDark ? '#13103A' : '#ffffff',
-        padding: 20,
-        borderRadius: 24,
-        borderWidth: 1,
-        borderColor: isDark ? 'rgba(255,255,255,0.1)' : '#f3f4f6',
-        flex: 1,
-        minWidth: 160,
-        margin: 4,
-    }}>
+    <View className="flex-1 min-w-[160px] m-1 p-5 rounded-3xl bg-[#F6F8FA] dark:bg-[#161B22] border border-[#D0D7DE] dark:border-[#21262D]">
         <View style={{ backgroundColor: `${color}20`, padding: 12, borderRadius: 16, marginBottom: 16, alignSelf: 'flex-start' }}>
             <Icon size={24} color={color} />
         </View>
-        <Text style={{ color: isDark ? '#9ca3af' : '#6b7280', fontSize: 13, fontWeight: '500' }} numberOfLines={1} adjustsFontSizeToFit>{title}</Text>
-        <View style={{ flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', marginTop: 4 }}>
-            <Text style={{ color: isDark ? '#f1f1f1' : '#111827', fontSize: 24, fontWeight: 'bold' }} numberOfLines={1} adjustsFontSizeToFit>{value}</Text>
+        <Text className="text-gray-500 dark:text-gray-400 text-[13px] font-bold" numberOfLines={1} adjustsFontSizeToFit>{title}</Text>
+        <View className="flex-row items-end justify-between mt-1">
+            <Text className="text-gray-900 dark:text-white text-2xl font-black" numberOfLines={1} adjustsFontSizeToFit>{value}</Text>
             {trend && (
-                <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: isDark ? '#052e16' : '#f0fdf4', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 999 }}>
+                <View className="flex-row items-center bg-green-50 dark:bg-[#052e16] px-2 py-0.5 rounded-full">
                     <TrendingUp size={12} color="#16a34a" />
-                    <Text style={{ color: '#16a34a', fontSize: 11, fontWeight: 'bold', marginLeft: 4 }}>{trend}</Text>
+                    <Text className="text-[#16a34a] text-[11px] font-bold ml-1">{trend}</Text>
                 </View>
             )}
         </View>
@@ -112,7 +103,7 @@ export default function AnalyticsScreen() {
     ];
 
     return (
-        <View style={{ flex: 1, backgroundColor: isDark ? '#0F0B2E' : '#f9fafb' }}>
+        <View className="flex-1 bg-[#FFFFFF] dark:bg-[#0D1117]">
             <UnifiedHeader
                 title="Management"
                 subtitle="Analytics"
@@ -120,7 +111,7 @@ export default function AnalyticsScreen() {
                 onBack={() => router.back()}
             />
             <ScrollView
-                style={{ flex: 1 }}
+                className="flex-1"
                 showsVerticalScrollIndicator={false}
                 refreshControl={
                     <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={["#FF6B00"]} tintColor="#FF6B00" />
@@ -175,7 +166,7 @@ export default function AnalyticsScreen() {
                                             <Text style={{ color: textPrimary, fontSize: 13, fontWeight: '800' }}>{metric.value}</Text>
                                         </View>
                                         <View style={{ height: 8, backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : '#f3f4f6', borderRadius: 999, overflow: 'hidden' }}>
-                                            <View style={{ height: '100%', width: metric.width, backgroundColor: metric.color, borderRadius: 999 }} />
+                                            <View style={{ height: '100%', width: metric.width as DimensionValue, backgroundColor: metric.color, borderRadius: 999 }} />
                                         </View>
                                         <Text style={{ color: textSecondary, fontSize: 11, marginTop: 4 }}>{metric.helper}</Text>
                                     </View>

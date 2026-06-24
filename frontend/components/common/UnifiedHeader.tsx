@@ -40,12 +40,12 @@ export const UnifiedHeader: React.FC<UnifiedHeaderProps> = ({
 
   const isMobile = width < 768;
 
-  // Material Dark tokens
-  const bg = isDark ? '#13103A' : '#ffffff';
-  const border = isDark ? 'rgba(255,255,255,0.1)' : '#f3f4f6';
-  const surface = isDark ? '#1A1650' : '#f9fafb';
-  const surfaceBorder = isDark ? 'rgba(255,255,255,0.1)' : '#f3f4f6';
-  const iconColor = isDark ? '#e5e5e5' : '#111827';
+  // FotMob Design System tokens
+  const bg = isDark ? '#0D1117' : '#FFFFFF';
+  const border = isDark ? '#21262D' : '#D0D7DE';
+  const surface = isDark ? '#1C2128' : '#F6F8FA';
+  const surfaceBorder = isDark ? '#21262D' : '#D0D7DE';
+  const iconColor = isDark ? '#FFFFFF' : '#111827';
   const subtleIconColor = isDark ? '#9ca3af' : '#6b7280';
   const [isMenuOpen, setIsMenuOpen] = React.useState(false);
   const slideAnim = React.useRef(new Animated.Value(-300)).current;

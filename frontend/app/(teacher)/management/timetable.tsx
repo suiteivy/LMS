@@ -36,7 +36,7 @@ const TimetableCard = ({ entry, isDark }: { entry: TimetableEntry; isDark: boole
                     </Text>
                 </View>
                 {entry.room_number && (
-                    <View className="flex-row items-center px-2">
+                    <View className="flex-row items-center">
                         <MapPin size={14} color="#9CA3AF" />
                         <Text className={`${isDark ? 'text-gray-300' : 'text-gray-400'} text-xs font-medium ml-1.5`}>{entry.room_number}</Text>
                     </View>
@@ -85,7 +85,7 @@ export default function TimetablePage() {
                 <ScrollView
                     horizontal
                     showsHorizontalScrollIndicator={false}
-                    className="flex-row mb-6 -mx-1"
+                    className="flex-row mb-4 -mx-5 px-5"
                 >
                     {DAYS.map((day) => (
                         <TouchableOpacity
@@ -105,7 +105,7 @@ export default function TimetablePage() {
                 </ScrollView>
             </View>
 
-            <ScrollView className="flex-1 px-4 md:px-8">
+            <ScrollView className="flex-1 px-5" showsVerticalScrollIndicator={false}>
                 {loading ? (
                     <View className="flex-1 items-center justify-center pt-20">
                         <ActivityIndicator size="large" color="#FF6900" />

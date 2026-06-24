@@ -37,12 +37,6 @@ export default function AdminResourceApprovals() {
     const [refreshing, setRefreshing] = useState(false);
     const [approvingId, setApprovingId] = useState<string | null>(null);
 
-    const bg = isDark ? "#0F0B2E" : "#f9fafb";
-    const cardBg = isDark ? "#13103A" : "#ffffff";
-    const border = isDark ? "rgba(255,255,255,0.08)" : "#f3f4f6";
-    const textPrimary = isDark ? "#f1f1f1" : "#111827";
-    const textMuted = isDark ? "#9ca3af" : "#6b7280";
-
     const fetch = useCallback(async () => {
         try {
             const data = await ResourceAPI.getResources();
@@ -83,15 +77,8 @@ export default function AdminResourceApprovals() {
         const isPending = !resource.status || resource.status === 'pending';
 
         return (
-            <View style={{
-                backgroundColor: cardBg,
-                borderColor: border,
-                borderWidth: 1,
-                borderRadius: 20,
-                padding: 16,
-                marginBottom: 12,
-            }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
+            <View className="p-4 mb-3 rounded-2xl bg-[#F6F8FA] dark:bg-[#161B22] border border-[#D0D7DE] dark:border-[#21262D]">
+                <View className="flex-row items-center mb-3">
                     <View style={{
                         backgroundColor: isDark ? cfg.darkBg : cfg.bg,
                         width: 44, height: 44,
@@ -101,19 +88,19 @@ export default function AdminResourceApprovals() {
                     }}>
                         <IconComponent size={20} color={cfg.color} />
                     </View>
-                    <View style={{ flex: 1 }}>
-                        <Text style={{ color: textPrimary, fontWeight: 'bold', fontSize: 15 }} numberOfLines={1}>
+                    <View className="flex-1">
+                        <Text className="text-gray-900 dark:text-white font-bold text-[15px]" numberOfLines={1}>
                             {resource.title}
                         </Text>
-                        <Text style={{ color: textMuted, fontSize: 11, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.8, marginTop: 2 }}>
+                        <Text className="text-gray-500 dark:text-gray-400 text-[11px] font-bold uppercase tracking-widest mt-0.5">
                             {resource.Subject_title ?? resource.subject?.title ?? "—"} · {resource.type ?? "file"}
                         </Text>
                     </View>
 
                     {/* Status badge */}
-                    <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: status.bg, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999 }}>
+                    <View style={{ backgroundColor: status.bg }} className="flex-row items-center px-2.5 py-1 rounded-full">
                         <StatusIcon size={12} color={status.color} />
-                        <Text style={{ color: status.color, fontSize: 11, fontWeight: 'bold', marginLeft: 4 }}>{status.label}</Text>
+                        <Text style={{ color: status.color }} className="text-[11px] font-bold ml-1">{status.label}</Text>
                     </View>
                 </View>
 
@@ -121,17 +108,12 @@ export default function AdminResourceApprovals() {
                     <TouchableOpacity
                         onPress={() => handleApprove(resource.id)}
                         disabled={approvingId === resource.id}
-                        style={{
-                            backgroundColor: '#0ea5e9',
-                            borderRadius: 12,
-                            paddingVertical: 10,
-                            alignItems: 'center',
-                            opacity: approvingId === resource.id ? 0.6 : 1,
-                        }}
+                        style={{ opacity: approvingId === resource.id ? 0.6 : 1 }}
+                        className="bg-[#0ea5e9] rounded-xl py-2.5 items-center mt-2"
                     >
                         {approvingId === resource.id
                             ? <ActivityIndicator size="small" color="#fff" />
-                            : <Text style={{ color: 'white', fontWeight: 'bold', fontSize: 13 }}>✓ Approve Resource</Text>
+                            : <Text className="text-white font-bold text-[13px]">✓ Approve Resource</Text>
                         }
                     </TouchableOpacity>
                 )}
@@ -140,7 +122,7 @@ export default function AdminResourceApprovals() {
     };
 
     return (
-        <View style={{ flex: 1, backgroundColor: bg }}>
+        <View className="flex-1 bg-[#FFFFFF] dark:bg-[#0D1117]">
             <UnifiedHeader
                 title="Resource"
                 subtitle="Approvals"
@@ -148,56 +130,57 @@ export default function AdminResourceApprovals() {
                 onBack={() => router.back()}
             />
             <ScrollView
-                style={{ flex: 1 }}
+                className="flex-1"
                 showsVerticalScrollIndicator={false}
-                contentContainerStyle={{ padding: 16, paddingBottom: 100 }}
                 refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetch(); }} tintColor="#FF6B00" />}
             >
-                {/* Stats row */}
-                <View style={{ flexDirection: 'row', gap: 12, marginBottom: 24 }}>
-                    <View style={{ flex: 1, backgroundColor: '#f59e0b', borderRadius: 20, padding: 16 }}>
-                        <Text style={{ color: 'rgba(255,255,255,0.85)', fontSize: 10, fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: 1 }}>Pending</Text>
-                        <Text style={{ color: 'white', fontSize: 28, fontWeight: 'bold', marginTop: 4 }}>{pending.length}</Text>
+                <View className="p-4 md:p-8 pb-24">
+                    {/* Stats row */}
+                    <View className="flex-row gap-3 mb-6">
+                        <View className="flex-1 bg-[#f59e0b] rounded-3xl p-4">
+                            <Text className="text-white/80 text-[10px] font-bold uppercase tracking-widest">Pending</Text>
+                            <Text className="text-white text-2xl font-black mt-1">{pending.length}</Text>
+                        </View>
+                        <View className="flex-1 bg-[#16a34a] rounded-3xl p-4">
+                            <Text className="text-white/80 text-[10px] font-bold uppercase tracking-widest">Approved</Text>
+                            <Text className="text-white text-2xl font-black mt-1">{approved.length}</Text>
+                        </View>
+                        <View className="flex-1 bg-[#F6F8FA] dark:bg-[#161B22] border border-[#D0D7DE] dark:border-[#21262D] rounded-3xl p-4">
+                            <Text className="text-gray-500 dark:text-gray-400 text-[10px] font-bold uppercase tracking-widest">Total</Text>
+                            <Text className="text-gray-900 dark:text-white text-2xl font-black mt-1">{resources.length}</Text>
+                        </View>
                     </View>
-                    <View style={{ flex: 1, backgroundColor: '#16a34a', borderRadius: 20, padding: 16 }}>
-                        <Text style={{ color: 'rgba(255,255,255,0.85)', fontSize: 10, fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: 1 }}>Approved</Text>
-                        <Text style={{ color: 'white', fontSize: 28, fontWeight: 'bold', marginTop: 4 }}>{approved.length}</Text>
-                    </View>
-                    <View style={{ flex: 1, backgroundColor: isDark ? '#13103A' : '#111827', borderRadius: 20, padding: 16 }}>
-                        <Text style={{ color: 'rgba(255,255,255,0.6)', fontSize: 10, fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: 1 }}>Total</Text>
-                        <Text style={{ color: 'white', fontSize: 28, fontWeight: 'bold', marginTop: 4 }}>{resources.length}</Text>
-                    </View>
-                </View>
 
-                {loading ? (
-                    <ActivityIndicator size="large" color="#FF6B00" style={{ marginTop: 40 }} />
-                ) : resources.length === 0 ? (
-                    <View style={{ alignItems: 'center', padding: 48 }}>
-                        <File size={48} color={isDark ? "#374151" : "#d1d5db"} />
-                        <Text style={{ color: textMuted, fontWeight: 'bold', marginTop: 16, textAlign: 'center' }}>
-                            No resources found.
-                        </Text>
-                    </View>
-                ) : (
-                    <>
-                        {pending.length > 0 && (
-                            <>
-                                <Text style={{ color: textMuted, fontSize: 11, fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 10 }}>
-                                    Awaiting Approval ({pending.length})
-                                </Text>
-                                {pending.map(r => <ResourceCard key={r.id} resource={r} />)}
-                            </>
-                        )}
-                        {approved.length > 0 && (
-                            <>
-                                <Text style={{ color: textMuted, fontSize: 11, fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: 1, marginTop: 16, marginBottom: 10 }}>
-                                    Previously Approved ({approved.length})
-                                </Text>
-                                {approved.map(r => <ResourceCard key={r.id} resource={r} />)}
-                            </>
-                        )}
-                    </>
-                )}
+                    {loading ? (
+                        <ActivityIndicator size="large" color="#FF6B00" style={{ marginTop: 40 }} />
+                    ) : resources.length === 0 ? (
+                        <View className="items-center p-12">
+                            <File size={48} color={isDark ? "#374151" : "#d1d5db"} />
+                            <Text className="text-gray-500 dark:text-gray-400 font-bold mt-4 text-center">
+                                No resources found.
+                            </Text>
+                        </View>
+                    ) : (
+                        <>
+                            {pending.length > 0 && (
+                                <>
+                                    <Text className="text-gray-500 dark:text-gray-400 text-[11px] font-bold uppercase tracking-widest mb-3">
+                                        Awaiting Approval ({pending.length})
+                                    </Text>
+                                    {pending.map(r => <ResourceCard key={r.id} resource={r} />)}
+                                </>
+                            )}
+                            {approved.length > 0 && (
+                                <>
+                                    <Text className="text-gray-500 dark:text-gray-400 text-[11px] font-bold uppercase tracking-widest mt-4 mb-3">
+                                        Previously Approved ({approved.length})
+                                    </Text>
+                                    {approved.map(r => <ResourceCard key={r.id} resource={r} />)}
+                                </>
+                            )}
+                        </>
+                    )}
+                </View>
             </ScrollView>
         </View>
     );

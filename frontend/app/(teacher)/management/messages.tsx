@@ -7,6 +7,7 @@ import { CheckCircle2, ChevronRight, Mail, MessageCircle, Plus, Search, Send, Us
 import React, { useEffect, useState } from "react";
 import { ActivityIndicator, Alert, ScrollView, Text, TextInput, TouchableOpacity, View, RefreshControl } from "react-native";
 import { SubscriptionGate, AddonRequestButton } from "@/components/shared/SubscriptionComponents";
+import { useTheme } from "@/contexts/ThemeContext";
 
 const formatTime = (dateStr: string) => {
   const d = new Date(dateStr);
@@ -41,6 +42,7 @@ export default function MessagingPage() {
     const [sending, setSending] = useState(false);
 
     const { profile, isDemo } = useAuth();
+    const { isDark } = useTheme();
 
     const fetchInitialContacts = async () => {
         try {
@@ -170,7 +172,7 @@ export default function MessagingPage() {
     }
 
     return (
-        <View className="flex-1 bg-gray-50 dark:bg-navy">
+        <View className="flex-1 bg-[#FFFFFF] dark:bg-[#0D1117]">
             <UnifiedHeader
                 title="Management"
                 subtitle="Messaging"
@@ -182,14 +184,14 @@ export default function MessagingPage() {
                 }
             />
 
-            <SubscriptionGate 
+            <SubscriptionGate
                 feature="messaging"
                 fallback={
                     <View className="flex-1 items-center justify-center p-8">
-                        <View className="bg-orange-50 p-8 rounded-[40px] items-center border border-orange-100 border-dashed max-w-sm">
-                            <Zap size={48} color="#FF6900" style={{ marginBottom: 20 }} />
-                            <Text className="text-xl font-bold text-gray-900 text-center mb-2">Messaging Locked</Text>
-                            <Text className="text-gray-500 text-center mb-8 leading-5">
+                        <View className="bg-[#F6F8FA] dark:bg-[#161B22] p-8 rounded-2xl items-center border border-[#D0D7DE] dark:border-[#21262D] border-dashed max-w-sm">
+                            <Zap size={40} color="#FF6900" style={{ marginBottom: 20 }} />
+                            <Text className="text-lg font-bold text-gray-900 dark:text-white text-center mb-2">Messaging Locked</Text>
+                            <Text className="text-gray-500 dark:text-gray-400 text-center text-xs mb-6 leading-5">
                                 Advanced messaging features are not included in your current subscription plan.
                             </Text>
                             <AddonRequestButton onPress={() => { /* Handle request */ }} />

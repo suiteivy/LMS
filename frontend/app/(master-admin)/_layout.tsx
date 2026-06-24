@@ -47,11 +47,6 @@ function MasterAdminTabs() {
                     paddingHorizontal: 40,
                     justifyContent: "center",
                     gap: 32,
-                    elevation: 8,
-                    shadowColor: "#000",
-                    shadowOffset: { width: 0, height: -4 },
-                    shadowOpacity: 0.1,
-                    shadowRadius: 3,
                     boxShadow: [{
                         offsetX: 0,
                         offsetY: -4,
@@ -88,10 +83,7 @@ function MasterAdminTabs() {
                                 alignItems: "center",
                                 justifyContent: "center",
                                 marginTop: focused ? -14 : 0,
-                                shadowColor: "#FF6B00",
-                                shadowOffset: { width: 0, height: 4 },
                                 shadowOpacity: focused ? 0.35 : 0,
-                                shadowRadius: 8,
                                 elevation: focused ? 6 : 0,
                                 boxShadow: focused ? [{
                                     offsetX: 0,

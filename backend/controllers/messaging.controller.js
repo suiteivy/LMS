@@ -41,6 +41,8 @@ exports.sendMessage = async (req, res) => {
 exports.getMessages = async (req, res) => {
     try {
         const { userId, institution_id } = req;
+        console.log('getMessages:', { userId, institution_id, type: req.query.type });
+        
         const { type = 'inbox' } = req.query; // 'inbox' or 'sent'
 
         let query = supabase
@@ -60,6 +62,7 @@ exports.getMessages = async (req, res) => {
         }
 
         const { data, error } = await query;
+        console.log('Messages query result:', { count: data?.length, error, userId, institution_id });
 
         if (error) {
             return res.status(500).json({ error: error.message });

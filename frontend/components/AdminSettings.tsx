@@ -84,10 +84,10 @@ export default function AdminSettings() {
         <TouchableOpacity
             onPress={onPress}
             disabled={!onPress}
-            className={`flex-row items-center justify-between p-4 ${!isLast ? 'border-b border-gray-100 dark:border-gray-800' : ''}`}
+            className={`flex-row items-center justify-between p-4 ${!isLast ? 'border-b border-[#D0D7DE] dark:border-[#21262D]' : ''}`}
         >
             <View className="flex-row items-center flex-1">
-                <View className="p-2 bg-gray-50 dark:bg-gray-800 rounded-lg mr-3">
+                <View className="p-2 bg-[#E5E7EB] dark:bg-[#21262D] rounded-xl mr-3">
                     <Icon size={20} color="#FF6B00" />
                 </View>
                 <Text className="text-gray-700 dark:text-gray-300 font-medium text-base">{title}</Text>
@@ -96,50 +96,45 @@ export default function AdminSettings() {
         </TouchableOpacity>
     );
 
+
     const settingsContent = (
-        <ScrollView className="flex-1 bg-white dark:bg-navy">
+        <ScrollView className="flex-1 bg-[#FFFFFF] dark:bg-[#0D1117]">
             <View className="p-4 md:p-8 max-w-2xl mx-auto w-full">
-                <Text className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest ml-1 mb-2">Account</Text>
-                <View className="bg-white dark:bg-[#1a1a1a] rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm mb-6 overflow-hidden">
-                    <TouchableOpacity onPress={() => setShowEditForm(true)}>
-                        <SettingRow icon={User} title="Edit Profile">
-                            <HelpTooltip id="settings.profile.full_name" role="admin" tier={tier} onLearnMore={openManual} />
-                        </SettingRow>
+
+                <Text className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest ml-1 mb-2">Account</Text>
+                <View className="bg-[#F6F8FA] dark:bg-[#161B22] rounded-3xl border border-[#D0D7DE] dark:border-[#21262D] mb-6 overflow-hidden">
+                    <TouchableOpacity
+                        onPress={() => setShowEditForm(true)}
+                    >
+                        <SettingRow icon={User} title="Edit Admin Profile" />
                     </TouchableOpacity>
-                    <SettingRow icon={Lock} title="Change Password" onPress={() => setShowPasswordForm(true)}>
-                        <HelpTooltip id="settings.password" role="admin" tier={tier} onLearnMore={openManual} />
-                    </SettingRow>
-                    <SettingRow icon={Globe} title="Language" isLast>
-                        <HelpTooltip id="settings.language" role="admin" tier={tier} onLearnMore={openManual} />
-                        <Text className="text-gray-400 dark:text-gray-500 mr-2">English</Text>
+                    <SettingRow icon={Lock} title="Change Password" onPress={() => setShowPasswordForm(true)} />
+                    <SettingRow icon={Globe} title="Language" isLast >
+                        <Text className="text-gray-500 dark:text-gray-400 mr-2">English</Text>
                     </SettingRow>
                 </View>
 
-                <Text className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest ml-1 mb-2">Configurations</Text>
-                {prefsLoading ? (
-                    <ActivityIndicator size="small" color="#FF6B00" style={{ marginBottom: 24 }} />
-                ) : (
-                    <View className="bg-white dark:bg-[#1a1a1a] rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm mb-6 overflow-hidden">
-                        <SettingRow icon={Bell} title="System Notifications">
-                            <HelpTooltip id="settings.notifications.general" role="admin" tier={tier} onLearnMore={openManual} />
-                            <Switch
-                                value={prefs.push_notifications}
-                                onValueChange={() => togglePref('push_notifications')}
-                                trackColor={{ false: "#374151", true: "#f97316" }}
-                                thumbColor="#ffffff"
-                            />
-                        </SettingRow>
-                        <SettingRow icon={Shield} title="Admin Priority Alerts" isLast>
-                            <HelpTooltip id="settings.notifications.priority" role="admin" tier={tier} onLearnMore={openManual} />
-                            <Switch
-                                value={prefs.system_alerts}
-                                onValueChange={() => togglePref('system_alerts')}
-                                trackColor={{ false: "#374151", true: "#f97316" }}
-                                thumbColor="#ffffff"
-                            />
-                        </SettingRow>
-                    </View>
-                )}
+                <Text className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest ml-1 mb-2">Configurations</Text>
+                <View className="bg-[#F6F8FA] dark:bg-[#161B22] rounded-3xl border border-[#D0D7DE] dark:border-[#21262D] mb-6 overflow-hidden">
+                    <SettingRow icon={Bell} title="System Notifications">
+                        <Switch
+                            value={prefs.push_notifications}
+                            onValueChange={() => togglePref('push_notifications')}
+                            trackColor={{ false: isDark ? "#21262D" : "#D0D7DE", true: "#FF6900" }}
+                            thumbColor="#ffffff"
+                            disabled={prefsLoading}
+                        />
+                    </SettingRow>
+                    <SettingRow icon={Shield} title="Admin Priority Alerts" isLast>
+                        <Switch
+                            value={prefs.system_alerts}
+                            onValueChange={() => togglePref('system_alerts')}
+                            trackColor={{ false: isDark ? "#21262D" : "#D0D7DE", true: "#FF6900" }}
+                            thumbColor="#ffffff"
+                            disabled={prefsLoading}
+                        />
+                    </SettingRow>
+                </View>
 
                 <ProfileEdit visible={showEditForm} onClose={() => setShowEditForm(false)} />
                 <ChangePasswordModal visible={showPasswordForm} onClose={() => setShowPasswordForm(false)} />

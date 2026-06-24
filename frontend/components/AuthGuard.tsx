@@ -5,106 +5,106 @@ import { useTheme } from '../contexts/ThemeContext'
 import { useAuth } from '../contexts/AuthContext'
 
 interface AuthGuardProps {
-  children: React.ReactNode
-  fallback?: React.ReactNode
-  requireAuth?: boolean
-  allowedRoles?: string[] // New prop
+ children: React.ReactNode
+ fallback?: React.ReactNode
+ requireAuth?: boolean
+ allowedRoles?: string[] // New prop
 }
 
 export const AuthGuard: React.FC<AuthGuardProps> = ({
-  children,
-  fallback = null,
-  requireAuth = true,
-  allowedRoles
+ children,
+ fallback = null,
+ requireAuth = true,
+ allowedRoles
 }) => {
-  const { user, profile, isInitializing, getRoleRedirect, isPlatformAdmin } = useAuth()
-  const { isDark } = useTheme()
-  const hasBeenInitialized = React.useRef(false)
-  const [shouldShowOverlay, setShouldShowOverlay] = React.useState(false)
-  
-  // Guard against redirect loops
-  const redirectCount = React.useRef(0)
-  const lastRedirectTarget = React.useRef<string | null>(null)
+ const { user, profile, isInitializing, getRoleRedirect, isPlatformAdmin } = useAuth()
+ const { isDark } = useTheme()
+ const hasBeenInitialized = React.useRef(false)
+ const [shouldShowOverlay, setShouldShowOverlay] = React.useState(false)
+ 
+ // Guard against redirect loops
+ const redirectCount = React.useRef(0)
+ const lastRedirectTarget = React.useRef<string | null>(null)
 
-  useEffect(() => {
-    if (!isInitializing) {
-      hasBeenInitialized.current = true
-    }
-  }, [isInitializing])
+ useEffect(() => {
+ if (!isInitializing) {
+ hasBeenInitialized.current = true
+ }
+ }, [isInitializing])
 
-  useEffect(() => {
-    if (!isInitializing && requireAuth) {
-      if (!user) {
-      } else if (allowedRoles && profile && !allowedRoles.includes(profile.role)) {
-        const redirectPath = getRoleRedirect(profile, isPlatformAdmin) || '/(auth)/signIn';
-        
-        
-        // Loop prevention
-        if (lastRedirectTarget.current === redirectPath) {
-          redirectCount.current++
-          if (redirectCount.current > 5) {
-            console.error('AuthGuard: REDIRECT LOOP DETECTED. Aborting.')
-            return
-          }
-        } else {
-          redirectCount.current = 0
-          lastRedirectTarget.current = redirectPath
-        }
+ useEffect(() => {
+ if (!isInitializing && requireAuth) {
+ if (!user) {
+ } else if (allowedRoles && profile && !allowedRoles.includes(profile.role)) {
+ const redirectPath = getRoleRedirect(profile, isPlatformAdmin) || '/(auth)/signIn';
+ 
+ 
+ // Loop prevention
+ if (lastRedirectTarget.current === redirectPath) {
+ redirectCount.current++
+ if (redirectCount.current > 5) {
+ console.error('AuthGuard: REDIRECT LOOP DETECTED. Aborting.')
+ return
+ }
+ } else {
+ redirectCount.current = 0
+ lastRedirectTarget.current = redirectPath
+ }
 
-        router.replace(redirectPath as any)
-      }
-    }
-  }, [isInitializing, user, profile, requireAuth, allowedRoles, getRoleRedirect, isPlatformAdmin])
+ router.replace(redirectPath as any)
+ }
+ }
+ }, [isInitializing, user, profile, requireAuth, allowedRoles, getRoleRedirect, isPlatformAdmin])
 
-  // If we require auth and have no user, we naturally want to block the view 
-  // until the redirect happens. We use an overlay to keep the component mounted.
-  // This prevents the "flash" of empty specific-role content (like "0.00 GPA" or "Student")
-  // while the navigation system is processing the redirect.
-  // We check !isInitializing because if we ARE initializing, the spinner above handles it.
-  const isLoggedOut = requireAuth && !user && !isInitializing;
+ // If we require auth and have no user, we naturally want to block the view 
+ // until the redirect happens. We use an overlay to keep the component mounted.
+ // This prevents the"flash" of empty specific-role content (like"0.00 GPA" or"Student")
+ // while the navigation system is processing the redirect.
+ // We check !isInitializing because if we ARE initializing, the spinner above handles it.
+ const isLoggedOut = requireAuth && !user && !isInitializing;
 
-  // CRITICAL: If we are initializing and haven't rendered children yet, we MUST block.
-  // But once we HAVE rendered children (hasBeenInitialized=true), we must NEVER return a 
-  // different top-level component (like a View with ActivityIndicator) because that 
-  // destroys the navigation context for anything inside 'children'.
-  if (isInitializing && !hasBeenInitialized.current) {
-    return (
-      <View
-        style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#0F0B2E' }}
-      >
-        <ActivityIndicator size="large" color="#FF6B00" />
-        <Text style={{ marginTop: 8, color: 'rgba(255,255,255,0.7)' }}>Verifying access...</Text>
-      </View>
-    )
-  }
+ // CRITICAL: If we are initializing and haven't rendered children yet, we MUST block.
+ // But once we HAVE rendered children (hasBeenInitialized=true), we must NEVER return a 
+ // different top-level component (like a View with ActivityIndicator) because that 
+ // destroys the navigation context for anything inside 'children'.
+ if (isInitializing && !hasBeenInitialized.current) {
+ return (
+ <View
+ style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#0F0B2E' }}
+ >
+ <ActivityIndicator size="large" color="#FF6900" />
+ <Text style={{ marginTop: 8, color: 'rgba(255,255,255,0.7)' }}>Verifying access...</Text>
+ </View>
+ )
+ }
 
-  // If we require auth and have no user, we might be about to redirect.
-  // We keep children mounted but can show an overlay if needed.
-  return (
-    <View style={{ flex: 1 }}>
-      {children}
-      {isInitializing && hasBeenInitialized.current && (
-        <View
-          style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(255, 255, 255, 0.3)' }}
-        >
-          <ActivityIndicator size="small" color="#1ABC9C" />
-        </View>
-      )}
+ // If we require auth and have no user, we might be about to redirect.
+ // We keep children mounted but can show an overlay if needed.
+ return (
+ <View style={{ flex: 1 }}>
+ {children}
+ {isInitializing && hasBeenInitialized.current && (
+ <View
+ style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(255, 255, 255, 0.3)' }}
+ >
+ <ActivityIndicator size="small" color="#1ABC9C" />
+ </View>
+ )}
 
-      {/* Logout Blocker: instantly hide content when session is gone */}
-      {isLoggedOut && (
-        <View
-          style={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            backgroundColor: isDark ? '#0F0B2E' : '#ffffff',
-            zIndex: 9999,
-          }}
-        />
-      )}
-    </View>
-  )
+ {/* Logout Blocker: instantly hide content when session is gone */}
+ {isLoggedOut && (
+ <View
+ style={{
+ position: 'absolute',
+ top: 0,
+ left: 0,
+ right: 0,
+ bottom: 0,
+ backgroundColor: isDark ? '#0F0B2E' : '#ffffff',
+ zIndex: 9999,
+ }}
+ />
+ )}
+ </View>
+ )
 }

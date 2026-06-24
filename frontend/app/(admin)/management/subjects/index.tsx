@@ -22,11 +22,11 @@ export default function SubjectsIndex() {
         fetchSubjects();
     });
 
-    const surface = isDark ? '#13103A' : '#ffffff';
-    const border = isDark ? 'rgba(255,255,255,0.1)' : '#f3f4f6';
-    const inputBg = isDark ? '#1A1650' : '#f3f4f6';
-    const textPrimary = isDark ? '#f1f1f1' : '#111827';
-    const textMuted = isDark ? '#9ca3af' : '#9ca3af';
+    const surface = isDark ? '#161B22' : '#F6F8FA';
+    const border = isDark ? '#21262D' : '#D0D7DE';
+    const inputBg = isDark ? '#0D1117' : '#FFFFFF';
+    const textPrimary = isDark ? '#FFFFFF' : '#111827';
+    const textMuted = isDark ? '#9ca3af' : '#6b7280';
 
     const filteredSubjects = subjects.filter((s) =>
         s.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -107,15 +107,15 @@ export default function SubjectsIndex() {
 
     if (loading) {
         return (
-            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: isDark ? '#0F0B2E' : '#f9fafb' }}>
+            <View className="flex-1 justify-center items-center bg-[#FFFFFF] dark:bg-[#0D1117]">
                 <ActivityIndicator size="large" color="#FF6B00" />
             </View>
         );
     }
 
     return (
-        <ScrollView style={{ flex: 1, backgroundColor: isDark ? '#0F0B2E' : '#f9fafb' }}>
-            <View style={{ flex: 1, backgroundColor: isDark ? '#0F0B2E' : '#f9fafb' }}>
+        <ScrollView className="flex-1 bg-[#FFFFFF] dark:bg-[#0D1117]">
+            <View className="flex-1 bg-[#FFFFFF] dark:bg-[#0D1117]">
                 <UnifiedHeader
                     title="Management"
                     subtitle="Subjects"

@@ -74,11 +74,11 @@ export default function StudentSettings() {
     )
 
     return (
-        <ScrollView className="flex-1 bg-gray-50 dark:bg-navy">
+        <ScrollView className="flex-1 bg-[#FFFFFF] dark:bg-[#0D1117]">
             <View className="p-4 md:p-8 max-w-2xl mx-auto w-full">
 
-                <Text className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest ml-1 mb-2">Account</Text>
-                <View className="bg-white dark:bg-[#1a1a1a] rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm mb-6 overflow-hidden">
+                <Text className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest ml-1 mb-2">Account</Text>
+                <View className="bg-[#F6F8FA] dark:bg-[#161B22] rounded-lg border border-[#D0D7DE] dark:border-[#21262D] mb-6 overflow-hidden">
                     <TouchableOpacity
                         onPress={() => setShowEditForm(true)}
                     >
@@ -90,7 +90,7 @@ export default function StudentSettings() {
                         <SettingRow icon={Lock} title="Change Password" isDark={isDark} />
                     </TouchableOpacity>
                     <SettingRow icon={Globe} title="Language" isLast isDark={isDark}>
-                        <Text className="text-gray-400 dark:text-gray-500 mr-2">English</Text>
+                        <Text className="text-gray-500 dark:text-gray-400 mr-2">English</Text>
                     </SettingRow>
                 </View>
 

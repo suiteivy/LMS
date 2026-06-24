@@ -83,7 +83,7 @@ exports.getAssignments = async (req, res) => {
         if (userRole === 'student') {
             const { data: student } = await supabase
                 .from('students')
-                .select('id, class_id')
+                .select('id', 'class_id')
                 .eq('user_id', userId)
                 .single();
 
@@ -111,6 +111,27 @@ exports.getAssignments = async (req, res) => {
             // Admin and other roles see all assignments in institution
             if (subject_id) {
                 query = query.eq("subject_id", subject_id);
+            }
+            if(req.query.class_id){
+                query = query.eq("class_id", req.query.class_id);
+            }
+            if(req.query.student_id){
+                const {data: student, error: studentAssignmentErr} = await supabase
+                    .from('assignments')
+                    .select('id')
+                    .eq('student_id', req.query.student_id)
+                    .eq('institution_id', institution_id)
+                    .single();
+                
+                if(student?.class_id){
+                    query = query.eq("class_id", student.class_id);
+                }   
+                
+                if(studentAssignmentErr){
+                    res.status(404).json({ error: "Student assignment not found" });
+                    console.error("Error fetching students assigments", studentAssignmentErr);
+                    return;
+                }
             }
         }
 

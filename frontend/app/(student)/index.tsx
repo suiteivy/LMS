@@ -35,116 +35,24 @@ interface QuickActionProps {
   label: string;
   color: string;
   onPress: () => void;
-  cols: number;
+  badge?: React.ReactNode;
+  cols?: number;
 }
 
-const QuickAction = ({ icon: Icon, label, color, onPress, cols }: QuickActionProps) => {
-  const { isDark } = useTheme();
-  // Tighter padding on 3-col layout, more breathing room on 2-col
-  const pad = cols >= 3 ? 14 : 18;
-
+const QuickAction = ({ icon: Icon, label, color, onPress, badge, cols }: QuickActionProps) => {
   return (
     <TouchableOpacity
       onPress={onPress}
-      activeOpacity={0.75}
-      style={{
-        width: `${Math.floor(100 / cols) - 2}%`,
-        marginBottom: 12,
-        padding: pad,
-        borderRadius: 20,
-        backgroundColor: isDark ? '#0F0B2E' : '#ffffff',
-        borderWidth: 1,
-        borderColor: isDark ? '#1f2937' : '#f1f5f9',
-        alignItems: 'center',
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: isDark ? 0.35 : 0.06,
-        shadowRadius: 4,
-        elevation: 2,
-        boxShadow: [{
-          offsetX: 0,
-          offsetY: 1,
-          blurRadius: 4,
-          color: isDark ? 'rgba(0, 0, 0, 0.35)' : 'rgba(0, 0, 0, 0.06)',
-        }],
-      }}
+      activeOpacity={0.7}
+      style={cols ? { width: `${100 / cols - 2}%` } : undefined}
+      className="flex-1 bg-[#F6F8FA] dark:bg-[#161B22] border border-[#D0D7DE] dark:border-[#21262D] rounded-xl p-4 mr-3 mb-3 min-w-[140px]"
     >
-      <View
-        style={{
-          backgroundColor: `${color}15`,
-          padding: cols >= 3 ? 10 : 12,
-          borderRadius: 14,
-          marginBottom: 8,
-        }}
-      >
-        <Icon size={cols >= 3 ? 20 : 22} color={color} strokeWidth={2} />
+      <View className="flex-row items-center mb-3">
+        <Icon size={20} color={color} />
+        {badge && <View className="ml-2">{badge}</View>}
       </View>
-      <Text
-        style={{
-          color: isDark ? '#e2e8f0' : '#111827',
-          fontWeight: '700',
-          fontSize: cols >= 3 ? 11 : 12,
-          letterSpacing: 0.1,
-          textAlign: 'center',
-        }}
-      >
-        {label}
-      </Text>
+      <Text className="text-gray-900 dark:text-white font-bold">{label}</Text>
     </TouchableOpacity>
-  );
-};
-
-// ─── Metric Card ─────────────────────────────────────────────────────────────
-
-interface MetricCardProps {
-  icon: any;
-  value: string;
-  label: string;
-  dark?: boolean;
-  isDark: boolean;
-}
-
-const MetricCard = ({ icon: Icon, value, label, dark = false, isDark }: MetricCardProps) => {
-  const bg = dark
-    ? (isDark ? '#1a1a2e' : '#111827')
-    : (isDark ? '#1a1a2e' : '#ffffff');
-
-  const valuColor = dark ? '#ffffff' : (isDark ? '#ffffff' : '#111827');
-  const labelColor = dark ? 'rgba(255,255,255,0.4)' : (isDark ? '#64748b' : '#94a3b8');
-  const borderColor = dark ? 'transparent' : (isDark ? '#1f2937' : '#f1f5f9');
-
-  return (
-    <View
-      style={{
-        flex: 1,
-        backgroundColor: bg,
-        padding: 20,
-        borderRadius: 28,
-        borderWidth: 1,
-        borderColor,
-        shadowColor: dark ? '#FF6900' : '#000',
-        shadowOffset: { width: 0, height: dark ? 8 : 2 },
-        shadowOpacity: dark ? 0.15 : (isDark ? 0.35 : 0.07),
-        shadowRadius: dark ? 16 : 6,
-        elevation: dark ? 8 : 2,
-        boxShadow: [{
-          offsetX: 0,
-          offsetY: dark ? 8 : 2,
-          blurRadius: dark ? 16 : 6,
-          color: dark
-            ? 'rgba(255, 105, 0, 0.15)'
-            : (isDark ? 'rgba(0,0,0,0.35)' : 'rgba(0,0,0,0.07)'),
-        }],
-      }}
-    >
-      <Icon size={18} color="#FF6900" strokeWidth={2} />
-      <Text style={{ color: valuColor, fontSize: 30, fontWeight: '800', marginTop: 12, letterSpacing: -1 }}>
-        {value}
-      </Text>
-      <Text style={{ color: labelColor, fontSize: 9, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1.5, marginTop: 2 }}>
-        {label}
-      </Text>
-    </View>
   );
 };
 
@@ -152,91 +60,34 @@ const MetricCard = ({ icon: Icon, value, label, dark = false, isDark }: MetricCa
 
 interface ScheduleCardProps {
   item: any;
-  index: number;
-  isDark: boolean;
+  index?: number;
+  isDark?: boolean;
   isGrid?: boolean;
 }
 
-const ScheduleCard = ({ item, index, isDark, isGrid }: ScheduleCardProps) => {
-  const accent = index % 2 === 0;
+const ScheduleCard = ({ item, isGrid }: ScheduleCardProps) => {
   return (
-    <View
-      style={{
-        backgroundColor: isDark ? '#1a1a2e' : '#ffffff',
-        padding: 16,
-        borderRadius: 20,
-        borderWidth: 1,
-        borderColor: isDark ? '#1f2937' : '#f1f5f9',
-        // Horizontal scroll: fixed width. Grid: flex fill handled by parent
-        ...(isGrid ? { flex: 1 } : { width: 220, marginRight: 12 }),
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: isDark ? 0.3 : 0.06,
-        shadowRadius: 4,
-        elevation: 2,
-        boxShadow: [{
-          offsetX: 0,
-          offsetY: 1,
-          blurRadius: 4,
-          color: isDark ? 'rgba(0,0,0,0.3)' : 'rgba(0,0,0,0.06)',
-        }],
-      }}
+    <TouchableOpacity
+      activeOpacity={0.7}
+      className={`bg-[#F6F8FA] dark:bg-[#161B22] border border-[#D0D7DE] dark:border-[#21262D] rounded-xl p-4 ${isGrid ? 'mr-0 flex-1' : 'mr-3 min-w-[220px]'}`}
     >
-      <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 10 }}>
-        <View
-          style={{
-            backgroundColor: accent
-              ? (isDark ? 'rgba(255,105,0,0.15)' : '#fff7ed')
-              : (isDark ? '#1f2937' : '#f8fafc'),
-            padding: 7,
-            borderRadius: 10,
-            marginRight: 8,
-          }}
-        >
-          <BookOpen size={14} color={accent ? "#FF6900" : "#6B7280"} strokeWidth={2} />
+      <View className="flex-row items-center mb-2">
+        <View className="mr-2">
+          <BookOpen size={16} color="#FF6900" />
         </View>
-        <Text style={{ color: isDark ? '#64748b' : '#94a3b8', fontWeight: '700', fontSize: 9, textTransform: 'uppercase', letterSpacing: 0.8 }}>
-          {item.start_time?.slice(0, 5)} – {item.end_time?.slice(0, 5)}
+        <Text className="text-gray-500 dark:text-gray-400 font-bold text-xs uppercase tracking-widest">
+          {item.start_time?.slice(0, 5)} - {item.end_time?.slice(0, 5)}
         </Text>
       </View>
-      <Text style={{ color: isDark ? '#f1f5f9' : '#111827', fontWeight: '700', fontSize: 14, marginBottom: 6, letterSpacing: -0.2 }} numberOfLines={1}>
+      <Text className="text-gray-900 dark:text-white font-bold text-base mb-1" numberOfLines={1}>
         {item.subjects?.title || "Subject"}
       </Text>
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-        <Text style={{ color: isDark ? '#475569' : '#94a3b8', fontSize: 11, fontWeight: '500' }}>
-          {item.room_number || "Room TBD"}
-        </Text>
-        <Text style={{ color: '#FF6900', fontSize: 10, fontWeight: '700' }}>
-          {item.subjects?.teachers?.users?.full_name?.split(' ')[0] || "Faculty"}
-        </Text>
-      </View>
-    </View>
+      <Text className="text-gray-500 dark:text-gray-400 text-sm">
+        {item.room_number || "Room TBD"} • {item.subjects?.teachers?.users?.full_name?.split(' ')[0] || "Faculty"}
+      </Text>
+    </TouchableOpacity>
   );
 };
-
-// ─── Section Header ───────────────────────────────────────────────────────────
-
-interface SectionHeaderProps {
-  title: string;
-  actionLabel?: string;
-  onAction?: () => void;
-  isDark: boolean;
-}
-
-const SectionHeader = ({ title, actionLabel, onAction, isDark }: SectionHeaderProps) => (
-  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-    <Text style={{ fontSize: 17, fontWeight: '800', color: isDark ? '#f1f5f9' : '#111827', letterSpacing: -0.3 }}>
-      {title}
-    </Text>
-    {actionLabel && onAction && (
-      <TouchableOpacity onPress={onAction} activeOpacity={0.7}>
-        <Text style={{ color: '#FF6900', fontSize: 10, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.8 }}>
-          {actionLabel}
-        </Text>
-      </TouchableOpacity>
-    )}
-  </View>
-);
 
 // ─── Main Screen ─────────────────────────────────────────────────────────────
 
@@ -386,7 +237,7 @@ export default function Index() {
   ];
 
   return (
-    <View style={{ flex: 1, backgroundColor: isDark ? '#0F0B2E' : '#f8fafc' }}>
+    <View className="flex-1 bg-[#FFFFFF] dark:bg-[#0D1117]">
       <UnifiedHeader
         title="Dashboard"
         subtitle={profile?.full_name || "Student Portal"}
@@ -396,9 +247,9 @@ export default function Index() {
       <SubscriptionBanner />
 
       <ScrollView
-        style={{ flex: 1 }}
+        className="flex-1"
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 100 }}
+        contentContainerStyle={{ paddingBottom: 60, paddingHorizontal: 20, paddingTop: 16 }}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -448,35 +299,17 @@ export default function Index() {
             }}>
               Academic Portal
             </Text>
-            <Text style={{
-              color: isDark ? '#f1f5f9' : '#111827',
-              fontWeight: '800',
-              fontSize: 26,
-              letterSpacing: -0.5,
-              lineHeight: 30,
-            }}>
-              Hello, {profile?.first_name || profile?.full_name?.split(' ')[0] || 'Student'}
-            </Text>
-            <Text style={{ color: isDark ? '#475569' : '#94a3b8', fontSize: 11, fontWeight: '500', marginTop: 3 }}>
-              ID: {displayId || 'Not Assigned'}
+            <Text className="text-gray-900 dark:text-white text-3xl font-black">
+              {gpa}
             </Text>
           </View>
-
-          {/* ── Metric Cards ─────────────────────────────────────────── */}
-          <View style={{ flexDirection: 'row', gap: 12, marginBottom: 28 }}>
-            <MetricCard
-              icon={Star}
-              value={gpa}
-              label="GPA Score"
-              dark
-              isDark={isDark}
-            />
-            <MetricCard
-              icon={Clock}
-              value={attendancePct}
-              label="Attendance"
-              isDark={isDark}
-            />
+          <View>
+            <Text className="text-gray-500 dark:text-gray-400 text-xs uppercase tracking-widest mb-1">
+              Attendance
+            </Text>
+            <Text className="text-gray-900 dark:text-white text-3xl font-black">
+              {attendancePct}
+            </Text>
           </View>
 
           {/* ── Today's Schedule ─────────────────────────────────────── */}
@@ -608,7 +441,30 @@ export default function Index() {
           </SubscriptionGate>
 
         </View>
+
+
+
       </ScrollView>
     </View>
   );
 }
+
+interface SectionHeaderProps {
+  title: string;
+  isDark: boolean;
+  actionLabel?: string;
+  onAction?: () => void;
+}
+
+const SectionHeader = ({ title, isDark, actionLabel, onAction }: SectionHeaderProps) => (
+  <View className="flex-row justify-between items-end mb-3">
+    <Text className={`text-lg font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
+      {title}
+    </Text>
+    {actionLabel && onAction && (
+      <TouchableOpacity onPress={onAction} activeOpacity={0.7}>
+        <Text className="text-[#FF6900] font-bold text-sm">{actionLabel}</Text>
+      </TouchableOpacity>
+    )}
+  </View>
+);

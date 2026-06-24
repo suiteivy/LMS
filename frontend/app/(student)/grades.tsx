@@ -20,10 +20,10 @@ interface GradeProps {
 
 const SubjectGrade = ({ SubjectCode, SubjectName, grade, score, credits, isDark, onPress }: GradeProps) => {
     const getGradeColor = (g: string) => {
-        if (g.startsWith('A')) return { text: 'text-green-600 dark:text-green-400', bg: 'bg-green-50 dark:bg-green-950/20' };
-        if (g.startsWith('B')) return { text: 'text-blue-600 dark:text-blue-400', bg: 'bg-blue-50 dark:bg-blue-950/20' };
-        if (g.startsWith('C')) return { text: 'text-yellow-600 dark:text-yellow-400', bg: 'bg-yellow-50 dark:bg-yellow-950/20' };
-        return { text: 'text-red-600 dark:text-red-400', bg: 'bg-red-50 dark:bg-red-950/20' };
+        if (g.startsWith('A')) return { text: 'text-gray-900 dark:text-white', bg: 'bg-gray-100 dark:bg-gray-800' };
+        if (g.startsWith('B')) return { text: 'text-gray-900 dark:text-white', bg: 'bg-gray-100 dark:bg-gray-800' };
+        if (g.startsWith('C')) return { text: 'text-gray-500 dark:text-gray-400', bg: 'bg-gray-100 dark:bg-gray-800' };
+        return { text: 'text-gray-500 dark:text-gray-400', bg: 'bg-gray-100 dark:bg-gray-800' };
     }
     const styles = getGradeColor(grade);
     return (
@@ -36,25 +36,21 @@ const SubjectGrade = ({ SubjectCode, SubjectName, grade, score, credits, isDark,
                     blurRadius: 2,
                     color: isDark ? 'rgba(0, 0, 0, 0.4)' : 'rgba(0, 0, 0, 0.05)',
                 }],
-                shadowColor: "#000",
-                shadowOffset: { width: 0, height: 1 },
                 shadowOpacity: isDark ? 0.4 : 0.05,
-                shadowRadius: 2,
-                elevation: 2,
-            }}
-            className="bg-white dark:bg-[#1a1a1a] p-5 rounded-[32px] border border-gray-50 dark:border-gray-800 mb-4 flex-row items-center active:bg-gray-50 dark:active:bg-gray-900"
+                }}
+            className="bg-[#FFFFFF] dark:bg-[#0D1117] p-5 rounded-xl border border-[#D0D7DE] dark:border-[#21262D] mb-4 flex-row items-center active:bg-gray-50 dark:active:bg-gray-900"
         >
-            <View className={`w-12 h-12 rounded-2xl items-center justify-center mr-4 ${styles.bg}`}>
+            <View className={`w-12 h-12 rounded-xl items-center justify-center mr-4 ${styles.bg}`}>
                 <Text className={`font-black text-xl ${styles.text}`}>{grade === 'N/A' || grade === null ? '?' : grade}</Text>
             </View>
             <View className="flex-1">
-                <Text className="text-gray-400 dark:text-gray-500 text-[8px] font-bold uppercase tracking-[2px] mb-1">{SubjectCode}</Text>
+                <Text className="text-gray-500 dark:text-gray-400 text-[8px] font-bold uppercase tracking-[2px] mb-1">{SubjectCode}</Text>
                 <Text className="text-gray-900 dark:text-white font-bold text-base leading-tight" numberOfLines={1}>{SubjectName}</Text>
-                <Text className="text-gray-400 dark:text-gray-500 text-[10px] font-bold uppercase tracking-widest mt-1">{credits} Credits Earned</Text>
+                <Text className="text-gray-500 dark:text-gray-400 text-[10px] font-bold uppercase tracking-widest mt-1">{credits} Credits Earned</Text>
             </View>
             <View className="items-end">
                 <Text className="text-gray-900 dark:text-gray-100 font-bold text-base">{score}%</Text>
-                <Text className="text-gray-400 dark:text-gray-500 text-[8px] font-bold uppercase tracking-widest">Weightage</Text>
+                <Text className="text-gray-500 dark:text-gray-400 text-[8px] font-bold uppercase tracking-widest">Weightage</Text>
             </View>
         </TouchableOpacity>
     )
@@ -82,11 +78,11 @@ export default function Grades() {
     }, [studentId, user?.id, isDemo]);
 
     const getPerformanceStatus = (gpa: number) => {
-        if (gpa >= 4.0) return { label: "Elite Achievement", color: "text-emerald-400" };
-        if (gpa >= 3.7) return { label: "Scholar Distinction", color: "text-emerald-300" };
-        if (gpa >= 3.3) return { label: "Merit Standing", color: "text-blue-300" };
-        if (gpa >= 3.0) return { label: "Standard Proficiency", color: "text-blue-200" };
-        return { label: "Academic Advisory", color: "text-orange-200" };
+        if (gpa >= 4.0) return { label: "Elite Achievement", color: "text-gray-900 dark:text-white" };
+        if (gpa >= 3.7) return { label: "Scholar Distinction", color: "text-gray-900 dark:text-white" };
+        if (gpa >= 3.3) return { label: "Merit Standing", color: "text-gray-500 dark:text-gray-400" };
+        if (gpa >= 3.0) return { label: "Standard Proficiency", color: "text-gray-500 dark:text-gray-400" };
+        return { label: "Academic Advisory", color: "text-[#FF6900]" };
     };
 
     const fetchGrades = async () => {
@@ -278,13 +274,8 @@ export default function Grades() {
                                 blurRadius: 30,
                                 color: 'rgba(0, 0, 0, 0.3)',
                             }],
-                            shadowColor: "#000",
-                            shadowOffset: { width: 0, height: 15 },
-                            shadowOpacity: 0.3,
-                            shadowRadius: 30,
-                            elevation: 20,
-                        }}
-                        className="bg-gray-900 dark:bg-[#1a1a1a] p-8 rounded-[48px] mb-8 border border-transparent dark:border-gray-800"
+                            }}
+                        className="bg-gray-900 dark:bg-[#1a1a1a] p-8 rounded-xl mb-8 border border-transparent dark:border-gray-800"
                     >
                         <View className="flex-row justify-between items-start mb-10">
                             <View>
@@ -302,13 +293,8 @@ export default function Grades() {
                                         blurRadius: 10,
                                         color: 'rgba(255, 105, 0, 0.3)',
                                     }],
-                                    shadowColor: "#FF6900",
-                                    shadowOffset: { width: 0, height: 4 },
-                                    shadowOpacity: 0.3,
-                                    shadowRadius: 10,
-                                    elevation: 8,
-                                }}
-                                className="bg-[#FF6900] p-4 rounded-3xl"
+                                    }}
+                                className="bg-[#FF6900] p-4 rounded-xl"
                             >
                                 <TrendingUp size={28} color="white" />
                             </View>
@@ -339,25 +325,21 @@ export default function Grades() {
                                 blurRadius: 2,
                                 color: isDark ? 'rgba(0, 0, 0, 0.4)' : 'rgba(0, 0, 0, 0.05)',
                             }],
-                            shadowColor: "#000",
-                            shadowOffset: { width: 0, height: 1 },
                             shadowOpacity: isDark ? 0.4 : 0.05,
-                            shadowRadius: 2,
-                            elevation: 2,
-                        }}
-                        className="bg-white dark:bg-[#1a1a1a] p-6 rounded-[32px] border border-gray-100 dark:border-gray-800 mb-10"
+                            }}
+                        className="bg-[#FFFFFF] dark:bg-[#0D1117] p-6 rounded-xl border border-[#D0D7DE] dark:border-[#21262D] mb-10"
                     >
                         <View className="flex-row items-center mb-6">
                             <BarChart3 size={18} color="#FF6900" />
                             <Text className="text-gray-900 dark:text-white font-bold text-lg tracking-tight ml-3">Analytical Overview</Text>
                         </View>
-                        <View className="flex-row border-t border-gray-50 dark:border-gray-800 pt-6">
+                        <View className="flex-row border-t border-[#D0D7DE] dark:border-[#21262D] pt-6">
                             <View className="flex-1">
-                                <Text className="text-gray-400 dark:text-gray-500 text-[8px] font-bold uppercase tracking-widest mb-1">Raw Aggregation</Text>
+                                <Text className="text-gray-500 dark:text-gray-400 text-[8px] font-bold uppercase tracking-widest mb-1">Raw Aggregation</Text>
                                 <Text className="text-gray-900 dark:text-gray-100 font-bold text-xl">{stats.totalMarks.toLocaleString()}</Text>
                             </View>
-                            <View className="flex-1 border-l border-gray-50 dark:border-gray-800 pl-6">
-                                <Text className="text-gray-400 dark:text-gray-500 text-[8px] font-bold uppercase tracking-widest mb-1">Average Grade</Text>
+                            <View className="flex-1 border-l border-[#D0D7DE] dark:border-[#21262D] pl-6">
+                                <Text className="text-gray-500 dark:text-gray-400 text-[8px] font-bold uppercase tracking-widest mb-1">Average Grade</Text>
                                 <Text className="text-gray-900 dark:text-gray-100 font-bold text-xl">
                                     {(() => {
                                         const avg = stats.avgMark;
@@ -411,13 +393,9 @@ export default function Grades() {
                                     blurRadius: 2,
                                     color: isDark ? 'rgba(0, 0, 0, 0.4)' : 'rgba(0, 0, 0, 0.05)',
                                 }],
-                                shadowColor: "#000",
-                                shadowOffset: { width: 0, height: 1 },
                                 shadowOpacity: isDark ? 0.4 : 0.05,
-                                shadowRadius: 2,
-                                elevation: 2,
-                            }}
-                            className="flex-row items-center bg-white dark:bg-[#1a1a1a] px-4 py-2 rounded-xl border border-gray-100 dark:border-gray-800 overflow-hidden active:bg-gray-50 dark:active:bg-gray-900"
+                                }}
+                            className="flex-row items-center bg-[#FFFFFF] dark:bg-[#0D1117] px-4 py-2 rounded-xl border border-[#D0D7DE] dark:border-[#21262D] overflow-hidden active:bg-gray-50 dark:active:bg-gray-900"
                         >
                             <Award size={14} color="#FF6900" />
                             <Text className="text-gray-900 dark:text-gray-100 text-[10px] font-bold uppercase tracking-widest ml-2">History</Text>
@@ -425,9 +403,9 @@ export default function Grades() {
                     </View>
 
                     {grades.length === 0 ? (
-                        <View className="bg-white dark:bg-[#1a1a1a] p-20 rounded-[48px] items-center border border-gray-100 dark:border-gray-800 border-dashed mt-4">
+                        <View className="bg-[#FFFFFF] dark:bg-[#0D1117] p-20 rounded-xl items-center border border-[#D0D7DE] dark:border-[#21262D] border-dashed mt-4">
                             <Star size={48} color="#E5E7EB" style={{ opacity: 0.3 }} />
-                            <Text className="text-gray-400 dark:text-gray-500 font-bold text-center mt-6">Void Transcript</Text>
+                            <Text className="text-gray-500 dark:text-gray-400 font-bold text-center mt-6">Void Transcript</Text>
                         </View>
                     ) : (
                         grades.map((g, i) => (

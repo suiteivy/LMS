@@ -61,11 +61,8 @@ export default function AttendanceLanding() {
                             flexDirection: 'row',
                             alignItems: 'center',
                             shadowColor: '#000',
-                            shadowOffset: { width: 0, height: 2 },
                             shadowOpacity: isDark ? 0.3 : 0.05,
-                            shadowRadius: 10,
-                            elevation: 2
-                        }}
+                            }}
                     >
                         <View style={{
                             width: 52,

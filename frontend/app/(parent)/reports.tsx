@@ -4,7 +4,7 @@ import { ParentService } from '@/services/ParentService';
 import { router, useLocalSearchParams } from 'expo-router';
 import { FileText, Download, Printer, ChevronRight } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, ScrollView, Text, TouchableOpacity, View, RefreshControl } from 'react-native';
+import { ActivityIndicator, ScrollView, Text, TouchableOpacity, View, RefreshControl, Linking, Alert } from 'react-native';
 
 export default function ReportsScreen() {
     const { studentId, studentName } = useLocalSearchParams<{ studentId: string; studentName: string }>();
@@ -37,14 +37,14 @@ export default function ReportsScreen() {
 
     if (loading && !refreshing) {
         return (
-            <View className="flex-1 justify-center items-center bg-white dark:bg-navy">
+            <View className="flex-1 justify-center items-center bg-[#FFFFFF] dark:bg-[#0D1117]">
                 <ActivityIndicator size="large" color="#FF6900" />
             </View>
         );
     }
 
     return (
-        <View className="flex-1 bg-white dark:bg-navy">
+        <View className="flex-1 bg-[#FFFFFF] dark:bg-[#0D1117]">
             <UnifiedHeader
                 title="Academic Reports"
                 subtitle={studentName || "Student Progress"}
@@ -85,7 +85,7 @@ export default function ReportsScreen() {
                 {reports.length === 0 ? (
                     <View className="py-20 items-center">
                         <FileText size={48} color={isDark ? '#374151' : '#d1d5db'} />
-                        <Text className="text-gray-400 dark:text-gray-500 mt-4 text-center">
+                        <Text className="text-gray-500 dark:text-gray-400 mt-4 text-center">
                             No published reports found for this student.
                         </Text>
                     </View>
@@ -101,24 +101,16 @@ export default function ReportsScreen() {
 
 function ReportCard({ report, isDark }: { report: any; isDark: boolean }) {
     const data = report.data || {};
+    const [expanded, setExpanded] = useState(false);
     
     return (
         <View 
             style={{
-                boxShadow: [{
-                    offsetX: 0,
-                    offsetY: 2,
-                    blurRadius: 10,
-                    color: isDark ? 'rgba(0,0,0,0.5)' : 'rgba(0,0,0,0.05)',
-                }],
-                shadowColor: "#000",
-                shadowOffset: { width: 0, height: 2 },
-                shadowOpacity: 0.1,
-                shadowRadius: 10,
-                elevation: 3,
-            }}
-            className="bg-white dark:bg-navy-surface rounded-[32px] p-6 mb-6 border border-gray-100 dark:border-gray-800"
+                boxShadow: [{ offsetX: 0, offsetY: 2, blurRadius: 10, color: isDark ? 'rgba(0,0,0,0.5)' : 'rgba(0,0,0,0.05)' }],
+                }}
+            className="bg-[#FFFFFF] dark:bg-[#0D1117]-surface rounded-xl p-6 mb-6 border border-[#D0D7DE] dark:border-[#21262D]"
         >
+            {/* Header */}
             <View className="flex-row justify-between items-start mb-4">
                 <View>
                     <Text className="text-[#FF6900] text-[10px] font-bold uppercase tracking-widest mb-1">
@@ -138,31 +130,77 @@ function ReportCard({ report, isDark }: { report: any; isDark: boolean }) {
                 </View>
             </View>
 
-            <View className="flex-row justify-between border-t border-b border-gray-50 dark:border-gray-800 py-4 mb-4">
+            {/* Stats row */}
+            <View className="flex-row justify-between border-t border-b border-[#D0D7DE] dark:border-[#21262D] py-4 mb-4">
                 <View className="items-center flex-1">
-                    <Text className="text-gray-400 dark:text-gray-500 text-[8px] font-bold uppercase mb-1">GPA</Text>
+                    <Text className="text-gray-500 dark:text-gray-400 text-[8px] font-bold uppercase mb-1">GPA</Text>
                     <Text className="text-gray-900 dark:text-white font-black text-lg">{data.gpa || 'N/A'}</Text>
                 </View>
-                <View className="items-center flex-1 border-l border-r border-gray-50 dark:border-gray-800">
-                    <Text className="text-gray-400 dark:text-gray-500 text-[8px] font-bold uppercase mb-1">Position</Text>
+                <View className="items-center flex-1 border-l border-r border-[#D0D7DE] dark:border-[#21262D]">
+                    <Text className="text-gray-500 dark:text-gray-400 text-[8px] font-bold uppercase mb-1">Position</Text>
                     <Text className="text-gray-900 dark:text-white font-black text-lg">{data.position || 'N/A'}/{data.total_students || '-'}</Text>
                 </View>
                 <View className="items-center flex-1">
-                    <Text className="text-gray-400 dark:text-gray-500 text-[8px] font-bold uppercase mb-1">Attendance</Text>
+                    <Text className="text-gray-500 dark:text-gray-400 text-[8px] font-bold uppercase mb-1">Attendance</Text>
                     <Text className="text-gray-900 dark:text-white font-black text-lg">{data.attendance || 'N/A'}</Text>
                 </View>
             </View>
 
+            {/* Teacher remarks */}
             {data.comments && (
-                <View className="bg-orange-50/30 dark:bg-navy p-4 rounded-2xl mb-4">
-                    <Text className="text-[#FF6900] text-[8px] font-bold uppercase tracking-widest mb-2">Teacher&apos;s Remarks</Text>
-                    <Text className="text-gray-600 dark:text-gray-400 text-xs italic">&quot;{data.comments}&quot;</Text>
+                <View className="bg-orange-50/30 dark:bg-navy p-4 rounded-xl mb-4">
+                    <Text className="text-[#FF6900] text-[8px] font-bold uppercase tracking-widest mb-2">Teacher's Remarks</Text>
+                    <Text className="text-gray-600 dark:text-gray-400 text-xs italic">"{data.comments}"</Text>
                 </View>
             )}
 
-            <TouchableOpacity className="flex-row justify-between items-center bg-gray-900 dark:bg-white p-4 rounded-2xl">
-                <Text className="text-white dark:text-navy font-bold text-xs">View Full Details</Text>
-                <ChevronRight size={16} color={isDark ? '#1e293b' : 'white'} />
+            {/* Subject breakdown — shown when expanded */}
+            {expanded && data.subjects && data.subjects.length > 0 && (
+                <View className="mb-4">
+                    <Text className="text-[#FF6900] text-[8px] font-bold uppercase tracking-widest mb-3">
+                        Subject Breakdown
+                    </Text>
+                    {data.subjects.map((subject: any, index: number) => (
+                        <View 
+                            key={index}
+                            className="flex-row justify-between items-center py-3 border-b border-[#D0D7DE] dark:border-[#21262D]"
+                        >
+                            <View className="flex-1">
+                                <Text className="text-gray-900 dark:text-white text-sm font-semibold">
+                                    {subject.title}
+                                </Text>
+                                {subject.remarks && (
+                                    <Text className="text-gray-500 dark:text-gray-400 text-xs mt-0.5">
+                                        {subject.remarks}
+                                    </Text>
+                                )}
+                            </View>
+                            <View className="items-center ml-4">
+                                <Text 
+                                    className="font-black text-lg"
+                                    style={{ color: subject.grade >= 80 ? '#22c55e' : subject.grade >= 60 ? '#FF6900' : '#ef4444' }}
+                                >
+                                    {subject.grade}%
+                                </Text>
+                            </View>
+                        </View>
+                    ))}
+                </View>
+            )}
+
+            {/* Toggle button */}
+            <TouchableOpacity 
+                className="flex-row justify-between items-center bg-gray-900 dark:bg-white p-4 rounded-xl"
+                onPress={() => setExpanded(!expanded)}
+            >
+                <Text className="text-white dark:text-navy font-bold text-xs">
+                    {expanded ? 'Hide Details' : 'View Full Details'}
+                </Text>
+                <ChevronRight 
+                    size={16} 
+                    color={isDark ? '#1e293b' : 'white'}
+                    style={{ transform: [{ rotate: expanded ? '90deg' : '0deg' }] }}
+                />
             </TouchableOpacity>
         </View>
     );

@@ -20,43 +20,43 @@ const SubjectCard = ({ subject }: { subject: Subject }) => {
     const isActive = subject.status === "active";
     return (
         <TouchableOpacity
-            className="bg-white p-5 rounded-3xl border border-gray-100 mb-4 shadow-sm"
+            className="bg-[#F6F8FA] dark:bg-[#161B22] p-5 rounded-xl border border-[#D0D7DE] dark:border-[#21262D] mb-4"
             onPress={() => router.push({
                 pathname: "/(teacher)/management/subjects/details" as any,
                 params: { id: subject.id }
             })}
         >
             <View className="flex-row justify-between items-start mb-4">
-                <View className="bg-orange-50 p-3 rounded-2xl">
-                    <BookOpen size={24} color="#FF6B00" />
+                <View className="bg-orange-50 dark:bg-orange-950/30 p-3 rounded-lg">
+                    <BookOpen size={24} color="#FF6900" />
                 </View>
-                <View className={`px-3 py-1 rounded-full ${subject.status === 'active' ? 'bg-green-50' : 'bg-gray-50'}`}>
-                    <Text className={`text-[10px] font-bold uppercase ${subject.status === 'active' ? 'text-green-600' : 'text-gray-400'}`}>
+                <View className={`px-3 py-1 rounded-full ${subject.status === 'active' ? 'bg-green-50 dark:bg-green-950/30' : 'bg-gray-50 dark:bg-gray-800'}`}>
+                    <Text className={`text-[10px] font-bold uppercase ${subject.status === 'active' ? 'text-green-600 dark:text-green-400' : 'text-gray-400 dark:text-gray-500'}`}>
                         {subject.status}
                     </Text>
                 </View>
             </View>
 
-            <Text className="text-gray-900 text-lg font-bold mb-1">{subject.title}</Text>
+            <Text className="text-gray-900 dark:text-white text-lg font-bold mb-1">{subject.title}</Text>
             <View className="flex-row items-center mb-4">
                 <Clock size={12} color="#9CA3AF" />
-                <Text className="text-gray-400 text-xs ml-1">Updated {subject.lastUpdated}</Text>
+                <Text className="text-gray-400 dark:text-gray-500 text-xs ml-1">Updated {subject.lastUpdated}</Text>
             </View>
 
-            <View className="flex-row justify-between items-center pt-4 border-t border-gray-50">
+            <View className="flex-row justify-between items-center pt-4 border-t border-gray-50 dark:border-gray-800">
                 <View>
-                    <Text className="text-gray-400 text-[10px] uppercase font-bold mb-1">Students</Text>
-                    <Text className="text-gray-900 font-bold">{subject.students}</Text>
+                    <Text className="text-gray-400 dark:text-gray-500 text-[10px] uppercase font-bold mb-1">Students</Text>
+                    <Text className="text-gray-900 dark:text-white font-bold">{subject.students}</Text>
                 </View>
                 <View className="items-end">
-                    <Text className="text-gray-400 text-[10px] uppercase font-bold mb-1">Completion</Text>
-                    <Text className="text-teacherBlack font-bold">{subject.completion}%</Text>
+                    <Text className="text-gray-400 dark:text-gray-500 text-[10px] uppercase font-bold mb-1">Completion</Text>
+                    <Text className="text-teacherBlack dark:text-white font-bold">{subject.completion}%</Text>
                 </View>
             </View>
             <View className="flex-row justify-end mt-5 gap-4">
                 <TouchableOpacity className="flex-row items-center px-3 py-2 bg-orange-50 dark:bg-orange-950/20 rounded-xl">
-                    <Edit size={16} color="#FF6B00" />
-                    <Text className="text-[#FF6B00] text-xs ml-1.5 font-bold">Edit</Text>
+                    <Edit size={16} color="#FF6900" />
+                    <Text className="text-[#FF6900] text-xs ml-1.5 font-bold">Edit</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                     className="flex-row items-center px-3 py-2 bg-gray-50 dark:bg-gray-800 rounded-xl"
@@ -107,30 +107,30 @@ export default function SubjectsPage() {
     const filteredSubjects = subjects.filter(s => filter === "all" || s.status === filter);
 
     return (
-        <View className="flex-1 bg-gray-50">
+        <View className="flex-1 bg-[#FFFFFF] dark:bg-[#0D1117]">
             <StatusBar barStyle="dark-content" />
             <SubscriptionBanner />
             <ScrollView className="flex-1 px-4" contentContainerStyle={{ paddingBottom: 100 }}>
                 {/* Header */}
                 <View className="flex-row items-center justify-between py-6">
-                    <TouchableOpacity onPress={() => router.back()} className="w-10 h-10 items-center justify-center rounded-full bg-white border border-gray-100">
-                        <ArrowLeft size={20} color="#1F2937" />
+                    <TouchableOpacity onPress={() => router.back()} className="w-10 h-10 items-center justify-center rounded-full bg-[#F6F8FA] dark:bg-[#161B22] border border-[#D0D7DE] dark:border-[#21262D]">
+                        <ArrowLeft size={20} color="#9CA3AF" />
                     </TouchableOpacity>
-                    <Text className="text-xl font-black text-gray-900">Manage Subjects</Text>
-                    <TouchableOpacity className="w-10 h-10 items-center justify-center rounded-full bg-teacherBlack shadow-sm">
+                    <Text className="text-xl font-black text-gray-900 dark:text-white">Manage Subjects</Text>
+                    <TouchableOpacity className="w-10 h-10 items-center justify-center rounded-full bg-teacherBlack dark:bg-[#FF6900]">
                         <Plus size={20} color="white" />
                     </TouchableOpacity>
                 </View>
 
                 {/* Filter Tabs */}
-                <View className="flex-row bg-white p-1.5 rounded-2xl mb-6 border border-gray-100">
+                <View className="flex-row bg-[#F6F8FA] dark:bg-[#161B22] p-1.5 rounded-lg mb-6 border border-[#D0D7DE] dark:border-[#21262D]">
                     {["all", "active", "draft"].map((tab) => (
                         <TouchableOpacity
                             key={tab}
                             onPress={() => setFilter(tab as any)}
-                            className={`flex-1 py-2.5 rounded-xl items-center ${filter === tab ? 'bg-orange-50' : ''}`}
+                            className={`flex-1 py-2.5 rounded-xl items-center ${filter === tab ? 'bg-orange-50 dark:bg-[#FF6900]' : ''}`}
                         >
-                            <Text className={`text-xs font-bold capitalize ${filter === tab ? 'text-teacherOrange' : 'text-gray-400'}`}>
+                            <Text className={`text-xs font-bold capitalize ${filter === tab ? 'text-teacherOrange dark:text-white' : 'text-gray-400 dark:text-gray-500'}`}>
                                 {tab}
                             </Text>
                         </TouchableOpacity>
@@ -138,7 +138,7 @@ export default function SubjectsPage() {
                 </View>
 
                 {loading ? (
-                    <ActivityIndicator size="large" color="#FF6B00" className="mt-10" />
+                    <ActivityIndicator size="large" color="#FF6900" className="mt-10" />
                 ) : filteredSubjects.length === 0 ? (
                     <View className="items-center justify-center py-20">
                         <BookOpen size={48} color="#E5E7EB" />

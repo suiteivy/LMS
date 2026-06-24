@@ -41,10 +41,10 @@ const MenuItem = ({ icon, label, onPress, danger, isDark }: MenuItemProps) => (
       alignItems: 'center',
       padding: 16,
       borderBottomWidth: 1,
-      borderBottomColor: isDark ? 'rgba(255,255,255,0.1)' : '#f3f4f6',
+      borderBottomColor: isDark ? '#21262D' : '#D0D7DE',
       backgroundColor: danger
         ? (isDark ? 'rgba(127,29,29,0.2)' : '#fef2f2')
-        : (isDark ? '#0F0B2E' : '#ffffff'),
+        : (isDark ? '#0D1117' : '#FFFFFF'),
     }}
   >
     <View style={{ width: 32 }}>{icon}</View>
@@ -60,12 +60,12 @@ function SettingsMenu({ userRole, onNavigate }: { userRole: string; onNavigate: 
   const { theme, setTheme, isDark } = useTheme();
   const roleLabel = userRole === 'master_admin' ? 'Master Admin' : userRole === 'parent' ? 'Parent/Guardian' : (userRole.charAt(0).toUpperCase() + userRole.slice(1));
 
-  const surface = isDark ? '#13103A' : '#ffffff';
-  const border = isDark ? 'rgba(255,255,255,0.1)' : '#f3f4f6';
-  const textPrimary = isDark ? '#f1f1f1' : '#111827';
-  const textSecondary = isDark ? '#6b7280' : '#9ca3af';
-  const pillBg = isDark ? '#0F0B2E' : '#f9fafb';
-  const pillBorder = isDark ? 'rgba(255,255,255,0.1)' : '#f3f4f6';
+  const surface = isDark ? '#161B22' : '#F6F8FA';
+  const border = isDark ? '#21262D' : '#D0D7DE';
+  const textPrimary = isDark ? '#FFFFFF' : '#111827';
+  const textSecondary = isDark ? '#9CA3AF' : '#6B7280';
+  const pillBg = isDark ? '#0D1117' : '#FFFFFF';
+  const pillBorder = isDark ? '#21262D' : '#D0D7DE';
 
   const handleLogout = async () => {
     try {
@@ -84,7 +84,7 @@ function SettingsMenu({ userRole, onNavigate }: { userRole: string; onNavigate: 
   ] as ThemeMode[];
 
   const modeIcon = (mode: ThemeMode, active: boolean) => {
-    const color = active ? '#FF6B00' : '#9ca3af';
+    const color = active ? '#FF6900' : '#9ca3af';
     if (mode === 'light') return <Sun size={14} color={color} strokeWidth={2.5} />;
     if (mode === 'dark') return <Moon size={14} color={color} strokeWidth={2.5} />;
     return <Settings size={14} color={color} strokeWidth={2.5} />;
@@ -126,18 +126,18 @@ function SettingsMenu({ userRole, onNavigate }: { userRole: string; onNavigate: 
       </View>
 
       {/* Menu Items */}
-      <ScrollView style={{ flex: 1, backgroundColor: isDark ? '#0F0B2E' : '#ffffff' }} contentContainerStyle={{ paddingBottom: 20 }}>
+      <ScrollView style={{ flex: 1, backgroundColor: isDark ? '#0D1117' : '#FFFFFF' }} contentContainerStyle={{ paddingBottom: 20 }}>
         {userRole === 'admin' && (
           <>
-            <MenuItem isDark={isDark} icon={<ShieldCheck size={22} color="#8b5cf6" />} label="Admin Overview" onPress={() => onNavigate('overview')} />
+            <MenuItem isDark={isDark} icon={<ShieldCheck size={22} color="#6B7280" />} label="Admin Overview" onPress={() => onNavigate('overview')} />
             {isMain && (
-              <MenuItem isDark={isDark} icon={<ShieldCheck size={22} color="#f59e0b" />} label="Institution Ownership" onPress={() => onNavigate('ownership')} />
+              <MenuItem isDark={isDark} icon={<ShieldCheck size={22} color="#6B7280" />} label="Institution Ownership" onPress={() => onNavigate('ownership')} />
             )}
           </>
         )}
         <MenuItem
           isDark={isDark}
-          icon={<UserCircle size={22} color={isTrial ? "#9ca3af" : "#FF6B00"} />}
+          icon={<UserCircle size={22} color={isTrial ? "#9ca3af" : "#FF6900"} />}
           label={isTrial ? "My Profile (Restricted)" : "My Profile"}
           onPress={() => isTrial ? Alert.alert("Demo Mode", "Profile editing is disabled in demo mode.") : onNavigate('profile')}
         />
@@ -148,10 +148,10 @@ function SettingsMenu({ userRole, onNavigate }: { userRole: string; onNavigate: 
           <MenuItem isDark={isDark} icon={<Laptop size={22} color="#10b981" />} label="Device Sessions" onPress={() => onNavigate('sessions')} />
         )}
         {isTrial && userRole !== 'admin' && userRole !== 'master_admin' && (
-          <MenuItem isDark={isDark} icon={<HelpCircle size={22} color="#3b82f6" />} label="Help & Support" onPress={() => onNavigate('help')} />
+          <MenuItem isDark={isDark} icon={<HelpCircle size={22} color="#6B7280" />} label="Help & Support" onPress={() => onNavigate('help')} />
         )}
         {!isTrial && userRole !== 'master_admin' && (
-          <MenuItem isDark={isDark} icon={<HelpCircle size={22} color="#3b82f6" />} label="Help & Support" onPress={() => onNavigate('help')} />
+          <MenuItem isDark={isDark} icon={<HelpCircle size={22} color="#6B7280" />} label="Help & Support" onPress={() => onNavigate('help')} />
         )}
 
         {/* Theme toggle — all style={{}} to avoid dark: className crash on toggle */}
@@ -174,7 +174,7 @@ function SettingsMenu({ userRole, onNavigate }: { userRole: string; onNavigate: 
                     justifyContent: 'center',
                     borderRadius: 18,
                     flexDirection: 'row',
-                    backgroundColor: isActive ? (isDark ? '#1f2937' : '#ffffff') : 'transparent',
+                    backgroundColor: isActive ? (isDark ? '#1f2937' : '#FFFFFF') : 'transparent',
                     borderWidth: isActive ? 1 : 0,
                     borderColor: isActive ? (isDark ? '#374151' : '#e5e7eb') : 'transparent',
                   }}
@@ -186,7 +186,7 @@ function SettingsMenu({ userRole, onNavigate }: { userRole: string; onNavigate: 
                     fontWeight: 'bold',
                     textTransform: 'uppercase',
                     letterSpacing: 1,
-                    color: isActive ? (isDark ? '#ffffff' : '#111827') : '#9ca3af',
+                    color: isActive ? (isDark ? '#FFFFFF' : '#111827') : '#9ca3af',
                   }}>
                     {mode}
                   </Text>
@@ -198,14 +198,14 @@ function SettingsMenu({ userRole, onNavigate }: { userRole: string; onNavigate: 
       </ScrollView>
 
       {/* Logout */}
-      <View style={{ padding: 24, paddingBottom: 40, borderTopWidth: 1, borderTopColor: border, backgroundColor: isDark ? '#0F0B2E' : '#ffffff' }}>
+      <View style={{ padding: 24, paddingBottom: 40, borderTopWidth: 1, borderTopColor: border, backgroundColor: isDark ? '#0D1117' : '#FFFFFF' }}>
         <TouchableOpacity
           onPress={handleLogout}
           disabled={loading}
           style={{ flexDirection: 'row', alignItems: 'center', padding: 16, borderRadius: 12, backgroundColor: isDark ? 'rgba(239,68,68,0.08)' : '#fef2f2', alignSelf: 'flex-start' }}
         >
-          <View style={{ width: 32, height: 32, borderRadius: 8, backgroundColor: isDark ? 'rgba(239,68,68,0.15)' : '#ffffff', alignItems: 'center', justifyContent: 'center' }}>
-            <LogOut size={16} color="#ef4444" />
+          <View style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: isDark ? 'rgba(239,68,68,0.15)' : '#FFFFFF', alignItems: 'center', justifyContent: 'center' }}>
+            <LogOut size={20} color="#ef4444" />
           </View>
           <View style={{ marginLeft: 12 }}>
             <Text style={{ fontWeight: '600', color: '#ef4444', fontSize: 16, letterSpacing: -0.5 }}>Logout</Text>

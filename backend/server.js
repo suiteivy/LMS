@@ -42,7 +42,10 @@ app.use("/api/auth/reset-password", rateLimiters.passwordReset);
 
 // Subscription Check Middleware (Trial Branch specific)
 const { authMiddleware } = require("./middleware/auth.middleware.js");
+const demoGuard = require("./middleware/demoGuard.js")
 const checkSubscription = require("./middleware/subscriptionCheck.js");
+
+const gated = [authMiddleware, demoGuard, checkSubscription]
 
 // Public Routes
 app.use("/api/auth", authRoutes);

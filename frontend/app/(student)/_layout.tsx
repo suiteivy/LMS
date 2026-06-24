@@ -78,11 +78,7 @@ function StudentTabs() {
           paddingBottom: insets.bottom || 4,
           paddingTop: 4,
           paddingHorizontal: 8,
-          elevation: 12,
-          shadowColor: "#000",
-          shadowOffset: { width: 0, height: -2 },
           shadowOpacity: isDark ? 0.3 : 0.08,
-          shadowRadius: 8,
           boxShadow: [{
             offsetX: 0,
             offsetY: -2,
@@ -133,8 +129,6 @@ function StudentTabs() {
                 alignItems: "center",
                 justifyContent: "center",
                 marginTop: focused ? -16 : 0,
-                shadowColor: "#FF6B00",
-                shadowOffset: { width: 0, height: focused ? 6 : 0 },
                 shadowOpacity: focused ? 0.4 : 0,
                 shadowRadius: focused ? 10 : 0,
                 boxShadow: focused ? [{

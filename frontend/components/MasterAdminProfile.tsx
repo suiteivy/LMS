@@ -62,10 +62,10 @@ export default function MasterAdminProfile() {
                     'Authorization': `Bearer ${session.access_token}`,
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify({ 
-                    first_name: firstName, 
+                body: JSON.stringify({
+                    first_name: firstName,
                     last_name: lastName,
-                    phone 
+                    phone
                 })
             });
 
@@ -87,7 +87,7 @@ export default function MasterAdminProfile() {
     if (!profile) {
         return (
             <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: tokens.bg }}>
-                <ActivityIndicator size="large" color="#FF6B00" />
+                <ActivityIndicator size="large" color="#FF6900" />
             </View>
         );
     }
@@ -103,12 +103,10 @@ export default function MasterAdminProfile() {
                         borderColor: tokens.border,
                         overflow: "hidden",
                         boxShadow: isDark ? undefined : [{ offsetX: 0, offsetY: 0, blurRadius: 6, color: 'rgba(0, 0, 0, 0.06)' }],
-                        shadowColor: "#000",
                         shadowOpacity: isDark ? 0 : 0.06,
-                        shadowRadius: 6,
                         elevation: isDark ? 0 : 3,
                     }}>
-                        <View style={{ backgroundColor: "#FF6B00", borderTopLeftRadius: 24, borderTopRightRadius: 24 }}>
+                        <View style={{ backgroundColor: "#FF6900", borderTopLeftRadius: 24, borderTopRightRadius: 24 }}>
                             <View style={{ paddingHorizontal: 24, paddingBottom: 24, flexDirection: "row", justifyContent: "space-between", alignItems: "flex-end", marginTop: 16 }}>
                                 <View style={{ flex: 1, paddingBottom: 8 }}>
                                     {isEditing ? (
@@ -159,21 +157,28 @@ export default function MasterAdminProfile() {
                                     <Text style={{ color: "#ffedd5", fontWeight: "500", marginTop: 2 }}>
                                         Master Platform Admin
                                     </Text>
+                                    <View style={{
+                                        flexDirection: "row",
+                                        alignItems: "center",
+                                        marginTop: 8,
+                                        backgroundColor: isDark ? "rgba(255,255,255,0.1)" : "#fff1f2",
+                                        alignSelf: "flex-start",
+                                        paddingHorizontal: 12,
+                                        paddingVertical: 4,
+                                        borderRadius: 99,
+                                    }}>
+                                        <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: "#22c55e", marginRight: 6 }} />
+                                        <Text style={{ fontSize: 11, fontWeight: "700", textTransform: "uppercase", color: isDark ? "#86efac" : "#15803d" }}>
+                                            Active
+                                        </Text>
+                                    </View>
                                 </View>
 
-                                <View style={{ position: "relative", elevation: 8, zIndex: 10 }}>
-                                    {profile?.avatar_url ? (
-                                        <Image
-                                            source={{ uri: profile.avatar_url }}
-                                            style={{ width: 96, height: 96, borderRadius: 16, borderWidth: 4, borderColor: "#ffffff", backgroundColor: "#d1d5db" }}
-                                        />
-                                    ) : (
-                                        <View style={{ width: 96, height: 96, borderRadius: 16, borderWidth: 4, borderColor: "#ffffff", backgroundColor: isDark ? "#374151" : "#e5e7eb", alignItems: "center", justifyContent: "center" }}>
-                                            <Text style={{ fontSize: 32, fontWeight: "800", color: isDark ? "#9ca3af" : "#6b7280" }}>
-                                                {profile?.first_name?.charAt(0) || 'M'}
-                                            </Text>
-                                        </View>
-                                    )}
+                                <View style={{ position: "relative", zIndex: 10 }}>
+                                    <Image
+                                        source={{ uri: "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&w=200" }}
+                                        style={{ width: 96, height: 96, borderRadius: 16, borderWidth: 4, borderColor: "#ffffff", backgroundColor: "#d1d5db" }}
+                                    />
                                     <TouchableOpacity
                                         style={{
                                             position: "absolute",
@@ -184,7 +189,6 @@ export default function MasterAdminProfile() {
                                             backgroundColor: isEditing ? "#22c55e" : "#ffffff",
                                             borderWidth: 1,
                                             borderColor: isDark ? "rgba(255,255,255,0.1)" : "#f3f4f6",
-                                            elevation: 10,
                                             zIndex: 20,
                                         }}
                                         activeOpacity={0.8}
@@ -196,7 +200,7 @@ export default function MasterAdminProfile() {
                                         ) : isEditing ? (
                                             <Save size={18} color="#ffffff" />
                                         ) : (
-                                            <Edit3 size={18} color="#FF6B00" />
+                                            <Edit3 size={18} color="#FF6900" />
                                         )}
                                     </TouchableOpacity>
                                     {isEditing && (
@@ -210,7 +214,6 @@ export default function MasterAdminProfile() {
                                                 backgroundColor: isDark ? "rgba(239, 68, 68, 0.2)" : "#fee2e2",
                                                 borderWidth: 1,
                                                 borderColor: isDark ? "rgba(239, 68, 68, 0.3)" : "#fecaca",
-                                                elevation: 10,
                                                 zIndex: 20,
                                             }}
                                             activeOpacity={0.8}
@@ -233,9 +236,7 @@ export default function MasterAdminProfile() {
                                 borderColor: tokens.border,
                                 marginBottom: 16,
                                 boxShadow: isDark ? undefined : [{ offsetX: 0, offsetY: 0, blurRadius: 4, color: 'rgba(0, 0, 0, 0.04)' }],
-                                shadowColor: "#000",
                                 shadowOpacity: isDark ? 0 : 0.04,
-                                shadowRadius: 4,
                                 elevation: isDark ? 0 : 1,
                             }}>
                                 <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 16 }}>
@@ -265,9 +266,7 @@ export default function MasterAdminProfile() {
                                 borderColor: tokens.border,
                                 marginBottom: 16,
                                 boxShadow: isDark ? undefined : [{ offsetX: 0, offsetY: 0, blurRadius: 4, color: 'rgba(0, 0, 0, 0.04)' }],
-                                shadowColor: "#000",
                                 shadowOpacity: isDark ? 0 : 0.04,
-                                shadowRadius: 4,
                                 elevation: isDark ? 0 : 1,
                             }}>
                                 <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 16 }}>

@@ -48,10 +48,10 @@ export default function StudentLibraryPage() {
           showNotification={false}
         />
         <View className="flex-1 items-center justify-center p-8">
-             <View className="bg-white dark:bg-navy-surface p-10 rounded-[40px] border border-gray-100 dark:border-gray-800 items-center w-full">
+             <View className="bg-[#FFFFFF] dark:bg-[#0D1117]-surface p-10 rounded-xl border border-[#D0D7DE] dark:border-[#21262D] items-center w-full">
             <BookOpen size={40} color="#FF6900" style={{ opacity: 0.6 }} />
             <Text className="text-gray-900 dark:text-white font-bold text-lg text-center mt-6">Select a Child First</Text>
-            <TouchableOpacity onPress={() => router.replace("/(parent)" as any)} className="mt-8 bg-[#FF6900] px-8 py-4 rounded-2xl">
+            <TouchableOpacity onPress={() => router.replace("/(parent)" as any)} className="mt-8 bg-[#FF6900] px-8 py-4 rounded-xl">
               <Text className="text-white font-bold">Go to Home</Text>
             </TouchableOpacity>
           </View>
@@ -98,7 +98,7 @@ export default function StudentLibraryPage() {
           </View>
 
           {activeLoans.length === 0 ? (
-            <View className="bg-white dark:bg-navy-surface p-12 rounded-[40px] border border-dashed border-gray-100 dark:border-gray-800 items-center mb-10">
+            <View className="bg-[#FFFFFF] dark:bg-[#0D1117]-surface p-12 rounded-xl border border-dashed border-[#D0D7DE] dark:border-[#21262D] items-center mb-10">
               <BookMarked size={40} color="#E5E7EB" />
               <Text className="text-gray-400 text-sm font-bold mt-4">No active loans</Text>
             </View>
@@ -106,7 +106,7 @@ export default function StudentLibraryPage() {
             activeLoans.map((loan) => (
               <View 
                 key={loan.id}
-                className="bg-white dark:bg-navy-surface p-6 rounded-[32px] mb-6 border border-gray-50 dark:border-gray-800 shadow-sm"
+                className="bg-[#FFFFFF] dark:bg-[#0D1117]-surface p-6 rounded-xl mb-6 border border-[#D0D7DE] dark:border-[#21262D] shadow-sm"
               >
                 <View className="flex-row justify-between items-start mb-6">
                     <View className="flex-1 pr-4">
@@ -125,14 +125,14 @@ export default function StudentLibraryPage() {
                 </View>
 
                 <View className="flex-row gap-4 mb-6">
-                    <View className="flex-1 bg-gray-50 dark:bg-gray-800/50 p-4 rounded-2xl items-center border border-gray-100 dark:border-gray-700">
+                    <View className="flex-1 bg-gray-50 dark:bg-gray-800/50 p-4 rounded-xl items-center border border-[#D0D7DE] dark:border-[#21262D]">
                         <Clock size={16} color="#9CA3AF" />
                         <Text className="text-gray-400 text-[8px] font-bold uppercase tracking-widest mt-2">Due Date</Text>
                         <Text className={`font-bold mt-0.5 ${loan.status === 'overdue' ? 'text-red-600' : 'text-gray-900 dark:text-white'}`}>
                             {new Date(loan.dueDate).toLocaleDateString()}
                         </Text>
                     </View>
-                    <View className="flex-1 bg-gray-50 dark:bg-gray-800/50 p-4 rounded-2xl items-center border border-gray-100 dark:border-gray-700">
+                    <View className="flex-1 bg-gray-50 dark:bg-gray-800/50 p-4 rounded-xl items-center border border-[#D0D7DE] dark:border-[#21262D]">
                         <BookOpen size={16} color="#9CA3AF" />
                         <Text className="text-gray-400 text-[8px] font-bold uppercase tracking-widest mt-2">Borrowed</Text>
                         <Text className="text-gray-900 dark:text-white font-bold mt-0.5">
@@ -142,7 +142,7 @@ export default function StudentLibraryPage() {
                 </View>
 
                 {loan.notes && (
-                    <View className="bg-blue-50 dark:bg-blue-950/30 p-4 rounded-2xl flex-row items-start border border-blue-100 dark:border-blue-900">
+                    <View className="bg-blue-50 dark:bg-blue-950/30 p-4 rounded-xl flex-row items-start border border-blue-100 dark:border-blue-900">
                         <MessageSquare size={16} color="#3B82F6" style={{ marginTop: 2 }} />
                         <View className="flex-1 ml-3">
                             <Text className="text-blue-800 dark:text-blue-400 text-[8px] font-black uppercase tracking-widest mb-1">Teacher Remarks</Text>
@@ -161,7 +161,7 @@ export default function StudentLibraryPage() {
                     <Text className="text-gray-900 dark:text-white font-bold text-xl tracking-tight">Return History</Text>
                 </View>
                 {pastLoans.map((loan) => (
-                    <View key={loan.id} className="bg-white dark:bg-navy-surface p-5 rounded-[28px] mb-4 flex-row items-center border border-gray-50 dark:border-gray-800 opacity-70">
+                    <View key={loan.id} className="bg-[#FFFFFF] dark:bg-[#0D1117]-surface p-5 rounded-[28px] mb-4 flex-row items-center border border-[#D0D7DE] dark:border-[#21262D] opacity-70">
                         <View className="w-10 h-10 rounded-xl bg-gray-50 dark:bg-gray-800 items-center justify-center mr-4">
                             <BookMarked size={18} color="#9CA3AF" />
                         </View>

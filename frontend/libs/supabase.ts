@@ -200,7 +200,8 @@ export const authService = {
         },
         body: JSON.stringify({ role }),
       });
-
+      console.log('[startDemoSession] hitting:', response)
+      
       const data = await response.json();
 
       if (!response.ok) {
@@ -215,9 +216,32 @@ export const authService = {
 
       if (sessionError) return { data: null, error: sessionError };
 
+      console.log('[startDemoSession] data from server:', JSON.stringify(data));
+      console.log('[startDemoSession] sessionError:', sessionError);
+
       return { data, error: null };
     } catch (error: any) {
       return { data: null, error: error.message || "Network error" };
+    }
+  },
+
+  // End / cleanup a demo session
+  endDemoSession: async (institutionId: string, userId: string) => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const response = await fetch(`${getApiBaseUrl()}/demo/end`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
+        },
+        body: JSON.stringify({ user_id: userId }),
+      });
+      const data = await response.json();
+      if (!response.ok) return { error: data.error || "Cleanup failed" };
+      return { error: null };
+    } catch (error: any) {
+      return { error: error.message || "Network error" };
     }
   },
 };

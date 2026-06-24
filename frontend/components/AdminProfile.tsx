@@ -16,17 +16,17 @@ export default function AdminProfile() {
     const [saving, setSaving] = useState(false);
 
     const tokens = {
-        bg:           isDark ? "#000000" : "#ffffff",
-        surface:      isDark ? "#1a1a1a" : "#ffffff",
-        border:       isDark ? "#2a2a2a" : "#f3f4f6",
-        textPrimary:  isDark ? "#ffffff" : "#111827",
-        textSecondary:isDark ? "#d1d5db" : "#4b5563",
-        textMuted:    isDark ? "#6b7280" : "#9ca3af",
-        inputBg:      isDark ? "#2a2a2a" : "#f9fafb",
-        inputBorder:  isDark ? "#3a3a3a" : "#e5e7eb",
-        inputText:    isDark ? "#ffffff" : "#111827",
-        redIconBg:    isDark ? "#2a0a0a" : "#fef2f2",
-        blueIconBg:   isDark ? "#0c1a3a" : "#eff6ff",
+        bg: isDark ? "#000000" : "#ffffff",
+        surface: isDark ? "#1a1a1a" : "#ffffff",
+        border: isDark ? "#2a2a2a" : "#f3f4f6",
+        textPrimary: isDark ? "#ffffff" : "#111827",
+        textSecondary: isDark ? "#d1d5db" : "#4b5563",
+        textMuted: isDark ? "#6b7280" : "#9ca3af",
+        inputBg: isDark ? "#2a2a2a" : "#f9fafb",
+        inputBorder: isDark ? "#3a3a3a" : "#e5e7eb",
+        inputText: isDark ? "#ffffff" : "#111827",
+        redIconBg: isDark ? "#2a0a0a" : "#fef2f2",
+        blueIconBg: isDark ? "#0c1a3a" : "#eff6ff",
     };
 
     useEffect(() => {
@@ -44,17 +44,17 @@ export default function AdminProfile() {
         }
         setSaving(true);
         try {
-            const { error } = await authService.updateProfile({ 
-                first_name: firstName, 
+            const { error } = await authService.updateProfile({
+                first_name: firstName,
                 last_name: lastName,
-                phone 
+                phone
             });
             if (error) throw error;
             await refreshProfile();
             setIsEditing(false);
             Alert.alert("Success", "Profile updated successfully");
         } catch (error: any) {
-            Alert.alert("Error", "Failed to update profile: " + error.message);
+            Alert.alert("Error", "Failed to update profile:" + error.message);
         } finally {
             setSaving(false);
         }
@@ -63,7 +63,7 @@ export default function AdminProfile() {
     if (!profile) {
         return (
             <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: tokens.bg }}>
-                <ActivityIndicator size="large" color="#FF6B00" />
+                <ActivityIndicator size="large" color="#FF6900" />
             </View>
         );
     }
@@ -80,9 +80,7 @@ export default function AdminProfile() {
                         borderColor: tokens.border,
                         overflow: "hidden",
                         boxShadow: isDark ? undefined : [{ offsetX: 0, offsetY: 0, blurRadius: 6, color: 'rgba(0, 0, 0, 0.06)' }],
-                        shadowColor: "#000",
                         shadowOpacity: isDark ? 0 : 0.06,
-                        shadowRadius: 6,
                         elevation: isDark ? 0 : 3,
                     }}>
                         {/* Red Banner */}
@@ -138,22 +136,29 @@ export default function AdminProfile() {
                                     <Text style={{ color: "#fecaca", fontWeight: "500", marginTop: 2 }}>
                                         System Administrator
                                     </Text>
+                                    <View style={{
+                                        flexDirection: "row",
+                                        alignItems: "center",
+                                        marginTop: 8,
+                                        backgroundColor: isDark ? "rgba(255,255,255,0.1)" : "#fff1f2",
+                                        alignSelf: "flex-start",
+                                        paddingHorizontal: 12,
+                                        paddingVertical: 4,
+                                        borderRadius: 99,
+                                    }}>
+                                        <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: "#22c55e", marginRight: 6 }} />
+                                        <Text style={{ fontSize: 11, fontWeight: "700", textTransform: "uppercase", color: isDark ? "#86efac" : "#15803d" }}>
+                                            {profile.status}
+                                        </Text>
+                                    </View>
                                 </View>
 
                                 {/* Avatar + edit buttons */}
-                                <View style={{ position: "relative", elevation: 8, zIndex: 10 }}>
-                                    {profile?.avatar_url ? (
-                                        <Image
-                                            source={{ uri: profile.avatar_url }}
-                                            style={{ width: 96, height: 96, borderRadius: 16, borderWidth: 4, borderColor: "#ffffff", backgroundColor: "#d1d5db" }}
-                                        />
-                                    ) : (
-                                        <View style={{ width: 96, height: 96, borderRadius: 16, borderWidth: 4, borderColor: "#ffffff", backgroundColor: isDark ? "#374151" : "#e5e7eb", alignItems: "center", justifyContent: "center" }}>
-                                            <Text style={{ fontSize: 32, fontWeight: "800", color: isDark ? "#9ca3af" : "#6b7280" }}>
-                                                {profile?.first_name?.charAt(0) || 'A'}
-                                            </Text>
-                                        </View>
-                                    )}
+                                <View style={{ position: "relative", zIndex: 10 }}>
+                                    <Image
+                                        source={{ uri: "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&w=200" }}
+                                        style={{ width: 96, height: 96, borderRadius: 16, borderWidth: 4, borderColor: "#ffffff", backgroundColor: "#d1d5db" }}
+                                    />
                                     <TouchableOpacity
                                         style={{
                                             position: "absolute",
@@ -164,7 +169,6 @@ export default function AdminProfile() {
                                             backgroundColor: isEditing ? "#22c55e" : "#ffffff",
                                             borderWidth: 1,
                                             borderColor: isDark ? "#3a3a3a" : "#f3f4f6",
-                                            elevation: 10,
                                             zIndex: 20,
                                         }}
                                         activeOpacity={0.8}
@@ -190,7 +194,6 @@ export default function AdminProfile() {
                                                 backgroundColor: isDark ? "#2a0a0a" : "#fee2e2",
                                                 borderWidth: 1,
                                                 borderColor: isDark ? "#3a0a0a" : "#fecaca",
-                                                elevation: 10,
                                                 zIndex: 20,
                                             }}
                                             activeOpacity={0.8}
@@ -215,9 +218,7 @@ export default function AdminProfile() {
                                 borderColor: tokens.border,
                                 marginBottom: 16,
                                 boxShadow: isDark ? undefined : [{ offsetX: 0, offsetY: 0, blurRadius: 4, color: 'rgba(0, 0, 0, 0.04)' }],
-                                shadowColor: "#000",
                                 shadowOpacity: isDark ? 0 : 0.04,
-                                shadowRadius: 4,
                                 elevation: isDark ? 0 : 1,
                             }}>
                                 <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 16 }}>
@@ -248,9 +249,7 @@ export default function AdminProfile() {
                                 borderColor: tokens.border,
                                 marginBottom: 16,
                                 boxShadow: isDark ? undefined : [{ offsetX: 0, offsetY: 0, blurRadius: 4, color: 'rgba(0, 0, 0, 0.04)' }],
-                                shadowColor: "#000",
                                 shadowOpacity: isDark ? 0 : 0.04,
-                                shadowRadius: 4,
                                 elevation: isDark ? 0 : 1,
                             }}>
                                 <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 16 }}>

@@ -6,124 +6,124 @@ import Feather from 'react-native-vector-icons/Feather';
 type SectionType = 'overview' | 'payments' | 'payouts' | 'fees';
 
 interface DashboardHeaderProps {
-  onRefresh?: () => void;
-  onLogout?: () => void;
-  activeSection?: SectionType;
-  onSectionChange?: (section: SectionType) => void;
+    onRefresh?: () => void;
+    onLogout?: () => void;
+    activeSection?: SectionType;
+    onSectionChange?: (section: SectionType) => void;
 }
 
 const DashboardHeader: React.FC<DashboardHeaderProps> = ({
-  onRefresh,
-  onLogout,
-  activeSection = 'overview',
-  onSectionChange,
+    onRefresh,
+    onLogout,
+    activeSection = 'overview',
+    onSectionChange,
 }) => {
-  const { isDark } = useTheme();
-  const sections = [
-    { id: 'overview', label: 'Dashboard', icon: 'ðŸ“Š' },
-    { id: 'payments', label: 'Payments', icon: 'ðŸ’°' },
-    { id: 'payouts', label: 'Payouts', icon: 'ðŸ’³' },
-    { id: 'fees', label: 'Fee Structure', icon: 'âš™ï¸' },
-  ] as const;
+    const { isDark } = useTheme();
+    const sections = [
+        { id: 'overview', label: 'Dashboard', icon: 'ðŸ“Š' },
+        { id: 'payments', label: 'Payments', icon: 'ðŸ’°' },
+        { id: 'payouts', label: 'Payouts', icon: 'ðŸ’³' },
+        { id: 'fees', label: 'Fee Structure', icon: 'âš™ï¸' },
+    ] as const;
 
-  // Only show header on overview page
-  if (activeSection !== 'overview') {
-    return (
-      <View className="mb-4">
-        {/* Navigation Tabs Only */}
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          className="mb-4"
-        >
-          <View className="flex-row space-x-2 px-1 gap-4 ">
-            {sections.map((section) => (
-              <TouchableOpacity
-                key={section.id}
-                onPress={() => onSectionChange?.(section.id as SectionType)}
-                className={`px-4 py-3 rounded-lg shadow-sm min-w-[120px] items-center ${activeSection === section.id ? 'shadow-md' : ''
-                  }`}
-                style={{
-                  backgroundColor: activeSection === section.id ? '#1ABC9C' : (isDark ? '#1a1a1a' : '#FFFFFF'),
-                  borderWidth: 1,
-                  borderColor: activeSection === section.id ? '#16A085' : (isDark ? '#333' : '#D0E8E6'),
-                }}
-              >
-                <Text className="text-lg mb-1">
-                  {section.icon}
-                </Text>
-                <Text
-                  className="text-sm font-medium text-center"
-                  style={{
-                    color: activeSection === section.id ? '#FFFFFF' : (isDark ? '#F9FAFB' : '#2C3E50')
-                  }}
+    // Only show header on overview page
+    if (activeSection !== 'overview') {
+        return (
+            <View className="mb-4">
+                {/* Navigation Tabs Only */}
+                <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    className="mb-4"
                 >
-                  {section.label}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </ScrollView>
-      </View>
-    );
-  }
+                    <View className="flex-row space-x-2 px-1 gap-4">
+                        {sections.map((section) => (
+                            <TouchableOpacity
+                                key={section.id}
+                                onPress={() => onSectionChange?.(section.id as SectionType)}
+                                className={`px-4 py-3 rounded-lg min-w-[120px] items-center ${activeSection === section.id ? '' : ''
+                                    }`}
+                                style={{
+                                    backgroundColor: activeSection === section.id ? '#1ABC9C' : (isDark ? '#1a1a1a' : '#FFFFFF'),
+                                    borderWidth: 1,
+                                    borderColor: activeSection === section.id ? '#16A085' : (isDark ? '#333' : '#D0E8E6'),
+                                }}
+                            >
+                                <Text className="text-lg mb-1">
+                                    {section.icon}
+                                </Text>
+                                <Text
+                                    className="text-sm font-medium text-center"
+                                    style={{
+                                        color: activeSection === section.id ? '#FFFFFF' : (isDark ? '#F9FAFB' : '#2C3E50')
+                                    }}
+                                >
+                                    {section.label}
+                                </Text>
+                            </TouchableOpacity>
+                        ))}
+                    </View>
+                </ScrollView>
+            </View>
+        );
+    }
 
-  // Full header only on overview page
-  return (
-    <View className="mb-6">
-      {/* Header Section - Only on Overview */}
-      <View className="flex-row justify-between items-center mb-4">
-        <Text className="text-2xl font-bold text-gray-900 dark:text-white">Admin Dashboard</Text>
-        <View className="flex-row space-x-3 gap-2">
-          {onRefresh && (
-            <TouchableOpacity onPress={onRefresh}>
-              <Feather name="refresh-cw" size={24} color={isDark ? "white" : "black"} />
-            </TouchableOpacity>
-          )}
-          {onLogout && (
-            <TouchableOpacity onPress={onLogout}>
-              <Feather name="log-out" size={24} color="red" />
-            </TouchableOpacity>
-          )}
-        </View>
-      </View>
+    // Full header only on overview page
+    return (
+        <View className="mb-6">
+            {/* Header Section - Only on Overview */}
+            <View className="flex-row justify-between items-center mb-4">
+                <Text className="text-2xl font-bold text-gray-900 dark:text-white">Admin Dashboard</Text>
+                <View className="flex-row space-x-3 gap-2">
+                    {onRefresh && (
+                        <TouchableOpacity onPress={onRefresh}>
+                            <Feather name="refresh-cw" size={24} color={isDark ? "white" : "black"} />
+                        </TouchableOpacity>
+                    )}
+                    {onLogout && (
+                        <TouchableOpacity onPress={onLogout}>
+                            <Feather name="log-out" size={24} color="red" />
+                        </TouchableOpacity>
+                    )}
+                </View>
+            </View>
 
-      {/* Navigation Tabs */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        className="mb-4"
-      >
-        <View className="flex-row space-x-2 px-1 gap-4">
-          {sections.map((section) => (
-            <TouchableOpacity
-              key={section.id}
-              onPress={() => onSectionChange?.(section.id as SectionType)}
-              className={`px-4 py-3 rounded-lg shadow-sm min-w-[120px] items-center ${activeSection === section.id ? 'shadow-md' : ''
-                }`}
-              style={{
-                backgroundColor: activeSection === section.id ? '#1ABC9C' : (isDark ? '#1a1a1a' : '#FFFFFF'),
-                borderWidth: 1,
-                borderColor: activeSection === section.id ? '#16A085' : (isDark ? '#333' : '#D0E8E6'),
-              }}
+            {/* Navigation Tabs */}
+            <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                className="mb-4"
             >
-              <Text className="text-lg mb-1">
-                {section.icon}
-              </Text>
-              <Text
-                className="text-sm font-medium text-center"
-                style={{
-                  color: activeSection === section.id ? '#FFFFFF' : (isDark ? '#F9FAFB' : '#2C3E50')
-                }}
-              >
-                {section.label}
-              </Text>
-            </TouchableOpacity>
-          ))}
+                <View className="flex-row space-x-2 px-1 gap-4">
+                    {sections.map((section) => (
+                        <TouchableOpacity
+                            key={section.id}
+                            onPress={() => onSectionChange?.(section.id as SectionType)}
+                            className={`px-4 py-3 rounded-lg min-w-[120px] items-center ${activeSection === section.id ? '' : ''
+                                }`}
+                            style={{
+                                backgroundColor: activeSection === section.id ? '#1ABC9C' : (isDark ? '#1a1a1a' : '#FFFFFF'),
+                                borderWidth: 1,
+                                borderColor: activeSection === section.id ? '#16A085' : (isDark ? '#333' : '#D0E8E6'),
+                            }}
+                        >
+                            <Text className="text-lg mb-1">
+                                {section.icon}
+                            </Text>
+                            <Text
+                                className="text-sm font-medium text-center"
+                                style={{
+                                    color: activeSection === section.id ? '#FFFFFF' : (isDark ? '#F9FAFB' : '#2C3E50')
+                                }}
+                            >
+                                {section.label}
+                            </Text>
+                        </TouchableOpacity>
+                    ))}
+                </View>
+            </ScrollView>
         </View>
-      </ScrollView>
-    </View>
-  );
+    );
 };
 
 export { DashboardHeader };

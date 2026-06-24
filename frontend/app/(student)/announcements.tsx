@@ -88,7 +88,7 @@ export default function StudentAnnouncementsPage() {
                             >
                                 <View className="p-4">
                                     <View className="flex-row items-start">
-                                        <View className="bg-orange-100 p-3 rounded-2xl mr-4">
+                                        <View className="bg-orange-100 p-3 rounded-xl mr-4">
                                             <Megaphone size={22} color="#FF6B00" />
                                         </View>
                                         <View className="flex-1">
