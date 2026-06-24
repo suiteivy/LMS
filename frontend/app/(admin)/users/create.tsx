@@ -744,6 +744,22 @@ export default function CreateUserScreen() {
                         </TouchableOpacity>
                     </View>
                 </View>
+                {!!result?.credential_delivery?.url && (
+                    <View style={{ paddingTop: 8 }}>
+                        <Text style={{ color: textSecondary, marginBottom: 4 }}>One-time credential link</Text>
+                        <TouchableOpacity onPress={() => copyToClipboard(result?.credential_delivery?.url || '')}>
+                            <Text style={{ color: '#FF6B00', fontWeight: '700' }}>Copy secure link</Text>
+                        </TouchableOpacity>
+                    </View>
+                )}
+                {!!result?.credential_document && (
+                    <View style={{ paddingTop: 8 }}>
+                        <Text style={{ color: textSecondary, marginBottom: 4 }}>Credential document</Text>
+                        <TouchableOpacity onPress={() => copyToClipboard(result?.credential_document || '')}>
+                            <Text style={{ color: '#FF6B00', fontWeight: '700' }}>Copy credential document</Text>
+                        </TouchableOpacity>
+                    </View>
+                )}
                 {result?.parentResult && (
                     <View style={{ marginTop: 24, paddingTop: 24, borderTopWidth: 2, borderTopColor: border, borderStyle: 'dashed' }}>
                         <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
@@ -774,6 +790,22 @@ export default function CreateUserScreen() {
                                         </TouchableOpacity>
                                     </View>
                                 </View>
+                                {!!result?.parentResult?.credential_delivery?.url && (
+                                    <View style={{ paddingTop: 8 }}>
+                                        <Text style={{ color: textSecondary, marginBottom: 4 }}>One-time credential link</Text>
+                                        <TouchableOpacity onPress={() => copyToClipboard(result?.parentResult?.credential_delivery?.url || '')}>
+                                            <Text style={{ color: '#3b82f6', fontWeight: '700' }}>Copy secure link</Text>
+                                        </TouchableOpacity>
+                                    </View>
+                                )}
+                                {!!result?.parentResult?.credential_document && (
+                                    <View style={{ paddingTop: 8 }}>
+                                        <Text style={{ color: textSecondary, marginBottom: 4 }}>Credential document</Text>
+                                        <TouchableOpacity onPress={() => copyToClipboard(result?.parentResult?.credential_document || '')}>
+                                            <Text style={{ color: '#3b82f6', fontWeight: '700' }}>Copy credential document</Text>
+                                        </TouchableOpacity>
+                                    </View>
+                                )}
                             </>
                         )}
                     </View>

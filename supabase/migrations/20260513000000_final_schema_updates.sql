@@ -13,16 +13,12 @@ CREATE TABLE IF NOT EXISTS user_preferences (
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
-
 ALTER TABLE user_preferences ENABLE ROW LEVEL SECURITY;
-
 DROP POLICY IF EXISTS "strict_institution_isolation" ON user_preferences;
 CREATE POLICY "strict_institution_isolation" ON user_preferences FOR ALL USING (institution_id = get_current_user_institution_id() OR get_current_user_role() = 'master_admin');
-
 -- Add updated_at trigger for user_preferences
 DROP TRIGGER IF EXISTS tr_update_updated_at ON user_preferences;
 CREATE TRIGGER tr_update_updated_at BEFORE UPDATE ON user_preferences FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
 -- 2. Ensure academic_reports RLS policy exists
 ALTER TABLE academic_reports ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "academic_reports_isolation" ON academic_reports;
@@ -42,7 +38,6 @@ FOR ALL USING (
         ))
     )
 );
-
 -- 3. Ensure v_classes_detailed view is updated with capacity
 DROP VIEW IF EXISTS v_classes_detailed;
 CREATE VIEW v_classes_detailed AS

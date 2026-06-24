@@ -1,4 +1,5 @@
 const supabase = require("../utils/supabaseClient.js");
+const { canonicalRoleFrom } = require("../utils/roleAlias.js");
 
 // Simple in-memory cache for profiles: userId -> { profile, timestamp }
 const profileCache = new Map();
@@ -276,6 +277,9 @@ async function authMiddleware(req, res, next) {
         email: profileData.email,
         institution_id: profileData.institution_id,
         role: profileData.role,
+        must_change_password: !!profileData.must_change_password,
+        requires_security_questions_setup: !!profileData.requires_security_questions_setup,
+        role_alias: canonicalRoleFrom(profileData.role, isPlatformAdmin),
         is_main: isMain,
         isPlatformAdmin: isPlatformAdmin,
         customRoles,
@@ -300,6 +304,9 @@ async function authMiddleware(req, res, next) {
       email: profile.email,
       institution_id: profile.institution_id,
       role: profile.role,
+      role_alias: profile.role_alias,
+      must_change_password: !!profile.must_change_password,
+      requires_security_questions_setup: !!profile.requires_security_questions_setup,
       roles: profile.customRoles || [],
       permissions: profile.permissions || [],
       is_main: profile.is_main || false,
@@ -315,6 +322,33 @@ async function authMiddleware(req, res, next) {
     req.userRole = profile.role || null;
     req.isMain = req.user.is_main;
     req.isPlatformAdmin = req.user.is_platform_admin;
+
+    // First-login enforcement gate: force password update and security setup
+    // before allowing access to broader application endpoints.
+    if (req.user.must_change_password || req.user.requires_security_questions_setup) {
+      const path = req.originalUrl || req.path || '';
+      const method = (req.method || 'GET').toUpperCase();
+      const allowed = [
+        '/api/auth/change-password',
+        '/api/auth/security-questions/setup',
+        '/api/auth/logout',
+        '/api/auth/ping',
+        '/change-password',
+        '/security-questions/setup',
+        '/logout',
+        '/ping',
+      ];
+
+      const isAllowed = allowed.some((p) => path.startsWith(p));
+      if (!isAllowed) {
+        return res.status(428).json({
+          error: 'Password change required before continuing',
+          code: 'MUST_CHANGE_PASSWORD',
+          allow: allowed,
+          method,
+        });
+      }
+    }
 
     // Defensive: fallback if somehow missing
     if (!req.userRole) {

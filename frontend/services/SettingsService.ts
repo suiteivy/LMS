@@ -76,4 +76,39 @@ export const SettingsService = {
         const response = await api.post('/auth/forgot-password', { email });
         return response.data;
     },
+
+    setupSecurityQuestions: async (
+        question1: string,
+        question2: string,
+        question3: string,
+    ): Promise<{ message: string }> => {
+        const response = await api.post('/auth/security-questions/setup', {
+            question1,
+            question2,
+            question3,
+        });
+        return response.data;
+    },
+
+    verifySecurityQuestions: async (
+        email: string,
+        question1: string,
+        question2: string,
+        question3: string,
+        new_password?: string,
+    ): Promise<{ verified: boolean; message: string }> => {
+        const response = await api.post('/auth/verify-security-questions', {
+            email,
+            question1,
+            question2,
+            question3,
+            new_password,
+        });
+        return response.data;
+    },
+
+    getCredentialDelivery: async (token: string): Promise<{ email: string; temporary_password: string; consumed: boolean }> => {
+        const response = await api.get(`/auth/credential-delivery/${encodeURIComponent(token)}`, { skipErrorToast: true });
+        return response.data;
+    },
 };

@@ -53,12 +53,13 @@ http://localhost:4001/api
 
 ## Database Setup
 
-To set up the database, run the following SQL scripts in the Supabase SQL Editor in order:
+The backend now uses a fully consolidated schema file:
 
-1. **Schema**: `backend/supabase/schema.sql` (Creates tables and RLS policies)
-2. **Triggers**: `backend/supabase/triggers.sql` (Adds essential database logic)
-3. **Term lock support**: `backend/supabase/Migrations/20260623_add_terms_locked_at.sql`
-4. **Promotion + notification delivery history**: `backend/supabase/Migrations/20260623_add_promotion_cycles_and_notification_delivery_history.sql`
+1. **Schema**: `backend/supabase/schema.sql` (tables, indexes, triggers, and RLS)
+
+If you are using the Supabase CLI workflow, use the repository-level migrations in `supabase/migrations`.
+
+Legacy backend migration helpers are kept only for emergency/manual replay and are not part of the primary workflow.
 
 ---
 

@@ -58,7 +58,8 @@ const MenuItem = ({ icon, label, onPress, danger, isDark }: MenuItemProps) => (
 function SettingsMenu({ userRole, onNavigate }: { userRole: string; onNavigate: (screen: 'profile' | 'settings' | 'help' | 'overview' | 'ownership' | 'sessions') => void }) {
   const { signOut, profile, loading, displayId, isTrial, isMain } = useAuth();
   const { theme, setTheme, isDark } = useTheme();
-  const roleLabel = userRole === 'master_admin' ? 'Master Admin' : userRole === 'parent' ? 'Parent/Guardian' : (userRole.charAt(0).toUpperCase() + userRole.slice(1));
+  const isPlatformAdminRole = userRole === 'master_admin' || userRole === 'platform_admin';
+  const roleLabel = isPlatformAdminRole ? 'Master Admin' : userRole === 'parent' ? 'Parent/Guardian' : (userRole.charAt(0).toUpperCase() + userRole.slice(1));
 
   const surface = isDark ? '#13103A' : '#ffffff';
   const border = isDark ? 'rgba(255,255,255,0.1)' : '#f3f4f6';
@@ -147,10 +148,10 @@ function SettingsMenu({ userRole, onNavigate }: { userRole: string; onNavigate: 
         {!isTrial && (
           <MenuItem isDark={isDark} icon={<Laptop size={22} color="#10b981" />} label="Device Sessions" onPress={() => onNavigate('sessions')} />
         )}
-        {isTrial && userRole !== 'admin' && userRole !== 'master_admin' && (
+        {isTrial && userRole !== 'admin' && !isPlatformAdminRole && (
           <MenuItem isDark={isDark} icon={<HelpCircle size={22} color="#3b82f6" />} label="Help & Support" onPress={() => onNavigate('help')} />
         )}
-        {!isTrial && userRole !== 'master_admin' && (
+        {!isTrial && !isPlatformAdminRole && (
           <MenuItem isDark={isDark} icon={<HelpCircle size={22} color="#3b82f6" />} label="Help & Support" onPress={() => onNavigate('help')} />
         )}
 
@@ -226,13 +227,13 @@ export function GlobalSettingsContent({ userRole = 'student' }: { userRole?: Use
     switch (activeScreen) {
       case 'overview': return <AdminOverview />;
       case 'profile':
-        if (userRole === 'master_admin') return <MasterAdminProfile />;
+        if (userRole === 'master_admin' || userRole === 'platform_admin') return <MasterAdminProfile />;
         if (userRole === 'admin') return <AdminProfile />;
         if (userRole === 'teacher') return <TeacherProfile />;
         if (userRole === 'parent') return <ParentProfile />;
         return <StudentProfile />;
       case 'settings':
-        if (userRole === 'master_admin') return <MasterAdminSettings />;
+        if (userRole === 'master_admin' || userRole === 'platform_admin') return <MasterAdminSettings />;
         if (userRole === 'admin') return <AdminSettings />;
         if (userRole === 'teacher') return <TeacherSettings />;
         return <StudentSettings />;
@@ -265,7 +266,7 @@ export function GlobalSettingsContent({ userRole = 'student' }: { userRole?: Use
     }
   };
 
-  const roleLabel = userRole === 'master_admin' ? 'Master Admin' : userRole === 'parent' ? 'Parent/Guardian' : (userRole.charAt(0).toUpperCase() + userRole.slice(1)) as "Student" | "Teacher" | "Admin" | "Parent/Guardian" | "Master Admin";
+  const roleLabel = (userRole === 'master_admin' || userRole === 'platform_admin') ? 'Master Admin' : userRole === 'parent' ? 'Parent/Guardian' : (userRole.charAt(0).toUpperCase() + userRole.slice(1)) as "Student" | "Teacher" | "Admin" | "Parent/Guardian" | "Master Admin";
 
   return (
     <View style={{ flex: 1, backgroundColor: isDark ? '#0F0B2E' : '#ffffff' }}>

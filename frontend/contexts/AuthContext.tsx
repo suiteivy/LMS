@@ -27,6 +27,7 @@ interface AuthContextType {
   institutionName: string | null
   isMain: boolean
   isPlatformAdmin: boolean
+  canonicalRole: string | null
   loading: boolean
   setLoading: (loading: boolean) => void
   isInitializing: boolean
@@ -96,6 +97,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [institutionName, setInstitutionName] = useState<string | null>(null)
   const [isMain, setIsMain] = useState(false)
   const [isPlatformAdmin, setIsPlatformAdmin] = useState(false)
+  const canonicalRole = (profile as any)?.role_alias || profile?.role || null;
   const [addonFlags, setAddonFlags] = useState({
     messaging: false,
     library: false,
@@ -680,6 +682,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     isTrial: subscriptionStatus === 'trial' || subscriptionPlan === 'trial',
     isMain,
     isPlatformAdmin,
+    canonicalRole,
     addonMessaging: addonFlags.messaging,
     addonLibrary: addonFlags.library,
     addonFinance: addonFlags.finance,
@@ -689,7 +692,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     addonDiary: addonFlags.diary,
     customStudentLimit,
     getRoleRedirect,
-  }), [session, user, profile, roleInfo, subscriptionStatus, subscriptionPlan, trialEndDate, institutionName, loading, isInitializing, isNavReady, isProfileLoading, isSessionExpiring, sessionWarningDismissed, isDemo, wasDemo, clearWasDemo, isMain, isPlatformAdmin, addonFlags, customStudentLimit]);
+  }), [session, user, profile, roleInfo, subscriptionStatus, subscriptionPlan, trialEndDate, institutionName, loading, isInitializing, isNavReady, isProfileLoading, isSessionExpiring, sessionWarningDismissed, isDemo, wasDemo, clearWasDemo, isMain, isPlatformAdmin, canonicalRole, addonFlags, customStudentLimit]);
 
   return (
     <AuthContext.Provider value={value}>

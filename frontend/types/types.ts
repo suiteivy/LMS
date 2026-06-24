@@ -11,7 +11,7 @@ import { TextInputProps } from "react-native";
  * User-related types
  */
 
-export type UserRole = "admin" | "teacher" | "student" | "parent" | "bursary" | "master_admin" | "librarian";
+export type UserRole = "admin" | "teacher" | "student" | "parent" | "bursary" | "master_admin" | "platform_admin" | "school_admin" | "librarian";
 
 export interface User {
   id: string;

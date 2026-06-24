@@ -560,6 +560,11 @@ export default function ForgotPassword() {
 
                 {/* Back to sign in */}
                 <View style={{ alignItems: "center", marginTop: 24 }}>
+                  <TouchableOpacity onPress={() => router.push('/(auth)/verify-security-questions' as any)} activeOpacity={0.7} style={{ marginBottom: 10 }}>
+                    <Text style={{ color: "#FF6B00", fontWeight: "700", fontSize: 13 }}>
+                      Prefer security questions? Verify here
+                    </Text>
+                  </TouchableOpacity>
                   <TouchableOpacity onPress={() => router.back()} activeOpacity={0.7}>
                     <Text style={{ color: "rgba(255,255,255,0.4)", fontWeight: "600", fontSize: 14 }}>
                       Back to <Text style={{ color: "#FF6B00", fontWeight: "700" }}>Sign In</Text>

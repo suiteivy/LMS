@@ -2,14 +2,21 @@ const process = require("node:process");
 const _supabase = require("../utils/supabaseClient.js");
 const { createClient } = require("@supabase/supabase-js");
 const { sendBulkInAppNotificationsWithHistory } = require('../services/notificationDelivery.service.js');
+const { canonicalRoleFrom, withRoleAliases } = require("../utils/roleAlias.js");
+
+let serviceClientFactory = createClient;
 
 // We MUST use the service role key for platform-wide operations to bypass RLS,
 // since normal user tokens are strictly scoped to their institution.
 const getServiceSupabase = () => {
-    return createClient(
+    return serviceClientFactory(
         process.env.SUPABASE_URL || process.env.EXPO_PUBLIC_SUPABASE_URL,
         process.env.SUPABASE_SERVICE_ROLE_KEY
     );
+};
+
+exports.__setServiceClientFactoryForTest = (factory) => {
+    serviceClientFactory = typeof factory === 'function' ? factory : createClient;
 };
 
 exports.getDashboardStats = async (_req, res) => {
@@ -44,6 +51,101 @@ exports.getDashboardStats = async (_req, res) => {
     } catch (error) {
         console.error("Error fetching platform stats:", error);
         res.status(500).json({ error: "Failed to fetch dashboard statistics" });
+    }
+};
+
+exports.getPasswordAuditLogs = async (req, res) => {
+    try {
+        const adminClient = getServiceSupabase();
+        const {
+            page = '1',
+            limit = '50',
+            action,
+            outcome,
+            target_email,
+            actor_user_id,
+            target_user_id,
+            from,
+            to,
+        } = req.query;
+
+        const pageNum = Math.max(parseInt(page, 10) || 1, 1);
+        const limitNum = Math.min(Math.max(parseInt(limit, 10) || 50, 1), 200);
+        const fromIdx = (pageNum - 1) * limitNum;
+        const toIdx = fromIdx + limitNum - 1;
+
+        let query = adminClient
+            .from('password_audit_logs')
+            .select('*', { count: 'exact' })
+            .order('created_at', { ascending: false })
+            .range(fromIdx, toIdx);
+
+        if (action) query = query.eq('action', action);
+        if (outcome) query = query.eq('outcome', outcome);
+        if (target_email) query = query.ilike('target_email', `%${target_email}%`);
+        if (actor_user_id) query = query.eq('actor_user_id', actor_user_id);
+        if (target_user_id) query = query.eq('target_user_id', target_user_id);
+        if (from) query = query.gte('created_at', from);
+        if (to) query = query.lte('created_at', to);
+
+        const { data, error, count } = await query;
+        if (error) throw error;
+
+        return res.status(200).json({
+            logs: data || [],
+            pagination: {
+                page: pageNum,
+                limit: limitNum,
+                total: count || 0,
+                pages: count ? Math.ceil(count / limitNum) : 0,
+            },
+        });
+    } catch (error) {
+        console.error('Error fetching password audit logs:', error);
+        return res.status(500).json({ error: 'Failed to fetch password audit logs' });
+    }
+};
+
+exports.getCredentialDeliveryByToken = async (req, res) => {
+    try {
+        const adminClient = getServiceSupabase();
+        const token = req.params?.token;
+        if (!token) return res.status(400).json({ error: 'Token is required' });
+
+        const { data: row, error } = await adminClient
+            .from('credential_delivery_tokens')
+            .select('id, target_email, temporary_password, expires_at, consumed_at')
+            .eq('token', token)
+            .maybeSingle();
+
+        if (error || !row) {
+            return res.status(404).json({ error: 'Credential token is invalid' });
+        }
+
+        const now = Date.now();
+        const expiresAtMs = new Date(row.expires_at).getTime();
+
+        if (row.consumed_at) {
+            return res.status(410).json({ error: 'Credential token has already been used' });
+        }
+
+        if (Number.isFinite(expiresAtMs) && now > expiresAtMs) {
+            return res.status(410).json({ error: 'Credential token has expired' });
+        }
+
+        await adminClient
+            .from('credential_delivery_tokens')
+            .update({ consumed_at: new Date().toISOString() })
+            .eq('id', row.id);
+
+        return res.status(200).json({
+            email: row.target_email,
+            temporary_password: row.temporary_password,
+            consumed: true,
+        });
+    } catch (err) {
+        console.error('getCredentialDeliveryByToken error:', err);
+        return res.status(500).json({ error: err.message || 'Failed to load credentials' });
     }
 };
 
@@ -783,7 +885,11 @@ exports.getAllUsers = async (req, res) => {
         const { data, error } = await query;
         if (error) throw error;
 
-        res.status(200).json({ users: data || [] });
+        const users = (data || []).map((user) =>
+            withRoleAliases(user, { isPlatformAdmin: canonicalRoleFrom(user.role) === 'platform_admin' })
+        );
+
+        res.status(200).json({ users });
     } catch (error) {
         console.error("Error fetching all users:", error);
         res.status(500).json({ error: "Failed to fetch users" });

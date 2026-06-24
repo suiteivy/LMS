@@ -76,6 +76,8 @@ CREATE TABLE users (
     avatar_url TEXT,
     institution_id UUID REFERENCES institutions(id),
     is_main BOOLEAN DEFAULT false,
+    must_change_password BOOLEAN NOT NULL DEFAULT false,
+    requires_security_questions_setup BOOLEAN NOT NULL DEFAULT false,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -1007,6 +1009,105 @@ CREATE TABLE password_reset_requests (
 );
 
 CREATE INDEX idx_password_reset_email_time ON password_reset_requests(email, requested_at);
+
+-- 2b. Password Audit Logs
+CREATE TABLE password_audit_logs (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    action TEXT NOT NULL CHECK (
+        action IN (
+            'change_password',
+            'admin_reset_password',
+            'forgot_password_request',
+            'reset_password'
+        )
+    ),
+    actor_user_id UUID REFERENCES users(id) ON DELETE SET NULL,
+    target_user_id UUID REFERENCES users(id) ON DELETE SET NULL,
+    target_email TEXT,
+    outcome TEXT NOT NULL DEFAULT 'success' CHECK (outcome IN ('success', 'failure', 'requested')),
+    reason TEXT,
+    ip_address TEXT,
+    user_agent TEXT,
+    metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX idx_password_audit_logs_created_at ON password_audit_logs(created_at DESC);
+CREATE INDEX idx_password_audit_logs_actor_user_id ON password_audit_logs(actor_user_id);
+CREATE INDEX idx_password_audit_logs_target_user_id ON password_audit_logs(target_user_id);
+CREATE INDEX idx_password_audit_logs_target_email ON password_audit_logs(target_email);
+
+ALTER TABLE password_audit_logs ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Master admins can view password audit logs"
+ON password_audit_logs FOR SELECT
+USING (
+    EXISTS (
+        SELECT 1 FROM users
+        WHERE id = auth.uid()
+          AND role = 'master_admin'
+    )
+);
+
+CREATE POLICY "No direct client writes password audit logs"
+ON password_audit_logs FOR ALL
+USING (false)
+WITH CHECK (false);
+
+-- 2c. Security Question Answers (hashed)
+CREATE TABLE user_security_answers (
+    user_id UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+    question1_hash TEXT NOT NULL,
+    question1_salt TEXT NOT NULL,
+    question2_hash TEXT NOT NULL,
+    question2_salt TEXT NOT NULL,
+    question3_hash TEXT NOT NULL,
+    question3_salt TEXT NOT NULL,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+ALTER TABLE user_security_answers ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can manage own security answers"
+ON user_security_answers FOR ALL
+USING (auth.uid() = user_id)
+WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Service role full access security answers"
+ON user_security_answers FOR ALL
+USING (auth.role() = 'service_role')
+WITH CHECK (auth.role() = 'service_role');
+
+-- 2d. One-time credential delivery tokens
+CREATE TABLE credential_delivery_tokens (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    token TEXT NOT NULL UNIQUE,
+    created_by UUID REFERENCES users(id) ON DELETE SET NULL,
+    target_user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+    target_email TEXT NOT NULL,
+    temporary_password TEXT NOT NULL,
+    metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
+    expires_at TIMESTAMPTZ NOT NULL,
+    consumed_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX idx_credential_delivery_tokens_token ON credential_delivery_tokens(token);
+CREATE INDEX idx_credential_delivery_tokens_expires_at ON credential_delivery_tokens(expires_at);
+CREATE INDEX idx_credential_delivery_tokens_consumed_at ON credential_delivery_tokens(consumed_at);
+
+ALTER TABLE credential_delivery_tokens ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Service role full access credential tokens"
+ON credential_delivery_tokens FOR ALL
+USING (auth.role() = 'service_role')
+WITH CHECK (auth.role() = 'service_role');
+
+CREATE POLICY "No client access credential tokens"
+ON credential_delivery_tokens FOR ALL
+USING (false)
+WITH CHECK (false);
 
 -- 3. Trial/Demo Sessions Tracking
 CREATE TABLE trial_sessions (

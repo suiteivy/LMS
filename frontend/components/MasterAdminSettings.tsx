@@ -1,13 +1,13 @@
-import { useAuth } from "@/contexts/AuthContext";
 import { useTheme } from "@/contexts/ThemeContext";
 import { Lock, ShieldAlert, Bell, Mail, Smartphone, AlertTriangle, AlertCircle, HelpCircle } from "lucide-react-native";
 import React, { useState, useEffect } from "react";
-import { ActivityIndicator, Modal, Platform, ScrollView, Text, TextInput, TouchableOpacity, View, Alert, Switch } from "react-native";
+import { ActivityIndicator, Modal, Platform, ScrollView, Text, TextInput, TouchableOpacity, View, Switch } from "react-native";
 import Toast from 'react-native-toast-message';
 import { supabase } from '@/libs/supabase';
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { ChangePasswordModal } from "./shared/ChangePasswordModal";
 import { SettingsService, UserPreferences } from "@/services/SettingsService";
+import { router } from "expo-router";
 
 interface SettingRowProps {
     icon: any;
@@ -15,6 +15,19 @@ interface SettingRowProps {
     onPress?: () => void;
     isLast?: boolean;
     rightElement?: React.ReactNode;
+}
+
+interface PasswordAuditLog {
+    id: string;
+    action: 'change_password' | 'admin_reset_password' | 'forgot_password_request' | 'reset_password';
+    actor_user_id: string | null;
+    target_user_id: string | null;
+    target_email: string | null;
+    outcome: 'success' | 'failure' | 'requested';
+    reason: string | null;
+    ip_address: string | null;
+    user_agent: string | null;
+    created_at: string;
 }
 
 export default function MasterAdminSettings() {
@@ -25,6 +38,12 @@ export default function MasterAdminSettings() {
     const [enrollModalVisible, setEnrollModalVisible] = useState(false);
     const [enrollData, setEnrollData] = useState({ full_name: "", email: "", password: "" });
     const [enrollLoading, setEnrollLoading] = useState(false);
+
+    // Password Audit Logs
+    const [auditModalVisible, setAuditModalVisible] = useState(false);
+    const [auditLogs, setAuditLogs] = useState<PasswordAuditLog[]>([]);
+    const [auditLoading, setAuditLoading] = useState(false);
+    const [auditError, setAuditError] = useState<string | null>(null);
 
     // Notification Preferences
     const [prefs, setPrefs] = useState<UserPreferences>({
@@ -127,6 +146,54 @@ export default function MasterAdminSettings() {
         }
     };
 
+    const fetchPasswordAuditLogs = async () => {
+        setAuditLoading(true);
+        setAuditError(null);
+        try {
+            const { data: { session } } = await supabase.auth.getSession();
+            if (!session) {
+                setAuditError('No active session. Please sign in again.');
+                setAuditLogs([]);
+                return;
+            }
+
+            const res = await fetch(`${getBackendUrl()}/api/master-admin/password-audit-logs?limit=100`, {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${session.access_token}`,
+                    'Content-Type': 'application/json',
+                },
+            });
+
+            const payload = await res.json();
+            if (!res.ok) {
+                throw new Error(payload?.error || 'Failed to fetch password audit logs');
+            }
+
+            setAuditLogs(payload?.logs || []);
+        } catch (error: any) {
+            setAuditLogs([]);
+            setAuditError(error?.message || 'Failed to load password audit logs');
+        } finally {
+            setAuditLoading(false);
+        }
+    };
+
+    const openAuditModal = async () => {
+        setAuditModalVisible(true);
+        await fetchPasswordAuditLogs();
+    };
+
+    const formatAction = (action: PasswordAuditLog['action']) => {
+        switch (action) {
+            case 'change_password': return 'Change Password';
+            case 'admin_reset_password': return 'Admin Reset';
+            case 'forgot_password_request': return 'Forgot Password';
+            case 'reset_password': return 'Reset Password';
+            default: return action;
+        }
+    };
+
     const SettingRow = ({ icon: Icon, title, onPress, isLast, rightElement }: SettingRowProps) => (
         <TouchableOpacity
             onPress={onPress}
@@ -158,6 +225,16 @@ export default function MasterAdminSettings() {
                 <View style={{ backgroundColor: tokens.surface, borderRadius: 16, borderWidth: 1, borderColor: tokens.border, marginBottom: 24, overflow: 'hidden' }}>
                     <SettingRow icon={Lock} title="Change Password" onPress={() => setPasswordModalVisible(true)} />
                     <SettingRow icon={ShieldAlert} title="Two-Factor Authentication (Coming Soon)" isLast />
+                </View>
+
+                <Text style={{ fontSize: 12, fontWeight: 'bold', color: tokens.textSecondary, textTransform: 'uppercase', letterSpacing: 1, marginLeft: 4, marginBottom: 8 }}>Security Auditing</Text>
+                <View style={{ backgroundColor: tokens.surface, borderRadius: 16, borderWidth: 1, borderColor: tokens.border, marginBottom: 24, overflow: 'hidden' }}>
+                    <SettingRow icon={AlertCircle} title="Password Audit Logs" onPress={openAuditModal} isLast />
+                </View>
+
+                <Text style={{ fontSize: 12, fontWeight: 'bold', color: tokens.textSecondary, textTransform: 'uppercase', letterSpacing: 1, marginLeft: 4, marginBottom: 8 }}>Advanced Auditing</Text>
+                <View style={{ backgroundColor: tokens.surface, borderRadius: 16, borderWidth: 1, borderColor: tokens.border, marginBottom: 24, overflow: 'hidden' }}>
+                    <SettingRow icon={ShieldAlert} title="Open Full Password Audit Page" onPress={() => router.push('/(master-admin)/password-audit')} isLast />
                 </View>
 
                 <Text style={{ fontSize: 12, fontWeight: 'bold', color: tokens.textSecondary, textTransform: 'uppercase', letterSpacing: 1, marginLeft: 4, marginBottom: 8 }}>Notifications Configuration</Text>
@@ -259,6 +336,57 @@ export default function MasterAdminSettings() {
                         >
                             {enrollLoading ? <ActivityIndicator color="#fff" /> : <Text style={{ color: '#fff', fontSize: 16, fontWeight: '700' }}>Enroll Admin</Text>}
                         </TouchableOpacity>
+                    </View>
+                </View>
+            </Modal>
+
+            {/* Password Audit Logs Modal */}
+            <Modal visible={auditModalVisible} transparent animationType="slide" onRequestClose={() => setAuditModalVisible(false)}>
+                <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}>
+                    <View style={{ backgroundColor: tokens.surface, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: Platform.OS === 'ios' ? 40 : 24, maxHeight: '80%' }}>
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                            <Text style={{ fontSize: 20, fontWeight: '800', color: tokens.textPrimary }}>Password Audit Logs</Text>
+                            <TouchableOpacity onPress={() => setAuditModalVisible(false)}>
+                                <MaterialCommunityIcons name="close" size={24} color={tokens.textSecondary} />
+                            </TouchableOpacity>
+                        </View>
+
+                        <TouchableOpacity
+                            onPress={fetchPasswordAuditLogs}
+                            disabled={auditLoading}
+                            style={{ alignSelf: 'flex-end', marginBottom: 12, backgroundColor: tokens.inputBg, borderWidth: 1, borderColor: tokens.inputBorder, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 8 }}
+                        >
+                            <Text style={{ color: tokens.textPrimary, fontWeight: '600', fontSize: 12 }}>{auditLoading ? 'Refreshing...' : 'Refresh'}</Text>
+                        </TouchableOpacity>
+
+                        {auditLoading ? (
+                            <View style={{ paddingVertical: 24 }}>
+                                <ActivityIndicator color={tokens.primary} />
+                            </View>
+                        ) : auditError ? (
+                            <View style={{ paddingVertical: 16 }}>
+                                <Text style={{ color: '#ef4444', fontWeight: '600' }}>{auditError}</Text>
+                            </View>
+                        ) : (
+                            <ScrollView style={{ maxHeight: 420 }} contentContainerStyle={{ paddingBottom: 8 }}>
+                                {auditLogs.length === 0 ? (
+                                    <Text style={{ color: tokens.textSecondary }}>No password audit logs found.</Text>
+                                ) : auditLogs.map((log) => (
+                                    <View key={log.id} style={{ borderWidth: 1, borderColor: tokens.border, borderRadius: 12, padding: 12, marginBottom: 10, backgroundColor: tokens.inputBg }}>
+                                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 }}>
+                                            <Text style={{ color: tokens.textPrimary, fontWeight: '700' }}>{formatAction(log.action)}</Text>
+                                            <Text style={{ color: log.outcome === 'failure' ? '#ef4444' : log.outcome === 'requested' ? '#f59e0b' : '#10b981', fontWeight: '700', textTransform: 'uppercase', fontSize: 11 }}>
+                                                {log.outcome}
+                                            </Text>
+                                        </View>
+                                        <Text style={{ color: tokens.textSecondary, fontSize: 12 }}>Target: {log.target_email || log.target_user_id || 'N/A'}</Text>
+                                        <Text style={{ color: tokens.textSecondary, fontSize: 12 }}>Actor: {log.actor_user_id || 'System/Anonymous'}</Text>
+                                        <Text style={{ color: tokens.textSecondary, fontSize: 12 }}>When: {new Date(log.created_at).toLocaleString()}</Text>
+                                        {log.reason ? <Text style={{ color: '#f59e0b', fontSize: 12, marginTop: 4 }}>Reason: {log.reason}</Text> : null}
+                                    </View>
+                                ))}
+                            </ScrollView>
+                        )}
                     </View>
                 </View>
             </Modal>
