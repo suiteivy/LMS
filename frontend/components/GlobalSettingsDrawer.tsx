@@ -6,6 +6,8 @@ import { ChevronRight, HelpCircle, LogOut, Moon, Settings, ShieldCheck, Sun, Use
 import React, { useState } from 'react';
 import { Alert, Image, Platform, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { SubscriptionStatusBadge } from '@/components/shared/SubscriptionComponents';
+import { useSubscriptionTier } from '@/hooks/useSubscriptionTier';
+import { HelpTooltip } from './settings/HelpTooltip';
 
 // Screens
 import AdminHelp from '@/components/AdminHelp';
@@ -58,6 +60,7 @@ const MenuItem = ({ icon, label, onPress, danger, isDark }: MenuItemProps) => (
 function SettingsMenu({ userRole, onNavigate }: { userRole: string; onNavigate: (screen: 'profile' | 'settings' | 'help' | 'overview' | 'ownership' | 'sessions') => void }) {
   const { signOut, profile, loading, displayId, isTrial, isMain } = useAuth();
   const { theme, setTheme, isDark } = useTheme();
+  const tier = useSubscriptionTier();
   const isPlatformAdminRole = userRole === 'master_admin' || userRole === 'platform_admin';
   const roleLabel = isPlatformAdminRole ? 'Master Admin' : userRole === 'parent' ? 'Parent/Guardian' : (userRole.charAt(0).toUpperCase() + userRole.slice(1));
 
@@ -236,7 +239,8 @@ export function GlobalSettingsContent({ userRole = 'student' }: { userRole?: Use
         if (userRole === 'master_admin' || userRole === 'platform_admin') return <MasterAdminSettings />;
         if (userRole === 'admin') return <AdminSettings />;
         if (userRole === 'teacher') return <TeacherSettings />;
-        return <StudentSettings />;
+        if (userRole === 'parent') return <StudentSettings role="parent" />;
+        return <StudentSettings role="student" />;
       case 'help':
         if (userRole === 'admin') return <AdminHelp />;
         if (userRole === 'teacher') return <TeacherHelp />;

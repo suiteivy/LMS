@@ -5,6 +5,67 @@ const { canonicalRoleFrom } = require("../utils/roleAlias.js");
 const profileCache = new Map();
 const CACHE_TTL = 60000; // 60 seconds
 
+const IDLE_TIMEOUT_MS = 30 * 60 * 1000;
+
+function decodeJwtPayload(token) {
+  const parts = (token || '').split('.');
+  if (parts.length !== 3) return null;
+  const base64Url = parts[1];
+  const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+  const padded = base64.padEnd(base64.length + ((4 - (base64.length % 4)) % 4), '=');
+  return JSON.parse(Buffer.from(padded, 'base64').toString('utf8'));
+}
+
+function parseUserAgent(userAgent) {
+  const ua = (userAgent || '').toLowerCase();
+
+  let osName = 'Unknown OS';
+  let deviceType = 'Web';
+
+  if (/iphone|ipod/.test(ua)) {
+    osName = 'iOS';
+    deviceType = 'iPhone';
+  } else if (/ipad/.test(ua)) {
+    osName = 'iOS';
+    deviceType = 'iPad';
+  } else if (/android/.test(ua)) {
+    osName = 'Android';
+    deviceType = /mobile/.test(ua) ? 'Android Phone' : 'Android Tablet';
+  } else if (/windows nt 10\.0/.test(ua)) {
+    osName = 'Windows 10/11';
+    deviceType = 'Desktop';
+  } else if (/windows/.test(ua)) {
+    osName = 'Windows';
+    deviceType = 'Desktop';
+  } else if (/macintosh|mac os x/.test(ua)) {
+    osName = 'macOS';
+    deviceType = 'Mac';
+  } else if (/linux/.test(ua)) {
+    osName = 'Linux';
+    deviceType = 'Desktop';
+  }
+
+  let browser = 'Unknown Browser';
+  if (/edg\//.test(ua) || /edge\//.test(ua)) browser = 'Edge';
+  else if (/opr\//.test(ua) || /opera/.test(ua)) browser = 'Opera';
+  else if (/firefox\//.test(ua) || /fxios/.test(ua)) browser = 'Firefox';
+  else if (/crios/.test(ua) || /chrome\//.test(ua)) browser = 'Chrome';
+  else if (/safari\//.test(ua)) browser = 'Safari';
+
+  return {
+    browser,
+    osName,
+    deviceType,
+    displayName: `${browser} on ${deviceType}`,
+  };
+}
+
+function getClientIp(req) {
+  const forwarded = req?.headers?.['x-forwarded-for'];
+  const rawIp = forwarded || req?.socket?.remoteAddress || '127.0.0.1';
+  return String(rawIp).split(',')[0].trim();
+}
+
 async function authMiddleware(req, res, next) {
   try {
     const authHeader = req.headers.authorization || "";
@@ -31,9 +92,8 @@ async function authMiddleware(req, res, next) {
     let sessionId = null;
     let tokenIssuedAt = null;
     try {
-      const parts = token.split('.');
-      if (parts.length === 3) {
-        const payload = JSON.parse(Buffer.from(parts[1], 'base64').toString('utf8'));
+      const payload = decodeJwtPayload(token);
+      if (payload) {
         sessionId = payload.session_id;
         tokenIssuedAt = payload.iat;
       }
@@ -54,7 +114,6 @@ async function authMiddleware(req, res, next) {
       }
 
       const now = Date.now();
-      const tenMinutesMs = 30 * 60 * 1000;
 
       if (sessionRow) {
         // Enforce revocation
@@ -71,9 +130,9 @@ async function authMiddleware(req, res, next) {
           return res.status(401).json({ error: "Session expired", code: "SESSION_TIMEOUT" });
         }
 
-        // Enforce idle timeout (10 minutes)
+        // Enforce idle timeout (30 minutes)
         const lastActive = new Date(sessionRow.last_active_at).getTime();
-        if (now - lastActive > tenMinutesMs) {
+        if (now - lastActive > IDLE_TIMEOUT_MS) {
           console.warn(`[AuthMiddleware] Session idle timeout exceeded: ${sessionId}`);
           await supabase.from('user_sessions').update({ is_revoked: true }).eq('session_id', sessionId);
             return res.status(401).json({ error: "You've been logged out due to inactivity.", code: "SESSION_IDLE_TIMEOUT" });
@@ -99,40 +158,13 @@ async function authMiddleware(req, res, next) {
         const expiresAt = new Date(loginAt.getTime() + 10 * 60 * 60 * 1000); // 10 hours absolute limit
         const userAgent = req.headers['user-agent'] || '';
 
-        // Parse User Agent
-        let deviceType = 'Web';
-        let osName = 'Unknown OS';
-        if (/iphone|ipad|ipod/i.test(userAgent)) {
-          deviceType = /ipad/i.test(userAgent) ? 'iPad' : 'iPhone';
-          osName = 'iOS';
-        } else if (/android/i.test(userAgent)) {
-          deviceType = 'Android Device';
-          osName = 'Android';
-        } else if (/windows/i.test(userAgent)) {
-          deviceType = 'Desktop';
-          osName = 'Windows';
-          if (/windows nt 10.0/i.test(userAgent)) osName = 'Windows 10/11';
-        } else if (/macintosh|mac os x/i.test(userAgent)) {
-          deviceType = 'Mac';
-          osName = 'macOS';
-        } else if (/linux/i.test(userAgent)) {
-          deviceType = 'Desktop';
-          osName = 'Linux';
-        }
-
-        let browser = 'Unknown Browser';
-        if (/chrome|crios/i.test(userAgent) && !/edge|opr/i.test(userAgent)) browser = 'Chrome';
-        else if (/safari/i.test(userAgent) && !/chrome|crios/i.test(userAgent)) browser = 'Safari';
-        else if (/firefox|fxios/i.test(userAgent)) browser = 'Firefox';
-        else if (/edge|edg/i.test(userAgent)) browser = 'Edge';
-
-        const device = `${browser} on ${deviceType}`;
-        const ipAddress = req.headers['x-forwarded-for'] || req.socket.remoteAddress || '127.0.0.1';
+        const fingerprint = parseUserAgent(userAgent);
+        const ipAddress = getClientIp(req);
 
         // Resolve location and register session asynchronously
         const resolveAndRegister = async () => {
           let location = 'Unknown Location';
-          const cleanIp = ipAddress.split(',')[0].trim();
+          const cleanIp = ipAddress;
           if (cleanIp !== '::1' && cleanIp !== '127.0.0.1' && !cleanIp.startsWith('192.168.') && !cleanIp.startsWith('10.')) {
             try {
               const resLoc = await fetch(`http://ip-api.com/json/${cleanIp}?fields=status,message,country,city`);
@@ -154,8 +186,8 @@ async function authMiddleware(req, res, next) {
                 user_id: user.id,
                 session_id: sessionId,
                 user_agent: userAgent,
-                device_type: device,
-                os_name: osName,
+                device_type: fingerprint.displayName,
+                os_name: fingerprint.osName,
                 ip_address: cleanIp,
                 location,
                 login_at: loginAt.toISOString(),

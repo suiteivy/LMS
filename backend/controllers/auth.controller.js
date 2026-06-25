@@ -5,6 +5,51 @@ const { sendEmail } = require("../utils/emailService.js");
 const { sendBulkInAppNotificationsWithHistory } = require('../services/notificationDelivery.service.js');
 const { canonicalRoleFrom, withRoleAliases } = require("../utils/roleAlias.js");
 
+const IDLE_TIMEOUT_MS = 30 * 60 * 1000;
+
+const parseUserAgent = (userAgent) => {
+  const ua = String(userAgent || '').toLowerCase();
+
+  let osName = 'Unknown OS';
+  let deviceType = 'Web';
+
+  if (/iphone|ipod/.test(ua)) {
+    osName = 'iOS';
+    deviceType = 'iPhone';
+  } else if (/ipad/.test(ua)) {
+    osName = 'iOS';
+    deviceType = 'iPad';
+  } else if (/android/.test(ua)) {
+    osName = 'Android';
+    deviceType = /mobile/.test(ua) ? 'Android Phone' : 'Android Tablet';
+  } else if (/windows nt 10\.0/.test(ua)) {
+    osName = 'Windows 10/11';
+    deviceType = 'Desktop';
+  } else if (/windows/.test(ua)) {
+    osName = 'Windows';
+    deviceType = 'Desktop';
+  } else if (/macintosh|mac os x/.test(ua)) {
+    osName = 'macOS';
+    deviceType = 'Mac';
+  } else if (/linux/.test(ua)) {
+    osName = 'Linux';
+    deviceType = 'Desktop';
+  }
+
+  let browser = 'Unknown Browser';
+  if (/edg\//.test(ua) || /edge\//.test(ua)) browser = 'Edge';
+  else if (/opr\//.test(ua) || /opera/.test(ua)) browser = 'Opera';
+  else if (/firefox\//.test(ua) || /fxios/.test(ua)) browser = 'Firefox';
+  else if (/crios/.test(ua) || /chrome\//.test(ua)) browser = 'Chrome';
+  else if (/safari\//.test(ua)) browser = 'Safari';
+
+  return {
+    osName,
+    deviceType,
+    displayName: `${browser} on ${deviceType}`,
+  };
+};
+
 // Generate a random 8-character temporary password
 const generateTempPassword = () => {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
@@ -1741,14 +1786,13 @@ exports.getActiveSessions = async (req, res) => {
 
     if (error) throw error;
 
-    // Filter out sessions that have exceeded the 10-minute idle timeout
+    // Filter out sessions that have exceeded the idle timeout
     const now = Date.now();
-    const tenMinutesMs = 10 * 60 * 1000;
     const activeSessions = [];
 
     for (const session of sessions) {
       const lastActive = new Date(session.last_active_at).getTime();
-      if (now - lastActive > tenMinutesMs) {
+      if (now - lastActive > IDLE_TIMEOUT_MS) {
         // Automatically mark as revoked/expired in the background
         (async () => {
           try {
@@ -1763,10 +1807,14 @@ exports.getActiveSessions = async (req, res) => {
           }
         })();
       } else {
+        const parsed = parseUserAgent(session.user_agent);
+        const normalizedDevice = parsed.displayName;
+        const normalizedOs = parsed.osName;
+
         activeSessions.push({
           id: session.id,
-          device_type: session.device_type,
-          os_name: session.os_name,
+          device_type: normalizedDevice,
+          os_name: normalizedOs,
           ip_address: session.ip_address,
           location: session.location,
           login_at: session.login_at,

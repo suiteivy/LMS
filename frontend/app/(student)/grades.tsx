@@ -1,6 +1,8 @@
 import { GradeDetailModal } from "@/components/common/GradeDetailModal";
 import { UnifiedHeader } from "@/components/common/UnifiedHeader";
+import { HelpTooltip } from "@/components/settings/HelpTooltip";
 import { useAuth } from "@/contexts/AuthContext";
+import { useSubscriptionTier } from "@/hooks/useSubscriptionTier";
 import { supabase } from "@/libs/supabase";
 import { router } from "expo-router";
 import { useTheme } from "@/contexts/ThemeContext";
@@ -59,6 +61,7 @@ const SubjectGrade = ({ SubjectCode, SubjectName, grade, score, credits, isDark,
 export default function Grades() {
     const { studentId, displayId, user, isDemo } = useAuth();
     const { isDark } = useTheme();
+    const tier = useSubscriptionTier();
     const [grades, setGrades] = useState<GradeProps[]>([]);
     const [loading, setLoading] = useState(true);
     const [stats, setStats] = useState({ gpa: 0, credits: 0, totalMarks: 0, avgMark: 0, rank: 'N/A' as string | number, totalStudents: 0 });
@@ -266,6 +269,9 @@ export default function Grades() {
             <ScrollView className="flex-1" showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 150 }}>
                 <View className="p-4 md:p-8">
                     {/* GPA Hero */}
+                    <View className="flex-row justify-end mb-2">
+                        <HelpTooltip id="student.grades.summary" role="student" tier={tier} onLearnMore={(a) => router.push({ pathname: '/(student)/settings', params: { manual: '1', anchor: a || 'student-workflow' } } as any)} />
+                    </View>
                     <View 
                         style={{
                             boxShadow: [{
@@ -384,7 +390,10 @@ export default function Grades() {
 
                     {/* Subject Breakdown */}
                     <View className="px-2 flex-row justify-between items-center mb-6">
-                        <Text className="text-gray-900 dark:text-white font-bold text-xl tracking-tight">Transcript Records</Text>
+                        <View className="flex-row items-center">
+                            <Text className="text-gray-900 dark:text-white font-bold text-xl tracking-tight">Transcript Records</Text>
+                            <HelpTooltip id="student.grades.transcript" role="student" tier={tier} onLearnMore={(a) => router.push({ pathname: '/(student)/settings', params: { manual: '1', anchor: a || 'student-workflow' } } as any)} />
+                        </View>
                         <TouchableOpacity 
                             style={{
                                 boxShadow: [{

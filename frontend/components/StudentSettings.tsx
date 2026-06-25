@@ -1,11 +1,15 @@
 import { useTheme } from "@/contexts/ThemeContext";
+import { useSubscriptionTier } from "@/hooks/useSubscriptionTier";
 import { SettingsService, UserPreferences } from "@/services/SettingsService";
 import { Bell, ChevronRight, Globe, Lock, LucideIcon, User } from "lucide-react-native";
 import React, { ReactNode, useEffect, useState } from "react";
 import { ActivityIndicator, ScrollView, Switch, Text, TouchableOpacity, View } from "react-native";
 import Toast from 'react-native-toast-message';
+import { useLocalSearchParams } from "expo-router";
 import { ProfileEdit } from "./ProfileEdit";
 import { ChangePasswordModal } from "./shared/ChangePasswordModal";
+import { HelpTooltip } from "./settings/HelpTooltip";
+import { SettingsWithManual } from "./settings/SettingsWithManual";
 import { ThemeSegmentedControl } from "./settings/ThemeSegmentedControl";
 
 interface SettingRowProps {
@@ -17,10 +21,39 @@ interface SettingRowProps {
     isDark?: boolean;
 }
 
-export default function StudentSettings() {
+interface StudentSettingsProps {
+    role?: 'student' | 'parent';
+}
+
+export default function StudentSettings({ role = 'student' }: StudentSettingsProps) {
     const [showEditForm, setShowEditForm] = useState(false)
     const [showPasswordForm, setShowPasswordForm] = useState(false)
     const { isDark } = useTheme();
+    const tier = useSubscriptionTier();
+    const params = useLocalSearchParams<{ manual?: string; anchor?: string }>();
+    const [activeTab, setActiveTab] = useState<'preferences' | 'manual'>(params.manual === '1' ? 'manual' : 'preferences');
+    const defaultAnchor = role === 'parent' ? 'parent-workflow' : 'student-workflow';
+    const [manualAnchor, setManualAnchor] = useState<string | undefined>(params.anchor || defaultAnchor);
+
+    useEffect(() => {
+        if (params.manual === '1') setActiveTab('manual');
+        if (typeof params.anchor === 'string' && params.anchor.length > 0) setManualAnchor(params.anchor);
+    }, [params.manual, params.anchor, defaultAnchor]);
+
+    useEffect(() => {
+        if (activeTab === 'manual' && !manualAnchor) {
+            setManualAnchor(defaultAnchor);
+        }
+    }, [activeTab, manualAnchor, defaultAnchor]);
+
+    const openManual = (anchor?: string) => {
+        if (anchor) setManualAnchor(anchor);
+        setActiveTab('manual');
+    };
+
+    const handleTabChange = (tab: 'preferences' | 'manual') => {
+        setActiveTab(tab);
+    };
 
     // Notification preferences — loaded from and persisted to backend
     const [prefs, setPrefs] = useState<UserPreferences>({
@@ -75,7 +108,7 @@ export default function StudentSettings() {
     )
 
 
-    return (
+    const settingsContent = (
         <ScrollView className="flex-1 bg-[#FFFFFF] dark:bg-[#0D1117]">
             <View className="p-4 md:p-8 max-w-2xl mx-auto w-full">
 
@@ -84,12 +117,16 @@ export default function StudentSettings() {
                     <TouchableOpacity
                         onPress={() => setShowEditForm(true)}
                     >
-                        <SettingRow icon={User} title="Edit Profile" isDark={isDark} />
+                        <SettingRow icon={User} title="Edit Profile" isDark={isDark}>
+                            <HelpTooltip id="settings.profile.full_name" role={role} tier={tier} onLearnMore={openManual} />
+                        </SettingRow>
                     </TouchableOpacity>
                     <TouchableOpacity
                         onPress={() => setShowPasswordForm(true)}
                     >
-                        <SettingRow icon={Lock} title="Change Password" isDark={isDark} />
+                        <SettingRow icon={Lock} title="Change Password" isDark={isDark}>
+                            <HelpTooltip id="settings.password" role={role} tier={tier} onLearnMore={openManual} />
+                        </SettingRow>
                     </TouchableOpacity>
                     <SettingRow icon={Globe} title="Language" isLast isDark={isDark}>
                         <Text className="text-gray-500 dark:text-gray-400 mr-2">English</Text>
@@ -102,6 +139,7 @@ export default function StudentSettings() {
                 ) : (
                     <View className="bg-white dark:bg-[#1a1a1a] rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm mb-6 overflow-hidden">
                         <SettingRow icon={Bell} title="Push Notifications" isLast isDark={isDark}>
+                            <HelpTooltip id="settings.notifications.general" role={role} tier={tier} onLearnMore={openManual} />
                             <Switch
                                 value={prefs.push_notifications}
                                 onValueChange={() => togglePref('push_notifications')}
@@ -127,5 +165,16 @@ export default function StudentSettings() {
                 />
             </View>
         </ScrollView>
-    )
+    );
+
+    return (
+        <SettingsWithManual
+            role={role}
+            tier={tier}
+            initialTab={activeTab}
+            initialManualAnchor={manualAnchor}
+            settingsContent={settingsContent}
+            onTabChange={handleTabChange}
+        />
+    );
 }

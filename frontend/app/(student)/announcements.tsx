@@ -4,6 +4,8 @@ import { ChevronLeft, Megaphone, BookOpen, User, Clock } from "lucide-react-nati
 import { router } from "expo-router";
 import { StudentService } from "@/services/StudentService";
 import { format } from "date-fns";
+import { HelpTooltip } from "@/components/settings/HelpTooltip";
+import { useSubscriptionTier } from "@/hooks/useSubscriptionTier";
 
 interface Announcement {
     id: string;
@@ -23,6 +25,7 @@ interface Announcement {
 }
 
 export default function StudentAnnouncementsPage() {
+    const tier = useSubscriptionTier();
     const [announcements, setAnnouncements] = useState<Announcement[]>([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
@@ -53,14 +56,14 @@ export default function StudentAnnouncementsPage() {
     return (
         <View className="flex-1 bg-gray-50">
             {/* Header */}
-            <View className="bg-white px-6 pt-12 pb-6 border-b border-gray-100">
-                <View className="flex-row items-center justify-between mb-2">
-                    <TouchableOpacity onPress={() => router.back()} className="bg-gray-100 p-2 rounded-full">
-                        <ChevronLeft size={24} color="#374151" />
-                    </TouchableOpacity>
-                    <Text className="text-2xl font-bold text-gray-900">Announcements</Text>
-                    <View className="w-10" />
-                </View>
+                <View className="bg-white px-6 pt-12 pb-6 border-b border-gray-100">
+                    <View className="flex-row items-center justify-between mb-2">
+                        <TouchableOpacity onPress={() => router.back()} className="bg-gray-100 p-2 rounded-full">
+                            <ChevronLeft size={24} color="#374151" />
+                        </TouchableOpacity>
+                        <Text className="text-2xl font-bold text-gray-900">Announcements</Text>
+                        <HelpTooltip id="student.announcements.feed" role="student" tier={tier} onLearnMore={(a) => router.push({ pathname: '/(student)/settings', params: { manual: '1', anchor: a || 'student-workflow' } } as any)} />
+                    </View>
                 <Text className="text-gray-500 text-sm text-center">Stay updated with your teachers</Text>
             </View>
 

@@ -24,6 +24,7 @@ export function HelpTooltip({ id, role, tier, onLearnMore }: HelpTooltipProps) {
   const { isDark } = useTheme();
   const [open, setOpen] = useState(false);
   const [anchor, setAnchor] = useState({ x: 0, y: 0, w: 20, h: 20 });
+  const [webVisible, setWebVisible] = useState(false);
   const hoverCloseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const triggerRef = useRef<View | null>(null);
 
@@ -59,15 +60,22 @@ export function HelpTooltip({ id, role, tier, onLearnMore }: HelpTooltipProps) {
     });
   };
 
-  const openTooltip = () => {
-    clearHoverTimer();
-    updateAnchorFromTrigger();
-    setOpen(true);
-  };
-
   const closeTooltipSoon = () => {
     clearHoverTimer();
-    hoverCloseTimer.current = setTimeout(() => setOpen(false), 120);
+    hoverCloseTimer.current = setTimeout(() => {
+      setOpen(false);
+      setWebVisible(false);
+    }, 180);
+  };
+
+  const showTooltip = () => {
+    clearHoverTimer();
+    updateAnchorFromTrigger();
+    if (Platform.OS === 'web') {
+      setWebVisible(true);
+      return;
+    }
+    setOpen(true);
   };
 
   const trigger = (
@@ -78,13 +86,14 @@ export function HelpTooltip({ id, role, tier, onLearnMore }: HelpTooltipProps) {
       accessibilityRole="button"
       accessibilityLabel={`${entry.title} help`}
       accessibilityHint={entry.text}
-      onHoverIn={Platform.OS === 'web' ? openTooltip : undefined}
+      onHoverIn={Platform.OS === 'web' ? showTooltip : undefined}
       onHoverOut={Platform.OS === 'web' ? closeTooltipSoon : undefined}
-      onFocus={openTooltip}
+      onFocus={showTooltip}
       onBlur={closeTooltipSoon}
-      onPress={openTooltip}
-      onLongPress={openTooltip}
-      style={{ marginLeft: 6, padding: 2 }}
+      onPress={showTooltip}
+      onLongPress={showTooltip}
+      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+      style={{ marginLeft: 6, padding: 4, borderRadius: 999 }}
     >
       <HelpCircle size={14} color={muted} />
     </Pressable>
@@ -136,10 +145,48 @@ export function HelpTooltip({ id, role, tier, onLearnMore }: HelpTooltipProps) {
     </Modal>
   );
 
+  const webPopup = webVisible ? (
+    <Pressable
+      style={{
+        position: 'absolute',
+        top,
+        left,
+        width: cardWidth,
+        backgroundColor: bg,
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: border,
+        padding: 12,
+        zIndex: 99999,
+        shadowColor: '#000',
+        shadowOpacity: 0.18,
+        shadowRadius: 14,
+        shadowOffset: { width: 0, height: 8 },
+      }}
+      onHoverIn={clearHoverTimer}
+      onHoverOut={closeTooltipSoon}
+    >
+      <Text style={{ color: text, fontWeight: '700', fontSize: 12, marginBottom: 4 }}>{entry.title}</Text>
+      <Text style={{ color: muted, fontSize: 12, marginBottom: 8 }}>{entry.text}</Text>
+      {entry.learnMoreAnchor ? (
+        <TouchableOpacity
+          onPress={() => {
+            setWebVisible(false);
+            onLearnMore?.(entry.learnMoreAnchor);
+          }}
+          accessibilityRole="button"
+          accessibilityLabel="Learn more"
+        >
+          <Text style={{ color: '#FF6B00', fontSize: 12, fontWeight: '700' }}>Learn more →</Text>
+        </TouchableOpacity>
+      ) : null}
+    </Pressable>
+  ) : null;
+
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center' }}>
       {trigger}
-      {popup}
+      {Platform.OS === 'web' ? webPopup : popup}
     </View>
   );
 }

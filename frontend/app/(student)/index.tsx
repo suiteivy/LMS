@@ -1,5 +1,6 @@
 import { UnifiedHeader } from "@/components/common/UnifiedHeader";
 import { SubscriptionBanner, SubscriptionGate } from "@/components/shared/SubscriptionComponents";
+import { HelpTooltip } from "@/components/settings/HelpTooltip";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSubscriptionTier } from "@/hooks/useSubscriptionTier";
 import { useNotifications } from "@/contexts/NotificationContext";
@@ -95,6 +96,7 @@ export default function Index() {
   const { profile, displayId, loading: authLoading, studentId, isDemo, logout } = useAuth();
   const { isDark } = useTheme();
   const { hasDiary, showFinancials } = useSubscriptionTier();
+  const tier = useSubscriptionTier();
   const { unreadCount } = useNotifications();
   const router = useRouter();
   const { width } = useWindowDimensions();
@@ -286,40 +288,44 @@ export default function Index() {
               <Text className="ml-2 text-red-600 font-bold text-[10px] uppercase tracking-widest">Logout</Text>
             </TouchableOpacity>
           </View>
-
           {/* ── Welcome ───────────────────────────────────────────────── */}
           <View style={{ marginBottom: 24 }}>
-            <Text style={{
-              color: isDark ? '#475569' : '#94a3b8',
-              fontWeight: '700',
-              fontSize: 9,
-              textTransform: 'uppercase',
-              letterSpacing: 3,
-              marginBottom: 6,
-            }}>
+            <Text className="text-gray-500 dark:text-gray-400 text-[10px] font-bold uppercase tracking-widest mb-2">
               Academic Portal
             </Text>
-            <Text className="text-gray-900 dark:text-white text-3xl font-black">
-              {gpa}
+            <Text className="text-gray-900 dark:text-white text-2xl font-black">
+              Welcome Back
             </Text>
           </View>
-          <View>
-            <Text className="text-gray-500 dark:text-gray-400 text-xs uppercase tracking-widest mb-1">
-              Attendance
-            </Text>
-            <Text className="text-gray-900 dark:text-white text-3xl font-black">
-              {attendancePct}
-            </Text>
+
+          {/* ── Metric Cards ─────────────────────────────────────────── */}
+          <View className="flex-row justify-end mb-2">
+            <HelpTooltip id="student.dashboard.metrics" role="student" tier={tier} onLearnMore={(a) => router.push({ pathname: '/(student)/settings', params: { manual: '1', anchor: a || 'student-workflow' } } as any)} />
+          </View>
+          <View className="flex-row gap-4 mb-6">
+            <View className="flex-1 bg-[#F6F8FA] dark:bg-[#161B22] border border-[#D0D7DE] dark:border-[#21262D] rounded-xl p-4">
+              <Star size={18} color="#FF6900" />
+              <Text className="text-gray-900 dark:text-white text-2xl font-black mt-2">{gpa}</Text>
+              <Text className="text-gray-500 dark:text-gray-400 text-[10px] font-bold uppercase tracking-widest mt-1">GPA Score</Text>
+            </View>
+            <View className="flex-1 bg-[#F6F8FA] dark:bg-[#161B22] border border-[#D0D7DE] dark:border-[#21262D] rounded-xl p-4">
+              <Clock size={18} color="#10B981" />
+              <Text className="text-gray-900 dark:text-white text-2xl font-black mt-2">{attendancePct}</Text>
+              <Text className="text-gray-500 dark:text-gray-400 text-[10px] font-bold uppercase tracking-widest mt-1">Attendance</Text>
+            </View>
           </View>
 
           {/* ── Today's Schedule ─────────────────────────────────────── */}
           <View style={{ marginBottom: 28 }}>
-            <SectionHeader
-              title="Today's Lectures"
-              actionLabel="Full Schedule"
-              onAction={() => router.push("/(student)/timetable" as any)}
-              isDark={isDark}
-            />
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+              <SectionHeader
+                title="Today's Lectures"
+                actionLabel="Full Schedule"
+                onAction={() => router.push("/(student)/timetable" as any)}
+                isDark={isDark}
+              />
+              <HelpTooltip id="student.dashboard.schedule" role="student" tier={tier} onLearnMore={(a) => router.push({ pathname: '/(student)/settings', params: { manual: '1', anchor: a || 'student-workflow' } } as any)} />
+            </View>
 
             {loadingData ? (
               <View style={{ paddingVertical: 32, alignItems: 'center' }}>
@@ -372,7 +378,10 @@ export default function Index() {
 
           {/* ── Academic Tools ────────────────────────────────────────── */}
           <View style={{ marginBottom: 8 }}>
-            <SectionHeader title="Academic Tools" isDark={isDark} />
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+              <SectionHeader title="Academic Tools" isDark={isDark} />
+              <HelpTooltip id="student.dashboard.tools" role="student" tier={tier} onLearnMore={(a) => router.push({ pathname: '/(student)/settings', params: { manual: '1', anchor: a || 'student-workflow' } } as any)} />
+            </View>
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' }}>
               {quickActions.map((action) => (
                 <QuickAction

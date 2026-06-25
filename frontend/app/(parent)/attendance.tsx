@@ -1,5 +1,7 @@
 import { UnifiedHeader } from "@/components/common/UnifiedHeader";
+import { HelpTooltip } from "@/components/settings/HelpTooltip";
 import { useAuth } from "@/contexts/AuthContext";
+import { useSubscriptionTier } from "@/hooks/useSubscriptionTier";
 import { ParentService } from "@/services/ParentService";
 import { router, useLocalSearchParams } from "expo-router";
 import { Calendar as CalendarIcon, CheckCircle2, Clock, Search, XCircle } from "lucide-react-native";
@@ -62,6 +64,7 @@ export default function StudentAttendancePage() {
   const params = useLocalSearchParams<{ studentId: string; studentName?: string; classId?: string }>();
   const { studentId: resolvedStudentId, studentName: resolvedName, ready } = useParentStudentContext(params as any);
   const { isDemo } = useAuth();
+  const tier = useSubscriptionTier();
 
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -125,7 +128,11 @@ export default function StudentAttendancePage() {
           ) : (
             <>
               {/* Attendance Hero */}
-              <View className="bg-gray-900 p-8 rounded-xl shadow-2xl mb-8">
+              <View className="flex-row justify-end mb-2">
+                <HelpTooltip id="parent.attendance.summary" role="parent" tier={tier} onLearnMore={(a) => router.push({ pathname: '/(parent)/settings', params: { manual: '1', anchor: a || 'parent-workflow' } } as any)} />
+              </View>
+              <View className="bg-gray-900 p-8 rounded-xl mb-8">
+
                 <View className="flex-row justify-between items-center mb-10">
                   <View>
                     <Text className="text-white/40 text-[10px] font-bold uppercase tracking-[3px] mb-2">Academic Presence</Text>

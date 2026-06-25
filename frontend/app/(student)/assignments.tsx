@@ -1,4 +1,5 @@
 import { UnifiedHeader } from "@/components/common/UnifiedHeader";
+import { HelpTooltip } from "@/components/settings/HelpTooltip";
 import { useAuth } from "@/contexts/AuthContext";
 import Toast from 'react-native-toast-message';
 import { supabase } from "@/libs/supabase";
@@ -7,6 +8,7 @@ import { router } from "expo-router";
 import { Activity, Calendar, CheckCircle2, ChevronRight, Clock, Download, FileText, X } from "lucide-react-native";
 import React, { useEffect, useState } from "react";
 import { ActivityIndicator, Alert, Linking, Modal, ScrollView, Text, TouchableOpacity, View } from "react-native";
+import { useSubscriptionTier } from "@/hooks/useSubscriptionTier";
 
 interface Assignments {
   id: string
@@ -22,6 +24,7 @@ interface Assignments {
 
 export default function StudentsAssignments() {
   const { studentId, isDemo } = useAuth()
+  const tier = useSubscriptionTier();
   const [loading, setLoading] = useState(false)
   const [filter, setFilter] = useState<"pending" | "completed" | "overdue">('pending')
   const [assignments, setAssignments] = useState<Assignments[]>([])
@@ -263,6 +266,9 @@ export default function StudentsAssignments() {
             )}
 
             {/* Submission Zone */}
+            <View className="flex-row justify-end mb-2">
+              <HelpTooltip id="student.assignments.submission" role="student" tier={tier} onLearnMore={(a) => router.push({ pathname: '/(student)/settings', params: { manual: '1', anchor: a || 'student-workflow' } } as any)} />
+            </View>
             {selectedAssignment?.status === 'completed' ? (
               <View className="bg-green-50 dark:bg-green-950/20 p-8 rounded-xl border border-green-100 dark:border-green-900 items-center">
                 <View className="bg-[#FFFFFF] dark:bg-[#0D1117] p-4 rounded-full shadow-sm mb-4">
