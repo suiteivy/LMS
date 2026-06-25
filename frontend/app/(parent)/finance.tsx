@@ -1,136 +1,157 @@
-<<<<<<< HEAD
 import { UnifiedHeader } from "@/components/common/UnifiedHeader";
+import { SubscriptionGate } from "@/components/shared/SubscriptionComponents";
+import { useParentStudentContext } from "@/hooks/useParentStudentContext";
 import { ParentService } from "@/services/ParentService";
-import { useAuth } from "@/contexts/AuthContext";
-import Toast from 'react-native-toast-message';
+import { formatClassLabel } from "@/utils/classLabel";
+import { setParentSelectedChild } from "@/utils/parentSelectedChild";
 import { router, useLocalSearchParams } from "expo-router";
-import { ArrowDownLeft, ArrowUpRight, Award, CreditCard, Info, Wallet } from "lucide-react-native";
-import React, { useEffect, useState } from "react";
-import { useTheme } from "@/contexts/ThemeContext";
-import { ActivityIndicator, RefreshControl, ScrollView, Text, TouchableOpacity, View, Modal, TextInput, Alert, Image } from "react-native";
-import * as DocumentPicker from 'expo-document-picker';
-import { supabase } from "@/utils/supabase";
-import { FinanceService } from "@/services/FinanceService";
-import { X, CheckCircle2, Upload } from "lucide-react-native";
-import { BlurView } from "expo-blur";
-import { formatCurrency } from "@/utils/currency";
-import { useRealtimeQuery } from "@/hooks/useRealtimeQuery";
+import { ArrowDownLeft, Wallet } from "lucide-react-native";
+import React, { useEffect, useMemo, useState } from "react";
+import {
+  ActivityIndicator,
+  RefreshControl,
+  ScrollView,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
 
+type LinkedStudent = {
+  id: string;
+  class_id?: string | null;
+  class_name?: string | null;
+  grade_level?: string | number | null;
+  form_level?: string | number | null;
+  users?: {
+    full_name?: string | null;
+    first_name?: string | null;
+    last_name?: string | null;
+  };
+};
 
-// Standard formatCurrency utility imported from @/utils/currency
+type FinancePayload = {
+  balance: number;
+  total_fees: number;
+  paid_amount: number;
+  pending_amount: number;
+  paid_percentage: number;
+  fee_structures: Array<{
+    id: string;
+    title: string;
+    amount: number;
+    academic_year?: string;
+    term?: string;
+  }>;
+  transactions: Array<{
+    id: string;
+    type: string;
+    description?: string;
+    date?: string;
+    amount: number;
+    status?: string;
+  }>;
+};
 
-export default function StudentFinancePage() {
-  const { studentId, studentName } = useLocalSearchParams<{ studentId: string; studentName?: string }>();
-  const { isDemo } = useAuth();
-  const { isDark } = useTheme();
+function formatCurrency(amount: number) {
+  return `$${Number(amount || 0).toFixed(2)}`;
+}
+
+function displayStudentName(student?: LinkedStudent | null) {
+  if (!student) return "Student";
+  const user = student.users || {};
+  if (user.full_name) return user.full_name;
+  const joined = `${user.first_name || ""} ${user.last_name || ""}`.trim();
+  return joined || "Student";
+}
+
+function displayClassLabel(student?: LinkedStudent | null) {
+  if (!student) return "Unassigned";
+  if (student.class_name) return student.class_name;
+  const fallback = formatClassLabel({
+    grade_level: student.grade_level,
+    form_level: student.form_level,
+  });
+  return fallback || "Unassigned";
+}
+
+export default function ParentFinancePage() {
+  const params = useLocalSearchParams<{ studentId?: string; studentName?: string; classId?: string }>();
+  const context = useParentStudentContext(params as any, { persistWhenParamPresent: false });
+
+  const [linkedStudents, setLinkedStudents] = useState<LinkedStudent[]>([]);
+  const [selectedStudent, setSelectedStudent] = useState<LinkedStudent | null>(null);
+  const [finance, setFinance] = useState<FinancePayload | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [financeData, setFinanceData] = useState<any>(null);
-  const [bursaries, setBursaries] = useState<any[]>([]);
-  const [bursaryLoading, setBursaryLoading] = useState(false);
-  const [bursariesFetched, setBursariesFetched] = useState(false);
 
-  // Evidence Upload State
-  const [showUploadModal, setShowUploadModal] = useState(false);
-  const [isUploading, setIsUploading] = useState(false);
-  const [amount, setAmount] = useState("");
-  const [reference, setReference] = useState("");
-  const [selectedFile, setSelectedFile] = useState<any>(null);
-  const [feeStructures, setFeeStructures] = useState<any[]>([]);
-  const [selectedFeeId, setSelectedFeeId] = useState("");
+  const selectedName = useMemo(() => displayStudentName(selectedStudent), [selectedStudent]);
+  const selectedClassLabel = useMemo(() => displayClassLabel(selectedStudent), [selectedStudent]);
+  const paidPercentage = Math.max(0, Math.min(100, Number(finance?.paid_percentage || 0)));
 
+  const fetchLinkedStudents = async () => {
+    const students = (await ParentService.getLinkedStudents()) || [];
+    setLinkedStudents(students);
 
-  const fetchFinanceData = async () => {
-    if (!studentId) return;
+    if (students.length === 0) {
+      setSelectedStudent(null);
+      setFinance(null);
+      return;
+    }
+
+    const matched = context.studentId
+      ? students.find((s: LinkedStudent) => s.id === context.studentId)
+      : null;
+    const initial = matched || students[0];
+    setSelectedStudent(initial);
+    await setParentSelectedChild({
+      studentId: initial.id,
+      studentName: displayStudentName(initial),
+      classId: initial.class_id || "",
+    });
+  };
+
+  const fetchFinance = async (studentId: string) => {
+    const payload = await ParentService.getStudentFinance(studentId);
+    setFinance(payload || null);
+  };
+
+  const loadPage = async () => {
     try {
-      const data = await ParentService.getStudentFinance(studentId);
-      setFinanceData(data);
+      setLoading(true);
+      await fetchLinkedStudents();
     } catch (error) {
-      console.error("Error fetching finance data:", error);
+      console.error("Error loading parent finance:", error);
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
   };
 
-  const fetchBursaries = async () => {
-    if (!studentId || bursariesFetched) return;
-    try {
-      setBursaryLoading(true);
-      const data = await ParentService.getStudentBursaries(studentId);
-      setBursaries(data);
-      setBursariesFetched(true);
-    } catch (err) {
-      console.error('Error fetching bursaries:', err);
-    } finally {
-      setBursaryLoading(false);
-    }
-  };
-
-  const fetchFeeStructures = async () => {
-    try {
-      const data = await FinanceService.getFeeStructures();
-      setFeeStructures(data || []);
-      if (data && data.length > 0) setSelectedFeeId(data[0].id);
-    } catch (e) {
-      console.error(e);
-    }
-  };
-=======
-import React, { useEffect } from "react";
-import { View, Text, ActivityIndicator } from "react-native";
-import { router } from "expo-router";
->>>>>>> df05e40555bb1ec7b19b668a6cfb4d742c627c50
-
-export default function ParentFinanceRedirect() {
-  useEffect(() => {
-<<<<<<< HEAD
-    fetchFinanceData();
-    fetchBursaries();
-    fetchFeeStructures();
-  }, [studentId]);
-
-  // Real-time synchronization for parent fee statement screen
-  useRealtimeQuery('financial_transactions', fetchFinanceData);
-  useRealtimeQuery('payments', fetchFinanceData);
-
-
-  const onRefresh = () => {
+  const onRefresh = async () => {
     setRefreshing(true);
-    fetchFinanceData();
+    await loadPage();
   };
 
-  // When accessed directly from the tab bar without a selected student
-  if (!studentId) {
-    return (
-      <View className="flex-1 bg-gray-50 dark:bg-navy">
-        <UnifiedHeader
-          title={studentName ? `${studentName}'s Finance` : "Finance"}
-          subtitle="Fee Statement"
-          role="Parent/Guardian"
-          onBack={() => router.back()}
-          showNotification={false}
-        />
-        <View className="flex-1 items-center justify-center p-8">
-          <View className="bg-[#FFFFFF] dark:bg-[#0D1117]-surface p-10 rounded-xl border border-[#D0D7DE] dark:border-[#21262D] items-center" style={{ width: '100%' }}>
-            <CreditCard size={40} color="#FF6900" style={{ opacity: 0.6 }} />
-            <Text className="text-gray-900 dark:text-white font-bold text-lg text-center mt-6 tracking-tight">
-              Select a Child First
-            </Text>
-            <Text className="text-gray-500 dark:text-gray-400 text-sm text-center mt-3 leading-6">
-              Go to the Home tab and tap a child&apos;s Finance card to view their fee statement.
-            </Text>
-            <TouchableOpacity
-              onPress={() => router.replace("/(parent)" as any)}
-              className="mt-8 bg-[#FF6900] px-8 py-4 rounded-xl"
-            >
-              <Text className="text-white font-bold text-sm">Go to Home</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </View>
-    );
-  }
+  useEffect(() => {
+    if (!context.ready) return;
+    loadPage();
+  }, [context.ready, context.studentId]);
+
+  useEffect(() => {
+    const syncAndFetch = async () => {
+      if (!selectedStudent?.id) return;
+      await setParentSelectedChild({
+        studentId: selectedStudent.id,
+        studentName: displayStudentName(selectedStudent),
+        classId: selectedStudent.class_id || "",
+      });
+      await fetchFinance(selectedStudent.id);
+    };
+
+    syncAndFetch().catch((error) => {
+      console.error("Error fetching finance data:", error);
+    });
+  }, [selectedStudent?.id]);
 
   if (loading && !refreshing) {
     return (
@@ -140,436 +161,195 @@ export default function ParentFinanceRedirect() {
     );
   }
 
-
-  const {
-    balance = 0,
-    total_fees = 0,
-    paid_amount = 0,
-    transactions = []
-  } = financeData || {};
-
-  const paidPct = total_fees > 0 ? Math.round((paid_amount / total_fees) * 100) : 0;
-
   return (
     <View className="flex-1 bg-gray-50 dark:bg-navy">
       <UnifiedHeader
-        title={studentName ? `${studentName}'s Finance` : "Finance"}
-        subtitle="Fee Statement"
+        title="Finance"
+        subtitle={selectedName === "Student" ? "Student Financials" : `${selectedName}'s Financials`}
         role="Parent/Guardian"
         onBack={() => router.back()}
-        showNotification={false}
       />
 
-      <ScrollView
-        className="flex-1"
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 150 }}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={["#FF6900"]} tintColor="#FF6900" />
+      <SubscriptionGate
+        feature="finance"
+        fallback={
+          <View className="flex-1 items-center justify-center px-8">
+            <View className="bg-white dark:bg-navy-surface rounded-3xl border border-gray-100 dark:border-gray-800 p-6 w-full max-w-xl">
+              <Text className="text-gray-900 dark:text-white text-lg font-bold mb-2">Finance Locked</Text>
+              <Text className="text-gray-500 dark:text-gray-400 text-sm">
+                Finance access is not enabled for your institution. Contact your school administrator to enable it.
+              </Text>
+            </View>
+          </View>
         }
       >
-        <View className="p-4 md:p-8">
-
-          {/* Balance Hero */}
-          <View 
-            style={{
-              boxShadow: [{
-                offsetX: 0,
-                offsetY: 15,
-                blurRadius: 30,
-                color: 'rgba(0, 0, 0, 0.3)',
-              }],
-              }}
-            className="bg-gray-900 p-8 rounded-xl mb-8"
-          >
-            <View className="flex-row justify-between items-center mb-8">
-              <View className="flex-1 mr-4">
-                <Text className="text-white/40 text-[10px] font-bold uppercase tracking-[3px] mb-2">Portfolio Balance</Text>
-                <Text className="text-white text-5xl font-black tracking-tighter" adjustsFontSizeToFit numberOfLines={1}>
-                  {formatCurrency(balance)}
+        <ScrollView
+          className="flex-1"
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ paddingBottom: 140 }}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={["#FF6900"]} />}
+        >
+          <View className="p-4 md:p-8">
+            {linkedStudents.length > 1 && (
+              <View className="mb-5">
+                <Text className="text-gray-400 dark:text-gray-500 text-[10px] font-bold uppercase tracking-widest mb-3 px-2">
+                  Select Child
                 </Text>
-                <View className="bg-[#FF6900]/20 self-start px-3 py-1 rounded-full mt-2">
-                  <Text className="text-[#FF6900] text-[10px] font-bold tracking-widest uppercase">{paidPct}% Paid</Text>
-                </View>
-              </View>
-              <View className="w-16 h-16 rounded-full bg-white/5 items-center justify-center border border-white/10">
-                <Wallet size={32} color="white" />
-              </View>
-            </View>
-
-            {/* Progress Visual */}
-            <View className="bg-white/5 p-6 rounded-xl border border-white/5 mb-8">
-              <View className="flex-row justify-between mb-3 px-1">
-                <Text className="text-white/40 text-[8px] font-bold uppercase tracking-widest">Fee Progress</Text>
-                <Text className="text-emerald-400 text-[8px] font-bold uppercase tracking-widest">Active Standing</Text>
-              </View>
-              <View className="bg-white/10 rounded-full h-2 overflow-hidden">
-                <View style={{ width: `${paidPct}%` }} className="bg-[#FF6900] h-2 rounded-full" />
-              </View>
-            </View>
-
-            <View className="flex-row gap-4 pt-8 border-t border-white/10">
-              <View className="flex-1">
-                <Text className="text-white/30 text-[8px] font-bold uppercase tracking-widest mb-1">Total Obligation</Text>
-                <Text className="text-white font-bold text-base">{formatCurrency(total_fees)}</Text>
-              </View>
-              <View className="flex-1 border-l border-white/10 pl-4">
-                <Text className="text-white/30 text-[8px] font-bold uppercase tracking-widest mb-1">Total Clear</Text>
-                <Text className="text-emerald-400 font-bold text-base">{formatCurrency(paid_amount)}</Text>
-              </View>
-            </View>
-          </View>
-
-          {/* Status Feedback */}
-          {Number(balance) > 0 && (
-            <View className="p-6 rounded-xl mb-8 flex-row items-center border border-orange-100 dark:border-orange-900 bg-orange-50 dark:bg-orange-950/30">
-              <View 
-                style={{
-                  boxShadow: [{
-                    offsetX: 0,
-                    offsetY: 1,
-                    blurRadius: 2,
-                    color: 'rgba(0, 0, 0, 0.05)',
-                  }],
-                  }}
-                className="w-10 h-10 rounded-xl items-center justify-center bg-white"
-              >
-                <Info size={20} color="#FF6900" />
-              </View>
-              <Text className="flex-1 ml-4 text-sm font-medium leading-tight text-gray-900 dark:text-gray-100">
-                Outstanding balance of {formatCurrency(balance)}. Please contact the finance office for payment options.
-              </Text>
-            </View>
-          )}
-
-          {/* Transaction Ledger */}
-          <View className="px-2 flex-row justify-between items-center mb-6">
-            <Text className="text-gray-900 dark:text-white font-bold text-xl tracking-tight">Financial Statements</Text>
-            <TouchableOpacity 
-              onPress={() => setShowUploadModal(true)}
-              style={{
-                boxShadow: [{
-                  offsetX: 0,
-                  offsetY: 1,
-                  blurRadius: 2,
-                  color: isDark ? 'rgba(0, 0, 0, 0.4)' : 'rgba(0, 0, 0, 0.05)',
-                }],
-                shadowOpacity: isDark ? 0.4 : 0.05,
-                }}
-              className="flex-row items-center bg-[#FFFFFF] dark:bg-[#0D1117]-surface px-4 py-2 rounded-xl border border-[#D0D7DE] dark:border-[#21262D]"
-            >
-              <CreditCard size={14} color="#FF6900" />
-              <Text className="text-gray-900 dark:text-white text-[10px] font-bold uppercase tracking-widest ml-2">Upload Evidence</Text>
-            </TouchableOpacity>
-          </View>
-
-          {transactions.length === 0 ? (
-            <View className="bg-[#FFFFFF] dark:bg-[#0D1117]-surface p-8 rounded-xl border border-dashed border-[#D0D7DE] dark:border-[#21262D] items-center mb-8">
-              <Text className="text-gray-500 dark:text-gray-400 text-xs font-bold uppercase tracking-widest italic text-center">
-                No transactions recorded yet
-              </Text>
-            </View>
-          ) : (
-            transactions.map((tx: any) => (
-              <View 
-                key={tx.id} 
-                style={{
-                  boxShadow: [{
-                    offsetX: 0,
-                    offsetY: 1,
-                    blurRadius: 2,
-                    color: isDark ? 'rgba(0, 0, 0, 0.4)' : 'rgba(0, 0, 0, 0.05)',
-                  }],
-                  shadowOpacity: isDark ? 0.4 : 0.05,
-                  }}
-                className="bg-[#FFFFFF] dark:bg-[#0D1117]-surface p-5 rounded-xl mb-4 flex-row items-center border border-[#D0D7DE] dark:border-[#21262D]"
-              >
-                <View className={`w-12 h-12 rounded-xl items-center justify-center mr-4 ${tx.direction === "inflow" ? "bg-green-50" : "bg-red-50"}`}>
-                  {tx.direction === "inflow"
-                    ? <ArrowDownLeft size={20} color="#10B981" />
-                    : <ArrowUpRight size={20} color="#F43F5E" />}
-                </View>
-                <View className="flex-1">
-                  <Text className="text-gray-900 dark:text-white font-bold text-sm tracking-tight">
-                    {tx.type || tx.description || "Transaction"}
-                  </Text>
-                  <Text className="text-gray-400 text-[10px] font-bold uppercase tracking-widest mt-1">
-                    {new Date(tx.date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
-                  </Text>
-                </View>
-                <Text className={`font-bold text-base ${tx.direction === "inflow" ? "text-green-600" : "text-gray-900 dark:text-white"}`}>
-                  {tx.direction === "inflow" ? "+" : "-"}{formatCurrency(tx.amount).replace("KES ", "")}
-                </Text>
-              </View>
-            ))
-          )}
-
-          {/* ── Bursaries Section ── */}
-          <View className="mt-8">
-            <Text className="text-gray-900 dark:text-white font-bold text-xl tracking-tight mb-5 px-2">Bursaries</Text>
-            {bursaryLoading ? (
-              <ActivityIndicator size="small" color="#FF6900" />
-            ) : bursaries.length > 0 ? (
-              bursaries.map((item: any) => (
-                <View 
-                  key={item.id} 
-                  style={{
-                    boxShadow: [{
-                      offsetX: 0,
-                      offsetY: 1,
-                      blurRadius: 2,
-                      color: isDark ? 'rgba(0, 0, 0, 0.4)' : 'rgba(0, 0, 0, 0.05)',
-                    }],
-                    shadowOpacity: isDark ? 0.4 : 0.05,
-                    }}
-                  className="bg-[#FFFFFF] dark:bg-[#0D1117]-surface rounded-[28px] mb-4 border border-[#D0D7DE] dark:border-[#21262D] overflow-hidden"
-                >
-                  <View className="h-1.5 bg-emerald-500" />
-                  <View className="p-5">
-                    <View className="flex-row justify-between items-start mb-2">
-                      <Text className="text-gray-900 dark:text-white font-bold text-sm flex-1 mr-3">{item.bursary?.title}</Text>
-                      <View className="bg-emerald-100 dark:bg-emerald-950/40 px-2 py-0.5 rounded-full border border-emerald-200 dark:border-emerald-800">
-                        <Text className="text-emerald-700 dark:text-emerald-400 text-[9px] font-extrabold uppercase tracking-wider">Approved</Text>
-                      </View>
-                    </View>
-
-                    {item.bursary?.description && (
-                      <Text className="text-gray-500 dark:text-gray-400 text-xs mb-3 leading-5">{item.bursary.description}</Text>
-                    )}
-
-                    <View className="bg-gray-900 rounded-xl p-4 flex-row justify-between items-center">
-                      <View>
-                        <Text className="text-white/40 text-[9px] font-bold uppercase tracking-widest mb-1">Amount Awarded</Text>
-                        <Text className="text-white text-2xl font-black">{formatCurrency(item.amount_awarded || item.bursary?.amount || 0)}</Text>
-                      </View>
-                      <View className="w-12 h-12 rounded-full bg-emerald-500/10 border border-emerald-500/20 items-center justify-center">
-                        <Award size={22} color="#10B981" />
-                      </View>
-                    </View>
-
-                    {(item.bursary?.deadline || item.notes) && (
-                      <View className="flex-row gap-2 flex-wrap mt-3">
-                        {item.bursary?.deadline && (
-                          <View className="bg-gray-50 dark:bg-gray-800 px-3 py-1.5 rounded-xl flex-row items-center gap-1">
-                            <Text className="text-[9px] font-bold text-gray-400 uppercase tracking-wider">Deadline:</Text>
-                            <Text className="text-xs font-bold text-gray-900 dark:text-white">
-                              {new Date(item.bursary.deadline).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })}
-                            </Text>
-                          </View>
-                        )}
-                        {item.notes && (
-                          <View className="bg-blue-50 dark:bg-blue-950/30 px-3 py-1.5 rounded-xl">
-                            <Text className="text-xs text-blue-700 dark:text-blue-400 font-medium">{item.notes}</Text>
-                          </View>
-                        )}
-                      </View>
-                    )}
-                  </View>
-                </View>
-              ))
-            ) : (
-              <View className="bg-[#FFFFFF] dark:bg-[#0D1117]-surface p-8 rounded-xl border border-dashed border-[#D0D7DE] dark:border-[#21262D] items-center">
-                <Award size={36} color="#E5E7EB" />
-                <Text className="text-gray-400 text-sm font-bold text-center mt-4">No approved bursaries</Text>
-              </View>
-            )}
-          </View>
-
-        </View>
-      </ScrollView>
-
-      {/* Upload Evidence Modal */}
-      <Modal
-        visible={showUploadModal}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setShowUploadModal(false)}
-      >
-        <View className="flex-1 justify-end bg-black/60">
-          <BlurView intensity={20} tint={isDark ? "dark" : "light"} className="absolute inset-0" />
-          <View className="bg-[#FFFFFF] dark:bg-[#0D1117]-surface rounded-t-[48px] p-8 pb-12 border-t border-[#D0D7DE] dark:border-[#21262D]">
-            <View className="flex-row justify-between items-center mb-8">
-              <View>
-                <Text className="text-gray-900 dark:text-white font-black text-2xl tracking-tighter">Submit Evidence</Text>
-                <Text className="text-gray-400 text-xs font-bold uppercase tracking-widest mt-1">Proof of Fee Payment</Text>
-              </View>
-              <TouchableOpacity 
-                onPress={() => setShowUploadModal(false)}
-                className="w-10 h-10 rounded-full bg-gray-100 dark:bg-gray-800 items-center justify-center"
-              >
-                <X size={20} color={isDark ? "#FFF" : "#000"} />
-              </TouchableOpacity>
-            </View>
-
-            <ScrollView showsVerticalScrollIndicator={false}>
-              <View className="space-y-6">
-                {/* Fee Structure Selection */}
-                <View>
-                  <Text className="text-gray-500 dark:text-gray-400 text-[10px] font-black uppercase tracking-[2px] mb-3 ml-1">Fee Category</Text>
-                  <View className="flex-row flex-wrap gap-2">
-                    {feeStructures.map(fee => (
+                <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                  {linkedStudents.map((student) => {
+                    const active = student.id === selectedStudent?.id;
+                    return (
                       <TouchableOpacity
-                        key={fee.id}
-                        onPress={() => setSelectedFeeId(fee.id)}
-                        className={`px-4 py-3 rounded-xl border ${selectedFeeId === fee.id ? 'bg-[#FF6900] border-[#FF6900]' : 'bg-gray-50 dark:bg-gray-800 border-[#D0D7DE] dark:border-[#21262D]'}`}
+                        key={student.id}
+                        onPress={() => setSelectedStudent(student)}
+                        className={`mr-3 px-5 py-2.5 rounded-2xl border ${
+                          active
+                            ? "bg-[#FF6900] border-[#FF6900]"
+                            : "bg-white dark:bg-navy-surface border-gray-100 dark:border-gray-800"
+                        }`}
                       >
-                        <Text className={`text-xs font-bold ${selectedFeeId === fee.id ? 'text-white' : 'text-gray-600 dark:text-gray-400'}`}>
-                          {fee.title}
+                        <Text
+                          className={`text-xs font-bold ${active ? "text-white" : "text-gray-700 dark:text-gray-200"}`}
+                        >
+                          {displayStudentName(student)}
                         </Text>
                       </TouchableOpacity>
-                    ))}
+                    );
+                  })}
+                </ScrollView>
+              </View>
+            )}
+
+            {linkedStudents.length === 0 ? (
+              <View className="bg-white dark:bg-navy-surface p-8 rounded-3xl border border-dashed border-gray-200 dark:border-gray-700 items-center">
+                <Text className="text-gray-500 dark:text-gray-400 text-sm font-medium text-center">
+                  No students are linked to this parent account.
+                </Text>
+              </View>
+            ) : (
+              <>
+                <View className="px-2 mb-4">
+                  <View className="self-start bg-white dark:bg-navy-surface border border-gray-100 dark:border-gray-800 rounded-full px-3 py-1.5">
+                    <Text className="text-[10px] font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400">
+                      Viewing: <Text className="text-gray-900 dark:text-white">{selectedName}</Text> · {selectedClassLabel}
+                    </Text>
                   </View>
                 </View>
 
-                {/* Amount Input */}
-                <View>
-                  <Text className="text-gray-500 dark:text-gray-400 text-[10px] font-black uppercase tracking-[2px] mb-3 ml-1">Amount Paid (KSh)</Text>
-                  <TextInput
-                    value={amount}
-                    onChangeText={setAmount}
-                    placeholder="e.g. 50000"
-                    placeholderTextColor={isDark ? "#4B5563" : "#9CA3AF"}
-                    keyboardType="numeric"
-                    className="bg-gray-50 dark:bg-gray-800 p-5 rounded-xl text-gray-900 dark:text-white font-bold"
-                  />
+                <View className="bg-gray-900 p-8 rounded-[40px] mb-6">
+                  <View className="flex-row justify-between items-center mb-6">
+                    <View>
+                      <Text className="text-white/40 text-[10px] font-bold uppercase tracking-[3px] mb-2">Outstanding Balance</Text>
+                      <Text className="text-white text-5xl font-black tracking-tighter">
+                        {formatCurrency(finance?.balance || 0)}
+                      </Text>
+                    </View>
+                    <View className="w-14 h-14 rounded-full bg-white/10 items-center justify-center border border-white/20">
+                      <Wallet size={26} color="white" />
+                    </View>
+                  </View>
+
+                  <View className="flex-row pt-6 border-t border-white/10">
+                    <View className="flex-1">
+                      <Text className="text-white/40 text-[8px] font-bold uppercase tracking-widest mb-1">Total Fees</Text>
+                      <Text className="text-white font-bold text-base">{formatCurrency(finance?.total_fees || 0)}</Text>
+                    </View>
+                    <View className="flex-1 border-l border-white/10 pl-4">
+                      <Text className="text-white/40 text-[8px] font-bold uppercase tracking-widest mb-1">Paid</Text>
+                      <Text className="text-emerald-400 font-bold text-base">{formatCurrency(finance?.paid_amount || 0)}</Text>
+                    </View>
+                    <View className="flex-1 border-l border-white/10 pl-4">
+                      <Text className="text-white/40 text-[8px] font-bold uppercase tracking-widest mb-1">Pending</Text>
+                      <Text className="text-amber-400 font-bold text-base">{formatCurrency(finance?.pending_amount || 0)}</Text>
+                    </View>
+                  </View>
+
+                  <View className="mt-6 pt-5 border-t border-white/10">
+                    <View className="flex-row justify-between items-center mb-2">
+                      <Text className="text-white/60 text-[10px] font-bold uppercase tracking-widest">Payment Progress</Text>
+                      <Text className="text-white font-black text-xs">{paidPercentage}%</Text>
+                    </View>
+                    <View className="h-2.5 rounded-full bg-white/10 overflow-hidden">
+                      <View
+                        className="h-full bg-[#FF6900]"
+                        style={{ width: `${paidPercentage}%` }}
+                      />
+                    </View>
+                    <View className="flex-row justify-between mt-2">
+                      <Text className="text-white/50 text-[10px] font-semibold">
+                        Paid {formatCurrency(finance?.paid_amount || 0)}
+                      </Text>
+                      <Text className="text-white/50 text-[10px] font-semibold">
+                        Remaining {formatCurrency(finance?.balance || 0)}
+                      </Text>
+                    </View>
+                  </View>
                 </View>
 
-                {/* Reference Input */}
-                <View className="mt-6">
-                  <Text className="text-gray-500 dark:text-gray-400 text-[10px] font-black uppercase tracking-[2px] mb-3 ml-1">Reference Number / M-PESA ID</Text>
-                  <TextInput
-                    value={reference}
-                    onChangeText={setReference}
-                    placeholder="e.g. QXJ82910XX"
-                    placeholderTextColor={isDark ? "#4B5563" : "#9CA3AF"}
-                    autoCapitalize="characters"
-                    className="bg-gray-50 dark:bg-gray-800 p-5 rounded-xl text-gray-900 dark:text-white font-bold"
-                  />
-                </View>
-
-                {/* File Picker */}
-                <TouchableOpacity 
-                  onPress={async () => {
-                    const res = await DocumentPicker.getDocumentAsync({ type: ['image/*', 'application/pdf'] });
-                    if (!res.canceled) setSelectedFile(res.assets[0]);
-                  }}
-                  className="mt-6 border-2 border-dashed border-[#D0D7DE] dark:border-[#21262D] rounded-xl p-8 items-center justify-center bg-gray-50/50 dark:bg-gray-800/20"
-                >
-                  {selectedFile ? (
-                    <View className="items-center">
-                      <CheckCircle2 size={32} color="#10B981" />
-                      <Text className="text-gray-900 dark:text-white font-bold text-sm mt-3">{selectedFile.name}</Text>
-                      <Text className="text-gray-400 text-[10px] mt-1">Tap to change file</Text>
+                <View className="mb-6">
+                  <Text className="text-gray-900 dark:text-white font-bold text-lg px-1 mb-3">Current Fee Structures</Text>
+                  {(finance?.fee_structures || []).length === 0 ? (
+                    <View className="bg-white dark:bg-navy-surface rounded-3xl border border-gray-100 dark:border-gray-800 p-5">
+                      <Text className="text-gray-500 dark:text-gray-400 text-sm">No fee structures for the active period.</Text>
                     </View>
                   ) : (
-                    <View className="items-center">
-                      <View className="w-12 h-12 bg-[#FF6900]/10 rounded-xl items-center justify-center mb-3">
-                        <Upload size={24} color="#FF6900" />
+                    finance?.fee_structures?.map((fee) => (
+                      <View
+                        key={fee.id}
+                        className="bg-white dark:bg-navy-surface rounded-3xl border border-gray-100 dark:border-gray-800 p-5 mb-3"
+                      >
+                        <View className="flex-row justify-between items-start">
+                          <View className="flex-1 mr-3">
+                            <Text className="text-gray-900 dark:text-white font-bold text-sm">{fee.title || "Fee item"}</Text>
+                            <Text className="text-gray-400 dark:text-gray-500 text-[10px] font-bold uppercase tracking-widest mt-1">
+                              {fee.term || "Term"} {fee.academic_year || ""}
+                            </Text>
+                          </View>
+                          <Text className="text-gray-900 dark:text-white font-black text-base">{formatCurrency(fee.amount || 0)}</Text>
+                        </View>
                       </View>
-                      <Text className="text-gray-900 dark:text-white font-bold text-sm">Select Receipt / Proof</Text>
-                      <Text className="text-gray-400 text-[10px] mt-1">PNG, JPG or PDF (Max 5MB)</Text>
+                    ))
+                  )}
+                </View>
+
+                <View>
+                  <Text className="text-gray-900 dark:text-white font-bold text-lg px-1 mb-3">Recent Transactions</Text>
+                  {(finance?.transactions || []).length === 0 ? (
+                    <View className="bg-white dark:bg-navy-surface rounded-3xl border border-gray-100 dark:border-gray-800 p-5">
+                      <Text className="text-gray-500 dark:text-gray-400 text-sm">No transactions found for this student.</Text>
                     </View>
-                  )}
-                </TouchableOpacity>
-
-                {/* Submit Button */}
-                <TouchableOpacity
-                  disabled={isUploading || !amount || !reference || !selectedFile}
-                  onPress={async () => {
-                    if (isDemo) {
-                      const newTx = {
-                        id: Math.random().toString(),
-                        amount: parseFloat(amount),
-                        direction: 'inflow',
-                        type: 'Fee Payment (Pending Verification)',
-                        date: new Date().toISOString(),
-                        description: `Evidence Submitted (Ref: ${reference})`
-                      };
-                      setFinanceData((prev: any) => ({
-                        ...prev,
-                        transactions: [newTx, ...(prev?.transactions || [])]
-                      }));
-                      setShowUploadModal(false);
-                      setAmount("");
-                      setReference("");
-                      setSelectedFile(null);
-                      Toast.show({
-                        type: 'success',
-                        text1: 'Done',
-                        text2: 'Changes saved.'
-                      });
-                      return;
-                    }
-                    try {
-                      setIsUploading(true);
-                      
-                      // 1. Upload to Supabase Storage
-                      const fileExt = selectedFile.name.split('.').pop();
-                      const fileName = `${Date.now()}.${fileExt}`;
-                      const filePath = `${studentId}/${fileName}`;
-
-                      // Fetch the file as a blob
-                      const response = await fetch(selectedFile.uri);
-                      const blob = await response.blob();
-
-                      const { data: uploadData, error: uploadError } = await supabase.storage
-                        .from('payment_proofs')
-                        .upload(filePath, blob, { contentType: selectedFile.mimeType });
-
-                      if (uploadError) throw uploadError;
-
-                      const { data: { publicUrl } } = supabase.storage
-                        .from('payment_proofs')
-                        .getPublicUrl(filePath);
-
-                      // 2. Submit to Backend
-                      await FinanceService.submitEvidence({
-                        student_id: studentId,
-                        fee_structure_id: selectedFeeId,
-                        amount: parseFloat(amount),
-                        payment_method: 'bank_transfer',
-                        reference_number: reference,
-                        proof_url: publicUrl,
-                        notes: `M-PESA/Reference: ${reference}`
-                      });
-
-                      Alert.alert("Success", "Payment evidence submitted successfully for review.");
-                      setShowUploadModal(false);
-                      setAmount("");
-                      setReference("");
-                      setSelectedFile(null);
-                      fetchFinanceData();
-                    } catch (e: any) {
-                      console.error(e);
-                      Alert.alert("Upload Failed", e.message || "An error occurred while uploading.");
-                    } finally {
-                      setIsUploading(false);
-                    }
-                  }}
-                  className={`mt-10 p-5 rounded-xl items-center justify-center ${isUploading || !amount || !reference || !selectedFile ? 'bg-gray-200 dark:bg-gray-800' : 'bg-[#FF6900]'}`}
-                >
-                  {isUploading ? (
-                    <ActivityIndicator color="white" />
                   ) : (
-                    <Text className="text-white font-black text-base uppercase tracking-widest">Submit for Verification</Text>
+                    finance?.transactions?.map((tx) => (
+                      <View
+                        key={tx.id}
+                        className="bg-white dark:bg-navy-surface rounded-3xl border border-gray-100 dark:border-gray-800 p-5 mb-3 flex-row items-center"
+                      >
+                        <View className="w-10 h-10 rounded-2xl items-center justify-center bg-emerald-50 dark:bg-emerald-900/20 mr-3">
+                          <ArrowDownLeft size={18} color="#10B981" />
+                        </View>
+                        <View className="flex-1 mr-2">
+                          <Text className="text-gray-900 dark:text-white font-semibold text-sm">
+                            {tx.description || tx.type || "Payment"}
+                          </Text>
+                          <Text className="text-gray-400 dark:text-gray-500 text-[10px] font-bold uppercase tracking-widest mt-1">
+                            {tx.date ? new Date(tx.date).toLocaleDateString() : "Unknown date"}
+                          </Text>
+                        </View>
+                        <View className="items-end">
+                          <Text className="text-gray-900 dark:text-white font-black text-sm">{formatCurrency(tx.amount || 0)}</Text>
+                          <Text className="text-gray-400 dark:text-gray-500 text-[10px] font-bold uppercase tracking-widest mt-1">
+                            {tx.status || "completed"}
+                          </Text>
+                        </View>
+                      </View>
+                    ))
                   )}
-                </TouchableOpacity>
-              </View>
-            </ScrollView>
+                </View>
+              </>
+            )}
           </View>
-        </View>
-      </Modal>
-=======
-    router.replace("/(parent)" as any);
-  }, []);
-
-  return (
-    <View className="flex-1 items-center justify-center bg-gray-50 dark:bg-navy p-6">
-      <ActivityIndicator size="large" color="#FF6900" />
-      <Text className="text-gray-500 dark:text-gray-400 mt-3 text-center text-sm">
-        Redirecting to Home. Finance is now consolidated on the dashboard.
-      </Text>
->>>>>>> df05e40555bb1ec7b19b668a6cfb4d742c627c50
+        </ScrollView>
+      </SubscriptionGate>
     </View>
   );
 }

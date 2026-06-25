@@ -326,26 +326,8 @@ export function DirectChatView({
       )
       .subscribe();
 
-    const typingChannel = supabase.channel(`conversation:${selectedConversation.id}`, {
-      config: {
-        broadcast: { self: true },
-      },
-    });
-
-    typingChannel
-      .on("broadcast", { event: "typing" }, (payload: any) => {
-        if (!payload?.payload) return;
-        const typingUserId = payload.payload.userId;
-        if (!typingUserId || typingUserId === profile?.id) return;
-        setTypingText(payload.payload.typing ? "Typing..." : "");
-        if (typingResetRef.current) clearTimeout(typingResetRef.current);
-        typingResetRef.current = setTimeout(() => setTypingText(""), 2000);
-      })
-      .subscribe();
-
     return () => {
       supabase.removeChannel(channel);
-      supabase.removeChannel(typingChannel);
     };
   }, [selectedConversation?.id, fetchConversations, isFocused, profile?.id, scheduleAcknowledgeDelivery]);
 
@@ -478,21 +460,8 @@ export function DirectChatView({
   const groupedMessages = useMemo(() => groupMessagesByDate(messages), [messages]);
 
   const sendTypingSignal = (typing: boolean) => {
-    if (!selectedConversation?.id || !profile?.id) return;
-    const channel = supabase.channel(`conversation:${selectedConversation.id}`);
-    channel
-      .subscribe(async (status) => {
-        if (status === "SUBSCRIBED") {
-          await channel.send({
-            type: "broadcast",
-            event: "typing",
-            payload: { userId: profile.id, typing },
-          });
-          setTimeout(() => {
-            supabase.removeChannel(channel);
-          }, 50);
-        }
-      });
+    // Intentionally disabled until private broadcast channel authorization is enforced.
+    return;
   };
 
   const handleInputChanged = (text: string) => {

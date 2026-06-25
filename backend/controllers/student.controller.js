@@ -1,4 +1,74 @@
 const supabase = require("../utils/supabaseClient.js");
+const { buildClassLabel } = require('../utils/classLabel');
+const { getStudentCurrentClassEnrollment } = require('../utils/studentClassEnrollment');
+const { resolveActiveTerm } = require('../utils/resolveActiveTerm');
+
+const normalizeText = (value) => {
+    if (typeof value !== 'string') return '';
+    return value.trim().toLowerCase();
+};
+
+const isAnnualTermSelection = (termName, termId) => {
+    if (termId) return false;
+    const normalized = normalizeText(termName);
+    return !normalized || normalized === 'annual';
+};
+
+const isFeeStructureActiveForTerm = (feeStructure, activeTerm) => {
+    if (!activeTerm) return false;
+
+    const activeYearId = activeTerm.academic_year_id;
+    const activeYearName = normalizeText(activeTerm.academic_years?.name);
+    const requestedYearId = feeStructure?.academic_year_id;
+    const requestedYearName = normalizeText(feeStructure?.academic_year);
+    const hasYearSelection = !!requestedYearId || !!requestedYearName;
+
+    const yearMatches =
+        !hasYearSelection ||
+        ((!!requestedYearId && !!activeYearId && requestedYearId === activeYearId) ||
+            (!!requestedYearName && !!activeYearName && requestedYearName === activeYearName));
+
+    if (!yearMatches) return false;
+
+    if (isAnnualTermSelection(feeStructure?.term, feeStructure?.term_id)) {
+        return true;
+    }
+
+    const requestedTermName = normalizeText(feeStructure?.term);
+    const activeTermName = normalizeText(activeTerm?.name);
+
+    return (
+        (!!feeStructure?.term_id && feeStructure.term_id === activeTerm.id) ||
+        (!!requestedTermName && !!activeTermName && requestedTermName === activeTermName)
+    );
+};
+
+const isFeeStructureApplicableToStudent = (feeStructure, student) => {
+    const scope = normalizeText(feeStructure?.level_scope) || 'all';
+    const gradeLevel = Number(student?.grade_level);
+    const formLevel = Number(student?.form_level);
+
+    if (scope === 'all') return true;
+
+    if (scope === 'grade') {
+        const target = Number(feeStructure?.level_value);
+        return Number.isFinite(target) && Number.isFinite(gradeLevel) && target === gradeLevel;
+    }
+
+    if (scope === 'form') {
+        const target = Number(feeStructure?.level_value);
+        return Number.isFinite(target) && Number.isFinite(formLevel) && target === formLevel;
+    }
+
+    if (scope === 'range') {
+        const from = Number(feeStructure?.level_from);
+        const to = Number(feeStructure?.level_to);
+        const candidate = Number.isFinite(gradeLevel) ? gradeLevel : formLevel;
+        return Number.isFinite(from) && Number.isFinite(to) && Number.isFinite(candidate) && candidate >= from && candidate <= to;
+    }
+
+    return true;
+};
 
 async function purgeExpiredAnnouncementsAndNotifications(institutionId) {
     const nowIso = new Date().toISOString();
@@ -26,14 +96,30 @@ exports.getMyFinance = async (req, res) => {
         // 1. Get student profile linked to this user
         const { data: student } = await supabase
             .from('students')
-            .select('id, fee_balance')
+            .select('id, fee_balance, institution_id, grade_level, form_level')
             .eq('user_id', userId)
             .eq('institution_id', req.institution_id)
             .single();
 
         if (!student) return res.status(404).json({ error: "Student profile not found" });
 
-        // 2. Get transactions
+        // 2. Get active, released fee structures for current term/year only
+        const activeTerm = await resolveActiveTerm(student.institution_id);
+
+        const { data: feeStructureRows } = await supabase
+            .from('fee_structures')
+            .select('*')
+            .eq('institution_id', student.institution_id)
+            .eq('is_active', true)
+            .order('created_at', { ascending: false });
+
+        const feeStructures = (feeStructureRows || [])
+            .filter((row) => isFeeStructureActiveForTerm(row, activeTerm))
+            .filter((row) => isFeeStructureApplicableToStudent(row, student));
+
+        const hasActiveReleasedStructures = feeStructures.length > 0;
+
+        // 3. Get transactions
         const { data: transactions } = await supabase
             .from("financial_transactions")
             .select("*")
@@ -42,16 +128,32 @@ exports.getMyFinance = async (req, res) => {
             .order("date", { ascending: false });
 
         // Calculate paid and total
-        const paidAmount = transactions
-            ?.filter(t => t.type === 'fee_payment' && t.status === 'completed')
-            .reduce((sum, t) => sum + Number(t.amount), 0) || 0;
+        const paidAmount = hasActiveReleasedStructures
+            ? (transactions
+                ?.filter(t => t.type === 'fee_payment' && t.status === 'completed')
+                .reduce((sum, t) => sum + Number(t.amount), 0) || 0)
+            : 0;
 
-        const totalFees = Number(student.fee_balance || 0) + paidAmount;
+        const totalFees = hasActiveReleasedStructures
+            ? (feeStructures || []).reduce((sum, fee) => sum + Number(fee.amount || 0), 0)
+            : 0;
+
+        const balance = hasActiveReleasedStructures
+            ? Math.max(totalFees - paidAmount, 0)
+            : 0;
+
+        const pendingAmount = 0;
+        const paidPercentage = totalFees > 0
+            ? Math.min(100, Math.round((paidAmount / totalFees) * 100))
+            : 0;
 
         res.json({
-            balance: student.fee_balance,
+            balance,
             total_fees: totalFees,
             paid_amount: paidAmount,
+            pending_amount: pendingAmount,
+            paid_percentage: paidPercentage,
+            fee_structures: feeStructures,
             transactions
         });
     } catch (err) {
@@ -79,14 +181,9 @@ exports.getMyTimetable = async (req, res) => {
         }
 
         // 2. Get student's class_id from enrollments
-        const { data: enrollment, error: enrollError } = await supabase
-            .from('class_enrollments')
-            .select('class_id')
-            .eq('student_id', student.id)
-            .eq('status', 'enrolled')
-            .maybeSingle();
+        const enrollment = await getStudentCurrentClassEnrollment(student.id, institution_id);
 
-        if (enrollError || !enrollment) {
+        if (!enrollment) {
             return res.status(404).json({ error: "Student not assigned to a class" });
         }
 
@@ -267,7 +364,37 @@ exports.listStudents = async (req, res) => {
         const { data, error } = await query.order('id');
 
         if (error) throw error;
-        res.json(data || []);
+
+        const students = data || [];
+        const studentIds = students.map((s) => s.id).filter(Boolean);
+
+        let classMap = new Map();
+        if (studentIds.length > 0) {
+            const { data: classRows, error: classRowsError } = await supabase
+                .from('class_enrollments')
+                .select('student_id, class_id, enrolled_at, class:classes(id, grade_level, form_level, stream, level_label)')
+                .in('student_id', studentIds)
+                .order('enrolled_at', { ascending: false });
+
+            if (classRowsError) throw classRowsError;
+
+            for (const row of classRows || []) {
+                if (!classMap.has(row.student_id)) {
+                    classMap.set(row.student_id, {
+                        class_id: row.class_id,
+                        class_name: buildClassLabel(row.class),
+                    });
+                }
+            }
+        }
+
+        const enriched = students.map((student) => ({
+            ...student,
+            class_id: classMap.get(student.id)?.class_id || null,
+            class_name: classMap.get(student.id)?.class_name || 'Unassigned',
+        }));
+
+        res.json(enriched);
     } catch (err) {
         console.error("List students error:", err);
         res.status(500).json({ error: err.message });

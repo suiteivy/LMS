@@ -13,7 +13,7 @@ const ALL_NAV_ITEMS: NavItem[] = [
     { name: "index", title: "Home", icon: Building, route: "/(teacher)" },
     { name: "notifications", title: "Alerts", icon: Bell, route: "/(teacher)/notifications" },
     { name: "management", title: "Manage", icon: LayoutGrid, route: "/(teacher)/management" },
-    { name: "settings", title: "Settings", icon: Settings, route: "/(teacher)/settings" },
+    { name: "accessibility/settings", title: "Accessibility", icon: Settings, route: "/(teacher)/accessibility/settings" },
 ];
 
 // Simplified nav for beta plan
@@ -21,7 +21,7 @@ const BETA_NAV_ITEMS: NavItem[] = [
     { name: "index", title: "Home", icon: Building, route: "/(teacher)" },
     { name: "notifications", title: "Alerts", icon: Bell, route: "/(teacher)/notifications" },
     { name: "management", title: "Manage", icon: LayoutGrid, route: "/(teacher)/management" },
-    { name: "settings", title: "Settings", icon: Settings, route: "/(teacher)/settings" },
+    { name: "accessibility/settings", title: "Accessibility", icon: Settings, route: "/(teacher)/accessibility/settings" },
 ];
 
 // Routes accessible via Manage — registered but hidden from tab bar
@@ -142,6 +142,7 @@ function TeacherTabs() {
                     />
                 );
             })}
+            <Tabs.Screen name="settings" options={{ href: null, headerShown: false }} />
             {/* On free plan, hide paid-only tabs from nav but register them as routes */}
             {/* Register Manage sub-routes as hidden screens (accessible but not in tab bar) */}
             {MANAGE_SUB_ROUTES.map(name => (

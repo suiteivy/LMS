@@ -151,7 +151,7 @@ export default function AttendancePage() {
 
     const selectedSubjectName = subjects.find(s => s.id === selectedSubjectId)?.title || "Select Subject";
     const openManual = (anchor?: string) => {
-        router.push({ pathname: '/(teacher)/settings', params: { manual: '1', anchor: anchor || 'attendance-ops' } } as any);
+        router.push({ pathname: '/(teacher)/accessibility/settings', params: { manual: '1', anchor: anchor || 'attendance-ops' } } as any);
     };
 
     return (

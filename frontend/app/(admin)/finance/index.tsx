@@ -129,21 +129,25 @@ export default function FinanceDashboard() {
         }
     };
 
-    const handleFeeStructureRelease = async (feeStructureId: string) => {
-        try {
-            await FinanceService.releaseFeeStructure(feeStructureId);
-            fetchAllData();
-        } catch (error) {
-            console.error('Error releasing fee structure:', error);
-        }
-    };
-
     const handleFeeStructureDelete = async (feeStructureId: string) => {
         try {
             await FinanceService.deleteFeeStructure(feeStructureId);
             fetchAllData();
         } catch (error) {
             console.error('Error deleting fee structure:', error);
+        }
+    };
+
+    const handleFeeStructureReleaseToggle = async (feeStructureId: string, release: boolean) => {
+        try {
+            if (release) {
+                await FinanceService.releaseFeeStructure(feeStructureId);
+            } else {
+                await FinanceService.revertReleaseFeeStructure(feeStructureId);
+            }
+            fetchAllData();
+        } catch (error) {
+            console.error('Error toggling fee structure release:', error);
         }
     };
 
@@ -223,8 +227,8 @@ export default function FinanceDashboard() {
                             loading={loading}
                             onFeeStructureUpdate={handleFeeStructureUpdate}
                             onFeeStructureCreate={handleFeeStructureCreate}
-                            onFeeStructureRelease={handleFeeStructureRelease}
                             onFeeStructureDelete={handleFeeStructureDelete}
+                            onFeeStructureReleaseToggle={handleFeeStructureReleaseToggle}
                             onRefresh={onRefresh}
                         />
                     )}

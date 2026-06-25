@@ -100,7 +100,7 @@ const MODULES: ManualSection[] = [
   {
     id: 'student-workflow',
     title: 'Student Workflow',
-    roles: ['student'],
+    roles: ['student', 'parent', 'admin', 'teacher'],
     shortBlurb: 'How students track grades, assignments, attendance, and reports in one flow.',
     whatItDoes:
       'Guides students through daily learning visibility: announcements, timetable, assignments, grades, and report-cards.',
@@ -123,7 +123,7 @@ const MODULES: ManualSection[] = [
     id: 'billing-ops',
     title: 'Finance',
     feature: 'billing',
-    roles: ['admin'],
+    roles: ['admin', 'teacher'],
     shortBlurb: 'Manages fee payments, financial visibility, and billing-related controls.',
     whatItDoes: 'Tracks inflows/outstanding balances and powers finance dashboards.',
     whatChanges: 'Payment and ledger updates immediately affect financial cards and reports.',

@@ -96,6 +96,11 @@ export class FinanceService {
         return response.data;
     }
 
+    static async revertReleaseFeeStructure(id: string) {
+        const response = await api.put(`/finance/fee-structures/${id}/revert-release`, {});
+        return response.data;
+    }
+
     static async deleteFeeStructure(id: string) {
         const response = await api.delete(`/finance/fee-structures/${id}`);
         return response.data;

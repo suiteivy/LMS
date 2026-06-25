@@ -13,11 +13,11 @@ import {
     PenLine,
     Award
 } from 'lucide-react-native';
-import { ScrollView, Text, TouchableOpacity, View, Alert } from 'react-native';
+import { ScrollView, Text, TouchableOpacity, View, ActivityIndicator } from 'react-native';
 import { useSubscriptionTier } from "@/hooks/useSubscriptionTier";
 import { useAuth } from "@/contexts/AuthContext";
-import { useEffect, useState } from "react";
 import { supabase } from "@/libs/supabase";
+import React, { useEffect, useState } from "react";
 
 interface FeatureCardProps {
     icon: any;
@@ -28,49 +28,37 @@ interface FeatureCardProps {
     route: string;
     badge?: string;
     tooltipId?: any;
-<<<<<<< HEAD
-    // tier?: any;
-=======
     tier?: any;
->>>>>>> df05e40555bb1ec7b19b668a6cfb4d742c627c50
 }
 
-const FeatureCard = ({ icon: Icon, title, description, color, bgColor, route, badge, tooltipId }: FeatureCardProps) => {
+const FeatureCard = ({ icon: Icon, title, description, color, bgColor, route, badge, tooltipId, tier }: FeatureCardProps) => {
     return (
         <TouchableOpacity
-            className={`bg-[#F6F8FA] dark:bg-[#161B22] p-4 rounded-xl border border-[#D0D7DE] dark:border-[#21262D] mb-3 flex-row items-center`}
-            // onPress={() => {
-            //     if (isDisabled) {
-            //         Alert.alert("Demo Mode", "This feature is not available in demo mode. Please create an account to access it.");
-            //         return;
-            //     }
-            //     router.push(route as any);
-            // }}
-            // activeOpacity={isDisabled ? 1 : 0.7}
+            className="bg-white dark:bg-navy-surface p-5 rounded-[32px] border border-gray-100 dark:border-gray-800 shadow-sm mb-4 flex-row items-center active:bg-gray-50"
+            onPress={() => router.push(route as any)}
         >
-            <View style={{ backgroundColor: bgColor }} className="w-10 h-10 items-center justify-center rounded-xl mr-3 dark:opacity-80">
-                <Icon size={20} color={color} />
+            <View style={{ backgroundColor: bgColor }} className="p-3.5 rounded-2xl mr-4 shadow-sm dark:opacity-90">
+                <Icon size={24} color={color} />
             </View>
-            <View className="flex-1 pr-2">
+            <View className="flex-1">
                 <View className="flex-row items-center">
                     <Text className="text-gray-900 dark:text-gray-100 font-bold text-base tracking-tight">{title}</Text>
-                    {/* {tooltipId ? <HelpTooltip id={tooltipId} role="teacher" onLearnMore={(a) => router.push({ pathname: '/(teacher)/settings', params: { manual: '1', anchor: a || 'reports-ops' } } as any)} /> : null} */}
+                    {tooltipId ? <HelpTooltip id={tooltipId} role="teacher" tier={tier} onLearnMore={(a) => router.push({ pathname: '/(teacher)/accessibility/settings', params: { manual: '1', anchor: a || 'reports-ops' } } as any)} /> : null}
                     {badge && (
-                        <View className="ml-2 bg-[#FF6900] px-2 py-0.5 rounded-md">
-                            <Text className="text-white text-[8px] font-bold uppercase tracking-widest">{badge}</Text>
+                        <View className="ml-2 bg-[#FF6900] px-2 py-0.5 rounded-full">
+                            <Text className="text-white text-[8px] font-bold uppercase">{badge}</Text>
                         </View>
                     )}
                 </View>
-                <Text className="text-gray-500 dark:text-gray-400 text-xs mt-0.5">{description}</Text>
+                <Text className="text-gray-400 text-xs font-medium mt-0.5">{description}</Text>
             </View>
-            <ChevronRight size={18} color="#9CA3AF" />
+            <ChevronRight size={18} color="#D1D5DB" />
         </TouchableOpacity>
     );
 };
 
 export default function ManagementIndex() {
     const tier = useSubscriptionTier();
-    // const tier = "premium"
     const { hasDiary, hasAnalytics } = tier;
     const { teacherId, isDemo } = useAuth();
     const [pendingCount, setPendingCount] = useState<number | null>(null);
@@ -165,41 +153,37 @@ export default function ManagementIndex() {
             title: "Performance",
             description: "Grades and assessment tracking",
             color: "#FF6900",
-            bgColor: "#ffedd5",
+            bgColor: "#f3f4f6",
             route: "/(teacher)/management/grades",
             badge: "Action Required",
-            tooltipId: 'teacher.manage.performance',
-            // tier:"premium"
+            tooltipId: 'teacher.manage.performance'
         },
         {
             icon: ClipboardList,
-            title: "Assignments",
+            title: "Coursework",
             description: "Assignments and submissions",
-            color: "#FF6900",
+            color: "#f97316",
             bgColor: "#ffedd5",
             route: "/(teacher)/management/assignments",
-            tooltipId: 'teacher.manage.coursework',
-            // tier:""
+            tooltipId: 'teacher.manage.coursework'
         },
         {
             icon: CalendarCheck,
-            title: "Attendance",
+            title: "Registrar",
             description: "Mark and track student attendance",
             color: "#8b5cf6",
             bgColor: "#ede9fe",
             route: "/(teacher)/management/attendance",
-            tooltipId: 'teacher.manage.registrar',
-            // tier:""
+            tooltipId: 'teacher.manage.registrar'
         },
         {
             icon: Megaphone,
-            title: "Broadcast",
-            description: "Post updates to your classes",
+            title: "Announcements",
+            description: "View school announcements and updates",
             color: "#ec4899",
             bgColor: "#fce7f3",
             route: "/(teacher)/management/announcements",
-            tooltipId: 'teacher.manage.announcements',
-            // tier:""
+            tooltipId: 'teacher.manage.announcements'
         },
         {
             icon: BarChart3,
@@ -207,37 +191,17 @@ export default function ManagementIndex() {
             description: "Track performance and statistics",
             color: "#3b82f6",
             bgColor: "#dbeafe",
-<<<<<<< HEAD
-            route: hasAnalytics ? "/(teacher)/management/analytics" : "/(admin)/request-feature",
-            badge: hasAnalytics ? undefined : "Add-on",
-            tooltipId: 'teacher.manage.insights',
-            // tier:""
-        },
-        {
-            icon: Wallet,
-            title: "Finance",
-            description: "View payment history and earnings",
-            color: "#22c55e",
-            bgColor: "#dcfce7",
-            route: "/(teacher)/management/earnings",
-            tooltipId: 'teacher.manage.finance',
-            // tier:""
-        },
-        {
-=======
             route: "/(teacher)/management/analytics",
             tooltipId: 'teacher.manage.insights'
         },
         {
->>>>>>> df05e40555bb1ec7b19b668a6cfb4d742c627c50
             icon: BookOpen,
-            title: "Resource Bank",
+            title: "Academic Vault",
             description: "Upload and manage Subject materials",
             color: "#eab308",
             bgColor: "#fef9c3",
             route: "/(teacher)/management/resources",
-            tooltipId: 'teacher.manage.resources',
-            // tier:""
+            tooltipId: 'teacher.manage.resources'
         },
         {
             icon: PenLine,
@@ -246,8 +210,7 @@ export default function ManagementIndex() {
             color: "#3b82f6",
             bgColor: "#dbeafe",
             route: "/(teacher)/management/grade-entry",
-            tooltipId: 'teacher.manage.grade_entry',
-            // tier:""
+            tooltipId: 'teacher.manage.grade_entry'
         },
         {
             icon: Award,
@@ -256,8 +219,7 @@ export default function ManagementIndex() {
             color: "#8b5cf6",
             bgColor: "#ede9fe",
             route: "/(teacher)/management/report-cards",
-            tooltipId: 'teacher.manage.report_cards',
-            // tier:""
+            tooltipId: 'teacher.manage.report_cards'
         },
         {
             icon: MessageSquare,
@@ -266,8 +228,7 @@ export default function ManagementIndex() {
             color: "#0891b2",
             bgColor: "#ecfeff",
             route: "/(teacher)/management/messages",
-            tooltipId: 'teacher.manage.messages',
-            // tier:""
+            tooltipId: 'teacher.manage.messages'
         },
         ...(hasDiary ? [{
             icon: BookOpen,
@@ -276,8 +237,7 @@ export default function ManagementIndex() {
             color: "#f59e0b",
             bgColor: "#fef3c7",
             route: "/(teacher)/management/diary",
-            tooltipId: 'teacher.manage.diary',
-            // tier:""
+            tooltipId: 'teacher.manage.diary'
         }] : [])
     ];
 
@@ -289,7 +249,7 @@ export default function ManagementIndex() {
     });
 
     return (
-        <View className="flex-1 bg-[#FFFFFF] dark:bg-[#0D1117]">
+        <View className="flex-1 bg-gray-50 dark:bg-navy">
             <UnifiedHeader
                 title="Management"
                 subtitle="Management"
@@ -299,31 +259,41 @@ export default function ManagementIndex() {
             <ScrollView
                 className="flex-1"
                 showsVerticalScrollIndicator={false}
-                contentContainerStyle={{ paddingBottom: 60 }}
+                contentContainerStyle={{ paddingBottom: 100 }}
             >
-                <View className="px-5 pt-4">
+                <View className="p-4 md:p-8">
                     {/* Header Text */}
-                    <View className="mb-6">
-                        <Text className="text-gray-500 dark:text-gray-400 font-bold text-xs uppercase tracking-widest mb-1">Faculty Hub</Text>
-                        <Text className="text-gray-900 dark:text-white font-black text-3xl">Academic Tools</Text>
+                    <View className="mb-8 px-2">
+                        <Text className="text-gray-400 dark:text-gray-500 font-bold text-[10px] uppercase tracking-[3px] mb-2">Faculty Hub</Text>
+                        <Text className="text-gray-900 dark:text-white font-bold text-3xl tracking-tight">Academic Tools</Text>
+                    </View>
+
+                    {/* Quick Stats Row */}
+                    <View className="flex-row gap-4 mb-8">
+                        <View className="flex-1 bg-gray-900 dark:bg-navy-surface p-6 rounded-[32px] shadow-lg border border-transparent dark:border-gray-800 justify-center">
+                            <Text className="text-white/40 dark:text-gray-500 text-[8px] font-bold uppercase tracking-widest">Pending</Text>
+                            {statsLoading ? (
+                                <ActivityIndicator size="small" color="white" className="mt-2" style={{ alignSelf: 'flex-start' }} />
+                            ) : (
+                                <Text className="text-white text-3xl font-bold mt-1">{pendingCount ?? 0}</Text>
+                            )}
+                        </View>
+                        <View className="flex-1 bg-white dark:bg-navy-surface p-6 rounded-[32px] border border-gray-100 dark:border-gray-800 shadow-sm justify-center">
+                            <Text className="text-gray-400 dark:text-gray-500 text-[8px] font-bold uppercase tracking-widest">Submitted</Text>
+                            {statsLoading ? (
+                                <ActivityIndicator size="small" color="#FF6900" className="mt-2" style={{ alignSelf: 'flex-start' }} />
+                            ) : (
+                                <Text className="text-gray-900 dark:text-white text-3xl font-bold mt-1">{submittedCount ?? 0}</Text>
+                            )}
+                        </View>
                     </View>
 
                     {/* Feature Cards */}
-<<<<<<< HEAD
-                    <Text className="text-lg font-bold text-gray-900 dark:text-white mb-3">Management Suite</Text>
-                    
-                    {features.map((feature, index) => (
-                        <FeatureCard key={index} {...feature
-
-                       
-                        } />
-=======
                     <View className="px-2 mb-4">
                         <Text className="text-gray-400 font-bold text-[10px] uppercase tracking-widest">Management Suite</Text>
                     </View>
                     {visibleFeatures.map((feature, index) => (
                         <FeatureCard key={index} {...feature} tier={tier} />
->>>>>>> df05e40555bb1ec7b19b668a6cfb4d742c627c50
                     ))}
                 </View>
             </ScrollView>

@@ -97,7 +97,7 @@ export default function AttendancePage() {
             <View className="p-4 md:p-8">
                 {/* Score Hero */}
                 <View className="flex-row justify-end mb-2">
-                    <HelpTooltip id="student.attendance.summary" role="student" tier={tier} onLearnMore={(a) => router.push({ pathname: '/(student)/settings', params: { manual: '1', anchor: a || 'student-workflow' } } as any)} />
+                    <HelpTooltip id="student.attendance.summary" role="student" tier={tier} onLearnMore={(a) => router.push({ pathname: '/(student)/accessibility/settings', params: { manual: '1', anchor: a || 'student-workflow' } } as any)} />
                 </View>
                 <View className="bg-gray-900 p-8 rounded-[40px] shadow-xl mb-8 flex-row items-center">
                     <View className="flex-1">
@@ -134,7 +134,7 @@ export default function AttendancePage() {
                 <View className="px-2 mb-4">
                     <View className="flex-row items-center justify-between">
                         <Text className="text-gray-400 font-bold text-[10px] uppercase tracking-[3px]">Session Logs</Text>
-                        <HelpTooltip id="student.attendance.logs" role="student" tier={tier} onLearnMore={(a) => router.push({ pathname: '/(student)/settings', params: { manual: '1', anchor: a || 'student-workflow' } } as any)} />
+                        <HelpTooltip id="student.attendance.logs" role="student" tier={tier} onLearnMore={(a) => router.push({ pathname: '/(student)/accessibility/settings', params: { manual: '1', anchor: a || 'student-workflow' } } as any)} />
                     </View>
                 </View>
 

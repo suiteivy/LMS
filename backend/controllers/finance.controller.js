@@ -1,42 +1,50 @@
 // controllers/finance.controller.js
 const supabase = require("../utils/supabaseClient.js");
+const { resolveActiveTerm } = require('../utils/resolveActiveTerm');
 
 const normalizeNumeric = (value, fallback = 0) => {
     const parsed = Number(value);
     return Number.isFinite(parsed) ? parsed : fallback;
 };
 
-const resolveFeeStructureActiveState = async ({ institution_id, term_id, academic_year_id, termName, academicYearName, fallbackActive = false }) => {
-    if (!term_id && !termName) {
-        return !!fallbackActive;
+const normalizeText = (value) => {
+    if (typeof value !== 'string') return '';
+    return value.trim().toLowerCase();
+};
+
+const isAnnualTermSelection = (termName, termId) => {
+    if (termId) return false;
+    const normalized = normalizeText(termName);
+    return !normalized || normalized === 'annual';
+};
+
+const resolveFeeStructureCurrentPair = async ({ institution_id, term_id, academic_year_id, termName, academicYearName }) => {
+    const activeTerm = await resolveActiveTerm(institution_id);
+    if (!activeTerm) return false;
+
+    const activeYearId = activeTerm.academic_year_id;
+    const activeYearName = normalizeText(activeTerm.academic_years?.name);
+    const requestedYearName = normalizeText(academicYearName);
+    const hasYearSelection = !!academic_year_id || !!requestedYearName;
+
+    const yearMatches =
+        !hasYearSelection ||
+        ((!!academic_year_id && !!activeYearId && academic_year_id === activeYearId) ||
+        (!!requestedYearName && !!activeYearName && requestedYearName === activeYearName));
+
+    if (!yearMatches) return false;
+
+    if (isAnnualTermSelection(termName, term_id)) {
+        return true;
     }
 
-    let query = supabase
-        .from('terms')
-        .select('id, name, academic_year_id, is_current, academic_years(name)')
-        .eq('institution_id', institution_id);
+    const requestedTermName = normalizeText(termName);
+    const activeTermName = normalizeText(activeTerm.name);
+    const termMatches =
+        (!!term_id && term_id === activeTerm.id) ||
+        (!!requestedTermName && !!activeTermName && requestedTermName === activeTermName);
 
-    if (term_id) {
-        query = query.eq('id', term_id);
-    } else {
-        query = query.eq('name', termName);
-    }
-
-    const { data: term, error: termError } = await query.maybeSingle();
-
-    if (termError || !term) {
-        return !!fallbackActive;
-    }
-
-    if (academic_year_id && term.academic_year_id && term.academic_year_id !== academic_year_id) {
-        return false;
-    }
-
-    if (academicYearName && term.academic_years?.name && term.academic_years.name !== academicYearName) {
-        return false;
-    }
-
-    return !!term.is_current;
+    return termMatches;
 };
 
 /**
@@ -376,7 +384,17 @@ exports.getFeeStructures = async (req, res) => {
             .order('created_at', { ascending: false });
 
         if (error) throw error;
-        res.json(data);
+
+        const transformed = await Promise.all((data || []).map(async (row) => ({
+            ...row,
+            is_current_period: await resolveFeeStructureCurrentPair({
+                institution_id,
+                termName: row.term,
+                academicYearName: row.academic_year,
+            }),
+        })));
+
+        res.json(transformed);
     } catch (err) {
         console.error("Get fee structures error:", err);
         res.status(500).json({ error: err.message });
@@ -396,31 +414,26 @@ exports.updateFeeStructure = async (req, res) => {
 
         const {
             title,
-            description,
             amount,
             academic_year,
             term,
-            is_active,
             academic_year_id,
             term_id,
+            level_scope,
+            level_value,
+            level_from,
+            level_to,
         } = req.body;
-
-        const resolvedActiveState = await resolveFeeStructureActiveState({
-            institution_id,
-            term_id,
-            academic_year_id,
-            termName: term,
-            academicYearName: academic_year,
-            fallbackActive: is_active,
-        });
 
         const updates = {
             title,
-            description,
             amount: normalizeNumeric(amount, 0),
             academic_year,
             term,
-            is_active: resolvedActiveState,
+            level_scope,
+            level_value,
+            level_from,
+            level_to,
         };
 
         const { data, error } = await supabase
@@ -449,38 +462,34 @@ exports.createFeeStructure = async (req, res) => {
 
         const {
             title,
-            description,
             amount,
             academic_year,
             term,
             academic_year_id,
             term_id,
-            is_active,
+            level_scope,
+            level_value,
+            level_from,
+            level_to,
         } = req.body;
 
         if (!title || amount === undefined || amount === null || Number.isNaN(Number(amount))) {
             return res.status(400).json({ error: 'title and amount are required' });
         }
 
-        const resolvedActiveState = await resolveFeeStructureActiveState({
-            institution_id,
-            term_id,
-            academic_year_id,
-            termName: term,
-            academicYearName: academic_year,
-            fallbackActive: is_active,
-        });
-
         const { data, error } = await supabase
             .from("fee_structures")
             .insert([{
                 institution_id,
                 title,
-                description,
                 amount: normalizeNumeric(amount, 0),
                 academic_year,
                 term,
-                is_active: resolvedActiveState,
+                level_scope,
+                level_value,
+                level_from,
+                level_to,
+                is_active: false,
             }])
             .select()
             .single();
@@ -521,11 +530,10 @@ exports.releaseFeeStructure = async (req, res) => {
                 });
             }
 
-            const isCurrentPair = await resolveFeeStructureActiveState({
+            const isCurrentPair = await resolveFeeStructureCurrentPair({
                 institution_id,
                 termName: feeStructure.term,
                 academicYearName: feeStructure.academic_year,
-                fallbackActive: false,
             });
 
             if (!isCurrentPair) {
@@ -568,6 +576,29 @@ exports.deleteFeeStructure = async (req, res) => {
         res.json({ success: true, id });
     } catch (err) {
         console.error('Delete fee structure error:', err);
+        res.status(500).json({ error: err.message });
+    }
+};
+
+exports.revertReleaseFeeStructure = async (req, res) => {
+    try {
+        const { userRole, institution_id } = req;
+        const { id } = req.params;
+        if (!['admin', 'bursary', 'master_admin'].includes(userRole)) return res.status(403).json({ error: 'Unauthorized' });
+        if (!id) return res.status(400).json({ error: 'Fee structure id is required' });
+
+        const { data, error } = await supabase
+            .from('fee_structures')
+            .update({ is_active: false, updated_at: new Date().toISOString() })
+            .eq('id', id)
+            .eq('institution_id', institution_id)
+            .select()
+            .single();
+
+        if (error) throw error;
+        res.json(data);
+    } catch (err) {
+        console.error('Revert release fee structure error:', err);
         res.status(500).json({ error: err.message });
     }
 };

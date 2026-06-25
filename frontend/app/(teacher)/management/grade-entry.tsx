@@ -296,7 +296,7 @@ export default function GradeEntryPage() {
     const { teacherId } = useAuth();
     const tier = useSubscriptionTier();
     const openManual = (anchor?: string) => {
-        router.push({ pathname: '/(teacher)/settings', params: { manual: '1', anchor: anchor || 'grading-ops' } } as any);
+        router.push({ pathname: '/(teacher)/accessibility/settings', params: { manual: '1', anchor: anchor || 'grading-ops' } } as any);
     };
 
     // ── Filter state ──

@@ -1,12 +1,13 @@
 import { UnifiedHeader } from "@/components/common/UnifiedHeader";
 import { HelpTooltip } from "@/components/settings/HelpTooltip";
+import { SubscriptionGate } from "@/components/shared/SubscriptionComponents";
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
+import { formatClassLabel } from '@/utils/classLabel';
 import { ParentService } from '@/services/ParentService';
 import { router } from 'expo-router';
 import {
   Award,
-  Bell,
   BookOpen,
   Calendar,
   CheckCircle,
@@ -29,7 +30,7 @@ export default function ParentIndex() {
 
   if (loading) {
     return (
-      <View className="flex-1 justify-center items-center bg-[#FFFFFF] dark:bg-[#0D1117]">
+      <View className="flex-1 justify-center items-center bg-white dark:bg-navy">
         <ActivityIndicator size="large" color="#FF6900" />
       </View>
     );
@@ -152,9 +153,9 @@ function ParentDashboard({ user, logout }: any) {
     },
     {
       icon: CreditCard,
-      label: "Finance",
+      label: "Fees",
       color: "#059669",
-      onPress: () => undefined,
+      onPress: () => goTo("/(parent)/finance"),
       show: tier.showFinancials,
     },
     {
@@ -192,18 +193,18 @@ function ParentDashboard({ user, logout }: any) {
       onPress: () => goTo("/(parent)/diary"),
       show: tier.hasDiary,
     },
-  ].filter((action) => action.show && action.label !== "Finance");
+  ].filter((action) => action.show);
 
   if (loading && !refreshing) {
     return (
-      <View className="flex-1 justify-center items-center bg-[#FFFFFF] dark:bg-[#0D1117]">
+      <View className="flex-1 justify-center items-center bg-white dark:bg-navy">
         <ActivityIndicator size="large" color="#FF6900" />
       </View>
     );
   }
 
   return (
-    <View className="flex-1 bg-[#FFFFFF] dark:bg-[#0D1117]">
+    <View className="flex-1 bg-white dark:bg-navy">
       <UnifiedHeader
         title="Welcome back"
         subtitle={user?.full_name || "Parent Portal"}
@@ -215,7 +216,7 @@ function ParentDashboard({ user, logout }: any) {
       <ScrollView
         className="flex-1"
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 60, paddingHorizontal: 20, paddingTop: 16 }}
+        contentContainerStyle={{ paddingBottom: 150 }}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={["#FF6900"]} tintColor="#FF6900" />
         }
@@ -264,7 +265,12 @@ function ParentDashboard({ user, logout }: any) {
 
           {/* Child Selection Hero */}
           {selectedStudent && (
-            <View
+            <View className="flex-row justify-end mb-2">
+              <HelpTooltip id="parent.dashboard.child_profile" role="parent" tier={tier} onLearnMore={(a) => router.push({ pathname: '/(parent)/accessibility/settings', params: { manual: '1', anchor: a || 'parent-workflow' } } as any)} />
+            </View>
+          )}
+          {selectedStudent && (
+            <View 
               style={{
                 boxShadow: [{
                   offsetX: 0,
@@ -313,7 +319,7 @@ function ParentDashboard({ user, logout }: any) {
                         <Text className={`font-bold text-xs ${selectedStudent?.id === stu.id ? 'text-white' : 'text-gray-400'}`}>
                           {stu.users?.first_name || stu.users?.full_name?.split(' ')[0]}
                         </Text>
-                        {(stu.grade_level || stu.form_level) && (
+                        { (stu.grade_level || stu.form_level) && (
                           <Text className={`text-[9px] mt-0.5 ${selectedStudent?.id === stu.id ? 'text-white/70' : 'text-gray-600'}`}>
                             {levelLabel.substring(0, 2)} {stu.grade_level || stu.form_level}
                           </Text>
@@ -352,106 +358,96 @@ function ParentDashboard({ user, logout }: any) {
               <View className="px-2 mb-6">
                 <View className="flex-row items-center justify-between">
                   <Text className="text-gray-900 dark:text-white font-bold text-xl tracking-tight">Academic Oversight</Text>
-                  <HelpTooltip id="parent.dashboard.oversight" role="parent" tier={tier} onLearnMore={(a) => router.push({ pathname: '/(parent)/settings', params: { manual: '1', anchor: a || 'parent-workflow' } } as any)} />
+                  <HelpTooltip id="parent.dashboard.oversight" role="parent" tier={tier} onLearnMore={(a) => router.push({ pathname: '/(parent)/accessibility/settings', params: { manual: '1', anchor: a || 'parent-workflow' } } as any)} />
                 </View>
                 <Text className="text-gray-400 dark:text-gray-500 text-xs mt-1">
-                  Viewing: {selectedStudent.users?.first_name || selectedStudent.users?.full_name?.split(' ')[0]}
+                  Viewing: {selectedStudent.users?.first_name || selectedStudent.users?.full_name?.split(' ')[0]} · {selectedStudent.class_name || formatClassLabel({
+                    grade_level: selectedStudent.grade_level,
+                    form_level: selectedStudent.form_level,
+                  }) || `No ${levelLabel}`}
                   {linkedStudents.length > 1 ? ` · ${linkedStudents.length} children` : ''}
                 </Text>
               </View>
 
               <View className="flex-row flex-wrap justify-between px-1 mb-8">
-                {quickActions.map((action) => (
-                  <QuickAction
-                    key={action.label}
-                    icon={action.icon}
-                    label={action.label}
-                    color={action.color}
-                    isDark={isDark}
-                    onPress={action.onPress}
-                  />
-                ))}
+                {quickActions.map((action) => {
+                  const card = (
+                    <QuickAction
+                      key={action.label}
+                      icon={action.icon}
+                      label={action.label}
+                      color={action.color}
+                      isDark={isDark}
+                      onPress={action.onPress}
+                    />
+                  );
+
+                  if (action.label === "Fees") {
+                    return (
+                      <SubscriptionGate key="fees-card" feature="finance">
+                        {card}
+                      </SubscriptionGate>
+                    );
+                  }
+
+                  return card;
+                })}
               </View>
             </>
           )}
-
-          {/* Updates Section */}
-          <SectionHeader
-            title="Institutional Updates"
-            actionLabel="Archive"
-            onAction={() => router.push("/(parent)/announcements" as any)}
-          />
-          <TouchableOpacity
-            onPress={async () => {
-              await logout();
-              router.replace("/(auth)/signIn");
-            }}
-            style={{
-              boxShadow: [{
-                offsetX: 0,
-                offsetY: 1,
-                blurRadius: 2,
-                color: isDark ? 'rgba(0, 0, 0, 0.4)' : 'rgba(0, 0, 0, 0.05)',
-              }],
-              shadowColor: "#000",
-              shadowOffset: { width: 0, height: 1 },
-              shadowOpacity: isDark ? 0.4 : 0.05,
-              shadowRadius: 2,
-              elevation: 1,
-            }}
-            activeOpacity={0.7}
-            className="flex-row items-center bg-white dark:bg-navy-surface px-4 py-2 rounded-2xl border border-gray-100 dark:border-gray-800"
-          >
-            <LogOut size={14} color="#ef4444" />
-            <Text className="ml-2 text-red-600 font-bold text-[10px] uppercase tracking-widest">Logout</Text>
-          </TouchableOpacity>
-
-          <SectionHeader
-            title="Institutional Updates"
-            actionLabel="Archive"
-            onAction={() => router.push("/(parent)/announcements" as any)}
-          />
-          <View className="bg-[#F6F8FA] dark:bg-[#161B22] border border-[#D0D7DE] dark:border-[#21262D] rounded-xl p-6 mb-6 items-center">
-            <Bell size={28} color={isDark ? '#4B5563' : '#9CA3AF'} />
-            <Text className="text-gray-500 dark:text-gray-400 mt-2 text-xs uppercase tracking-widest font-bold text-center">
-              No unread notifications
-            </Text>
-          </View>
         </View>
-
       </ScrollView>
     </View>
   );
 }
 
-const SectionHeader = ({ title, actionLabel, onAction }: any) => (
-  <View className="flex-row justify-between items-end mb-3">
-    <Text className="text-lg font-bold text-gray-900 dark:text-white">{title}</Text>
-    {actionLabel && onAction && (
-      <TouchableOpacity onPress={onAction} activeOpacity={0.7}>
-        <Text className="text-[#FF6900] font-bold text-sm">{actionLabel}</Text>
-      </TouchableOpacity>
-    )}
+const MetricCard = ({ icon: Icon, value, label, color, isDark }: any) => (
+  <View 
+    style={{
+      boxShadow: [{
+        offsetX: 0,
+        offsetY: 1,
+        blurRadius: 2,
+        color: isDark ? 'rgba(0, 0, 0, 0.4)' : 'rgba(0, 0, 0, 0.05)',
+      }],
+      shadowColor: "#000",
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: isDark ? 0.4 : 0.05,
+      shadowRadius: 2,
+      elevation: 1,
+    }}
+    className="flex-1 bg-white dark:bg-navy-surface p-6 rounded-[32px] border border-gray-50 dark:border-gray-800"
+  >
+    <View className={`w-10 h-10 rounded-2xl items-center justify-center mb-4`} style={{ backgroundColor: `${color}15` }}>
+      <Icon size={20} color={color} />
+    </View>
+    <Text className="text-gray-900 dark:text-white text-3xl font-black tracking-tighter">{value}</Text>
+    <Text className="text-gray-400 dark:text-gray-500 text-[8px] font-bold uppercase tracking-[2px] mt-1">{label}</Text>
   </View>
 );
 
-const QuickAction = ({ icon: Icon, label, color, onPress }: any) => (
+const QuickAction = ({ icon: Icon, label, color, onPress, isDark }: any) => (
   <TouchableOpacity
     onPress={onPress}
     activeOpacity={0.7}
-    className="flex-1 bg-[#F6F8FA] dark:bg-[#161B22] border border-[#D0D7DE] dark:border-[#21262D] rounded-xl p-4 mr-3 mb-3 min-w-[140px]"
+    style={{
+      boxShadow: [{
+        offsetX: 0,
+        offsetY: 1,
+        blurRadius: 2,
+        color: isDark ? 'rgba(0, 0, 0, 0.4)' : 'rgba(0, 0, 0, 0.05)',
+      }],
+      shadowColor: "#000",
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: isDark ? 0.4 : 0.05,
+      shadowRadius: 2,
+      elevation: 2,
+    }}
+    className="w-[48%] bg-white dark:bg-navy-surface p-8 rounded-[40px] border border-gray-50 dark:border-gray-800 items-center mb-4 active:opacity-80"
   >
-    <View className="flex-row items-center mb-3">
-      <Icon size={20} color={color} />
+    <View style={{ backgroundColor: isDark ? `${color}25` : `${color}10` }} className="p-4 rounded-3xl mb-3 shadow-inner">
+      <Icon size={24} color={color} />
     </View>
-    <Text className="text-gray-900 dark:text-white font-bold">{label}</Text>
+    <Text className="text-gray-900 dark:text-gray-200 font-bold text-xs uppercase tracking-widest">{label}</Text>
   </TouchableOpacity>
-);
-
-const MetricCard = ({ icon: Icon, value, label, color, isDark }: any) => (
-  <View className="flex-1 bg-[#F6F8FA] dark:bg-[#161B22] border border-[#D0D7DE] dark:border-[#21262D] rounded-xl p-4">
-    <Icon size={18} color={color} />
-    <Text className="text-gray-900 dark:text-white text-2xl font-black mt-2">{value}</Text>
-    <Text className="text-gray-500 dark:text-gray-400 text-[10px] font-bold uppercase tracking-widest mt-1">{label}</Text>
-  </View>
 );

@@ -7,6 +7,7 @@ import { useSubscriptionTier } from '@/hooks/useSubscriptionTier';
 import { GradingAPI } from '@/services/GradingService';
 import { PromotionAPI, type PromotionCycle, type PromotionDecision } from '@/services/PromotionService';
 import { api } from '@/services/api';
+import { formatClassLabel } from '@/utils/classLabel';
 import { router } from 'expo-router';
 import { CheckCircle2, PlayCircle, RefreshCw, ShieldCheck, Users } from 'lucide-react-native';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
@@ -22,7 +23,14 @@ import {
   View,
 } from 'react-native';
 
-type ClassRow = { id: string; display_name?: string; name?: string };
+type ClassRow = {
+  id: string;
+  name?: string;
+  level_label?: string;
+  grade_level?: number | string | null;
+  form_level?: number | string | null;
+  stream?: string | null;
+};
 type TermRow = { id: string; name: string; locked_at?: string | null };
 
 const selectCardColor = (isDark: boolean) => (isDark ? '#161B22' : '#F6F8FA');
@@ -230,22 +238,22 @@ export default function AdminPromotionsScreen() {
             <HelpTooltip id="promotion.from_class" role="admin" tier={tier} onLearnMore={openManual} />
           </View>
           <View style={{ borderColor: border, borderWidth: 1, borderRadius: 10, marginBottom: 8, overflow: 'hidden', backgroundColor: isDark ? '#1F2937' : '#FFFFFF' }}>
-            <Picker selectedValue={fromClassId} onValueChange={(v) => setFromClassId(String(v))} dropdownIconColor={muted} style={{ color: text }}>
-              {classes.map((c) => (
-                <Picker.Item key={c.id} label={c.display_name || c.name || c.id} value={c.id} color={pickerDropdownItemColor} />
-              ))}
-            </Picker>
+              <Picker selectedValue={fromClassId} onValueChange={(v) => setFromClassId(String(v))} dropdownIconColor={muted} style={{ color: text }}>
+                {classes.map((c) => (
+                <Picker.Item key={c.id} label={formatClassLabel(c)} value={c.id} color={pickerDropdownItemColor} />
+                ))}
+              </Picker>
           </View>
           <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
             <Text style={{ color: muted, fontSize: 12 }}>To Class</Text>
             <HelpTooltip id="promotion.to_class" role="admin" tier={tier} onLearnMore={openManual} />
           </View>
           <View style={{ borderColor: border, borderWidth: 1, borderRadius: 10, marginBottom: 8, overflow: 'hidden', backgroundColor: isDark ? '#1F2937' : '#FFFFFF' }}>
-            <Picker selectedValue={toClassId} onValueChange={(v) => setToClassId(String(v))} dropdownIconColor={muted} style={{ color: text }}>
-              {classes.map((c) => (
-                <Picker.Item key={c.id} label={c.display_name || c.name || c.id} value={c.id} color={pickerDropdownItemColor} />
-              ))}
-            </Picker>
+              <Picker selectedValue={toClassId} onValueChange={(v) => setToClassId(String(v))} dropdownIconColor={muted} style={{ color: text }}>
+                {classes.map((c) => (
+                <Picker.Item key={c.id} label={formatClassLabel(c)} value={c.id} color={pickerDropdownItemColor} />
+                ))}
+              </Picker>
           </View>
           <View style={{ flexDirection: 'row', gap: 8 }}>
             <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center' }}>
@@ -258,7 +266,7 @@ export default function AdminPromotionsScreen() {
             </View>
           </View>
           <Text style={{ color: muted, marginTop: 8, fontSize: 12 }}>
-            Path: {selectedFromClass?.display_name || selectedFromClass?.name || '-'} → {selectedToClass?.display_name || selectedToClass?.name || '-'}
+            Path: {selectedFromClass ? formatClassLabel(selectedFromClass) : '-'} → {selectedToClass ? formatClassLabel(selectedToClass) : '-'}
           </Text>
           {selectedTerm?.locked_at ? (
             <Text style={{ color: '#EF4444', marginTop: 8, fontSize: 12 }}>Selected term is locked. Execution is blocked by backend policies.</Text>
@@ -342,5 +350,5 @@ export default function AdminPromotionsScreen() {
   );
 }
   const openManual = (anchor?: string) => {
-    router.push({ pathname: '/(admin)/settings/settings', params: { manual: '1', anchor: anchor || 'promotion-engine' } } as any);
+    router.push({ pathname: '/(admin)/accessibility/settings', params: { manual: '1', anchor: anchor || 'promotion-engine' } } as any);
   };

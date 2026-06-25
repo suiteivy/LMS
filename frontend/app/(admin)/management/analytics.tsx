@@ -69,7 +69,7 @@ export default function AnalyticsScreen() {
     const textPrimary = isDark ? '#FFFFFF' : '#111827';
     const textSecondary = isDark ? '#9ca3af' : '#6b7280';
     const openManual = (anchor?: string) => {
-        router.push({ pathname: '/(admin)/settings/settings', params: { manual: '1', anchor: anchor || 'promotion-engine' } } as any);
+        router.push({ pathname: '/(admin)/accessibility/settings', params: { manual: '1', anchor: anchor || 'promotion-engine' } } as any);
     };
 
     const totalStudents = parseInt(stats.find(s => s.label === "Total Students")?.value || "0", 10) || 0;

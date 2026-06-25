@@ -1,4 +1,61 @@
 const supabase = require("../utils/supabaseClient.js");
+const { buildClassLabel } = require('../utils/classLabel');
+const { resolveActiveTerm } = require('../utils/resolveActiveTerm');
+const { getStudentCurrentClassEnrollment } = require('../utils/studentClassEnrollment');
+
+const normalizeText = (value) => {
+    if (typeof value !== 'string') return '';
+    return value.trim().toLowerCase();
+};
+
+const isAnnualTermSelection = (termName) => {
+    const normalized = normalizeText(termName);
+    return !normalized || normalized === 'annual';
+};
+
+const isFeeStructureActiveForTerm = (feeStructure, activeTerm) => {
+    if (!activeTerm) return false;
+
+    const requestedYearName = normalizeText(feeStructure?.academic_year);
+    const activeYearName = normalizeText(activeTerm?.academic_years?.name);
+    const yearMatches = !requestedYearName || (activeYearName && requestedYearName === activeYearName);
+    if (!yearMatches) return false;
+
+    if (isAnnualTermSelection(feeStructure?.term)) {
+        return true;
+    }
+
+    const requestedTermName = normalizeText(feeStructure?.term);
+    const activeTermName = normalizeText(activeTerm?.name);
+    return !!requestedTermName && !!activeTermName && requestedTermName === activeTermName;
+};
+
+const isFeeStructureApplicableToStudent = (feeStructure, student) => {
+    const scope = normalizeText(feeStructure?.level_scope) || 'all';
+    const gradeLevel = Number(student?.grade_level);
+    const formLevel = Number(student?.form_level);
+
+    if (scope === 'all') return true;
+
+    if (scope === 'grade') {
+        const target = Number(feeStructure?.level_value);
+        return Number.isFinite(target) && Number.isFinite(gradeLevel) && target === gradeLevel;
+    }
+
+    if (scope === 'form') {
+        const target = Number(feeStructure?.level_value);
+        return Number.isFinite(target) && Number.isFinite(formLevel) && target === formLevel;
+    }
+
+    if (scope === 'range') {
+        const from = Number(feeStructure?.level_from);
+        const to = Number(feeStructure?.level_to);
+        const studentLevel = Number.isFinite(gradeLevel) ? gradeLevel : formLevel;
+        return Number.isFinite(from) && Number.isFinite(to) && Number.isFinite(studentLevel) && studentLevel >= from && studentLevel <= to;
+    }
+
+    return true;
+};
 
 async function purgeExpiredAnnouncementsAndNotifications(institutionId) {
     const nowIso = new Date().toISOString();
@@ -57,21 +114,34 @@ exports.getLinkedStudents = async (req, res) => {
                 student:students(
                     id, 
                     grade_level, 
+                    form_level,
                     institution_id,
-                    users(first_name, last_name, full_name, avatar_url, email),
-                    class_enrollments(
-                        class:classes(id, display_name)
-                    )
+                    users(first_name, last_name, full_name, avatar_url, email)
                 )
             `)
             .eq("parent_id", parent.id);
 
         if (error) throw error;
-        
-        const enrichedStudents = students.map(s => ({
-            ...s.student,
-            class_id: s.student.class_enrollments?.[0]?.class?.id || null,
-            class_name: s.student.class_enrollments?.[0]?.class?.display_name || 'Unassigned'
+
+        const enrichedStudents = await Promise.all((students || []).map(async (s) => {
+            const student = s.student;
+            const enrollment = await getStudentCurrentClassEnrollment(student?.id, student?.institution_id || null);
+
+            let classData = null;
+            if (enrollment?.class_id) {
+                const { data: klass } = await supabase
+                    .from('classes')
+                    .select('id, grade_level, form_level, stream, level_label')
+                    .eq('id', enrollment.class_id)
+                    .maybeSingle();
+                classData = klass;
+            }
+
+            return {
+                ...student,
+                class_id: classData?.id || null,
+                class_name: buildClassLabel(classData) || 'Unassigned',
+            };
         }));
 
         res.json(enrichedStudents);
@@ -163,15 +233,25 @@ exports.getStudentFinance = async (req, res) => {
 
         if (!student) return res.status(404).json({ error: "Student not found" });
 
-        // 2. Get fee structures currently active for the institution
-        const { data: feeStructures } = await supabase
+        // 2. Get fee structures and resolve active/applicable rows using the same active-term strategy as admin finance
+        const activeTerm = await resolveActiveTerm(student.institution_id);
+
+        const { data: feeStructureRows } = await supabase
             .from('fee_structures')
-            .select('id, title, description, amount, academic_year, term, is_active')
+            .select('*')
             .eq('institution_id', student.institution_id)
-            .eq('is_active', true)
             .order('created_at', { ascending: false });
 
-        const totalFees = (feeStructures || []).reduce((sum, fee) => sum + Number(fee.amount || 0), 0);
+        const feeStructures = (feeStructureRows || [])
+            .filter((row) => !!row.is_active)
+            .filter((row) => isFeeStructureActiveForTerm(row, activeTerm))
+            .filter((row) => isFeeStructureApplicableToStudent(row, student))
+            .map((row) => ({ ...row, is_active: true }));
+
+        const hasActiveReleasedStructures = feeStructures.length > 0;
+        const totalFees = hasActiveReleasedStructures
+            ? (feeStructures || []).reduce((sum, fee) => sum + Number(fee.amount || 0), 0)
+            : 0;
 
         // 3. Get payment history from payments table
         const { data: paymentRows } = await supabase
@@ -180,17 +260,21 @@ exports.getStudentFinance = async (req, res) => {
             .eq('student_id', studentId)
             .order('payment_date', { ascending: false });
 
-        const paidAmount = (paymentRows || [])
-            .filter((p) => p.status === 'completed')
-            .reduce((sum, p) => sum + Number(p.amount || 0), 0);
+        const paidAmount = hasActiveReleasedStructures
+            ? (paymentRows || [])
+                .filter((p) => p.status === 'completed')
+                .reduce((sum, p) => sum + Number(p.amount || 0), 0)
+            : 0;
 
-        const pendingAmount = (paymentRows || [])
-            .filter((p) => p.status === 'pending')
-            .reduce((sum, p) => sum + Number(p.amount || 0), 0);
+        const pendingAmount = hasActiveReleasedStructures
+            ? (paymentRows || [])
+                .filter((p) => p.status === 'pending')
+                .reduce((sum, p) => sum + Number(p.amount || 0), 0)
+            : 0;
 
         // Prefer derived balance from active fee structures; fallback to stored student fee balance when no structures exist
         const derivedBalance = Math.max(totalFees - paidAmount, 0);
-        const balance = totalFees > 0 ? derivedBalance : Number(student.fee_balance || 0);
+        const balance = hasActiveReleasedStructures ? derivedBalance : 0;
 
         const enrichedTransactions = (paymentRows || []).map((p) => ({
             id: p.id,

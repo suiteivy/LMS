@@ -62,7 +62,7 @@ export default function StudentAnnouncementsPage() {
                             <ChevronLeft size={24} color="#374151" />
                         </TouchableOpacity>
                         <Text className="text-2xl font-bold text-gray-900">Announcements</Text>
-                        <HelpTooltip id="student.announcements.feed" role="student" tier={tier} onLearnMore={(a) => router.push({ pathname: '/(student)/settings', params: { manual: '1', anchor: a || 'student-workflow' } } as any)} />
+                        <HelpTooltip id="student.announcements.feed" role="student" tier={tier} onLearnMore={(a) => router.push({ pathname: '/(student)/accessibility/settings', params: { manual: '1', anchor: a || 'student-workflow' } } as any)} />
                     </View>
                 <Text className="text-gray-500 text-sm text-center">Stay updated with your teachers</Text>
             </View>

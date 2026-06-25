@@ -5,7 +5,7 @@ import { GradingAPI } from '@/services/GradingService';
 import { FeeStructure } from '@/types/types';
 import { formatCurrency } from '@/utils/currency';
 import React, { useEffect, useMemo, useState } from 'react';
-import { Alert, Modal, ScrollView, Switch, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Alert, Modal, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 interface AcademicYearOption {
   id: string;
@@ -25,8 +25,8 @@ interface FeeStructureSectionProps {
   loading: boolean;
   onFeeStructureUpdate: (feeStructure: Partial<FeeStructure>) => void;
   onFeeStructureCreate: (feeStructure: Partial<FeeStructure>) => void;
-  onFeeStructureRelease: (feeStructureId: string) => void;
   onFeeStructureDelete: (feeStructureId: string) => void;
+  onFeeStructureReleaseToggle: (feeStructureId: string, release: boolean) => void;
   onRefresh?: () => void;
 }
 
@@ -40,8 +40,8 @@ const FeeStructureSection: React.FC<FeeStructureSectionProps> = ({
   loading,
   onFeeStructureUpdate,
   onFeeStructureCreate,
-  onFeeStructureRelease,
   onFeeStructureDelete,
+  onFeeStructureReleaseToggle,
 }) => {
   const { isDark } = useTheme();
 
@@ -51,12 +51,12 @@ const FeeStructureSection: React.FC<FeeStructureSectionProps> = ({
 
   const [academicYears, setAcademicYears] = useState<AcademicYearOption[]>([]);
   const [terms, setTerms] = useState<TermOption[]>([]);
-  const [classLevels, setClassLevels] = useState<number[]>([]);
+  const [gradeLevels, setGradeLevels] = useState<number[]>([]);
+  const [formLevels, setFormLevels] = useState<number[]>([]);
   const [loadingOptions, setLoadingOptions] = useState(false);
 
   const [formData, setFormData] = useState({
     title: '',
-    description: '',
     amount: '',
     academic_year: '',
     academic_year_id: '',
@@ -66,7 +66,6 @@ const FeeStructureSection: React.FC<FeeStructureSectionProps> = ({
     level_value: '',
     level_from: '',
     level_to: '',
-    is_active: true,
   });
 
   useEffect(() => {
@@ -95,15 +94,17 @@ const FeeStructureSection: React.FC<FeeStructureSectionProps> = ({
           is_current: !!t.is_current,
         }));
 
-        const extractedLevels = new Set<number>();
+        const extractedGradeLevels = new Set<number>();
+        const extractedFormLevels = new Set<number>();
         (classesData || []).forEach((cls: any) => {
-          if (Number.isFinite(Number(cls.grade_level))) extractedLevels.add(Number(cls.grade_level));
-          if (Number.isFinite(Number(cls.form_level))) extractedLevels.add(Number(cls.form_level));
+          if (Number.isFinite(Number(cls.grade_level))) extractedGradeLevels.add(Number(cls.grade_level));
+          if (Number.isFinite(Number(cls.form_level))) extractedFormLevels.add(Number(cls.form_level));
         });
 
         setAcademicYears(normalizedYears);
         setTerms(normalizedTerms);
-        setClassLevels(Array.from(extractedLevels).sort((a, b) => a - b));
+        setGradeLevels(Array.from(extractedGradeLevels).sort((a, b) => a - b));
+        setFormLevels(Array.from(extractedFormLevels).sort((a, b) => a - b));
 
         if (!formData.academic_year_id && normalizedYears.length > 0) {
           const current = normalizedYears.find((y) => y.is_current) || normalizedYears[0];
@@ -129,13 +130,38 @@ const FeeStructureSection: React.FC<FeeStructureSectionProps> = ({
     return [{ id: ANNUAL_TERM_ID, name: ANNUAL_TERM_NAME, academic_year_id: formData.academic_year_id }, ...scopedTerms];
   }, [terms, formData.academic_year_id]);
 
+  const mergedLevels = useMemo(
+    () => Array.from(new Set([...gradeLevels, ...formLevels])).sort((a, b) => a - b),
+    [gradeLevels, formLevels]
+  );
+
+  const availableLevelScopes = useMemo(() => {
+    const scopes: LevelScope[] = ['all'];
+    if (gradeLevels.length > 0) scopes.push('grade');
+    if (formLevels.length > 0) scopes.push('form');
+    if (mergedLevels.length > 1) scopes.push('range');
+    return scopes;
+  }, [gradeLevels, formLevels, mergedLevels]);
+
   const defaultYear = useMemo(() => academicYears.find((y) => y.is_current) || academicYears[0], [academicYears]);
+
+  useEffect(() => {
+    if (!availableLevelScopes.includes(formData.level_scope)) {
+      const fallbackScope = availableLevelScopes[0] || 'all';
+      setFormData((prev) => ({
+        ...prev,
+        level_scope: fallbackScope,
+        level_value: '',
+        level_from: '',
+        level_to: '',
+      }));
+    }
+  }, [availableLevelScopes, formData.level_scope]);
 
   const resetForm = () => {
     const year = defaultYear;
     setFormData({
       title: '',
-      description: '',
       amount: '',
       academic_year: year?.name || '',
       academic_year_id: year?.id || '',
@@ -145,7 +171,6 @@ const FeeStructureSection: React.FC<FeeStructureSectionProps> = ({
       level_value: '',
       level_from: '',
       level_to: '',
-      is_active: true,
     });
     setEditingStructure(null);
   };
@@ -159,7 +184,6 @@ const FeeStructureSection: React.FC<FeeStructureSectionProps> = ({
     setEditingStructure(structure);
     setFormData({
       title: (structure as any).title || (structure as any).Subject_name || '',
-      description: (structure as any).description || '',
       amount: String((structure as any).amount ?? (structure as any).base_fee ?? ''),
       academic_year: (structure as any).academic_year || defaultYear?.name || '',
       academic_year_id: (structure as any).academic_year_id || defaultYear?.id || '',
@@ -175,7 +199,6 @@ const FeeStructureSection: React.FC<FeeStructureSectionProps> = ({
       level_to: (structure as any).level_to !== null && (structure as any).level_to !== undefined
         ? String((structure as any).level_to)
         : '',
-      is_active: !!structure.is_active,
     });
     setShowForm(true);
   };
@@ -226,7 +249,6 @@ const FeeStructureSection: React.FC<FeeStructureSectionProps> = ({
 
     const payload: Partial<FeeStructure> = {
       title: formData.title.trim(),
-      description: formData.description.trim() || undefined,
       amount: parsedAmount,
       academic_year: formData.academic_year,
       academic_year_id: formData.academic_year_id,
@@ -236,7 +258,6 @@ const FeeStructureSection: React.FC<FeeStructureSectionProps> = ({
       level_value: formData.level_scope === 'grade' || formData.level_scope === 'form' ? Number(formData.level_value) : undefined,
       level_from: formData.level_scope === 'range' ? Number(formData.level_from) : undefined,
       level_to: formData.level_scope === 'range' ? Number(formData.level_to) : undefined,
-      is_active: formData.is_active,
     };
 
     try {
@@ -300,14 +321,6 @@ const FeeStructureSection: React.FC<FeeStructureSectionProps> = ({
               </Text>
             </View>
             <View className="flex-row gap-2">
-              {!isReleased ? (
-                <TouchableOpacity
-                  onPress={() => onFeeStructureRelease((item as any).id)}
-                  className="p-1 px-3 bg-green-600 rounded-xl"
-                >
-                  <Text className="text-white text-[10px] font-black uppercase tracking-widest">Release</Text>
-                </TouchableOpacity>
-              ) : null}
               <TouchableOpacity onPress={() => openEditForm(item)} className="p-1 px-3 bg-slate-900 dark:bg-gray-700 rounded-xl">
                 <Text className="text-white text-[10px] font-black uppercase tracking-widest">Edit</Text>
               </TouchableOpacity>
@@ -321,6 +334,30 @@ const FeeStructureSection: React.FC<FeeStructureSectionProps> = ({
                 className="p-1 px-3 bg-red-600 rounded-xl"
               >
                 <Text className="text-white text-[10px] font-black uppercase tracking-widest">Delete</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => {
+                  const nextActionIsRelease = !isReleased;
+                  Alert.alert(
+                    nextActionIsRelease ? 'Release Fee Structure' : 'Revert Fee Structure Release',
+                    nextActionIsRelease
+                      ? 'This will make the fee structure visible to parents and students for the active period. Continue?'
+                      : 'This will hide the fee structure from parents and students. Continue?',
+                    [
+                      { text: 'Cancel', style: 'cancel' },
+                      {
+                        text: nextActionIsRelease ? 'Release' : 'Revert',
+                        style: nextActionIsRelease ? 'default' : 'destructive',
+                        onPress: () => onFeeStructureReleaseToggle((item as any).id, nextActionIsRelease),
+                      },
+                    ]
+                  );
+                }}
+                className={`p-1 px-3 rounded-xl ${isReleased ? 'bg-amber-600' : 'bg-emerald-600'}`}
+              >
+                <Text className="text-white text-[10px] font-black uppercase tracking-widest">
+                  {isReleased ? 'Revert Release' : 'Release'}
+                </Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -360,11 +397,10 @@ const FeeStructureSection: React.FC<FeeStructureSectionProps> = ({
 
       {loading ? (
         <View className="flex-1 items-center justify-center py-20">
-          <Text className="text-gray-400 text-sm">Loading fee structures…</Text>
           <Spinner label="Loading fee structures" color={isDark ? '#FF6900' : '#FF6900'} />
         </View>
       ) : feeStructures.length === 0 ? (
-        <View className="flex-1 items-center justify-center py-20 border border-dashed border-[#D0D7DE] dark:border-[#21262D] rounded-xl">
+        <View className="flex-1 items-center justify-center py-20 border border-dashed border-gray-200 dark:border-gray-700 rounded-3xl">
           <Text className="text-gray-400 font-bold text-center">No fee structures yet</Text>
           <Text className="text-gray-400 text-sm text-center mt-2">Tap &quot;+ New&quot; to create one.</Text>
         </View>
@@ -411,18 +447,7 @@ const FeeStructureSection: React.FC<FeeStructureSectionProps> = ({
             onChangeText={(v) => setFormData((p) => ({ ...p, title: v }))}
             placeholder="e.g. Grade 10 Annual Fees"
             placeholderTextColor="#9CA3AF"
-            className="bg-[#EAEEF2] dark:bg-[#1C2128] border border-[#D0D7DE] dark:border-[#21262D] rounded-lg px-4 py-4 text-gray-900 dark:text-white font-medium mb-5"
-          />
-
-          <Text className="text-gray-700 dark:text-gray-300 font-bold mb-2 uppercase text-[10px] tracking-widest">Description</Text>
-          <TextInput
-            value={formData.description}
-            onChangeText={(v) => setFormData((p) => ({ ...p, description: v }))}
-            placeholder="Optional details"
-            placeholderTextColor="#9CA3AF"
-            multiline
-            numberOfLines={2}
-            className="bg-[#EAEEF2] dark:bg-[#1C2128] border border-[#D0D7DE] dark:border-[#21262D] rounded-lg px-4 py-4 text-gray-900 dark:text-white font-medium mb-5"
+            className="bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl px-4 py-4 text-gray-900 dark:text-white font-medium mb-5"
           />
 
           <Text className="text-gray-700 dark:text-gray-300 font-bold mb-2 uppercase text-[10px] tracking-widest">Amount (KSh) *</Text>
@@ -432,21 +457,10 @@ const FeeStructureSection: React.FC<FeeStructureSectionProps> = ({
             placeholder="0.00"
             keyboardType="numeric"
             placeholderTextColor="#9CA3AF"
-            className="bg-[#EAEEF2] dark:bg-[#1C2128] border border-[#D0D7DE] dark:border-[#21262D] rounded-lg px-4 py-4 text-gray-900 dark:text-white font-medium mb-5"
+            className="bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl px-4 py-4 text-gray-900 dark:text-white font-medium mb-5"
           />
 
           <Text className="text-gray-700 dark:text-gray-300 font-bold mb-2 uppercase text-[10px] tracking-widest">Academic Year</Text>
-          <TextInput
-            value={formData.academic_year}
-            onChangeText={v => setFormData(p => ({ ...p, academic_year: v }))}
-            placeholder="2025"
-            keyboardType="numeric"
-            placeholderTextColor="#9CA3AF"
-            className="bg-[#EAEEF2] dark:bg-[#1C2128] border border-[#D0D7DE] dark:border-[#21262D] rounded-lg px-4 py-4 text-gray-900 dark:text-white font-medium mb-5"
-          />
-
-          {/* Term picker */}
-          <Text className="text-gray-700 dark:text-gray-300 font-bold mb-2 uppercase text-[10px] tracking-widest">Term</Text>
           <View className="flex-row flex-wrap gap-2 mb-6">
             {academicYears.map((year) => (
               <TouchableOpacity
@@ -468,7 +482,6 @@ const FeeStructureSection: React.FC<FeeStructureSectionProps> = ({
               </TouchableOpacity>
             ))}
           </View>
-
 
           <Text className="text-gray-700 dark:text-gray-300 font-bold mb-2 uppercase text-[10px] tracking-widest">Term</Text>
           <View className="flex-row flex-wrap gap-2 mb-6">
@@ -493,7 +506,7 @@ const FeeStructureSection: React.FC<FeeStructureSectionProps> = ({
 
           <Text className="text-gray-700 dark:text-gray-300 font-bold mb-2 uppercase text-[10px] tracking-widest">Level Target</Text>
           <View className="flex-row flex-wrap gap-2 mb-4">
-            {(['all', 'grade', 'form', 'range'] as LevelScope[]).map((scope) => (
+            {availableLevelScopes.map((scope) => (
               <TouchableOpacity
                 key={scope}
                 onPress={() => setFormData((p) => ({ ...p, level_scope: scope }))}
@@ -508,7 +521,7 @@ const FeeStructureSection: React.FC<FeeStructureSectionProps> = ({
 
           {(formData.level_scope === 'grade' || formData.level_scope === 'form') ? (
             <View className="flex-row flex-wrap gap-2 mb-6">
-              {classLevels.map((lvl) => (
+              {(formData.level_scope === 'grade' ? gradeLevels : formLevels).map((lvl) => (
                 <TouchableOpacity
                   key={`lvl-${lvl}`}
                   onPress={() => setFormData((p) => ({ ...p, level_value: String(lvl) }))}
@@ -545,16 +558,6 @@ const FeeStructureSection: React.FC<FeeStructureSectionProps> = ({
             </View>
           ) : null}
 
-          <View className="flex-row items-center justify-between bg-gray-50 dark:bg-gray-900 rounded-2xl px-4 py-4 mb-8 border border-gray-200 dark:border-gray-700">
-            <Text className="text-gray-900 dark:text-white font-bold">Active</Text>
-            <Switch
-              value={formData.is_active}
-              onValueChange={(v) => setFormData((p) => ({ ...p, is_active: v }))}
-              trackColor={{ false: '#374151', true: '#FF6900' }}
-              thumbColor="white"
-            />
-          </View>
-
           <TouchableOpacity
             onPress={handleSubmit}
             className="bg-gray-900 py-5 rounded-2xl items-center"
@@ -569,9 +572,9 @@ const FeeStructureSection: React.FC<FeeStructureSectionProps> = ({
               </Text>
             )}
           </TouchableOpacity>
-        </ScrollView >
-      </Modal >
-    </View >
+        </ScrollView>
+      </Modal>
+    </View>
   );
 };
 

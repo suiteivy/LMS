@@ -16,10 +16,10 @@ const NAV_ITEMS: NavItem[] = [
     { name: "notifications", title: "Notices", icon: Bell, route: "/(master-admin)/notifications" },
     { name: "password-audit", title: "Password Audit", icon: ShieldAlert, route: "/(master-admin)/password-audit" },
     { name: "support", title: "Support", icon: Headphones, route: "/(master-admin)/support" },
-    { name: "settings", title: "Settings", icon: Settings, route: "/(master-admin)/settings" },
+    { name: "accessibility/settings", title: "Accessibility", icon: Settings, route: "/(master-admin)/accessibility/settings" },
 ];
 
-const MOBILE_TAB_NAMES = ["settings", "index", "institutions", "payments"];
+const MOBILE_TAB_NAMES = ["accessibility/settings", "index", "institutions", "payments"];
 
 const ALL_OTHER = NAV_ITEMS
     .filter(i => !MOBILE_TAB_NAMES.includes(i.name))
@@ -59,14 +59,19 @@ function MasterAdminTabs() {
             }}
         >
             <Tabs.Screen
-                name="settings"
+                name="accessibility/settings"
                 options={{
-                    title: "Settings",
+                    title: "Accessibility",
                     tabBarIcon: ({ size, color }) => {
                         const Icon = Settings as any;
                         return <View><Icon size={size} color={color} strokeWidth={2} /></View>;
                     },
                 }}
+            />
+
+            <Tabs.Screen
+                name="settings"
+                options={{ href: null }}
             />
 
             <Tabs.Screen

@@ -31,6 +31,7 @@ const canMessage = (senderRole, receiverRole) => {
 };
 
 const DELETED_PLACEHOLDER = "This message was deleted";
+const NOT_FOUND_MESSAGE = "Conversation not found";
 
 const computeConversationExpiryIso = (baseDate = new Date()) => {
     const ttlMs = DEFAULT_CONVERSATION_TTL_DAYS * 24 * 60 * 60 * 1000;
@@ -138,6 +139,35 @@ const ensureConversationMembership = async (conversationId, userId, institutionI
     }
 
     return { membership, conversation };
+};
+
+const getAuthorizedMessageContext = async (messageId, userId, institutionId) => {
+    const { data: message, error: messageError } = await supabase
+        .from("messages")
+        .select("id, conversation_id, sender_id, receiver_id, content, created_at, deleted_for_everyone_at, hidden_for_user_ids")
+        .eq("id", messageId)
+        .maybeSingle();
+
+    if (messageError || !message) {
+        return null;
+    }
+
+    if (!message.conversation_id) {
+        const legacyAllowed = message.sender_id === userId || message.receiver_id === userId;
+        if (!legacyAllowed) return null;
+        return { message, membership: null, conversation: null };
+    }
+
+    const membershipContext = await ensureConversationMembership(message.conversation_id, userId, institutionId);
+    if (!membershipContext) {
+        return null;
+    }
+
+    return {
+        message,
+        membership: membershipContext.membership,
+        conversation: membershipContext.conversation,
+    };
 };
 
 const computeDirectKey = (userA, userB) => {
@@ -419,7 +449,7 @@ exports.listConversationMessages = async (req, res) => {
 
         const membership = await ensureConversationMembership(conversationId, userId, institution_id);
         if (!membership) {
-            return res.status(403).json({ error: "Not allowed to access this conversation" });
+            return res.status(404).json({ error: NOT_FOUND_MESSAGE });
         }
 
         let query = supabase
@@ -473,7 +503,7 @@ exports.sendConversationMessage = async (req, res) => {
 
         const membership = await ensureConversationMembership(conversationId, userId, institution_id);
         if (!membership) {
-            return res.status(403).json({ error: "Not allowed to message in this conversation" });
+            return res.status(404).json({ error: NOT_FOUND_MESSAGE });
         }
 
         const trimmed = String(content).trim();
@@ -569,20 +599,11 @@ exports.editMessage = async (req, res) => {
             return res.status(400).json({ error: "newContent is required" });
         }
 
-        const { data: message, error: messageError } = await supabase
-            .from("messages")
-            .select("id, conversation_id, sender_id, content, created_at, deleted_for_everyone_at")
-            .eq("id", messageId)
-            .maybeSingle();
-
-        if (messageError || !message) {
-            return res.status(404).json({ error: "Message not found" });
+        const context = await getAuthorizedMessageContext(messageId, userId, institution_id);
+        if (!context) {
+            return res.status(404).json({ error: NOT_FOUND_MESSAGE });
         }
-
-        const membership = await ensureConversationMembership(message.conversation_id, userId, institution_id);
-        if (!membership) {
-            return res.status(403).json({ error: "Not allowed to edit this message" });
-        }
+        const { message } = context;
 
         if (message.sender_id !== userId) {
             return res.status(403).json({ error: "Only the sender can edit this message" });
@@ -635,20 +656,11 @@ exports.deleteMessageForMe = async (req, res) => {
         const { userId, institution_id } = req;
         const { messageId } = req.params;
 
-        const { data: message, error: messageError } = await supabase
-            .from("messages")
-            .select("id, conversation_id, hidden_for_user_ids")
-            .eq("id", messageId)
-            .maybeSingle();
-
-        if (messageError || !message) {
-            return res.status(404).json({ error: "Message not found" });
+        const context = await getAuthorizedMessageContext(messageId, userId, institution_id);
+        if (!context) {
+            return res.status(404).json({ error: NOT_FOUND_MESSAGE });
         }
-
-        const membership = await ensureConversationMembership(message.conversation_id, userId, institution_id);
-        if (!membership) {
-            return res.status(403).json({ error: "Not allowed to update this message" });
-        }
+        const { message } = context;
 
         const hidden = Array.isArray(message.hidden_for_user_ids) ? [...message.hidden_for_user_ids] : [];
         if (!hidden.includes(userId)) {
@@ -682,20 +694,11 @@ exports.deleteMessageForEveryone = async (req, res) => {
         const { userId, institution_id } = req;
         const { messageId } = req.params;
 
-        const { data: message, error: messageError } = await supabase
-            .from("messages")
-            .select("id, conversation_id, sender_id, created_at, deleted_for_everyone_at")
-            .eq("id", messageId)
-            .maybeSingle();
-
-        if (messageError || !message) {
-            return res.status(404).json({ error: "Message not found" });
+        const context = await getAuthorizedMessageContext(messageId, userId, institution_id);
+        if (!context) {
+            return res.status(404).json({ error: NOT_FOUND_MESSAGE });
         }
-
-        const membership = await ensureConversationMembership(message.conversation_id, userId, institution_id);
-        if (!membership) {
-            return res.status(403).json({ error: "Not allowed to update this message" });
-        }
+        const { message } = context;
 
         if (message.sender_id !== userId) {
             return res.status(403).json({ error: "Only sender can delete for everyone" });
@@ -744,7 +747,7 @@ exports.deleteConversationForMe = async (req, res) => {
 
         const membership = await ensureConversationMembership(conversationId, userId, institution_id);
         if (!membership) {
-            return res.status(403).json({ error: "Not allowed to delete this conversation" });
+            return res.status(404).json({ error: NOT_FOUND_MESSAGE });
         }
 
         const { error } = await supabase
@@ -774,7 +777,7 @@ exports.clearConversationForMe = async (req, res) => {
 
         const membership = await ensureConversationMembership(conversationId, userId, institution_id);
         if (!membership) {
-            return res.status(403).json({ error: "Not allowed to clear this conversation" });
+            return res.status(404).json({ error: NOT_FOUND_MESSAGE });
         }
 
         const { data: rows, error: rowsError } = await supabase
@@ -823,7 +826,21 @@ exports.markConversationRead = async (req, res) => {
 
         const membership = await ensureConversationMembership(conversationId, userId, institution_id);
         if (!membership) {
-            return res.status(403).json({ error: "Not allowed" });
+            return res.status(404).json({ error: NOT_FOUND_MESSAGE });
+        }
+
+        const { count: unreadCount, error: unreadCountError } = await supabase
+            .from("messages")
+            .select("id", { count: "exact", head: true })
+            .eq("conversation_id", conversationId)
+            .neq("sender_id", userId);
+
+        if (unreadCountError) {
+            return handleMessagingSupabaseError(res, unreadCountError);
+        }
+
+        if (!unreadCount) {
+            return res.status(200).json({ success: true });
         }
 
         const now = new Date().toISOString();
@@ -858,7 +875,21 @@ exports.acknowledgeDelivery = async (req, res) => {
 
         const membership = await ensureConversationMembership(conversationId, userId, institution_id);
         if (!membership) {
-            return res.status(403).json({ error: "Not allowed" });
+            return res.status(404).json({ error: NOT_FOUND_MESSAGE });
+        }
+
+        const { count: incomingCount, error: incomingCountError } = await supabase
+            .from("messages")
+            .select("id", { count: "exact", head: true })
+            .eq("conversation_id", conversationId)
+            .neq("sender_id", userId);
+
+        if (incomingCountError) {
+            return handleMessagingSupabaseError(res, incomingCountError);
+        }
+
+        if (!incomingCount) {
+            return res.status(200).json({ success: true });
         }
 
         const { error } = await supabase

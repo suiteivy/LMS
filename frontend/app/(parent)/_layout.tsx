@@ -16,7 +16,7 @@ const ALL_NAV_ITEMS: NavItem[] = [
     { name: "messages", title: "Chat", icon: MessageSquare, route: "/(parent)/messages" },
 >>>>>>> df05e40555bb1ec7b19b668a6cfb4d742c627c50
     { name: "announcements", title: "Updates", icon: Bell, route: "/(parent)/announcements" },
-    { name: "settings", title: "Settings", icon: Settings, route: "/(parent)/settings" },
+    { name: "accessibility/settings", title: "Accessibility", icon: Settings, route: "/(parent)/accessibility/settings" },
 ];
 
 import { useNotifications } from "@/contexts/NotificationContext";
@@ -126,6 +126,7 @@ function ParentTabs() {
                     />
                 );
             })}
+            <Tabs.Screen name="settings" options={{ href: null, headerShown: false }} />
             <Tabs.Screen name="finance" options={{ href: null, headerShown: false }} />
             <Tabs.Screen name="grades" options={{ href: null, headerShown: false }} />
             <Tabs.Screen name="attendance" options={{ href: null, headerShown: false }} />

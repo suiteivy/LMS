@@ -6,7 +6,8 @@
     "test": "node --test tests/**/*.test.js",
     "start": "node server.js",
     "dev": "node --watch server.js",
-    "notification:retry": "node scripts/run-notification-retries.js"
+    "notification:retry": "node scripts/run-notification-retries.js",
+    "seed:dm-fixture": "node scripts/seed_dm_security_fixture.js"
   },
   "author": "",
   "license": "ISC",

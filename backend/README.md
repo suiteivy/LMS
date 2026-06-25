@@ -119,6 +119,23 @@ Automatic retry worker:
 Testing:
 - `npm test` runs backend node:test suites.
 - Current suite includes promotion eligibility service coverage and notification retry worker contract check.
+- DM RLS integration harness: `tests/messaging-rls.integration.test.js`
+  - Uses JWT-scoped Supabase clients (anon key + user bearer token) to assert real RLS behavior.
+  - Required env vars:
+    - `SUPABASE_URL`
+    - `SUPABASE_ANON_KEY`
+    - `DM_TEST_USER_A_JWT`
+    - `DM_TEST_USER_B_JWT`
+    - `DM_TEST_CONV_A_ONLY`
+    - `DM_TEST_CONV_B_ONLY`
+    - `DM_TEST_CONV_SHARED`
+  - If these env vars are missing, the test auto-skips.
+  - Fixture generator script: `npm run seed:dm-fixture`
+    - Creates/ensures 4 users and 3 conversations for the matrix:
+      - `DM_TEST_CONV_A_ONLY` => A with C (A can see, B cannot)
+      - `DM_TEST_CONV_B_ONLY` => B with D (B can see, A cannot)
+      - `DM_TEST_CONV_SHARED` => A with B (both can see)
+    - Emits env-style output (`KEY=value`) by default for easy copy/paste.
 
 ---
 

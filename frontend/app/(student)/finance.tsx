@@ -187,6 +187,14 @@ export default function StudentFinancePage() {
                                 </View>
                             </View>
 
+                            {(financeData?.fee_structures || []).length === 0 && (
+                                <View className="bg-white dark:bg-[#1a1a1a] p-8 rounded-[32px] border border-gray-100 dark:border-gray-800 mb-8">
+                                    <Text className="text-gray-500 dark:text-gray-400 text-sm font-semibold text-center">
+                                        No fee structures for the active period.
+                                    </Text>
+                                </View>
+                            )}
+
                             {/* Status Info */}
                              <View className={`p-6 rounded-xl mb-8 flex-row items-center border ${financeData?.balance > 0 ? 'bg-orange-50 dark:bg-orange-950/30 border-orange-100 dark:border-orange-900' : 'bg-green-50 dark:bg-green-950/30 border-green-100 dark:border-green-900'}`}>
                                  <View 

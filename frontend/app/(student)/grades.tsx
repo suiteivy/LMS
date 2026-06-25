@@ -270,7 +270,7 @@ export default function Grades() {
                 <View className="p-4 md:p-8">
                     {/* GPA Hero */}
                     <View className="flex-row justify-end mb-2">
-                        <HelpTooltip id="student.grades.summary" role="student" tier={tier} onLearnMore={(a) => router.push({ pathname: '/(student)/settings', params: { manual: '1', anchor: a || 'student-workflow' } } as any)} />
+                        <HelpTooltip id="student.grades.summary" role="student" tier={tier} onLearnMore={(a) => router.push({ pathname: '/(student)/accessibility/settings', params: { manual: '1', anchor: a || 'student-workflow' } } as any)} />
                     </View>
                     <View 
                         style={{
@@ -392,7 +392,7 @@ export default function Grades() {
                     <View className="px-2 flex-row justify-between items-center mb-6">
                         <View className="flex-row items-center">
                             <Text className="text-gray-900 dark:text-white font-bold text-xl tracking-tight">Transcript Records</Text>
-                            <HelpTooltip id="student.grades.transcript" role="student" tier={tier} onLearnMore={(a) => router.push({ pathname: '/(student)/settings', params: { manual: '1', anchor: a || 'student-workflow' } } as any)} />
+                            <HelpTooltip id="student.grades.transcript" role="student" tier={tier} onLearnMore={(a) => router.push({ pathname: '/(student)/accessibility/settings', params: { manual: '1', anchor: a || 'student-workflow' } } as any)} />
                         </View>
                         <TouchableOpacity 
                             style={{

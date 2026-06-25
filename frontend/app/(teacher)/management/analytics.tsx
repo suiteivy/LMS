@@ -75,7 +75,7 @@ export default function AnalyticsPage() {
     const [topPerformers, setTopPerformers] = useState<any[]>([]);
     const [trends, setTrends] = useState<any>({ terms: [], subjects: [] });
     const openManual = (anchor?: string) => {
-        router.push({ pathname: '/(teacher)/settings', params: { manual: '1', anchor: anchor || 'promotion-engine' } } as any);
+        router.push({ pathname: '/(teacher)/accessibility/settings', params: { manual: '1', anchor: anchor || 'promotion-engine' } } as any);
     };
 
     const fetchAnalytics = async () => {

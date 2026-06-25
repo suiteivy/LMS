@@ -150,7 +150,7 @@ export default function AssignmentsPage() {
     const [weight, setWeight] = useState("");
     const [term, setTerm] = useState("");
     const openManual = (anchor?: string) => {
-        router.push({ pathname: '/(teacher)/settings', params: { manual: '1', anchor: anchor || 'grading-ops' } } as any);
+        router.push({ pathname: '/(teacher)/accessibility/settings', params: { manual: '1', anchor: anchor || 'grading-ops' } } as any);
     };
 
     const onDateChange = (_event: any, selectedDate?: Date) => {
