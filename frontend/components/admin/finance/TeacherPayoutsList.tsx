@@ -1,10 +1,11 @@
 import { useTheme } from '@/contexts/ThemeContext';
+import { Spinner } from '@/components/ui/Spinner';
 import { supabase } from '@/libs/supabase';
 import { TeacherPayout } from '@/types/types';
 import { formatCurrency } from '@/utils/currency';
 import { format } from 'date-fns';
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, FlatList, Text, TouchableOpacity, View } from 'react-native';
+import { FlatList, Text, TouchableOpacity, View } from 'react-native';
 
 export function TeacherPayoutsList() {
     const { isDark } = useTheme();
@@ -83,7 +84,7 @@ export function TeacherPayoutsList() {
     );
 
     if (loading) {
-        return <ActivityIndicator size="large" color={isDark ? "#FF6900" : "#000"} className="mt-10" />;
+        return <Spinner size="large" color={isDark ? "#FF6900" : "#000"} className="mt-10" label="Loading teacher payouts" />;
     }
 
     return (

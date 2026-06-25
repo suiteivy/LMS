@@ -1,11 +1,11 @@
 import { useAuth } from "@/contexts/AuthContext";
+import { Spinner } from "@/components/ui/Spinner";
 import { useTheme } from "@/contexts/ThemeContext";
 import { LibraryAPI, useLibraryAPI } from "@/services/LibraryService";
 import { AddUpdateDeleteBooksFormProps, FrontendBook, FrontendBorrowedBook } from "@/types/types";
 import { Ionicons } from "@expo/vector-icons";
 import React, { useEffect, useState } from "react";
 import {
-  ActivityIndicator,
   Alert,
   Modal,
   ScrollView,
@@ -257,7 +257,7 @@ const AddUpdateDeleteBooksForm: React.FC<AddUpdateDeleteBooksFormProps> = ({
       {/* Loading / Error */}
       {loading && (
         <View className="items-center py-4">
-          <ActivityIndicator size="small" color="#FF6B00" />
+          <Spinner size="small" color="#FF6B00" label="Loading library books" />
           <Text className="text-gray-500 dark:text-gray-400 mt-2">Loading...</Text>
         </View>
       )}
@@ -445,10 +445,15 @@ const AddUpdateDeleteBooksForm: React.FC<AddUpdateDeleteBooksFormProps> = ({
               className="bg-orange-500 p-4 rounded-lg"
               onPress={handleSubmit}
               disabled={loading}
+              accessibilityState={{ disabled: loading, busy: loading }}
             >
-              <Text className="text-white text-center font-semibold">
-                {editingBook ? "Update Book" : "Add Book"}
-              </Text>
+              {loading ? (
+                <Spinner color="white" label={editingBook ? "Updating book" : "Adding book"} />
+              ) : (
+                <Text className="text-white text-center font-semibold">
+                  {editingBook ? "Update Book" : "Add Book"}
+                </Text>
+              )}
             </TouchableOpacity>
           </ScrollView>
         </View>

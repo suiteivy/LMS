@@ -2,11 +2,17 @@ const process = require("node:process");
 const supabase = require("../utils/supabaseClient.js");
 const { createClient } = require("@supabase/supabase-js");
 
+let serviceClientFactory = createClient;
+
 const getServiceSupabase = () => {
-    return createClient(
+    return serviceClientFactory(
         process.env.SUPABASE_URL || process.env.EXPO_PUBLIC_SUPABASE_URL,
         process.env.SUPABASE_SERVICE_ROLE_KEY
     );
+};
+
+exports.__setServiceClientFactoryForTest = (factory) => {
+    serviceClientFactory = typeof factory === 'function' ? factory : createClient;
 };
 
 exports.createRequest = async (req, res) => {
@@ -110,19 +116,9 @@ exports.updateRequestStatus = async (req, res) => {
 
         if (updateErr) throw updateErr;
 
-        // 3. If approved, automatically update the institution's features
-        if (status === 'approved' && request.addon_type !== 'feature_request') {
-            const addonColumn = `addon_${request.addon_type}`;
-            const { error: instErr } = await adminClient
-                .from('institutions')
-                .update({ [addonColumn]: true, updated_at: new Date().toISOString() })
-                .eq('id', request.institution_id);
-
-            if (instErr) {
-                console.error("Error auto-updating institution addon:", instErr);
-                // We keep the request as approved but log the failure
-            }
-        }
+        // NOTE: Approval does not mutate institution entitlements directly.
+        // Institution add-ons/subscription fields are controlled exclusively
+        // through master admin subscription management endpoints.
 
         res.status(200).json({ message: `Request ${status} successfully`, request: updatedRequest });
     } catch (error) {

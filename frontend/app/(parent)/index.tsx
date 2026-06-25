@@ -21,6 +21,7 @@ import { useSubscriptionTier } from '@/hooks/useSubscriptionTier';
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, RefreshControl, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { SubscriptionBanner } from "@/components/shared/SubscriptionComponents";
+import { clearParentSelectedChild, getParentSelectedChild, setParentSelectedChild } from "@/utils/parentSelectedChild";
 
 export default function ParentIndex() {
   const { profile, loading, logout } = useAuth();
@@ -51,7 +52,19 @@ function ParentDashboard({ user, logout }: any) {
       const students = await ParentService.getLinkedStudents();
       setLinkedStudents(students);
       if (students.length > 0) {
-        setSelectedStudent(students[0]);
+        const saved = await getParentSelectedChild();
+        const matched = saved?.studentId
+          ? students.find((s: any) => s.id === saved.studentId)
+          : null;
+        const initial = matched || students[0];
+        setSelectedStudent(initial);
+        await setParentSelectedChild({
+          studentId: initial.id,
+          studentName: initial.users?.full_name || "",
+          classId: initial.class_id || "",
+        });
+      } else {
+        await clearParentSelectedChild();
       }
     } catch (error) {
       console.error("Error fetching linked students:", error);
@@ -95,6 +108,11 @@ function ParentDashboard({ user, logout }: any) {
   useEffect(() => {
     if (selectedStudent) {
       fetchStudentDetails(selectedStudent.id);
+      setParentSelectedChild({
+        studentId: selectedStudent.id,
+        studentName: selectedStudent.users?.full_name || "",
+        classId: selectedStudent.class_id || "",
+      });
     }
   }, [selectedStudent]);
 
@@ -115,6 +133,65 @@ function ParentDashboard({ user, logout }: any) {
       },
     });
   };
+
+  const quickActions = [
+    {
+      icon: FileText,
+      label: "Grades",
+      color: "#2563eb",
+      onPress: () => goTo("/(parent)/grades"),
+      show: true,
+    },
+    {
+      icon: Calendar,
+      label: "Attendance",
+      color: "#7c3aed",
+      onPress: () => goTo("/(parent)/attendance"),
+      show: true,
+    },
+    {
+      icon: CreditCard,
+      label: "Finance",
+      color: "#059669",
+      onPress: () => undefined,
+      show: tier.showFinancials,
+    },
+    {
+      icon: FileText,
+      label: "Reports",
+      color: "#ec4899",
+      onPress: () => goTo("/(parent)/reports"),
+      show: true,
+    },
+    {
+      icon: Award,
+      label: "Report Cards",
+      color: "#8b5cf6",
+      onPress: () => goTo("/(parent)/report-cards"),
+      show: true,
+    },
+    {
+      icon: TrendingUp,
+      label: "Analytics",
+      color: "#f97316",
+      onPress: () => goTo("/(parent)/analytics"),
+      show: tier.hasAnalytics,
+    },
+    {
+      icon: Clock,
+      label: "Timetable",
+      color: "#eab308",
+      onPress: () => goTo("/(parent)/timetable"),
+      show: true,
+    },
+    {
+      icon: BookOpen,
+      label: "Class Diary",
+      color: "#f59e0b",
+      onPress: () => goTo("/(parent)/diary"),
+      show: tier.hasDiary,
+    },
+  ].filter((action) => action.show && action.label !== "Finance");
 
   if (loading && !refreshing) {
     return (
@@ -280,72 +357,16 @@ function ParentDashboard({ user, logout }: any) {
               </View>
 
               <View className="flex-row flex-wrap justify-between px-1 mb-8">
-                <QuickAction
-                  icon={FileText}
-                  label="Grades"
-                  color="#2563eb"
-                  isDark={isDark}
-                  onPress={() => goTo("/(parent)/grades")}
-                />
-                <QuickAction
-                  icon={Calendar}
-                  label="Attendance"
-                  color="#7c3aed"
-                  isDark={isDark}
-                  onPress={() => goTo("/(parent)/attendance")}
-                />
-                {tier.showFinancials && (
+                {quickActions.map((action) => (
                   <QuickAction
-                    icon={CreditCard}
-                    label="Finance"
-                    color="#059669"
+                    key={action.label}
+                    icon={action.icon}
+                    label={action.label}
+                    color={action.color}
                     isDark={isDark}
-                    onPress={() => goTo("/(parent)/finance")}
+                    onPress={action.onPress}
                   />
-                )}
-                <QuickAction
-                  icon={FileText}
-                  label="Reports"
-                  color="#ec4899"
-                  isDark={isDark}
-                  onPress={() => goTo("/(parent)/reports")}
-                />
-                <QuickAction
-                  icon={Award}
-                  label="Report Cards"
-                  color="#8b5cf6"
-                  isDark={isDark}
-                  onPress={() => goTo("/(parent)/report-cards")}
-                />
-                <QuickAction
-                  icon={TrendingUp}
-                  label="Analytics"
-                  color="#f97316"
-                  isDark={isDark}
-                  onPress={() => {
-                    if (tier.hasAnalytics) {
-                      goTo("/(parent)/analytics");
-                    } else {
-                      router.push("/(admin)/request-feature" as any);
-                    }
-                  }}
-                />
-                <QuickAction
-                  icon={Clock}
-                  label="Timetable"
-                  color="#eab308"
-                  isDark={isDark}
-                  onPress={() => goTo("/(parent)/timetable")}
-                />
-                {tier.hasDiary && (
-                  <QuickAction
-                    icon={BookOpen}
-                    label="Class Diary"
-                    color="#f59e0b"
-                    isDark={isDark}
-                    onPress={() => goTo("/(parent)/diary")}
-                  />
-                )}
+                ))}
               </View>
             </>
           )}

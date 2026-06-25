@@ -2,6 +2,7 @@ const supabase = require("../utils/supabaseClient.js");
 
 const ADMIN_ROLES = new Set(["admin", "master_admin", "school_admin", "platform_admin"]);
 const DEFAULT_DELETE_FOR_EVERYONE_WINDOW_MINUTES = Number(process.env.MESSAGE_DELETE_FOR_EVERYONE_WINDOW_MINUTES || 15);
+const DEFAULT_CONVERSATION_TTL_DAYS = Number(process.env.CHAT_CONVERSATION_TTL_DAYS || 7);
 
 const normalizeRole = (role) => {
     if (!role) return "";
@@ -30,6 +31,34 @@ const canMessage = (senderRole, receiverRole) => {
 };
 
 const DELETED_PLACEHOLDER = "This message was deleted";
+
+const computeConversationExpiryIso = (baseDate = new Date()) => {
+    const ttlMs = DEFAULT_CONVERSATION_TTL_DAYS * 24 * 60 * 60 * 1000;
+    return new Date(baseDate.getTime() + ttlMs).toISOString();
+};
+
+const isConversationExpired = (conversation) => {
+    if (!conversation?.expires_at) return false;
+    const expiresAtMs = new Date(conversation.expires_at).getTime();
+    return Number.isFinite(expiresAtMs) && Date.now() > expiresAtMs;
+};
+
+const cleanupExpiredConversations = async (institutionId) => {
+    const nowIso = new Date().toISOString();
+    let query = supabase
+        .from("conversations")
+        .delete()
+        .lt("expires_at", nowIso);
+
+    if (institutionId) {
+        query = query.eq("institution_id", institutionId);
+    }
+
+    const { error } = await query;
+    if (error && !String(error.message || "").toLowerCase().includes("does not exist")) {
+        throw new Error(error.message);
+    }
+};
 
 const isMessagingMigrationRequiredError = (errorMessage = "") => {
     const normalized = String(errorMessage).toLowerCase();
@@ -87,7 +116,7 @@ const ensureConversationMembership = async (conversationId, userId, institutionI
 
     const { data: conversation, error } = await supabase
         .from("conversations")
-        .select("id, institution_id, type, last_message_at")
+        .select("id, institution_id, type, last_message_at, expires_at")
         .eq("id", conversationId)
         .maybeSingle();
 
@@ -96,6 +125,15 @@ const ensureConversationMembership = async (conversationId, userId, institutionI
     }
 
     if (!conversation || conversation.institution_id !== institutionId) {
+        return null;
+    }
+
+    if (isConversationExpired(conversation)) {
+        await supabase
+            .from("conversations")
+            .delete()
+            .eq("id", conversation.id)
+            .eq("institution_id", institutionId);
         return null;
     }
 
@@ -113,6 +151,7 @@ exports.startConversation = async (req, res) => {
     try {
         const { userId, institution_id, userRole } = req;
         const { otherUserId } = req.body;
+        await cleanupExpiredConversations(institution_id);
 
         if (!otherUserId) {
             return res.status(400).json({ error: "otherUserId is required" });
@@ -146,6 +185,7 @@ exports.startConversation = async (req, res) => {
 
         const directKey = computeDirectKey(userId, otherUserId);
         const now = new Date().toISOString();
+        const expiresAt = computeConversationExpiryIso(new Date());
 
         let conversation = null;
 
@@ -157,6 +197,7 @@ exports.startConversation = async (req, res) => {
                     institution_id,
                     direct_key: directKey,
                     updated_at: now,
+                    expires_at: expiresAt,
                 },
                 {
                     onConflict: "institution_id,direct_key",
@@ -164,7 +205,7 @@ exports.startConversation = async (req, res) => {
                 }
             )
             .select("id, type, institution_id, direct_key, created_at, last_message_at")
-            .single();
+                .single();
 
         if (upsertResult.error) {
             return handleMessagingSupabaseError(res, upsertResult.error);
@@ -215,6 +256,7 @@ exports.startConversation = async (req, res) => {
 exports.listConversations = async (req, res) => {
     try {
         const { userId, institution_id } = req;
+        await cleanupExpiredConversations(institution_id);
 
         if (!institution_id) {
             return res.status(403).json({ error: "Institution context is required" });
@@ -227,7 +269,7 @@ exports.listConversations = async (req, res) => {
                 deleted_at,
                 last_read_at,
                 last_delivered_at,
-                conversation:conversation_id(id, institution_id, type, created_at, last_message_at)
+                conversation:conversation_id(id, institution_id, type, created_at, last_message_at, expires_at)
             `)
             .eq("user_id", userId);
 
@@ -237,7 +279,7 @@ exports.listConversations = async (req, res) => {
 
         const scoped = (ownParticipants || []).filter((row) => {
             const c = row.conversation;
-            return c && c.institution_id === institution_id && c.type === "DIRECT";
+            return c && c.institution_id === institution_id && c.type === "DIRECT" && !isConversationExpired(c);
         });
 
         if (!scoped.length) {
@@ -340,6 +382,7 @@ exports.listConversations = async (req, res) => {
                 institution_id: convo.institution_id,
                 created_at: convo.created_at,
                 last_message_at: convo.last_message_at,
+                expires_at: convo.expires_at || null,
                 last_read_at: ownRow.last_read_at,
                 last_delivered_at: ownRow.last_delivered_at || null,
                 unread_count: unreadCount,
@@ -435,6 +478,7 @@ exports.sendConversationMessage = async (req, res) => {
 
         const trimmed = String(content).trim();
         const now = new Date().toISOString();
+        const expiresAt = computeConversationExpiryIso(new Date());
 
         // Legacy compatibility: messages.receiver_id may still be NOT NULL in some environments.
         // Resolve direct-conversation partner and populate receiver_id on insert.
@@ -497,7 +541,7 @@ exports.sendConversationMessage = async (req, res) => {
 
         await supabase
             .from("conversations")
-            .update({ last_message_at: now, updated_at: now })
+            .update({ last_message_at: now, updated_at: now, expires_at: expiresAt })
             .eq("id", conversationId);
 
         await supabase
@@ -716,6 +760,55 @@ exports.deleteConversationForMe = async (req, res) => {
         return res.status(200).json({ success: true });
     } catch (err) {
         console.error("deleteConversationForMe error:", err);
+        return res.status(500).json({ error: "Server error" });
+    }
+};
+
+/**
+ * Clear conversation history for requester only (hide all current messages for this user).
+ */
+exports.clearConversationForMe = async (req, res) => {
+    try {
+        const { userId, institution_id } = req;
+        const { conversationId } = req.params;
+
+        const membership = await ensureConversationMembership(conversationId, userId, institution_id);
+        if (!membership) {
+            return res.status(403).json({ error: "Not allowed to clear this conversation" });
+        }
+
+        const { data: rows, error: rowsError } = await supabase
+            .from("messages")
+            .select("id, hidden_for_user_ids")
+            .eq("conversation_id", conversationId);
+
+        if (rowsError) {
+            return handleMessagingSupabaseError(res, rowsError);
+        }
+
+        const updates = (rows || []).map((row) => {
+            const hidden = Array.isArray(row.hidden_for_user_ids) ? [...row.hidden_for_user_ids] : [];
+            if (!hidden.includes(userId)) hidden.push(userId);
+            return supabase
+                .from("messages")
+                .update({
+                    hidden_for_user_ids: hidden,
+                    updated_at: new Date().toISOString(),
+                })
+                .eq("id", row.id);
+        });
+
+        if (updates.length) {
+            const results = await Promise.all(updates);
+            const failed = results.find((r) => r.error);
+            if (failed?.error) {
+                return handleMessagingSupabaseError(res, failed.error);
+            }
+        }
+
+        return res.status(200).json({ success: true });
+    } catch (err) {
+        console.error("clearConversationForMe error:", err);
         return res.status(500).json({ error: "Server error" });
     }
 };

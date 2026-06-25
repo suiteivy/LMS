@@ -8,6 +8,7 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { ChangePasswordModal } from "./shared/ChangePasswordModal";
 import { SettingsService, UserPreferences } from "@/services/SettingsService";
 import { router } from "expo-router";
+import { ThemeSegmentedControl } from "./settings/ThemeSegmentedControl";
 
 interface SettingRowProps {
     icon: any;
@@ -95,6 +96,7 @@ export default function MasterAdminSettings() {
         inputBorder: isDark ? "rgba(255,255,255,0.1)" : "#e2e8f0",
         primary: "#FF6B00",
     };
+
 
     const getBackendUrl = () => {
         let url = process.env.EXPO_PUBLIC_API_URL || "http://localhost:4001";
@@ -279,6 +281,11 @@ export default function MasterAdminSettings() {
                 <Text style={{ fontSize: 12, fontWeight: 'bold', color: tokens.textSecondary, textTransform: 'uppercase', letterSpacing: 1, marginLeft: 4, marginBottom: 8 }}>Administration</Text>
                 <View style={{ backgroundColor: tokens.surface, borderRadius: 16, borderWidth: 1, borderColor: tokens.border, marginBottom: 24, overflow: 'hidden' }}>
                     <SettingRow icon={ShieldAlert} title="Enroll New Master Admin" onPress={() => setEnrollModalVisible(true)} isLast />
+                </View>
+
+                <Text style={{ fontSize: 12, fontWeight: 'bold', color: tokens.textSecondary, textTransform: 'uppercase', letterSpacing: 1, marginLeft: 4, marginBottom: 8 }}>Appearance</Text>
+                <View style={{ backgroundColor: tokens.surface, borderRadius: 16, borderWidth: 1, borderColor: tokens.border, marginBottom: 24, overflow: 'hidden', padding: 12 }}>
+                    <ThemeSegmentedControl />
                 </View>
 
             </View>

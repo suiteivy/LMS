@@ -5,29 +5,33 @@ import { router, useLocalSearchParams } from "expo-router";
 import { Calendar, MapPin, User, Clock } from "lucide-react-native";
 import React, { useEffect, useState } from "react";
 import { ActivityIndicator, Alert, ScrollView, Text, TouchableOpacity, View } from "react-native";
+import { useParentStudentContext } from "@/hooks/useParentStudentContext";
 
 export default function ParentStudentTimetablePage() {
-    const params = useLocalSearchParams();
-    const studentId = params.studentId as string;
-    const studentName = params.studentName as string;
-    const classId = params.classId as string;
+    const params = useLocalSearchParams<{ studentId?: string; studentName?: string; classId?: string }>();
+    const {
+        studentName: resolvedName,
+        classId: resolvedClassId,
+        ready,
+    } = useParentStudentContext(params as any);
 
     const [loading, setLoading] = useState(true);
     const [timetable, setTimetable] = useState<any[]>([]);
     const [selectedDay, setSelectedDay] = useState(new Date());
 
     useEffect(() => {
-        if (classId) {
+        if (!ready) return;
+        if (resolvedClassId) {
             fetchTimetable();
         } else {
             setLoading(false);
         }
-    }, [classId]);
+    }, [ready, resolvedClassId]);
 
     const fetchTimetable = async () => {
         try {
             setLoading(true);
-            const data = await TimetableAPI.getClassTimetable(classId);
+            const data = await TimetableAPI.getClassTimetable(resolvedClassId);
             setTimetable(data || []);
         } catch (error) {
             console.error(error);
@@ -59,7 +63,7 @@ export default function ParentStudentTimetablePage() {
 
             <View className="px-4 md:px-8 pt-4">
                 <Text className="text-gray-900 dark:text-white font-bold text-2xl tracking-tighter mb-1 px-2">Academic Schedule</Text>
-                <Text className="text-gray-400 dark:text-gray-500 text-xs mb-4 px-2">Viewing timetable for: {studentName || 'Student'}</Text>
+                <Text className="text-gray-400 dark:text-gray-500 text-xs mb-4 px-2">Viewing timetable for: {resolvedName || 'Student'}</Text>
 
                 {/* Horizontal Date Selector */}
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-8" contentContainerStyle={{ paddingHorizontal: 8 }}>
@@ -89,7 +93,7 @@ export default function ParentStudentTimetablePage() {
             </View>
 
             <ScrollView className="flex-1 px-4 md:px-8" showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 150 }}>
-                {!classId ? (
+                {!resolvedClassId ? (
                     <View className="bg-white dark:bg-navy-surface p-20 rounded-[48px] items-center border border-gray-100 dark:border-gray-700 border-dashed mt-4">
                         <Calendar size={48} color="#E5E7EB" style={{ opacity: 0.5 }} />
                         <Text className="text-gray-500 font-bold text-center mt-6">No Active Class Assignment</Text>

@@ -1,6 +1,6 @@
 import { GradeDetailModal } from "@/components/common/GradeDetailModal";
 import { UnifiedHeader } from "@/components/common/UnifiedHeader";
-import { AddonRequestButton, SubscriptionGate } from "@/components/shared/SubscriptionComponents";
+import { SubscriptionGate } from "@/components/shared/SubscriptionComponents";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useSubscriptionTier } from "@/hooks/useSubscriptionTier";
@@ -954,7 +954,6 @@ export default function GradesEnhanced() {
               <Text className="text-gray-400 dark:text-gray-500 text-xs mb-3">
                 Analytics add-on is not enabled for your institution.
               </Text>
-              <AddonRequestButton onPress={() => router.push('/(admin)/request-feature' as any)} />
             </View>
           )}
 

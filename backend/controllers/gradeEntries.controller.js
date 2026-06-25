@@ -99,11 +99,21 @@ async function getGradeEntries(req, res) {
       if (!profile) return sendError(res, 404, 'Student profile not found');
       query = query.eq('student_id', profile.id);
     } else if (user_role === 'parent') {
+      const { data: parent } = await supabase
+        .from('parents')
+        .select('id')
+        .eq('user_id', user_id)
+        .eq('institution_id', institution_id)
+        .maybeSingle();
+
+      if (!parent?.id) {
+        return sendSuccess(res, []);
+      }
+
       const { data: children } = await supabase
-        .from('parent_student_links')
+        .from('parent_students')
         .select('student_id')
-        .eq('parent_user_id', user_id)
-        .eq('institution_id', institution_id);
+        .eq('parent_id', parent.id);
 
       if (!children || children.length === 0) {
         return sendSuccess(res, []);

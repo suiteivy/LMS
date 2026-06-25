@@ -230,14 +230,29 @@ export interface TeacherPayout {
 
 export interface FeeStructure {
   id: string;
-  Subject_id: string;
-  Subject_name: string;
-  base_fee: number;
-  registration_fee: number;
-  material_fee: number;
-  teacher_rate: number;
-  bursary_percentage: number;
-  effective_date: string;
+  title?: string;
+  description?: string;
+  amount?: number;
+  academic_year?: string;
+  academic_year_id?: string | null;
+  term?: string;
+  term_id?: string | null;
+  level_scope?: 'all' | 'grade' | 'form' | 'range';
+  level_value?: number | null;
+  level_from?: number | null;
+  level_to?: number | null;
+  is_released?: boolean;
+  released_at?: string | null;
+
+  // Legacy fields retained for backward compatibility
+  Subject_id?: string;
+  Subject_name?: string;
+  base_fee?: number;
+  registration_fee?: number;
+  material_fee?: number;
+  teacher_rate?: number;
+  bursary_percentage?: number;
+  effective_date?: string;
   is_active: boolean;
 }
 
@@ -532,6 +547,7 @@ export interface Notification {
   is_read: boolean;
   data?: any;
   created_at: string;
+  expires_at?: string | null;
 }
 
 export type StatsClickHandler = (stat: StatsData) => void;

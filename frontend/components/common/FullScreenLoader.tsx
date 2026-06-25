@@ -1,5 +1,6 @@
 import React from 'react';
-import { ActivityIndicator, Modal, Text, View } from 'react-native';
+import { Modal, Text, View } from 'react-native';
+import { Spinner } from '@/components/ui/Spinner';
 
 interface FullScreenLoaderProps {
     visible: boolean;
@@ -24,7 +25,7 @@ export const FullScreenLoader: React.FC<FullScreenLoaderProps> = ({ visible, mes
                 zIndex: 9999
             }} className="bg-white/90 dark:bg-navy/90">
                 <View className="bg-white dark:bg-navy-surface p-6 rounded-2xl shadow-lg items-center border border-gray-100 dark:border-gray-800">
-                    <ActivityIndicator size="large" color="#f97316" />
+                    <Spinner size="large" color="#f97316" label="Loading content" />
                     {message && (
                         <Text className="mt-4 text-gray-600 dark:text-gray-300 font-medium text-sm">
                             {message}

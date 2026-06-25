@@ -1,4 +1,5 @@
 import { UnifiedHeader } from '@/components/common/UnifiedHeader';
+import { Spinner } from '@/components/ui/Spinner';
 import { useTheme } from '@/contexts/ThemeContext';
 import { GradingAPI } from '@/services/GradingService';
 import { showSuccess, showError } from '@/utils/toast';
@@ -23,7 +24,6 @@ import {
 } from 'lucide-react-native';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
-    ActivityIndicator,
     Alert,
     Modal,
     Platform,
@@ -671,7 +671,7 @@ export default function AcademicSetupPage() {
     if (loading) {
         return (
             <View style={{ flex: 1, backgroundColor: bg, alignItems: 'center', justifyContent: 'center' }}>
-                <ActivityIndicator size="large" color={accent} />
+                <Spinner size="large" color={accent} label="Loading academic setup" />
                 <Text style={{ color: textSecondary, marginTop: 12, fontSize: 14 }}>Loading academic setup...</Text>
             </View>
         );
@@ -1320,10 +1320,12 @@ export default function AcademicSetupPage() {
                                 style={{
                                     backgroundColor: accent, paddingVertical: 16,
                                     borderRadius: 16, alignItems: 'center',
+                                    opacity: saving ? 0.75 : 1,
                                 }}
+                                accessibilityState={{ disabled: saving, busy: saving }}
                             >
                                 {saving ? (
-                                    <ActivityIndicator color="white" />
+                                    <Spinner color="white" label="Saving academic year" />
                                 ) : (
                                     <Text style={{ color: 'white', fontWeight: '800', fontSize: 16 }}>Create Year</Text>
                                 )}
@@ -1406,10 +1408,12 @@ export default function AcademicSetupPage() {
                                 style={{
                                     backgroundColor: accent, paddingVertical: 16,
                                     borderRadius: 16, alignItems: 'center',
+                                    opacity: saving ? 0.75 : 1,
                                 }}
+                                accessibilityState={{ disabled: saving, busy: saving }}
                             >
                                 {saving ? (
-                                    <ActivityIndicator color="white" />
+                                    <Spinner color="white" label="Saving term" />
                                 ) : (
                                     <Text style={{ color: 'white', fontWeight: '800', fontSize: 16 }}>{editingTerm ? 'Save Changes' : 'Create Term'}</Text>
                                 )}
@@ -1554,10 +1558,12 @@ export default function AcademicSetupPage() {
                                 style={{
                                     backgroundColor: accent, paddingVertical: 16,
                                     borderRadius: 16, alignItems: 'center',
+                                    opacity: saving ? 0.75 : 1,
                                 }}
+                                accessibilityState={{ disabled: saving, busy: saving }}
                             >
                                 {saving ? (
-                                    <ActivityIndicator color="white" />
+                                    <Spinner color="white" label="Saving grading scale" />
                                 ) : (
                                     <Text style={{ color: 'white', fontWeight: '800', fontSize: 16 }}>
                                         {editingScale ? 'Save Changes' : 'Add Entry'}
@@ -1699,10 +1705,12 @@ export default function AcademicSetupPage() {
                                 style={{
                                     backgroundColor: accent, paddingVertical: 16,
                                     borderRadius: 16, alignItems: 'center',
+                                    opacity: saving ? 0.75 : 1,
                                 }}
+                                accessibilityState={{ disabled: saving, busy: saving }}
                             >
                                 {saving ? (
-                                    <ActivityIndicator color="white" />
+                                    <Spinner color="white" label="Saving assessment type" />
                                 ) : (
                                     <Text style={{ color: 'white', fontWeight: '800', fontSize: 16 }}>
                                         {editingType ? 'Save Changes' : 'Create Type'}

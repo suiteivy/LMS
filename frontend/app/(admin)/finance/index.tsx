@@ -111,10 +111,37 @@ export default function FinanceDashboard() {
         try {
             if (feeData.id) {
                 await FinanceService.updateFeeStructure(feeData.id, feeData);
-                fetchAllData();
             }
+            fetchAllData();
         } catch (error) {
             console.error('Error updating fee structure:', error);
+        }
+    };
+
+    const handleFeeStructureCreate = async (feeData: Partial<FeeStructure>) => {
+        try {
+            await FinanceService.createFeeStructure(feeData);
+            fetchAllData();
+        } catch (error) {
+            console.error('Error creating fee structure:', error);
+        }
+    };
+
+    const handleFeeStructureRelease = async (feeStructureId: string) => {
+        try {
+            await FinanceService.releaseFeeStructure(feeStructureId);
+            fetchAllData();
+        } catch (error) {
+            console.error('Error releasing fee structure:', error);
+        }
+    };
+
+    const handleFeeStructureDelete = async (feeStructureId: string) => {
+        try {
+            await FinanceService.deleteFeeStructure(feeStructureId);
+            fetchAllData();
+        } catch (error) {
+            console.error('Error deleting fee structure:', error);
         }
     };
 
@@ -188,7 +215,17 @@ export default function FinanceDashboard() {
                     {activeTab === 'payments' && <PaymentManagementSection payments={payments} loading={loading} onPaymentSubmit={handlePaymentSubmit} onRefresh={onRefresh} />}
                     {activeTab === 'bursaries' && <BursariesList />}
                     {activeTab === 'payouts' && <TeacherPayoutSection payouts={payouts} loading={loading} onPayoutProcess={handlePayoutProcess} onRefresh={onRefresh} />}
-                    {activeTab === 'fees' && <FeeStructureSection feeStructures={feeStructures} loading={loading} onFeeStructureUpdate={handleFeeStructureUpdate} onRefresh={onRefresh} />}
+                    {activeTab === 'fees' && (
+                        <FeeStructureSection
+                            feeStructures={feeStructures}
+                            loading={loading}
+                            onFeeStructureUpdate={handleFeeStructureUpdate}
+                            onFeeStructureCreate={handleFeeStructureCreate}
+                            onFeeStructureRelease={handleFeeStructureRelease}
+                            onFeeStructureDelete={handleFeeStructureDelete}
+                            onRefresh={onRefresh}
+                        />
+                    )}
                 </ScrollView>
 
                 {/* FAB for Bursaries */}

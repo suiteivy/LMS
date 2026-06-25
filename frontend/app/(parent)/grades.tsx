@@ -10,6 +10,7 @@ import * as Sharing from 'expo-sharing';
 import { Printer } from 'lucide-react-native';
 import { getPerformanceLabel } from "@/utils/getPerformanceLabel";
 import { GradingAPI } from "@/services/GradingService";
+import { useParentStudentContext } from "@/hooks/useParentStudentContext";
 
 const gradeColor = (g: string) => {
   if (g.startsWith("A")) return { bg: "bg-emerald-50", text: "text-emerald-700" };
@@ -18,7 +19,8 @@ const gradeColor = (g: string) => {
 };
 
 export default function StudentGradesPage() {
-  const { studentId, studentName } = useLocalSearchParams<{ studentId: string; studentName?: string }>();
+  const params = useLocalSearchParams<{ studentId: string; studentName?: string; classId?: string }>();
+  const { studentId: resolvedStudentId, studentName: resolvedName, ready } = useParentStudentContext(params as any);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [performance, setPerformance] = useState<any>(null);
@@ -27,11 +29,11 @@ export default function StudentGradesPage() {
   const [gradingScales, setGradingScales] = useState<any[]>([]);
 
   const fetchPerformanceData = async () => {
-    if (!studentId) return;
+    if (!resolvedStudentId) return;
     try {
       const [performanceData, attendance, scales] = await Promise.all([
-        ParentService.getStudentPerformance(studentId),
-        ParentService.getStudentAttendance(studentId),
+        ParentService.getStudentPerformance(resolvedStudentId),
+        ParentService.getStudentAttendance(resolvedStudentId),
         GradingAPI.getGradingScales().catch(() => []),
       ]);
 
@@ -66,7 +68,7 @@ export default function StudentGradesPage() {
       }
 
       // Fetch Rank
-      const { data: rankData }: any = await (supabase.rpc as any)('get_student_rank', { p_student_id: studentId });
+      const { data: rankData }: any = await (supabase.rpc as any)('get_student_rank', { p_student_id: resolvedStudentId });
 
       // Derive standing from grading scale instead of hardcoded thresholds
       const perf = getPerformanceLabel(avg, Array.isArray(scales) ? scales : []);
@@ -88,7 +90,7 @@ export default function StudentGradesPage() {
   };
 
   const handlePrint = async () => {
-    if (!studentId || grades.length === 0) {
+    if (!resolvedStudentId || grades.length === 0) {
         return;
     }
 
@@ -129,8 +131,8 @@ export default function StudentGradesPage() {
                             <p>Official Academic Transcript</p>
                         </div>
                         <div class="student-badge">
-                            <h2>${studentName || "Student"}</h2>
-                            <p>ID: ${studentId?.substring(0, 10).toUpperCase()}</p>
+                            <h2>${resolvedName || "Student"}</h2>
+                            <p>ID: ${resolvedStudentId?.substring(0, 10).toUpperCase()}</p>
                         </div>
                     </div>
 
@@ -187,8 +189,9 @@ export default function StudentGradesPage() {
   };
 
   useEffect(() => {
+    if (!ready) return;
     fetchPerformanceData();
-  }, [studentId]);
+  }, [ready, resolvedStudentId]);
 
   const onRefresh = () => {
     setRefreshing(true);
@@ -205,7 +208,7 @@ export default function StudentGradesPage() {
   return (
     <View className="flex-1 bg-gray-50 dark:bg-navy">
       <UnifiedHeader
-        title={studentName ? `${studentName}'s Report` : "Performance"}
+        title={resolvedName ? `${resolvedName}'s Report` : "Performance"}
         subtitle="Academic Report"
         role="Parent/Guardian"
         onBack={() => router.back()}

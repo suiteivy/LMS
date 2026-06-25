@@ -1,4 +1,5 @@
 import { EmptyState } from "@/components/common/EmptyState";
+import { Spinner } from "@/components/ui/Spinner";
 import { useTheme } from "@/contexts/ThemeContext";
 import { formatCurrency } from "@/utils/currency";
 import { supabase } from "@/libs/supabase";
@@ -16,7 +17,6 @@ import {
   TextInput,
   TouchableOpacity,
   View,
-  ActivityIndicator
 } from "react-native";
 import { FinanceService } from "@/services/FinanceService";
 import { Check, X, ExternalLink, Clock } from "lucide-react-native";
@@ -27,7 +27,7 @@ import Toast from 'react-native-toast-message';
 interface PaymentManagementSectionProps {
   payments: Payment[];
   loading: boolean;
-  onPaymentSubmit: (payment: Omit<Payment, "id">) => void;
+  onPaymentSubmit: (payment: Omit<Payment, "id">) => void | Promise<void>;
   onRefresh?: () => void;
 }
 
@@ -52,6 +52,7 @@ const PaymentManagementSection: React.FC<
   const [loadingPending, setLoadingPending] = useState(false);
   const [reviewingId, setReviewingId] = useState<string | null>(null);
   const [adminNotes, setAdminNotes] = useState("");
+  const [submittingPayment, setSubmittingPayment] = useState(false);
 
 
   // Student search in payment form
@@ -153,7 +154,7 @@ const PaymentManagementSection: React.FC<
     setShowStudentDropdown(false);
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!formData.student_id || !formData.student_name || !formData.amount) {
       Alert.alert("Error", "Please fill in all required fields including Student");
       return;
@@ -170,9 +171,14 @@ const PaymentManagementSection: React.FC<
       notes: formData.notes,
     };
 
-    onPaymentSubmit(payment);
-    resetForm();
-    setShowForm(false);
+    setSubmittingPayment(true);
+    try {
+      await Promise.resolve(onPaymentSubmit(payment));
+      resetForm();
+      setShowForm(false);
+    } finally {
+      setSubmittingPayment(false);
+    }
   };
 
   const formatAmount = (amount: number | null | undefined) => {
@@ -328,7 +334,8 @@ const PaymentManagementSection: React.FC<
 
       {loading ? (
         <View className="flex-1 justify-center items-center">
-          <Text className="text-gray-500 dark:text-gray-400">Loading payments...</Text>
+          <Spinner color="#FF6B00" size="small" label="Loading payments" />
+          <Text className="text-gray-500 dark:text-gray-400 mt-3">Loading payments...</Text>
         </View>
       ) : (
         <View className="pb-20">
@@ -358,7 +365,7 @@ const PaymentManagementSection: React.FC<
         <View className="pb-20">
           {loadingPending ? (
             <View className="py-20 items-center">
-              <ActivityIndicator color="#FF6B00" />
+              <Spinner color="#FF6B00" label="Loading pending receipts" />
               <Text className="text-gray-400 text-xs mt-4 font-bold uppercase tracking-widest">Scanning receipt bucket...</Text>
             </View>
           ) : pendingPayments.length === 0 ? (
@@ -453,10 +460,17 @@ const PaymentManagementSection: React.FC<
               <Text className="text-blue-600 dark:text-blue-400 text-lg">Cancel</Text>
             </TouchableOpacity>
             <Text className="text-lg font-semibold text-gray-900 dark:text-white">Record Payment</Text>
-            <TouchableOpacity onPress={handleSubmit}>
-              <Text className="text-sm border border-[#10B981] dark:border-green-500 px-3 py-2 rounded-full font-semibold text-[#10B981] dark:text-green-500">
-                Save
-              </Text>
+            <TouchableOpacity onPress={handleSubmit} disabled={submittingPayment}>
+              <View
+                className="text-sm border border-[#10B981] dark:border-green-500 px-3 py-2 rounded-full"
+                accessibilityState={{ disabled: submittingPayment, busy: submittingPayment }}
+              >
+                {submittingPayment ? (
+                  <Spinner color="#10B981" size="small" label="Saving payment" />
+                ) : (
+                  <Text className="font-semibold text-[#10B981] dark:text-green-500">Save</Text>
+                )}
+              </View>
             </TouchableOpacity>
           </View>
 

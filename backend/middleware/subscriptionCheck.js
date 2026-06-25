@@ -76,9 +76,6 @@ const RESTRICTED_FEATURES = [
   { path: '/api/finance/funds', minRank: planRank('premium') },
   { path: '/api/finance/allocations', minRank: planRank('premium') },
 
-  // ── Bursary Module — premium+ (Rank 4) ──
-  { path: '/api/bursary', minRank: planRank('premium') },
-
   // ── Analytics — premium+ (Rank 4) ──
   { path: '/api/analytics', minRank: planRank('premium') },
   { path: '/api/analytics/advanced', minRank: planRank('premium') },
@@ -92,16 +89,9 @@ const RESTRICTED_FEATURES = [
   // ── Bulk ops — premium+ (Rank 4) ──
   { path: '/api/bulk', minRank: planRank('premium') },
 
-  // ── Library — pro+ (Rank 2) ──
-  { path: '/api/library', minRank: planRank('pro') },
-
   // ── Attendance — pro+ (Rank 2) ──
   { path: '/api/attendance', minRank: planRank('pro') },
 
-  // ── Messaging + Virtual Diary — beta+ (Rank 0) ──
-  { path: '/api/messaging', minRank: planRank('beta') },
-  { path: '/api/messages', minRank: planRank('beta') },
-  { path: '/api/diary', minRank: planRank('beta') },
 ];
 
 // Write-specific restrictions (POST/PUT/DELETE) on library for basic
@@ -193,6 +183,47 @@ const checkSubscription = async (req, res, next) => {
       req.institutionSubscription = subscription_status;
       req.institutionPlan = subscription_plan;
       return next();
+    }
+
+    // Add-on-only gates for non-beta institutions.
+    // Basic/Pro/Premium are capacity tiers; add-ons are independent feature flags.
+    if (subscription_plan !== 'beta') {
+      const isLibraryPath = fullPath.includes('/api/library');
+      const isMessagingPath = fullPath.includes('/api/messaging') || fullPath.includes('/api/messages');
+      const isDiaryPath = fullPath.includes('/api/diary');
+      const isBursaryPath = fullPath.includes('/api/bursary');
+
+      if (isLibraryPath && !addon_library) {
+        return res.status(403).json({
+          error: 'Digital Library add-on is required for this feature.',
+          code: 'ADDON_REQUIRED',
+          requiredAddon: 'library',
+        });
+      }
+
+      if (isMessagingPath && !addon_messaging) {
+        return res.status(403).json({
+          error: 'Messaging + Diary add-on is required for messaging.',
+          code: 'ADDON_REQUIRED',
+          requiredAddon: 'messaging',
+        });
+      }
+
+      if (isDiaryPath && !addon_diary) {
+        return res.status(403).json({
+          error: 'Messaging + Diary add-on is required for diary.',
+          code: 'ADDON_REQUIRED',
+          requiredAddon: 'diary',
+        });
+      }
+
+      if (isBursaryPath && !addon_bursary) {
+        return res.status(403).json({
+          error: 'Bursary add-on is required for this feature.',
+          code: 'ADDON_REQUIRED',
+          requiredAddon: 'bursary',
+        });
+      }
     }
 
     for (const feature of RESTRICTED_FEATURES) {

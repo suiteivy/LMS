@@ -1,11 +1,12 @@
 import { useAuth } from "@/contexts/AuthContext";
 import { useTheme } from "@/contexts/ThemeContext";
 import { authService, supabase } from "@/libs/supabase";
+import { Spinner } from "@/components/ui/Spinner";
 import { Database } from "@/types/database";
 import { showError, showSuccess } from "@/utils/toast";
 import { BookOpen, Calendar, Camera, GraduationCap, Layers, Mail, MapPin, Phone, User, UserCircle, Users } from "lucide-react-native";
 import React, { useEffect, useState } from "react";
-import { ActivityIndicator, Image, RefreshControl, ScrollView, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { Image, RefreshControl, ScrollView, Text, TextInput, TouchableOpacity, View } from "react-native";
 import DatePicker from '@/components/common/DatePicker';
 
 type Subject = Database['public']['Tables']['subjects']['Row'];
@@ -158,7 +159,7 @@ export default function TeacherProfile() {
     if (!profile) {
         return (
             <View className="flex-1 justify-center items-center bg-gray-50 dark:bg-navy">
-                <ActivityIndicator size="large" color="#FF6B00" />
+                <Spinner size="large" color="#FF6B00" label="Loading profile" />
             </View>
         );
     }
@@ -252,7 +253,7 @@ export default function TeacherProfile() {
                                          </View>
                                      </View>
                                      <TouchableOpacity className="bg-[#FF6900] py-4 rounded-2xl items-center mt-4 shadow-lg shadow-orange-500/20" onPress={handleUpdateProfile} disabled={saving}>
-                                         {saving ? <ActivityIndicator color="white" /> : <Text className="text-white font-black text-xs uppercase tracking-[2px]">Save Changes</Text>}
+                                         {saving ? <Spinner color="white" label="Saving profile" /> : <Text className="text-white font-black text-xs uppercase tracking-[2px]">Save Changes</Text>}
                                      </TouchableOpacity>
                                 </View>
                             ) : (

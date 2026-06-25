@@ -1,7 +1,8 @@
 import { useTheme } from '@/contexts/ThemeContext';
+import { Spinner } from '@/components/ui/Spinner';
 import { User } from '@/types/types';
 import React from 'react';
-import { ActivityIndicator, Text, TouchableOpacity, View } from 'react-native';
+import { Text, TouchableOpacity, View } from 'react-native';
 
 interface UsersTableSectionProps {
   users: User[];
@@ -19,8 +20,8 @@ const UsersTableSection: React.FC<UsersTableSectionProps> = ({
   const { isDark } = useTheme();
   if (loading) {
     return (
-      <View className="py-4">
-        <ActivityIndicator size="large" color={isDark ? "#FF6900" : "#000"} />
+      <View className="py-4" accessibilityState={{ busy: true }}>
+        <Spinner size="large" color={isDark ? "#FF6900" : "#000"} label="Loading users" />
       </View>
     );
   }

@@ -11,6 +11,8 @@ import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import * as WebBrowser from 'expo-web-browser';
+import { setParentSelectedChild } from '@/utils/parentSelectedChild';
+import { useParentStudentContext } from '@/hooks/useParentStudentContext';
 
 const DiaryCard = ({ entry, onSign }: { entry: DiaryEntry; onSign: (id: string) => void }) => {
     const [signing, setSigning] = useState(false);
@@ -183,11 +185,17 @@ const DiaryCard = ({ entry, onSign }: { entry: DiaryEntry; onSign: (id: string) 
 
 export default function ParentDiaryPage() {
     const { user } = useAuth();
-    const { studentId: paramStudentId } = useLocalSearchParams<{ studentId?: string }>();
+    const params = useLocalSearchParams<{ studentId?: string; studentName?: string; classId?: string }>();
+    const {
+        studentId: paramStudentId,
+        studentName: paramStudentName,
+        ready,
+    } = useParentStudentContext(params as any, { persistWhenParamPresent: false });
     const [loading, setLoading] = useState(true);
     const [entries, setEntries] = useState<DiaryEntry[]>([]);
     const [students, setStudents] = useState<any[]>([]);
     const [selectedStudentId, setSelectedStudentId] = useState("");
+    const [resolvedStudentName, setResolvedStudentName] = useState<string>(paramStudentName || "");
     const [showStudentDropdown, setShowStudentDropdown] = useState(false);
 
     // Filter states
@@ -205,16 +213,27 @@ export default function ParentDiaryPage() {
     }, []);
 
     useEffect(() => {
+        if (paramStudentName) setResolvedStudentName(String(paramStudentName));
+    }, [paramStudentName]);
+
+    useEffect(() => {
+        if (!ready) return;
         if (paramStudentId && students.some(s => s.id === paramStudentId)) {
             setSelectedStudentId(paramStudentId);
         }
-    }, [paramStudentId, students]);
+    }, [ready, paramStudentId, students]);
 
     useEffect(() => {
         if (selectedStudentId) {
             fetchEntries();
+            const student = students.find((s) => s.id === selectedStudentId);
+            setParentSelectedChild({
+                studentId: selectedStudentId,
+                studentName: student?.users?.full_name || resolvedStudentName || "",
+                classId: student?.class_id || "",
+            });
         }
-    }, [selectedStudentId]);
+    }, [selectedStudentId, students, resolvedStudentName]);
 
     useEffect(() => {
         const student = students.find(s => s.id === selectedStudentId);
@@ -271,7 +290,10 @@ export default function ParentDiaryPage() {
         }
     };
 
-    const selectedStudentName = students.find(s => s.id === selectedStudentId)?.users?.full_name || "Select Student";
+    const selectedStudentName =
+        students.find(s => s.id === selectedStudentId)?.users?.full_name ||
+        resolvedStudentName ||
+        "Select Student";
 
     // Client-side filtering logic
     const filteredEntries = entries.filter(entry => {
@@ -411,7 +433,7 @@ export default function ParentDiaryPage() {
         <View className="flex-1 bg-gray-50 dark:bg-[#0c0c0c]">
             <UnifiedHeader
                 title="Class Diary"
-                subtitle="Daily Activities"
+                subtitle={selectedStudentName ? `Daily Activities · ${selectedStudentName}` : "Daily Activities"}
                 role="Parent/Guardian"
                 onBack={() => router.push("/(parent)")}
             />

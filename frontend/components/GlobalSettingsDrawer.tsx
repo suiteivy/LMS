@@ -160,7 +160,7 @@ function SettingsMenu({ userRole, onNavigate }: { userRole: string; onNavigate: 
           <Text style={{ fontSize: 10, fontWeight: 'bold', color: textSecondary, textTransform: 'uppercase', letterSpacing: 3, marginBottom: 16 }}>
             Appearance
           </Text>
-          <View style={{ flexDirection: 'row', backgroundColor: pillBg, borderRadius: 24, padding: 6, borderWidth: 1, borderColor: pillBorder }}>
+          <View style={{ flexDirection: 'row', backgroundColor: pillBg, borderRadius: 14, padding: 3, borderWidth: 1, borderColor: pillBorder }}>
             {themeModes.map((mode) => {
               const isActive = theme === mode;
               return (
@@ -170,10 +170,10 @@ function SettingsMenu({ userRole, onNavigate }: { userRole: string; onNavigate: 
                   activeOpacity={0.8}
                   style={{
                     flex: 1,
-                    paddingVertical: 12,
+                    paddingVertical: 6,
                     alignItems: 'center',
                     justifyContent: 'center',
-                    borderRadius: 18,
+                    borderRadius: 11,
                     flexDirection: 'row',
                     backgroundColor: isActive ? (isDark ? '#1f2937' : '#ffffff') : 'transparent',
                     borderWidth: isActive ? 1 : 0,
@@ -182,11 +182,11 @@ function SettingsMenu({ userRole, onNavigate }: { userRole: string; onNavigate: 
                 >
                   {modeIcon(mode, isActive)}
                   <Text style={{
-                    marginLeft: 6,
-                    fontSize: 10,
+                    marginLeft: 4,
+                    fontSize: 8,
                     fontWeight: 'bold',
                     textTransform: 'uppercase',
-                    letterSpacing: 1,
+                    letterSpacing: 0.6,
                     color: isActive ? (isDark ? '#ffffff' : '#111827') : '#9ca3af',
                   }}>
                     {mode}

@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Spinner } from '@/components/ui/Spinner';
 import {
     View,
     Text,
@@ -6,7 +7,6 @@ import {
     TouchableOpacity,
     ScrollView,
     TextInput,
-    ActivityIndicator,
     Alert
 } from 'react-native';
 import { X, CheckCircle, Info, Library, MessageSquare, BadgeCent, BarChart3, HelpCircle, Users, Zap } from 'lucide-react-native';
@@ -162,6 +162,7 @@ export const AddonRequestModal = ({ visible, onClose, currentAddons }: AddonRequ
                         <TouchableOpacity
                             onPress={handleSubmit}
                             disabled={loading || !selectedAddon}
+                            accessibilityState={{ disabled: loading || !selectedAddon, busy: loading }}
                             style={{
                                 marginTop: 32,
                                 backgroundColor: selectedAddon ? '#FF6B00' : '#E5E7EB',
@@ -180,7 +181,7 @@ export const AddonRequestModal = ({ visible, onClose, currentAddons }: AddonRequ
                             }}
                         >
                             {loading ? (
-                                <ActivityIndicator color="white" />
+                                <Spinner color="white" label="Submitting addon request" />
                             ) : (
                                 <>
                                     <Text style={{ color: 'white', fontSize: 16, fontWeight: '800' }}>Submit Feature Request</Text>

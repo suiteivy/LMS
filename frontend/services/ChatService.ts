@@ -6,6 +6,7 @@ export type ConversationSummary = {
   institution_id: string;
   created_at: string;
   last_message_at?: string | null;
+  expires_at?: string | null;
   last_read_at?: string | null;
   last_delivered_at?: string | null;
   unread_count: number;
@@ -93,6 +94,11 @@ export class ChatService {
 
   static async deleteConversation(conversationId: string) {
     const response = await api.delete(`/messages/conversations/${conversationId}`);
+    return response.data;
+  }
+
+  static async clearConversationForMe(conversationId: string) {
+    const response = await api.post(`/messages/conversations/${conversationId}/clear-for-me`);
     return response.data;
   }
 

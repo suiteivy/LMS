@@ -1,5 +1,6 @@
 import { UnifiedHeader } from "@/components/common/UnifiedHeader";
 import { DirectChatView } from "@/components/chat/DirectChatView";
+import { Spinner } from "@/components/ui/Spinner";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTheme } from "@/contexts/ThemeContext";
 import { supabase } from "@/libs/supabase";
@@ -24,7 +25,6 @@ import {
 } from "lucide-react-native";
 import React, { useEffect, useState, useCallback, useRef } from "react";
 import {
-    ActivityIndicator,
     Alert,
     Animated,
     Easing,
@@ -63,6 +63,7 @@ export default function CommunicationPage() {
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [directChatRefreshToken, setDirectChatRefreshToken] = useState(0);
+    const [directChatComposeToken, setDirectChatComposeToken] = useState(0);
 
     // Data lists
     const [inbox, setInbox] = useState<any[]>([]);
@@ -394,6 +395,7 @@ export default function CommunicationPage() {
                     searchPlaceholder="Search school contacts..."
                     emptyListTitle="No direct conversations"
                     externalRefreshToken={directChatRefreshToken}
+                    externalComposeToken={directChatComposeToken}
                 />
             </View>
         );
@@ -500,7 +502,7 @@ export default function CommunicationPage() {
                             className="bg-[#FF6B00] w-10 h-10 rounded-xl items-center justify-center shadow active:bg-orange-600"
                             onPress={() => {
                                 if (mainTab === "messages") {
-                                    setScreen("compose");
+                                    setDirectChatComposeToken((prev) => prev + 1);
                                 } else {
                                     openAnnouncementModal();
                                 }
@@ -514,7 +516,7 @@ export default function CommunicationPage() {
 
             {loading && !refreshing ? (
                 <View className="flex-1 justify-center items-center">
-                    <ActivityIndicator size="large" color="#FF6B00" />
+                    <Spinner size="large" color="#FF6B00" label="Loading communication" />
                 </View>
             ) : mainTab === "messages" ? (
                 renderDirectMessagesTab()
@@ -562,9 +564,10 @@ export default function CommunicationPage() {
                             className={`py-4 rounded-xl items-center justify-center flex-row shadow-md active:opacity-90 ${!announcementTitle.trim() || !announcementMessage.trim() ? 'bg-gray-400' : 'bg-[#FF6B00]'}`}
                             onPress={handlePostOrUpdateAnnouncement}
                             disabled={postingAnnouncement || !announcementTitle.trim() || !announcementMessage.trim()}
+                            accessibilityState={{ disabled: postingAnnouncement || !announcementTitle.trim() || !announcementMessage.trim(), busy: postingAnnouncement }}
                         >
                             {postingAnnouncement ? (
-                                <ActivityIndicator color="white" />
+                                <Spinner color="white" label="Saving announcement" />
                             ) : (
                                 <>
                                     {editingAnnouncement ? <Edit2 size={16} color="white" /> : <Megaphone size={16} color="white" />}

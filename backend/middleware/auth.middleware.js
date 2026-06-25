@@ -54,7 +54,7 @@ async function authMiddleware(req, res, next) {
       }
 
       const now = Date.now();
-      const tenMinutesMs = 10 * 60 * 1000;
+      const tenMinutesMs = 30 * 60 * 1000;
 
       if (sessionRow) {
         // Enforce revocation
@@ -76,7 +76,7 @@ async function authMiddleware(req, res, next) {
         if (now - lastActive > tenMinutesMs) {
           console.warn(`[AuthMiddleware] Session idle timeout exceeded: ${sessionId}`);
           await supabase.from('user_sessions').update({ is_revoked: true }).eq('session_id', sessionId);
-          return res.status(401).json({ error: "You've been logged out due to inactivity.", code: "SESSION_IDLE_TIMEOUT" });
+            return res.status(401).json({ error: "You've been logged out due to inactivity.", code: "SESSION_IDLE_TIMEOUT" });
         }
 
         // Valid session: update last_active_at (throttled to once every 30 seconds)

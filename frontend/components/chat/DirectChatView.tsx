@@ -2,10 +2,12 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/libs/supabase";
 import { ChatMessage, ChatService, ConversationSummary } from "@/services/ChatService";
 import { MessageService } from "@/services/MessageService";
-import { format } from "date-fns";
-import { ActivityIndicator, Alert, Image, RefreshControl, ScrollView, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { groupMessagesByDate, isDateSeparator } from "@/utils/chatDateGrouping";
+import { Spinner } from "@/components/ui/Spinner";
+import { SkeletonList } from "@/components/ui/Skeleton";
+import { Alert, Image, RefreshControl, ScrollView, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { useIsFocused } from "@react-navigation/native";
-import { AlertCircle, Check, CheckCheck, CheckCircle2, ChevronLeft, ChevronRight, Clock3, MessageCircle, Plus, Search, Send, Trash2, User } from "lucide-react-native";
+import { AlertCircle, Check, CheckCheck, CheckCircle2, ChevronLeft, ChevronRight, Clock3, MessageCircle, MoreVertical, Plus, Search, Send, User } from "lucide-react-native";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 type Screen = "list" | "thread" | "compose";
@@ -16,6 +18,7 @@ interface DirectChatViewProps {
   emptyListTitle?: string;
   compact?: boolean;
   externalRefreshToken?: number;
+  externalComposeToken?: number;
 }
 
 const formatTime = (dateStr?: string | null) => {
@@ -45,6 +48,16 @@ const getInitial = (name?: string | null) => {
   return (trimmed.charAt(0) || "U").toUpperCase();
 };
 
+const getConversationExpiryLabel = (expiresAt?: string | null) => {
+  if (!expiresAt) return null;
+  const ms = new Date(expiresAt).getTime() - Date.now();
+  if (!Number.isFinite(ms)) return null;
+  const totalDays = Math.ceil(ms / (24 * 60 * 60 * 1000));
+  if (totalDays <= 0) return "Expires today";
+  if (totalDays === 1) return "Expires in 1 day";
+  return `Expires in ${totalDays} days`;
+};
+
 type DerivedMessageStatus = "pending" | "failed" | "sent" | "delivered" | "read" | null;
 
 const deriveMessageStatus = (
@@ -71,12 +84,30 @@ const deriveMessageStatus = (
   return "sent";
 };
 
+const sortMessagesByCreatedAt = (messages: ChatMessage[]) => {
+  return [...messages].sort((a, b) => {
+    const at = new Date(a.created_at).getTime();
+    const bt = new Date(b.created_at).getTime();
+    if (at === bt) return a.id.localeCompare(b.id);
+    return at - bt;
+  });
+};
+
+const mergeMessagesUnique = (messages: ChatMessage[]) => {
+  const byId = new Map<string, ChatMessage>();
+  for (const message of messages) {
+    byId.set(message.id, message);
+  }
+  return sortMessagesByCreatedAt(Array.from(byId.values()));
+};
+
 export function DirectChatView({
   allowedContactRoles,
   searchPlaceholder = "Search contacts...",
   emptyListTitle = "No conversations yet",
   compact = false,
   externalRefreshToken,
+  externalComposeToken,
 }: DirectChatViewProps) {
   const { profile, user } = useAuth();
   const isFocused = useIsFocused();
@@ -105,6 +136,7 @@ export function DirectChatView({
   const [contactSearch, setContactSearch] = useState("");
   const [loadingContacts, setLoadingContacts] = useState(false);
   const [selectedContact, setSelectedContact] = useState<any>(null);
+  const [startingChat, setStartingChat] = useState(false);
 
   const horizontalPaddingClass = compact ? "px-3" : "px-4";
 
@@ -115,6 +147,7 @@ export function DirectChatView({
   const selectedConversationIdRef = useRef<string | null>(null);
   const contactsLoadedRef = useRef(false);
   const lastExternalRefreshTokenRef = useRef<number | undefined>(externalRefreshToken);
+  const lastExternalComposeTokenRef = useRef<number | undefined>(externalComposeToken);
   const autoRetryTimersRef = useRef<Map<string, any>>(new Map());
   const retryAttemptsRef = useRef<Map<string, number>>(new Map());
 
@@ -163,9 +196,9 @@ export function DirectChatView({
       }
       const data = await ChatService.listMessages(conversationId, reset ? undefined : cursor || undefined, 30);
       if (reset) {
-        setMessages(data.messages || []);
+        setMessages(sortMessagesByCreatedAt(data.messages || []));
       } else {
-        setMessages((prev) => [...(data.messages || []), ...prev]);
+        setMessages((prev) => mergeMessagesUnique([...(data.messages || []), ...prev]));
       }
       setHasMore(Boolean(data.hasMore));
       setCursor(data.nextCursor || null);
@@ -233,8 +266,7 @@ export function DirectChatView({
           const incoming = payload.new as ChatMessage;
           setMessages((prev) => {
             if (prev.some((m) => m.id === incoming.id)) return prev;
-            const merged = [...prev, incoming].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
-            return merged;
+            return mergeMessagesUnique([...prev, incoming]);
           });
           if (incoming.sender_id && incoming.sender_id !== profile?.id) {
             scheduleAcknowledgeDelivery(selectedConversation.id);
@@ -366,6 +398,17 @@ export function DirectChatView({
     onRefresh().catch(() => {});
   }, [externalRefreshToken, onRefresh]);
 
+  useEffect(() => {
+    if (!isFocused) return;
+    if (externalComposeToken === undefined) return;
+    if (lastExternalComposeTokenRef.current === externalComposeToken) return;
+    lastExternalComposeTokenRef.current = externalComposeToken;
+
+    setScreen("compose");
+    setSelectedContact(null);
+    setContactSearch("");
+  }, [externalComposeToken, isFocused]);
+
   const fetchContacts = useCallback(async () => {
     if (!isFocused) return;
     setLoadingContacts(true);
@@ -431,6 +474,8 @@ export function DirectChatView({
     () => messages.filter((m) => m.sender_id === profile?.id && m.local_status === "failed"),
     [messages, profile?.id]
   );
+
+  const groupedMessages = useMemo(() => groupMessagesByDate(messages), [messages]);
 
   const sendTypingSignal = (typing: boolean) => {
     if (!selectedConversation?.id || !profile?.id) return;
@@ -585,31 +630,64 @@ export function DirectChatView({
   };
 
   const startWithContact = async () => {
-    if (!selectedContact?.id) return;
+    if (!selectedContact?.id || startingChat) return;
+    setStartingChat(true);
     try {
       const started = await ChatService.startConversation(selectedContact.id);
       const id = started?.conversation?.id;
       if (!id) throw new Error("Conversation creation failed.");
+
+      const immediateConversation: ConversationSummary = {
+        id,
+        type: "DIRECT",
+        institution_id: started?.conversation?.institution_id || profile?.institution_id || "",
+        created_at: started?.conversation?.created_at || new Date().toISOString(),
+        last_message_at: started?.conversation?.last_message_at || null,
+        unread_count: 0,
+        partner: {
+          id: selectedContact.id,
+          full_name: selectedContact.full_name,
+          avatar_url: selectedContact.avatar_url || null,
+          role: selectedContact.role,
+        },
+        last_message: null,
+      };
+
+      setSelectedConversation(immediateConversation);
+      setScreen("thread");
+
       await fetchConversations();
       const latest = await ChatService.listConversations();
       const found = (latest || []).find((c: ConversationSummary) => c.id === id) || null;
       if (found) {
         setSelectedConversation(found);
-        setScreen("thread");
       }
       setSelectedContact(null);
       setContactSearch("");
     } catch (error: any) {
       Alert.alert("Unable to start chat", error?.response?.data?.error || error?.message || "Could not start conversation.");
+    } finally {
+      setStartingChat(false);
     }
   };
 
   const deleteChat = async () => {
     if (!selectedConversation?.id) return;
-    Alert.alert("Delete chat", "This removes the chat from your list only.", [
-      { text: "Cancel", style: "cancel" },
+    Alert.alert("Chat options", "Choose what to remove.", [
       {
-        text: "Delete",
+        text: "Clear messages (for me)",
+        onPress: async () => {
+          try {
+            await ChatService.clearConversationForMe(selectedConversation.id);
+            setMessages([]);
+            await fetchConversations();
+          } catch (error: any) {
+            Alert.alert("Clear failed", error?.message || "Could not clear messages.");
+          }
+        },
+      },
+      {
+        text: "Delete chat from list",
         style: "destructive",
         onPress: async () => {
           try {
@@ -623,6 +701,7 @@ export function DirectChatView({
           }
         },
       },
+      { text: "Cancel", style: "cancel" },
     ]);
   };
 
@@ -778,10 +857,15 @@ export function DirectChatView({
             <Text className="text-gray-400 dark:text-gray-500 text-[10px] font-bold uppercase tracking-widest">
               {typingText || (selectedConversation?.partner?.role || "DIRECT")}
             </Text>
+            {selectedConversation?.expires_at ? (
+              <Text className="text-amber-600 dark:text-amber-400 text-[9px] font-bold uppercase tracking-widest mt-1">
+                {getConversationExpiryLabel(selectedConversation.expires_at)}
+              </Text>
+            ) : null}
             </View>
           </View>
-          <TouchableOpacity onPress={deleteChat} className="bg-red-50 dark:bg-red-950/30 p-2 rounded-lg">
-            <Trash2 size={16} color="#ef4444" />
+          <TouchableOpacity onPress={deleteChat} className="bg-gray-100 dark:bg-gray-800 p-2 rounded-lg">
+            <MoreVertical size={16} color="#6B7280" />
           </TouchableOpacity>
         </View>
         </View>
@@ -808,34 +892,52 @@ export function DirectChatView({
             }
           }}
             >
-              {loadingMore ? <ActivityIndicator size="small" color="#FF6900" className="py-2" /> : null}
+              {loadingMore ? <Spinner size="small" color="#FF6900" className="py-2" label="Loading older messages" /> : null}
 
-              {messages.map((m) => {
-            const own = m.sender_id === profile?.id;
-            const status = own ? deriveMessageStatus(m, partnerDeliveredAt, partnerReadAt) : null;
-            return (
-              <TouchableOpacity
-                key={m.id}
-                activeOpacity={0.8}
-                onLongPress={() => handleMessageAction(m)}
-                className={`max-w-[80%] px-4 py-3 rounded-2xl mb-2 ${own ? "self-end bg-[#FF6900]" : "self-start bg-white dark:bg-navy-surface border border-gray-100 dark:border-gray-800"}`}
-              >
-                <Text className={`${own ? "text-white" : "text-gray-900 dark:text-white"} text-sm`}>{m.content}</Text>
-                <View className="flex-row items-center justify-end mt-1 gap-1">
-                  {m.edited_at ? <Text className={`${own ? "text-white/70" : "text-gray-400"} text-[9px] font-bold uppercase`}>edited</Text> : null}
-                  <Text className={`${own ? "text-white/80" : "text-gray-400"} text-[9px] font-bold`}>{formatTime(m.created_at)}</Text>
-                  {own ? renderStatusIndicator(status, () => retryFailedMessage(m)) : null}
-                </View>
-                {own && status === "failed" ? (
+              {groupedMessages.map((item) => {
+                if (isDateSeparator(item)) {
+                  return (
+                    <View key={item.id} className="items-center my-2">
+                      <View className="px-3 py-1 rounded-full bg-gray-200 dark:bg-gray-800 border border-gray-300 dark:border-gray-700">
+                        <Text className="text-[9px] font-bold uppercase tracking-widest text-gray-600 dark:text-gray-300">
+                          {item.label}
+                        </Text>
+                      </View>
+                    </View>
+                  );
+                }
+
+                const m = item;
+                const own = m.sender_id === profile?.id;
+                const status = own ? deriveMessageStatus(m, partnerDeliveredAt, partnerReadAt) : null;
+                return (
                   <TouchableOpacity
-                    onPress={() => retryFailedMessage(m)}
-                    className="mt-2 self-end bg-white/20 px-2 py-1 rounded-lg"
+                    key={m.id}
+                    activeOpacity={0.8}
+                    onLongPress={() => handleMessageAction(m)}
+                    className={`max-w-[80%] px-4 py-3 rounded-2xl mb-2 ${own ? "self-end bg-[#FF6900]" : "self-start bg-white dark:bg-navy-surface border border-gray-100 dark:border-gray-800"}`}
                   >
-                    <Text className="text-white text-[9px] font-bold uppercase tracking-widest">Retry send</Text>
+                    <View className="flex-row items-start">
+                      <Text className={`flex-1 ${own ? "text-white" : "text-gray-900 dark:text-white"} text-sm`}>{m.content}</Text>
+                      <TouchableOpacity onPress={() => handleMessageAction(m)} className="ml-2 p-1" hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                        <MoreVertical size={13} color={own ? "rgba(255,255,255,0.8)" : "#9CA3AF"} />
+                      </TouchableOpacity>
+                    </View>
+                    <View className="flex-row items-center justify-end mt-1 gap-1">
+                      {m.edited_at ? <Text className={`${own ? "text-white/70" : "text-gray-400"} text-[9px] font-bold uppercase`}>edited</Text> : null}
+                      <Text className={`${own ? "text-white/80" : "text-gray-400"} text-[9px] font-bold`}>{formatTime(m.created_at)}</Text>
+                      {own ? renderStatusIndicator(status, () => retryFailedMessage(m)) : null}
+                    </View>
+                    {own && status === "failed" ? (
+                      <TouchableOpacity
+                        onPress={() => retryFailedMessage(m)}
+                        className="mt-2 self-end bg-white/20 px-2 py-1 rounded-lg"
+                      >
+                        <Text className="text-white text-[9px] font-bold uppercase tracking-widest">Retry send</Text>
+                      </TouchableOpacity>
+                    ) : null}
                   </TouchableOpacity>
-                ) : null}
-              </TouchableOpacity>
-            );
+                );
               })}
             </ScrollView>
           </View>
@@ -895,10 +997,11 @@ export function DirectChatView({
             <TouchableOpacity
               onPress={handleSend}
               disabled={!messageInput.trim() || sending}
+              accessibilityState={{ disabled: !messageInput.trim() || sending, busy: false }}
               className="ml-2 w-11 h-11 rounded-full items-center justify-center"
               style={{ backgroundColor: !messageInput.trim() || sending ? "#9CA3AF" : "#FF6900" }}
             >
-              {sending ? <ActivityIndicator color="white" size="small" /> : <Send size={18} color="white" />}
+               <Send size={18} color="white" />
             </TouchableOpacity>
           </View>
         </View>
@@ -919,10 +1022,15 @@ export function DirectChatView({
             onChangeText={setContactSearch}
           />
         </View>
+        <View className="mt-3 bg-amber-50 dark:bg-amber-950/20 border border-amber-100 dark:border-amber-900/50 rounded-xl px-3 py-2">
+          <Text className="text-amber-700 dark:text-amber-300 text-[10px] font-bold uppercase tracking-widest">
+            Chats auto-delete after 7 days of inactivity.
+          </Text>
+        </View>
       </View>
 
       {loadingContacts ? (
-        <ActivityIndicator size="small" color="#FF6900" className="py-4" />
+        <Spinner size="small" color="#FF6900" className="py-4" label="Loading contacts" />
       ) : (
         <ScrollView className="flex-1" keyboardShouldPersistTaps="handled">
           {(displayedContacts || []).map((c) => {
@@ -956,11 +1064,18 @@ export function DirectChatView({
       <View className="py-3">
         <TouchableOpacity
           onPress={startWithContact}
-          disabled={!selectedContact}
+          disabled={!selectedContact || startingChat}
           className="py-4 rounded-2xl items-center"
-          style={{ backgroundColor: selectedContact ? "#FF6900" : "#9CA3AF" }}
+          style={{ backgroundColor: selectedContact && !startingChat ? "#FF6900" : "#9CA3AF" }}
         >
-          <Text className="text-white font-bold text-sm uppercase tracking-widest">Start chat</Text>
+          {startingChat ? (
+            <View className="flex-row items-center">
+              <Spinner size="small" color="#FFFFFF" />
+              <Text className="text-white font-bold text-sm uppercase tracking-widest ml-2">Starting chat...</Text>
+            </View>
+          ) : (
+            <Text className="text-white font-bold text-sm uppercase tracking-widest">Start chat</Text>
+          )}
         </TouchableOpacity>
       </View>
     </View>
@@ -1037,6 +1152,11 @@ export function DirectChatView({
                         : (c.partner?.full_name || "Contact")
                       : "No messages yet"}
                   </Text>
+                  {c.expires_at ? (
+                    <Text className="text-amber-600 dark:text-amber-400 text-[9px] font-bold uppercase tracking-widest mt-1" numberOfLines={1}>
+                      {getConversationExpiryLabel(c.expires_at)}
+                    </Text>
+                  ) : null}
                 </View>
                 {c.unread_count > 0 ? (
                   <View className="bg-[#FF6900] px-2 py-1 rounded-full ml-2">
@@ -1058,8 +1178,8 @@ export function DirectChatView({
 
   if (loading) {
     return (
-      <View className="flex-1 items-center justify-center">
-        <ActivityIndicator size="large" color="#FF6900" />
+      <View className={`flex-1 ${horizontalPaddingClass} pt-4`} accessibilityState={{ busy: true }}>
+        <SkeletonList count={5} />
       </View>
     );
   }

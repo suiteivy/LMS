@@ -177,9 +177,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         clearTimeout(idleTimeoutRef.current);
       }
       idleTimeoutRef.current = setTimeout(async () => {
-        console.warn("[AuthContext] Local idle timeout triggered (10 minutes inactivity)");
+        console.warn("[AuthContext] Local idle timeout triggered (30 minutes inactivity)");
         await handleLogout(false, LogoutReason.INACTIVITY_TIMEOUT);
-      }, 10 * 60 * 1000);
+      }, 30 * 60 * 1000);
 
       // Throttled keep-alive ping to backend (at most once every 1 minute)
       const now = Date.now();

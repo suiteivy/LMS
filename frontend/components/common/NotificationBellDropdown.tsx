@@ -1,11 +1,11 @@
 import { useNotifications } from "@/contexts/NotificationContext";
 import { useTheme } from "@/contexts/ThemeContext";
+import { Spinner } from "@/components/ui/Spinner";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { formatDistanceToNow } from "date-fns";
 import { AlertCircle, Bell, CheckCircle, Info, Trash2, X } from "lucide-react-native";
 import React from "react";
 import {
-    ActivityIndicator,
     Pressable,
     ScrollView,
     Text,
@@ -155,7 +155,7 @@ export function NotificationBellDropdown({
                             {/* Content */}
                             {loading && recentNotifications.length === 0 ? (
                                 <View style={{ padding: 32, alignItems: "center" }}>
-                                    <ActivityIndicator color={accentColor} size="small" />
+                                    <Spinner color={accentColor} size="small" label="Loading notifications" />
                                     <Text
                                         style={{
                                             color: tokens.textMuted,

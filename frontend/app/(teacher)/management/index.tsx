@@ -188,13 +188,10 @@ export default function ManagementIndex() {
         {
             icon: BarChart3,
             title: "Insights",
-            description: hasAnalytics
-                ? "Track performance and statistics"
-                : "Requires Analytics add-on",
+            description: "Track performance and statistics",
             color: "#3b82f6",
             bgColor: "#dbeafe",
-            route: hasAnalytics ? "/(teacher)/management/analytics" : "/(admin)/request-feature",
-            badge: hasAnalytics ? undefined : "Add-on",
+            route: "/(teacher)/management/analytics",
             tooltipId: 'teacher.manage.insights'
         },
         {
@@ -244,6 +241,13 @@ export default function ManagementIndex() {
         }] : [])
     ];
 
+    const visibleFeatures = features.filter((feature) => {
+        if (feature.route === "/(teacher)/management/analytics") {
+            return hasAnalytics;
+        }
+        return true;
+    });
+
     return (
         <View className="flex-1 bg-gray-50 dark:bg-navy">
             <UnifiedHeader
@@ -288,7 +292,7 @@ export default function ManagementIndex() {
                     <View className="px-2 mb-4">
                         <Text className="text-gray-400 font-bold text-[10px] uppercase tracking-widest">Management Suite</Text>
                     </View>
-                    {features.map((feature, index) => (
+                    {visibleFeatures.map((feature, index) => (
                         <FeatureCard key={index} {...feature} tier={tier} />
                     ))}
                 </View>

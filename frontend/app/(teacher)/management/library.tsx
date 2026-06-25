@@ -6,7 +6,7 @@ import { router } from "expo-router";
 import { BookOpen, Calendar, ChevronRight, Plus, Search, User, X, Zap } from "lucide-react-native";
 import React, { useEffect, useState } from "react";
 import { ActivityIndicator, Alert, Modal, ScrollView, Text, TextInput, TouchableOpacity, View } from "react-native";
-import { SubscriptionGate, AddonRequestButton } from "@/components/shared/SubscriptionComponents";
+import { SubscriptionGate } from "@/components/shared/SubscriptionComponents";
 import { supabase } from "@/libs/supabase";
 
 export default function TeacherLibraryPage() {
@@ -102,7 +102,6 @@ export default function TeacherLibraryPage() {
                             <Text className="text-gray-500 text-center mb-8 leading-5">
                                 Digital Library features are not included in your current subscription plan.
                             </Text>
-                            <AddonRequestButton onPress={() => { /* Handle request */ }} />
                         </View>
                     </View>
                 }

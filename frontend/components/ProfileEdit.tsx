@@ -1,8 +1,9 @@
 import { supabase, authService } from '@/libs/supabase'; // Adjust path if needed, usually in lib or services
+import { Spinner } from '@/components/ui/Spinner';
 import * as ImagePicker from 'expo-image-picker';
 import { Camera, X } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Image, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Alert, Image, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useAuth } from '@/contexts/AuthContext';
 import DatePicker from '@/components/common/DatePicker';
 
@@ -233,7 +234,7 @@ export const ProfileEdit = ({ visible, onClose, currentUser, onUpdate }: EditFor
                       )}
                     </View>
                     <View className="absolute bottom-0 right-0 bg-orange-500 p-2 rounded-full border-2 border-white">
-                      {uploading ? <ActivityIndicator size="small" color="white" /> : <Camera size={14} color="white" />}
+                      {uploading ? <Spinner size="small" color="white" label="Uploading avatar" /> : <Camera size={14} color="white" />}
                     </View>
                   </TouchableOpacity>
                   <Text className="text-gray-400 text-xs mt-2">JPG, PNG or WebP · Max 5MB</Text>
@@ -364,12 +365,13 @@ export const ProfileEdit = ({ visible, onClose, currentUser, onUpdate }: EditFor
                 <TouchableOpacity
                   disabled={loading}
                   onPress={handleSave}
+                  accessibilityState={{ disabled: loading, busy: loading }}
                   className={`p-4 rounded-2xl items-center ${loading
                     ? "bg-gray-100"
                     : "bg-orange-500 shadow-md active:opacity-90"}`}
                 >
                   {loading ? (
-                    <ActivityIndicator color="white" />
+                    <Spinner color="white" label="Saving profile changes" />
                   ) : (
                     <Text className="font-bold text-lg text-white">
                       Save Changes

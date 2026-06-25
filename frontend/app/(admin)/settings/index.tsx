@@ -4,7 +4,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/libs/supabase";
 import { User, Phone, Mail, Shield, LogOut, ChevronRight, Save, Zap, Star } from "lucide-react-native";
 import { showSuccess, showError } from "@/utils/toast";
-import { AddonRequestModal, AddonRequestButton } from "@/components/shared/SubscriptionComponents";
+import { AddonRequestModal } from "@/components/shared/SubscriptionComponents";
 import { getPlanLabel } from "@/services/SubscriptionService";
 
 export default function SettingsScreen() {
@@ -180,7 +180,29 @@ export default function SettingsScreen() {
                         </View>
                     </View>
 
-                    <AddonRequestButton style={{ width: '100%', justifyContent: 'center' }} onPress={() => setRequestModalVisible(true)} />
+                    <TouchableOpacity
+                        onPress={() => setRequestModalVisible(true)}
+                        style={{
+                            width: '100%',
+                            justifyContent: 'center',
+                            alignItems: 'center',
+                            flexDirection: 'row',
+                            backgroundColor: '#FF6900',
+                            paddingHorizontal: 16,
+                            paddingVertical: 10,
+                            borderRadius: 12,
+                            gap: 8,
+                            boxShadow: [{ offsetX: 0, offsetY: 4, blurRadius: 8, color: 'rgba(255, 105, 0, 0.2)' }],
+                            shadowColor: '#FF6900',
+                            shadowOffset: { width: 0, height: 4 },
+                            shadowOpacity: 0.2,
+                            shadowRadius: 8,
+                            elevation: 4,
+                        }}
+                    >
+                        <Zap size={16} color="white" />
+                        <Text style={{ color: 'white', fontWeight: '800', fontSize: 13 }}>Request Feature</Text>
+                    </TouchableOpacity>
                 </View>
 
                 {/* Account Actions */}

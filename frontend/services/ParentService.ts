@@ -27,6 +27,11 @@ export class ParentService {
         return response.data;
     }
 
+    static async getStudentAnnouncements(studentId: string) {
+        const response = await api.get(`/parent/student/${studentId}/announcements`);
+        return response.data;
+    }
+
     /** Get academic reports for a linked student */
     static async getStudentReports(studentId: string) {
         const response = await api.get(`/reports?studentId=${studentId}`);

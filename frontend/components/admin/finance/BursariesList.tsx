@@ -1,4 +1,5 @@
 import { useTheme } from '@/contexts/ThemeContext';
+import { Spinner } from '@/components/ui/Spinner';
 import { BursaryService } from '@/services/BursaryService';
 import { Bursary } from '@/types/types';
 import { formatCurrency } from '@/utils/currency';
@@ -6,7 +7,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { format } from 'date-fns';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Text, TouchableOpacity, View } from 'react-native';
+import { Text, TouchableOpacity, View } from 'react-native';
 
 
 export function BursariesList() {
@@ -73,7 +74,7 @@ export function BursariesList() {
     );
 
     if (loading) {
-        return <ActivityIndicator size="large" color={isDark ? "#FF6900" : "#FF6B00"} className="mt-10" />;
+        return <Spinner size="large" color={isDark ? "#FF6900" : "#FF6B00"} className="mt-10" label="Loading bursaries" />;
     }
 
     return (

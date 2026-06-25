@@ -91,6 +91,16 @@ export class FinanceService {
         return response.data;
     }
 
+    static async releaseFeeStructure(id: string) {
+        const response = await api.put(`/finance/fee-structures/${id}/release`, {});
+        return response.data;
+    }
+
+    static async deleteFeeStructure(id: string) {
+        const response = await api.delete(`/finance/fee-structures/${id}`);
+        return response.data;
+    }
+
     static async submitEvidence(evidenceData: any) {
         const response = await api.post('/finance/fees/evidence', evidenceData);
         return response.data;

@@ -16,6 +16,8 @@ import { GradingAPI } from '@/services/GradingService';
 import { ParentService } from '@/services/ParentService';
 import { usePrint } from '@/hooks/usePrint';
 import { getPerformanceLabel, type GradingScaleRow } from '@/utils/getPerformanceLabel';
+import { setParentSelectedChild } from '@/utils/parentSelectedChild';
+import { useParentStudentContext } from '@/hooks/useParentStudentContext';
 import {
   AlertCircle,
   Award,
@@ -188,7 +190,9 @@ export default function ParentReportCardsScreen() {
   const params = useLocalSearchParams<{
     studentId?: string;
     studentName?: string;
+    classId?: string;
   }>();
+  const context = useParentStudentContext(params as any, { persistWhenParamPresent: false });
 
   const [children, setChildren] = useState<Child[]>([]);
   const [selectedChild, setSelectedChild] = useState<Child | null>(null);
@@ -207,20 +211,27 @@ export default function ParentReportCardsScreen() {
 
   // Fetch linked children
   const fetchChildren = useCallback(async () => {
+    if (!context.ready) return;
     try {
       const students = await ParentService.getLinkedStudents();
       setChildren(students);
       if (students.length > 0) {
         // Pre-select child from navigation params
-        const preSelected = params.studentId
-          ? students.find((s: Child) => s.id === params.studentId)
+        const preSelected = context.studentId
+          ? students.find((s: Child) => s.id === context.studentId)
           : null;
-        setSelectedChild(preSelected || students[0]);
+        const initial = preSelected || students[0];
+        setSelectedChild(initial);
+        await setParentSelectedChild({
+          studentId: initial.id,
+          studentName: initial.users?.full_name || '',
+          classId: initial.class_id || '',
+        });
       }
     } catch (err: any) {
       showError(err?.message || 'Failed to load children');
     }
-  }, [params.studentId]);
+  }, [context.ready, context.studentId]);
 
   // Fetch report cards for selected child
   const fetchReportCards = useCallback(async () => {
@@ -254,6 +265,15 @@ export default function ParentReportCardsScreen() {
     fetchReportCards();
   }, [fetchReportCards]);
 
+  useEffect(() => {
+    if (!selectedChild) return;
+    setParentSelectedChild({
+      studentId: selectedChild.id,
+      studentName: selectedChild.users?.full_name || '',
+      classId: selectedChild.class_id || '',
+    });
+  }, [selectedChild]);
+
   const handleToggleExpand = (id: string) => {
     setExpandedCard((prev) => (prev === id ? null : id));
   };
@@ -281,7 +301,7 @@ export default function ParentReportCardsScreen() {
   // ─── Render ───────────────────────────────────────────────────────────────
 
   const childName =
-    selectedChild?.users?.full_name || params.studentName || 'Child';
+    selectedChild?.users?.full_name || context.studentName || 'Child';
 
   return (
     <View style={styles.container}>

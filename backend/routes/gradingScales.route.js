@@ -13,7 +13,7 @@ const {
 
 router.use(authMiddleware);
 
-router.get("/", authorizeRoles(["admin", "teacher"]), getGradingScales);
+router.get("/", authorizeRoles(["admin", "teacher", "student", "parent"]), getGradingScales);
 router.get("/default", authorizeRoles(["admin"]), getDefaultScale);
 router.post("/", authorizeRoles(["admin", "teacher"]), createGradingScale);
 router.put("/:id", authorizeRoles(["admin", "teacher"]), updateGradingScale);

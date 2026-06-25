@@ -1,6 +1,7 @@
 import { useAuth } from "@/contexts/AuthContext";
 import { useTheme } from "@/contexts/ThemeContext";
 import { authService } from "@/libs/supabase";
+import { Spinner } from "@/components/ui/Spinner";
 import { ParentService } from "@/services/ParentService";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router } from "expo-router";
@@ -17,7 +18,6 @@ import {
 } from "lucide-react-native";
 import React, { useEffect, useState } from "react";
 import {
-  ActivityIndicator,
   Alert,
   Image,
   RefreshControl,
@@ -132,7 +132,7 @@ export default function ParentProfile() {
   if (!profile) {
     return (
       <View className="flex-1 justify-center items-center bg-gray-50 dark:bg-navy">
-        <ActivityIndicator size="large" color="#FF6B00" />
+        <Spinner size="large" color="#FF6B00" label="Loading profile" />
       </View>
     );
   }
@@ -243,7 +243,7 @@ export default function ParentProfile() {
                     disabled={saving}
                   >
                     {saving ? (
-                      <ActivityIndicator color="white" />
+                      <Spinner color="white" label="Saving profile" />
                     ) : (
                       <Text className="text-white font-black text-xs uppercase tracking-[2px]">
                         Save Changes
@@ -281,7 +281,7 @@ export default function ParentProfile() {
               </View>
 
               {loadingStudents ? (
-                <ActivityIndicator size="small" color="#FF6900" className="my-6" />
+                <Spinner size="small" color="#FF6900" className="my-6" label="Loading linked children" />
               ) : linkedStudents.length === 0 ? (
                 <View className="items-center justify-center py-8 bg-gray-50 dark:bg-gray-900 rounded-3xl border border-dashed border-gray-200 dark:border-gray-800">
                   <Users size={32} color="#D1D5DB" />

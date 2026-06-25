@@ -1,11 +1,12 @@
 import { useTheme } from '@/contexts/ThemeContext';
+import { Spinner } from '@/components/ui/Spinner';
 import { supabase } from '@/libs/supabase';
 import { Payment } from '@/types/types';
 import { formatCurrency } from '@/utils/currency'; // Assuming this utility exists or I should create it
 import { Ionicons } from '@expo/vector-icons';
 import { format } from 'date-fns';
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, FlatList, Text, View } from 'react-native';
+import { FlatList, Text, View } from 'react-native';
 
 export function PaymentsList() {
     const { isDark } = useTheme();
@@ -93,7 +94,7 @@ export function PaymentsList() {
     );
 
     if (loading) {
-        return <ActivityIndicator size="large" color={isDark ? "#FF6900" : "#000"} className="mt-10" />;
+        return <Spinner size="large" color={isDark ? "#FF6900" : "#000"} className="mt-10" label="Loading payments" />;
     }
 
     return (

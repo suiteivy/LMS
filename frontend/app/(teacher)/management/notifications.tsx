@@ -11,6 +11,7 @@ export default function TeacherNotifications() {
     const [notifications, setNotifications] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
+    const [markingAllRead, setMarkingAllRead] = useState(false);
 
     // Listen to realtime changes on the notifications table
     useRealtimeQuery('notifications', () => {
@@ -50,11 +51,16 @@ export default function TeacherNotifications() {
     };
 
     const markAllAsRead = async () => {
+        if (markingAllRead) return;
         try {
+            setMarkingAllRead(true);
             await NotificationAPI.markAllAsRead();
             setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
+            await fetchNotifications();
         } catch (error) {
             console.error("Error marking all as read:", error);
+        } finally {
+            setMarkingAllRead(false);
         }
     };
 
@@ -99,11 +105,19 @@ export default function TeacherNotifications() {
                             </View>
                             {unreadCount > 0 && (
                                 <TouchableOpacity
-                                    className="flex-row items-center bg-white px-5 py-2.5 rounded-2xl border border-gray-100 shadow-sm active:bg-gray-50"
+                                    className="flex-row items-center bg-white px-2.5 py-1.5 rounded-full border border-gray-100 shadow-sm active:bg-gray-50"
                                     onPress={markAllAsRead}
+                                    disabled={markingAllRead}
+                                    accessibilityState={{ disabled: markingAllRead, busy: markingAllRead }}
                                 >
-                                    <CheckCircle2 size={16} color="#FF6900" />
-                                    <Text className="text-[#FF6900] font-bold text-xs ml-2 uppercase tracking-widest">Mark All</Text>
+                                    {markingAllRead ? (
+                                        <ActivityIndicator size="small" color="#FF6900" />
+                                    ) : (
+                                        <>
+                                            <CheckCircle2 size={12} color="#6B7280" />
+                                            <Text className="text-gray-500 font-bold text-[9px] ml-1 uppercase tracking-wider">Mark everything as read</Text>
+                                        </>
+                                    )}
                                 </TouchableOpacity>
                             )}
                         </View>

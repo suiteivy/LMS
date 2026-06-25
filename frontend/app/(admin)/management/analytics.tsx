@@ -1,6 +1,6 @@
 import { UnifiedHeader } from "@/components/common/UnifiedHeader";
 import { HelpTooltip } from "@/components/settings/HelpTooltip";
-import { AddonRequestButton, SubscriptionGate } from "@/components/shared/SubscriptionComponents";
+import { SubscriptionGate } from "@/components/shared/SubscriptionComponents";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useSubscriptionTier } from "@/hooks/useSubscriptionTier";
 import { useDashboardStats } from "@/hooks/useDashboardStats";
@@ -140,7 +140,6 @@ export default function AnalyticsScreen() {
                                 <Text style={{ color: textSecondary, fontSize: 13, textAlign: 'center', marginBottom: 16 }}>
                                     Advanced analytics are not included in your current subscription plan.
                                 </Text>
-                                <AddonRequestButton onPress={() => router.push('/(admin)/request-feature' as any)} />
                             </View>
                         }
                     >

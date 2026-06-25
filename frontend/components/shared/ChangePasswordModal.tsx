@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
+import { Spinner } from '@/components/ui/Spinner';
 import {
     View,
     Text,
     Modal,
     TextInput,
     TouchableOpacity,
-    ActivityIndicator,
     Platform,
     KeyboardAvoidingView,
     ScrollView,
@@ -226,6 +226,7 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ visibl
                             <TouchableOpacity
                                 onPress={handlePasswordChange}
                                 disabled={loading}
+                                accessibilityState={{ disabled: loading, busy: loading }}
                                 activeOpacity={0.8}
                                 style={{ 
                                     backgroundColor: tokens.primary, 
@@ -243,7 +244,7 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ visibl
                                 }}
                             >
                                 {loading ? (
-                                    <ActivityIndicator color="#fff" />
+                                    <Spinner color="#fff" label="Updating password" />
                                 ) : (
                                     <Text style={{ color: '#fff', fontSize: 16, fontWeight: '800', letterSpacing: 0.5 }}>Confirm Change</Text>
                                 )}
@@ -255,4 +256,3 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ visibl
         </Modal>
     );
 };
-

@@ -9,8 +9,8 @@ import {
   Platform,
 } from "react-native";
 import { ArrowLeft, TrendingUp, BarChart3, Award, BookOpen } from "lucide-react-native";
-import { router } from "expo-router";
-import { AddonRequestButton, SubscriptionGate } from "@/components/shared/SubscriptionComponents";
+import { router, useLocalSearchParams } from "expo-router";
+import { SubscriptionGate } from "@/components/shared/SubscriptionComponents";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useSubscriptionTier } from "@/hooks/useSubscriptionTier";
@@ -19,8 +19,12 @@ import { GradingAPI } from "@/services/GradingService";
 import { getPerformanceLabel } from "@/utils/getPerformanceLabel";
 import { TrendChart, SubjectTrendCard } from "@/components/common/TrendChart";
 import { UnifiedHeader } from "@/components/common/UnifiedHeader";
+import { setParentSelectedChild } from "@/utils/parentSelectedChild";
+import { useParentStudentContext } from "@/hooks/useParentStudentContext";
 
 export default function ParentAnalyticsPage() {
+  const params = useLocalSearchParams<{ studentId?: string; studentName?: string; classId?: string }>();
+  const context = useParentStudentContext(params as any, { persistWhenParamPresent: false });
   const { profile } = useAuth();
   const { isDark } = useTheme();
   const { hasAnalytics } = useSubscriptionTier();
@@ -57,21 +61,38 @@ export default function ParentAnalyticsPage() {
 
   useEffect(() => {
     const loadStudents = async () => {
+      if (!context.ready) return;
       try {
         const students = await ParentService.getLinkedStudents();
         setLinkedStudents(students);
         if (students.length > 0) {
-          setSelectedStudent(students[0]);
+          const matched = context.studentId
+            ? students.find((s: any) => s.id === context.studentId)
+            : null;
+          const initial = matched || students[0];
+          setSelectedStudent(initial);
+          await setParentSelectedChild({
+            studentId: initial.id,
+            studentName: initial.users?.full_name || "",
+            classId: initial.class_id || "",
+          });
         }
       } catch (error) {
         console.error("Error loading students:", error);
       }
     };
     loadStudents();
-  }, []);
+  }, [context.ready, context.studentId]);
 
   useEffect(() => {
-    if (selectedStudent) fetchData(selectedStudent);
+    if (selectedStudent) {
+      setParentSelectedChild({
+        studentId: selectedStudent.id,
+        studentName: selectedStudent.users?.full_name || "",
+        classId: selectedStudent.class_id || "",
+      });
+      fetchData(selectedStudent);
+    }
   }, [selectedStudent]);
 
   const onRefresh = () => {
@@ -126,6 +147,12 @@ export default function ParentAnalyticsPage() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       >
         <View className="p-4">
+          {!!selectedStudent?.users?.full_name && (
+            <Text className="text-gray-400 text-xs mb-3 px-1">
+              Viewing: {selectedStudent.users.full_name}
+            </Text>
+          )}
+
           {/* Student Switcher */}
           {linkedStudents.length > 1 && (
             <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-4">
@@ -144,7 +171,7 @@ export default function ParentAnalyticsPage() {
                       selectedStudent?.id === student.id ? "text-white" : "text-gray-600"
                     }`}
                   >
-                    {student.full_name || student.name || "Student"}
+                    {student.users?.full_name || student.full_name || student.name || "Student"}
                   </Text>
                 </TouchableOpacity>
               ))}
@@ -159,7 +186,6 @@ export default function ParentAnalyticsPage() {
                 <Text className="text-gray-400 dark:text-gray-500 text-sm text-center mb-4">
                   Analytics add-on is not enabled for your institution.
                 </Text>
-                <AddonRequestButton onPress={() => router.push('/(admin)/request-feature' as any)} />
               </View>
             }
           >

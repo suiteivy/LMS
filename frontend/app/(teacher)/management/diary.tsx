@@ -10,7 +10,7 @@ import { ActivityIndicator, Modal, ScrollView, Text, TextInput, TouchableOpacity
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import { Printer } from 'lucide-react-native';
-import { SubscriptionGate, AddonRequestButton } from "@/components/shared/SubscriptionComponents";
+import { SubscriptionGate } from "@/components/shared/SubscriptionComponents";
 
 const DiaryCard = ({ entry, onDelete, onEdit }: { entry: DiaryEntry; onDelete: (id: string) => void; onEdit: (entry: DiaryEntry) => void }) => {
     return (
@@ -262,7 +262,6 @@ export default function TeacherDiaryPage() {
                             <Text className="text-gray-500 text-center mb-8 leading-5">
                                 The Virtual Diary module is not included in your current subscription plan.
                             </Text>
-                            <AddonRequestButton onPress={() => { /* Handle request modal */ }} />
                         </View>
                     </View>
                 }

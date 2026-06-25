@@ -13,8 +13,8 @@ const {
 const { authorizeRoles } = require("../middleware/authRole.js");
 
 router.get("/", authMiddleware, getUserNotifications);
-router.put("/:id/read", authMiddleware, markAsRead);
 router.put("/read-all", authMiddleware, markAllAsRead);
+router.put("/:id/read", authMiddleware, markAsRead);
 router.delete("/:id", authMiddleware, deleteNotification);
 router.delete("/", authMiddleware, clearAllNotifications);
 

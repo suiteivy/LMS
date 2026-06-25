@@ -1,12 +1,14 @@
 import { UnifiedHeader } from "@/components/common/UnifiedHeader";
-import { SubscriptionGate, AddonRequestButton } from "@/components/shared/SubscriptionComponents";
+import { SubscriptionGate } from "@/components/shared/SubscriptionComponents";
 import { DirectChatView } from "@/components/chat/DirectChatView";
 import { router } from "expo-router";
-import { Zap } from "lucide-react-native";
+import { Plus, Zap } from "lucide-react-native";
 import React from "react";
-import { Text, View } from "react-native";
+import { Text, TouchableOpacity, View } from "react-native";
 
 export default function MessagingPage() {
+  const [directChatComposeToken, setDirectChatComposeToken] = React.useState(0);
+
   return (
     <View className="flex-1 bg-gray-50 dark:bg-navy">
       <UnifiedHeader
@@ -14,6 +16,15 @@ export default function MessagingPage() {
         subtitle="Messaging"
         role="Teacher"
         onBack={() => router.push("/(teacher)/management")}
+        rightActions={
+          <TouchableOpacity
+            className="bg-[#FF6900] w-10 h-10 rounded-xl items-center justify-center"
+            onPress={() => setDirectChatComposeToken((prev) => prev + 1)}
+            accessibilityLabel="Start new chat"
+          >
+            <Plus size={20} color="white" />
+          </TouchableOpacity>
+        }
       />
 
       <SubscriptionGate
@@ -26,7 +37,6 @@ export default function MessagingPage() {
               <Text className="text-gray-500 text-center mb-8 leading-5">
                 Advanced messaging features are not included in your current subscription plan.
               </Text>
-              <AddonRequestButton onPress={() => {}} />
             </View>
           </View>
         }
@@ -35,6 +45,7 @@ export default function MessagingPage() {
           allowedContactRoles={["teacher", "parent", "admin", "master_admin", "school_admin", "platform_admin"]}
           searchPlaceholder="Search stakeholders..."
           emptyListTitle="No secure threads"
+          externalComposeToken={directChatComposeToken}
         />
       </SubscriptionGate>
     </View>

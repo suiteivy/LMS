@@ -13,6 +13,7 @@ const {
   deleteMessageForMe,
   deleteMessageForEveryone,
   deleteConversationForMe,
+  clearConversationForMe,
   markConversationRead,
   acknowledgeDelivery,
 } = require("../controllers/messaging.controller.js");
@@ -25,6 +26,7 @@ router.post("/conversations/:conversationId/messages", authMiddleware, sendConve
 router.put("/conversations/:conversationId/read", authMiddleware, markConversationRead);
 router.put("/conversations/:conversationId/delivered", authMiddleware, acknowledgeDelivery);
 router.delete("/conversations/:conversationId", authMiddleware, deleteConversationForMe);
+router.post("/conversations/:conversationId/clear-for-me", authMiddleware, clearConversationForMe);
 
 router.put("/message/:messageId", authMiddleware, editMessage);
 router.post("/message/:messageId/delete-for-me", authMiddleware, deleteMessageForMe);

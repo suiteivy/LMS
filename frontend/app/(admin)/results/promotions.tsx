@@ -1,5 +1,6 @@
 import { UnifiedHeader } from '@/components/common/UnifiedHeader';
-import { AddonRequestButton, SubscriptionGate } from '@/components/shared/SubscriptionComponents';
+import { Spinner } from '@/components/ui/Spinner';
+import { SubscriptionGate } from '@/components/shared/SubscriptionComponents';
 import { HelpTooltip } from '@/components/settings/HelpTooltip';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useSubscriptionTier } from '@/hooks/useSubscriptionTier';
@@ -11,7 +12,6 @@ import { CheckCircle2, PlayCircle, RefreshCw, ShieldCheck, Users } from 'lucide-
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Picker } from '@react-native-picker/picker';
 import {
-  ActivityIndicator,
   Alert,
   Platform,
   ScrollView,
@@ -178,7 +178,7 @@ export default function AdminPromotionsScreen() {
       <View style={{ flex: 1, backgroundColor: isDark ? '#0F0B2E' : '#F9FAFB' }}>
         <UnifiedHeader title="Promotions" subtitle="Progression Engine" role="Admin" onBack={() => router.back()} />
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-          <ActivityIndicator size="large" color="#FF6B00" />
+          <Spinner size="large" color="#FF6B00" label="Loading promotion cycles" />
         </View>
       </View>
     );
@@ -196,7 +196,6 @@ export default function AdminPromotionsScreen() {
               <Text style={{ color: muted, fontSize: 12, marginBottom: 12 }}>
                 Enable Analytics add-on to access enhanced promotion documentation and guided controls.
               </Text>
-              <AddonRequestButton onPress={() => router.push('/(admin)/request-feature' as any)} />
             </View>
           </View>
         }

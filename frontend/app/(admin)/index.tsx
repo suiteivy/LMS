@@ -1,4 +1,5 @@
 import { UnifiedHeader } from "@/components/common/UnifiedHeader";
+import { Spinner } from "@/components/ui/Spinner";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useDashboardStats } from "@/hooks/useDashboardStats";
@@ -23,8 +24,8 @@ import {
   Calendar
 } from 'lucide-react-native';
 import React, { useCallback, useEffect, useState } from "react";
-import { ActivityIndicator, ScrollView, Text, TouchableOpacity, View, StatusBar, DimensionValue } from "react-native";
-import { SubscriptionBanner, SubscriptionGate, OnboardingTracker, SubscriptionBadge, AddonRequestModal, AddonRequestButton } from "@/components/shared/SubscriptionComponents";
+import { ScrollView, Text, TouchableOpacity, View, StatusBar, DimensionValue } from "react-native";
+import { SubscriptionGate, OnboardingTracker } from "@/components/shared/SubscriptionComponents";
 import { useSubscriptionTier } from "@/hooks/useSubscriptionTier";
 
 interface QuickActionProps {
@@ -80,22 +81,15 @@ const QuickAction = ({ icon: Icon, label, onPress, badge }: QuickActionProps) =>
 export default function AdminDashboard() {
   const {
     profile,
-    isDemo,
     subscriptionPlan,
     subscriptionStatus,
     isMain,
-    addonMessaging,
-    addonLibrary,
-    addonFinance,
-    addonAnalytics,
-    addonBursary,
     logout
   } = useAuth();
-  const { stats, loading: statsLoading, refresh: refreshStats } = useDashboardStats();
+  const { stats, refresh: refreshStats } = useDashboardStats();
   const { isDark } = useTheme();
   const [recentUsers, setRecentUsers] = useState<User[]>([]);
   const [loadingUsers, setLoadingUsers] = useState(false);
-  const [requestModalVisible, setRequestModalVisible] = useState(false);
   const [refreshingOverview, setRefreshingOverview] = useState(false);
 
   const fetchRecentUsers = useCallback(async () => {
@@ -216,7 +210,7 @@ export default function AdminDashboard() {
               className="flex-row items-center bg-white dark:bg-[#1a1a2e] px-4 py-2 rounded-2xl border border-gray-100 dark:border-gray-800"
             >
               {refreshingOverview ? (
-                <ActivityIndicator size="small" color="#FF6B00" />
+                <Spinner size="small" color="#FF6B00" label="Refreshing overview" />
               ) : (
                 <IconRefreshCw size={14} color="#FF6B00" />
               )}
@@ -439,7 +433,7 @@ export default function AdminDashboard() {
 
             {loadingUsers ? (
               <View className="h-40 items-center justify-center">
-                <ActivityIndicator color="#FF6900" />
+                <Spinner color="#FF6900" label="Loading recent users" />
               </View>
             ) : recentUsers.length === 0 ? (
               <View className="bg-white dark:bg-[#0F0B2E] p-8 rounded-3xl border border-dashed border-gray-200 dark:border-gray-800 items-center justify-center mb-6">
@@ -475,17 +469,6 @@ export default function AdminDashboard() {
         </View>
       </ScrollView>
 
-      <AddonRequestModal
-        visible={requestModalVisible}
-        onClose={() => setRequestModalVisible(false)}
-        currentAddons={{
-          library: addonLibrary,
-          messaging: addonMessaging,
-          finance: addonFinance,
-          analytics: addonAnalytics,
-          bursary: addonBursary,
-        }}
-      />
     </View>
   );
 }

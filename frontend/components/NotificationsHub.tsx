@@ -10,6 +10,7 @@ import { router } from 'expo-router';
 export const NotificationsHub = () => {
   const { notifications, markAllAsRead, refreshNotifications, loading, clearAll, deleteNotification } = useNotifications();
   const { isDark } = useTheme();
+  const [markingAllRead, setMarkingAllRead] = React.useState(false);
 
   useEffect(() => {
     refreshNotifications();
@@ -32,6 +33,19 @@ export const NotificationsHub = () => {
     if (type === 'success') return isDark ? 'rgba(6,78,59,0.3)'    : '#f0fdf4';
     if (type === 'warning') return isDark ? 'rgba(120,53,15,0.3)'  : '#fffbeb';
     return isDark ? 'rgba(30,58,138,0.3)' : '#eff6ff';
+  };
+
+  const hasUnread = notifications.some((item) => !item.is_read);
+
+  const handleMarkAllAsRead = async () => {
+    if (!hasUnread || markingAllRead) return;
+    try {
+      setMarkingAllRead(true);
+      await markAllAsRead();
+      await refreshNotifications();
+    } finally {
+      setMarkingAllRead(false);
+    }
   };
 
   return (
@@ -142,19 +156,28 @@ export const NotificationsHub = () => {
 
             <TouchableOpacity
               style={{
-                marginTop: 24,
-                paddingVertical: 18,
-                backgroundColor: tokens.surfaceAlt,
-                borderRadius: 20,
+                marginTop: 10,
+                alignSelf: 'center',
+                paddingHorizontal: 10,
+                paddingVertical: 6,
+                backgroundColor: hasUnread ? tokens.surfaceAlt : 'transparent',
+                borderRadius: 999,
                 alignItems: 'center',
                 borderWidth: 1,
-                borderColor: tokens.border,
+                borderColor: hasUnread ? tokens.border : 'transparent',
+                opacity: hasUnread ? 1 : 0.55,
               }}
-              onPress={markAllAsRead}
+              onPress={handleMarkAllAsRead}
+              disabled={!hasUnread || markingAllRead}
+              accessibilityState={{ disabled: !hasUnread || markingAllRead, busy: markingAllRead }}
             >
-              <Text style={{ color: tokens.textPrimary, fontWeight: '700', fontSize: 12, textTransform: 'uppercase', letterSpacing: 2 }}>
-                Mark everything as read
-              </Text>
+              {markingAllRead ? (
+                <ActivityIndicator size="small" color="#FF6900" />
+              ) : (
+                <Text style={{ color: tokens.textSecondary, fontWeight: '700', fontSize: 9, textTransform: 'uppercase', letterSpacing: 0.9 }}>
+                  Mark everything as read
+                </Text>
+              )}
             </TouchableOpacity>
           </>
         )}

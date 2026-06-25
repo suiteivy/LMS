@@ -11,7 +11,10 @@ const {
     createTransaction,
     processTransaction,
     getFeeStructures,
+    createFeeStructure,
     updateFeeStructure,
+    releaseFeeStructure,
+    deleteFeeStructure,
     recordFeePayment,
     submitPaymentEvidence,
     getPendingPayments,
@@ -33,8 +36,10 @@ router.put("/transactions/:id/process", authMiddleware, authorizeRoles(['admin',
 
 // Fee Structures
 router.get("/fee-structures", authMiddleware, getFeeStructures);
-router.post("/fee-structures", authMiddleware, authorizeRoles(['admin', 'bursary', 'master_admin']), require("../controllers/finance.controller.js").createFeeStructure);
+router.post("/fee-structures", authMiddleware, authorizeRoles(['admin', 'bursary', 'master_admin']), createFeeStructure);
 router.put("/fee-structures/:id", authMiddleware, authorizeRoles(['admin', 'bursary', 'master_admin']), updateFeeStructure);
+router.put("/fee-structures/:id/release", authMiddleware, authorizeRoles(['admin', 'bursary', 'master_admin']), releaseFeeStructure);
+router.delete("/fee-structures/:id", authMiddleware, authorizeRoles(['admin', 'bursary', 'master_admin']), deleteFeeStructure);
 
 // Helper for Fees
 router.post("/fees/pay", authMiddleware, authorizeRoles(['admin', 'bursary', 'master_admin']), recordFeePayment);
