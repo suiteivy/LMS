@@ -6,6 +6,7 @@ import { Subject } from "@/types/types";
 import { Ionicons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
 import React, { useEffect, useState } from "react";
+import { formatClassLabel } from "@/utils/classLabel";
 import {
   ActivityIndicator,
   Text,
@@ -49,10 +50,23 @@ function SubjectDetailsScreen() {
     // Fetch teachers and classes for dropdowns
     const [teacherRes, classRes] = await Promise.all([
       supabase.from("teachers").select("id, user_id, users:user_id(full_name, institution_id)").eq("institution_id", profile.institution_id),
-      supabase.from("v_classes_detailed").select("id, name:display_name").eq("institution_id", profile.institution_id).order("display_name"),
+      supabase
+        .from("v_classes_detailed")
+        .select("id, name, grade_level, form_level, level_label, stream")
+        .eq("institution_id", profile.institution_id)
+        .order("grade_level", { ascending: true })
+        .order("form_level", { ascending: true })
+        .order("stream", { ascending: true }),
     ]);
     if (teacherRes.data) setTeachers(teacherRes.data);
-    if (classRes.data) setClasses(classRes.data);
+    if (classRes.data) {
+      setClasses(
+        classRes.data.map((cls: any) => ({
+          ...cls,
+          name: formatClassLabel(cls),
+        }))
+      );
+    }
   };
 
   const fetchSubject = async () => {

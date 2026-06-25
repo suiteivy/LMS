@@ -4,6 +4,7 @@ const supabase = require("../utils/supabaseClient.js");
 const { sendEmail } = require("../utils/emailService.js");
 const { sendBulkInAppNotificationsWithHistory } = require('../services/notificationDelivery.service.js');
 const { canonicalRoleFrom, withRoleAliases } = require("../utils/roleAlias.js");
+const { assignStudentToSingleClass } = require('../utils/studentClassEnrollment');
 
 const IDLE_TIMEOUT_MS = 30 * 60 * 1000;
 
@@ -549,13 +550,14 @@ exports.enrollUser = async (req, res) => {
         .from('students').select('id').eq('user_id', uid).single();
       customId = studentData?.id;
 
-      // Class enrollment
+      // Class enrollment (single active class per student)
       if (class_ids && class_ids.length > 0 && customId) {
-        const enrollmentRows = class_ids.map(classId => ({
-          student_id: customId,
-          class_id: classId,
-        }));
-        await supabase.from('class_enrollments').insert(enrollmentRows);
+        await assignStudentToSingleClass({
+          studentId: customId,
+          classId: class_ids[0],
+          institutionId: targetInstitutionId,
+          syncStudentLevel: true,
+        });
       }
 
       // Optional Atomic Parent Creation
@@ -885,26 +887,19 @@ exports.adminUpdateUser = async (req, res) => {
         await supabase.from('students').update(updates).eq('user_id', id);
       }
 
-      // Update class enrollment
+      // Update class enrollment (single active class per student)
       if (class_id !== undefined) {
         // Resolve custom student ID
         const { data: studentData } = await supabase.from('students').select('id').eq('user_id', id).single();
         const customStudentId = studentData?.id;
 
         if (customStudentId) {
-          if (class_id === null) {
-            await supabase.from('class_enrollments').delete().eq('student_id', customStudentId);
-          } else {
-            // Check if already enrolled in a class
-            const { data: existing } = await supabase.from('class_enrollments')
-              .select('id').eq('student_id', customStudentId).maybeSingle();
-
-            if (existing) {
-              await supabase.from('class_enrollments').update({ class_id }).eq('student_id', customStudentId);
-            } else {
-              await supabase.from('class_enrollments').insert({ student_id: customStudentId, class_id });
-            }
-          }
+          await assignStudentToSingleClass({
+            studentId: customStudentId,
+            classId: class_id,
+            institutionId: req.institution_id,
+            syncStudentLevel: true,
+          });
         }
       }
 

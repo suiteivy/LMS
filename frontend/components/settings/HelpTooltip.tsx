@@ -68,7 +68,7 @@ export function HelpTooltip({ id, role, tier, onLearnMore }: HelpTooltipProps) {
     }, 180);
   };
 
-  const showTooltip = () => {
+  const showTooltip = (event?: any) => {
     clearHoverTimer();
     updateAnchorFromTrigger();
     if (Platform.OS === 'web') {
@@ -88,6 +88,7 @@ export function HelpTooltip({ id, role, tier, onLearnMore }: HelpTooltipProps) {
       accessibilityHint={entry.text}
       onHoverIn={Platform.OS === 'web' ? showTooltip : undefined}
       onHoverOut={Platform.OS === 'web' ? closeTooltipSoon : undefined}
+      onPointerMove={undefined}
       onFocus={showTooltip}
       onBlur={closeTooltipSoon}
       onPress={showTooltip}
@@ -101,92 +102,119 @@ export function HelpTooltip({ id, role, tier, onLearnMore }: HelpTooltipProps) {
 
   const viewport = Dimensions.get('window');
   const cardWidth = Math.min(340, Math.max(240, viewport.width - 32));
-  const preferredLeft = anchor.x + anchor.w + 10;
+  const preferredLeft = anchor.x + anchor.w + 4;
   const left = Math.max(12, Math.min(preferredLeft, viewport.width - cardWidth - 12));
-  const top = Math.max(12, Math.min(anchor.y - 12, viewport.height - 180));
+  const preferredTop = anchor.y - 12;
+  const top = Math.max(12, Math.min(preferredTop, viewport.height - 180));
+  const hoverBuffer = 18;
+
+  const visible = Platform.OS === 'web' ? webVisible : open;
 
   const popup = (
-    <Modal transparent visible={open} animationType="fade" onRequestClose={() => setOpen(false)}>
-      <Pressable style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.2)' }} onPress={() => setOpen(false)}>
+    <Modal transparent visible={visible} animationType="fade" onRequestClose={() => {
+      setOpen(false);
+      setWebVisible(false);
+    }}>
+      {Platform.OS === 'web' ? (
+        <View style={{ flex: 1 }} pointerEvents="box-none">
+          <Pressable
+            onHoverIn={clearHoverTimer}
+            onHoverOut={closeTooltipSoon}
+            style={{
+              position: 'absolute',
+              top: top - hoverBuffer,
+              left: left - hoverBuffer,
+              width: cardWidth + hoverBuffer * 2,
+              padding: hoverBuffer,
+              zIndex: 99999,
+              elevation: 16,
+            }}
+          >
+            <View
+              style={{
+                width: cardWidth,
+                backgroundColor: bg,
+                borderRadius: 12,
+                borderWidth: 1,
+                borderColor: border,
+                padding: 12,
+                shadowColor: '#000',
+                shadowOpacity: 0.18,
+                shadowRadius: 14,
+                shadowOffset: { width: 0, height: 8 },
+              }}
+            >
+              <Text style={{ color: text, fontWeight: '700', fontSize: 12, marginBottom: 4 }}>{entry.title}</Text>
+              <Text style={{ color: muted, fontSize: 12, marginBottom: 8 }}>{entry.text}</Text>
+              {entry.learnMoreAnchor ? (
+                <TouchableOpacity
+                  onPress={() => {
+                    setOpen(false);
+                    setWebVisible(false);
+                    onLearnMore?.(entry.learnMoreAnchor);
+                  }}
+                  accessibilityRole="button"
+                  accessibilityLabel="Learn more"
+                >
+                  <Text style={{ color: '#FF6B00', fontSize: 12, fontWeight: '700' }}>Learn more →</Text>
+                </TouchableOpacity>
+              ) : null}
+            </View>
+          </Pressable>
+        </View>
+      ) : (
         <Pressable
-          onHoverIn={Platform.OS === 'web' ? clearHoverTimer : undefined}
-          onHoverOut={Platform.OS === 'web' ? closeTooltipSoon : undefined}
-          onPress={() => {}}
-          style={{
-            position: 'absolute',
-            top,
-            left,
-            width: cardWidth,
-            backgroundColor: bg,
-            borderRadius: 12,
-            borderWidth: 1,
-            borderColor: border,
-            padding: 12,
-            zIndex: 99999,
-            elevation: 16,
+          style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.2)' }}
+          onPress={() => {
+            setOpen(false);
+            setWebVisible(false);
           }}
         >
-          <Text style={{ color: text, fontWeight: '700', fontSize: 12, marginBottom: 4 }}>{entry.title}</Text>
-          <Text style={{ color: muted, fontSize: 12, marginBottom: 8 }}>{entry.text}</Text>
-          {entry.learnMoreAnchor ? (
-            <TouchableOpacity
-              onPress={() => {
-                setOpen(false);
-                onLearnMore?.(entry.learnMoreAnchor);
-              }}
-              accessibilityRole="button"
-              accessibilityLabel="Learn more"
-            >
-              <Text style={{ color: '#FF6B00', fontSize: 12, fontWeight: '700' }}>Learn more →</Text>
-            </TouchableOpacity>
-          ) : null}
+          <Pressable
+            onPress={() => {}}
+            style={{
+              position: 'absolute',
+              top,
+              left,
+              width: cardWidth,
+              backgroundColor: bg,
+              borderRadius: 12,
+              borderWidth: 1,
+              borderColor: border,
+              padding: 12,
+              zIndex: 99999,
+              elevation: 16,
+              shadowColor: '#000',
+              shadowOpacity: 0.18,
+              shadowRadius: 14,
+              shadowOffset: { width: 0, height: 8 },
+            }}
+          >
+            <Text style={{ color: text, fontWeight: '700', fontSize: 12, marginBottom: 4 }}>{entry.title}</Text>
+            <Text style={{ color: muted, fontSize: 12, marginBottom: 8 }}>{entry.text}</Text>
+            {entry.learnMoreAnchor ? (
+              <TouchableOpacity
+                onPress={() => {
+                  setOpen(false);
+                  setWebVisible(false);
+                  onLearnMore?.(entry.learnMoreAnchor);
+                }}
+                accessibilityRole="button"
+                accessibilityLabel="Learn more"
+              >
+                <Text style={{ color: '#FF6B00', fontSize: 12, fontWeight: '700' }}>Learn more →</Text>
+              </TouchableOpacity>
+            ) : null}
+          </Pressable>
         </Pressable>
-      </Pressable>
+      )}
     </Modal>
   );
-
-  const webPopup = webVisible ? (
-    <Pressable
-      style={{
-        position: 'absolute',
-        top,
-        left,
-        width: cardWidth,
-        backgroundColor: bg,
-        borderRadius: 12,
-        borderWidth: 1,
-        borderColor: border,
-        padding: 12,
-        zIndex: 99999,
-        shadowColor: '#000',
-        shadowOpacity: 0.18,
-        shadowRadius: 14,
-        shadowOffset: { width: 0, height: 8 },
-      }}
-      onHoverIn={clearHoverTimer}
-      onHoverOut={closeTooltipSoon}
-    >
-      <Text style={{ color: text, fontWeight: '700', fontSize: 12, marginBottom: 4 }}>{entry.title}</Text>
-      <Text style={{ color: muted, fontSize: 12, marginBottom: 8 }}>{entry.text}</Text>
-      {entry.learnMoreAnchor ? (
-        <TouchableOpacity
-          onPress={() => {
-            setWebVisible(false);
-            onLearnMore?.(entry.learnMoreAnchor);
-          }}
-          accessibilityRole="button"
-          accessibilityLabel="Learn more"
-        >
-          <Text style={{ color: '#FF6B00', fontSize: 12, fontWeight: '700' }}>Learn more →</Text>
-        </TouchableOpacity>
-      ) : null}
-    </Pressable>
-  ) : null;
 
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center' }}>
       {trigger}
-      {Platform.OS === 'web' ? webPopup : popup}
+      {popup}
     </View>
   );
 }

@@ -2,19 +2,15 @@ import { AuthGuard } from "@/components/AuthGuard";
 import { NavItem, WebSidebar } from "@/components/layouts/WebSideBar";
 import { useTheme } from "@/contexts/ThemeContext";
 import { Slot, Tabs } from "expo-router";
-import { Bell, LayoutDashboard, MessageSquare, Settings } from "lucide-react-native";
+import { Bell, CreditCard, LayoutDashboard, MessageSquare, Settings } from "lucide-react-native";
 import { Platform, Text, useWindowDimensions, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 // All nav items   finance tab conditionally removed for free plan at runtime
 const ALL_NAV_ITEMS: NavItem[] = [
     { name: "index", title: "Home", icon: LayoutDashboard, route: "/(parent)" },
-<<<<<<< HEAD
     { name: "finance", title: "Fees", icon: CreditCard, route: "/(parent)/finance" },
-    { name: "messages", title: "Diary", icon: MessageSquare, route: "/(parent)/messages" },
-=======
     { name: "messages", title: "Chat", icon: MessageSquare, route: "/(parent)/messages" },
->>>>>>> df05e40555bb1ec7b19b668a6cfb4d742c627c50
     { name: "announcements", title: "Updates", icon: Bell, route: "/(parent)/announcements" },
     { name: "accessibility/settings", title: "Accessibility", icon: Settings, route: "/(parent)/accessibility/settings" },
 ];

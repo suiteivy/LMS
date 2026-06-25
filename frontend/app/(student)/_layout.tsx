@@ -25,11 +25,11 @@ const NAV_ITEMS: NavItem[] = [
   { name: "finance", title: "Finances", icon: CreditCard, route: "/(student)/finance" },
   { name: "diary", title: "Diary", icon: BookOpen, route: "/(student)/diary" },
   { name: "notifications", title: "Updates", icon: MessageSquare, route: "/(student)/notifications" },
-  { name: "settings", title: "Settings", icon: Settings, route: "/(student)/settings" },
+  { name: "accessibility/settings", title: "Accessibility", icon: Settings, route: "/(student)/accessibility/settings" },
 ];
 
 // Only these show in the mobile bottom tab bar
-const MOBILE_TAB_NAMES = ["grades", "assignments", "index", "notifications", "settings"];
+const MOBILE_TAB_NAMES = ["grades", "assignments", "index", "notifications", "accessibility/settings"];
 
 // Everything else hidden (route still works, just no tab)
 const ALL_OTHER = NAV_ITEMS
@@ -166,9 +166,9 @@ function StudentTabs() {
       />
 
       <Tabs.Screen
-        name="settings"
+        name="accessibility/settings"
         options={{
-          title: "Settings",
+          title: "Accessibility",
           tabBarIcon: ({ size, color }) => {
             const Icon = Settings as any;
             return <Icon size={size - 2} color={color} strokeWidth={2} />;

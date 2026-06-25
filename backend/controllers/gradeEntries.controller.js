@@ -1,5 +1,6 @@
 const supabase = require('../utils/supabaseClient.js');
 const { isTermLocked } = require('../utils/resolveActiveTerm');
+const { buildClassLabel } = require('../utils/classLabel');
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -78,7 +79,7 @@ async function getGradeEntries(req, res) {
         *,
         assessment_types ( name, code, category ),
         subjects ( title ),
-        classes ( display_name )
+        classes ( grade_level, form_level, stream, level_label )
       `)
       .eq('institution_id', institution_id);
 
@@ -129,7 +130,13 @@ async function getGradeEntries(req, res) {
     const { data, error } = await query;
     if (error) throw error;
 
-    return sendSuccess(res, data);
+    const normalized = (data || []).map((row) => ({
+      ...row,
+      class_name: buildClassLabel(row.classes),
+      classes: row.classes ? { ...row.classes, name: buildClassLabel(row.classes) } : row.classes,
+    }));
+
+    return sendSuccess(res, normalized);
   } catch (err) {
     return sendError(res, 500, err.message);
   }
@@ -247,13 +254,19 @@ async function createGradeEntry(req, res) {
         *,
         assessment_types ( name, code, category ),
         subjects ( title ),
-        classes ( display_name )
+        classes ( grade_level, form_level, stream, level_label )
       `)
       .single();
 
     if (insertErr) throw insertErr;
 
-    return sendSuccess(res, created, 201);
+    const normalizedCreated = {
+      ...created,
+      class_name: buildClassLabel(created?.classes),
+      classes: created?.classes ? { ...created.classes, name: buildClassLabel(created.classes) } : created?.classes,
+    };
+
+    return sendSuccess(res, normalizedCreated, 201);
   } catch (err) {
     return sendError(res, 500, err.message);
   }
@@ -355,13 +368,19 @@ async function updateGradeEntry(req, res) {
         *,
         assessment_types ( name, code, category ),
         subjects ( title ),
-        classes ( display_name )
+        classes ( grade_level, form_level, stream, level_label )
       `)
       .single();
 
     if (updateErr) throw updateErr;
 
-    return sendSuccess(res, updated);
+    const normalizedUpdated = {
+      ...updated,
+      class_name: buildClassLabel(updated?.classes),
+      classes: updated?.classes ? { ...updated.classes, name: buildClassLabel(updated.classes) } : updated?.classes,
+    };
+
+    return sendSuccess(res, normalizedUpdated);
   } catch (err) {
     return sendError(res, 500, err.message);
   }

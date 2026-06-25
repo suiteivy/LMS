@@ -15,6 +15,7 @@ import {
     TextInput, TouchableOpacity, View, Platform
 } from 'react-native';
 import { SettingsService } from '@/services/SettingsService';
+import { formatClassLabel } from '@/utils/classLabel';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
 
@@ -143,12 +144,25 @@ export default function UserDetailsScreen() {
         }
 
         const [classRes, subjectRes, studentRes, parentRes] = await Promise.all([
-            supabase.from('v_classes_detailed').select('id, name:display_name').eq('institution_id', profile?.institution_id || '').order('display_name'),
+            supabase
+                .from('v_classes_detailed')
+                .select('id, name, grade_level, form_level, level_label, stream')
+                .eq('institution_id', profile?.institution_id || '')
+                .order('grade_level', { ascending: true })
+                .order('form_level', { ascending: true })
+                .order('stream', { ascending: true }),
             subjectQuery,
             studentQuery,
             parentQuery
         ]);
-        if (classRes.data) setClasses(classRes.data);
+        if (classRes.data) {
+            setClasses(
+                classRes.data.map((cls: any) => ({
+                    ...cls,
+                    name: formatClassLabel(cls),
+                }))
+            );
+        }
         if (subjectRes.data) setAllSubjects(subjectRes.data);
         if (studentRes.data) setStudents(studentRes.data);
         if (parentRes.data) setAllParents(parentRes.data);

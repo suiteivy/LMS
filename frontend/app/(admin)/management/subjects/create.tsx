@@ -28,6 +28,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { supabase } from "@/libs/supabase";
 import { useAuth } from "@/contexts/AuthContext";
+import { formatClassLabel } from "@/utils/classLabel";
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 const MODAL_HEIGHT = SCREEN_HEIGHT * 0.92;
@@ -55,14 +56,16 @@ const CreateSubject = () => {
     useEffect(() => {
         const fetchClasses = async () => {
             const { data } = await (supabase.from('classes') as any)
-                .select('id, grade_level, stream, display_name')
+                .select('id, name, grade_level, form_level, level_label, stream')
                 .eq('institution_id', profile?.institution_id || '')
-                .order('grade_level');
+                .order('grade_level', { ascending: true })
+                .order('form_level', { ascending: true })
+                .order('stream', { ascending: true });
             
             if (data) {
                 const options = data.map((c: any) => ({
                     value: c.id,
-                    label: c.display_name || `Grade ${c.grade_level} - Stream ${c.stream}`
+                    label: formatClassLabel(c)
                 }));
                 setClasses(options);
             }

@@ -14,6 +14,7 @@ import { UnifiedHeader } from '@/components/common/UnifiedHeader';
 import { showError } from '@/utils/toast';
 import { GradingAPI } from '@/services/GradingService';
 import { ParentService } from '@/services/ParentService';
+import { formatClassLabel } from '@/utils/classLabel';
 import { usePrint } from '@/hooks/usePrint';
 import { getPerformanceLabel, type GradingScaleRow } from '@/utils/getPerformanceLabel';
 import { setParentSelectedChild } from '@/utils/parentSelectedChild';
@@ -126,6 +127,9 @@ interface Term {
 interface Child {
   id: string;
   users?: { full_name?: string };
+  class_name?: string;
+  grade_level?: string | number | null;
+  form_level?: string | number | null;
   class_id?: string;
 }
 
@@ -199,6 +203,7 @@ export default function ParentReportCardsScreen() {
   const [reportCards, setReportCards] = useState<ReportCard[]>([]);
   const [terms, setTerms] = useState<Term[]>([]);
   const [selectedTerm, setSelectedTerm] = useState<string | null>(null);
+  const [termSelectionTouched, setTermSelectionTouched] = useState(false);
   const [resolvedActiveTerm, setResolvedActiveTerm] = useState<Term | null>(null);
   const [expandedCard, setExpandedCard] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -238,24 +243,34 @@ export default function ParentReportCardsScreen() {
     if (!selectedChild) return;
     try {
       setLoading(true);
-      const params2: any = { student_id: selectedChild.id };
-      if (selectedTerm) params2.term_id = selectedTerm;
-
-      const [cards, termsData, scalesData] = await Promise.all([
-        GradingAPI.getReportCards(params2),
+      const [termsData, activeTermData, scalesData] = await Promise.all([
         GradingAPI.getTerms(),
+        GradingAPI.getActiveTerm().catch(() => null),
         GradingAPI.getGradingScales().catch(() => []),
       ]);
+      const safeTerms = Array.isArray(termsData) ? termsData : [];
+      const activeTerm = (activeTermData?.active_term || null) as Term | null;
+      const effectiveTermId = selectedTerm ?? (!termSelectionTouched ? activeTerm?.id ?? null : null);
+
+      const params2: any = { student_id: selectedChild.id };
+      if (effectiveTermId) params2.term_id = effectiveTermId;
+
+      const cards = await GradingAPI.getReportCards(params2);
+
       setReportCards(normalizeReportCards(cards));
-      setTerms(termsData);
+      setTerms(safeTerms);
       setGradingScales(Array.isArray(scalesData) ? scalesData : []);
-      setResolvedActiveTerm(null);
+      setResolvedActiveTerm(activeTerm);
+
+      if (!termSelectionTouched && !selectedTerm && activeTerm?.id) {
+        setSelectedTerm(activeTerm.id);
+      }
     } catch (err: any) {
       showError(err?.message || 'Failed to load report cards');
     } finally {
       setLoading(false);
     }
-  }, [selectedChild, selectedTerm]);
+  }, [selectedChild, selectedTerm, termSelectionTouched]);
 
   useEffect(() => {
     fetchChildren();
@@ -302,6 +317,13 @@ export default function ParentReportCardsScreen() {
 
   const childName =
     selectedChild?.users?.full_name || context.studentName || 'Child';
+  const childClassLabel =
+    selectedChild?.class_name ||
+    formatClassLabel({
+      grade_level: selectedChild?.grade_level,
+      form_level: selectedChild?.form_level,
+    }) ||
+    'Unassigned';
 
   return (
     <View style={styles.container}>
@@ -356,6 +378,32 @@ export default function ParentReportCardsScreen() {
         </View>
       )}
 
+      <View style={{ paddingHorizontal: 16, marginBottom: 10 }}>
+        <View
+          style={{
+            alignSelf: 'flex-start',
+            borderRadius: 999,
+            paddingHorizontal: 12,
+            paddingVertical: 6,
+            borderWidth: 1,
+            borderColor: isDark ? '#2D2A5A' : '#E5E7EB',
+            backgroundColor: isDark ? '#16133A' : '#FFFFFF',
+          }}
+        >
+          <Text
+            style={{
+              fontSize: 10,
+              fontWeight: '700',
+              textTransform: 'uppercase',
+              letterSpacing: 0.8,
+              color: isDark ? '#9CA3AF' : '#6B7280',
+            }}
+          >
+            Viewing: <Text style={{ color: isDark ? '#F3F4F6' : '#111827' }}>{childName}</Text> · {childClassLabel}
+          </Text>
+        </View>
+      </View>
+
       {/* Term Selector */}
       <View style={styles.termSelectorWrap}>
         <ScrollView
@@ -368,7 +416,10 @@ export default function ParentReportCardsScreen() {
               styles.termPill,
               selectedTerm === null && styles.termPillActive,
             ]}
-            onPress={() => setSelectedTerm(null)}
+            onPress={() => {
+              setTermSelectionTouched(true);
+              setSelectedTerm(null);
+            }}
             activeOpacity={0.7}
           >
             <Text
@@ -387,7 +438,10 @@ export default function ParentReportCardsScreen() {
                 styles.termPill,
                 selectedTerm === term.id && styles.termPillActive,
               ]}
-              onPress={() => setSelectedTerm(term.id)}
+              onPress={() => {
+                setTermSelectionTouched(true);
+                setSelectedTerm(term.id);
+              }}
               activeOpacity={0.7}
             >
               <Calendar

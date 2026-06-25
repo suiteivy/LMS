@@ -1,4 +1,5 @@
 const supabase = require("../utils/supabaseClient.js");
+const { getStudentCurrentClassEnrollment } = require('../utils/studentClassEnrollment');
 
 /**
  * Create a new diary entry (Teacher only or Admin)
@@ -85,7 +86,7 @@ exports.getEntries = async (req, res) => {
             const { data: student } = await supabase.from('students').select('id').eq('user_id', userId).single();
             if (!student) return res.status(404).json({ error: "Student profile not found" });
 
-            const { data: enrollment } = await supabase.from('class_enrollments').select('class_id').eq('student_id', student.id).single();
+            const enrollment = await getStudentCurrentClassEnrollment(student.id, institution_id);
             if (!enrollment) return res.status(404).json({ error: "Student not enrolled in any class" });
             targetClassId = enrollment.class_id;
             targetStudentId = student.id;
@@ -99,7 +100,7 @@ exports.getEntries = async (req, res) => {
             const { data: linkage } = await supabase.from('parent_students').select('id').eq('parent_id', parent.id).eq('student_id', student_id).single();
             if (!linkage) return res.status(403).json({ error: "Access denied: Not linked to this student" });
 
-            const { data: enrollment } = await supabase.from('class_enrollments').select('class_id').eq('student_id', student_id).single();
+            const enrollment = await getStudentCurrentClassEnrollment(student_id, institution_id);
             if (!enrollment) return res.status(404).json({ error: "Student not enrolled in any class" });
             targetClassId = enrollment.class_id;
             targetStudentId = student_id;

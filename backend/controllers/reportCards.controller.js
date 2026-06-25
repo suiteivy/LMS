@@ -1,5 +1,6 @@
 const supabase = require('../utils/supabaseClient.js');
 const { isTermLocked } = require('../utils/resolveActiveTerm');
+const { buildClassLabel } = require('../utils/classLabel');
 const {
   calculateStudentGPA,
   calculateClassRankings,
@@ -24,12 +25,7 @@ const mapReportCardForClient = (rc, studentInfo, classInfo, termInfo, items) => 
     student_name: studentName,
     admission_number: studentInfo?.id || null,
     class_id: rc.class_id,
-    class_name:
-      classInfo?.display_name ||
-      [classInfo?.grade_level || classInfo?.form_level, classInfo?.stream]
-        .filter(Boolean)
-        .join(' ') ||
-      'Class',
+    class_name: buildClassLabel(classInfo) || 'Class',
     term_id: rc.term_id,
     term_name: termInfo?.name || null,
     status: rc.status,
@@ -152,7 +148,7 @@ const getReportCards = async (req, res) => {
       if (rc.class_id) {
         const { data: c } = await supabase
           .from('classes')
-          .select('display_name, grade_level, form_level, stream')
+          .select('grade_level, form_level, stream, level_label')
           .eq('id', rc.class_id)
           .single();
         classInfo = c;
@@ -198,7 +194,7 @@ const getReportCard = async (req, res) => {
       .select(`
         *,
         students (id, user_id, users (first_name, last_name, date_of_birth, gender)),
-        classes (display_name, grade_level, form_level, stream),
+        classes (grade_level, form_level, stream, level_label),
         terms (name, academic_year, start_date, end_date),
         report_card_items (
           *,
@@ -796,7 +792,7 @@ const exportReportCardPDF = async (req, res) => {
       .select(`
         *,
         students (id, user_id, users (first_name, last_name, date_of_birth, gender)),
-        classes (display_name, grade_level, form_level, stream),
+        classes (grade_level, form_level, stream, level_label),
         terms (name, academic_year, start_date, end_date),
         report_card_items (
           *,
@@ -883,6 +879,7 @@ const exportReportCardPDF = async (req, res) => {
     const items = reportCard.report_card_items || [];
     const student = reportCard.students?.users || reportCard.students || {};
     const classInfo = reportCard.classes || {};
+    const className = buildClassLabel(classInfo) || 'N/A';
     const term = reportCard.terms || {};
 
     const gradingScale = [
@@ -987,7 +984,7 @@ const exportReportCardPDF = async (req, res) => {
     </div>
     <div class="info-item">
       <div class="info-label">Class</div>
-      <div class="info-value">${classInfo.display_name || (classInfo.form_level ? `Form ${classInfo.form_level}` : '') + (classInfo.stream ? ` ${classInfo.stream}` : '') || 'N/A'}</div>
+      <div class="info-value">${className}</div>
     </div>
     <div class="info-item">
       <div class="info-label">Term</div>

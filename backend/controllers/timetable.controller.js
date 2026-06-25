@@ -1,5 +1,6 @@
 // controllers/timetable.controller.js
 const supabase = require("../utils/supabaseClient.js");
+const { buildClassLabel } = require('../utils/classLabel');
 
 // ── Shared helpers ────────────────────────────────────────────────────────────
 
@@ -265,7 +266,7 @@ exports.getTeacherTimetable = async (req, res) => {
       .select(
         `
         id, day_of_week, start_time, end_time, room_number,
-        classes ( display_name ),
+        classes ( grade_level, form_level, stream, level_label ),
         subjects ( title )
         `,
       )
@@ -275,7 +276,11 @@ exports.getTeacherTimetable = async (req, res) => {
       .order("start_time", { ascending: true });
 
     if (error) throw error;
-    res.json(data);
+    const normalized = (data || []).map((row) => ({
+      ...row,
+      classes: row.classes ? { ...row.classes, name: buildClassLabel(row.classes) } : row.classes,
+    }));
+    res.json(normalized);
   } catch (err) {
     console.error("Get teacher timetable error:", err);
     res.status(500).json({ error: err.message });

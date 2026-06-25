@@ -6,6 +6,7 @@ import { ClassService, ClassStudent } from "@/services/ClassService";
 import { TimetableAPI, TimetableEntry } from "@/services/TimetableService";
 import { useRealtimeQuery } from "@/hooks/useRealtimeQuery";
 import { TeacherAttendanceAPI } from "@/services/TeacherAttendanceService";
+import { formatClassLabel } from "@/utils/classLabel";
 import {
     BookOpen,
     Calendar,
@@ -36,7 +37,7 @@ import {
 
 interface ClassItem {
     id: string;
-    display_name: string;
+    name: string;
     student_count?: number;
     teacher_id?: string | null;
     institution_id?: string | null;
@@ -102,7 +103,7 @@ const TabPill = ({
 }) => (
     <TouchableOpacity
         onPress={onPress}
-        className={`flex-1 flex-row items-center justify-center py-3 rounded-lg gap-2 ${active ? "bg-[#FF6900]" : "bg-gray-100 dark:bg-[#1a1a1a]"
+        className={`flex-1 flex-row items-center justify-center py-3 rounded-2xl gap-2 ${active ? "bg-[#FF6900] shadow-md" : "bg-gray-100 dark:bg-[#1a1a1a]"
             }`}
     >
         {icon}
@@ -147,7 +148,7 @@ const StatusBtn = ({
             disabled={locked}
             className={`w-9 h-9 rounded-xl items-center justify-center ${isActive
                 ? activeBg[status]
-                : "bg-gray-100 dark:bg-[#1A1650] border border-[#D0D7DE] dark:border-[#21262D]"
+                : "bg-gray-100 dark:bg-[#1A1650] border border-gray-200 dark:border-gray-700"
                 } ${locked ? "opacity-60" : ""}`}
         >
             {icons[status]}
@@ -291,7 +292,7 @@ const DailyTab = ({ classId, className: cName }: { classId: string; className: s
     return (
         <View className="flex-1">
             {/* Date navigator */}
-            <View className="flex-row items-center justify-between bg-[#F6F8FA] dark:bg-[#161B22] rounded-lg px-4 py-3 mb-4 border border-[#D0D7DE] dark:border-[#21262D]">
+            <View className="flex-row items-center justify-between bg-gray-50 dark:bg-[#1a1a1a] rounded-2xl px-4 py-3 mb-4 border border-gray-100 dark:border-gray-800">
                 <TouchableOpacity onPress={() => shiftDay(-1)} className="p-1">
                     <ChevronLeft size={20} color="#6B7280" />
                 </TouchableOpacity>
@@ -318,7 +319,7 @@ const DailyTab = ({ classId, className: cName }: { classId: string; className: s
             ) : !hasClass ? (
                 /* ── No class today ── */
                 <View className="flex-1 py-8">
-                    <View className="bg-[#F6F8FA] dark:bg-[#161B22] border border-dashed border-[#D0D7DE] dark:border-[#21262D] rounded-xl p-10 items-center">
+                    <View className="bg-gray-50 dark:bg-[#1a1a1a] border border-dashed border-gray-200 dark:border-gray-700 rounded-3xl p-10 items-center">
                         <School size={44} color="#D1D5DB" />
                         <Text className="text-gray-700 dark:text-gray-300 font-black text-base mt-4 text-center">
                             No class on {todayName}
@@ -350,7 +351,7 @@ const DailyTab = ({ classId, className: cName }: { classId: string; className: s
                     {sessionsToday.map((session) => (
                         <View
                             key={session.id}
-                            className="bg-orange-50 dark:bg-orange-950/20 border border-orange-100 dark:border-orange-900/30 rounded-lg px-4 py-3 mb-4 flex-row items-center gap-3"
+                            className="bg-orange-50 dark:bg-orange-950/20 border border-orange-100 dark:border-orange-900/30 rounded-2xl px-4 py-3 mb-4 flex-row items-center gap-3"
                         >
                             <View className="bg-[#FF6900]/10 p-2 rounded-xl">
                                 <BookOpen size={14} color="#FF6900" />
@@ -389,11 +390,11 @@ const DailyTab = ({ classId, className: cName }: { classId: string; className: s
                                 { label: "Present", val: presentCount, color: "bg-green-50 dark:bg-green-950/30", text: "text-green-600" },
                                 { label: "Absent", val: absentCount, color: "bg-red-50 dark:bg-red-950/30", text: "text-red-500" },
                                 { label: "Late", val: lateCount, color: "bg-amber-50 dark:bg-amber-950/30", text: "text-amber-500" },
-                                ...(!locked ? [{ label: "Unmarked", val: unmarkedCount, color: "bg-[#F6F8FA] dark:bg-[#161B22]", text: "text-gray-400" }] : []),
+                                ...(!locked ? [{ label: "Unmarked", val: unmarkedCount, color: "bg-gray-50 dark:bg-[#1a1a1a]", text: "text-gray-400" }] : []),
                             ].map((p) => (
                                 <View
                                     key={p.label}
-                                    className={`flex-1 ${p.color} rounded-lg py-3 items-center border border-[#D0D7DE] dark:border-[#21262D]`}
+                                    className={`flex-1 ${p.color} rounded-2xl py-3 items-center border border-gray-100 dark:border-gray-800`}
                                 >
                                     <Text className={`${p.text} text-xl font-black`}>{p.val}</Text>
                                     <Text className={`${p.text} text-[9px] font-bold uppercase tracking-widest`}>{p.label}</Text>
@@ -415,7 +416,7 @@ const DailyTab = ({ classId, className: cName }: { classId: string; className: s
                             {rows.map((r) => (
                                 <View
                                     key={r.student_id}
-                                    className="bg-[#F6F8FA] dark:bg-[#161B22] p-4 rounded-lg border border-[#D0D7DE] dark:border-[#21262D] mb-2.5 flex-row items-center"
+                                    className="bg-white dark:bg-[#1a1a1a] p-4 rounded-2xl border border-gray-100 dark:border-gray-800 mb-2.5 flex-row items-center"
                                 >
                                     <View
                                         className="w-11 h-11 rounded-xl items-center justify-center mr-3"
@@ -449,7 +450,7 @@ const DailyTab = ({ classId, className: cName }: { classId: string; className: s
 
                             {/* Save / Locked CTA */}
                             {locked ? (
-                                <View className="flex-row items-center justify-center gap-2 py-4 mt-4 bg-orange-50 dark:bg-orange-950/20 rounded-lg border border-orange-100 dark:border-orange-900/30">
+                                <View className="flex-row items-center justify-center gap-2 py-4 mt-4 bg-orange-50 dark:bg-orange-950/20 rounded-2xl border border-orange-100 dark:border-orange-900/30">
                                     <Lock size={14} color="#FF6900" />
                                     <Text className="text-[#FF6900] font-bold text-sm">
                                         Attendance locked for this date
@@ -459,7 +460,7 @@ const DailyTab = ({ classId, className: cName }: { classId: string; className: s
                                 <TouchableOpacity
                                     onPress={save}
                                     disabled={saving}
-                                    className={`bg-[#FF6900] py-4 rounded-lg items-center mt-4 shadow-lg ${saving ? "opacity-60" : "active:bg-orange-600"}`}
+                                    className={`bg-[#FF6900] py-4 rounded-2xl items-center mt-4 shadow-lg ${saving ? "opacity-60" : "active:bg-orange-600"}`}
                                 >
                                     {saving ? (
                                         <ActivityIndicator color="white" />
@@ -549,7 +550,7 @@ const ByClassTab = ({ classId }: { classId: string }) => {
                 return (
                     <View
                         key={session.date}
-                        className="bg-[#F6F8FA] dark:bg-[#161B22] rounded-lg border border-[#D0D7DE] dark:border-[#21262D] mb-3 overflow-hidden"
+                        className="bg-white dark:bg-[#1a1a1a] rounded-2xl border border-gray-100 dark:border-gray-800 mb-3 overflow-hidden"
                     >
                         <TouchableOpacity
                             onPress={() => toggle(idx)}
@@ -580,7 +581,7 @@ const ByClassTab = ({ classId }: { classId: string }) => {
                         </TouchableOpacity>
 
                         {session.expanded && (
-                            <View className="border-t border-[#D0D7DE] dark:border-[#21262D] px-4 pb-4 pt-2">
+                            <View className="border-t border-gray-100 dark:border-gray-800 px-4 pb-4 pt-2">
                                 {session.students.map((st: { name: string; email: string; status: AttendanceStatus }, i: number) => (
                                     <View
                                         key={i}
@@ -646,7 +647,7 @@ const ClassAttendanceModal = ({
             >
                 <TouchableOpacity
                     activeOpacity={1}
-                    className="bg-[#FFFFFF] dark:bg-[#0D1117] rounded-t-[36px] border-t border-[#D0D7DE] dark:border-[#21262D]"
+                    className="bg-white dark:bg-[#0F0B2E] rounded-t-[36px] border-t border-gray-100 dark:border-gray-800"
                     style={{ height: "90%" }}
                 >
                     {/* Drag handle */}
@@ -656,7 +657,7 @@ const ClassAttendanceModal = ({
 
                     {/* Header */}
                     <View className="flex-row items-center px-6 pt-4 pb-5">
-                        <View className="bg-orange-50 dark:bg-orange-950/30 p-2.5 rounded-lg mr-3">
+                        <View className="bg-orange-50 dark:bg-orange-950/30 p-2.5 rounded-2xl mr-3">
                             <Users size={20} color="#FF6900" />
                         </View>
                         <View className="flex-1">
@@ -664,7 +665,7 @@ const ClassAttendanceModal = ({
                                 className="text-gray-900 dark:text-white font-black text-lg tracking-tight"
                                 numberOfLines={1}
                             >
-                                {cls.display_name}
+                                {cls.name}
                             </Text>
                             <Text className="text-gray-400 dark:text-gray-500 text-xs font-medium">
                                 {cls.student_count ?? 0} students enrolled
@@ -697,7 +698,7 @@ const ClassAttendanceModal = ({
                     {/* Content */}
                     <View className="flex-1 px-6">
                         {tab === "daily" ? (
-                            <DailyTab classId={cls.id} className={cls.display_name} />
+                            <DailyTab classId={cls.id} className={cls.name} />
                         ) : (
                             <ByClassTab classId={cls.id} />
                         )}
@@ -766,7 +767,7 @@ export default function TeacherClasses() {
                         .eq('class_id', cls.id);
                     return {
                         id: cls.id,
-                        display_name: cls.display_name || "",
+                        name: formatClassLabel(cls),
                         teacher_id: cls.teacher_id,
                         institution_id: cls.institution_id,
                         created_at: cls.created_at,
@@ -784,7 +785,7 @@ export default function TeacherClasses() {
     };
 
     return (
-        <View className="flex-1 bg-[#FFFFFF] dark:bg-[#0D1117]">
+        <View className="flex-1 bg-white dark:bg-navy">
             <UnifiedHeader title="Management" subtitle="My Classes" role="Teacher" />
 
             <ScrollView
@@ -806,7 +807,7 @@ export default function TeacherClasses() {
                     ) : (
                         <View>
                             {classes.length === 0 ? (
-                                <View className="bg-[#F6F8FA] dark:bg-[#161B22] p-10 rounded-xl items-center border border-[#D0D7DE] dark:border-[#21262D] border-dashed">
+                                <View className="bg-white dark:bg-[#1a1a1a] p-10 rounded-3xl items-center border border-gray-100 dark:border-gray-800 border-dashed">
                                     <School size={48} color="#9CA3AF" />
                                     <Text className="text-gray-400 dark:text-gray-500 font-bold mt-4 text-center">
                                         No classes assigned yet.
@@ -817,15 +818,15 @@ export default function TeacherClasses() {
                                     <TouchableOpacity
                                         key={cls.id}
                                         onPress={() => setSelectedClass(cls)}
-                                        className="bg-[#F6F8FA] dark:bg-[#161B22] p-5 rounded-xl border border-[#D0D7DE] dark:border-[#21262D] mb-3 flex-row items-center active:bg-gray-50 dark:active:bg-gray-900"
+                                        className="bg-white dark:bg-[#1a1a1a] p-5 rounded-3xl border border-gray-100 dark:border-gray-800 mb-3 shadow-sm flex-row items-center active:bg-gray-50 dark:active:bg-gray-900"
                                     >
-                                        <View className="bg-orange-50 p-3 rounded-lg mr-4">
+                                        <View className="bg-orange-50 p-3 rounded-2xl mr-4">
                                             <Users size={24} color="#FF6900" />
                                         </View>
 
                                         <View className="flex-1">
                                             <Text className="text-gray-900 dark:text-white font-bold text-lg">
-                                                {cls.display_name}
+                                                {cls.name}
                                             </Text>
                                             <Text className="text-gray-600 dark:text-gray-300 text-sm font-medium">
                                                 {cls.student_count} Students

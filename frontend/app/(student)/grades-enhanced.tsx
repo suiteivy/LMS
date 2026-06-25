@@ -631,6 +631,12 @@ export default function GradesEnhanced() {
   const [reportCards, setReportCards] = useState<ReportCard[]>([]);
   const [terms, setTerms] = useState<Term[]>([]);
   const [selectedTermId, setSelectedTermId] = useState<string | null>(null);
+  const [resolvedActiveTerm, setResolvedActiveTerm] = useState<Term | null>(null);
+  const [termSelectionTouched, setTermSelectionTouched] = useState(false);
+
+  useEffect(() => {
+    setTermSelectionTouched(false);
+  }, [studentId, user?.id]);
 
   const [stats, setStats] = useState<Stats>({
     gpa: 0,
@@ -665,23 +671,31 @@ export default function GradesEnhanced() {
       setLoading(true);
 
       // Fetch in parallel
-      const [studentScaleData, termsData] = await Promise.all([
+      const [studentScaleData, termsData, activeTermData] = await Promise.all([
         GradingAPI.getStudentGradingScale(targetId).catch(() => null),
         GradingAPI.getTerms().catch(() => []),
+        GradingAPI.getActiveTerm().catch(() => null),
       ]);
 
       // Use the student's linked grading scale (or fall back to institution default)
       const studentScale = studentScaleData?.grading_scale || [];
       setGradingScales(studentScale);
       setTerms(termsData || []);
+      const activeTerm = (activeTermData?.active_term || null) as Term | null;
+      setResolvedActiveTerm(activeTerm);
+
+      const effectiveTermId = selectedTermId ?? (!termSelectionTouched ? activeTerm?.id ?? null : null);
+      if (!termSelectionTouched && !selectedTermId && activeTerm?.id) {
+        setSelectedTermId(activeTerm.id);
+      }
 
       // Grade entries
       const entryParams: any = { student_id: targetId };
-      if (selectedTermId) entryParams.term_id = selectedTermId;
+      if (effectiveTermId) entryParams.term_id = effectiveTermId;
 
       const [entries, summary] = await Promise.all([
         GradingAPI.getGradeEntries(entryParams).catch(() => []),
-        GradingAPI.getGradeSummary({ student_id: targetId, ...(selectedTermId ? { term_id: selectedTermId } : {}) }).catch(
+        GradingAPI.getGradeSummary({ student_id: targetId, ...(effectiveTermId ? { term_id: effectiveTermId } : {}) }).catch(
           () => null,
         ),
       ]);
@@ -690,7 +704,7 @@ export default function GradesEnhanced() {
 
       // Report cards
       const rcParams: any = { student_id: targetId };
-      if (selectedTermId) rcParams.term_id = selectedTermId;
+      if (effectiveTermId) rcParams.term_id = effectiveTermId;
       const rcs = await GradingAPI.getReportCards(rcParams).catch(() => []);
       setReportCards(rcs || []);
 
@@ -842,7 +856,7 @@ export default function GradesEnhanced() {
 
   const selectedTermName = selectedTermId
     ? terms.find((t) => t.id === selectedTermId)?.name || "Selected Term"
-    : "All Terms";
+    : resolvedActiveTerm?.name || "All Terms";
 
   if (loading) {
     return (
@@ -871,7 +885,10 @@ export default function GradesEnhanced() {
           <TermSelector
             terms={terms}
             selectedTermId={selectedTermId}
-            onSelect={setSelectedTermId}
+            onSelect={(id) => {
+              setTermSelectionTouched(true);
+              setSelectedTermId(id);
+            }}
             isDark={isDark}
           />
 

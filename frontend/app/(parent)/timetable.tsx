@@ -6,6 +6,8 @@ import { Calendar, MapPin, User, Clock } from "lucide-react-native";
 import React, { useEffect, useState } from "react";
 import { ActivityIndicator, Alert, ScrollView, Text, TouchableOpacity, View } from "react-native";
 import { useParentStudentContext } from "@/hooks/useParentStudentContext";
+import { ParentService } from "@/services/ParentService";
+import { formatClassLabel } from "@/utils/classLabel";
 
 export default function ParentStudentTimetablePage() {
     const params = useLocalSearchParams<{ studentId?: string; studentName?: string; classId?: string }>();
@@ -18,6 +20,7 @@ export default function ParentStudentTimetablePage() {
     const [loading, setLoading] = useState(true);
     const [timetable, setTimetable] = useState<any[]>([]);
     const [selectedDay, setSelectedDay] = useState(new Date());
+    const [classLabel, setClassLabel] = useState<string>('');
 
     useEffect(() => {
         if (!ready) return;
@@ -31,8 +34,18 @@ export default function ParentStudentTimetablePage() {
     const fetchTimetable = async () => {
         try {
             setLoading(true);
-            const data = await TimetableAPI.getClassTimetable(resolvedClassId);
+            const [data, students] = await Promise.all([
+                TimetableAPI.getClassTimetable(resolvedClassId),
+                ParentService.getLinkedStudents().catch(() => []),
+            ]);
             setTimetable(data || []);
+
+            const matchedStudent = (students || []).find((s: any) => s.id === params.studentId);
+            const resolvedClass = matchedStudent?.class_name || formatClassLabel({
+                grade_level: matchedStudent?.grade_level,
+                form_level: matchedStudent?.form_level,
+            });
+            setClassLabel(resolvedClass || 'Unassigned');
         } catch (error) {
             console.error(error);
             Alert.alert("Error", "Failed to load child's timetable");
@@ -63,7 +76,13 @@ export default function ParentStudentTimetablePage() {
 
             <View className="px-4 md:px-8 pt-4">
                 <Text className="text-gray-900 dark:text-white font-bold text-2xl tracking-tighter mb-1 px-2">Academic Schedule</Text>
-                <Text className="text-gray-400 dark:text-gray-500 text-xs mb-4 px-2">Viewing timetable for: {resolvedName || 'Student'}</Text>
+                <View className="mb-4 px-2">
+                    <View className="self-start bg-white dark:bg-navy-surface border border-gray-100 dark:border-gray-800 rounded-full px-3 py-1.5">
+                        <Text className="text-[10px] font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400">
+                            Viewing: <Text className="text-gray-900 dark:text-white">{resolvedName || 'Student'}</Text> · {classLabel || 'Unassigned'}
+                        </Text>
+                    </View>
+                </View>
 
                 {/* Horizontal Date Selector */}
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-8" contentContainerStyle={{ paddingHorizontal: 8 }}>

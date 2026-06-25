@@ -16,6 +16,7 @@ import { useTheme } from "@/contexts/ThemeContext";
 import { useSubscriptionTier } from "@/hooks/useSubscriptionTier";
 import { ParentService } from "@/services/ParentService";
 import { GradingAPI } from "@/services/GradingService";
+import { formatClassLabel } from "@/utils/classLabel";
 import { getPerformanceLabel } from "@/utils/getPerformanceLabel";
 import { TrendChart, SubjectTrendCard } from "@/components/common/TrendChart";
 import { UnifiedHeader } from "@/components/common/UnifiedHeader";
@@ -148,9 +149,16 @@ export default function ParentAnalyticsPage() {
       >
         <View className="p-4">
           {!!selectedStudent?.users?.full_name && (
-            <Text className="text-gray-400 text-xs mb-3 px-1">
-              Viewing: {selectedStudent.users.full_name}
-            </Text>
+            <View className="mb-3 px-1">
+              <View className="self-start bg-white dark:bg-navy-surface border border-gray-100 dark:border-gray-800 rounded-full px-3 py-1.5">
+                <Text className="text-[10px] font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400">
+                  Viewing: <Text className="text-gray-900 dark:text-white">{selectedStudent.users.full_name}</Text> · {selectedStudent.class_name || formatClassLabel({
+                    grade_level: selectedStudent.grade_level,
+                    form_level: selectedStudent.form_level,
+                  }) || 'Unassigned'}
+                </Text>
+              </View>
+            </View>
           )}
 
           {/* Student Switcher */}

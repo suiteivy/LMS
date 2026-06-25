@@ -1,5 +1,6 @@
 const supabase = require("../utils/supabaseClient.js");
 const { resolveTeacher } = require("../middleware/resolveTeacher.js");
+const { buildClassLabel } = require('../utils/classLabel');
 
 
 exports.getDashboardStats = async (req, res) => {
@@ -30,7 +31,7 @@ exports.getDashboardStats = async (req, res) => {
         // Fetch primary subjects
         let primaryQuery = supabase
             .from('subjects')
-            .select('*, classes(id, display_name)')
+            .select('*, classes(id, grade_level, form_level, stream, level_label)')
             .eq('teacher_id', teacher.id);
         if (institution_id) primaryQuery = primaryQuery.eq('institution_id', institution_id);
         const { data: primarySubjects, error: psError } = await primaryQuery;
@@ -39,7 +40,7 @@ exports.getDashboardStats = async (req, res) => {
         // Fetch assistant subjects
         let assocQuery = supabase
             .from('subject_teachers')
-            .select('subject_id, subject:subjects!inner(*, classes(id, display_name))')
+            .select('subject_id, subject:subjects!inner(*, classes(id, grade_level, form_level, stream, level_label))')
             .eq('teacher_id', teacher.id);
         if (institution_id) assocQuery = assocQuery.eq('institution_id', institution_id);
         const { data: assocSubjects, error: asError } = await assocQuery;
@@ -55,7 +56,7 @@ exports.getDashboardStats = async (req, res) => {
         // Fetch classes where designated Class Teacher
         let ctQuery = supabase
             .from('classes')
-            .select('id, display_name, grade_level, form_level, stream')
+            .select('id, grade_level, form_level, stream, level_label')
             .eq('teacher_id', teacher.id);
         if (institution_id) ctQuery = ctQuery.eq('institution_id', institution_id);
         const { data: classTeacherOf, error: ctError } = await ctQuery;
@@ -102,7 +103,7 @@ exports.getDashboardStats = async (req, res) => {
                 .from('timetables')
                 .select(`
                     id, day_of_week, start_time, end_time, room_number, class_id, subject_id,
-                    classes(display_name),
+                    classes(grade_level, form_level, stream, level_label),
                     subjects(title)
                 `)
                 .in('subject_id', subjectIds);
@@ -139,7 +140,7 @@ exports.getDashboardStats = async (req, res) => {
             ...item,
             classes: {
                 ...item.classes,
-                name: item.classes?.display_name
+                    name: buildClassLabel(item.classes)
             }
         }));
 
@@ -170,7 +171,11 @@ exports.getDashboardStats = async (req, res) => {
                     description: s.description,
                     class: s.classes ? {
                         id: s.classes.id,
-                        display_name: s.classes.display_name
+                        name: buildClassLabel(s.classes),
+                        grade_level: s.classes.grade_level,
+                        form_level: s.classes.form_level,
+                        stream: s.classes.stream,
+                        level_label: s.classes.level_label,
                     } : null,
                     timetable: subjectTimetables.map(tt => ({
                         day_of_week: tt.day_of_week,
@@ -312,12 +317,12 @@ exports.getStudentPerformance = async (req, res) => {
         // 2. Get subjects taught by this teacher (primary or assistant)
         const { data: primarySubjects } = await supabase
             .from('subjects')
-            .select('id, title, class_id, classes(display_name)')
+            .select('id, title, class_id, classes(grade_level, form_level, stream, level_label)')
             .eq('teacher_id', teacher.id);
             
         const { data: assocSubjects } = await supabase
             .from('subject_teachers')
-            .select('subject_id, subject:subjects!inner(id, title, class_id, classes(display_name))')
+            .select('subject_id, subject:subjects!inner(id, title, class_id, classes(grade_level, form_level, stream, level_label))')
             .eq('teacher_id', teacher.id);
 
         const primaryList = primarySubjects || [];
@@ -423,7 +428,7 @@ exports.getStudentPerformance = async (req, res) => {
             return {
                 subject_id: subject.id,
                 subject_title: subject.title,
-                class_name: subject.classes?.display_name || 'N/A',
+                class_name: buildClassLabel(subject.classes) || 'N/A',
                 students,
             };
         });
@@ -633,7 +638,7 @@ exports.getSubjectClasses = async (req, res) => {
 
         let query = supabase
             .from("subjects")
-            .select("id, title, class_id, classes(id, display_name, grade_level, form_level, stream)")
+            .select("id, title, class_id, classes(id, grade_level, form_level, stream, level_label)")
             .eq("teacher_id", teacher.id);
         if (institution_id) query = query.eq("institution_id", institution_id);
         if (subject_id) query = query.eq("id", subject_id);
@@ -644,7 +649,7 @@ exports.getSubjectClasses = async (req, res) => {
         // Also include subjects via subject_teachers
         const { data: assoc } = await supabase
             .from("subject_teachers")
-            .select("subject_id, subject:subjects(id, title, class_id, classes(id, display_name, grade_level, form_level, stream))")
+            .select("subject_id, subject:subjects(id, title, class_id, classes(id, grade_level, form_level, stream, level_label))")
             .eq("teacher_id", teacher.id);
 
         const map = new Map();
@@ -655,8 +660,7 @@ exports.getSubjectClasses = async (req, res) => {
             subject_id: s.id,
             subject_title: s.title,
             class_id: s.class_id,
-            class_name: s.classes?.display_name || (s.classes?.form_level ? `Form ${s.classes.form_level}` : "") + (s.classes?.stream ? ` ${s.classes.stream}` : ""),
-            class_display_name: s.classes?.display_name,
+            class_name: buildClassLabel(s.classes),
             grade_level: s.classes?.grade_level,
             form_level: s.classes?.form_level,
             stream: s.classes?.stream,

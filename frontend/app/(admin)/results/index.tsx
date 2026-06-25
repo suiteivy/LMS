@@ -28,13 +28,17 @@ import {
 import { GradingAPI } from '@/services/GradingService';
 import { api } from '@/services/api';
 import { showSuccess, showError } from '@/utils/toast';
+import { formatClassLabel } from '@/utils/classLabel';
 
 // ─── Types ─────────────────────────────────────────────────
 
 interface ClassOption {
     id: string;
     name: string;
-    display_name?: string;
+    level_label?: string;
+    grade_level?: number | string | null;
+    form_level?: number | string | null;
+    stream?: string | null;
 }
 
 interface TermOption {
@@ -252,7 +256,10 @@ export default function AdminResults() {
                 (Array.isArray(classData) ? classData : []).map((c: any) => ({
                     id: c.id,
                     name: c.name,
-                    display_name: c.display_name,
+                    level_label: c.level_label,
+                    grade_level: c.grade_level,
+                    form_level: c.form_level,
+                    stream: c.stream,
                 }))
             );
 
@@ -618,7 +625,7 @@ export default function AdminResults() {
 
                         <DropdownSelector
                             label="Class"
-                            options={classes.map(c => ({ id: c.id, label: c.display_name || c.name }))}
+                            options={classes.map(c => ({ id: c.id, label: formatClassLabel(c) }))}
                             selectedId={selectedClassId}
                             onSelect={setSelectedClassId}
                             placeholder="Select a class"

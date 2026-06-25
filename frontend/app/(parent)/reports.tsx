@@ -1,15 +1,12 @@
 import { UnifiedHeader } from "@/components/common/UnifiedHeader";
 import { useTheme } from '@/contexts/ThemeContext';
+import { formatClassLabel } from '@/utils/classLabel';
 import { ParentService } from '@/services/ParentService';
 import { router, useLocalSearchParams } from 'expo-router';
 import { FileText, Download, Printer, ChevronRight } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
-<<<<<<< HEAD
 import { ActivityIndicator, ScrollView, Text, TouchableOpacity, View, RefreshControl, Linking, Alert } from 'react-native';
-=======
-import { ActivityIndicator, ScrollView, Text, TouchableOpacity, View, RefreshControl } from 'react-native';
 import { useParentStudentContext } from '@/hooks/useParentStudentContext';
->>>>>>> df05e40555bb1ec7b19b668a6cfb4d742c627c50
 
 export default function ReportsScreen() {
     const params = useLocalSearchParams<{ studentId: string; studentName?: string; classId?: string }>();
@@ -18,12 +15,23 @@ export default function ReportsScreen() {
     const [reports, setReports] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
+    const [classLabel, setClassLabel] = useState<string>('');
 
     const fetchReports = async () => {
         try {
             if (!resolvedStudentId) return;
-            const data = await ParentService.getStudentReports(resolvedStudentId);
+            const [data, students] = await Promise.all([
+                ParentService.getStudentReports(resolvedStudentId),
+                ParentService.getLinkedStudents().catch(() => []),
+            ]);
             setReports(data.data || []);
+
+            const matchedStudent = (students || []).find((s: any) => s.id === resolvedStudentId);
+            const resolvedClass = matchedStudent?.class_name || formatClassLabel({
+                grade_level: matchedStudent?.grade_level,
+                form_level: matchedStudent?.form_level,
+            });
+            setClassLabel(resolvedClass || 'Unassigned');
         } catch (error) {
             console.error("Error fetching reports:", error);
         } finally {
@@ -66,11 +74,19 @@ export default function ReportsScreen() {
                     <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={["#FF6900"]} />
                 }
             >
+                <View className="mb-3">
+                    <View className="self-start bg-white dark:bg-navy-surface border border-gray-100 dark:border-gray-800 rounded-full px-3 py-1.5">
+                        <Text className="text-[10px] font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400">
+                            Viewing: <Text className="text-gray-900 dark:text-white">{resolvedName || 'Student'}</Text> · {classLabel || 'Unassigned'}
+                        </Text>
+                    </View>
+                </View>
+
                 <TouchableOpacity
                     onPress={() =>
                         router.push({
                             pathname: '/(parent)/report-cards' as any,
-                            params: { studentId: resolvedStudentId, studentName: resolvedName },
+                            params: { studentId: resolvedStudentId, studentName: resolvedName, classId: params.classId },
                         })
                     }
                     style={{

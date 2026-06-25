@@ -6,6 +6,7 @@ import { ClassAPI, ClassItem as ClassData } from "@/services/ClassService";
 import { SubjectAPI, SubjectData } from "@/services/SubjectService";
 import { CreateTimetableDto, TimetableAPI, TimetableEntry } from "@/services/TimetableService";
 import { showError, showSuccess } from "@/utils/toast";
+import { formatClassLabel } from "@/utils/classLabel";
 import { Picker } from "@react-native-picker/picker";
 import { useRouter } from "expo-router";
 import { useTheme } from "@/contexts/ThemeContext";
@@ -644,7 +645,7 @@ export default function TimetableBuilder() {
                                 onPress={() => setSelectedClassId(cls.id)}
                                 activeOpacity={0.7}
                             >
-                                <Text style={[styles.chipText, active && styles.chipTextActive]}>{cls.display_name || cls.name}</Text>
+                                <Text style={[styles.chipText, active && styles.chipTextActive]}>{formatClassLabel(cls)}</Text>
                             </TouchableOpacity>
                         );
                     })}
@@ -802,7 +803,7 @@ export default function TimetableBuilder() {
                             <View>
                                 <Text style={styles.modalTitle}>{editingEntry ? "Edit Slot" : "Add Schedule Slot"}</Text>
                                 <Text style={styles.modalSub}>
-                                    {selectedClass?.display_name || selectedClass?.name || "Selected class"} · Conflicts checked on save
+                                    {formatClassLabel(selectedClass) || "Selected class"} · Conflicts checked on save
                                 </Text>
                             </View>
                             <TouchableOpacity style={styles.modalCloseBtn} onPress={() => setIsAddModalVisible(false)}>

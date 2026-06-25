@@ -1,4 +1,6 @@
 const supabase = require("../utils/supabaseClient.js");
+const { buildClassLabel } = require('../utils/classLabel');
+const { assignStudentToSingleClass } = require('../utils/studentClassEnrollment');
 
 /**
  * Create a new class
@@ -274,25 +276,13 @@ exports.enrollStudent = async (req, res) => {
             }
         }
 
-        // Check if already enrolled in this class
-        const { data: existing } = await supabase
-            .from("class_enrollments")
-            .select("id")
-            .eq("class_id", id)
-            .eq("student_id", student_id)
-            .maybeSingle();
+        const data = await assignStudentToSingleClass({
+            studentId: student_id,
+            classId: id,
+            institutionId: req.institution_id,
+            syncStudentLevel: true,
+        });
 
-        if (existing) {
-            return res.status(400).json({ error: "Student is already enrolled in this class" });
-        }
-
-        const { data, error } = await supabase
-            .from("class_enrollments")
-            .insert({ class_id: id, student_id })
-            .select("*")
-            .single();
-
-        if (error) throw error;
         res.status(201).json(data);
     } catch (err) {
         console.error("enrollStudent error:", err);
@@ -337,7 +327,7 @@ exports.autoAssignStudents = async (req, res) => {
         // 1. Get all classes for this grade level
         let classQuery = supabase
             .from("v_classes_detailed")
-            .select("id, display_name, capacity")
+            .select("id, name, grade_level, form_level, stream, level_label, capacity")
             .eq("grade_level", grade_level);
 
         if (institution_id) {
@@ -442,7 +432,7 @@ exports.autoAssignStudents = async (req, res) => {
 
         // Build summary
         const summary = classData.map((cls) => ({
-            class_name: cls.display_name,
+            class_name: buildClassLabel(cls),
             total_students: cls.current_count,
         }));
 

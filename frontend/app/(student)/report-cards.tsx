@@ -187,6 +187,7 @@ export default function ReportCardsScreen() {
   const [reportCards, setReportCards] = useState<ReportCard[]>([]);
   const [terms, setTerms] = useState<Term[]>([]);
   const [selectedTerm, setSelectedTerm] = useState<string | null>(null);
+  const [termSelectionTouched, setTermSelectionTouched] = useState(false);
   const [resolvedActiveTerm, setResolvedActiveTerm] = useState<Term | null>(null);
   const [expandedCard, setExpandedCard] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -199,22 +200,31 @@ export default function ReportCardsScreen() {
   const fetchData = useCallback(async () => {
     try {
       setLoading(true);
-      const params: any = {};
-      if (selectedTerm) params.term_id = selectedTerm;
-
-      const [cards, termsData] = await Promise.all([
-        GradingAPI.getReportCards(params),
+      const [termsData, activeTermData] = await Promise.all([
         GradingAPI.getTerms(),
+        GradingAPI.getActiveTerm().catch(() => null),
       ]);
+      const safeTerms = Array.isArray(termsData) ? termsData : [];
+      const activeTerm = (activeTermData?.active_term || null) as Term | null;
+      const effectiveTermId = selectedTerm ?? (!termSelectionTouched ? activeTerm?.id ?? null : null);
+
+      const params: any = {};
+      if (effectiveTermId) params.term_id = effectiveTermId;
+
+      const cards = await GradingAPI.getReportCards(params);
       setReportCards(normalizeReportCards(cards));
-      setTerms(termsData);
-      setResolvedActiveTerm(null);
+      setTerms(safeTerms);
+      setResolvedActiveTerm(activeTerm);
+
+      if (!termSelectionTouched && !selectedTerm && activeTerm?.id) {
+        setSelectedTerm(activeTerm.id);
+      }
     } catch (err: any) {
       showError(err?.message || 'Failed to load report cards');
     } finally {
       setLoading(false);
     }
-  }, [selectedTerm]);
+  }, [selectedTerm, termSelectionTouched]);
 
   useEffect(() => {
     fetchData();
@@ -266,7 +276,10 @@ export default function ReportCardsScreen() {
               styles.termPill,
               selectedTerm === null && styles.termPillActive,
             ]}
-            onPress={() => setSelectedTerm(null)}
+            onPress={() => {
+              setTermSelectionTouched(true);
+              setSelectedTerm(null);
+            }}
             activeOpacity={0.7}
           >
             <Text
@@ -285,7 +298,10 @@ export default function ReportCardsScreen() {
                 styles.termPill,
                 selectedTerm === term.id && styles.termPillActive,
               ]}
-              onPress={() => setSelectedTerm(term.id)}
+              onPress={() => {
+                setTermSelectionTouched(true);
+                setSelectedTerm(term.id);
+              }}
               activeOpacity={0.7}
             >
               <Calendar
