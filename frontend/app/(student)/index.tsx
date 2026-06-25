@@ -1,5 +1,6 @@
 import { UnifiedHeader } from "@/components/common/UnifiedHeader";
 import { SubscriptionBanner, SubscriptionGate } from "@/components/shared/SubscriptionComponents";
+import { HelpTooltip } from "@/components/settings/HelpTooltip";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSubscriptionTier } from "@/hooks/useSubscriptionTier";
 import { useNotifications } from "@/contexts/NotificationContext";
@@ -244,6 +245,7 @@ export default function Index() {
   const { profile, displayId, loading: authLoading, studentId, isDemo, logout } = useAuth();
   const { isDark } = useTheme();
   const { hasDiary, showFinancials } = useSubscriptionTier();
+  const tier = useSubscriptionTier();
   const { unreadCount } = useNotifications();
   const router = useRouter();
   const { width } = useWindowDimensions();
@@ -463,6 +465,9 @@ export default function Index() {
           </View>
 
           {/* ── Metric Cards ─────────────────────────────────────────── */}
+          <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginBottom: 8 }}>
+            <HelpTooltip id="student.dashboard.metrics" role="student" tier={tier} onLearnMore={(a) => router.push({ pathname: '/(student)/settings', params: { manual: '1', anchor: a || 'student-workflow' } } as any)} />
+          </View>
           <View style={{ flexDirection: 'row', gap: 12, marginBottom: 28 }}>
             <MetricCard
               icon={Star}
@@ -481,12 +486,15 @@ export default function Index() {
 
           {/* ── Today's Schedule ─────────────────────────────────────── */}
           <View style={{ marginBottom: 28 }}>
-            <SectionHeader
-              title="Today's Lectures"
-              actionLabel="Full Schedule"
-              onAction={() => router.push("/(student)/timetable" as any)}
-              isDark={isDark}
-            />
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+              <SectionHeader
+                title="Today's Lectures"
+                actionLabel="Full Schedule"
+                onAction={() => router.push("/(student)/timetable" as any)}
+                isDark={isDark}
+              />
+              <HelpTooltip id="student.dashboard.schedule" role="student" tier={tier} onLearnMore={(a) => router.push({ pathname: '/(student)/settings', params: { manual: '1', anchor: a || 'student-workflow' } } as any)} />
+            </View>
 
             {loadingData ? (
               <View style={{ paddingVertical: 32, alignItems: 'center' }}>
@@ -539,7 +547,10 @@ export default function Index() {
 
           {/* ── Academic Tools ────────────────────────────────────────── */}
           <View style={{ marginBottom: 8 }}>
-            <SectionHeader title="Academic Tools" isDark={isDark} />
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+              <SectionHeader title="Academic Tools" isDark={isDark} />
+              <HelpTooltip id="student.dashboard.tools" role="student" tier={tier} onLearnMore={(a) => router.push({ pathname: '/(student)/settings', params: { manual: '1', anchor: a || 'student-workflow' } } as any)} />
+            </View>
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' }}>
               {quickActions.map((action) => (
                 <QuickAction

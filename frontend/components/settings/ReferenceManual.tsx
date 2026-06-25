@@ -11,7 +11,9 @@ type ManualSectionId =
   | 'grading-ops'
   | 'attendance-ops'
   | 'reports-ops'
-  | 'billing-ops';
+  | 'billing-ops'
+  | 'student-workflow'
+  | 'parent-workflow';
 
 interface ManualSection {
   id: ManualSectionId;
@@ -94,6 +96,28 @@ const MODULES: ManualSection[] = [
     whatItDoes: 'Provides printable/exportable snapshots of grades, attendance, and status.',
     whatChanges: 'Date range, term scope, and filters alter who appears in generated reports.',
     crossLinks: ['Results → Report Cards', 'Management → Analytics'],
+  },
+  {
+    id: 'student-workflow',
+    title: 'Student Workflow',
+    roles: ['student'],
+    shortBlurb: 'How students track grades, assignments, attendance, and reports in one flow.',
+    whatItDoes:
+      'Guides students through daily learning visibility: announcements, timetable, assignments, grades, and report-cards.',
+    whatChanges:
+      'Changes in teacher grading cadence, attendance capture, or report release immediately affect student-facing summaries.',
+    crossLinks: ['Student → Assignments', 'Student → Grades', 'Student → Report Cards', 'Student → Notifications'],
+  },
+  {
+    id: 'parent-workflow',
+    title: 'Parent Workflow',
+    roles: ['parent'],
+    shortBlurb: 'How guardians monitor linked students across academics, attendance, and school communication.',
+    whatItDoes:
+      'Consolidates linked-student visibility for progress monitoring and communication with school staff.',
+    whatChanges:
+      'Linked student selection, report publication, and announcement targeting alter what a parent sees at any time.',
+    crossLinks: ['Parent → Dashboard', 'Parent → Attendance', 'Parent → Announcements', 'Parent → Report Cards'],
   },
   {
     id: 'billing-ops',

@@ -1,6 +1,6 @@
 import type { SubscriptionTierInfo } from '@/hooks/useSubscriptionTier';
 
-export type SettingsRole = 'admin' | 'teacher';
+export type SettingsRole = 'admin' | 'teacher' | 'student' | 'parent';
 
 export type AccessFeatureKey =
   | 'promotion'

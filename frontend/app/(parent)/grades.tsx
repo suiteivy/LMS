@@ -1,4 +1,5 @@
 import { UnifiedHeader } from "@/components/common/UnifiedHeader";
+import { HelpTooltip } from "@/components/settings/HelpTooltip";
 import { ParentService } from "@/services/ParentService";
 import { supabase } from "@/libs/supabase";
 import { router, useLocalSearchParams } from "expo-router";
@@ -11,6 +12,7 @@ import { Printer } from 'lucide-react-native';
 import { getPerformanceLabel } from "@/utils/getPerformanceLabel";
 import { GradingAPI } from "@/services/GradingService";
 import { useParentStudentContext } from "@/hooks/useParentStudentContext";
+import { useSubscriptionTier } from "@/hooks/useSubscriptionTier";
 
 const gradeColor = (g: string) => {
   if (g.startsWith("A")) return { bg: "bg-emerald-50", text: "text-emerald-700" };
@@ -27,6 +29,7 @@ export default function StudentGradesPage() {
   const [grades, setGrades] = useState<any[]>([]);
   const [stats, setStats] = useState({ gpa: "0.0", attendance_pct: "0", standing: "N/A" });
   const [gradingScales, setGradingScales] = useState<any[]>([]);
+  const tier = useSubscriptionTier();
 
   const fetchPerformanceData = async () => {
     if (!resolvedStudentId) return;
@@ -225,6 +228,9 @@ export default function StudentGradesPage() {
       >
         <View className="p-4 md:p-8">
           {/* GPA Hero Section */}
+          <View className="flex-row justify-end mb-2">
+            <HelpTooltip id="parent.grades.summary" role="parent" tier={tier} onLearnMore={(a) => router.push({ pathname: '/(parent)/settings', params: { manual: '1', anchor: a || 'parent-workflow' } } as any)} />
+          </View>
           <View className="bg-gray-900 p-8 rounded-[48px] shadow-2xl mb-8">
             <View className="flex-row justify-between items-start mb-10">
               <View>
@@ -256,7 +262,10 @@ export default function StudentGradesPage() {
 
           {/* Transcript Breakdown */}
           <View className="px-2 flex-row justify-between items-center mb-6">
-            <Text className="text-gray-900 dark:text-white font-bold text-xl tracking-tight">Academic Transcript</Text>
+            <View className="flex-row items-center">
+              <Text className="text-gray-900 dark:text-white font-bold text-xl tracking-tight">Academic Transcript</Text>
+              <HelpTooltip id="parent.grades.transcript" role="parent" tier={tier} onLearnMore={(a) => router.push({ pathname: '/(parent)/settings', params: { manual: '1', anchor: a || 'parent-workflow' } } as any)} />
+            </View>
             <TouchableOpacity
               className="bg-white dark:bg-navy-surface p-2 rounded-xl border border-gray-100 dark:border-gray-800 shadow-sm"
               onPress={handlePrint}

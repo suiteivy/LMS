@@ -1,5 +1,7 @@
 import { UnifiedHeader } from "@/components/common/UnifiedHeader";
+import { HelpTooltip } from "@/components/settings/HelpTooltip";
 import { useAuth } from '@/contexts/AuthContext';
+import { useSubscriptionTier } from "@/hooks/useSubscriptionTier";
 import { supabase } from '@/libs/supabase';
 import { router } from 'expo-router';
 import { AlertCircle, Calendar, CheckCircle, Clock, XCircle } from 'lucide-react-native';
@@ -7,7 +9,8 @@ import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, ScrollView, Text, View } from 'react-native';
 
 export default function AttendancePage() {
-    const { studentId, isDemo } = useAuth();
+  const { studentId, isDemo } = useAuth();
+    const tier = useSubscriptionTier();
     const [attendance, setAttendance] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [stats, setStats] = useState({
@@ -93,6 +96,9 @@ export default function AttendancePage() {
 
             <View className="p-4 md:p-8">
                 {/* Score Hero */}
+                <View className="flex-row justify-end mb-2">
+                    <HelpTooltip id="student.attendance.summary" role="student" tier={tier} onLearnMore={(a) => router.push({ pathname: '/(student)/settings', params: { manual: '1', anchor: a || 'student-workflow' } } as any)} />
+                </View>
                 <View className="bg-gray-900 p-8 rounded-[40px] shadow-xl mb-8 flex-row items-center">
                     <View className="flex-1">
                         <Text className="text-white/40 text-[10px] font-bold uppercase tracking-[3px] mb-2">Performance Rate</Text>
@@ -126,7 +132,10 @@ export default function AttendancePage() {
 
                 {/* Detailed Logs */}
                 <View className="px-2 mb-4">
-                    <Text className="text-gray-400 font-bold text-[10px] uppercase tracking-[3px]">Session Logs</Text>
+                    <View className="flex-row items-center justify-between">
+                        <Text className="text-gray-400 font-bold text-[10px] uppercase tracking-[3px]">Session Logs</Text>
+                        <HelpTooltip id="student.attendance.logs" role="student" tier={tier} onLearnMore={(a) => router.push({ pathname: '/(student)/settings', params: { manual: '1', anchor: a || 'student-workflow' } } as any)} />
+                    </View>
                 </View>
 
                 {loading ? (

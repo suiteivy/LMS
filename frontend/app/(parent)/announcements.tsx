@@ -1,4 +1,6 @@
 import { UnifiedHeader } from "@/components/common/UnifiedHeader";
+import { HelpTooltip } from "@/components/settings/HelpTooltip";
+import { useSubscriptionTier } from "@/hooks/useSubscriptionTier";
 import { ParentService } from "@/services/ParentService";
 import { useLocalSearchParams } from "expo-router";
 import { router } from "expo-router";
@@ -21,6 +23,7 @@ const getNotificationConfig = (type: string) => {
 };
 
 export default function StudentAnnouncementsPage() {
+  const tier = useSubscriptionTier();
   const params = useLocalSearchParams();
   const { studentId, ready } = useParentStudentContext(params as any, { autoInjectParams: true, persistWhenParamPresent: true });
   const [loading, setLoading] = useState(true);
@@ -84,8 +87,11 @@ export default function StudentAnnouncementsPage() {
         <View className="p-4 md:p-8">
           <View className="px-2 mb-8 flex-row justify-between items-center">
             <Text className="text-gray-900 dark:text-white font-bold text-2xl tracking-tighter">School Registry</Text>
-            <View className="bg-orange-50 dark:bg-orange-950/30 px-3 py-1 rounded-full">
-              <Text className="text-[#FF6900] text-[8px] font-black uppercase tracking-widest">{announcements.length} Updates</Text>
+            <View className="flex-row items-center">
+              <HelpTooltip id="parent.announcements.feed" role="parent" tier={tier} onLearnMore={(a) => router.push({ pathname: '/(parent)/settings', params: { manual: '1', anchor: a || 'parent-workflow' } } as any)} />
+              <View className="bg-orange-50 dark:bg-orange-950/30 px-3 py-1 rounded-full ml-2">
+                <Text className="text-[#FF6900] text-[8px] font-black uppercase tracking-widest">{announcements.length} Updates</Text>
+              </View>
             </View>
           </View>
 

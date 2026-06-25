@@ -36,6 +36,24 @@ export type TooltipTargetId =
   | 'teacher.manage.report_cards'
   | 'teacher.manage.messages'
   | 'teacher.manage.diary'
+  | 'student.dashboard.metrics'
+  | 'student.dashboard.schedule'
+  | 'student.dashboard.tools'
+  | 'student.assignments.filters'
+  | 'student.assignments.submission'
+  | 'student.attendance.summary'
+  | 'student.attendance.logs'
+  | 'parent.dashboard.child_profile'
+  | 'parent.dashboard.oversight'
+  | 'parent.dashboard.updates'
+  | 'parent.attendance.summary'
+  | 'parent.attendance.logs'
+  | 'student.grades.summary'
+  | 'student.grades.transcript'
+  | 'student.announcements.feed'
+  | 'parent.grades.summary'
+  | 'parent.grades.transcript'
+  | 'parent.announcements.feed'
   | 'settings.notifications.general'
   | 'settings.notifications.submission'
   | 'settings.notifications.priority'
@@ -52,6 +70,7 @@ export interface TooltipEntry {
 }
 
 const ROLE_DEFAULT: SettingsRole[] = ['admin', 'teacher'];
+const EXTENDED_SETTINGS_ROLES: SettingsRole[] = ['admin', 'teacher', 'student', 'parent'];
 
 export const SETTINGS_TOOLTIPS: Record<TooltipTargetId, TooltipEntry> = {
   'settings.profile.full_name': {
@@ -321,12 +340,138 @@ export const SETTINGS_TOOLTIPS: Record<TooltipTargetId, TooltipEntry> = {
     learnMoreAnchor: 'reports-ops',
     roles: ['teacher'],
   },
+  'student.dashboard.metrics': {
+    id: 'student.dashboard.metrics',
+    title: 'Academic metrics',
+    text: 'Shows GPA and attendance signals based on your latest graded and attendance records.',
+    learnMoreAnchor: 'student-workflow',
+    roles: ['student'],
+  },
+  'student.dashboard.schedule': {
+    id: 'student.dashboard.schedule',
+    title: 'Today\'s lectures',
+    text: 'Displays your timetable for today from active class enrollment and subject assignments.',
+    learnMoreAnchor: 'student-workflow',
+    roles: ['student'],
+  },
+  'student.dashboard.tools': {
+    id: 'student.dashboard.tools',
+    title: 'Academic tools',
+    text: 'Quick links to the core student modules used daily for coursework and tracking progress.',
+    learnMoreAnchor: 'student-workflow',
+    roles: ['student'],
+  },
+  'student.assignments.filters': {
+    id: 'student.assignments.filters',
+    title: 'Assignment filters',
+    text: 'Current shows pending or overdue items. History shows already submitted work.',
+    learnMoreAnchor: 'student-workflow',
+    roles: ['student'],
+  },
+  'student.assignments.submission': {
+    id: 'student.assignments.submission',
+    title: 'Submission flow',
+    text: 'Upload your assignment file to submit. Status updates after successful upload and record creation.',
+    learnMoreAnchor: 'student-workflow',
+    roles: ['student'],
+  },
+  'student.attendance.summary': {
+    id: 'student.attendance.summary',
+    title: 'Attendance summary',
+    text: 'Your attendance percentage is calculated from present/late sessions over total tracked sessions.',
+    learnMoreAnchor: 'student-workflow',
+    roles: ['student'],
+  },
+  'student.attendance.logs': {
+    id: 'student.attendance.logs',
+    title: 'Session logs',
+    text: 'Detailed attendance entries by date and subject help explain your summary trend.',
+    learnMoreAnchor: 'student-workflow',
+    roles: ['student'],
+  },
+  'parent.dashboard.child_profile': {
+    id: 'parent.dashboard.child_profile',
+    title: 'Child profile',
+    text: 'Shows the currently selected linked child. Switching child updates all dashboard cards and modules.',
+    learnMoreAnchor: 'parent-workflow',
+    roles: ['parent'],
+  },
+  'parent.dashboard.oversight': {
+    id: 'parent.dashboard.oversight',
+    title: 'Academic oversight',
+    text: 'Quick actions open student-specific parent views using the selected child context.',
+    learnMoreAnchor: 'parent-workflow',
+    roles: ['parent'],
+  },
+  'parent.dashboard.updates': {
+    id: 'parent.dashboard.updates',
+    title: 'Institutional updates',
+    text: 'Announcements are scoped to your linked child and filtered by current visibility/expiry rules.',
+    learnMoreAnchor: 'parent-workflow',
+    roles: ['parent'],
+  },
+  'parent.attendance.summary': {
+    id: 'parent.attendance.summary',
+    title: 'Attendance summary',
+    text: 'Provides a parent view of attendance rate and counts for the selected child.',
+    learnMoreAnchor: 'parent-workflow',
+    roles: ['parent'],
+  },
+  'parent.attendance.logs': {
+    id: 'parent.attendance.logs',
+    title: 'Daily log entry',
+    text: 'Chronological attendance details for each recorded session and subject.',
+    learnMoreAnchor: 'parent-workflow',
+    roles: ['parent'],
+  },
+  'student.grades.summary': {
+    id: 'student.grades.summary',
+    title: 'Grade summary',
+    text: 'Shows your GPA, rank context, and weighted performance from published grading records.',
+    learnMoreAnchor: 'student-workflow',
+    roles: ['student'],
+  },
+  'student.grades.transcript': {
+    id: 'student.grades.transcript',
+    title: 'Transcript records',
+    text: 'Per-subject grade rows with score context and detailed breakdown available by selection.',
+    learnMoreAnchor: 'student-workflow',
+    roles: ['student'],
+  },
+  'student.announcements.feed': {
+    id: 'student.announcements.feed',
+    title: 'Announcements feed',
+    text: 'Displays active school and subject announcements relevant to your enrollment context.',
+    learnMoreAnchor: 'student-workflow',
+    roles: ['student'],
+  },
+  'parent.grades.summary': {
+    id: 'parent.grades.summary',
+    title: 'Academic report summary',
+    text: 'Highlights your child\'s cumulative standing, attendance context, and institution ranking signal.',
+    learnMoreAnchor: 'parent-workflow',
+    roles: ['parent'],
+  },
+  'parent.grades.transcript': {
+    id: 'parent.grades.transcript',
+    title: 'Academic transcript',
+    text: 'Detailed subject performance records used for parent-side academic monitoring.',
+    learnMoreAnchor: 'parent-workflow',
+    roles: ['parent'],
+  },
+  'parent.announcements.feed': {
+    id: 'parent.announcements.feed',
+    title: 'Announcements archive',
+    text: 'Shows active announcements tied to the selected linked student and current institution scope.',
+    learnMoreAnchor: 'parent-workflow',
+    roles: ['parent'],
+  },
   'settings.notifications.general': {
     id: 'settings.notifications.general',
     title: 'General notifications',
     text: 'Controls routine app alerts for your role and daily workflow events.',
-    learnMoreAnchor: 'attendance-ops',
-    roles: ROLE_DEFAULT,
+    learnMoreAnchor: 'student-workflow',
+    roles: EXTENDED_SETTINGS_ROLES,
   },
   'settings.notifications.submission': {
     id: 'settings.notifications.submission',
@@ -346,14 +491,14 @@ export const SETTINGS_TOOLTIPS: Record<TooltipTargetId, TooltipEntry> = {
     id: 'settings.language',
     title: 'Language',
     text: 'Changes text language where translations are available across supported modules.',
-    learnMoreAnchor: 'reports-ops',
-    roles: ROLE_DEFAULT,
+    learnMoreAnchor: 'student-workflow',
+    roles: EXTENDED_SETTINGS_ROLES,
   },
   'settings.password': {
     id: 'settings.password',
     title: 'Password',
     text: 'Update login credentials. This signs out other sessions depending on security policy.',
-    learnMoreAnchor: 'reports-ops',
-    roles: ROLE_DEFAULT,
+    learnMoreAnchor: 'student-workflow',
+    roles: EXTENDED_SETTINGS_ROLES,
   },
 };

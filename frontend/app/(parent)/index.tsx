@@ -1,4 +1,5 @@
 import { UnifiedHeader } from "@/components/common/UnifiedHeader";
+import { HelpTooltip } from "@/components/settings/HelpTooltip";
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { ParentService } from '@/services/ParentService';
@@ -263,6 +264,11 @@ function ParentDashboard({ user, logout }: any) {
 
           {/* Child Selection Hero */}
           {selectedStudent && (
+            <View className="flex-row justify-end mb-2">
+              <HelpTooltip id="parent.dashboard.child_profile" role="parent" tier={tier} onLearnMore={(a) => router.push({ pathname: '/(parent)/settings', params: { manual: '1', anchor: a || 'parent-workflow' } } as any)} />
+            </View>
+          )}
+          {selectedStudent && (
             <View 
               style={{
                 boxShadow: [{
@@ -349,7 +355,10 @@ function ParentDashboard({ user, logout }: any) {
           {selectedStudent && (
             <>
               <View className="px-2 mb-6">
-                <Text className="text-gray-900 dark:text-white font-bold text-xl tracking-tight">Academic Oversight</Text>
+                <View className="flex-row items-center justify-between">
+                  <Text className="text-gray-900 dark:text-white font-bold text-xl tracking-tight">Academic Oversight</Text>
+                  <HelpTooltip id="parent.dashboard.oversight" role="parent" tier={tier} onLearnMore={(a) => router.push({ pathname: '/(parent)/settings', params: { manual: '1', anchor: a || 'parent-workflow' } } as any)} />
+                </View>
                 <Text className="text-gray-400 dark:text-gray-500 text-xs mt-1">
                   Viewing: {selectedStudent.users?.first_name || selectedStudent.users?.full_name?.split(' ')[0]}
                   {linkedStudents.length > 1 ? ` · ${linkedStudents.length} children` : ''}
@@ -372,11 +381,16 @@ function ParentDashboard({ user, logout }: any) {
           )}
 
           {/* Updates Section */}
-          <SectionHeader
-            title="Institutional Updates"
-            actionLabel="Archive"
-            onAction={() => router.push("/(parent)/announcements" as any)}
-          />
+          <View className="flex-row items-center justify-between">
+            <SectionHeader
+              title="Institutional Updates"
+              actionLabel="Archive"
+              onAction={() => router.push("/(parent)/announcements" as any)}
+            />
+            <View className="mr-4">
+              <HelpTooltip id="parent.dashboard.updates" role="parent" tier={tier} onLearnMore={(a) => router.push({ pathname: '/(parent)/settings', params: { manual: '1', anchor: a || 'parent-workflow' } } as any)} />
+            </View>
+          </View>
           <View 
             style={{
               boxShadow: [{

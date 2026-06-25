@@ -6,6 +6,8 @@ import { ChevronRight, HelpCircle, LogOut, Moon, Settings, ShieldCheck, Sun, Use
 import React, { useState } from 'react';
 import { Alert, Image, Platform, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { SubscriptionStatusBadge } from '@/components/shared/SubscriptionComponents';
+import { useSubscriptionTier } from '@/hooks/useSubscriptionTier';
+import { HelpTooltip } from './settings/HelpTooltip';
 
 // Screens
 import AdminHelp from '@/components/AdminHelp';
@@ -58,6 +60,7 @@ const MenuItem = ({ icon, label, onPress, danger, isDark }: MenuItemProps) => (
 function SettingsMenu({ userRole, onNavigate }: { userRole: string; onNavigate: (screen: 'profile' | 'settings' | 'help' | 'overview' | 'ownership' | 'sessions') => void }) {
   const { signOut, profile, loading, displayId, isTrial, isMain } = useAuth();
   const { theme, setTheme, isDark } = useTheme();
+  const tier = useSubscriptionTier();
   const isPlatformAdminRole = userRole === 'master_admin' || userRole === 'platform_admin';
   const roleLabel = isPlatformAdminRole ? 'Master Admin' : userRole === 'parent' ? 'Parent/Guardian' : (userRole.charAt(0).toUpperCase() + userRole.slice(1));
 
@@ -127,7 +130,21 @@ function SettingsMenu({ userRole, onNavigate }: { userRole: string; onNavigate: 
       </View>
 
       {/* Menu Items */}
-      <ScrollView style={{ flex: 1, backgroundColor: isDark ? '#0F0B2E' : '#ffffff' }} contentContainerStyle={{ paddingBottom: 20 }}>
+        <ScrollView style={{ flex: 1, backgroundColor: isDark ? '#0F0B2E' : '#ffffff' }} contentContainerStyle={{ paddingBottom: 20 }}>
+        {(['student', 'parent'] as const).includes(userRole as 'student' | 'parent') && (
+          <View style={{ paddingHorizontal: 24, paddingTop: 16, paddingBottom: 4, flexDirection: 'row', alignItems: 'center' }}>
+            <Text style={{ fontSize: 10, fontWeight: 'bold', color: textSecondary, textTransform: 'uppercase', letterSpacing: 3 }}>Quick Guide</Text>
+            <HelpTooltip
+              id={userRole === 'parent' ? 'settings.language' : 'settings.language'}
+              role={userRole as 'student' | 'parent'}
+              tier={tier}
+              onLearnMore={(anchor) => {
+                onNavigate('settings');
+                router.push({ pathname: `/${userRole === 'parent' ? '(parent)' : '(student)'}/settings` as any, params: { manual: '1', anchor: anchor || (userRole === 'parent' ? 'parent-workflow' : 'student-workflow') } } as any);
+              }}
+            />
+          </View>
+        )}
         {userRole === 'admin' && (
           <>
             <MenuItem isDark={isDark} icon={<ShieldCheck size={22} color="#8b5cf6" />} label="Admin Overview" onPress={() => onNavigate('overview')} />
@@ -236,7 +253,8 @@ export function GlobalSettingsContent({ userRole = 'student' }: { userRole?: Use
         if (userRole === 'master_admin' || userRole === 'platform_admin') return <MasterAdminSettings />;
         if (userRole === 'admin') return <AdminSettings />;
         if (userRole === 'teacher') return <TeacherSettings />;
-        return <StudentSettings />;
+        if (userRole === 'parent') return <StudentSettings role="parent" />;
+        return <StudentSettings role="student" />;
       case 'help':
         if (userRole === 'admin') return <AdminHelp />;
         if (userRole === 'teacher') return <TeacherHelp />;

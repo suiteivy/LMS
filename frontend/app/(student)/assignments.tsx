@@ -1,5 +1,7 @@
 import { UnifiedHeader } from "@/components/common/UnifiedHeader";
+import { HelpTooltip } from "@/components/settings/HelpTooltip";
 import { useAuth } from "@/contexts/AuthContext";
+import { useSubscriptionTier } from "@/hooks/useSubscriptionTier";
 import { supabase } from "@/libs/supabase";
 import * as DocumentPicker from 'expo-document-picker';
 import { router } from "expo-router";
@@ -21,6 +23,7 @@ interface Assignments {
 
 export default function StudentsAssignments() {
   const { studentId } = useAuth()
+  const tier = useSubscriptionTier();
   const [loading, setLoading] = useState(false)
   const [filter, setFilter] = useState<"pending" | "completed" | "overdue">('pending')
   const [assignments, setAssignments] = useState<Assignments[]>([])
@@ -151,6 +154,9 @@ export default function StudentsAssignments() {
 
       <View className="p-4 md:p-8">
         {/* Toggle Controls */}
+        <View className="flex-row justify-end mb-2">
+          <HelpTooltip id="student.assignments.filters" role="student" tier={tier} onLearnMore={(a) => router.push({ pathname: '/(student)/settings', params: { manual: '1', anchor: a || 'student-workflow' } } as any)} />
+        </View>
         <View className="flex-row bg-white dark:bg-[#1a1a1a] p-1.5 rounded-[24px] border border-gray-100 dark:border-gray-800 shadow-sm mb-8">
           <TouchableOpacity
             onPress={() => setFilter("pending")}
@@ -252,6 +258,9 @@ export default function StudentsAssignments() {
             )}
 
             {/* Submission Zone */}
+            <View className="flex-row justify-end mb-2">
+              <HelpTooltip id="student.assignments.submission" role="student" tier={tier} onLearnMore={(a) => router.push({ pathname: '/(student)/settings', params: { manual: '1', anchor: a || 'student-workflow' } } as any)} />
+            </View>
             {selectedAssignment?.status === 'completed' ? (
               <View className="bg-green-50 dark:bg-green-950/20 p-8 rounded-[40px] border border-green-100 dark:border-green-900 items-center">
                 <View className="bg-white dark:bg-[#0F0B2E] p-4 rounded-full shadow-sm mb-4">

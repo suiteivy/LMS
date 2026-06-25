@@ -1,5 +1,7 @@
 import { UnifiedHeader } from "@/components/common/UnifiedHeader";
+import { HelpTooltip } from "@/components/settings/HelpTooltip";
 import { useAuth } from "@/contexts/AuthContext";
+import { useSubscriptionTier } from "@/hooks/useSubscriptionTier";
 import { ParentService } from "@/services/ParentService";
 import { router, useLocalSearchParams } from "expo-router";
 import { Calendar as CalendarIcon, CheckCircle2, Clock, Search, XCircle } from "lucide-react-native";
@@ -62,6 +64,7 @@ export default function StudentAttendancePage() {
   const params = useLocalSearchParams<{ studentId: string; studentName?: string; classId?: string }>();
   const { studentId: resolvedStudentId, studentName: resolvedName, ready } = useParentStudentContext(params as any);
   const { isDemo } = useAuth();
+  const tier = useSubscriptionTier();
 
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -125,6 +128,9 @@ export default function StudentAttendancePage() {
           ) : (
             <>
               {/* Attendance Hero */}
+              <View className="flex-row justify-end mb-2">
+                <HelpTooltip id="parent.attendance.summary" role="parent" tier={tier} onLearnMore={(a) => router.push({ pathname: '/(parent)/settings', params: { manual: '1', anchor: a || 'parent-workflow' } } as any)} />
+              </View>
               <View className="bg-gray-900 p-8 rounded-[48px] shadow-2xl mb-8">
                 <View className="flex-row justify-between items-center mb-10">
                   <View>
@@ -158,10 +164,15 @@ export default function StudentAttendancePage() {
 
               {/* History Section */}
               <View className="px-2 flex-row justify-between items-center mb-6">
-                <Text className="text-gray-900 dark:text-white font-bold text-xl tracking-tight">Daily Log Entry</Text>
-                <TouchableOpacity className="bg-white dark:bg-navy-surface p-2 rounded-xl border border-gray-100 dark:border-gray-800 shadow-sm">
-                  <Search size={16} color="#FF6900" />
-                </TouchableOpacity>
+                <View>
+                  <Text className="text-gray-900 dark:text-white font-bold text-xl tracking-tight">Daily Log Entry</Text>
+                </View>
+                <View className="flex-row items-center">
+                  <HelpTooltip id="parent.attendance.logs" role="parent" tier={tier} onLearnMore={(a) => router.push({ pathname: '/(parent)/settings', params: { manual: '1', anchor: a || 'parent-workflow' } } as any)} />
+                  <TouchableOpacity className="bg-white dark:bg-navy-surface p-2 rounded-xl border border-gray-100 dark:border-gray-800 shadow-sm ml-2">
+                    <Search size={16} color="#FF6900" />
+                  </TouchableOpacity>
+                </View>
               </View>
 
               {records.length === 0 ? (
