@@ -4,6 +4,8 @@ import { Camera, X } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, Image, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useAuth } from '@/contexts/AuthContext';
+import { useTheme } from '@/contexts/ThemeContext';
+import { DatePicker } from '@/components/common/DatePicker';
 
 interface EditFormProps {
   visible: boolean
@@ -19,6 +21,7 @@ const GENDER_OPTIONS = ['male', 'female', 'other'] as const;
 
 export const ProfileEdit = ({ visible, onClose, currentUser, onUpdate }: EditFormProps) => {
   const { profile, refreshProfile } = useAuth();
+  const isDark = useTheme()
 
   const [loading, setLoading] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
@@ -32,7 +35,6 @@ export const ProfileEdit = ({ visible, onClose, currentUser, onUpdate }: EditFor
   const [gender, setGender] = useState('');
   const [dateOfBirth, setDateOfBirth] = useState('');
 
-  const DatePicker = require('@/components/common/DatePicker').default;
 
   useEffect(() => {
     if (!visible) {
@@ -191,10 +193,11 @@ export const ProfileEdit = ({ visible, onClose, currentUser, onUpdate }: EditFor
       transparent
       visible={visible}
       onRequestClose={onClose}
+      style={{backgroundColor: isDark ? '#0D1117' : '#FCFCFC'}}
     >
       <Pressable className="flex-1 bg-black/60 justify-end" onPress={onClose}>
         <Pressable
-          className="bg-white rounded-t-[32px] h-[85%] w-full shadow-xl"
+          className={`rounded-t-[32px] h-[85%] w-full shadow-xl ${isDark ? 'bg-gray-900' : 'bg-white'}`}
           onPress={(e) => e.stopPropagation()}
         >
           <View className="items-center py-3">
@@ -202,7 +205,9 @@ export const ProfileEdit = ({ visible, onClose, currentUser, onUpdate }: EditFor
           </View>
 
           <View className="flex-row items-center justify-between px-6 pb-4 border-b border-gray-50">
-            <Text className="text-xl font-bold text-gray-800">
+            <Text 
+              style={{ color: isDark? '#FCFCFC' : '#0D1117' }}
+              className={`text-xl font-bold`}>
               Edit Profile
             </Text>
             <TouchableOpacity
@@ -217,169 +222,146 @@ export const ProfileEdit = ({ visible, onClose, currentUser, onUpdate }: EditFor
             behavior={Platform.OS === "ios" ? "padding" : "height"}
             className="flex-1"
           >
-            <ScrollView className="p-6" showsVerticalScrollIndicator={false}>
-              <View>
-                {/* Avatar Section */}
-                <View className="items-center mb-8">
-                  <TouchableOpacity onPress={pickImage} className="relative">
-                    <View className="w-24 h-24 rounded-full bg-gray-100 overflow-hidden items-center justify-center border-4 border-white shadow-sm">
-                      {avatarUrl ? (
-                        <Image source={{ uri: avatarUrl }} className="w-full h-full" />
-                      ) : (
-                        <Text className="text-gray-400 text-2xl font-bold">
-                          {firstName?.charAt(0) || profile?.full_name?.charAt(0) || "U"}
-                        </Text>
-                      )}
-                    </View>
-                    <View className="absolute bottom-0 right-0 bg-orange-500 p-2 rounded-full border-2 border-white">
-                      {uploading ? <ActivityIndicator size="small" color="white" /> : <Camera size={14} color="white" />}
-                    </View>
-                  </TouchableOpacity>
-                  <Text className="text-gray-400 text-xs mt-2">JPG, PNG or WebP · Max 5MB</Text>
-                </View>
+            <ScrollView className="px-4 pt-4" showsVerticalScrollIndicator={false}>
 
-                <View className="mb-8">
-                  <Text className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4">
-                    Identity
-                  </Text>
-                  <View className="space-y-4">
-                    <View>
-                      <Text className="text-sm font-semibold text-gray-700 mb-2">
-                        First Name
+              {/* Avatar */}
+              <View className="items-center mb-6">
+                <TouchableOpacity onPress={pickImage} activeOpacity={0.7} className="relative">
+                  <View
+                    className="w-20 h-20 rounded-full overflow-hidden items-center justify-center border border-[#D0D7DE] dark:border-[#21262D]"
+                    style={{ backgroundColor: isDark ? '#161B22' : '#F6F8FA' }}
+                  >
+                    {avatarUrl ? (
+                      <Image source={{ uri: avatarUrl }} className="w-full h-full" />
+                    ) : (
+                      <Text className="text-gray-400 text-2xl font-black">
+                        {firstName?.charAt(0) || profile?.full_name?.charAt(0) || 'U'}
                       </Text>
-                      <TextInput
-                        className="bg-gray-50 p-4 rounded-2xl border border-gray-100 text-gray-900"
-                        placeholder="First Name"
-                        placeholderTextColor="#9ca3af"
-                        value={firstName}
-                        onChangeText={setFirstName}
-                      />
-                    </View>
-
-                    <View>
-                      <Text className="text-sm font-semibold text-gray-700 mb-2">
-                        Last Name
-                      </Text>
-                      <TextInput
-                        className="bg-gray-50 p-4 rounded-2xl border border-gray-100 text-gray-900"
-                        placeholder="Last Name"
-                        placeholderTextColor="#9ca3af"
-                        value={lastName}
-                        onChangeText={setLastName}
-                      />
-                    </View>
-
-                    <View>
-                      <Text className="text-sm font-semibold text-gray-700 mb-2">
-                        Mobile Number
-                      </Text>
-                      <TextInput
-                        className="bg-gray-50 p-4 rounded-2xl border border-gray-100 text-gray-900"
-                        placeholder="Mobile Number"
-                        placeholderTextColor="#9ca3af"
-                        keyboardType="phone-pad"
-                        value={phone}
-                        onChangeText={setPhone}
-                      />
-                    </View>
-
-                    <View>
-                      <Text className="text-sm font-semibold text-gray-700 mb-2">
-                        Email Address (Assigned)
-                      </Text>
-                      <View className="bg-gray-100 p-4 rounded-2xl border border-gray-200">
-                        <Text className="text-gray-500 text-base">
-                          {email}
-                        </Text>
-                      </View>
-                    </View>
+                    )}
                   </View>
+                  <View className="absolute bottom-0 right-0 bg-[#FF6900] p-2 rounded-full border-2 border-white dark:border-[#0D1117]">
+                    {uploading ? <ActivityIndicator size="small" color="white" /> : <Camera size={13} color="white" />}
+                  </View>
+                </TouchableOpacity>
+                <Text className="text-gray-400 text-xs font-bold uppercase tracking-widest mt-2">
+                  JPG, PNG or WebP · Max 5MB
+                </Text>
+              </View>
+
+              {/* Identity */}
+              <Text className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">Identity</Text>
+              <View className="gap-3 mb-6">
+                <View>
+                  <Text className="text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">First Name</Text>
+                  <TextInput
+                    className="bg-[#F6F8FA] dark:bg-[#161B22] border border-[#D0D7DE] dark:border-[#21262D] rounded-xl px-4 py-3 text-gray-900 dark:text-white"
+                    placeholder="First Name"
+                    placeholderTextColor="#9ca3af"
+                    value={firstName}
+                    onChangeText={setFirstName}
+                  />
                 </View>
 
-                {/* Personal Details Section */}
-                <View className="mb-8">
-                  <Text className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4">
-                    Personal Details
-                  </Text>
-                  <View className="space-y-4">
-                    <View>
-                      <Text className="text-sm font-semibold text-gray-700 mb-2">
-                        Residence / Address
-                      </Text>
-                      <TextInput
-                        className="bg-gray-50 p-4 rounded-2xl border border-gray-100 text-gray-900"
-                        placeholder="Enter your address"
-                        placeholderTextColor="#9ca3af"
-                        value={address}
-                        onChangeText={setAddress}
-                      />
-                    </View>
+                <View>
+                  <Text className="text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">Last Name</Text>
+                  <TextInput
+                    className="bg-[#F6F8FA] dark:bg-[#161B22] border border-[#D0D7DE] dark:border-[#21262D] rounded-xl px-4 py-3 text-gray-900 dark:text-white"
+                    placeholder="Last Name"
+                    placeholderTextColor="#9ca3af"
+                    value={lastName}
+                    onChangeText={setLastName}
+                  />
+                </View>
 
-                    <View>
-                      <Text className="text-sm font-semibold text-gray-700 mb-2">
-                        Gender
-                      </Text>
-                      <View className="flex-row gap-2">
-                        {GENDER_OPTIONS.map((option) => (
-                          <TouchableOpacity
-                            key={option}
-                            onPress={() => setGender(option)}
-                            className={`flex-1 p-4 rounded-2xl border items-center ${gender === option
-                                ? 'bg-orange-50 border-orange-500'
-                                : 'bg-gray-50 border-gray-100'
-                              }`}
-                          >
-                            <Text className={`font-semibold capitalize text-sm ${gender === option ? 'text-orange-600' : 'text-gray-500'
-                              }`}>
-                              {option}
-                            </Text>
-                          </TouchableOpacity>
-                        ))}
-                      </View>
-                    </View>
+                <View>
+                  <Text className="text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">Mobile Number</Text>
+                  <TextInput
+                    className="bg-[#F6F8FA] dark:bg-[#161B22] border border-[#D0D7DE] dark:border-[#21262D] rounded-xl px-4 py-3 text-gray-900 dark:text-white"
+                    placeholder="Mobile Number"
+                    placeholderTextColor="#9ca3af"
+                    keyboardType="phone-pad"
+                    value={phone}
+                    onChangeText={setPhone}
+                  />
+                </View>
 
-                    <View>
-                      <Text className="text-sm font-semibold text-gray-700 mb-2">
-                        Date of Birth
-                      </Text>
-                      <View className="bg-gray-50 p-4 rounded-2xl border border-gray-100 text-gray-900">
-                        <DatePicker
-                          label="Date of Birth"
-                          value={dateOfBirth}
-                          onChange={setDateOfBirth}
-                          isDark={false}
-                          inline={true}
-                        />
-                      </View>
-                    </View>
+                <View>
+                  <Text className="text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">Email (Assigned)</Text>
+                  <View className="bg-[#EAEEF2] dark:bg-[#1C2128] border border-[#D0D7DE] dark:border-[#21262D] rounded-xl px-4 py-3">
+                    <Text className="text-gray-500 dark:text-gray-400">{email}</Text>
                   </View>
                 </View>
               </View>
 
-              {/* Footer Buttons */}
-              <View className="mt-4 mb-10 space-y-3">
+              {/* Personal Details */}
+              <Text className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">Personal Details</Text>
+              <View className="gap-3 mb-6">
+                <View>
+                  <Text className="text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">Residence / Address</Text>
+                  <TextInput
+                    className="bg-[#F6F8FA] dark:bg-[#161B22] border border-[#D0D7DE] dark:border-[#21262D] rounded-xl px-4 py-3 text-gray-900 dark:text-white"
+                    placeholder="Enter your address"
+                    placeholderTextColor="#9ca3af"
+                    value={address}
+                    onChangeText={setAddress}
+                  />
+                </View>
+
+                <View>
+                  <Text className="text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">Gender</Text>
+                  <View className="flex-row gap-2">
+                    {GENDER_OPTIONS.map((option) => (
+                      <TouchableOpacity
+                        key={option}
+                        onPress={() => setGender(option)}
+                        activeOpacity={0.7}
+                        className={`flex-1 py-3 rounded-xl border items-center ${gender === option
+                            ? 'bg-orange-50 dark:bg-orange-950/20 border-[#FF6900]'
+                            : 'bg-[#F6F8FA] dark:bg-[#161B22] border-[#D0D7DE] dark:border-[#21262D]'
+                          }`}
+                      >
+                        <Text className={`font-bold capitalize text-xs uppercase tracking-widest ${gender === option ? 'text-[#FF6900]' : 'text-gray-500 dark:text-gray-400'
+                          }`}>
+                          {option}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </View>
+
+                <View>
+                  <Text className="text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">Date of Birth</Text>
+                  <View className="bg-[#F6F8FA] dark:bg-[#161B22] border border-[#D0D7DE] dark:border-[#21262D] rounded-xl px-4 py-3">
+                    <DatePicker
+                      label="Date of Birth"
+                      value={dateOfBirth}
+                      onChange={setDateOfBirth}
+                      isDark={true}
+                      inline={true}
+                    />
+                  </View>
+                </View>
+              </View>
+
+              {/* Actions */}
+              <View className="gap-3 mb-8">
                 <TouchableOpacity
                   disabled={loading}
                   onPress={handleSave}
-                  className={`p-4 rounded-2xl items-center ${loading
-                    ? "bg-gray-100"
-                    : "bg-orange-500 shadow-md active:opacity-90"}`}
+                  activeOpacity={0.7}
+                  className={`py-4 rounded-xl items-center ${loading ? 'bg-[#EAEEF2] dark:bg-[#1C2128]' : 'bg-[#FF6900]'}`}
                 >
-                  {loading ? (
-                    <ActivityIndicator color="white" />
-                  ) : (
-                    <Text className="font-bold text-lg text-white">
-                      Save Changes
-                    </Text>
-                  )}
+                  {loading
+                    ? <ActivityIndicator color="#9ca3af" />
+                    : <Text className="font-black text-sm text-white uppercase tracking-widest">Save Changes</Text>
+                  }
                 </TouchableOpacity>
-                <TouchableOpacity
-                  onPress={onClose}
-                  className="p-4 rounded-2xl items-center"
-                >
-                  <Text className="text-gray-500 font-semibold">Cancel</Text>
+
+                <TouchableOpacity onPress={onClose} activeOpacity={0.7} className="py-4 items-center">
+                  <Text className="text-gray-500 dark:text-gray-400 font-bold text-sm">Cancel</Text>
                 </TouchableOpacity>
               </View>
+
             </ScrollView>
           </KeyboardAvoidingView>
         </Pressable>

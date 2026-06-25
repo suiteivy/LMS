@@ -27,10 +27,10 @@ export default function AdminStudentAttendance() {
     const [classBreakdown, setClassBreakdown] = useState<any[]>([]);
     const [searchQuery, setSearchQuery] = useState('');
 
-    const surface = isDark ? '#13103A' : '#ffffff';
-    const border = isDark ? 'rgba(255,255,255,0.1)' : '#f3f4f6';
-    const textPrimary = isDark ? '#f1f1f1' : '#111827';
-    const textSecondary = isDark ? '#9ca3af' : '#6b7280';
+    const surface = isDark ? '#161B22' : '#F6F8FA';
+    const border = isDark ? '#21262D' : '#D0D7DE';
+    const textPrimary = isDark ? '#FFFFFF' : '#111827';
+    const textSecondary = isDark ? '#9CA3AF' : '#6B7280';
 
     useEffect(() => { loadInstitutionStats(); }, [date, profile?.institution_id]);
 
@@ -88,7 +88,7 @@ export default function AdminStudentAttendance() {
     );
 
     return (
-        <View style={{ flex: 1, backgroundColor: isDark ? '#0F0B2E' : '#f9fafb' }}>
+        <View style={{ flex: 1, backgroundColor: isDark ? '#0D1117' : '#FFFFFF' }}>
             <UnifiedHeader
                 title="Student Reports"
                 subtitle="Daily Attendance"
@@ -109,29 +109,29 @@ export default function AdminStudentAttendance() {
                         />
                     </View>
 
-                    <View style={{ backgroundColor: '#FF6B00', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, alignSelf: 'center', marginTop: 14 }}>
+                    <View style={{ backgroundColor: '#FF6900', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12, alignSelf: 'center', marginTop: 14 }}>
                         <Text style={{ color: 'white', fontWeight: '800', fontSize: 12 }}>{stats.percentage}% Present</Text>
                     </View>
                 </View>
 
                 {loading ? (
-                    <ActivityIndicator size="large" color="#FF6B00" style={{ marginTop: 40 }} />
+                    <ActivityIndicator size="large" color="#FF6900" style={{ marginTop: 40 }} />
                 ) : (
                     <>
                         {/* Summary Cards */}
                         <View style={{ flexDirection: 'row', gap: 12, marginBottom: 24 }}>
-                            <View style={{ flex: 1, backgroundColor: surface, padding: 16, borderRadius: 20, borderWidth: 1, borderColor: border }}>
+                            <View style={{ flex: 1, backgroundColor: surface, padding: 16, borderRadius: 12, borderWidth: 1, borderColor: border }}>
                                 <CheckCircle2 size={24} color="#10b981" />
                                 <Text style={{ fontSize: 22, fontWeight: '800', color: textPrimary, marginTop: 8 }}>{stats.present}</Text>
                                 <Text style={{ fontSize: 11, color: textSecondary, fontWeight: '600' }}>PRESENT</Text>
                             </View>
-                            <View style={{ flex: 1, backgroundColor: surface, padding: 16, borderRadius: 20, borderWidth: 1, borderColor: border }}>
+                            <View style={{ flex: 1, backgroundColor: surface, padding: 16, borderRadius: 12, borderWidth: 1, borderColor: border }}>
                                 <XCircle size={24} color="#ef4444" />
                                 <Text style={{ fontSize: 22, fontWeight: '800', color: textPrimary, marginTop: 8 }}>{stats.absent}</Text>
                                 <Text style={{ fontSize: 11, color: textSecondary, fontWeight: '600' }}>ABSENT</Text>
                             </View>
-                            <View style={{ flex: 1, backgroundColor: surface, padding: 16, borderRadius: 20, borderWidth: 1, borderColor: border }}>
-                                <Clock size={24} color="#f59e0b" />
+                            <View style={{ flex: 1, backgroundColor: surface, padding: 16, borderRadius: 12, borderWidth: 1, borderColor: border }}>
+                                <Clock size={24} color="#FF6900" />
                                 <Text style={{ fontSize: 22, fontWeight: '800', color: textPrimary, marginTop: 8 }}>{stats.late}</Text>
                                 <Text style={{ fontSize: 11, color: textSecondary, fontWeight: '600' }}>LATE</Text>
                             </View>
@@ -144,7 +144,7 @@ export default function AdminStudentAttendance() {
                             </Text>
                         </View>
 
-                        <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: surface, borderRadius: 16, borderWidth: 1, borderColor: border, paddingHorizontal: 12, marginBottom: 16 }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: surface, borderRadius: 12, borderWidth: 1, borderColor: border, paddingHorizontal: 12, marginBottom: 16 }}>
                             <Search size={18} color={textSecondary} />
                             <TextInput
                                 style={{ flex: 1, paddingVertical: 12, paddingHorizontal: 8, color: textPrimary, fontSize: 14 }}
@@ -156,7 +156,7 @@ export default function AdminStudentAttendance() {
                         </View>
 
                         {filteredBreakdown.map((c, i) => (
-                            <View key={i} style={{ backgroundColor: surface, padding: 16, borderRadius: 16, borderLeftWidth: 4, borderLeftColor: '#FF6B00', marginBottom: 12, borderWidth: 1, borderColor: border }}>
+                            <View key={i} style={{ backgroundColor: surface, padding: 16, borderRadius: 12, borderLeftWidth: 4, borderLeftColor: '#FF6900', marginBottom: 12, borderWidth: 1, borderColor: border }}>
                                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
                                     <View>
                                         <Text style={{ fontSize: 16, fontWeight: '800', color: textPrimary }}>{c.name}</Text>
@@ -166,7 +166,7 @@ export default function AdminStudentAttendance() {
                                         <Text style={{ fontSize: 16, fontWeight: '800', color: '#10b981' }}>{Math.round(((c.present + c.late) / c.total) * 100)}%</Text>
                                         <View style={{ flexDirection: 'row', gap: 8, marginTop: 4 }}>
                                             <Text style={{ fontSize: 11, color: '#ef4444' }}>{c.absent} Abs</Text>
-                                            <Text style={{ fontSize: 11, color: '#f59e0b' }}>{c.late} Late</Text>
+                                            <Text style={{ fontSize: 11, color: '#FF6900' }}>{c.late} Late</Text>
                                             <Text style={{ fontSize: 11, color: '#10b981' }}>{c.present} Pre</Text>
                                         </View>
                                     </View>

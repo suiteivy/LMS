@@ -369,12 +369,12 @@ export default function TimetableBuilder() {
     // Derive theme-based palette
     const colors = React.useMemo(() => {
         return {
-            bg: isDark ? "#0F0B2E" : "#f9fafb",
-            surface: isDark ? "#13103A" : "#ffffff",
-            surface2: isDark ? "#1A1650" : "#f3f4f6",
-            border: isDark ? "rgba(255,255,255,0.1)" : "#E5E7EB",
-            borderLight: isDark ? "rgba(255,255,255,0.05)" : "#f3f4f6",
-            text: isDark ? "#ffffff" : "#111827",
+            bg: isDark ? "#0D1117" : "#FFFFFF",
+            surface: isDark ? "#161B22" : "#F6F8FA",
+            surface2: isDark ? "#1C2128" : "#EAEEF2",
+            border: isDark ? "#21262D" : "#D0D7DE",
+            borderLight: isDark ? "#21262D" : "#D0D7DE",
+            text: isDark ? "#FFFFFF" : "#111827",
             textSub: isDark ? "rgba(255,255,255,0.6)" : "#4b5563",
             textMuted: isDark ? "rgba(255,255,255,0.4)" : "#9ca3af",
             accent: "#FF6900",

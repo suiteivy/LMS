@@ -111,10 +111,12 @@ export default function FinanceDashboard() {
         try {
             if (feeData.id) {
                 await FinanceService.updateFeeStructure(feeData.id, feeData);
-                fetchAllData();
+            } else {
+                await FinanceService.createFeeStructure(feeData);
             }
+            fetchAllData();
         } catch (error) {
-            console.error('Error updating fee structure:', error);
+            console.error('Error saving fee structure:', error);
         }
     };
 
@@ -124,7 +126,7 @@ export default function FinanceDashboard() {
     }, []);
 
     return (
-        <View style={{ flex: 1, backgroundColor: isDark ? '#0F0B2E' : '#f9fafb' }}>
+        <View style={{ flex: 1, backgroundColor: isDark ? '#0D1117' : '#FFFFFF' }}>
             <UnifiedHeader
                 title="Management"
                 subtitle="Finance"
@@ -135,9 +137,9 @@ export default function FinanceDashboard() {
 
                 {/* Tabs */}
                 <View style={{
-                    backgroundColor: isDark ? '#13103A' : '#ffffff',
+                    backgroundColor: isDark ? '#161B22' : '#F6F8FA',
                     borderBottomWidth: 1,
-                    borderBottomColor: isDark ? 'rgba(255,255,255,0.1)' : '#f3f4f6',
+                    borderBottomColor: isDark ? '#21262D' : '#D0D7DE',
                     paddingHorizontal: 16,
                     paddingVertical: 8,
                 }}>
@@ -157,8 +159,8 @@ export default function FinanceDashboard() {
                                         paddingVertical: 8,
                                         borderRadius: 999,
                                         borderWidth: 1,
-                                        backgroundColor: isActive ? '#FF6B00' : 'transparent',
-                                        borderColor: isActive ? '#FF6B00' : (isDark ? 'rgba(255,255,255,0.1)' : '#e5e7eb'),
+                                        backgroundColor: isActive ? '#FF6900' : 'transparent',
+                                        borderColor: isActive ? '#FF6900' : (isDark ? '#21262D' : '#D0D7DE'),
                                     }}
                                 >
                                     <Text style={{
@@ -180,8 +182,8 @@ export default function FinanceDashboard() {
                         <RefreshControl
                             refreshing={refreshing}
                             onRefresh={onRefresh}
-                            tintColor="#FF6B00"
-                            colors={["#FF6B00"]}
+                            tintColor="#FF6900"
+                            colors={["#FF6900"]}
                         />
                     }
                 >
@@ -197,7 +199,7 @@ export default function FinanceDashboard() {
                         <TouchableOpacity
                             style={{
                                 width: 48, height: 48,
-                                backgroundColor: isDark ? '#13103A' : '#ffffff',
+                                backgroundColor: isDark ? '#161B22' : '#F6F8FA',
                                 borderRadius: 24,
                                 alignItems: 'center',
                                 justifyContent: 'center',

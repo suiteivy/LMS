@@ -244,7 +244,7 @@ export function GlobalSettingsContent({ userRole = 'student' }: { userRole?: Use
         return <InstitutionOwnership />;
       case 'sessions':
         return (
-          <View style={{ flex: 1, padding: 24 }}>
+          <View style={{ flex: 1, padding: 24, backgroundColor: isDark ? '#0D1117' : '#fcfcfc' }}>
             <ActiveSessions />
           </View>
         );

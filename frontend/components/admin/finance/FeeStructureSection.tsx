@@ -1,5 +1,6 @@
 import { useTheme } from "@/contexts/ThemeContext";
 import { FeeStructure } from "@/types/types";
+import { Loader } from "lucide-react-native";
 import React, { useState } from "react";
 import {
   Alert,
@@ -108,13 +109,13 @@ const FeeStructureSection: React.FC<FeeStructureSectionProps> = ({
     const displayDesc = (item as any).description;
 
     return (
-      <View className="bg-[#FFFFFF] dark:bg-[#0D1117]-surface rounded-xl p-6 mb-6 shadow-xl shadow-slate-200/50 dark:shadow-none border border-slate-100 dark:border-gray-800">
+      <View className="bg-[#FFFFFF] dark:bg-[#111827] rounded-xl px-6 py-3 mb-6 shadow-xl shadow-slate-200/50 dark:shadow-none border border-slate-100 dark:border-gray-800">
         {/* Header */}
         <View className="flex-row justify-between items-start mb-5">
           <View className="flex-1 mr-3">
-            <Text className="text-lg font-semibold text-gray-900 dark:text-white">{displayTitle}</Text>
+            <Text className="text-lg font-semibold text-[#ff6900]">{displayTitle}</Text>
             {displayDesc ? (
-              <Text className="text-xs text-gray-500 dark:text-gray-400 mt-1">{displayDesc}</Text>
+              <Text className="text-sm font-bold capitalize text-gray-500 dark:text-gray-400 mt-1">{displayDesc}</Text>
             ) : null}
           </View>
           <View className="flex-row items-center gap-2">
@@ -134,7 +135,7 @@ const FeeStructureSection: React.FC<FeeStructureSectionProps> = ({
         </View>
 
         {/* Amount Block */}
-        <View className="bg-[#111827] rounded-xl p-6 mb-5 border border-slate-800">
+        <View className="bg-[#111827] dark:bg-[#0D1117] rounded-xl p-6 mb-5 border border-slate-800">
           <View className="flex-row justify-between items-center">
             <Text className="text-slate-400 text-sm font-semibold">Fee Amount</Text>
             <Text className="text-white text-2xl font-black">{formatAmount(displayAmount)}</Text>
@@ -176,6 +177,7 @@ const FeeStructureSection: React.FC<FeeStructureSectionProps> = ({
       {loading ? (
         <View className="flex-1 items-center justify-center py-20">
           <Text className="text-gray-400 text-sm">Loading fee structures…</Text>
+          <Loader size={24} color="#FF6900" />
         </View>
       ) : feeStructures.length === 0 ? (
         <View className="flex-1 items-center justify-center py-20 border border-dashed border-[#D0D7DE] dark:border-[#21262D] rounded-xl">

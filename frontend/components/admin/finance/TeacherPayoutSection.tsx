@@ -109,16 +109,21 @@ const TeacherPayoutSection: React.FC<TeacherPayoutSectionProps> = ({
     }).format(amount);
   };
 
-  const getStatusColor = (status: TeacherPayout['status']) => {
+  const getStatusBg = (status: TeacherPayout['status']) => {
     switch (status) {
-      case 'paid':
-        return 'bg-green-100 dark:bg-green-950/30 text-green-800 dark:text-green-400';
-      case 'processing':
-        return 'bg-blue-100 dark:bg-blue-950/30 text-blue-800 dark:text-blue-400';
-      case 'pending':
-        return 'bg-yellow-100 dark:bg-yellow-950/30 text-yellow-800 dark:text-yellow-400';
-      default:
-        return 'bg-[#EAEEF2] dark:bg-[#1C2128] text-gray-800 dark:text-gray-200';
+      case 'paid':       return isDark ? '#052e16' : '#dcfce7';
+      case 'processing': return isDark ? '#172554' : '#dbeafe';
+      case 'pending':    return isDark ? '#422006' : '#fef9c3';
+      default:           return isDark ? '#1C2128' : '#EAEEF2';
+    }
+  };
+
+  const getStatusText = (status: TeacherPayout['status']) => {
+    switch (status) {
+      case 'paid':       return isDark ? '#4ade80' : '#166534';
+      case 'processing': return isDark ? '#60a5fa' : '#1e40af';
+      case 'pending':    return isDark ? '#ffffff' : '#854d0e';
+      default:           return isDark ? '#e2e8f0' : '#1f2937';
     }
   };
 
@@ -156,7 +161,7 @@ const TeacherPayoutSection: React.FC<TeacherPayoutSectionProps> = ({
   const renderPayoutItem = ({ item }: { item: TeacherPayout }) => (
     <TouchableOpacity
       onPress={() => handlePayoutAction(item)}
-      className="bg-[#FFFFFF] dark:bg-[#0D1117]-surface rounded-lg p-4 mb-3 border border-[#D0D7DE] dark:border-[#21262D]"
+      className="bg-[#FFFFFF] dark:bg-[#0D1117] rounded-lg p-4 mb-3 border border-[#D0D7DE] dark:border-[#21262D]"
       style={{
         boxShadow: [{ offsetX: 0, offsetY: 2, blurRadius: 3, color: 'rgba(0, 0, 0, 0.1)' }],
         shadowColor: '#000',
@@ -177,8 +182,12 @@ const TeacherPayoutSection: React.FC<TeacherPayoutSectionProps> = ({
             </Text>
           )}
         </View>
-        <View className={`px-2 py-1 rounded-full ${getStatusColor(item.status)}`}>
-          <Text className="text-xs font-medium capitalize">{item.status}</Text>
+        <View
+          style={{backgroundColor: getStatusBg(item.status)}}
+          className={`px-2 py-1 rounded-full`}>
+          <Text
+            style={{ color: getStatusText(item.status) }}
+            className="text-xs font-medium capitalize">{item.status}</Text>
         </View>
       </View>
 
@@ -339,14 +348,22 @@ const TeacherPayoutSection: React.FC<TeacherPayoutSectionProps> = ({
           </View>
 
           {selectedPayout && (
-            <ScrollView className="flex-1 p-4">
-              <View className="bg-[#FFFFFF] dark:bg-[#0D1117]-surface rounded-lg border border-gray-200 dark:border-gray-800 p-4 mb-4">
+            <ScrollView className="flex-1 p-4 ">
+              <View className="bg-[#FFFFFF] dark:bg-[#0D1117] rounded-lg border border-gray-200 dark:border-gray-800 p-4 mb-4">
                 <Text className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
                   {selectedPayout.teacher_name}
                 </Text>
 
-                <View className={`px-3 py-1 rounded-full mb-4 self-start ${getStatusColor(selectedPayout.status)}`}>
-                  <Text className="font-medium capitalize">{selectedPayout.status}</Text>
+                <View
+                  style={{
+                    backgroundColor: getStatusBg(selectedPayout.status)
+                  }}
+                    className={`px-3 py-1 rounded-full mb-4 self-start`}>
+                  <Text
+                    className="font-medium capitalize"
+                    style={{ color: getStatusText(selectedPayout.status) }}>
+                    {selectedPayout.status}
+                  </Text>
                 </View>
 
                 <View className="space-y-3">

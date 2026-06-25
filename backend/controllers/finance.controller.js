@@ -303,6 +303,8 @@ exports.recordFeePayment = async (req, res) => {
                 )
             `)
             .single();
+        
+        console.log('Payment method value:', JSON.stringify(payment_method))
 
         if (error) throw error;
         

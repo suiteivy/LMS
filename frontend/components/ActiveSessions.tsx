@@ -170,15 +170,16 @@ export default function ActiveSessions() {
     <ScrollView
       className="flex-1"
       showsVerticalScrollIndicator={false}
+      style={{ backgroundColor: isDark ? '#0D1117' : '#fcfcfc' }}
       refreshControl={
         <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor="#FF6900" />
       }
     >
-      <View className="mb-6 flex-row justify-between items-center">
+      <View className="mb-6 flex-row justify-between items-center dark:bg-[#0D1117] bg-[#fcfcfc]">
         <View className="flex-row items-center">
-          <View className="bg-orange-500 w-1.5 h-6 rounded-full mr-4 shadow-sm" />
+          <View className="bg-orange-500 w-1.5 h-6 rounded-full mr-4 shadow-sm dark:bg-[#0D1117]" />
           <Text className="text-gray-900 dark:text-white font-black text-xl tracking-tight uppercase">
-            Active Sessions
+            Active Sessionss
           </Text>
         </View>
         

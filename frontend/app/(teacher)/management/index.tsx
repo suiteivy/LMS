@@ -29,10 +29,10 @@ interface FeatureCardProps {
     route: string;
     badge?: string;
     tooltipId?: any;
-    tier: any;
+    // tier?: any;
 }
 
-const FeatureCard = ({ icon: Icon, title, description, color, bgColor, route, badge, tooltipId, tier }: FeatureCardProps) => {
+const FeatureCard = ({ icon: Icon, title, description, color, bgColor, route, badge, tooltipId }: FeatureCardProps) => {
     return (
         <TouchableOpacity
             className={`bg-[#F6F8FA] dark:bg-[#161B22] p-4 rounded-xl border border-[#D0D7DE] dark:border-[#21262D] mb-3 flex-row items-center`}
@@ -51,7 +51,7 @@ const FeatureCard = ({ icon: Icon, title, description, color, bgColor, route, ba
             <View className="flex-1 pr-2">
                 <View className="flex-row items-center">
                     <Text className="text-gray-900 dark:text-gray-100 font-bold text-base tracking-tight">{title}</Text>
-                    {tooltipId ? <HelpTooltip id={tooltipId} role="teacher" tier={tier} onLearnMore={(a) => router.push({ pathname: '/(teacher)/settings', params: { manual: '1', anchor: a || 'reports-ops' } } as any)} /> : null}
+                    {/* {tooltipId ? <HelpTooltip id={tooltipId} role="teacher" onLearnMore={(a) => router.push({ pathname: '/(teacher)/settings', params: { manual: '1', anchor: a || 'reports-ops' } } as any)} /> : null} */}
                     {badge && (
                         <View className="ml-2 bg-[#FF6900] px-2 py-0.5 rounded-md">
                             <Text className="text-white text-[8px] font-bold uppercase tracking-widest">{badge}</Text>
@@ -67,6 +67,7 @@ const FeatureCard = ({ icon: Icon, title, description, color, bgColor, route, ba
 
 export default function ManagementIndex() {
     const tier = useSubscriptionTier();
+    // const tier = "premium"
     const { hasDiary, hasAnalytics } = tier;
     const { teacherId, isDemo } = useAuth();
     const [pendingCount, setPendingCount] = useState<number | null>(null);
@@ -165,7 +166,7 @@ export default function ManagementIndex() {
             route: "/(teacher)/management/grades",
             badge: "Action Required",
             tooltipId: 'teacher.manage.performance',
-            tier:""
+            // tier:"premium"
         },
         {
             icon: ClipboardList,
@@ -175,7 +176,7 @@ export default function ManagementIndex() {
             bgColor: "#ffedd5",
             route: "/(teacher)/management/assignments",
             tooltipId: 'teacher.manage.coursework',
-            tier:""
+            // tier:""
         },
         {
             icon: CalendarCheck,
@@ -185,7 +186,7 @@ export default function ManagementIndex() {
             bgColor: "#ede9fe",
             route: "/(teacher)/management/attendance",
             tooltipId: 'teacher.manage.registrar',
-            tier:""
+            // tier:""
         },
         {
             icon: Megaphone,
@@ -195,7 +196,7 @@ export default function ManagementIndex() {
             bgColor: "#fce7f3",
             route: "/(teacher)/management/announcements",
             tooltipId: 'teacher.manage.announcements',
-            tier:""
+            // tier:""
         },
         {
             icon: BarChart3,
@@ -208,7 +209,7 @@ export default function ManagementIndex() {
             route: hasAnalytics ? "/(teacher)/management/analytics" : "/(admin)/request-feature",
             badge: hasAnalytics ? undefined : "Add-on",
             tooltipId: 'teacher.manage.insights',
-            tier:""
+            // tier:""
         },
         {
             icon: Wallet,
@@ -218,7 +219,7 @@ export default function ManagementIndex() {
             bgColor: "#dcfce7",
             route: "/(teacher)/management/earnings",
             tooltipId: 'teacher.manage.finance',
-            tier:""
+            // tier:""
         },
         {
             icon: BookOpen,
@@ -228,7 +229,7 @@ export default function ManagementIndex() {
             bgColor: "#fef9c3",
             route: "/(teacher)/management/resources",
             tooltipId: 'teacher.manage.resources',
-            tier:""
+            // tier:""
         },
         {
             icon: PenLine,
@@ -238,7 +239,7 @@ export default function ManagementIndex() {
             bgColor: "#dbeafe",
             route: "/(teacher)/management/grade-entry",
             tooltipId: 'teacher.manage.grade_entry',
-            tier:""
+            // tier:""
         },
         {
             icon: Award,
@@ -248,7 +249,7 @@ export default function ManagementIndex() {
             bgColor: "#ede9fe",
             route: "/(teacher)/management/report-cards",
             tooltipId: 'teacher.manage.report_cards',
-            tier:""
+            // tier:""
         },
         {
             icon: MessageSquare,
@@ -258,7 +259,7 @@ export default function ManagementIndex() {
             bgColor: "#ecfeff",
             route: "/(teacher)/management/messages",
             tooltipId: 'teacher.manage.messages',
-            tier:""
+            // tier:""
         },
         ...(hasDiary ? [{
             icon: BookOpen,
@@ -268,7 +269,7 @@ export default function ManagementIndex() {
             bgColor: "#fef3c7",
             route: "/(teacher)/management/diary",
             tooltipId: 'teacher.manage.diary',
-            tier:""
+            // tier:""
         }] : [])
     ];
 
@@ -296,7 +297,10 @@ export default function ManagementIndex() {
                     <Text className="text-lg font-bold text-gray-900 dark:text-white mb-3">Management Suite</Text>
                     
                     {features.map((feature, index) => (
-                        <FeatureCard key={index} {...feature} tier={tier} />
+                        <FeatureCard key={index} {...feature
+
+                       
+                        } />
                     ))}
                 </View>
             </ScrollView>

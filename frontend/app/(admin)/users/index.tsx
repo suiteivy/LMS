@@ -26,13 +26,13 @@ export default function UsersManagementScreen() {
     const [activeFilter, setActiveFilter] = useState<'all' | 'student' | 'teacher' | 'admin'>('all');
 
     // Theme shorthands
-    const bg = isDark ? '#0F0B2E' : '#ffffff';
-    const card = isDark ? '#13103A' : '#ffffff';
-    const border = isDark ? 'rgba(255,255,255,0.1)' : '#f3f4f6';
+    const bg = isDark ? '#0D1117' : '#FFFFFF';
+    const card = isDark ? '#161B22' : '#F6F8FA';
+    const border = isDark ? '#21262D' : '#D0D7DE';
     const textPrimary = isDark ? '#f9fafb' : '#111827';
     const textSecondary = isDark ? '#94a3b8' : '#6b7280';
-    const inputBg = isDark ? '#13103A' : '#f9fafb';
-    const inputBorder = isDark ? 'rgba(255,255,255,0.1)' : '#f3f4f6';
+    const inputBg = isDark ? '#1C2128' : '#EAEEF2';
+    const inputBorder = isDark ? '#21262D' : '#D0D7DE';
 
     const { isDemo, profile } = useAuth();
 
@@ -127,6 +127,7 @@ export default function UsersManagementScreen() {
                     </View>
                     <TouchableOpacity
                         onPress={() => router.push('/(admin)/users/create')}
+                        activeOpacity={0.7}
                         style={{
                             width: 48,
                             height: 48,
@@ -134,14 +135,7 @@ export default function UsersManagementScreen() {
                             borderRadius: 16,
                             alignItems: 'center',
                             justifyContent: 'center',
-                            shadowColor: '#FF6900',
-                            boxShadow: [{
-                                offsetX: 0,
-                                offsetY: 4,
-                                blurRadius: 8,
-                                color: 'rgba(255, 105, 0, 0.3)',
-                            }],
-                            }}
+                        }}
                     >
                         <Ionicons name="add" size={28} color="white" />
                     </TouchableOpacity>
@@ -155,15 +149,16 @@ export default function UsersManagementScreen() {
                             <TouchableOpacity
                                 key={filter}
                                 onPress={() => setActiveFilter(filter)}
+                                activeOpacity={0.7}
                                 style={{
                                     paddingHorizontal: 20, paddingVertical: 10, borderRadius: 12, borderWidth: 1,
-                                    backgroundColor: isActive ? (isDark ? '#f9fafb' : '#111827') : (isDark ? '#13103A' : '#ffffff'),
-                                    borderColor: isActive ? (isDark ? '#f9fafb' : '#111827') : border,
+                                    backgroundColor: card,
+                                    borderColor: isActive ? '#FF6900' : border,
                                 }}
                             >
                                 <Text style={{
                                     fontWeight: '600', fontSize: 13, textTransform: 'capitalize',
-                                    color: isActive ? (isDark ? '#111827' : '#ffffff') : textSecondary,
+                                    color: isActive ? '#FF6900' : textSecondary,
                                 }}>
                                     {filter}
                                 </Text>

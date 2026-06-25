@@ -1,13 +1,9 @@
-<<<<<<< Updated upstream
 import React, { createContext, ReactNode, useCallback, useContext, useEffect, useRef, useState } from 'react';
-=======
-import React, { createContext, ReactNode, useContext, useEffect, useState } from 'react';
-import Toast from 'react-native-toast-message';
->>>>>>> Stashed changes
 import { NotificationAPI } from '../services/NotificationService';
 import { Notification } from '../types/types';
 import { useAuth } from './AuthContext';
 import { useRealtimeQuery } from '../hooks/useRealtimeQuery';
+import Toast from 'react-native-toast-message';
 
 interface NotificationContextType {
     notifications: Notification[];

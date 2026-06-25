@@ -1,7 +1,7 @@
 import { UnifiedHeader } from "@/components/common/UnifiedHeader";
 import { useTheme } from "@/contexts/ThemeContext";
 import { TeacherAttendance, TeacherAttendanceAPI } from "@/services/TeacherAttendanceService";
-import DatePicker from '@/components/common/DatePicker';
+import {DatePicker} from '@/components/common/DatePicker';
 import { useRouter } from "expo-router";
 import { useRealtimeQuery } from "@/hooks/useRealtimeQuery";
 import { Calendar as CalendarIcon, Check, Clock, X } from "lucide-react-native";
@@ -13,12 +13,13 @@ export default function TeacherAttendancePage() {
     const { isDark } = useTheme();
     const [loading, setLoading] = useState(true);
     const [attendance, setAttendance] = useState<TeacherAttendance[]>([]);
+    const [pendingChanges, setPendingChanges] = useState<Record<string, string>>({});
     const [date, setDate] = useState(new Date());
 
-    const surface = isDark ? '#13103A' : '#ffffff';
-    const border = isDark ? 'rgba(255,255,255,0.1)' : '#f3f4f6';
-    const textPrimary = isDark ? '#f1f1f1' : '#111827';
-    const textSecondary = isDark ? '#9ca3af' : '#6b7280';
+    const surface = isDark ? '#161B22' : '#F6F8FA';
+    const border = isDark ? '#21262D' : '#D0D7DE';
+    const textPrimary = isDark ? '#FFFFFF' : '#111827';
+    const textSecondary = isDark ? '#9CA3AF' : '#6B7280';
 
     useEffect(() => { loadAttendance(); }, [date]);
 
@@ -40,6 +41,7 @@ export default function TeacherAttendancePage() {
             const dateStr = getLocalDateString(date);
             const data = await TeacherAttendanceAPI.getAttendance(dateStr);
             setAttendance(data);
+            setPendingChanges({});
         } catch (error: any) {
             console.error(error);
             Alert.alert("Error", "Failed to load attendance");
@@ -48,14 +50,45 @@ export default function TeacherAttendancePage() {
         }
     };
 
-    const handleMark = async (teacherId: string, status: string) => {
+    const handleMarkLocal = (teacherId: string, status: string) => {
+        setPendingChanges(prev => ({ ...prev, [teacherId]: status }));
+        setAttendance(prev => prev.map(a => a.teacher_id === teacherId ? { ...a, status: status as any } : a));
+    };
+
+    const handleSave = async () => {
+        const changes = Object.entries(pendingChanges);
+        if (changes.length === 0) return;
+
+        setLoading(true);
         try {
-            setAttendance(prev => prev.map(a => a.teacher_id === teacherId ? { ...a, status: status as any } : a));
             const dateStr = getLocalDateString(date);
-            await TeacherAttendanceAPI.markAttendance({ teacher_id: teacherId, date: dateStr, status, notes: "" });
-        } catch (error) {
-            Alert.alert("Error", "Failed to update status");
+            await Promise.all(
+                changes.map(([teacherId, status]) => 
+                    TeacherAttendanceAPI.markAttendance({ teacher_id: teacherId, date: dateStr, status, notes: "" })
+                )
+            );
+            Alert.alert("Success", "Attendance saved successfully");
+            setPendingChanges({});
             loadAttendance();
+        } catch (error) {
+            Alert.alert("Error", "Failed to save some attendance records");
+            setLoading(false);
+        }
+    };
+
+    const markAllPresent = () => {
+        const newChanges: Record<string, string> = {};
+        const updatedAttendance = attendance.map(a => {
+            if (a.status !== 'present') {
+                newChanges[a.teacher_id] = 'present';
+                return { ...a, status: 'present' as any };
+            }
+            return a;
+        });
+        
+        if (Object.keys(newChanges).length > 0) {
+            setPendingChanges(prev => ({ ...prev, ...newChanges }));
+            setAttendance(updatedAttendance);
         }
     };
 
@@ -63,13 +96,13 @@ export default function TeacherAttendancePage() {
         switch (status) {
             case 'present': return { dot: '#10b981', activeBg: isDark ? '#052e16' : '#dcfce7', activeBorder: '#10b981' };
             case 'absent': return { dot: '#ef4444', activeBg: isDark ? 'rgba(239,68,68,0.12)' : '#fee2e2', activeBorder: '#ef4444' };
-            case 'late': return { dot: '#f59e0b', activeBg: isDark ? '#3d2000' : '#fef9c3', activeBorder: '#f59e0b' };
-            default: return { dot: isDark ? 'rgba(255,255,255,0.1)' : '#d1d5db', activeBg: 'transparent', activeBorder: border };
+            case 'late': return { dot: '#FF6900', activeBg: isDark ? '#3d2000' : '#fef9c3', activeBorder: '#FF6900' };
+            default: return { dot: isDark ? '#21262D' : '#d1d5db', activeBg: 'transparent', activeBorder: border };
         }
     };
 
     return (
-        <View style={{ flex: 1, backgroundColor: isDark ? '#0F0B2E' : '#f9fafb' }}>
+        <View style={{ flex: 1, backgroundColor: isDark ? '#0D1117' : '#FFFFFF' }}>
             <UnifiedHeader
                 title="Management"
                 subtitle="Attendance"
@@ -79,13 +112,39 @@ export default function TeacherAttendancePage() {
             />
 
             {/* DatePicker is always mounted to prevent unmounting/failing to select on load updates */}
-            <View style={{ paddingHorizontal: 20, paddingTop: 20 }}>
-                <DatePicker
-                    label="Attendance Date"
-                    value={getLocalDateString(date)}
-                    onChange={(d) => setDate(new Date(d))}
-                    isDark={isDark}
-                />
+            <View style={{ paddingHorizontal: 20, paddingTop: 20, paddingBottom: 10 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <View style={{ flex: 1, marginRight: 16 }}>
+                        <DatePicker
+                            label="Attendance Date"
+                            value={getLocalDateString(date)}
+                            onChange={(d) => {
+                                const newDate = new Date(d);
+                                if (newDate > new Date()) {
+                                    Alert.alert("Invalid Date", "Cannot mark attendance for a future date.");
+                                    return;
+                                }
+                                setDate(newDate);
+                            }}
+                            isDark={isDark}
+                        />
+                    </View>
+                    <View style={{ flexDirection: 'row', gap: 8, marginTop: 14 }}>
+                        <TouchableOpacity 
+                            onPress={markAllPresent}
+                            style={{ backgroundColor: surface, borderWidth: 1, borderColor: border, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, justifyContent: 'center' }}
+                        >
+                            <Text style={{ color: textPrimary, fontSize: 13, fontWeight: '600' }}>Mark All Present</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity 
+                            onPress={handleSave}
+                            disabled={Object.keys(pendingChanges).length === 0}
+                            style={{ backgroundColor: Object.keys(pendingChanges).length > 0 ? '#FF6900' : surface, paddingHorizontal: 16, paddingVertical: 8, borderRadius: 8, justifyContent: 'center', opacity: Object.keys(pendingChanges).length > 0 ? 1 : 0.5 }}
+                        >
+                            <Text style={{ color: Object.keys(pendingChanges).length > 0 ? 'white' : textSecondary, fontSize: 13, fontWeight: '600' }}>Save</Text>
+                        </TouchableOpacity>
+                    </View>
+                </View>
             </View>
 
             {loading ? (
@@ -97,15 +156,15 @@ export default function TeacherAttendancePage() {
                     {attendance.map((item: any) => {
                         const config = statusConfig(item.status);
                         return (
-                            <View key={item.teacher_id} style={{ backgroundColor: surface, padding: 16, borderRadius: 16, borderWidth: 1, borderColor: border, marginBottom: 12, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <View key={item.teacher_id} style={{ backgroundColor: surface, padding: 16, borderRadius: 12, borderWidth: 1, borderColor: border, marginBottom: 12, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
                                 {/* Avatar + Name */}
                                 <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, marginRight: 12 }}>
-                                    <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: isDark ? '#1A1650' : '#f3f4f6', marginRight: 12, overflow: 'hidden', flexShrink: 0 }}>
+                                    <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: isDark ? '#1C2128' : '#EAEEF2', marginRight: 12, overflow: 'hidden', flexShrink: 0 }}>
                                         {item.teachers?.users?.avatar_url || item.avatar_url ? (
                                             <Image source={{ uri: item.teachers?.users?.avatar_url || item.avatar_url }} style={{ width: '100%', height: '100%' }} />
                                         ) : (
-                                            <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: isDark ? 'rgba(255,107,0,0.12)' : '#fff7ed' }}>
-                                                <Text style={{ color: '#FF6B00', fontWeight: 'bold', fontSize: 16 }}>
+                                            <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: isDark ? 'rgba(255,105,0,0.12)' : '#fff7ed' }}>
+                                                <Text style={{ color: '#FF6900', fontWeight: 'bold', fontSize: 16 }}>
                                                     {item.teachers?.users?.first_name?.charAt(0) 
                                                         || item.teachers?.users?.full_name?.charAt(0) 
                                                         || item.first_name?.charAt(0) 
@@ -134,14 +193,14 @@ export default function TeacherAttendancePage() {
                                     {[
                                         { status: 'present', icon: Check, activeColor: '#10b981' },
                                         { status: 'absent', icon: X, activeColor: '#ef4444' },
-                                        { status: 'late', icon: Clock, activeColor: '#f59e0b' },
+                                        { status: 'late', icon: Clock, activeColor: '#FF6900' },
                                     ].map(({ status, icon: Icon, activeColor }) => {
                                         const isActive = item.status === status;
                                         const cfg = statusConfig(status);
                                         return (
                                             <TouchableOpacity
                                                 key={status}
-                                                onPress={() => handleMark(item.teacher_id, status)}
+                                                onPress={() => handleMarkLocal(item.teacher_id, status)}
                                                 style={{
                                                     padding: 8, borderRadius: 10, borderWidth: 1,
                                                     backgroundColor: isActive ? cfg.activeBg : 'transparent',

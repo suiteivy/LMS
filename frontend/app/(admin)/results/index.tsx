@@ -126,10 +126,10 @@ interface DropdownProps {
 function DropdownSelector({ label, options, selectedId, onSelect, placeholder, isDark, disabled }: DropdownProps) {
     const [open, setOpen] = useState(false);
 
-    const bg = isDark ? '#13103A' : '#FFFFFF';
-    const border = isDark ? 'rgba(255,255,255,0.1)' : '#F3F4F6';
-    const inputBg = isDark ? 'rgba(255,255,255,0.08)' : '#F9FAFB';
-    const textPrimary = isDark ? '#F9FAFB' : '#111827';
+    const bg = isDark ? '#161B22' : '#F6F8FA';
+    const border = isDark ? '#21262D' : '#D0D7DE';
+    const inputBg = isDark ? '#1C2128' : '#EAEEF2';
+    const textPrimary = isDark ? '#FFFFFF' : '#111827';
     const textMuted = isDark ? '#6B7280' : '#9CA3AF';
 
     const selectedLabel = options.find(o => o.id === selectedId)?.label || placeholder || 'Select...';
@@ -183,7 +183,7 @@ function DropdownSelector({ label, options, selectedId, onSelect, placeholder, i
                                 }}
                             >
                                 <Text style={{
-                                    color: option.id === selectedId ? '#FF6B00' : textPrimary,
+                                    color: option.id === selectedId ? '#FF6900' : textPrimary,
                                     fontSize: 14, fontWeight: option.id === selectedId ? '700' : '500',
                                 }} numberOfLines={1}>
                                     {option.label}
@@ -203,13 +203,13 @@ export default function AdminResults() {
     const { isDark } = useTheme();
 
     // ── Theme colors ──
-    const bg = isDark ? '#0F0B2E' : '#F9FAFB';
-    const card = isDark ? '#13103A' : '#FFFFFF';
-    const border = isDark ? 'rgba(255,255,255,0.1)' : '#F3F4F6';
-    const textPrimary = isDark ? '#F9FAFB' : '#111827';
+    const bg = isDark ? '#0D1117' : '#FFFFFF';
+    const card = isDark ? '#161B22' : '#F6F8FA';
+    const border = isDark ? '#21262D' : '#D0D7DE';
+    const textPrimary = isDark ? '#FFFFFF' : '#111827';
     const textSecondary = isDark ? '#9CA3AF' : '#6B7280';
     const textMuted = isDark ? '#6B7280' : '#9CA3AF';
-    const sectionBg = isDark ? '#1A1650' : '#F9FAFB';
+    const sectionBg = isDark ? '#1C2128' : '#EAEEF2';
 
     // ── Active tab ──
     const [activeTab, setActiveTab] = useState<TabSection>('completeness');
@@ -582,7 +582,7 @@ export default function AdminResults() {
                                 backgroundColor: isDark ? '#2A1A0A' : '#FFF3E8',
                                 padding: 10, borderRadius: 12, marginRight: 10,
                             }}>
-                                <Filter size={18} color="#FF6B00" />
+                                <Filter size={18} color="#FF6900" />
                             </View>
                             <Text style={{ color: textPrimary, fontWeight: '700', fontSize: 16, flex: 1 }}>Filters</Text>
                             <TouchableOpacity
@@ -610,7 +610,7 @@ export default function AdminResults() {
                                 </Text>
                             </TouchableOpacity>
                             {loadingFilters && !manualRefreshing && (
-                                <ActivityIndicator size="small" color="#FF6B00" style={{ marginLeft: 8 }} />
+                                <ActivityIndicator size="small" color="#FF6900" style={{ marginLeft: 8 }} />
                             )}
                         </View>
 
@@ -676,7 +676,7 @@ export default function AdminResults() {
                                     style={{
                                         flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
                                         paddingVertical: 12, borderRadius: 13,
-                                        backgroundColor: isActive ? '#FF6B00' : 'transparent',
+                                        backgroundColor: isActive ? '#FF6900' : 'transparent',
                                     }}
                                 >
                                     <Icon size={16} color={isActive ? '#FFFFFF' : textSecondary} />
@@ -707,7 +707,7 @@ export default function AdminResults() {
                         }}
                     >
                         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                            <Shield size={16} color="#FF6B00" />
+                            <Shield size={16} color="#FF6900" />
                             <Text style={{ color: textPrimary, fontWeight: '700', fontSize: 13 }}>
                                 Promotion Cycles
                             </Text>
@@ -723,7 +723,7 @@ export default function AdminResults() {
                                 onPress={handleCheckCompleteness}
                                 disabled={checkingCompleteness || !hasFilters}
                                 style={{
-                                    backgroundColor: !hasFilters ? (isDark ? '#374151' : '#E5E7EB') : '#FF6B00',
+                                    backgroundColor: !hasFilters ? (isDark ? '#374151' : '#E5E7EB') : '#FF6900',
                                     paddingVertical: 14, borderRadius: 16, alignItems: 'center', marginBottom: 16,
                                     flexDirection: 'row', justifyContent: 'center', gap: 8,
                                     opacity: !hasFilters ? 0.5 : 1,
@@ -867,7 +867,7 @@ export default function AdminResults() {
                                 </View>
                             ) : loadingReportCards ? (
                                 <View style={{ padding: 40, alignItems: 'center' }}>
-                                    <ActivityIndicator size="large" color="#FF6B00" />
+                                    <ActivityIndicator size="large" color="#FF6900" />
                                     <Text style={{ color: textSecondary, marginTop: 12 }}>Loading report cards...</Text>
                                 </View>
                             ) : (
@@ -882,7 +882,7 @@ export default function AdminResults() {
                                                 { label: 'Generated', value: reportSummary.generated, color: '#8B5CF6', bg: isDark ? '#2E1065' : '#EDE9FE' },
                                                 { label: 'Published', value: reportSummary.published, color: '#2563EB', bg: isDark ? '#1E3A5F' : '#DBEAFE' },
                                                 { label: 'Released', value: reportSummary.released, color: '#059669', bg: isDark ? '#064E3B' : '#D1FAE5' },
-                                                { label: 'Avg GPA', value: reportSummary.average_gpa.toFixed(2), color: '#FF6B00', bg: isDark ? '#2A1A0A' : '#FFF3E8' },
+                                                { label: 'Avg GPA', value: reportSummary.average_gpa.toFixed(2), color: '#FF6900', bg: isDark ? '#2A1A0A' : '#FFF3E8' },
                                             ].map(stat => (
                                                 <View key={stat.label} style={{
                                                     flex: 1, minWidth: 80, backgroundColor: stat.bg,
@@ -979,7 +979,7 @@ export default function AdminResults() {
                                                             backgroundColor: isDark ? '#2A1A0A' : '#FFF3E8',
                                                             alignItems: 'center', justifyContent: 'center', marginRight: 12,
                                                         }}>
-                                                            <Text style={{ color: '#FF6B00', fontWeight: '700', fontSize: 16 }}>
+                                                            <Text style={{ color: '#FF6900', fontWeight: '700', fontSize: 16 }}>
                                                                 {rc.student_name?.charAt(0)?.toUpperCase() || '?'}
                                                             </Text>
                                                         </View>
@@ -1001,7 +1001,7 @@ export default function AdminResults() {
                                                                         backgroundColor: isDark ? '#2A1A0A' : '#FFF3E8',
                                                                         paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10,
                                                                     }}>
-                                                                        <Text style={{ color: '#FF6B00', fontSize: 12, fontWeight: '700' }}>
+                                                                        <Text style={{ color: '#FF6900', fontSize: 12, fontWeight: '700' }}>
                                                                             GPA {rc.gpa.toFixed(2)}
                                                                         </Text>
                                                                     </View>
@@ -1009,7 +1009,7 @@ export default function AdminResults() {
                                                             </View>
                                                         </View>
                                                         {isProcessing && (
-                                                            <ActivityIndicator size="small" color="#FF6B00" />
+                                                            <ActivityIndicator size="small" color="#FF6900" />
                                                         )}
                                                     </View>
 

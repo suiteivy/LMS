@@ -98,19 +98,19 @@ export default function AcademicSetupPage() {
     const { isDark } = useTheme();
 
     // ─── Theme helpers ─────────────────────────────────────
-    const bg = isDark ? '#0F0B2E' : '#f9fafb';
-    const card = isDark ? '#13103A' : '#ffffff';
-    const border = isDark ? 'rgba(255,255,255,0.1)' : '#f3f4f6';
-    const textPrimary = isDark ? '#F9FAFB' : '#111827';
+    const bg = isDark ? '#0D1117' : '#FFFFFF';
+    const card = isDark ? '#161B22' : '#F6F8FA';
+    const border = isDark ? '#21262D' : '#D0D7DE';
+    const textPrimary = isDark ? '#FFFFFF' : '#111827';
     const textSecondary = isDark ? '#9CA3AF' : '#6B7280';
     const textMuted = isDark ? '#6B7280' : '#9CA3AF';
-    const inputBg = isDark ? 'rgba(255,255,255,0.1)' : '#F9FAFB';
-    const inputBorder = isDark ? '#3F3F3F' : '#E5E7EB';
-    const pillInactive = isDark ? 'rgba(255,255,255,0.1)' : '#FFFFFF';
-    const pillInactiveBorder = isDark ? '#3F3F3F' : '#E5E7EB';
+    const inputBg = isDark ? '#1C2128' : '#EAEEF2';
+    const inputBorder = isDark ? '#21262D' : '#D0D7DE';
+    const pillInactive = isDark ? '#1C2128' : '#EAEEF2';
+    const pillInactiveBorder = isDark ? '#21262D' : '#D0D7DE';
     const pillInactiveText = isDark ? '#9CA3AF' : '#4B5563';
-    const sectionBg = isDark ? '#1A1650' : '#F9FAFB';
-    const accent = '#FF6B00';
+    const sectionBg = isDark ? '#1C2128' : '#EAEEF2';
+    const accent = '#FF6900';
 
     // ─── State ────────────────────────────────────────────
     const [activeTab, setActiveTab] = useState<TabKey>('academic_years');

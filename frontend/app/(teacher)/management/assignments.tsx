@@ -43,9 +43,9 @@ interface SubjectOption {
     title: string;
 }
 
-const AssignmentCard = ({ assignment, onEdit, onView, onDelete }: { 
-    assignment: Assignment; 
-    onEdit: (a: Assignment) => void; 
+const AssignmentCard = ({ assignment, onEdit, onView, onDelete }: {
+    assignment: Assignment;
+    onEdit: (a: Assignment) => void;
     onView: (a: Assignment) => void;
     onDelete: (a: Assignment) => void;
 }) => {
@@ -77,7 +77,7 @@ const AssignmentCard = ({ assignment, onEdit, onView, onDelete }: {
                     <Text className={`text-[10px] font-bold uppercase tracking-widest ${assignment.status === 'active' ? 'text-green-600 dark:text-green-400' : 'text-gray-500 dark:text-gray-400'}`}>
                         {assignment.status || 'active'}
                     </Text>
-                    <TouchableOpacity 
+                    <TouchableOpacity
                         onPress={() => onDelete(assignment)}
                         activeOpacity={0.7}
                         className="p-1.5 bg-[#EAEEF2] dark:bg-[#1C2128] rounded-lg"
@@ -743,7 +743,7 @@ export default function AssignmentsPage() {
                         <Text className="text-gray-500 dark:text-gray-400 text-[10px] font-bold uppercase tracking-wider">Assignment Status</Text>
                         <HelpTooltip id="teacher.manage.coursework" role="teacher" tier={tier} onLearnMore={openManual} />
                     </View>
-                    <View className="flex-row bg-white dark:bg-[#1a1a1a] rounded-2xl p-1.5 mb-8 border border-gray-100 dark:border-gray-800 shadow-sm">
+                    <ScrollView className="flex-row bg-white dark:bg-[#1a1a1a] rounded-2xl p-1.5 mb-8 border border-gray-100 dark:border-gray-800 shadow-sm">
                         {(["all", "active", "draft", "closed"] as const).map((tab) => (
                             <TouchableOpacity
                                 key={tab}
@@ -756,7 +756,7 @@ export default function AssignmentsPage() {
                                 </Text>
                             </TouchableOpacity>
                         ))}
-                    </View>
+                    </ScrollView>
 
                     {/* Assignment List */}
                     {loading ? (
@@ -825,199 +825,191 @@ export default function AssignmentsPage() {
                                 )}
                             </View>
 
-<<<<<<< Updated upstream
+
                             <View className="mb-6">
                                 <View className="flex-row items-center ml-2 mb-2">
                                     <Type size={12} color="#6B7280" />
                                     <Text className="text-gray-500 dark:text-gray-400 text-[10px] font-bold uppercase tracking-wider ml-1.5">Title</Text>
                                     <HelpTooltip id="teacher.manage.coursework" role="teacher" tier={tier} onLearnMore={openManual} />
                                 </View>
-=======
-                            <View className="mb-5">
-                                <Text className="text-gray-500 dark:text-gray-400 text-[10px] font-bold uppercase tracking-widest ml-1 mb-2">Title</Text>
->>>>>>> Stashed changes
-                                <TextInput
-                                    className="bg-[#F6F8FA] dark:bg-[#161B22] rounded-xl px-5 py-4 text-gray-900 dark:text-white font-bold border border-[#D0D7DE] dark:border-[#21262D]"
-                                    placeholder="e.g. Mid-term Research Project"
-                                    placeholderTextColor="#9CA3AF"
-                                    value={title}
-                                    onChangeText={setTitle}
-                                />
-                            </View>
 
-<<<<<<< Updated upstream
-                            <View className="mb-6">
-                                <View className="flex-row items-center ml-2 mb-2">
-                                    <AlignLeft size={12} color="#6B7280" />
-                                    <Text className="text-gray-500 dark:text-gray-400 text-[10px] font-bold uppercase tracking-wider ml-1.5">Description</Text>
-                                    <HelpTooltip id="teacher.manage.coursework" role="teacher" tier={tier} onLearnMore={openManual} />
+                                <View className="mb-5">
+                                    <Text className="text-gray-500 dark:text-gray-400 text-[10px] font-bold uppercase tracking-widest ml-1 mb-2">Title</Text>
+
+                                    <TextInput
+                                        className="bg-[#F6F8FA] dark:bg-[#161B22] rounded-xl px-5 py-4 text-gray-900 dark:text-white font-bold border border-[#D0D7DE] dark:border-[#21262D]"
+                                        placeholder="e.g. Mid-term Research Project"
+                                        placeholderTextColor="#9CA3AF"
+                                        value={title}
+                                        onChangeText={setTitle}
+                                    />
                                 </View>
-=======
-                            <View className="mb-5">
-                                <Text className="text-gray-500 dark:text-gray-400 text-[10px] font-bold uppercase tracking-widest ml-1 mb-2">Description</Text>
->>>>>>> Stashed changes
-                                <TextInput
-                                    className="bg-[#F6F8FA] dark:bg-[#161B22] rounded-xl px-5 py-4 text-gray-900 dark:text-white font-medium border border-[#D0D7DE] dark:border-[#21262D]"
-                                    placeholder="Enter assignment instructions..."
-                                    placeholderTextColor="#9CA3AF"
-                                    multiline
-                                    textAlignVertical="top"
-                                    value={description}
-                                    onChangeText={setDescription}
-                                    style={{ minHeight: 100 }}
-                                />
-                            </View>
 
-                            <View className="flex-row gap-3 mb-5">
-                                <View className="flex-1">
-                                    <Text className="text-gray-500 dark:text-gray-400 text-[10px] font-bold uppercase tracking-widest ml-1 mb-2">Due Date</Text>
-                                    {Platform.OS === 'web' ? (
-                                        <input
-                                            type="date"
-                                            aria-label="Due Date"
-                                            title="Due Date"
-                                            value={dueDate}
-                                            onChange={(e) => {
-                                                const v = e.target.value;
-                                                setDueDate(v);
-                                                if (v) setDateObject(new Date(v));
-                                            }}
-                                            className="bg-[#F6F8FA] dark:bg-[#161B22] rounded-xl px-5 py-4 text-gray-900 dark:text-white font-bold border border-[#D0D7DE] dark:border-[#21262D]"
-                                            style={{ 
-                                                minHeight: 52,
-                                                colorScheme: isDark ? 'dark' : 'light',
-                                                outline: 'none',
-                                                fontFamily: 'inherit',
-                                                fontSize: '14px'
-                                            }}
+
+                                <View className="mb-6">
+                                    <View className="flex-row items-center ml-2 mb-2">
+                                        <AlignLeft size={12} color="#6B7280" />
+                                        <Text className="text-gray-500 dark:text-gray-400 text-[10px] font-bold uppercase tracking-wider ml-1.5">Description</Text>
+                                        <HelpTooltip id="teacher.manage.coursework" role="teacher" tier={tier} onLearnMore={openManual} />
+                                    </View>
+
+                                    <View className="mb-5">
+                                        <Text className="text-gray-500 dark:text-gray-400 text-[10px] font-bold uppercase tracking-widest ml-1 mb-2">Description</Text>
+
+                                        <TextInput
+                                            className="bg-[#F6F8FA] dark:bg-[#161B22] rounded-xl px-5 py-4 text-gray-900 dark:text-white font-medium border border-[#D0D7DE] dark:border-[#21262D]"
+                                            placeholder="Enter assignment instructions..."
+                                            placeholderTextColor="#9CA3AF"
+                                            multiline
+                                            textAlignVertical="top"
+                                            value={description}
+                                            onChangeText={setDescription}
+                                            style={{ minHeight: 100 }}
                                         />
-                                    ) : (
+                                    </View>
+
+                                    <View className="flex-row gap-3 mb-5">
+                                        <View className="flex-1">
+                                            <Text className="text-gray-500 dark:text-gray-400 text-[10px] font-bold uppercase tracking-widest ml-1 mb-2">Due Date</Text>
+                                            {Platform.OS === 'web' ? (
+                                                <input
+                                                    type="date"
+                                                    aria-label="Due Date"
+                                                    title="Due Date"
+                                                    value={dueDate}
+                                                    onChange={(e) => {
+                                                        const v = e.target.value;
+                                                        setDueDate(v);
+                                                        if (v) setDateObject(new Date(v));
+                                                    }}
+                                                    className="bg-[#F6F8FA] dark:bg-[#161B22] rounded-xl px-5 py-4 text-gray-900 dark:text-white font-bold border border-[#D0D7DE] dark:border-[#21262D]"
+                                                    style={{
+                                                        minHeight: 52,
+                                                        colorScheme: isDark ? 'dark' : 'light',
+                                                        outline: 'none',
+                                                        fontFamily: 'inherit',
+                                                        fontSize: '14px'
+                                                    }}
+                                                />
+                                            ) : (
+                                                <TouchableOpacity
+                                                    onPress={() => setShowDatePicker(true)}
+                                                    className="bg-[#F6F8FA] dark:bg-[#161B22] rounded-xl px-5 py-4 flex-row justify-between items-center border border-[#D0D7DE] dark:border-[#21262D]"
+                                                    style={{ minHeight: 52 }}
+                                                >
+                                                    <Text className={`font-bold ${dueDate ? "text-gray-900 dark:text-white" : "text-gray-400 dark:text-gray-500"}`}>
+                                                        {dueDate ? dueDate : "Select"}
+                                                    </Text>
+                                                    <Calendar size={16} color="#FF6900" />
+                                                </TouchableOpacity>
+                                            )}
+                                        </View>
+
+                                        <View className="flex-1">
+                                            <View className="flex-row items-center ml-2 mb-2">
+                                                <Target size={12} color="#6B7280" />
+                                                <Text className="text-gray-500 dark:text-gray-400 text-[10px] font-bold uppercase tracking-wider ml-1.5">Points</Text>
+                                                <HelpTooltip id="teacher.manage.coursework" role="teacher" tier={tier} onLearnMore={openManual} />
+                                            </View>
+                                            <TextInput
+                                                className="bg-[#F6F8FA] dark:bg-[#161B22] rounded-xl px-5 py-4 text-gray-900 dark:text-white font-bold border border-[#D0D7DE] dark:border-[#21262D]"
+                                                placeholder="100"
+                                                placeholderTextColor="#9CA3AF"
+                                                keyboardType="numeric"
+                                                value={points}
+                                                onChangeText={setPoints}
+                                                style={{ minHeight: 52 }}
+                                            />
+                                        </View >
+                                    </View >
+
+                                    <View className="flex-row gap-3 mb-6">
+                                        <View className="flex-1">
+                                            <View className="flex-row items-center ml-2 mb-2">
+                                                <Trophy size={12} color="#6B7280" />
+                                                <Text className="text-gray-500 dark:text-gray-400 text-[10px] font-bold uppercase tracking-wider ml-1.5">Weight (%)</Text>
+                                                <HelpTooltip id="teacher.manage.coursework" role="teacher" tier={tier} onLearnMore={openManual} />
+                                            </View>
+                                            <TextInput
+                                                className="bg-[#F6F8FA] dark:bg-[#161B22] rounded-xl px-5 py-4 text-gray-900 dark:text-white font-bold border border-[#D0D7DE] dark:border-[#21262D]"
+                                                placeholder="25"
+                                                placeholderTextColor="#9CA3AF"
+                                                keyboardType="numeric"
+                                                value={weight}
+                                                onChangeText={setWeight}
+                                            />
+                                        </View >
+
+                                        <View className="flex-1">
+                                            <View className="flex-row items-center ml-2 mb-2">
+                                                <BookOpen size={12} color="#6B7280" />
+                                                <Text className="text-gray-500 dark:text-gray-400 text-[10px] font-bold uppercase tracking-wider ml-1.5">Term</Text>
+                                                <HelpTooltip id="teacher.manage.coursework" role="teacher" tier={tier} onLearnMore={openManual} />
+                                            </View>
+                                            <TextInput
+                                                className="bg-[#F6F8FA] dark:bg-[#161B22] rounded-xl px-5 py-4 text-gray-900 dark:text-white font-bold border border-[#D0D7DE] dark:border-[#21262D]"
+                                                placeholder="Term 1"
+                                                placeholderTextColor="#9CA3AF"
+                                                value={term}
+                                                onChangeText={setTerm}
+                                            />
+                                        </View >
+                                    </View >
+
+                                    {showDatePicker && (
+                                        <DateTimePicker
+                                            value={dateObject}
+                                            mode="date"
+                                            display="default"
+                                            onChange={onDateChange}
+                                            minimumDate={new Date()}
+                                        />
+                                    )
+                                    }
+
+                                    <View className="mb-8">
+                                        <Text className="text-gray-500 dark:text-gray-400 text-[10px] font-bold uppercase tracking-widest ml-1 mb-2">Attachments</Text>
                                         <TouchableOpacity
-                                            onPress={() => setShowDatePicker(true)}
-                                            className="bg-[#F6F8FA] dark:bg-[#161B22] rounded-xl px-5 py-4 flex-row justify-between items-center border border-[#D0D7DE] dark:border-[#21262D]"
-                                            style={{ minHeight: 52 }}
+                                            onPress={pickDocument}
+                                            activeOpacity={0.7}
+                                            className={`flex-row items-center justify-center border-dashed border-2 rounded-xl p-6 ${selectedFile ? 'border-green-500 bg-green-50 dark:bg-green-950/20' : 'border-[#D0D7DE] dark:border-[#21262D] bg-[#F6F8FA] dark:bg-[#161B22]'}`}
                                         >
-                                            <Text className={`font-bold ${dueDate ? "text-gray-900 dark:text-white" : "text-gray-400 dark:text-gray-500"}`}>
-                                                {dueDate ? dueDate : "Select"}
-                                            </Text>
-                                            <Calendar size={16} color="#FF6900" />
+                                            {selectedFile ? (
+                                                <View className="items-center">
+                                                    <FileText size={24} color="#10B981" />
+                                                    <Text className="text-green-900 dark:text-green-400 font-bold mt-2 text-center">{selectedFile.name}</Text>
+                                                </View>
+                                            ) : (
+                                                <View className="items-center">
+                                                    <Upload size={24} color="#9CA3AF" />
+                                                    <Text className="text-gray-900 dark:text-white font-bold mt-2">Upload Material</Text>
+                                                    <Text className="text-gray-500 dark:text-gray-400 text-[10px] font-bold uppercase tracking-widest mt-1">PDF, DOCX, Images</Text>
+                                                </View>
+                                            )}
                                         </TouchableOpacity>
-                                    )}
-                                </View>
-
-                                <View className="flex-1">
-<<<<<<< Updated upstream
-                                    <View className="flex-row items-center ml-2 mb-2">
-                                        <Target size={12} color="#6B7280" />
-                                        <Text className="text-gray-500 dark:text-gray-400 text-[10px] font-bold uppercase tracking-wider ml-1.5">Points</Text>
-                                        <HelpTooltip id="teacher.manage.coursework" role="teacher" tier={tier} onLearnMore={openManual} />
                                     </View>
-=======
-                                    <Text className="text-gray-500 dark:text-gray-400 text-[10px] font-bold uppercase tracking-widest ml-1 mb-2">Points</Text>
->>>>>>> Stashed changes
-                                    <TextInput
-                                        className="bg-[#F6F8FA] dark:bg-[#161B22] rounded-xl px-5 py-4 text-gray-900 dark:text-white font-bold border border-[#D0D7DE] dark:border-[#21262D]"
-                                        placeholder="100"
-                                        placeholderTextColor="#9CA3AF"
-                                        keyboardType="numeric"
-                                        value={points}
-                                        onChangeText={setPoints}
-                                        style={{ minHeight: 52 }}
-                                    />
+
+                                    <TouchableOpacity
+                                        className={`bg-[#FF6900] py-4 rounded-xl items-center ${uploading ? 'opacity-70' : ''}`}
+                                        onPress={saveAssignment}
+                                        disabled={uploading}
+                                        activeOpacity={0.7}
+                                    >
+                                        {uploading ? (
+                                            <ActivityIndicator color="white" />
+                                        ) : (
+                                            <Text className="text-white font-bold text-lg">
+                                                {editingAssignment ? "Update" : "Publish"}
+                                            </Text>
+                                        )}
+                                    </TouchableOpacity>
                                 </View>
                             </View>
-
-                            <View className="flex-row gap-3 mb-6">
-                                <View className="flex-1">
-<<<<<<< Updated upstream
-                                    <View className="flex-row items-center ml-2 mb-2">
-                                        <Trophy size={12} color="#6B7280" />
-                                        <Text className="text-gray-500 dark:text-gray-400 text-[10px] font-bold uppercase tracking-wider ml-1.5">Weight (%)</Text>
-                                        <HelpTooltip id="teacher.manage.coursework" role="teacher" tier={tier} onLearnMore={openManual} />
-                                    </View>
-=======
-                                    <Text className="text-gray-500 dark:text-gray-400 text-[10px] font-bold uppercase tracking-widest ml-1 mb-2">Weight (%)</Text>
->>>>>>> Stashed changes
-                                    <TextInput
-                                        className="bg-[#F6F8FA] dark:bg-[#161B22] rounded-xl px-5 py-4 text-gray-900 dark:text-white font-bold border border-[#D0D7DE] dark:border-[#21262D]"
-                                        placeholder="25"
-                                        placeholderTextColor="#9CA3AF"
-                                        keyboardType="numeric"
-                                        value={weight}
-                                        onChangeText={setWeight}
-                                    />
-                                </View>
-
-                                <View className="flex-1">
-<<<<<<< Updated upstream
-                                    <View className="flex-row items-center ml-2 mb-2">
-                                        <BookOpen size={12} color="#6B7280" />
-                                        <Text className="text-gray-500 dark:text-gray-400 text-[10px] font-bold uppercase tracking-wider ml-1.5">Term</Text>
-                                        <HelpTooltip id="teacher.manage.coursework" role="teacher" tier={tier} onLearnMore={openManual} />
-                                    </View>
-=======
-                                    <Text className="text-gray-500 dark:text-gray-400 text-[10px] font-bold uppercase tracking-widest ml-1 mb-2">Term</Text>
->>>>>>> Stashed changes
-                                    <TextInput
-                                        className="bg-[#F6F8FA] dark:bg-[#161B22] rounded-xl px-5 py-4 text-gray-900 dark:text-white font-bold border border-[#D0D7DE] dark:border-[#21262D]"
-                                        placeholder="Term 1"
-                                        placeholderTextColor="#9CA3AF"
-                                        value={term}
-                                        onChangeText={setTerm}
-                                    />
-                                </View>
-                            </View>
-
-                            {showDatePicker && (
-                                <DateTimePicker
-                                    value={dateObject}
-                                    mode="date"
-                                    display="default"
-                                    onChange={onDateChange}
-                                    minimumDate={new Date()}
-                                />
-                            )}
-
-                            <View className="mb-8">
-                                <Text className="text-gray-500 dark:text-gray-400 text-[10px] font-bold uppercase tracking-widest ml-1 mb-2">Attachments</Text>
-                                <TouchableOpacity
-                                    onPress={pickDocument}
-                                    activeOpacity={0.7}
-                                    className={`flex-row items-center justify-center border-dashed border-2 rounded-xl p-6 ${selectedFile ? 'border-green-500 bg-green-50 dark:bg-green-950/20' : 'border-[#D0D7DE] dark:border-[#21262D] bg-[#F6F8FA] dark:bg-[#161B22]'}`}
-                                >
-                                    {selectedFile ? (
-                                        <View className="items-center">
-                                            <FileText size={24} color="#10B981" />
-                                            <Text className="text-green-900 dark:text-green-400 font-bold mt-2 text-center">{selectedFile.name}</Text>
-                                        </View>
-                                    ) : (
-                                        <View className="items-center">
-                                            <Upload size={24} color="#9CA3AF" />
-                                            <Text className="text-gray-900 dark:text-white font-bold mt-2">Upload Material</Text>
-                                            <Text className="text-gray-500 dark:text-gray-400 text-[10px] font-bold uppercase tracking-widest mt-1">PDF, DOCX, Images</Text>
-                                        </View>
-                                    )}
-                                </TouchableOpacity>
-                            </View>
-
-                            <TouchableOpacity
-                                className={`bg-[#FF6900] py-4 rounded-xl items-center ${uploading ? 'opacity-70' : ''}`}
-                                onPress={saveAssignment}
-                                disabled={uploading}
-                                activeOpacity={0.7}
-                            >
-                                {uploading ? (
-                                    <ActivityIndicator color="white" />
-                                ) : (
-                                    <Text className="text-white font-bold text-lg">
-                                        {editingAssignment ? "Update" : "Publish"}
-                                    </Text>
-                                )}
-                            </TouchableOpacity>
                         </ScrollView>
                     </View>
                 </View>
-            </Modal>
+            </Modal >
+
         </View>
     );
 }

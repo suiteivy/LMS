@@ -45,7 +45,7 @@ export function NotificationBellDropdown({
     };
 
     const tokens = {
-        surface: isDark ? "#1A1650" : "#ffffff",
+        surface: isDark ? "#0D1117" : "#F6F8FA",
         surfaceAlt: isDark ? "#0F0B2E" : "#f9fafb",
         border: isDark ? "rgba(255,255,255,0.1)" : "#e5e7eb",
         textPrimary: isDark ? "#ffffff" : "#111827",
@@ -177,7 +177,7 @@ export function NotificationBellDropdown({
                                             marginBottom: 12,
                                         }}
                                     >
-                                        <Bell size={32} color={tokens.textMuted} strokeWidth={1.5} />
+                                        <Bell size={32} color={tokens.textPrimary} strokeWidth={1.5} />
                                     </View>
                                     <Text
                                         style={{

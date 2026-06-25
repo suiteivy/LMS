@@ -24,15 +24,15 @@ import {
 type ClassRow = { id: string; display_name?: string; name?: string };
 type TermRow = { id: string; name: string; locked_at?: string | null };
 
-const selectCardColor = (isDark: boolean) => (isDark ? '#13103A' : '#FFFFFF');
-const selectBorderColor = (isDark: boolean) => (isDark ? 'rgba(255,255,255,0.1)' : '#E5E7EB');
+const selectCardColor = (isDark: boolean) => (isDark ? '#161B22' : '#F6F8FA');
+const selectBorderColor = (isDark: boolean) => (isDark ? '#21262D' : '#D0D7DE');
 
 export default function AdminPromotionsScreen() {
   const { isDark } = useTheme();
   const tier = useSubscriptionTier();
   const card = selectCardColor(isDark);
   const border = selectBorderColor(isDark);
-  const text = isDark ? '#F9FAFB' : '#111827';
+  const text = isDark ? '#FFFFFF' : '#111827';
   const muted = isDark ? '#9CA3AF' : '#6B7280';
 
   const [loading, setLoading] = useState(true);
@@ -54,7 +54,7 @@ export default function AdminPromotionsScreen() {
   const selectedTerm = useMemo(() => terms.find((t) => t.id === termId) || null, [termId, terms]);
   const selectedFromClass = useMemo(() => classes.find((c) => c.id === fromClassId) || null, [classes, fromClassId]);
   const selectedToClass = useMemo(() => classes.find((c) => c.id === toClassId) || null, [classes, toClassId]);
-  const pickerItemColor = isDark ? '#F9FAFB' : '#111827';
+  const pickerItemColor = isDark ? '#FFFFFF' : '#111827';
   const pickerDropdownItemColor = Platform.OS === 'android' ? '#111827' : pickerItemColor;
 
   const loadAll = useCallback(async () => {
@@ -175,17 +175,17 @@ export default function AdminPromotionsScreen() {
 
   if (loading) {
     return (
-      <View style={{ flex: 1, backgroundColor: isDark ? '#0F0B2E' : '#F9FAFB' }}>
+      <View style={{ flex: 1, backgroundColor: isDark ? '#0D1117' : '#FFFFFF' }}>
         <UnifiedHeader title="Promotions" subtitle="Progression Engine" role="Admin" onBack={() => router.back()} />
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-          <ActivityIndicator size="large" color="#FF6B00" />
+          <ActivityIndicator size="large" color="#FF6900" />
         </View>
       </View>
     );
   }
 
   return (
-    <View style={{ flex: 1, backgroundColor: isDark ? '#0F0B2E' : '#F9FAFB' }}>
+    <View style={{ flex: 1, backgroundColor: isDark ? '#0D1117' : '#FFFFFF' }}>
       <UnifiedHeader title="Promotions" subtitle="Progression Engine" role="Admin" onBack={() => router.back()} />
       <SubscriptionGate
         feature="analytics"
@@ -263,7 +263,7 @@ export default function AdminPromotionsScreen() {
           {selectedTerm?.locked_at ? (
             <Text style={{ color: '#EF4444', marginTop: 8, fontSize: 12 }}>Selected term is locked. Execution is blocked by backend policies.</Text>
           ) : null}
-          <TouchableOpacity onPress={createCycle} disabled={working} style={{ marginTop: 10, backgroundColor: '#FF6B00', paddingVertical: 10, borderRadius: 10, alignItems: 'center' }}>
+          <TouchableOpacity onPress={createCycle} disabled={working} style={{ marginTop: 10, backgroundColor: '#FF6900', paddingVertical: 10, borderRadius: 10, alignItems: 'center' }}>
             <Text style={{ color: '#FFF', fontWeight: '700' }}>Create Promotion Cycle</Text>
           </TouchableOpacity>
         </View>

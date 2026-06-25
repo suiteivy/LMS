@@ -1,4 +1,4 @@
-import { ProfileEdit } from "@/components/ProfileEdit";
+import {ProfileEdit} from "@/components/ProfileEdit";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useSubscriptionTier } from "@/hooks/useSubscriptionTier";
 import { SettingsService, UserPreferences } from "@/services/SettingsService";
@@ -121,7 +121,7 @@ export default function AdminSettings() {
                             value={prefs.push_notifications}
                             onValueChange={() => togglePref('push_notifications')}
                             trackColor={{ false: isDark ? "#21262D" : "#D0D7DE", true: "#FF6900" }}
-                            thumbColor="#ffffff"
+                            thumbColor="#fd6900"
                             disabled={prefsLoading}
                         />
                     </SettingRow>
@@ -130,7 +130,7 @@ export default function AdminSettings() {
                             value={prefs.system_alerts}
                             onValueChange={() => togglePref('system_alerts')}
                             trackColor={{ false: isDark ? "#21262D" : "#D0D7DE", true: "#FF6900" }}
-                            thumbColor="#ffffff"
+                            thumbColor="#fd6900"
                             disabled={prefsLoading}
                         />
                     </SettingRow>

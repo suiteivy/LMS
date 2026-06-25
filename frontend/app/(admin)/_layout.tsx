@@ -107,9 +107,9 @@ function AdminTabs() {
                     tabBarInactiveTintColor: isDark ? "#94a3b8" : "#64748b",
                     tabBarLabelStyle: { fontSize: 11, fontWeight: "600" },
                     tabBarStyle: {
-                        backgroundColor: isDark ? '#0F0B2E' : "#ffffff",
+                        backgroundColor: isDark ? '#0D1117' : "#F6F8FA",
                         borderTopWidth: 1,
-                        borderTopColor: isDark ? '#1f2937' : "#e5e7eb",
+                        borderTopColor: isDark ? '#21262D' : "#D0D7DE",
                         height: tabBarHeight,
                         paddingBottom: insets.bottom || 6,
                         paddingTop: 6,
@@ -131,6 +131,16 @@ function AdminTabs() {
                     sceneStyle: { backgroundColor: isDark ? '#0F0B2E' : "#f9fafb" },
                 }}
             >
+            <Tabs.Screen
+                name="index"
+                options={{
+                    title: "Home",
+                    tabBarIcon: ({ size = 24, color, focused }) => {
+                        const Icon = House as any;
+                        return <Icon size={size} color={focused ? "#FF6B00" : color} strokeWidth={2} />;
+                    },
+                }}
+            />
             {/* Notifications — tab registered, press intercepted by listeners */}
             <Tabs.Screen
                 name="notifications"

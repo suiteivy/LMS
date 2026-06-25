@@ -9,18 +9,18 @@ import { BarChart3, BookOpen, DollarSign, GraduationCap, TrendingUp, Users, Zap 
 import React, { useState } from "react";
 import { ActivityIndicator, DimensionValue, RefreshControl, ScrollView, Text, TouchableOpacity, View } from "react-native";
 
-const StatCard = ({ title, value, icon: Icon, color, trend, isDark }: any) => (
-    <View className="flex-1 min-w-[160px] m-1 p-5 rounded-3xl bg-[#F6F8FA] dark:bg-[#161B22] border border-[#D0D7DE] dark:border-[#21262D]">
-        <View style={{ backgroundColor: `${color}20`, padding: 12, borderRadius: 16, marginBottom: 16, alignSelf: 'flex-start' }}>
-            <Icon size={24} color={color} />
+const StatCard = ({ title, value, icon: Icon, color, trend }: any) => (
+    <View className="bg-[#F6F8FA] dark:bg-[#161B22] border border-[#D0D7DE] dark:border-[#21262D] rounded-xl p-4 mb-3" style={{ width: '48.5%' }}>
+        <View className="w-9 h-9 rounded-xl bg-[#EAEEF2] dark:bg-[#1C2128] items-center justify-center mb-3">
+            <Icon size={18} color={color} />
         </View>
-        <Text className="text-gray-500 dark:text-gray-400 text-[13px] font-bold" numberOfLines={1} adjustsFontSizeToFit>{title}</Text>
-        <View className="flex-row items-end justify-between mt-1">
+        <Text className="text-gray-500 dark:text-gray-400 text-[10px] font-bold uppercase tracking-widest mb-1" numberOfLines={1}>{title}</Text>
+        <View className="flex-row items-end justify-between">
             <Text className="text-gray-900 dark:text-white text-2xl font-black" numberOfLines={1} adjustsFontSizeToFit>{value}</Text>
             {trend && (
-                <View className="flex-row items-center bg-green-50 dark:bg-[#052e16] px-2 py-0.5 rounded-full">
+                <View className="flex-row items-center bg-green-50 dark:bg-[#052e16] px-2 py-0.5 rounded-md">
                     <TrendingUp size={12} color="#16a34a" />
-                    <Text className="text-[#16a34a] text-[11px] font-bold ml-1">{trend}</Text>
+                    <Text className="text-[#16a34a] text-[10px] font-bold ml-1">{trend}</Text>
                 </View>
             )}
         </View>
@@ -42,8 +42,8 @@ export default function AnalyticsScreen() {
 
     if (loading && !refreshing) {
         return (
-            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: isDark ? '#0F0B2E' : '#f9fafb' }}>
-                <ActivityIndicator size="large" color="#FF6B00" />
+            <View className="flex-1 items-center justify-center bg-[#FFFFFF] dark:bg-[#0D1117]">
+                <ActivityIndicator size="large" color="#FF6900" />
             </View>
         );
     }
@@ -64,9 +64,9 @@ export default function AnalyticsScreen() {
 
     const maxRevenue = Math.max(...revenueData.map(d => d.amount), 100);
 
-    const surface = isDark ? '#13103A' : '#ffffff';
-    const border = isDark ? 'rgba(255,255,255,0.1)' : '#f3f4f6';
-    const textPrimary = isDark ? '#f1f1f1' : '#111827';
+    const surface = isDark ? '#161B22' : '#F6F8FA';
+    const border = isDark ? '#21262D' : '#D0D7DE';
+    const textPrimary = isDark ? '#FFFFFF' : '#111827';
     const textSecondary = isDark ? '#9ca3af' : '#6b7280';
     const openManual = (anchor?: string) => {
         router.push({ pathname: '/(admin)/settings/settings', params: { manual: '1', anchor: anchor || 'promotion-engine' } } as any);
@@ -114,19 +114,19 @@ export default function AnalyticsScreen() {
                 className="flex-1"
                 showsVerticalScrollIndicator={false}
                 refreshControl={
-                    <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={["#FF6B00"]} tintColor="#FF6B00" />
+                    <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={["#FF6900"]} tintColor="#FF6900" />
                 }
             >
                 <View style={{ padding: 24 }}>
                     <SubscriptionGate
                         feature="analytics"
                         fallback={
-                            <View style={{ backgroundColor: isDark ? '#13103A' : '#fff7ed', padding: 24, borderRadius: 24, borderWidth: 1, borderColor: isDark ? 'rgba(255,255,255,0.12)' : '#fed7aa', alignItems: 'center' }}>
-                                <View style={{ width: 56, height: 56, borderRadius: 999, backgroundColor: isDark ? 'rgba(255,107,0,0.18)' : '#ffedd5', alignItems: 'center', justifyContent: 'center', marginBottom: 14 }}>
-                                    <Zap size={28} color="#FF6B00" />
+                            <View className="bg-[#F6F8FA] dark:bg-[#161B22] border border-[#D0D7DE] dark:border-[#21262D] rounded-xl p-6 items-center">
+                                <View className="w-12 h-12 rounded-xl bg-[#EAEEF2] dark:bg-[#1C2128] items-center justify-center mb-4">
+                                    <Zap size={24} color="#FF6900" />
                                 </View>
-                                <Text style={{ color: textPrimary, fontSize: 18, fontWeight: '800', marginBottom: 6 }}>Analytics Add-on Required</Text>
-                                <Text style={{ color: textSecondary, fontSize: 13, textAlign: 'center', marginBottom: 16 }}>
+                                <Text className="text-gray-900 dark:text-white font-bold text-base mb-2">Analytics Add-on Required</Text>
+                                <Text className="text-gray-500 dark:text-gray-400 text-xs text-center mb-4">
                                     Advanced analytics are not included in your current subscription plan.
                                 </Text>
                                 <AddonRequestButton onPress={() => router.push('/(admin)/request-feature' as any)} />
@@ -139,95 +139,87 @@ export default function AnalyticsScreen() {
                                 <Text style={{ color: textPrimary, fontSize: 15, fontWeight: '700' }}>Core Metrics</Text>
                                 <HelpTooltip id="admin.manage.analytics" role="admin" tier={tier} onLearnMore={openManual} />
                             </View>
-                            <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginHorizontal: -4, marginBottom: 24 }}>
+                            <View className="flex-row flex-wrap justify-between mb-4">
                                 {stats.filter(s => showFinancials || s.label !== "Revenue").map((stat, index) => (
                                     <StatCard
                                         key={index}
                                         title={stat.label}
                                         value={stat.value}
                                         icon={iconMap[stat.label] || BarChart3}
-                                        color={colorMap[stat.label] || "#FF6B00"}
+                                        color={colorMap[stat.label] || "#FF6900"}
                                         trend={stat.trend?.value}
-                                        isDark={isDark}
                                     />
                                 ))}
                             </View>
 
                             {/* Student Performance Overview */}
-                            <View style={{ backgroundColor: surface, padding: 24, borderRadius: 24, borderWidth: 1, borderColor: border, marginBottom: 24 }}>
-                                <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 14 }}>
-                                    <Text style={{ fontSize: 17, fontWeight: 'bold', color: textPrimary }}>Student Performance Overview</Text>
+                            <View className="bg-[#F6F8FA] dark:bg-[#161B22] border border-[#D0D7DE] dark:border-[#21262D] rounded-xl p-5 mb-4">
+                                <View className="flex-row items-center mb-4">
+                                    <Text className="text-gray-900 dark:text-white font-bold text-base">Student Performance Overview</Text>
                                     <HelpTooltip id="admin.manage.analytics" role="admin" tier={tier} onLearnMore={openManual} />
                                 </View>
                                 {analyticsOverview.map((metric) => (
-                                    <View key={metric.title} style={{ marginBottom: 14 }}>
-                                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 }}>
-                                            <Text style={{ color: textSecondary, fontSize: 13, fontWeight: '600' }}>{metric.title}</Text>
-                                            <Text style={{ color: textPrimary, fontSize: 13, fontWeight: '800' }}>{metric.value}</Text>
+                                    <View key={metric.title} className="mb-4">
+                                        <View className="flex-row justify-between mb-1.5">
+                                            <Text className="text-gray-500 dark:text-gray-400 text-xs font-bold uppercase tracking-widest">{metric.title}</Text>
+                                            <Text className="text-gray-900 dark:text-white text-xs font-black">{metric.value}</Text>
                                         </View>
-                                        <View style={{ height: 8, backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : '#f3f4f6', borderRadius: 999, overflow: 'hidden' }}>
+                                        <View className="h-1.5 bg-[#EAEEF2] dark:bg-[#1C2128] rounded-full overflow-hidden">
                                             <View style={{ height: '100%', width: metric.width as DimensionValue, backgroundColor: metric.color, borderRadius: 999 }} />
                                         </View>
-                                        <Text style={{ color: textSecondary, fontSize: 11, marginTop: 4 }}>{metric.helper}</Text>
+                                        <Text className="text-gray-500 dark:text-gray-400 text-[10px] mt-1">{metric.helper}</Text>
                                     </View>
                                 ))}
                             </View>
 
                             {/* Revenue Chart */}
                             {showFinancials && (
-                                <View style={{ backgroundColor: surface, padding: 24, borderRadius: 24, borderWidth: 1, borderColor: border, marginBottom: 24 }}>
-                                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
-                                        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                                            <Text style={{ fontSize: 17, fontWeight: 'bold', color: textPrimary }}>Revenue (Last 7 Days)</Text>
-                                            <HelpTooltip id="admin.manage.analytics" role="admin" tier={tier} onLearnMore={openManual} />
-                                        </View>
-                                        <View style={{ backgroundColor: isDark ? 'rgba(255,107,0,0.12)' : '#fff7ed', paddingHorizontal: 12, paddingVertical: 4, borderRadius: 999 }}>
-                                            <Text style={{ color: '#FF6B00', fontSize: 11, fontWeight: 'bold' }}>Live Data</Text>
+                                <View className="bg-[#F6F8FA] dark:bg-[#161B22] border border-[#D0D7DE] dark:border-[#21262D] rounded-xl p-5 mb-4">
+                                    <View className="flex-row justify-between items-center mb-4">
+                                        <Text className="text-gray-900 dark:text-white font-bold text-base">Revenue (Last 7 Days)</Text>
+                                        <View className="bg-orange-50 dark:bg-orange-950/20 border border-orange-100 dark:border-orange-900/30 px-2 py-1 rounded-md">
+                                            <Text className="text-[#FF6900] text-[10px] font-bold uppercase tracking-widest">Live</Text>
                                         </View>
                                     </View>
 
-                                    <View style={{ flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', height: 192, paddingHorizontal: 8 }}>
+                                    <View style={{ flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', height: 120, paddingHorizontal: 4 }}>
                                         {revenueData.map((data, i) => {
                                             const height = (data.amount / maxRevenue) * 100;
                                             return (
                                                 <View key={i} style={{ alignItems: 'center', flex: 1 }}>
-                                                    <Text style={{ fontSize: 8, color: textSecondary, fontWeight: 'bold', marginBottom: 8 }}>${data.amount}</Text>
+                                                    <Text className="text-gray-500 dark:text-gray-400 text-[9px] font-bold mb-1">${data.amount}</Text>
                                                     <View style={{
                                                         height: `${Math.max(height, 5)}%`,
-                                                        width: 32,
-                                                        backgroundColor: '#FF6B00',
-                                                        borderTopLeftRadius: 8,
-                                                        borderTopRightRadius: 8,
-                                                        opacity: 0.9,
+                                                        width: 24,
+                                                        backgroundColor: '#FF6900',
+                                                        borderTopLeftRadius: 4,
+                                                        borderTopRightRadius: 4,
                                                     }} />
-                                                    <Text style={{ color: textSecondary, fontSize: 10, marginTop: 8, fontWeight: '500' }}>{data.day}</Text>
+                                                    <Text className="text-gray-500 dark:text-gray-400 text-[9px] font-bold mt-1">{data.day}</Text>
                                                 </View>
                                             );
                                         })}
                                     </View>
                                     {revenueData.length === 0 && (
-                                        <View style={{ height: 160, justifyContent: 'center', alignItems: 'center' }}>
-                                            <Text style={{ color: textSecondary }}>No transaction data yet</Text>
+                                        <View className="h-24 items-center justify-center">
+                                            <Text className="text-gray-500 dark:text-gray-400 text-xs font-bold uppercase tracking-widest">No transaction data yet</Text>
                                         </View>
                                     )}
                                 </View>
                             )}
 
                             {/* System Capacity */}
-                            <View style={{ backgroundColor: surface, padding: 24, borderRadius: 24, borderWidth: 1, borderColor: border }}>
-                                <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 16 }}>
-                                    <Text style={{ fontSize: 17, fontWeight: 'bold', color: textPrimary }}>System Capacity</Text>
-                                    <HelpTooltip id="admin.manage.analytics" role="admin" tier={tier} onLearnMore={openManual} />
-                                </View>
+                            <View className="bg-[#F6F8FA] dark:bg-[#161B22] border border-[#D0D7DE] dark:border-[#21262D] rounded-xl p-5">
+                                <Text className="text-gray-900 dark:text-white font-bold text-base mb-4">System Capacity</Text>
 
-                                <View style={{ marginBottom: 16 }}>
-                                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 }}>
-                                        <Text style={{ fontSize: 13, color: textSecondary, fontWeight: '500' }}>Database Usage</Text>
-                                        <Text style={{ fontSize: 13, color: textPrimary, fontWeight: 'bold' }}>
+                                <View className="mb-4">
+                                    <View className="flex-row justify-between mb-1.5">
+                                        <Text className="text-gray-500 dark:text-gray-400 text-xs font-bold uppercase tracking-widest">Database Usage</Text>
+                                        <Text className="text-gray-900 dark:text-white text-xs font-black">
                                             {parseInt(stats.find(s => s.label === "Total Students")?.value || "0", 10) > 1000 ? "Medium" : "Low"}
                                         </Text>
                                     </View>
-                                    <View style={{ height: 8, backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : '#f3f4f6', borderRadius: 999, overflow: 'hidden' }}>
+                                    <View className="h-1.5 bg-[#EAEEF2] dark:bg-[#1C2128] rounded-full overflow-hidden">
                                         <View style={{
                                             height: '100%',
                                             backgroundColor: '#3b82f6',
@@ -235,18 +227,18 @@ export default function AnalyticsScreen() {
                                             borderRadius: 999,
                                         }} />
                                     </View>
-                                    <Text style={{ fontSize: 11, color: textSecondary, marginTop: 4 }}>Based on student records</Text>
+                                    <Text className="text-gray-500 dark:text-gray-400 text-[10px] mt-1">Based on student records</Text>
                                 </View>
 
                                 <View>
-                                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 }}>
-                                        <Text style={{ fontSize: 13, color: textSecondary, fontWeight: '500' }}>Server Status</Text>
-                                        <Text style={{ fontSize: 13, color: '#10b981', fontWeight: 'bold' }}>Optimal</Text>
+                                    <View className="flex-row justify-between mb-1.5">
+                                        <Text className="text-gray-500 dark:text-gray-400 text-xs font-bold uppercase tracking-widest">Server Status</Text>
+                                        <Text className="text-[10px] font-black" style={{ color: '#10b981' }}>Optimal</Text>
                                     </View>
-                                    <View style={{ height: 8, backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : '#f3f4f6', borderRadius: 999, overflow: 'hidden' }}>
+                                    <View className="h-1.5 bg-[#EAEEF2] dark:bg-[#1C2128] rounded-full overflow-hidden">
                                         <View style={{ height: '100%', backgroundColor: '#10b981', width: '100%', borderRadius: 999 }} />
                                     </View>
-                                    <Text style={{ fontSize: 11, color: textSecondary, marginTop: 4 }}>All services operational</Text>
+                                    <Text className="text-gray-500 dark:text-gray-400 text-[10px] mt-1">All services operational</Text>
                                 </View>
                             </View>
                         </>

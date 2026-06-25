@@ -1,4 +1,4 @@
-import DatePicker from '@/components/common/DatePicker';
+import { DatePicker } from '@/components/common/DatePicker';
 import { UserCard } from '@/components/common/UserCard';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -51,13 +51,13 @@ export default function UserDetailsScreen() {
     const { profile } = useAuth();
 
     // Theme shorthands
-    const bg = isDark ? '#111827' : '#f9fafb';
-    const card = isDark ? '#111827' : '#ffffff';
-    const border = isDark ? '#a7a7a7ff' : '#303030ff';
+    const bg = isDark ? '#0D1117' : '#FFFFFF';
+    const card = isDark ? '#161B22' : '#F6F8FA';
+    const border = isDark ? '#21262D' : '#D0D7DE';
     const textPrimary = isDark ? '#f9fafb' : '#111827';
     const textSecondary = isDark ? '#94a3b8' : '#6b7280';
-    const inputBg = isDark ? '#000000ff' : '#f9fafb';
-    const inputBorder = isDark ? '#ff6b00' : '#ff6b00';
+    const inputBg = isDark ? '#1C2128' : '#EAEEF2';
+    const inputBorder = isDark ? '#21262D' : '#D0D7DE';
     
     const instLevelLabel = (profile as any)?.institutions?.school_categories?.level_label || 'Grade';
 
@@ -483,7 +483,7 @@ export default function UserDetailsScreen() {
                 <View style={{ flexDirection: 'row', gap: 8 }}>
                     {['male', 'female', 'other'].map(g => (
                         <TouchableOpacity key={g} onPress={() => setGender(g)}
-                            style={{ paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, borderWidth: 1, backgroundColor: gender === g ? '#FF6B00' : card, borderColor: gender === g ? '#FF6B00' : border }}>
+                            style={{ paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, borderWidth: 1, backgroundColor: gender === g ? '#FF6900' : card, borderColor: gender === g ? '#FF6900' : border }}>
                             <Text style={{ fontSize: 13, fontWeight: '500', textTransform: 'capitalize', color: gender === g ? 'white' : textPrimary }}>{g}</Text>
                         </TouchableOpacity>
                     ))}
@@ -535,7 +535,7 @@ export default function UserDetailsScreen() {
     if (loading) {
         return (
             <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: bg }}>
-                <ActivityIndicator size="large" color="#FF6B00" />
+                <ActivityIndicator size="large" color="#FF6900" />
             </View>
         );
     }
@@ -571,7 +571,7 @@ export default function UserDetailsScreen() {
                     {!isEditing && !isResettingPassword ? (
                         <>
                             <TouchableOpacity onPress={() => setIsEditing(true)}
-                                style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: '#FF6B00', paddingVertical: 14, borderRadius: 12 }}>
+                                style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: '#FF6900', paddingVertical: 14, borderRadius: 12 }}>
                                 <Ionicons name="create-outline" size={18} color="white" />
                                 <Text style={{ color: 'white', fontWeight: '700', marginLeft: 8 }}>Edit User</Text>
                             </TouchableOpacity>
@@ -616,7 +616,7 @@ export default function UserDetailsScreen() {
                                     <Text style={{ fontWeight: '700', color: textPrimary }}>Cancel</Text>
                                 </TouchableOpacity>
                                 <TouchableOpacity onPress={() => handleAdminResetPassword(newPassword, newPasswordConfirmation)} disabled={saving}
-                                    style={{ flex: 1, backgroundColor: '#FF6B00', paddingVertical: 14, borderRadius: 12, alignItems: 'center' }}>
+                                    style={{ flex: 1, backgroundColor: '#FF6900', paddingVertical: 14, borderRadius: 12, alignItems: 'center' }}>
                                     {saving ? <ActivityIndicator color="white" size="small" /> : <Text style={{ fontWeight: '700', color: 'white' }}>Reset Password</Text>}
                                 </TouchableOpacity>
                             </View>
@@ -628,7 +628,7 @@ export default function UserDetailsScreen() {
                                 <Text style={{ fontWeight: '700', color: textPrimary }}>Cancel</Text>
                             </TouchableOpacity>
                             <TouchableOpacity onPress={handleSave} disabled={saving}
-                                style={{ flex: 1, backgroundColor: '#FF6B00', paddingVertical: 14, borderRadius: 12, alignItems: 'center' }}>
+                                style={{ flex: 1, backgroundColor: '#FF6900', paddingVertical: 14, borderRadius: 12, alignItems: 'center' }}>
                                 {saving ? <ActivityIndicator color="white" size="small" /> : <Text style={{ fontWeight: '700', color: 'white' }}>Save Changes</Text>}
                             </TouchableOpacity>
                         </View>
@@ -673,15 +673,15 @@ export default function UserDetailsScreen() {
                         <Text style={{ fontSize: 11, fontWeight: '700', color: '#8b5cf6', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 12 }}>📊 Grades & Academic Performance</Text>
 
                         {loadingAcademics ? (
-                            <ActivityIndicator size="small" color="#FF6B00" style={{ marginVertical: 20 }} />
+                            <ActivityIndicator size="small" color="#FF6900" style={{ marginVertical: 20 }} />
                         ) : (
                             <>
                                 {/* GPA Summary Row */}
                                 {studentGrades.length > 0 && (
-                                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', backgroundColor: isDark ? '#1a1a2e' : '#f8fafc', borderRadius: 12, padding: 16, marginBottom: 16, borderWidth: 1, borderColor: border }}>
+                                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', backgroundColor: isDark ? '#1C2128' : '#EAEEF2', borderRadius: 12, padding: 16, marginBottom: 16, borderWidth: 1, borderColor: border }}>
                                         <View style={{ alignItems: 'center', flex: 1 }}>
                                             <Text style={{ fontSize: 9, fontWeight: '700', color: textSecondary, textTransform: 'uppercase', letterSpacing: 1 }}>Est. GPA</Text>
-                                            <Text style={{ fontSize: 22, fontWeight: '900', color: '#FF6B00', marginTop: 4 }}>
+                                            <Text style={{ fontSize: 22, fontWeight: '900', color: '#FF6900', marginTop: 4 }}>
                                                 {(studentGrades.reduce((a, c) => a + c.score, 0) / studentGrades.length / 25).toFixed(2)}
                                             </Text>
                                         </View>
@@ -743,7 +743,7 @@ export default function UserDetailsScreen() {
                                 <View key={report.id || idx} style={{ paddingVertical: 12, borderBottomWidth: idx < studentReports.length - 1 ? 1 : 0, borderBottomColor: border }}>
                                     <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
                                         <View style={{ flex: 1 }}>
-                                            <Text style={{ color: '#FF6B00', fontSize: 9, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1 }}>
+                                            <Text style={{ color: '#FF6900', fontSize: 9, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1 }}>
                                                 {report.report_type?.replace(/-/g, ' ') || 'Report'}
                                             </Text>
                                             <Text style={{ color: textPrimary, fontWeight: '700', fontSize: 15, marginTop: 2 }}>

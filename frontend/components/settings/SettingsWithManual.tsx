@@ -41,13 +41,13 @@ export function SettingsWithManual({
   }, [initialManualAnchor]);
 
   return (
-    <View style={{ flex: 1, backgroundColor: isDark ? '#0F0B2E' : '#F9FAFB' }}>
+    <View style={{ flex: 1, backgroundColor: isDark ? '#0d1117' : '#F9FAFB' }}>
       <View
         style={{
           marginHorizontal: 16,
           marginTop: 12,
           marginBottom: 8,
-          backgroundColor: isDark ? '#13103A' : '#FFFFFF',
+          backgroundColor: isDark ? '#0d1117' : '#FFFFFF',
           borderRadius: 12,
           borderWidth: 1,
           borderColor: isDark ? 'rgba(255,255,255,0.12)' : '#E5E7EB',
@@ -66,7 +66,7 @@ export function SettingsWithManual({
             alignItems: 'center',
           }}
         >
-          <Text style={{ color: tab === 'preferences' ? '#FFFFFF' : isDark ? '#E5E7EB' : '#111827', fontSize: 12, fontWeight: '700' }}>
+          <Text style={{ color: tab === 'preferences' ? '#FFFFFF' : isDark ? '#E5E7EB' : '#0d1117', fontSize: 12, fontWeight: '700' }}>
             Settings
           </Text>
         </TouchableOpacity>
@@ -81,7 +81,7 @@ export function SettingsWithManual({
             alignItems: 'center',
           }}
         >
-          <Text style={{ color: tab === 'manual' ? '#FFFFFF' : isDark ? '#E5E7EB' : '#111827', fontSize: 12, fontWeight: '700' }}>
+          <Text style={{ color: tab === 'manual' ? '#FFFFFF' : isDark ? '#E5E7EB' : '#0d1117', fontSize: 12, fontWeight: '700' }}>
             Reference Manual
           </Text>
         </TouchableOpacity>

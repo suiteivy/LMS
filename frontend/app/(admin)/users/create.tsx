@@ -1,4 +1,4 @@
-import DatePicker from '@/components/common/DatePicker';
+import { DatePicker } from '@/components/common/DatePicker';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { supabase } from '@/libs/supabase';
@@ -272,13 +272,13 @@ export default function CreateUserScreen() {
     const prevStep = () => { if (step > 0) setStep((step - 1) as Step); else router.back(); };
 
     // ---------- Theme shorthands ----------
-    const bg = isDark ? '#0F0B2E' : '#f9fafb';
-    const card = isDark ? '#13103A' : '#ffffff';
-    const border = isDark ? 'rgba(255,255,255,0.1)' : '#e5e7eb';
+    const bg = isDark ? '#0D1117' : '#FFFFFF';
+    const card = isDark ? '#161B22' : '#F6F8FA';
+    const border = isDark ? '#21262D' : '#D0D7DE';
     const textPrimary = isDark ? '#f9fafb' : '#111827';
     const textSecondary = isDark ? '#94a3b8' : '#6b7280';
-    const inputBg = isDark ? '#13103A' : '#f9fafb';
-    const inputBorder = isDark ? 'rgba(255,255,255,0.1)' : '#e5e7eb';
+    const inputBg = isDark ? '#1C2128' : '#EAEEF2';
+    const inputBorder = isDark ? '#21262D' : '#D0D7DE';
 
     // ---------- Options ----------
     const ROLE_CARDS = [
@@ -301,13 +301,13 @@ export default function CreateUserScreen() {
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 16, paddingHorizontal: 24, backgroundColor: card, borderBottomWidth: 1, borderBottomColor: border }}>
             {['Role', 'Personal', form.role === 'admin' ? '' : 'Details', 'Review', 'Done'].filter(Boolean).map((label, i) => (
                 <View key={i} style={{ flexDirection: 'row', alignItems: 'center' }}>
-                    <View style={{ width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center', backgroundColor: i <= step ? '#FF6B00' : (isDark ? 'rgba(255,255,255,0.1)' : '#e5e7eb') }}>
+                    <View style={{ width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center', backgroundColor: i <= step ? '#FF6900' : (isDark ? 'rgba(255,255,255,0.1)' : '#e5e7eb') }}>
                         {i < step
                             ? <Ionicons name="checkmark" size={16} color="white" />
                             : <Text style={{ fontSize: 12, fontWeight: '700', color: i <= step ? 'white' : textSecondary }}>{i + 1}</Text>
                         }
                     </View>
-                    {i < 4 && <View style={{ width: 32, height: 2, backgroundColor: i < step ? '#FF6B00' : (isDark ? 'rgba(255,255,255,0.1)' : '#e5e7eb') }} />}
+                    {i < 4 && <View style={{ width: 32, height: 2, backgroundColor: i < step ? '#FF6900' : (isDark ? 'rgba(255,255,255,0.1)' : '#e5e7eb') }} />}
                 </View>
             ))}
         </View>
@@ -361,19 +361,19 @@ export default function CreateUserScreen() {
             <Text style={{ color: textSecondary, marginBottom: 24 }}>Choose the type of user you want to enroll</Text>
             {ROLE_CARDS.map(roleCard => (
                 <TouchableOpacity key={roleCard.role} onPress={() => updateForm('role', roleCard.role)} activeOpacity={0.7}
-                    style={{ padding: 20, borderRadius: 16, borderWidth: 2, flexDirection: 'row', alignItems: 'center', marginBottom: 12, backgroundColor: form.role === roleCard.role ? (isDark ? '#2a1a0a' : '#fff7ed') : card, borderColor: form.role === roleCard.role ? '#FF6B00' : border }}>
+                    style={{ padding: 20, borderRadius: 16, borderWidth: 2, flexDirection: 'row', alignItems: 'center', marginBottom: 12, backgroundColor: form.role === roleCard.role ? (isDark ? '#2a1a0a' : '#fff7ed') : card, borderColor: form.role === roleCard.role ? '#FF6900' : border }}>
                     <View style={{ width: 56, height: 56, borderRadius: 12, alignItems: 'center', justifyContent: 'center', marginRight: 16, backgroundColor: roleCard.color + '20' }}>
                         <Ionicons name={roleCard.icon as any} size={28} color={roleCard.color} />
                     </View>
                     <View style={{ flex: 1 }}>
                         <Text style={{ fontSize: 17, fontWeight: '700', color: textPrimary }}>{roleCard.label}</Text>
                         <Text style={{ fontSize: 13, color: textSecondary }}>{roleCard.desc}</Text>
-                        <Text style={{ fontSize: 11, fontWeight: '700', color: '#FF6B00', marginTop: 4 }}>
+                        <Text style={{ fontSize: 11, fontWeight: '700', color: '#FF6900', marginTop: 4 }}>
                             {getRemainingSlotsText(roleCard.role)}
                         </Text>
                     </View>
                     {form.role === roleCard.role && (
-                        <View style={{ width: 24, height: 24, borderRadius: 12, backgroundColor: '#FF6B00', alignItems: 'center', justifyContent: 'center' }}>
+                        <View style={{ width: 24, height: 24, borderRadius: 12, backgroundColor: '#FF6900', alignItems: 'center', justifyContent: 'center' }}>
                             <Ionicons name="checkmark" size={14} color="white" />
                         </View>
                     )}
@@ -394,13 +394,13 @@ export default function CreateUserScreen() {
                     <RenderInput label="Last Name *" value={form.last_name} onChangeText={(v: string) => updateFormSanitized('last_name', v)} placeholder="Doe" isDark={isDark} textPrimary={textPrimary} textSecondary={textSecondary} inputBg={inputBg} inputBorder={inputBorder} />
                 </View>
             </View>
-            <RenderInput 
-                label={`Email ${form.role === 'parent' ? '*' : '(Optional)'}`} 
-                value={form.email} 
-                onChangeText={(v: string) => updateFormSanitized('email', v, 'email')} 
-                placeholder={form.role === 'parent' ? "parent_guardian@example.com" : "Auto-generated if left blank"} 
-                keyboardType="email-address" 
-                isDark={isDark} textPrimary={textPrimary} textSecondary={textSecondary} inputBg={inputBg} inputBorder={inputBorder} 
+            <RenderInput
+                label={`Email ${form.role === 'parent' ? '*' : '(Optional)'}`}
+                value={form.email}
+                onChangeText={(v: string) => updateFormSanitized('email', v, 'email')}
+                placeholder={form.role === 'parent' ? "parent_guardian@example.com" : "Auto-generated if left blank"}
+                keyboardType="email-address"
+                isDark={isDark} textPrimary={textPrimary} textSecondary={textSecondary} inputBg={inputBg} inputBorder={inputBorder}
             />
             {form.role !== 'parent' && !form.email.trim() && (
                 <View style={{ backgroundColor: isDark ? '#1e293b' : '#f1f5f9', padding: 12, borderRadius: 12, marginBottom: 16 }}>
@@ -414,7 +414,7 @@ export default function CreateUserScreen() {
             )}
             <RenderPicker label="Gender" options={GENDER_OPTIONS} selected={form.gender} onSelect={(v: string) => updateForm('gender', v)} isDark={isDark} textPrimary={textPrimary} textSecondary={textSecondary} border={border} card={card} />
             <DatePicker label="Date of Birth" value={form.date_of_birth} onChange={v => updateForm('date_of_birth', v)} isDark={isDark} />
-            <View style={{ marginTop: -10, marginBottom: 16 }}>
+            <View style={{ marginTop: 6, marginBottom: 20 }}>
                 <Text style={{ color: textSecondary, fontSize: 12 }}>
                     Age: <Text style={{ color: textPrimary, fontWeight: '700' }}>{computedAge !== null ? `${computedAge} years` : 'Set date of birth to calculate'}</Text>
                 </Text>
@@ -504,10 +504,20 @@ export default function CreateUserScreen() {
                             { label: 'Parent/Guardian Phone', key: 'phone', placeholder: '+254...', type: 'phone' },
                             { label: 'Parent/Guardian Occupation', key: 'occupation', placeholder: 'e.g. Doctor', type: 'default' },
                         ].map(f => (
-                            <View key={f.key} style={{ marginBottom: 12 }}>
+                            <View key={f.key} style={{ marginBottom: 16 }}>
                                 <Text style={{ fontSize: 13, fontWeight: '600', color: isDark ? '#93c5fd' : '#1e40af', marginBottom: 6 }}>{f.label}</Text>
                                 <TextInput
-                                    style={{ backgroundColor: isDark ? '#1e2d3d' : 'white', borderWidth: 1, borderColor: isDark ? '#1e3a5f' : '#bfdbfe', borderRadius: 12, paddingHorizontal: 16, paddingVertical: 12, color: textPrimary }}
+                                    style={{
+                                        width: '100%',
+                                        backgroundColor: isDark ? '#1e2d3d' : 'white',
+                                        borderWidth: 1,
+                                        borderColor: isDark ? '#1e3a5f' : '#bfdbfe',
+                                        borderRadius: 12,
+                                        paddingHorizontal: 16,
+                                        paddingVertical: 14,
+                                        color: textPrimary,
+                                        fontSize: 15,
+                                    }}
                                     placeholder={f.placeholder}
                                     placeholderTextColor={textSecondary}
                                     keyboardType={f.type === 'email' ? 'email-address' : f.type === 'phone' ? 'phone-pad' : 'default'}
@@ -539,7 +549,7 @@ export default function CreateUserScreen() {
                     <Text style={{ fontSize: 13, fontWeight: '600', color: textSecondary, marginBottom: 6 }}>Assign as Class Teacher</Text>
                     {classes.map(c => (
                         <TouchableOpacity key={c.id} onPress={() => updateForm('class_teacher_id', form.class_teacher_id === c.id ? '' : c.id)}
-                            style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12, borderRadius: 12, borderWidth: 1, marginBottom: 8, backgroundColor: form.class_teacher_id === c.id ? '#FF6B00' : card, borderColor: form.class_teacher_id === c.id ? '#FF6B00' : border }}>
+                            style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12, borderRadius: 12, borderWidth: 1, marginBottom: 8, backgroundColor: form.class_teacher_id === c.id ? '#FF6900' : card, borderColor: form.class_teacher_id === c.id ? '#FF6900' : border }}>
                             <Ionicons name={form.class_teacher_id === c.id ? 'radio-button-on' : 'radio-button-off'} size={18} color={form.class_teacher_id === c.id ? 'white' : textSecondary} />
                             <Text style={{ marginLeft: 12, fontWeight: '500', color: form.class_teacher_id === c.id ? 'white' : textPrimary }}>{c.name}</Text>
                         </TouchableOpacity>
@@ -563,7 +573,18 @@ export default function CreateUserScreen() {
                 <View style={{ marginBottom: 16 }}>
                     <Text style={{ fontSize: 13, fontWeight: '600', color: textSecondary, marginBottom: 8 }}>Link to Student(s)</Text>
                     <TextInput
-                        style={{ backgroundColor: inputBg, borderWidth: 1, borderColor: inputBorder, borderRadius: 12, paddingHorizontal: 16, paddingVertical: 12, color: textPrimary, marginBottom: 8 }}
+                        style={{
+                            width: '100%',
+                            backgroundColor: inputBg,
+                            borderWidth: 1,
+                            borderColor: inputBorder,
+                            borderRadius: 12,
+                            paddingHorizontal: 16,
+                            paddingVertical: 14,
+                            color: textPrimary,
+                            fontSize: 15,
+                            marginBottom: 12
+                        }}
                         placeholder="Search student by name or ID..."
                         value={studentSearch}
                         onChangeText={v => setStudentSearch(sanitize(v))}
@@ -576,8 +597,8 @@ export default function CreateUserScreen() {
                                     const parentInfo = s.parent_students?.[0]?.parents?.users;
                                     const parentName = parentInfo ? (`${parentInfo.first_name || ''} ${parentInfo.last_name || ''}`.trim() || parentInfo.full_name) : null;
                                     return (
-                                        <TouchableOpacity 
-                                            key={s.id} 
+                                        <TouchableOpacity
+                                            key={s.id}
                                             onPress={() => { addLinkedStudent(s.id, (s.users as any)?.full_name || s.id); setStudentSearch(''); }}
                                             disabled={!!parentName}
                                             style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: border, opacity: parentName ? 0.5 : 1 }}>
@@ -600,7 +621,7 @@ export default function CreateUserScreen() {
                         <View key={ls.student_id} style={{ backgroundColor: isDark ? '#13103A' : '#f9fafb', borderRadius: 12, padding: 16, marginBottom: 8, borderWidth: 1, borderColor: border }}>
                             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
                                 <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                                    <Ionicons name="person" size={16} color="#FF6B00" />
+                                    <Ionicons name="person" size={16} color="#FF6900" />
                                     <Text style={{ marginLeft: 8, fontWeight: '600', color: textPrimary }}>{ls.name}</Text>
                                     <Text style={{ color: textSecondary, fontSize: 11, marginLeft: 6 }}>{ls.student_id}</Text>
                                 </View>
@@ -611,7 +632,7 @@ export default function CreateUserScreen() {
                             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
                                 {RELATIONSHIP_OPTIONS.map(rel => (
                                     <TouchableOpacity key={rel} onPress={() => updateLinkedRelationship(ls.student_id, rel)}
-                                        style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, borderWidth: 1, backgroundColor: ls.relationship === rel ? '#FF6B00' : card, borderColor: ls.relationship === rel ? '#FF6B00' : border }}>
+                                        style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, borderWidth: 1, backgroundColor: ls.relationship === rel ? '#FF6900' : card, borderColor: ls.relationship === rel ? '#FF6900' : border }}>
                                         <Text style={{ fontSize: 12, fontWeight: '500', textTransform: 'capitalize', color: ls.relationship === rel ? 'white' : textPrimary }}>{rel}</Text>
                                     </TouchableOpacity>
                                 ))}
@@ -725,7 +746,7 @@ export default function CreateUserScreen() {
             <View style={{ backgroundColor: card, borderRadius: 16, borderWidth: 1, borderColor: border, padding: 20, width: '100%', marginBottom: 24 }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
                     <View style={{ width: 24, height: 24, borderRadius: 12, backgroundColor: isDark ? '#431407' : '#fff7ed', alignItems: 'center', justifyContent: 'center', marginRight: 8 }}>
-                        <Ionicons name="school" size={12} color="#FF6B00" />
+                        <Ionicons name="school" size={12} color="#FF6900" />
                     </View>
                     <Text style={{ fontWeight: '700', color: textPrimary }}>{form.role?.toUpperCase()} CREDENTIALS</Text>
                 </View>
@@ -738,7 +759,7 @@ export default function CreateUserScreen() {
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 8 }}>
                     <Text style={{ color: textSecondary }}>Temp Password</Text>
                     <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                        <Text style={{ fontFamily: 'monospace', fontWeight: '700', fontSize: 17, color: '#FF6B00', marginRight: 8 }}>{result?.tempPassword}</Text>
+                        <Text style={{ fontFamily: 'monospace', fontWeight: '700', fontSize: 17, color: '#FF6900', marginRight: 8 }}>{result?.tempPassword}</Text>
                         <TouchableOpacity onPress={() => copyToClipboard(result?.tempPassword || '')}>
                             <Ionicons name="copy-outline" size={20} color={textSecondary} />
                         </TouchableOpacity>
@@ -822,7 +843,7 @@ export default function CreateUserScreen() {
                         <Text style={{ fontWeight: '700', color: textPrimary }}>{step === 0 ? 'Cancel' : 'Back'}</Text>
                     </TouchableOpacity>
                     <TouchableOpacity onPress={nextStep} disabled={!canGoNext() || loading}
-                        style={{ flex: 1, backgroundColor: canGoNext() ? '#FF6B00' : (isDark ? 'rgba(255,255,255,0.1)' : '#d1d5db'), paddingVertical: 16, borderRadius: 12, alignItems: 'center' }}>
+                        style={{ flex: 1, backgroundColor: canGoNext() ? '#FF6600' : (isDark ? 'rgba(255,255,255,0.1)' : '#d1d5db'), paddingVertical: 16, borderRadius: 12, alignItems: 'center' }}>
                         {loading
                             ? <ActivityIndicator color="white" />
                             : <Text style={{ fontWeight: '700', color: 'white' }}>{step === 3 ? 'Confirm & Enroll' : 'Next'}</Text>
@@ -835,28 +856,41 @@ export default function CreateUserScreen() {
 }
 
 // ---------- Rendering Helpers ----------
-const RenderInput = ({ label, value, onChangeText, placeholder, keyboardType, isDark, textPrimary, textSecondary, inputBg, inputBorder }: any) => (
-    <View style={{ marginBottom: 16 }}>
-        <Text style={{ fontSize: 13, fontWeight: '600', color: textSecondary, marginBottom: 6 }}>{label}</Text>
+const RenderInput = ({ label, value, onChangeText, placeholder, keyboardType, isDark, textPrimary, textSecondary }: any) => (
+    <View className="mb-5">
+        <Text className="text-[11px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest mb-2">
+            {label}
+        </Text>
         <TextInput
-            style={{ backgroundColor: inputBg, borderWidth: 1, borderColor: inputBorder, borderRadius: 12, paddingHorizontal: 16, paddingVertical: 14, color: textPrimary, fontWeight: '500' }}
+            className="bg-[#161B22] dark:bg-[#161B22] border border-[#D0D7DE] dark:border-[#30363D] rounded-xl px-4 py-4 text-gray-900 dark:text-white text-[15px] font-medium"
             placeholder={placeholder}
             value={String(value || '')}
             onChangeText={onChangeText}
-            placeholderTextColor={textSecondary}
+            placeholderTextColor={isDark ? '#6b7280' : '#9ca3af'}
             keyboardType={keyboardType}
+            style={{ backgroundColor: isDark ? '#161B22' : '#F6F8FA' }}
         />
     </View>
 );
 
-const RenderPicker = ({ label, options, selected, onSelect, isDark, textPrimary, textSecondary, border, card }: any) => (
-    <View style={{ marginBottom: 16 }}>
-        <Text style={{ fontSize: 13, fontWeight: '600', color: textSecondary, marginBottom: 6 }}>{label}</Text>
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+const RenderPicker = ({ label, options, selected, onSelect, isDark }: any) => (
+    <View className="mb-5">
+        <Text className="text-[11px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest mb-2">
+            {label}
+        </Text>
+        <View className="flex-row flex-wrap gap-2">
             {options.map((opt: string) => (
-                <TouchableOpacity key={opt} onPress={() => onSelect(opt)}
-                    style={{ paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, borderWidth: 1, backgroundColor: selected === opt ? '#FF6B00' : card, borderColor: selected === opt ? '#FF6B00' : border }}>
-                    <Text style={{ fontSize: 13, fontWeight: '600', textTransform: 'capitalize', color: selected === opt ? 'white' : textPrimary }}>
+                <TouchableOpacity
+                    key={opt}
+                    onPress={() => onSelect(opt)}
+                    activeOpacity={0.7}
+                    className={`px-4 py-2.5 rounded-xl border ${selected === opt
+                            ? 'bg-[#FF6900] border-[#FF6900]'
+                            : 'bg-[#F6F8FA] dark:bg-[#161B22] border-[#D0D7DE] dark:border-[#30363D]'
+                        }`}
+                >
+                    <Text className={`text-[13px] font-bold capitalize ${selected === opt ? 'text-white' : 'text-gray-900 dark:text-white'
+                        }`}>
                         {opt.replace(/_/g, ' ')}
                     </Text>
                 </TouchableOpacity>
@@ -865,20 +899,35 @@ const RenderPicker = ({ label, options, selected, onSelect, isDark, textPrimary,
     </View>
 );
 
-const RenderMultiSelect = ({ label, items, selectedIds, toggleItem, displayFn, isDark, textPrimary, textSecondary, border, card }: any) => (
-    <View style={{ marginBottom: 16 }}>
-        <Text style={{ fontSize: 13, fontWeight: '600', color: textSecondary, marginBottom: 6 }}>{label}</Text>
+const RenderMultiSelect = ({ label, items, selectedIds, toggleItem, displayFn, isDark }: any) => (
+    <View className="mb-5">
+        <Text className="text-[11px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest mb-2">
+            {label}
+        </Text>
         {items.length === 0
-            ? <Text style={{ color: textSecondary, fontSize: 13, fontStyle: 'italic' }}>No items available</Text>
+            ? <Text className="text-gray-500 dark:text-gray-400 text-[13px]">No items available</Text>
             : items.map((item: any) => {
                 const isSelected = selectedIds.includes(item.id);
                 return (
-                    <TouchableOpacity key={item.id} onPress={() => toggleItem(item.id)}
-                        style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12, borderRadius: 12, borderWidth: 1, marginBottom: 8, backgroundColor: isSelected ? '#FF6B00' : card, borderColor: isSelected ? '#FF6B00' : border }}>
-                        <View style={{ width: 20, height: 20, borderRadius: 4, borderWidth: 1, marginRight: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: isSelected ? 'white' : 'transparent', borderColor: isSelected ? 'white' : textSecondary }}>
-                            {isSelected && <Ionicons name="checkmark" size={12} color="#FF6B00" />}
+                    <TouchableOpacity
+                        key={item.id}
+                        onPress={() => toggleItem(item.id)}
+                        activeOpacity={0.7}
+                        className={`flex-row items-center px-4 py-3.5 rounded-xl border mb-2 ${isSelected
+                                ? 'bg-[#FF6900] border-[#FF6900]'
+                                : 'bg-[#F6F8FA] dark:bg-[#161B22] border-[#D0D7DE] dark:border-[#30363D]'
+                            }`}
+                    >
+                        <View className={`w-5 h-5 rounded border mr-3 items-center justify-center ${isSelected
+                                ? 'bg-white border-white'
+                                : 'bg-transparent border-gray-400 dark:border-gray-500'
+                            }`}>
+                            {isSelected && <Ionicons name="checkmark" size={12} color="#FF6900" />}
                         </View>
-                        <Text style={{ fontWeight: '500', color: isSelected ? 'white' : textPrimary }}>{displayFn(item)}</Text>
+                        <Text className={`text-[14px] font-semibold ${isSelected ? 'text-white' : 'text-gray-900 dark:text-white'
+                            }`}>
+                            {displayFn(item)}
+                        </Text>
                     </TouchableOpacity>
                 );
             })

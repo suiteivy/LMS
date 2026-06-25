@@ -36,7 +36,7 @@ interface FeatureCardProps {
 
 const FeatureCard = ({ icon: Icon, title, description, color, bgColor, darkBgColor, route, badge, isDark, tooltipId, tier }: FeatureCardProps) => (
     <TouchableOpacity
-        className="flex-row items-center p-4 mb-3 rounded-2xl bg-[#F6F8FA] dark:bg-[#161B22] border border-[#D0D7DE] dark:border-[#21262D]"
+        className="flex-row items-center p-4 mb-3 rounded-xl bg-[#F6F8FA] dark:bg-[#161B22] border border-[#D0D7DE] dark:border-[#21262D]"
         onPress={() => {
             if (route === '#') {
                 alert('Coming Soon');
@@ -46,22 +46,22 @@ const FeatureCard = ({ icon: Icon, title, description, color, bgColor, darkBgCol
         }}
         activeOpacity={0.7}
     >
-        <View style={{ backgroundColor: isDark ? (darkBgColor ?? bgColor) : bgColor, padding: 12, borderRadius: 12, marginRight: 16 }}>
-            <Icon size={24} color={color} />
+        <View className="w-10 h-10 rounded-xl bg-[#EAEEF2] dark:bg-[#1C2128] items-center justify-center mr-3">
+            <Icon size={20} color={color} />
         </View>
-        <View style={{ flex: 1 }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                <Text style={{ color: isDark ? '#f1f1f1' : '#111827', fontWeight: 'bold', fontSize: 15 }}>{title}</Text>
+        <View className="flex-1 pr-2">
+            <View className="flex-row items-center">
+                <Text className="text-gray-900 dark:text-white font-bold text-base">{title}</Text>
                 {tooltipId ? <HelpTooltip id={tooltipId} role="admin" tier={tier} onLearnMore={(a) => router.push({ pathname: '/(admin)/settings/settings', params: { manual: '1', anchor: a || 'reports-ops' } } as any)} /> : null}
                 {badge && (
-                    <View style={{ marginLeft: 8, backgroundColor: '#ef4444', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 999 }}>
-                        <Text style={{ color: 'white', fontSize: 11, fontWeight: 'bold' }}>{badge}</Text>
+                    <View className="ml-2 bg-[#FF6900] px-2 py-0.5 rounded-md">
+                        <Text className="text-white text-[8px] font-bold uppercase tracking-widest">{badge}</Text>
                     </View>
                 )}
             </View>
-            <Text className="text-gray-500 dark:text-gray-400 text-[13px] mt-1">{description}</Text>
+            <Text className="text-gray-500 dark:text-gray-400 text-xs mt-0.5">{description}</Text>
         </View>
-        <ChevronRight size={20} color={isDark ? '#4b5563' : '#9CA3AF'} />
+        <ChevronRight size={18} color="#9CA3AF" />
     </TouchableOpacity>
 );
 
@@ -199,28 +199,21 @@ export default function AdminManagement() {
             <ScrollView
                 className="flex-1"
                 showsVerticalScrollIndicator={false}
-                contentContainerStyle={{ paddingBottom: 100 }}
+                contentContainerStyle={{ paddingBottom: 60 }}
             >
-                <View className="p-4 md:p-8">
-                    {/* Quick Stats Row */}
-                    <View style={{ flexDirection: 'row', gap: 12, marginBottom: 24 }}>
-                        {/* Total Students */}
-                        <View className="flex-1 p-4 rounded-3xl bg-[#2563eb]">
-                            <Text className="text-[#bfdbfe] text-[10px] font-bold uppercase tracking-widest">
-                                Students
-                            </Text>
-                            <Text className="text-white text-2xl font-black mt-1 tracking-tight">
-                                {loading ? "..." : getStatValue("Total Students")}
+                <View className="px-4 pt-4 pb-2">
+                    {/* Inline Hero Stats */}
+                    <View className="flex-row gap-8 mb-4">
+                        <View>
+                            <Text className="text-gray-500 dark:text-gray-400 text-xs uppercase tracking-widest mb-1">Students</Text>
+                            <Text className="text-gray-900 dark:text-white text-3xl font-black">
+                                {loading ? "—" : getStatValue("Total Students")}
                             </Text>
                         </View>
-
-                        {/* Teachers — always orange, brand color */}
-                        <View className="flex-1 p-4 rounded-3xl bg-[#FF6900]">
-                            <Text className="text-white/75 text-[10px] font-bold uppercase tracking-widest">
-                                Teachers
-                            </Text>
-                            <Text className="text-white text-2xl font-black mt-1 tracking-tight">
-                                {loading ? "..." : getStatValue("Teachers")}
+                        <View>
+                            <Text className="text-gray-500 dark:text-gray-400 text-xs uppercase tracking-widest mb-1">Teachers</Text>
+                            <Text className="text-gray-900 dark:text-white text-3xl font-black">
+                                {loading ? "—" : getStatValue("Teachers")}
                             </Text>
                         </View>
                     </View>

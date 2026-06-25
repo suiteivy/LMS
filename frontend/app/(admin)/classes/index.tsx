@@ -3,6 +3,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { supabase } from '@/libs/supabase';
 import { AutoAssignResult, ClassItem, ClassService, ClassStudent } from '@/services/ClassService';
+import { showError } from '@/utils/toast';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
@@ -128,19 +129,19 @@ export default function AdminClassManagement() {
     );
 
     // ─── Theme helpers ─────────────────────────────────────
-    const bg = isDark ? '#0F0B2E' : '#F9FAFB';
-    const card = isDark ? '#13103A' : '#FFFFFF';
-    const border = isDark ? 'rgba(255,255,255,0.1)' : '#F3F4F6';
-    const textPrimary = isDark ? '#F9FAFB' : '#111827';
+    const bg = isDark ? '#0D1117' : '#FFFFFF';
+    const card = isDark ? '#161B22' : '#F6F8FA';
+    const border = isDark ? '#21262D' : '#D0D7DE';
+    const textPrimary = isDark ? '#FFFFFF' : '#111827';
     const textSecondary = isDark ? '#9CA3AF' : '#6B7280';
     const textMuted = isDark ? '#6B7280' : '#9CA3AF';
-    const inputBg = isDark ? 'rgba(255,255,255,0.1)' : '#F9FAFB';
-    const inputBorder = isDark ? '#3F3F3F' : '#E5E7EB';
-    const pillInactive = isDark ? 'rgba(255,255,255,0.1)' : '#FFFFFF';
-    const pillInactiveBorder = isDark ? '#3F3F3F' : '#E5E7EB';
+    const inputBg = isDark ? '#1C2128' : '#EAEEF2';
+    const inputBorder = isDark ? '#21262D' : '#D0D7DE';
+    const pillInactive = isDark ? '#1C2128' : '#EAEEF2';
+    const pillInactiveBorder = isDark ? '#21262D' : '#D0D7DE';
     const pillInactiveText = isDark ? '#9CA3AF' : '#4B5563';
-    const modalBg = isDark ? '#13103A' : '#FFFFFF';
-    const sectionBg = isDark ? '#1A1650' : '#F9FAFB';
+    const modalBg = isDark ? '#161B22' : '#F6F8FA';
+    const sectionBg = isDark ? '#1C2128' : '#EAEEF2';
 
     // ─── Data Loading ──────────────────────────────────────
     const loadClasses = useCallback(async () => {
@@ -187,7 +188,7 @@ export default function AdminClassManagement() {
     };
 
     useEffect(() => {
-        if (formName.length >= 1) {
+        if (formName && formName.length >= 1) {
             const suggestions = getNameSuggestions(formName, formLevel, classes);
             setNameSuggestions(suggestions);
             setShowSuggestions(suggestions.length > 0);
@@ -302,8 +303,8 @@ export default function AdminClassManagement() {
     };
 
     const handleSave = async () => {
-        if (!formName.trim()) {
-            Alert.alert('Validation', 'Class name is required');
+        if (!formName || formName.trim() === '') {
+            showError('Validation', 'Class name is required');
             return;
         }
         setSaving(true);
@@ -483,7 +484,7 @@ export default function AdminClassManagement() {
     if (loading) {
         return (
             <SafeAreaView edges={['top']} style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: bg }}>
-                <ActivityIndicator size="large" color="#FF6B00" />
+                <ActivityIndicator size="large" color="#FF6900" />
             </SafeAreaView>
         );
     }
@@ -518,7 +519,7 @@ export default function AdminClassManagement() {
 
                             <TouchableOpacity
                                 onPress={() => { setStreamLevel(''); setStreamCount(4); setStreamClasses([]); setShowStreamModal(true); }}
-                                style={{ backgroundColor: '#FF6B00', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 12, flexDirection: 'row', alignItems: 'center' }}
+                                style={{ backgroundColor: '#FF6900', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 12, flexDirection: 'row', alignItems: 'center' }}
                             >
                                 <Ionicons name="apps" size={15} color="white" />
                                 <Text style={{ color: 'white', fontWeight: '700', fontSize: 12, marginLeft: 5 }}>Streams</Text>
@@ -526,7 +527,7 @@ export default function AdminClassManagement() {
 
                             <TouchableOpacity
                                 onPress={openCreateModal}
-                                style={{ backgroundColor: isDark ? '#FF6B00' : '#111827', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 12, flexDirection: 'row', alignItems: 'center' }}
+                                style={{ backgroundColor: isDark ? '#FF6900' : '#111827', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 12, flexDirection: 'row', alignItems: 'center' }}
                             >
                                 <Ionicons name="add" size={16} color="white" />
                                 <Text style={{ color: 'white', fontWeight: '700', fontSize: 12, marginLeft: 4 }}>New</Text>
@@ -541,8 +542,8 @@ export default function AdminClassManagement() {
                                 onPress={() => setLevelFilter('')}
                                 style={{
                                     paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20, borderWidth: 1,
-                                    backgroundColor: !levelFilter ? '#FF6B00' : pillInactive,
-                                    borderColor: !levelFilter ? '#FF6B00' : pillInactiveBorder,
+                                    backgroundColor: !levelFilter ? '#FF6900' : pillInactive,
+                                    borderColor: !levelFilter ? '#FF6900' : pillInactiveBorder,
                                 }}
                             >
                                 <Text style={{ fontSize: 12, fontWeight: '700', color: !levelFilter ? 'white' : pillInactiveText }}>All</Text>
@@ -553,8 +554,8 @@ export default function AdminClassManagement() {
                                     onPress={() => setLevelFilter(levelFilter === g ? '' : g)}
                                     style={{
                                         paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20, borderWidth: 1,
-                                        backgroundColor: levelFilter === g ? '#FF6B00' : pillInactive,
-                                        borderColor: levelFilter === g ? '#FF6B00' : pillInactiveBorder,
+                                        backgroundColor: levelFilter === g ? '#FF6900' : pillInactive,
+                                        borderColor: levelFilter === g ? '#FF6900' : pillInactiveBorder,
                                     }}
                                 >
                                     <Text style={{ fontSize: 12, fontWeight: '700', color: levelFilter === g ? 'white' : pillInactiveText }}>{g}</Text>
@@ -581,7 +582,7 @@ export default function AdminClassManagement() {
                                     padding: 16,
                                     borderRadius: 20,
                                     borderWidth: 1.5,
-                                    borderColor: selectedClass?.id === cls.id ? '#FF6B00' : border,
+                                    borderColor: selectedClass?.id === cls.id ? '#FF6900' : border,
                                     marginBottom: 12,
                                     shadowColor: '#000',
                                     shadowOpacity: isDark ? 0.3 : 0.06,
@@ -596,7 +597,7 @@ export default function AdminClassManagement() {
                                 <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
                                     <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
                                         <View style={{ backgroundColor: isDark ? '#2A1A0A' : '#FFF3E8', padding: 12, borderRadius: 14, marginRight: 12 }}>
-                                            <Ionicons name="school" size={22} color="#FF6B00" />
+                                            <Ionicons name="school" size={22} color="#FF6900" />
                                         </View>
                                         <View style={{ flex: 1 }}>
                                             <Text style={{ color: textPrimary, fontWeight: '700', fontSize: 15 }}>{cls.display_name || cls.name}</Text>
@@ -686,7 +687,7 @@ export default function AdminClassManagement() {
                             {/* Student list */}
                             {loadingStudents ? (
                                 <View style={{ padding: 24, alignItems: 'center' }}>
-                                    <ActivityIndicator color="#FF6B00" />
+                                    <ActivityIndicator color="#FF6900" />
                                 </View>
                             ) : students.length === 0 ? (
                                 <View style={{ padding: 24, alignItems: 'center' }}>
@@ -705,7 +706,7 @@ export default function AdminClassManagement() {
                                         }}
                                     >
                                         <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: isDark ? '#2A1A0A' : '#FFF3E8', alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
-                                            <Text style={{ color: '#FF6B00', fontWeight: '700', fontSize: 14 }}>
+                                            <Text style={{ color: '#FF6900', fontWeight: '700', fontSize: 14 }}>
                                                 {s.full_name?.charAt(0).toUpperCase() || '?'}
                                             </Text>
                                         </View>
@@ -755,8 +756,8 @@ export default function AdminClassManagement() {
                                                 onPress={() => setFormLevel(formLevel === g ? '' : g)}
                                                 style={{
                                                     paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, borderWidth: 1.5,
-                                                    backgroundColor: formLevel === g ? '#FF6B00' : pillInactive,
-                                                    borderColor: formLevel === g ? '#FF6B00' : pillInactiveBorder,
+                                                    backgroundColor: formLevel === g ? '#FF6900' : pillInactive,
+                                                    borderColor: formLevel === g ? '#FF6900' : pillInactiveBorder,
                                                 }}
                                             >
                                                 <Text style={{ fontSize: 12, fontWeight: '700', color: formLevel === g ? 'white' : pillInactiveText }}>{g}</Text>
@@ -792,9 +793,9 @@ export default function AdminClassManagement() {
                                 {/* Autocomplete dropdown */}
                                 {showSuggestions && nameSuggestions.length > 0 && (
                                     <View style={{
-                                        backgroundColor: card, borderWidth: 1.5, borderColor: '#FF6B00',
+                                        backgroundColor: card, borderWidth: 1.5, borderColor: '#FF6900',
                                         borderRadius: 14, marginTop: 4, overflow: 'hidden',
-                                        shadowColor: '#FF6B00', boxShadow: [{
+                                        shadowColor: '#FF6900', boxShadow: [{
                                             offsetX: 0,
                                             offsetY: 2,
                                             blurRadius: 8,
@@ -812,7 +813,7 @@ export default function AdminClassManagement() {
                                                     borderBottomColor: border,
                                                 }}
                                             >
-                                                <Ionicons name="sparkles-outline" size={14} color="#FF6B00" style={{ marginRight: 10 }} />
+                                                <Ionicons name="sparkles-outline" size={14} color="#FF6900" style={{ marginRight: 10 }} />
                                                 <Text style={{ color: textPrimary, fontSize: 14, fontWeight: '500' }}>{suggestion}</Text>
                                             </TouchableOpacity>
                                         ))}
@@ -832,10 +833,10 @@ export default function AdminClassManagement() {
                                                         style={{
                                                             paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20,
                                                             backgroundColor: isDark ? '#2A1A0A' : '#FFF3E8',
-                                                            borderWidth: 1, borderColor: isDark ? '#FF6B0040' : '#FFD0A8',
+                                                            borderWidth: 1, borderColor: isDark ? '#FF690040' : '#FFD0A8',
                                                         }}
                                                     >
-                                                        <Text style={{ color: '#FF6B00', fontSize: 12, fontWeight: '700' }}>{formLevel} {suffix}</Text>
+                                                        <Text style={{ color: '#FF6900', fontSize: 12, fontWeight: '700' }}>{formLevel} {suffix}</Text>
                                                     </TouchableOpacity>
                                                 ))}
                                             </View>
@@ -870,8 +871,8 @@ export default function AdminClassManagement() {
                                             onPress={() => setFormTeacher('')}
                                             style={{
                                                 paddingHorizontal: 16, paddingVertical: 12, borderRadius: 14, borderWidth: 1.5,
-                                                backgroundColor: !formTeacher ? (isDark ? '#FF6B00' : '#111827') : pillInactive,
-                                                borderColor: !formTeacher ? (isDark ? '#FF6B00' : '#111827') : pillInactiveBorder,
+                                                backgroundColor: !formTeacher ? (isDark ? '#FF6900' : '#111827') : pillInactive,
+                                                borderColor: !formTeacher ? (isDark ? '#FF6900' : '#111827') : pillInactiveBorder,
                                             }}
                                         >
                                             <Text style={{ fontSize: 14, fontWeight: '600', color: !formTeacher ? 'white' : textSecondary }}>None</Text>
@@ -885,8 +886,8 @@ export default function AdminClassManagement() {
                                                     disabled={!!assignedClass}
                                                     style={{
                                                         paddingHorizontal: 16, paddingVertical: 12, borderRadius: 14, borderWidth: 1.5,
-                                                        backgroundColor: formTeacher === t.id ? '#FF6B00' : (assignedClass ? (isDark ? 'rgba(255,255,255,0.05)' : '#f3f4f6') : pillInactive),
-                                                        borderColor: formTeacher === t.id ? '#FF6B00' : pillInactiveBorder,
+                                                        backgroundColor: formTeacher === t.id ? '#FF6900' : (assignedClass ? (isDark ? 'rgba(255,255,255,0.05)' : '#f3f4f6') : pillInactive),
+                                                        borderColor: formTeacher === t.id ? '#FF6900' : pillInactiveBorder,
                                                         opacity: assignedClass ? 0.5 : 1,
                                                     }}
                                                 >
@@ -904,7 +905,7 @@ export default function AdminClassManagement() {
                                 onPress={handleSave}
                                 disabled={saving}
                                 style={{
-                                    backgroundColor: '#FF6B00', paddingVertical: 16,
+                                    backgroundColor: '#FF6900', paddingVertical: 16,
                                     borderRadius: 16, alignItems: 'center', marginBottom: 8,
                                 }}
                             >

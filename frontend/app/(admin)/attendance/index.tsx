@@ -8,10 +8,10 @@ export default function AttendanceLanding() {
     const router = useRouter();
     const { isDark } = useTheme();
 
-    const surface = isDark ? '#13103A' : '#ffffff';
-    const border = isDark ? 'rgba(255,255,255,0.1)' : '#f3f4f6';
-    const textPrimary = isDark ? '#f1f1f1' : '#111827';
-    const textSecondary = isDark ? '#9ca3af' : '#6b7280';
+    const surface = isDark ? '#161B22' : '#F6F8FA';
+    const border = isDark ? '#21262D' : '#D0D7DE';
+    const textPrimary = isDark ? '#FFFFFF' : '#111827';
+    const textSecondary = isDark ? '#9CA3AF' : '#6B7280';
 
     const modules = [
         {
@@ -33,7 +33,7 @@ export default function AttendanceLanding() {
     ];
 
     return (
-        <View style={{ flex: 1, backgroundColor: isDark ? '#0F0B2E' : '#f9fafb' }}>
+        <View style={{ flex: 1, backgroundColor: isDark ? '#0D1117' : '#FFFFFF' }}>
             <UnifiedHeader
                 title="Management"
                 subtitle="Attendance Center"
@@ -54,21 +54,19 @@ export default function AttendanceLanding() {
                         style={{
                             backgroundColor: surface,
                             padding: 20,
-                            borderRadius: 24,
+                            borderRadius: 12,
                             borderWidth: 1,
                             borderColor: border,
                             marginBottom: 16,
                             flexDirection: 'row',
                             alignItems: 'center',
-                            shadowColor: '#000',
-                            shadowOpacity: isDark ? 0.3 : 0.05,
                             }}
                     >
                         <View style={{
-                            width: 52,
-                            height: 52,
-                            borderRadius: 16,
-                            backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#F3F4F6',
+                            width: 48,
+                            height: 48,
+                            borderRadius: 12,
+                            backgroundColor: isDark ? '#1C2128' : '#EAEEF2',
                             alignItems: 'center',
                             justifyContent: 'center',
                             marginRight: 16

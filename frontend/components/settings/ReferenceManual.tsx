@@ -137,11 +137,11 @@ export function ReferenceManual({ role, tier, initialAnchor }: ReferenceManualPr
     }
   }, [initialAnchor, scrollRef, anchorY]);
 
-  const bg = isDark ? '#0F0B2E' : '#F9FAFB';
-  const card = isDark ? '#13103A' : '#FFFFFF';
+  const bg = isDark ? '#0D1117' : '#F9FAFB';
+  const card = isDark ? '#10161f' : '#FFFFFF';
   const text = isDark ? '#F9FAFB' : '#111827';
   const muted = isDark ? '#9CA3AF' : '#6B7280';
-  const border = isDark ? 'rgba(255,255,255,0.12)' : '#E5E7EB';
+  const border = isDark ? '#30363d' : '#E5E7EB';
 
   const visibleModules = useMemo(
     () =>

@@ -4,6 +4,7 @@ import { ArrowLeft, FileText, Download, Users, TrendingUp, DollarSign, Calendar 
 import { router } from "expo-router";
 import { supabase } from "@/libs/supabase";
 import { useAuth } from "@/contexts/AuthContext";
+import { UnifiedHeader } from "@/components/common/UnifiedHeader";
 import { useTheme } from "@/contexts/ThemeContext"; // ← add this
 
 import { useSubscriptionTier } from "@/hooks/useSubscriptionTier";
@@ -80,15 +81,15 @@ export default function ReportsPage() {
     ];
 
     // Theme helpers — avoids repeating ternaries in JSX
-    const bg = isDark ? '#0F0B2E' : '#f9fafb';
-    const cardBg = isDark ? '#1a1744' : '#ffffff';
-    const cardBorder = isDark ? '#2d2a5e' : '#f3f4f6';
-    const textPrimary = isDark ? '#f9fafb' : '#111827';
-    const textSecondary = isDark ? '#94a3b8' : '#6b7280';
-    const textMuted = isDark ? '#64748b' : '#9CA3AF';
-    const backBtnBg = isDark ? '#1a1744' : '#ffffff';
-    const backBtnBorder = isDark ? '#2d2a5e' : '#f3f4f6';
-    const progressTrack = isDark ? '#1f2937' : '#f9fafb';
+    const bg = isDark ? '#0D1117' : '#FFFFFF';
+    const cardBg = isDark ? '#161B22' : '#F6F8FA';
+    const cardBorder = isDark ? '#21262D' : '#D0D7DE';
+    const textPrimary = isDark ? '#FFFFFF' : '#111827';
+    const textSecondary = isDark ? '#9CA3AF' : '#6B7280';
+    const textMuted = isDark ? '#6B7280' : '#9CA3AF';
+    const backBtnBg = isDark ? '#1C2128' : '#EAEEF2';
+    const backBtnBorder = isDark ? '#21262D' : '#D0D7DE';
+    const progressTrack = isDark ? '#1C2128' : '#EAEEF2';
 
     if (!tier.hasBursary) {
         return null;
@@ -97,7 +98,7 @@ export default function ReportsPage() {
     if (loading) {
         return (
             <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: bg }}>
-                <ActivityIndicator size="large" color="#FF6B00" />
+                <ActivityIndicator size="large" color="#FF6900" />
             </View>
         );
     }
@@ -105,22 +106,19 @@ export default function ReportsPage() {
     return (
         <View style={{ flex: 1, backgroundColor: bg }}>
             <StatusBar barStyle={isDark ? "light-content" : "dark-content"} />
-            <ScrollView style={{ flex: 1, paddingHorizontal: 16 }} contentContainerStyle={{ paddingBottom: 100 }}>
+            <UnifiedHeader
+                title="Management"
+                subtitle="Financial Reports"
+                role="Admin"
+                onBack={() => router.back()}
+                showNotification={false}
+            />
+            <ScrollView style={{ flex: 1, paddingHorizontal: 16, paddingTop: 16 }} contentContainerStyle={{ paddingBottom: 100 }}>
 
-                {/* Header */}
-                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 24 }}>
-                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                        <TouchableOpacity
-                            onPress={() => router.navigate('/(admin)/finance')}
-                            style={{ width: 40, height: 40, alignItems: 'center', justifyContent: 'center', borderRadius: 20, backgroundColor: backBtnBg, borderWidth: 1, borderColor: backBtnBorder, marginRight: 16 }}
-                        >
-                            <ArrowLeft size={20} color={textPrimary} />
-                        </TouchableOpacity>
-                        <Text style={{ fontSize: 20, fontWeight: '900', color: textPrimary }}>Financial Reports</Text>
-                    </View>
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', marginBottom: 24 }}>
                     <TouchableOpacity
                         onPress={handleExport}
-                        style={{ width: 40, height: 40, alignItems: 'center', justifyContent: 'center', borderRadius: 20, backgroundColor: '#FF6B00' }}
+                        style={{ width: 40, height: 40, alignItems: 'center', justifyContent: 'center', borderRadius: 20, backgroundColor: '#FF6900' }}
                     >
                         <Download size={20} color="white" />
                     </TouchableOpacity>
@@ -129,7 +127,7 @@ export default function ReportsPage() {
                 {/* Stats Grid */}
                 <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginBottom: 24 }}>
                     {statCards.map((card, i) => (
-                        <View key={i} style={{ flexBasis: '48%', flexGrow: 1, backgroundColor: card.bg, padding: 16, borderRadius: 24, borderWidth: 1, borderColor: card.cardBorder }}>
+                        <View key={i} style={{ flexBasis: '48%', flexGrow: 1, backgroundColor: card.bg, padding: 16, borderRadius: 12, borderWidth: 1, borderColor: card.cardBorder }}>
                             <View style={{ backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : card.bg, width: 40, height: 40, borderRadius: 12, justifyContent: 'center', alignItems: 'center', marginBottom: 12 }}>
                                 <card.icon size={20} color={card.color} />
                             </View>
@@ -142,19 +140,19 @@ export default function ReportsPage() {
                 {/* Schemes Breakdown */}
                 <Text style={{ fontSize: 18, fontWeight: '700', color: textPrimary, marginBottom: 16 }}>Allocation Breakdown</Text>
                 {bursaryStats.map((item, i) => (
-                    <View key={i} style={{ backgroundColor: cardBg, padding: 20, borderRadius: 24, borderWidth: 1, borderColor: cardBorder, marginBottom: 16 }}>
+                    <View key={i} style={{ backgroundColor: cardBg, padding: 20, borderRadius: 12, borderWidth: 1, borderColor: cardBorder, marginBottom: 16 }}>
                         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
                             <View>
                                 <Text style={{ color: textPrimary, fontWeight: '700' }}>{item.title}</Text>
                                 <Text style={{ color: textMuted, fontSize: 12 }}>Target: {item.target_group}</Text>
                             </View>
-                            <Text style={{ color: '#FF6B00', fontWeight: '900' }}>${item.amount.toLocaleString()}</Text>
+                            <Text style={{ color: '#FF6900', fontWeight: '900' }}>${item.amount.toLocaleString()}</Text>
                         </View>
 
                         {/* Progress bar */}
                         <View style={{ height: 8, backgroundColor: progressTrack, borderRadius: 999, overflow: 'hidden', marginBottom: 16 }}>
                             <View
-                                style={{ width: `${Math.min(100, (item.stats.disbursed / item.amount) * 100)}%`, height: '100%', backgroundColor: '#FF6B00', borderRadius: 999 }}
+                                style={{ width: `${Math.min(100, (item.stats.disbursed / item.amount) * 100)}%`, height: '100%', backgroundColor: '#FF6900', borderRadius: 999 }}
                             />
                         </View>
 
@@ -169,7 +167,7 @@ export default function ReportsPage() {
                             </View>
                             <View style={{ alignItems: 'flex-end' }}>
                                 <Text style={{ color: textMuted, fontSize: 10, fontWeight: '700', textTransform: 'uppercase' }}>Disbursed</Text>
-                                <Text style={{ color: '#FF6B00', fontWeight: '700', fontSize: 12 }}>${item.stats.disbursed.toLocaleString()}</Text>
+                                <Text style={{ color: '#FF6900', fontWeight: '700', fontSize: 12 }}>${item.stats.disbursed.toLocaleString()}</Text>
                             </View>
                         </View>
                     </View>
