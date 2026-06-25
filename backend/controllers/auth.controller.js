@@ -1,16 +1,129 @@
 const process = require("node:process");
+const crypto = require("node:crypto");
 const supabase = require("../utils/supabaseClient.js");
 const { sendEmail } = require("../utils/emailService.js");
 const { sendBulkInAppNotificationsWithHistory } = require('../services/notificationDelivery.service.js');
+const { canonicalRoleFrom, withRoleAliases } = require("../utils/roleAlias.js");
 
 // Generate a random 8-character temporary password
 const generateTempPassword = () => {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
-  let password = '';
+  const randomBytes = crypto.randomBytes(8);
+  let password = "";
   for (let i = 0; i < 8; i++) {
-    password += chars.charAt(Math.floor(Math.random() * chars.length));
+    password += chars[randomBytes[i] % chars.length];
   }
   return password;
+};
+
+const getRequestContext = (req) => ({
+  ip_address: req?.headers?.['x-forwarded-for'] || req?.socket?.remoteAddress || null,
+  user_agent: req?.headers?.['user-agent'] || null,
+});
+
+const writePasswordAuditLog = async ({
+  action,
+  actorUserId = null,
+  targetUserId = null,
+  targetEmail = null,
+  outcome = 'success',
+  reason = null,
+  ipAddress = null,
+  userAgent = null,
+  metadata = {},
+}) => {
+  try {
+    await supabase.from('password_audit_logs').insert({
+      action,
+      actor_user_id: actorUserId,
+      target_user_id: targetUserId,
+      target_email: targetEmail,
+      outcome,
+      reason,
+      ip_address: ipAddress,
+      user_agent: userAgent,
+      metadata,
+    });
+  } catch (auditError) {
+    console.error('Password audit log write failed:', auditError?.message || auditError);
+  }
+};
+
+const normalizeSecurityAnswer = (value) => {
+  if (typeof value !== 'string') return '';
+  return value.trim().toLowerCase().replace(/\s+/g, ' ');
+};
+
+const hashSecurityAnswer = (answer, salt) => {
+  return crypto
+    .createHash('sha256')
+    .update(`${salt}:${normalizeSecurityAnswer(answer)}`)
+    .digest('hex');
+};
+
+const buildCredentialDeliveryUrl = (token) => {
+  const base =
+    process.env.CREDENTIAL_DELIVERY_BASE_URL ||
+    process.env.EXPO_PUBLIC_APP_URL ||
+    'http://localhost:8081';
+  return `${base.replace(/\/+$/, '')}/credential-delivery?token=${encodeURIComponent(token)}`;
+};
+
+const createCredentialDeliveryToken = async ({
+  createdBy,
+  targetUserId,
+  targetEmail,
+  temporaryPassword,
+  metadata = {},
+}) => {
+  const token = crypto.randomBytes(24).toString('hex');
+  const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+
+  const { error } = await supabase.from('credential_delivery_tokens').insert({
+    token,
+    created_by: createdBy || null,
+    target_user_id: targetUserId || null,
+    target_email: targetEmail,
+    temporary_password: temporaryPassword,
+    metadata,
+    expires_at: expiresAt,
+  });
+
+  if (error) throw error;
+
+  return {
+    token,
+    expiresAt,
+    url: buildCredentialDeliveryUrl(token),
+  };
+};
+
+const buildCredentialDocument = ({
+  fullName,
+  role,
+  email,
+  temporaryPassword,
+  credentialUrl,
+  expiresAt,
+}) => {
+  const lines = [
+    'Cloudora LMS Credential Delivery',
+    `Name: ${fullName || 'N/A'}`,
+    `Role: ${role || 'N/A'}`,
+    `Email: ${email}`,
+    `Temporary password: ${temporaryPassword}`,
+  ];
+
+  if (credentialUrl) {
+    lines.push(`One-time credential link: ${credentialUrl}`);
+  }
+
+  if (expiresAt) {
+    lines.push(`Link expires at (UTC): ${expiresAt}`);
+  }
+
+  lines.push('Security notice: Change password immediately on first login.');
+  return lines.join('\n');
 };
 
 exports.login = async (req, res) => {
@@ -43,7 +156,7 @@ const { createClient } = require("@supabase/supabase-js");
 
     const { data: userData, error: userError } = await supabase
       .from("users")
-      .select("first_name, last_name, full_name, role, institution_id, admins!user_id(is_main)")
+      .select("first_name, last_name, full_name, role, institution_id, must_change_password, requires_security_questions_setup, admins!user_id(is_main)")
       .eq("id", user.id)
       .single();
 
@@ -110,19 +223,21 @@ const { createClient } = require("@supabase/supabase-js");
       message: "Login successful",
       token: authData.session.access_token,
       expiresIn,
-      user: {
+      user: withRoleAliases({
         uid: user.id,
         email: user.email,
         full_name: userData.full_name,
         first_name: userData.first_name,
         last_name: userData.last_name,
         role: userData.role,
+        must_change_password: !!userData.must_change_password,
+        requires_security_questions_setup: !!userData.requires_security_questions_setup,
         institution_id: userData.institution_id,
-        isMain,
         isPlatformAdmin,
+        isMain,
         customId,
         subscription
-      },
+      }),
     });
   } catch (err) {
     res.status(401).json({ error: err.message });
@@ -356,6 +471,8 @@ exports.enrollUser = async (req, res) => {
       first_name: fName,
       last_name: lName,
       role,
+      must_change_password: true,
+      requires_security_questions_setup: true,
       phone: phone || null,
       gender: gender || null,
       date_of_birth: date_of_birth || null,
@@ -425,6 +542,8 @@ exports.enrollUser = async (req, res) => {
             first_name: parent_info.first_name || '',
             last_name: parent_info.last_name || '',
             role: 'parent',
+            must_change_password: true,
+            requires_security_questions_setup: true,
             phone: parent_info.phone || null,
             institution_id: targetInstitutionId,
           });
@@ -452,7 +571,7 @@ exports.enrollUser = async (req, res) => {
             address: parent_info.address || null,
           }).eq('id', pData.id);
 
-          if (customId) {
+            if (customId) {
             // Link parent to student
             const { error: linkErr } = await supabase.from('parent_students').insert({
               parent_id: pData.id,
@@ -462,9 +581,29 @@ exports.enrollUser = async (req, res) => {
 
             if (linkErr) throw linkErr;
 
+            const parentCredentialDelivery = await createCredentialDeliveryToken({
+              createdBy: req.userId || null,
+              targetUserId: pUid,
+              targetEmail: parent_info.email,
+              temporaryPassword: parentTempPass,
+              metadata: {
+                role: 'parent',
+                enrolled_from_student_id: customId,
+              },
+            });
+
             parentResult = {
               email: parent_info.email,
               tempPassword: parentTempPass,
+              credential_delivery: parentCredentialDelivery,
+              credential_document: buildCredentialDocument({
+                fullName: `${parent_info.first_name || ''} ${parent_info.last_name || ''}`.trim(),
+                role: 'parent',
+                email: parent_info.email,
+                temporaryPassword: parentTempPass,
+                credentialUrl: parentCredentialDelivery.url,
+                expiresAt: parentCredentialDelivery.expiresAt,
+              }),
               customId: pData.id,
               full_name: `${parent_info.first_name || ''} ${parent_info.last_name || ''}`.trim()
             };
@@ -572,11 +711,31 @@ exports.enrollUser = async (req, res) => {
       customId = bursarData?.id;
     }
 
+    const credentialDelivery = await createCredentialDeliveryToken({
+      createdBy: req.userId || null,
+      targetUserId: uid,
+      targetEmail: finalEmail,
+      temporaryPassword: tempPassword,
+      metadata: {
+        role,
+        institution_id: targetInstitutionId || null,
+      },
+    });
+
     res.status(201).json({
       message: "User enrolled successfully",
       uid,
       email: finalEmail,
       tempPassword,
+      credential_delivery: credentialDelivery,
+      credential_document: buildCredentialDocument({
+        fullName: finalFullName,
+        role,
+        email: finalEmail,
+        temporaryPassword: tempPassword,
+        credentialUrl: credentialDelivery.url,
+        expiresAt: credentialDelivery.expiresAt,
+      }),
       customId,
       role,
       parentResult // Included if role was student and parent was created
@@ -916,6 +1075,7 @@ exports.changePassword = async (req, res) => {
   try {
     const { current_password, new_password } = req.body;
     const userId = req.userId;
+    const { ip_address: ipAddress, user_agent: userAgent } = getRequestContext(req);
 
     if (!current_password || !new_password) {
       return res.status(400).json({ error: "Current password and new password are required" });
@@ -942,6 +1102,16 @@ exports.changePassword = async (req, res) => {
     });
 
     if (signInError) {
+      await writePasswordAuditLog({
+        action: 'change_password',
+        actorUserId: userId,
+        targetUserId: userId,
+        targetEmail: userData.email,
+        outcome: 'failure',
+        reason: 'current_password_incorrect',
+        ipAddress,
+        userAgent,
+      });
       return res.status(401).json({ error: "Current password is incorrect" });
     }
 
@@ -952,9 +1122,33 @@ exports.changePassword = async (req, res) => {
 
     if (updateError) throw updateError;
 
+    await supabase
+      .from('users')
+      .update({ must_change_password: false })
+      .eq('id', userId);
+
+    await writePasswordAuditLog({
+      action: 'change_password',
+      actorUserId: userId,
+      targetUserId: userId,
+      targetEmail: userData.email,
+      outcome: 'success',
+      ipAddress,
+      userAgent,
+    });
+
     res.status(200).json({ message: "Password changed successfully" });
   } catch (err) {
     console.error("changePassword error:", err);
+    await writePasswordAuditLog({
+      action: 'change_password',
+      actorUserId: req.userId || null,
+      targetUserId: req.userId || null,
+      outcome: 'failure',
+      reason: err?.message || 'change_password_failed',
+      ipAddress: req?.headers?.['x-forwarded-for'] || req?.socket?.remoteAddress || null,
+      userAgent: req?.headers?.['user-agent'] || null,
+    });
     res.status(500).json({ error: err.message || "Failed to change password" });
   }
 };
@@ -969,6 +1163,7 @@ exports.adminResetPassword = async (req, res) => {
     const adminId = req.userId;
     const adminRole = req.userRole;
     const adminInstId = req.institution_id;
+    const { ip_address: ipAddress, user_agent: userAgent } = getRequestContext(req);
 
     if (!targetUserId || !newPassword) {
       return res.status(400).json({ error: "Target user ID and new password are required" });
@@ -995,14 +1190,44 @@ exports.adminResetPassword = async (req, res) => {
     } else if (adminRole === 'admin') {
       // Regular admin can only reset users in their own institution
       if (targetUser.institution_id !== adminInstId) {
+        await writePasswordAuditLog({
+          action: 'admin_reset_password',
+          actorUserId: adminId,
+          targetUserId,
+          outcome: 'failure',
+          reason: 'cross_institution_denied',
+          ipAddress,
+          userAgent,
+          metadata: { admin_role: adminRole },
+        });
         return res.status(403).json({ error: "Access denied. Target user belongs to a different institution." });
       }
       // Admins cannot reset other admins (except themselves via changePassword)
       // They must contact Master Admin for platform-level reset as per user request
       if (targetUser.role === 'admin' && targetUserId !== adminId) {
+        await writePasswordAuditLog({
+          action: 'admin_reset_password',
+          actorUserId: adminId,
+          targetUserId,
+          outcome: 'failure',
+          reason: 'admin_to_admin_denied',
+          ipAddress,
+          userAgent,
+          metadata: { admin_role: adminRole },
+        });
         return res.status(403).json({ error: "As an institution administrator, you cannot reset other administrators. Please contact the Master Admin." });
       }
     } else {
+      await writePasswordAuditLog({
+        action: 'admin_reset_password',
+        actorUserId: adminId,
+        targetUserId,
+        outcome: 'failure',
+        reason: 'insufficient_permissions',
+        ipAddress,
+        userAgent,
+        metadata: { admin_role: adminRole },
+      });
       return res.status(403).json({ error: "Unauthorized. Insufficient permissions." });
     }
 
@@ -1013,9 +1238,39 @@ exports.adminResetPassword = async (req, res) => {
 
     if (updateError) throw updateError;
 
+    await supabase
+      .from('users')
+      .update({
+        must_change_password: true,
+        requires_security_questions_setup: true,
+      })
+      .eq('id', targetUserId);
+
+    const { data: targetEmailRow } = await supabase.from('users').select('email').eq('id', targetUserId).maybeSingle();
+    await writePasswordAuditLog({
+      action: 'admin_reset_password',
+      actorUserId: adminId,
+      targetUserId,
+      targetEmail: targetEmailRow?.email || null,
+      outcome: 'success',
+      ipAddress,
+      userAgent,
+      metadata: { admin_role: adminRole },
+    });
+
     res.status(200).json({ message: "User password has been reset successfully." });
   } catch (err) {
     console.error("adminResetPassword error:", err);
+    await writePasswordAuditLog({
+      action: 'admin_reset_password',
+      actorUserId: req.userId || null,
+      targetUserId: req.body?.targetUserId || null,
+      outcome: 'failure',
+      reason: err?.message || 'admin_reset_failed',
+      ipAddress: req?.headers?.['x-forwarded-for'] || req?.socket?.remoteAddress || null,
+      userAgent: req?.headers?.['user-agent'] || null,
+      metadata: { admin_role: req.userRole || null },
+    });
     res.status(500).json({ error: err.message || "Failed to reset user password" });
   }
 };
@@ -1026,6 +1281,7 @@ exports.adminResetPassword = async (req, res) => {
 exports.forgotPassword = async (req, res) => {
   try {
     const { email } = req.body;
+    const { ip_address: ipAddress, user_agent: userAgent } = getRequestContext(req);
 
     if (!email) {
       return res.status(400).json({ error: "Email is required" });
@@ -1040,6 +1296,14 @@ exports.forgotPassword = async (req, res) => {
       .gt('requested_at', new Date(Date.now() - 3600000).toISOString()); // Last 1 hour
 
     if (recentRequests && recentRequests.length >= 3) {
+      await writePasswordAuditLog({
+        action: 'forgot_password_request',
+        targetEmail: email,
+        outcome: 'failure',
+        reason: 'rate_limit_exceeded',
+        ipAddress,
+        userAgent,
+      });
       return res.status(429).json({ 
         error: "Too many password reset requests. Please try again in an hour.",
         code: 'RATE_LIMIT_EXCEEDED'
@@ -1057,6 +1321,16 @@ exports.forgotPassword = async (req, res) => {
       .single();
 
     if (userData) {
+      await writePasswordAuditLog({
+        action: 'forgot_password_request',
+        targetUserId: userData.id,
+        targetEmail: email,
+        outcome: 'requested',
+        ipAddress,
+        userAgent,
+        metadata: { role: userData.role, institution_id: userData.institution_id || null },
+      });
+
       const rawPlan = userData.institutions?.subscription_plan;
       const plan = ((p) => {
         const mapping = {
@@ -1117,6 +1391,15 @@ exports.forgotPassword = async (req, res) => {
           });
         }
       }
+    } else {
+      await writePasswordAuditLog({
+        action: 'forgot_password_request',
+        targetEmail: email,
+        outcome: 'requested',
+        reason: 'email_not_found_or_hidden',
+        ipAddress,
+        userAgent,
+      });
     }
 
     const { createClient } = require("@supabase/supabase-js");
@@ -1136,6 +1419,14 @@ exports.forgotPassword = async (req, res) => {
     res.status(200).json({ message: "If an account with that email exists, a reset link has been sent." });
   } catch (err) {
     console.error("forgotPassword error:", err);
+    await writePasswordAuditLog({
+      action: 'forgot_password_request',
+      targetEmail: req.body?.email || null,
+      outcome: 'failure',
+      reason: err?.message || 'forgot_password_failed',
+      ipAddress: req?.headers?.['x-forwarded-for'] || req?.socket?.remoteAddress || null,
+      userAgent: req?.headers?.['user-agent'] || null,
+    });
     // Still return 200 to not leak info
     res.status(200).json({ message: "If an account with that email exists, a reset link has been sent." });
   }
@@ -1147,6 +1438,7 @@ exports.forgotPassword = async (req, res) => {
 exports.resetPassword = async (req, res) => {
   try {
     const { access_token, new_password } = req.body;
+    const { ip_address: ipAddress, user_agent: userAgent } = getRequestContext(req);
 
     if (!access_token || !new_password) {
       return res.status(400).json({ error: "Access token and new password are required" });
@@ -1166,6 +1458,13 @@ exports.resetPassword = async (req, res) => {
 
     const { data: { user }, error: getUserError } = await scopedClient.auth.getUser(access_token);
     if (getUserError || !user) {
+      await writePasswordAuditLog({
+        action: 'reset_password',
+        outcome: 'failure',
+        reason: 'invalid_or_expired_reset_token',
+        ipAddress,
+        userAgent,
+      });
       return res.status(401).json({ error: "Invalid or expired reset token" });
     }
 
@@ -1176,10 +1475,225 @@ exports.resetPassword = async (req, res) => {
 
     if (updateError) throw updateError;
 
+    await supabase
+      .from('users')
+      .update({
+        must_change_password: false,
+        requires_security_questions_setup: false,
+      })
+      .eq('id', user.id);
+
+    await writePasswordAuditLog({
+      action: 'reset_password',
+      actorUserId: user.id,
+      targetUserId: user.id,
+      targetEmail: user.email || null,
+      outcome: 'success',
+      ipAddress,
+      userAgent,
+    });
+
     res.status(200).json({ message: "Password reset successfully" });
   } catch (err) {
     console.error("resetPassword error:", err);
+    await writePasswordAuditLog({
+      action: 'reset_password',
+      outcome: 'failure',
+      reason: err?.message || 'reset_password_failed',
+      ipAddress: req?.headers?.['x-forwarded-for'] || req?.socket?.remoteAddress || null,
+      userAgent: req?.headers?.['user-agent'] || null,
+    });
     res.status(500).json({ error: err.message || "Failed to reset password" });
+  }
+};
+
+/**
+ * Setup or update security questions for authenticated user.
+ */
+exports.setupSecurityQuestions = async (req, res) => {
+  try {
+    const userId = req.userId;
+    const { question1, question2, question3 } = req.body || {};
+
+    if (!question1 || !question2 || !question3) {
+      return res.status(400).json({ error: 'All security questions are required' });
+    }
+
+    const q1 = normalizeSecurityAnswer(question1);
+    const q2 = normalizeSecurityAnswer(question2);
+    const q3 = normalizeSecurityAnswer(question3);
+
+    if (!q1 || !q2 || !q3) {
+      return res.status(400).json({ error: 'Security question answers cannot be empty' });
+    }
+
+    const s1 = crypto.randomBytes(16).toString('hex');
+    const s2 = crypto.randomBytes(16).toString('hex');
+    const s3 = crypto.randomBytes(16).toString('hex');
+
+    const payload = {
+      user_id: userId,
+      question1_salt: s1,
+      question1_hash: hashSecurityAnswer(q1, s1),
+      question2_salt: s2,
+      question2_hash: hashSecurityAnswer(q2, s2),
+      question3_salt: s3,
+      question3_hash: hashSecurityAnswer(q3, s3),
+      updated_at: new Date().toISOString(),
+    };
+
+    const { error } = await supabase
+      .from('user_security_answers')
+      .upsert(payload, { onConflict: 'user_id' });
+
+    if (error) throw error;
+
+    await supabase
+      .from('users')
+      .update({ requires_security_questions_setup: false })
+      .eq('id', userId);
+
+    return res.status(200).json({ message: 'Security questions saved successfully' });
+  } catch (err) {
+    console.error('setupSecurityQuestions error:', err);
+    return res.status(500).json({ error: err.message || 'Failed to save security questions' });
+  }
+};
+
+/**
+ * Verify security questions and optionally reset password.
+ */
+exports.verifySecurityQuestions = async (req, res) => {
+  try {
+    const { email, question1, question2, question3, new_password } = req.body || {};
+    const { ip_address: ipAddress, user_agent: userAgent } = getRequestContext(req);
+
+    if (!email || !question1 || !question2 || !question3) {
+      return res.status(400).json({ error: 'Email and all security question answers are required' });
+    }
+
+    const { data: userRow } = await supabase
+      .from('users')
+      .select('id, email')
+      .eq('email', email)
+      .maybeSingle();
+
+    if (!userRow) {
+      return res.status(200).json({ verified: false, message: 'Invalid verification details' });
+    }
+
+    const { data: answers, error: answersError } = await supabase
+      .from('user_security_answers')
+      .select('*')
+      .eq('user_id', userRow.id)
+      .maybeSingle();
+
+    if (answersError || !answers) {
+      return res.status(200).json({ verified: false, message: 'Security questions are not configured for this account' });
+    }
+
+    const isValid =
+      hashSecurityAnswer(question1, answers.question1_salt) === answers.question1_hash &&
+      hashSecurityAnswer(question2, answers.question2_salt) === answers.question2_hash &&
+      hashSecurityAnswer(question3, answers.question3_salt) === answers.question3_hash;
+
+    if (!isValid) {
+      await writePasswordAuditLog({
+        action: 'forgot_password_request',
+        targetUserId: userRow.id,
+        targetEmail: userRow.email,
+        outcome: 'failure',
+        reason: 'security_questions_verification_failed',
+        ipAddress,
+        userAgent,
+      });
+      return res.status(200).json({ verified: false, message: 'Invalid verification details' });
+    }
+
+    if (new_password) {
+      if (new_password.length < 6) {
+        return res.status(400).json({ error: 'Password must be at least 6 characters' });
+      }
+
+      const { error: updateError } = await supabase.auth.admin.updateUserById(userRow.id, {
+        password: new_password,
+      });
+      if (updateError) throw updateError;
+
+      await supabase
+        .from('users')
+        .update({
+          must_change_password: false,
+          requires_security_questions_setup: false,
+        })
+        .eq('id', userRow.id);
+
+      await writePasswordAuditLog({
+        action: 'reset_password',
+        actorUserId: userRow.id,
+        targetUserId: userRow.id,
+        targetEmail: userRow.email,
+        outcome: 'success',
+        reason: 'security_questions_verified',
+        ipAddress,
+        userAgent,
+      });
+    }
+
+    return res.status(200).json({
+      verified: true,
+      message: new_password
+        ? 'Security verification complete and password updated'
+        : 'Security verification complete',
+    });
+  } catch (err) {
+    console.error('verifySecurityQuestions error:', err);
+    return res.status(500).json({ error: err.message || 'Failed to verify security questions' });
+  }
+};
+
+/**
+ * One-time credential delivery endpoint.
+ */
+exports.getCredentialDeliveryByToken = async (req, res) => {
+  try {
+    const token = req.params?.token;
+    if (!token) return res.status(400).json({ error: 'Token is required' });
+
+    const { data: row, error } = await supabase
+      .from('credential_delivery_tokens')
+      .select('id, target_email, temporary_password, expires_at, consumed_at')
+      .eq('token', token)
+      .maybeSingle();
+
+    if (error || !row) {
+      return res.status(404).json({ error: 'Credential token is invalid' });
+    }
+
+    const now = Date.now();
+    const expiresAtMs = new Date(row.expires_at).getTime();
+
+    if (row.consumed_at) {
+      return res.status(410).json({ error: 'Credential token has already been used' });
+    }
+
+    if (Number.isFinite(expiresAtMs) && now > expiresAtMs) {
+      return res.status(410).json({ error: 'Credential token has expired' });
+    }
+
+    await supabase
+      .from('credential_delivery_tokens')
+      .update({ consumed_at: new Date().toISOString() })
+      .eq('id', row.id);
+
+    return res.status(200).json({
+      email: row.target_email,
+      temporary_password: row.temporary_password,
+      consumed: true,
+    });
+  } catch (err) {
+    console.error('getCredentialDeliveryByToken error:', err);
+    return res.status(500).json({ error: err.message || 'Failed to load credentials' });
   }
 };
 

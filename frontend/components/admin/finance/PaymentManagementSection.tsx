@@ -755,6 +755,4 @@ export const PaymentManagementSection: React.FC<
   );
 };
 
-
-export { PaymentManagementSection };
 export default PaymentManagementSection;

@@ -1,14 +1,15 @@
 const supabase = require("../utils/supabaseClient.js");
 
 exports.createInstitution = async (req, res) => {
-  // Only admins can create institutions
-  if (req.userRole !== "admin") {
+  // Only platform admins can create institutions
+  if (req.userRole !== "master_admin") {
     return res
       .status(403)
-      .json({ error: "Only admins can create institutions" });
+      .json({ error: "Only master admins can create institutions" });
   }
 
-  const { name, location, email, plan = 'trial', category_id } = req.body;
+  const { name, location, email, category_id } = req.body;
+  const plan = 'trial';
   if (!name)
     return res.status(400).json({ error: "Institution name is required" });
 

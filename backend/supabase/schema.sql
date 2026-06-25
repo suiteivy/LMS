@@ -1,6 +1,7 @@
 -- ==========================================
 -- LMS SYSTEM MASTER SCHEMA
--- Consolidated: 2026-02-11
+-- Consolidated: 2026-06-25
+-- Includes messaging delivery/idempotency hardening
 -- ==========================================
 
 -- ---------------------------------------------------------
@@ -76,6 +77,8 @@ CREATE TABLE users (
     avatar_url TEXT,
     institution_id UUID REFERENCES institutions(id),
     is_main BOOLEAN DEFAULT false,
+    must_change_password BOOLEAN NOT NULL DEFAULT false,
+    requires_security_questions_setup BOOLEAN NOT NULL DEFAULT false,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -626,20 +629,76 @@ CREATE TABLE teacher_attendance (
 -- PART 6: COMMUNICATION MODULE
 -- ---------------------------------------------------------
 
--- 1. Messages
+-- 1. Conversations
+CREATE TABLE conversations (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    type TEXT NOT NULL DEFAULT 'DIRECT' CHECK (type IN ('DIRECT', 'GROUP')),
+    institution_id UUID NOT NULL REFERENCES institutions(id) ON DELETE CASCADE,
+    direct_key TEXT,
+    last_message_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE UNIQUE INDEX idx_conversations_direct_unique
+    ON conversations(institution_id, direct_key);
+
+CREATE INDEX idx_conversations_institution_last_message
+    ON conversations(institution_id, last_message_at DESC);
+
+-- 2. Conversation participants
+CREATE TABLE conversation_participants (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    conversation_id UUID NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    joined_at TIMESTAMPTZ DEFAULT NOW(),
+    deleted_at TIMESTAMPTZ,
+    last_delivered_at TIMESTAMPTZ,
+    last_read_at TIMESTAMPTZ,
+    is_typing BOOLEAN DEFAULT false,
+    UNIQUE (conversation_id, user_id)
+);
+
+CREATE INDEX idx_conversation_participants_user_deleted
+    ON conversation_participants(user_id, deleted_at);
+
+-- 3. Messages
 CREATE TABLE messages (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    conversation_id UUID REFERENCES conversations(id) ON DELETE CASCADE,
     sender_id UUID REFERENCES users(id) ON DELETE CASCADE,
     receiver_id UUID REFERENCES users(id) ON DELETE CASCADE,
     subject TEXT,
     content TEXT NOT NULL,
     is_read BOOLEAN DEFAULT false,
+    edited_at TIMESTAMPTZ,
+    deleted_for_everyone_at TIMESTAMPTZ,
+    hidden_for_user_ids UUID[] DEFAULT ARRAY[]::UUID[],
+    client_request_id TEXT,
     institution_id UUID REFERENCES institutions(id),
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 2. Notifications
+CREATE INDEX idx_messages_conversation_created
+    ON messages(conversation_id, created_at DESC);
+
+CREATE UNIQUE INDEX idx_messages_sender_conversation_client_request
+    ON messages(conversation_id, sender_id, client_request_id)
+    WHERE client_request_id IS NOT NULL;
+
+-- 4. Message edit history
+CREATE TABLE message_edit_history (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    message_id UUID NOT NULL REFERENCES messages(id) ON DELETE CASCADE,
+    content TEXT NOT NULL,
+    edited_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX idx_message_edit_history_message
+    ON message_edit_history(message_id);
+
+-- 5. Notifications
 CREATE TABLE notifications (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID REFERENCES users(id) ON DELETE CASCADE,
@@ -655,7 +714,7 @@ CREATE TABLE notifications (
 -- Term lock metadata for grade/report immutability
 
 
--- 3. User Preferences
+-- 6. User Preferences
 CREATE TABLE user_preferences (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID REFERENCES users(id) ON DELETE CASCADE UNIQUE,
@@ -1007,6 +1066,105 @@ CREATE TABLE password_reset_requests (
 );
 
 CREATE INDEX idx_password_reset_email_time ON password_reset_requests(email, requested_at);
+
+-- 2b. Password Audit Logs
+CREATE TABLE password_audit_logs (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    action TEXT NOT NULL CHECK (
+        action IN (
+            'change_password',
+            'admin_reset_password',
+            'forgot_password_request',
+            'reset_password'
+        )
+    ),
+    actor_user_id UUID REFERENCES users(id) ON DELETE SET NULL,
+    target_user_id UUID REFERENCES users(id) ON DELETE SET NULL,
+    target_email TEXT,
+    outcome TEXT NOT NULL DEFAULT 'success' CHECK (outcome IN ('success', 'failure', 'requested')),
+    reason TEXT,
+    ip_address TEXT,
+    user_agent TEXT,
+    metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX idx_password_audit_logs_created_at ON password_audit_logs(created_at DESC);
+CREATE INDEX idx_password_audit_logs_actor_user_id ON password_audit_logs(actor_user_id);
+CREATE INDEX idx_password_audit_logs_target_user_id ON password_audit_logs(target_user_id);
+CREATE INDEX idx_password_audit_logs_target_email ON password_audit_logs(target_email);
+
+ALTER TABLE password_audit_logs ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Master admins can view password audit logs"
+ON password_audit_logs FOR SELECT
+USING (
+    EXISTS (
+        SELECT 1 FROM users
+        WHERE id = auth.uid()
+          AND role = 'master_admin'
+    )
+);
+
+CREATE POLICY "No direct client writes password audit logs"
+ON password_audit_logs FOR ALL
+USING (false)
+WITH CHECK (false);
+
+-- 2c. Security Question Answers (hashed)
+CREATE TABLE user_security_answers (
+    user_id UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+    question1_hash TEXT NOT NULL,
+    question1_salt TEXT NOT NULL,
+    question2_hash TEXT NOT NULL,
+    question2_salt TEXT NOT NULL,
+    question3_hash TEXT NOT NULL,
+    question3_salt TEXT NOT NULL,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+ALTER TABLE user_security_answers ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can manage own security answers"
+ON user_security_answers FOR ALL
+USING (auth.uid() = user_id)
+WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Service role full access security answers"
+ON user_security_answers FOR ALL
+USING (auth.role() = 'service_role')
+WITH CHECK (auth.role() = 'service_role');
+
+-- 2d. One-time credential delivery tokens
+CREATE TABLE credential_delivery_tokens (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    token TEXT NOT NULL UNIQUE,
+    created_by UUID REFERENCES users(id) ON DELETE SET NULL,
+    target_user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+    target_email TEXT NOT NULL,
+    temporary_password TEXT NOT NULL,
+    metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
+    expires_at TIMESTAMPTZ NOT NULL,
+    consumed_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX idx_credential_delivery_tokens_token ON credential_delivery_tokens(token);
+CREATE INDEX idx_credential_delivery_tokens_expires_at ON credential_delivery_tokens(expires_at);
+CREATE INDEX idx_credential_delivery_tokens_consumed_at ON credential_delivery_tokens(consumed_at);
+
+ALTER TABLE credential_delivery_tokens ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Service role full access credential tokens"
+ON credential_delivery_tokens FOR ALL
+USING (auth.role() = 'service_role')
+WITH CHECK (auth.role() = 'service_role');
+
+CREATE POLICY "No client access credential tokens"
+ON credential_delivery_tokens FOR ALL
+USING (false)
+WITH CHECK (false);
 
 -- 3. Trial/Demo Sessions Tracking
 CREATE TABLE trial_sessions (

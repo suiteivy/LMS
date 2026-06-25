@@ -1,6 +1,44 @@
 // controllers/finance.controller.js
 const supabase = require("../utils/supabaseClient.js");
 
+const normalizeNumeric = (value, fallback = 0) => {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : fallback;
+};
+
+const resolveFeeStructureActiveState = async ({ institution_id, term_id, academic_year_id, termName, academicYearName, fallbackActive = false }) => {
+    if (!term_id && !termName) {
+        return !!fallbackActive;
+    }
+
+    let query = supabase
+        .from('terms')
+        .select('id, name, academic_year_id, is_current, academic_years(name)')
+        .eq('institution_id', institution_id);
+
+    if (term_id) {
+        query = query.eq('id', term_id);
+    } else {
+        query = query.eq('name', termName);
+    }
+
+    const { data: term, error: termError } = await query.maybeSingle();
+
+    if (termError || !term) {
+        return !!fallbackActive;
+    }
+
+    if (academic_year_id && term.academic_year_id && term.academic_year_id !== academic_year_id) {
+        return false;
+    }
+
+    if (academicYearName && term.academic_years?.name && term.academic_years.name !== academicYearName) {
+        return false;
+    }
+
+    return !!term.is_current;
+};
+
 /**
  * Create a new Fund
  */
@@ -334,7 +372,8 @@ exports.getFeeStructures = async (req, res) => {
         const { data, error } = await supabase
             .from("fee_structures")
             .select("*")
-            .eq("institution_id", institution_id);
+            .eq("institution_id", institution_id)
+            .order('created_at', { ascending: false });
 
         if (error) throw error;
         res.json(data);
@@ -352,11 +391,41 @@ exports.updateFeeStructure = async (req, res) => {
         const { userRole, institution_id } = req;
         if (!['admin', 'bursary', 'master_admin'].includes(userRole)) return res.status(403).json({ error: "Unauthorized" });
 
-        const { id, title, description, amount, academic_year, term, is_active } = req.body;
+        const id = req.params.id || req.body.id;
+        if (!id) return res.status(400).json({ error: 'Fee structure id is required' });
+
+        const {
+            title,
+            description,
+            amount,
+            academic_year,
+            term,
+            is_active,
+            academic_year_id,
+            term_id,
+        } = req.body;
+
+        const resolvedActiveState = await resolveFeeStructureActiveState({
+            institution_id,
+            term_id,
+            academic_year_id,
+            termName: term,
+            academicYearName: academic_year,
+            fallbackActive: is_active,
+        });
+
+        const updates = {
+            title,
+            description,
+            amount: normalizeNumeric(amount, 0),
+            academic_year,
+            term,
+            is_active: resolvedActiveState,
+        };
 
         const { data, error } = await supabase
             .from("fee_structures")
-            .update({ title, description, amount, academic_year, term, is_active })
+            .update(updates)
             .eq("id", id)
             .eq("institution_id", institution_id)
             .select()
@@ -378,17 +447,127 @@ exports.createFeeStructure = async (req, res) => {
         const { userRole, institution_id } = req;
         if (!['admin', 'bursary', 'master_admin'].includes(userRole)) return res.status(403).json({ error: "Unauthorized" });
 
-        const { title, description, amount, academic_year, term } = req.body;
+        const {
+            title,
+            description,
+            amount,
+            academic_year,
+            term,
+            academic_year_id,
+            term_id,
+            is_active,
+        } = req.body;
+
+        if (!title || amount === undefined || amount === null || Number.isNaN(Number(amount))) {
+            return res.status(400).json({ error: 'title and amount are required' });
+        }
+
+        const resolvedActiveState = await resolveFeeStructureActiveState({
+            institution_id,
+            term_id,
+            academic_year_id,
+            termName: term,
+            academicYearName: academic_year,
+            fallbackActive: is_active,
+        });
 
         const { data, error } = await supabase
             .from("fee_structures")
-            .insert([{ institution_id, title, description, amount, academic_year, term, is_active: true }])
+            .insert([{
+                institution_id,
+                title,
+                description,
+                amount: normalizeNumeric(amount, 0),
+                academic_year,
+                term,
+                is_active: resolvedActiveState,
+            }])
             .select()
             .single();
 
         if (error) throw error;
         res.status(201).json(data);
     } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+};
+
+exports.releaseFeeStructure = async (req, res) => {
+    try {
+        const { userRole, institution_id } = req;
+        const { id } = req.params;
+        const strictCurrentPair =
+            req.query?.strict_current_pair === 'true' ||
+            req.query?.strict_current_pair === '1' ||
+            req.body?.strict_current_pair === true;
+        if (!['admin', 'bursary', 'master_admin'].includes(userRole)) return res.status(403).json({ error: 'Unauthorized' });
+        if (!id) return res.status(400).json({ error: 'Fee structure id is required' });
+
+        if (strictCurrentPair) {
+            const { data: feeStructure, error: feeStructureError } = await supabase
+                .from('fee_structures')
+                .select('id, academic_year, term')
+                .eq('id', id)
+                .eq('institution_id', institution_id)
+                .single();
+
+            if (feeStructureError || !feeStructure) {
+                return res.status(404).json({ error: 'Fee structure not found' });
+            }
+
+            if (!feeStructure.term || !feeStructure.academic_year) {
+                return res.status(409).json({
+                    error: 'Cannot strictly release fee structure without both term and academic year',
+                });
+            }
+
+            const isCurrentPair = await resolveFeeStructureActiveState({
+                institution_id,
+                termName: feeStructure.term,
+                academicYearName: feeStructure.academic_year,
+                fallbackActive: false,
+            });
+
+            if (!isCurrentPair) {
+                return res.status(409).json({
+                    error: 'Selected academic year and term are not current; strict release blocked',
+                });
+            }
+        }
+
+        const { data, error } = await supabase
+            .from('fee_structures')
+            .update({ is_active: true, updated_at: new Date().toISOString() })
+            .eq('id', id)
+            .eq('institution_id', institution_id)
+            .select()
+            .single();
+
+        if (error) throw error;
+        res.json(data);
+    } catch (err) {
+        console.error('Release fee structure error:', err);
+        res.status(500).json({ error: err.message });
+    }
+};
+
+exports.deleteFeeStructure = async (req, res) => {
+    try {
+        const { userRole, institution_id } = req;
+        const { id } = req.params;
+        if (!['admin', 'bursary', 'master_admin'].includes(userRole)) return res.status(403).json({ error: 'Unauthorized' });
+        if (!id) return res.status(400).json({ error: 'Fee structure id is required' });
+
+        const { error } = await supabase
+            .from('fee_structures')
+            .delete()
+            .eq('id', id)
+            .eq('institution_id', institution_id);
+
+        if (error) throw error;
+        res.json({ success: true, id });
+    } catch (err) {
+        console.error('Delete fee structure error:', err);
         res.status(500).json({ error: err.message });
     }
 };

@@ -10,6 +10,8 @@ router.use(requirePlatformAdmin);
 
 // Dashboard Statistics
 router.get("/stats", masterAdminController.getDashboardStats);
+router.get("/password-audit-logs", masterAdminController.getPasswordAuditLogs);
+router.get("/credential-delivery/:token", masterAdminController.getCredentialDeliveryByToken);
 
 // Institutions Management
 router.get("/institutions", masterAdminController.getAllInstitutions);

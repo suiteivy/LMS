@@ -57,6 +57,15 @@ exports.getUserNotifications = async (req, res) => {
         }
 
         const now = new Date().toISOString();
+
+        if (institution_id) {
+            await supabase
+                .from("notifications")
+                .delete()
+                .eq("institution_id", institution_id)
+                .lt("expires_at", now);
+        }
+
         let query = supabase
             .from("notifications")
             .select("*");

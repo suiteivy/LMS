@@ -173,5 +173,4 @@ USING (
 -- 4. Remove announcements:write permission association from Teacher role
 DELETE FROM public.role_permissions
 WHERE permission_id IN (SELECT id FROM public.permissions WHERE name = 'announcements:write')
-  AND role_id IN (SELECT id FROM public.roles WHERE name = 'Teacher');
-
+  AND role_id IN (SELECT id FROM public.roles WHERE name = 'Teacher');;

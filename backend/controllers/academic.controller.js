@@ -1,6 +1,62 @@
 const supabase = require("../utils/supabaseClient.js");
 const { resolveTeacher, authorizeTeacherForSubject } = require("../middleware/resolveTeacher.js");
 
+const ANNOUNCEMENT_EXPIRY_DAYS = Number(process.env.ANNOUNCEMENT_EXPIRY_DAYS || 3);
+
+const computeAnnouncementExpiryIso = () => {
+    return new Date(Date.now() + ANNOUNCEMENT_EXPIRY_DAYS * 24 * 60 * 60 * 1000).toISOString();
+};
+
+const purgeExpiredAnnouncements = async (institutionId) => {
+    const nowIso = new Date().toISOString();
+
+    const { data: expiredRows, error: fetchError } = await supabase
+        .from("announcements")
+        .select("id")
+        .eq("institution_id", institutionId)
+        .lt("expires_at", nowIso);
+
+    if (fetchError) throw fetchError;
+
+    if (!expiredRows?.length) return;
+
+    const expiredIds = expiredRows.map((r) => r.id);
+
+    const { error: deleteAnnouncementsError } = await supabase
+        .from("announcements")
+        .delete()
+        .in("id", expiredIds)
+        .eq("institution_id", institutionId);
+
+    if (deleteAnnouncementsError) throw deleteAnnouncementsError;
+
+    const { data: notifications, error: notifFetchError } = await supabase
+        .from("notifications")
+        .select("id, data")
+        .eq("institution_id", institutionId);
+
+    if (notifFetchError) throw notifFetchError;
+
+    const announcementIdSet = new Set(expiredIds.map(String));
+    const notificationIdsToDelete = (notifications || [])
+        .filter((n) => {
+            const announcementId = n?.data?.announcement_id;
+            if (!announcementId) return false;
+            return announcementIdSet.has(String(announcementId));
+        })
+        .map((n) => n.id);
+
+    if (notificationIdsToDelete.length) {
+        const { error: notifDeleteError } = await supabase
+            .from("notifications")
+            .delete()
+            .in("id", notificationIdsToDelete)
+            .eq("institution_id", institutionId);
+
+        if (notifDeleteError) throw notifDeleteError;
+    }
+};
+
 /**
  * Handle Learning Materials (Upload/Update)
  */
@@ -289,9 +345,10 @@ exports.createAnnouncement = async (req, res) => {
     try {
         const { subject_id, teacher_id, title, message } = req.body;
         const { institution_id } = req;
+        await purgeExpiredAnnouncements(institution_id);
         const { data, error } = await supabase
             .from("announcements")
-            .insert([{ subject_id, teacher_id, title, message, institution_id }])
+            .insert([{ subject_id, teacher_id, title, message, institution_id, expires_at: computeAnnouncementExpiryIso() }])
             .select()
             .single();
 
@@ -306,9 +363,11 @@ exports.getAnnouncements = async (req, res) => {
     try {
         const { subject_id } = req.query;
         const { institution_id } = req;
+        await purgeExpiredAnnouncements(institution_id);
         let query = supabase.from("announcements")
             .select("*, teacher:teachers(user:users(first_name, last_name, full_name))")
-            .eq("institution_id", institution_id);
+            .eq("institution_id", institution_id)
+            .or(`expires_at.is.null,expires_at.gt.${new Date().toISOString()}`);
         if (subject_id) query = query.eq("subject_id", subject_id);
 
         const { data, error } = await query;
@@ -323,6 +382,7 @@ exports.deleteAnnouncement = async (req, res) => {
     try {
         const { id } = req.params;
         const { institution_id, userRole } = req;
+        await purgeExpiredAnnouncements(institution_id);
 
         let query = supabase
             .from("announcements")

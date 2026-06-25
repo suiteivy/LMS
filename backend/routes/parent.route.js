@@ -8,6 +8,7 @@ const {
     getStudentAttendance,
     getStudentFinance,
     getStudentBursaries,
+    getStudentAnnouncements,
     updateLinkedStudentProfile
 } = require("../controllers/parent.controller.js");
 
@@ -20,6 +21,7 @@ router.get("/student/:studentId/performance", getStudentAcademicData);
 router.get("/student/:studentId/attendance", getStudentAttendance);
 router.get("/student/:studentId/finance", getStudentFinance);
 router.get("/student/:studentId/bursaries", getStudentBursaries);
+router.get("/student/:studentId/announcements", getStudentAnnouncements);
 router.put("/student/:studentId/profile", updateLinkedStudentProfile);
 
 module.exports = router;

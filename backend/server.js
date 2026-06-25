@@ -36,7 +36,7 @@ app.use(nullStringSanitizer);
 app.use(express.urlencoded({ extended: true }));
 
 // Apply rate limiting to public endpoints
-app.use("/api/auth", rateLimiters.auth);
+app.use("/api/auth", rateLimiters.authPublic);
 app.use("/api/auth/forgot-password", rateLimiters.passwordReset);
 app.use("/api/auth/reset-password", rateLimiters.passwordReset);
 

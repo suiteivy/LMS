@@ -11,6 +11,9 @@ const {
   forgotPassword,
   resetPassword,
   adminResetPassword,
+  setupSecurityQuestions,
+  verifySecurityQuestions,
+  getCredentialDeliveryByToken,
   transferMainAdmin,
   getActiveSessions,
   revokeSession,
@@ -34,6 +37,8 @@ router.post(
   forgotPassword,
 );
 router.post("/reset-password", rateLimiters.passwordReset, resetPassword);
+router.post("/verify-security-questions", rateLimiters.passwordReset, verifySecurityQuestions);
+router.get("/credential-delivery/:token", getCredentialDeliveryByToken);
 
 // Protected: User management with subscription check, admin role check, and validation
 router.post(
@@ -62,12 +67,18 @@ router.delete(
 );
 
 // Generic auth routes
-router.get("/search-users", authMiddleware, searchUsers);
+router.get(
+  "/search-users",
+  authMiddleware,
+  rateLimiters.search,
+  searchUsers,
+);
 router.post("/logout", authMiddleware, logout);
 
 // Password management
 router.put("/change-password", authMiddleware, changePassword);
 router.post("/admin-reset-password", authMiddleware, adminResetPassword);
+router.post("/security-questions/setup", authMiddleware, setupSecurityQuestions);
 
 // Session management
 router.get("/sessions", authMiddleware, getActiveSessions);

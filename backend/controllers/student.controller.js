@@ -1,5 +1,21 @@
 const supabase = require("../utils/supabaseClient.js");
 
+async function purgeExpiredAnnouncementsAndNotifications(institutionId) {
+    const nowIso = new Date().toISOString();
+
+    await supabase
+        .from('announcements')
+        .delete()
+        .eq('institution_id', institutionId)
+        .lt('expires_at', nowIso);
+
+    await supabase
+        .from('notifications')
+        .delete()
+        .eq('institution_id', institutionId)
+        .lt('expires_at', nowIso);
+}
+
 /**
  * Get Authenticated Student's Finance Data
  */
@@ -101,6 +117,8 @@ exports.getMyAnnouncements = async (req, res) => {
     try {
         const { userId, institution_id } = req;
 
+        await purgeExpiredAnnouncementsAndNotifications(institution_id);
+
         // 1. Get student profile
         const { data: student } = await supabase
             .from('students')
@@ -110,14 +128,34 @@ exports.getMyAnnouncements = async (req, res) => {
 
         if (!student) return res.status(404).json({ error: "Student profile not found" });
 
-        // 2. Get subject IDs from enrollments (only active enrollments)
+        // 2. Get subject IDs from direct enrollments (only active enrollments)
         const { data: enrollments } = await supabase
             .from('enrollments')
             .select('subject_id')
             .eq('student_id', student.id)
             .eq('status', 'enrolled');
 
-        const subjectIds = enrollments?.map(e => e.subject_id).filter(Boolean) || [];
+        const directSubjectIds = enrollments?.map(e => e.subject_id).filter(Boolean) || [];
+
+        // 2b. Get subject IDs from class enrollment -> subjects.class_id
+        const { data: classEnrollments } = await supabase
+            .from('class_enrollments')
+            .select('class_id')
+            .eq('student_id', student.id);
+
+        const classIds = classEnrollments?.map(e => e.class_id).filter(Boolean) || [];
+
+        let classSubjectIds = [];
+        if (classIds.length > 0) {
+            const { data: subjectsByClass } = await supabase
+                .from('subjects')
+                .select('id')
+                .in('class_id', classIds)
+                .eq('institution_id', institution_id);
+            classSubjectIds = subjectsByClass?.map(s => s.id).filter(Boolean) || [];
+        }
+
+        const subjectIds = [...new Set([...directSubjectIds, ...classSubjectIds])];
 
         // 3. Fetch announcements for those subjects or general announcements (subject_id is null)
         let query = supabase
