@@ -89,6 +89,7 @@ export function useSubscriptionTier(): SubscriptionTierInfo {
     // - Specific add-ons always grant access regardless of base plan.
 
     const isBeta = canonical === 'beta';
+    const hasAddonOrBeta = (addonEnabled: boolean) => isBeta || !!addonEnabled;
 
     return {
         plan: canonical,
@@ -98,8 +99,8 @@ export function useSubscriptionTier(): SubscriptionTierInfo {
         // Finance: Included in Premium (4) OR explicitly granted as add-on
         hasFinance: r >= PLAN_RANK['premium'] || addonFinance,
 
-        // Bursary: Included in Premium (4) OR explicitly granted as add-on
-        hasBursary: r >= PLAN_RANK['premium'] || addonBursary,
+        // Bursary: Add-on controlled (beta unaffected)
+        hasBursary: hasAddonOrBeta(addonBursary),
 
         // Student Module: Always enabled for authenticated students
         hasStudentModule: true,
@@ -107,14 +108,14 @@ export function useSubscriptionTier(): SubscriptionTierInfo {
         // Analytics: Included in Premium (4) OR explicitly granted as add-on
         hasAnalytics: r >= PLAN_RANK['premium'] || addonAnalytics,
 
-        // Messaging: Included in Beta (0)+ OR explicitly granted as add-on
-        hasMessaging: r >= PLAN_RANK['beta'] || addonMessaging,
+        // Messaging: Add-on controlled (beta unaffected)
+        hasMessaging: hasAddonOrBeta(addonMessaging),
 
-        // Diary: Included in Beta (0)+ OR explicitly granted as add-on
-        hasDiary: r >= PLAN_RANK['beta'] || addonDiary,
+        // Diary: Add-on controlled (beta unaffected)
+        hasDiary: hasAddonOrBeta(addonDiary),
 
-        // Library: Included in Pro (3)+ OR explicitly granted as add-on
-        hasLibrary: r >= PLAN_RANK['pro'] || addonLibrary,
+        // Library: Add-on controlled (beta unaffected)
+        hasLibrary: hasAddonOrBeta(addonLibrary),
 
         // Attendance: Included in Pro (3) and Premium (4) OR explicitly granted as add-on
         hasAttendance: (r >= PLAN_RANK['pro'] && r !== PLAN_RANK['custom']) || addonAttendance,

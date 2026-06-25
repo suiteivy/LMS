@@ -1,6 +1,7 @@
 import { useAuth } from "@/contexts/AuthContext";
 import { useTheme } from "@/contexts/ThemeContext";
 import { authService } from "@/libs/supabase";
+import { Spinner } from "@/components/ui/Spinner";
 import { Edit3, Mail, Save, ShieldCheck, X } from "lucide-react-native";
 import React, { useEffect, useState } from "react";
 import { ActivityIndicator, Alert, Image, Text, TextInput, TouchableOpacity, View } from "react-native";
@@ -174,9 +175,10 @@ export default function AdminProfile() {
                                         activeOpacity={0.8}
                                         onPress={() => isEditing ? handleSave() : setIsEditing(true)}
                                         disabled={saving}
+                                        accessibilityState={{ disabled: saving, busy: saving }}
                                     >
                                         {saving ? (
-                                            <ActivityIndicator size="small" color="white" />
+                                            <Spinner size="small" color="white" label="Saving profile" />
                                         ) : isEditing ? (
                                             <Save size={18} color="#ffffff" />
                                         ) : (

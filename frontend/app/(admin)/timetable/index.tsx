@@ -1,5 +1,6 @@
 // (admin)/timetable/index.tsx   Theme-aware Timetable Builder
 import { SubscriptionGate } from "@/components/shared/SubscriptionComponents";
+import { Spinner } from "@/components/ui/Spinner";
 import { supabase } from "@/libs/supabase";
 import { ClassAPI, ClassItem as ClassData } from "@/services/ClassService";
 import { SubjectAPI, SubjectData } from "@/services/SubjectService";
@@ -33,7 +34,6 @@ import {
 } from "lucide-react-native";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
-    ActivityIndicator,
     Alert,
     Modal,
     ScrollView,
@@ -323,10 +323,11 @@ function ConflictPanel({ conflicts, onSendAll, sending, institutionType, colors,
                             style={[styles.alertBtn, sending && { opacity: 0.5 }]}
                             onPress={onSendAll}
                             disabled={sending}
+                            accessibilityState={{ disabled: sending, busy: sending }}
                             activeOpacity={0.8}
                         >
                             {sending ? (
-                                <ActivityIndicator color="#fff" size="small" />
+                                <Spinner color="#fff" size="small" label="Sending conflict alerts" />
                             ) : (
                                 <>
                                     <Bell size={14} color="#fff" />
@@ -609,7 +610,7 @@ export default function TimetableBuilder() {
     if (loading) {
         return (
             <View style={styles.centered}>
-                <ActivityIndicator size="large" color={colors.accent} />
+                <Spinner size="large" color={colors.accent} label="Loading timetable" />
             </View>
         );
     }
@@ -702,7 +703,7 @@ export default function TimetableBuilder() {
                 </View>
             ) : fetchingTimetable ? (
                 <View style={styles.centered}>
-                    <ActivityIndicator color={colors.accent} />
+                    <Spinner color={colors.accent} label="Loading class timetable" />
                 </View>
             ) : (
                 <ScrollView
@@ -876,10 +877,11 @@ export default function TimetableBuilder() {
                                 style={[styles.saveBtn, saving && { opacity: 0.6 }]}
                                 onPress={handleSave}
                                 disabled={saving}
+                                accessibilityState={{ disabled: saving, busy: saving }}
                                 activeOpacity={0.85}
                             >
                                 {saving ? (
-                                    <ActivityIndicator color="#fff" size="small" />
+                                    <Spinner color="#fff" size="small" label="Saving timetable slot" />
                                 ) : (
                                     <>
                                         <Check size={16} color="#fff" />

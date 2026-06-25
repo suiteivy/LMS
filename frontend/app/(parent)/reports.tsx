@@ -4,10 +4,16 @@ import { ParentService } from '@/services/ParentService';
 import { router, useLocalSearchParams } from 'expo-router';
 import { FileText, Download, Printer, ChevronRight } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
+<<<<<<< HEAD
 import { ActivityIndicator, ScrollView, Text, TouchableOpacity, View, RefreshControl, Linking, Alert } from 'react-native';
+=======
+import { ActivityIndicator, ScrollView, Text, TouchableOpacity, View, RefreshControl } from 'react-native';
+import { useParentStudentContext } from '@/hooks/useParentStudentContext';
+>>>>>>> df05e40555bb1ec7b19b668a6cfb4d742c627c50
 
 export default function ReportsScreen() {
-    const { studentId, studentName } = useLocalSearchParams<{ studentId: string; studentName: string }>();
+    const params = useLocalSearchParams<{ studentId: string; studentName?: string; classId?: string }>();
+    const { studentId: resolvedStudentId, studentName: resolvedName, ready } = useParentStudentContext(params as any);
     const { isDark } = useTheme();
     const [reports, setReports] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
@@ -15,8 +21,8 @@ export default function ReportsScreen() {
 
     const fetchReports = async () => {
         try {
-            if (!studentId) return;
-            const data = await ParentService.getStudentReports(studentId);
+            if (!resolvedStudentId) return;
+            const data = await ParentService.getStudentReports(resolvedStudentId);
             setReports(data.data || []);
         } catch (error) {
             console.error("Error fetching reports:", error);
@@ -27,8 +33,9 @@ export default function ReportsScreen() {
     };
 
     useEffect(() => {
+        if (!ready) return;
         fetchReports();
-    }, [studentId]);
+    }, [ready, resolvedStudentId]);
 
     const onRefresh = () => {
         setRefreshing(true);
@@ -47,7 +54,7 @@ export default function ReportsScreen() {
         <View className="flex-1 bg-[#FFFFFF] dark:bg-[#0D1117]">
             <UnifiedHeader
                 title="Academic Reports"
-                subtitle={studentName || "Student Progress"}
+                subtitle={resolvedName || "Student Progress"}
                 role="Parent/Guardian"
                 onBack={() => router.back()}
             />
@@ -63,7 +70,7 @@ export default function ReportsScreen() {
                     onPress={() =>
                         router.push({
                             pathname: '/(parent)/report-cards' as any,
-                            params: { studentId, studentName },
+                            params: { studentId: resolvedStudentId, studentName: resolvedName },
                         })
                     }
                     style={{

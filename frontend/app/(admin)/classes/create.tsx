@@ -1,4 +1,5 @@
 import { UnifiedHeader } from "@/components/common/UnifiedHeader";
+import { Spinner } from "@/components/ui/Spinner";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { ClassService } from "@/services/ClassService";
@@ -7,7 +8,6 @@ import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from "react";
 import {
-    ActivityIndicator,
     Alert,
     FlatList,
     Modal,
@@ -238,10 +238,12 @@ export default function CreateClassScreen() {
                         paddingVertical: 16,
                         alignItems: "center",
                         marginTop: 20,
+                        opacity: loading ? 0.75 : 1,
                     }}
+                    accessibilityState={{ disabled: loading, busy: loading }}
                 >
                     {loading ? (
-                        <ActivityIndicator color="white" />
+                        <Spinner color="white" label="Creating class" />
                     ) : (
                         <Text style={{ color: "white", fontSize: 16, fontWeight: "700" }}>
                             Create Class
@@ -261,6 +263,7 @@ export default function CreateClassScreen() {
                             maxHeight: "60%",
                             paddingBottom: 20,
                         }}
+                        accessibilityState={{ busy: loadingTeachers }}
                     >
                         <View
                             style={{
@@ -281,7 +284,9 @@ export default function CreateClassScreen() {
                         </View>
 
                         {loadingTeachers ? (
-                            <ActivityIndicator size="large" color="#FF6B00" style={{ marginTop: 20 }} />
+                            <View style={{ marginTop: 20 }}>
+                                <Spinner size="large" color="#FF6B00" centered label="Loading teachers" />
+                            </View>
                         ) : (
                             <FlatList
                                 data={teachers}

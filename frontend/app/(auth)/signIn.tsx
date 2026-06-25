@@ -443,10 +443,17 @@ export default function SignIn() {
         return;
       }
 
-      interface UserRow { role: string; full_name: string; id: string; institution_id: string; }
+      interface UserRow {
+        role: string;
+        full_name: string;
+        id: string;
+        institution_id: string;
+        must_change_password?: boolean;
+        requires_security_questions_setup?: boolean;
+      }
       const { data: userData, error: roleError } = await supabase
         .from("users")
-        .select("role, full_name, id, institution_id")
+        .select("role, full_name, id, institution_id, must_change_password, requires_security_questions_setup")
         .eq("id", data.user.id)
         .single() as { data: UserRow | null; error: any };
 
@@ -484,6 +491,12 @@ export default function SignIn() {
       }
 
       showToast(`Welcome back, ${userData.full_name || "there"}!`);
+
+      if ((userData as any).must_change_password || (userData as any).requires_security_questions_setup) {
+        setTimeout(() => {
+          router.replace('/(auth)/security-questions' as any);
+        }, 200);
+      }
 
       // Let AuthHandler detect session change and handle the transition
     } catch (error: unknown) {

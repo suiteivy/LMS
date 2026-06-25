@@ -6,9 +6,11 @@ import { BookOpen, Clock, Info, BookMarked, MessageSquare } from "lucide-react-n
 import React, { useEffect, useState } from "react";
 import { useTheme } from "@/contexts/ThemeContext";
 import { ActivityIndicator, RefreshControl, ScrollView, Text, View, TouchableOpacity } from "react-native";
+import { useParentStudentContext } from "@/hooks/useParentStudentContext";
 
 export default function StudentLibraryPage() {
-  const { studentId, studentName } = useLocalSearchParams<{ studentId: string; studentName?: string }>();
+  const params = useLocalSearchParams<{ studentId: string; studentName?: string; classId?: string }>();
+  const { studentId, studentName, ready } = useParentStudentContext(params as any);
   const { isDark } = useTheme();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -29,15 +31,16 @@ export default function StudentLibraryPage() {
   };
 
   useEffect(() => {
+    if (!ready) return;
     fetchBorrowings();
-  }, [studentId]);
+  }, [ready, studentId]);
 
   const onRefresh = () => {
     setRefreshing(true);
     fetchBorrowings();
   };
 
-  if (!studentId) {
+  if (ready && !studentId) {
     return (
       <View className="flex-1 bg-gray-50 dark:bg-navy">
         <UnifiedHeader

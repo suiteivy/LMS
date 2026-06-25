@@ -24,6 +24,8 @@ export interface Database {
           date_of_birth: string | null;
           address: string | null;
           avatar_url: string | null;
+          must_change_password: boolean;
+          requires_security_questions_setup: boolean;
           created_at: string;
           updated_at: string;
         };
@@ -41,6 +43,8 @@ export interface Database {
           date_of_birth?: string | null;
           address?: string | null;
           avatar_url?: string | null;
+          must_change_password?: boolean;
+          requires_security_questions_setup?: boolean;
           created_at?: string;
           updated_at?: string;
         };
@@ -58,6 +62,8 @@ export interface Database {
           date_of_birth?: string | null;
           address?: string | null;
           avatar_url?: string | null;
+          must_change_password?: boolean;
+          requires_security_questions_setup?: boolean;
           created_at?: string;
           updated_at?: string;
         };

@@ -73,19 +73,16 @@ export default function AdminManagement() {
     const getStatValue = (label: string) => stats.find(s => s.label === label)?.value || "0";
 
     const features = [
-        {
+        ...(tier.hasAnalytics ? [{
             icon: BarChart3,
             title: "System Analytics",
-            description: tier.hasAnalytics
-                ? "View system-wide performance and stats"
-                : "Requires Analytics add-on to unlock advanced insights",
+            description: "View system-wide performance and stats",
             color: "#3b82f6",
             bgColor: "#dbeafe",
             darkBgColor: "#1e3a5f",
-            route: tier.hasAnalytics ? "/(admin)/management/analytics" : "/(admin)/request-feature",
-            badge: tier.hasAnalytics ? undefined : "Add-on",
+            route: "/(admin)/management/analytics",
             tooltipId: 'admin.manage.analytics'
-        },
+        }] : []),
         {
             icon: BookOpen,
             title: "Library Management",

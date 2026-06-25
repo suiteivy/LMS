@@ -1,7 +1,7 @@
 import { useTheme } from '@/contexts/ThemeContext';
 import { HelpCircle } from 'lucide-react-native';
 import React, { useMemo, useRef, useState } from 'react';
-import { Modal, Platform, Pressable, Text, TouchableOpacity, View } from 'react-native';
+import { Dimensions, Modal, Platform, Pressable, Text, TouchableOpacity, View } from 'react-native';
 import type { SubscriptionTierInfo } from '@/hooks/useSubscriptionTier';
 import { hasFeatureAccess, type SettingsRole } from './access';
 import { SETTINGS_TOOLTIPS, type TooltipTargetId } from './tooltips.config';
@@ -23,8 +23,9 @@ export function isTooltipEnabled(id: TooltipTargetId, role: SettingsRole, tier: 
 export function HelpTooltip({ id, role, tier, onLearnMore }: HelpTooltipProps) {
   const { isDark } = useTheme();
   const [open, setOpen] = useState(false);
-  const [anchor, setAnchor] = useState({ x: 0, y: 0, w: 0, h: 0 });
+  const [anchor, setAnchor] = useState({ x: 0, y: 0, w: 20, h: 20 });
   const hoverCloseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const triggerRef = useRef<View | null>(null);
 
   const entry = SETTINGS_TOOLTIPS[id];
   const enabled = useMemo(() => isTooltipEnabled(id, role, tier), [id, role, tier]);
@@ -43,8 +44,24 @@ export function HelpTooltip({ id, role, tier, onLearnMore }: HelpTooltipProps) {
     }
   };
 
+  const updateAnchorFromTrigger = () => {
+    const node = triggerRef.current as any;
+    if (!node || typeof node.measureInWindow !== 'function') return;
+    node.measureInWindow((x: number, y: number, w: number, h: number) => {
+      if (Number.isFinite(x) && Number.isFinite(y)) {
+        setAnchor({
+          x: Math.max(0, x),
+          y: Math.max(0, y),
+          w: Math.max(1, w || 1),
+          h: Math.max(1, h || 1),
+        });
+      }
+    });
+  };
+
   const openTooltip = () => {
     clearHoverTimer();
+    updateAnchorFromTrigger();
     setOpen(true);
   };
 
@@ -55,6 +72,9 @@ export function HelpTooltip({ id, role, tier, onLearnMore }: HelpTooltipProps) {
 
   const trigger = (
     <Pressable
+      ref={(node) => {
+        triggerRef.current = node;
+      }}
       accessibilityRole="button"
       accessibilityLabel={`${entry.title} help`}
       accessibilityHint={entry.text}
@@ -62,11 +82,7 @@ export function HelpTooltip({ id, role, tier, onLearnMore }: HelpTooltipProps) {
       onHoverOut={Platform.OS === 'web' ? closeTooltipSoon : undefined}
       onFocus={openTooltip}
       onBlur={closeTooltipSoon}
-      onPress={(e) => {
-        const t = e.nativeEvent;
-        setAnchor({ x: t.pageX, y: t.pageY, w: t.locationX, h: t.locationY });
-        openTooltip();
-      }}
+      onPress={openTooltip}
       onLongPress={openTooltip}
       style={{ marginLeft: 6, padding: 2 }}
     >
@@ -74,20 +90,31 @@ export function HelpTooltip({ id, role, tier, onLearnMore }: HelpTooltipProps) {
     </Pressable>
   );
 
+  const viewport = Dimensions.get('window');
+  const cardWidth = Math.min(340, Math.max(240, viewport.width - 32));
+  const preferredLeft = anchor.x + anchor.w + 10;
+  const left = Math.max(12, Math.min(preferredLeft, viewport.width - cardWidth - 12));
+  const top = Math.max(12, Math.min(anchor.y - 12, viewport.height - 180));
+
   const popup = (
     <Modal transparent visible={open} animationType="fade" onRequestClose={() => setOpen(false)}>
       <Pressable style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.2)' }} onPress={() => setOpen(false)}>
-        <View
+        <Pressable
+          onHoverIn={Platform.OS === 'web' ? clearHoverTimer : undefined}
+          onHoverOut={Platform.OS === 'web' ? closeTooltipSoon : undefined}
+          onPress={() => {}}
           style={{
             position: 'absolute',
-            top: Math.max(24, anchor.y - 96),
-            left: 16,
-            right: 16,
+            top,
+            left,
+            width: cardWidth,
             backgroundColor: bg,
             borderRadius: 12,
             borderWidth: 1,
             borderColor: border,
             padding: 12,
+            zIndex: 99999,
+            elevation: 16,
           }}
         >
           <Text style={{ color: text, fontWeight: '700', fontSize: 12, marginBottom: 4 }}>{entry.title}</Text>
@@ -104,53 +131,10 @@ export function HelpTooltip({ id, role, tier, onLearnMore }: HelpTooltipProps) {
               <Text style={{ color: '#FF6B00', fontSize: 12, fontWeight: '700' }}>Learn more →</Text>
             </TouchableOpacity>
           ) : null}
-        </View>
+        </Pressable>
       </Pressable>
     </Modal>
   );
-
-  if (Platform.OS === 'web') {
-    return (
-      <View style={{ flexDirection: 'row', alignItems: 'center', position: 'relative' }}>
-        {trigger}
-        {open ? (
-          <View
-            onTouchStart={clearHoverTimer}
-            style={{
-              position: 'absolute',
-              top: 20,
-              left: 24,
-              minWidth: 240,
-              maxWidth: 320,
-              backgroundColor: bg,
-              borderRadius: 10,
-              borderWidth: 1,
-              borderColor: border,
-              padding: 10,
-              zIndex: 9999,
-              boxShadow: [{ offsetX: 0, offsetY: 4, blurRadius: 12, color: 'rgba(0,0,0,0.15)' }],
-              elevation: 8,
-            }}
-          >
-            <Text style={{ color: text, fontWeight: '700', fontSize: 12, marginBottom: 4 }}>{entry.title}</Text>
-            <Text style={{ color: muted, fontSize: 12, marginBottom: 8 }}>{entry.text}</Text>
-            {entry.learnMoreAnchor ? (
-              <TouchableOpacity
-                onPress={() => {
-                  setOpen(false);
-                  onLearnMore?.(entry.learnMoreAnchor);
-                }}
-                accessibilityRole="button"
-                accessibilityLabel="Learn more"
-              >
-                <Text style={{ color: '#FF6B00', fontSize: 12, fontWeight: '700' }}>Learn more →</Text>
-              </TouchableOpacity>
-            ) : null}
-          </View>
-        ) : null}
-      </View>
-    );
-  }
 
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center' }}>

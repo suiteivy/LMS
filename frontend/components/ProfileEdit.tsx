@@ -1,4 +1,5 @@
 import { supabase, authService } from '@/libs/supabase'; // Adjust path if needed, usually in lib or services
+import { Spinner } from '@/components/ui/Spinner';
 import * as ImagePicker from 'expo-image-picker';
 import { Camera, X } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
@@ -222,8 +223,27 @@ export const ProfileEdit = ({ visible, onClose, currentUser, onUpdate }: EditFor
             behavior={Platform.OS === "ios" ? "padding" : "height"}
             className="flex-1"
           >
-            <ScrollView className="px-4 pt-4" showsVerticalScrollIndicator={false}>
-
+            <ScrollView className="p-6" showsVerticalScrollIndicator={false}>
+              <View>
+                {/* Avatar Section */}
+                <View className="items-center mb-8">
+                  <TouchableOpacity onPress={pickImage} className="relative">
+                    <View className="w-24 h-24 rounded-full bg-gray-100 overflow-hidden items-center justify-center border-4 border-white shadow-sm">
+                      {avatarUrl ? (
+                        <Image source={{ uri: avatarUrl }} className="w-full h-full" />
+                      ) : (
+                        <Text className="text-gray-400 text-2xl font-bold">
+                          {firstName?.charAt(0) || profile?.full_name?.charAt(0) || "U"}
+                        </Text>
+                      )}
+                    </View>
+                    <View className="absolute bottom-0 right-0 bg-orange-500 p-2 rounded-full border-2 border-white">
+                      {uploading ? <Spinner size="small" color="white" label="Uploading avatar" /> : <Camera size={14} color="white" />}
+                    </View>
+                  </TouchableOpacity>
+                  <Text className="text-gray-400 text-xs mt-2">JPG, PNG or WebP · Max 5MB</Text>
+                </View>
+              </View>
               {/* Avatar */}
               <View className="items-center mb-6">
                 <TouchableOpacity onPress={pickImage} activeOpacity={0.7} className="relative">
@@ -348,13 +368,18 @@ export const ProfileEdit = ({ visible, onClose, currentUser, onUpdate }: EditFor
                 <TouchableOpacity
                   disabled={loading}
                   onPress={handleSave}
-                  activeOpacity={0.7}
-                  className={`py-4 rounded-xl items-center ${loading ? 'bg-[#EAEEF2] dark:bg-[#1C2128]' : 'bg-[#FF6900]'}`}
+                  accessibilityState={{ disabled: loading, busy: loading }}
+                  className={`p-4 rounded-2xl items-center ${loading
+                    ? "bg-gray-100"
+                    : "bg-orange-500 shadow-md active:opacity-90"}`}
                 >
-                  {loading
-                    ? <ActivityIndicator color="#9ca3af" />
-                    : <Text className="font-black text-sm text-white uppercase tracking-widest">Save Changes</Text>
-                  }
+                  {loading ? (
+                    <Spinner color="white" label="Saving profile changes" />
+                  ) : (
+                    <Text className="font-bold text-lg text-white">
+                      Save Changes
+                    </Text>
+                  )}
                 </TouchableOpacity>
 
                 <TouchableOpacity onPress={onClose} activeOpacity={0.7} className="py-4 items-center">

@@ -1,4 +1,5 @@
 import { UnifiedHeader } from "@/components/common/UnifiedHeader";
+import { Spinner } from "@/components/ui/Spinner";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useDashboardStats } from "@/hooks/useDashboardStats";
@@ -68,7 +69,6 @@ const QuickAction = ({ icon: Icon, label, onPress, badge }: QuickActionProps) =>
 export default function AdminDashboard() {
   const {
     profile,
-    isDemo,
     subscriptionPlan,
     subscriptionStatus,
     isMain,
@@ -79,7 +79,7 @@ export default function AdminDashboard() {
     addonBursary,
     logout,
   } = useAuth();
-  const { stats, loading: statsLoading, refresh: refreshStats } = useDashboardStats();
+  const { stats, refresh: refreshStats } = useDashboardStats();
   const { isDark } = useTheme();
   const [recentUsers, setRecentUsers] = useState<User[]>([]);
   const [loadingUsers, setLoadingUsers] = useState(false);
@@ -197,10 +197,47 @@ export default function AdminDashboard() {
         {/* ── Hero Inline Stats ── */}
         <View className="flex-row gap-8 mb-6 mt-2">
           <View>
-            <Text className="text-gray-500 dark:text-gray-400 text-xs uppercase tracking-widest mb-1">Students</Text>
-            <Text className="text-gray-900 dark:text-white text-3xl font-black">
-              {stats.find(s => s.label === "Total Students")?.value || "0"}
-            </Text>
+            <View className="flex-row justify-between items-end mb-5 px-1">
+              <Text className="text-lg font-bold text-gray-900 dark:text-white">Recent Users</Text>
+              <TouchableOpacity onPress={() => router.navigate("/(admin)/users")}>
+                <Text className="text-orange-500 font-bold text-sm">View All</Text>
+              </TouchableOpacity>
+            </View>
+
+            {loadingUsers ? (
+              <View className="h-40 items-center justify-center">
+                <Spinner color="#FF6900" label="Loading recent users" />
+              </View>
+            ) : recentUsers.length === 0 ? (
+              <View className="bg-white dark:bg-[#0F0B2E] p-8 rounded-3xl border border-dashed border-gray-200 dark:border-gray-800 items-center justify-center mb-6">
+                <View className="w-12 h-12 bg-gray-50 dark:bg-gray-800 rounded-full items-center justify-center mb-3">
+                  <IconUsers size={24} color="#9ca3af" />
+                </View>
+                <Text className="text-gray-500 dark:text-gray-400 font-medium">No recent activity detected</Text>
+              </View>
+            ) : (
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} className="flex-row -mx-6 px-6" contentContainerStyle={{ paddingRight: 24 }}>
+                {recentUsers.map((user) => (
+                  <View key={user.id} className="bg-white dark:bg-[#1a1a1a] p-5 rounded-3xl border border-gray-100 dark:border-gray-800 mr-4 w-72">
+                    <View className="flex-row items-center justify-between mb-4">
+                      <View className={`h-10 w-10 rounded-xl items-center justify-center ${user.role === 'student' ? 'bg-orange-50 dark:bg-orange-950/30' : user.role === 'teacher' ? 'bg-purple-50 dark:bg-purple-950/30' : 'bg-blue-50 dark:bg-blue-950/30'}`}>
+                        {user.role === 'student' ? <IconGraduationCap size={20} color="#FF6B00" /> :
+                          user.role === 'teacher' ? <IconSchool size={20} color="#8b5cf6" /> :
+                            <IconSettings size={20} color="#3b82f6" />}
+                      </View>
+                      <View className="bg-gray-50 dark:bg-gray-800 px-2 py-1 rounded-lg">
+                        <Text className="text-gray-400 dark:text-gray-500 font-bold text-[10px]">
+                          {user.joinDate ? new Date(user.joinDate).toLocaleDateString() : 'N/A'}
+                        </Text>
+                      </View>
+                    </View>
+                    <Text className="text-gray-900 dark:text-white font-bold text-base mb-1" numberOfLines={1}>{user.name}</Text>
+                    <Text className="text-gray-600 dark:text-gray-300 text-xs font-bold uppercase tracking-wider mb-1">{user.role}</Text>
+                    <Text className="text-gray-400 dark:text-gray-500 text-[10px] font-mono">{user.displayId}</Text>
+                  </View>
+                ))}
+              </ScrollView>
+            )}
           </View>
           {tier.showFinancials && (
             <View>
@@ -340,17 +377,6 @@ export default function AdminDashboard() {
         </View>
       </ScrollView>
 
-      <AddonRequestModal
-        visible={requestModalVisible}
-        onClose={() => setRequestModalVisible(false)}
-        currentAddons={{
-          library: addonLibrary,
-          messaging: addonMessaging,
-          finance: addonFinance,
-          analytics: addonAnalytics,
-          bursary: addonBursary,
-        }}
-      />
     </View>
   );
 }

@@ -58,7 +58,8 @@ const MenuItem = ({ icon, label, onPress, danger, isDark }: MenuItemProps) => (
 function SettingsMenu({ userRole, onNavigate }: { userRole: string; onNavigate: (screen: 'profile' | 'settings' | 'help' | 'overview' | 'ownership' | 'sessions') => void }) {
   const { signOut, profile, loading, displayId, isTrial, isMain } = useAuth();
   const { theme, setTheme, isDark } = useTheme();
-  const roleLabel = userRole === 'master_admin' ? 'Master Admin' : userRole === 'parent' ? 'Parent/Guardian' : (userRole.charAt(0).toUpperCase() + userRole.slice(1));
+  const isPlatformAdminRole = userRole === 'master_admin' || userRole === 'platform_admin';
+  const roleLabel = isPlatformAdminRole ? 'Master Admin' : userRole === 'parent' ? 'Parent/Guardian' : (userRole.charAt(0).toUpperCase() + userRole.slice(1));
 
   const surface = isDark ? '#161B22' : '#F6F8FA';
   const border = isDark ? '#21262D' : '#D0D7DE';
@@ -159,7 +160,7 @@ function SettingsMenu({ userRole, onNavigate }: { userRole: string; onNavigate: 
           <Text style={{ fontSize: 10, fontWeight: 'bold', color: textSecondary, textTransform: 'uppercase', letterSpacing: 3, marginBottom: 16 }}>
             Appearance
           </Text>
-          <View style={{ flexDirection: 'row', backgroundColor: pillBg, borderRadius: 24, padding: 6, borderWidth: 1, borderColor: pillBorder }}>
+          <View style={{ flexDirection: 'row', backgroundColor: pillBg, borderRadius: 14, padding: 3, borderWidth: 1, borderColor: pillBorder }}>
             {themeModes.map((mode) => {
               const isActive = theme === mode;
               return (
@@ -169,10 +170,10 @@ function SettingsMenu({ userRole, onNavigate }: { userRole: string; onNavigate: 
                   activeOpacity={0.8}
                   style={{
                     flex: 1,
-                    paddingVertical: 12,
+                    paddingVertical: 6,
                     alignItems: 'center',
                     justifyContent: 'center',
-                    borderRadius: 18,
+                    borderRadius: 11,
                     flexDirection: 'row',
                     backgroundColor: isActive ? (isDark ? '#1f2937' : '#FFFFFF') : 'transparent',
                     borderWidth: isActive ? 1 : 0,
@@ -181,8 +182,8 @@ function SettingsMenu({ userRole, onNavigate }: { userRole: string; onNavigate: 
                 >
                   {modeIcon(mode, isActive)}
                   <Text style={{
-                    marginLeft: 6,
-                    fontSize: 10,
+                    marginLeft: 4,
+                    fontSize: 8,
                     fontWeight: 'bold',
                     textTransform: 'uppercase',
                     letterSpacing: 1,
@@ -226,13 +227,13 @@ export function GlobalSettingsContent({ userRole = 'student' }: { userRole?: Use
     switch (activeScreen) {
       case 'overview': return <AdminOverview />;
       case 'profile':
-        if (userRole === 'master_admin') return <MasterAdminProfile />;
+        if (userRole === 'master_admin' || userRole === 'platform_admin') return <MasterAdminProfile />;
         if (userRole === 'admin') return <AdminProfile />;
         if (userRole === 'teacher') return <TeacherProfile />;
         if (userRole === 'parent') return <ParentProfile />;
         return <StudentProfile />;
       case 'settings':
-        if (userRole === 'master_admin') return <MasterAdminSettings />;
+        if (userRole === 'master_admin' || userRole === 'platform_admin') return <MasterAdminSettings />;
         if (userRole === 'admin') return <AdminSettings />;
         if (userRole === 'teacher') return <TeacherSettings />;
         return <StudentSettings />;
@@ -265,7 +266,7 @@ export function GlobalSettingsContent({ userRole = 'student' }: { userRole?: Use
     }
   };
 
-  const roleLabel = userRole === 'master_admin' ? 'Master Admin' : userRole === 'parent' ? 'Parent/Guardian' : (userRole.charAt(0).toUpperCase() + userRole.slice(1)) as "Student" | "Teacher" | "Admin" | "Parent/Guardian" | "Master Admin";
+  const roleLabel = (userRole === 'master_admin' || userRole === 'platform_admin') ? 'Master Admin' : userRole === 'parent' ? 'Parent/Guardian' : (userRole.charAt(0).toUpperCase() + userRole.slice(1)) as "Student" | "Teacher" | "Admin" | "Parent/Guardian" | "Master Admin";
 
   return (
     <View style={{ flex: 1, backgroundColor: isDark ? '#0F0B2E' : '#ffffff' }}>

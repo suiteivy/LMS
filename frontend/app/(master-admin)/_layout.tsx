@@ -3,7 +3,7 @@ import { NavItem, WebSidebar } from "@/components/layouts/WebSideBar";
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { Redirect, Slot, Tabs } from "expo-router";
-import { Bell, Building2, CreditCard, Headphones, LayoutDashboard, Settings, Users } from 'lucide-react-native';
+import { Bell, Building2, CreditCard, Headphones, LayoutDashboard, Settings, ShieldAlert, Users } from 'lucide-react-native';
 import React from 'react';
 import { Platform, useWindowDimensions, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -14,6 +14,7 @@ const NAV_ITEMS: NavItem[] = [
     { name: "users", title: "All Users", icon: Users, route: "/(master-admin)/users" },
     { name: "payments", title: "Payments", icon: CreditCard, route: "/(master-admin)/payments" },
     { name: "notifications", title: "Notices", icon: Bell, route: "/(master-admin)/notifications" },
+    { name: "password-audit", title: "Password Audit", icon: ShieldAlert, route: "/(master-admin)/password-audit" },
     { name: "support", title: "Support", icon: Headphones, route: "/(master-admin)/support" },
     { name: "settings", title: "Settings", icon: Settings, route: "/(master-admin)/settings" },
 ];
@@ -134,6 +135,11 @@ function MasterAdminTabs() {
                         return <View><Icon size={size} color={color} strokeWidth={2} /></View>;
                     },
                 }}
+            />
+
+            <Tabs.Screen
+                name="password-audit"
+                options={{ href: null }}
             />
 
             {HIDDEN.map((name) => (

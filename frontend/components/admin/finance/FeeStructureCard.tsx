@@ -1,9 +1,10 @@
 import { useTheme } from '@/contexts/ThemeContext';
+import { Spinner } from '@/components/ui/Spinner';
 import { supabase } from '@/libs/supabase';
 import { formatCurrency } from '@/utils/currency';
 import { Ionicons } from '@expo/vector-icons';
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 
 export function FeeStructureCard() {
     const { isDark } = useTheme();
@@ -35,7 +36,7 @@ export function FeeStructureCard() {
     };
 
     if (loading) {
-        return <ActivityIndicator size="large" color={isDark ? "#FF6900" : "#000"} className="mt-10" />;
+        return <Spinner size="large" color={isDark ? "#FF6900" : "#000"} className="mt-10" label="Loading fee structures" />;
     }
 
     return (

@@ -1,4 +1,5 @@
 import { useTheme } from '@/contexts/ThemeContext';
+import { Spinner } from '@/components/ui/Spinner';
 import { User } from '@/types/types';
 import React from 'react';
 import { ActivityIndicator, Text, TouchableOpacity, View } from 'react-native';

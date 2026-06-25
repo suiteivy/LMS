@@ -11,8 +11,7 @@ import {
     Megaphone,
     MessageSquare,
     PenLine,
-    Award,
-    Wallet
+    Award
 } from 'lucide-react-native';
 import { ScrollView, Text, TouchableOpacity, View, Alert } from 'react-native';
 import { useSubscriptionTier } from "@/hooks/useSubscriptionTier";
@@ -29,7 +28,11 @@ interface FeatureCardProps {
     route: string;
     badge?: string;
     tooltipId?: any;
+<<<<<<< HEAD
     // tier?: any;
+=======
+    tier?: any;
+>>>>>>> df05e40555bb1ec7b19b668a6cfb4d742c627c50
 }
 
 const FeatureCard = ({ icon: Icon, title, description, color, bgColor, route, badge, tooltipId }: FeatureCardProps) => {
@@ -201,11 +204,10 @@ export default function ManagementIndex() {
         {
             icon: BarChart3,
             title: "Insights",
-            description: hasAnalytics
-                ? "Track performance and statistics"
-                : "Requires Analytics add-on",
+            description: "Track performance and statistics",
             color: "#3b82f6",
             bgColor: "#dbeafe",
+<<<<<<< HEAD
             route: hasAnalytics ? "/(teacher)/management/analytics" : "/(admin)/request-feature",
             badge: hasAnalytics ? undefined : "Add-on",
             tooltipId: 'teacher.manage.insights',
@@ -222,6 +224,12 @@ export default function ManagementIndex() {
             // tier:""
         },
         {
+=======
+            route: "/(teacher)/management/analytics",
+            tooltipId: 'teacher.manage.insights'
+        },
+        {
+>>>>>>> df05e40555bb1ec7b19b668a6cfb4d742c627c50
             icon: BookOpen,
             title: "Resource Bank",
             description: "Upload and manage Subject materials",
@@ -273,6 +281,13 @@ export default function ManagementIndex() {
         }] : [])
     ];
 
+    const visibleFeatures = features.filter((feature) => {
+        if (feature.route === "/(teacher)/management/analytics") {
+            return hasAnalytics;
+        }
+        return true;
+    });
+
     return (
         <View className="flex-1 bg-[#FFFFFF] dark:bg-[#0D1117]">
             <UnifiedHeader
@@ -294,6 +309,7 @@ export default function ManagementIndex() {
                     </View>
 
                     {/* Feature Cards */}
+<<<<<<< HEAD
                     <Text className="text-lg font-bold text-gray-900 dark:text-white mb-3">Management Suite</Text>
                     
                     {features.map((feature, index) => (
@@ -301,6 +317,13 @@ export default function ManagementIndex() {
 
                        
                         } />
+=======
+                    <View className="px-2 mb-4">
+                        <Text className="text-gray-400 font-bold text-[10px] uppercase tracking-widest">Management Suite</Text>
+                    </View>
+                    {visibleFeatures.map((feature, index) => (
+                        <FeatureCard key={index} {...feature} tier={tier} />
+>>>>>>> df05e40555bb1ec7b19b668a6cfb4d742c627c50
                     ))}
                 </View>
             </ScrollView>

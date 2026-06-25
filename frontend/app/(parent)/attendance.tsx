@@ -5,6 +5,7 @@ import { router, useLocalSearchParams } from "expo-router";
 import { Calendar as CalendarIcon, CheckCircle2, Clock, Search, XCircle } from "lucide-react-native";
 import React, { useEffect, useState } from "react";
 import { ActivityIndicator, RefreshControl, ScrollView, Text, TouchableOpacity, View } from "react-native";
+import { useParentStudentContext } from "@/hooks/useParentStudentContext";
 
 // ─── Demo fallback ───────────────────────────────────────────────────────────
 const DEMO_ATTENDANCE = [
@@ -58,7 +59,8 @@ const computeStats = (records: any[]) => {
 };
 
 export default function StudentAttendancePage() {
-  const { studentId, studentName } = useLocalSearchParams<{ studentId: string; studentName?: string }>();
+  const params = useLocalSearchParams<{ studentId: string; studentName?: string; classId?: string }>();
+  const { studentId: resolvedStudentId, studentName: resolvedName, ready } = useParentStudentContext(params as any);
   const { isDemo } = useAuth();
 
   const [loading, setLoading] = useState(true);
@@ -66,7 +68,7 @@ export default function StudentAttendancePage() {
   const [records, setRecords] = useState<any[]>([]);
 
   const loadAttendance = async () => {
-    if (isDemo || !studentId) {
+    if (isDemo || !resolvedStudentId) {
       setRecords(DEMO_ATTENDANCE);
       setLoading(false);
       setRefreshing(false);
@@ -74,7 +76,7 @@ export default function StudentAttendancePage() {
     }
 
     try {
-      const data = await ParentService.getStudentAttendance(studentId);
+      const data = await ParentService.getStudentAttendance(resolvedStudentId);
       setRecords(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error("Error fetching attendance:", error);
@@ -86,8 +88,9 @@ export default function StudentAttendancePage() {
   };
 
   useEffect(() => {
+    if (!ready) return;
     loadAttendance();
-  }, [studentId, isDemo]);
+  }, [ready, resolvedStudentId, isDemo]);
 
   const onRefresh = () => {
     setRefreshing(true);
@@ -99,7 +102,7 @@ export default function StudentAttendancePage() {
   return (
     <View className="flex-1 bg-gray-50 dark:bg-navy">
       <UnifiedHeader
-        title={studentName ? `${studentName}'s Attendance` : "Compliance"}
+        title={resolvedName ? `${resolvedName}'s Attendance` : "Compliance"}
         subtitle="Attendance Record"
         role="Parent/Guardian"
         onBack={() => router.back()}

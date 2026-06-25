@@ -1,4 +1,5 @@
 import { UnifiedHeader } from '@/components/common/UnifiedHeader';
+import { Spinner } from '@/components/ui/Spinner';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { supabase } from '@/libs/supabase';
@@ -8,7 +9,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
-    ActivityIndicator, Alert, Modal, Platform,
+    Alert, Modal, Platform,
     ScrollView,
     Text,
     TextInput,
@@ -484,7 +485,11 @@ export default function AdminClassManagement() {
     if (loading) {
         return (
             <SafeAreaView edges={['top']} style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: bg }}>
+<<<<<<< HEAD
                 <ActivityIndicator size="large" color="#FF6900" />
+=======
+                <Spinner size="large" color="#FF6B00" label="Loading classes" />
+>>>>>>> df05e40555bb1ec7b19b668a6cfb4d742c627c50
             </SafeAreaView>
         );
     }
@@ -632,9 +637,12 @@ export default function AdminClassManagement() {
                         ))
                     )}
 
-                    {/* ── Students Panel ── */}
-                    {selectedClass && (
-                        <View style={{ marginTop: 8, backgroundColor: card, borderRadius: 20, borderWidth: 1, borderColor: border, overflow: 'hidden' }}>
+            {/* ── Students Panel ── */}
+            {selectedClass && (
+                        <View
+                            style={{ marginTop: 8, backgroundColor: card, borderRadius: 20, borderWidth: 1, borderColor: border, overflow: 'hidden' }}
+                            accessibilityState={{ busy: loadingStudents }}
+                        >
                             <View style={{ padding: 16, backgroundColor: sectionBg, borderBottomWidth: 1, borderBottomColor: border }}>
                                 <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
                                     <View>
@@ -687,7 +695,11 @@ export default function AdminClassManagement() {
                             {/* Student list */}
                             {loadingStudents ? (
                                 <View style={{ padding: 24, alignItems: 'center' }}>
+<<<<<<< HEAD
                                     <ActivityIndicator color="#FF6900" />
+=======
+                                    <Spinner color="#FF6B00" label="Loading class students" />
+>>>>>>> df05e40555bb1ec7b19b668a6cfb4d742c627c50
                                 </View>
                             ) : students.length === 0 ? (
                                 <View style={{ padding: 24, alignItems: 'center' }}>
@@ -907,10 +919,12 @@ export default function AdminClassManagement() {
                                 style={{
                                     backgroundColor: '#FF6900', paddingVertical: 16,
                                     borderRadius: 16, alignItems: 'center', marginBottom: 8,
+                                    opacity: saving ? 0.7 : 1,
                                 }}
+                                accessibilityState={{ disabled: saving, busy: saving }}
                             >
                                 {saving ? (
-                                    <ActivityIndicator color="white" />
+                                    <Spinner color="white" label="Saving class" />
                                 ) : (
                                     <Text style={{ color: 'white', fontWeight: '800', fontSize: 16 }}>
                                         {editingClass ? 'Save Changes' : 'Create Class'}
@@ -971,10 +985,12 @@ export default function AdminClassManagement() {
                                     style={{
                                         flex: 2, paddingVertical: 14, borderRadius: 14, alignItems: 'center',
                                         backgroundColor: autoAssignLevel ? '#7C3AED' : (isDark ? '#3F3F3F' : '#D1D5DB'),
+                                        opacity: autoAssigning ? 0.8 : 1,
                                     }}
+                                    accessibilityState={{ disabled: autoAssigning || !autoAssignLevel, busy: autoAssigning }}
                                 >
                                     {autoAssigning ? (
-                                        <ActivityIndicator color="white" />
+                                        <Spinner color="white" label="Auto-assigning students" />
                                     ) : (
                                         <Text style={{ color: 'white', fontWeight: '800' }}>Assign</Text>
                                     )}
@@ -1200,10 +1216,12 @@ export default function AdminClassManagement() {
                                 style={{
                                     backgroundColor: streamLevel && streamClasses.length > 0 ? '#0891B2' : (isDark ? '#3F3F3F' : '#D1D5DB'),
                                     paddingVertical: 16, borderRadius: 16, alignItems: 'center', marginBottom: 8,
+                                    opacity: bulkCreating ? 0.8 : 1,
                                 }}
+                                accessibilityState={{ disabled: bulkCreating || !streamLevel || streamClasses.length === 0, busy: bulkCreating }}
                             >
                                 {bulkCreating ? (
-                                    <ActivityIndicator color="white" />
+                                    <Spinner color="white" label="Creating classes in bulk" />
                                 ) : (
                                     <Text style={{ color: 'white', fontWeight: '800', fontSize: 16 }}>
                                         {streamClasses.length > 0

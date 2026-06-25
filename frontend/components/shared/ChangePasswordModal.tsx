@@ -1,14 +1,15 @@
 import React, { useState } from 'react';
+import { Spinner } from '@/components/ui/Spinner';
 import {
     View,
     Text,
     Modal,
     TextInput,
     TouchableOpacity,
-    ActivityIndicator,
     Platform,
     KeyboardAvoidingView,
     ScrollView,
+    ActivityIndicator,
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -240,6 +241,7 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ visibl
                             <TouchableOpacity
                                 onPress={handlePasswordChange}
                                 disabled={loading}
+                                accessibilityState={{ disabled: loading, busy: loading }}
                                 activeOpacity={0.8}
                                 style={{
                                     backgroundColor: tokens.primary,

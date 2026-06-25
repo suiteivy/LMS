@@ -1,5 +1,6 @@
 import { UnifiedHeader } from '@/components/common/UnifiedHeader';
-import { AddonRequestButton, SubscriptionGate } from '@/components/shared/SubscriptionComponents';
+import { Spinner } from '@/components/ui/Spinner';
+import { SubscriptionGate } from '@/components/shared/SubscriptionComponents';
 import { HelpTooltip } from '@/components/settings/HelpTooltip';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useSubscriptionTier } from '@/hooks/useSubscriptionTier';
@@ -196,7 +197,6 @@ export default function AdminPromotionsScreen() {
               <Text style={{ color: muted, fontSize: 12, marginBottom: 12 }}>
                 Enable Analytics add-on to access enhanced promotion documentation and guided controls.
               </Text>
-              <AddonRequestButton onPress={() => router.push('/(admin)/request-feature' as any)} />
             </View>
           </View>
         }

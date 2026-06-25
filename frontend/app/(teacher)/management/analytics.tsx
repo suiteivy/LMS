@@ -6,7 +6,7 @@ import { supabase } from "@/libs/supabase";
 import { useAuth } from "@/contexts/AuthContext";
 import { TeacherAPI } from "@/services/TeacherService";
 import { GradingAPI } from "@/services/GradingService";
-import { SubscriptionBanner, SubscriptionGate, AddonRequestButton } from "@/components/shared/SubscriptionComponents";
+import { SubscriptionBanner, SubscriptionGate } from "@/components/shared/SubscriptionComponents";
 import { UnifiedHeader } from "@/components/common/UnifiedHeader";
 import { TrendChart, SubjectTrendCard } from "@/components/common/TrendChart";
 import { HelpTooltip } from "@/components/settings/HelpTooltip";
@@ -217,7 +217,6 @@ export default function AnalyticsPage() {
                                     <Text className="text-gray-500 dark:text-gray-400 text-center text-xs mb-6">
                                         Advanced analytics are not included in your current plan.
                                     </Text>
-                                    <AddonRequestButton onPress={() => { /* Handle request */ }} />
                                 </View>
                             }
                         >

@@ -10,6 +10,7 @@ import { useLocalSearchParams } from "expo-router";
 import { ChangePasswordModal } from "./shared/ChangePasswordModal";
 import { HelpTooltip } from "./settings/HelpTooltip";
 import { SettingsWithManual } from "./settings/SettingsWithManual";
+import { ThemeSegmentedControl } from "./settings/ThemeSegmentedControl";
 
 interface SettingRowProps {
     icon: LucideIcon;
@@ -134,6 +135,11 @@ export default function AdminSettings() {
                             disabled={prefsLoading}
                         />
                     </SettingRow>
+                </View>
+
+                <Text className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest ml-1 mb-2">Appearance</Text>
+                <View className="bg-white dark:bg-[#1a1a1a] rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm mb-6 overflow-hidden p-3">
+                    <ThemeSegmentedControl />
                 </View>
 
                 <ProfileEdit visible={showEditForm} onClose={() => setShowEditForm(false)} />

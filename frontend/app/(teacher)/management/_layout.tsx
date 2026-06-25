@@ -19,7 +19,6 @@ export default function ManagementLayout() {
                 <Stack.Screen name="attendance" />
                 <Stack.Screen name="announcements" />
                 <Stack.Screen name="analytics" />
-                <Stack.Screen name="earnings" />
                 <Stack.Screen name="resources" />
                 <Stack.Screen name="diary" />
                 <Stack.Screen name="grade-entry" />

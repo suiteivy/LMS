@@ -1,5 +1,5 @@
 import { UnifiedHeader } from "@/components/common/UnifiedHeader";
-import { AddonRequestButton, SubscriptionBanner, SubscriptionGate } from "@/components/shared/SubscriptionComponents";
+import { SubscriptionBanner, SubscriptionGate } from "@/components/shared/SubscriptionComponents";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSubscriptionTier } from "@/hooks/useSubscriptionTier";
 import { useNotifications } from "@/contexts/NotificationContext";
@@ -408,7 +408,6 @@ export default function Index() {
                 <Text style={{ color: isDark ? '#94a3b8' : '#6b7280', fontSize: 12, marginBottom: 12 }}>
                   Your institution has not enabled the Analytics add-on yet.
                 </Text>
-                <AddonRequestButton onPress={() => router.push('/(admin)/request-feature' as any)} />
               </View>
             }
           >

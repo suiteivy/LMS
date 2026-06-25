@@ -25,7 +25,9 @@ export const useDashboardStats = () => {
             let studentCount = 0;
             let teacherCount = 0;
             let subjectCount = 0;
-            let totalRevenue = 0;
+            // Stored transaction amounts are in KES in this codebase.
+            // Keep a canonical KES total and only derive USD as a display conversion.
+            let totalRevenueKES = 0;
             let presentToday = 0;
 
             const getLocalDateString = (d: Date) => {
@@ -89,6 +91,7 @@ export const useDashboardStats = () => {
                 .select('amount, date')
                 .eq('type', 'fee_payment')
                 .eq('direction', 'inflow')
+                .eq('status', 'completed')
                 .eq('institution_id', profile.institution_id)
                 .gte('date', thirtyDaysAgo.toISOString().split('T')[0]);
 
@@ -99,7 +102,7 @@ export const useDashboardStats = () => {
             if (transError) {
                 console.error('Error fetching transactions:', transError);
             } else {
-                totalRevenue = transactions?.reduce((sum, p) => sum + Number(p.amount || 0), 0) || 0;
+                totalRevenueKES = transactions?.reduce((sum, p) => sum + Number(p.amount || 0), 0) || 0;
 
                 // Group by day for last 7 days chart
                 const last7Days = Array.from({ length: 7 }, (_, i) => {
@@ -118,8 +121,8 @@ export const useDashboardStats = () => {
                 setRevenueData(breakdown);
             }
 
-            const exchangeRate = rates.KES; 
-            const totalRevenueKES = totalRevenue * exchangeRate;
+            const exchangeRate = rates.KES || 130;
+            const totalRevenueUSD = totalRevenueKES / exchangeRate;
 
             const statsData: StatsData[] = [
                 {
@@ -144,7 +147,7 @@ export const useDashboardStats = () => {
                 {
                     label: "Revenue",
                     value: formatKES(totalRevenueKES),
-                    subValue: formatUSD(totalRevenue),
+                    subValue: formatUSD(totalRevenueUSD),
                     icon: "wallet",
                     color: "yellow",
                 },

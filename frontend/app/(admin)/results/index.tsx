@@ -1,4 +1,5 @@
 import { UnifiedHeader } from '@/components/common/UnifiedHeader';
+import { Spinner } from '@/components/ui/Spinner';
 import { useTheme } from '@/contexts/ThemeContext';
 import { router } from 'expo-router';
 import {
@@ -599,9 +600,10 @@ export default function AdminResults() {
                                     paddingVertical: 6,
                                     opacity: manualRefreshing ? 0.7 : 1,
                                 }}
+                                accessibilityState={{ disabled: manualRefreshing, busy: manualRefreshing }}
                             >
                                 {manualRefreshing ? (
-                                    <ActivityIndicator size="small" color={isDark ? '#F9FAFB' : '#111827'} />
+                                    <Spinner size="small" color={isDark ? '#F9FAFB' : '#111827'} label="Refreshing results page" />
                                 ) : (
                                     <RefreshCw size={14} color={isDark ? '#F9FAFB' : '#111827'} />
                                 )}
@@ -728,9 +730,10 @@ export default function AdminResults() {
                                     flexDirection: 'row', justifyContent: 'center', gap: 8,
                                     opacity: !hasFilters ? 0.5 : 1,
                                 }}
+                                accessibilityState={{ disabled: checkingCompleteness || !hasFilters, busy: checkingCompleteness }}
                             >
                                 {checkingCompleteness ? (
-                                    <ActivityIndicator color="#FFFFFF" />
+                                    <Spinner color="#FFFFFF" label="Checking grade completeness" />
                                 ) : (
                                     <>
                                         <RefreshCw size={16} color="#FFFFFF" />
@@ -908,8 +911,9 @@ export default function AdminResults() {
                                                 flex: 1, backgroundColor: '#8B5CF6', paddingVertical: 12, borderRadius: 14,
                                                 flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
                                             }}
+                                            accessibilityState={{ disabled: generatingAll, busy: generatingAll }}
                                         >
-                                            {generatingAll ? <ActivityIndicator color="#FFF" size="small" /> : (
+                                            {generatingAll ? <Spinner color="#FFF" size="small" label="Generating report cards" /> : (
                                                 <>
                                                     <FileText size={14} color="#FFF" />
                                                     <Text style={{ color: '#FFF', fontWeight: '700', fontSize: 12 }}>Generate All</Text>
@@ -923,8 +927,9 @@ export default function AdminResults() {
                                                 flex: 1, backgroundColor: '#2563EB', paddingVertical: 12, borderRadius: 14,
                                                 flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
                                             }}
+                                            accessibilityState={{ disabled: publishingAll, busy: publishingAll }}
                                         >
-                                            {publishingAll ? <ActivityIndicator color="#FFF" size="small" /> : (
+                                            {publishingAll ? <Spinner color="#FFF" size="small" label="Publishing report cards" /> : (
                                                 <>
                                                     <Shield size={14} color="#FFF" />
                                                     <Text style={{ color: '#FFF', fontWeight: '700', fontSize: 12 }}>Publish All</Text>
@@ -938,8 +943,9 @@ export default function AdminResults() {
                                                 flex: 1, backgroundColor: '#059669', paddingVertical: 12, borderRadius: 14,
                                                 flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
                                             }}
+                                            accessibilityState={{ disabled: releasingAll, busy: releasingAll }}
                                         >
-                                            {releasingAll ? <ActivityIndicator color="#FFF" size="small" /> : (
+                                            {releasingAll ? <Spinner color="#FFF" size="small" label="Releasing report cards" /> : (
                                                 <>
                                                     <Send size={14} color="#FFF" />
                                                     <Text style={{ color: '#FFF', fontWeight: '700', fontSize: 12 }}>Release All</Text>

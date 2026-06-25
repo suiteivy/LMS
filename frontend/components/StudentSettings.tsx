@@ -6,6 +6,7 @@ import { ActivityIndicator, ScrollView, Switch, Text, TouchableOpacity, View } f
 import Toast from 'react-native-toast-message';
 import { ProfileEdit } from "./ProfileEdit";
 import { ChangePasswordModal } from "./shared/ChangePasswordModal";
+import { ThemeSegmentedControl } from "./settings/ThemeSegmentedControl";
 
 interface SettingRowProps {
     icon: LucideIcon;
@@ -73,6 +74,7 @@ export default function StudentSettings() {
         </TouchableOpacity>
     )
 
+
     return (
         <ScrollView className="flex-1 bg-[#FFFFFF] dark:bg-[#0D1117]">
             <View className="p-4 md:p-8 max-w-2xl mx-auto w-full">
@@ -108,6 +110,11 @@ export default function StudentSettings() {
                         </SettingRow>
                     </View>
                 )}
+
+                <Text className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest ml-1 mb-2">Appearance</Text>
+                <View className="bg-white dark:bg-[#1a1a1a] rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm mb-6 overflow-hidden p-3">
+                    <ThemeSegmentedControl />
+                </View>
 
                 <ProfileEdit
                     visible={showEditForm}

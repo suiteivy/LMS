@@ -1,4 +1,6 @@
 import { UnifiedHeader } from "@/components/common/UnifiedHeader";
+import { DirectChatView } from "@/components/chat/DirectChatView";
+import { Spinner } from "@/components/ui/Spinner";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTheme } from "@/contexts/ThemeContext";
 import { supabase } from "@/libs/supabase";
@@ -23,7 +25,6 @@ import {
 } from "lucide-react-native";
 import React, { useEffect, useState, useCallback, useRef } from "react";
 import {
-    ActivityIndicator,
     Alert,
     Animated,
     Easing,
@@ -61,6 +62,8 @@ export default function CommunicationPage() {
     // Loading states
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
+    const [directChatRefreshToken, setDirectChatRefreshToken] = useState(0);
+    const [directChatComposeToken, setDirectChatComposeToken] = useState(0);
 
     // Data lists
     const [inbox, setInbox] = useState<any[]>([]);
@@ -211,6 +214,18 @@ export default function CommunicationPage() {
         setRefreshing(true);
         loadAllData(true);
     };
+
+    const onHeaderRefresh = useCallback(() => {
+        setRefreshing(true);
+
+        if (mainTab === "messages") {
+            setDirectChatRefreshToken((prev) => prev + 1);
+            setTimeout(() => setRefreshing(false), 350);
+            return;
+        }
+
+        loadAllData(true);
+    }, [mainTab, loadAllData]);
 
 
 
@@ -373,228 +388,15 @@ export default function CommunicationPage() {
     // ─── Render Sub-methods ─────────────────────────────────────────────────────
 
     const renderDirectMessagesTab = () => {
-        const messagesList = msgTab === "inbox" ? inbox : sent;
-        const unreadCount = inbox.filter(m => !m.is_read).length;
-        const filteredParents = allParents.filter(p => 
-            p.full_name?.toLowerCase().includes(parentSearch.toLowerCase()) ||
-            p.email?.toLowerCase().includes(parentSearch.toLowerCase())
-        );
-
-        if (screen === "view" && selectedMsg) {
-            const partner = msgTab === "inbox" ? selectedMsg.sender : selectedMsg.receiver;
-            return (
-                <View className="flex-1 px-4 md:px-8 mt-4">
-                    <View className="bg-white dark:bg-[#1a1a1a] p-6 rounded-3xl border border-gray-100 dark:border-gray-800 flex-row items-center mb-6">
-                        <View className="w-12 h-12 rounded-xl bg-orange-50 dark:bg-orange-950/20 items-center justify-center mr-4">
-                            <Mail size={22} color="#FF6B00" />
-                        </View>
-                        <View className="flex-1">
-                            <Text className="text-gray-900 dark:text-white font-extrabold text-base tracking-tight">{selectedMsg.subject}</Text>
-                            <Text className="text-gray-400 dark:text-gray-500 text-[10px] font-bold uppercase tracking-widest mt-1">
-                                {msgTab === "inbox" ? `From: ${partner?.full_name}` : `To: ${partner?.full_name}`}
-                            </Text>
-                            <Text className="text-gray-400 dark:text-gray-500 text-[9px] font-medium mt-0.5">{partner?.email}</Text>
-                        </View>
-                        <TouchableOpacity
-                            className="bg-gray-50 dark:bg-gray-800 p-2 rounded-full"
-                            onPress={() => { setScreen("list"); setSelectedMsg(null); }}
-                        >
-                            <X size={16} color={isDark ? "#ffffff" : "#64748b"} />
-                        </TouchableOpacity>
-                    </View>
-                    <ScrollView className="flex-1 bg-white dark:bg-[#1a1a1a] rounded-3xl p-6 border border-gray-100 dark:border-gray-800">
-                        <Text className="text-gray-700 dark:text-gray-300 text-sm font-medium leading-[22px] mb-8">
-                            {selectedMsg.content}
-                        </Text>
-                        <Text className="text-gray-400 dark:text-gray-500 text-[10px] font-bold uppercase tracking-widest border-t border-gray-50 dark:border-gray-800 pt-4">
-                            Transmitted on {new Date(selectedMsg.created_at).toLocaleString()}
-                        </Text>
-                    </ScrollView>
-                </View>
-            );
-        }
-
-        if (screen === "compose") {
-            return (
-                <View className="flex-1 px-4 md:px-8 mt-4">
-                    <ScrollView className="flex-1" keyboardShouldPersistTaps="handled">
-                        <View className="flex-row justify-between items-center mb-6">
-                            <Text className="text-gray-950 dark:text-white text-xl font-black tracking-tight">Draft Transmission</Text>
-                            <TouchableOpacity
-                                className="w-8 h-8 bg-gray-100 dark:bg-gray-800 rounded-full items-center justify-center"
-                                onPress={() => { setScreen("list"); setSelectedParent(null); }}
-                            >
-                                <X size={16} color={isDark ? "#ffffff" : "#64748b"} />
-                            </TouchableOpacity>
-                        </View>
-
-                        {!selectedParent ? (
-                            <View className="bg-white dark:bg-[#1a1a1a] p-5 rounded-3xl border border-gray-100 dark:border-gray-800 shadow-sm mb-6">
-                                <Text className="text-gray-500 dark:text-gray-400 text-[10px] font-bold uppercase tracking-widest mb-2 ml-1">Search Parent/Guardian Stakeholder</Text>
-                                <View className="flex-row items-center bg-gray-50 dark:bg-gray-800 px-4 py-3 rounded-2xl mb-4 border border-gray-100 dark:border-gray-700">
-                                    <Search size={18} color="#9CA3AF" />
-                                    <TextInput
-                                        className="flex-1 ml-3 text-gray-950 dark:text-white font-semibold text-xs tracking-wide"
-                                        placeholder="Type name to lookup Parent/Guardian..."
-                                        placeholderTextColor="#9CA3AF"
-                                        value={parentSearch}
-                                        onChangeText={setParentSearch}
-                                    />
-                                </View>
-                                {filteredParents.length === 0 ? (
-                                    <View className="items-center py-8">
-                                        <Text className="text-gray-400 dark:text-gray-500 font-bold uppercase tracking-widest text-[9px]">No Parent/Guardian matches found</Text>
-                                    </View>
-                                ) : (
-                                    filteredParents.map(item => (
-                                        <TouchableOpacity
-                                            key={item.id}
-                                            className="flex-row items-center p-3 mb-2 bg-gray-50 dark:bg-gray-800/50 rounded-xl border border-gray-100 dark:border-gray-800"
-                                            onPress={() => { setSelectedParent(item); setParentSearch(""); }}
-                                        >
-                                            <View className="w-8 h-8 bg-orange-100 rounded-lg items-center justify-center mr-3">
-                                                <UserCircle size={18} color="#FF6B00" />
-                                            </View>
-                                            <View>
-                                                <Text className="text-gray-950 dark:text-white font-bold text-xs">{item.full_name}</Text>
-                                                <Text className="text-gray-400 dark:text-gray-500 text-[8px] font-bold uppercase tracking-widest">{item.email}</Text>
-                                            </View>
-                                        </TouchableOpacity>
-                                    ))
-                                )}
-                            </View>
-                        ) : (
-                            <View className="bg-[#1E293B] dark:bg-[#100D35] p-6 rounded-3xl mb-6 shadow-md border border-slate-700 dark:border-gray-800">
-                                <View className="flex-row items-center justify-between mb-6">
-                                    <View className="flex-row items-center">
-                                        <View className="bg-white/10 p-3 rounded-xl">
-                                            <UserCircle size={22} color="white" />
-                                        </View>
-                                        <View className="ml-3">
-                                            <Text className="text-white font-extrabold text-sm tracking-tight">{selectedParent.full_name}</Text>
-                                            <Text className="text-[#FF6B00] text-[9px] font-bold uppercase tracking-widest mt-0.5">{selectedParent.email}</Text>
-                                        </View>
-                                    </View>
-                                    <TouchableOpacity
-                                        onPress={() => setSelectedParent(null)}
-                                        className="bg-white/10 px-3 py-1.5 rounded-lg active:opacity-75"
-                                    >
-                                        <Text className="text-white text-[9px] font-bold uppercase">Change</Text>
-                                    </TouchableOpacity>
-                                </View>
-
-                                <Text className="text-slate-400 text-[9px] font-bold uppercase tracking-widest mb-1.5 ml-1">Subject</Text>
-                                <TextInput
-                                    className="bg-white dark:bg-gray-900 border border-slate-700 dark:border-gray-800 rounded-xl px-4 py-3 text-slate-900 dark:text-white font-bold text-xs mb-4"
-                                    placeholder="e.g. Performance Inquiry"
-                                    placeholderTextColor="#9ca3af"
-                                    value={messageSubject}
-                                    onChangeText={setMessageSubject}
-                                />
-
-                                <Text className="text-slate-400 text-[9px] font-bold uppercase tracking-widest mb-1.5 ml-1">Secure Message</Text>
-                                <View className="bg-white dark:bg-gray-900 border border-slate-700 dark:border-gray-800 rounded-2xl p-4" style={{ minHeight: 180 }}>
-                                    <TextInput
-                                        className="text-slate-900 dark:text-white text-xs font-medium"
-                                        placeholder="Compose message..."
-                                        placeholderTextColor="#9CA3AF"
-                                        multiline
-                                        textAlignVertical="top"
-                                        value={messageContent}
-                                        onChangeText={setMessageContent}
-                                        style={{ flex: 1 }}
-                                    />
-                                </View>
-
-                                <TouchableOpacity
-                                    className={`mt-6 py-4 rounded-xl flex-row justify-center items-center shadow-lg active:opacity-90 ${!messageContent.trim() ? "bg-gray-600" : "bg-[#FF6B00]"}`}
-                                    onPress={handleSendMessage}
-                                    disabled={sendingMsg || !messageContent.trim()}
-                                >
-                                    {sendingMsg ? (
-                                        <ActivityIndicator color="white" />
-                                    ) : (
-                                        <>
-                                            <Text className="text-white font-extrabold text-sm mr-2 uppercase tracking-wider">Send Message</Text>
-                                            <Send size={16} color="white" />
-                                        </>
-                                    )}
-                                </TouchableOpacity>
-                            </View>
-                        )}
-                    </ScrollView>
-                </View>
-            );
-        }
-
         return (
-            <View className="flex-1 px-4 md:px-8">
-                {/* Inbox/Sent Navigation */}
-                <View className="flex-row bg-white dark:bg-navy-surface p-1 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm mb-6 mt-4">
-                    {(["inbox", "sent"] as const).map(tab => (
-                        <TouchableOpacity
-                            key={tab}
-                            className={`flex-1 py-3 rounded-xl items-center justify-center ${msgTab === tab ? "bg-[#FF6B00]" : ""}`}
-                            onPress={() => setMsgTab(tab)}
-                        >
-                            <Text className={`text-[10px] font-bold uppercase tracking-widest ${msgTab === tab ? "text-white" : "text-gray-400 dark:text-gray-500"}`}>
-                                {tab === "inbox" && unreadCount > 0 ? `Inbox (${unreadCount})` : tab}
-                            </Text>
-                        </TouchableOpacity>
-                    ))}
-                </View>
-
-                {sentSuccess && (
-                    <View className="mb-4 bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900 p-3 rounded-xl flex-row items-center">
-                        <CheckCircle2 size={16} color="#10B981" />
-                        <Text className="text-emerald-700 dark:text-emerald-400 font-bold text-[10px] uppercase tracking-widest ml-3">Message sent successfully</Text>
-                    </View>
-                )}
-
-                <ScrollView
-                    className="flex-1"
-                    showsVerticalScrollIndicator={false}
-                    refreshControl={
-                        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={["#FF6B00"]} tintColor="#FF6B00" />
-                    }
-                >
-                    {messagesList.length === 0 ? (
-                        <View className="items-center py-16 bg-white dark:bg-navy-surface rounded-3xl border border-dashed border-gray-100 dark:border-gray-800">
-                            <MessageCircle size={48} color="#E5E7EB" style={{ opacity: 0.3 }} />
-                            <Text className="text-gray-400 dark:text-gray-500 font-bold mt-4 uppercase tracking-widest text-[10px]">No messages found</Text>
-                        </View>
-                    ) : (
-                        messagesList.map((item: any) => {
-                            const partner = msgTab === "inbox" ? item.sender : item.receiver;
-                            const unread = !item.is_read && msgTab === "inbox";
-                            return (
-                                <TouchableOpacity
-                                    key={item.id}
-                                    activeOpacity={0.7}
-                                    className={`flex-row items-center p-5 mb-3 rounded-2xl border shadow-sm ${unread ? "border-orange-100 bg-orange-50/10 dark:border-orange-950/20 dark:bg-orange-950/5" : "bg-white dark:bg-navy-surface border-gray-50 dark:border-gray-800"}`}
-                                    onPress={() => {
-                                        if (unread) handleMarkAsRead(item.id);
-                                        setSelectedMsg(item);
-                                        setScreen("view");
-                                    }}
-                                >
-                                    <View className={`w-10 h-10 rounded-xl items-center justify-center mr-3 ${unread ? "bg-orange-100 dark:bg-orange-950/30" : "bg-gray-50 dark:bg-gray-800"}`}>
-                                        <UserCircle size={20} color={unread ? "#FF6B00" : "#9CA3AF"} />
-                                    </View>
-                                    <View className="flex-1">
-                                        <View className="flex-row justify-between items-center mb-1">
-                                            <Text className="text-gray-950 dark:text-white font-bold text-sm" numberOfLines={1}>{partner?.full_name || "Unknown Stakeholder"}</Text>
-                                            <Text className="text-gray-400 dark:text-gray-500 text-[8px] font-bold uppercase tracking-widest">{formatTime(item.created_at)}</Text>
-                                        </View>
-                                        <Text className="text-gray-700 dark:text-gray-400 text-xs font-bold" numberOfLines={1}>{item.subject}</Text>
-                                        <Text className="text-gray-400 dark:text-gray-500 text-[10px] font-medium" numberOfLines={1}>{item.content}</Text>
-                                    </View>
-                                    {unread ? <View className="w-2 h-2 rounded-full bg-[#FF6B00] ml-2" /> : <ChevronRight size={14} color="#E5E7EB" className="ml-1" />}
-                                </TouchableOpacity>
-                            );
-                        })
-                    )}
-                </ScrollView>
+            <View className="flex-1 px-4 md:px-8 mt-4">
+                <DirectChatView
+                    allowedContactRoles={["teacher", "parent", "admin", "master_admin", "school_admin", "platform_admin"]}
+                    searchPlaceholder="Search school contacts..."
+                    emptyListTitle="No direct conversations"
+                    externalRefreshToken={directChatRefreshToken}
+                    externalComposeToken={directChatComposeToken}
+                />
             </View>
         );
     };
@@ -689,10 +491,7 @@ export default function CommunicationPage() {
                     <View className="flex-row items-center gap-2">
                         <TouchableOpacity
                             className={`bg-white dark:bg-navy-surface w-10 h-10 rounded-xl items-center justify-center shadow active:bg-gray-100 dark:active:bg-gray-700 ${refreshing ? "opacity-50" : ""}`}
-                            onPress={() => {
-                                setRefreshing(true);
-                                loadAllData(true);
-                            }}
+                            onPress={onHeaderRefresh}
                             disabled={refreshing}
                         >
                             <Animated.View style={{ transform: [{ rotate: spin }] }}>
@@ -703,7 +502,7 @@ export default function CommunicationPage() {
                             className="bg-[#FF6B00] w-10 h-10 rounded-xl items-center justify-center shadow active:bg-orange-600"
                             onPress={() => {
                                 if (mainTab === "messages") {
-                                    setScreen("compose");
+                                    setDirectChatComposeToken((prev) => prev + 1);
                                 } else {
                                     openAnnouncementModal();
                                 }
@@ -717,7 +516,7 @@ export default function CommunicationPage() {
 
             {loading && !refreshing ? (
                 <View className="flex-1 justify-center items-center">
-                    <ActivityIndicator size="large" color="#FF6B00" />
+                    <Spinner size="large" color="#FF6B00" label="Loading communication" />
                 </View>
             ) : mainTab === "messages" ? (
                 renderDirectMessagesTab()
@@ -765,9 +564,10 @@ export default function CommunicationPage() {
                             className={`py-4 rounded-xl items-center justify-center flex-row shadow-md active:opacity-90 ${!announcementTitle.trim() || !announcementMessage.trim() ? 'bg-gray-400' : 'bg-[#FF6B00]'}`}
                             onPress={handlePostOrUpdateAnnouncement}
                             disabled={postingAnnouncement || !announcementTitle.trim() || !announcementMessage.trim()}
+                            accessibilityState={{ disabled: postingAnnouncement || !announcementTitle.trim() || !announcementMessage.trim(), busy: postingAnnouncement }}
                         >
                             {postingAnnouncement ? (
-                                <ActivityIndicator color="white" />
+                                <Spinner color="white" label="Saving announcement" />
                             ) : (
                                 <>
                                     {editingAnnouncement ? <Edit2 size={16} color="white" /> : <Megaphone size={16} color="white" />}

@@ -1,9 +1,11 @@
 import { UnifiedHeader } from "@/components/common/UnifiedHeader";
-import { NotificationAPI } from "@/services/NotificationService";
+import { ParentService } from "@/services/ParentService";
+import { useLocalSearchParams } from "expo-router";
 import { router } from "expo-router";
 import { AlertTriangle, Bell, Calendar, ChevronRight, Info, MessageSquare } from "lucide-react-native";
 import React, { useEffect, useState } from "react";
 import { ActivityIndicator, RefreshControl, ScrollView, Text, TouchableOpacity, View } from "react-native";
+import { useParentStudentContext } from "@/hooks/useParentStudentContext";
 
 const getNotificationConfig = (type: string) => {
   switch (type) {
@@ -19,13 +21,22 @@ const getNotificationConfig = (type: string) => {
 };
 
 export default function StudentAnnouncementsPage() {
+  const params = useLocalSearchParams();
+  const { studentId, ready } = useParentStudentContext(params as any, { autoInjectParams: true, persistWhenParamPresent: true });
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [announcements, setAnnouncements] = useState<any[]>([]);
 
   const fetchAnnouncements = async () => {
+    if (!studentId) {
+      setAnnouncements([]);
+      setLoading(false);
+      setRefreshing(false);
+      return;
+    }
+
     try {
-      const data = await NotificationAPI.getUserNotifications();
+      const data = await ParentService.getStudentAnnouncements(studentId);
       setAnnouncements(data);
     } catch (error) {
       console.error("Error fetching announcements:", error);
@@ -36,8 +47,9 @@ export default function StudentAnnouncementsPage() {
   };
 
   useEffect(() => {
+    if (!ready) return;
     fetchAnnouncements();
-  }, []);
+  }, [ready, studentId]);
 
   const onRefresh = () => {
     setRefreshing(true);

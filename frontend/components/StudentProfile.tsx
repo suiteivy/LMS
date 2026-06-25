@@ -1,6 +1,7 @@
 import { useAuth } from "@/contexts/AuthContext";
 import { useTheme } from "@/contexts/ThemeContext";
 import { authService, supabase } from "@/libs/supabase";
+import { Spinner } from "@/components/ui/Spinner";
 import {
   Calendar,
   Camera,
@@ -14,7 +15,6 @@ import {
 } from "lucide-react-native";
 import React, { useEffect, useState } from "react";
 import {
-  ActivityIndicator,
   Alert,
   Image,
   RefreshControl,
@@ -122,8 +122,8 @@ export default function StudentProfile() {
 
   if (!profile) {
     return (
-      <View className="flex-1 justify-center items-center bg-[#FFFFFF] dark:bg-[#0D1117]">
-        <ActivityIndicator size="large" color="#FF6900" />
+      <View className="flex-1 justify-center items-center bg-gray-50 dark:bg-navy">
+        <Spinner size="large" color="#FF6B00" label="Loading profile" />
       </View>
     );
   }
@@ -217,9 +217,9 @@ export default function StudentProfile() {
                     </View>
                   </View>
 
-                  <TouchableOpacity className="bg-[#FF6900] py-4 rounded-2xl items-center mt-4 shadow-lg shadow-orange-500/20" onPress={handleUpdateProfile} disabled={saving}>
-                    {saving ? <ActivityIndicator color="white" /> : <Text className="text-white font-black text-xs uppercase tracking-[2px]">Save Changes</Text>}
-                  </TouchableOpacity>
+                    <TouchableOpacity className="bg-[#FF6900] py-4 rounded-2xl items-center mt-4 shadow-lg shadow-orange-500/20" onPress={handleUpdateProfile} disabled={saving}>
+                      {saving ? <Spinner color="white" label="Saving profile" /> : <Text className="text-white font-black text-xs uppercase tracking-[2px]">Save Changes</Text>}
+                    </TouchableOpacity>
                 </View>
               ) : (
                 <View>

@@ -7,7 +7,7 @@ import { BookOpen, CheckCircle2, Clock, Filter, Search, X } from 'lucide-react-n
 import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, Modal, RefreshControl, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useRealtimeQuery } from '@/hooks/useRealtimeQuery';
-import { SubscriptionGate, AddonRequestButton } from "@/components/shared/SubscriptionComponents";
+import { SubscriptionGate } from "@/components/shared/SubscriptionComponents";
 import { Zap } from "lucide-react-native";
 
 export default function StudentLibrary() {

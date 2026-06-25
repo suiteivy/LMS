@@ -150,6 +150,7 @@ function AuthHandler() {
     const currentPath = normalizePath(`/${segments.join('/')}`);
     const inAuthGroup = segments.some(s => s === "(auth)");
     const isRoot = currentPath === '/' || currentPath === '';
+    const isCredentialDelivery = currentPath === '/credential-delivery';
 
 
     const handleRedirect = (path: string) => {
@@ -172,7 +173,7 @@ function AuthHandler() {
     };
 
     if (!session) {
-      if (!inAuthGroup && !isRoot) {
+      if (!inAuthGroup && !isRoot && !isCredentialDelivery) {
         if (wasDemo) {
           handleRedirect("/");
           clearWasDemo();
@@ -181,8 +182,17 @@ function AuthHandler() {
         }
       }
     } else if (profile) {
+      const requiresCredentialSetup = !!(profile as any).must_change_password || !!(profile as any).requires_security_questions_setup;
+      if (requiresCredentialSetup && currentPath !== '/(auth)/security-questions') {
+        handleRedirect('/(auth)/security-questions');
+        return;
+      }
+
       // If at root or in auth group, redirect to role-specific dashboard
       if (isRoot || inAuthGroup) {
+        if (requiresCredentialSetup && currentPath === '/(auth)/security-questions') {
+          return;
+        }
         const redirectPath = getRoleRedirect(profile, isPlatformAdmin);
         if (redirectPath) {
           handleRedirect(redirectPath);
@@ -212,6 +222,9 @@ function AuthHandler() {
         <Stack.Screen name="(teacher)" />
         <Stack.Screen name="(parent)" />
         <Stack.Screen name="(auth)/forgot-password" />
+        <Stack.Screen name="(auth)/security-questions" />
+        <Stack.Screen name="(auth)/verify-security-questions" />
+        <Stack.Screen name="credential-delivery" />
         <Stack.Screen name="(auth)/demo" />
       </Stack>
 

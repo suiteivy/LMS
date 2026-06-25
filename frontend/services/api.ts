@@ -45,6 +45,8 @@ if (typeof window !== 'undefined') {
 
 let _lastNetworkToast = 0;
 const NETWORK_TOAST_COOLDOWN = 5000;
+const RATE_LIMIT_TOAST_COOLDOWN = 10000;
+let _lastRateLimitToast = 0;
 let _pendingRetry: (() => Promise<any>) | null = null;
 
 export const getPendingRetry = () => _pendingRetry;
@@ -102,9 +104,55 @@ export const api: AxiosInstance = axios.create({
   },
 });
 
+const rateLimitHolds = new Map<string, number>();
+
+const makeRateLimitKey = (config?: InternalAxiosRequestConfig) => {
+  const method = (config?.method || 'get').toLowerCase();
+  const url = (config?.url || '').split('?')[0];
+  return `${method}:${url}`;
+};
+
+const getHoldUntil = (config?: InternalAxiosRequestConfig) => {
+  if (!config) return 0;
+  const key = makeRateLimitKey(config);
+  return rateLimitHolds.get(key) || 0;
+};
+
+const setRateLimitHold = (config: InternalAxiosRequestConfig | undefined, retryAfterSeconds: number) => {
+  if (!config) return;
+  const key = makeRateLimitKey(config);
+  rateLimitHolds.set(key, Date.now() + (Math.max(1, retryAfterSeconds) * 1000));
+};
+
+const clearExpiredRateLimitHolds = () => {
+  const now = Date.now();
+  for (const [key, until] of rateLimitHolds.entries()) {
+    if (until <= now) {
+      rateLimitHolds.delete(key);
+    }
+  }
+};
+
 // Request Interceptor: Inject Auth Token
 api.interceptors.request.use(
   async (config) => {
+    clearExpiredRateLimitHolds();
+    const holdUntil = getHoldUntil(config);
+    if (holdUntil > Date.now()) {
+      const retryAfter = Math.max(1, Math.ceil((holdUntil - Date.now()) / 1000));
+      const heldError: any = new Error('Rate limited request held');
+      heldError.config = config;
+      heldError.response = {
+        status: 429,
+        data: {
+          error: 'Too many requests. Please try again later.',
+          code: 'RATE_LIMIT_HELD',
+          retryAfter,
+        },
+      };
+      throw heldError;
+    }
+
     const startTime = Date.now();
     const requestId = Math.random().toString(36).substring(7);
     
@@ -204,11 +252,14 @@ api.interceptors.response.use(
           }
           severity = 'info';
           break;
-        case 429:
+        case 429: {
           title = "Too Many Requests";
-          message = "You're doing that too often. Please wait a moment.";
+          const retryAfter = Number(data?.retryAfter || 10);
+          setRateLimitHold(error.config as InternalAxiosRequestConfig, retryAfter);
+          message = `You're doing that too often. Please wait ${retryAfter}s.`;
           severity = 'warning';
           break;
+        }
         case 500:
           title = "Server Error";
           if (!data?.error && !data?.message) {
@@ -270,13 +321,21 @@ api.interceptors.response.use(
     // Only show toast if it's not a "cancelled" request, NOT a 401 (handled by AuthContext),
     // and the caller hasn't opted out via `skipErrorToast: true`.
     const skipToast = (error.config as InternalAxiosRequestConfig & { skipErrorToast?: boolean })?.skipErrorToast;
-    if (error.message !== 'canceled' && error.response?.status !== 401 && !skipToast) {
+    const now = Date.now();
+    const isRateLimited = error.response?.status === 429;
+    const canShowRateLimitToast = !isRateLimited || (now - _lastRateLimitToast > RATE_LIMIT_TOAST_COOLDOWN);
+
+    if (error.message !== 'canceled' && error.response?.status !== 401 && !skipToast && canShowRateLimitToast) {
       if (severity === 'warning') {
         showWarning(title, message);
       } else if (severity === 'info') {
         showInfo(title, message);
       } else {
         showError(title, message);
+      }
+
+      if (isRateLimited) {
+        _lastRateLimitToast = now;
       }
     }
 

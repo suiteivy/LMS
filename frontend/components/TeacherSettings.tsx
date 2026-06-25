@@ -10,14 +10,15 @@ import { ProfileEdit } from "./ProfileEdit";
 import { ChangePasswordModal } from "./shared/ChangePasswordModal";
 import { HelpTooltip } from "./settings/HelpTooltip";
 import { SettingsWithManual } from "./settings/SettingsWithManual";
+import { ThemeSegmentedControl } from "./settings/ThemeSegmentedControl";
 
 interface SettingRowProps {
- icon: LucideIcon;
- title: string;
- onPress?: () => void;
- isLast?: boolean;
- children?: ReactNode;
- isDark?: boolean;
+    icon: LucideIcon;
+    title: string;
+    onPress?: () => void;
+    isLast?: boolean;
+    children?: ReactNode;
+    isDark?: boolean;
 }
 
 export default function TeacherSettings() {
@@ -95,6 +96,7 @@ export default function TeacherSettings() {
         </TouchableOpacity>
     )
 
+
     const settingsContent = (
         <ScrollView className="flex-1 bg-gray-50 dark:bg-navy">
             <View className="p-4 md:p-8 max-w-2xl mx-auto w-full">
@@ -147,10 +149,10 @@ export default function TeacherSettings() {
                     </View>
                 )}
 
- <ProfileEdit
- visible={showEditForm}
- onClose={() => setShowEditForm(false)}
- />
+                <ProfileEdit
+                    visible={showEditForm}
+                    onClose={() => setShowEditForm(false)}
+                />
 
                 <ChangePasswordModal
                     visible={showPasswordForm}
