@@ -26,12 +26,12 @@ export default function UsersManagementScreen() {
     const [activeFilter, setActiveFilter] = useState<'all' | 'student' | 'teacher' | 'admin'>('all');
 
     // Theme shorthands
-    const bg = isDark ? '#0D1117' : '#FFFFFF';
-    const card = isDark ? '#161B22' : '#F6F8FA';
+    const bg = isDark ? '#161B22' : '#FFFFFF';
+    const card = isDark ? '#161B22' : '#FFFFFF';
     const border = isDark ? '#21262D' : '#D0D7DE';
     const textPrimary = isDark ? '#f9fafb' : '#111827';
     const textSecondary = isDark ? '#94a3b8' : '#6b7280';
-    const inputBg = isDark ? '#1C2128' : '#EAEEF2';
+    const inputBg = isDark ? '#161B22' : '#FFFFFF';
     const inputBorder = isDark ? '#21262D' : '#D0D7DE';
 
     const { isDemo, profile } = useAuth();

@@ -48,14 +48,14 @@ const SubjectAnalyticsCard = ({ Subject }: { Subject: SubjectAnalytics }) => {
             <View className="flex-row gap-4 mt-2">
                 <View className="flex-1">
                     <Text className="text-gray-500 dark:text-gray-400 text-[10px] uppercase tracking-widest font-bold mb-2">Completion</Text>
-                    <View className="h-1.5 bg-[#D0D7DE] dark:bg-[#21262D] rounded-full overflow-hidden">
+                    <View className="h-1.5 bg-[#D0D7DE] dark:bg-[#161B22] rounded-full overflow-hidden">
                         <View className="h-full bg-[#FF6900] rounded-full" style={{ width: `${Subject.completionRate}%` }} />
                     </View>
                     <Text className="text-gray-900 dark:text-white text-xs font-bold mt-2">{Subject.completionRate}%</Text>
                 </View>
                 <View className="flex-1">
                     <Text className="text-gray-500 dark:text-gray-400 text-[10px] uppercase tracking-widest font-bold mb-2">Avg Grade</Text>
-                    <View className="h-1.5 bg-[#D0D7DE] dark:bg-[#21262D] rounded-full overflow-hidden">
+                    <View className="h-1.5 bg-[#D0D7DE] dark:bg-[#161B22] rounded-full overflow-hidden">
                         <View className="h-full bg-[#1A1650] dark:bg-gray-300 rounded-full" style={{ width: `${Subject.avgGrade}%` }} />
                     </View>
                     <Text className="text-gray-900 dark:text-white text-xs font-bold mt-2">{Subject.avgGrade}%</Text>
@@ -185,7 +185,7 @@ export default function AnalyticsPage() {
         : 0;
 
     return (
-        <View className="flex-1 bg-[#FFFFFF] dark:bg-[#0D1117]">
+        <View className="flex-1 bg-[#FFFFFF] dark:bg-[#161B22]">
             <StatusBar barStyle={isDark ? "light-content" : "dark-content"} />
             <SubscriptionBanner />
             <UnifiedHeader
@@ -274,7 +274,7 @@ export default function AnalyticsPage() {
                                         )}
 
                                         {topPerformers.length > 0 && (
-                                            <View className="bg-[#1C2128] dark:bg-[#21262D] p-5 rounded-xl mt-6">
+                                            <View className="bg-navy dark:bg-[#161B22] p-5 rounded-xl mt-6">
                                                 <Text className="text-white font-bold mb-4">🏆 Top Performers</Text>
                                                 <View className="flex-row justify-between">
                                                     {topPerformers.map((student, index) => (

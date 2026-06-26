@@ -53,7 +53,7 @@ const QuickAction = ({ icon: Icon, label, color, onPress, cols }: QuickActionPro
         marginBottom: 12,
         padding: pad,
         borderRadius: 20,
-        backgroundColor: isDark ? '#0F0B2E' : '#ffffff',
+        backgroundColor: isDark ? '#161B22' : '#ffffff',
         borderWidth: 1,
         borderColor: isDark ? '#1f2937' : '#f1f5f9',
         alignItems: 'center',
@@ -163,7 +163,7 @@ const ScheduleCard = ({ item, index, isDark, isGrid }: ScheduleCardProps) => {
   return (
     <View
       style={{
-        backgroundColor: isDark ? '#1a1a2e' : '#ffffff',
+        backgroundColor: isDark ? '#161B22' : '#ffffff',
         padding: 16,
         borderRadius: 20,
         borderWidth: 1,
@@ -371,7 +371,7 @@ export default function Index() {
 
   if (authLoading) {
     return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: isDark ? '#0F0B2E' : '#f8fafc' }}>
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: isDark ? '#161B22' : '#f8fafc' }}>
         <ActivityIndicator size="large" color="#FF6900" />
       </View>
     );
@@ -388,7 +388,7 @@ export default function Index() {
   ];
 
   return (
-    <View style={{ flex: 1, backgroundColor: isDark ? '#0F0B2E' : '#f8fafc' }}>
+    <View style={{ flex: 1, backgroundColor: isDark ? '#161B22' : '#f8fafc' }}>
       <UnifiedHeader
         title="Dashboard"
         subtitle={profile?.full_name || "Student Portal"}
@@ -431,7 +431,7 @@ export default function Index() {
                 shadowRadius: 2,
                 elevation: 1,
               }}
-              className="flex-row items-center bg-white dark:bg-[#1a1a2e] px-4 py-2 rounded-2xl border border-gray-100 dark:border-gray-800"
+              className="flex-row items-center bg-white dark:bg-[#161B22] px-4 py-2 rounded-2xl border border-gray-100 dark:border-gray-800"
             >
               <LogOut size={14} color="#ef4444" />
               <Text className="ml-2 text-red-600 font-bold text-[10px] uppercase tracking-widest">Logout</Text>
@@ -571,7 +571,7 @@ export default function Index() {
             fallback={
               <View
                 style={{
-                  backgroundColor: isDark ? '#1a1a2e' : '#fff7ed',
+                  backgroundColor: isDark ? '#161B22' : '#fff7ed',
                   borderColor: isDark ? '#1f2937' : '#fed7aa',
                   borderWidth: 1,
                   borderRadius: 20,
@@ -597,7 +597,7 @@ export default function Index() {
                 marginBottom: 12,
                 padding: 16,
                 borderRadius: 20,
-                backgroundColor: isDark ? '#0F0B2E' : '#ffffff',
+                backgroundColor: isDark ? '#161B22' : '#ffffff',
                 borderWidth: 1,
                 borderColor: isDark ? '#1f2937' : '#f1f5f9',
                 flexDirection: 'row',

@@ -101,7 +101,7 @@ export default function ExamsPage() {
  };
 
  return (
- <View className="flex-1 bg-[#FFFFFF] dark:bg-[#0D1117]">
+ <View className="flex-1 bg-[#FFFFFF] dark:bg-[#161B22]">
  <UnifiedHeader
  title="Academic"
  subtitle="Exams"
@@ -141,7 +141,7 @@ export default function ExamsPage() {
  <Text className="text-gray-900 dark:text-white font-bold text-lg leading-tight">{exam.title}</Text>
  <Text className="text-[#FF6900] text-xs font-bold mt-1 uppercase tracking-wider">{exam.subject_title}</Text>
  </View>
- <View className="bg-gray-50 dark:bg-[#1A1650] px-3 py-1 rounded-full border border-[#D0D7DE] dark:border-[#21262D]">
+ <View className="bg-gray-50 dark:bg-[#161B22] px-3 py-1 rounded-full border border-[#D0D7DE] dark:border-[#21262D]">
  <Text className="text-gray-400 dark:text-gray-500 text-[10px] font-bold uppercase tracking-widest">{exam.results_count} results</Text>
  </View>
  </View>
@@ -152,7 +152,7 @@ export default function ExamsPage() {
  <Text className="text-gray-500 dark:text-gray-400 text-xs font-bold ml-1.5">{new Date(exam.date).toLocaleDateString()}</Text>
  </View>
  <View className="flex-row items-center">
- <View className="w-1.5 h-1.5 bg-gray-300 dark:bg-gray-700 rounded-full mr-2" />
+ <View className="w-1.5 h-1.5 bg-gray-300 dark:bg-[#161B22] rounded-full mr-2" />
  <Text className="text-gray-500 dark:text-gray-400 text-xs font-bold">{exam.max_score} Points</Text>
  </View>
  </View>
@@ -173,7 +173,7 @@ export default function ExamsPage() {
  {/* Create Modal */}
  <Modal visible={showCreateModal} animationType="slide" transparent>
  <View className="flex-1 bg-black/50 justify-end">
- <View className="bg-[#FFFFFF] dark:bg-[#0D1117] rounded-t-[40px] p-8 pb-12 border-t border-[#D0D7DE] dark:border-[#21262D]">
+ <View className="bg-[#FFFFFF] dark:bg-[#161B22] rounded-t-[40px] p-8 pb-12 border-t border-[#D0D7DE] dark:border-[#21262D]">
  <View className="flex-row justify-between items-center mb-8">
  <Text className="text-2xl font-bold text-gray-900 dark:text-white tracking-tight">Schedule Exam</Text>
  <TouchableOpacity

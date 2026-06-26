@@ -8,17 +8,9 @@ import { showSuccess, showError } from "@/utils/toast";
 import { router } from "expo-router";
 import { api } from "@/services/api";
 import {
-    CheckCircle2,
-    ChevronRight,
     Edit2,
-    Mail,
-    MessageCircle,
-    MessageSquare,
     Plus,
     RefreshCw,
-    Search,
-    Send,
-    UserCircle,
     X,
     Megaphone,
     Trash2
@@ -29,7 +21,6 @@ import {
     Animated,
     Easing,
     Modal,
-    Platform,
     RefreshControl,
     ScrollView,
     Text,
@@ -38,50 +29,23 @@ import {
     View
 } from "react-native";
 
-const formatTime = (dateStr: string) => {
-    if (!dateStr) return "N/A";
-    const d = new Date(dateStr);
-    const diff = Date.now() - d.getTime();
-    if (diff < 86400000) return d.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" });
-    return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
-};
-
-type Screen = "list" | "view" | "compose";
 type MainTab = "messages" | "announcements";
-type MessageTab = "inbox" | "sent";
 
 export default function CommunicationPage() {
     const { isDark } = useTheme();
     const { profile } = useAuth();
 
-    // Navigation & Tabs
+    // Tabs
     const [mainTab, setMainTab] = useState<MainTab>("messages");
-    const [msgTab, setMsgTab] = useState<MessageTab>("inbox");
-    const [screen, setScreen] = useState<Screen>("list");
 
     // Loading states
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [directChatRefreshToken, setDirectChatRefreshToken] = useState(0);
     const [directChatComposeToken, setDirectChatComposeToken] = useState(0);
+    const [lastChatRefreshAt, setLastChatRefreshAt] = useState<Date | null>(null);
 
-    // Data lists
-    const [inbox, setInbox] = useState<any[]>([]);
-    const [sent, setSent] = useState<any[]>([]);
     const [announcements, setAnnouncements] = useState<any[]>([]);
-    const [allParents, setAllParents] = useState<any[]>([]);
-
-    // Selection / Viewing
-    const [selectedMsg, setSelectedMsg] = useState<any>(null);
-    const [msgDetailVisible, setMsgDetailVisible] = useState(false);
-
-    // Compose Message State
-    const [parentSearch, setParentSearch] = useState("");
-    const [selectedParent, setSelectedParent] = useState<any>(null);
-    const [messageSubject, setMessageSubject] = useState("");
-    const [messageContent, setMessageContent] = useState("");
-    const [sendingMsg, setSendingMsg] = useState(false);
-    const [sentSuccess, setSentSuccess] = useState(false);
 
     // Compose / Edit Announcement State
     const [announcementModalVisible, setAnnouncementModalVisible] = useState(false);
@@ -122,63 +86,9 @@ export default function CommunicationPage() {
     });
 
     // Colors
-    const surfaceBg = isDark ? "#13103A" : "#ffffff";
-    const surfaceBorder = isDark ? "#1A1650" : "#f3f4f6";
-    const textPrimary = isDark ? "#f9fafb" : "#111827";
-    const textMuted = isDark ? "#94a3b8" : "#6b7280";
-    const bgContainer = isDark ? "#0F0B2E" : "#f9fafb";
+    const bgContainer = isDark ? "#161B22" : "#FFFFFF";
 
     // ─── Data Fetching ──────────────────────────────────────────────────────────
-
-    const fetchParents = useCallback(async () => {
-        if (!profile?.institution_id) return;
-        try {
-            const { data, error } = await (supabase.from("users") as any)
-                .select("id, full_name, email, role, avatar_url")
-                .eq("role", "parent")
-                .eq("institution_id", profile.institution_id)
-                .order("full_name", { ascending: true });
-
-            if (error) throw error;
-            setAllParents(data || []);
-        } catch (error: any) {
-            console.error("Error fetching parents:", error.message);
-        }
-    }, [profile?.institution_id]);
-
-    const fetchMessages = useCallback(async () => {
-        if (!profile?.institution_id) return;
-        try {
-            // Fetch Inbox: receiver is current user (admin)
-            const { data: inboxData, error: inboxError } = await (supabase.from("messages") as any)
-                .select(`
-                    *,
-                    sender:sender_id ( id, full_name, avatar_url, email )
-                `)
-                .eq("receiver_id", profile.id)
-                .eq("institution_id", profile.institution_id)
-                .order("created_at", { ascending: false });
-
-            if (inboxError) throw inboxError;
-
-            // Fetch Sent: sender is current user (admin)
-            const { data: sentData, error: sentError } = await (supabase.from("messages") as any)
-                .select(`
-                    *,
-                    receiver:receiver_id ( id, full_name, avatar_url, email )
-                `)
-                .eq("sender_id", profile.id)
-                .eq("institution_id", profile.institution_id)
-                .order("created_at", { ascending: false });
-
-            if (sentError) throw sentError;
-
-            setInbox(inboxData || []);
-            setSent(sentData || []);
-        } catch (error: any) {
-            console.error("Error fetching messages:", error.message);
-        }
-    }, [profile?.id, profile?.institution_id]);
 
     const fetchAnnouncements = useCallback(async () => {
         if (!profile?.institution_id) return;
@@ -197,22 +107,22 @@ export default function CommunicationPage() {
         }
     }, [profile?.institution_id]);
 
-    const loadAllData = useCallback(async (isRefresh = false) => {
+    const loadAnnouncementData = useCallback(async (isRefresh = false) => {
         if (!isRefresh) setLoading(true);
-        await Promise.all([fetchMessages(), fetchAnnouncements(), fetchParents()]);
+        await fetchAnnouncements();
         setLoading(false);
         setRefreshing(false);
-    }, [fetchMessages, fetchAnnouncements, fetchParents]);
+    }, [fetchAnnouncements]);
 
     useEffect(() => {
         if (profile?.institution_id) {
-            loadAllData();
+            loadAnnouncementData();
         }
-    }, [profile?.institution_id, loadAllData]);
+    }, [profile?.institution_id, loadAnnouncementData]);
 
     const onRefresh = () => {
         setRefreshing(true);
-        loadAllData(true);
+        loadAnnouncementData(true);
     };
 
     const onHeaderRefresh = useCallback(() => {
@@ -220,72 +130,16 @@ export default function CommunicationPage() {
 
         if (mainTab === "messages") {
             setDirectChatRefreshToken((prev) => prev + 1);
-            setTimeout(() => setRefreshing(false), 350);
+            setTimeout(() => {
+                setDirectChatRefreshToken((prev) => prev + 1);
+                setLastChatRefreshAt(new Date());
+                setRefreshing(false);
+            }, 600);
             return;
         }
 
-        loadAllData(true);
-    }, [mainTab, loadAllData]);
-
-
-
-    // ─── Messaging Logic ─────────────────────────────────────────────────────────
-
-    const handleSendMessage = async () => {
-        if (!profile?.id || !profile?.institution_id) return;
-        if (!selectedParent || !messageContent.trim()) {
-            Alert.alert("Validation", "Please select a parent and type a message.");
-            return;
-        }
-
-        setSendingMsg(true);
-        try {
-            const subject = messageSubject.trim() || `Secure Message from Administrator`;
-            const content = messageContent.trim();
-
-            // 1. Insert message
-            const { error: msgError } = await (supabase.from("messages") as any)
-                .insert({
-                    sender_id: profile.id,
-                    receiver_id: selectedParent.id,
-                    subject,
-                    content,
-                    institution_id: profile.institution_id,
-                    is_read: false
-                });
-
-            if (msgError) throw msgError;
-
-            showSuccess("Message Sent", "Transmission completed successfully.");
-            setSentSuccess(true);
-            setScreen("list");
-            setMessageSubject("");
-            setMessageContent("");
-            setSelectedParent(null);
-            setParentSearch("");
-            fetchMessages();
-
-            setTimeout(() => setSentSuccess(false), 3000);
-        } catch (error: any) {
-            console.error("Error sending message:", error);
-            showError("Send Failed", error.message || "Failed to deliver message.");
-        } finally {
-            setSendingMsg(false);
-        }
-    };
-
-    const handleMarkAsRead = async (msgId: string) => {
-        try {
-            await (supabase.from("messages") as any)
-                .update({ is_read: true })
-                .eq("id", msgId);
-
-            // Local state update
-            setInbox(prev => prev.map(m => m.id === msgId ? { ...m, is_read: true } : m));
-        } catch (error: any) {
-            console.error("Error marking as read:", error.message);
-        }
-    };
+        loadAnnouncementData(true);
+    }, [mainTab, loadAnnouncementData]);
 
     // ─── Announcements Logic ───────────────────────────────────────────────────
 
@@ -412,7 +266,7 @@ export default function CommunicationPage() {
                     }
                 >
                     {announcements.length === 0 ? (
-                        <View className="items-center py-16 bg-white dark:bg-navy-surface rounded-3xl border border-dashed border-gray-100 dark:border-gray-800">
+                        <View className="items-center py-16 bg-white dark:bg-[#161B22] rounded-3xl border border-dashed border-gray-100 dark:border-gray-800">
                             <Megaphone size={48} color="#E5E7EB" style={{ opacity: 0.3 }} />
                             <Text className="text-gray-400 dark:text-gray-500 font-bold mt-4 uppercase tracking-widest text-[10px]">No announcements posted</Text>
                         </View>
@@ -420,7 +274,7 @@ export default function CommunicationPage() {
                         announcements.map((item: any) => (
                             <View
                                 key={item.id}
-                                className="bg-white dark:bg-navy-surface p-5 rounded-2xl border border-gray-50 dark:border-gray-800 mb-4 shadow-sm"
+                                className="bg-white dark:bg-[#161B22] p-5 rounded-2xl border border-gray-50 dark:border-gray-800 mb-4 shadow-sm"
                             >
                                 <View className="flex-row items-start mb-3">
                                     <View className="bg-orange-50 dark:bg-orange-950/20 p-2.5 rounded-xl mr-3">
@@ -466,53 +320,59 @@ export default function CommunicationPage() {
                 title="Communication"
                 subtitle="Communication"
                 role="Admin"
-                onBack={screen !== "list" ? () => { setScreen("list"); setSelectedParent(null); } : () => router.push("/(admin)")}
+                onBack={() => router.push("/(admin)")}
                 showNotification={false}
             />
 
             {/* Main Tabs Selection */}
-            {screen === "list" && (
-                <View className="px-4 md:px-8 mt-4 flex-row justify-between items-center">
-                    <View className="flex-row bg-white dark:bg-navy-surface p-1 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm flex-1 mr-4">
-                        <TouchableOpacity
-                            onPress={() => setMainTab("messages")}
-                            className={`flex-1 py-3 rounded-xl items-center justify-center ${mainTab === "messages" ? "bg-[#FF6B00]" : ""}`}
-                        >
-                            <Text className={`text-[10px] font-black uppercase tracking-wider ${mainTab === "messages" ? "text-white" : "text-gray-400 dark:text-gray-500"}`}>Direct Messages</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                            onPress={() => setMainTab("announcements")}
-                            className={`flex-1 py-3 rounded-xl items-center justify-center ${mainTab === "announcements" ? "bg-[#FF6B00]" : ""}`}
-                        >
-                            <Text className={`text-[10px] font-black uppercase tracking-wider ${mainTab === "announcements" ? "text-white" : "text-gray-400 dark:text-gray-500"}`}>Announcements</Text>
-                        </TouchableOpacity>
-                    </View>
-
-                    <View className="flex-row items-center gap-2">
-                        <TouchableOpacity
-                            className={`bg-white dark:bg-navy-surface w-10 h-10 rounded-xl items-center justify-center shadow active:bg-gray-100 dark:active:bg-gray-700 ${refreshing ? "opacity-50" : ""}`}
-                            onPress={onHeaderRefresh}
-                            disabled={refreshing}
-                        >
-                            <Animated.View style={{ transform: [{ rotate: spin }] }}>
-                                <RefreshCw size={20} color={isDark ? "#f9fafb" : "#111827"} />
-                            </Animated.View>
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                            className="bg-[#FF6B00] w-10 h-10 rounded-xl items-center justify-center shadow active:bg-orange-600"
-                            onPress={() => {
-                                if (mainTab === "messages") {
-                                    setDirectChatComposeToken((prev) => prev + 1);
-                                } else {
-                                    openAnnouncementModal();
-                                }
-                            }}
-                        >
-                            <Plus size={20} color="white" />
-                        </TouchableOpacity>
-                    </View>
+            <View className="px-4 md:px-8 mt-4 flex-row justify-between items-center">
+                <View className="flex-row bg-[#F6F8FA] dark:bg-[#161B22] p-1 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm flex-1 mr-4">
+                    <TouchableOpacity
+                        onPress={() => setMainTab("messages")}
+                        className={`flex-1 py-3 rounded-xl items-center justify-center ${mainTab === "messages" ? "bg-[#FF6B00]" : ""}`}
+                    >
+                        <Text className={`text-[10px] font-black uppercase tracking-wider ${mainTab === "messages" ? "text-white" : "text-gray-400 dark:text-gray-500"}`}>Direct Messages</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                        onPress={() => setMainTab("announcements")}
+                        className={`flex-1 py-3 rounded-xl items-center justify-center ${mainTab === "announcements" ? "bg-[#FF6B00]" : ""}`}
+                    >
+                        <Text className={`text-[10px] font-black uppercase tracking-wider ${mainTab === "announcements" ? "text-white" : "text-gray-400 dark:text-gray-500"}`}>Announcements</Text>
+                    </TouchableOpacity>
                 </View>
-            )}
+
+                <View className="flex-row items-center gap-2">
+                    <TouchableOpacity
+                        className={`bg-white dark:bg-[#161B22] w-10 h-10 rounded-xl items-center justify-center shadow active:bg-gray-100 dark:active:bg-gray-700 ${refreshing ? "opacity-50" : ""}`}
+                        onPress={onHeaderRefresh}
+                        disabled={refreshing}
+                    >
+                        <Animated.View style={{ transform: [{ rotate: spin }] }}>
+                            <RefreshCw size={20} color={isDark ? "#f9fafb" : "#111827"} />
+                        </Animated.View>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                        className="bg-[#FF6B00] w-10 h-10 rounded-xl items-center justify-center shadow active:bg-orange-600"
+                        onPress={() => {
+                            if (mainTab === "messages") {
+                                setDirectChatComposeToken((prev) => prev + 1);
+                            } else {
+                                openAnnouncementModal();
+                            }
+                        }}
+                    >
+                        <Plus size={20} color="white" />
+                    </TouchableOpacity>
+                </View>
+            </View>
+
+            {mainTab === "messages" && lastChatRefreshAt ? (
+                <View className="px-4 md:px-8 mt-1">
+                    <Text className="text-[9px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">
+                        Updated {lastChatRefreshAt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
+                    </Text>
+                </View>
+            ) : null}
 
             {loading && !refreshing ? (
                 <View className="flex-1 justify-center items-center">
@@ -527,13 +387,13 @@ export default function CommunicationPage() {
             {/* Broadcast / Edit Announcement Modal */}
             <Modal visible={announcementModalVisible} animationType="slide" transparent>
                 <View className="flex-1 bg-black/60 justify-end">
-                    <View className="bg-white dark:bg-[#0F0B2E] rounded-t-[36px] p-6 pb-10 border-t border-gray-100 dark:border-gray-800">
+                    <View className="bg-white dark:bg-[#161B22] rounded-t-[36px] p-6 pb-10 border-t border-gray-100 dark:border-gray-800">
                         <View className="flex-row justify-between items-center mb-6">
                             <Text className="text-lg font-black text-gray-950 dark:text-white tracking-tight">
                                 {editingAnnouncement ? "Edit Announcement" : "Post Updates"}
                             </Text>
                             <TouchableOpacity
-                                className="w-8 h-8 bg-gray-100 dark:bg-gray-800 rounded-full items-center justify-center"
+                                className="w-8 h-8 bg-gray-100 dark:bg-[#161B22] rounded-full items-center justify-center"
                                 onPress={closeAnnouncementModal}
                             >
                                 <X size={18} color="#6B7280" />
@@ -542,7 +402,7 @@ export default function CommunicationPage() {
 
                         <Text className="text-gray-500 dark:text-gray-400 text-[9px] font-bold uppercase tracking-widest ml-1 mb-1.5">Announcement Title</Text>
                         <TextInput
-                            className="bg-gray-50 dark:bg-gray-900 rounded-xl px-4 py-3 text-slate-900 dark:text-white font-bold text-xs border border-gray-100 dark:border-gray-800 mb-4"
+                            className="bg-gray-50 dark:bg-[#161B22] rounded-xl px-4 py-3 text-slate-900 dark:text-white font-bold text-xs border border-gray-100 dark:border-gray-800 mb-4"
                             placeholder="e.g. End of Term Closure"
                             placeholderTextColor="#9CA3AF"
                             value={announcementTitle}
@@ -551,7 +411,7 @@ export default function CommunicationPage() {
 
                         <Text className="text-gray-500 dark:text-gray-400 text-[9px] font-bold uppercase tracking-widest ml-1 mb-1.5">Announcement Message</Text>
                         <TextInput
-                            className="bg-gray-50 dark:bg-gray-900 rounded-2xl px-4 py-3 text-slate-900 dark:text-white font-medium text-xs border border-gray-100 dark:border-gray-800 h-28 mb-6"
+                            className="bg-gray-50 dark:bg-[#161B22] rounded-2xl px-4 py-3 text-slate-900 dark:text-white font-medium text-xs border border-gray-100 dark:border-gray-800 h-28 mb-6"
                             placeholder="Type announcement message here..."
                             placeholderTextColor="#9CA3AF"
                             multiline
@@ -584,7 +444,7 @@ export default function CommunicationPage() {
             {/* Delete Confirmation Modal */}
             <Modal visible={deleteModalVisible} animationType="fade" transparent>
                 <View className="flex-1 bg-black/60 justify-center items-center px-4">
-                    <View className="bg-white dark:bg-[#0F0B2E] rounded-[32px] p-6 w-full max-w-sm border border-gray-100 dark:border-gray-800 shadow-2xl animate-fade-in">
+                    <View className="bg-white dark:bg-[#161B22] rounded-[32px] p-6 w-full max-w-sm border border-gray-100 dark:border-gray-800 shadow-2xl animate-fade-in">
                         <View className="items-center mb-6">
                             <View className="w-16 h-16 bg-red-50 dark:bg-red-950/20 rounded-full items-center justify-center mb-4">
                                 <Trash2 size={28} color="#ef4444" />
@@ -599,7 +459,7 @@ export default function CommunicationPage() {
 
                         <View className="flex-row gap-3">
                             <TouchableOpacity
-                                className="flex-1 py-3.5 bg-gray-50 dark:bg-gray-800 rounded-xl items-center border border-gray-100 dark:border-gray-700 active:opacity-90"
+                                className="flex-1 py-3.5 bg-[#F6F8FA] dark:bg-[#161B22] rounded-xl items-center border border-gray-100 dark:border-gray-700 active:opacity-90"
                                 onPress={() => {
                                     setDeleteModalVisible(false);
                                     setAnnouncementToDelete(null);

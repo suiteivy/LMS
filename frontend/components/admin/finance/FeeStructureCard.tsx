@@ -47,7 +47,7 @@ export function FeeStructureCard() {
                 </View>
             ) : (
                 feeStructures.map((fee) => (
-                    <View key={fee.id} className="bg-[#F6F8FA] dark:bg-[#161B22] p-5 rounded-lg mb-4 border border-[#D0D7DE] dark:border-[#21262D]">
+                    <View key={fee.id} className="bg-[#F6F8FA] dark:bg-navy p-5 rounded-lg mb-4 border border-[#D0D7DE] dark:border-[#21262D]">
                         <View className="flex-row items-center mb-4">
                             <View className="w-10 h-10 bg-teal-50 dark:bg-teal-900/20 rounded-full items-center justify-center mr-3">
                                 <Ionicons name="school-outline" size={20} color={isDark ? "#2DD4BF" : "#0f766e"} />

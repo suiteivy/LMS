@@ -39,7 +39,7 @@ export const SubjectList: React.FC<SubjectListProps> = ({
             {title.split(' ')[0]}
             <Text style={{ color: accent }}>.</Text>
           </Text>
-          <View style={{ backgroundColor: isDark ? '#13103A' : '#111827', width: 40, height: 40, borderRadius: 16, alignItems: 'center', justifyContent: 'center', borderWidth: isDark ? 1 : 0, borderColor: border }}>
+          <View style={{ backgroundColor: isDark ? '#0F0B2E' : '#111827', width: 40, height: 40, borderRadius: 16, alignItems: 'center', justifyContent: 'center', borderWidth: isDark ? 1 : 0, borderColor: border }}>
             <Filter size={20} color="white" />
           </View>
         </View>

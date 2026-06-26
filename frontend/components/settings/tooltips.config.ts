@@ -55,10 +55,26 @@ export type TooltipTargetId =
   | 'parent.grades.transcript'
   | 'parent.announcements.feed'
   | 'settings.notifications.general'
+  | 'settings.notifications.general.admin'
+  | 'settings.notifications.general.teacher'
+  | 'settings.notifications.general.student'
+  | 'settings.notifications.general.parent'
   | 'settings.notifications.submission'
   | 'settings.notifications.priority'
+  | 'admin.finance.payments'
+  | 'admin.finance.payouts'
+  | 'admin.finance.fee_structures'
+  | 'admin.finance.bursaries'
   | 'settings.language'
-  | 'settings.password';
+  | 'settings.language.admin'
+  | 'settings.language.teacher'
+  | 'settings.language.student'
+  | 'settings.language.parent'
+  | 'settings.password'
+  | 'settings.password.admin'
+  | 'settings.password.teacher'
+  | 'settings.password.student'
+  | 'settings.password.parent';
 
 export interface TooltipEntry {
   id: TooltipTargetId;
@@ -473,6 +489,34 @@ export const SETTINGS_TOOLTIPS: Record<TooltipTargetId, TooltipEntry> = {
     learnMoreAnchor: 'student-workflow',
     roles: EXTENDED_SETTINGS_ROLES,
   },
+  'settings.notifications.general.admin': {
+    id: 'settings.notifications.general.admin',
+    title: 'System notifications',
+    text: 'Alerts for platform operations, institution-level changes, and urgent admin actions.',
+    learnMoreAnchor: 'reports-ops',
+    roles: ['admin'],
+  },
+  'settings.notifications.general.teacher': {
+    id: 'settings.notifications.general.teacher',
+    title: 'Teaching notifications',
+    text: 'Classroom and learner alerts tied to submissions, attendance activity, and grading flow.',
+    learnMoreAnchor: 'grading-ops',
+    roles: ['teacher'],
+  },
+  'settings.notifications.general.student': {
+    id: 'settings.notifications.general.student',
+    title: 'Learning notifications',
+    text: 'Assignment deadlines, grade releases, and schedule reminders for your active classes.',
+    learnMoreAnchor: 'student-workflow',
+    roles: ['student'],
+  },
+  'settings.notifications.general.parent': {
+    id: 'settings.notifications.general.parent',
+    title: 'Guardian notifications',
+    text: 'Linked-child updates for attendance, announcements, and academic progress visibility.',
+    learnMoreAnchor: 'parent-workflow',
+    roles: ['parent'],
+  },
   'settings.notifications.submission': {
     id: 'settings.notifications.submission',
     title: 'Submission alerts',
@@ -487,6 +531,38 @@ export const SETTINGS_TOOLTIPS: Record<TooltipTargetId, TooltipEntry> = {
     learnMoreAnchor: 'reports-ops',
     roles: ['admin'],
   },
+  'admin.finance.payments': {
+    id: 'admin.finance.payments',
+    title: 'Payments ledger',
+    text: 'Records completed and pending student payments including method, reference, and timestamp.',
+    learnMoreAnchor: 'billing-ops',
+    feature: 'billing',
+    roles: ['admin'],
+  },
+  'admin.finance.payouts': {
+    id: 'admin.finance.payouts',
+    title: 'Teacher payouts',
+    text: 'Tracks pending, processing, and paid teacher payouts for each period and workload.',
+    learnMoreAnchor: 'billing-ops',
+    feature: 'billing',
+    roles: ['admin'],
+  },
+  'admin.finance.fee_structures': {
+    id: 'admin.finance.fee_structures',
+    title: 'Fee structure',
+    text: 'Defines annual and term fee rules by academic year, level scope, and effective amounts.',
+    learnMoreAnchor: 'billing-ops',
+    feature: 'billing',
+    roles: ['admin'],
+  },
+  'admin.finance.bursaries': {
+    id: 'admin.finance.bursaries',
+    title: 'Bursary management',
+    text: 'Manages bursary allocations, approvals, and adjustments that affect outstanding balances.',
+    learnMoreAnchor: 'billing-ops',
+    feature: 'billing',
+    roles: ['admin'],
+  },
   'settings.language': {
     id: 'settings.language',
     title: 'Language',
@@ -494,11 +570,67 @@ export const SETTINGS_TOOLTIPS: Record<TooltipTargetId, TooltipEntry> = {
     learnMoreAnchor: 'student-workflow',
     roles: EXTENDED_SETTINGS_ROLES,
   },
+  'settings.language.admin': {
+    id: 'settings.language.admin',
+    title: 'Admin language',
+    text: 'Applies to management labels, reports, and institution administration screens.',
+    learnMoreAnchor: 'reports-ops',
+    roles: ['admin'],
+  },
+  'settings.language.teacher': {
+    id: 'settings.language.teacher',
+    title: 'Teacher language',
+    text: 'Applies to instructional workflows such as attendance, grading, and classroom tools.',
+    learnMoreAnchor: 'grading-ops',
+    roles: ['teacher'],
+  },
+  'settings.language.student': {
+    id: 'settings.language.student',
+    title: 'Student language',
+    text: 'Applies to learning-facing screens like assignments, timetable, and grade views.',
+    learnMoreAnchor: 'student-workflow',
+    roles: ['student'],
+  },
+  'settings.language.parent': {
+    id: 'settings.language.parent',
+    title: 'Parent language',
+    text: 'Applies to guardian dashboards and linked-child monitoring modules.',
+    learnMoreAnchor: 'parent-workflow',
+    roles: ['parent'],
+  },
   'settings.password': {
     id: 'settings.password',
     title: 'Password',
     text: 'Update login credentials. This signs out other sessions depending on security policy.',
     learnMoreAnchor: 'student-workflow',
     roles: EXTENDED_SETTINGS_ROLES,
+  },
+  'settings.password.admin': {
+    id: 'settings.password.admin',
+    title: 'Admin password',
+    text: 'Protects elevated operations. Rotation signs out stale sessions based on security policy.',
+    learnMoreAnchor: 'reports-ops',
+    roles: ['admin'],
+  },
+  'settings.password.teacher': {
+    id: 'settings.password.teacher',
+    title: 'Teacher password',
+    text: 'Protects instructional records and grading actions linked to your classroom scope.',
+    learnMoreAnchor: 'grading-ops',
+    roles: ['teacher'],
+  },
+  'settings.password.student': {
+    id: 'settings.password.student',
+    title: 'Student password',
+    text: 'Protects your personal learning records, submissions, and account access.',
+    learnMoreAnchor: 'student-workflow',
+    roles: ['student'],
+  },
+  'settings.password.parent': {
+    id: 'settings.password.parent',
+    title: 'Parent password',
+    text: 'Protects guardian access to linked-child records and communication history.',
+    learnMoreAnchor: 'parent-workflow',
+    roles: ['parent'],
   },
 };

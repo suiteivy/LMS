@@ -175,7 +175,7 @@ const BorrowedBooksOverview: React.FC<BorrowedBooksOverviewProps> = ({
                 };
             default:
                 return {
-                    bg: "bg-[#EAEEF2] dark:bg-[#1C2128]",
+                    bg: "bg-[#EAEEF2] dark:bg-navy",
                     text: "text-gray-800 dark:text-gray-200",
                     border: "border-[#D0D7DE] dark:border-[#21262D]",
                 };
@@ -233,7 +233,7 @@ const BorrowedBooksOverview: React.FC<BorrowedBooksOverviewProps> = ({
                 type: 'success',
                 text1: 'Book Returned',
                 text2: `${selectedBook.bookTitle} has been processed successfully.`,
-                position: 'bottom'
+                position: 'top'
             })
 
             router.push('/management/library')
@@ -243,7 +243,7 @@ const BorrowedBooksOverview: React.FC<BorrowedBooksOverviewProps> = ({
                 type: 'error',
                 text1: 'Return Failed',
                 text2: 'Could not process the return. Please try again.',
-                position: 'bottom',
+                position: 'top',
             });
         }
     }
@@ -463,7 +463,7 @@ const BorrowedBooksOverview: React.FC<BorrowedBooksOverviewProps> = ({
         return (
             <View
                 key={borrowedBook.id}
-                className="bg-[#F6F8FA] dark:bg-[#161B22] rounded-xl p-4 mb-3 border border-slate-200 dark:border-gray-700"
+                className="bg-[#F6F8FA] dark:bg-navy rounded-xl p-4 mb-3 border border-slate-200 dark:border-gray-700"
             >
                 <View className="flex-row justify-between items-start mb-3">
                     <View className="flex-1">
@@ -675,17 +675,17 @@ const BorrowedBooksOverview: React.FC<BorrowedBooksOverviewProps> = ({
     }
 
     return (
-        <View className="flex-1 bg-[#ffffff] dark:bg-[#0D1117]">
+        <View className="flex-1 bg-[#ffffff] dark:bg-navy">
             {/* Header */}
-            <View className="bg-[#FFFFFF] dark:bg-[#0D1117] p-4 border-b border-teal-100 dark:border-gray-800">
+            <View className="bg-[#FFFFFF] dark:bg-navy p-4 border-b border-teal-100 dark:border-gray-800">
                 <Text className="text-xl font-bold text-slate-800 dark:text-white">
                     Borrowed Books
                 </Text>
             </View>
 
             {/* Filters & Search */}
-            <View className="bg-[#FFFFFF] dark:bg-[#0D1117] px-4 pb-4 border-b border-teal-100 dark:border-gray-800">
-                <View className="flex-row items-center bg-[#FFFFFF] dark:bg-[#0D1117] border border-teal-100 dark:border-gray-800 rounded-xl px-4 py-2 mt-2 mb-4">
+            <View className="bg-[#FFFFFF] dark:bg-navy px-4 pb-4 border-b border-teal-100 dark:border-gray-800">
+                <View className="flex-row items-center bg-[#FFFFFF] dark:bg-navy border border-teal-100 dark:border-gray-800 rounded-xl px-4 py-2 mt-2 mb-4">
                     <Ionicons name="search" size={20} color={isDark ? "#fff" : "#9ca3af"} />
                     <TextInput
                         className="flex-1 ml-2 text-slate-800 dark:text-white"
@@ -775,7 +775,7 @@ const BorrowedBooksOverview: React.FC<BorrowedBooksOverviewProps> = ({
                 presentationStyle="pageSheet"
                 onRequestClose={() => setShowReturnModal(false)}
             >
-                <View className="flex-1 bg-[#FFFFFF] dark:bg-[#0D1117]">
+                <View className="flex-1 bg-[#FFFFFF] dark:bg-navy">
                     <View className="bg-[#FD6900] p-4 pt-12">
                         <View className="flex-row justify-between items-center">
                             <Text className="text-xl font-bold text-white">
@@ -789,7 +789,7 @@ const BorrowedBooksOverview: React.FC<BorrowedBooksOverviewProps> = ({
 
                     {selectedBook && (
                         <ScrollView className="flex-1 p-4">
-                            <View className="bg-[#FFFFFF] dark:bg-[#0D1117] p-4 rounded-lg mb-4">
+                            <View className="bg-[#FFFFFF] dark:bg-navy p-4 rounded-lg mb-4">
                                 <Text className="font-semibold text-slate-800 dark:text-white mb-1">
                                     {selectedBook.bookTitle}
                                 </Text>

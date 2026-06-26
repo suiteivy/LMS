@@ -23,7 +23,7 @@ module.exports = {
         teacherOrange: "#FF6B00",
         teacherBlack: "#1a1a1a",
         // SuiteIvy dark palette
-        navy: "#0F0B2E",
+        navy: "#161B22",
         "navy-surface": "#13103A",
         "navy-card": "#1A1650",
       },

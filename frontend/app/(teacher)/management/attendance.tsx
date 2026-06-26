@@ -14,6 +14,7 @@ import Toast from 'react-native-toast-message';
 
 interface Student {
     student_id: string;
+    student_display_id?: string;
     name: string;
     avatar_url?: string;
     status: "present" | "absent" | "late" | "pending" | "excused";
@@ -28,7 +29,7 @@ interface SubjectOption {
 const StudentAttendanceRow = ({ student, onMark }: { student: Student; onMark: (id: string, status: Student["status"]) => void }) => {
     return (
         <View className="bg-[#F6F8FA] dark:bg-[#161B22] p-4 rounded-xl border border-[#D0D7DE] dark:border-[#21262D] mb-3 flex-row items-center">
-            <View className="w-10 h-10 rounded-xl bg-[#EAEEF2] dark:bg-[#1C2128] items-center justify-center mr-3">
+            <View className="w-10 h-10 rounded-xl bg-[#EAEEF2] dark:bg-[#161B22] items-center justify-center mr-3">
                 <Text className="text-gray-900 dark:text-white font-black text-base">
                     {(student.name || "U").charAt(0)}
                 </Text>
@@ -36,13 +37,13 @@ const StudentAttendanceRow = ({ student, onMark }: { student: Student; onMark: (
             <View className="flex-1">
                 <Text className="text-gray-900 dark:text-white font-bold text-base">{student.name}</Text>
                 <Text className="text-gray-500 dark:text-gray-400 text-[10px] font-bold uppercase tracking-widest mt-0.5">
-                    ID: {student.student_id.substring(0, 8)}
+                    ID: {student.student_display_id || student.student_id}
                 </Text>
             </View>
 
             <TouchableOpacity
                 activeOpacity={0.7}
-                className={`w-10 h-10 rounded-xl items-center justify-center ${student.status === "present" ? "bg-[#FF6900]" : "bg-[#EAEEF2] dark:bg-[#1C2128]"}`}
+                className={`w-10 h-10 rounded-xl items-center justify-center ${student.status === "present" ? "bg-[#FF6900]" : "bg-[#EAEEF2] dark:bg-[#161B22]"}`}
                 onPress={() => onMark(student.student_id, student.status === "present" ? "absent" : "present")}
             >
                 {student.status === "present" && <Check size={18} color="white" />}
@@ -155,7 +156,7 @@ export default function AttendancePage() {
     };
 
     return (
-        <View className="flex-1 bg-[#FFFFFF] dark:bg-[#0D1117]">
+        <View className="flex-1 bg-[#FFFFFF] dark:bg-[#161B22]">
             <UnifiedHeader
                 title="Management"
                 subtitle="Attendance"
@@ -187,7 +188,7 @@ export default function AttendancePage() {
                             <HelpTooltip id="teacher.manage.registrar" role="teacher" tier={tier} onLearnMore={openManual} />
                         </View>
                         <TouchableOpacity
-                            className="bg-white dark:bg-[#1a1a1a] rounded-3xl px-6 py-4 border border-gray-100 dark:border-gray-800 flex-row items-center justify-between shadow-sm active:bg-gray-50 dark:active:bg-gray-900"
+                            className="bg-white dark:bg-[#161B22] rounded-3xl px-6 py-4 border border-gray-100 dark:border-gray-800 flex-row items-center justify-between shadow-sm active:bg-gray-50 dark:active:bg-gray-900"
                             onPress={() => setShowSubjectDropdown(!showSubjectDropdown)}
                         >
                             <Text className="text-gray-900 dark:text-gray-100 font-bold text-sm tracking-tight">{selectedSubjectName}</Text>
@@ -195,7 +196,7 @@ export default function AttendancePage() {
                         </TouchableOpacity>
 
                         {showSubjectDropdown && (
-                            <View className="absolute top-16 left-0 right-0 bg-white dark:bg-[#1a1a1a] border border-gray-100 dark:border-gray-800 rounded-[32px] shadow-2xl z-20 overflow-hidden">
+                            <View className="absolute top-16 left-0 right-0 bg-white dark:bg-[#161B22] border border-gray-100 dark:border-gray-800 rounded-[32px] shadow-2xl z-20 overflow-hidden">
                                 {subjects.map(sub => (
                                     <TouchableOpacity
                                         key={sub.id}

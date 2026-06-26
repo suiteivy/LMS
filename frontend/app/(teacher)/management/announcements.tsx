@@ -20,7 +20,7 @@ const AnnouncementCard = ({ announcement }: { announcement: Announcement }) => {
         <TouchableOpacity 
             activeOpacity={0.8}
             onPress={() => setExpanded(!expanded)}
-            className="bg-white dark:bg-[#1a1a1a] p-5 rounded-3xl border border-gray-100 dark:border-gray-800 mb-4 shadow-sm"
+            className="bg-white dark:bg-[#161B22] p-5 rounded-3xl border border-gray-100 dark:border-gray-800 mb-4 shadow-sm"
         >
             <View className="flex-row items-start mb-4">
                 <View className="bg-orange-100 dark:bg-orange-950/20 p-2.5 rounded-2xl mr-4">
@@ -108,7 +108,7 @@ export default function AnnouncementsPage() {
     };
 
     return (
-        <View className="flex-1 bg-gray-50 dark:bg-navy">
+        <View className="flex-1 bg-[#F6F8FA] dark:bg-[#161B22]">
             <UnifiedHeader
                 title="Management"
                 subtitle="School Notices"
@@ -137,7 +137,7 @@ export default function AnnouncementsPage() {
                     {loading ? (
                         <ActivityIndicator size="large" color="#FF6900" className="mt-8" />
                     ) : announcements.length === 0 ? (
-                        <View className="bg-white dark:bg-[#1a1a1a] p-12 rounded-[40px] items-center border border-gray-100 dark:border-gray-800 border-dashed">
+                        <View className="bg-white dark:bg-[#161B22] p-12 rounded-[40px] items-center border border-gray-100 dark:border-gray-800 border-dashed">
                             <Megaphone size={48} color="#E5E7EB" style={{ opacity: 0.3 }} />
                             <Text className="text-gray-400 dark:text-gray-500 font-bold text-center mt-6 tracking-tight">No announcements posted yet.</Text>
                         </View>

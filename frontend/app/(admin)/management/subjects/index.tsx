@@ -24,7 +24,7 @@ export default function SubjectsIndex() {
 
     const surface = isDark ? '#161B22' : '#F6F8FA';
     const border = isDark ? '#21262D' : '#D0D7DE';
-    const inputBg = isDark ? '#0D1117' : '#FFFFFF';
+    const inputBg = isDark ? '#161B22' : '#FFFFFF';
     const textPrimary = isDark ? '#FFFFFF' : '#111827';
     const textMuted = isDark ? '#9ca3af' : '#6b7280';
 
@@ -107,15 +107,15 @@ export default function SubjectsIndex() {
 
     if (loading) {
         return (
-            <View className="flex-1 justify-center items-center bg-[#FFFFFF] dark:bg-[#0D1117]">
+            <View className="flex-1 justify-center items-center bg-[#FFFFFF] dark:bg-[#161B22]">
                 <ActivityIndicator size="large" color="#FF6B00" />
             </View>
         );
     }
 
     return (
-        <ScrollView className="flex-1 bg-[#FFFFFF] dark:bg-[#0D1117]">
-            <View className="flex-1 bg-[#FFFFFF] dark:bg-[#0D1117]">
+        <ScrollView className="flex-1 bg-[#FFFFFF] dark:bg-[#161B22]">
+            <View className="flex-1 bg-[#FFFFFF] dark:bg-[#161B22]">
                 <UnifiedHeader
                     title="Management"
                     subtitle="Subjects"

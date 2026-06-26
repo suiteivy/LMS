@@ -22,10 +22,10 @@ interface GradeProps {
 
 const SubjectGrade = ({ SubjectCode, SubjectName, grade, score, credits, isDark, onPress }: GradeProps) => {
     const getGradeColor = (g: string) => {
-        if (g.startsWith('A')) return { text: 'text-gray-900 dark:text-white', bg: 'bg-gray-100 dark:bg-gray-800' };
-        if (g.startsWith('B')) return { text: 'text-gray-900 dark:text-white', bg: 'bg-gray-100 dark:bg-gray-800' };
-        if (g.startsWith('C')) return { text: 'text-gray-500 dark:text-gray-400', bg: 'bg-gray-100 dark:bg-gray-800' };
-        return { text: 'text-gray-500 dark:text-gray-400', bg: 'bg-gray-100 dark:bg-gray-800' };
+        if (g.startsWith('A')) return { text: 'text-gray-900 dark:text-white', bg: 'bg-gray-100 dark:bg-[#161B22]' };
+        if (g.startsWith('B')) return { text: 'text-gray-900 dark:text-white', bg: 'bg-gray-100 dark:bg-[#161B22]' };
+        if (g.startsWith('C')) return { text: 'text-gray-500 dark:text-gray-400', bg: 'bg-gray-100 dark:bg-[#161B22]' };
+        return { text: 'text-gray-500 dark:text-gray-400', bg: 'bg-gray-100 dark:bg-[#161B22]' };
     }
     const styles = getGradeColor(grade);
     return (
@@ -40,7 +40,7 @@ const SubjectGrade = ({ SubjectCode, SubjectName, grade, score, credits, isDark,
                 }],
                 shadowOpacity: isDark ? 0.4 : 0.05,
                 }}
-            className="bg-[#FFFFFF] dark:bg-[#0D1117] p-5 rounded-xl border border-[#D0D7DE] dark:border-[#21262D] mb-4 flex-row items-center active:bg-gray-50 dark:active:bg-gray-900"
+            className="bg-[#FFFFFF] dark:bg-[#161B22] p-5 rounded-xl border border-[#D0D7DE] dark:border-[#21262D] mb-4 flex-row items-center active:bg-gray-50 dark:active:bg-gray-900"
         >
             <View className={`w-12 h-12 rounded-xl items-center justify-center mr-4 ${styles.bg}`}>
                 <Text className={`font-black text-xl ${styles.text}`}>{grade === 'N/A' || grade === null ? '?' : grade}</Text>
@@ -251,14 +251,14 @@ export default function Grades() {
 
     if (loading) {
         return (
-            <View className="flex-1 justify-center items-center bg-gray-50 dark:bg-navy">
+            <View className="flex-1 justify-center items-center bg-[#F6F8FA] dark:bg-[#161B22]">
                 <ActivityIndicator size="large" color="#FF6900" />
             </View>
         );
     }
 
     return (
-        <View className="flex-1 bg-gray-50 dark:bg-navy">
+        <View className="flex-1 bg-[#F6F8FA] dark:bg-[#161B22]">
             <UnifiedHeader
                 title="Grades"
                 subtitle="Performance"
@@ -281,7 +281,7 @@ export default function Grades() {
                                 color: 'rgba(0, 0, 0, 0.3)',
                             }],
                             }}
-                        className="bg-gray-900 dark:bg-[#1a1a1a] p-8 rounded-xl mb-8 border border-transparent dark:border-gray-800"
+                        className="bg-gray-900 dark:bg-[#161B22] p-8 rounded-xl mb-8 border border-transparent dark:border-gray-800"
                     >
                         <View className="flex-row justify-between items-start mb-10">
                             <View>
@@ -333,7 +333,7 @@ export default function Grades() {
                             }],
                             shadowOpacity: isDark ? 0.4 : 0.05,
                             }}
-                        className="bg-[#FFFFFF] dark:bg-[#0D1117] p-6 rounded-xl border border-[#D0D7DE] dark:border-[#21262D] mb-10"
+                        className="bg-[#FFFFFF] dark:bg-[#161B22] p-6 rounded-xl border border-[#D0D7DE] dark:border-[#21262D] mb-10"
                     >
                         <View className="flex-row items-center mb-6">
                             <BarChart3 size={18} color="#FF6900" />
@@ -376,7 +376,7 @@ export default function Grades() {
                             shadowRadius: 2,
                             elevation: 2,
                         }}
-                        className="bg-white dark:bg-[#1a1a1a] p-5 rounded-[32px] border border-gray-100 dark:border-gray-800 mb-6 flex-row items-center active:bg-gray-50 dark:active:bg-gray-900"
+                        className="bg-white dark:bg-[#161B22] p-5 rounded-[32px] border border-gray-100 dark:border-gray-800 mb-6 flex-row items-center active:bg-gray-50 dark:active:bg-gray-900"
                     >
                         <View style={{ backgroundColor: isDark ? '#2e1065' : '#ede9fe', padding: 12, borderRadius: 12, marginRight: 16 }}>
                             <Award size={24} color="#8b5cf6" />
@@ -404,7 +404,7 @@ export default function Grades() {
                                 }],
                                 shadowOpacity: isDark ? 0.4 : 0.05,
                                 }}
-                            className="flex-row items-center bg-[#FFFFFF] dark:bg-[#0D1117] px-4 py-2 rounded-xl border border-[#D0D7DE] dark:border-[#21262D] overflow-hidden active:bg-gray-50 dark:active:bg-gray-900"
+                            className="flex-row items-center bg-[#FFFFFF] dark:bg-[#161B22] px-4 py-2 rounded-xl border border-[#D0D7DE] dark:border-[#21262D] overflow-hidden active:bg-gray-50 dark:active:bg-gray-900"
                         >
                             <Award size={14} color="#FF6900" />
                             <Text className="text-gray-900 dark:text-gray-100 text-[10px] font-bold uppercase tracking-widest ml-2">History</Text>
@@ -412,7 +412,7 @@ export default function Grades() {
                     </View>
 
                     {grades.length === 0 ? (
-                        <View className="bg-[#FFFFFF] dark:bg-[#0D1117] p-20 rounded-xl items-center border border-[#D0D7DE] dark:border-[#21262D] border-dashed mt-4">
+                        <View className="bg-[#FFFFFF] dark:bg-[#161B22] p-20 rounded-xl items-center border border-[#D0D7DE] dark:border-[#21262D] border-dashed mt-4">
                             <Star size={48} color="#E5E7EB" style={{ opacity: 0.3 }} />
                             <Text className="text-gray-500 dark:text-gray-400 font-bold text-center mt-6">Void Transcript</Text>
                         </View>

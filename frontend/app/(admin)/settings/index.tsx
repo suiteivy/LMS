@@ -71,7 +71,7 @@ export default function SettingsScreen() {
 
     return (
         <ScrollView
-            className="flex-1 bg-[#FFFFFF] dark:bg-[#0D1117]"
+            className="flex-1 bg-[#FFFFFF] dark:bg-[#161B22]"
             contentContainerStyle={{ paddingBottom: 40 }}
         >
             <View className="p-4 md:p-8">
@@ -94,7 +94,7 @@ export default function SettingsScreen() {
                     <View className="space-y-4">
                         <View>
                             <Text className="text-gray-500 text-xs font-bold uppercase mb-1 ml-1">Full Name</Text>
-                            <View className="flex-row items-center bg-[#FFFFFF] dark:bg-[#0D1117] border border-[#D0D7DE] dark:border-[#21262D] rounded-xl px-4 py-3">
+                            <View className="flex-row items-center bg-[#FFFFFF] dark:bg-[#161B22] border border-[#D0D7DE] dark:border-[#21262D] rounded-xl px-4 py-3">
                                 <User size={18} color="#94a3b8" />
                                 <TextInput
                                     className="flex-1 ml-3 text-gray-900 dark:text-white font-medium"
@@ -108,7 +108,7 @@ export default function SettingsScreen() {
 
                         <View className="mt-4">
                             <Text className="text-gray-500 text-xs font-bold uppercase mb-1 ml-1">Phone Number</Text>
-                            <View className="flex-row items-center bg-[#FFFFFF] dark:bg-[#0D1117] border border-[#D0D7DE] dark:border-[#21262D] rounded-xl px-4 py-3">
+                            <View className="flex-row items-center bg-[#FFFFFF] dark:bg-[#161B22] border border-[#D0D7DE] dark:border-[#21262D] rounded-xl px-4 py-3">
                                 <Phone size={18} color="#94a3b8" />
                                 <TextInput
                                     className="flex-1 ml-3 text-gray-900 dark:text-white font-medium"
@@ -123,9 +123,9 @@ export default function SettingsScreen() {
 
                         <View className="mt-4 opacity-70">
                             <Text className="text-gray-500 text-xs font-bold uppercase mb-1 ml-1">Email Address (Read-only)</Text>
-                            <View className="flex-row items-center bg-[#E5E7EB] dark:bg-[#21262D] border border-[#D0D7DE] dark:border-[#30363D] rounded-xl px-4 py-3">
+                            <View className="flex-row items-center bg-[#E5E7EB] dark:bg-[#161B22] border border-[#D0D7DE] dark:border-[#30363D] rounded-xl px-4 py-3">
                                 <Mail size={18} color="#94a3b8" />
-                                <Text className="flex-1 ml-3 text-gray-500 dark:text-gray-400 font-medium">{profile?.email}</Text>
+                                <Text className="flex-1 ml-3 text-gray-500 dark:text-white font-medium">{profile?.email}</Text>
                             </View>
                         </View>
                     </View>
@@ -166,14 +166,14 @@ export default function SettingsScreen() {
                         </View>
                     </View>
 
-                    <View className="flex-row items-center justify-between bg-[#FFFFFF] dark:bg-[#0D1117] border border-[#D0D7DE] dark:border-[#21262D] p-4 rounded-2xl mb-4">
+                    <View className="flex-row items-center justify-between bg-[#FFFFFF] dark:bg-[#161B22] border border-[#D0D7DE] dark:border-[#21262D] p-4 rounded-2xl mb-4">
                         <View>
                             <Text className="text-gray-400 text-[10px] font-bold uppercase mb-1">Current Base Plan</Text>
                             <Text className="text-gray-900 dark:text-white font-bold">
                                 {subscriptionPlan === 'premium' ? 'PREMIUM' : subscriptionPlan === 'pro' ? 'PRO' : subscriptionPlan === 'basic' ? 'BASIC' : String(subscriptionPlan || 'TRIAL').toUpperCase()}
                             </Text>
                         </View>
-                        <View className="h-8 w-[1px] bg-gray-200 dark:bg-gray-700 mx-4" />
+                        <View className="h-8 w-[1px] bg-gray-200 dark:bg-[#161B22] mx-4" />
                         <View className="flex-1">
                             <Text className="text-gray-400 text-[10px] font-bold uppercase mb-1">Active Modules</Text>
                             <Text className="text-gray-900 dark:text-white text-[11px] font-bold" numberOfLines={1}>

@@ -10,7 +10,7 @@ const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'
 
 const TimetableCard = ({ entry, isDark }: { entry: TimetableEntry; isDark: boolean }) => {
     return (
-        <View className={`${isDark ? 'bg-[#13103A] border-white/10' : 'bg-white border-gray-100'} p-5 rounded-3xl border mb-4 shadow-sm`}>
+        <View className={`${isDark ? 'bg-navy border-white/10' : 'bg-white border-gray-100'} p-5 rounded-3xl border mb-4 shadow-sm`}>
             <View className="flex-row justify-between items-start mb-4">
                 <View className="flex-1">
                     <Text className={`${isDark ? 'text-white' : 'text-gray-900'} font-bold text-lg leading-tight`}>{entry.subjects?.title || "Unknown Subject"}</Text>
@@ -73,7 +73,7 @@ export default function TimetablePage() {
         .sort((a, b) => a.start_time.localeCompare(b.start_time));
 
     return (
-        <View className={`flex-1 ${isDark ? 'bg-[#0F0B2E]' : 'bg-gray-50'}`}>
+        <View className={`flex-1 ${isDark ? 'bg-navy' : 'bg-gray-50'}`}>
             <UnifiedHeader
                 title="Management"
                 subtitle="My Timetable"
@@ -93,7 +93,7 @@ export default function TimetablePage() {
                             onPress={() => setActiveDay(day)}
                             className={`mr-3 px-6 py-3 rounded-2xl border ${activeDay === day
                                 ? "bg-[#FF6900] border-[#FF6900] shadow-sm"
-                                : (isDark ? "bg-[#13103A] border-white/10" : "bg-white border-gray-100 shadow-sm")
+                                : (isDark ? "bg-navy border-white/10" : "bg-white border-gray-100 shadow-sm")
                                 }`}
                         >
                             <Text className={`font-bold text-xs uppercase tracking-wider ${activeDay === day ? "text-white" : (isDark ? "text-gray-300" : "text-gray-400")
@@ -116,7 +116,7 @@ export default function TimetablePage() {
                         <TimetableCard key={entry.id} entry={entry} isDark={isDark} />
                     ))
                 ) : (
-                    <View className={`flex-1 items-center justify-center pt-20 ${isDark ? 'bg-[#13103A] border-white/20' : 'bg-white border-gray-100'} rounded-[40px] p-12 mt-4 border border-dashed`}>
+                    <View className={`flex-1 items-center justify-center pt-20 ${isDark ? 'bg-navy border-white/20' : 'bg-white border-gray-100'} rounded-[40px] p-12 mt-4 border border-dashed`}>
                         <Calendar size={48} color="#D1D5DB" />
                         <Text className={`${isDark ? 'text-white' : 'text-gray-900'} font-bold text-xl mt-6`}>No lessons today</Text>
                         <Text className={`${isDark ? 'text-gray-300' : 'text-gray-500'} text-center mt-3 leading-relaxed`}>

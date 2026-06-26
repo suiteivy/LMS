@@ -11,7 +11,7 @@ import { ActivityIndicator, DimensionValue, RefreshControl, ScrollView, Text, To
 
 const StatCard = ({ title, value, icon: Icon, color, trend }: any) => (
     <View className="bg-[#F6F8FA] dark:bg-[#161B22] border border-[#D0D7DE] dark:border-[#21262D] rounded-xl p-4 mb-3" style={{ width: '48.5%' }}>
-        <View className="w-9 h-9 rounded-xl bg-[#EAEEF2] dark:bg-[#1C2128] items-center justify-center mb-3">
+        <View className="w-9 h-9 rounded-xl bg-[#EAEEF2] dark:bg-[#161B22] items-center justify-center mb-3">
             <Icon size={18} color={color} />
         </View>
         <Text className="text-gray-500 dark:text-gray-400 text-[10px] font-bold uppercase tracking-widest mb-1" numberOfLines={1}>{title}</Text>
@@ -42,7 +42,7 @@ export default function AnalyticsScreen() {
 
     if (loading && !refreshing) {
         return (
-            <View className="flex-1 items-center justify-center bg-[#FFFFFF] dark:bg-[#0D1117]">
+            <View className="flex-1 items-center justify-center bg-[#FFFFFF] dark:bg-[#161B22]">
                 <ActivityIndicator size="large" color="#FF6900" />
             </View>
         );
@@ -77,6 +77,7 @@ export default function AnalyticsScreen() {
     const attendanceRate = parseInt((stats.find(s => s.label === "Attendance")?.value || "0").replace('%', ''), 10) || 0;
     const studentTeacherRatio = teachers > 0 ? (totalStudents / teachers).toFixed(1) : "0.0";
     const engagementRate = Math.round((attendanceRate + Math.min(attendanceRate + 8, 100)) / 2);
+    const formatLargeNumber = (value: number) => (value > 100 ? value.toLocaleString() : `${value}`);
 
     const toPercent = (value: number): `${number}%` => `${Math.min(Math.max(value, 0), 100)}%`;
 
@@ -105,7 +106,7 @@ export default function AnalyticsScreen() {
     ];
 
     return (
-        <View className="flex-1 bg-[#FFFFFF] dark:bg-[#0D1117]">
+        <View className="flex-1 bg-[#FFFFFF] dark:bg-[#161B22]">
             <UnifiedHeader
                 title="Management"
                 subtitle="Analytics"
@@ -124,7 +125,7 @@ export default function AnalyticsScreen() {
                         feature="analytics"
                         fallback={
                             <View className="bg-[#F6F8FA] dark:bg-[#161B22] border border-[#D0D7DE] dark:border-[#21262D] rounded-xl p-6 items-center">
-                                <View className="w-12 h-12 rounded-xl bg-[#EAEEF2] dark:bg-[#1C2128] items-center justify-center mb-4">
+                                <View className="w-12 h-12 rounded-xl bg-[#EAEEF2] dark:bg-[#161B22] items-center justify-center mb-4">
                                     <Zap size={24} color="#FF6900" />
                                 </View>
                                 <Text className="text-gray-900 dark:text-white font-bold text-base mb-2">Analytics Add-on Required</Text>
@@ -165,7 +166,7 @@ export default function AnalyticsScreen() {
                                             <Text className="text-gray-500 dark:text-gray-400 text-xs font-bold uppercase tracking-widest">{metric.title}</Text>
                                             <Text className="text-gray-900 dark:text-white text-xs font-black">{metric.value}</Text>
                                         </View>
-                                        <View className="h-1.5 bg-[#EAEEF2] dark:bg-[#1C2128] rounded-full overflow-hidden">
+                                        <View className="h-1.5 bg-[#EAEEF2] dark:bg-[#161B22] rounded-full overflow-hidden">
                                             <View style={{ height: '100%', width: metric.width as DimensionValue, backgroundColor: metric.color, borderRadius: 999 }} />
                                         </View>
                                         <Text className="text-gray-500 dark:text-gray-400 text-[10px] mt-1">{metric.helper}</Text>
@@ -188,7 +189,7 @@ export default function AnalyticsScreen() {
                                             const height = (data.amount / maxRevenue) * 100;
                                             return (
                                                 <View key={i} style={{ alignItems: 'center', flex: 1 }}>
-                                                    <Text className="text-gray-500 dark:text-gray-400 text-[9px] font-bold mb-1">${data.amount}</Text>
+                                                    <Text className="text-gray-500 dark:text-gray-400 text-[9px] font-bold mb-1">${formatLargeNumber(data.amount)}</Text>
                                                     <View style={{
                                                         height: `${Math.max(height, 5)}%`,
                                                         width: 24,
@@ -220,7 +221,7 @@ export default function AnalyticsScreen() {
                                             {parseInt(stats.find(s => s.label === "Total Students")?.value || "0", 10) > 1000 ? "Medium" : "Low"}
                                         </Text>
                                     </View>
-                                    <View className="h-1.5 bg-[#EAEEF2] dark:bg-[#1C2128] rounded-full overflow-hidden">
+                                    <View className="h-1.5 bg-[#EAEEF2] dark:bg-[#161B22] rounded-full overflow-hidden">
                                         <View style={{
                                             height: '100%',
                                             backgroundColor: '#3b82f6',
@@ -236,7 +237,7 @@ export default function AnalyticsScreen() {
                                         <Text className="text-gray-500 dark:text-gray-400 text-xs font-bold uppercase tracking-widest">Server Status</Text>
                                         <Text className="text-[10px] font-black" style={{ color: '#10b981' }}>Optimal</Text>
                                     </View>
-                                    <View className="h-1.5 bg-[#EAEEF2] dark:bg-[#1C2128] rounded-full overflow-hidden">
+                                    <View className="h-1.5 bg-[#EAEEF2] dark:bg-[#161B22] rounded-full overflow-hidden">
                                         <View style={{ height: '100%', backgroundColor: '#10b981', width: '100%', borderRadius: 999 }} />
                                     </View>
                                     <Text className="text-gray-500 dark:text-gray-400 text-[10px] mt-1">All services operational</Text>

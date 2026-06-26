@@ -107,14 +107,14 @@ export default function StudentFinancePage() {
 
     if (loading) {
         return (
-            <View className="flex-1 justify-center items-center bg-gray-50 dark:bg-navy">
+            <View className="flex-1 justify-center items-center bg-[#F6F8FA] dark:bg-[#161B22]">
                 <ActivityIndicator size="large" color="#FF6900" />
             </View>
         );
     }
 
     return (
-        <View className="flex-1 bg-gray-50 dark:bg-navy">
+        <View className="flex-1 bg-[#F6F8FA] dark:bg-[#161B22]">
             <UnifiedHeader
                 title="Finance"
                 subtitle="Finances"
@@ -123,7 +123,7 @@ export default function StudentFinancePage() {
             />
 
             {/* Tab Selector */}
-            <View className="flex-row mx-4 mt-4 mb-2 bg-[#FFFFFF] dark:bg-[#0D1117] rounded-xl p-1 border border-[#D0D7DE] dark:border-[#21262D]">
+            <View className="flex-row mx-4 mt-4 mb-2 bg-[#FFFFFF] dark:bg-[#161B22] rounded-xl p-1 border border-[#D0D7DE] dark:border-[#21262D]">
                 {([
                     { key: 'fees', label: 'Fees & Payments', icon: CreditCard },
                     { key: 'bursaries', label: 'Bursaries', icon: Award },
@@ -140,7 +140,7 @@ export default function StudentFinancePage() {
             </View>
 
             <ScrollView className="flex-1" showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 150 }}>
-                <View className="p-4 md:p-8 bg-gray-50 dark:bg-navy">
+                <View className="p-4 md:p-8 bg-gray-50 dark:bg-[#161B22]">
 
                     {activeTab === 'fees' ? (
                         <>
@@ -188,7 +188,7 @@ export default function StudentFinancePage() {
                             </View>
 
                             {(financeData?.fee_structures || []).length === 0 && (
-                                <View className="bg-white dark:bg-[#1a1a1a] p-8 rounded-[32px] border border-gray-100 dark:border-gray-800 mb-8">
+                                <View className="bg-white dark:bg-[#161B22] p-8 rounded-[32px] border border-gray-100 dark:border-gray-800 mb-8">
                                     <Text className="text-gray-500 dark:text-gray-400 text-sm font-semibold text-center">
                                         No fee structures for the active period.
                                     </Text>
@@ -240,7 +240,7 @@ export default function StudentFinancePage() {
                                          }],
                                          shadowOpacity: isDark ? 0.4 : 0.08,
                                          }}
-                                     className="flex-row items-center bg-[#FFFFFF] dark:bg-[#0D1117] px-4 py-2 rounded-xl border border-[#D0D7DE] dark:border-[#21262D]"
+                                     className="flex-row items-center bg-[#FFFFFF] dark:bg-[#161B22] px-4 py-2 rounded-xl border border-[#D0D7DE] dark:border-[#21262D]"
                                  >
                                      <CreditCard size={14} color="#FF6900" />
                                      <Text className="text-gray-900 dark:text-white text-[10px] font-bold uppercase tracking-widest ml-2">Pay Fees</Text>
@@ -260,7 +260,7 @@ export default function StudentFinancePage() {
                                              }],
                                              shadowOpacity: isDark ? 0.4 : 0.08,
                                              }}
-                                         className="bg-[#FFFFFF] dark:bg-[#0D1117] p-5 rounded-xl mb-4 flex-row items-center border border-[#D0D7DE] dark:border-[#21262D]"
+                                         className="bg-[#FFFFFF] dark:bg-[#161B22] p-5 rounded-xl mb-4 flex-row items-center border border-[#D0D7DE] dark:border-[#21262D]"
                                      >
                                         <View className={`w-12 h-12 rounded-xl items-center justify-center mr-4 ${tx.direction === 'inflow' ? 'bg-green-50' : 'bg-red-50'}`}>
                                             {tx.direction === 'inflow' ? <ArrowDownLeft size={20} color="#16a34a" /> : <ArrowUpRight size={20} color="#dc2626" />}
@@ -278,7 +278,7 @@ export default function StudentFinancePage() {
                                     </View>
                                 ))
                             ) : (
-                                <View className="bg-[#FFFFFF] dark:bg-[#0D1117] p-20 rounded-xl items-center border border-[#D0D7DE] dark:border-[#21262D] border-dashed mt-4">
+                                <View className="bg-[#FFFFFF] dark:bg-[#161B22] p-20 rounded-xl items-center border border-[#D0D7DE] dark:border-[#21262D] border-dashed mt-4">
                                     <Receipt size={48} color="#E5E7EB" />
                                     <Text className="text-gray-400 font-bold text-center mt-6">Void Transaction Hub</Text>
                                 </View>
@@ -304,7 +304,7 @@ export default function StudentFinancePage() {
                                              }],
                                              shadowOpacity: isDark ? 0.4 : 0.08,
                                              }}
-                                         className="bg-[#FFFFFF] dark:bg-[#0D1117] rounded-xl mb-5 border border-[#D0D7DE] dark:border-[#21262D] overflow-hidden"
+                                         className="bg-[#FFFFFF] dark:bg-[#161B22] rounded-xl mb-5 border border-[#D0D7DE] dark:border-[#21262D] overflow-hidden"
                                      >
                                         {/* Accent bar */}
                                         <View className="h-1.5 bg-emerald-500" />
@@ -337,7 +337,7 @@ export default function StudentFinancePage() {
                                             {/* Meta info */}
                                             <View className="flex-row gap-3 flex-wrap">
                                                 {item.bursary?.deadline && (
-                                                    <View className="bg-gray-50 dark:bg-gray-800 px-4 py-2 rounded-xl flex-row items-center gap-2">
+                                                    <View className="bg-gray-50 dark:bg-[#161B22] px-4 py-2 rounded-xl flex-row items-center gap-2">
                                                         <Text className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Deadline:</Text>
                                                         <Text className="text-xs font-bold text-gray-900 dark:text-white">
                                                             {new Date(item.bursary.deadline).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })}
@@ -345,7 +345,7 @@ export default function StudentFinancePage() {
                                                     </View>
                                                 )}
                                                 {item.notes && (
-                                                    <View className="bg-gray-100 dark:bg-gray-800 px-4 py-2 rounded-xl flex-row items-center gap-2">
+                                                    <View className="bg-gray-100 dark:bg-[#161B22] px-4 py-2 rounded-xl flex-row items-center gap-2">
                                                         <Text className="text-xs text-gray-900 dark:text-gray-100 font-medium">{item.notes}</Text>
                                                     </View>
                                                 )}
@@ -354,7 +354,7 @@ export default function StudentFinancePage() {
                                     </View>
                                 ))
                             ) : (
-                                <View className="bg-[#FFFFFF] dark:bg-[#0D1117] p-20 rounded-xl items-center border border-[#D0D7DE] dark:border-[#21262D] border-dashed mt-4">
+                                <View className="bg-[#FFFFFF] dark:bg-[#161B22] p-20 rounded-xl items-center border border-[#D0D7DE] dark:border-[#21262D] border-dashed mt-4">
                                     <Award size={48} color="#E5E7EB" />
                                     <Text className="text-gray-400 font-bold text-center mt-6">No approved bursaries yet</Text>
                                     <Text className="text-gray-400 text-sm text-center mt-2">Bursary approvals from your institution will appear here.</Text>

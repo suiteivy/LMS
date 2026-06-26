@@ -66,7 +66,7 @@ export default function ParentStudentTimetablePage() {
     ).sort((a, b) => a.start_time.localeCompare(b.start_time));
 
     return (
-        <View className="flex-1 bg-gray-50 dark:bg-navy">
+        <View className="flex-1 bg-[#F6F8FA] dark:bg-[#161B22]">
             <UnifiedHeader
                 title="Timetable"
                 subtitle="Portal"
@@ -77,7 +77,7 @@ export default function ParentStudentTimetablePage() {
             <View className="px-4 md:px-8 pt-4">
                 <Text className="text-gray-900 dark:text-white font-bold text-2xl tracking-tighter mb-1 px-2">Academic Schedule</Text>
                 <View className="mb-4 px-2">
-                    <View className="self-start bg-white dark:bg-navy-surface border border-gray-100 dark:border-gray-800 rounded-full px-3 py-1.5">
+                    <View className="self-start bg-white dark:bg-[#161B22] border border-gray-100 dark:border-gray-800 rounded-full px-3 py-1.5">
                         <Text className="text-[10px] font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400">
                             Viewing: <Text className="text-gray-900 dark:text-white">{resolvedName || 'Student'}</Text> · {classLabel || 'Unassigned'}
                         </Text>
@@ -94,7 +94,7 @@ export default function ParentStudentTimetablePage() {
                                 key={index}
                                 activeOpacity={0.7}
                                 onPress={() => setSelectedDay(date)}
-                                className={`mr-4 p-5 rounded-[28px] items-center min-w-[75px] shadow-sm border ${isSelected ? 'bg-gray-900 border-gray-900' : 'bg-white dark:bg-navy-surface border-gray-100 dark:border-gray-800'}`}
+                                className={`mr-4 p-5 rounded-[28px] items-center min-w-[75px] shadow-sm border ${isSelected ? 'bg-gray-900 border-gray-900' : 'bg-white dark:bg-[#161B22] border-gray-100 dark:border-gray-800'}`}
                             >
                                 <Text className={`text-[10px] font-bold uppercase tracking-widest mb-1.5 ${isSelected ? 'text-white/40' : 'text-gray-400'}`}>
                                     {format(date, 'EEE')}
@@ -113,7 +113,7 @@ export default function ParentStudentTimetablePage() {
 
             <ScrollView className="flex-1 px-4 md:px-8" showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 150 }}>
                 {!resolvedClassId ? (
-                    <View className="bg-white dark:bg-navy-surface p-20 rounded-[48px] items-center border border-gray-100 dark:border-gray-700 border-dashed mt-4">
+                    <View className="bg-white dark:bg-[#161B22] p-20 rounded-[48px] items-center border border-gray-100 dark:border-gray-700 border-dashed mt-4">
                         <Calendar size={48} color="#E5E7EB" style={{ opacity: 0.5 }} />
                         <Text className="text-gray-500 font-bold text-center mt-6">No Active Class Assignment</Text>
                         <Text className="text-gray-400 text-xs text-center mt-2">This student is not currently enrolled in any class stream.</Text>
@@ -126,11 +126,11 @@ export default function ParentStudentTimetablePage() {
                             {/* Time Column */}
                             <View className="w-16 pt-2 items-center mr-4">
                                 <Text className="font-bold text-gray-900 dark:text-white text-sm">{entry.start_time.slice(0, 5)}</Text>
-                                <View className="w-[1.5px] h-full bg-gray-100 dark:bg-gray-700 my-3 rounded-full" />
+                                <View className="w-[1.5px] h-full bg-gray-100 dark:bg-[#161B22] my-3 rounded-full" />
                             </View>
 
                             {/* Class Card */}
-                            <View className="flex-1 bg-white dark:bg-navy-surface p-6 rounded-[32px] border border-gray-50 dark:border-gray-800 shadow-sm">
+                            <View className="flex-1 bg-[#F6F8FA] dark:bg-[#161B22] p-6 rounded-[32px] border border-gray-50 dark:border-gray-800 shadow-sm">
                                 <View className="flex-row justify-between items-start mb-4">
                                     <View className="bg-blue-50 px-3 py-1 rounded-xl">
                                         <Text className="text-blue-600 text-[8px] font-bold uppercase tracking-widest">
@@ -138,7 +138,7 @@ export default function ParentStudentTimetablePage() {
                                         </Text>
                                     </View>
                                     {entry.room_number && (
-                                        <View className="flex-row items-center bg-gray-50 dark:bg-gray-800 px-3 py-1 rounded-xl">
+                                        <View className="flex-row items-center bg-gray-50 dark:bg-[#161B22] px-3 py-1 rounded-xl">
                                             <MapPin size={12} color="#9CA3AF" />
                                             <Text className="text-gray-400 text-[10px] font-bold ml-1.5 uppercase tracking-widest">{entry.room_number}</Text>
                                         </View>
@@ -164,7 +164,7 @@ export default function ParentStudentTimetablePage() {
                         </View>
                     ))
                 ) : (
-                    <View className="bg-white dark:bg-navy-surface p-20 rounded-[48px] items-center border border-gray-100 dark:border-gray-700 border-dashed mt-4">
+                    <View className="bg-white dark:bg-[#161B22] p-20 rounded-[48px] items-center border border-gray-100 dark:border-gray-700 border-dashed mt-4">
                         <Calendar size={48} color="#E5E7EB" style={{ opacity: 0.5 }} />
                         <Text className="text-gray-400 font-bold text-center mt-6">No Academic Sessions</Text>
                         <Text className="text-gray-400 text-xs text-center mt-2">No timetable entries scheduled for {getDayName(selectedDay)}.</Text>

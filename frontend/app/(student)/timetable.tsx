@@ -40,7 +40,7 @@ export default function StudentTimetablePage() {
     ).sort((a, b) => a.start_time.localeCompare(b.start_time));
 
     return (
-        <View className="flex-1 bg-gray-50 dark:bg-navy">
+        <View className="flex-1 bg-[#F6F8FA] dark:bg-[#161B22]">
             <UnifiedHeader
                 title="Timetable"
                 subtitle="Portal"
@@ -61,7 +61,7 @@ export default function StudentTimetablePage() {
                                 key={index}
                                 activeOpacity={0.7}
                                 onPress={() => setSelectedDay(date)}
-                                className={`mr-4 p-5 rounded-[28px] items-center min-w-[75px] shadow-sm border ${isSelected ? 'bg-gray-900 border-gray-900' : 'bg-[#FFFFFF] dark:bg-[#0D1117]-surface border-[#D0D7DE] dark:border-[#21262D]'}`}
+                                className={`mr-4 p-5 rounded-[28px] items-center min-w-[75px] shadow-sm border ${isSelected ? 'bg-gray-900 border-gray-900' : 'bg-[#FFFFFF] dark:bg-[#161B22] border-[#D0D7DE] dark:border-[#21262D]'}`}
                             >
                                 <Text className={`text-[10px] font-bold uppercase tracking-widest mb-1.5 ${isSelected ? 'text-white/40' : 'text-gray-400'}`}>
                                     {format(date, 'EEE')}
@@ -96,19 +96,19 @@ export default function StudentTimetablePage() {
                             {/* Time Column */}
                             <View className="w-16 pt-2 items-center mr-4">
                                 <Text className="font-bold text-gray-900 dark:text-white text-sm">{entry.start_time.slice(0, 5)}</Text>
-                                <View className="w-[1.5px] h-full bg-gray-100 dark:bg-gray-700 my-3 rounded-full" />
+                                <View className="w-[1.5px] h-full bg-gray-100 dark:bg-[#161B22] my-3 rounded-full" />
                             </View>
 
                             {/* Class Card */}
-                            <View className="flex-1 bg-[#FFFFFF] dark:bg-[#0D1117]-surface p-6 rounded-xl border border-[#D0D7DE] dark:border-[#21262D] shadow-sm">
+                            <View className="flex-1 bg-[#FFFFFF] dark:bg-[#161B22] p-6 rounded-xl border border-[#D0D7DE] dark:border-[#21262D] shadow-sm">
                                 <View className="flex-row justify-between items-start mb-4">
-                                    <View className="bg-gray-100 dark:bg-gray-800 px-3 py-1 rounded-xl">
+                                    <View className="bg-gray-100 dark:bg-[#161B22] px-3 py-1 rounded-xl">
                                         <Text className="text-gray-900 dark:text-white text-[8px] font-bold uppercase tracking-widest">
                                             {entry.subjects?.title || 'Academic Unit'}
                                         </Text>
                                     </View>
                                     {entry.room_number && (
-                                        <View className="flex-row items-center bg-gray-50 dark:bg-gray-800 px-3 py-1 rounded-xl">
+                                        <View className="flex-row items-center bg-gray-50 dark:bg-[#161B22] px-3 py-1 rounded-xl">
                                             <MapPin size={12} color="#9CA3AF" />
                                             <Text className="text-gray-400 text-[10px] font-bold ml-1.5 uppercase tracking-widest">{entry.room_number}</Text>
                                         </View>
@@ -134,7 +134,7 @@ export default function StudentTimetablePage() {
                         </View>
                     ))
                 ) : (
-                    <View className="bg-[#FFFFFF] dark:bg-[#0D1117]-surface p-20 rounded-xl items-center border border-[#D0D7DE] dark:border-[#21262D] border-dashed mt-4">
+                    <View className="bg-[#FFFFFF] dark:bg-[#161B22] p-20 rounded-xl items-center border border-[#D0D7DE] dark:border-[#21262D] border-dashed mt-4">
                         <Calendar size={48} color="#E5E7EB" />
                         <Text className="text-gray-400 font-bold text-center mt-6">No Academic Sessions</Text>
                     </View>

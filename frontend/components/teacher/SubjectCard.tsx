@@ -32,7 +32,7 @@ const SubjectCard: React.FC<SubjectCardProps> = ({ Subject }) => {
  }],
  shadowOpacity: isDark ? 0.4 : 0.05,
  }}
- className="bg-[#F6F8FA] dark:bg-[#161B22] rounded-xl p-4 mb-4 border border-[#D0D7DE] dark:border-[#21262D]"
+ className="bg-[#F6F8FA] dark:bg-navy rounded-xl p-4 mb-4 border border-[#D0D7DE] dark:border-[#21262D]"
  >
  <View className="flex-row justify-between items-start mb-3">
  <View className="flex-1 pr-2">
@@ -44,7 +44,7 @@ const SubjectCard: React.FC<SubjectCardProps> = ({ Subject }) => {
  </Text>
  </View>
  <View
- className={`px-2 py-1 rounded-full ${isActive ?"bg-green-100 dark:bg-green-950/20" :"bg-[#EAEEF2] dark:bg-[#1C2128]"
+ className={`px-2 py-1 rounded-full ${isActive ?"bg-green-100 dark:bg-green-950/20" :"bg-[#EAEEF2] dark:bg-navy"
  }`}
  >
  <Text

@@ -54,6 +54,12 @@ const FeeStructureSection: React.FC<FeeStructureSectionProps> = ({
   const [gradeLevels, setGradeLevels] = useState<number[]>([]);
   const [formLevels, setFormLevels] = useState<number[]>([]);
   const [loadingOptions, setLoadingOptions] = useState(false);
+  const [confirmModalVisible, setConfirmModalVisible] = useState(false);
+  const [confirmTitle, setConfirmTitle] = useState('');
+  const [confirmMessage, setConfirmMessage] = useState('');
+  const [confirmBusy, setConfirmBusy] = useState(false);
+  const [confirmDestructive, setConfirmDestructive] = useState(false);
+  const [confirmAction, setConfirmAction] = useState<null | (() => Promise<void>)>(null);
 
   const [formData, setFormData] = useState({
     title: '',
@@ -302,10 +308,23 @@ const FeeStructureSection: React.FC<FeeStructureSectionProps> = ({
     const description = (item as any).description;
     const isReleased = item.is_active;
 
+    const openConfirmModal = (
+      title: string,
+      message: string,
+      action: () => Promise<void>,
+      destructive: boolean = true
+    ) => {
+      setConfirmTitle(title);
+      setConfirmMessage(message);
+      setConfirmAction(() => action);
+      setConfirmDestructive(destructive);
+      setConfirmModalVisible(true);
+    };
+
     return (
       <View
         key={(item as any).id}
-        className="bg-white dark:bg-navy-surface rounded-3xl p-6 mb-6 shadow-xl shadow-slate-200/50 dark:shadow-none border border-slate-100 dark:border-gray-800"
+        className="bg-white dark:bg-navy rounded-3xl p-6 mb-6 shadow-xl shadow-slate-200/50 dark:shadow-none border border-slate-100 dark:border-gray-800"
       >
         <View className="flex-row justify-between items-start mb-5">
           <View className="flex-1 mr-3">
@@ -325,12 +344,16 @@ const FeeStructureSection: React.FC<FeeStructureSectionProps> = ({
                 <Text className="text-white text-[10px] font-black uppercase tracking-widest">Edit</Text>
               </TouchableOpacity>
               <TouchableOpacity
-                onPress={() => {
-                  Alert.alert('Delete Fee Structure', 'This action cannot be undone. Continue?', [
-                    { text: 'Cancel', style: 'cancel' },
-                    { text: 'Delete', style: 'destructive', onPress: () => onFeeStructureDelete((item as any).id) },
-                  ]);
-                }}
+                onPress={() =>
+                  openConfirmModal(
+                    'Delete Fee Structure',
+                    'This action cannot be undone. Continue?',
+                    async () => {
+                      await Promise.resolve(onFeeStructureDelete((item as any).id));
+                    },
+                    true
+                  )
+                }
                 className="p-1 px-3 bg-red-600 rounded-xl"
               >
                 <Text className="text-white text-[10px] font-black uppercase tracking-widest">Delete</Text>
@@ -338,19 +361,15 @@ const FeeStructureSection: React.FC<FeeStructureSectionProps> = ({
               <TouchableOpacity
                 onPress={() => {
                   const nextActionIsRelease = !isReleased;
-                  Alert.alert(
+                  openConfirmModal(
                     nextActionIsRelease ? 'Release Fee Structure' : 'Revert Fee Structure Release',
                     nextActionIsRelease
                       ? 'This will make the fee structure visible to parents and students for the active period. Continue?'
                       : 'This will hide the fee structure from parents and students. Continue?',
-                    [
-                      { text: 'Cancel', style: 'cancel' },
-                      {
-                        text: nextActionIsRelease ? 'Release' : 'Revert',
-                        style: nextActionIsRelease ? 'default' : 'destructive',
-                        onPress: () => onFeeStructureReleaseToggle((item as any).id, nextActionIsRelease),
-                      },
-                    ]
+                    async () => {
+                      await Promise.resolve(onFeeStructureReleaseToggle((item as any).id, nextActionIsRelease));
+                    },
+                    !nextActionIsRelease
                   );
                 }}
                 className={`p-1 px-3 rounded-xl ${isReleased ? 'bg-amber-600' : 'bg-emerald-600'}`}
@@ -411,6 +430,60 @@ const FeeStructureSection: React.FC<FeeStructureSectionProps> = ({
       )}
 
       <Modal
+        visible={confirmModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => {
+          if (confirmBusy) return;
+          setConfirmModalVisible(false);
+          setConfirmAction(null);
+        }}
+      >
+        <View className="flex-1 items-center justify-center bg-black/40 px-4">
+          <View className="w-full max-w-md bg-white dark:bg-[#161B22] rounded-3xl border border-gray-200 dark:border-gray-800 p-6">
+            <Text className="text-gray-900 dark:text-white text-lg font-black mb-2">{confirmTitle}</Text>
+            <Text className="text-gray-600 dark:text-gray-300 text-sm mb-6">{confirmMessage}</Text>
+            <View className="flex-row" style={{ gap: 10 }}>
+              <TouchableOpacity
+                className="flex-1 py-3 rounded-xl bg-gray-100 dark:bg-gray-800 items-center"
+                onPress={() => {
+                  if (confirmBusy) return;
+                  setConfirmModalVisible(false);
+                  setConfirmAction(null);
+                }}
+                disabled={confirmBusy}
+              >
+                <Text className="text-gray-700 dark:text-gray-200 font-bold text-xs uppercase tracking-widest">Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                className={`flex-1 py-3 rounded-xl items-center ${confirmDestructive ? 'bg-red-600' : 'bg-emerald-600'}`}
+                onPress={async () => {
+                  if (!confirmAction || confirmBusy) return;
+                  try {
+                    setConfirmBusy(true);
+                    await confirmAction();
+                    setConfirmModalVisible(false);
+                    setConfirmAction(null);
+                  } catch (e: any) {
+                    Alert.alert('Action failed', e?.message || 'Please try again.');
+                  } finally {
+                    setConfirmBusy(false);
+                  }
+                }}
+                disabled={confirmBusy}
+              >
+                {confirmBusy ? (
+                  <Spinner color="#FFFFFF" size="small" />
+                ) : (
+                  <Text className="text-white font-black text-xs uppercase tracking-widest">Confirm</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal
         visible={showForm}
         animationType="slide"
         presentationStyle="pageSheet"
@@ -447,7 +520,7 @@ const FeeStructureSection: React.FC<FeeStructureSectionProps> = ({
             onChangeText={(v) => setFormData((p) => ({ ...p, title: v }))}
             placeholder="e.g. Grade 10 Annual Fees"
             placeholderTextColor="#9CA3AF"
-            className="bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl px-4 py-4 text-gray-900 dark:text-white font-medium mb-5"
+            className="bg-white dark:bg-[#0F141C] border-2 border-gray-300 dark:border-gray-600 rounded-2xl px-4 py-4 text-gray-900 dark:text-white font-semibold mb-5 shadow-sm"
           />
 
           <Text className="text-gray-700 dark:text-gray-300 font-bold mb-2 uppercase text-[10px] tracking-widest">Amount (KSh) *</Text>
@@ -457,7 +530,7 @@ const FeeStructureSection: React.FC<FeeStructureSectionProps> = ({
             placeholder="0.00"
             keyboardType="numeric"
             placeholderTextColor="#9CA3AF"
-            className="bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl px-4 py-4 text-gray-900 dark:text-white font-medium mb-5"
+            className="bg-white dark:bg-[#0F141C] border-2 border-gray-300 dark:border-gray-600 rounded-2xl px-4 py-4 text-gray-900 dark:text-white font-semibold mb-5 shadow-sm"
           />
 
           <Text className="text-gray-700 dark:text-gray-300 font-bold mb-2 uppercase text-[10px] tracking-widest">Academic Year</Text>
@@ -544,7 +617,7 @@ const FeeStructureSection: React.FC<FeeStructureSectionProps> = ({
                 keyboardType="numeric"
                 placeholder="e.g. 1"
                 placeholderTextColor="#9CA3AF"
-                className="bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl px-4 py-4 text-gray-900 dark:text-white font-medium mb-4"
+                className="bg-white dark:bg-[#0F141C] border-2 border-gray-300 dark:border-gray-600 rounded-2xl px-4 py-4 text-gray-900 dark:text-white font-semibold mb-4 shadow-sm"
               />
               <Text className="text-gray-700 dark:text-gray-300 font-bold mb-2 uppercase text-[10px] tracking-widest">Range To</Text>
               <TextInput
@@ -553,7 +626,7 @@ const FeeStructureSection: React.FC<FeeStructureSectionProps> = ({
                 keyboardType="numeric"
                 placeholder="e.g. 8"
                 placeholderTextColor="#9CA3AF"
-                className="bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl px-4 py-4 text-gray-900 dark:text-white font-medium"
+                className="bg-white dark:bg-[#0F141C] border-2 border-gray-300 dark:border-gray-600 rounded-2xl px-4 py-4 text-gray-900 dark:text-white font-semibold shadow-sm"
               />
             </View>
           ) : null}

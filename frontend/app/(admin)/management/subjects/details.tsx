@@ -35,7 +35,7 @@ function SubjectDetailsScreen() {
     .join(", ");
   // const surface = isDark ? "#161B22" : "#F6F8FA";
   const border = isDark ? "#21262D" : "#D0D7DE";
-  const inputBg = isDark ? "#0D1117" : "#FFFFFF";
+  const inputBg = isDark ? "#161B22" : "#FFFFFF";
   const textPrimary = isDark ? "#FFFFFF" : "#111827";
   const textMuted = isDark ? "#9ca3af" : "#6b7280";
 
@@ -52,7 +52,7 @@ function SubjectDetailsScreen() {
       supabase.from("teachers").select("id, user_id, users:user_id(full_name, institution_id)").eq("institution_id", profile.institution_id),
       supabase
         .from("v_classes_detailed")
-        .select("id, name, grade_level, form_level, level_label, stream")
+        .select("id, name, display_name, grade_level, form_level, level_label, stream")
         .eq("institution_id", profile.institution_id)
         .order("grade_level", { ascending: true })
         .order("form_level", { ascending: true })
@@ -209,7 +209,7 @@ function SubjectDetailsScreen() {
           flex: 1,
           justifyContent: "center",
           alignItems: "center",
-          backgroundColor: isDark ? "#0D1117" : "#FFFFFF"
+          backgroundColor: isDark ? "#161B22" : "#FFFFFF"
         }}
       >
         <ActivityIndicator size="large" color="#FF6B00" />
@@ -224,7 +224,7 @@ function SubjectDetailsScreen() {
           flex: 1,
           justifyContent: "center",
           alignItems: "center",
-          backgroundColor: isDark ? "#0D1117" : "#FFFFFF"
+          backgroundColor: isDark ? "#161B22" : "#FFFFFF"
         }}
       >
         <Text style={{ color: textPrimary }}>Subject not found.</Text>
@@ -234,11 +234,11 @@ function SubjectDetailsScreen() {
 
   return (
     <ScrollView
-      style={{ flex: 1, backgroundColor: isDark ? "#0D1117" : "#FFFFFF" }}
+      style={{ flex: 1, backgroundColor: isDark ? "#161B22" : "#FFFFFF" }}
       contentContainerStyle={{ paddingBottom: 100 }}
     >
       <View
-        style={{ flex: 1, backgroundColor: isDark ? "#0D1117" : "#FFFFFF" }}
+        style={{ flex: 1, backgroundColor: isDark ? "#161B22" : "#FFFFFF" }}
       >
         <UnifiedHeader
           title="Subject Details"

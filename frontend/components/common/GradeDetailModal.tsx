@@ -22,11 +22,11 @@ export const GradeDetailModal = ({ visible, onClose, subjectName, lecturerName, 
  return (
  <Modal visible={visible} animationType="slide" transparent>
  <View className="flex-1 bg-black/60 justify-end">
- <View className="bg-[#FFFFFF] dark:bg-[#0D1117] rounded-t-[40px] p-8 h-[80%] border-t border-[#D0D7DE] dark:border-[#21262D]">
+ <View className="bg-[#FFFFFF] dark:bg-navy rounded-t-[40px] p-8 h-[80%] border-t border-[#D0D7DE] dark:border-[#21262D]">
  <View className="flex-row justify-between items-center mb-8">
  <Text className="text-2xl font-bold text-gray-900 dark:text-white tracking-tight">Grade Details</Text>
  <TouchableOpacity
- className="w-10 h-10 bg-[#F6F8FA] dark:bg-[#161B22] rounded-full items-center justify-center"
+ className="w-10 h-10 bg-[#F6F8FA] dark:bg-navy rounded-full items-center justify-center"
  onPress={onClose}
  >
  <X size={20} color="#6B7280" />
@@ -58,7 +58,7 @@ export const GradeDetailModal = ({ visible, onClose, subjectName, lecturerName, 
  <Text className="text-gray-900 dark:text-white font-bold text-lg mb-4 tracking-tight px-1">Component Breakdown</Text>
 
  {/* Table Header */}
- <View className="flex-row px-4 py-3 bg-[#F6F8FA] dark:bg-[#161B22] rounded-t-2xl border-x border-t border-[#D0D7DE] dark:border-[#21262D]">
+ <View className="flex-row px-4 py-3 bg-[#F6F8FA] dark:bg-navy rounded-t-2xl border-x border-t border-[#D0D7DE] dark:border-[#21262D]">
  <Text className="flex-1 text-gray-500 dark:text-gray-400 text-[10px] font-bold uppercase tracking-widest">Title</Text>
  <Text className="w-16 text-center text-gray-500 dark:text-gray-400 text-[10px] font-bold uppercase tracking-widest">Mark</Text>
  <Text className="w-16 text-right text-gray-500 dark:text-gray-400 text-[10px] font-bold uppercase tracking-widest">Weight</Text>
@@ -67,12 +67,12 @@ export const GradeDetailModal = ({ visible, onClose, subjectName, lecturerName, 
  {/* Table Body */}
  <View className="border border-[#D0D7DE] dark:border-[#21262D] rounded-b-2xl overflow-hidden">
  {testScores.length === 0 ? (
- <View className="p-8 bg-[#F6F8FA] dark:bg-[#161B22] items-center">
+ <View className="p-8 bg-[#F6F8FA] dark:bg-navy items-center">
  <Text className="text-gray-500 dark:text-gray-400 text-xs font-bold">No components found</Text>
  </View>
  ) : (
  testScores.map((score, index) => (
- <View key={index} className={`flex-row px-4 py-4 bg-[#F6F8FA] dark:bg-[#161B22] ${index < testScores.length - 1 ? 'border-b border-[#D0D7DE] dark:border-[#21262D]' : ''}`}>
+ <View key={index} className={`flex-row px-4 py-4 bg-[#F6F8FA] dark:bg-navy ${index < testScores.length - 1 ? 'border-b border-[#D0D7DE] dark:border-[#21262D]' : ''}`}>
  <Text className="flex-1 text-gray-900 dark:text-white font-bold text-sm" numberOfLines={1}>{score.title}</Text>
  <Text className="w-16 text-center text-gray-900 dark:text-white font-bold text-sm">{score.mark}/{score.maxMark}</Text>
  <Text className="w-16 text-right text-[#FF6900] font-black text-xs">{score.weight}%</Text>

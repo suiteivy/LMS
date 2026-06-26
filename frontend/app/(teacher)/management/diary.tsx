@@ -42,7 +42,7 @@ const DiaryCard = ({ entry, onDelete, onEdit }: { entry: DiaryEntry; onDelete: (
 
                 <View className="flex-row gap-2">
                     <TouchableOpacity
-                        className="w-10 h-10 bg-gray-50 dark:bg-[#1A1650] rounded-xl items-center justify-center"
+                        className="w-10 h-10 bg-gray-50 dark:bg-[#161B22] rounded-xl items-center justify-center"
                         onPress={() => onEdit(entry)}
                     >
                         <Edit2 size={16} color="#6B7280" />
@@ -285,7 +285,7 @@ export default function TeacherDiaryPage() {
     };
 
     return (
-        <View className="flex-1 bg-[#FFFFFF] dark:bg-[#0D1117]">
+        <View className="flex-1 bg-[#FFFFFF] dark:bg-[#161B22]">
             <UnifiedHeader
                 title="Management"
                 subtitle="Virtual Diary"
@@ -318,7 +318,7 @@ export default function TeacherDiaryPage() {
                                 You haven&apos;t been assigned to any classes yet. Please contact your administrator to assign you a class before you can create diary entries.
                             </Text>
                             <TouchableOpacity
-                                className="bg-[#EAEEF2] dark:bg-[#1C2128] px-8 py-4 rounded-lg active:bg-gray-200"
+                                className="bg-[#EAEEF2] dark:bg-[#161B22] px-8 py-4 rounded-lg active:bg-gray-200"
                                 onPress={() => router.push("/(teacher)")}
                             >
                                 <Text className="text-gray-600 dark:text-gray-300 font-bold uppercase tracking-widest text-xs">Return to Dashboard</Text>
@@ -414,7 +414,7 @@ export default function TeacherDiaryPage() {
 
                 <Modal visible={showModal} animationType="slide" transparent>
                     <View className="flex-1 bg-black/50 justify-end">
-                        <View className="bg-[#FFFFFF] dark:bg-[#0D1117] rounded-t-[40px] p-8 pb-12 border-t border-[#D0D7DE] dark:border-[#21262D]">
+                        <View className="bg-[#FFFFFF] dark:bg-[#161B22] rounded-t-[40px] p-8 pb-12 border-t border-[#D0D7DE] dark:border-[#21262D]">
                             <View className="flex-row justify-between items-center mb-8">
                                 <Text className="text-2xl font-bold text-gray-900 dark:text-white tracking-tight">
                                     {editingEntryId ? "Edit Entry" : "New Diary Entry"}

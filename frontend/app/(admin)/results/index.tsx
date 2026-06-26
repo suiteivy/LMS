@@ -133,7 +133,7 @@ function DropdownSelector({ label, options, selectedId, onSelect, placeholder, i
 
     const bg = isDark ? '#161B22' : '#F6F8FA';
     const border = isDark ? '#21262D' : '#D0D7DE';
-    const inputBg = isDark ? '#1C2128' : '#EAEEF2';
+    const inputBg = isDark ? '#161B22' : '#EAEEF2';
     const textPrimary = isDark ? '#FFFFFF' : '#111827';
     const textMuted = isDark ? '#6B7280' : '#9CA3AF';
 
@@ -208,13 +208,13 @@ export default function AdminResults() {
     const { isDark } = useTheme();
 
     // ── Theme colors ──
-    const bg = isDark ? '#0D1117' : '#FFFFFF';
+    const bg = isDark ? '#161B22' : '#FFFFFF';
     const card = isDark ? '#161B22' : '#F6F8FA';
     const border = isDark ? '#21262D' : '#D0D7DE';
     const textPrimary = isDark ? '#FFFFFF' : '#111827';
     const textSecondary = isDark ? '#9CA3AF' : '#6B7280';
     const textMuted = isDark ? '#6B7280' : '#9CA3AF';
-    const sectionBg = isDark ? '#1C2128' : '#EAEEF2';
+    const sectionBg = isDark ? '#161B22' : '#EAEEF2';
 
     // ── Active tab ──
     const [activeTab, setActiveTab] = useState<TabSection>('completeness');
@@ -599,7 +599,7 @@ export default function AdminResults() {
                                 style={{
                                     flexDirection: 'row',
                                     alignItems: 'center',
-                                    backgroundColor: isDark ? '#1A1650' : '#FFFFFF',
+                                    backgroundColor: isDark ? '#161B22' : '#FFFFFF',
                                     borderWidth: 1,
                                     borderColor: border,
                                     borderRadius: 10,

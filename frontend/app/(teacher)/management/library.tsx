@@ -84,7 +84,7 @@ export default function TeacherLibraryPage() {
     );
 
     return (
-        <View className="flex-1 bg-[#FFFFFF] dark:bg-[#0D1117]">
+        <View className="flex-1 bg-[#FFFFFF] dark:bg-[#161B22]">
             <UnifiedHeader
                 title="Management"
                 subtitle="Library Books"
@@ -109,7 +109,7 @@ export default function TeacherLibraryPage() {
             >
                 <View className="flex-1">
                     <View className="p-4 md:p-8">
-                        <View className="flex-row items-center bg-[#FFFFFF] dark:bg-[#0D1117]-surface px-5 py-4 rounded-[28px] border border-[#D0D7DE] dark:border-[#21262D] mb-6">
+                        <View className="flex-row items-center bg-[#FFFFFF] dark:bg-[#161B22] px-5 py-4 rounded-[28px] border border-[#D0D7DE] dark:border-[#21262D] mb-6">
                             <Search size={20} color="#94a3b8" />
                             <TextInput
                                 placeholder="Search books by title or author..."
@@ -123,7 +123,7 @@ export default function TeacherLibraryPage() {
                         {loading ? (
                             <ActivityIndicator size="large" color="#FF6900" className="mt-8" />
                         ) : filteredBooks.length === 0 ? (
-                            <View className="bg-[#FFFFFF] dark:bg-[#0D1117]-surface p-12 rounded-[40px] items-center border border-[#D0D7DE] dark:border-[#21262D] border-dashed mt-4">
+                            <View className="bg-[#FFFFFF] dark:bg-[#161B22] p-12 rounded-[40px] items-center border border-[#D0D7DE] dark:border-[#21262D] border-dashed mt-4">
                                 <BookOpen size={48} color="#e2e8f0" style={{ opacity: 0.5 }} />
                                 <Text className="text-slate-400 font-bold text-center mt-6">No books found</Text>
                             </View>
@@ -132,7 +132,7 @@ export default function TeacherLibraryPage() {
                                 {filteredBooks.map((book) => (
                                     <TouchableOpacity
                                         key={book.id}
-                                        className="bg-[#FFFFFF] dark:bg-[#0D1117]-surface p-5 rounded-[32px] border border-gray-50 dark:border-gray-800 mb-4 flex-row items-center"
+                                        className="bg-[#FFFFFF] dark:bg-[#161B22] p-5 rounded-[32px] border border-gray-50 dark:border-gray-800 mb-4 flex-row items-center"
                                         onPress={() => {
                                             if (book.available > 0) {
                                                 setSelectedBook(book);
@@ -150,7 +150,7 @@ export default function TeacherLibraryPage() {
                                             <Text className="text-slate-400 text-xs font-medium mt-1">{book.author}</Text>
                                         </View>
                                         <View className="flex-row items-center gap-3">
-                                            <View className="bg-slate-50 dark:bg-navy-light px-3 py-1 rounded-full">
+                                            <View className="bg-slate-50 dark:bg-[#161B22] px-3 py-1 rounded-full">
                                                 <Text className="text-slate-500 dark:text-slate-400 text-[10px] font-bold uppercase">{book.available}/{book.quantity}</Text>
                                             </View>
                                             <View className="w-8 h-8 rounded-full bg-orange-50 dark:bg-orange-950/20 items-center justify-center">
@@ -173,7 +173,7 @@ export default function TeacherLibraryPage() {
                 onRequestClose={() => setIssueModalVisible(false)}
             >
                 <View className="flex-1 bg-black/50 justify-center p-6">
-                    <View className="bg-[#FFFFFF] dark:bg-[#0D1117]-surface rounded-[40px] p-8">
+                    <View className="bg-[#FFFFFF] dark:bg-[#161B22] rounded-[40px] p-8">
                         <View className="flex-row justify-between items-center mb-6">
                             <Text className="text-xl font-bold dark:text-white">Issue Book</Text>
                             <TouchableOpacity onPress={() => setIssueModalVisible(false)}>
@@ -183,7 +183,7 @@ export default function TeacherLibraryPage() {
 
                         <View className="mb-6">
                             <Text className="text-gray-400 text-[10px] font-bold uppercase mb-2">Book Selected</Text>
-                            <View className="bg-[#FFFFFF] dark:bg-[#0D1117]-light p-4 rounded-lg">
+                            <View className="bg-[#FFFFFF] dark:bg-[#161B22] p-4 rounded-lg">
                                 <Text className="font-bold dark:text-white">{selectedBook?.title}</Text>
                                 <Text className="text-xs text-gray-400">{selectedBook?.author}</Text>
                             </View>
@@ -191,7 +191,7 @@ export default function TeacherLibraryPage() {
 
                         <View className="mb-8">
                             <Text className="text-gray-400 text-[10px] font-bold uppercase mb-2">Select Student</Text>
-                            <ScrollView style={{ maxHeight: 200 }} className="bg-[#FFFFFF] dark:bg-[#0D1117]-light rounded-lg overflow-hidden">
+                            <ScrollView style={{ maxHeight: 200 }} className="bg-[#FFFFFF] dark:bg-[#161B22] rounded-lg overflow-hidden">
                                 {students.map((s) => (
                                     <TouchableOpacity
                                         key={s.id}

@@ -92,7 +92,7 @@ export default function TeacherNotifications() {
     const unreadCount = notifications.filter(n => !n.is_read).length;
 
     return (
-        <View className="flex-1 bg-gray-50">
+        <View className="flex-1 bg-[#F6F8FA]">
             <UnifiedHeader
                 title="Updates"
                 subtitle="Notifications"

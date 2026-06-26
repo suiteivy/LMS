@@ -24,7 +24,7 @@ interface StudentGrade {
 const GradeRow = ({ student, onGrade }: { student: StudentGrade; onGrade: (student: StudentGrade) => void }) => {
     return (
         <View className="bg-[#F6F8FA] dark:bg-[#161B22] p-4 rounded-xl border border-[#D0D7DE] dark:border-[#21262D] mb-3 flex-row items-center">
-            <View className="w-10 h-10 rounded-xl bg-[#EAEEF2] dark:bg-[#1C2128] items-center justify-center mr-3">
+            <View className="w-10 h-10 rounded-xl bg-[#EAEEF2] dark:bg-[#161B22] items-center justify-center mr-3">
                 <Text className="text-gray-900 dark:text-white font-black text-base">
                     {(student.student_name || "U").charAt(0)}
                 </Text>
@@ -55,7 +55,7 @@ const GradeRow = ({ student, onGrade }: { student: StudentGrade; onGrade: (stude
             {/* Grade Button */}
             <TouchableOpacity
                 activeOpacity={0.7}
-                className={`w-10 h-10 rounded-xl items-center justify-center ${student.status === "graded" ? "bg-[#EAEEF2] dark:bg-[#1C2128]" : "bg-[#FF6900]"}`}
+                className={`w-10 h-10 rounded-xl items-center justify-center ${student.status === "graded" ? "bg-[#EAEEF2] dark:bg-[#161B22]" : "bg-[#FF6900]"}`}
                 onPress={() => onGrade(student)}
             >
                 {student.status === "graded" ? (
@@ -281,7 +281,7 @@ export default function GradesPage() {
     const pendingCount = submissions.filter(s => s.status !== "graded").length;
 
     return (
-        <View className="flex-1 bg-[#FFFFFF] dark:bg-[#0D1117]">
+        <View className="flex-1 bg-[#FFFFFF] dark:bg-[#161B22]">
             <UnifiedHeader
                 title="Management"
                 subtitle="Grade Book"
@@ -376,7 +376,7 @@ export default function GradesPage() {
                                         onPress={togglePublication}
                                         disabled={updatingVisibility}
                                         activeOpacity={0.7}
-                                        className={`px-4 py-2 rounded-lg border ${isPublished ? "bg-green-50 dark:bg-green-950 border-green-200 dark:border-green-800" : "bg-[#F6F8FA] dark:bg-[#1C2128] border-[#D0D7DE] dark:border-[#21262D]"}`}
+                                        className={`px-4 py-2 rounded-lg border ${isPublished ? "bg-green-50 dark:bg-green-950 border-green-200 dark:border-green-800" : "bg-[#F6F8FA] dark:bg-[#161B22] border-[#D0D7DE] dark:border-[#21262D]"}`}
                                     >
                                         {updatingVisibility ? (
                                             <ActivityIndicator size="small" color={isPublished ? "#059669" : "#FF6900"} />
@@ -423,11 +423,11 @@ export default function GradesPage() {
             {/* Grading Modal */}
             <Modal visible={gradingModalVisible} animationType="slide" transparent>
                 <View className="flex-1 bg-black/70 justify-end">
-                    <View className="bg-[#FFFFFF] dark:bg-[#0D1117] rounded-t-3xl p-6 pb-12 border-t border-[#D0D7DE] dark:border-[#21262D]">
+                    <View className="bg-[#FFFFFF] dark:bg-[#161B22] rounded-t-3xl p-6 pb-12 border-t border-[#D0D7DE] dark:border-[#21262D]">
                         <View className="flex-row justify-between items-center mb-6">
                             <Text className="text-xl font-bold text-gray-900 dark:text-white">Grade Submission</Text>
                             <TouchableOpacity
-                                className="w-10 h-10 bg-[#F6F8FA] dark:bg-[#1C2128] rounded-xl items-center justify-center border border-[#D0D7DE] dark:border-[#21262D]"
+                                className="w-10 h-10 bg-[#F6F8FA] dark:bg-[#161B22] rounded-xl items-center justify-center border border-[#D0D7DE] dark:border-[#21262D]"
                                 onPress={() => setGradingModalVisible(false)}
                                 activeOpacity={0.7}
                             >

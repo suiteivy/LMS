@@ -102,7 +102,7 @@ export default function TeacherAttendancePage() {
     };
 
     return (
-        <View style={{ flex: 1, backgroundColor: isDark ? '#0D1117' : '#FFFFFF' }}>
+        <View style={{ flex: 1, backgroundColor: isDark ? '#161B22' : '#FFFFFF' }}>
             <UnifiedHeader
                 title="Management"
                 subtitle="Attendance"
@@ -159,7 +159,7 @@ export default function TeacherAttendancePage() {
                             <View key={item.teacher_id} style={{ backgroundColor: surface, padding: 16, borderRadius: 12, borderWidth: 1, borderColor: border, marginBottom: 12, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
                                 {/* Avatar + Name */}
                                 <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, marginRight: 12 }}>
-                                    <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: isDark ? '#1C2128' : '#EAEEF2', marginRight: 12, overflow: 'hidden', flexShrink: 0 }}>
+                                    <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: isDark ? '#161B22' : '#EAEEF2', marginRight: 12, overflow: 'hidden', flexShrink: 0 }}>
                                         {item.teachers?.users?.avatar_url || item.avatar_url ? (
                                             <Image source={{ uri: item.teachers?.users?.avatar_url || item.avatar_url }} style={{ width: '100%', height: '100%' }} />
                                         ) : (

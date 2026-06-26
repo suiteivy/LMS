@@ -194,7 +194,7 @@ const AddUpdateDeleteBooksForm: React.FC<AddUpdateDeleteBooksFormProps> = ({
     const renderBookItem = (book: FrontendBook, borrowed = false) => (
         <View
             key={book.id}
-            className="bg-[#FFFFFF] dark:bg-[#1C2128] rounded-xl p-4 mb-3"
+            className="bg-[#FFFFFF] dark:bg-navy rounded-xl p-4 mb-3"
         >
             <View className="flex-row justify-between items-start mb-2">
                 <View className="flex-1">
@@ -238,7 +238,7 @@ const AddUpdateDeleteBooksForm: React.FC<AddUpdateDeleteBooksFormProps> = ({
     return (
         <View className="flex-1">
             {/* Header */}
-            <View className="bg-[#FFFFFF] dark:bg-[#0D1117] p-4 border-b border-teal-100 dark:border-gray-800">
+            <View className="bg-[#FFFFFF] dark:bg-navy p-4 border-b border-teal-100 dark:border-gray-800">
                 <View className="flex-row justify-between items-center">
                     <Text className="text-xl font-bold text-slate-800 dark:text-white">
                         Book Management
@@ -257,7 +257,7 @@ const AddUpdateDeleteBooksForm: React.FC<AddUpdateDeleteBooksFormProps> = ({
 
             {/* Loading / Error */}
             {loading && (
-                <View className="items-center py-4 bg-[#FCFCFC] dark:bg-[#1C2128]">
+                <View className="items-center py-4 bg-[#FCFCFC] dark:bg-navy">
                     <ActivityIndicator size="small" color="#FF6900" />
                     <Text className="text-gray-500 dark:text-gray-400 mt-2">Loading...</Text>
                 </View>
@@ -272,11 +272,11 @@ const AddUpdateDeleteBooksForm: React.FC<AddUpdateDeleteBooksFormProps> = ({
             )}
 
             {/* Search Bar */}
-            <View className="px-4 py-2 bg-[#FCFCFC] dark:bg-[#0D1117]">
-                <View className="flex-row items-center bg-[#FCFCFC] dark:bg-[#1C2128] border border-teal-100 dark:border-gray-800 rounded-xl px-4 py-2">
+            <View className="px-4 py-2 bg-[#FCFCFC] dark:bg-navy">
+                <View className="flex-row items-center bg-[#FCFCFC] dark:bg-navy border border-teal-100 dark:border-gray-800 rounded-xl px-4 py-2">
                     <Ionicons name="search" size={20} color={isDark ? "#9CA3AF" : "#6B7280"} />
                     <TextInput
-                        className="flex-1 ml-2 bg-[#FCFCFC] dark:bg-[#1C2128] text-slate-800 dark:text-white"
+                        className="flex-1 ml-2 bg-[#FCFCFC] dark:bg-navy text-slate-800 dark:text-white"
                         placeholder="Search books by title, author, or ISBN..."
                         placeholderTextColor={isDark ? "#6B7280" : "#9CA3AF"}
                         value={searchQuery}
@@ -291,10 +291,10 @@ const AddUpdateDeleteBooksForm: React.FC<AddUpdateDeleteBooksFormProps> = ({
             </View>
 
             {/* Books List */}
-            <ScrollView className="flex-1 p-4 dark:bg-[#0D1117]">
+            <ScrollView className="flex-1 p-4 dark:bg-navy">
                 <Text className="text-lg font-semibold text-gray-900 dark:text-white mb-3">Library Books</Text>
                 {filteredBooks.length === 0 ? (
-                    <View className="items-center justify-center py-6 dark:bg-[#1C2128]" style={{ borderRadius: 12 }}>
+                    <View className="items-center justify-center py-6 dark:bg-navy" style={{ borderRadius: 12 }}>
                         <Ionicons name="book-outline" size={48} color={isDark ? "#ff6900" : "#ff6900"}/>
                         <Text className="text-gray-500 dark:text-gray-400 text-center mt-4">
                             {books.length === 0 ? "No books added yet." : "No books match your search."}
@@ -317,7 +317,7 @@ const AddUpdateDeleteBooksForm: React.FC<AddUpdateDeleteBooksFormProps> = ({
                     borrowedBooks.map((borrow) => (
                         <View
                             key={borrow.id}
-                            className="bg-[#EAEEF2] dark:bg-[#1C2128] rounded-xl p-4 mb-3"
+                            className="bg-[#EAEEF2] dark:bg-navy rounded-xl p-4 mb-3"
                         >
                             <Text className="text-lg font-semibold text-slate-800 dark:text-white mb-1">
                                 {borrow.bookTitle}
@@ -342,7 +342,7 @@ const AddUpdateDeleteBooksForm: React.FC<AddUpdateDeleteBooksFormProps> = ({
                 animationType="slide"
                 presentationStyle="pageSheet"
             >
-                <View className="flex-1 bg-[#FFFFFF] dark:bg-[#0D1117]">
+                <View className="flex-1 bg-[#FFFFFF] dark:bg-navy">
                     <View className="bg-[#FD6900] dark:bg-[#FD6900] p-4 pt-12">
                         <View className="flex-row justify-between items-center">
                             <Text className="text-xl font-bold text-white">
@@ -366,7 +366,7 @@ const AddUpdateDeleteBooksForm: React.FC<AddUpdateDeleteBooksFormProps> = ({
                                 Book Title *
                             </Text>
                             <TextInput
-                                className="bg-[#FFFFFF] dark:bg-[#1C2128] border border-[#D0D7DE] dark:border-[#21262D] rounded-lg p-3 text-gray-900 dark:text-white"
+                                className="bg-[#FFFFFF] dark:bg-navy border border-[#D0D7DE] dark:border-[#21262D] rounded-lg p-3 text-gray-900 dark:text-white"
                                 value={formData.title}
                                 onChangeText={(text) =>
                                     setFormData({ ...formData, title: text })
@@ -382,7 +382,7 @@ const AddUpdateDeleteBooksForm: React.FC<AddUpdateDeleteBooksFormProps> = ({
                                 Author *
                             </Text>
                             <TextInput
-                                className="bg-[#FFFFFF] dark:bg-[#1C2128] border border-[#D0D7DE] dark:border-[#21262D] rounded-lg p-3 text-gray-900 dark:text-white"
+                                className="bg-[#FFFFFF] dark:bg-navy border border-[#D0D7DE] dark:border-[#21262D] rounded-lg p-3 text-gray-900 dark:text-white"
                                 value={formData.author}
                                 onChangeText={(text) =>
                                     setFormData({ ...formData, author: text })
@@ -398,7 +398,7 @@ const AddUpdateDeleteBooksForm: React.FC<AddUpdateDeleteBooksFormProps> = ({
                                 ISBN *
                             </Text>
                             <TextInput
-                                className="bg-[#FFFFFF] dark:bg-[#1C2128] border border-[#D0D7DE] dark:border-[#21262D] rounded-lg p-3 text-gray-900 dark:text-white"
+                                className="bg-[#FFFFFF] dark:bg-navy border border-[#D0D7DE] dark:border-[#21262D] rounded-lg p-3 text-gray-900 dark:text-white"
                                 value={formData.isbn}
                                 onChangeText={(text) =>
                                     setFormData({ ...formData, isbn: text })
@@ -414,7 +414,7 @@ const AddUpdateDeleteBooksForm: React.FC<AddUpdateDeleteBooksFormProps> = ({
                                 Category
                             </Text>
                             <TextInput
-                                className="bg-[#FFFFFF] dark:bg-[#1C2128] border border-[#D0D7DE] dark:border-[#21262D] rounded-lg p-3 text-gray-900 dark:text-white"
+                                className="bg-[#FFFFFF] dark:bg-navy border border-[#D0D7DE] dark:border-[#21262D] rounded-lg p-3 text-gray-900 dark:text-white"
                                 value={formData.category}
                                 onChangeText={(text) =>
                                     setFormData({ ...formData, category: text })
@@ -430,7 +430,7 @@ const AddUpdateDeleteBooksForm: React.FC<AddUpdateDeleteBooksFormProps> = ({
                                 Quantity
                             </Text>
                             <TextInput
-                                className="bg-[#FFFFFF] dark:bg-[#1C2128] border border-[#D0D7DE] dark:border-[#21262D] rounded-lg p-3 text-gray-900 dark:text-white"
+                                className="bg-[#FFFFFF] dark:bg-navy border border-[#D0D7DE] dark:border-[#21262D] rounded-lg p-3 text-gray-900 dark:text-white"
                                 value={formData.quantity}
                                 onChangeText={(text) =>
                                     setFormData({ ...formData, quantity: text })

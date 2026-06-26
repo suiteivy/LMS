@@ -10,7 +10,7 @@ export default function StudentAccessibilitySettings() {
   const initialScreen = params.manual === '1' ? 'settings' : 'menu';
 
   return (
-    <View style={{ flex: 1 }}>
+    <View style={{ flex: 1, backgroundColor: '#161B22' }}>
       <GlobalSettingsContent userRole={userRole} initialScreen={initialScreen} />
     </View>
   );

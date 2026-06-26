@@ -17,9 +17,9 @@ const FAQItem = ({ question, answer, isDark }: FAQItemProps) => {
     return (
         <View style={{
             marginBottom: 12,
-            backgroundColor: isDark ? '#13103A' : '#ffffff',
+            backgroundColor: isDark ? '#161B22' : '#F6F8FA',
             borderWidth: 1,
-            borderColor: isDark ? 'rgba(255,255,255,0.1)' : '#f3f4f6',
+            borderColor: isDark ? '#21262D' : '#D0D7DE',
             borderRadius: 16,
             overflow: 'hidden',
             boxShadow: [{ 
@@ -49,7 +49,7 @@ const FAQItem = ({ question, answer, isDark }: FAQItemProps) => {
                     paddingBottom: 16,
                     paddingTop: 12,
                     borderTopWidth: 1,
-                    borderTopColor: isDark ? '#1f2937' : '#f9fafb',
+                    borderTopColor: isDark ? '#21262D' : '#D0D7DE',
                 }}>
                     <Text style={{ color: isDark ? '#9ca3af' : '#6b7280', lineHeight: 24 }}>{answer}</Text>
                 </View>
@@ -116,14 +116,14 @@ export default function StudentHelp() {
     };
 
     const tokens = {
-        bg: isDark ? '#0F0B2E' : '#f9fafb',
-        surface: isDark ? '#13103A' : '#ffffff',
-        border: isDark ? 'rgba(255,255,255,0.1)' : '#f3f4f6',
+        bg: isDark ? '#161B22' : '#FFFFFF',
+        surface: isDark ? '#161B22' : '#F6F8FA',
+        border: isDark ? '#21262D' : '#D0D7DE',
         textPrimary: isDark ? '#ffffff' : '#111827',
         textSecondary: isDark ? '#9ca3af' : '#6b7280',
         textMuted: isDark ? '#6b7280' : '#9ca3af',
-        inputBg: isDark ? '#1A1650' : '#f9fafb',
-        inputBorder: isDark ? 'rgba(255,255,255,0.1)' : '#f3f4f6',
+        inputBg: isDark ? '#0F141C' : '#FFFFFF',
+        inputBorder: isDark ? '#374151' : '#D0D7DE',
         inputText: isDark ? '#ffffff' : '#111827',
     };
 

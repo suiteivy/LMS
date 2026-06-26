@@ -96,7 +96,7 @@ export default function StudentAnalyticsPage() {
   const hasData = termGpaData.length > 0 || subjectBreakdown.length > 0 || trends.subjects?.length > 0;
 
   return (
-    <View className="flex-1 bg-gray-50">
+    <View className="flex-1 bg-[#F6F8FA]">
       <UnifiedHeader
         title="Performance Trends"
         subtitle="Analytics"
@@ -124,14 +124,14 @@ export default function StudentAnalyticsPage() {
             <View>
               {/* GPA Overview Cards */}
               <View className="flex-row gap-3 mb-6">
-                <View className="flex-1 bg-white p-4 rounded-2xl border border-gray-100">
+                <View className="flex-1 bg-[#F6F8FA] p-4 rounded-2xl border border-gray-100">
                   <View className="w-10 h-10 rounded-xl items-center justify-center mb-2 bg-orange-50">
                     <TrendingUp size={20} color="#FF6B00" />
                   </View>
                   <Text className="text-gray-900 text-2xl font-bold">{latestGpa}</Text>
                   <Text className="text-gray-400 text-xs uppercase">Current GPA</Text>
                 </View>
-                <View className="flex-1 bg-white p-4 rounded-2xl border border-gray-100">
+                <View className="flex-1 bg-[#F6F8FA] p-4 rounded-2xl border border-gray-100">
                   <View className="w-10 h-10 rounded-xl items-center justify-center mb-2 bg-blue-50">
                     <BarChart3 size={20} color="#3B82F6" />
                   </View>

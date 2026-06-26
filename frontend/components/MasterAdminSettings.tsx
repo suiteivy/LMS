@@ -77,7 +77,7 @@ export default function MasterAdminSettings() {
         setPrefs(prev => ({ ...prev, [key]: newValue }));
         try {
             await SettingsService.updatePreferences({ [key]: newValue });
-            Toast.show({ type: 'success', text1: 'Preferences Updated', text2: 'Your notification settings have been saved.', position: 'bottom' });
+            Toast.show({ type: 'success', text1: 'Preferences Updated', text2: 'Your notification settings have been saved.', position: 'top' });
         } catch (err) {
             console.error('Failed to update preference:', err);
             // Revert on failure

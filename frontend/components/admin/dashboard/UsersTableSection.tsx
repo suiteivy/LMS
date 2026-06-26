@@ -31,7 +31,7 @@ const UsersTableSection: React.FC<UsersTableSectionProps> = ({
             <View>
                 <Text className="text-xl font-bold mb-2 text-gray-900 dark:text-white">All Users</Text>
             </View>
-            <View className="mt-4 bg-[#F6F8FA] dark:bg-[#161B22] p-4 rounded-xl border border-transparent dark:border-gray-800">
+            <View className="mt-4 bg-[#F6F8FA] dark:bg-navy p-4 rounded-xl border border-transparent dark:border-gray-800">
 
                 {users.map((user) => (
                     <View

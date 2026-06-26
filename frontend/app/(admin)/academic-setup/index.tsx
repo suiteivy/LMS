@@ -98,18 +98,18 @@ export default function AcademicSetupPage() {
     const { isDark } = useTheme();
 
     // ─── Theme helpers ─────────────────────────────────────
-    const bg = isDark ? '#0D1117' : '#FFFFFF';
+    const bg = isDark ? '#161B22' : '#FFFFFF';
     const card = isDark ? '#161B22' : '#F6F8FA';
     const border = isDark ? '#21262D' : '#D0D7DE';
     const textPrimary = isDark ? '#FFFFFF' : '#111827';
     const textSecondary = isDark ? '#9CA3AF' : '#6B7280';
     const textMuted = isDark ? '#6B7280' : '#9CA3AF';
-    const inputBg = isDark ? '#1C2128' : '#EAEEF2';
+    const inputBg = isDark ? '#161B22' : '#EAEEF2';
     const inputBorder = isDark ? '#21262D' : '#D0D7DE';
-    const pillInactive = isDark ? '#1C2128' : '#EAEEF2';
+    const pillInactive = isDark ? '#0F0B2E' : '#EAEEF2';
     const pillInactiveBorder = isDark ? '#21262D' : '#D0D7DE';
     const pillInactiveText = isDark ? '#9CA3AF' : '#4B5563';
-    const sectionBg = isDark ? '#1C2128' : '#EAEEF2';
+    const sectionBg = isDark ? '#161B22' : '#EAEEF2';
     const accent = '#FF6900';
 
     // ─── State ────────────────────────────────────────────
@@ -1007,7 +1007,7 @@ export default function AcademicSetupPage() {
                                     onPress={handleLoadDefaultScale}
                                     disabled={saving}
                                     style={{
-                                        backgroundColor: isDark ? '#1A1650' : '#F3F4F6',
+                                        backgroundColor: isDark ? '#161B22' : '#F3F4F6',
                                         paddingHorizontal: 12, paddingVertical: 8, borderRadius: 12,
                                         flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: border,
                                     }}
@@ -1228,7 +1228,7 @@ export default function AcademicSetupPage() {
             <Modal visible={showYearModal} animationType="slide" transparent>
                 <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' }}>
                     <View style={{
-                        backgroundColor: isDark ? '#13103A' : '#FFFFFF',
+                        backgroundColor: isDark ? '#161B22' : '#FFFFFF',
                         borderTopLeftRadius: 28, borderTopRightRadius: 28,
                         paddingBottom: Platform.OS === 'ios' ? 40 : 24,
                     }}>
@@ -1339,7 +1339,7 @@ export default function AcademicSetupPage() {
             <Modal visible={showTermModal} animationType="slide" transparent>
                 <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' }}>
                     <View style={{
-                        backgroundColor: isDark ? '#13103A' : '#FFFFFF',
+                        backgroundColor: isDark ? '#161B22' : '#FFFFFF',
                         borderTopLeftRadius: 28, borderTopRightRadius: 28,
                         paddingBottom: Platform.OS === 'ios' ? 40 : 24,
                     }}>
@@ -1427,7 +1427,7 @@ export default function AcademicSetupPage() {
             <Modal visible={showScaleModal} animationType="slide" transparent>
                 <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' }}>
                     <View style={{
-                        backgroundColor: isDark ? '#13103A' : '#FFFFFF',
+                        backgroundColor: isDark ? '#161B22' : '#FFFFFF',
                         borderTopLeftRadius: 28, borderTopRightRadius: 28,
                         paddingBottom: Platform.OS === 'ios' ? 40 : 24,
                     }}>
@@ -1579,7 +1579,7 @@ export default function AcademicSetupPage() {
             <Modal visible={showTypeModal} animationType="slide" transparent>
                 <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' }}>
                     <View style={{
-                        backgroundColor: isDark ? '#13103A' : '#FFFFFF',
+                        backgroundColor: isDark ? '#161B22' : '#FFFFFF',
                         borderTopLeftRadius: 28, borderTopRightRadius: 28,
                         paddingBottom: Platform.OS === 'ios' ? 40 : 24,
                     }}>

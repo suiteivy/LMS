@@ -15,9 +15,9 @@ export default function AdminOverview() {
     const recentAlerts = notifications.slice(0, 5);
 
     const tokens = {
-        bg: isDark ? "#000000" : "#ffffff",
-        surface: isDark ? "#1a1a1a" : "#ffffff",
-        border: isDark ? "#2a2a2a" : "#f3f4f6",
+        bg: isDark ? "#161B22" : "#FFFFFF",
+        surface: isDark ? "#161B22" : "#F6F8FA",
+        border: isDark ? "#21262D" : "#D0D7DE",
         textPrimary: isDark ? "#ffffff" : "#111827",
         textSecondary: isDark ? "#d1d5db" : "#4b5563",
         textMuted: isDark ? "#6b7280" : "#9ca3af",

@@ -60,7 +60,7 @@ function TeacherTabs() {
                 screenOptions={{
                     headerShown: false,
                     tabBarStyle: {
-                        backgroundColor: isDark ? '#0F0B2E' : "#ffffff",
+                        backgroundColor: isDark ? '#161B22' : "#ffffff",
                         borderTopWidth: 1,
                         borderTopColor: isDark ? '#1f2937' : "#e5e7eb",
                         minHeight: tabBarHeight,
@@ -81,7 +81,7 @@ function TeacherTabs() {
                     tabBarActiveTintColor: "#FF6B00",
                     tabBarInactiveTintColor: isDark ? "#9ca3af" : "#6b7280",
                     tabBarLabelStyle: { fontSize: 11, fontWeight: "600", marginTop: 0 },
-                    sceneStyle: { backgroundColor: isDark ? '#0F0B2E' : "#ffffff" },
+                    sceneStyle: { backgroundColor: isDark ? '#161B22' : "#ffffff" },
                 }}
             >
             {NAV_ITEMS.map((item) => {

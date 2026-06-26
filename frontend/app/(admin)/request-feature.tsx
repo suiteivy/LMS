@@ -81,7 +81,7 @@ export default function RequestFeaturePage() {
     };
 
     return (
-        <View className="flex-1 bg-[#FFFFFF] dark:bg-[#0D1117]">
+        <View className="flex-1 bg-[#FFFFFF] dark:bg-[#161B22]">
             <UnifiedHeader 
                 title="Request Feature"
                 subtitle="Enhance Your Institution"
@@ -113,7 +113,7 @@ export default function RequestFeaturePage() {
                                 className={`flex-row items-center p-5 rounded-xl border-2 ${
                                     isSelected 
                                     ? 'border-orange-500 bg-orange-50/50 dark:bg-orange-900/10' 
-                                    : 'border-[#D0D7DE] dark:border-[#21262D] bg-[#FFFFFF] dark:bg-[#0D1117]-surface'
+                                    : 'border-[#D0D7DE] dark:border-[#21262D] bg-[#FFFFFF] dark:bg-[#161B22]'
                                 } ${isOwned ? 'opacity-50' : ''}`}
                                 style={{
                                     boxShadow: isSelected ? [{ offsetX: 0, offsetY: 4, blurRadius: 10, color: 'rgba(255, 105, 0, 0.1)' }] : [],
@@ -159,7 +159,7 @@ export default function RequestFeaturePage() {
                 <View className="mt-10">
                     <Text className="text-gray-900 dark:text-white font-bold text-sm mb-3 ml-1 uppercase tracking-widest">Additional Requirements</Text>
                     <TextInput
-                        className="bg-gray-50 dark:bg-navy-surface border border-[#D0D7DE] dark:border-[#21262D] rounded-xl p-5 text-gray-900 dark:text-white text-base min-h-[120]"
+                        className="bg-gray-50 dark:bg-[#161B22] border border-[#D0D7DE] dark:border-[#21262D] rounded-xl p-5 text-gray-900 dark:text-white text-base min-h-[120]"
                         placeholder="Describe any specific needs or custom modifications..."
                         placeholderTextColor="#9CA3AF"
                         multiline
@@ -173,7 +173,7 @@ export default function RequestFeaturePage() {
                     onPress={handleSubmit}
                     disabled={loading || !selectedAddon}
                     className={`mt-10 py-5 rounded-[24px] flex-row justify-center items-center ${
-                        selectedAddon ? 'bg-orange-500 shadow-lg shadow-orange-500/30' : 'bg-gray-200 dark:bg-gray-800'
+                        selectedAddon ? 'bg-orange-500 shadow-lg shadow-orange-500/30' : 'bg-gray-200 dark:bg-[#161B22]'
                     }`}
                 >
                     {loading ? (
@@ -191,7 +191,7 @@ export default function RequestFeaturePage() {
             {/* Success Modal */}
             <Modal visible={success} transparent animationType="fade">
                 <View className="flex-1 bg-black/60 items-center justify-center p-6">
-                    <View className="bg-[#FFFFFF] dark:bg-[#0D1117]-surface w-full max-w-sm rounded-xl p-10 items-center border border-[#D0D7DE] dark:border-[#21262D]">
+                    <View className="bg-[#FFFFFF] dark:bg-[#161B22] w-full max-w-sm rounded-xl p-10 items-center border border-[#D0D7DE] dark:border-[#21262D]">
                         <View className="w-20 h-20 bg-emerald-100 dark:bg-emerald-950/30 rounded-full items-center justify-center mb-8">
                             <CheckCircle size={48} color="#10B981" />
                         </View>
@@ -208,7 +208,7 @@ export default function RequestFeaturePage() {
                             }}
                             className="bg-gray-900 dark:bg-white w-full py-4 rounded-xl items-center"
                         >
-                            <Text className="text-white dark:text-navy font-bold text-base">Back to Dashboard</Text>
+                            <Text className="text-white dark:text-gray-900 font-bold text-base">Back to Dashboard</Text>
                         </TouchableOpacity>
                         <Text className="text-gray-300 dark:text-gray-600 text-[8px] font-bold uppercase tracking-widest mt-6">
                             Terms and conditions apply

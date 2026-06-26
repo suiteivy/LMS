@@ -70,7 +70,7 @@ function StudentTabs() {
         tabBarInactiveTintColor: isDark ? "#94a3b8" : "#64748b",
         tabBarLabelStyle: { fontSize: 10, fontWeight: "600", letterSpacing: 0.2 },
         tabBarStyle: {
-          backgroundColor: isDark ? '#0F0B2E' : "#ffffff",
+          backgroundColor: isDark ? '#161B22' : "#ffffff",
           borderTopWidth: 1,
           borderTopColor: isDark ? '#1f2937' : "#f1f5f9",
           // Tighter on all screen sizes — no more sprawling gaps
@@ -87,7 +87,7 @@ function StudentTabs() {
           }],
         },
         sceneStyle: {
-          backgroundColor: isDark ? '#0F0B2E' : "#ffffff",
+          backgroundColor: isDark ? '#161B22' : "#ffffff",
         },
       }}
     >

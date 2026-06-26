@@ -30,7 +30,7 @@ export default function ParentIndex() {
 
   if (loading) {
     return (
-      <View className="flex-1 justify-center items-center bg-white dark:bg-navy">
+      <View className="flex-1 justify-center items-center bg-[#F6F8FA] dark:bg-[#161B22]">
         <ActivityIndicator size="large" color="#FF6900" />
       </View>
     );
@@ -197,14 +197,14 @@ function ParentDashboard({ user, logout }: any) {
 
   if (loading && !refreshing) {
     return (
-      <View className="flex-1 justify-center items-center bg-white dark:bg-navy">
+      <View className="flex-1 justify-center items-center bg-[#F6F8FA] dark:bg-[#161B22]">
         <ActivityIndicator size="large" color="#FF6900" />
       </View>
     );
   }
 
   return (
-    <View className="flex-1 bg-white dark:bg-navy">
+    <View className="flex-1 bg-[#F6F8FA] dark:bg-[#161B22]">
       <UnifiedHeader
         title="Welcome back"
         subtitle={user?.full_name || "Parent Portal"}
@@ -243,7 +243,7 @@ function ParentDashboard({ user, logout }: any) {
                 shadowRadius: 2,
                 elevation: 1,
               }}
-              className="flex-row items-center bg-white dark:bg-navy-surface px-4 py-2 rounded-2xl border border-gray-100 dark:border-gray-800"
+              className="flex-row items-center bg-white dark:bg-[#161B22] px-4 py-2 rounded-2xl border border-gray-100 dark:border-gray-800"
             >
               <LogOut size={14} color="#ef4444" />
               <Text className="ml-2 text-red-600 font-bold text-[10px] uppercase tracking-widest">Logout</Text>
@@ -252,7 +252,7 @@ function ParentDashboard({ user, logout }: any) {
 
           {/* No students linked state */}
           {linkedStudents.length === 0 && !loading && (
-            <View className="bg-white dark:bg-navy-surface p-10 rounded-[40px] border border-dashed border-gray-200 dark:border-gray-700 items-center mb-8">
+            <View className="bg-white dark:bg-[#161B22] p-10 rounded-[40px] border border-dashed border-gray-200 dark:border-gray-700 items-center mb-8">
               <UserCircle size={40} color="#9ca3af" />
               <Text className="text-gray-400 dark:text-gray-500 font-bold text-sm text-center mt-4">
                 No students linked to your account
@@ -416,7 +416,7 @@ const MetricCard = ({ icon: Icon, value, label, color, isDark }: any) => (
       shadowRadius: 2,
       elevation: 1,
     }}
-    className="flex-1 bg-white dark:bg-navy-surface p-6 rounded-[32px] border border-gray-50 dark:border-gray-800"
+    className="flex-1 bg-[#F6F8FA] dark:bg-[#161B22] p-6 rounded-[32px] border border-gray-50 dark:border-gray-800"
   >
     <View className={`w-10 h-10 rounded-2xl items-center justify-center mb-4`} style={{ backgroundColor: `${color}15` }}>
       <Icon size={20} color={color} />
@@ -443,7 +443,7 @@ const QuickAction = ({ icon: Icon, label, color, onPress, isDark }: any) => (
       shadowRadius: 2,
       elevation: 2,
     }}
-    className="w-[48%] bg-white dark:bg-navy-surface p-8 rounded-[40px] border border-gray-50 dark:border-gray-800 items-center mb-4 active:opacity-80"
+    className="w-[48%] bg-white dark:bg-[#161B22] p-8 rounded-[40px] border border-gray-50 dark:border-gray-800 items-center mb-4 active:opacity-80"
   >
     <View style={{ backgroundColor: isDark ? `${color}25` : `${color}10` }} className="p-4 rounded-3xl mb-3 shadow-inner">
       <Icon size={24} color={color} />

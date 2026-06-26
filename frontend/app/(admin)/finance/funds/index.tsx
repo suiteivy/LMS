@@ -97,7 +97,7 @@ export default function FundManager() {
     }
 
     return (
-        <View className="flex-1 bg-gray-50">
+        <View className="flex-1 bg-[#F6F8FA]">
             <View className="bg-white px-6 pt-14 pb-4 border-b border-gray-100 flex-row items-center justify-between shadow-sm">
                 <View className="flex-row items-center">
                     <TouchableOpacity onPress={() => router.back()} className="mr-4 bg-gray-50 p-2 rounded-full">

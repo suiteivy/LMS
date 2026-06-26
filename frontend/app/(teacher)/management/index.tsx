@@ -34,7 +34,7 @@ interface FeatureCardProps {
 const FeatureCard = ({ icon: Icon, title, description, color, bgColor, route, badge, tooltipId, tier }: FeatureCardProps) => {
     return (
         <TouchableOpacity
-            className="bg-white dark:bg-navy-surface p-5 rounded-[32px] border border-gray-100 dark:border-gray-800 shadow-sm mb-4 flex-row items-center active:bg-gray-50"
+            className="bg-white dark:bg-[#161B22] p-5 rounded-[32px] border border-gray-100 dark:border-gray-800 shadow-sm mb-4 flex-row items-center active:bg-gray-50"
             onPress={() => router.push(route as any)}
         >
             <View style={{ backgroundColor: bgColor }} className="p-3.5 rounded-2xl mr-4 shadow-sm dark:opacity-90">
@@ -249,7 +249,7 @@ export default function ManagementIndex() {
     });
 
     return (
-        <View className="flex-1 bg-gray-50 dark:bg-navy">
+        <View className="flex-1 bg-[#F6F8FA] dark:bg-[#161B22]">
             <UnifiedHeader
                 title="Management"
                 subtitle="Management"
@@ -270,7 +270,7 @@ export default function ManagementIndex() {
 
                     {/* Quick Stats Row */}
                     <View className="flex-row gap-4 mb-8">
-                        <View className="flex-1 bg-gray-900 dark:bg-navy-surface p-6 rounded-[32px] shadow-lg border border-transparent dark:border-gray-800 justify-center">
+                        <View className="flex-1 bg-gray-900 dark:bg-[#161B22] p-6 rounded-[32px] shadow-lg border border-transparent dark:border-gray-800 justify-center">
                             <Text className="text-white/40 dark:text-gray-500 text-[8px] font-bold uppercase tracking-widest">Pending</Text>
                             {statsLoading ? (
                                 <ActivityIndicator size="small" color="white" className="mt-2" style={{ alignSelf: 'flex-start' }} />
@@ -278,7 +278,7 @@ export default function ManagementIndex() {
                                 <Text className="text-white text-3xl font-bold mt-1">{pendingCount ?? 0}</Text>
                             )}
                         </View>
-                        <View className="flex-1 bg-white dark:bg-navy-surface p-6 rounded-[32px] border border-gray-100 dark:border-gray-800 shadow-sm justify-center">
+                        <View className="flex-1 bg-[#F6F8FA] dark:bg-[#161B22] p-6 rounded-[32px] border border-gray-100 dark:border-gray-800 shadow-sm justify-center">
                             <Text className="text-gray-400 dark:text-gray-500 text-[8px] font-bold uppercase tracking-widest">Submitted</Text>
                             {statsLoading ? (
                                 <ActivityIndicator size="small" color="#FF6900" className="mt-2" style={{ alignSelf: 'flex-start' }} />

@@ -123,11 +123,34 @@ const MODULES: ManualSection[] = [
     id: 'billing-ops',
     title: 'Finance',
     feature: 'billing',
-    roles: ['admin', 'teacher'],
-    shortBlurb: 'Manages fee payments, financial visibility, and billing-related controls.',
-    whatItDoes: 'Tracks inflows/outstanding balances and powers finance dashboards.',
-    whatChanges: 'Payment and ledger updates immediately affect financial cards and reports.',
-    crossLinks: ['Finance → Funds', 'Finance → Reports'],
+    roles: ['admin'],
+    shortBlurb: 'Manages school fee operations including payments, payouts, bursaries, and fee structures.',
+    whatItDoes:
+      'Coordinates student billing records, teacher payout tracking, bursary allocations, and fee policy configuration for each academic cycle.',
+    whatChanges:
+      'Any update to fee structures, payment records, payout states, or bursary rules immediately changes dashboard totals, outstanding balances, and downstream finance reports.',
+    crossLinks: ['Finance → Payments', 'Finance → Teacher Payouts', 'Finance → Fee Structures', 'Finance → Bursaries', 'Finance → Reports'],
+    deepDive: {
+      title: 'Finance operational flow',
+      steps: [
+        '1) Configure fee structures by class/term and academic year before recording payments.',
+        '2) Capture incoming payments with method/reference so reconciliation remains auditable.',
+        '3) Apply bursary decisions to reduce liabilities for approved students.',
+        '4) Track teacher payout states from pending to paid with period-level context.',
+        '5) Review finance cards and exports to verify balances before period close.',
+      ],
+      workedExample: [
+        'Term starts with fee structure update for Grade 8 tuition.',
+        'Student payment posts against the updated rule and reduces outstanding balance.',
+        'Approved bursary adjusts the same account before final arrears reporting.',
+        'Teacher payout run marks pending records as paid and updates payroll-facing totals.',
+      ],
+      edgeCases: [
+        'Editing fee structures after payments requires reconciliation review to avoid mismatched balances.',
+        'Partial payments can leave accounts outstanding even when status appears updated in one card.',
+        'Bursary reversals should be logged before generating final term finance exports.',
+      ],
+    },
   },
 ];
 

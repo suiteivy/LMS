@@ -184,7 +184,7 @@ export default function AdminPromotionsScreen() {
 
   if (loading) {
     return (
-      <View style={{ flex: 1, backgroundColor: isDark ? '#0D1117' : '#FFFFFF' }}>
+      <View style={{ flex: 1, backgroundColor: isDark ? '#161B22' : '#FFFFFF' }}>
         <UnifiedHeader title="Promotions" subtitle="Progression Engine" role="Admin" onBack={() => router.back()} />
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
           <ActivityIndicator size="large" color="#FF6900" />
@@ -194,7 +194,7 @@ export default function AdminPromotionsScreen() {
   }
 
   return (
-    <View style={{ flex: 1, backgroundColor: isDark ? '#0D1117' : '#FFFFFF' }}>
+    <View style={{ flex: 1, backgroundColor: isDark ? '#161B22' : '#FFFFFF' }}>
       <UnifiedHeader title="Promotions" subtitle="Progression Engine" role="Admin" onBack={() => router.back()} />
       <SubscriptionGate
         feature="analytics"

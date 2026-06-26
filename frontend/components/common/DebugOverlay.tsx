@@ -53,16 +53,16 @@ export const DebugOverlay: React.FC = () => {
  style={{ zIndex: 1000000 }}
  >
  <SafeAreaView className="flex-1">
- <View className="flex-row justify-between items-center p-4 border-b border-[#D0D7DE] dark:border-[#21262D] bg-[#FFFFFF] dark:bg-[#0D1117]">
+ <View className="flex-row justify-between items-center p-4 border-b border-[#D0D7DE] dark:border-[#21262D] bg-[#FFFFFF] dark:bg-navy">
  <Text className="text-lg font-bold text-gray-900 dark:text-white">Debug Hub</Text>
  <View className="flex-row items-center">
- <TouchableOpacity onPress={() => logger.copyToClipboard()} className="mr-6 p-2 bg-[#F6F8FA] dark:bg-[#161B22] rounded-lg border border-transparent dark:border-gray-800">
+ <TouchableOpacity onPress={() => logger.copyToClipboard()} className="mr-6 p-2 bg-[#F6F8FA] dark:bg-navy rounded-lg border border-transparent dark:border-gray-800">
  <Ionicons name="copy" size={20} color={isDark ?"#FF6900" :"#333333"} />
  </TouchableOpacity>
- <TouchableOpacity onPress={() => logger.clearLogs().then(() => setLogs([]))} className="mr-6 p-2 bg-[#F6F8FA] dark:bg-[#161B22] rounded-lg border border-transparent dark:border-gray-800">
+ <TouchableOpacity onPress={() => logger.clearLogs().then(() => setLogs([]))} className="mr-6 p-2 bg-[#F6F8FA] dark:bg-navy rounded-lg border border-transparent dark:border-gray-800">
  <Ionicons name="trash" size={20} color="#EF4444" />
  </TouchableOpacity>
- <TouchableOpacity onPress={toggleOverlay} className="p-2 bg-[#F6F8FA] dark:bg-[#161B22] rounded-lg border border-transparent dark:border-gray-800">
+ <TouchableOpacity onPress={toggleOverlay} className="p-2 bg-[#F6F8FA] dark:bg-navy rounded-lg border border-transparent dark:border-gray-800">
  <Ionicons name="close" size={24} color={isDark ?"#FFFFFF" :"#1A1A1A"} />
  </TouchableOpacity>
  </View>
@@ -83,7 +83,7 @@ export const DebugOverlay: React.FC = () => {
  </View>
  <Text className="text-sm text-gray-700 dark:text-gray-300">{log.message}</Text>
  {log.details && (
- <Text className="text-[10px] text-gray-500 dark:text-gray-400 mt-1 font-mono bg-[#F6F8FA] dark:bg-[#161B22] p-1 rounded border border-transparent dark:border-gray-800">
+ <Text className="text-[10px] text-gray-500 dark:text-gray-400 mt-1 font-mono bg-[#F6F8FA] dark:bg-navy p-1 rounded border border-transparent dark:border-gray-800">
  {log.details}
  </Text>
  )}

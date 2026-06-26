@@ -33,7 +33,7 @@ export default function AttendanceLanding() {
     ];
 
     return (
-        <View style={{ flex: 1, backgroundColor: isDark ? '#0D1117' : '#FFFFFF' }}>
+        <View style={{ flex: 1, backgroundColor: isDark ? '#161B22' : '#FFFFFF' }}>
             <UnifiedHeader
                 title="Management"
                 subtitle="Attendance Center"
@@ -66,7 +66,7 @@ export default function AttendanceLanding() {
                             width: 48,
                             height: 48,
                             borderRadius: 12,
-                            backgroundColor: isDark ? '#1C2128' : '#EAEEF2',
+                            backgroundColor: isDark ? '#161B22' : '#EAEEF2',
                             alignItems: 'center',
                             justifyContent: 'center',
                             marginRight: 16

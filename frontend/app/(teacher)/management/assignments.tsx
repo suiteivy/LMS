@@ -80,7 +80,7 @@ const AssignmentCard = ({ assignment, onEdit, onView, onDelete }: {
                     <TouchableOpacity
                         onPress={() => onDelete(assignment)}
                         activeOpacity={0.7}
-                        className="p-1.5 bg-[#EAEEF2] dark:bg-[#1C2128] rounded-lg"
+                        className="p-1.5 bg-[#EAEEF2] dark:bg-[#161B22] rounded-lg"
                     >
                         <Trash2 size={14} color="#EF4444" />
                     </TouchableOpacity>
@@ -106,7 +106,7 @@ const AssignmentCard = ({ assignment, onEdit, onView, onDelete }: {
             {/* Actions */}
             <View className="flex-row justify-end gap-2 mt-1">
                 <TouchableOpacity
-                    className="flex-row items-center px-4 py-2 bg-[#EAEEF2] dark:bg-[#1C2128] rounded-lg"
+                    className="flex-row items-center px-4 py-2 bg-[#EAEEF2] dark:bg-[#161B22] rounded-lg"
                     onPress={() => onView(assignment)}
                     activeOpacity={0.7}
                 >
@@ -679,7 +679,7 @@ export default function AssignmentsPage() {
 
 
     return (
-        <View className="flex-1 bg-[#FFFFFF] dark:bg-[#0D1117]">
+        <View className="flex-1 bg-[#FFFFFF] dark:bg-[#161B22]">
             <UnifiedHeader
                 title="Management"
                 subtitle="Assignments"
@@ -743,7 +743,7 @@ export default function AssignmentsPage() {
                         <Text className="text-gray-500 dark:text-gray-400 text-[10px] font-bold uppercase tracking-wider">Assignment Status</Text>
                         <HelpTooltip id="teacher.manage.coursework" role="teacher" tier={tier} onLearnMore={openManual} />
                     </View>
-                    <ScrollView className="flex-row bg-white dark:bg-[#1a1a1a] rounded-2xl p-1.5 mb-8 border border-gray-100 dark:border-gray-800 shadow-sm">
+                    <ScrollView className="flex-row bg-white dark:bg-[#161B22] rounded-2xl p-1.5 mb-8 border border-gray-100 dark:border-gray-800 shadow-sm">
                         {(["all", "active", "draft", "closed"] as const).map((tab) => (
                             <TouchableOpacity
                                 key={tab}
@@ -783,7 +783,7 @@ export default function AssignmentsPage() {
             {/* Create/Edit Assignment Modal */}
             <Modal visible={showModal} animationType="slide" transparent>
                 <View className="flex-1 bg-black/70 justify-end">
-                    <View className="bg-[#FFFFFF] dark:bg-[#0D1117] rounded-t-3xl p-6 h-[85%] border-t border-[#D0D7DE] dark:border-[#21262D]">
+                    <View className="bg-[#FFFFFF] dark:bg-[#161B22] rounded-t-3xl p-6 h-[85%] border-t border-[#D0D7DE] dark:border-[#21262D]">
                         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
                             <View className="flex-row justify-between items-center mb-6">
                                 <Text className="text-xl font-bold text-gray-900 dark:text-white">
@@ -791,7 +791,7 @@ export default function AssignmentsPage() {
                                 </Text>
                                 <HelpTooltip id="teacher.manage.coursework" role="teacher" tier={tier} onLearnMore={openManual} />
                                 <TouchableOpacity
-                                    className="w-10 h-10 bg-[#F6F8FA] dark:bg-[#1C2128] rounded-xl items-center justify-center border border-[#D0D7DE] dark:border-[#21262D]"
+                                    className="w-10 h-10 bg-[#F6F8FA] dark:bg-[#161B22] rounded-xl items-center justify-center border border-[#D0D7DE] dark:border-[#21262D]"
                                     onPress={() => { setShowModal(false); resetForm(); }}
                                 >
                                     <X size={20} color="#9CA3AF" />
@@ -815,7 +815,7 @@ export default function AssignmentsPage() {
                                                     key={c.id}
                                                     onPress={() => setSelectedSubjectId(c.id)}
                                                     activeOpacity={0.7}
-                                                    className={`mr-3 px-5 py-2.5 rounded-lg border ${isSelected ? "bg-[#FF6900] border-[#FF6900]" : "bg-[#F6F8FA] dark:bg-[#1C2128] border-[#D0D7DE] dark:border-[#21262D]"}`}
+                                                    className={`mr-3 px-5 py-2.5 rounded-lg border ${isSelected ? "bg-[#FF6900] border-[#FF6900]" : "bg-[#F6F8FA] dark:bg-[#161B22] border-[#D0D7DE] dark:border-[#21262D]"}`}
                                                 >
                                                     <Text className={`font-bold text-xs ${isSelected ? "text-white" : "text-gray-900 dark:text-gray-400"}`}>{c.title}</Text>
                                                 </TouchableOpacity>

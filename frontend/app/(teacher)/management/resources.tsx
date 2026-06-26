@@ -177,7 +177,7 @@ export default function ResourcesPage() {
   };
 
   return (
-    <View className="flex-1 bg-gray-50 dark:bg-[#0D1117]">
+    <View className="flex-1 bg-[#F6F8FA] dark:bg-[#161B22]">
       <UnifiedHeader
         title="Academic"
         subtitle="Resources"
@@ -208,7 +208,7 @@ export default function ResourcesPage() {
               <Text className="text-gray-900 dark:text-white font-bold text-base tracking-tight">Cloud Storage</Text>
               <Text className="text-[#FF6900] font-bold text-xs uppercase tracking-widest">Unlimited</Text>
             </View>
-            <View className="h-2.5 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
+            <View className="h-2.5 bg-gray-100 dark:bg-[#161B22] rounded-full overflow-hidden">
               <View className="h-full bg-[#FF6900] rounded-full" style={{ width: "8%" }} />
             </View>
           </View>
@@ -248,7 +248,7 @@ export default function ResourcesPage() {
                 <TouchableOpacity
                   key={c.id}
                   onPress={() => setSelectedSubjectId(c.id)}
-                  className={`mr-3 px-6 py-3 rounded-lg border ${selectedSubjectId === c.id ? 'bg-[#FF6900] border-[#FF6900] ' : 'bg-gray-50 dark:bg-[#0D1117] border-gray-100 dark:border-white/10'}`}
+                  className={`mr-3 px-6 py-3 rounded-lg border ${selectedSubjectId === c.id ? 'bg-[#FF6900] border-[#FF6900] ' : 'bg-gray-50 dark:bg-[#161B22] border-gray-100 dark:border-white/10'}`}
                 >
                   <Text className={`font-bold text-xs ${selectedSubjectId === c.id ? 'text-white' : 'text-gray-500'}`}>{c.title}</Text>
                 </TouchableOpacity>
@@ -261,7 +261,7 @@ export default function ResourcesPage() {
                 <TouchableOpacity
                   key={t}
                   onPress={() => setType(t)}
-                  className={`flex-1 py-3 rounded-xl border items-center ${type === t ? 'bg-gray-900 dark:bg-white border-gray-900 dark:border-white' : 'bg-gray-50 dark:bg-[#0D1117] border-gray-100 dark:border-white/10'}`}
+                  className={`flex-1 py-3 rounded-xl border items-center ${type === t ? 'bg-gray-900 dark:bg-white border-gray-900 dark:border-white' : 'bg-gray-50 dark:bg-[#161B22] border-gray-100 dark:border-white/10'}`}
                 >
                   <Text className={`font-bold text-[10px] uppercase tracking-widest ${type === t ? 'text-white dark:text-black' : 'text-gray-400'}`}>{t}</Text>
                 </TouchableOpacity>
@@ -271,7 +271,7 @@ export default function ResourcesPage() {
             <View className="mb-6">
               <Text className="text-gray-500 text-[10px] font-bold uppercase tracking-wider ml-2 mb-2">Title</Text>
               <TextInput
-                className="bg-gray-50 dark:bg-[#0D1117] rounded-lg px-6 py-4 text-gray-900 dark:text-white font-bold border border-gray-100 dark:border-white/10"
+                className="bg-gray-50 dark:bg-[#161B22] rounded-lg px-6 py-4 text-gray-900 dark:text-white font-bold border border-gray-100 dark:border-white/10"
                 placeholder="e.g. Mathematics Syllabus"
                 placeholderTextColor="#9CA3AF"
                 value={title}
@@ -282,7 +282,7 @@ export default function ResourcesPage() {
             <View className="mb-10">
               <Text className="text-gray-500 text-[10px] font-bold uppercase tracking-wider ml-2 mb-2">Resource URL</Text>
               <TextInput
-                className="bg-gray-50 dark:bg-[#0D1117] rounded-lg px-6 py-4 text-gray-900 dark:text-white font-bold border border-gray-100 dark:border-white/10"
+                className="bg-gray-50 dark:bg-[#161B22] rounded-lg px-6 py-4 text-gray-900 dark:text-white font-bold border border-gray-100 dark:border-white/10"
                 placeholder="https://..."
                 placeholderTextColor="#9CA3AF"
                 value={url}

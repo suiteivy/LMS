@@ -54,7 +54,7 @@ export default function StudentAnnouncementsPage() {
     };
 
     return (
-        <View className="flex-1 bg-gray-50">
+        <View className="flex-1 bg-[#F6F8FA]">
             {/* Header */}
                 <View className="bg-white px-6 pt-12 pb-6 border-b border-gray-100">
                     <View className="flex-row items-center justify-between mb-2">

@@ -183,10 +183,10 @@ const LibraryAction = () => {
 
                     <Text style={{ fontSize: 19, fontWeight: 'bold', color: isDark ? '#f1f1f1' : '#1e293b', marginBottom: 16 }}>Library Overview</Text>
 
-                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginHorizontal: -8, marginBottom: 24, backgroundColor: isDark ? '#0D1117' : '#ffffff' }}>
+                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginHorizontal: -8, marginBottom: 24, backgroundColor: isDark ? '#0F0B2E' : '#ffffff' }}>
                         {statCards.map((card, i) => (
-                            <View key={i} style={{ width: '50%', paddingHorizontal: 8, marginBottom: 16, backgroundColor: isDark ? '#0D1117' : '#ffffff' }}>
-                                <View style={{ borderRadius: 16, padding: 16, borderWidth: 1, borderColor: border, backgroundColor: isDark ? '#161B22' : 'fcfcfc' }}>
+                            <View key={i} style={{ width: '50%', paddingHorizontal: 8, marginBottom: 16, backgroundColor: isDark ? '#0F0B2E' : '#ffffff' }}>
+                                <View style={{ borderRadius: 16, padding: 16, borderWidth: 1, borderColor: border, backgroundColor: isDark ? '#0F0B2E' : 'fcfcfc' }}>
                                     <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
                                         <View>
                                             <Text style={{ fontSize: 24, fontWeight: 'bold', color: card.color }}>{card.value}</Text>
@@ -208,7 +208,7 @@ const LibraryAction = () => {
                             { section: "borrowed", label: "Borrowed Books", desc: "Track returns and manage loans", icon: "book-outline" },
                             { section: "config", label: "Borrow Configuration", desc: "Set limits and policies", icon: "settings-outline" },
                         ].map((item) => (
-                            <TouchableOpacity key={item.section} style={{ backgroundColor: isDark ? '#161B22' : 'fcfcfc', borderRadius: 16, padding: 16, borderWidth: 1, borderColor: border, flexDirection: 'row', alignItems: 'center' }} onPress={() => setActiveSection(item.section as LibrarySection)}>
+                            <TouchableOpacity key={item.section} style={{ backgroundColor: isDark ? '#0F0B2E' : 'fcfcfc', borderRadius: 16, padding: 16, borderWidth: 1, borderColor: border, flexDirection: 'row', alignItems: 'center' }} onPress={() => setActiveSection(item.section as LibrarySection)}>
                                 <View style={{ width: 40, height: 40, backgroundColor: isDark ? 'rgba(255,107,0,0.12)' : '#fff7ed', borderRadius: 20, alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
                                     <Ionicons name={item.icon as any} size={20} color="#FF6900" />
                                 </View>
@@ -243,7 +243,7 @@ const LibraryAction = () => {
     };
 
     return (
-        <View style={{ flex: 1, backgroundColor: isDark ? '#0D1117' : '#fcfcfc' }}>
+        <View style={{ flex: 1, backgroundColor: isDark ? '#0F0B2E' : '#fcfcfc' }}>
             <UnifiedHeader
                 title="Management"
                 subtitle="Library"
@@ -252,9 +252,9 @@ const LibraryAction = () => {
             />
 
             {/* Section Tabs */}
-            <View style={{ backgroundColor: isDark ? '#0D1117' : '#fcfcfc', borderBottomWidth: 1, borderBottomColor: border }}>
+            <View style={{ backgroundColor: isDark ? '#0F0B2E' : '#fcfcfc', borderBottomWidth: 1, borderBottomColor: border }}>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ paddingHorizontal: 16, paddingVertical: 12 }}>
-                    <View style={{ flexDirection: 'row', gap: 8, backgroundColor: isDark ? '#0D1117' : '#fcfcfc' }}>
+                    <View style={{ flexDirection: 'row', gap: 8, backgroundColor: isDark ? '#0F0B2E' : '#fcfcfc' }}>
                         {sections.map((section) => {
                             const isActive = activeSection === section.id;
                             return (

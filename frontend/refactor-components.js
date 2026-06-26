@@ -17,11 +17,11 @@ walkDir(componentsDir, (filePath) => {
         let original = content;
 
         // Replace main backgrounds
-        content = content.replace(/bg-white\s+dark:bg-(?:navy|\[#1a1a1a\]|\[#0F0B2E\])/g, 'bg-[#FFFFFF] dark:bg-[#0D1117]');
-        content = content.replace(/bg-\[\#f8fafc\]\s+dark:bg-\[\#0F0B2E\]/g, 'bg-[#FFFFFF] dark:bg-[#0D1117]');
+        content = content.replace(/bg-white\s+dark:bg-(?:navy|\[#1a1a1a\]|\[#0F0B2E\])/g, 'bg-[#FFFFFF] dark:bg-navy');
+        content = content.replace(/bg-\[\#f8fafc\]\s+dark:bg-\[\#0F0B2E\]/g, 'bg-[#FFFFFF] dark:bg-navy');
 
         // Replace card backgrounds
-        content = content.replace(/bg-white\s+dark:bg-(?:navy-surface|\[#161B22\]|\[#1a1a1a\])/g, 'bg-[#F6F8FA] dark:bg-[#161B22]');
+        content = content.replace(/bg-white\s+dark:bg-(?:navy-surface|\[#161B22\]|\[#1a1a1a\])/g, 'bg-[#F6F8FA] dark:bg-navy');
 
         // Replace border colors
         content = content.replace(/border-gray-[12]00\s+dark:border-gray-[78]00/g, 'border-[#D0D7DE] dark:border-[#21262D]');

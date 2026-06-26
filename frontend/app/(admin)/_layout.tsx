@@ -107,7 +107,7 @@ function AdminTabs() {
                     tabBarInactiveTintColor: isDark ? "#94a3b8" : "#64748b",
                     tabBarLabelStyle: { fontSize: 11, fontWeight: "600" },
                     tabBarStyle: {
-                        backgroundColor: isDark ? '#0F0B2E' : "#ffffff",
+                        backgroundColor: isDark ? '#161B22' : "#ffffff",
                         borderTopWidth: 1,
                         borderTopColor: isDark ? '#1f2937' : "#e5e7eb",
                         height: tabBarHeight,
@@ -128,7 +128,7 @@ function AdminTabs() {
                             color: 'rgba(0, 0, 0, 0.1)',
                         }],
                     },
-                    sceneStyle: { backgroundColor: isDark ? '#0F0B2E' : "#f9fafb" },
+                    sceneStyle: { backgroundColor: isDark ? '#161B22' : "#f9fafb" },
                 }}
             >
             {/* Notifications — tab registered, press intercepted by listeners */}

@@ -9,7 +9,6 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 // All nav items   finance tab conditionally removed for free plan at runtime
 const ALL_NAV_ITEMS: NavItem[] = [
     { name: "index", title: "Home", icon: LayoutDashboard, route: "/(parent)" },
-    { name: "finance", title: "Fees", icon: CreditCard, route: "/(parent)/finance" },
     { name: "messages", title: "Chat", icon: MessageSquare, route: "/(parent)/messages" },
     { name: "announcements", title: "Updates", icon: Bell, route: "/(parent)/announcements" },
     { name: "accessibility/settings", title: "Accessibility", icon: Settings, route: "/(parent)/accessibility/settings" },
@@ -46,7 +45,7 @@ function ParentTabs() {
                 screenOptions={{
                     headerShown: false,
                     tabBarStyle: {
-                        backgroundColor: isDark ? '#0F0B2E' : "#ffffff",
+                        backgroundColor: isDark ? '#161B22' : "#ffffff",
                         borderTopWidth: 1,
                         borderTopColor: isDark ? '#1f2937' : "#e5e7eb",
                         height: tabBarHeight,
@@ -61,7 +60,7 @@ function ParentTabs() {
                     tabBarInactiveTintColor: isDark ? "#94a3b8" : "#64748b",
                     tabBarLabelStyle: { fontSize: 10, fontWeight: "600" },
                     sceneStyle: {
-                        backgroundColor: isDark ? '#0F0B2E' : "#ffffff",
+                        backgroundColor: isDark ? '#161B22' : "#ffffff",
                     },
                 }}
             >

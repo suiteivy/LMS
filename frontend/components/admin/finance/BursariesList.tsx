@@ -34,7 +34,7 @@ export function BursariesList() {
 
     const renderItem = ({ item }: { item: Bursary }) => (
         <TouchableOpacity
-            className="bg-[#F6F8FA] dark:bg-[#161B22] p-4 rounded-xl mb-3 border border-[#D0D7DE] dark:border-[#21262D]"
+            className="bg-[#F6F8FA] dark:bg-navy p-4 rounded-xl mb-3 border border-[#D0D7DE] dark:border-[#21262D]"
             onPress={() => router.push(`/(admin)/finance/bursaries/${item.id}`)}
         >
             <View className="flex-row justify-between items-start mb-2">

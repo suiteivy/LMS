@@ -58,7 +58,7 @@ export default function MasterDashboard() {
     }, []);
 
     return (
-        <SafeAreaView className="flex-1 bg-[#FFFFFF] dark:bg-[#0D1117]" edges={['top', 'left', 'right']}>
+        <SafeAreaView className="flex-1 bg-[#FFFFFF] dark:bg-navy" edges={['top', 'left', 'right']}>
             {/* Header */}
             <View className="px-5 pt-3 pb-5">
                 <View className="flex-row items-center gap-3">
@@ -131,7 +131,7 @@ export default function MasterDashboard() {
                     <Text className="text-gray-500 dark:text-gray-400 text-sm">Failed to load stats.</Text>
                 )}
 
-                <View className="bg-[#F6F8FA] dark:bg-[#161B22] border border-[#D0D7DE] dark:border-[#21262D] rounded-xl p-5 mt-4">
+                <View className="bg-[#F6F8FA] dark:bg-navy border border-[#D0D7DE] dark:border-[#21262D] rounded-xl p-5 mt-4">
                     <View className="flex-row items-center mb-3">
                         <MaterialCommunityIcons name="information" size={20} color="#FF6900" style={{ marginRight: 8 }} />
                         <Text className="text-gray-900 dark:text-white font-bold text-base">Admin Privileges</Text>

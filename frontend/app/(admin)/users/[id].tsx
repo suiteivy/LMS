@@ -52,12 +52,12 @@ export default function UserDetailsScreen() {
     const { profile } = useAuth();
 
     // Theme shorthands
-    const bg = isDark ? '#0D1117' : '#FFFFFF';
+    const bg = isDark ? '#161B22' : '#FFFFFF';
     const card = isDark ? '#161B22' : '#F6F8FA';
     const border = isDark ? '#21262D' : '#D0D7DE';
     const textPrimary = isDark ? '#f9fafb' : '#111827';
     const textSecondary = isDark ? '#94a3b8' : '#6b7280';
-    const inputBg = isDark ? '#1C2128' : '#EAEEF2';
+    const inputBg = isDark ? '#161B22' : '#EAEEF2';
     const inputBorder = isDark ? '#21262D' : '#D0D7DE';
     
     const instLevelLabel = (profile as any)?.institutions?.school_categories?.level_label || 'Grade';
@@ -146,7 +146,7 @@ export default function UserDetailsScreen() {
         const [classRes, subjectRes, studentRes, parentRes] = await Promise.all([
             supabase
                 .from('v_classes_detailed')
-                .select('id, name, grade_level, form_level, level_label, stream')
+                .select('id, name, display_name, grade_level, form_level, level_label, stream')
                 .eq('institution_id', profile?.institution_id || '')
                 .order('grade_level', { ascending: true })
                 .order('form_level', { ascending: true })
@@ -692,7 +692,7 @@ export default function UserDetailsScreen() {
                             <>
                                 {/* GPA Summary Row */}
                                 {studentGrades.length > 0 && (
-                                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', backgroundColor: isDark ? '#1C2128' : '#EAEEF2', borderRadius: 12, padding: 16, marginBottom: 16, borderWidth: 1, borderColor: border }}>
+                                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', backgroundColor: isDark ? '#161B22' : '#EAEEF2', borderRadius: 12, padding: 16, marginBottom: 16, borderWidth: 1, borderColor: border }}>
                                         <View style={{ alignItems: 'center', flex: 1 }}>
                                             <Text style={{ fontSize: 9, fontWeight: '700', color: textSecondary, textTransform: 'uppercase', letterSpacing: 1 }}>Est. GPA</Text>
                                             <Text style={{ fontSize: 22, fontWeight: '900', color: '#FF6900', marginTop: 4 }}>

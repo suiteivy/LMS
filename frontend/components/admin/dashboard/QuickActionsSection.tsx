@@ -33,7 +33,7 @@ const QuickActionsSection: React.FC<QuickActionsSectionProps> = ({
             title: "Add User",
             icon: "person-add",
             color: {
-                bg: "bg-[#F6F8FA] dark:bg-[#161B22]",
+                bg: "bg-[#F6F8FA] dark:bg-navy",
                 border: "border-slate-200 dark:border-gray-800",
                 active: "active:bg-slate-50 dark:active:bg-gray-800",
                 iconBg: "bg-slate-100 dark:bg-gray-800",
@@ -46,7 +46,7 @@ const QuickActionsSection: React.FC<QuickActionsSectionProps> = ({
             title: "Add Subject",
             icon: "book-outline",
             color: {
-                bg: "bg-[#F6F8FA] dark:bg-[#161B22]",
+                bg: "bg-[#F6F8FA] dark:bg-navy",
                 border: "border-slate-200 dark:border-gray-800",
                 active: "active:bg-teal-50 dark:active:bg-gray-800",
                 iconBg: "bg-slate-100 dark:bg-gray-800",
@@ -59,7 +59,7 @@ const QuickActionsSection: React.FC<QuickActionsSectionProps> = ({
             title: "Library",
             icon: "library-outline",
             color: {
-                bg: "bg-[#F6F8FA] dark:bg-[#161B22]",
+                bg: "bg-[#F6F8FA] dark:bg-navy",
                 border: "border-slate-200 dark:border-gray-800",
                 active: "active:bg-mint-50 dark:active:bg-gray-800",
                 iconBg: "bg-slate-100 dark:bg-gray-800",
@@ -72,7 +72,7 @@ const QuickActionsSection: React.FC<QuickActionsSectionProps> = ({
             title: "Analytics",
             icon: "analytics-outline",
             color: {
-                bg: "bg-[#F6F8FA] dark:bg-[#161B22]",
+                bg: "bg-[#F6F8FA] dark:bg-navy",
                 border: "border-slate-200 dark:border-gray-800",
                 active: "active:bg-teal-50 dark:active:bg-gray-800",
                 iconBg: "bg-slate-100 dark:bg-gray-800",
@@ -85,7 +85,7 @@ const QuickActionsSection: React.FC<QuickActionsSectionProps> = ({
             title: "Settings",
             icon: "settings-outline",
             color: {
-                bg: "bg-[#F6F8FA] dark:bg-[#161B22]",
+                bg: "bg-[#F6F8FA] dark:bg-navy",
                 border: "border-slate-200 dark:border-gray-800",
                 active: "active:bg-slate-50 dark:active:bg-gray-800",
                 iconBg: "bg-slate-100 dark:bg-gray-800",

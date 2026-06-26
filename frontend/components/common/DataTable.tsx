@@ -104,7 +104,7 @@ export const DataTable: React.FC<DataTableProps> = ({
  };
 
  const renderTableHeader = () => (
- <View className="flex-row bg-[#EAEEF2] dark:bg-[#1C2128]/50 border-b border-[#D0D7DE] dark:border-[#21262D]">
+ <View className="flex-row bg-[#EAEEF2] dark:bg-navy border-b border-[#D0D7DE] dark:border-[#21262D]">
  {columns.map((column, index) => (
  <TouchableOpacity
  key={column.key}
@@ -131,7 +131,7 @@ export const DataTable: React.FC<DataTableProps> = ({
  const renderTableRow = (row: TableData, index: number) => (
  <TouchableOpacity
  key={row.id || index}
- className={`flex-row border-b border-[#D0D7DE] dark:border-[#21262D] ${striped && index % 2 === 1 ? 'bg-gray-50/50 dark:bg-gray-800/20' : 'bg-[#F6F8FA] dark:bg-[#161B22]'
+ className={`flex-row border-b border-[#D0D7DE] dark:border-[#21262D] ${striped && index % 2 === 1 ? 'bg-gray-50/50 dark:bg-gray-800/20' : 'bg-[#F6F8FA] dark:bg-navy'
  } ${onRowPress ? 'active:bg-gray-100 dark:active:bg-gray-800' : ''}`}
  onPress={() => onRowPress?.(row)}
  disabled={!onRowPress}
@@ -163,7 +163,7 @@ export const DataTable: React.FC<DataTableProps> = ({
  );
 
  const renderLoadingState = () => (
- <View className="bg-[#F6F8FA] dark:bg-[#161B22]">
+ <View className="bg-[#F6F8FA] dark:bg-navy">
  {[...Array(5)].map((_, index) => (
  <View key={index} className="flex-row border-b border-[#D0D7DE] dark:border-[#21262D] p-3">
  {columns.map((column, colIndex) => (
@@ -183,7 +183,7 @@ export const DataTable: React.FC<DataTableProps> = ({
  );
 
  const renderEmptyState = () => (
- <View className="bg-[#F6F8FA] dark:bg-[#161B22] p-8">
+ <View className="bg-[#F6F8FA] dark:bg-navy p-8">
  <View className="items-center">
  <Ionicons name={emptyIcon as any} size={48} color="#9CA3AF" />
  <Text className="text-gray-500 dark:text-gray-400 mt-2 text-center">{emptyMessage}</Text>
@@ -192,7 +192,7 @@ export const DataTable: React.FC<DataTableProps> = ({
  );
 
  const tableContent = (
- <View className={`bg-[#F6F8FA] dark:bg-[#161B22] rounded-xl border border-[#D0D7DE] dark:border-[#21262D] overflow-hidden ${className}`}>
+ <View className={`bg-[#F6F8FA] dark:bg-navy rounded-xl border border-[#D0D7DE] dark:border-[#21262D] overflow-hidden ${className}`}>
  {renderTableHeader()}
 
  {loading ? (

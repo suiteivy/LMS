@@ -24,7 +24,7 @@ const StudentCard = ({ student, onPress }: { student: StudentListItem; onPress: 
     return (
         <TouchableOpacity 
             onPress={onPress} 
-            className="bg-white dark:bg-[#1a1a1a] p-4 rounded-2xl border border-gray-100 dark:border-gray-800 mb-3 flex-row items-center border-l-4 border-l-[#FF6900] active:bg-gray-50 dark:active:bg-gray-900"
+            className="bg-white dark:bg-[#161B22] p-4 rounded-2xl border border-gray-100 dark:border-gray-800 mb-3 flex-row items-center border-l-4 border-l-[#FF6900] active:bg-gray-50 dark:active:bg-gray-900"
         >
             <View className="w-10 h-10 rounded-full bg-orange-50 dark:bg-orange-950/30 items-center justify-center mr-3">
                 <Text className="text-[#FF6900] font-black text-sm">
@@ -106,12 +106,12 @@ export default function StudentsPage() {
     };
 
     return (
-        <View className="flex-1 bg-gray-50 dark:bg-navy">
+        <View className="flex-1 bg-[#F6F8FA] dark:bg-[#161B22]">
             <StatusBar barStyle={isDark ? "light-content" : "dark-content"} />
             <View className="flex-1 px-4">
                 {/* Header */}
                 <View className="flex-row items-center justify-between py-6">
-                    <TouchableOpacity onPress={() => router.back()} className="w-10 h-10 items-center justify-center rounded-full bg-white dark:bg-[#1a1a1a] border border-gray-100 dark:border-gray-800">
+                    <TouchableOpacity onPress={() => router.back()} className="w-10 h-10 items-center justify-center rounded-full bg-white dark:bg-[#161B22] border border-gray-100 dark:border-gray-800">
                         <ArrowLeft size={20} color={isDark ? "#FFFFFF" : "#1F2937"} />
                     </TouchableOpacity>
                     <Text className="text-xl font-black text-gray-900 dark:text-white">Your Students</Text>
@@ -128,7 +128,7 @@ export default function StudentsPage() {
                 </View>
 
                 {/* Search */}
-                <View className="flex-row bg-white dark:bg-[#1a1a1a] rounded-2xl px-4 py-3 border border-gray-100 dark:border-gray-800 items-center mb-6">
+                <View className="flex-row bg-white dark:bg-[#161B22] rounded-2xl px-4 py-3 border border-gray-100 dark:border-gray-800 items-center mb-6">
                     <Search size={20} color="#9CA3AF" />
                     <TextInput
                         placeholder="Search for students..."
@@ -144,7 +144,7 @@ export default function StudentsPage() {
                 ) : (
                     <ScrollView className="flex-1" contentContainerStyle={{ paddingBottom: 100 }} showsVerticalScrollIndicator={false}>
                         {filteredStudents.length === 0 ? (
-                            <View className="items-center justify-center py-20 bg-white dark:bg-[#1a1a1a] rounded-3xl border border-dashed border-gray-200 dark:border-gray-800 p-8">
+                            <View className="items-center justify-center py-20 bg-white dark:bg-[#161B22] rounded-3xl border border-dashed border-gray-200 dark:border-gray-800 p-8">
                                 <Users size={48} color="#D1D5DB" />
                                 <Text className="text-gray-400 dark:text-gray-500 font-medium mt-4">No students found</Text>
                             </View>
@@ -169,10 +169,10 @@ export default function StudentsPage() {
                 onRequestClose={() => setModalVisible(false)}
             >
                 <View className="flex-1 bg-black/60 justify-end">
-                    <View className="bg-white dark:bg-[#0f0b2e] rounded-t-[36px] h-[85%] border-t border-gray-100 dark:border-gray-800">
+                    <View className="bg-white dark:bg-[#161B22] rounded-t-[36px] h-[85%] border-t border-gray-100 dark:border-gray-800">
                         {/* Drag indicator / bar */}
                         <View className="items-center pt-3 pb-1">
-                            <View className="w-10 h-1 bg-gray-200 dark:bg-gray-700 rounded-full" />
+                            <View className="w-10 h-1 bg-gray-200 dark:bg-[#161B22] rounded-full" />
                         </View>
 
                         {/* Modal Header */}
@@ -188,7 +188,7 @@ export default function StudentsPage() {
                             </View>
                             <TouchableOpacity
                                 onPress={() => setModalVisible(false)}
-                                className="w-9 h-9 bg-gray-100 dark:bg-[#1a1a1a] rounded-full items-center justify-center"
+                                className="w-9 h-9 bg-gray-100 dark:bg-[#161B22] rounded-full items-center justify-center"
                             >
                                 <X size={18} color="#6B7280" />
                             </TouchableOpacity>
@@ -203,7 +203,7 @@ export default function StudentsPage() {
                                     className={`flex-1 py-3 rounded-2xl items-center ${
                                         detailsTab === tab 
                                             ? "bg-[#FF6900]" 
-                                            : "bg-gray-100 dark:bg-[#1a1a1a]"
+                                            : "bg-gray-100 dark:bg-[#161B22]"
                                     }`}
                                 >
                                     <Text className={`font-bold text-xs uppercase tracking-wider ${
@@ -230,7 +230,7 @@ export default function StudentsPage() {
                         ) : (
                             <ScrollView className="flex-1 px-6 pb-10" showsVerticalScrollIndicator={false}>
                                 {/* Header Card */}
-                                <View className="bg-orange-50/50 dark:bg-[#1a1a1a]/40 p-5 rounded-3xl border border-orange-100/40 dark:border-gray-800 mb-6 flex-row items-center">
+                                <View className="bg-orange-50/50 dark:bg-[#161B22] p-5 rounded-3xl border border-orange-100/40 dark:border-gray-800 mb-6 flex-row items-center">
                                     <View className="w-14 h-14 rounded-2xl bg-orange-100 dark:bg-orange-950/40 items-center justify-center mr-4">
                                         <Text className="text-[#FF6900] font-black text-xl">
                                             {studentDetails.profile?.first_name?.charAt(0).toUpperCase()}
@@ -261,7 +261,7 @@ export default function StudentsPage() {
                                     <View>
                                         {/* General Information Section */}
                                         <Text className="text-sm font-bold text-gray-400 uppercase tracking-widest mb-3">General Information</Text>
-                                        <View className="bg-white dark:bg-[#161245]/50 border border-gray-100 dark:border-gray-850 rounded-3xl p-4 mb-6">
+                                        <View className="bg-white dark:bg-[#161B22] border border-gray-100 dark:border-gray-850 rounded-3xl p-4 mb-6">
                                             <View className="flex-row py-3 border-b border-gray-50 dark:border-gray-800">
                                                 <Text className="text-gray-400 dark:text-gray-500 text-xs font-semibold w-32">Gender</Text>
                                                 <Text className="text-gray-900 dark:text-white text-xs font-bold capitalize">{studentDetails.profile?.gender || 'N/A'}</Text>
@@ -284,7 +284,7 @@ export default function StudentsPage() {
                                         {studentDetails.isClassTeacher ? (
                                             <View>
                                                 <Text className="text-sm font-bold text-gray-400 uppercase tracking-widest mb-3">Guardian & Contacts</Text>
-                                                <View className="bg-white dark:bg-[#161245]/50 border border-gray-100 dark:border-gray-850 rounded-3xl p-4 mb-6">
+                                                <View className="bg-white dark:bg-[#161B22] border border-gray-100 dark:border-gray-850 rounded-3xl p-4 mb-6">
                                                     <View className="flex-row py-3 border-b border-gray-50 dark:border-gray-800">
                                                         <Text className="text-gray-400 dark:text-gray-500 text-xs font-semibold w-32">Parent Contact</Text>
                                                         <Text className="text-gray-900 dark:text-white text-xs font-bold">{studentDetails.profile?.parent_contact || 'N/A'}</Text>
@@ -308,13 +308,13 @@ export default function StudentsPage() {
                                                 {/* Guardians List */}
                                                 <Text className="text-sm font-bold text-gray-400 uppercase tracking-widest mb-3">Associated Guardians</Text>
                                                 {(!studentDetails.profile?.guardians || studentDetails.profile?.guardians.length === 0) ? (
-                                                    <View className="bg-white dark:bg-[#161245]/50 border border-gray-100 dark:border-gray-850 rounded-3xl p-6 mb-6 items-center">
+                                                    <View className="bg-white dark:bg-[#161B22] border border-gray-100 dark:border-gray-850 rounded-3xl p-6 mb-6 items-center">
                                                         <User size={24} color="#9CA3AF" />
                                                         <Text className="text-gray-400 dark:text-gray-500 text-xs mt-2">No registered guardians found</Text>
                                                     </View>
                                                 ) : (
                                                     studentDetails.profile.guardians.map((g: any, index: number) => (
-                                                        <View key={index} className="bg-white dark:bg-[#161245]/50 border border-gray-100 dark:border-gray-850 rounded-3xl p-4 mb-3 flex-row items-center justify-between">
+                                                        <View key={index} className="bg-white dark:bg-[#161B22] border border-gray-100 dark:border-gray-850 rounded-3xl p-4 mb-3 flex-row items-center justify-between">
                                                             <View>
                                                                 <Text className="text-gray-900 dark:text-white font-bold text-sm">{g.parent?.user?.full_name}</Text>
                                                                 <Text className="text-gray-400 dark:text-gray-500 text-xs mt-0.5 capitalize">{g.relationship || 'Guardian'}</Text>
@@ -333,7 +333,7 @@ export default function StudentsPage() {
                                             </View>
                                         ) : (
                                             /* Locked Section Message */
-                                            <View className="bg-gray-100 dark:bg-navy/80 p-5 rounded-3xl border border-gray-200 dark:border-gray-800 items-center flex-row gap-3 mb-6">
+                                            <View className="bg-gray-100 dark:bg-[#161B22] p-5 rounded-3xl border border-gray-200 dark:border-gray-800 items-center flex-row gap-3 mb-6">
                                                 <ShieldAlert size={20} color="#FF6900" />
                                                 <View className="flex-1">
                                                     <Text className="text-gray-800 dark:text-gray-200 font-bold text-xs uppercase">Access Restrained</Text>
@@ -350,13 +350,13 @@ export default function StudentsPage() {
                                     <View>
                                         <Text className="text-sm font-bold text-gray-400 uppercase tracking-widest mb-3">Attendance History</Text>
                                         {(!studentDetails.attendance || studentDetails.attendance.length === 0) ? (
-                                            <View className="bg-white dark:bg-[#161245]/50 border border-gray-100 dark:border-gray-850 rounded-3xl p-8 items-center">
+                                            <View className="bg-white dark:bg-[#161B22] border border-gray-100 dark:border-gray-850 rounded-3xl p-8 items-center">
                                                 <Calendar size={36} color="#D1D5DB" />
                                                 <Text className="text-gray-450 dark:text-gray-500 text-xs font-semibold mt-3">No attendance records found</Text>
                                             </View>
                                         ) : (
                                             studentDetails.attendance.map((att: any, index: number) => (
-                                                <View key={index} className="bg-white dark:bg-[#161245]/50 border border-gray-100 dark:border-gray-850 rounded-3xl p-4 mb-3.5 flex-row items-center justify-between">
+                                                <View key={index} className="bg-white dark:bg-[#161B22] border border-gray-100 dark:border-gray-850 rounded-3xl p-4 mb-3.5 flex-row items-center justify-between">
                                                     <View>
                                                         <Text className="text-gray-900 dark:text-white font-bold text-sm">
                                                             {att.subject?.title || 'General Lesson'}
@@ -384,14 +384,14 @@ export default function StudentsPage() {
                                         {/* Submissions Section */}
                                         <Text className="text-sm font-bold text-gray-400 uppercase tracking-widest mb-3">Submissions & Homework</Text>
                                         {(!studentDetails.performance?.submissions || studentDetails.performance.submissions.length === 0) ? (
-                                            <View className="bg-white dark:bg-[#161245]/50 border border-gray-100 dark:border-gray-850 rounded-3xl p-6 mb-6 items-center">
+                                            <View className="bg-white dark:bg-[#161B22] border border-gray-100 dark:border-gray-850 rounded-3xl p-6 mb-6 items-center">
                                                 <BookOpen size={28} color="#D1D5DB" />
                                                 <Text className="text-gray-405 dark:text-gray-500 text-xs font-semibold mt-2">No submission records</Text>
                                             </View>
                                         ) : (
                                             <View className="mb-6">
                                                 {studentDetails.performance.submissions.map((sub: any, index: number) => (
-                                                    <View key={index} className="bg-white dark:bg-[#161245]/50 border border-gray-100 dark:border-gray-850 rounded-3xl p-4 mb-3">
+                                                    <View key={index} className="bg-white dark:bg-[#161B22] border border-gray-100 dark:border-gray-850 rounded-3xl p-4 mb-3">
                                                         <View className="flex-row justify-between items-start">
                                                             <View className="flex-1 pr-4">
                                                                 <Text className="text-gray-900 dark:text-white font-bold text-sm" numberOfLines={1}>{sub.assignment?.title}</Text>
@@ -404,7 +404,7 @@ export default function StudentsPage() {
                                                             </View>
                                                         </View>
                                                         {sub.feedback && (
-                                                            <View className="mt-3 p-3 bg-gray-50 dark:bg-navy/40 rounded-2xl border border-gray-100 dark:border-gray-800">
+                                                            <View className="mt-3 p-3 bg-gray-50 dark:bg-[#161B22] rounded-2xl border border-gray-100 dark:border-gray-800">
                                                                 <Text className="text-gray-400 dark:text-gray-500 text-[9px] uppercase font-black tracking-wider mb-0.5">Feedback</Text>
                                                                 <Text className="text-gray-600 dark:text-gray-300 text-xs italic">&quot;{sub.feedback}&quot;</Text>
                                                             </View>
@@ -417,13 +417,13 @@ export default function StudentsPage() {
                                         {/* Exam Results Section */}
                                         <Text className="text-sm font-bold text-gray-400 uppercase tracking-widest mb-3">Exam Results</Text>
                                         {(!studentDetails.performance?.examResults || studentDetails.performance.examResults.length === 0) ? (
-                                            <View className="bg-white dark:bg-[#161245]/50 border border-gray-100 dark:border-gray-850 rounded-3xl p-6 items-center">
+                                            <View className="bg-white dark:bg-[#161B22] border border-gray-100 dark:border-gray-850 rounded-3xl p-6 items-center">
                                                 <Award size={28} color="#D1D5DB" />
                                                 <Text className="text-gray-405 dark:text-gray-500 text-xs font-semibold mt-2">No exam results recorded</Text>
                                             </View>
                                         ) : (
                                             studentDetails.performance.examResults.map((ex: any, index: number) => (
-                                                <View key={index} className="bg-white dark:bg-[#161245]/50 border border-gray-100 dark:border-gray-850 rounded-3xl p-4 mb-3">
+                                                <View key={index} className="bg-white dark:bg-[#161B22] border border-gray-100 dark:border-gray-850 rounded-3xl p-4 mb-3">
                                                     <View className="flex-row justify-between items-start">
                                                         <View className="flex-1 pr-4">
                                                             <Text className="text-gray-900 dark:text-white font-bold text-sm" numberOfLines={1}>{ex.exam?.title}</Text>
@@ -436,7 +436,7 @@ export default function StudentsPage() {
                                                         </View>
                                                     </View>
                                                     {ex.feedback && (
-                                                        <View className="mt-3 p-3 bg-gray-50 dark:bg-navy/40 rounded-2xl border border-gray-100 dark:border-gray-800">
+                                                        <View className="mt-3 p-3 bg-gray-50 dark:bg-[#161B22] rounded-2xl border border-gray-100 dark:border-gray-800">
                                                             <Text className="text-gray-400 dark:text-gray-500 text-[9px] uppercase font-black tracking-wider mb-0.5">Feedback</Text>
                                                             <Text className="text-gray-600 dark:text-gray-300 text-xs italic">&quot;{ex.feedback}&quot;</Text>
                                                         </View>

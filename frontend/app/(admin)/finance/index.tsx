@@ -13,6 +13,7 @@ import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { RefreshControl, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { useRealtimeQuery } from '@/hooks/useRealtimeQuery';
+import { HelpTooltip } from '@/components/settings/HelpTooltip';
 
 const TABS = [
     { key: 'payments', label: 'Payments' },
@@ -132,9 +133,10 @@ export default function FinanceDashboard() {
     const handleFeeStructureDelete = async (feeStructureId: string) => {
         try {
             await FinanceService.deleteFeeStructure(feeStructureId);
-            fetchAllData();
+            await fetchAllData();
         } catch (error) {
             console.error('Error deleting fee structure:', error);
+            throw error;
         }
     };
 
@@ -145,9 +147,10 @@ export default function FinanceDashboard() {
             } else {
                 await FinanceService.revertReleaseFeeStructure(feeStructureId);
             }
-            fetchAllData();
+            await fetchAllData();
         } catch (error) {
             console.error('Error toggling fee structure release:', error);
+            throw error;
         }
     };
 
@@ -157,7 +160,7 @@ export default function FinanceDashboard() {
     }, []);
 
     return (
-        <View style={{ flex: 1, backgroundColor: isDark ? '#0D1117' : '#FFFFFF' }}>
+        <View style={{ flex: 1, backgroundColor: isDark ? '#161B22' : '#FFFFFF' }}>
             <UnifiedHeader
                 title="Management"
                 subtitle="Finance"
@@ -180,27 +183,51 @@ export default function FinanceDashboard() {
                             if (key === 'bursaries' && !tier.hasBursary) return null;
                             
                             const isActive = activeTab === key;
+                            const tooltipId =
+                                key === 'payments'
+                                    ? 'admin.finance.payments'
+                                    : key === 'payouts'
+                                      ? 'admin.finance.payouts'
+                                      : key === 'fees'
+                                        ? 'admin.finance.fee_structures'
+                                        : key === 'bursaries'
+                                          ? 'admin.finance.bursaries'
+                                          : null;
+
                             return (
-                                <TouchableOpacity
-                                    key={key}
-                                    onPress={() => setActiveTab(key)}
-                                    style={{
-                                        marginRight: 12,
-                                        paddingHorizontal: 16,
-                                        paddingVertical: 8,
-                                        borderRadius: 999,
-                                        borderWidth: 1,
-                                        backgroundColor: isActive ? '#FF6900' : 'transparent',
-                                        borderColor: isActive ? '#FF6900' : (isDark ? '#21262D' : '#D0D7DE'),
-                                    }}
-                                >
-                                    <Text style={{
-                                        fontWeight: '600',
-                                        color: isActive ? '#ffffff' : (isDark ? '#9ca3af' : '#6b7280'),
-                                    }}>
-                                        {label}
-                                    </Text>
-                                </TouchableOpacity>
+                                <View key={key} style={{ marginRight: 12, flexDirection: 'row', alignItems: 'center' }}>
+                                    <TouchableOpacity
+                                        onPress={() => setActiveTab(key)}
+                                        style={{
+                                            paddingHorizontal: 16,
+                                            paddingVertical: 8,
+                                            borderRadius: 999,
+                                            borderWidth: 1,
+                                            backgroundColor: isActive ? '#FF6900' : 'transparent',
+                                            borderColor: isActive ? '#FF6900' : (isDark ? '#21262D' : '#D0D7DE'),
+                                        }}
+                                    >
+                                        <Text style={{
+                                            fontWeight: '600',
+                                            color: isActive ? '#ffffff' : (isDark ? '#9ca3af' : '#6b7280'),
+                                        }}>
+                                            {label}
+                                        </Text>
+                                    </TouchableOpacity>
+                                    {tooltipId ? (
+                                        <HelpTooltip
+                                            id={tooltipId as any}
+                                            role="admin"
+                                            tier={tier as any}
+                                            onLearnMore={(anchor) =>
+                                                router.push({
+                                                    pathname: '/(admin)/accessibility/settings' as any,
+                                                    params: { manual: '1', anchor: anchor || 'billing-ops' },
+                                                } as any)
+                                            }
+                                        />
+                                    ) : null}
+                                </View>
                             );
                         })}
                     </ScrollView>

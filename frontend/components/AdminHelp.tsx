@@ -17,12 +17,12 @@ const FAQItem = ({ question, answer }: FAQItemProps) => {
  return (
  <View style={{
  marginBottom: 12,
- backgroundColor: isDark ? '#13103A' : '#ffffff',
- borderWidth: 1,
- borderColor: isDark ? 'rgba(255,255,255,0.05)' : '#f1f5f9',
- borderRadius: 16,
- overflow: 'hidden'
- }}>
+  backgroundColor: isDark ? '#161B22' : '#F6F8FA',
+  borderWidth: 1,
+  borderColor: isDark ? '#21262D' : '#D0D7DE',
+  borderRadius: 16,
+  overflow: 'hidden'
+  }}>
  <TouchableOpacity
  onPress={() => setIsOpen(!isOpen)}
  style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 16 }}
@@ -32,10 +32,10 @@ const FAQItem = ({ question, answer }: FAQItemProps) => {
  {isOpen ? <ChevronUp size={20} color="#FF6900" /> : <ChevronDown size={20} color="#94a3b8" />}
  </TouchableOpacity>
  {isOpen && (
- <View style={{ paddingHorizontal: 16, borderTopWidth: 1, borderTopColor: isDark ? 'rgba(255,255,255,0.05)' : '#f8fafc', paddingTop: 12, paddingBottom: 16 }}>
- <Text style={{ color: isDark ? '#94a3b8' : '#64748b', lineHeight: 24 }}>{answer}</Text>
- </View>
- )}
+  <View style={{ paddingHorizontal: 16, borderTopWidth: 1, borderTopColor: isDark ? '#21262D' : '#D0D7DE', paddingTop: 12, paddingBottom: 16 }}>
+  <Text style={{ color: isDark ? '#94a3b8' : '#64748b', lineHeight: 24 }}>{answer}</Text>
+  </View>
+  )}
  </View>
  );
 };
@@ -48,13 +48,13 @@ export default function AdminHelp() {
  const [submitting, setSubmitting] = useState(false);
 
  const themeColors = {
- bg: isDark ? '#0F0B2E' : '#f8fafc',
- card: isDark ? '#13103A' : '#ffffff',
+ bg: isDark ? '#161B22' : '#FFFFFF',
+ card: isDark ? '#161B22' : '#F6F8FA',
  text: isDark ? '#ffffff' : '#1e293b',
  subtext: isDark ? '#94a3b8' : '#64748b',
  border: isDark ? 'rgba(255,255,255,0.05)' : '#e2e8f0',
  primary: '#FF6900',
- inputBg: isDark ? 'rgba(255,255,255,0.05)' : '#f1f5f9'
+ inputBg: isDark ? '#0F141C' : '#FFFFFF'
  };
 
  const getBackendUrl = () => {
@@ -171,7 +171,7 @@ export default function AdminHelp() {
  {/* Modal */}
  <Modal animationType="slide" transparent visible={!!selectedTab} onRequestClose={() => setSelectedTab(null)}>
  <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.7)', padding: 20 }}>
- <View style={{ backgroundColor: themeColors.card, width: '100%', maxWidth: 500, borderRadius: 32, overflow: 'hidden', borderWidth: 1, borderColor: themeColors.border }}>
+  <View style={{ backgroundColor: themeColors.card, width: '100%', maxWidth: 500, borderRadius: 32, overflow: 'hidden', borderWidth: 1, borderColor: themeColors.border }}>
  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 24, borderBottomWidth: 1, borderBottomColor: themeColors.border }}>
  <Text style={{ fontSize: 20, fontWeight: '800', color: themeColors.text }}>{selectedTab === 'ticket' ? 'Platform Support Ticket' : 'Contact Us'}</Text>
  <TouchableOpacity onPress={() => setSelectedTab(null)}>
@@ -184,7 +184,7 @@ export default function AdminHelp() {
  <View>
  <Text style={{ color: themeColors.text, fontWeight: '600', marginBottom: 8, fontSize: 12, textTransform: 'uppercase', letterSpacing: 1 }}>Subject</Text>
  <TextInput
- style={{ backgroundColor: themeColors.inputBg, color: themeColors.text, borderRadius: 12, padding: 14, marginBottom: 16, borderWidth: 1, borderColor: themeColors.border }}
+  style={{ backgroundColor: themeColors.inputBg, color: themeColors.text, borderRadius: 12, padding: 14, marginBottom: 16, borderWidth: 2, borderColor: isDark ? '#374151' : '#D0D7DE' }}
  placeholder="Brief summary of the issue"
  placeholderTextColor={themeColors.subtext}
  value={ticketSubject}
@@ -193,7 +193,7 @@ export default function AdminHelp() {
 
  <Text style={{ color: themeColors.text, fontWeight: '600', marginBottom: 8, fontSize: 12, textTransform: 'uppercase', letterSpacing: 1 }}>Description</Text>
  <TextInput
- style={{ backgroundColor: themeColors.inputBg, color: themeColors.text, borderRadius: 12, padding: 14, marginBottom: 24, borderWidth: 1, borderColor: themeColors.border, minHeight: 120, textAlignVertical: 'top' }}
+  style={{ backgroundColor: themeColors.inputBg, color: themeColors.text, borderRadius: 12, padding: 14, marginBottom: 24, borderWidth: 2, borderColor: isDark ? '#374151' : '#D0D7DE', minHeight: 120, textAlignVertical: 'top' }}
  placeholder="Please provide technical details..."
  placeholderTextColor={themeColors.subtext}
  multiline

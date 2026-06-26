@@ -52,7 +52,7 @@ export function TeacherPayoutsList() {
     };
 
     const renderItem = ({ item }: { item: TeacherPayout }) => (
-        <View className="bg-[#F6F8FA] dark:bg-[#161B22] p-4 rounded-xl mb-3 border border-[#D0D7DE] dark:border-[#21262D]">
+        <View className="bg-[#F6F8FA] dark:bg-navy p-4 rounded-xl mb-3 border border-[#D0D7DE] dark:border-[#21262D]">
             <View className="flex-row justify-between items-center mb-2">
                 <View>
                     <Text className="text-lg font-bold text-gray-900 dark:text-white">{item.teacher_name}</Text>

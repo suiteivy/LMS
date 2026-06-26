@@ -76,7 +76,7 @@ export const StatsCard: React.FC<StatsCardProps> = ({
  gray: {
  bg: 'bg-gray-50 dark:bg-gray-800/50',
  border: 'border-[#D0D7DE] dark:border-[#21262D]',
- icon: 'bg-[#EAEEF2] dark:bg-[#1C2128]',
+ icon: 'bg-[#EAEEF2] dark:bg-navy',
  iconColor: '#6B7280',
  text: 'text-gray-800 dark:text-gray-300',
  value: 'text-gray-900 dark:text-white'
@@ -98,7 +98,7 @@ export const StatsCard: React.FC<StatsCardProps> = ({
  }],
  shadowOpacity: isDark ? 0.4 : 0.05,
  }}
- className={`bg-[#F6F8FA] dark:bg-[#161B22] rounded-xl p-4 border border-[#D0D7DE] dark:border-[#21262D] mb-4 ${className}`}
+ className={`bg-[#F6F8FA] dark:bg-navy rounded-xl p-4 border border-[#D0D7DE] dark:border-[#21262D] mb-4 ${className}`}
  testID={testID}
  >
  <View className="animate-pulse">
@@ -128,7 +128,7 @@ export const StatsCard: React.FC<StatsCardProps> = ({
  }],
  shadowOpacity: isDark ? 0.4 : 0.05,
  }}
- className={`bg-[#F6F8FA] dark:bg-[#161B22] rounded-xl p-4 border ${scheme.border} mb-4 ${scheme.bg}`}
+ className={`bg-[#F6F8FA] dark:bg-navy rounded-xl p-4 border ${scheme.border} mb-4 ${scheme.bg}`}
  >
  <View className="flex-row items-center justify-between">
  <View className="flex-1">

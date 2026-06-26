@@ -81,13 +81,13 @@ export default function ReportsPage() {
     ];
 
     // Theme helpers — avoids repeating ternaries in JSX
-    const bg = isDark ? '#0D1117' : '#FFFFFF';
-    const cardBg = isDark ? '#161B22' : '#F6F8FA';
+    const bg = isDark ? '#161B22' : '#FFFFFF';
+    const cardBg = isDark ? '#0F0B2E' : '#F6F8FA';
     const cardBorder = isDark ? '#21262D' : '#D0D7DE';
     const textPrimary = isDark ? '#FFFFFF' : '#111827';
     const textSecondary = isDark ? '#9CA3AF' : '#6B7280';
     const textMuted = isDark ? '#6B7280' : '#9CA3AF';
-    const backBtnBg = isDark ? '#1C2128' : '#EAEEF2';
+    const backBtnBg = isDark ? '#0F0B2E' : '#EAEEF2';
     const backBtnBorder = isDark ? '#21262D' : '#D0D7DE';
     const progressTrack = isDark ? '#1C2128' : '#EAEEF2';
 

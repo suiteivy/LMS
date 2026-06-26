@@ -1,11 +1,12 @@
 import { useAuth } from "@/contexts/AuthContext";
 import { useTheme } from "@/contexts/ThemeContext";
-import { Edit3, Mail, Save, ShieldCheck, X } from "lucide-react-native";
+import { Edit3, Mail, Save, ShieldCheck, UserCircle, X } from "lucide-react-native";
 import React, { useEffect, useState } from "react";
 import { ActivityIndicator, Image, Platform, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { ScrollView } from "react-native-gesture-handler";
 import Toast from 'react-native-toast-message';
 import { supabase } from '@/libs/supabase';
+import { resolveAvatarUri } from "@/utils/avatar";
 
 export default function MasterAdminProfile() {
     const { profile, refreshProfile, displayId } = useAuth();
@@ -15,6 +16,7 @@ export default function MasterAdminProfile() {
     const [lastName, setLastName] = useState(profile?.last_name || "");
     const [phone, setPhone] = useState(profile?.phone || "");
     const [saving, setSaving] = useState(false);
+    const avatarUri = resolveAvatarUri(profile?.avatar_url);
 
     const tokens = {
         bg: isDark ? "#0F0B2E" : "#ffffff",
@@ -175,10 +177,16 @@ export default function MasterAdminProfile() {
                                 </View>
 
                                 <View style={{ position: "relative", zIndex: 10 }}>
-                                    <Image
-                                        source={{ uri: "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&w=200" }}
-                                        style={{ width: 96, height: 96, borderRadius: 16, borderWidth: 4, borderColor: "#ffffff", backgroundColor: "#d1d5db" }}
-                                    />
+                                    {avatarUri ? (
+                                        <Image
+                                            source={{ uri: avatarUri }}
+                                            style={{ width: 96, height: 96, borderRadius: 16, borderWidth: 4, borderColor: "#ffffff", backgroundColor: "#d1d5db" }}
+                                        />
+                                    ) : (
+                                        <View style={{ width: 96, height: 96, borderRadius: 16, borderWidth: 4, borderColor: "#ffffff", backgroundColor: isDark ? "#111827" : "#F3F4F6", alignItems: 'center', justifyContent: 'center' }}>
+                                            <UserCircle size={52} color={isDark ? '#374151' : '#9CA3AF'} />
+                                        </View>
+                                    )}
                                     <TouchableOpacity
                                         style={{
                                             position: "absolute",

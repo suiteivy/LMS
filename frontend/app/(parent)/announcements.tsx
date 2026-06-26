@@ -61,13 +61,13 @@ export default function StudentAnnouncementsPage() {
 
   if (loading && !refreshing) {
     return (
-      <View className="flex-1 justify-center items-center bg-gray-50 dark:bg-navy">
+      <View className="flex-1 justify-center items-center bg-[#F6F8FA] dark:bg-[#161B22]">
         <ActivityIndicator size="large" color="#FF6900" />
       </View>
     );
   }
   return (
-    <View className="flex-1 bg-gray-50 dark:bg-navy">
+    <View className="flex-1 bg-[#F6F8FA] dark:bg-[#161B22]">
       <UnifiedHeader
         title="Announcements"
         subtitle="Archives"
@@ -96,7 +96,7 @@ export default function StudentAnnouncementsPage() {
           </View>
 
           {announcements.length === 0 ? (
-            <View className="bg-[#FFFFFF] dark:bg-[#0D1117]-surface p-12 rounded-xl items-center border border-[#D0D7DE] dark:border-[#21262D] border-dashed mt-4">
+            <View className="bg-[#FFFFFF] dark:bg-[#161B22] p-12 rounded-xl items-center border border-[#D0D7DE] dark:border-[#21262D] border-dashed mt-4">
               <Bell size={48} color="#E5E7EB" style={{ opacity: 0.3 }} />
               <Text className="text-gray-500 dark:text-gray-400 font-bold text-center mt-6">No announcements recorded</Text>
             </View>
@@ -107,12 +107,12 @@ export default function StudentAnnouncementsPage() {
                 <TouchableOpacity
                   key={item.id}
                   activeOpacity={0.8}
-                  className="bg-[#FFFFFF] dark:bg-[#0D1117]-surface p-8 rounded-xl mb-6 border border-[#D0D7DE] dark:border-[#21262D] shadow-sm"
+                  className="bg-[#FFFFFF] dark:bg-[#161B22] p-8 rounded-xl mb-6 border border-[#D0D7DE] dark:border-[#21262D] shadow-sm"
                 >
                   {/* Tag + Date Row */}
                   <View className="flex-row items-center justify-between mb-6">
                     <View className="flex-row items-center">
-                      <View className={`${config.bg} dark:bg-gray-800 p-3 rounded-xl shadow-sm`}>
+                      <View className={`${config.bg} dark:bg-[#161B22] p-3 rounded-xl shadow-sm`}>
                         {config.icon}
                       </View>
                       <View className="ml-4">
@@ -130,7 +130,7 @@ export default function StudentAnnouncementsPage() {
                   {/* Author (Simplified for notifications) */}
                   <View className="pt-6 border-t border-[#D0D7DE] dark:border-[#21262D] flex-row items-center justify-between">
                     <View className="flex-row items-center">
-                      <View className="bg-gray-50 dark:bg-gray-800 w-10 h-10 rounded-full items-center justify-center border border-[#D0D7DE] dark:border-[#21262D] mr-3">
+                      <View className="bg-gray-50 dark:bg-[#161B22] w-10 h-10 rounded-full items-center justify-center border border-[#D0D7DE] dark:border-[#21262D] mr-3">
                         <MessageSquare size={14} color="#FF6900" />
                       </View>
                       <View>

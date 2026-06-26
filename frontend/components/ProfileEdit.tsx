@@ -194,7 +194,7 @@ export const ProfileEdit = ({ visible, onClose, currentUser, onUpdate }: EditFor
       transparent
       visible={visible}
       onRequestClose={onClose}
-      style={{backgroundColor: isDark ? '#0D1117' : '#FCFCFC'}}
+      style={{backgroundColor: isDark ? '#0F0B2E' : '#FCFCFC'}}
     >
       <Pressable className="flex-1 bg-black/60 justify-end" onPress={onClose}>
         <Pressable
@@ -249,7 +249,7 @@ export const ProfileEdit = ({ visible, onClose, currentUser, onUpdate }: EditFor
                 <TouchableOpacity onPress={pickImage} activeOpacity={0.7} className="relative">
                   <View
                     className="w-20 h-20 rounded-full overflow-hidden items-center justify-center border border-[#D0D7DE] dark:border-[#21262D]"
-                    style={{ backgroundColor: isDark ? '#161B22' : '#F6F8FA' }}
+                    style={{ backgroundColor: isDark ? '#0F0B2E' : '#F6F8FA' }}
                   >
                     {avatarUrl ? (
                       <Image source={{ uri: avatarUrl }} className="w-full h-full" />
@@ -274,7 +274,7 @@ export const ProfileEdit = ({ visible, onClose, currentUser, onUpdate }: EditFor
                 <View>
                   <Text className="text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">First Name</Text>
                   <TextInput
-                    className="bg-[#F6F8FA] dark:bg-[#161B22] border border-[#D0D7DE] dark:border-[#21262D] rounded-xl px-4 py-3 text-gray-900 dark:text-white"
+                    className="bg-[#F6F8FA] dark:bg-navy border border-[#D0D7DE] dark:border-[#21262D] rounded-xl px-4 py-3 text-gray-900 dark:text-white"
                     placeholder="First Name"
                     placeholderTextColor="#9ca3af"
                     value={firstName}
@@ -285,7 +285,7 @@ export const ProfileEdit = ({ visible, onClose, currentUser, onUpdate }: EditFor
                 <View>
                   <Text className="text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">Last Name</Text>
                   <TextInput
-                    className="bg-[#F6F8FA] dark:bg-[#161B22] border border-[#D0D7DE] dark:border-[#21262D] rounded-xl px-4 py-3 text-gray-900 dark:text-white"
+                    className="bg-[#F6F8FA] dark:bg-navy border border-[#D0D7DE] dark:border-[#21262D] rounded-xl px-4 py-3 text-gray-900 dark:text-white"
                     placeholder="Last Name"
                     placeholderTextColor="#9ca3af"
                     value={lastName}
@@ -296,7 +296,7 @@ export const ProfileEdit = ({ visible, onClose, currentUser, onUpdate }: EditFor
                 <View>
                   <Text className="text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">Mobile Number</Text>
                   <TextInput
-                    className="bg-[#F6F8FA] dark:bg-[#161B22] border border-[#D0D7DE] dark:border-[#21262D] rounded-xl px-4 py-3 text-gray-900 dark:text-white"
+                    className="bg-[#F6F8FA] dark:bg-navy border border-[#D0D7DE] dark:border-[#21262D] rounded-xl px-4 py-3 text-gray-900 dark:text-white"
                     placeholder="Mobile Number"
                     placeholderTextColor="#9ca3af"
                     keyboardType="phone-pad"
@@ -307,7 +307,7 @@ export const ProfileEdit = ({ visible, onClose, currentUser, onUpdate }: EditFor
 
                 <View>
                   <Text className="text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">Email (Assigned)</Text>
-                  <View className="bg-[#EAEEF2] dark:bg-[#1C2128] border border-[#D0D7DE] dark:border-[#21262D] rounded-xl px-4 py-3">
+                  <View className="bg-[#EAEEF2] dark:bg-navy border border-[#D0D7DE] dark:border-[#21262D] rounded-xl px-4 py-3">
                     <Text className="text-gray-500 dark:text-gray-400">{email}</Text>
                   </View>
                 </View>
@@ -319,7 +319,7 @@ export const ProfileEdit = ({ visible, onClose, currentUser, onUpdate }: EditFor
                 <View>
                   <Text className="text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">Residence / Address</Text>
                   <TextInput
-                    className="bg-[#F6F8FA] dark:bg-[#161B22] border border-[#D0D7DE] dark:border-[#21262D] rounded-xl px-4 py-3 text-gray-900 dark:text-white"
+                    className="bg-[#F6F8FA] dark:bg-navy border border-[#D0D7DE] dark:border-[#21262D] rounded-xl px-4 py-3 text-gray-900 dark:text-white"
                     placeholder="Enter your address"
                     placeholderTextColor="#9ca3af"
                     value={address}
@@ -337,7 +337,7 @@ export const ProfileEdit = ({ visible, onClose, currentUser, onUpdate }: EditFor
                         activeOpacity={0.7}
                         className={`flex-1 py-3 rounded-xl border items-center ${gender === option
                             ? 'bg-orange-50 dark:bg-orange-950/20 border-[#FF6900]'
-                            : 'bg-[#F6F8FA] dark:bg-[#161B22] border-[#D0D7DE] dark:border-[#21262D]'
+                            : 'bg-[#F6F8FA] dark:bg-navy border-[#D0D7DE] dark:border-[#21262D]'
                           }`}
                       >
                         <Text className={`font-bold capitalize text-xs uppercase tracking-widest ${gender === option ? 'text-[#FF6900]' : 'text-gray-500 dark:text-gray-400'
@@ -351,7 +351,7 @@ export const ProfileEdit = ({ visible, onClose, currentUser, onUpdate }: EditFor
 
                 <View>
                   <Text className="text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">Date of Birth</Text>
-                  <View className="bg-[#F6F8FA] dark:bg-[#161B22] border border-[#D0D7DE] dark:border-[#21262D] rounded-xl px-4 py-3">
+                  <View className="bg-[#F6F8FA] dark:bg-navy border border-[#D0D7DE] dark:border-[#21262D] rounded-xl px-4 py-3">
                     <DatePicker
                       label="Date of Birth"
                       value={dateOfBirth}

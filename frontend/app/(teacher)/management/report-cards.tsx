@@ -136,7 +136,7 @@ const Dropdown = ({
             <TouchableOpacity
                 onPress={() => setOpen((o) => !o)}
                 style={{
-                    backgroundColor: isDark ? "#13103A" : "#ffffff",
+                    backgroundColor: isDark ? "#161B22" : "#ffffff",
                     borderRadius: 16,
                     borderWidth: 1,
                     borderColor: isDark ? "rgba(255,255,255,0.1)" : "#F3F4F6",
@@ -169,7 +169,7 @@ const Dropdown = ({
             {open && items.length > 0 && (
                 <View
                     style={{
-                        backgroundColor: isDark ? "#1A1650" : "#ffffff",
+                        backgroundColor: isDark ? "#161B22" : "#ffffff",
                         borderRadius: 16,
                         borderWidth: 1,
                         borderColor: isDark ? "rgba(255,255,255,0.1)" : "#F3F4F6",
@@ -276,7 +276,7 @@ const ReportCardRow = ({
     return (
         <View
             style={{
-                backgroundColor: isDark ? "#13103A" : "#ffffff",
+                backgroundColor: isDark ? "#161B22" : "#ffffff",
                 borderRadius: 24,
                 borderWidth: 1,
                 borderColor: isDark ? "rgba(255,255,255,0.08)" : "#F3F4F6",
@@ -830,7 +830,7 @@ export default function ReportCardsPage() {
     // ---------------------------------------------------------------------------
 
     return (
-        <View style={{ flex: 1, backgroundColor: isDark ? "#0F0B2E" : "#f9fafb" }}>
+        <View style={{ flex: 1, backgroundColor: isDark ? "#161B22" : "#f9fafb" }}>
             <UnifiedHeader
                 title="Report Cards"
                 subtitle="Management"
@@ -849,7 +849,7 @@ export default function ReportCardsPage() {
                     {/* ------------------------------------------------------- */}
                     <View
                         style={{
-                            backgroundColor: isDark ? "#13103A" : "#ffffff",
+                            backgroundColor: isDark ? "#161B22" : "#ffffff",
                             borderRadius: 24,
                             borderWidth: 1,
                             borderColor: isDark ? "rgba(255,255,255,0.08)" : "#F3F4F6",
@@ -1031,7 +1031,7 @@ export default function ReportCardsPage() {
                         <View
                             style={{
                                 flex: 1,
-                                backgroundColor: isDark ? "#13103A" : "#ffffff",
+                                backgroundColor: isDark ? "#161B22" : "#ffffff",
                                 borderRadius: 20,
                                 borderWidth: 1,
                                 borderColor: isDark ? "rgba(255,255,255,0.08)" : "#F3F4F6",
@@ -1063,7 +1063,7 @@ export default function ReportCardsPage() {
                         <View
                             style={{
                                 flex: 1,
-                                backgroundColor: isDark ? "#13103A" : "#ffffff",
+                                backgroundColor: isDark ? "#161B22" : "#ffffff",
                                 borderRadius: 20,
                                 borderWidth: 1,
                                 borderColor: isDark ? "rgba(255,255,255,0.08)" : "#F3F4F6",
@@ -1095,7 +1095,7 @@ export default function ReportCardsPage() {
                         <View
                             style={{
                                 flex: 1,
-                                backgroundColor: isDark ? "#13103A" : "#ffffff",
+                                backgroundColor: isDark ? "#161B22" : "#ffffff",
                                 borderRadius: 20,
                                 borderWidth: 1,
                                 borderColor: isDark ? "rgba(255,255,255,0.08)" : "#F3F4F6",
@@ -1133,7 +1133,7 @@ export default function ReportCardsPage() {
                         style={{
                             flexDirection: "row",
                             alignItems: "center",
-                            backgroundColor: isDark ? "#13103A" : "#ffffff",
+                            backgroundColor: isDark ? "#161B22" : "#ffffff",
                             borderRadius: 16,
                             borderWidth: 1,
                             borderColor: isDark ? "rgba(255,255,255,0.08)" : "#F3F4F6",
@@ -1236,7 +1236,7 @@ export default function ReportCardsPage() {
                     ) : filteredCards.length === 0 ? (
                         <View
                             style={{
-                                backgroundColor: isDark ? "#13103A" : "#ffffff",
+                                backgroundColor: isDark ? "#161B22" : "#ffffff",
                                 borderRadius: 24,
                                 borderWidth: 1,
                                 borderColor: isDark ? "rgba(255,255,255,0.08)" : "#F3F4F6",

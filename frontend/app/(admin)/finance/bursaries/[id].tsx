@@ -61,7 +61,7 @@ export default function BursaryDetailsScreen() {
 
     if (loading) {
         return (
-            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: isDark ? '#121212' : '#f9fafb' }}>
+            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: isDark ? '#161B22' : '#f9fafb' }}>
                 <ActivityIndicator size="large" color="#FF6B00" />
             </View>
         );
@@ -70,7 +70,7 @@ export default function BursaryDetailsScreen() {
     const isOpen = bursary?.status === 'open';
 
     return (
-        <View style={{ flex: 1, backgroundColor: isDark ? '#121212' : '#f9fafb' }}>
+        <View style={{ flex: 1, backgroundColor: isDark ? '#161B22' : '#f9fafb' }}>
             <UnifiedHeader
                 title="Finance"
                 subtitle="Bursary Details"

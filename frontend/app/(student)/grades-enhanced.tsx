@@ -174,7 +174,7 @@ const ShadowCard = ({
       elevation: 2,
       ...style,
     }}
-    className={`bg-white dark:bg-[#1a1a1a] p-5 rounded-[32px] border border-gray-50 dark:border-gray-800 mb-4 ${className}`}
+    className={`bg-white dark:bg-[#161B22] p-5 rounded-[32px] border border-gray-50 dark:border-gray-800 mb-4 ${className}`}
   >
     {children}
   </View>
@@ -203,7 +203,7 @@ const GPAHero = ({
         shadowRadius: 30,
         elevation: 20,
       }}
-      className="bg-gray-900 dark:bg-[#1a1a1a] p-8 rounded-[48px] mb-8 border border-transparent dark:border-gray-800"
+      className="bg-gray-900 dark:bg-[#161B22] p-8 rounded-[48px] mb-8 border border-transparent dark:border-gray-800"
     >
       <View className="flex-row justify-between items-start mb-2">
         <Text className="text-white/40 dark:text-gray-500 text-[10px] font-bold uppercase tracking-[3px]">
@@ -295,7 +295,7 @@ const TermSelector = ({
       className={`px-4 py-2 rounded-xl border ${
         selectedTermId === null
           ? "bg-[#FF6900] border-[#FF6900]"
-          : "bg-white dark:bg-[#1a1a1a] border-gray-200 dark:border-gray-800"
+          : "bg-white dark:bg-[#161B22] border-gray-200 dark:border-gray-800"
       }`}
     >
       <Text
@@ -313,7 +313,7 @@ const TermSelector = ({
         className={`px-4 py-2 rounded-xl border ${
           selectedTermId === t.id
             ? "bg-[#FF6900] border-[#FF6900]"
-            : "bg-white dark:bg-[#1a1a1a] border-gray-200 dark:border-gray-800"
+            : "bg-white dark:bg-[#161B22] border-gray-200 dark:border-gray-800"
         }`}
       >
         <Text
@@ -860,14 +860,14 @@ export default function GradesEnhanced() {
 
   if (loading) {
     return (
-      <View className="flex-1 justify-center items-center bg-gray-50 dark:bg-navy">
+      <View className="flex-1 justify-center items-center bg-[#F6F8FA] dark:bg-[#161B22]">
         <ActivityIndicator size="large" color="#FF6900" />
       </View>
     );
   }
 
   return (
-    <View className="flex-1 bg-gray-50 dark:bg-navy">
+    <View className="flex-1 bg-[#F6F8FA] dark:bg-[#161B22]">
       <UnifiedHeader
         title="Grades"
         subtitle="Performance"
@@ -938,7 +938,7 @@ export default function GradesEnhanced() {
           {hasAnalytics ? (
             <TouchableOpacity
               onPress={() => router.push("/(student)/analytics" as any)}
-              className="flex-row items-center justify-between bg-white dark:bg-[#1a1a1a] p-4 rounded-2xl border border-gray-100 dark:border-gray-800 mb-6"
+              className="flex-row items-center justify-between bg-white dark:bg-[#161B22] p-4 rounded-2xl border border-gray-100 dark:border-gray-800 mb-6"
               activeOpacity={0.7}
             >
               <View className="flex-row items-center">
@@ -950,7 +950,7 @@ export default function GradesEnhanced() {
                   <Text className="text-gray-400 dark:text-gray-500 text-xs">View grade trends across terms</Text>
                 </View>
               </View>
-              <View className="w-8 h-8 rounded-full bg-gray-50 dark:bg-gray-800 items-center justify-center">
+              <View className="w-8 h-8 rounded-full bg-gray-50 dark:bg-[#161B22] items-center justify-center">
                 <View style={{ transform: [{ rotate: "-90deg" }] }}>
                   <ChevronDown size={16} color="#9ca3af" />
                 </View>
@@ -959,7 +959,7 @@ export default function GradesEnhanced() {
           ) : (
             <View
               style={{
-                backgroundColor: isDark ? '#1a1a1a' : '#fff7ed',
+                backgroundColor: isDark ? '#161B22' : '#fff7ed',
                 borderColor: isDark ? '#374151' : '#fed7aa',
                 borderWidth: 1,
                 borderRadius: 16,
@@ -985,7 +985,7 @@ export default function GradesEnhanced() {
           </View>
 
           {subjectData.length === 0 ? (
-            <View className="bg-white dark:bg-[#1a1a1a] p-20 rounded-[48px] items-center border border-gray-100 dark:border-gray-800 border-dashed mt-4">
+            <View className="bg-white dark:bg-[#161B22] p-20 rounded-[48px] items-center border border-gray-100 dark:border-gray-800 border-dashed mt-4">
               <Star size={48} color="#E5E7EB" style={{ opacity: 0.3 }} />
               <Text className="text-gray-400 dark:text-gray-500 font-bold text-center mt-6">
                 No grades available for this period

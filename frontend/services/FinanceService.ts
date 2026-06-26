@@ -16,16 +16,23 @@ export class FinanceService {
         // Map FinancialTransaction -> Payment
         return response.data.map((tx: any) => {
             const userObj = tx.users;
+            const studentProfile = Array.isArray(userObj?.students)
+                ? userObj.students[0]
+                : userObj?.students;
             const student_name = userObj?.first_name 
                 ? `${userObj.first_name} ${userObj.last_name || ''}`.trim() 
                 : (userObj?.full_name || 'Unknown');
-            const student_id = userObj?.students?.[0]?.id || tx.user_id;
+            const student_id = studentProfile?.id || tx.user_id;
+            const student_display_id =
+                tx.student_display_id ||
+                studentProfile?.id ||
+                tx.user_id;
             
             return {
                 id: tx.id,
                 student_id,
                 student_name,
-                student_display_id: student_id,
+                student_display_id,
                 amount: tx.amount,
                 payment_date: tx.date || tx.created_at,
                 payment_method: tx.method || tx.payment_method,
@@ -51,16 +58,20 @@ export class FinanceService {
         // Map FinancialTransaction -> TeacherPayout
         return response.data.map((tx: any) => {
             const userObj = tx.users;
+            const teacherProfile = Array.isArray(userObj?.teachers)
+                ? userObj.teachers[0]
+                : userObj?.teachers;
             const teacher_name = userObj?.first_name 
                 ? `${userObj.first_name} ${userObj.last_name || ''}`.trim() 
                 : (userObj?.full_name || 'Unknown');
-            const teacher_id = userObj?.teachers?.[0]?.id || tx.user_id;
+            const teacher_id = teacherProfile?.id || tx.user_id;
+            const teacher_display_id = tx.teacher_display_id || teacherProfile?.id || tx.user_id;
 
             return {
                 id: tx.id,
                 teacher_id,
                 teacher_name,
-                teacher_display_id: teacher_id,
+                teacher_display_id,
                 amount: tx.amount,
                 period_start: tx.date, // Approximate
                 period_end: tx.date,

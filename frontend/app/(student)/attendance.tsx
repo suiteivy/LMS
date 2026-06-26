@@ -80,13 +80,13 @@ export default function AttendancePage() {
             case 'present': return { text: 'text-green-600', bg: 'bg-green-50', icon: <CheckCircle size={18} color="#16a34a" /> };
             case 'absent': return { text: 'text-red-600', bg: 'bg-red-50', icon: <XCircle size={18} color="#dc2626" /> };
             case 'late': return { text: 'text-orange-600', bg: 'bg-orange-50', icon: <Clock size={18} color="#ea580c" /> };
-            case 'excused': return { text: 'text-gray-900 dark:text-white', bg: 'bg-gray-100 dark:bg-gray-800', icon: <AlertCircle size={18} color="#4B5563" /> };
+            case 'excused': return { text: 'text-gray-900 dark:text-white', bg: 'bg-gray-100 dark:bg-[#161B22]', icon: <AlertCircle size={18} color="#4B5563" /> };
             default: return { text: 'text-gray-600', bg: 'bg-gray-50', icon: <AlertCircle size={18} color="#4b5563" /> };
         }
     };
 
     return (
-        <View className="flex-1 bg-gray-50 dark:bg-navy">
+        <View className="flex-1 bg-[#F6F8FA] dark:bg-[#161B22]">
             <UnifiedHeader
                 title="Attendance"
                 subtitle="Attendance"
@@ -112,19 +112,19 @@ export default function AttendancePage() {
 
                 {/* Mini Stats Grid */}
                 <View className="flex-row flex-wrap gap-3 mb-10 px-2">
-                    <View className="w-[47%] bg-[#FFFFFF] dark:bg-[#0D1117] p-5 rounded-xl border border-[#D0D7DE] dark:border-[#21262D] shadow-sm items-center">
+                    <View className="w-[47%] bg-[#FFFFFF] dark:bg-[#161B22] p-5 rounded-xl border border-[#D0D7DE] dark:border-[#21262D] shadow-sm items-center">
                         <Text className="text-green-600 text-2xl font-bold">{stats.present}</Text>
                         <Text className="text-gray-400 text-[8px] font-bold uppercase tracking-widest mt-1">Present</Text>
                     </View>
-                    <View className="w-[47%] bg-[#FFFFFF] dark:bg-[#0D1117] p-5 rounded-xl border border-[#D0D7DE] dark:border-[#21262D] shadow-sm items-center">
+                    <View className="w-[47%] bg-[#FFFFFF] dark:bg-[#161B22] p-5 rounded-xl border border-[#D0D7DE] dark:border-[#21262D] shadow-sm items-center">
                         <Text className="text-red-600 text-2xl font-bold">{stats.absent}</Text>
                         <Text className="text-gray-400 text-[8px] font-bold uppercase tracking-widest mt-1">Absent</Text>
                     </View>
-                    <View className="w-[47%] bg-[#FFFFFF] dark:bg-[#0D1117] p-5 rounded-xl border border-[#D0D7DE] dark:border-[#21262D] shadow-sm items-center">
+                    <View className="w-[47%] bg-[#FFFFFF] dark:bg-[#161B22] p-5 rounded-xl border border-[#D0D7DE] dark:border-[#21262D] shadow-sm items-center">
                         <Text className="text-orange-600 text-2xl font-bold">{stats.late}</Text>
                         <Text className="text-gray-400 text-[8px] font-bold uppercase tracking-widest mt-1">Late</Text>
                     </View>
-                    <View className="w-[47%] bg-[#FFFFFF] dark:bg-[#0D1117] p-5 rounded-xl border border-[#D0D7DE] dark:border-[#21262D] shadow-sm items-center">
+                    <View className="w-[47%] bg-[#FFFFFF] dark:bg-[#161B22] p-5 rounded-xl border border-[#D0D7DE] dark:border-[#21262D] shadow-sm items-center">
                         <Text className="text-gray-900 dark:text-white text-2xl font-bold">{stats.excused}</Text>
                         <Text className="text-gray-400 text-[8px] font-bold uppercase tracking-widest mt-1">Excused</Text>
                     </View>
@@ -143,7 +143,7 @@ export default function AttendancePage() {
                 ) : (
                     <ScrollView className="flex-1" showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 200 }}>
                         {attendance.length === 0 ? (
-                            <View className="bg-[#FFFFFF] dark:bg-[#0D1117] p-12 rounded-xl items-center border border-[#D0D7DE] dark:border-[#21262D] border-dashed mt-4">
+                            <View className="bg-[#FFFFFF] dark:bg-[#161B22] p-12 rounded-xl items-center border border-[#D0D7DE] dark:border-[#21262D] border-dashed mt-4">
                                 <Calendar size={48} color="#E5E7EB" />
                                 <Text className="text-gray-400 font-bold text-center mt-6">No records found</Text>
                             </View>
@@ -151,7 +151,7 @@ export default function AttendancePage() {
                             attendance.map((record) => {
                                 const styles = getStatusStyles(record.status);
                                 return (
-                                    <View key={record.id} className="bg-[#FFFFFF] dark:bg-[#0D1117] p-5 rounded-xl border border-[#D0D7DE] dark:border-[#21262D] mb-4 flex-row justify-between items-center shadow-sm">
+                                    <View key={record.id} className="bg-[#FFFFFF] dark:bg-[#161B22] p-5 rounded-xl border border-[#D0D7DE] dark:border-[#21262D] mb-4 flex-row justify-between items-center shadow-sm">
                                         <View className="flex-1">
                                             <Text className="font-bold text-gray-900 dark:text-white text-base tracking-tight mb-1">{record.classes?.name || 'Academic Session'}</Text>
                                             <View className="flex-row items-center">
@@ -163,7 +163,7 @@ export default function AttendancePage() {
                                             <View className={`${styles.bg} px-3 py-1.5 rounded-full mr-3 border border-black/5`}>
                                                 <Text className={`${styles.text} text-[8px] font-black uppercase tracking-widest`}>{record.status}</Text>
                                             </View>
-                                            <View className="w-10 h-10 rounded-xl bg-gray-50 dark:bg-gray-800 items-center justify-center border border-[#D0D7DE] dark:border-[#21262D]">
+                                            <View className="w-10 h-10 rounded-xl bg-gray-50 dark:bg-[#161B22] items-center justify-center border border-[#D0D7DE] dark:border-[#21262D]">
                                                 {styles.icon}
                                             </View>
                                         </View>

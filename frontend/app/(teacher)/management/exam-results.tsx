@@ -107,7 +107,7 @@ export default function ExamResultsPage() {
  );
 
  return (
- <View className="flex-1 bg-gray-50">
+ <View className="flex-1 bg-[#F6F8FA]">
  <UnifiedHeader
  title={exam?.title ||"Exam Results"}
  subtitle={exam ? `Max: ${exam.max_score}` :"Grading"}
@@ -118,7 +118,7 @@ export default function ExamResultsPage() {
  <View className="p-4 md:p-8">
  {/* Actions Row */}
  <View className="flex-row items-center gap-3 mb-6">
- <View className="flex-1 flex-row items-center bg-white px-5 py-3.5 rounded-lg border border-gray-100">
+ <View className="flex-1 flex-row items-center bg-[#F6F8FA] px-5 py-3.5 rounded-lg border border-gray-100">
  <Search size={18} color="#9CA3AF" />
  <TextInput
  className="flex-1 ml-3 text-gray-900 font-bold text-xs uppercase tracking-widest"

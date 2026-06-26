@@ -86,7 +86,7 @@ export default function StudentLibrary() {
     );
 
     return (
-        <View className="flex-1 bg-gray-50 dark:bg-navy">
+        <View className="flex-1 bg-[#F6F8FA] dark:bg-[#161B22]">
             <UnifiedHeader
                 title="Resources"
                 subtitle="Library"
@@ -112,7 +112,7 @@ export default function StudentLibrary() {
             <View className="p-4 md:p-8">
                 {/* Search Header */}
                 <View className="flex-row gap-3 mb-8">
-                    <View className="flex-1 flex-row items-center bg-[#FFFFFF] dark:bg-[#0D1117] px-5 py-3.5 rounded-xl border border-[#D0D7DE] dark:border-[#21262D] shadow-sm">
+                    <View className="flex-1 flex-row items-center bg-[#FFFFFF] dark:bg-[#161B22] px-5 py-3.5 rounded-xl border border-[#D0D7DE] dark:border-[#21262D] shadow-sm">
                         <Search size={18} color="#9CA3AF" />
                         <TextInput
                             placeholder="Find publications..."
@@ -122,7 +122,7 @@ export default function StudentLibrary() {
                             onChangeText={setSearchQuery}
                         />
                     </View>
-                    <TouchableOpacity className="w-14 h-14 bg-[#FFFFFF] dark:bg-[#0D1117] rounded-xl items-center justify-center border border-[#D0D7DE] dark:border-[#21262D] shadow-sm active:bg-gray-50">
+                    <TouchableOpacity className="w-14 h-14 bg-[#FFFFFF] dark:bg-[#161B22] rounded-xl items-center justify-center border border-[#D0D7DE] dark:border-[#21262D] shadow-sm active:bg-gray-50">
                         <Filter size={20} color="#FF6900" />
                     </TouchableOpacity>
                 </View>
@@ -143,7 +143,7 @@ export default function StudentLibrary() {
                                     <Text className="text-gray-500 dark:text-gray-400 font-bold text-[10px] uppercase tracking-[3px]">Active Borrowing</Text>
                                 </View>
                                 {borrowingHistory.filter(b => ['borrowed', 'waiting', 'ready_for_pickup', 'overdue'].includes(b.status)).map((borrow) => (
-                                    <View key={borrow.id} className="bg-[#FFFFFF] dark:bg-[#0D1117] p-5 rounded-xl border border-[#D0D7DE] dark:border-[#21262D] mb-3 flex-row items-center shadow-sm">
+                                    <View key={borrow.id} className="bg-[#FFFFFF] dark:bg-[#161B22] p-5 rounded-xl border border-[#D0D7DE] dark:border-[#21262D] mb-3 flex-row items-center shadow-sm">
                                         <View className="w-12 h-12 rounded-xl bg-orange-50 dark:bg-orange-950/20 items-center justify-center mr-4">
                                             <BookOpen size={20} color="#FF6900" />
                                         </View>
@@ -167,7 +167,7 @@ export default function StudentLibrary() {
                             <Text className="text-gray-500 dark:text-gray-400 font-bold text-[10px] uppercase tracking-[3px]">Digital Catalog</Text>
                         </View>
                         {filteredBooks.length === 0 ? (
-                            <View className="bg-[#FFFFFF] dark:bg-[#0D1117] p-12 rounded-xl items-center border border-[#D0D7DE] dark:border-[#21262D] border-dashed mt-4">
+                            <View className="bg-[#FFFFFF] dark:bg-[#161B22] p-12 rounded-xl items-center border border-[#D0D7DE] dark:border-[#21262D] border-dashed mt-4">
                                 <Search size={48} color="#E5E7EB" style={{ opacity: 0.3 }} />
                                 <Text className="text-gray-500 dark:text-gray-400 font-bold text-center mt-6">No matches found</Text>
                             </View>
@@ -180,9 +180,9 @@ export default function StudentLibrary() {
                                         setSelectedBook(item);
                                         setModalVisible(true);
                                     }}
-                                    className="bg-[#FFFFFF] dark:bg-[#0D1117] p-5 rounded-xl border border-[#D0D7DE] dark:border-[#21262D] mb-4 flex-row items-center shadow-sm active:bg-gray-50 dark:active:bg-gray-900"
+                                    className="bg-[#FFFFFF] dark:bg-[#161B22] p-5 rounded-xl border border-[#D0D7DE] dark:border-[#21262D] mb-4 flex-row items-center shadow-sm active:bg-gray-50 dark:active:bg-gray-900"
                                 >
-                                    <View className={`p-4 rounded-xl mr-4 ${item.available > 0 ? 'bg-orange-50 dark:bg-orange-950/20' : 'bg-gray-50 dark:bg-gray-800'}`}>
+                                    <View className={`p-4 rounded-xl mr-4 ${item.available > 0 ? 'bg-orange-50 dark:bg-orange-950/20' : 'bg-gray-50 dark:bg-[#161B22]'}`}>
                                         <BookOpen size={22} color={item.available > 0 ? "#FF6900" : "#9CA3AF"} />
                                     </View>
                                     <View className="flex-1">
@@ -190,7 +190,7 @@ export default function StudentLibrary() {
                                         <Text className="text-gray-900 dark:text-white font-bold text-base leading-tight" numberOfLines={1}>{item.title}</Text>
                                         <Text className="text-gray-500 dark:text-gray-400 text-xs font-medium">{item.author}</Text>
                                     </View>
-                                    <View className={`px-2 py-0.5 rounded-full ${item.available > 0 ? 'bg-orange-500' : 'bg-gray-100 dark:bg-gray-800'}`}>
+                                    <View className={`px-2 py-0.5 rounded-full ${item.available > 0 ? 'bg-orange-500' : 'bg-gray-100 dark:bg-[#161B22]'}`}>
                                         <Text className={`font-bold text-[8px] uppercase tracking-widest ${item.available > 0 ? 'text-white' : 'text-gray-500 dark:text-gray-400'}`}>
                                             {item.available > 0 ? `${item.available} Left` : 'N/A'}
                                         </Text>
@@ -204,25 +204,25 @@ export default function StudentLibrary() {
 
             <Modal animationType="slide" transparent visible={modalVisible}>
                 <View className="flex-1 bg-black/60 justify-end">
-                    <View className="bg-[#FFFFFF] dark:bg-[#0D1117] rounded-t-[50px] p-8 pb-12 border-t border-[#D0D7DE] dark:border-[#21262D]">
+                    <View className="bg-[#FFFFFF] dark:bg-[#161B22] rounded-t-[50px] p-8 pb-12 border-t border-[#D0D7DE] dark:border-[#21262D]">
                         <View className="flex-row justify-between items-start mb-8">
                             <View className="flex-1 pr-6">
                                 <Text className="text-[#FF6900] font-bold text-[10px] uppercase tracking-[3px] mb-2">{selectedBook?.category}</Text>
                                 <Text className="text-3xl font-bold text-gray-900 dark:text-white tracking-tight leading-tight">{selectedBook?.title}</Text>
                                 <Text className="text-gray-500 dark:text-gray-400 font-bold text-sm mt-2">by {selectedBook?.author}</Text>
                             </View>
-                            <TouchableOpacity onPress={() => setModalVisible(false)} className="w-10 h-10 bg-gray-50 dark:bg-gray-800 rounded-full items-center justify-center">
+                            <TouchableOpacity onPress={() => setModalVisible(false)} className="w-10 h-10 bg-gray-50 dark:bg-[#161B22] rounded-full items-center justify-center">
                                 <X size={20} color="#6B7280" />
                             </TouchableOpacity>
                         </View>
 
                         <View className="flex-row gap-4 mb-10">
-                            <View className="flex-1 bg-gray-50 dark:bg-gray-800 p-6 rounded-xl border border-[#D0D7DE] dark:border-[#21262D] items-center justify-center">
+                            <View className="flex-1 bg-[#F6F8FA] dark:bg-[#161B22] p-6 rounded-xl border border-[#D0D7DE] dark:border-[#21262D] items-center justify-center">
                                 <Clock size={20} color="#FF6900" />
                                 <Text className="text-gray-500 dark:text-gray-400 text-[8px] font-bold uppercase tracking-widest mt-3">Period</Text>
                                 <Text className="text-gray-900 dark:text-white font-bold text-base mt-1">14 Days</Text>
                             </View>
-                            <View className="flex-1 bg-gray-50 dark:bg-gray-800 p-6 rounded-xl border border-[#D0D7DE] dark:border-[#21262D] items-center justify-center">
+                            <View className="flex-1 bg-[#F6F8FA] dark:bg-[#161B22] p-6 rounded-xl border border-[#D0D7DE] dark:border-[#21262D] items-center justify-center">
                                 <CheckCircle2 size={20} color="#FF6900" />
                                 <Text className="text-gray-500 dark:text-gray-400 text-[8px] font-bold uppercase tracking-widest mt-3">Stock</Text>
                                 <Text className="text-gray-900 dark:text-white font-bold text-base mt-1">{selectedBook?.available} Items</Text>

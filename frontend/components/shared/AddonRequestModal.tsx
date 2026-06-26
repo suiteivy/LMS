@@ -74,7 +74,7 @@ export const AddonRequestModal = ({ visible, onClose, currentAddons }: AddonRequ
         return (
             <Modal visible={visible} transparent animationType="fade">
                 <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', alignItems: 'center', padding: 24 }}>
-                    <View style={{ backgroundColor: isDark ? '#13103A' : 'white', borderRadius: 32, padding: 32, alignItems: 'center', width: '100%', maxWidth: 400 }}>
+                    <View style={{ backgroundColor: isDark ? '#0F0B2E' : 'white', borderRadius: 32, padding: 32, alignItems: 'center', width: '100%', maxWidth: 400 }}>
                         <CheckCircle size={64} color="#10B981" />
                         <Text style={{ fontSize: 24, fontWeight: '800', color: isDark ? '#F9FAFB' : '#111827', marginTop: 24, textAlign: 'center' }}>Request Submitted!</Text>
                         <Text style={{ fontSize: 16, color: isDark ? '#9CA3AF' : '#6B7280', textAlign: 'center', marginTop: 12 }}>Our team will review your request and get back to you shortly via email.</Text>
@@ -87,7 +87,7 @@ export const AddonRequestModal = ({ visible, onClose, currentAddons }: AddonRequ
     return (
         <Modal visible={visible} transparent animationType="slide">
             <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' }}>
-                <View style={{ backgroundColor: isDark ? '#13103A' : 'white', borderTopLeftRadius: 32, borderTopRightRadius: 32, padding: 24, minHeight: '60%', boxShadow: [{ offsetX: 0, offsetY: -10, blurRadius: 20, color: 'rgba(0, 0, 0, 0.1)' }], shadowColor: '#000', }}>
+                <View style={{ backgroundColor: isDark ? '#0F0B2E' : 'white', borderTopLeftRadius: 32, borderTopRightRadius: 32, padding: 24, minHeight: '60%', boxShadow: [{ offsetX: 0, offsetY: -10, blurRadius: 20, color: 'rgba(0, 0, 0, 0.1)' }], shadowColor: '#000', }}>
 
                     {/* Header */}
                     <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>

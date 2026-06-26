@@ -286,6 +286,11 @@ exports.startConversation = async (req, res) => {
 exports.listConversations = async (req, res) => {
     try {
         const { userId, institution_id } = req;
+
+        if (!userId) {
+            return res.status(401).json({ error: "Unauthorized" });
+        }
+
         await cleanupExpiredConversations(institution_id);
 
         if (!institution_id) {
@@ -394,10 +399,24 @@ exports.listConversations = async (req, res) => {
             }
 
             const participants = participantsByConversation.get(ownRow.conversation_id) || [];
+            const participantIds = participants.map((p) => p.user_id).filter(Boolean);
+
+            // Defensive guard: never return a conversation unless requester is a participant.
+            if (!participantIds.includes(userId)) {
+                continue;
+            }
+
             const partnerParticipant = participants.find((p) => p.user_id !== userId) || null;
             const partner = partnerParticipant?.user || null;
+            if (!partnerParticipant || !partner) {
+                continue;
+            }
 
             const lastMessageData = lastMessageByConversation.get(ownRow.conversation_id) || null;
+            if (!lastMessageData) {
+                // Hide empty conversations (no messages yet) from inbox list.
+                continue;
+            }
 
             let unreadCount = 0;
             const unreadCandidates = unreadRowsByConversation.get(ownRow.conversation_id) || [];
@@ -419,7 +438,7 @@ exports.listConversations = async (req, res) => {
                 partner,
                 partner_last_read_at: partnerParticipant?.last_read_at || null,
                 partner_last_delivered_at: partnerParticipant?.last_delivered_at || null,
-                last_message: lastMessageData ? normalizeConversationMessageForUser(lastMessageData, userId) : null,
+                last_message: normalizeConversationMessageForUser(lastMessageData, userId),
             });
         }
 
@@ -631,7 +650,6 @@ exports.editMessage = async (req, res) => {
             .update({
                 content: trimmed,
                 edited_at: new Date().toISOString(),
-                updated_at: new Date().toISOString(),
             })
             .eq("id", messageId)
             .select("id, conversation_id, sender_id, content, created_at, edited_at, deleted_for_everyone_at, hidden_for_user_ids, client_request_id")
@@ -671,7 +689,6 @@ exports.deleteMessageForMe = async (req, res) => {
             .from("messages")
             .update({
                 hidden_for_user_ids: hidden,
-                updated_at: new Date().toISOString(),
             })
             .eq("id", messageId);
 
@@ -722,7 +739,6 @@ exports.deleteMessageForEveryone = async (req, res) => {
             .update({
                 content: DELETED_PLACEHOLDER,
                 deleted_for_everyone_at: new Date().toISOString(),
-                updated_at: new Date().toISOString(),
             })
             .eq("id", messageId);
 
@@ -796,7 +812,6 @@ exports.clearConversationForMe = async (req, res) => {
                 .from("messages")
                 .update({
                     hidden_for_user_ids: hidden,
-                    updated_at: new Date().toISOString(),
                 })
                 .eq("id", row.id);
         });

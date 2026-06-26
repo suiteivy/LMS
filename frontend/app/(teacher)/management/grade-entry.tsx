@@ -118,7 +118,7 @@ function letterGradeColor(letter: string): string {
         case "F":
             return "bg-red-100 dark:bg-red-950/30 text-red-700 dark:text-red-400";
         default:
-            return "bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400";
+            return "bg-gray-100 dark:bg-[#161B22] text-gray-500 dark:text-gray-400";
     }
 }
 
@@ -140,7 +140,7 @@ const DropdownSelector: React.FC<DropdownSelectorProps> = ({
                 {label}
             </Text>
             <TouchableOpacity
-                className="bg-white dark:bg-[#1a1a1a] rounded-2xl px-4 py-3.5 border border-gray-100 dark:border-gray-800 flex-row items-center justify-between shadow-sm active:bg-gray-50 dark:active:bg-gray-900"
+                className="bg-white dark:bg-[#161B22] rounded-2xl px-4 py-3.5 border border-gray-100 dark:border-gray-800 flex-row items-center justify-between shadow-sm active:bg-gray-50 dark:active:bg-gray-900"
                 onPress={() => setOpen(!open)}
                 disabled={loading}
             >
@@ -151,7 +151,7 @@ const DropdownSelector: React.FC<DropdownSelectorProps> = ({
             </TouchableOpacity>
 
             {open && (
-                <View className="absolute top-[62px] left-0 right-0 bg-white dark:bg-[#1a1a1a] border border-gray-100 dark:border-gray-800 rounded-2xl shadow-2xl z-30 overflow-hidden max-h-52">
+                <View className="absolute top-[62px] left-0 right-0 bg-white dark:bg-[#161B22] border border-gray-100 dark:border-gray-800 rounded-2xl shadow-2xl z-30 overflow-hidden max-h-52">
                     <ScrollView showsVerticalScrollIndicator={false}>
                         {options.length === 0 ? (
                             <View className="px-4 py-4">
@@ -869,7 +869,7 @@ export default function GradeEntryPage() {
     // ──────────────────────────────────────────────────────────────────────────
 
     return (
-        <View className="flex-1 bg-gray-50 dark:bg-navy">
+        <View className="flex-1 bg-[#F6F8FA] dark:bg-[#161B22]">
             <UnifiedHeader
                 title="Management"
                 subtitle="Grade Entry"
@@ -900,7 +900,7 @@ export default function GradeEntryPage() {
                             <Text className="text-green-100 text-[10px] font-bold uppercase tracking-wider">Finalized</Text>
                             <Text className="text-white text-2xl font-bold mt-1">{existingCount}</Text>
                         </View>
-                        <View className="flex-1 bg-gray-800 dark:bg-gray-700 p-4 rounded-3xl shadow-sm">
+                        <View className="flex-1 bg-gray-800 dark:bg-[#161B22] p-4 rounded-3xl shadow-sm">
                             <Text className="text-gray-300 text-[10px] font-bold uppercase tracking-wider">Pending</Text>
                             <Text className="text-white text-2xl font-bold mt-1">{totalStudents - gradedCount}</Text>
                         </View>
@@ -981,7 +981,7 @@ export default function GradeEntryPage() {
                     {selectedSubjectId && selectedClassId && (
                         <View className="flex-row gap-3 mb-6">
                             <TouchableOpacity
-                                className={`flex-1 bg-white dark:bg-[#1a1a1a] py-3.5 rounded-2xl border border-gray-100 dark:border-gray-800 flex-row items-center justify-center shadow-sm active:bg-gray-50 dark:active:bg-gray-900 ${(syncing || isSelectedTermLocked) ? "opacity-50" : ""}`}
+                                className={`flex-1 bg-white dark:bg-[#161B22] py-3.5 rounded-2xl border border-gray-100 dark:border-gray-800 flex-row items-center justify-center shadow-sm active:bg-gray-50 dark:active:bg-gray-900 ${(syncing || isSelectedTermLocked) ? "opacity-50" : ""}`}
                                 onPress={syncFromAssignments}
                                 disabled={syncing || isSelectedTermLocked}
                             >
@@ -994,7 +994,7 @@ export default function GradeEntryPage() {
                             </TouchableOpacity>
 
                             <TouchableOpacity
-                                className={`flex-1 bg-white dark:bg-[#1a1a1a] py-3.5 rounded-2xl border border-gray-100 dark:border-gray-800 flex-row items-center justify-center shadow-sm active:bg-gray-50 dark:active:bg-gray-900 ${(syncing || isSelectedTermLocked) ? "opacity-50" : ""}`}
+                                className={`flex-1 bg-white dark:bg-[#161B22] py-3.5 rounded-2xl border border-gray-100 dark:border-gray-800 flex-row items-center justify-center shadow-sm active:bg-gray-50 dark:active:bg-gray-900 ${(syncing || isSelectedTermLocked) ? "opacity-50" : ""}`}
                                 onPress={syncFromExams}
                                 disabled={syncing || isSelectedTermLocked}
                             >
@@ -1017,7 +1017,7 @@ export default function GradeEntryPage() {
                     )}
                     {selectedClassId && selectedTermId && selectedAssessmentTypeId && (
                         <TouchableOpacity
-                            className={`bg-white dark:bg-[#1a1a1a] py-3.5 rounded-2xl border border-gray-100 dark:border-gray-800 flex-row items-center justify-center shadow-sm mb-6 active:bg-gray-50 dark:active:bg-gray-900 ${isSelectedTermLocked ? "opacity-50" : ""}`}
+                            className={`bg-white dark:bg-[#161B22] py-3.5 rounded-2xl border border-gray-100 dark:border-gray-800 flex-row items-center justify-center shadow-sm mb-6 active:bg-gray-50 dark:active:bg-gray-900 ${isSelectedTermLocked ? "opacity-50" : ""}`}
                             onPress={openImportModal}
                             disabled={isSelectedTermLocked}
                         >
@@ -1028,7 +1028,7 @@ export default function GradeEntryPage() {
 
                     {/* ── Search ── */}
                     {gradeEntries.length > 0 && (
-                        <View className="flex-row items-center bg-white dark:bg-[#1a1a1a] rounded-2xl px-4 py-3 mb-6 border border-gray-100 dark:border-gray-800 shadow-sm">
+                        <View className="flex-row items-center bg-white dark:bg-[#161B22] rounded-2xl px-4 py-3 mb-6 border border-gray-100 dark:border-gray-800 shadow-sm">
                             <Search size={18} color="#9CA3AF" />
                             <TextInput
                                 className="flex-1 ml-3 text-gray-900 dark:text-gray-100 font-medium"
@@ -1047,7 +1047,7 @@ export default function GradeEntryPage() {
 
                     {/* ── Grade Table ── */}
                     {!selectedClassId || !selectedTermId ? (
-                        <View className="bg-white dark:bg-[#1a1a1a] p-12 rounded-[40px] items-center border border-gray-100 dark:border-gray-800 border-dashed">
+                        <View className="bg-white dark:bg-[#161B22] p-12 rounded-[40px] items-center border border-gray-100 dark:border-gray-800 border-dashed">
                             <Text className="text-gray-400 dark:text-gray-500 font-bold text-center tracking-tight">
                                 Select a subject, class, and term to begin grading.
                             </Text>
@@ -1055,7 +1055,7 @@ export default function GradeEntryPage() {
                     ) : fetchingStudents ? (
                         <ActivityIndicator size="large" color="#FF6900" className="mt-8" />
                     ) : filteredEntries.length === 0 ? (
-                        <View className="bg-white dark:bg-[#1a1a1a] p-12 rounded-[40px] items-center border border-gray-100 dark:border-gray-800 border-dashed">
+                        <View className="bg-white dark:bg-[#161B22] p-12 rounded-[40px] items-center border border-gray-100 dark:border-gray-800 border-dashed">
                             <Text className="text-gray-400 dark:text-gray-500 font-bold text-center tracking-tight">
                                 {searchQuery ? "No students match your search." : "No students found for this class."}
                             </Text>
@@ -1063,7 +1063,7 @@ export default function GradeEntryPage() {
                     ) : (
                         <View>
                             {/* Table Header */}
-                            <View className="flex-row bg-gray-100 dark:bg-gray-800/50 rounded-t-2xl px-4 py-3 items-center">
+                            <View className="flex-row bg-gray-100 dark:bg-[#161B22] rounded-t-2xl px-4 py-3 items-center">
                                 <Text className="w-[120px] text-gray-500 dark:text-gray-400 text-[10px] font-bold uppercase tracking-wider">Student</Text>
                                 <Text className="w-[70px] text-gray-500 dark:text-gray-400 text-[10px] font-bold uppercase tracking-wider text-center">Score</Text>
                                 <Text className="w-[45px] text-gray-500 dark:text-gray-400 text-[10px] font-bold uppercase tracking-wider text-center">%</Text>
@@ -1088,7 +1088,7 @@ export default function GradeEntryPage() {
                                             key={entry.student_id}
                                             className={`flex-row items-center px-4 py-3 border-b border-gray-50 dark:border-gray-900 ${
                                                 index % 2 === 0
-                                                    ? "bg-white dark:bg-[#1a1a1a]"
+                                                    ? "bg-white dark:bg-[#161B22]"
                                                     : "bg-gray-50/50 dark:bg-[#161616]/50"
                                             } ${isUngraded ? "opacity-70" : ""}`}
                                         >
@@ -1114,7 +1114,7 @@ export default function GradeEntryPage() {
                                             {/* Score Input */}
                                             <View className="w-[70px]">
                                                 <TextInput
-                                                    className="bg-gray-100 dark:bg-gray-800 rounded-xl px-2 py-2 text-gray-900 dark:text-white font-bold text-xs text-center border border-gray-200 dark:border-gray-700"
+                                                    className="bg-gray-100 dark:bg-[#161B22] rounded-xl px-2 py-2 text-gray-900 dark:text-white font-bold text-xs text-center border border-gray-200 dark:border-gray-700"
                                                     placeholder={`/${entry.maxScore}`}
                                                     placeholderTextColor="#9CA3AF"
                                                     keyboardType="numeric"
@@ -1146,7 +1146,7 @@ export default function GradeEntryPage() {
 
                                             {/* Feedback Button */}
                                             <TouchableOpacity
-                                                className="w-[36px] h-[36px] rounded-xl items-center justify-center bg-gray-100 dark:bg-gray-800 active:bg-gray-200 dark:active:bg-gray-700"
+                                                className="w-[36px] h-[36px] rounded-xl items-center justify-center bg-gray-100 dark:bg-[#161B22] active:bg-gray-200 dark:active:bg-gray-700"
                                                 onPress={() => openFeedback(entry.student_id)}
                                                 disabled={isSelectedTermLocked}
                                             >
@@ -1165,7 +1165,7 @@ export default function GradeEntryPage() {
 
             {/* ── Sticky Bottom Actions ── */}
             {gradeEntries.length > 0 && (
-                <View className="absolute bottom-0 left-0 right-0 bg-white/90 dark:bg-[#0F0B2E]/95 border-t border-gray-100 dark:border-gray-800 px-4 py-4 pb-8">
+                <View className="absolute bottom-0 left-0 right-0 bg-white/90 dark:bg-[#161B22] border-t border-gray-100 dark:border-gray-800 px-4 py-4 pb-8">
                     <View className="flex-row items-center justify-between mb-3">
                         <View className="flex-row items-center">
                             <Text className="text-gray-500 dark:text-gray-400 font-bold text-[10px] uppercase tracking-wider">
@@ -1180,7 +1180,7 @@ export default function GradeEntryPage() {
 
                     <View className="flex-row gap-3">
                         <TouchableOpacity
-                            className={`flex-1 bg-gray-100 dark:bg-gray-800 py-4 rounded-2xl items-center active:bg-gray-200 dark:active:bg-gray-700 ${(saving || isSelectedTermLocked) ? "opacity-50" : ""}`}
+                            className={`flex-1 bg-gray-100 dark:bg-[#161B22] py-4 rounded-2xl items-center active:bg-gray-200 dark:active:bg-gray-700 ${(saving || isSelectedTermLocked) ? "opacity-50" : ""}`}
                             onPress={() => saveAllGrades("draft")}
                             disabled={saving || isSelectedTermLocked}
                         >
@@ -1212,7 +1212,7 @@ export default function GradeEntryPage() {
             {/* ── CSV Import Modal ── */}
             <Modal visible={importModalVisible} animationType="slide" transparent>
                 <View className="flex-1 bg-black/50 justify-end">
-                    <View className="bg-white dark:bg-[#0F0B2E] rounded-t-[40px] p-8 pb-12 border-t border-gray-100 dark:border-gray-800 max-h-[85%]">
+                    <View className="bg-white dark:bg-[#161B22] rounded-t-[40px] p-8 pb-12 border-t border-gray-100 dark:border-gray-800 max-h-[85%]">
                         <View className="flex-row justify-between items-center mb-4">
                             <Text className="text-xl font-bold text-gray-900 dark:text-white tracking-tight">
                                 {importStep === "pick" && "Import Grades from CSV"}
@@ -1221,7 +1221,7 @@ export default function GradeEntryPage() {
                                 {importStep === "results" && "Import Results"}
                             </Text>
                             <TouchableOpacity
-                                className="w-10 h-10 bg-gray-50 dark:bg-[#1a1a1a] rounded-full items-center justify-center"
+                                className="w-10 h-10 bg-gray-50 dark:bg-[#161B22] rounded-full items-center justify-center"
                                 onPress={() => setImportModalVisible(false)}
                             >
                                 <X size={20} color="#6B7280" />
@@ -1236,7 +1236,7 @@ export default function GradeEntryPage() {
                                     Optionally include max_score.
                                 </Text>
                                 <TouchableOpacity
-                                    className="bg-gray-50 dark:bg-[#1a1a1a] rounded-2xl border-2 border-dashed border-gray-200 dark:border-gray-700 py-12 items-center justify-center active:bg-gray-100 dark:active:bg-gray-800"
+                                    className="bg-gray-50 dark:bg-[#161B22] rounded-2xl border-2 border-dashed border-gray-200 dark:border-gray-700 py-12 items-center justify-center active:bg-gray-100 dark:active:bg-gray-800"
                                     onPress={pickCsvFile}
                                 >
                                     <Upload size={28} color="#FF6900" />
@@ -1323,7 +1323,7 @@ export default function GradeEntryPage() {
                                 {/* Actions */}
                                 <View className="flex-row gap-3 mt-4">
                                     <TouchableOpacity
-                                        className="flex-1 bg-gray-50 dark:bg-[#1a1a1a] py-4 rounded-2xl items-center border border-gray-100 dark:border-gray-800 active:bg-gray-100 dark:active:bg-gray-800"
+                                        className="flex-1 bg-[#F6F8FA] dark:bg-[#161B22] py-4 rounded-2xl items-center border border-gray-100 dark:border-gray-800 active:bg-gray-100 dark:active:bg-gray-800"
                                         onPress={() => setImportStep("pick")}
                                     >
                                         <Text className="text-gray-700 dark:text-gray-200 font-semibold text-sm">Back</Text>
@@ -1404,11 +1404,11 @@ export default function GradeEntryPage() {
             {/* ── Feedback Modal ── */}
             <Modal visible={feedbackModalVisible} animationType="slide" transparent>
                 <View className="flex-1 bg-black/50 justify-end">
-                    <View className="bg-white dark:bg-[#0F0B2E] rounded-t-[40px] p-8 pb-12 border-t border-gray-100 dark:border-gray-800">
+                    <View className="bg-white dark:bg-[#161B22] rounded-t-[40px] p-8 pb-12 border-t border-gray-100 dark:border-gray-800">
                         <View className="flex-row justify-between items-center mb-6">
                             <Text className="text-xl font-bold text-gray-900 dark:text-white tracking-tight">Feedback</Text>
                             <TouchableOpacity
-                                className="w-10 h-10 bg-gray-50 dark:bg-[#1a1a1a] rounded-full items-center justify-center"
+                                className="w-10 h-10 bg-gray-50 dark:bg-[#161B22] rounded-full items-center justify-center"
                                 onPress={() => setFeedbackModalVisible(false)}
                             >
                                 <X size={20} color="#6B7280" />
@@ -1420,7 +1420,7 @@ export default function GradeEntryPage() {
                         </Text>
 
                         <TextInput
-                            className="bg-gray-50 dark:bg-[#1a1a1a] rounded-2xl px-5 py-4 text-gray-900 dark:text-white h-36 border border-gray-100 dark:border-gray-800"
+                            className="bg-gray-50 dark:bg-[#161B22] rounded-2xl px-5 py-4 text-gray-900 dark:text-white h-36 border border-gray-100 dark:border-gray-800"
                             placeholder="Write feedback for this student..."
                             placeholderTextColor="#9CA3AF"
                             multiline

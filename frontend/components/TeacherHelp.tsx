@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { Linking, ScrollView, Text, TextInput, TouchableOpacity, View, Modal, ActivityIndicator, Platform } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { supabase } from '@/libs/supabase';
+import { useTheme } from '@/contexts/ThemeContext';
 
 interface FAQItemProps {
  question: string;
@@ -11,20 +12,30 @@ interface FAQItemProps {
 
 const FAQItem = ({ question, answer }: FAQItemProps) => {
  const [isOpen, setIsOpen] = useState(false);
+ const { isDark } = useTheme();
 
  return (
- <View className="mb-3 bg-white border border-gray-100 rounded-lg overflow-hidden">
+ <View
+ style={{
+ marginBottom: 12,
+ backgroundColor: isDark ? '#161B22' : '#F6F8FA',
+ borderWidth: 1,
+ borderColor: isDark ? '#21262D' : '#D0D7DE',
+ borderRadius: 16,
+ overflow: 'hidden',
+ }}
+ >
  <TouchableOpacity
  onPress={() => setIsOpen(!isOpen)}
  className="flex-row items-center justify-between p-4"
  activeOpacity={0.7}
  >
- <Text className="flex-1 text-gray-800 font-semibold text-base">{question}</Text>
+ <Text style={{ flex: 1, color: isDark ? '#f3f4f6' : '#1f2937', fontWeight: '600', fontSize: 15 }}>{question}</Text>
  {isOpen ? <ChevronUp size={20} color="#0d9488" /> : <ChevronDown size={20} color="#9ca3af" />}
  </TouchableOpacity>
  {isOpen && (
- <View className="px-4 pb-4 border-t border-gray-50 pt-3">
- <Text className="text-gray-600 leading-6">{answer}</Text>
+ <View style={{ paddingHorizontal: 16, paddingBottom: 16, paddingTop: 12, borderTopWidth: 1, borderTopColor: isDark ? '#21262D' : '#D0D7DE' }}>
+ <Text style={{ color: isDark ? '#9ca3af' : '#6b7280', lineHeight: 24 }}>{answer}</Text>
  </View>
  )}
  </View>
@@ -32,6 +43,7 @@ const FAQItem = ({ question, answer }: FAQItemProps) => {
 };
 
 export default function TeacherHelp() {
+ const { isDark } = useTheme();
  const [selectedTab, setSelectedTab] = useState<'ticket' | 'email' | null>(null);
  const [ticketSubject, setTicketSubject] = useState('');
  const [ticketDescription, setTicketDescription] = useState('');
@@ -88,7 +100,7 @@ export default function TeacherHelp() {
 
  return (
  <>
- <ScrollView className="flex-1 bg-gray-50">
+ <ScrollView className="flex-1" style={{ backgroundColor: isDark ? '#161B22' : '#FFFFFF' }}>
  <View className="p-4 md:p-8 max-w-2xl mx-auto w-full">
 
  {/* Header Section */}
@@ -160,7 +172,7 @@ export default function TeacherHelp() {
  {/* Modal */}
  <Modal animationType="fade" transparent visible={!!selectedTab} onRequestClose={() => setSelectedTab(null)}>
  <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.6)', paddingHorizontal: 16 }}>
- <View className="bg-white w-full max-w-lg rounded-xl overflow-hidden border border-gray-200">
+ <View style={{ backgroundColor: isDark ? '#161B22' : '#F6F8FA', borderColor: isDark ? '#21262D' : '#D0D7DE' }} className="w-full max-w-lg rounded-xl overflow-hidden border">
  {/* Modal Header */}
  <View className="flex-row justify-between items-center p-6 border-b border-gray-100">
  <Text className="text-xl font-bold text-gray-900">
@@ -176,18 +188,20 @@ export default function TeacherHelp() {
  {selectedTab === 'ticket' ? (
  <View className="w-full items-start">
  <Text className="text-gray-900 font-semibold mb-2 text-sm uppercase tracking-wider">Subject</Text>
- <TextInput
- className="bg-gray-50 text-gray-900 rounded-xl p-4 mb-4 border border-gray-200 w-full"
- placeholder="Brief summary of the issue"
- placeholderTextColor="#9ca3af"
+  <TextInput
+  className="rounded-xl p-4 mb-4 border-2 w-full"
+  style={{ backgroundColor: isDark ? '#0F141C' : '#FFFFFF', borderColor: isDark ? '#374151' : '#D0D7DE', color: isDark ? '#F9FAFB' : '#111827' }}
+  placeholder="Brief summary of the issue"
+  placeholderTextColor="#9ca3af"
  value={ticketSubject}
  onChangeText={setTicketSubject}
  />
 
  <Text className="text-gray-900 font-semibold mb-2 text-sm uppercase tracking-wider">Description</Text>
- <TextInput
- className="bg-gray-50 text-gray-900 rounded-xl p-4 mb-6 border border-gray-200 w-full min-h-[120px]"
- placeholder="Please describe your issue in detail..."
+  <TextInput
+  className="rounded-xl p-4 mb-6 border-2 w-full min-h-[120px]"
+  style={{ backgroundColor: isDark ? '#0F141C' : '#FFFFFF', borderColor: isDark ? '#374151' : '#D0D7DE', color: isDark ? '#F9FAFB' : '#111827' }}
+  placeholder="Please describe your issue in detail..."
  placeholderTextColor="#9ca3af"
  multiline
  numberOfLines={5}

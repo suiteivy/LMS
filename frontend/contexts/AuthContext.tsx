@@ -242,7 +242,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       try { await AsyncStorage.clear(); } catch { /* non-critical */ }
 
       if (!silent && isDemoRef.current) {
-        Toast.show({ type: 'info', text1: 'Session ended', text2: 'Demo session ended.', position: 'bottom' });
+        Toast.show({ type: 'info', text1: 'Session ended', text2: 'Demo session ended.', position: 'top' });
       }
     } finally {
       // Delay resetting the flag to allow events to settle
@@ -367,7 +367,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         .eq('id', userId)
         .single()
       const result = data as any
-      console.log('[loadUserProfile] data:', result?.role, result?.institution_id, 'error:', error?.message)
       if (error) {
         console.error('[AuthContext] Profile load error:', error);
         // If profile doesn't exist but user does, it might be a newly created user without a record yet
@@ -621,17 +620,17 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           const reason = (rawReason as LogoutReason) || LogoutReason.UNKNOWN;
           const msg = LOGOUT_MESSAGES[reason] ?? LOGOUT_MESSAGES[LogoutReason.UNKNOWN];
           if (!silent) {
-            Toast.show({
-              type: reason === LogoutReason.INSTITUTION_SUSPENDED ? 'error' : 'info',
-              text1: msg.title,
-              text2: msg.body,
-              position: 'bottom',
-            });
-          }
+              Toast.show({
+                type: reason === LogoutReason.INSTITUTION_SUSPENDED ? 'error' : 'info',
+                text1: msg.title,
+                text2: msg.body,
+                position: 'top',
+              });
+            }
           AsyncStorage.removeItem('logout_reason').catch(() => {});
         }).catch(() => {
           if (!silent) {
-            Toast.show({ type: 'info', text1: 'Logged Out', text2: 'You have been logged out.', position: 'bottom' });
+            Toast.show({ type: 'info', text1: 'Logged Out', text2: 'You have been logged out.', position: 'top' });
           }
         });
       }

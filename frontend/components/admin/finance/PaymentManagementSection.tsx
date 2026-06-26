@@ -16,6 +16,7 @@ import {
   TextInput,
   TouchableOpacity,
   View,
+  Linking,
 } from "react-native";
 import { FinanceService } from "@/services/FinanceService";
 import { Check, X, ExternalLink, Clock } from "lucide-react-native";
@@ -232,10 +233,7 @@ export const PaymentManagementSection: React.FC<
   const selectedPaymentLabel = paymentMethods.find(m => m.value === formData.payment_method)?.label ?? 'Select method…';
 
   const renderPaymentItem = ({ item }: { item: Payment }) => (
-    <View
-      className="bg-[#F6F8FA] dark:bg-[#161B22] rounded-lg p-4 mb-3 border border-[#D0D7DE] dark:border-[#21262D]"
-      style={{ backgroundColor: isDark ? "#1a1a1a" : "#FFFFFF", borderColor: isDark ? "#333" : "#D0E8E6" }}
-    >
+    <View className="bg-[#F6F8FA] dark:bg-[#161B22] rounded-lg p-4 mb-3 border border-[#D0D7DE] dark:border-[#21262D]">
       <View className="flex-row justify-between items-start mb-2">
         <View>
           <Text className="text-lg font-semibold text-black" style={{ color: isDark ? "#fff" : "#2C3E50" }}>
@@ -289,7 +287,7 @@ export const PaymentManagementSection: React.FC<
         )}
 
         {item.notes && (
-          <View className="mt-2 p-2 bg-gray-50 dark:bg-gray-800/50 rounded">
+          <View className="mt-2 p-2 bg-gray-50 dark:bg-[#0F141C] rounded border border-[#D0D7DE] dark:border-[#21262D]">
             <Text className="text-sm text-gray-700 dark:text-gray-300">{item.notes}</Text>
           </View>
         )}
@@ -298,7 +296,7 @@ export const PaymentManagementSection: React.FC<
   );
 
   return (
-    <View className="flex-1 p-4 bg-[#FFFFFF] dark:bg-[#0D1117]">
+    <View className="flex-1 p-4 bg-[#FFFFFF] dark:bg-[#161B22]">
       <View className="flex-row justify-between items-center mb-6">
         <View>
           <Text className="text-2xl font-bold text-gray-800 dark:text-white">Finance</Text>
@@ -313,7 +311,7 @@ export const PaymentManagementSection: React.FC<
       </View>
 
       {/* Tab Switcher */}
-      <View className="flex-row bg-[#EAEEF2] dark:bg-[#1C2128] p-1 rounded-lg mb-6">
+      <View className="flex-row bg-[#EAEEF2] dark:bg-[#0F141C] p-1 rounded-lg mb-6 border border-[#D0D7DE] dark:border-[#21262D]">
         <TouchableOpacity
           onPress={() => setViewMode('list')}
           className={`flex-1 py-3 rounded-xl items-center justify-center ${viewMode === 'list' ? 'bg-white dark:bg-gray-700 ' : ''}`}
@@ -338,7 +336,7 @@ export const PaymentManagementSection: React.FC<
       {viewMode === 'list' ? (
         <>
           {/* Search Bar */}
-          <View className="flex-row items-center bg-[#EAEEF2] dark:bg-[#1C2128] rounded-xl px-4 py-3 mb-6">
+          <View className="flex-row items-center bg-[#EAEEF2] dark:bg-[#0F141C] rounded-xl px-4 py-3 mb-6 border border-[#D0D7DE] dark:border-[#21262D]">
             <Ionicons name="search" size={20} color={isDark ? "#9CA3AF" : "#6B7280"} />
             <TextInput
               className="flex-1 ml-2 text-gray-900 dark:text-white font-medium"
@@ -429,11 +427,23 @@ export const PaymentManagementSection: React.FC<
                   <TouchableOpacity
                     onPress={() => {
                       Alert.alert("Receipt Document", "Review payment receipt carefully before approval.", [
-                        { text: "Open URL", onPress: () => { /* Linking.openURL(item.proof_url) */ } },
+                        { text: "Open URL", onPress: async () => {
+                          if (!item.proof_url) return;
+                          try {
+                            const supported = await Linking.canOpenURL(item.proof_url);
+                            if (supported) {
+                              await Linking.openURL(item.proof_url);
+                            } else {
+                              Toast.show({ type: 'error', text1: 'Error', text2: 'Cannot open receipt URL' });
+                            }
+                          } catch {
+                            Toast.show({ type: 'error', text1: 'Error', text2: 'Failed to open receipt URL' });
+                          }
+                        } },
                         { text: "Close", style: "cancel" }
                       ]);
                     }}
-                    className="flex-row items-center justify-center bg-[#EAEEF2] dark:bg-[#1C2128] p-4 rounded-lg mb-6 border border-[#D0D7DE] dark:border-[#21262D]"
+                    className="flex-row items-center justify-center bg-[#EAEEF2] dark:bg-[#0F141C] p-4 rounded-lg mb-6 border border-[#D0D7DE] dark:border-[#21262D]"
                   >
                     <ExternalLink size={16} color={isDark ? "#9CA3AF" : "#4B5563"} />
                     <Text className="ml-2 text-gray-700 dark:text-gray-300 font-bold text-xs uppercase tracking-widest">View Attachment</Text>
@@ -470,7 +480,7 @@ export const PaymentManagementSection: React.FC<
         animationType="slide"
         presentationStyle="pageSheet"
       >
-        <View className="flex-1 bg-[#FFFFFF] dark:bg-[#0D1117]">
+        <View className="flex-1 bg-[#FFFFFF] dark:bg-[#161B22]">
           <View className="flex-row justify-between items-center p-4 border-b border-[#D0D7DE] dark:border-[#21262D]">
             <TouchableOpacity onPress={() => { setShowForm(false); resetForm(); }}>
               <Text className="text-blue-600 dark:text-blue-400 text-lg">Cancel</Text>
@@ -527,7 +537,7 @@ export const PaymentManagementSection: React.FC<
                       flexDirection: 'row', alignItems: 'center',
                       borderWidth: 1, borderColor: isDark ? '#374151' : '#d1d5db',
                       borderRadius: 12, paddingHorizontal: 12, paddingVertical: 3,
-                      backgroundColor: isDark ? '#1a1a1a' : '#ffffff',
+                      backgroundColor: isDark ? '#0F141C' : '#ffffff',
                     }}>
                       <Ionicons name="search" size={18} color={isDark ? '#9CA3AF' : '#6B7280'} />
                       <TextInput
@@ -552,7 +562,7 @@ export const PaymentManagementSection: React.FC<
                         marginTop: 4, borderWidth: 1,
                         borderColor: isDark ? '#374151' : '#e5e7eb',
                         borderRadius: 12, overflow: 'hidden',
-                        backgroundColor: isDark ? '#161B22' : '#ffffff',
+                        backgroundColor: isDark ? '#0F141C' : '#ffffff',
                         maxHeight: 200,
                       }}>
                         {filteredStudents.length === 0 ? (
@@ -636,7 +646,7 @@ export const PaymentManagementSection: React.FC<
                     borderWidth: 1,
                     borderColor: isDark ? '#374151' : '#D1D5DB',
                     borderRadius: 12,
-                    backgroundColor: isDark ? '#161B22' : '#F6F8FA',
+                    backgroundColor: isDark ? '#0F141C' : '#F6F8FA',
                     paddingHorizontal: 12,
                     height: 50,
                   }}
@@ -726,7 +736,7 @@ export const PaymentManagementSection: React.FC<
                   }
                   placeholder="Transaction reference (optional)"
                   placeholderTextColor={isDark ? "#6B7280" : "#9CA3AF"}
-                  className="border border-gray-300 dark:border-gray-700 rounded-lg px-3 py-3 text-base text-gray-900 dark:text-white bg-[#F6F8FA] dark:bg-[#161B22]"
+                  className="border border-gray-300 dark:border-gray-700 rounded-lg px-3 py-3 text-base text-gray-900 dark:text-white bg-[#F6F8FA] dark:bg-[#0F141C]"
                 />
               </View>
 
@@ -744,7 +754,7 @@ export const PaymentManagementSection: React.FC<
                   placeholderTextColor={isDark ? "#6B7280" : "#9CA3AF"}
                   multiline
                   numberOfLines={3}
-                  className="border border-gray-300 dark:border-gray-700 rounded-lg px-3 py-3 text-base text-gray-900 dark:text-white bg-[#F6F8FA] dark:bg-[#161B22]"
+                  className="border border-gray-300 dark:border-gray-700 rounded-lg px-3 py-3 text-base text-gray-900 dark:text-white bg-[#F6F8FA] dark:bg-[#0F141C]"
                 />
               </View>
             </View>

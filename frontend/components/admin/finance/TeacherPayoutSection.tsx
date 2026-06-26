@@ -161,7 +161,7 @@ const TeacherPayoutSection: React.FC<TeacherPayoutSectionProps> = ({
   const renderPayoutItem = ({ item }: { item: TeacherPayout }) => (
     <TouchableOpacity
       onPress={() => handlePayoutAction(item)}
-      className="bg-[#FFFFFF] dark:bg-[#0D1117] rounded-lg p-4 mb-3 border border-[#D0D7DE] dark:border-[#21262D]"
+      className="bg-[#FFFFFF] dark:bg-navy rounded-lg p-4 mb-3 border border-[#D0D7DE] dark:border-[#21262D]"
       style={{
         boxShadow: [{ offsetX: 0, offsetY: 2, blurRadius: 3, color: 'rgba(0, 0, 0, 0.1)' }],
         shadowColor: '#000',
@@ -244,7 +244,7 @@ const TeacherPayoutSection: React.FC<TeacherPayoutSectionProps> = ({
   const totalPaid = calculateTotalPaid();
 
   return (
-    <View className="flex-1 bg-[#FFFFFF] dark:bg-[#0D1117]">
+    <View className="flex-1 bg-[#FFFFFF] dark:bg-navy">
       <Text className="text-2xl font-bold text-gray-800 dark:text-white mb-2 ml-4 mt-2">Teachers Payouts</Text>
       <View className="p-4">
         {/* Summary Cards */}
@@ -338,7 +338,7 @@ const TeacherPayoutSection: React.FC<TeacherPayoutSectionProps> = ({
         animationType="slide"
         presentationStyle="pageSheet"
       >
-        <View className="flex-1 bg-[#FFFFFF] dark:bg-[#0D1117]">
+        <View className="flex-1 bg-[#FFFFFF] dark:bg-navy">
           <View className="flex-row justify-between items-center p-4 border-b border-gray-200 dark:border-gray-800">
             <TouchableOpacity onPress={() => setShowDetails(false)}>
               <Text className="text-blue-600 dark:text-blue-400 text-lg font-medium">Close</Text>
@@ -349,7 +349,7 @@ const TeacherPayoutSection: React.FC<TeacherPayoutSectionProps> = ({
 
           {selectedPayout && (
             <ScrollView className="flex-1 p-4 ">
-              <View className="bg-[#FFFFFF] dark:bg-[#0D1117] rounded-lg border border-gray-200 dark:border-gray-800 p-4 mb-4">
+              <View className="bg-[#FFFFFF] dark:bg-navy rounded-lg border border-gray-200 dark:border-gray-800 p-4 mb-4">
                 <Text className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
                   {selectedPayout.teacher_name}
                 </Text>

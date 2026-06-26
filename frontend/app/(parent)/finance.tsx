@@ -155,14 +155,14 @@ export default function ParentFinancePage() {
 
   if (loading && !refreshing) {
     return (
-      <View className="flex-1 justify-center items-center bg-gray-50 dark:bg-navy">
+      <View className="flex-1 justify-center items-center bg-[#F6F8FA] dark:bg-[#161B22]">
         <ActivityIndicator size="large" color="#FF6900" />
       </View>
     );
   }
 
   return (
-    <View className="flex-1 bg-gray-50 dark:bg-navy">
+    <View className="flex-1 bg-[#F6F8FA] dark:bg-[#161B22]">
       <UnifiedHeader
         title="Finance"
         subtitle={selectedName === "Student" ? "Student Financials" : `${selectedName}'s Financials`}
@@ -174,7 +174,7 @@ export default function ParentFinancePage() {
         feature="finance"
         fallback={
           <View className="flex-1 items-center justify-center px-8">
-            <View className="bg-white dark:bg-navy-surface rounded-3xl border border-gray-100 dark:border-gray-800 p-6 w-full max-w-xl">
+            <View className="bg-white dark:bg-[#161B22] rounded-3xl border border-gray-100 dark:border-gray-800 p-6 w-full max-w-xl">
               <Text className="text-gray-900 dark:text-white text-lg font-bold mb-2">Finance Locked</Text>
               <Text className="text-gray-500 dark:text-gray-400 text-sm">
                 Finance access is not enabled for your institution. Contact your school administrator to enable it.
@@ -205,7 +205,7 @@ export default function ParentFinancePage() {
                         className={`mr-3 px-5 py-2.5 rounded-2xl border ${
                           active
                             ? "bg-[#FF6900] border-[#FF6900]"
-                            : "bg-white dark:bg-navy-surface border-gray-100 dark:border-gray-800"
+                            : "bg-white dark:bg-[#161B22] border-gray-100 dark:border-gray-800"
                         }`}
                       >
                         <Text
@@ -221,7 +221,7 @@ export default function ParentFinancePage() {
             )}
 
             {linkedStudents.length === 0 ? (
-              <View className="bg-white dark:bg-navy-surface p-8 rounded-3xl border border-dashed border-gray-200 dark:border-gray-700 items-center">
+              <View className="bg-white dark:bg-[#161B22] p-8 rounded-3xl border border-dashed border-gray-200 dark:border-gray-700 items-center">
                 <Text className="text-gray-500 dark:text-gray-400 text-sm font-medium text-center">
                   No students are linked to this parent account.
                 </Text>
@@ -229,7 +229,7 @@ export default function ParentFinancePage() {
             ) : (
               <>
                 <View className="px-2 mb-4">
-                  <View className="self-start bg-white dark:bg-navy-surface border border-gray-100 dark:border-gray-800 rounded-full px-3 py-1.5">
+                  <View className="self-start bg-white dark:bg-[#161B22] border border-gray-100 dark:border-gray-800 rounded-full px-3 py-1.5">
                     <Text className="text-[10px] font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400">
                       Viewing: <Text className="text-gray-900 dark:text-white">{selectedName}</Text> · {selectedClassLabel}
                     </Text>
@@ -289,14 +289,14 @@ export default function ParentFinancePage() {
                 <View className="mb-6">
                   <Text className="text-gray-900 dark:text-white font-bold text-lg px-1 mb-3">Current Fee Structures</Text>
                   {(finance?.fee_structures || []).length === 0 ? (
-                    <View className="bg-white dark:bg-navy-surface rounded-3xl border border-gray-100 dark:border-gray-800 p-5">
+                    <View className="bg-white dark:bg-[#161B22] rounded-3xl border border-gray-100 dark:border-gray-800 p-5">
                       <Text className="text-gray-500 dark:text-gray-400 text-sm">No fee structures for the active period.</Text>
                     </View>
                   ) : (
                     finance?.fee_structures?.map((fee) => (
                       <View
                         key={fee.id}
-                        className="bg-white dark:bg-navy-surface rounded-3xl border border-gray-100 dark:border-gray-800 p-5 mb-3"
+                        className="bg-white dark:bg-[#161B22] rounded-3xl border border-gray-100 dark:border-gray-800 p-5 mb-3"
                       >
                         <View className="flex-row justify-between items-start">
                           <View className="flex-1 mr-3">
@@ -315,14 +315,14 @@ export default function ParentFinancePage() {
                 <View>
                   <Text className="text-gray-900 dark:text-white font-bold text-lg px-1 mb-3">Recent Transactions</Text>
                   {(finance?.transactions || []).length === 0 ? (
-                    <View className="bg-white dark:bg-navy-surface rounded-3xl border border-gray-100 dark:border-gray-800 p-5">
+                    <View className="bg-white dark:bg-[#161B22] rounded-3xl border border-gray-100 dark:border-gray-800 p-5">
                       <Text className="text-gray-500 dark:text-gray-400 text-sm">No transactions found for this student.</Text>
                     </View>
                   ) : (
                     finance?.transactions?.map((tx) => (
                       <View
                         key={tx.id}
-                        className="bg-white dark:bg-navy-surface rounded-3xl border border-gray-100 dark:border-gray-800 p-5 mb-3 flex-row items-center"
+                        className="bg-white dark:bg-[#161B22] rounded-3xl border border-gray-100 dark:border-gray-800 p-5 mb-3 flex-row items-center"
                       >
                         <View className="w-10 h-10 rounded-2xl items-center justify-center bg-emerald-50 dark:bg-emerald-900/20 mr-3">
                           <ArrowDownLeft size={18} color="#10B981" />

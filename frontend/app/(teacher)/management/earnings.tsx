@@ -92,7 +92,7 @@ export default function EarningsPage() {
     const pendingAmount = payments.filter(p => p.status === "pending").reduce((acc, p) => acc + p.amount, 0);
 
     return (
-        <View className="flex-1 bg-[#FFFFFF] dark:bg-[#0D1117]">
+        <View className="flex-1 bg-[#FFFFFF] dark:bg-[#161B22]">
             <UnifiedHeader
                 title="Management"
                 subtitle="Earnings & Payouts"
@@ -120,7 +120,7 @@ export default function EarningsPage() {
                     ) : (
                         <>
                             {/* Wallet Card */}
-                            <View className="bg-gray-900 dark:bg-[#1a1a1a] p-8 rounded-[40px] mb-8 shadow-2xl relative overflow-hidden border border-transparent dark:border-gray-800">
+                            <View className="bg-gray-900 dark:bg-[#161B22] p-8 rounded-[40px] mb-8 shadow-2xl relative overflow-hidden border border-transparent dark:border-gray-800">
                                 <View className="absolute -right-10 -top-10 bg-white/5 w-40 h-40 rounded-full" />
                                 <View className="flex-row justify-between items-start mb-10">
                                     <View>
@@ -158,7 +158,7 @@ export default function EarningsPage() {
                                     <Text className="text-gray-400 dark:text-gray-500 text-[10px] font-bold uppercase tracking-widest">Payouts</Text>
                                 </View>
                                 <View className="flex-1 bg-[#F6F8FA] dark:bg-[#161B22] p-5 rounded-[40px] border border-[#D0D7DE] dark:border-[#21262D] relative overflow-hidden">
-                                    <View className="absolute -right-4 -bottom-4 bg-gray-50/50 dark:bg-gray-800/20 w-16 h-16 rounded-full" />
+                                    <View className="absolute -right-4 -bottom-4 bg-gray-50/50 dark:bg-[#161B22] w-16 h-16 rounded-full" />
                                     <Calendar size={20} color="#111827" />
                                     <Text className="text-gray-900 dark:text-white text-2xl font-bold mt-6">{payments.filter(p => p.status === 'completed').length}</Text>
                                     <Text className="text-gray-400 dark:text-gray-500 text-[10px] font-bold uppercase tracking-widest">Verified</Text>

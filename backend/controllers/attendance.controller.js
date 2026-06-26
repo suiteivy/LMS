@@ -75,6 +75,7 @@ exports.getStudentAttendance = async (req, res) => {
             const record = attendance?.find(a => a.student_id === s.id);
             return {
                 student_id: s.id,
+                student_display_id: s.id,
                 name: s.users.full_name,
                 first_name: s.users.first_name,
                 last_name: s.users.last_name,

@@ -170,14 +170,14 @@ export default function ActiveSessions() {
     <ScrollView
       className="flex-1"
       showsVerticalScrollIndicator={false}
-      style={{ backgroundColor: isDark ? '#0D1117' : '#fcfcfc' }}
+      style={{ backgroundColor: isDark ? '#161B22' : '#FFFFFF' }}
       refreshControl={
         <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor="#FF6900" />
       }
     >
-      <View className="mb-6 flex-row justify-between items-center dark:bg-[#0D1117] bg-[#fcfcfc]">
+      <View className="mb-6 flex-row justify-between items-center dark:bg-[#161B22] bg-[#FFFFFF]">
         <View className="flex-row items-center">
-          <View className="bg-orange-500 w-1.5 h-6 rounded-full mr-4 shadow-sm dark:bg-[#0D1117]" />
+          <View className="bg-orange-500 w-1.5 h-6 rounded-full mr-4 shadow-sm dark:bg-navy" />
           <Text className="text-gray-900 dark:text-white font-black text-xl tracking-tight uppercase">
             Active Sessionss
           </Text>
@@ -217,7 +217,7 @@ export default function ActiveSessions() {
             className={`p-5 rounded-3xl border mb-4 ${
               item.is_current 
                 ? 'bg-orange-50/20 dark:bg-orange-950/5 border-orange-200/50 dark:border-orange-900/20' 
-                : 'bg-white dark:bg-[#1a1a1a] border-gray-100 dark:border-gray-800'
+                : 'bg-[#F6F8FA] dark:bg-[#161B22] border-[#D0D7DE] dark:border-[#21262D]'
             }`}
           >
             <View className="flex-row items-start justify-between">

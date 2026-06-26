@@ -52,14 +52,14 @@ export default function ReportsScreen() {
 
     if (loading && !refreshing) {
         return (
-            <View className="flex-1 justify-center items-center bg-[#FFFFFF] dark:bg-[#0D1117]">
+            <View className="flex-1 justify-center items-center bg-[#FFFFFF] dark:bg-[#161B22]">
                 <ActivityIndicator size="large" color="#FF6900" />
             </View>
         );
     }
 
     return (
-        <View className="flex-1 bg-[#FFFFFF] dark:bg-[#0D1117]">
+        <View className="flex-1 bg-[#FFFFFF] dark:bg-[#161B22]">
             <UnifiedHeader
                 title="Academic Reports"
                 subtitle={resolvedName || "Student Progress"}
@@ -75,7 +75,7 @@ export default function ReportsScreen() {
                 }
             >
                 <View className="mb-3">
-                    <View className="self-start bg-white dark:bg-navy-surface border border-gray-100 dark:border-gray-800 rounded-full px-3 py-1.5">
+                    <View className="self-start bg-white dark:bg-[#161B22] border border-gray-100 dark:border-gray-800 rounded-full px-3 py-1.5">
                         <Text className="text-[10px] font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400">
                             Viewing: <Text className="text-gray-900 dark:text-white">{resolvedName || 'Student'}</Text> · {classLabel || 'Unassigned'}
                         </Text>
@@ -131,7 +131,7 @@ function ReportCard({ report, isDark }: { report: any; isDark: boolean }) {
             style={{
                 boxShadow: [{ offsetX: 0, offsetY: 2, blurRadius: 10, color: isDark ? 'rgba(0,0,0,0.5)' : 'rgba(0,0,0,0.05)' }],
                 }}
-            className="bg-[#FFFFFF] dark:bg-[#0D1117]-surface rounded-xl p-6 mb-6 border border-[#D0D7DE] dark:border-[#21262D]"
+            className="bg-[#FFFFFF] dark:bg-[#161B22] rounded-xl p-6 mb-6 border border-[#D0D7DE] dark:border-[#21262D]"
         >
             {/* Header */}
             <View className="flex-row justify-between items-start mb-4">
@@ -144,10 +144,10 @@ function ReportCard({ report, isDark }: { report: any; isDark: boolean }) {
                     </Text>
                 </View>
                 <View className="flex-row gap-2">
-                    <TouchableOpacity className="p-2 bg-gray-50 dark:bg-navy rounded-full">
+                    <TouchableOpacity className="p-2 bg-gray-50 dark:bg-[#161B22] rounded-full">
                         <Download size={18} color={isDark ? '#9ca3af' : '#6b7280'} />
                     </TouchableOpacity>
-                    <TouchableOpacity className="p-2 bg-gray-50 dark:bg-navy rounded-full">
+                    <TouchableOpacity className="p-2 bg-gray-50 dark:bg-[#161B22] rounded-full">
                         <Printer size={18} color={isDark ? '#9ca3af' : '#6b7280'} />
                     </TouchableOpacity>
                 </View>
@@ -171,7 +171,7 @@ function ReportCard({ report, isDark }: { report: any; isDark: boolean }) {
 
             {/* Teacher remarks */}
             {data.comments && (
-                <View className="bg-orange-50/30 dark:bg-navy p-4 rounded-xl mb-4">
+                <View className="bg-orange-50/30 dark:bg-[#161B22] p-4 rounded-xl mb-4">
                     <Text className="text-[#FF6900] text-[8px] font-bold uppercase tracking-widest mb-2">Teacher's Remarks</Text>
                     <Text className="text-gray-600 dark:text-gray-400 text-xs italic">"{data.comments}"</Text>
                 </View>
@@ -216,7 +216,7 @@ function ReportCard({ report, isDark }: { report: any; isDark: boolean }) {
                 className="flex-row justify-between items-center bg-gray-900 dark:bg-white p-4 rounded-xl"
                 onPress={() => setExpanded(!expanded)}
             >
-                <Text className="text-white dark:text-navy font-bold text-xs">
+                <Text className="text-white dark:text-gray-900 font-bold text-xs">
                     {expanded ? 'Hide Details' : 'View Full Details'}
                 </Text>
                 <ChevronRight 

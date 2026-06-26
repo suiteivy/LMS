@@ -83,7 +83,7 @@ export default function StudentSettings({ role = 'student' }: StudentSettingsPro
         setPrefs(prev => ({ ...prev, [key]: newValue }));
         try {
             await SettingsService.updatePreferences({ [key]: newValue });
-            Toast.show({ type: 'success', text1: 'Preferences Updated', text2: 'Your notification settings have been saved.', position: 'bottom' });
+            Toast.show({ type: 'success', text1: 'Preferences Updated', text2: 'Your notification settings have been saved.', position: 'top' });
         } catch (err) {
             console.error('Failed to update preference:', err);
             setPrefs(prev => ({ ...prev, [key]: !newValue }));
@@ -101,7 +101,7 @@ export default function StudentSettings({ role = 'student' }: StudentSettingsPro
                 <View className="p-2 bg-gray-50 dark:bg-900 rounded-lg mr-3">
                     <Icon size={20} color="orange" />
                 </View>
-                <Text className="text-gray-700 dark:text-200 font-medium text-base">{title}</Text>
+                <Text className="text-gray-700 dark:text-white font-medium text-base">{title}</Text>
             </View>
             {children ? children : <ChevronRight size={18} color={isDark ? "#4B5563" : "#9ca3af"} />}
         </TouchableOpacity>
@@ -109,10 +109,10 @@ export default function StudentSettings({ role = 'student' }: StudentSettingsPro
 
 
     const settingsContent = (
-        <ScrollView className="flex-1 bg-[#FFFFFF] dark:bg-[#0D1117]">
+        <ScrollView className="flex-1 bg-[#FFFFFF] dark:bg-[#161B22]">
             <View className="p-4 md:p-8 max-w-2xl mx-auto w-full">
 
-                <Text className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest ml-1 mb-2">Account</Text>
+                <Text className="text-xs font-bold text-gray-500 dark:text-white uppercase tracking-widest ml-1 mb-2">Account</Text>
                 <View className="bg-[#F6F8FA] dark:bg-[#161B22] rounded-lg border border-[#D0D7DE] dark:border-[#21262D] mb-6 overflow-hidden">
                     <TouchableOpacity
                         onPress={() => setShowEditForm(true)}
@@ -125,21 +125,22 @@ export default function StudentSettings({ role = 'student' }: StudentSettingsPro
                         onPress={() => setShowPasswordForm(true)}
                     >
                         <SettingRow icon={Lock} title="Change Password" isDark={isDark}>
-                            <HelpTooltip id="settings.password" role={role} tier={tier} onLearnMore={openManual} />
+                            <HelpTooltip id={role === 'parent' ? 'settings.password.parent' : 'settings.password.student'} role={role} tier={tier} onLearnMore={openManual} />
                         </SettingRow>
                     </TouchableOpacity>
                     <SettingRow icon={Globe} title="Language" isLast isDark={isDark}>
-                        <Text className="text-gray-500 dark:text-gray-400 mr-2">English</Text>
+                        <HelpTooltip id={role === 'parent' ? 'settings.language.parent' : 'settings.language.student'} role={role} tier={tier} onLearnMore={openManual} />
+                        <Text className="text-gray-500 dark:text-white mr-2">English</Text>
                     </SettingRow>
                 </View>
 
-                <Text className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest ml-1 mb-2">Preferences</Text>
+                <Text className="text-xs font-bold text-gray-400 dark:text-white uppercase tracking-widest ml-1 mb-2">Preferences</Text>
                 {prefsLoading ? (
                     <ActivityIndicator size="small" color="#FF6B00" style={{ marginBottom: 24 }} />
                 ) : (
-                    <View className="bg-white dark:bg-[#1a1a1a] rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm mb-6 overflow-hidden">
+                    <View className="bg-white dark:bg-[#161B22] rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm mb-6 overflow-hidden">
                         <SettingRow icon={Bell} title="Push Notifications" isLast isDark={isDark}>
-                            <HelpTooltip id="settings.notifications.general" role={role} tier={tier} onLearnMore={openManual} />
+                            <HelpTooltip id={role === 'parent' ? 'settings.notifications.general.parent' : 'settings.notifications.general.student'} role={role} tier={tier} onLearnMore={openManual} />
                             <Switch
                                 value={prefs.push_notifications}
                                 onValueChange={() => togglePref('push_notifications')}
@@ -149,8 +150,8 @@ export default function StudentSettings({ role = 'student' }: StudentSettingsPro
                     </View>
                 )}
 
-                <Text className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest ml-1 mb-2">Appearance</Text>
-                <View className="bg-white dark:bg-[#1a1a1a] rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm mb-6 overflow-hidden p-3">
+                <Text className="text-xs font-bold text-gray-400 dark:text-white uppercase tracking-widest ml-1 mb-2">Appearance</Text>
+                <View className="bg-white dark:bg-[#161B22] rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm mb-6 overflow-hidden p-3">
                     <ThemeSegmentedControl />
                 </View>
 

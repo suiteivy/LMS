@@ -28,6 +28,7 @@ import {
   View
 } from "react-native";
 import {DatePicker} from '@/components/common/DatePicker';
+import { resolveAvatarUri } from "@/utils/avatar";
 
 interface LinkedStudent {
   id: string;
@@ -44,7 +45,7 @@ interface LinkedStudent {
 }
 
 export default function ParentProfile() {
-  const { profile, refreshProfile } = useAuth();
+  const { profile, refreshProfile, displayId } = useAuth();
   const { isDark } = useTheme();
 
   const [isEditing, setIsEditing] = useState(false);
@@ -61,6 +62,7 @@ export default function ParentProfile() {
 
   const [linkedStudents, setLinkedStudents] = useState<LinkedStudent[]>([]);
   const [loadingStudents, setLoadingStudents] = useState(true);
+  const avatarUri = resolveAvatarUri(profile?.avatar_url);
 
   useEffect(() => {
     if (profile) {
@@ -150,8 +152,8 @@ export default function ParentProfile() {
         <View className="items-center mt-8 mb-4">
           <View className="relative">
             <View className="w-32 h-32 rounded-[40px] bg-white dark:bg-gray-800 items-center justify-center border-4 border-gray-100 dark:border-gray-800 shadow-2xl overflow-hidden">
-              {profile?.avatar_url ? (
-                <Image source={{ uri: profile.avatar_url }} className="w-full h-full" resizeMode="cover" />
+              {avatarUri ? (
+                <Image source={{ uri: avatarUri }} className="w-full h-full" resizeMode="cover" />
               ) : (
                 <UserCircle size={80} color={isDark ? "#374151" : "#F3F4F6"} />
               )}
@@ -163,7 +165,7 @@ export default function ParentProfile() {
           </Text>
           <View className="bg-[#FF6900]/10 px-4 py-1.5 rounded-full mt-2 border border-[#FF6900]/20 self-center">
             <Text className="text-[#FF6900] text-[10px] font-black uppercase tracking-[2px]">
-              Parent/Guardian · ID: {profile?.id?.slice(0, 8)}
+              Parent/Guardian · ID: {displayId || 'N/A'}
             </Text>
           </View>
         </View>

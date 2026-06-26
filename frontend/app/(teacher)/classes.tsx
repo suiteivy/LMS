@@ -103,7 +103,7 @@ const TabPill = ({
 }) => (
     <TouchableOpacity
         onPress={onPress}
-        className={`flex-1 flex-row items-center justify-center py-3 rounded-2xl gap-2 ${active ? "bg-[#FF6900] shadow-md" : "bg-gray-100 dark:bg-[#1a1a1a]"
+        className={`flex-1 flex-row items-center justify-center py-3 rounded-2xl gap-2 ${active ? "bg-[#FF6900] shadow-md" : "bg-gray-100 dark:bg-[#161B22]"
             }`}
     >
         {icon}
@@ -148,7 +148,7 @@ const StatusBtn = ({
             disabled={locked}
             className={`w-9 h-9 rounded-xl items-center justify-center ${isActive
                 ? activeBg[status]
-                : "bg-gray-100 dark:bg-[#1A1650] border border-gray-200 dark:border-gray-700"
+                : "bg-gray-100 dark:bg-[#161B22] border border-gray-200 dark:border-gray-700"
                 } ${locked ? "opacity-60" : ""}`}
         >
             {icons[status]}
@@ -292,7 +292,7 @@ const DailyTab = ({ classId, className: cName }: { classId: string; className: s
     return (
         <View className="flex-1">
             {/* Date navigator */}
-            <View className="flex-row items-center justify-between bg-gray-50 dark:bg-[#1a1a1a] rounded-2xl px-4 py-3 mb-4 border border-gray-100 dark:border-gray-800">
+            <View className="flex-row items-center justify-between bg-gray-50 dark:bg-[#161B22] rounded-2xl px-4 py-3 mb-4 border border-gray-100 dark:border-gray-800">
                 <TouchableOpacity onPress={() => shiftDay(-1)} className="p-1">
                     <ChevronLeft size={20} color="#6B7280" />
                 </TouchableOpacity>
@@ -319,7 +319,7 @@ const DailyTab = ({ classId, className: cName }: { classId: string; className: s
             ) : !hasClass ? (
                 /* ── No class today ── */
                 <View className="flex-1 py-8">
-                    <View className="bg-gray-50 dark:bg-[#1a1a1a] border border-dashed border-gray-200 dark:border-gray-700 rounded-3xl p-10 items-center">
+                    <View className="bg-gray-50 dark:bg-[#161B22] border border-dashed border-gray-200 dark:border-gray-700 rounded-3xl p-10 items-center">
                         <School size={44} color="#D1D5DB" />
                         <Text className="text-gray-700 dark:text-gray-300 font-black text-base mt-4 text-center">
                             No class on {todayName}
@@ -390,7 +390,7 @@ const DailyTab = ({ classId, className: cName }: { classId: string; className: s
                                 { label: "Present", val: presentCount, color: "bg-green-50 dark:bg-green-950/30", text: "text-green-600" },
                                 { label: "Absent", val: absentCount, color: "bg-red-50 dark:bg-red-950/30", text: "text-red-500" },
                                 { label: "Late", val: lateCount, color: "bg-amber-50 dark:bg-amber-950/30", text: "text-amber-500" },
-                                ...(!locked ? [{ label: "Unmarked", val: unmarkedCount, color: "bg-gray-50 dark:bg-[#1a1a1a]", text: "text-gray-400" }] : []),
+                                ...(!locked ? [{ label: "Unmarked", val: unmarkedCount, color: "bg-gray-50 dark:bg-[#161B22]", text: "text-gray-400" }] : []),
                             ].map((p) => (
                                 <View
                                     key={p.label}
@@ -416,7 +416,7 @@ const DailyTab = ({ classId, className: cName }: { classId: string; className: s
                             {rows.map((r) => (
                                 <View
                                     key={r.student_id}
-                                    className="bg-white dark:bg-[#1a1a1a] p-4 rounded-2xl border border-gray-100 dark:border-gray-800 mb-2.5 flex-row items-center"
+                                    className="bg-white dark:bg-[#161B22] p-4 rounded-2xl border border-gray-100 dark:border-gray-800 mb-2.5 flex-row items-center"
                                 >
                                     <View
                                         className="w-11 h-11 rounded-xl items-center justify-center mr-3"
@@ -550,7 +550,7 @@ const ByClassTab = ({ classId }: { classId: string }) => {
                 return (
                     <View
                         key={session.date}
-                        className="bg-white dark:bg-[#1a1a1a] rounded-2xl border border-gray-100 dark:border-gray-800 mb-3 overflow-hidden"
+                        className="bg-white dark:bg-[#161B22] rounded-2xl border border-gray-100 dark:border-gray-800 mb-3 overflow-hidden"
                     >
                         <TouchableOpacity
                             onPress={() => toggle(idx)}
@@ -647,12 +647,12 @@ const ClassAttendanceModal = ({
             >
                 <TouchableOpacity
                     activeOpacity={1}
-                    className="bg-white dark:bg-[#0F0B2E] rounded-t-[36px] border-t border-gray-100 dark:border-gray-800"
+                    className="bg-white dark:bg-[#161B22] rounded-t-[36px] border-t border-gray-100 dark:border-gray-800"
                     style={{ height: "90%" }}
                 >
                     {/* Drag handle */}
                     <View className="items-center pt-3 pb-1">
-                        <View className="w-10 h-1 bg-gray-200 dark:bg-gray-700 rounded-full" />
+                        <View className="w-10 h-1 bg-gray-200 dark:bg-[#161B22] rounded-full" />
                     </View>
 
                     {/* Header */}
@@ -673,7 +673,7 @@ const ClassAttendanceModal = ({
                         </View>
                         <TouchableOpacity
                             onPress={onClose}
-                            className="w-9 h-9 bg-gray-100 dark:bg-[#1a1a1a] rounded-full items-center justify-center"
+                            className="w-9 h-9 bg-gray-100 dark:bg-[#161B22] rounded-full items-center justify-center"
                         >
                             <X size={18} color="#6B7280" />
                         </TouchableOpacity>
@@ -785,7 +785,7 @@ export default function TeacherClasses() {
     };
 
     return (
-        <View className="flex-1 bg-white dark:bg-navy">
+        <View className="flex-1 bg-[#F6F8FA] dark:bg-[#161B22]">
             <UnifiedHeader title="Management" subtitle="My Classes" role="Teacher" />
 
             <ScrollView
@@ -807,7 +807,7 @@ export default function TeacherClasses() {
                     ) : (
                         <View>
                             {classes.length === 0 ? (
-                                <View className="bg-white dark:bg-[#1a1a1a] p-10 rounded-3xl items-center border border-gray-100 dark:border-gray-800 border-dashed">
+                                <View className="bg-white dark:bg-[#161B22] p-10 rounded-3xl items-center border border-gray-100 dark:border-gray-800 border-dashed">
                                     <School size={48} color="#9CA3AF" />
                                     <Text className="text-gray-400 dark:text-gray-500 font-bold mt-4 text-center">
                                         No classes assigned yet.
@@ -818,7 +818,7 @@ export default function TeacherClasses() {
                                     <TouchableOpacity
                                         key={cls.id}
                                         onPress={() => setSelectedClass(cls)}
-                                        className="bg-white dark:bg-[#1a1a1a] p-5 rounded-3xl border border-gray-100 dark:border-gray-800 mb-3 shadow-sm flex-row items-center active:bg-gray-50 dark:active:bg-gray-900"
+                                        className="bg-white dark:bg-[#161B22] p-5 rounded-3xl border border-gray-100 dark:border-gray-800 mb-3 shadow-sm flex-row items-center active:bg-gray-50 dark:active:bg-gray-900"
                                     >
                                         <View className="bg-orange-50 p-3 rounded-2xl mr-4">
                                             <Users size={24} color="#FF6900" />

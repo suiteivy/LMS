@@ -51,7 +51,7 @@ export default function StudentDiaryPage() {
     };
 
     return (
-        <View className="flex-1 bg-gray-50 dark:bg-[#0c0c0c]">
+        <View className="flex-1 bg-[#F6F8FA] dark:bg-[#161B22]">
             <UnifiedHeader
                 title="Academic"
                 subtitle="Diary"
@@ -81,7 +81,7 @@ export default function StudentDiaryPage() {
                                 return (
                                     <View
                                         key={item.id}
-                                        className="p-5 mb-4 rounded-xl bg-[#FFFFFF] dark:bg-[#0D1117] border border-[#D0D7DE] dark:border-[#21262D] shadow-sm"
+                                        className="p-5 mb-4 rounded-xl bg-[#FFFFFF] dark:bg-[#161B22] border border-[#D0D7DE] dark:border-[#21262D] shadow-sm"
                                     >
                                         <View className="flex-row items-start mb-4">
                                             <View className={`w-12 h-12 rounded-2xl items-center justify-center mr-4 ${assignment ? 'bg-indigo-50 dark:bg-indigo-950/20' : 'bg-orange-50 dark:bg-orange-950/30'}`}>
@@ -137,7 +137,7 @@ export default function StudentDiaryPage() {
 
                                         {/* Assignment fields: Grade & Reference Materials */}
                                         {assignment && (
-                                            <View className="bg-gray-50 dark:bg-[#151515] p-4 rounded-2xl mb-4 border border-gray-100/50 dark:border-gray-800/50">
+                                            <View className="bg-gray-50 dark:bg-[#161B22] p-4 rounded-2xl mb-4 border border-gray-100/50 dark:border-gray-800/50">
                                                 <View className="flex-row justify-between items-center mb-2.5">
                                                     <Text className="text-gray-400 dark:text-gray-500 text-[11px] font-bold uppercase tracking-wider">Score / Grade</Text>
                                                     {assignment.status === 'Graded' && assignment.grade !== null ? (
@@ -165,7 +165,7 @@ export default function StudentDiaryPage() {
                                                         <Text className="text-gray-400 dark:text-gray-500 text-[10px] font-bold uppercase tracking-wider">Reference Materials</Text>
                                                         <TouchableOpacity 
                                                             onPress={() => WebBrowser.openBrowserAsync(assignment.attachment_url!)}
-                                                            className="flex-row items-center bg-white dark:bg-[#202020] px-3 py-1.5 rounded-xl border border-gray-100 dark:border-gray-800"
+                                                            className="flex-row items-center bg-white dark:bg-[#161B22] px-3 py-1.5 rounded-xl border border-gray-100 dark:border-gray-800"
                                                         >
                                                             <ExternalLink size={11} color="#6366F1" />
                                                             <Text className="text-indigo-600 dark:text-indigo-400 font-bold text-[10px] ml-1.5 uppercase tracking-wider">
@@ -199,7 +199,7 @@ export default function StudentDiaryPage() {
                                 );
                             })
                         ) : (
-                            <View className="bg-[#FFFFFF] dark:bg-[#0D1117] p-20 rounded-xl items-center border border-[#D0D7DE] dark:border-[#21262D] border-dashed mt-8">
+                            <View className="bg-[#FFFFFF] dark:bg-[#161B22] p-20 rounded-xl items-center border border-[#D0D7DE] dark:border-[#21262D] border-dashed mt-8">
                                 <BookOpen size={64} color="#E5E7EB" style={{ opacity: 0.3 }} />
                                 <Text className="text-gray-500 dark:text-gray-400 font-bold text-center mt-6">No Diary Entries Yet</Text>
                             </View>

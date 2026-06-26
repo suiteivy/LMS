@@ -130,8 +130,8 @@ export default function AdminClassManagement() {
     );
 
     // ─── Theme helpers ─────────────────────────────────────
-    const bg = isDark ? '#0F0B2E' : '#F9FAFB';
-    const card = isDark ? '#13103A' : '#FFFFFF';
+    const bg = isDark ? '#161B22' : '#F9FAFB';
+    const card = isDark ? '#161B22' : '#FFFFFF';
     const border = isDark ? 'rgba(255,255,255,0.1)' : '#F3F4F6';
     const textPrimary = isDark ? '#F9FAFB' : '#111827';
     const textSecondary = isDark ? '#9CA3AF' : '#6B7280';
@@ -141,8 +141,8 @@ export default function AdminClassManagement() {
     const pillInactive = isDark ? 'rgba(255,255,255,0.1)' : '#FFFFFF';
     const pillInactiveBorder = isDark ? '#3F3F3F' : '#E5E7EB';
     const pillInactiveText = isDark ? '#9CA3AF' : '#4B5563';
-    const modalBg = isDark ? '#13103A' : '#FFFFFF';
-    const sectionBg = isDark ? '#1A1650' : '#F9FAFB';
+    const modalBg = isDark ? '#161B22' : '#FFFFFF';
+    const sectionBg = isDark ? '#161B22' : '#F9FAFB';
 
     // ─── Data Loading ──────────────────────────────────────
     const loadClasses = useCallback(async () => {

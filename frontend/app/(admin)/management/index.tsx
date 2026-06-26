@@ -37,7 +37,7 @@ interface FeatureCardProps {
 const FeatureCard = ({ icon: Icon, title, description, color, bgColor, darkBgColor, route, badge, isDark, tooltipId, tier }: FeatureCardProps) => (
     <TouchableOpacity
         style={{
-            backgroundColor: isDark ? '#13103A' : '#ffffff',
+            backgroundColor: isDark ? '#161B22' : '#ffffff',
             borderColor: isDark ? 'rgba(255,255,255,0.1)' : '#f3f4f6',
             borderWidth: 1,
             borderRadius: 16,
@@ -195,7 +195,7 @@ export default function AdminManagement() {
     ];
 
     return (
-        <View style={{ flex: 1, backgroundColor: isDark ? '#0F0B2E' : '#f9fafb' }}>
+        <View style={{ flex: 1, backgroundColor: isDark ? '#161B22' : '#f9fafb' }}>
             <UnifiedHeader
                 title="System"
                 subtitle="Management"

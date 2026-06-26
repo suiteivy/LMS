@@ -121,7 +121,7 @@ export default function TeacherLibrary() {
     );
 
     return (
-        <View className="flex-1 bg-[#FFFFFF] dark:bg-[#0D1117]">
+        <View className="flex-1 bg-[#FFFFFF] dark:bg-[#161B22]">
             <UnifiedHeader
                 title="Resources"
                 subtitle="Library"
@@ -144,16 +144,16 @@ export default function TeacherLibrary() {
                 }
             >
 
-                <View className="flex-row bg-[#EAEEF2] dark:bg-[#1C2128] p-1 mx-4 mt-4 rounded-lg">
+                <View className="flex-row bg-[#EAEEF2] dark:bg-[#161B22] p-1 mx-4 mt-4 rounded-lg">
                     <TouchableOpacity
                         onPress={() => setViewMode('personal')}
-                        className={`flex-1 py-3 rounded-xl items-center ${viewMode === 'personal' ? 'bg-white dark:bg-gray-700 ' : ''}`}
+                        className={`flex-1 py-3 rounded-xl items-center ${viewMode === 'personal' ? 'bg-white dark:bg-[#161B22] ' : ''}`}
                     >
                         <Text className={`text-[10px] font-black uppercase tracking-widest ${viewMode === 'personal' ? 'text-gray-900 dark:text-white' : 'text-gray-400'}`}>My Library</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
                         onPress={() => setViewMode('students')}
-                        className={`flex-1 py-3 rounded-xl items-center ${viewMode === 'students' ? 'bg-white dark:bg-gray-700 ' : ''}`}
+                        className={`flex-1 py-3 rounded-xl items-center ${viewMode === 'students' ? 'bg-white dark:bg-[#161B22] ' : ''}`}
                     >
                         <Text className={`text-[10px] font-black uppercase tracking-widest ${viewMode === 'students' ? 'text-gray-900 dark:text-white' : 'text-gray-400'}`}>Student Loans</Text>
                     </TouchableOpacity>
@@ -234,7 +234,7 @@ export default function TeacherLibrary() {
                                                 }}
                                                 className="bg-[#F6F8FA] dark:bg-[#161B22] p-5 rounded-[32px] border border-gray-50 dark:border-gray-800 mb-4 flex-row items-center active:bg-gray-50 dark:active:bg-gray-900"
                                             >
-                                                <View className={`p-4 rounded-lg mr-4 ${item.available > 0 ? 'bg-orange-50 dark:bg-orange-950/20' : 'bg-gray-50 dark:bg-gray-800'}`}>
+                                                <View className={`p-4 rounded-lg mr-4 ${item.available > 0 ? 'bg-orange-50 dark:bg-orange-950/20' : 'bg-gray-50 dark:bg-[#161B22]'}`}>
                                                     <BookOpen size={22} color={item.available > 0 ? "#FF6900" : "#9CA3AF"} />
                                                 </View>
                                                 <View className="flex-1">
@@ -242,7 +242,7 @@ export default function TeacherLibrary() {
                                                     <Text className="text-gray-900 dark:text-white font-bold text-base leading-tight" numberOfLines={1}>{item.title}</Text>
                                                     <Text className="text-gray-400 dark:text-gray-500 text-xs font-medium">{item.author}</Text>
                                                 </View>
-                                                <View className={`px-2 py-0.5 rounded-full ${item.available > 0 ? 'bg-[#FF6900]' : 'bg-[#EAEEF2] dark:bg-[#1C2128]'}`}>
+                                                <View className={`px-2 py-0.5 rounded-full ${item.available > 0 ? 'bg-[#FF6900]' : 'bg-[#EAEEF2] dark:bg-[#161B22]'}`}>
                                                     <Text className={`font-bold text-[8px] uppercase tracking-widest ${item.available > 0 ? 'text-white' : 'text-gray-400 dark:text-gray-500'}`}>
                                                         {item.available > 0 ? `${item.available} Left` : 'N/A'}
                                                     </Text>
@@ -273,7 +273,7 @@ export default function TeacherLibrary() {
                                                         <Text className="text-red-600 font-bold text-[8px] uppercase tracking-widest">{loan.status}</Text>
                                                     </View>
                                                 </View>
-                                                <View className="flex-row justify-between items-center bg-gray-50 dark:bg-gray-800/50 p-3 rounded-lg">
+                                                <View className="flex-row justify-between items-center bg-gray-50 dark:bg-[#161B22] p-3 rounded-lg">
                                                     <View>
                                                         <Text className="text-gray-400 text-[8px] font-bold uppercase">Issued On</Text>
                                                         <Text className="text-gray-900 dark:text-white font-bold text-[10px]">{new Date(loan.borrowDate).toLocaleDateString()}</Text>
@@ -294,25 +294,25 @@ export default function TeacherLibrary() {
 
                 <Modal animationType="slide" transparent visible={modalVisible}>
                     <View className="flex-1 bg-black/60 justify-end">
-                        <View className="bg-[#FFFFFF] dark:bg-[#0D1117] rounded-t-[50px] p-8 pb-12 border-t border-[#D0D7DE] dark:border-[#21262D]">
+                        <View className="bg-[#FFFFFF] dark:bg-[#161B22] rounded-t-[50px] p-8 pb-12 border-t border-[#D0D7DE] dark:border-[#21262D]">
                             <View className="flex-row justify-between items-start mb-8">
                                 <View className="flex-1 pr-6">
                                     <Text className="text-[#FF6900] font-bold text-[10px] uppercase tracking-[3px] mb-2">{selectedBook?.category}</Text>
                                     <Text className="text-3xl font-bold text-gray-900 dark:text-white tracking-tight leading-tight">{selectedBook?.title}</Text>
                                     <Text className="text-gray-400 dark:text-gray-500 font-bold text-sm mt-2">by {selectedBook?.author}</Text>
                                 </View>
-                                <TouchableOpacity onPress={() => setModalVisible(false)} className="w-10 h-10 bg-gray-50 dark:bg-gray-800 rounded-full items-center justify-center">
+                                <TouchableOpacity onPress={() => setModalVisible(false)} className="w-10 h-10 bg-gray-50 dark:bg-[#161B22] rounded-full items-center justify-center">
                                     <X size={20} color="#6B7280" />
                                 </TouchableOpacity>
                             </View>
 
                             <View className="flex-row gap-4 mb-10">
-                                <View className="flex-1 bg-gray-50 dark:bg-gray-800 p-6 rounded-[32px] border border-gray-100 dark:border-gray-700 items-center justify-center">
+                                <View className="flex-1 bg-[#F6F8FA] dark:bg-[#161B22] p-6 rounded-[32px] border border-gray-100 dark:border-gray-700 items-center justify-center">
                                     <Clock size={20} color="#FF6900" />
                                     <Text className="text-gray-400 dark:text-gray-500 text-[8px] font-bold uppercase tracking-widest mt-3">Period</Text>
                                     <Text className="text-gray-900 dark:text-white font-bold text-base mt-1">14 Days</Text>
                                 </View>
-                                <View className="flex-1 bg-gray-50 dark:bg-gray-800 p-6 rounded-[32px] border border-gray-100 dark:border-gray-700 items-center justify-center">
+                                <View className="flex-1 bg-[#F6F8FA] dark:bg-[#161B22] p-6 rounded-[32px] border border-gray-100 dark:border-gray-700 items-center justify-center">
                                     <CheckCircle2 size={20} color="#FF6900" />
                                     <Text className="text-gray-400 dark:text-gray-500 text-[8px] font-bold uppercase tracking-widest mt-3">Stock</Text>
                                     <Text className="text-gray-900 dark:text-white font-bold text-base mt-1">{selectedBook?.available} Items</Text>
@@ -341,7 +341,7 @@ export default function TeacherLibrary() {
                                 <View className="mt-8 border-t border-[#D0D7DE] dark:border-[#21262D] pt-8">
                                     <Text className="text-gray-400 font-bold text-[10px] uppercase tracking-[3px] mb-4 text-center">ISSUE WORKFLOW</Text>
 
-                                    <View className="bg-gray-50 dark:bg-gray-800 px-5 py-4 rounded-lg border border-gray-100 dark:border-gray-700 mb-4">
+                                    <View className="bg-gray-50 dark:bg-[#161B22] px-5 py-4 rounded-lg border border-gray-100 dark:border-gray-700 mb-4">
                                         <TextInput
                                             placeholder="Search Students..."
                                             className="text-gray-900 dark:text-white font-bold"
@@ -352,7 +352,7 @@ export default function TeacherLibrary() {
                                     </View>
 
                                     {studentSearch.length > 0 && !selectedStudent && (
-                                        <View className="max-h-40 bg-white dark:bg-gray-900 rounded-lg border border-[#D0D7DE] dark:border-[#21262D] mb-4 overflow-hidden">
+                                        <View className="max-h-40 bg-white dark:bg-[#161B22] rounded-lg border border-[#D0D7DE] dark:border-[#21262D] mb-4 overflow-hidden">
                                             <FlatList
                                                 data={students.filter(s => s.users?.full_name?.toLowerCase().includes(studentSearch.toLowerCase()))}
                                                 keyExtractor={item => item.id}
@@ -381,7 +381,7 @@ export default function TeacherLibrary() {
                                         </View>
                                     )}
 
-                                    <View className="bg-gray-50 dark:bg-gray-800 px-5 py-4 rounded-lg border border-gray-100 dark:border-gray-700 mb-6">
+                                    <View className="bg-gray-50 dark:bg-[#161B22] px-5 py-4 rounded-lg border border-gray-100 dark:border-gray-700 mb-6">
                                         <TextInput
                                             placeholder="Add remarks (e.g. slight tear on cover)..."
                                             multiline

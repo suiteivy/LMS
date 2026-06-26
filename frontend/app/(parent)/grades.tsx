@@ -213,13 +213,13 @@ export default function StudentGradesPage() {
 
   if (loading && !refreshing) {
     return (
-      <View className="flex-1 justify-center items-center bg-gray-50 dark:bg-navy">
+      <View className="flex-1 justify-center items-center bg-[#F6F8FA] dark:bg-[#161B22]">
         <ActivityIndicator size="large" color="#FF6900" />
       </View>
     );
   }
   return (
-    <View className="flex-1 bg-gray-50 dark:bg-navy">
+    <View className="flex-1 bg-[#F6F8FA] dark:bg-[#161B22]">
       <UnifiedHeader
         title={resolvedName ? `${resolvedName}'s Report` : "Performance"}
         subtitle="Academic Report"
@@ -238,7 +238,7 @@ export default function StudentGradesPage() {
       >
         <View className="p-4 md:p-8">
           <View className="px-2 mb-3">
-            <View className="self-start bg-white dark:bg-navy-surface border border-gray-100 dark:border-gray-800 rounded-full px-3 py-1.5">
+            <View className="self-start bg-white dark:bg-[#161B22] border border-gray-100 dark:border-gray-800 rounded-full px-3 py-1.5">
               <Text className="text-[10px] font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400">
                 Viewing: <Text className="text-gray-900 dark:text-white">{resolvedName || "Student"}</Text> · {classLabel || "Unassigned"}
               </Text>
@@ -285,7 +285,7 @@ export default function StudentGradesPage() {
               <HelpTooltip id="parent.grades.transcript" role="parent" tier={tier} onLearnMore={(a) => router.push({ pathname: '/(parent)/accessibility/settings', params: { manual: '1', anchor: a || 'parent-workflow' } } as any)} />
             </View>
             <TouchableOpacity
-              className="bg-white dark:bg-navy-surface p-2 rounded-xl border border-gray-100 dark:border-gray-800 shadow-sm"
+              className="bg-white dark:bg-[#161B22] p-2 rounded-xl border border-gray-100 dark:border-gray-800 shadow-sm"
               onPress={handlePrint}
             >
               <Printer size={16} color="#FF6900" />
@@ -293,7 +293,7 @@ export default function StudentGradesPage() {
           </View>
 
           {grades.length === 0 ? (
-            <View className="bg-white dark:bg-navy-surface p-12 rounded-[40px] items-center border border-gray-100 dark:border-gray-800 border-dashed mt-4">
+            <View className="bg-white dark:bg-[#161B22] p-12 rounded-[40px] items-center border border-gray-100 dark:border-gray-800 border-dashed mt-4">
               <Star size={48} color="#E5E7EB" style={{ opacity: 0.3 }} />
               <Text className="text-gray-400 dark:text-gray-500 font-bold text-center mt-6">No records found</Text>
             </View>
@@ -301,7 +301,7 @@ export default function StudentGradesPage() {
             grades.map((result: any) => {
               const gc = gradeColor(result.grade);
               return (
-                <View key={result.id} className="bg-white dark:bg-navy-surface p-6 rounded-[32px] mb-4 border border-gray-50 dark:border-gray-800 shadow-sm">
+                <View key={result.id} className="bg-white dark:bg-[#161B22] p-6 rounded-[32px] mb-4 border border-gray-50 dark:border-gray-800 shadow-sm">
                   <View className="flex-row justify-between items-center mb-6">
                     <View className="flex-row items-center flex-1">
                       <View className="w-10 h-10 rounded-2xl bg-orange-50 items-center justify-center mr-3">
@@ -321,7 +321,7 @@ export default function StudentGradesPage() {
                   </View>
 
                   {result.feedback && (
-                    <View className="bg-gray-50 dark:bg-gray-800 p-5 rounded-2xl border border-gray-100 dark:border-gray-700">
+                    <View className="bg-gray-50 dark:bg-[#161B22] p-5 rounded-2xl border border-gray-100 dark:border-gray-700">
                       <View className="flex-row items-center mb-3">
                         <Star size={14} color="#FF6900" />
                         <Text className="text-gray-400 text-[8px] font-bold uppercase tracking-widest ml-2">Faculty Evaluation</Text>

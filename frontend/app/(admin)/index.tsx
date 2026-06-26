@@ -1,44 +1,26 @@
 import { UnifiedHeader } from "@/components/common/UnifiedHeader";
-import { Spinner } from "@/components/ui/Spinner";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useDashboardStats } from "@/hooks/useDashboardStats";
-import { supabase } from "@/libs/supabase";
-import { User } from "@/types/types";
 import { router } from "expo-router";
 import {
-  ArrowRight,
   BarChart3,
-  Bell,
   BookOpen,
   Calendar,
   ClipboardList,
-  GraduationCap,
-  LayoutGrid,
   LogOut,
   RefreshCw,
-  School,
-  Settings,
   UserPlus,
-  Users,
   Wallet,
-  Zap,
 } from 'lucide-react-native';
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useState } from "react";
 import { ActivityIndicator, DimensionValue, RefreshControl, ScrollView, StatusBar, Text, TouchableOpacity, View } from "react-native";
-import { AddonRequestModal, AddonRequestButton, OnboardingTracker, SubscriptionBanner, SubscriptionGate, SubscriptionBadge } from "@/components/shared/SubscriptionComponents";
+import { OnboardingTracker, SubscriptionBanner, SubscriptionGate } from "@/components/shared/SubscriptionComponents";
 import { useSubscriptionTier } from "@/hooks/useSubscriptionTier";
 
 // Cast icons for RN compatibility
 const IconUserPlus = UserPlus as any;
-const IconBell = Bell as any;
-const IconUsers = Users as any;
 const IconWallet = Wallet as any;
-const IconLayoutGrid = LayoutGrid as any;
-const IconSettings = Settings as any;
-const IconArrowRight = ArrowRight as any;
-const IconSchool = School as any;
-const IconGraduationCap = GraduationCap as any;
 const IconBookOpen = BookOpen as any;
 const IconBarChart3 = BarChart3 as any;
 const IconLogOut = LogOut as any;
@@ -70,87 +52,34 @@ export default function AdminDashboard() {
   const {
     profile,
     subscriptionPlan,
-    subscriptionStatus,
     isMain,
-    addonMessaging,
-    addonLibrary,
-    addonFinance,
-    addonAnalytics,
-    addonBursary,
     logout,
   } = useAuth();
   const { stats, refresh: refreshStats } = useDashboardStats();
   const { isDark } = useTheme();
-  const [recentUsers, setRecentUsers] = useState<User[]>([]);
-  const [loadingUsers, setLoadingUsers] = useState(false);
-  const [requestModalVisible, setRequestModalVisible] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
   const tier = useSubscriptionTier();
 
-  const activeFeatures = [
-    tier.showFinancials && tier.hasFinance && 'Finance',
-    tier.hasLibrary && 'Library',
-    tier.hasAnalytics && 'Analytics',
-    tier.hasMessaging && 'Messaging',
-    tier.showFinancials && tier.hasBursary && 'Bursary',
-    tier.hasDiary && 'Diary',
-  ].filter(Boolean).join(', ');
-
-  const fetchRecentUsers = useCallback(async () => {
-    try {
-      setLoadingUsers(true);
-      if (!profile?.institution_id) { setRecentUsers([]); return; }
-      const { data, error } = await supabase
-        .from("users")
-        .select(`*, students(id), teachers(id), admins(id)`)
-        .eq("institution_id", profile.institution_id)
-        .order("created_at", { ascending: false })
-        .limit(5);
-      if (error) throw error;
-      if (data) {
-        const users = data.map((u: any) => {
-          let displayId = u.id;
-          if (u.role === 'student' && u.students?.[0]?.id) displayId = u.students[0].id;
-          else if (u.role === 'teacher' && u.teachers?.[0]?.id) displayId = u.teachers[0].id;
-          else if (u.role === 'admin' && u.admins?.[0]?.id) displayId = u.admins[0].id;
-          return {
-            id: u.id, displayId,
-            name: u.full_name || `${u.first_name || ''} ${u.last_name || ''}`.trim() || 'Unknown User',
-            first_name: u.first_name || '', last_name: u.last_name || '',
-            email: u.email || 'No Email', role: u.role,
-            status: u.status, joinDate: u.created_at || new Date().toISOString(),
-          } as User;
-        });
-        setRecentUsers(users);
-      }
-    } catch (error: any) {
-      console.error("Error fetching users:", error.message);
-    } finally {
-      setLoadingUsers(false);
-    }
-  }, [profile?.institution_id]);
-
-  useEffect(() => {
-    if (profile) fetchRecentUsers();
-  }, [fetchRecentUsers, profile]);
-
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
     try {
-      await Promise.all([refreshStats(), fetchRecentUsers()]);
+      await Promise.all([refreshStats()]);
     } finally {
       setRefreshing(false);
     }
-  }, [refreshStats, fetchRecentUsers]);
+  }, [refreshStats]);
 
   const attendanceValue = stats.find(s => s.label === "Attendance")?.value || "0%";
   const totalStudents = parseInt(stats.find(s => s.label === "Total Students")?.value || "0");
   const planMax = subscriptionPlan === 'trial' ? 50 : subscriptionPlan === 'basic' ? 500 : subscriptionPlan === 'pro' ? 1000 : 100000;
   const capacityPct = `${Math.min((totalStudents / planMax) * 100, 100)}%`;
+  const totalTeachers = parseInt(stats.find(s => s.label === "Teachers")?.value || "0");
+  const totalUsers = totalStudents + totalTeachers;
+  const formatLargeNumber = (value: number) => (value > 100 ? value.toLocaleString() : `${value}`);
 
   return (
-    <View className="flex-1 bg-[#FFFFFF] dark:bg-[#0D1117]">
+    <View className="flex-1 bg-[#FFFFFF] dark:bg-[#161B22]">
       <StatusBar barStyle={isDark ? "light-content" : "dark-content"} />
       <SubscriptionBanner />
       <UnifiedHeader
@@ -195,50 +124,7 @@ export default function AdminDashboard() {
         <OnboardingTracker stats={stats} />
 
         {/* ── Hero Inline Stats ── */}
-        <View className="flex-row gap-8 mb-6 mt-2">
-          <View>
-            <View className="flex-row justify-between items-end mb-5 px-1">
-              <Text className="text-lg font-bold text-gray-900 dark:text-white">Recent Users</Text>
-              <TouchableOpacity onPress={() => router.navigate("/(admin)/users")}>
-                <Text className="text-orange-500 font-bold text-sm">View All</Text>
-              </TouchableOpacity>
-            </View>
-
-            {loadingUsers ? (
-              <View className="h-40 items-center justify-center">
-                <Spinner color="#FF6900" label="Loading recent users" />
-              </View>
-            ) : recentUsers.length === 0 ? (
-              <View className="bg-white dark:bg-[#0F0B2E] p-8 rounded-3xl border border-dashed border-gray-200 dark:border-gray-800 items-center justify-center mb-6">
-                <View className="w-12 h-12 bg-gray-50 dark:bg-gray-800 rounded-full items-center justify-center mb-3">
-                  <IconUsers size={24} color="#9ca3af" />
-                </View>
-                <Text className="text-gray-500 dark:text-gray-400 font-medium">No recent activity detected</Text>
-              </View>
-            ) : (
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} className="flex-row -mx-6 px-6" contentContainerStyle={{ paddingRight: 24 }}>
-                {recentUsers.map((user) => (
-                  <View key={user.id} className="bg-white dark:bg-[#1a1a1a] p-5 rounded-3xl border border-gray-100 dark:border-gray-800 mr-4 w-72">
-                    <View className="flex-row items-center justify-between mb-4">
-                      <View className={`h-10 w-10 rounded-xl items-center justify-center ${user.role === 'student' ? 'bg-orange-50 dark:bg-orange-950/30' : user.role === 'teacher' ? 'bg-purple-50 dark:bg-purple-950/30' : 'bg-blue-50 dark:bg-blue-950/30'}`}>
-                        {user.role === 'student' ? <IconGraduationCap size={20} color="#FF6B00" /> :
-                          user.role === 'teacher' ? <IconSchool size={20} color="#8b5cf6" /> :
-                            <IconSettings size={20} color="#3b82f6" />}
-                      </View>
-                      <View className="bg-gray-50 dark:bg-gray-800 px-2 py-1 rounded-lg">
-                        <Text className="text-gray-400 dark:text-gray-500 font-bold text-[10px]">
-                          {user.joinDate ? new Date(user.joinDate).toLocaleDateString() : 'N/A'}
-                        </Text>
-                      </View>
-                    </View>
-                    <Text className="text-gray-900 dark:text-white font-bold text-base mb-1" numberOfLines={1}>{user.name}</Text>
-                    <Text className="text-gray-600 dark:text-gray-300 text-xs font-bold uppercase tracking-wider mb-1">{user.role}</Text>
-                    <Text className="text-gray-400 dark:text-gray-500 text-[10px] font-mono">{user.displayId}</Text>
-                  </View>
-                ))}
-              </ScrollView>
-            )}
-          </View>
+        <View className="flex-row items-start justify-between mb-6 mt-2">
           {tier.showFinancials && (
             <View>
               <Text className="text-gray-500 dark:text-gray-400 text-xs uppercase tracking-widest mb-1">Revenue</Text>
@@ -247,33 +133,10 @@ export default function AdminDashboard() {
               </Text>
             </View>
           )}
-          <View>
-            <Text className="text-gray-500 dark:text-gray-400 text-xs uppercase tracking-widest mb-1">Attendance</Text>
-            <Text className="text-[#FF6900] text-3xl font-black">{attendanceValue}</Text>
+          <View className="items-end">
+            <Text className="text-gray-500 dark:text-gray-400 text-xs uppercase tracking-widest mb-1">Total Users</Text>
+            <Text className="text-[#FF6900] text-3xl font-black">{formatLargeNumber(totalUsers)}</Text>
           </View>
-        </View>
-
-        {/* ── Plan / Modules Card ── */}
-        <View className="bg-[#F6F8FA] dark:bg-[#161B22] border border-[#D0D7DE] dark:border-[#21262D] rounded-xl p-5 mb-4">
-          <View className="flex-row items-center mb-4">
-            <Zap size={18} color="#FF6900" fill="#FF6900" />
-            <Text className="text-gray-900 dark:text-white font-bold text-base ml-3">Enhance Your Plan</Text>
-            <Text className="text-gray-500 dark:text-gray-400 text-[10px] font-bold uppercase tracking-widest ml-auto">Get modules</Text>
-          </View>
-          <View className="flex-row items-center border-t border-[#D0D7DE] dark:border-[#21262D] pt-4">
-            <View>
-              <Text className="text-gray-500 dark:text-gray-400 text-[10px] font-bold uppercase mb-1">Base Plan</Text>
-              <Text className="text-gray-900 dark:text-white font-bold text-sm">{tier.plan.toUpperCase()}</Text>
-            </View>
-            <View className="h-8 w-[1px] bg-[#D0D7DE] dark:bg-[#21262D] mx-4" />
-            <View className="flex-1">
-              <Text className="text-gray-500 dark:text-gray-400 text-[10px] font-bold uppercase mb-1">Active Modules</Text>
-              <Text className="text-gray-900 dark:text-white font-bold text-xs" numberOfLines={1}>
-                {activeFeatures || "Core Modules Only"}
-              </Text>
-            </View>
-          </View>
-          <AddonRequestButton style={{ marginTop: 16 }} onPress={() => setRequestModalVisible(true)} />
         </View>
 
         {/* ── Institution Capacity ── */}
@@ -285,13 +148,13 @@ export default function AdminDashboard() {
                 {subscriptionPlan === 'trial' ? 'Trial Limit' : 'Scale Usage'}
               </Text>
             </View>
-            <View className="h-2 bg-[#EAEEF2] dark:bg-[#1C2128] rounded-full overflow-hidden mb-2">
+            <View className="h-2 bg-[#EAEEF2] dark:bg-[#161B22] rounded-full overflow-hidden mb-2">
               <View className="h-full bg-[#FF6900] rounded-full" style={{ width: capacityPct as DimensionValue }} />
             </View>
             <View className="flex-row justify-between">
-              <Text className="text-gray-500 dark:text-gray-400 font-bold text-xs">{totalStudents} enrolled</Text>
+              <Text className="text-gray-500 dark:text-gray-400 font-bold text-xs">{formatLargeNumber(totalStudents)} enrolled</Text>
               <Text className="text-gray-900 dark:text-white font-bold text-xs">
-                {subscriptionPlan === 'premium' || subscriptionPlan === 'custom' ? 'Unlimited' : `Limit: ${planMax}`}
+                {subscriptionPlan === 'premium' || subscriptionPlan === 'custom' ? 'Unlimited' : `Limit: ${formatLargeNumber(planMax)}`}
               </Text>
             </View>
           </View>
@@ -306,7 +169,7 @@ export default function AdminDashboard() {
             </View>
             <Text className="text-gray-900 dark:text-white text-2xl font-black">{attendanceValue}</Text>
           </View>
-          <View className="h-2 bg-[#EAEEF2] dark:bg-[#1C2128] rounded-full overflow-hidden mb-2">
+          <View className="h-2 bg-[#EAEEF2] dark:bg-[#161B22] rounded-full overflow-hidden mb-2">
             <View className="h-full bg-[#FF6900] rounded-full" style={{ width: attendanceValue as DimensionValue }} />
           </View>
           <Text className="text-gray-500 dark:text-gray-400 font-bold text-xs">
@@ -333,48 +196,6 @@ export default function AdminDashboard() {
           </View>
         </View>
 
-        {/* ── Recent Users ── */}
-        <View>
-          <View className="flex-row justify-between items-end mb-3">
-            <Text className="text-lg font-bold text-gray-900 dark:text-white">Recent Users</Text>
-            <TouchableOpacity onPress={() => router.navigate("/(admin)/users")} activeOpacity={0.7}>
-              <Text className="text-[#FF6900] font-bold text-sm">View All</Text>
-            </TouchableOpacity>
-          </View>
-
-          {loadingUsers ? (
-            <ActivityIndicator color="#FF6900" className="my-6" />
-          ) : recentUsers.length === 0 ? (
-            <View className="bg-[#F6F8FA] dark:bg-[#161B22] border border-[#D0D7DE] dark:border-[#21262D] rounded-xl p-6 items-center justify-center mb-4">
-              <IconUsers size={40} color={isDark ? "#4B5563" : "#9CA3AF"} />
-              <Text className="text-gray-500 dark:text-gray-400 mt-2 text-xs uppercase tracking-widest font-bold">No recent activity</Text>
-            </View>
-          ) : (
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} className="flex-row mb-4 -mx-5 px-5">
-              {recentUsers.map((user) => (
-                <View key={user.id} className="bg-[#F6F8FA] dark:bg-[#161B22] border border-[#D0D7DE] dark:border-[#21262D] rounded-xl p-4 mr-3 min-w-[200px]">
-                  <View className="flex-row items-center justify-between mb-3">
-                    <View className="flex-row items-center">
-                      <View className="w-8 h-8 rounded-xl bg-[#EAEEF2] dark:bg-[#1C2128] items-center justify-center mr-2">
-                        {user.role === 'student'
-                          ? <IconGraduationCap size={16} color="#FF6900" />
-                          : user.role === 'teacher'
-                            ? <IconSchool size={16} color="#FF6900" />
-                            : <IconSettings size={16} color="#FF6900" />}
-                      </View>
-                      <Text className="text-gray-500 dark:text-gray-400 font-bold text-[10px] uppercase tracking-widest">{user.role}</Text>
-                    </View>
-                    <Text className="text-gray-500 dark:text-gray-400 font-bold text-[10px]">
-                      {user.joinDate ? new Date(user.joinDate).toLocaleDateString() : 'N/A'}
-                    </Text>
-                  </View>
-                  <Text className="text-gray-900 dark:text-white font-bold text-base mb-1" numberOfLines={1}>{user.name}</Text>
-                  <Text className="text-gray-500 dark:text-gray-400 text-xs font-mono">{user.displayId}</Text>
-                </View>
-              ))}
-            </ScrollView>
-          )}
-        </View>
       </ScrollView>
 
     </View>

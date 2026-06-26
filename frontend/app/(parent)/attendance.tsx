@@ -115,7 +115,7 @@ export default function StudentAttendancePage() {
   const stats = computeStats(records);
 
   return (
-    <View className="flex-1 bg-gray-50 dark:bg-navy">
+    <View className="flex-1 bg-[#F6F8FA] dark:bg-[#161B22]">
       <UnifiedHeader
         title={resolvedName ? `${resolvedName}'s Attendance` : "Compliance"}
         subtitle="Attendance Record"
@@ -134,7 +134,7 @@ export default function StudentAttendancePage() {
       >
         <View className="p-4 md:p-8">
           <View className="px-2 mb-3">
-            <View className="self-start bg-white dark:bg-navy-surface border border-gray-100 dark:border-gray-800 rounded-full px-3 py-1.5">
+            <View className="self-start bg-white dark:bg-[#161B22] border border-gray-100 dark:border-gray-800 rounded-full px-3 py-1.5">
               <Text className="text-[10px] font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400">
                 Viewing: <Text className="text-gray-900 dark:text-white">{resolvedName || "Student"}</Text> · {classLabel || "Unassigned"}
               </Text>
@@ -189,14 +189,14 @@ export default function StudentAttendancePage() {
                 </View>
                 <View className="flex-row items-center">
                   <HelpTooltip id="parent.attendance.logs" role="parent" tier={tier} onLearnMore={(a) => router.push({ pathname: '/(parent)/accessibility/settings', params: { manual: '1', anchor: a || 'parent-workflow' } } as any)} />
-                  <TouchableOpacity className="bg-white dark:bg-navy-surface p-2 rounded-xl border border-gray-100 dark:border-gray-800 shadow-sm ml-2">
+                  <TouchableOpacity className="bg-white dark:bg-[#161B22] p-2 rounded-xl border border-gray-100 dark:border-gray-800 shadow-sm ml-2">
                     <Search size={16} color="#FF6900" />
                   </TouchableOpacity>
                 </View>
               </View>
 
               {records.length === 0 ? (
-                <View className="bg-white dark:bg-navy-surface p-10 rounded-[32px] border border-gray-50 dark:border-gray-800 items-center">
+                <View className="bg-white dark:bg-[#161B22] p-10 rounded-[32px] border border-gray-50 dark:border-gray-800 items-center">
                   <CalendarIcon size={32} color="#FF6900" />
                   <Text className="text-gray-400 dark:text-gray-500 text-xs font-bold uppercase tracking-widest mt-4 text-center">
                     No attendance records yet
@@ -207,7 +207,7 @@ export default function StudentAttendancePage() {
                   const config = getStatusConfig(item.status);
                   const subjectName = item.subject?.title ?? item.subject ?? "—";
                   return (
-                    <View key={item.id ?? idx} className="bg-white dark:bg-navy-surface p-5 rounded-[32px] mb-4 flex-row items-center border border-gray-50 dark:border-gray-800 shadow-sm">
+                    <View key={item.id ?? idx} className="bg-white dark:bg-[#161B22] p-5 rounded-[32px] mb-4 flex-row items-center border border-gray-50 dark:border-gray-800 shadow-sm">
                       <View
                         style={{ backgroundColor: config.bg }}
                         className="w-12 h-12 rounded-2xl items-center justify-center mr-4"

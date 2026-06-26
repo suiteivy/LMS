@@ -140,7 +140,7 @@ export default function CreateUserScreen() {
 
         const [classRes, subjectRes, studentRes, parentRes, studentCountRes, adminCountRes, teacherCountRes, parentCountRes] = await Promise.all([
             supabase.from('v_classes_detailed')
-                .select('id, name, grade_level, form_level, level_label, stream')
+                .select('id, name, display_name, grade_level, form_level, level_label, stream')
                 .eq('institution_id', profile?.institution_id || '')
                 .order('grade_level', { ascending: true })
                 .order('form_level', { ascending: true })
@@ -282,12 +282,12 @@ export default function CreateUserScreen() {
     const prevStep = () => { if (step > 0) setStep((step - 1) as Step); else router.back(); };
 
     // ---------- Theme shorthands ----------
-    const bg = isDark ? '#0F0B2E' : '#f9fafb';
-    const card = isDark ? '#13103A' : '#ffffff';
+    const bg = isDark ? '#161B22' : '#f9fafb';
+    const card = isDark ? '#161B22' : '#ffffff';
     const border = isDark ? 'rgba(255,255,255,0.1)' : '#e5e7eb';
     const textPrimary = isDark ? '#f9fafb' : '#111827';
     const textSecondary = isDark ? '#94a3b8' : '#6b7280';
-    const inputBg = isDark ? '#13103A' : '#f9fafb';
+    const inputBg = isDark ? '#161B22' : '#f9fafb';
     const inputBorder = isDark ? 'rgba(255,255,255,0.1)' : '#e5e7eb';
 
     // ---------- Options ----------
@@ -607,7 +607,7 @@ export default function CreateUserScreen() {
                         </View>
                     )}
                     {form.linked_students.map(ls => (
-                        <View key={ls.student_id} style={{ backgroundColor: isDark ? '#13103A' : '#f9fafb', borderRadius: 12, padding: 16, marginBottom: 8, borderWidth: 1, borderColor: border }}>
+                        <View key={ls.student_id} style={{ backgroundColor: isDark ? '#161B22' : '#f9fafb', borderRadius: 12, padding: 16, marginBottom: 8, borderWidth: 1, borderColor: border }}>
                             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
                                 <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                                     <Ionicons name="person" size={16} color="#FF6B00" />
@@ -641,7 +641,7 @@ export default function CreateUserScreen() {
             {form.role === 'teacher' && renderTeacherDetails()}
             {form.role === 'parent' && renderParentDetails()}
             {form.role === 'admin' && (
-                <View style={{ backgroundColor: isDark ? '#13103A' : '#f9fafb', borderRadius: 12, padding: 24, alignItems: 'center' }}>
+                <View style={{ backgroundColor: isDark ? '#161B22' : '#f9fafb', borderRadius: 12, padding: 24, alignItems: 'center' }}>
                     <Ionicons name="shield-checkmark" size={48} color={textSecondary} />
                     <Text style={{ color: textSecondary, marginTop: 12, textAlign: 'center' }}>No additional details needed for admin accounts</Text>
                 </View>

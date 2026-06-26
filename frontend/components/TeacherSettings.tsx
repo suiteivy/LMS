@@ -72,7 +72,7 @@ export default function TeacherSettings() {
         setPrefs(prev => ({ ...prev, [key]: newValue }));
         try {
             await SettingsService.updatePreferences({ [key]: newValue });
-            Toast.show({ type: 'success', text1: 'Preferences Updated', text2: 'Your notification settings have been saved.', position: 'bottom' });
+            Toast.show({ type: 'success', text1: 'Preferences Updated', text2: 'Your notification settings have been saved.', position: 'top' });
         } catch (err) {
             console.error('Failed to update preference:', err);
             setPrefs(prev => ({ ...prev, [key]: !newValue }));
@@ -98,11 +98,11 @@ export default function TeacherSettings() {
 
 
     const settingsContent = (
-        <ScrollView className="flex-1 bg-gray-50 dark:bg-navy">
+        <ScrollView className="flex-1 bg-gray-50 dark:bg-[#161B22]">
             <View className="p-4 md:p-8 max-w-2xl mx-auto w-full">
 
-                <Text className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest ml-1 mb-2">Account</Text>
-                <View className="bg-white dark:bg-[#1a1a1a] rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm mb-6 overflow-hidden">
+                <Text className="text-xs font-bold text-gray-400 dark:text-white uppercase tracking-widest ml-1 mb-2">Account</Text>
+                <View className="bg-white dark:bg-[#161B22] rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm mb-6 overflow-hidden">
                     <TouchableOpacity
                         onPress={() => setShowEditForm(true)}
                     >
@@ -114,22 +114,22 @@ export default function TeacherSettings() {
                         onPress={() => setShowPasswordForm(true)}
                     >
                         <SettingRow icon={Lock} title="Change Password" isDark={isDark}>
-                            <HelpTooltip id="settings.password" role="teacher" tier={tier} onLearnMore={openManual} />
+                            <HelpTooltip id="settings.password.teacher" role="teacher" tier={tier} onLearnMore={openManual} />
                         </SettingRow>
                     </TouchableOpacity>
                     <SettingRow icon={Globe} title="Language" isLast isDark={isDark}>
-                        <HelpTooltip id="settings.language" role="teacher" tier={tier} onLearnMore={openManual} />
-                        <Text className="text-gray-400 dark:text-gray-500 mr-2">English</Text>
+                        <HelpTooltip id="settings.language.teacher" role="teacher" tier={tier} onLearnMore={openManual} />
+                        <Text className="text-gray-400 dark:text-white mr-2">English</Text>
                     </SettingRow>
                 </View>
 
-                <Text className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest ml-1 mb-2">Teaching Preferences</Text>
+                <Text className="text-xs font-bold text-gray-500 dark:text-white uppercase tracking-widest ml-1 mb-2">Teaching Preferences</Text>
                 {prefsLoading ? (
                     <ActivityIndicator size="small" color="#FF6B00" style={{ marginBottom: 24 }} />
                 ) : (
                     <View className="bg-[#F6F8FA] dark:bg-[#161B22] rounded-3xl border border-[#D0D7DE] dark:border-[#21262D] mb-6 overflow-hidden">
                         <SettingRow icon={Bell} title="General Notifications" isDark={isDark}>
-                            <HelpTooltip id="settings.notifications.general" role="teacher" tier={tier} onLearnMore={openManual} />
+                            <HelpTooltip id="settings.notifications.general.teacher" role="teacher" tier={tier} onLearnMore={openManual} />
                             <Switch
                                 value={prefs.push_notifications}
                                 onValueChange={() => togglePref('push_notifications')}

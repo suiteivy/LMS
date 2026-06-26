@@ -53,7 +53,7 @@ const resolveFeeStructureCurrentPair = async ({ institution_id, term_id, academi
 exports.createFund = async (req, res) => {
     try {
         const { userRole, institution_id } = req;
-        if (!['admin', 'bursary', 'master_admin'].includes(userRole)) return res.status(403).json({ error: "Unauthorized" });
+        if (!['admin', 'school_admin', 'platform_admin', 'bursary', 'master_admin'].includes(userRole)) return res.status(403).json({ error: "Unauthorized" });
 
         const { name, description, total_amount } = req.body;
         if (!name) return res.status(400).json({ error: "Fund name is required" });
@@ -98,7 +98,7 @@ exports.getFunds = async (req, res) => {
 exports.createAllocation = async (req, res) => {
     try {
         const { userRole, institution_id } = req;
-        if (!['admin', 'bursary', 'master_admin'].includes(userRole)) return res.status(403).json({ error: "Unauthorized" });
+        if (!['admin', 'school_admin', 'platform_admin', 'bursary', 'master_admin'].includes(userRole)) return res.status(403).json({ error: "Unauthorized" });
 
         const { fund_id, title, description, amount, category, status } = req.body;
         if (!fund_id || !title || !amount) {
@@ -210,7 +210,38 @@ exports.getTransactions = async (req, res) => {
 
         const { data, error } = await query;
         if (error) throw error;
-        res.json(data);
+
+        const rows = data || [];
+        const userIds = [...new Set(rows.map((tx) => tx.user_id).filter(Boolean))];
+
+        let studentByUserId = new Map();
+        let teacherByUserId = new Map();
+
+        if (userIds.length > 0) {
+            const [{ data: studentRows }, { data: teacherRows }] = await Promise.all([
+                supabase
+                    .from("students")
+                    .select("id, user_id")
+                    .eq("institution_id", institution_id)
+                    .in("user_id", userIds),
+                supabase
+                    .from("teachers")
+                    .select("id, user_id")
+                    .eq("institution_id", institution_id)
+                    .in("user_id", userIds),
+            ]);
+
+            studentByUserId = new Map((studentRows || []).map((s) => [s.user_id, s.id]));
+            teacherByUserId = new Map((teacherRows || []).map((t) => [t.user_id, t.id]));
+        }
+
+        const enriched = rows.map((tx) => ({
+            ...tx,
+            student_display_id: studentByUserId.get(tx.user_id) || null,
+            teacher_display_id: teacherByUserId.get(tx.user_id) || null,
+        }));
+
+        res.json(enriched);
     } catch (err) {
         console.error("Get transactions error:", err);
         res.status(500).json({ error: err.message });
@@ -225,7 +256,7 @@ exports.processTransaction = async (req, res) => {
         const { id } = req.params;
         const { userRole, institution_id } = req;
 
-        if (!['admin', 'bursary', 'master_admin'].includes(userRole)) return res.status(403).json({ error: "Unauthorized" });
+        if (!['admin', 'school_admin', 'platform_admin', 'bursary', 'master_admin'].includes(userRole)) return res.status(403).json({ error: "Unauthorized" });
 
         const { data: tx, error: fetchError } = await supabase
             .from("financial_transactions")
@@ -407,7 +438,7 @@ exports.getFeeStructures = async (req, res) => {
 exports.updateFeeStructure = async (req, res) => {
     try {
         const { userRole, institution_id } = req;
-        if (!['admin', 'bursary', 'master_admin'].includes(userRole)) return res.status(403).json({ error: "Unauthorized" });
+        if (!['admin', 'school_admin', 'platform_admin', 'bursary', 'master_admin'].includes(userRole)) return res.status(403).json({ error: "Unauthorized" });
 
         const id = req.params.id || req.body.id;
         if (!id) return res.status(400).json({ error: 'Fee structure id is required' });
@@ -458,7 +489,7 @@ exports.updateFeeStructure = async (req, res) => {
 exports.createFeeStructure = async (req, res) => {
     try {
         const { userRole, institution_id } = req;
-        if (!['admin', 'bursary', 'master_admin'].includes(userRole)) return res.status(403).json({ error: "Unauthorized" });
+        if (!['admin', 'school_admin', 'platform_admin', 'bursary', 'master_admin'].includes(userRole)) return res.status(403).json({ error: "Unauthorized" });
 
         const {
             title,
@@ -509,7 +540,7 @@ exports.releaseFeeStructure = async (req, res) => {
             req.query?.strict_current_pair === 'true' ||
             req.query?.strict_current_pair === '1' ||
             req.body?.strict_current_pair === true;
-        if (!['admin', 'bursary', 'master_admin'].includes(userRole)) return res.status(403).json({ error: 'Unauthorized' });
+        if (!['admin', 'school_admin', 'platform_admin', 'bursary', 'master_admin'].includes(userRole)) return res.status(403).json({ error: 'Unauthorized' });
         if (!id) return res.status(400).json({ error: 'Fee structure id is required' });
 
         if (strictCurrentPair) {
@@ -563,7 +594,7 @@ exports.deleteFeeStructure = async (req, res) => {
     try {
         const { userRole, institution_id } = req;
         const { id } = req.params;
-        if (!['admin', 'bursary', 'master_admin'].includes(userRole)) return res.status(403).json({ error: 'Unauthorized' });
+        if (!['admin', 'school_admin', 'platform_admin', 'bursary', 'master_admin'].includes(userRole)) return res.status(403).json({ error: 'Unauthorized' });
         if (!id) return res.status(400).json({ error: 'Fee structure id is required' });
 
         const { error } = await supabase
@@ -584,7 +615,7 @@ exports.revertReleaseFeeStructure = async (req, res) => {
     try {
         const { userRole, institution_id } = req;
         const { id } = req.params;
-        if (!['admin', 'bursary', 'master_admin'].includes(userRole)) return res.status(403).json({ error: 'Unauthorized' });
+        if (!['admin', 'school_admin', 'platform_admin', 'bursary', 'master_admin'].includes(userRole)) return res.status(403).json({ error: 'Unauthorized' });
         if (!id) return res.status(400).json({ error: 'Fee structure id is required' });
 
         const { data, error } = await supabase
@@ -642,7 +673,7 @@ exports.submitPaymentEvidence = async (req, res) => {
 exports.getPendingPayments = async (req, res) => {
     try {
         const { institution_id, userRole } = req;
-        if (!['admin', 'bursary', 'master_admin'].includes(userRole)) return res.status(403).json({ error: "Unauthorized" });
+        if (!['admin', 'school_admin', 'platform_admin', 'bursary', 'master_admin'].includes(userRole)) return res.status(403).json({ error: "Unauthorized" });
 
         const { data, error } = await supabase
             .from("payments")
@@ -665,7 +696,7 @@ exports.getPendingPayments = async (req, res) => {
 exports.confirmPaymentEvidence = async (req, res) => {
     try {
         const { userRole, institution_id, userId } = req;
-        if (!['admin', 'bursary', 'master_admin'].includes(userRole)) return res.status(403).json({ error: "Unauthorized" });
+        if (!['admin', 'school_admin', 'platform_admin', 'bursary', 'master_admin'].includes(userRole)) return res.status(403).json({ error: "Unauthorized" });
 
         const { payment_id, action, admin_notes } = req.body;
         const isApproved = action === 'approve';

@@ -39,7 +39,7 @@ const QuickAction = ({ icon: Icon, label, color, onPress, badge }: QuickActionPr
                 shadowRadius: 1.5,
                 elevation: 1,
             }}
-            className="bg-white dark:bg-[#1a1a1a] p-6 rounded-3xl border border-gray-100 dark:border-gray-800 items-center mb-4 active:bg-gray-50 dark:active:bg-gray-900"
+            className="bg-white dark:bg-[#161B22] p-6 rounded-3xl border border-gray-100 dark:border-gray-800 items-center mb-4 active:bg-gray-50 dark:active:bg-gray-900"
         >
             <View style={{ backgroundColor: `${color}15` }} className="p-3 rounded-2xl mb-2">
                 <Icon size={24} color={color} />
@@ -208,7 +208,7 @@ export default function TeacherHome() {
     const activeAssignment = assignedSubjects.find(s => s.title === selectedSubjectTitle && s.class?.id === selectedClassId);
 
     return (
-        <View className="flex-1 bg-white dark:bg-navy">
+        <View className="flex-1 bg-[#F6F8FA] dark:bg-[#161B22]">
             <StatusBar barStyle={isDark ? "light-content" : "dark-content"} />
             <SubscriptionBanner />
             <UnifiedHeader
@@ -254,7 +254,7 @@ export default function TeacherHome() {
                                 shadowRadius: 2,
                                 elevation: 1,
                             }}
-                            className="flex-row items-center bg-white dark:bg-[#1a1a1a] px-4 py-2 rounded-2xl border border-gray-100 dark:border-gray-800"
+                            className="flex-row items-center bg-white dark:bg-[#161B22] px-4 py-2 rounded-2xl border border-gray-100 dark:border-gray-800"
                         >
                             <LogOut size={14} color="#ef4444" />
                             <Text className="ml-2 text-red-600 font-bold text-[10px] uppercase tracking-widest">Logout</Text>
@@ -301,7 +301,7 @@ export default function TeacherHome() {
                                 shadowRadius: 2,
                                 elevation: 2,
                             }}
-                            className="flex-1 bg-white dark:bg-[#1a1a1a] p-6 rounded-3xl border border-gray-100 dark:border-gray-800"
+                            className="flex-1 bg-[#F6F8FA] dark:bg-[#161B22] p-6 rounded-3xl border border-gray-100 dark:border-gray-800"
                         >
                             <View className="bg-orange-50 dark:bg-orange-950/30 w-10 h-10 rounded-2xl items-center justify-center mb-3">
                                 <Clock size={20} color="#FF6900" />
@@ -316,10 +316,10 @@ export default function TeacherHome() {
                     </View>
 
                     {/* --- 3. Switcher Card (Subjects / Classes / CT Mode) --- */}
-                    <View className="bg-white dark:bg-[#1a1a1a] rounded-[32px] border border-gray-100 dark:border-gray-800 p-5 mb-8 shadow-sm">
+                    <View className="bg-white dark:bg-[#161B22] rounded-[32px] border border-gray-100 dark:border-gray-800 p-5 mb-8 shadow-sm">
                         {/* Mode Selector - Tabs */}
                         {roles.includes('Class Teacher') && (
-                            <View className="flex-row bg-gray-105 dark:bg-navy/80 rounded-2xl p-1 mb-5">
+                            <View className="flex-row bg-gray-105 dark:bg-[#161B22] rounded-2xl p-1 mb-5">
                                 <TouchableOpacity 
                                     onPress={() => setMode('subject')}
                                     className={`flex-1 py-2.5 rounded-xl items-center ${mode === 'subject' ? 'bg-[#FF6900]' : 'bg-transparent'}`}
@@ -351,7 +351,7 @@ export default function TeacherHome() {
                                             className={`px-4 py-2 rounded-xl mr-2 border ${
                                                 selectedSubjectTitle === title 
                                                     ? 'bg-orange-50 dark:bg-[#FF6900]/10 border-[#FF6900]' 
-                                                    : 'bg-gray-50 dark:bg-navy/40 border-gray-100 dark:border-gray-800'
+                                                    : 'bg-gray-50 dark:bg-[#161B22] border-gray-100 dark:border-gray-800'
                                             }`}
                                         >
                                             <Text className={`text-xs font-bold ${selectedSubjectTitle === title ? 'text-[#FF6900]' : 'text-gray-750 dark:text-gray-300'}`}>
@@ -377,7 +377,7 @@ export default function TeacherHome() {
                                                         className={`px-4 py-2 rounded-xl mr-2 border ${
                                                             selectedClassId === cls.id 
                                                                 ? 'bg-orange-50 dark:bg-[#FF6900]/10 border-[#FF6900]' 
-                                                                : 'bg-gray-50 dark:bg-navy/40 border-gray-100 dark:border-gray-800'
+                                                                : 'bg-gray-50 dark:bg-[#161B22] border-gray-100 dark:border-gray-800'
                                                         }`}
                                                     >
                                                         <Text className={`text-xs font-bold ${selectedClassId === cls.id ? 'text-[#FF6900]' : 'text-gray-750 dark:text-gray-300'}`}>
@@ -395,7 +395,7 @@ export default function TeacherHome() {
                                     <Text className="text-gray-400 dark:text-gray-550 text-[10px] font-bold uppercase tracking-wider mb-3">Weekly Timetable Schedule</Text>
                                     {activeAssignment?.timetable && activeAssignment.timetable.length > 0 ? (
                                         activeAssignment.timetable.map((slot: any, idx: number) => (
-                                            <View key={idx} className="flex-row items-center gap-3 bg-gray-50 dark:bg-navy/20 border border-gray-100 dark:border-gray-800 p-3 rounded-2xl mb-2">
+                                            <View key={idx} className="flex-row items-center gap-3 bg-gray-50 dark:bg-[#161B22] border border-gray-100 dark:border-gray-800 p-3 rounded-2xl mb-2">
                                                 <View className="bg-orange-500/10 p-2 rounded-xl">
                                                     <Clock size={14} color="#FF6900" />
                                                 </View>
@@ -404,14 +404,14 @@ export default function TeacherHome() {
                                                     <Text className="text-gray-450 dark:text-gray-500 text-[10px]">{slot.start_time} - {slot.end_time}</Text>
                                                 </View>
                                                 {slot.room_number && (
-                                                    <View className="bg-gray-100 dark:bg-navy px-2 py-1 rounded-lg">
+                                                    <View className="bg-gray-100 dark:bg-[#161B22] px-2 py-1 rounded-lg">
                                                         <Text className="text-gray-500 dark:text-gray-400 text-[10px] font-semibold">Room {slot.room_number}</Text>
                                                     </View>
                                                 )}
                                             </View>
                                         ))
                                     ) : (
-                                        <View className="items-center justify-center py-6 bg-gray-50 dark:bg-navy/20 rounded-2xl border border-dashed border-gray-200 dark:border-gray-800">
+                                        <View className="items-center justify-center py-6 bg-gray-50 dark:bg-[#161B22] rounded-2xl border border-dashed border-gray-200 dark:border-gray-800">
                                             <Text className="text-gray-400 dark:text-gray-500 text-xs font-semibold">No timetable slots scheduled</Text>
                                         </View>
                                     )}
@@ -437,7 +437,7 @@ export default function TeacherHome() {
                                             <View className="flex-row gap-2 mt-2">
                                                 <TouchableOpacity 
                                                     onPress={() => router.push("/(teacher)/classes" as any)}
-                                                    className="flex-1 bg-white dark:bg-[#1a1a1a] border border-gray-200 dark:border-gray-800 py-2.5 rounded-xl items-center active:bg-gray-50 dark:active:bg-gray-900"
+                                                    className="flex-1 bg-[#F6F8FA] dark:bg-[#161B22] border border-gray-200 dark:border-gray-800 py-2.5 rounded-xl items-center active:bg-[#F6F8FA] dark:active:bg-gray-900"
                                                 >
                                                     <Text className="text-gray-700 dark:text-gray-200 font-bold text-xs">Attendance & Roster</Text>
                                                 </TouchableOpacity>
@@ -452,7 +452,7 @@ export default function TeacherHome() {
                                         </View>
                                     ))
                                 ) : (
-                                    <View className="items-center justify-center py-6 bg-gray-50 dark:bg-[#1a1a1a] rounded-2xl border border-dashed border-gray-200 dark:border-gray-800">
+                                    <View className="items-center justify-center py-6 bg-gray-50 dark:bg-[#161B22] rounded-2xl border border-dashed border-gray-200 dark:border-gray-800">
                                         <Text className="text-gray-400 dark:text-gray-550 text-xs font-semibold">No assigned classes as Class Teacher</Text>
                                     </View>
                                 )}
@@ -473,7 +473,7 @@ export default function TeacherHome() {
                     {loading ? (
                         <ActivityIndicator size="small" color="#FF6900" className="my-8" />
                     ) : schedule.length === 0 ? (
-                        <View className="bg-white dark:bg-[#1a1a1a] p-8 rounded-3xl border border-dashed border-gray-200 dark:border-gray-800 items-center justify-center mb-6">
+                        <View className="bg-white dark:bg-[#161B22] p-8 rounded-3xl border border-dashed border-gray-200 dark:border-gray-800 items-center justify-center mb-6">
                             <Calendar size={32} color="#D1D5DB" />
                             <Text className="text-gray-400 dark:text-gray-550 mt-2 font-medium">No classes today</Text>
                         </View>
@@ -499,7 +499,7 @@ export default function TeacherHome() {
                                         shadowRadius: 2,
                                         elevation: 2,
                                     }}
-                                    className="bg-white dark:bg-[#1a1a1a] p-5 rounded-3xl border border-gray-100 dark:border-gray-800 mr-4 w-64"
+                                    className="bg-white dark:bg-[#161B22] p-5 rounded-3xl border border-gray-100 dark:border-gray-800 mr-4 w-64"
                                 >
                                     <View className="flex-row items-center mb-3">
                                         <View className="bg-orange-50 dark:bg-orange-950/30 p-2 rounded-xl mr-3">

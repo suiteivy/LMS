@@ -41,9 +41,9 @@ export const UnifiedHeader: React.FC<UnifiedHeaderProps> = ({
   const isMobile = width < 768;
 
   // FotMob Design System tokens
-  const bg = isDark ? '#0D1117' : '#FFFFFF';
+  const bg = isDark ? '#161B22' : '#F6F8FA';
   const border = isDark ? '#21262D' : '#D0D7DE';
-  const surface = isDark ? '#1C2128' : '#F6F8FA';
+  const surface = isDark ? '#111827' : '#EAEEF2';
   const surfaceBorder = isDark ? '#21262D' : '#D0D7DE';
   const iconColor = isDark ? '#FFFFFF' : '#111827';
   const subtleIconColor = isDark ? '#9ca3af' : '#6b7280';

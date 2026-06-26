@@ -122,7 +122,7 @@ export default function AdminResourceApprovals() {
     };
 
     return (
-        <View className="flex-1 bg-[#FFFFFF] dark:bg-[#0D1117]">
+        <View className="flex-1 bg-[#FFFFFF] dark:bg-[#161B22]">
             <UnifiedHeader
                 title="Resource"
                 subtitle="Approvals"

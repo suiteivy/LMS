@@ -139,7 +139,7 @@ export default function ParentAnalyticsPage() {
   const latestGpa = gpaValues.length > 0 ? gpaValues[gpaValues.length - 1].toFixed(2) : "N/A";
 
   return (
-    <View className="flex-1 bg-gray-50">
+    <View className="flex-1 bg-[#F6F8FA]">
       <UnifiedHeader title="Performance Trends" role="Parent/Guardian" />
       <ScrollView
         className="flex-1"
@@ -150,7 +150,7 @@ export default function ParentAnalyticsPage() {
         <View className="p-4">
           {!!selectedStudent?.users?.full_name && (
             <View className="mb-3 px-1">
-              <View className="self-start bg-white dark:bg-navy-surface border border-gray-100 dark:border-gray-800 rounded-full px-3 py-1.5">
+              <View className="self-start bg-white dark:bg-[#161B22] border border-gray-100 dark:border-gray-800 rounded-full px-3 py-1.5">
                 <Text className="text-[10px] font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400">
                   Viewing: <Text className="text-gray-900 dark:text-white">{selectedStudent.users.full_name}</Text> · {selectedStudent.class_name || formatClassLabel({
                     grade_level: selectedStudent.grade_level,
@@ -189,7 +189,7 @@ export default function ParentAnalyticsPage() {
           <SubscriptionGate
             feature="analytics"
             fallback={
-              <View className="bg-white dark:bg-[#1a1a1a] p-6 rounded-2xl border border-gray-100 dark:border-gray-800 items-center mt-6">
+              <View className="bg-white dark:bg-[#161B22] p-6 rounded-2xl border border-gray-100 dark:border-gray-800 items-center mt-6">
                 <Text className="text-gray-900 dark:text-white font-bold text-base mb-1">Analytics Locked</Text>
                 <Text className="text-gray-400 dark:text-gray-500 text-sm text-center mb-4">
                   Analytics add-on is not enabled for your institution.
@@ -203,14 +203,14 @@ export default function ParentAnalyticsPage() {
               <View>
               {/* GPA Overview Cards */}
               <View className="flex-row gap-3 mb-6">
-                <View className="flex-1 bg-white p-4 rounded-2xl border border-gray-100">
+                <View className="flex-1 bg-[#F6F8FA] p-4 rounded-2xl border border-gray-100">
                   <View className="w-10 h-10 rounded-xl items-center justify-center mb-2 bg-orange-50">
                     <TrendingUp size={20} color="#FF6B00" />
                   </View>
                   <Text className="text-gray-900 text-2xl font-bold">{latestGpa}</Text>
                   <Text className="text-gray-400 text-xs uppercase">Current GPA</Text>
                 </View>
-                <View className="flex-1 bg-white p-4 rounded-2xl border border-gray-100">
+                <View className="flex-1 bg-[#F6F8FA] p-4 rounded-2xl border border-gray-100">
                   <View className="w-10 h-10 rounded-xl items-center justify-center mb-2 bg-blue-50">
                     <BarChart3 size={20} color="#3B82F6" />
                   </View>

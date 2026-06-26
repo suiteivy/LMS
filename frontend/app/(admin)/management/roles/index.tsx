@@ -11,7 +11,7 @@ const RoleCard = ({ role, onEdit, onDelete, isDark }: { role: CustomRole; onEdit
     const border = isDark ? '#21262D' : '#D0D7DE';
     const textPrimary = isDark ? '#FFFFFF' : '#111827';
     const textSecondary = isDark ? '#9ca3af' : '#6b7280';
-    const chipBg = isDark ? '#161B22' : '#F6F8FA';
+    const chipBg = isDark ? '#0F0B2E' : '#F6F8FA';
     const chipBorder = isDark ? '#21262D' : '#D0D7DE';
 
     return (
@@ -87,7 +87,7 @@ const PermissionModal = ({ visible, onClose, role, availablePermissions, onSave,
     const border = isDark ? '#21262D' : '#D0D7DE';
     const textPrimary = isDark ? '#FFFFFF' : '#111827';
     const textSecondary = isDark ? '#9ca3af' : '#6b7280';
-    const inputBg = isDark ? '#0D1117' : '#FFFFFF';
+    const inputBg = isDark ? '#161B22' : '#FFFFFF';
 
     const [name, setName] = useState('');
     const [description, setDescription] = useState('');
@@ -139,7 +139,7 @@ const PermissionModal = ({ visible, onClose, role, availablePermissions, onSave,
                             </Text>
                             {role && <Text style={{ color: textSecondary, fontWeight: '500', marginTop: 2 }}>{role.name}</Text>}
                         </View>
-                        <TouchableOpacity onPress={onClose} style={{ backgroundColor: isDark ? '#1A1650' : '#f1f5f9', padding: 8, borderRadius: 999, borderWidth: 1, borderColor: isDark ? 'rgba(255,255,255,0.1)' : '#e2e8f0' }}>
+                        <TouchableOpacity onPress={onClose} style={{ backgroundColor: isDark ? '#161B22' : '#f1f5f9', padding: 8, borderRadius: 999, borderWidth: 1, borderColor: isDark ? 'rgba(255,255,255,0.1)' : '#e2e8f0' }}>
                             <X size={20} color={textPrimary} />
                         </TouchableOpacity>
                     </View>
@@ -267,7 +267,7 @@ export default function RolesAndPermissions() {
     };
 
     return (
-        <View className="flex-1 bg-[#FFFFFF] dark:bg-[#0D1117]">
+        <View className="flex-1 bg-[#FFFFFF] dark:bg-[#161B22]">
             <UnifiedHeader
                 title="Management"
                 subtitle="Permissions"

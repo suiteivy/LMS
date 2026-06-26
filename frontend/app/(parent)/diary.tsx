@@ -46,7 +46,7 @@ const DiaryCard = ({ entry, onSign }: { entry: DiaryEntry; onSign: (id: string) 
     const statusStyle = assignment ? getStatusColor(assignment.status) : null;
 
     return (
-        <View className="bg-[#FFFFFF] dark:bg-[#0D1117] p-5 rounded-xl border border-[#D0D7DE] dark:border-[#21262D] mb-4 shadow-sm">
+        <View className="bg-[#FFFFFF] dark:bg-[#161B22] p-5 rounded-xl border border-[#D0D7DE] dark:border-[#21262D] mb-4 shadow-sm">
             <View className="flex-row items-start mb-4">
                 <View className="bg-orange-100 dark:bg-orange-950/20 p-2.5 rounded-xl mr-4">
                     <BookOpen size={20} color="#FF6900" />
@@ -105,7 +105,7 @@ const DiaryCard = ({ entry, onSign }: { entry: DiaryEntry; onSign: (id: string) 
 
             {/* Assignment fields: Grade & Attachments */}
             {assignment && (
-                <View className="bg-gray-50 dark:bg-[#151515] p-4 rounded-2xl mb-4 border border-gray-100/50 dark:border-gray-800/50">
+                <View className="bg-gray-50 dark:bg-[#161B22] p-4 rounded-2xl mb-4 border border-gray-100/50 dark:border-gray-800/50">
                     <View className="flex-row justify-between items-center mb-2.5">
                         <Text className="text-gray-400 dark:text-gray-500 text-[11px] font-bold uppercase tracking-wider">Score / Grade</Text>
                         {assignment.status === 'Graded' && assignment.grade !== null ? (
@@ -133,7 +133,7 @@ const DiaryCard = ({ entry, onSign }: { entry: DiaryEntry; onSign: (id: string) 
                             <Text className="text-gray-400 dark:text-gray-500 text-[10px] font-bold uppercase tracking-wider">Reference Materials</Text>
                             <TouchableOpacity 
                                 onPress={() => WebBrowser.openBrowserAsync(assignment.attachment_url!)}
-                                className="flex-row items-center bg-white dark:bg-[#202020] px-3 py-1.5 rounded-xl border border-gray-100 dark:border-gray-800"
+                                className="flex-row items-center bg-white dark:bg-[#161B22] px-3 py-1.5 rounded-xl border border-gray-100 dark:border-gray-800"
                             >
                                 <ExternalLink size={11} color="#6366F1" />
                                 <Text className="text-indigo-600 dark:text-indigo-400 font-bold text-[10px] ml-1.5 uppercase tracking-wider">
@@ -426,7 +426,7 @@ export default function ParentDiaryPage() {
     };
 
     return (
-        <View className="flex-1 bg-gray-50 dark:bg-[#0c0c0c]">
+        <View className="flex-1 bg-[#F6F8FA] dark:bg-[#161B22]">
             <UnifiedHeader
                 title="Class Diary"
                 subtitle={selectedStudentName ? `Daily Activities · ${selectedStudentName}` : "Daily Activities"}
@@ -439,7 +439,7 @@ export default function ParentDiaryPage() {
                 {students.length > 1 && (
                     <View className="mb-6 relative z-10">
                         <TouchableOpacity
-                            className="bg-[#FFFFFF] dark:bg-[#0D1117] rounded-xl px-6 py-4 border border-[#D0D7DE] dark:border-[#21262D] flex-row items-center justify-between shadow-sm"
+                            className="bg-[#FFFFFF] dark:bg-[#161B22] rounded-xl px-6 py-4 border border-[#D0D7DE] dark:border-[#21262D] flex-row items-center justify-between shadow-sm"
                             onPress={() => setShowStudentDropdown(!showStudentDropdown)}
                         >
                             <View className="flex-row items-center">
@@ -450,7 +450,7 @@ export default function ParentDiaryPage() {
                         </TouchableOpacity>
 
                         {showStudentDropdown && (
-                            <View className="absolute top-16 left-0 right-0 bg-[#FFFFFF] dark:bg-[#0D1117] border border-[#D0D7DE] dark:border-[#21262D] rounded-xl shadow-2xl z-20 overflow-hidden">
+                            <View className="absolute top-16 left-0 right-0 bg-[#FFFFFF] dark:bg-[#161B22] border border-[#D0D7DE] dark:border-[#21262D] rounded-xl shadow-2xl z-20 overflow-hidden">
                                 {students.map(s => (
                                     <TouchableOpacity
                                         key={s.id}
@@ -469,7 +469,7 @@ export default function ParentDiaryPage() {
                 )}
 
                 {/* Collapsible Filter Panel */}
-                <View className="bg-white dark:bg-[#1a1a1a] p-4 rounded-3xl border border-gray-100 dark:border-gray-800 mb-6 shadow-sm">
+                <View className="bg-white dark:bg-[#161B22] p-4 rounded-3xl border border-gray-100 dark:border-gray-800 mb-6 shadow-sm">
                     <TouchableOpacity 
                         onPress={() => setShowFilters(!showFilters)}
                         className="flex-row items-center justify-between"
@@ -489,7 +489,7 @@ export default function ParentDiaryPage() {
                                 <ScrollView horizontal showsHorizontalScrollIndicator={false} className="flex-row">
                                     <TouchableOpacity
                                         onPress={() => setSelectedSubjectId("all")}
-                                        className={`px-4 py-2.5 rounded-2xl mr-2 border ${selectedSubjectId === "all" ? 'bg-orange-100 dark:bg-orange-950/20 border-orange-200' : 'bg-gray-50 dark:bg-[#202020] border-gray-100 dark:border-gray-800'}`}
+                                        className={`px-4 py-2.5 rounded-2xl mr-2 border ${selectedSubjectId === "all" ? 'bg-orange-100 dark:bg-orange-950/20 border-orange-200' : 'bg-gray-50 dark:bg-[#161B22] border-gray-100 dark:border-gray-800'}`}
                                     >
                                         <Text className={`font-bold text-xs ${selectedSubjectId === "all" ? 'text-orange-600' : 'text-gray-600 dark:text-gray-400'}`}>All Subjects</Text>
                                     </TouchableOpacity>
@@ -497,7 +497,7 @@ export default function ParentDiaryPage() {
                                         <TouchableOpacity
                                             key={sub.id}
                                             onPress={() => setSelectedSubjectId(sub.id)}
-                                            className={`px-4 py-2.5 rounded-2xl mr-2 border ${selectedSubjectId === sub.id ? 'bg-orange-100 dark:bg-orange-950/20 border-orange-200' : 'bg-gray-50 dark:bg-[#202020] border-gray-100 dark:border-gray-800'}`}
+                                            className={`px-4 py-2.5 rounded-2xl mr-2 border ${selectedSubjectId === sub.id ? 'bg-orange-100 dark:bg-orange-950/20 border-orange-200' : 'bg-gray-50 dark:bg-[#161B22] border-gray-100 dark:border-gray-800'}`}
                                         >
                                             <Text className={`font-bold text-xs ${selectedSubjectId === sub.id ? 'text-orange-600' : 'text-gray-600 dark:text-gray-400'}`}>{sub.title}</Text>
                                         </TouchableOpacity>
@@ -513,7 +513,7 @@ export default function ParentDiaryPage() {
                                         <TouchableOpacity
                                             key={status}
                                             onPress={() => setSelectedStatus(status)}
-                                            className={`px-4 py-2.5 rounded-2xl mr-2 border ${selectedStatus === status ? 'bg-orange-100 dark:bg-orange-950/20 border-orange-200' : 'bg-gray-50 dark:bg-[#202020] border-gray-100 dark:border-gray-800'}`}
+                                            className={`px-4 py-2.5 rounded-2xl mr-2 border ${selectedStatus === status ? 'bg-orange-100 dark:bg-orange-950/20 border-orange-200' : 'bg-gray-50 dark:bg-[#161B22] border-gray-100 dark:border-gray-800'}`}
                                         >
                                             <Text className={`font-bold text-xs ${selectedStatus === status ? 'text-orange-600' : 'text-gray-600 dark:text-gray-400'}`}>
                                                 {status === 'all' ? 'All (inc. Notes)' : status}
@@ -550,7 +550,7 @@ export default function ParentDiaryPage() {
                                     ) : (
                                         <TouchableOpacity
                                             onPress={() => setShowStartPicker(true)}
-                                            className="bg-gray-50 dark:bg-[#202020] rounded-2xl px-4 py-3 border border-gray-100 dark:border-gray-800 flex-row justify-between items-center"
+                                            className="bg-gray-50 dark:bg-[#161B22] rounded-2xl px-4 py-3 border border-gray-100 dark:border-gray-800 flex-row justify-between items-center"
                                         >
                                             <Text className="text-gray-950 dark:text-white font-bold text-xs">
                                                 {startDate || "Select date"}
@@ -596,7 +596,7 @@ export default function ParentDiaryPage() {
                                     ) : (
                                         <TouchableOpacity
                                             onPress={() => setShowEndPicker(true)}
-                                            className="bg-gray-50 dark:bg-[#202020] rounded-2xl px-4 py-3 border border-gray-100 dark:border-gray-800 flex-row justify-between items-center"
+                                            className="bg-gray-50 dark:bg-[#161B22] rounded-2xl px-4 py-3 border border-gray-100 dark:border-gray-800 flex-row justify-between items-center"
                                         >
                                             <Text className="text-gray-900 dark:text-white font-bold text-xs">
                                                 {endDate || "Select date"}
@@ -627,7 +627,7 @@ export default function ParentDiaryPage() {
                                         setStartDate("");
                                         setEndDate("");
                                     }}
-                                    className="mt-4 bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl py-2.5 items-center active:bg-gray-100"
+                                    className="mt-4 bg-gray-50 dark:bg-[#161B22] border border-gray-100 dark:border-gray-800 rounded-2xl py-2.5 items-center active:bg-gray-100"
                                 >
                                     <Text className="text-gray-600 dark:text-gray-400 font-bold text-xs">Reset Filters</Text>
                                 </TouchableOpacity>
@@ -643,7 +643,7 @@ export default function ParentDiaryPage() {
                             {entries.length} Entries found
                         </Text>
                         <TouchableOpacity
-                            className="flex-row items-center bg-[#FFFFFF] dark:bg-[#0D1117] px-4 py-2.5 rounded-xl border border-[#D0D7DE] dark:border-[#21262D] active:bg-gray-50 shadow-sm"
+                            className="flex-row items-center bg-[#FFFFFF] dark:bg-[#161B22] px-4 py-2.5 rounded-xl border border-[#D0D7DE] dark:border-[#21262D] active:bg-gray-50 shadow-sm"
                             onPress={handlePrint}
                         >
                             <Printer size={16} color={Platform.OS === 'web' ? '#6B7280' : '#FF6900'} />
@@ -654,7 +654,7 @@ export default function ParentDiaryPage() {
                     {loading ? (
                         <ActivityIndicator size="large" color="#FF6900" className="mt-8" />
                     ) : entries.length === 0 ? (
-                        <View className="bg-[#FFFFFF] dark:bg-[#0D1117] p-12 rounded-xl items-center border border-[#D0D7DE] dark:border-[#21262D] border-dashed">
+                        <View className="bg-[#FFFFFF] dark:bg-[#161B22] p-12 rounded-xl items-center border border-[#D0D7DE] dark:border-[#21262D] border-dashed">
                             <BookOpen size={48} color="#E5E7EB" style={{ opacity: 0.3 }} />
                             <Text className="text-gray-500 dark:text-gray-400 font-bold text-center mt-6 tracking-tight">No diary entries for this student.</Text>
                         </View>

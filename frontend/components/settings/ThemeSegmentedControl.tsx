@@ -22,9 +22,9 @@ export function ThemeSegmentedControl() {
   return (
     <View
       style={{
-        alignSelf: "center",
+        width: "100%",
         flexDirection: "row",
-        backgroundColor: isDark ? "#0F0B2E" : "#F8FAFC",
+        backgroundColor: isDark ? "#161B22" : "#F8FAFC",
         borderRadius: 16,
         padding: 4,
         borderWidth: 1,
@@ -40,6 +40,7 @@ export function ThemeSegmentedControl() {
             activeOpacity={0.85}
             style={{
               minWidth: 86,
+              flex: 1,
               paddingHorizontal: 12,
               paddingVertical: 7,
               borderRadius: 12,

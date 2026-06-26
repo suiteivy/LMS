@@ -5,7 +5,7 @@ import { MessageService } from "@/services/MessageService";
 import { groupMessagesByDate, isDateSeparator } from "@/utils/chatDateGrouping";
 import { Spinner } from "@/components/ui/Spinner";
 import { SkeletonList } from "@/components/ui/Skeleton";
-import { Alert, Image, RefreshControl, ScrollView, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { Alert, Image, Modal, RefreshControl, ScrollView, Text, TextInput, TouchableOpacity, View, useWindowDimensions } from "react-native";
 import { useIsFocused } from "@react-navigation/native";
 import { AlertCircle, Check, CheckCheck, CheckCircle2, ChevronLeft, ChevronRight, Clock3, MessageCircle, MoreVertical, Plus, Search, Send, User } from "lucide-react-native";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -48,14 +48,37 @@ const getInitial = (name?: string | null) => {
   return (trimmed.charAt(0) || "U").toUpperCase();
 };
 
-const getConversationExpiryLabel = (expiresAt?: string | null) => {
-  if (!expiresAt) return null;
-  const ms = new Date(expiresAt).getTime() - Date.now();
-  if (!Number.isFinite(ms)) return null;
-  const totalDays = Math.ceil(ms / (24 * 60 * 60 * 1000));
-  if (totalDays <= 0) return "Expires today";
-  if (totalDays === 1) return "Expires in 1 day";
-  return `Expires in ${totalDays} days`;
+const getConversationExpiryLabel = (
+  expiresAt?: string | null,
+  createdAt?: string | null,
+  nowMs: number = Date.now()
+) => {
+  const expiresAtMs = expiresAt ? new Date(expiresAt).getTime() : NaN;
+  const createdAtMs = createdAt ? new Date(createdAt).getTime() : NaN;
+  const fallbackExpiryMs = Number.isFinite(createdAtMs) ? createdAtMs + 7 * 24 * 60 * 60 * 1000 : NaN;
+  const targetMs = Number.isFinite(expiresAtMs) ? expiresAtMs : fallbackExpiryMs;
+
+  if (!Number.isFinite(targetMs)) return null;
+
+  const msRemaining = targetMs - nowMs;
+  if (msRemaining <= 0) return "Expired";
+
+  const totalMinutes = Math.floor(msRemaining / (60 * 1000));
+  const days = Math.floor(totalMinutes / (24 * 60));
+  const hours = Math.floor((totalMinutes % (24 * 60)) / 60);
+  const minutes = totalMinutes % 60;
+
+  if (days > 0) {
+    if (hours > 0) return `Expires in ${days}d ${hours}h`;
+    return `Expires in ${days}d`;
+  }
+
+  if (hours > 0) {
+    if (minutes > 0) return `Expires in ${hours}h ${minutes}m`;
+    return `Expires in ${hours}h`;
+  }
+
+  return `Expires in ${Math.max(1, minutes)}m`;
 };
 
 type DerivedMessageStatus = "pending" | "failed" | "sent" | "delivered" | "read" | null;
@@ -101,6 +124,20 @@ const mergeMessagesUnique = (messages: ChatMessage[]) => {
   return sortMessagesByCreatedAt(Array.from(byId.values()));
 };
 
+type ActionSheetOption = {
+  label: string;
+  onPress: () => void;
+  destructive?: boolean;
+  confirmTitle?: string;
+  confirmMessage?: string;
+};
+
+type ActionSheetAnchor = {
+  x: number;
+  y: number;
+  source: "header" | "bubble";
+};
+
 export function DirectChatView({
   allowedContactRoles,
   searchPlaceholder = "Search contacts...",
@@ -120,6 +157,7 @@ export function DirectChatView({
 
   const [selectedConversation, setSelectedConversation] = useState<ConversationSummary | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [loadingMessages, setLoadingMessages] = useState(false);
   const [messageInput, setMessageInput] = useState("");
   const [sending, setSending] = useState(false);
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
@@ -137,6 +175,15 @@ export function DirectChatView({
   const [loadingContacts, setLoadingContacts] = useState(false);
   const [selectedContact, setSelectedContact] = useState<any>(null);
   const [startingChat, setStartingChat] = useState(false);
+  const [actionSheetVisible, setActionSheetVisible] = useState(false);
+  const [actionSheetTitle, setActionSheetTitle] = useState("");
+  const [actionSheetOptions, setActionSheetOptions] = useState<ActionSheetOption[]>([]);
+  const [actionSheetAnchor, setActionSheetAnchor] = useState<ActionSheetAnchor | null>(null);
+  const [confirmVisible, setConfirmVisible] = useState(false);
+  const [confirmTitle, setConfirmTitle] = useState("");
+  const [confirmMessage, setConfirmMessage] = useState("");
+  const [nowMs, setNowMs] = useState(() => Date.now());
+  const { width: windowWidth, height: windowHeight } = useWindowDimensions();
 
   const horizontalPaddingClass = compact ? "px-3" : "px-4";
 
@@ -145,6 +192,8 @@ export function DirectChatView({
   const typingResetRef = useRef<any>(null);
   const deliveryAckTimerRef = useRef<any>(null);
   const selectedConversationIdRef = useRef<string | null>(null);
+  const conversationSignatureRef = useRef<string>("");
+  const pendingConfirmActionRef = useRef<null | (() => void)>(null);
   const contactsLoadedRef = useRef(false);
   const lastExternalRefreshTokenRef = useRef<number | undefined>(externalRefreshToken);
   const lastExternalComposeTokenRef = useRef<number | undefined>(externalComposeToken);
@@ -154,26 +203,78 @@ export function DirectChatView({
   const AUTO_RETRY_DELAYS_MS = [2000, 5000, 10000];
 
   const canUse = Boolean(profile?.id && profile?.institution_id);
+  const ACTION_SHEET_WIDTH = 288;
+  const ACTION_SHEET_MARGIN = 12;
+
+  const actionSheetPosition = useMemo(() => {
+    if (!actionSheetAnchor) {
+      return { left: ACTION_SHEET_MARGIN, top: 96 };
+    }
+
+    const maxLeft = Math.max(ACTION_SHEET_MARGIN, windowWidth - ACTION_SHEET_WIDTH - ACTION_SHEET_MARGIN);
+    const left = Math.min(maxLeft, Math.max(ACTION_SHEET_MARGIN, actionSheetAnchor.x - ACTION_SHEET_WIDTH + 16));
+
+    const preferredTop = actionSheetAnchor.y + (actionSheetAnchor.source === "header" ? 14 : 8);
+    const top = Math.min(Math.max(72, preferredTop), Math.max(72, windowHeight - 220));
+
+    return { left, top };
+  }, [actionSheetAnchor, windowWidth, windowHeight]);
+
+  const openActionSheetAt = (
+    title: string,
+    options: ActionSheetOption[],
+    pageX: number,
+    pageY: number,
+    source: "header" | "bubble"
+  ) => {
+    setActionSheetTitle(title);
+    setActionSheetOptions(options);
+    setActionSheetAnchor({ x: pageX, y: pageY, source });
+    setActionSheetVisible(true);
+  };
+
+  const closeActionSheet = () => {
+    setActionSheetVisible(false);
+  };
+
+  useEffect(() => {
+    const timer = setInterval(() => setNowMs(Date.now()), 30 * 1000);
+    return () => clearInterval(timer);
+  }, []);
 
   useEffect(() => {
     selectedConversationIdRef.current = selectedConversation?.id || null;
   }, [selectedConversation?.id]);
 
-  const fetchConversations = useCallback(async () => {
+  const fetchConversations = useCallback(async (force = false) => {
     if (!canUse || !isFocused) return;
     try {
       const rows = await ChatService.listConversations();
-      setConversations(rows || []);
+      const nextRows = rows || [];
+      const nextSignature = nextRows
+        .map((row) => `${row.id}:${row.last_message_at || row.created_at}:${row.unread_count}`)
+        .join("|");
+
+      if (force || nextSignature !== conversationSignatureRef.current) {
+        conversationSignatureRef.current = nextSignature;
+        setConversations(nextRows);
+      }
+
       const selectedId = selectedConversationIdRef.current;
       if (selectedId) {
-        const latest = (rows || []).find((c: ConversationSummary) => c.id === selectedId) || null;
+        const latest = nextRows.find((c: ConversationSummary) => c.id === selectedId) || null;
         setSelectedConversation((prev) => {
           if (!prev || prev.id !== selectedId) return prev;
-          return latest;
+          // Preserve in-flight/newly-started thread context even when backend
+          // intentionally hides empty conversations from the list.
+          return latest || prev;
         });
       }
     } catch (error) {
       console.error("Failed to fetch conversations", error);
+      conversationSignatureRef.current = "";
+      setConversations([]);
+      setSelectedConversation(null);
     }
   }, [canUse, isFocused]);
 
@@ -191,17 +292,24 @@ export function DirectChatView({
     async (conversationId: string, reset = true) => {
       if (!conversationId) return;
       if (reset) {
+        setLoadingMessages(true);
         setCursor(null);
         setMessages([]);
       }
-      const data = await ChatService.listMessages(conversationId, reset ? undefined : cursor || undefined, 30);
-      if (reset) {
-        setMessages(sortMessagesByCreatedAt(data.messages || []));
-      } else {
-        setMessages((prev) => mergeMessagesUnique([...(data.messages || []), ...prev]));
+      try {
+        const data = await ChatService.listMessages(conversationId, reset ? undefined : cursor || undefined, 30);
+        if (reset) {
+          setMessages(sortMessagesByCreatedAt(data.messages || []));
+        } else {
+          setMessages((prev) => mergeMessagesUnique([...(data.messages || []), ...prev]));
+        }
+        setHasMore(Boolean(data.hasMore));
+        setCursor(data.nextCursor || null);
+      } finally {
+        if (reset) {
+          setLoadingMessages(false);
+        }
       }
-      setHasMore(Boolean(data.hasMore));
-      setCursor(data.nextCursor || null);
     },
     [cursor]
   );
@@ -234,6 +342,23 @@ export function DirectChatView({
     if (!isFocused) return;
     loadInitial();
   }, [loadInitial]);
+
+  useEffect(() => {
+    if (!canUse) {
+      conversationSignatureRef.current = "";
+      setConversations([]);
+      setSelectedConversation(null);
+      setMessages([]);
+      return;
+    }
+
+    if (!isFocused) return;
+    fetchConversations().catch(() => {
+      setConversations([]);
+      setSelectedConversation(null);
+      setMessages([]);
+    });
+  }, [profile?.id, profile?.institution_id, canUse, isFocused, fetchConversations]);
 
   useEffect(() => {
     if (!isFocused || !selectedConversation?.id) return;
@@ -349,11 +474,13 @@ export function DirectChatView({
   }, [fetchConversations, isFocused]);
 
   const filteredConversations = useMemo(() => {
-    const sorted = [...conversations].sort((a, b) => {
+    const sorted = [...conversations]
+      .filter((c) => Boolean(c.last_message))
+      .sort((a, b) => {
       const at = new Date(a.last_message_at || a.created_at).getTime();
       const bt = new Date(b.last_message_at || b.created_at).getTime();
       return bt - at;
-    });
+      });
 
     const q = conversationSearch.trim().toLowerCase();
     if (!q) return sorted;
@@ -366,7 +493,7 @@ export function DirectChatView({
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await fetchConversations();
+    await fetchConversations(true);
     if (selectedConversation?.id) {
       await loadMessages(selectedConversation.id, true);
     }
@@ -531,62 +658,67 @@ export function DirectChatView({
     }
   };
 
-  const handleMessageAction = (message: ChatMessage) => {
+  const handleMessageAction = (message: ChatMessage, pageX?: number, pageY?: number) => {
     const isOwn = message.sender_id === profile?.id;
-    const options = ["Cancel"] as string[];
-    const handlers: Record<string, () => void> = {};
+    const options: ActionSheetOption[] = [];
 
     if (isOwn && !message.deleted_for_everyone_at) {
-      options.push("Edit");
-      handlers.Edit = () => {
+      options.push({
+        label: "Edit",
+        onPress: () => {
         setEditingMessageId(message.id);
         setMessageInput(message.content || "");
-      };
+        },
+      });
     }
 
-    options.push("Delete for me");
-    handlers["Delete for me"] = async () => {
-      try {
-        await ChatService.deleteMessageForMe(message.id);
-        setMessages((prev) => prev.filter((m) => m.id !== message.id));
-      } catch (error: any) {
-        Alert.alert("Delete failed", error?.message || "Unable to hide message.");
-      }
-    };
+    options.push({
+      label: "Delete for me",
+      destructive: true,
+      confirmTitle: "Delete message for you?",
+      confirmMessage: "This hides the message from your view only.",
+      onPress: async () => {
+        try {
+          await ChatService.deleteMessageForMe(message.id);
+          setMessages((prev) => prev.filter((m) => m.id !== message.id));
+        } catch (error: any) {
+          Alert.alert("Delete failed", error?.message || "Unable to hide message.");
+        }
+      },
+    });
 
     if (isOwn && !message.deleted_for_everyone_at) {
-      options.push("Delete for everyone");
-      handlers["Delete for everyone"] = async () => {
-        try {
-          await ChatService.deleteMessageForEveryone(message.id);
-          setMessages((prev) =>
-            prev.map((m) =>
-              m.id === message.id
-                ? {
-                    ...m,
-                    content: "This message was deleted",
-                    deleted_for_everyone_at: new Date().toISOString(),
-                    is_deleted_for_everyone: true,
-                  }
-                : m
-            )
-          );
-        } catch (error: any) {
-          const msg = error?.response?.data?.error || error?.message || "Unable to delete for everyone.";
-          Alert.alert("Delete for everyone failed", msg);
-        }
-      };
+      options.push({
+        label: "Delete for everyone",
+        destructive: true,
+        confirmTitle: "Delete message for everyone?",
+        confirmMessage: "This cannot be undone after confirmation.",
+        onPress: async () => {
+          try {
+            await ChatService.deleteMessageForEveryone(message.id);
+            setMessages((prev) =>
+              prev.map((m) =>
+                m.id === message.id
+                  ? {
+                      ...m,
+                      content: "This message was deleted",
+                      deleted_for_everyone_at: new Date().toISOString(),
+                      is_deleted_for_everyone: true,
+                    }
+                  : m
+              )
+            );
+          } catch (error: any) {
+            const msg = error?.response?.data?.error || error?.message || "Unable to delete for everyone.";
+            Alert.alert("Delete for everyone failed", msg);
+          }
+        },
+      });
     }
 
-    Alert.alert(
-      "Message actions",
-      "Choose an action",
-      options.map((opt) => ({
-        text: opt,
-        style: (opt === "Cancel" ? "cancel" : "default") as "cancel" | "default",
-        onPress: handlers[opt],
-      }))
-    );
+    const x = pageX ?? Math.max(windowWidth - 36, 12);
+    const y = pageY ?? Math.max(windowHeight * 0.5, 120);
+    openActionSheetAt("Message actions", options, x, y, "bubble");
   };
 
   const openConversation = async (conversation: ConversationSummary) => {
@@ -640,38 +772,45 @@ export function DirectChatView({
     }
   };
 
-  const deleteChat = async () => {
+  const deleteChat = async (pageX?: number, pageY?: number) => {
     if (!selectedConversation?.id) return;
-    Alert.alert("Chat options", "Choose what to remove.", [
+    const options: ActionSheetOption[] = [
       {
-        text: "Clear messages (for me)",
+        label: "Clear messages (for me)",
+        confirmTitle: "Clear this chat for you?",
+        confirmMessage: "This hides all current messages from your view.",
         onPress: async () => {
-          try {
-            await ChatService.clearConversationForMe(selectedConversation.id);
-            setMessages([]);
-            await fetchConversations();
-          } catch (error: any) {
-            Alert.alert("Clear failed", error?.message || "Could not clear messages.");
-          }
-        },
+        try {
+          await ChatService.clearConversationForMe(selectedConversation.id);
+          setMessages([]);
+          await fetchConversations();
+        } catch (error: any) {
+          Alert.alert("Clear failed", error?.message || "Could not clear messages.");
+        }
+      },
       },
       {
-        text: "Delete chat from list",
-        style: "destructive",
+        label: "Delete chat from list",
+        destructive: true,
+        confirmTitle: "Delete chat from your list?",
+        confirmMessage: "You can only restore it if new messages arrive.",
         onPress: async () => {
-          try {
-            await ChatService.deleteConversation(selectedConversation.id);
-            setScreen("list");
-            setSelectedConversation(null);
-            setMessages([]);
-            await fetchConversations();
-          } catch (error: any) {
-            Alert.alert("Delete failed", error?.message || "Could not delete chat.");
-          }
-        },
+        try {
+          await ChatService.deleteConversation(selectedConversation.id);
+          setScreen("list");
+          setSelectedConversation(null);
+          setMessages([]);
+          await fetchConversations();
+        } catch (error: any) {
+          Alert.alert("Delete failed", error?.message || "Could not delete chat.");
+        }
       },
-      { text: "Cancel", style: "cancel" },
-    ]);
+      },
+    ];
+
+    const x = pageX ?? Math.max(windowWidth - 36, 12);
+    const y = pageY ?? 96;
+    openActionSheetAt("Chat options", options, x, y, "header");
   };
 
   const retryFailedMessage = async (message: ChatMessage) => {
@@ -794,7 +933,7 @@ export function DirectChatView({
     return (
       <View className="flex-1">
         <View className={`${horizontalPaddingClass} mt-3 mb-2`}>
-          <View className="flex-row items-center justify-between px-4 py-3 bg-white dark:bg-navy-surface rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm">
+          <View className="flex-row items-center justify-between px-4 py-3 bg-white dark:bg-navy rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm">
           <View className="flex-row items-center">
             <TouchableOpacity
               onPress={() => {
@@ -828,19 +967,30 @@ export function DirectChatView({
             </Text>
             {selectedConversation?.expires_at ? (
               <Text className="text-amber-600 dark:text-amber-400 text-[9px] font-bold uppercase tracking-widest mt-1">
-                {getConversationExpiryLabel(selectedConversation.expires_at)}
+                {getConversationExpiryLabel(selectedConversation.expires_at, selectedConversation.created_at, nowMs)}
               </Text>
             ) : null}
             </View>
           </View>
-          <TouchableOpacity onPress={deleteChat} className="bg-gray-100 dark:bg-gray-800 p-2 rounded-lg">
+          <TouchableOpacity
+            onPress={(e) => {
+              const { pageX, pageY } = e.nativeEvent;
+              deleteChat(pageX, pageY);
+            }}
+            className="bg-gray-100 dark:bg-gray-800 p-2 rounded-lg"
+          >
             <MoreVertical size={16} color="#6B7280" />
           </TouchableOpacity>
         </View>
         </View>
 
         <View className={`flex-1 ${horizontalPaddingClass} mb-2`}>
-          <View className="flex-1 rounded-2xl border border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-[#0D0A28] shadow-sm overflow-hidden">
+          <View className="flex-1 rounded-2xl border border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-[#161B22] shadow-sm overflow-hidden">
+            {loadingMessages ? (
+              <View className="px-3 pt-3">
+                <Spinner size="small" color="#FF6900" label="Fetching messages" />
+              </View>
+            ) : null}
             <ScrollView
               ref={scrollRef}
               className="flex-1 px-3"
@@ -883,12 +1033,22 @@ export function DirectChatView({
                   <TouchableOpacity
                     key={m.id}
                     activeOpacity={0.8}
-                    onLongPress={() => handleMessageAction(m)}
-                    className={`max-w-[80%] px-4 py-3 rounded-2xl mb-2 ${own ? "self-end bg-[#FF6900]" : "self-start bg-white dark:bg-navy-surface border border-gray-100 dark:border-gray-800"}`}
+                    onLongPress={(e) => {
+                      const { pageX, pageY } = e.nativeEvent;
+                      handleMessageAction(m, pageX, pageY);
+                    }}
+                    className={`max-w-[80%] px-4 py-3 rounded-2xl mb-2 ${own ? "self-end bg-[#FF6900]" : "self-start bg-white dark:bg-navy border border-gray-100 dark:border-gray-800"}`}
                   >
                     <View className="flex-row items-start">
                       <Text className={`flex-1 ${own ? "text-white" : "text-gray-900 dark:text-white"} text-sm`}>{m.content}</Text>
-                      <TouchableOpacity onPress={() => handleMessageAction(m)} className="ml-2 p-1" hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                      <TouchableOpacity
+                        onPress={(e) => {
+                          const { pageX, pageY } = e.nativeEvent;
+                          handleMessageAction(m, pageX, pageY);
+                        }}
+                        className="ml-2 p-1"
+                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                      >
                         <MoreVertical size={13} color={own ? "rgba(255,255,255,0.8)" : "#9CA3AF"} />
                       </TouchableOpacity>
                     </View>
@@ -952,9 +1112,9 @@ export function DirectChatView({
         ) : null}
 
         <View className={`${horizontalPaddingClass} pb-3`}>
-          <View className="flex-row items-end bg-white dark:bg-navy-surface rounded-2xl border border-gray-100 dark:border-gray-800 p-2 shadow-sm">
-            <TextInput
-              className="flex-1 bg-gray-50 dark:bg-gray-900 rounded-xl px-4 py-3 text-gray-900 dark:text-white text-sm border border-gray-100 dark:border-gray-800"
+          <View className="flex-row items-center bg-white dark:bg-navy rounded-2xl border border-gray-100 dark:border-gray-800 p-2 shadow-sm">
+              <TextInput
+               className="flex-1 bg-gray-50 dark:bg-[#161B22] rounded-xl px-4 py-3 text-gray-900 dark:text-white text-sm border border-gray-100 dark:border-gray-800"
               placeholder={editingMessageId ? "Edit your message..." : "Type a message..."}
               placeholderTextColor="#9CA3AF"
               value={messageInput}
@@ -967,10 +1127,10 @@ export function DirectChatView({
               onPress={handleSend}
               disabled={!messageInput.trim() || sending}
               accessibilityState={{ disabled: !messageInput.trim() || sending, busy: false }}
-              className="ml-2 w-11 h-11 rounded-full items-center justify-center"
-              style={{ backgroundColor: !messageInput.trim() || sending ? "#9CA3AF" : "#FF6900" }}
+              className="ml-2 w-11 h-11 rounded-full items-center justify-center self-center"
+              style={{ backgroundColor: "#FF6900", opacity: !messageInput.trim() || sending ? 0.45 : 1 }}
             >
-               <Send size={18} color="white" />
+               <Send size={19} color="white" />
             </TouchableOpacity>
           </View>
         </View>
@@ -980,8 +1140,8 @@ export function DirectChatView({
 
   const renderCompose = () => (
     <View className={`flex-1 ${horizontalPaddingClass}`}>
-      <View className="mt-3 mb-4 bg-white dark:bg-navy-surface border border-gray-100 dark:border-gray-800 rounded-2xl p-4">
-        <View className="flex-row items-center bg-gray-50 dark:bg-gray-900 rounded-xl px-3 py-2 border border-gray-100 dark:border-gray-800">
+        <View className="mt-3 mb-4 bg-white dark:bg-navy border border-gray-100 dark:border-gray-800 rounded-2xl p-4">
+          <View className="flex-row items-center bg-gray-50 dark:bg-[#161B22] rounded-xl px-3 py-2 border border-gray-100 dark:border-gray-800">
           <Search size={16} color="#9CA3AF" />
           <TextInput
             className="flex-1 ml-2 text-gray-900 dark:text-white text-xs font-semibold"
@@ -990,11 +1150,6 @@ export function DirectChatView({
             value={contactSearch}
             onChangeText={setContactSearch}
           />
-        </View>
-        <View className="mt-3 bg-amber-50 dark:bg-amber-950/20 border border-amber-100 dark:border-amber-900/50 rounded-xl px-3 py-2">
-          <Text className="text-amber-700 dark:text-amber-300 text-[10px] font-bold uppercase tracking-widest">
-            Chats auto-delete after 7 days of inactivity.
-          </Text>
         </View>
       </View>
 
@@ -1007,7 +1162,7 @@ export function DirectChatView({
             return (
               <TouchableOpacity
                 key={c.id}
-                className={`flex-row items-center p-4 mb-2 rounded-2xl border ${chosen ? "border-orange-200 bg-orange-50/30 dark:border-orange-900 dark:bg-orange-950/10" : "border-gray-100 dark:border-gray-800 bg-white dark:bg-navy-surface"}`}
+                className={`flex-row items-center p-4 mb-2 rounded-2xl border ${chosen ? "border-orange-200 bg-orange-50/30 dark:border-orange-900 dark:bg-orange-950/10" : "border-gray-100 dark:border-gray-800 bg-white dark:bg-navy"}`}
                 onPress={() => setSelectedContact(c)}
               >
                 <View className="w-10 h-10 rounded-xl bg-orange-100 dark:bg-orange-950/20 items-center justify-center mr-3">
@@ -1056,7 +1211,7 @@ export function DirectChatView({
         <Text className="text-gray-900 dark:text-white font-extrabold text-[11px] uppercase tracking-widest">Chats</Text>
       </View>
 
-      <View className="mb-4 flex-row items-center bg-white dark:bg-navy-surface px-4 py-3 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm">
+      <View className="mb-4 flex-row items-center bg-white dark:bg-navy px-4 py-3 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm">
         <Search size={18} color="#9CA3AF" />
         <TextInput
           className="flex-1 ml-2 text-gray-900 dark:text-white font-medium text-sm"
@@ -1079,7 +1234,7 @@ export function DirectChatView({
         contentContainerStyle={{ paddingBottom: 12 }}
       >
         {filteredConversations.length === 0 ? (
-          <View className="bg-white dark:bg-navy-surface p-10 rounded-3xl items-center border border-gray-100 dark:border-gray-800 border-dashed shadow-sm">
+          <View className="bg-white dark:bg-navy p-10 rounded-3xl items-center border border-gray-100 dark:border-gray-800 border-dashed shadow-sm">
             <MessageCircle size={46} color="#cbd5e1" />
             <Text className="text-gray-400 dark:text-gray-500 font-bold mt-4 text-center">{emptyListTitle}</Text>
           </View>
@@ -1090,7 +1245,7 @@ export function DirectChatView({
               <TouchableOpacity
                 key={c.id}
                 onPress={() => openConversation(c)}
-                className="flex-row items-center p-4 rounded-2xl border mb-3 bg-white dark:bg-navy-surface border-gray-100 dark:border-gray-800 shadow-sm"
+                className="flex-row items-center p-4 rounded-2xl border mb-3 bg-white dark:bg-navy border-gray-100 dark:border-gray-800 shadow-sm"
               >
                 {partnerAvatarUri ? (
                   <Image
@@ -1123,7 +1278,7 @@ export function DirectChatView({
                   </Text>
                   {c.expires_at ? (
                     <Text className="text-amber-600 dark:text-amber-400 text-[9px] font-bold uppercase tracking-widest mt-1" numberOfLines={1}>
-                      {getConversationExpiryLabel(c.expires_at)}
+                      {getConversationExpiryLabel(c.expires_at, c.created_at, nowMs)}
                     </Text>
                   ) : null}
                 </View>
@@ -1156,6 +1311,93 @@ export function DirectChatView({
   return (
     <View className="flex-1">
       {screen === "thread" ? renderThread() : screen === "compose" ? renderCompose() : renderList()}
+
+      <Modal
+        visible={actionSheetVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={closeActionSheet}
+        onDismiss={() => {
+          setActionSheetAnchor(null);
+        }}
+      >
+        <View className="flex-1 bg-black/25">
+          <TouchableOpacity
+            className="flex-1"
+            activeOpacity={1}
+            onPress={closeActionSheet}
+          />
+          <View
+            className="absolute w-72 bg-white dark:bg-[#161B22] rounded-2xl p-3 border border-gray-200 dark:border-gray-800 shadow-xl"
+            style={{ left: actionSheetPosition.left, top: actionSheetPosition.top }}
+          >
+            <Text className="text-gray-900 dark:text-white font-bold text-sm px-1 pb-2">{actionSheetTitle}</Text>
+            {actionSheetOptions.map((opt) => (
+              <TouchableOpacity
+                key={opt.label}
+                className="px-4 py-3 rounded-xl bg-gray-50 dark:bg-[#0F141C] mb-2 border border-gray-200 dark:border-gray-800"
+                onPress={() => {
+                  closeActionSheet();
+                  if (opt.confirmMessage) {
+                    pendingConfirmActionRef.current = opt.onPress;
+                    setConfirmTitle(opt.confirmTitle || "Please confirm");
+                    setConfirmMessage(opt.confirmMessage);
+                    setConfirmVisible(true);
+                    return;
+                  }
+                  setTimeout(() => opt.onPress(), 0);
+                }}
+              >
+                <Text className={`font-semibold ${opt.destructive ? "text-red-500" : "text-gray-900 dark:text-white"}`}>
+                  {opt.label}
+                </Text>
+              </TouchableOpacity>
+            ))}
+            <TouchableOpacity
+              className="px-4 py-3 rounded-xl bg-gray-100 dark:bg-gray-800"
+              onPress={closeActionSheet}
+            >
+              <Text className="text-center text-gray-700 dark:text-gray-200 font-semibold">Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal
+        visible={confirmVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setConfirmVisible(false)}
+      >
+        <View className="flex-1 items-center justify-center bg-black/35 px-4">
+          <View className="w-full max-w-sm bg-white dark:bg-[#161B22] rounded-2xl p-5 border border-gray-200 dark:border-gray-800 shadow-xl">
+            <Text className="text-gray-900 dark:text-white font-bold text-base">{confirmTitle}</Text>
+            <Text className="text-gray-600 dark:text-gray-300 text-sm mt-2">{confirmMessage}</Text>
+            <View className="flex-row gap-2 mt-5">
+              <TouchableOpacity
+                className="flex-1 py-3 rounded-xl bg-gray-100 dark:bg-gray-800"
+                onPress={() => {
+                  pendingConfirmActionRef.current = null;
+                  setConfirmVisible(false);
+                }}
+              >
+                <Text className="text-center text-gray-700 dark:text-gray-200 font-semibold">Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                className="flex-1 py-3 rounded-xl bg-red-500"
+                onPress={() => {
+                  const action = pendingConfirmActionRef.current;
+                  pendingConfirmActionRef.current = null;
+                  setConfirmVisible(false);
+                  if (action) setTimeout(() => action(), 0);
+                }}
+              >
+                <Text className="text-center text-white font-semibold">Confirm</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
 
       {screen !== "list" && screen !== "thread" ? (
         <View className="px-4 pb-3">

@@ -40,7 +40,7 @@ function TeacherSubjectDetailsScreen() {
     const [uploading, setUploading] = useState(false);
 
     const border   = isDark ? "rgba(255,255,255,0.1)" : "#f3f4f6";
-    const inputBg  = isDark ? "#1A1650" : "#f3f4f6";
+    const inputBg  = isDark ? "#161B22" : "#f3f4f6";
     const textPrimary = isDark ? "#f1f1f1" : "#111827";
     const textMuted   = isDark ? "#9ca3af" : "#9ca3af";
 
@@ -205,7 +205,7 @@ function TeacherSubjectDetailsScreen() {
 
     if (loading) {
         return (
-            <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: isDark ? "#0F0B2E" : "#f9fafb" }}>
+            <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: isDark ? "#161B22" : "#f9fafb" }}>
                 <ActivityIndicator size="large" color="#FF6B00" />
             </View>
         );
@@ -213,7 +213,7 @@ function TeacherSubjectDetailsScreen() {
 
     if (!subject) {
         return (
-            <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: isDark ? "#0F0B2E" : "#f9fafb" }}>
+            <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: isDark ? "#161B22" : "#f9fafb" }}>
                 <Text style={{ color: textPrimary }}>Subject not found.</Text>
             </View>
         );
@@ -225,8 +225,8 @@ function TeacherSubjectDetailsScreen() {
     /* ─── Main UI ─── */
 
     return (
-        <ScrollView style={{ flex: 1, backgroundColor: isDark ? "#0F0B2E" : "#f9fafb" }}>
-            <View style={{ flex: 1, backgroundColor: isDark ? "#0F0B2E" : "#f9fafb" }}>
+        <ScrollView style={{ flex: 1, backgroundColor: isDark ? "#161B22" : "#f9fafb" }}>
+            <View style={{ flex: 1, backgroundColor: isDark ? "#161B22" : "#f9fafb" }}>
                 <UnifiedHeader
                     title="Subject Details"
                     subtitle={String(subject.title ?? "")}

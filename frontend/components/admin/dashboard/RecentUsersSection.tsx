@@ -28,7 +28,7 @@ const RecentUsersSection: React.FC<RecentUsersSectionProps> = ({
     const renderLoadingState = () => (
         <View className="space-y-3">
             {[...Array(3)].map((_, index) => (
-                <View key={index} className="bg-[#F6F8FA] dark:bg-[#161B22] rounded-xl p-4 border border-transparent dark:border-gray-800">
+                <View key={index} className="bg-[#F6F8FA] dark:bg-navy rounded-xl p-4 border border-transparent dark:border-gray-800">
                     <View className="animate-pulse flex-row space-x-3">
                         <View className="w-10 h-10 bg-gray-200 dark:bg-gray-800 rounded-full"></View>
                         <View className="flex-1 space-y-2">
@@ -42,7 +42,7 @@ const RecentUsersSection: React.FC<RecentUsersSectionProps> = ({
     );
 
     const renderEmptyState = () => (
-        <View className="bg-[#F6F8FA] dark:bg-[#161B22] rounded-xl p-8 border border-transparent dark:border-gray-800">
+        <View className="bg-[#F6F8FA] dark:bg-navy rounded-xl p-8 border border-transparent dark:border-gray-800">
             <View className="items-center">
                 <Ionicons name="people-outline" size={48} color="#9CA3AF" />
                 <Text className="text-gray-500 dark:text-gray-400 mt-2">No recent users</Text>

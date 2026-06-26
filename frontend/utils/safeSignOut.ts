@@ -2,13 +2,22 @@ import { LogoutReason, LOGOUT_MESSAGES } from '@/types/logout';
 import { supabase } from '@/libs/supabase';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Toast from 'react-native-toast-message';
+import { Platform } from 'react-native';
 
 function getApiBaseUrl(): string {
-  const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
-  if (supabaseUrl) {
-    return supabaseUrl.replace(/\/v1\/?$/, '') + '/api';
+  // App backend API base URL (not Supabase REST URL)
+  if (process.env.EXPO_PUBLIC_URL) {
+    return process.env.EXPO_PUBLIC_URL;
   }
-  return 'http://100.64.0.2:4001/api';
+
+  if (__DEV__) {
+    if (Platform.OS === 'android') {
+      return 'http://10.0.2.2:4001/api';
+    }
+    return 'http://localhost:4001/api';
+  }
+
+  return 'http://192.168.56.1:4001/api';
 }
 
 /**
@@ -83,7 +92,7 @@ export async function safeSignOut(
       type: reason === LogoutReason.INSTITUTION_SUSPENDED ? 'error' : 'info',
       text1: msg.title,
       text2: msg.body,
-      position: 'bottom',
+      position: 'top',
     });
   }
 }

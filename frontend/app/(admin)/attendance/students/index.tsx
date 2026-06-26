@@ -88,7 +88,7 @@ export default function AdminStudentAttendance() {
     );
 
     return (
-        <View style={{ flex: 1, backgroundColor: isDark ? '#0D1117' : '#FFFFFF' }}>
+        <View style={{ flex: 1, backgroundColor: isDark ? '#161B22' : '#FFFFFF' }}>
             <UnifiedHeader
                 title="Student Reports"
                 subtitle="Daily Attendance"

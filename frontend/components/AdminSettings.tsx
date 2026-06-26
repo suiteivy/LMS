@@ -73,7 +73,7 @@ export default function AdminSettings() {
         setPrefs((prev) => ({ ...prev, [key]: newValue }));
         try {
             await SettingsService.updatePreferences({ [key]: newValue });
-            Toast.show({ type: 'success', text1: 'Preferences Updated', text2: 'Your notification settings have been saved.', position: 'bottom' });
+            Toast.show({ type: 'success', text1: 'Preferences Updated', text2: 'Your notification settings have been saved.', position: 'top' });
         } catch (err) {
             console.error('Failed to update preference:', err);
             setPrefs((prev) => ({ ...prev, [key]: !newValue }));
@@ -91,7 +91,7 @@ export default function AdminSettings() {
                 <View className="p-2 bg-[#E5E7EB] dark:bg-[#21262D] rounded-xl mr-3">
                     <Icon size={20} color="#FF6B00" />
                 </View>
-                <Text className="text-gray-700 dark:text-gray-300 font-medium text-base">{title}</Text>
+                <Text className="text-gray-700 dark:text-white font-medium text-base">{title}</Text>
             </View>
             {children ? children : <ChevronRight size={18} color={isDark ? "#9ca3af" : "#9ca3af"} />}
         </TouchableOpacity>
@@ -99,25 +99,31 @@ export default function AdminSettings() {
 
 
     const settingsContent = (
-        <ScrollView className="flex-1 bg-[#FFFFFF] dark:bg-[#0D1117]">
+        <ScrollView className="flex-1 bg-[#FFFFFF] dark:bg-[#161B22]">
             <View className="p-4 md:p-8 max-w-2xl mx-auto w-full">
 
-                <Text className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest ml-1 mb-2">Account</Text>
+                <Text className="text-xs font-bold text-gray-500 dark:text-white uppercase tracking-widest ml-1 mb-2">Account</Text>
                 <View className="bg-[#F6F8FA] dark:bg-[#161B22] rounded-3xl border border-[#D0D7DE] dark:border-[#21262D] mb-6 overflow-hidden">
                     <TouchableOpacity
                         onPress={() => setShowEditForm(true)}
                     >
-                        <SettingRow icon={User} title="Edit Admin Profile" />
+                        <SettingRow icon={User} title="Edit Admin Profile">
+                            <HelpTooltip id="settings.profile.full_name" role="admin" tier={tier} onLearnMore={openManual} />
+                        </SettingRow>
                     </TouchableOpacity>
-                    <SettingRow icon={Lock} title="Change Password" onPress={() => setShowPasswordForm(true)} />
+                    <SettingRow icon={Lock} title="Change Password" onPress={() => setShowPasswordForm(true)}>
+                        <HelpTooltip id="settings.password.admin" role="admin" tier={tier} onLearnMore={openManual} />
+                    </SettingRow>
                     <SettingRow icon={Globe} title="Language" isLast >
-                        <Text className="text-gray-500 dark:text-gray-400 mr-2">English</Text>
+                        <HelpTooltip id="settings.language.admin" role="admin" tier={tier} onLearnMore={openManual} />
+                        <Text className="text-gray-500 dark:text-white mr-2">English</Text>
                     </SettingRow>
                 </View>
 
-                <Text className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest ml-1 mb-2">Configurations</Text>
+                <Text className="text-xs font-bold text-gray-500 dark:text-white uppercase tracking-widest ml-1 mb-2">Configurations</Text>
                 <View className="bg-[#F6F8FA] dark:bg-[#161B22] rounded-3xl border border-[#D0D7DE] dark:border-[#21262D] mb-6 overflow-hidden">
                     <SettingRow icon={Bell} title="System Notifications">
+                        <HelpTooltip id="settings.notifications.general.admin" role="admin" tier={tier} onLearnMore={openManual} />
                         <Switch
                             value={prefs.push_notifications}
                             onValueChange={() => togglePref('push_notifications')}
@@ -127,6 +133,7 @@ export default function AdminSettings() {
                         />
                     </SettingRow>
                     <SettingRow icon={Shield} title="Admin Priority Alerts" isLast>
+                        <HelpTooltip id="settings.notifications.priority" role="admin" tier={tier} onLearnMore={openManual} />
                         <Switch
                             value={prefs.system_alerts}
                             onValueChange={() => togglePref('system_alerts')}
@@ -137,8 +144,8 @@ export default function AdminSettings() {
                     </SettingRow>
                 </View>
 
-                <Text className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest ml-1 mb-2">Appearance</Text>
-                <View className="bg-white dark:bg-[#1a1a1a] rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm mb-6 overflow-hidden p-3">
+                <Text className="text-xs font-bold text-gray-400 dark:text-white uppercase tracking-widest ml-1 mb-2">Appearance</Text>
+                <View className="bg-white dark:bg-[#161B22] rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm mb-6 overflow-hidden p-3">
                     <ThemeSegmentedControl />
                 </View>
 

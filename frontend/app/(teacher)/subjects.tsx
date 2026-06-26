@@ -30,7 +30,7 @@ const SubjectCard = ({ subject }: { subject: Subject }) => {
                 <View className="bg-orange-50 dark:bg-orange-950/30 p-3 rounded-lg">
                     <BookOpen size={24} color="#FF6900" />
                 </View>
-                <View className={`px-3 py-1 rounded-full ${subject.status === 'active' ? 'bg-green-50 dark:bg-green-950/30' : 'bg-gray-50 dark:bg-gray-800'}`}>
+                <View className={`px-3 py-1 rounded-full ${subject.status === 'active' ? 'bg-green-50 dark:bg-green-950/30' : 'bg-gray-50 dark:bg-[#161B22]'}`}>
                     <Text className={`text-[10px] font-bold uppercase ${subject.status === 'active' ? 'text-green-600 dark:text-green-400' : 'text-gray-400 dark:text-gray-500'}`}>
                         {subject.status}
                     </Text>
@@ -59,7 +59,7 @@ const SubjectCard = ({ subject }: { subject: Subject }) => {
                     <Text className="text-[#FF6900] text-xs ml-1.5 font-bold">Edit</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
-                    className="flex-row items-center px-3 py-2 bg-gray-50 dark:bg-gray-800 rounded-xl"
+                    className="flex-row items-center px-3 py-2 bg-gray-50 dark:bg-[#161B22] rounded-xl"
                     onPress={() => router.push(`/(teacher)/management/subjects/details?id=${subject.id}` as any)}
                 >
                     <Eye size={16} color="#6B7280" />
@@ -107,7 +107,7 @@ export default function SubjectsPage() {
     const filteredSubjects = subjects.filter(s => filter === "all" || s.status === filter);
 
     return (
-        <View className="flex-1 bg-[#FFFFFF] dark:bg-[#0D1117]">
+        <View className="flex-1 bg-[#FFFFFF] dark:bg-[#161B22]">
             <StatusBar barStyle="dark-content" />
             <SubscriptionBanner />
             <ScrollView className="flex-1 px-4" contentContainerStyle={{ paddingBottom: 100 }}>

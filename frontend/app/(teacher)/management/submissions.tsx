@@ -290,7 +290,7 @@ export default function SubmissionsPage() {
     const reviewedCount = submissions.filter(s => s.status === 'graded').length;
 
     return (
-        <View className={`flex-1 ${isDark ? 'bg-[#0F0B2E]' : 'bg-gray-50'}`}>
+        <View className={`flex-1 ${isDark ? 'bg-navy' : 'bg-gray-50'}`}>
             <UnifiedHeader
                 title="Review"
                 subtitle="Submissions"
@@ -347,7 +347,7 @@ export default function SubmissionsPage() {
                         <Text className={`text-xl font-bold ${isDark ? 'text-white' : 'text-gray-900'} mb-6 px-2 tracking-tight`}>Student Submissions</Text>
 
                         {submissions.map((entry) => (
-                            <View key={entry.student_id} className={`${isDark ? 'bg-[#13103A] border-white/10' : 'bg-white border-gray-100'} p-5 rounded-3xl border mb-4 flex-row items-center shadow-sm`}>
+                            <View key={entry.student_id} className={`${isDark ? 'bg-navy border-white/10' : 'bg-white border-gray-100'} p-5 rounded-3xl border mb-4 flex-row items-center shadow-sm`}>
                                 <View className="w-12 h-12 rounded-2xl bg-orange-100 items-center justify-center mr-4">
                                     <Text className="text-[#FF6900] font-bold text-xl">{entry.student_name.charAt(0)}</Text>
                                 </View>
@@ -388,7 +388,7 @@ export default function SubmissionsPage() {
 
             <Modal visible={gradingModalVisible} animationType="slide" transparent>
                 <View className="flex-1 bg-black/50 justify-end">
-                    <View className={`${isDark ? 'bg-[#13103A]' : 'bg-white'} rounded-t-[40px] p-8 pb-12`}>
+                    <View className={`${isDark ? 'bg-navy' : 'bg-white'} rounded-t-[40px] p-8 pb-12`}>
                         <View className="flex-row justify-between items-center mb-8">
                             <Text className={`text-2xl font-bold ${isDark ? 'text-white' : 'text-gray-900'} tracking-tight`}>Review Work</Text>
                             <TouchableOpacity

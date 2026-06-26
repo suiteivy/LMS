@@ -387,7 +387,7 @@ export default function ParentReportCardsScreen() {
             paddingVertical: 6,
             borderWidth: 1,
             borderColor: isDark ? '#2D2A5A' : '#E5E7EB',
-            backgroundColor: isDark ? '#16133A' : '#FFFFFF',
+            backgroundColor: isDark ? '#161B22' : '#FFFFFF',
           }}
         >
           <Text
@@ -854,7 +854,7 @@ function createStyles(isDark: boolean) {
   return StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: isDark ? '#0F0B2E' : '#f9fafb',
+      backgroundColor: isDark ? '#161B22' : '#f9fafb',
     },
 
     // ── Child Selector ────────────────────────────────────────────────
@@ -873,7 +873,7 @@ function createStyles(isDark: boolean) {
       paddingHorizontal: 14,
       paddingVertical: 8,
       borderRadius: 20,
-      backgroundColor: isDark ? '#13103A' : '#ffffff',
+      backgroundColor: isDark ? '#161B22' : '#ffffff',
       borderWidth: 1,
       borderColor: isDark ? '#2A2456' : '#E5E7EB',
     },
@@ -907,7 +907,7 @@ function createStyles(isDark: boolean) {
       paddingHorizontal: 14,
       paddingVertical: 8,
       borderRadius: 20,
-      backgroundColor: isDark ? '#13103A' : '#ffffff',
+      backgroundColor: isDark ? '#161B22' : '#ffffff',
       borderWidth: 1,
       borderColor: isDark ? '#2A2456' : '#E5E7EB',
     },
@@ -966,7 +966,7 @@ function createStyles(isDark: boolean) {
 
     // ── Card ───────────────────────────────────────────────────────────
     card: {
-      backgroundColor: isDark ? '#13103A' : '#ffffff',
+      backgroundColor: isDark ? '#161B22' : '#ffffff',
       borderRadius: 16,
       padding: 16,
       marginBottom: 12,
@@ -1013,7 +1013,7 @@ function createStyles(isDark: boolean) {
     statsRow: {
       flexDirection: 'row',
       alignItems: 'center',
-      backgroundColor: isDark ? '#0D0A24' : '#F9FAFB',
+      backgroundColor: isDark ? '#161B22' : '#F9FAFB',
       borderRadius: 12,
       padding: 14,
       marginBottom: 12,

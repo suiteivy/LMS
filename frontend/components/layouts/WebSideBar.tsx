@@ -34,7 +34,7 @@ export const WebSidebar = ({ items, basePath, role, children }: WebSidebarProps)
   const border = isDark ? '#21262D' : '#D0D7DE';
   const textPrimary = isDark ? '#FFFFFF' : '#111827';
   const textSecondary = isDark ? '#9CA3AF' : '#6B7280';
-  const bg = isDark ? '#0D1117' : '#FFFFFF';
+  const collapseSurface = isDark ? '#111827' : '#EAEEF2';
 
   // Determine active route from segments
   const currentPath = segments.length > 0 ? '/' + segments.join('/') : '/';
@@ -42,7 +42,7 @@ export const WebSidebar = ({ items, basePath, role, children }: WebSidebarProps)
   const sidebarWidth = collapsed ? 72 : 240;
 
   return (
-    <View style={{ flex: 1, flexDirection: 'row', backgroundColor: bg }}>
+    <View style={{ flex: 1, flexDirection: 'row', backgroundColor: surface }}>
       {/* Sidebar */}
       <View style={{
         width: sidebarWidth,
@@ -136,8 +136,8 @@ export const WebSidebar = ({ items, basePath, role, children }: WebSidebarProps)
             alignItems: 'center',
             justifyContent: 'center',
             flexDirection: 'row',
-            backgroundColor: isDark ? '#0D1117' : '#FFFFFF',
-          }}
+             backgroundColor: collapseSurface,
+           }}
         >
           {collapsed
             ? <ChevronRight size={18} color={textSecondary} />
@@ -150,7 +150,7 @@ export const WebSidebar = ({ items, basePath, role, children }: WebSidebarProps)
       </View>
 
       {/* Main content */}
-      <View style={{ flex: 1, backgroundColor: bg }}>
+      <View style={{ flex: 1, backgroundColor: surface }}>
         {children}
       </View>
     </View>

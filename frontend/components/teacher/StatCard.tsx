@@ -18,7 +18,7 @@ const StatCard: React.FC<StatCardProps> = ({
  const isPositive = change.startsWith("+");
 
  return (
- <View className="flex-1 bg-[#F6F8FA] dark:bg-[#161B22] rounded-xl p-4 mr-2 mb-2 border border-[#D0D7DE] dark:border-[#21262D]">
+ <View className="flex-1 bg-[#F6F8FA] dark:bg-navy rounded-xl p-4 mr-2 mb-2 border border-[#D0D7DE] dark:border-[#21262D]">
  <View className="flex-row items-center justify-between mb-2">
  <View className="bg-[#E8F8F5] dark:bg-green-950/20 p-2 rounded-lg">
  <Ionicons name={icon} size={20} color="#1ABC9C" />

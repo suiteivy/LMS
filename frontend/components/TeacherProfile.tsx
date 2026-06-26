@@ -8,12 +8,13 @@ import { BookOpen, Calendar, Camera, GraduationCap, Layers, Mail, MapPin, Phone,
 import React, { useEffect, useState } from "react";
 import { ActivityIndicator, Image, RefreshControl, ScrollView, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { DatePicker } from '@/components/common/DatePicker';
+import { resolveAvatarUri } from "@/utils/avatar";
 
 type Subject = Database['public']['Tables']['subjects']['Row'];
 type Class = Database['public']['Tables']['classes']['Row'];
 
 export default function TeacherProfile() {
-    const { profile, user, refreshProfile, teacherId } = useAuth();
+    const { profile, user, refreshProfile, teacherId, displayId } = useAuth();
     const { isDark } = useTheme();
     const [isEditing, setIsEditing] = useState(false);
     const [firstName, setFirstName] = useState(profile?.first_name || "");
@@ -37,6 +38,7 @@ export default function TeacherProfile() {
         department: null,
         hire_date: null
     });
+    const avatarUri = resolveAvatarUri(profile?.avatar_url);
 
     useEffect(() => {
         if (profile) {
@@ -158,7 +160,7 @@ export default function TeacherProfile() {
 
     if (!profile) {
         return (
-            <View className="flex-1 justify-center items-center bg-[#FFFFFF] dark:bg-[#0D1117]">
+            <View className="flex-1 justify-center items-center bg-[#FFFFFF] dark:bg-navy">
                 <ActivityIndicator size="large" color="#FF6900" />
             </View>
         );
@@ -177,8 +179,8 @@ export default function TeacherProfile() {
                 <View className="items-center mt-8 mb-4">
                     <View className="relative">
                         <View className="w-32 h-32 rounded-[40px] bg-white dark:bg-gray-800 items-center justify-center border-4 border-gray-100 dark:border-gray-800 shadow-2xl overflow-hidden">
-                            {profile?.avatar_url ? (
-                                <Image source={{ uri: profile.avatar_url }} className="w-full h-full" resizeMode="cover" />
+                            {avatarUri ? (
+                                <Image source={{ uri: avatarUri }} className="w-full h-full" resizeMode="cover" />
                             ) : (
                                 <UserCircle size={80} color={isDark ? "#374151" : "#F3F4F6"} />
                             )}
@@ -190,13 +192,13 @@ export default function TeacherProfile() {
 
                     <Text className="text-gray-900 dark:text-white text-3xl font-black tracking-tighter mt-6 text-center">{profile?.first_name} {profile?.last_name}</Text>
                     <View className="bg-[#FF6900]/10 px-4 py-1.5 rounded-full mt-2 border border-[#FF6900]/20 self-center">
-                        <Text className="text-[#FF6900] text-[10px] font-black uppercase tracking-[2px]">Faculty Member \u00B7 ID: {teacherId?.slice(0, 8)}</Text>
+                        <Text className="text-[#FF6900] text-[10px] font-black uppercase tracking-[2px]">Faculty Member \u00B7 ID: {displayId || 'N/A'}</Text>
                     </View>
                 </View>
 
                 {/* Main Content */}
                 <View className="px-6 pb-32">
-                    <View className="bg-[#F6F8FA] dark:bg-[#161B22] rounded-[48px] p-8 shadow-xl border border-[#D0D7DE] dark:border-[#21262D]">
+                    <View className="bg-[#F6F8FA] dark:bg-navy rounded-[48px] p-8 shadow-xl border border-[#D0D7DE] dark:border-[#21262D]">
                         {/* Section Header */}
                         <View className="flex-row items-center mb-10">
                             <View className="bg-[#FF6900] w-1.5 h-6 rounded-full mr-4" />
@@ -310,7 +312,7 @@ const InfoRow = ({ label, value, icon: Icon, color, isDark }: any) => (
 const InfoInput = ({ label, value, onChange, icon: Icon, isDark }: any) => (
     <View className="mb-6">
         <Text className="text-gray-400 dark:text-gray-500 text-[8px] font-bold uppercase tracking-widest mb-2 ml-1">{label}</Text>
-        <View className="flex-row items-center bg-[#FFFFFF] dark:bg-[#0D1117] border border-gray-200 dark:border-gray-800 rounded-lg px-4 py-3">
+        <View className="flex-row items-center bg-[#FFFFFF] dark:bg-navy border border-gray-200 dark:border-gray-800 rounded-lg px-4 py-3">
             <Icon size={16} color={isDark ? "#4B5563" : "#9CA3AF"} />
             <TextInput
                 className="flex-1 ml-3 text-gray-900 dark:text-white font-bold text-xs"

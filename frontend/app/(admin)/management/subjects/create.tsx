@@ -144,11 +144,11 @@ const CreateSubject = () => {
 
     // ── Theme tokens ──────────────────────────────────────────────────────────
     const surface = isDark ? '#161B22' : '#F6F8FA';
-    const bg = isDark ? '#0D1117' : '#FFFFFF';
+    const bg = isDark ? '#161B22' : '#FFFFFF';
     const border = isDark ? '#21262D' : '#D0D7DE';
     const textPrimary = isDark ? '#FFFFFF' : '#111827';
     const textSecondary = isDark ? '#9ca3af' : '#6b7280';
-    const inputBg = isDark ? '#0D1117' : '#FFFFFF';
+    const inputBg = isDark ? '#161B22' : '#FFFFFF';
 
     return (
         <View style={{ flex: 1 }}>
@@ -204,7 +204,7 @@ const CreateSubject = () => {
                     </View>
                     <TouchableOpacity
                         onPress={handleClose}
-                        style={{ backgroundColor: isDark ? '#1A1650' : '#f3f4f6', padding: 8, borderRadius: 12, borderWidth: 1, borderColor: border }}
+                        style={{ backgroundColor: isDark ? '#161B22' : '#f3f4f6', padding: 8, borderRadius: 12, borderWidth: 1, borderColor: border }}
                     >
                         <Ionicons name="close" size={20} color={textSecondary} />
                     </TouchableOpacity>
@@ -359,7 +359,7 @@ const CreateSubject = () => {
                     gap: 12,
                 }}>
                     <TouchableOpacity
-                        style={{ flex: 1, paddingVertical: 14, borderRadius: 16, alignItems: 'center', backgroundColor: isDark ? '#1A1650' : '#f3f4f6', borderWidth: 1, borderColor: border }}
+                        style={{ flex: 1, paddingVertical: 14, borderRadius: 16, alignItems: 'center', backgroundColor: isDark ? '#161B22' : '#f3f4f6', borderWidth: 1, borderColor: border }}
                         onPress={saveDraft}
                     >
                         <Text style={{ color: textSecondary, fontWeight: '600' }}>Save Draft</Text>

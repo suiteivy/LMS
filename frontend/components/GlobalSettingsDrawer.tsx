@@ -12,20 +12,17 @@ import { HelpTooltip } from './settings/HelpTooltip';
 // Screens
 import AdminHelp from '@/components/AdminHelp';
 import AdminOverview from '@/components/AdminOverview';
-import AdminProfile from '@/components/AdminProfile';
 import AdminSettings from './AdminSettings';
 import StudentHelp from '@/components/StudentHelp';
-import StudentProfile from '@/components/StudentProfile';
-import ParentProfile from '@/components/ParentProfile';
 import StudentSettings from '@/components/StudentSettings';
 import TeacherHelp from '@/components/TeacherHelp';
-import TeacherProfile from '@/components/TeacherProfile';
 import TeacherSettings from '@/components/TeacherSettings';
 import InstitutionOwnership from '@/components/InstitutionOwnership';
-import MasterAdminProfile from '@/components/MasterAdminProfile';
 import MasterAdminSettings from '@/components/MasterAdminSettings';
 import ActiveSessions from '@/components/ActiveSessions';
+import ReadOnlyProfile from '@/components/ReadOnlyProfile';
 import { router } from 'expo-router';
+import { resolveAvatarUri } from '@/utils/avatar';
 
 type MenuItemProps = {
   icon: React.ReactNode;
@@ -46,7 +43,7 @@ const MenuItem = ({ icon, label, onPress, danger, isDark }: MenuItemProps) => (
       borderBottomColor: isDark ? 'rgba(255,255,255,0.1)' : '#f3f4f6',
       backgroundColor: danger
         ? (isDark ? 'rgba(127,29,29,0.2)' : '#fef2f2')
-        : (isDark ? '#0F0B2E' : '#ffffff'),
+        : (isDark ? '#161B22' : '#ffffff'),
     }}
   >
     <View style={{ width: 32 }}>{icon}</View>
@@ -64,10 +61,11 @@ function SettingsMenu({ userRole, onNavigate }: { userRole: string; onNavigate: 
   const isPlatformAdminRole = userRole === 'master_admin' || userRole === 'platform_admin';
   const roleLabel = isPlatformAdminRole ? 'Master Admin' : userRole === 'parent' ? 'Parent/Guardian' : (userRole.charAt(0).toUpperCase() + userRole.slice(1));
 
-  const surface = isDark ? '#13103A' : '#ffffff';
+  const surface = isDark ? '#161B22' : '#ffffff';
   const border = isDark ? 'rgba(255,255,255,0.1)' : '#f3f4f6';
   const textPrimary = isDark ? '#f1f1f1' : '#111827';
-  const textSecondary = isDark ? '#6b7280' : '#9ca3af';
+  const textSecondary = isDark ? '#D1D5DB' : '#9ca3af';
+  const avatarUri = resolveAvatarUri(profile?.avatar_url);
 
   const handleLogout = async () => {
     try {
@@ -93,8 +91,8 @@ function SettingsMenu({ userRole, onNavigate }: { userRole: string; onNavigate: 
       <View style={{ paddingHorizontal: 24, paddingVertical: 24, borderBottomWidth: 1, borderBottomColor: border, backgroundColor: surface }}>
         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
           <View style={{ width: 48, height: 48, borderRadius: 16, alignItems: 'center', justifyContent: 'center', marginRight: 16, backgroundColor: isDark ? '#1f2937' : '#f3f4f6', borderWidth: 1, borderColor: border, overflow: 'hidden' }}>
-            {profile?.avatar_url ? (
-              <Image source={{ uri: profile.avatar_url }} style={{ width: 48, height: 48 }} resizeMode="cover" />
+            {avatarUri ? (
+              <Image source={{ uri: avatarUri }} style={{ width: 48, height: 48 }} resizeMode="cover" />
             ) : (
               <Text style={{ color: textPrimary, fontWeight: '700', fontSize: 18 }}>
                 {profile?.full_name?.charAt(0) || 'U'}
@@ -116,12 +114,12 @@ function SettingsMenu({ userRole, onNavigate }: { userRole: string; onNavigate: 
       </View>
 
       {/* Menu Items */}
-        <ScrollView style={{ flex: 1, backgroundColor: isDark ? '#0F0B2E' : '#ffffff' }} contentContainerStyle={{ paddingBottom: 20 }}>
+        <ScrollView style={{ flex: 1, backgroundColor: isDark ? '#161B22' : '#ffffff' }} contentContainerStyle={{ paddingBottom: 20 }}>
         {(['student', 'parent'] as const).includes(userRole as 'student' | 'parent') && (
           <View style={{ paddingHorizontal: 24, paddingTop: 16, paddingBottom: 4, flexDirection: 'row', alignItems: 'center' }}>
             <Text style={{ fontSize: 10, fontWeight: 'bold', color: textSecondary, textTransform: 'uppercase', letterSpacing: 3 }}>Quick Guide</Text>
             <HelpTooltip
-              id={userRole === 'parent' ? 'settings.language' : 'settings.language'}
+              id={userRole === 'parent' ? 'settings.language.parent' : 'settings.language.student'}
               role={userRole as 'student' | 'parent'}
               tier={tier}
               onLearnMore={(anchor) => {
@@ -161,7 +159,7 @@ function SettingsMenu({ userRole, onNavigate }: { userRole: string; onNavigate: 
       </ScrollView>
 
       {/* Logout */}
-      <View style={{ padding: 24, paddingBottom: 40, borderTopWidth: 1, borderTopColor: border, backgroundColor: isDark ? '#0F0B2E' : '#ffffff' }}>
+      <View style={{ padding: 24, paddingBottom: 40, borderTopWidth: 1, borderTopColor: border, backgroundColor: isDark ? '#161B22' : '#ffffff' }}>
         <TouchableOpacity
           onPress={handleLogout}
           disabled={loading}
@@ -199,11 +197,7 @@ export function GlobalSettingsContent({
     switch (activeScreen) {
       case 'overview': return <AdminOverview />;
       case 'profile':
-        if (userRole === 'master_admin' || userRole === 'platform_admin') return <MasterAdminProfile />;
-        if (userRole === 'admin') return <AdminProfile />;
-        if (userRole === 'teacher') return <TeacherProfile />;
-        if (userRole === 'parent') return <ParentProfile />;
-        return <StudentProfile />;
+        return <ReadOnlyProfile />;
       case 'settings':
         if (userRole === 'master_admin' || userRole === 'platform_admin') return <MasterAdminSettings />;
         if (userRole === 'admin') return <AdminSettings />;
@@ -242,7 +236,7 @@ export function GlobalSettingsContent({
   const roleLabel = (userRole === 'master_admin' || userRole === 'platform_admin') ? 'Master Admin' : userRole === 'parent' ? 'Parent/Guardian' : (userRole.charAt(0).toUpperCase() + userRole.slice(1)) as "Student" | "Teacher" | "Admin" | "Parent/Guardian" | "Master Admin";
 
   return (
-    <View style={{ flex: 1, backgroundColor: isDark ? '#0F0B2E' : '#ffffff' }}>
+    <View style={{ flex: 1, backgroundColor: isDark ? '#161B22' : '#ffffff' }}>
       {isSessionExpiring && (
         <View style={{ backgroundColor: '#fff7ed', borderColor: '#ffedd5', borderWidth: 1, padding: 16, margin: 16, borderRadius: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', elevation: 2 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, marginRight: 8 }}>
