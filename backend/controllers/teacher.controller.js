@@ -31,7 +31,7 @@ exports.getDashboardStats = async (req, res) => {
         // Fetch primary subjects
         let primaryQuery = supabase
             .from('subjects')
-            .select('*, classes(id, grade_level, form_level, stream, level_label)')
+            .select('*, classes(id, grade_level, form_level, stream)')
             .eq('teacher_id', teacher.id);
         if (institution_id) primaryQuery = primaryQuery.eq('institution_id', institution_id);
         const { data: primarySubjects, error: psError } = await primaryQuery;
@@ -40,7 +40,7 @@ exports.getDashboardStats = async (req, res) => {
         // Fetch assistant subjects
         let assocQuery = supabase
             .from('subject_teachers')
-            .select('subject_id, subject:subjects!inner(*, classes(id, grade_level, form_level, stream, level_label))')
+            .select('subject_id, subject:subjects!inner(*, classes(id, grade_level, form_level, stream))')
             .eq('teacher_id', teacher.id);
         if (institution_id) assocQuery = assocQuery.eq('institution_id', institution_id);
         const { data: assocSubjects, error: asError } = await assocQuery;
@@ -56,7 +56,7 @@ exports.getDashboardStats = async (req, res) => {
         // Fetch classes where designated Class Teacher
         let ctQuery = supabase
             .from('classes')
-            .select('id, grade_level, form_level, stream, level_label')
+            .select('id, grade_level, form_level, stream')
             .eq('teacher_id', teacher.id);
         if (institution_id) ctQuery = ctQuery.eq('institution_id', institution_id);
         const { data: classTeacherOf, error: ctError } = await ctQuery;
@@ -103,7 +103,7 @@ exports.getDashboardStats = async (req, res) => {
                 .from('timetables')
                 .select(`
                     id, day_of_week, start_time, end_time, room_number, class_id, subject_id,
-                    classes(grade_level, form_level, stream, level_label),
+                    classes(grade_level, form_level, stream),
                     subjects(title)
                 `)
                 .in('subject_id', subjectIds);
@@ -175,7 +175,7 @@ exports.getDashboardStats = async (req, res) => {
                         grade_level: s.classes.grade_level,
                         form_level: s.classes.form_level,
                         stream: s.classes.stream,
-                        level_label: s.classes.level_label,
+                        // level_label: s.classes.level_label,
                     } : null,
                     timetable: subjectTimetables.map(tt => ({
                         day_of_week: tt.day_of_week,
@@ -317,12 +317,12 @@ exports.getStudentPerformance = async (req, res) => {
         // 2. Get subjects taught by this teacher (primary or assistant)
         const { data: primarySubjects } = await supabase
             .from('subjects')
-            .select('id, title, class_id, classes(grade_level, form_level, stream, level_label)')
+            .select('id, title, class_id, classes(grade_level, form_level, stream)')
             .eq('teacher_id', teacher.id);
             
         const { data: assocSubjects } = await supabase
             .from('subject_teachers')
-            .select('subject_id, subject:subjects!inner(id, title, class_id, classes(grade_level, form_level, stream, level_label))')
+            .select('subject_id, subject:subjects!inner(id, title, class_id, classes(grade_level, form_level, stream))')
             .eq('teacher_id', teacher.id);
 
         const primaryList = primarySubjects || [];
@@ -638,7 +638,7 @@ exports.getSubjectClasses = async (req, res) => {
 
         let query = supabase
             .from("subjects")
-            .select("id, title, class_id, classes(id, grade_level, form_level, stream, level_label)")
+            .select("id, title, class_id, classes(id, grade_level, form_level, stream)")
             .eq("teacher_id", teacher.id);
         if (institution_id) query = query.eq("institution_id", institution_id);
         if (subject_id) query = query.eq("id", subject_id);
@@ -649,7 +649,7 @@ exports.getSubjectClasses = async (req, res) => {
         // Also include subjects via subject_teachers
         const { data: assoc } = await supabase
             .from("subject_teachers")
-            .select("subject_id, subject:subjects(id, title, class_id, classes(id, grade_level, form_level, stream, level_label))")
+            .select("subject_id, subject:subjects(id, title, class_id, classes(id, grade_level, form_level, stream))")
             .eq("teacher_id", teacher.id);
 
         const map = new Map();

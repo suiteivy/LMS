@@ -490,7 +490,7 @@ export default function Index() {
               <SectionHeader
                 title="Today's Lectures"
                 actionLabel="Full Schedule"
-                onAction={() => router.push("/(student)/timetable" as any)}
+                onAction={() => router.push({ pathname: "/(student)/timetable", params: { backTo: "/(student)" } } as any)}
                 isDark={isDark}
               />
               <HelpTooltip id="student.dashboard.schedule" role="student" tier={tier} onLearnMore={(a) => router.push({ pathname: '/(student)/accessibility/settings', params: { manual: '1', anchor: a || 'student-workflow' } } as any)} />
@@ -558,7 +558,7 @@ export default function Index() {
                   icon={action.icon}
                   label={action.label}
                   color={action.color}
-                  onPress={() => router.push(action.route as any)}
+                  onPress={() => router.push({ pathname: action.route as any, params: { backTo: "/(student)" } } as any)}
                   cols={quickActionCols}
                 />
               ))}
@@ -590,7 +590,7 @@ export default function Index() {
             }
           >
             <TouchableOpacity
-              onPress={() => router.push("/(student)/analytics" as any)}
+              onPress={() => router.push({ pathname: "/(student)/analytics", params: { backTo: "/(student)" } } as any)}
               activeOpacity={0.75}
               style={{
                 marginTop: 8,

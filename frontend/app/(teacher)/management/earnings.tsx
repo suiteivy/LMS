@@ -97,7 +97,7 @@ export default function EarningsPage() {
                 title="Management"
                 subtitle="Earnings & Payouts"
                 role="Teacher"
-                onBack={() => router.push("/(teacher)/management")}
+                fallbackPath="/(teacher)/management"
             />
             <ScrollView
                 className="flex-1"

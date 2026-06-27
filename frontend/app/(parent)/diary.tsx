@@ -431,7 +431,7 @@ export default function ParentDiaryPage() {
                 title="Class Diary"
                 subtitle={selectedStudentName ? `Daily Activities · ${selectedStudentName}` : "Daily Activities"}
                 role="Parent/Guardian"
-                onBack={() => router.push("/(parent)")}
+                fallbackPath="/(parent)"
             />
 
             <View className="p-4 md:p-8 flex-1">

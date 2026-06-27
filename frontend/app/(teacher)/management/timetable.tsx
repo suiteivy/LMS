@@ -78,7 +78,7 @@ export default function TimetablePage() {
                 title="Management"
                 subtitle="My Timetable"
                 role="Teacher"
-                onBack={() => router.push("/(teacher)/management")}
+                fallbackPath="/(teacher)/management"
             />
 
             <View className="px-4 md:p-8 pt-4">

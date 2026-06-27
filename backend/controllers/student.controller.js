@@ -372,7 +372,7 @@ exports.listStudents = async (req, res) => {
         if (studentIds.length > 0) {
             const { data: classRows, error: classRowsError } = await supabase
                 .from('class_enrollments')
-                .select('student_id, class_id, enrolled_at, class:classes(id, grade_level, form_level, stream, level_label)')
+                .select('student_id, class_id, enrolled_at, class:classes(id, grade_level, form_level, stream)')
                 .in('student_id', studentIds)
                 .order('enrolled_at', { ascending: false });
 

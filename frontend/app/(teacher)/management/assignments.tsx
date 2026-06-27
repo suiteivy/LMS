@@ -684,7 +684,7 @@ export default function AssignmentsPage() {
                 title="Management"
                 subtitle="Assignments"
                 role="Teacher"
-                onBack={() => router.push("/(teacher)/management")}
+                fallbackPath="/(teacher)/management"
             />
             <ScrollView
                 className="flex-1"
@@ -784,18 +784,24 @@ export default function AssignmentsPage() {
             <Modal visible={showModal} animationType="slide" transparent>
                 <View className="flex-1 bg-black/70 justify-end">
                     <View className="bg-[#FFFFFF] dark:bg-[#161B22] rounded-t-3xl p-6 h-[85%] border-t border-[#D0D7DE] dark:border-[#21262D]">
-                        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
+                        <ScrollView
+                            style={{ paddingHorizontal: 4 }}
+                            showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
                             <View className="flex-row justify-between items-center mb-6">
-                                <Text className="text-xl font-bold text-gray-900 dark:text-white">
-                                    {editingAssignment ? "Edit Assignment" : "New Assignment"}
-                                </Text>
-                                <HelpTooltip id="teacher.manage.coursework" role="teacher" tier={tier} onLearnMore={openManual} />
-                                <TouchableOpacity
-                                    className="w-10 h-10 bg-[#F6F8FA] dark:bg-[#161B22] rounded-xl items-center justify-center border border-[#D0D7DE] dark:border-[#21262D]"
-                                    onPress={() => { setShowModal(false); resetForm(); }}
-                                >
-                                    <X size={20} color="#9CA3AF" />
-                                </TouchableOpacity>
+                                <View className="flex-row items-center">
+                                    <Text className="text-xl font-bold text-gray-900 dark:text-white">
+                                        {editingAssignment ? "Edit Assignment" : "New Assignment"}
+                                    </Text>
+                                    <HelpTooltip id="teacher.manage.coursework" role="teacher" tier={tier} onLearnMore={openManual} />
+                                </View>
+                                <View>
+                                    <TouchableOpacity
+                                        className="w-10 h-10 bg-[#F6F8FA] dark:bg-[#161B22] rounded-xl items-center justify-center border border-[#D0D7DE] dark:border-[#21262D]"
+                                        onPress={() => { setShowModal(false); resetForm(); }}
+                                    >
+                                        <X size={20} color="#9CA3AF" />
+                                    </TouchableOpacity>
+                                </View>
                             </View>
 
                             <View className="mb-6">

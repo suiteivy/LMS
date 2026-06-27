@@ -835,7 +835,7 @@ export default function ReportCardsPage() {
                 title="Report Cards"
                 subtitle="Management"
                 role="Teacher"
-                onBack={() => router.push("/(teacher)/management")}
+                fallbackPath="/(teacher)/management"
             />
 
             <ScrollView

@@ -2043,7 +2043,7 @@ export default function Index() {
               style={{ position: "absolute", top: 20, right: 20, zIndex: 10 }}
               onPress={() => setAddonModalVisible(false)}
             >
-              <Text style={{ color: "rgba(255,255,255,0.6)", fontSize: 24, fontWeight: "bold" }}>Ã—</Text>
+              <Text style={{ color: "rgba(255,255,255,0.6)", fontSize: 24, fontWeight: "bold" }}>x</Text>
             </TouchableOpacity>
 
             <View style={{ alignItems: 'center', marginBottom: 24 }}>
@@ -2153,7 +2153,7 @@ export default function Index() {
               style={{ position: "absolute", top: 20, right: 20, zIndex: 10 }}
               onPress={() => setCustomModalVisible(false)}
             >
-              <Text style={{ color: "rgba(255,255,255,0.6)", fontSize: 24, fontWeight: "bold" }}>Ã—</Text>
+              <Text style={{ color: "rgba(255,255,255,0.6)", fontSize: 24, fontWeight: "bold" }}>x</Text>
             </TouchableOpacity>
 
             <View style={{ alignItems: 'center', marginBottom: 24 }}>
@@ -2339,7 +2339,7 @@ export default function Index() {
                 style={{ position: "absolute", top: 24, right: 28, zIndex: 10, width: 32, height: 32, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: 16 }}
                 onPress={() => setModalVisible(false)}
               >
-                <Text style={{ color: "rgba(255,255,255,0.7)", fontSize: 20, fontWeight: "600", lineHeight: 22 }}>Ã—</Text>
+                <Text style={{ color: "rgba(255,255,255,0.7)", fontSize: 20, fontWeight: "600", lineHeight: 22 }}>x</Text>
               </TouchableOpacity>
 
               {submitted ? (

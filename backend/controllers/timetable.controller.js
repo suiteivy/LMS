@@ -266,7 +266,7 @@ exports.getTeacherTimetable = async (req, res) => {
       .select(
         `
         id, day_of_week, start_time, end_time, room_number,
-        classes ( grade_level, form_level, stream, level_label ),
+        classes ( grade_level, form_level, stream ),
         subjects ( title )
         `,
       )

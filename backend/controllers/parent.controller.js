@@ -131,7 +131,7 @@ exports.getLinkedStudents = async (req, res) => {
             if (enrollment?.class_id) {
                 const { data: klass } = await supabase
                     .from('classes')
-                    .select('id, grade_level, form_level, stream, level_label')
+                    .select('id, grade_level, form_level, stream')
                     .eq('id', enrollment.class_id)
                     .maybeSingle();
                 classData = klass;

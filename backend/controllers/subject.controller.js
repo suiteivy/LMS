@@ -24,7 +24,7 @@ const enrichSubjectsWithClassIds = async (subjects = [], institution_id) => {
 
   if (error) {
     // Migration not yet applied; keep legacy behavior.
-    if (error.code === "42P01") {
+    if (error.code === "42P01" || error.code === "PGRST205") {
       return subjects.map(hydrateSubjectClassIds);
     }
     throw error;
@@ -105,7 +105,7 @@ exports.createSubject = async (req, res) => {
         .from("subject_classes")
         .insert(subjectClassRecords);
 
-      if (subjectClassesError && subjectClassesError.code !== "23505" && subjectClassesError.code !== "42P01") {
+      if (subjectClassesError && subjectClassesError.code !== "23505" && subjectClassesError.code !== "42P01" && subjectClassesError.code !== "PGRST205") {
         await supabase.from("subjects").delete().eq("id", data.id).eq("institution_id", institution_id);
         return res.status(500).json({ error: subjectClassesError.message });
       }
@@ -423,11 +423,13 @@ exports.getSubjectsByClass = async (req, res) => {
       .eq("institution_id", institution_id)
       .eq("class_id", classId);
 
-    if (linksError && linksError.code !== "42P01") {
+    const isMissingTable = linksError && (linksError.code === "42P01" || linksError.code === "PGRST205");
+
+    if (linksError && !isMissingTable) {
       return res.status(500).json({ error: linksError.message });
     }
 
-    if (linksError && linksError.code === "42P01") {
+    if (isMissingTable) {
       const { data: subjects, error } = await supabase
         .from("subjects")
         .select("*")

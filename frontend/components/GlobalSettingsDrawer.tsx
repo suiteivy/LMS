@@ -8,6 +8,7 @@ import { Alert, Image, Platform, ScrollView, Text, TouchableOpacity, View } from
 import { SubscriptionStatusBadge } from '@/components/shared/SubscriptionComponents';
 import { useSubscriptionTier } from '@/hooks/useSubscriptionTier';
 import { HelpTooltip } from './settings/HelpTooltip';
+import { ThemeSegmentedControl } from "./settings/ThemeSegmentedControl";
 
 // Screens
 import AdminHelp from '@/components/AdminHelp';
@@ -155,6 +156,13 @@ function SettingsMenu({ userRole, onNavigate }: { userRole: string; onNavigate: 
         {!isTrial && !isPlatformAdminRole && (
           <MenuItem isDark={isDark} icon={<HelpCircle size={22} color="#3b82f6" />} label="Help & Support" onPress={() => onNavigate('help')} />
         )}
+
+        <View style={{ paddingHorizontal: 24, paddingTop: 20 }}>
+          <Text style={{ fontSize: 10, fontWeight: 'bold', color: textSecondary, textTransform: 'uppercase', letterSpacing: 3, marginBottom: 12 }}>App Theme</Text>
+          <View style={{ borderRadius: 16, borderOpacity: 1, borderWidth: 1, borderColor: border, overflow: 'hidden' }}>
+            <ThemeSegmentedControl />
+          </View>
+        </View>
 
       </ScrollView>
 

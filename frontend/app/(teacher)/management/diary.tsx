@@ -290,7 +290,7 @@ export default function TeacherDiaryPage() {
                 title="Management"
                 subtitle="Virtual Diary"
                 role="Teacher"
-                onBack={() => router.push("/(teacher)/management")}
+                fallbackPath="/(teacher)/management"
             />
 
             <SubscriptionGate

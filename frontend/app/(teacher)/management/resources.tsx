@@ -182,7 +182,7 @@ export default function ResourcesPage() {
         title="Academic"
         subtitle="Resources"
         role="Teacher"
-        onBack={() => router.push("/(teacher)/management")}
+        fallbackPath="/(teacher)/management"
       />
       <ScrollView className="flex-1" showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
         <View className="p-4 md:p-8">

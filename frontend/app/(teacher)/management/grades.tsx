@@ -286,7 +286,7 @@ export default function GradesPage() {
                 title="Management"
                 subtitle="Grade Book"
                 role="Teacher"
-                onBack={() => router.push("/(teacher)/management")}
+                fallbackPath="/(teacher)/management"
             />
             <ScrollView
                 className="flex-1"

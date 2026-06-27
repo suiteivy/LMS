@@ -81,6 +81,7 @@ interface DropdownSelectorProps {
     onSelect: (id: string) => void;
     loading?: boolean;
     placeholder?: string;
+    zIndex?: number;
 }
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
@@ -131,11 +132,12 @@ const DropdownSelector: React.FC<DropdownSelectorProps> = ({
     onSelect,
     loading,
     placeholder = "Select...",
+    zIndex,
 }) => {
     const [open, setOpen] = useState(false);
 
     return (
-        <View className="mb-4 relative z-20">
+        <View className="mb-4 relative" style={zIndex !== undefined ? { zIndex } : { zIndex: 20 }}>
             <Text className="text-gray-400 dark:text-gray-500 text-[10px] font-bold uppercase tracking-wider ml-1 mb-1.5">
                 {label}
             </Text>
@@ -874,7 +876,7 @@ export default function GradeEntryPage() {
                 title="Management"
                 subtitle="Grade Entry"
                 role="Teacher"
-                onBack={() => router.push("/(teacher)/management")}
+                fallbackPath="/(teacher)/management"
             />
 
             <ScrollView
@@ -907,7 +909,7 @@ export default function GradeEntryPage() {
                     </View>
 
                     {/* ── Filters ── */}
-                    <View className="mb-6">
+                    <View className="mb-6 relative z-50" style={{ zIndex: 50 }}>
                         <View className="flex-row items-center mb-3">
                             <Filter size={14} color="#FF6900" />
                             <Text className="text-gray-900 dark:text-white font-bold text-sm ml-2 tracking-tight">Filters</Text>
@@ -922,6 +924,7 @@ export default function GradeEntryPage() {
                                 setSelectedSubjectId(id);
                                 setSelectedClassId("");
                             }}
+                            zIndex={40}
                         />
 
                         <DropdownSelector
@@ -931,10 +934,11 @@ export default function GradeEntryPage() {
                             onSelect={setSelectedClassId}
                             loading={fetchingStudents}
                             placeholder={selectedSubjectId ? "Select a class..." : "Select a subject first"}
+                            zIndex={30}
                         />
 
-                        <View className="flex-row gap-3">
-                            <View className="flex-1">
+                        <View className="flex-row gap-3 relative z-10" style={{ zIndex: 10 }}>
+                            <View className="flex-1" style={{ zIndex: 20 }}>
                                 <DropdownSelector
                                     label="Term"
                                     value={selectedTermName}
@@ -943,6 +947,7 @@ export default function GradeEntryPage() {
                                         setSelectedTermId(id);
                                         setAutoSelectedActiveTerm(false);
                                     }}
+                                    zIndex={20}
                                 />
                                 {autoSelectedActiveTerm && selectedTermId ? (
                                     <View className="mt-2 self-start rounded-full bg-emerald-100 dark:bg-emerald-900/40 px-3 py-1 border border-emerald-200 dark:border-emerald-700">
@@ -959,13 +964,14 @@ export default function GradeEntryPage() {
                                     </View>
                                 ) : null}
                             </View>
-                            <View className="flex-1">
+                            <View className="flex-1" style={{ zIndex: 10 }}>
                                 <DropdownSelector
                                     label="Assessment Type"
                                     value={selectedAssessmentName}
                                     options={assessmentTypes.map((a) => ({ id: a.id, label: a.title }))}
                                     onSelect={setSelectedAssessmentTypeId}
                                     placeholder="All types"
+                                    zIndex={20}
                                 />
                             </View>
                         </View>

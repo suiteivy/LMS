@@ -87,7 +87,7 @@ export default function CreateBursaryScreen() {
                 title="Finance"
                 subtitle="Create Bursary"
                 role="Admin"
-                onBack={() => router.navigate('/(admin)/finance')}
+                fallbackPath="/(admin)/finance"
             />
 
             <ScrollView style={{ flex: 1, paddingHorizontal: 20, paddingTop: 24 }}>

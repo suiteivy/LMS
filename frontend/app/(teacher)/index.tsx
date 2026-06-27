@@ -465,7 +465,7 @@ export default function TeacherHome() {
                         <Text className="text-xl font-bold text-gray-900 dark:text-white">
                             Today&apos;s Schedule
                         </Text>
-                        <TouchableOpacity onPress={() => router.push("/(teacher)/management/timetable" as any)}>
+                        <TouchableOpacity onPress={() => router.push({ pathname: "/(teacher)/management/timetable", params: { backTo: "/(teacher)" } } as any)}>
                             <Text className="text-[#FF6900] font-semibold">View All</Text>
                         </TouchableOpacity>
                     </View>
@@ -531,7 +531,7 @@ export default function TeacherHome() {
                                     icon={GraduationCap}
                                     label="Grades"
                                     color={isDark ? "#ff6900" : "#1a1a1a"}
-                                    onPress={() => router.push("/(teacher)/management/grades" as any)}
+                                    onPress={() => router.push({ pathname: "/(teacher)/management/grades", params: { backTo: "/(teacher)" } } as any)}
                                 />
                             </View>
                             <View className="w-[48%]">
@@ -549,7 +549,7 @@ export default function TeacherHome() {
                                     icon={ArrowRight}
                                     label="Assignments"
                                     color="#f43f5e"
-                                    onPress={() => router.push("/(teacher)/management/assignments" as any)}
+                                    onPress={() => router.push({ pathname: "/(teacher)/management/assignments", params: { backTo: "/(teacher)" } } as any)}
                                 />
                             </View>
                             <View className="w-[48%]">
@@ -558,7 +558,7 @@ export default function TeacherHome() {
                                         icon={MessageSquare}
                                         label="Messages"
                                         color="#0891b2"
-                                        onPress={() => router.push("/(teacher)/management/messages" as any)}
+                                        onPress={() => router.push({ pathname: "/(teacher)/management/messages", params: { backTo: "/(teacher)" } } as any)}
                                     />
                                 </SubscriptionGate>
                             </View>
