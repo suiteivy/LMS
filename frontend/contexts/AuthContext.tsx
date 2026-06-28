@@ -363,7 +363,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setIsProfileLoading(true);
       const { data, error } = await supabase
         .from('users')
-        .select('*, students(id), teachers(id), admins(id), parents(id), institutions(name, category_id, subscription_status, subscription_plan, trial_end_date, addon_messaging, addon_library, addon_diary, addon_finance, addon_analytics, addon_bursary, addon_attendance, custom_student_limit, school_categories(name, level_label)), platform_admins(id)')
+        .select('*, students(id), teachers(id), admins(id), parents(id), institutions(name, category_id, subscription_status, subscription_plan, trial_end_date, addon_messaging, addon_library, addon_diary, addon_finance, addon_analytics, addon_bursary, addon_attendance, custom_student_limit, school_categories!institutions_category_id_fkey(name, level_label)), platform_admins(id)')
         .eq('id', userId)
         .single()
       const result = data as any
