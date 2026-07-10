@@ -22,7 +22,7 @@ const GENDER_OPTIONS = ['male', 'female', 'other'] as const;
 
 export const ProfileEdit = ({ visible, onClose, currentUser, onUpdate }: EditFormProps) => {
   const { profile, refreshProfile } = useAuth();
-  const isDark = useTheme()
+  const { isDark } = useTheme();
 
   const [loading, setLoading] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
@@ -194,7 +194,7 @@ export const ProfileEdit = ({ visible, onClose, currentUser, onUpdate }: EditFor
       transparent
       visible={visible}
       onRequestClose={onClose}
-      style={{backgroundColor: isDark ? '#0F0B2E' : '#FCFCFC'}}
+      style={{backgroundColor: isDark ? '#0B1117' : '#FCFCFC'}}
     >
       <Pressable className="flex-1 bg-black/60 justify-end" onPress={onClose}>
         <Pressable
@@ -224,26 +224,6 @@ export const ProfileEdit = ({ visible, onClose, currentUser, onUpdate }: EditFor
             className="flex-1"
           >
             <ScrollView className="p-6" showsVerticalScrollIndicator={false}>
-              <View>
-                {/* Avatar Section */}
-                <View className="items-center mb-8">
-                  <TouchableOpacity onPress={pickImage} className="relative">
-                    <View className="w-24 h-24 rounded-full bg-gray-100 overflow-hidden items-center justify-center border-4 border-white shadow-sm">
-                      {avatarUrl ? (
-                        <Image source={{ uri: avatarUrl }} className="w-full h-full" />
-                      ) : (
-                        <Text className="text-gray-400 text-2xl font-bold">
-                          {firstName?.charAt(0) || profile?.full_name?.charAt(0) || "U"}
-                        </Text>
-                      )}
-                    </View>
-                    <View className="absolute bottom-0 right-0 bg-orange-500 p-2 rounded-full border-2 border-white">
-                      {uploading ? <Spinner size="small" color="white" label="Uploading avatar" /> : <Camera size={14} color="white" />}
-                    </View>
-                  </TouchableOpacity>
-                  <Text className="text-gray-400 text-xs mt-2">JPG, PNG or WebP · Max 5MB</Text>
-                </View>
-              </View>
               {/* Avatar */}
               <View className="items-center mb-6">
                 <TouchableOpacity onPress={pickImage} activeOpacity={0.7} className="relative">

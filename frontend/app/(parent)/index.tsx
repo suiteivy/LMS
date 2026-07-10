@@ -137,6 +137,7 @@ function ParentDashboard({ user, logout }: any) {
         studentId: selectedStudent.id,
         studentName: selectedStudent.users?.full_name || '',
         classId: selectedStudent.class_id || '',
+        backTo: '/(parent)',
       },
     });
   };

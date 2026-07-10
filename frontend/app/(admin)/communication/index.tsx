@@ -342,7 +342,7 @@ export default function CommunicationPage() {
                 title="Communication"
                 subtitle="Communication"
                 role="Admin"
-                onBack={() => router.push("/(admin)")}
+                fallbackPath="/(admin)"
                 showNotification={false}
             />
 

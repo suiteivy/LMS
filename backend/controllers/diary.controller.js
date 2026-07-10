@@ -140,8 +140,22 @@ exports.getEntries = async (req, res) => {
 
         if (error) throw error;
 
+        // Deduplicate for teacher/admin view (where targetStudentId is not set)
+        let uniqueData = data || [];
+        if (!targetStudentId) {
+            const seen = new Set();
+            uniqueData = (data || []).filter(entry => {
+                const key = `${entry.class_id}-${entry.title}-${entry.content}-${entry.entry_date}`;
+                if (seen.has(key)) {
+                    return false;
+                }
+                seen.add(key);
+                return true;
+            });
+        }
+
         // Fetch submissions for any assignment-linked diary entries
-        const assignmentIds = (data || []).filter(e => e.assignment_id).map(e => e.assignment_id);
+        const assignmentIds = uniqueData.filter(e => e.assignment_id).map(e => e.assignment_id);
         let submissions = [];
         if (assignmentIds.length > 0 && targetStudentId) {
             const { data: subs } = await supabase
@@ -152,7 +166,7 @@ exports.getEntries = async (req, res) => {
             submissions = subs || [];
         }
 
-        const enriched = (data || []).map(entry => {
+        const enriched = uniqueData.map(entry => {
             if (!entry.assignment_id || !entry.assignment) {
                 return entry;
             }
@@ -215,25 +229,39 @@ exports.updateEntry = async (req, res) => {
         const { userId, userRole } = req;
 
         // Verify ownership/authorization
+        let teacherId = null;
         if (userRole === 'teacher') {
             const { data: teacher } = await supabase.from('teachers').select('id').eq('user_id', userId).single();
             const { data: entry } = await supabase.from('diary_entries').select('teacher_id').eq('id', id).single();
             if (!entry || entry.teacher_id !== teacher.id) {
                 return res.status(403).json({ error: "Access denied: You did not create this entry" });
             }
-        } else if (!['admin', 'master_admin'].includes(userRole)) {
-            return res.status(403).json({ error: "Unauthorized" });
+            teacherId = teacher.id;
         }
 
-        const { data, error } = await supabase
-            .from("diary_entries")
-            .update({ title, content, entry_date, updated_at: new Date().toISOString() })
-            .eq("id", id)
-            .select()
+        // Fetch original entry details to update all child copies
+        const { data: original } = await supabase
+            .from('diary_entries')
+            .select('class_id, title, content, entry_date')
+            .eq('id', id)
             .single();
 
-        if (error) throw error;
-        res.json(data);
+        if (original) {
+            let updateQuery = supabase
+                .from("diary_entries")
+                .update({ title, content, entry_date, updated_at: new Date().toISOString() })
+                .eq("class_id", original.class_id)
+                .eq("title", original.title)
+                .eq("content", original.content)
+                .eq("entry_date", original.entry_date);
+
+            if (teacherId) {
+                updateQuery = updateQuery.eq("teacher_id", teacherId);
+            }
+            await updateQuery;
+        }
+
+        res.json({ message: "Entry updated successfully" });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
@@ -247,18 +275,37 @@ exports.deleteEntry = async (req, res) => {
         const { id } = req.params;
         const { userId, userRole } = req;
 
+        let teacherId = null;
         if (userRole === 'teacher') {
             const { data: teacher } = await supabase.from('teachers').select('id').eq('user_id', userId).single();
             const { data: entry } = await supabase.from('diary_entries').select('teacher_id').eq('id', id).single();
             if (!entry || entry.teacher_id !== teacher.id) {
                 return res.status(403).json({ error: "Access denied: You did not create this entry" });
             }
-        } else if (!['admin', 'master_admin'].includes(userRole)) {
-            return res.status(403).json({ error: "Unauthorized" });
+            teacherId = teacher.id;
         }
 
-        const { error } = await supabase.from("diary_entries").delete().eq("id", id);
-        if (error) throw error;
+        const { data: original } = await supabase
+            .from('diary_entries')
+            .select('class_id, title, content, entry_date')
+            .eq('id', id)
+            .single();
+
+        if (original) {
+            let deleteQuery = supabase
+                .from("diary_entries")
+                .delete()
+                .eq("class_id", original.class_id)
+                .eq("title", original.title)
+                .eq("content", original.content)
+                .eq("entry_date", original.entry_date);
+
+            if (teacherId) {
+                deleteQuery = deleteQuery.eq("teacher_id", teacherId);
+            }
+            await deleteQuery;
+        }
+
         res.json({ message: "Entry deleted successfully" });
     } catch (err) {
         res.status(500).json({ error: err.message });

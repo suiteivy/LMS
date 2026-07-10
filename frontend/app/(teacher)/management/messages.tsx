@@ -21,7 +21,7 @@ export default function MessagingPage() {
         title="Management"
         subtitle="Messaging"
         role="Teacher"
-        onBack={() => router.push("/(teacher)/management")}
+        fallbackPath="/(teacher)/management"
         rightActions={
           <View className="flex-row items-center" style={{ gap: 8 }}>
             <TouchableOpacity

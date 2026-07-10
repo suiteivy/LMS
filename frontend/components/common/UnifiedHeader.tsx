@@ -2,7 +2,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useNotifications } from "@/contexts/NotificationContext";
 import { Ionicons } from "@expo/vector-icons";
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import React from "react";
 import { Text, TouchableOpacity, View, useWindowDimensions, Modal, ScrollView, Animated } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -18,6 +18,7 @@ interface UnifiedHeaderProps {
   showNotification?: boolean;
   onNotificationPress?: () => void;
   onBack?: () => void;
+  fallbackPath?: string;
   rightActions?: React.ReactNode;
   showMainBadge?: boolean;
 }
@@ -29,9 +30,11 @@ export const UnifiedHeader: React.FC<UnifiedHeaderProps> = ({
   showNotification = false,
   onNotificationPress,
   onBack,
+  fallbackPath,
   rightActions,
   showMainBadge = false,
 }) => {
+  const { backTo } = useLocalSearchParams<{ backTo?: string }>();
   const insets = useSafeAreaInsets();
   const { isDark } = useTheme();
   const { institutionName } = useAuth();
@@ -60,7 +63,8 @@ export const UnifiedHeader: React.FC<UnifiedHeaderProps> = ({
   };
 
   const navItems = getNavItems();
-  const showHamburger = isMobile && !onBack && navItems.length > 0;
+  const hasBackButton = !!onBack || !!fallbackPath || !!backTo;
+  const showHamburger = isMobile && !hasBackButton && navItems.length > 0;
 
   React.useEffect(() => {
       Animated.timing(slideAnim, {
@@ -100,9 +104,21 @@ export const UnifiedHeader: React.FC<UnifiedHeaderProps> = ({
             </TouchableOpacity>
           )}
 
-          {onBack && (
+          {hasBackButton && (
             <TouchableOpacity
-              onPress={onBack}
+              onPress={() => {
+                if (onBack) {
+                  onBack();
+                } else if (backTo) {
+                  router.replace(backTo as any);
+                } else if (fallbackPath) {
+                  if (router.canGoBack()) {
+                    router.back();
+                  } else {
+                    router.replace(fallbackPath as any);
+                  }
+                }
+              }}
               style={{
                 marginRight: 16,
                 backgroundColor: surface,

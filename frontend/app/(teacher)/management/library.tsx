@@ -90,7 +90,7 @@ export default function TeacherLibraryPage() {
                 title="Management"
                 subtitle="Library Books"
                 role="Teacher"
-                onBack={() => router.push("/(teacher)/management")}
+                fallbackPath="/(teacher)/management"
             />
 
             <SubscriptionGate

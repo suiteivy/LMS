@@ -33,9 +33,9 @@ export function HelpTooltip({ id, role, tier, onLearnMore }: HelpTooltipProps) {
 
   if (!enabled || !entry) return null;
 
-  const bg = isDark ? '#13103A' : '#FFFFFF';
+  const bg = isDark ? '#0D1117' : '#FCFCFC';
   const text = isDark ? '#F9FAFB' : '#111827';
-  const muted = isDark ? '#9CA3AF' : '#6B7280';
+  const muted = isDark ? '#9CA3AF' : '#30363D';
   const border = isDark ? 'rgba(255,255,255,0.12)' : '#E5E7EB';
 
   const clearHoverTimer = () => {

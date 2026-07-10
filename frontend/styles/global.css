@@ -18,6 +18,13 @@
   z-index: -1;
 }
 
+/* Global focus styling for React Native Web inputs */
+input:focus, textarea:focus, select:focus {
+  outline: none !important;
+  border-color: #FF6900 !important;
+  box-shadow: 0 0 0 2px rgba(255, 105, 0, 0.25) !important;
+}
+
 /* #2C3E50
 #F1FFF8
 #A1EBE5

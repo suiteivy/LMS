@@ -296,7 +296,7 @@ export default function SubmissionsPage() {
                 title="Review"
                 subtitle="Submissions"
                 role="Teacher"
-                onBack={() => router.push("/(teacher)/management")}
+                fallbackPath="/(teacher)/management"
             />
             {loading ? (
                 <View className="flex-1 p-4 md:p-8">

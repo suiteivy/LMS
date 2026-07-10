@@ -114,7 +114,7 @@ export default function AnnouncementsPage() {
                 title="Management"
                 subtitle="School Notices"
                 role="Teacher"
-                onBack={() => router.push("/(teacher)/management")}
+                fallbackPath="/(teacher)/management"
             />
             <ScrollView
                 className="flex-1"
