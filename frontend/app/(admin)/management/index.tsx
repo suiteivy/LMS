@@ -13,9 +13,7 @@ import {
     ClipboardList,
     DoorClosedLocked,
     FileCheck2,
-    FileText,
     GraduationCap,
-    Shield,
 } from 'lucide-react-native';
 import React from "react";
 import { ScrollView, Text, TouchableOpacity, View } from 'react-native';
@@ -92,7 +90,7 @@ export default function AdminManagement() {
             route: "/(admin)/management/analytics",
             tooltipId: 'admin.manage.analytics'
         }] : []),
-        {
+        ...(tier.hasLibrary ? [{
             icon: BookOpen,
             title: "Library Management",
             description: "Manage books and resources",
@@ -101,7 +99,7 @@ export default function AdminManagement() {
             darkBgColor: "#3d3000",
             route: "/(admin)/management/library",
             tooltipId: 'admin.manage.library'
-        },
+        }] : []),
         {
             icon: ClipboardList,
             title: "Subjects & Curricula",
@@ -111,26 +109,6 @@ export default function AdminManagement() {
             darkBgColor: "#2e1065",
             route: "/(admin)/management/subjects",
             tooltipId: 'admin.manage.subjects'
-        },
-        {
-            icon: Shield,
-            title: "Roles & Permissions",
-            description: "Configure system access levels",
-            color: "#ec4899",
-            bgColor: "#fce7f3",
-            darkBgColor: "#4a0028",
-            route: "/(admin)/management/roles",
-            tooltipId: 'admin.manage.roles'
-        },
-        {
-            icon: FileText,
-            title: "Reports & Logs",
-            description: "View activity logs and generate reports",
-            color: "#64748b",
-            bgColor: "#f1f5f9",
-            darkBgColor: "#1e2a35",
-            route: "/(admin)/finance/bursaries/reports",
-            tooltipId: 'admin.manage.reports'
         },
         {
             icon: CalendarCheck,

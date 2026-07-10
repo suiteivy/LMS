@@ -5,13 +5,10 @@ import { api } from "@/services/api";
 import { showError } from "@/utils/toast";
 import { router } from "expo-router";
 import { 
-    BadgeCent, 
-    BarChart3, 
     CheckCircle, 
     HelpCircle, 
     Library, 
     MessageSquare, 
-    Users, 
     Zap 
 } from "lucide-react-native";
 import React, { useState } from "react";
@@ -28,28 +25,21 @@ import {
 const ADDON_OPTIONS = [
     { key: 'library', label: 'Digital Library', icon: Library, color: '#FF6B00', desc: 'Manage books, PDFs and student borrowing.' },
     { key: 'messaging', label: 'Messaging + Diary', icon: MessageSquare, color: '#8B5CF6', desc: 'Direct chat, announcements and daily logs.' },
-    { key: 'attendance', label: 'Attendance Management', icon: Users, color: '#EC4899', desc: 'Advanced student and teacher tracking.' },
     { key: 'feature_request', label: 'Feature Request', icon: Zap, color: '#F59E0B', desc: 'Describe a new feature or modification you need.' },
-    { key: 'finance', label: 'Accounting Plus', icon: BadgeCent, color: '#10B981', desc: 'Advanced financial reports and fee tracking.' },
-    { key: 'analytics', label: 'Performance Analytics', icon: BarChart3, color: '#3B82F6', desc: 'Student progress and visual data insights.' },
     { key: 'bursary', label: 'Bursary Module', icon: HelpCircle, color: '#F59E0B', desc: 'Financial aid tracking and disbursements.' },
 ];
 
 export default function RequestFeaturePage() {
     const { isDark } = useTheme();
-    const { 
+    const {
         addonMessaging, 
         addonLibrary, 
-        addonFinance, 
-        addonAnalytics, 
         addonBursary 
     } = useAuth();
 
     const currentAddons: Record<string, boolean> = {
         library: addonLibrary,
         messaging: addonMessaging,
-        finance: addonFinance,
-        analytics: addonAnalytics,
         bursary: addonBursary,
     };
 

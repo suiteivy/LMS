@@ -1049,8 +1049,6 @@ const financialTransactions = [
   { id: 'FTX-001', type: 'fee_payment',   direction: 'inflow',  amount: 25_000, date: daysAgo(2),  method: 'mobile_money',  status: 'completed', reference_id: 'MPD20260601', meta: { student: 'Amina Hassan',   class: 'Form 1 North' } },
   { id: 'FTX-002', type: 'fee_payment',   direction: 'inflow',  amount: 29_500, date: daysAgo(3),  method: 'bank_transfer', status: 'completed', reference_id: 'KCB2026060X', meta: { student: 'David Mutuku',   class: 'Form 2 East'  } },
   { id: 'FTX-003', type: 'fee_payment',   direction: 'inflow',  amount: 32_500, date: daysAgo(5),  method: 'mobile_money',  status: 'completed', reference_id: 'MPD20260599', meta: { student: 'Samuel Kipchoge',class: 'Form 3 West'  } },
-  { id: 'FTX-004', type: 'salary_payout', direction: 'outflow', amount: 48_000, date: daysAgo(7),  method: 'bank_transfer', status: 'completed', reference_id: 'SAL-MAY-001', meta: { teacher: 'Sarah Chemutai'  } },
-  { id: 'FTX-005', type: 'salary_payout', direction: 'outflow', amount: 42_000, date: daysAgo(7),  method: 'bank_transfer', status: 'completed', reference_id: 'SAL-MAY-002', meta: { teacher: 'Brian Ochieng'   } },
   { id: 'FTX-006', type: 'expense',       direction: 'outflow', amount:  9_200, date: daysAgo(10), method: 'cash',          status: 'completed', reference_id: 'EXP-LAB-001', meta: { description: 'Science lab supplies & reagents' } },
   { id: 'FTX-007', type: 'grant',         direction: 'inflow',  amount: 15_000, date: daysAgo(14), method: 'direct_credit', status: 'completed', reference_id: 'BUR-EXCL-01', meta: { description: 'Excellence bursary – Kelson Otieno' } },
   { id: 'FTX-008', type: 'fee_payment',   direction: 'inflow',  amount: 4_500,  date: daysAgo(15), method: 'mobile_money',  status: 'completed', reference_id: 'MPD20260580', meta: { student: 'Grace Wanjiku',  class: 'Form 1 North' } },
@@ -1211,11 +1209,6 @@ const demoDummyData = {
         { name: "Michael C.", initials: "MC", score: 95 },
         { name: "Grace W.", initials: "GW", score: 94 },
     ],
-    earnings: [
-        { id: 'demo-1', description: "Performance Bonus - Jan", amount: 500.00, date: 'Jan 28, 2024', status: 'completed' },
-        { id: 'demo-2', description: "Monthly Salary - Jan", amount: 1950.00, date: 'Jan 25, 2024', status: 'completed' },
-        { id: 'demo-3', description: "Subject Bonus - Feb", amount: 450.00, date: 'Feb 12, 2024', status: 'pending' },
-    ],
   },
 
   /** Admin-facing data */
@@ -1248,13 +1241,6 @@ const demoDummyData = {
       { id: 'PAY-006', student_id: 'STU-DEMO-0006', student_name: 'David Mutuku',    student_display_id: 'STU-DEMO-0006', amount: 15_000, payment_date: daysAgo(30), payment_method: 'cash'          as const, status: 'pending'   as const, reference_number: 'CSH20260501' },
     ],
 
-    /** Finance screen – TeacherPayout[] */
-    earnings: [
-      { id: 'PAY-TCH-001', teacher_id: 'TCH-DEMO-0001', teacher_name: 'Sarah Chemutai', teacher_display_id: 'TCH-DEMO-0001', amount: 48_000, hours_taught: 80, rate_per_hour: 600, period_start: daysAgo(37), period_end: daysAgo(7),  status: 'paid'       as const, payment_date: daysAgo(7),  reference_number: 'SAL-MAY-001' },
-      { id: 'PAY-TCH-002', teacher_id: 'TCH-DEMO-0002', teacher_name: 'Brian Ochieng',  teacher_display_id: 'TCH-DEMO-0002', amount: 42_000, hours_taught: 70, rate_per_hour: 600, period_start: daysAgo(37), period_end: daysAgo(7),  status: 'paid'       as const, payment_date: daysAgo(7),  reference_number: 'SAL-MAY-002' },
-      { id: 'PAY-TCH-003', teacher_id: 'TCH-DEMO-0003', teacher_name: 'Janet Njoroge',  teacher_display_id: 'TCH-DEMO-0003', amount: 45_000, hours_taught: 75, rate_per_hour: 600, period_start: daysAgo(67), period_end: daysAgo(37), status: 'paid'       as const, payment_date: daysAgo(37), reference_number: 'SAL-APR-001' },
-      { id: 'PAY-TCH-004', teacher_id: 'TCH-DEMO-0001', teacher_name: 'Sarah Chemutai', teacher_display_id: 'TCH-DEMO-0001', amount: 48_000, hours_taught: 80, rate_per_hour: 600, period_start: daysAgo(7),  period_end: daysAgo(0),  status: 'pending'    as const },
-    ],
   },
 
   /** Parent-facing data */

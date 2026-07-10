@@ -1,5 +1,6 @@
 import { UnifiedHeader } from "@/components/common/UnifiedHeader";
 import { HelpTooltip } from "@/components/settings/HelpTooltip";
+import { ListItemSkeleton } from "@/components/ui/skeletons";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useSubscriptionTier } from "@/hooks/useSubscriptionTier";
@@ -760,7 +761,7 @@ export default function AssignmentsPage() {
 
                     {/* Assignment List */}
                     {loading ? (
-                        <ActivityIndicator size="large" color="#FF6900" className="mt-8" />
+                        <ListItemSkeleton loading={loading} count={4} label="Loading assignments..." />
                     ) : filteredAssignments.length === 0 ? (
                         <View className="bg-[#F6F8FA] dark:bg-[#161B22] p-8 rounded-xl items-center border border-[#D0D7DE] dark:border-[#21262D]">
                             <FileText size={40} color={isDark ? "#4B5563" : "#9CA3AF"} />

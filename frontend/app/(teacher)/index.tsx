@@ -1,11 +1,12 @@
 import { UnifiedHeader } from "@/components/common/UnifiedHeader";
+import { ListItemSkeleton } from "@/components/ui/skeletons";
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from "@/contexts/ThemeContext";
 import { TeacherAPI } from "@/services/TeacherService";
 import { router } from "expo-router";
 import { ArrowRight, BookOpen, Calendar, Clock, GraduationCap, MessageSquare, School, Users, LogOut, ShieldAlert } from 'lucide-react-native';
 import React, { useEffect, useState } from "react";
-import { ActivityIndicator, RefreshControl, ScrollView, Text, TouchableOpacity, View, StatusBar } from 'react-native';
+import { RefreshControl, ScrollView, Text, TouchableOpacity, View, StatusBar } from 'react-native';
 import { SubscriptionBanner, SubscriptionGate, SubscriptionBadge } from '@/components/shared/SubscriptionComponents';
 import { formatClassLabel } from '@/utils/classLabel';
 
@@ -110,12 +111,12 @@ export default function TeacherHome() {
                 ]);
 
                 const mockRoles = ['Subject Teacher', 'Class Teacher', 'Head of Department'];
-                const mockCT = [{ id: 'class-demo-1', grade_level: 12, level_label: 'Grade', stream: 'A' }];
+                const mockCT = [{ id: 'class-demo-1', grade_level: 12, class_type: 'Grade', stream: 'A' }];
                 const mockAssigned = [
                     {
                         id: "subj-demo-1",
                         title: "Advanced Mathematics",
-                        class: { id: "class-demo-1", grade_level: 12, level_label: 'Grade', stream: 'A' },
+                        class: { id: "class-demo-1", grade_level: 12, class_type: 'Grade', stream: 'A' },
                         timetable: [
                             { day_of_week: "Monday", start_time: "08:00:00", end_time: "09:30:00", room_number: "Lecture Hall A" },
                             { day_of_week: "Wednesday", start_time: "08:00:00", end_time: "09:30:00", room_number: "Lecture Hall A" }
@@ -124,7 +125,7 @@ export default function TeacherHome() {
                     {
                         id: "subj-demo-2",
                         title: "Theoretical Physics",
-                        class: { id: "class-demo-2", grade_level: 12, level_label: 'Grade', stream: 'B' },
+                        class: { id: "class-demo-2", grade_level: 12, class_type: 'Grade', stream: 'B' },
                         timetable: [
                             { day_of_week: "Tuesday", start_time: "10:00:00", end_time: "11:30:00", room_number: "Science Lab 2" }
                         ]
@@ -132,7 +133,7 @@ export default function TeacherHome() {
                     {
                         id: "subj-demo-3",
                         title: "Advanced Mathematics",
-                        class: { id: "class-demo-2", grade_level: 12, level_label: 'Grade', stream: 'B' },
+                        class: { id: "class-demo-2", grade_level: 12, class_type: 'Grade', stream: 'B' },
                         timetable: [
                             { day_of_week: "Thursday", start_time: "08:00:00", end_time: "09:30:00", room_number: "Lecture Hall B" }
                         ]
@@ -471,7 +472,7 @@ export default function TeacherHome() {
                     </View>
 
                     {loading ? (
-                        <ActivityIndicator size="small" color="#FF6900" className="my-8" />
+                        <ListItemSkeleton loading={loading} count={3} label="Loading schedule..." />
                     ) : schedule.length === 0 ? (
                         <View className="bg-white dark:bg-[#161B22] p-8 rounded-3xl border border-dashed border-gray-200 dark:border-gray-800 items-center justify-center mb-6">
                             <Calendar size={32} color="#D1D5DB" />

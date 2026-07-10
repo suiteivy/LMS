@@ -2,7 +2,7 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { Subject } from '@/types/types';
 import { BookOpen, Filter } from 'lucide-react-native';
 import React from 'react';
-import { ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { Text, View } from 'react-native';
 import { SubjectCard } from './SubjectCard';
 
 interface SubjectListProps {
@@ -10,6 +10,8 @@ interface SubjectListProps {
   title?: string;
   variant?: 'default' | 'compact' | 'featured';
   onPressSubject: (subject: Subject) => void;
+  onDeleteSubject?: (subject: Subject) => void;
+  deletingId?: string | null;
   kesRate?: number;
 }
 
@@ -18,6 +20,8 @@ export const SubjectList: React.FC<SubjectListProps> = ({
   title = "Subjects",
   variant = 'default',
   onPressSubject,
+  onDeleteSubject,
+  deletingId,
   kesRate = 129,
 }) => {
   const { isDark } = useTheme();
@@ -39,12 +43,9 @@ export const SubjectList: React.FC<SubjectListProps> = ({
             {title.split(' ')[0]}
             <Text style={{ color: accent }}>.</Text>
           </Text>
-          <View style={{ backgroundColor: isDark ? '#0F0B2E' : '#111827', width: 40, height: 40, borderRadius: 16, alignItems: 'center', justifyContent: 'center', borderWidth: isDark ? 1 : 0, borderColor: border }}>
-            <Filter size={20} color="white" />
-          </View>
         </View>
         <Text style={{ color: textSecondary, fontWeight: '600', fontSize: 12, letterSpacing: 2 }}>
-          DISCOVER {filteredSubjects.length} PREMIUM COURSES
+          {filteredSubjects.length} Subjects found
         </Text>
       </View>
 
@@ -53,13 +54,16 @@ export const SubjectList: React.FC<SubjectListProps> = ({
         {filteredSubjects.length > 0 ? (
           <View style={{ paddingBottom: 80 }}>
             {filteredSubjects.map((subject) => (
-              <SubjectCard
-                key={subject.id}
-                Subject={subject}
-                onPress={() => onPressSubject(subject)}
-                variant={variant}
-                kesRate={kesRate}
-              />
+              <View key={subject.id} style={{ marginBottom: 6 }}>
+                <SubjectCard
+                  Subject={subject}
+                  onPress={() => onPressSubject(subject)}
+                  variant={variant}
+                  kesRate={kesRate}
+                  onDelete={onDeleteSubject ? () => onDeleteSubject(subject) : undefined}
+                  deleting={deletingId === subject.id}
+                />
+              </View>
             ))}
           </View>
         ) : (

@@ -1,5 +1,6 @@
 import { UnifiedHeader } from "@/components/common/UnifiedHeader";
 import { HelpTooltip } from "@/components/settings/HelpTooltip";
+import { ListItemSkeleton } from "@/components/ui/skeletons";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSubscriptionTier } from "@/hooks/useSubscriptionTier";
 import { api } from "@/services/api";
@@ -1053,7 +1054,7 @@ export default function GradeEntryPage() {
                             </Text>
                         </View>
                     ) : fetchingStudents ? (
-                        <ActivityIndicator size="large" color="#FF6900" className="mt-8" />
+                        <ListItemSkeleton loading={fetchingStudents} count={5} label="Loading students for grading..." />
                     ) : filteredEntries.length === 0 ? (
                         <View className="bg-white dark:bg-[#161B22] p-12 rounded-[40px] items-center border border-gray-100 dark:border-gray-800 border-dashed">
                             <Text className="text-gray-400 dark:text-gray-500 font-bold text-center tracking-tight">

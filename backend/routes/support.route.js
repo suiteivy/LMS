@@ -9,6 +9,8 @@ router.use(authMiddleware);
 router.get('/tickets', supportController.getMyTickets);
 router.post('/tickets', supportController.createTicket);
 router.get('/tickets/:id', supportController.getTicketDetails);
+router.put('/tickets/:id', supportController.updateMyTicket);
+router.delete('/tickets/:id', supportController.deleteMyTicket);
 router.post('/tickets/:id/messages', supportController.addTicketMessage);
 
 module.exports = router;

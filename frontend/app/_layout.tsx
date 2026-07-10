@@ -16,6 +16,8 @@ import 'react-native-gesture-handler';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import Toast from "react-native-toast-message";
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { Animated, Easing as EasingRN, Text } from 'react-native';
 import "../styles/global.css";
 
 declare const global: typeof globalThis & {
@@ -128,10 +130,26 @@ function GlobalNotifications() {
 
 // AuthHandler 
 function AuthHandler() {
-  const { loading, isInitializing, isNavReady, resetSessionTimer, session, profile, isPlatformAdmin, getRoleRedirect, signOut, wasDemo, clearWasDemo } = useAuth();
+  const { loading, isInitializing, isNavReady, resetSessionTimer, session, profile, isPlatformAdmin, getRoleRedirect, signOut, wasDemo, clearWasDemo, maintenanceModeEnabled, maintenanceModeMessage } = useAuth();
   const { isDark } = useTheme();
   const segments = useSegments();
   const router = useRouter();
+  const inAuthGroup = React.useMemo(() => segments.some(s => s === "(auth)"), [segments]);
+  const currentPath = React.useMemo(() => `/${segments.join('/')}`.replace(/\/+$/, '') || '/', [segments]);
+  const isMobile = Platform.OS !== 'web';
+
+  const pulse = React.useRef(new Animated.Value(0.2)).current;
+  React.useEffect(() => {
+    if (!maintenanceModeEnabled) return;
+    const anim = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulse, { toValue: 0.6, duration: 1000, easing: EasingRN.inOut(EasingRN.ease), useNativeDriver: true }),
+        Animated.timing(pulse, { toValue: 0.2, duration: 1000, easing: EasingRN.inOut(EasingRN.ease), useNativeDriver: true }),
+      ])
+    );
+    anim.start();
+    return () => anim.stop();
+  }, [maintenanceModeEnabled]);
   
   // Guard against redirect loops
   const redirectCount = React.useRef(0);
@@ -148,7 +166,6 @@ function AuthHandler() {
     };
 
     const currentPath = normalizePath(`/${segments.join('/')}`);
-    const inAuthGroup = segments.some(s => s === "(auth)");
     const isRoot = currentPath === '/' || currentPath === '';
     const isCredentialDelivery = currentPath === '/credential-delivery';
 
@@ -199,7 +216,7 @@ function AuthHandler() {
         }
       }
     }
-  }, [session, profile, isInitializing, isNavReady, segments, isPlatformAdmin]);
+  }, [session, profile, isInitializing, isNavReady, segments, isPlatformAdmin, inAuthGroup, currentPath, wasDemo, clearWasDemo, getRoleRedirect, router]);
 
   const handleInteraction = React.useCallback(() => {
     if (session) resetSessionTimer();
@@ -239,6 +256,57 @@ function AuthHandler() {
           }}
         >
           <AppLoading onLogout={signOut} />
+        </View>
+      )}
+
+      {isMobile && maintenanceModeEnabled && !isPlatformAdmin && currentPath !== '/credential-delivery' && (
+        <View
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: '#06070F',
+            zIndex: 120000,
+            alignItems: 'center',
+            justifyContent: 'center',
+            paddingHorizontal: 28,
+          }}
+        >
+          <Animated.View
+            style={{
+              position: 'absolute',
+              width: 320,
+              height: 320,
+              borderRadius: 160,
+              backgroundColor: '#FF6900',
+              opacity: pulse,
+              transform: [{ scale: 1.1 }],
+            }}
+          />
+          <View
+            style={{
+              backgroundColor: 'rgba(19,16,58,0.75)',
+              borderColor: 'rgba(255,105,0,0.35)',
+              borderWidth: 1,
+              borderRadius: 24,
+              paddingVertical: 24,
+              paddingHorizontal: 20,
+              width: '100%',
+              maxWidth: 420,
+            }}
+          >
+            <View style={{ alignItems: 'center', marginBottom: 14 }}>
+              <MaterialCommunityIcons name="tools" size={40} color="#FF6900" />
+            </View>
+            <Text style={{ color: '#FFFFFF', fontSize: 22, fontWeight: '800', textAlign: 'center', marginBottom: 10 }}>
+              Scheduled Maintenance
+            </Text>
+            <Text style={{ color: 'rgba(255,255,255,0.78)', fontSize: 14, lineHeight: 22, textAlign: 'center' }}>
+              {maintenanceModeMessage || 'System maintenance is in progress. Please try again later.'}
+            </Text>
+          </View>
         </View>
       )}
     </View>

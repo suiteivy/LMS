@@ -1,4 +1,5 @@
 import { UnifiedHeader } from "@/components/common/UnifiedHeader";
+import { ListItemSkeleton } from "@/components/ui/skeletons";
 import { HelpTooltip } from "@/components/settings/HelpTooltip";
 import { SubscriptionGate } from "@/components/shared/SubscriptionComponents";
 import { useAuth } from '@/contexts/AuthContext';
@@ -21,7 +22,7 @@ import {
 } from 'lucide-react-native';
 import { useSubscriptionTier } from '@/hooks/useSubscriptionTier';
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, RefreshControl, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { RefreshControl, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { SubscriptionBanner } from "@/components/shared/SubscriptionComponents";
 import { clearParentSelectedChild, getParentSelectedChild, setParentSelectedChild } from "@/utils/parentSelectedChild";
 
@@ -30,8 +31,8 @@ export default function ParentIndex() {
 
   if (loading) {
     return (
-      <View className="flex-1 justify-center items-center bg-[#F6F8FA] dark:bg-[#161B22]">
-        <ActivityIndicator size="large" color="#FF6900" />
+      <View className="flex-1 bg-[#F6F8FA] dark:bg-[#161B22] px-4 pt-6">
+        <ListItemSkeleton loading={loading} count={4} label="Loading parent dashboard..." />
       </View>
     );
   }
@@ -41,7 +42,11 @@ export default function ParentIndex() {
 
 function ParentDashboard({ user, logout }: any) {
   const { isDark } = useTheme();
-  const levelLabel = user?.institutions?.school_categories?.level_label || 'Grade';
+  const classTypeLabel =
+    user?.institutions?.school_categories?.class_type ||
+    user?.institutions?.categories?.[0]?.class_type ||
+    user?.institutions?.school_categories?.level_label ||
+    'Grade';
   const tier = useSubscriptionTier();
   const [linkedStudents, setLinkedStudents] = useState<any[]>([]);
   const [selectedStudent, setSelectedStudent] = useState<any>(null);
@@ -197,8 +202,8 @@ function ParentDashboard({ user, logout }: any) {
 
   if (loading && !refreshing) {
     return (
-      <View className="flex-1 justify-center items-center bg-[#F6F8FA] dark:bg-[#161B22]">
-        <ActivityIndicator size="large" color="#FF6900" />
+      <View className="flex-1 bg-[#F6F8FA] dark:bg-[#161B22] px-4 pt-6">
+        <ListItemSkeleton loading={loading} count={4} label="Loading student dashboard..." />
       </View>
     );
   }
@@ -294,7 +299,7 @@ function ParentDashboard({ user, logout }: any) {
                   </Text>
                   <View className="bg-[#FF6900]/20 self-start px-3 py-1 rounded-full mt-2">
                     <Text className="text-[#FF6900] text-[10px] font-bold tracking-widest uppercase">
-                      {selectedStudent?.grade_level || selectedStudent?.form_level ? `${levelLabel} ${selectedStudent.grade_level || selectedStudent.form_level}` : `No ${levelLabel}`}
+                      {selectedStudent?.grade_level || selectedStudent?.form_level ? `${classTypeLabel} ${selectedStudent.grade_level || selectedStudent.form_level}` : `No ${classTypeLabel}`}
                     </Text>
                   </View>
                 </View>
@@ -321,7 +326,7 @@ function ParentDashboard({ user, logout }: any) {
                         </Text>
                         { (stu.grade_level || stu.form_level) && (
                           <Text className={`text-[9px] mt-0.5 ${selectedStudent?.id === stu.id ? 'text-white/70' : 'text-gray-600'}`}>
-                            {levelLabel.substring(0, 2)} {stu.grade_level || stu.form_level}
+                            {classTypeLabel.substring(0, 2)} {stu.grade_level || stu.form_level}
                           </Text>
                         )}
                       </TouchableOpacity>
@@ -364,7 +369,7 @@ function ParentDashboard({ user, logout }: any) {
                   Viewing: {selectedStudent.users?.first_name || selectedStudent.users?.full_name?.split(' ')[0]} · {selectedStudent.class_name || formatClassLabel({
                     grade_level: selectedStudent.grade_level,
                     form_level: selectedStudent.form_level,
-                  }) || `No ${levelLabel}`}
+                  }) || `No ${classTypeLabel}`}
                   {linkedStudents.length > 1 ? ` · ${linkedStudents.length} children` : ''}
                 </Text>
               </View>

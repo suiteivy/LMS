@@ -272,9 +272,9 @@ export interface Database {
           type: "primary" | "secondary" | "tertiary" | "vocational" | null;
           principal_name: string | null;
           subscription_status: "active" | "expired" | "cancelled" | null;
-          subscription_plan: "trial" | "basic" | "pro" | "premium" | null;
+          subscription_plan: "beta" | "basic" | "pro" | "premium" | null;
           subscription_cycle: "monthly" | "annually" | null;
-          trial_end_date: string | null;
+          subscription_tracking_start_date: string | null;
           has_used_trial: boolean;
           addon_library: boolean;
           addon_messaging: boolean;
@@ -291,9 +291,9 @@ export interface Database {
           type?: "primary" | "secondary" | "tertiary" | "vocational" | null;
           principal_name?: string | null;
           subscription_status?: "active" | "expired" | "cancelled" | null;
-          subscription_plan?: "trial" | "basic" | "pro" | "premium" | null;
+          subscription_plan?: "beta" | "basic" | "pro" | "premium" | null;
           subscription_cycle?: "monthly" | "annually" | null;
-          trial_end_date?: string | null;
+          subscription_tracking_start_date?: string | null;
           has_used_trial?: boolean;
           addon_library?: boolean;
           addon_messaging?: boolean;
@@ -310,9 +310,9 @@ export interface Database {
           type?: "primary" | "secondary" | "tertiary" | "vocational" | null;
           principal_name?: string | null;
           subscription_status?: "active" | "expired" | "cancelled" | null;
-          subscription_plan?: "trial" | "basic" | "pro" | "premium" | null;
+          subscription_plan?: "beta" | "basic" | "pro" | "premium" | null;
           subscription_cycle?: "monthly" | "annually" | null;
-          trial_end_date?: string | null;
+          subscription_tracking_start_date?: string | null;
           has_used_trial?: boolean;
           addon_library?: boolean;
           addon_messaging?: boolean;

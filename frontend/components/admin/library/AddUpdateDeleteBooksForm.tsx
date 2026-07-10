@@ -24,6 +24,12 @@ const AddUpdateDeleteBooksForm: React.FC<AddUpdateDeleteBooksFormProps> = ({
 }) => {
     const { profile } = useAuth();
     const { isDark } = useTheme();
+    const pageBg = isDark ? "#161B22" : "#FFFFFF";
+    const cardBg = isDark ? "#161B22" : "#FFFFFF";
+    const surfaceBg = isDark ? "#1C2128" : "#F6F8FA";
+    const borderColor = isDark ? "#21262D" : "#D0D7DE";
+    const textPrimary = isDark ? "#F1F5F9" : "#1E293B";
+    const textMuted = isDark ? "#9CA3AF" : "#64748B";
     const [localBooks, setLocalBooks] = useState<FrontendBook[]>([]);
     const books = propsBooks || localBooks;
     const [borrowedBooks, setBorrowedBooks] = useState<FrontendBorrowedBook[]>(
@@ -194,7 +200,8 @@ const AddUpdateDeleteBooksForm: React.FC<AddUpdateDeleteBooksFormProps> = ({
     const renderBookItem = (book: FrontendBook, borrowed = false) => (
         <View
             key={book.id}
-            className="bg-[#FFFFFF] dark:bg-navy rounded-xl p-4 mb-3"
+            className="rounded-xl p-4 mb-3"
+            style={{ backgroundColor: cardBg, borderWidth: 1, borderColor }}
         >
             <View className="flex-row justify-between items-start mb-2">
                 <View className="flex-1">
@@ -236,11 +243,18 @@ const AddUpdateDeleteBooksForm: React.FC<AddUpdateDeleteBooksFormProps> = ({
     );
 
     return (
-        <View className="flex-1">
+        <View className="flex-1" style={{ backgroundColor: pageBg }}>
             {/* Header */}
-            <View className="bg-[#FFFFFF] dark:bg-navy p-4 border-b border-teal-100 dark:border-gray-800">
+            <View
+                className="p-4"
+                style={{
+                    backgroundColor: cardBg,
+                    borderBottomWidth: 1,
+                    borderBottomColor: borderColor,
+                }}
+            >
                 <View className="flex-row justify-between items-center">
-                    <Text className="text-xl font-bold text-slate-800 dark:text-white">
+                    <Text className="text-xl font-bold" style={{ color: textPrimary }}>
                         Book Management
                     </Text>
                     <TouchableOpacity
@@ -257,9 +271,9 @@ const AddUpdateDeleteBooksForm: React.FC<AddUpdateDeleteBooksFormProps> = ({
 
             {/* Loading / Error */}
             {loading && (
-                <View className="items-center py-4 bg-[#FCFCFC] dark:bg-navy">
+                <View className="items-center py-4" style={{ backgroundColor: pageBg }}>
                     <ActivityIndicator size="small" color="#FF6900" />
-                    <Text className="text-gray-500 dark:text-gray-400 mt-2">Loading...</Text>
+                    <Text className="mt-2" style={{ color: textMuted }}>Loading...</Text>
                 </View>
             )}
             {error && (
@@ -272,31 +286,39 @@ const AddUpdateDeleteBooksForm: React.FC<AddUpdateDeleteBooksFormProps> = ({
             )}
 
             {/* Search Bar */}
-            <View className="px-4 py-2 bg-[#FCFCFC] dark:bg-navy">
-                <View className="flex-row items-center bg-[#FCFCFC] dark:bg-navy border border-teal-100 dark:border-gray-800 rounded-xl px-4 py-2">
-                    <Ionicons name="search" size={20} color={isDark ? "#9CA3AF" : "#6B7280"} />
+            <View className="px-4 py-2" style={{ backgroundColor: pageBg }}>
+                <View
+                    className="flex-row items-center rounded-xl px-4 py-2"
+                    style={{
+                        backgroundColor: surfaceBg,
+                        borderWidth: 1,
+                        borderColor,
+                    }}
+                >
+                    <Ionicons name="search" size={20} color={textMuted} />
                     <TextInput
-                        className="flex-1 ml-2 bg-[#FCFCFC] dark:bg-navy text-slate-800 dark:text-white"
+                        className="flex-1 ml-2"
+                        style={{ color: textPrimary }}
                         placeholder="Search books by title, author, or ISBN..."
-                        placeholderTextColor={isDark ? "#6B7280" : "#9CA3AF"}
+                        placeholderTextColor={textMuted}
                         value={searchQuery}
                         onChangeText={setSearchQuery}
                     />
                     {searchQuery.length > 0 && (
                         <TouchableOpacity onPress={() => setSearchQuery("")}>
-                            <Ionicons name="close-circle" size={18} color={isDark ? "#9CA3AF" : "#6B7280"} />
+                            <Ionicons name="close-circle" size={18} color={textMuted} />
                         </TouchableOpacity>
                     )}
                 </View>
             </View>
 
             {/* Books List */}
-            <ScrollView className="flex-1 p-4 dark:bg-navy">
-                <Text className="text-lg font-semibold text-gray-900 dark:text-white mb-3">Library Books</Text>
+            <ScrollView className="flex-1 p-4" style={{ backgroundColor: pageBg }}>
+                <Text className="text-lg font-semibold mb-3" style={{ color: textPrimary }}>Library Books</Text>
                 {filteredBooks.length === 0 ? (
-                    <View className="items-center justify-center py-6 dark:bg-navy" style={{ borderRadius: 12 }}>
+                    <View className="items-center justify-center py-6" style={{ borderRadius: 12 }}>
                         <Ionicons name="book-outline" size={48} color={isDark ? "#ff6900" : "#ff6900"}/>
-                        <Text className="text-gray-500 dark:text-gray-400 text-center mt-4">
+                        <Text className="text-center mt-4" style={{ color: textMuted }}>
                             {books.length === 0 ? "No books added yet." : "No books match your search."}
                         </Text>
                     </View>
@@ -305,11 +327,11 @@ const AddUpdateDeleteBooksForm: React.FC<AddUpdateDeleteBooksFormProps> = ({
                 )}
 
                 {/* Borrowed Books */}
-                <Text className="text-lg font-semibold text-gray-900 dark:text-white mt-8 mb-3">Borrowed Books</Text>
+                <Text className="text-lg font-semibold mt-8 mb-3" style={{ color: textPrimary }}>Borrowed Books</Text>
                 {borrowedBooks.length === 0 ? (
                     <View className="items-center justify-center py-6">
                         <Ionicons name="library-outline" size={48} color={isDark ? "#ff6900" : "#ff6900"} />
-                        <Text className="text-gray-500 dark:text-gray-400 text-center mt-4">
+                        <Text className="text-center mt-4" style={{ color: textMuted }}>
                             No borrowed books yet.
                         </Text>
                     </View>
@@ -317,18 +339,19 @@ const AddUpdateDeleteBooksForm: React.FC<AddUpdateDeleteBooksFormProps> = ({
                     borrowedBooks.map((borrow) => (
                         <View
                             key={borrow.id}
-                            className="bg-[#EAEEF2] dark:bg-navy rounded-xl p-4 mb-3"
+                            className="rounded-xl p-4 mb-3"
+                            style={{ backgroundColor: surfaceBg, borderWidth: 1, borderColor }}
                         >
-                            <Text className="text-lg font-semibold text-slate-800 dark:text-white mb-1">
+                            <Text className="text-lg font-semibold mb-1" style={{ color: textPrimary }}>
                                 {borrow.bookTitle}
                             </Text>
                             <Text className="text-sm text-[#FD6900] dark:text-[#FD6900] mb-1">
                                 by {borrow.author}
                             </Text>
-                            <Text className="text-xs text-gray-500 dark:text-gray-400 mb-1">
+                            <Text className="text-xs mb-1" style={{ color: textMuted }}>
                                 Borrower: {borrow.borrowerName} ({borrow.borrowerEmail})
                             </Text>
-                            <Text className="text-xs text-gray-500 dark:text-gray-400">
+                            <Text className="text-xs" style={{ color: textMuted }}>
                                 Status: {borrow.status}
                             </Text>
                         </View>
@@ -342,7 +365,7 @@ const AddUpdateDeleteBooksForm: React.FC<AddUpdateDeleteBooksFormProps> = ({
                 animationType="slide"
                 presentationStyle="pageSheet"
             >
-                <View className="flex-1 bg-[#FFFFFF] dark:bg-navy">
+                <View className="flex-1" style={{ backgroundColor: pageBg }}>
                     <View className="bg-[#FD6900] dark:bg-[#FD6900] p-4 pt-12">
                         <View className="flex-row justify-between items-center">
                             <Text className="text-xl font-bold text-white">
@@ -359,14 +382,20 @@ const AddUpdateDeleteBooksForm: React.FC<AddUpdateDeleteBooksFormProps> = ({
                         </View>
                     </View>
 
-                    <ScrollView className="flex-1 p-4">
+                    <ScrollView className="flex-1 p-4" style={{ backgroundColor: pageBg }}>
                         {/* Title */}
                         <View className="mb-4">
                             <Text className="text-sm font-medium text-slate-700 dark:text-gray-300 mb-2">
                                 Book Title *
                             </Text>
                             <TextInput
-                                className="bg-[#FFFFFF] dark:bg-navy border border-[#D0D7DE] dark:border-[#21262D] rounded-lg p-3 text-gray-900 dark:text-white"
+                                className="rounded-lg p-3"
+                                style={{
+                                    backgroundColor: surfaceBg,
+                                    borderWidth: 1,
+                                    borderColor,
+                                    color: textPrimary,
+                                }}
                                 value={formData.title}
                                 onChangeText={(text) =>
                                     setFormData({ ...formData, title: text })
@@ -382,7 +411,13 @@ const AddUpdateDeleteBooksForm: React.FC<AddUpdateDeleteBooksFormProps> = ({
                                 Author *
                             </Text>
                             <TextInput
-                                className="bg-[#FFFFFF] dark:bg-navy border border-[#D0D7DE] dark:border-[#21262D] rounded-lg p-3 text-gray-900 dark:text-white"
+                                className="rounded-lg p-3"
+                                style={{
+                                    backgroundColor: surfaceBg,
+                                    borderWidth: 1,
+                                    borderColor,
+                                    color: textPrimary,
+                                }}
                                 value={formData.author}
                                 onChangeText={(text) =>
                                     setFormData({ ...formData, author: text })
@@ -398,7 +433,13 @@ const AddUpdateDeleteBooksForm: React.FC<AddUpdateDeleteBooksFormProps> = ({
                                 ISBN *
                             </Text>
                             <TextInput
-                                className="bg-[#FFFFFF] dark:bg-navy border border-[#D0D7DE] dark:border-[#21262D] rounded-lg p-3 text-gray-900 dark:text-white"
+                                className="rounded-lg p-3"
+                                style={{
+                                    backgroundColor: surfaceBg,
+                                    borderWidth: 1,
+                                    borderColor,
+                                    color: textPrimary,
+                                }}
                                 value={formData.isbn}
                                 onChangeText={(text) =>
                                     setFormData({ ...formData, isbn: text })
@@ -414,7 +455,13 @@ const AddUpdateDeleteBooksForm: React.FC<AddUpdateDeleteBooksFormProps> = ({
                                 Category
                             </Text>
                             <TextInput
-                                className="bg-[#FFFFFF] dark:bg-navy border border-[#D0D7DE] dark:border-[#21262D] rounded-lg p-3 text-gray-900 dark:text-white"
+                                className="rounded-lg p-3"
+                                style={{
+                                    backgroundColor: surfaceBg,
+                                    borderWidth: 1,
+                                    borderColor,
+                                    color: textPrimary,
+                                }}
                                 value={formData.category}
                                 onChangeText={(text) =>
                                     setFormData({ ...formData, category: text })
@@ -430,7 +477,13 @@ const AddUpdateDeleteBooksForm: React.FC<AddUpdateDeleteBooksFormProps> = ({
                                 Quantity
                             </Text>
                             <TextInput
-                                className="bg-[#FFFFFF] dark:bg-navy border border-[#D0D7DE] dark:border-[#21262D] rounded-lg p-3 text-gray-900 dark:text-white"
+                                className="rounded-lg p-3"
+                                style={{
+                                    backgroundColor: surfaceBg,
+                                    borderWidth: 1,
+                                    borderColor,
+                                    color: textPrimary,
+                                }}
                                 value={formData.quantity}
                                 onChangeText={(text) =>
                                     setFormData({ ...formData, quantity: text })

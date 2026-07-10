@@ -9,22 +9,26 @@ const {
   logout,
   changePassword,
   forgotPassword,
+  checkPasswordRecoveryEmail,
   resetPassword,
   adminResetPassword,
   setupSecurityQuestions,
   verifySecurityQuestions,
   getCredentialDeliveryByToken,
   transferMainAdmin,
+  getInstitutionAdmins,
+  updateAdminDelegation,
   getActiveSessions,
   revokeSession,
   revokeAllOtherSessions,
   pingSession,
+  getEnrollmentSlotCapacity,
 } = require("../controllers/auth.controller.js");
 const { authMiddleware } = require("../middleware/auth.middleware.js");
 const checkSubscription = require("../middleware/subscriptionCheck.js");
 const { validate, schemas } = require("../middleware/inputValidator.js");
 const { rateLimiters } = require("../middleware/rateLimiter.js");
-const { requireAdmin } = require("../middleware/roleCheck.js");
+const { requireAdmin, requireRole } = require("../middleware/roleCheck.js");
 
 // Public: Login with validation
 router.post("/login", validate(schemas.login), login);
@@ -36,6 +40,7 @@ router.post(
   validate({ email: schemas.login.email }),
   forgotPassword,
 );
+router.get("/forgot-password/check-email", rateLimiters.passwordResetCheckEmail, checkPasswordRecoveryEmail);
 router.post("/reset-password", rateLimiters.passwordReset, resetPassword);
 router.post("/verify-security-questions", rateLimiters.passwordReset, verifySecurityQuestions);
 router.get("/credential-delivery/:token", getCredentialDeliveryByToken);
@@ -68,6 +73,14 @@ router.delete(
 
 // Generic auth routes
 router.get(
+  "/enrollment-slot-capacity",
+  authMiddleware,
+  checkSubscription,
+  requireRole('admin', 'master_admin'),
+  getEnrollmentSlotCapacity,
+);
+
+router.get(
   "/search-users",
   authMiddleware,
   rateLimiters.search,
@@ -92,6 +105,20 @@ router.post(
   authMiddleware,
   requireAdmin,
   transferMainAdmin,
+);
+
+router.get(
+  '/institution-admins',
+  authMiddleware,
+  requireRole('admin', 'master_admin'),
+  getInstitutionAdmins,
+);
+
+router.put(
+  '/admin-delegation',
+  authMiddleware,
+  requireRole('admin', 'master_admin'),
+  updateAdminDelegation,
 );
 
 module.exports = router;

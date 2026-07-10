@@ -2,6 +2,7 @@ import { UnifiedHeader } from "@/components/common/UnifiedHeader";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/libs/supabase";
+import { SubjectAPI } from "@/services/SubjectService";
 import { Subject } from "@/types/types";
 import { Ionicons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
@@ -52,7 +53,7 @@ function SubjectDetailsScreen() {
       supabase.from("teachers").select("id, user_id, users:user_id(full_name, institution_id)").eq("institution_id", profile.institution_id),
       supabase
         .from("v_classes_detailed")
-        .select("id, name, display_name, grade_level, form_level, level_label, stream")
+        .select("id, name, display_name, grade_level, form_level, stream")
         .eq("institution_id", profile.institution_id)
         .order("grade_level", { ascending: true })
         .order("form_level", { ascending: true })
@@ -142,30 +143,13 @@ function SubjectDetailsScreen() {
       // Update primary teacher_id column in subjects table for legacy compatibility
       subjectUpdateData.teacher_id = (teacher_ids && teacher_ids.length > 0) ? teacher_ids[0] : null;
 
-      const { error } = await (supabase.from("subjects") as any)
-        .update(subjectUpdateData)
-        .eq("id", subjectId)
-        .eq("institution_id", profile?.institution_id || '');
-      if (error) throw error;
-
-      // Update subject_teachers join table
-      const { error: deleteError } = await supabase
-        .from("subject_teachers")
-        .delete()
-        .eq("subject_id", subjectId);
-      if (deleteError) throw deleteError;
-
-      if (teacher_ids && teacher_ids.length > 0) {
-        const newAssignments = teacher_ids.map((tid: string) => ({
-          subject_id: subjectId,
-          teacher_id: tid,
-          institution_id: profile?.institution_id || ''
-        }));
-        const { error: insertError } = await supabase
-          .from("subject_teachers")
-          .insert(newAssignments);
-        if (insertError) throw insertError;
-      }
+      const refreshed = await SubjectAPI.updateSubject(String(subjectId), {
+        ...subjectUpdateData,
+        teacher_ids: teacher_ids || [],
+        class_id: form.class_id || null,
+        class_ids: Array.isArray(form?.metadata?.class_ids) ? form.metadata.class_ids : [],
+        metadata: form.metadata || {},
+      } as any);
 
       // Auto-enrollment logic if classes were assigned/changed
       if (classChanged && nextClassIds.length > 0) {
@@ -191,7 +175,16 @@ function SubjectDetailsScreen() {
         }
       }
 
-      setSubject(form);
+      const refreshedTeacherIds = Array.isArray((refreshed as any)?.subject_teachers)
+        ? (refreshed as any).subject_teachers.map((st: any) => st.teacher_id).filter(Boolean)
+        : (teacher_ids || []);
+      const nextSubject = {
+        ...(refreshed as any),
+        teacher_ids: refreshedTeacherIds,
+      };
+
+      setSubject(nextSubject as any);
+      setForm(nextSubject);
       setEditing(false);
       Alert.alert("Success", "Subject updated and stream students enrolled successfully.");
     } catch (error) {

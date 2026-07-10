@@ -45,51 +45,6 @@ export interface BorrowData {
   dueDate?: string | Date;
 }
 
-
-// Additional types for utility functions
-export interface DaysInfo {
-  days: number;
-  isOverdue: boolean;
-}
-
-export interface BorrowingLimits {
-  maxBooks: number;
-  maxDays: number;
-}
-
-export interface BookValidationResult {
-  isValid: boolean;
-  errors: string[];
-}
-
-export interface BorrowValidationResult {
-  isValid: boolean;
-  errors: string[];
-}
-
-export interface BookReportData {
-  summary: {
-    totalBooks: number;
-    totalBorrowed: number;
-    totalOverdue: number;
-    totalReturned: number;
-    utilizationRate: string;
-  };
-  mostBorrowedBooks: Array<{ title: string; count: number }>;
-  categoryDistribution: Record<string, number>;
-}
-
-export interface BookData {
-  title?: string;
-  author?: string;
-  isbn?: string;
-  quantity?: number;
-}
-
-export interface BorrowData {
-  dueDate?: string | Date;
-}
-
 /**
  * Library utility functions and constants
  */

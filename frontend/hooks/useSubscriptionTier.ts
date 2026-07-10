@@ -1,35 +1,35 @@
 import { useAuth } from '@/contexts/AuthContext';
 
 // ── Plan rank order (mirrors backend subscriptionCheck.js) ──────────────────
-// beta=0, trial=1, basic=2, pro=3, premium=4, custom=5
+// beta=0, basic=1, pro=2, premium=3
 const PLAN_RANK: Record<string, number> = {
     beta: 0,
-    trial: 1,
-    basic: 2,
-    pro: 3,
-    premium: 4,
-    custom: 5,
+    basic: 1,
+    pro: 2,
+    premium: 3,
 };
 
 // Normalise legacy plan IDs to canonical ones
 function normalisePlan(plan: string | null | undefined): string {
     const map: Record<string, string> = {
         beta_free: 'beta',
-        free: 'beta', // handle plain legacy 'free'
+        free: 'beta',
         basic_basic: 'basic',
         basic_pro: 'pro',
         basic_premium: 'premium',
-        enterprise_basic: 'custom',
-        enterprise_pro: 'custom',
-        enterprise_premium: 'custom',
+        trial: 'basic',
+        custom: 'premium',
+        enterprise_basic: 'premium',
+        enterprise_pro: 'premium',
+        enterprise_premium: 'premium',
     };
-    const p = plan ?? 'trial';
-    return map[p] ?? p;
+    const p = (plan ?? 'basic').toLowerCase();
+    return map[p] ?? (PLAN_RANK[p] !== undefined ? p : 'basic');
 }
 
 function rank(plan: string | null | undefined): number {
     const canonical = normalisePlan(plan);
-    return PLAN_RANK[canonical] ?? 1; // default to trial rank
+    return PLAN_RANK[canonical] ?? PLAN_RANK.basic;
 }
 
 export interface SubscriptionTierInfo {
@@ -39,27 +39,27 @@ export interface SubscriptionTierInfo {
     isBeta: boolean;
     /** True if any paid plan (basic and above) */
     isPaid: boolean;
-    /** Whether this tier includes the Finance module */
-    hasFinance: boolean;
     /** Whether this tier includes the Bursary add-on */
     hasBursary: boolean;
     /** Whether this tier includes the full Student module for students to login */
     hasStudentModule: boolean;
-    /** Whether this tier includes Analytics */
-    hasAnalytics: boolean;
     /** Whether this tier includes full Messaging (without add-on) */
     hasMessaging: boolean;
     /** Whether this tier includes Class Diary */
     hasDiary: boolean;
     /** Whether this tier includes Library (without add-on) */
     hasLibrary: boolean;
-    /** Whether this tier includes Attendance */
+    /** Finance module availability */
+    hasFinance: boolean;
+    /** Analytics module availability */
+    hasAnalytics: boolean;
+    /** Attendance module availability */
     hasAttendance: boolean;
     /** Numeric rank — higher = more capable */
     planRank: number;
     /** True if the institution is on a free/beta/trial tier */
     isFree: boolean;
-    /** Whether to show financial/revenue/payment UI elements (False for Beta) */
+    /** Whether to show financial/revenue/payment UI elements */
     showFinancials: boolean;
 }
 
@@ -72,11 +72,8 @@ export function useSubscriptionTier(): SubscriptionTierInfo {
         subscriptionPlan,
         addonMessaging,
         addonLibrary,
-        addonFinance,
-        addonAnalytics,
         addonBursary,
         addonDiary,
-        addonAttendance
     } = useAuth();
 
     const canonical = normalisePlan(subscriptionPlan);
@@ -94,19 +91,13 @@ export function useSubscriptionTier(): SubscriptionTierInfo {
     return {
         plan: canonical,
         isBeta,
-        isPaid: r >= PLAN_RANK['basic'] || isBeta,
-
-        // Finance: Included in Premium (4) OR explicitly granted as add-on
-        hasFinance: r >= PLAN_RANK['premium'] || addonFinance,
+        isPaid: true,
 
         // Bursary: Add-on controlled (beta unaffected)
         hasBursary: hasAddonOrBeta(addonBursary),
 
         // Student Module: Always enabled for authenticated students
         hasStudentModule: true,
-
-        // Analytics: Included in Premium (4) OR explicitly granted as add-on
-        hasAnalytics: r >= PLAN_RANK['premium'] || addonAnalytics,
 
         // Messaging: Add-on controlled (beta unaffected)
         hasMessaging: hasAddonOrBeta(addonMessaging),
@@ -117,10 +108,13 @@ export function useSubscriptionTier(): SubscriptionTierInfo {
         // Library: Add-on controlled (beta unaffected)
         hasLibrary: hasAddonOrBeta(addonLibrary),
 
-        // Attendance: Included in Pro (3) and Premium (4) OR explicitly granted as add-on
-        hasAttendance: (r >= PLAN_RANK['pro'] && r !== PLAN_RANK['custom']) || addonAttendance,
-        isFree: r < PLAN_RANK['basic'] && !isBeta,
-        planRank: isBeta ? 100 : r, // Elevate rank for Beta to pass plan-level gates
-        showFinancials: r >= PLAN_RANK['premium'] || !!addonFinance,
+        // Legacy add-on model removed: these modules are now always available.
+        hasFinance: true,
+        hasAnalytics: true,
+        hasAttendance: true,
+
+        isFree: false,
+        planRank: r,
+        showFinancials: true,
     };
 }

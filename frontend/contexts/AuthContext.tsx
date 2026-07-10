@@ -55,6 +55,9 @@ interface AuthContextType {
   addonDiary: boolean
   customStudentLimit: number | null
   getRoleRedirect: (profile: UserProfile | null, isPlatformAdmin: boolean) => string | null
+  maintenanceModeEnabled: boolean
+  maintenanceModeMessage: string
+  refreshMaintenanceStatus: () => Promise<{ enabled: boolean; message: string }>
 }
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -70,6 +73,23 @@ export const useAuth = () => {
 interface AuthProviderProps {
   children: React.ReactNode
 }
+
+const normalizeSubscriptionPlan = (plan: string | null | undefined): string => {
+  const map: Record<string, string> = {
+    beta_free: 'beta',
+    free: 'beta',
+    basic_basic: 'basic',
+    basic_pro: 'pro',
+    basic_premium: 'premium',
+    trial: 'basic',
+    custom: 'premium',
+    enterprise_basic: 'premium',
+    enterprise_pro: 'premium',
+    enterprise_premium: 'premium',
+  };
+  const raw = String(plan || 'basic').toLowerCase();
+  return map[raw] || raw;
+};
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [session, setSession] = useState<Session | null>(null)
@@ -101,10 +121,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [addonFlags, setAddonFlags] = useState({
     messaging: false,
     library: false,
-    finance: false,
-    analytics: false,
+    finance: true,
+    analytics: true,
     bursary: false,
-    attendance: false,
+    attendance: true,
     diary: false
   })
   const [customStudentLimit, setCustomStudentLimit] = useState<number | null>(null)
@@ -125,6 +145,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const [isSessionExpiring, setIsSessionExpiring] = useState(false);
   const [sessionWarningDismissed, setSessionWarningDismissed] = useState(false);
+  const [maintenanceModeEnabled, setMaintenanceModeEnabled] = useState(false);
+  const [maintenanceModeMessage, setMaintenanceModeMessage] = useState('System maintenance is in progress. Please try again later.');
 
   const timerRef = useRef<any>(null)
   const timerWarningRef = useRef<any>(null)
@@ -165,6 +187,30 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     if (heartbeatRef.current) {
       clearInterval(heartbeatRef.current);
       heartbeatRef.current = null;
+    }
+  }, []);
+
+  const refreshMaintenanceStatus = useCallback(async () => {
+    try {
+      const response = await api.get('/settings/maintenance', {
+        skipErrorToast: true,
+        timeout: 5000,
+      });
+      const data = response?.data || {};
+      const normalized = {
+        enabled: !!data.enabled,
+        message: String(data.message || 'System maintenance is in progress. Please try again later.'),
+      };
+      setMaintenanceModeEnabled(normalized.enabled);
+      setMaintenanceModeMessage(normalized.message);
+      return normalized;
+    } catch (error) {
+      // Fail-open so maintenance endpoint issues do not lock users.
+      setMaintenanceModeEnabled(false);
+      return {
+        enabled: false,
+        message: 'System maintenance is in progress. Please try again later.',
+      };
     }
   }, []);
 
@@ -222,7 +268,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setInstitutionName(null);
       setIsMain(false);
       setIsPlatformAdmin(false);
-      setAddonFlags({ messaging: false, library: false, finance: false, analytics: false, bursary: false, attendance: false, diary: false });
+      setAddonFlags({ messaging: false, library: false, finance: true, analytics: true, bursary: false, attendance: true, diary: false });
       setCustomStudentLimit(null);
       setLoading(false);
       setIsInitializing(false);
@@ -286,6 +332,26 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const resetSessionTimer = async () => {
     if (!session) return;
     // Start the heartbeat interval which handles idle timeout + backend ping
+    if (isDemoRef.current || profileRef.current?.role === 'master_admin') {
+      clearHeartbeat();
+      heartbeatRef.current = setInterval(() => {
+        if (idleTimeoutRef.current) {
+          clearTimeout(idleTimeoutRef.current);
+        }
+        idleTimeoutRef.current = setTimeout(async () => {
+          console.warn("[AuthContext] Local idle timeout triggered (15 minutes inactivity)");
+          await handleLogout(false, LogoutReason.INACTIVITY_TIMEOUT);
+        }, 15 * 60 * 1000);
+
+        const now = Date.now();
+        if (now - lastPingTime.current > 60000) {
+          lastPingTime.current = now;
+          api.post('/auth/ping', {}, { skipErrorToast: true }).catch(() => {});
+        }
+      }, 10 * 1000);
+      return;
+    }
+
     startHeartbeat();
   };
 
@@ -363,9 +429,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setIsProfileLoading(true);
       const { data, error } = await supabase
         .from('users')
-        .select('*, students(id), teachers(id), admins(id), parents(id), institutions(name, category_id, subscription_status, subscription_plan, trial_end_date, addon_messaging, addon_library, addon_diary, addon_finance, addon_analytics, addon_bursary, addon_attendance, custom_student_limit, school_categories(name, level_label)), platform_admins(id)')
+        .select('*, students(id), teachers(id), admins(id, is_main), parents(id), institutions(name, category_id, subscription_status, subscription_plan, subscription_tracking_start_date, addon_messaging, addon_library, addon_diary, addon_bursary, custom_student_limit, currency_id, institution_categories(category_id), currency:currency_id(code, symbol, decimal_places)), platform_admins(id)')
         .eq('id', userId)
-        .single()
+        .maybeSingle()
       const result = data as any
       if (error) {
         console.error('[AuthContext] Profile load error:', error);
@@ -377,7 +443,28 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         return null;
       }
 
+      if (!data) {
+        console.error('[AuthContext] Profile load error: missing public.users row for authenticated user', { userId });
+        setIsProfileLoading(false);
+        setLoading(false);
+        loadingUserId.current = null;
+        return null;
+      }
+
       const userData = data as any;
+
+      if (userData?.institutions) {
+        const categoryIdsFromLinks = Array.isArray(userData.institutions.institution_categories)
+          ? userData.institutions.institution_categories
+            .map((row: any) => row?.category_id)
+            .filter(Boolean)
+          : [];
+        const singleCategoryId = userData.institutions.category_id;
+        userData.institutions.category_ids = [...new Set([
+          ...categoryIdsFromLinks,
+          ...(singleCategoryId ? [singleCategoryId] : []),
+        ])];
+      }
 
       // 1. Calculate all derived states FIRST
       const isPlatformAdminFlag = !!userData.platform_admins?.[0] || userData.role === 'master_admin';
@@ -391,16 +478,19 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       if (userData.institutions) {
         newSubscriptionStatus = userData.institutions.subscription_status || null;
         newSubscriptionPlan = userData.institutions.subscription_plan || null;
-        newTrialEndDate = userData.institutions.trial_end_date || null;
+        newTrialEndDate = userData.institutions.subscription_tracking_start_date || null;
         newInstitutionName = userData.institutions.name || null;
+        const normalizedPlan = normalizeSubscriptionPlan(userData.institutions.subscription_plan);
+        const isBetaPlan = normalizedPlan === 'beta';
+
         setAddonFlags({
-          messaging: !!userData.institutions.addon_messaging,
-          library: !!userData.institutions.addon_library,
-          finance: !!userData.institutions.addon_finance,
-          analytics: !!userData.institutions.addon_analytics,
-          bursary: !!userData.institutions.addon_bursary,
-          attendance: !!userData.institutions.addon_attendance,
-          diary: !!userData.institutions.addon_diary,
+          messaging: isBetaPlan ? true : !!userData.institutions.addon_messaging,
+          library: isBetaPlan ? true : !!userData.institutions.addon_library,
+          finance: true,
+          analytics: true,
+          bursary: isBetaPlan ? true : !!userData.institutions.addon_bursary,
+          attendance: true,
+          diary: isBetaPlan ? true : !!userData.institutions.addon_diary,
         });
         setCustomStudentLimit(userData.institutions.custom_student_limit || null);
       }
@@ -483,6 +573,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     const initializeAuth = async () => {
       setIsInitializing(true);
       try {
+        await refreshMaintenanceStatus();
         const sessionPromise = supabase.auth.getSession();
         const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('getSession timeout')), 15000));
 
@@ -540,6 +631,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     initializeAuth();
 
     const navTimer = setTimeout(() => setIsNavReady(true), 1);
+    const maintenancePollTimer = setInterval(() => {
+      refreshMaintenanceStatus();
+    }, 60 * 1000);
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (event === 'SIGNED_IN' && session?.user) {
@@ -602,7 +696,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         setInstitutionName(null);
         setIsMain(false);
         setIsPlatformAdmin(false);
-        setAddonFlags({ messaging: false, library: false, finance: false, analytics: false, bursary: false, attendance: false, diary: false });
+        setAddonFlags({ messaging: false, library: false, finance: true, analytics: true, bursary: false, attendance: true, diary: false });
         setCustomStudentLimit(null);
         setLoading(false);
         setIsInitializing(false);
@@ -639,6 +733,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     const appStateSubscription = AppState.addEventListener('change', async (nextAppState: AppStateStatus) => {
       if (appState.current.match(/inactive|background/) && nextAppState === 'active') {
         await resetSessionTimer();
+        await refreshMaintenanceStatus();
       }
       appState.current = nextAppState;
     });
@@ -654,8 +749,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       clearHeartbeat()
       clearTimeout(watchdog)
       clearTimeout(navTimer)
+      clearInterval(maintenancePollTimer)
     }
-  }, [])
+  }, [refreshMaintenanceStatus])
 
   const value = React.useMemo(() => ({
     session, user, profile,
@@ -692,7 +788,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     addonDiary: addonFlags.diary,
     customStudentLimit,
     getRoleRedirect,
-  }), [session, user, profile, roleInfo, subscriptionStatus, subscriptionPlan, trialEndDate, institutionName, loading, isInitializing, isNavReady, isProfileLoading, isSessionExpiring, sessionWarningDismissed, isDemo, wasDemo, clearWasDemo, isMain, isPlatformAdmin, canonicalRole, addonFlags, customStudentLimit]);
+    maintenanceModeEnabled,
+    maintenanceModeMessage,
+    refreshMaintenanceStatus,
+  }), [session, user, profile, roleInfo, subscriptionStatus, subscriptionPlan, trialEndDate, institutionName, loading, isInitializing, isNavReady, isProfileLoading, isSessionExpiring, sessionWarningDismissed, isDemo, wasDemo, clearWasDemo, isMain, isPlatformAdmin, canonicalRole, addonFlags, customStudentLimit, maintenanceModeEnabled, maintenanceModeMessage, refreshMaintenanceStatus]);
 
   return (
     <AuthContext.Provider value={value}>

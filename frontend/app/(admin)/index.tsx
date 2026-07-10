@@ -1,5 +1,6 @@
 import { UnifiedHeader } from "@/components/common/UnifiedHeader";
 import { useAuth } from "@/contexts/AuthContext";
+import { useCurrency } from "@/contexts/CurrencyContext";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useDashboardStats } from "@/hooks/useDashboardStats";
 import { router } from "expo-router";
@@ -15,7 +16,7 @@ import {
 } from 'lucide-react-native';
 import React, { useCallback, useState } from "react";
 import { ActivityIndicator, DimensionValue, RefreshControl, ScrollView, StatusBar, Text, TouchableOpacity, View } from "react-native";
-import { OnboardingTracker, SubscriptionBanner, SubscriptionGate } from "@/components/shared/SubscriptionComponents";
+import { SubscriptionBanner, SubscriptionGate } from "@/components/shared/SubscriptionComponents";
 import { useSubscriptionTier } from "@/hooks/useSubscriptionTier";
 
 // Cast icons for RN compatibility
@@ -57,6 +58,7 @@ export default function AdminDashboard() {
   } = useAuth();
   const { stats, refresh: refreshStats } = useDashboardStats();
   const { isDark } = useTheme();
+  const { formatAmount } = useCurrency();
   const [refreshing, setRefreshing] = useState(false);
 
   const tier = useSubscriptionTier();
@@ -72,7 +74,7 @@ export default function AdminDashboard() {
 
   const attendanceValue = stats.find(s => s.label === "Attendance")?.value || "0%";
   const totalStudents = parseInt(stats.find(s => s.label === "Total Students")?.value || "0");
-  const planMax = subscriptionPlan === 'trial' ? 50 : subscriptionPlan === 'basic' ? 500 : subscriptionPlan === 'pro' ? 1000 : 100000;
+  const planMax = subscriptionPlan === 'beta' ? 30 : subscriptionPlan === 'basic' ? 900 : subscriptionPlan === 'pro' ? 1000 : 5000;
   const capacityPct = `${Math.min((totalStudents / planMax) * 100, 100)}%`;
   const totalTeachers = parseInt(stats.find(s => s.label === "Teachers")?.value || "0");
   const totalUsers = totalStudents + totalTeachers;
@@ -121,15 +123,13 @@ export default function AdminDashboard() {
           </TouchableOpacity>
         </View>
 
-        <OnboardingTracker stats={stats} />
-
         {/* ── Hero Inline Stats ── */}
         <View className="flex-row items-start justify-between mb-6 mt-2">
           {tier.showFinancials && (
             <View>
               <Text className="text-gray-500 dark:text-gray-400 text-xs uppercase tracking-widest mb-1">Revenue</Text>
               <Text className="text-gray-900 dark:text-white text-3xl font-black" numberOfLines={1} adjustsFontSizeToFit>
-                {stats.find(s => s.label === "Revenue")?.value || "KES 0"}
+                {stats.find(s => s.label === "Revenue")?.value || formatAmount(0)}
               </Text>
             </View>
           )}
@@ -144,9 +144,7 @@ export default function AdminDashboard() {
           <View className="bg-[#F6F8FA] dark:bg-[#161B22] border border-[#D0D7DE] dark:border-[#21262D] rounded-xl p-5 mb-4">
             <View className="flex-row justify-between items-end mb-3">
               <Text className="text-gray-900 dark:text-white font-bold text-base">Institution Capacity</Text>
-              <Text className="text-gray-500 dark:text-gray-400 text-[10px] font-bold uppercase tracking-widest">
-                {subscriptionPlan === 'trial' ? 'Trial Limit' : 'Scale Usage'}
-              </Text>
+                <Text className="text-gray-500 dark:text-gray-400 text-[10px] font-bold uppercase tracking-widest">Scale Usage</Text>
             </View>
             <View className="h-2 bg-[#EAEEF2] dark:bg-[#161B22] rounded-full overflow-hidden mb-2">
               <View className="h-full bg-[#FF6900] rounded-full" style={{ width: capacityPct as DimensionValue }} />
@@ -154,7 +152,7 @@ export default function AdminDashboard() {
             <View className="flex-row justify-between">
               <Text className="text-gray-500 dark:text-gray-400 font-bold text-xs">{formatLargeNumber(totalStudents)} enrolled</Text>
               <Text className="text-gray-900 dark:text-white font-bold text-xs">
-                {subscriptionPlan === 'premium' || subscriptionPlan === 'custom' ? 'Unlimited' : `Limit: ${formatLargeNumber(planMax)}`}
+                {`Limit: ${formatLargeNumber(planMax)}`}
               </Text>
             </View>
           </View>

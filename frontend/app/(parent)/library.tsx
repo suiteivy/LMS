@@ -1,4 +1,6 @@
 import { UnifiedHeader } from "@/components/common/UnifiedHeader";
+import { ListItemSkeleton } from "@/components/ui/skeletons";
+import { AddonRequestButton, SubscriptionGate } from "@/components/shared/SubscriptionComponents";
 import { LibraryAPI } from "@/services/LibraryService";
 import { FrontendBorrowedBook } from "@/types/types";
 import { router, useLocalSearchParams } from "expo-router";
@@ -19,7 +21,7 @@ export default function StudentLibraryPage() {
   const fetchBorrowings = async () => {
     if (!studentId) return;
     try {
-      const data = await LibraryAPI.getBorrowingHistory(studentId);
+      const data = await LibraryAPI.getParentStudentBorrowingHistory(studentId);
       const transformed = data.map(LibraryAPI.transformBorrowedBookData);
       setBorrowings(transformed as any);
     } catch (error) {
@@ -42,6 +44,20 @@ export default function StudentLibraryPage() {
 
   if (ready && !studentId) {
     return (
+      <SubscriptionGate
+        feature="library"
+        fallback={
+          <View className="flex-1 items-center justify-center p-8 bg-[#F6F8FA] dark:bg-[#161B22]">
+            <View className="bg-[#FFFFFF] dark:bg-[#161B22] p-8 rounded-2xl items-center border border-[#D0D7DE] dark:border-[#21262D] border-dashed max-w-sm">
+              <Text className="text-lg font-bold text-gray-900 dark:text-white text-center mb-2">Library Locked</Text>
+              <Text className="text-gray-500 dark:text-gray-400 text-center text-xs mb-6 leading-5">
+                Library access is not enabled for this institution subscription.
+              </Text>
+              <AddonRequestButton onPress={() => {}} />
+            </View>
+          </View>
+        }
+      >
       <View className="flex-1 bg-[#F6F8FA] dark:bg-[#161B22]">
         <UnifiedHeader
           title="Library"
@@ -60,13 +76,14 @@ export default function StudentLibraryPage() {
           </View>
         </View>
       </View>
+      </SubscriptionGate>
     );
   }
 
   if (loading && !refreshing) {
     return (
-      <View className="flex-1 justify-center items-center bg-[#F6F8FA] dark:bg-[#161B22]">
-        <ActivityIndicator size="large" color="#FF6900" />
+      <View className="flex-1 bg-[#F6F8FA] dark:bg-[#161B22] p-4 md:p-8">
+        <ListItemSkeleton loading={loading} count={4} label="Loading library activity..." />
       </View>
     );
   }
@@ -75,6 +92,20 @@ export default function StudentLibraryPage() {
   const pastLoans = borrowings.filter(b => b.status === 'returned');
 
   return (
+    <SubscriptionGate
+      feature="library"
+      fallback={
+        <View className="flex-1 items-center justify-center p-8 bg-[#F6F8FA] dark:bg-[#161B22]">
+          <View className="bg-[#FFFFFF] dark:bg-[#161B22] p-8 rounded-2xl items-center border border-[#D0D7DE] dark:border-[#21262D] border-dashed max-w-sm">
+            <Text className="text-lg font-bold text-gray-900 dark:text-white text-center mb-2">Library Locked</Text>
+            <Text className="text-gray-500 dark:text-gray-400 text-center text-xs mb-6 leading-5">
+              Library access is not enabled for this institution subscription.
+            </Text>
+            <AddonRequestButton onPress={() => {}} />
+          </View>
+        </View>
+      }
+    >
     <View className="flex-1 bg-[#F6F8FA] dark:bg-[#161B22]">
       <UnifiedHeader
         title={studentName ? `${studentName}'s Library` : "Library"}
@@ -180,5 +211,6 @@ export default function StudentLibraryPage() {
         </View>
       </ScrollView>
     </View>
+    </SubscriptionGate>
   );
 }

@@ -173,6 +173,21 @@ export class LibraryAPI {
   }
 
   /**
+   * Get borrowing history for a parent's linked student
+   */
+  static async getParentStudentBorrowingHistory(
+    studentId: string
+  ): Promise<BackendBorrowedBook[]> {
+    try {
+      const response = await api.get<BackendBorrowedBook[]>(`/parent/student/${studentId}/library`);
+      return response.data;
+    } catch (error) {
+      console.error("Error fetching parent-student borrowing history:", error);
+      throw error;
+    }
+  }
+
+  /**
    * Get all borrowed books (for admin/librarian view)
    * @returns {Promise<BackendBorrowedBook[]>} List of all borrowed books
    */
@@ -249,14 +264,14 @@ export class LibraryAPI {
   }
 
   /**
-   * Update borrow status (waiting -> ready_for_pickup -> borrowed)
+   * Update borrow status
    * @param {string} borrowId
-   * @param {string} status
+   * @param {'borrowed' | 'returned' | 'overdue'} status
    * @returns {Promise<BackendBorrowedBook>}
    */
   static async updateBorrowStatus(
     borrowId: string,
-    status: 'ready_for_pickup' | 'borrowed'
+    status: 'borrowed' | 'returned' | 'overdue'
   ): Promise<BackendBorrowedBook> {
     try {
       const response = await api.put<{ message: string; borrow: BackendBorrowedBook }>(

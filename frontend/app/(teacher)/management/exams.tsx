@@ -1,4 +1,5 @@
 import { UnifiedHeader } from"@/components/common/UnifiedHeader";
+import { ListItemSkeleton } from "@/components/ui/skeletons";
 import { useAuth } from"@/contexts/AuthContext";
 import Toast from 'react-native-toast-message';
 import { ExamService } from"@/services/ExamService";
@@ -6,7 +7,7 @@ import { SubjectAPI } from"@/services/SubjectService";
 import { router } from"expo-router";
 import { Calendar, ChevronRight, FileText, Plus, X } from 'lucide-react-native';
 import React, { useEffect, useState } from"react";
-import { ActivityIndicator, Alert, Modal, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Alert, Modal, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 interface Exam {
  id: string;
@@ -127,7 +128,7 @@ export default function ExamsPage() {
  </View>
 
  {loading ? (
- <ActivityIndicator size="large" color="#FF6900" className="mt-8" />
+ <ListItemSkeleton loading={loading} count={4} label="Loading exams..." />
  ) : exams.length === 0 ? (
  <View className="bg-[#F6F8FA] dark:bg-[#161B22] p-12 rounded-[40px] items-center border border-[#D0D7DE] dark:border-[#21262D] border-dashed">
  <FileText size={48} color="#E5E7EB" style={{ opacity: 0.3 }} />

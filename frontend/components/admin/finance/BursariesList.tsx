@@ -1,17 +1,19 @@
+import { useCurrency } from '@/contexts/CurrencyContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { Spinner } from '@/components/ui/Spinner';
+import { ListItemSkeleton } from '@/components/ui/skeletons';
 import { BursaryService } from '@/services/BursaryService';
 import { Bursary } from '@/types/types';
-import { formatCurrency } from '@/utils/currency';
 import { Ionicons } from '@expo/vector-icons';
 import { format } from 'date-fns';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Text, TouchableOpacity, View } from 'react-native';
+import { Text, TouchableOpacity, View } from 'react-native';
 
 
 export function BursariesList() {
     const { isDark } = useTheme();
+    const { formatAmount } = useCurrency();
     const [bursaries, setBursaries] = useState<Bursary[]>([]);
     const [loading, setLoading] = useState(true);
     const router = useRouter();
@@ -51,7 +53,7 @@ export function BursariesList() {
 
             <View className="flex-row justify-between items-center mt-3 pt-3 border-t border-[#D0D7DE] dark:border-[#21262D]">
                 <Text className="text-teal-700 dark:text-teal-400 font-bold text-base">
-                    {formatCurrency(item.amount)}
+                    {formatAmount(Number(item.amount || 0))}
                 </Text>
 
                 <View className="flex-row items-center space-x-4 gap-4">
@@ -74,7 +76,7 @@ export function BursariesList() {
     );
 
     if (loading) {
-        return <ActivityIndicator size="large" color={isDark ? "#FF6900" : "#FF6900"} className="mt-10" />;
+        return <ListItemSkeleton loading={loading} count={6} label="Loading bursaries..." />;
     }
 
     return (

@@ -1,4 +1,5 @@
 import { UnifiedHeader } from "@/components/common/UnifiedHeader";
+import { ListItemSkeleton } from "@/components/ui/skeletons";
 import { useAuth } from "@/contexts/AuthContext";
 import { DiaryAPI, DiaryEntry } from "@/services/DiaryService";
 import { ParentAPI } from "@/services/ParentService";
@@ -652,7 +653,7 @@ export default function ParentDiaryPage() {
                     </View>
 
                     {loading ? (
-                        <ActivityIndicator size="large" color="#FF6900" className="mt-8" />
+                        <ListItemSkeleton loading={loading} count={4} label="Loading diary entries..." />
                     ) : entries.length === 0 ? (
                         <View className="bg-[#FFFFFF] dark:bg-[#161B22] p-12 rounded-xl items-center border border-[#D0D7DE] dark:border-[#21262D] border-dashed">
                             <BookOpen size={48} color="#E5E7EB" style={{ opacity: 0.3 }} />

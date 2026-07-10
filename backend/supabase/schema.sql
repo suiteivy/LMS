@@ -1,7 +1,7 @@
 -- ==========================================
 -- LMS SYSTEM MASTER SCHEMA
--- Consolidated: 2026-06-25
--- Includes messaging delivery/idempotency hardening
+-- Consolidated: 2026-06-27
+-- Includes post-migration baseline through DM/RLS/expiry hardening
 -- ==========================================
 
 -- ---------------------------------------------------------
@@ -33,6 +33,34 @@ CREATE TABLE school_categories (
 -- PART 1: CORE TABLES (UUID BASED)
 -- ---------------------------------------------------------
 
+-- 0. Currencies (Master Admin managed)
+CREATE TABLE IF NOT EXISTS currencies (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    code TEXT NOT NULL UNIQUE,
+    name TEXT NOT NULL,
+    symbol TEXT NOT NULL,
+    usd_rate NUMERIC(18, 6) NOT NULL DEFAULT 1,
+    decimal_places INTEGER NOT NULL DEFAULT 2,
+    is_default BOOLEAN NOT NULL DEFAULT false,
+    is_active BOOLEAN NOT NULL DEFAULT true,
+    deleted_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    CONSTRAINT currencies_code_format CHECK (code ~ '^[A-Z]{3}$'),
+    CONSTRAINT currencies_rate_positive CHECK (usd_rate > 0),
+    CONSTRAINT currencies_decimal_places_range CHECK (decimal_places BETWEEN 0 AND 6)
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS uq_currencies_single_default
+    ON currencies (is_default)
+    WHERE is_default = true;
+
+INSERT INTO currencies (code, name, symbol, usd_rate, decimal_places, is_default, is_active)
+VALUES
+    ('USD', 'US Dollar', '$', 1, 2, true, true),
+    ('KES', 'Kenyan Shilling', 'KSh', 130, 2, false, true)
+ON CONFLICT (code) DO NOTHING;
+
 -- 1. Institutions
 CREATE TABLE institutions (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -42,24 +70,30 @@ CREATE TABLE institutions (
     email TEXT,
     type TEXT CHECK (type IN ('primary', 'secondary', 'tertiary', 'vocational')),
     principal_name TEXT,
-    subscription_status TEXT DEFAULT 'trial' CHECK (subscription_status IN ('trial', 'active', 'expired', 'cancelled')),
-    subscription_plan TEXT DEFAULT 'trial' CHECK (subscription_plan IN ('trial', 'beta', 'beta_free', 'free', 'basic', 'pro', 'premium', 'custom')),
+    subscription_status TEXT DEFAULT 'active' CHECK (subscription_status IN ('active', 'expired', 'cancelled', 'suspended')),
+    subscription_plan TEXT DEFAULT 'basic' CHECK (subscription_plan IN ('beta', 'basic', 'pro', 'premium')),
     has_used_trial BOOLEAN DEFAULT TRUE,
-    trial_start_date TIMESTAMPTZ DEFAULT NOW(),
-    trial_end_date TIMESTAMPTZ DEFAULT NOW() + INTERVAL '30 days',
+    subscription_tracking_start_date TIMESTAMPTZ,
     addon_bursary BOOLEAN NOT NULL DEFAULT false,
     addon_library BOOLEAN NOT NULL DEFAULT false,
     addon_messaging BOOLEAN NOT NULL DEFAULT false,
-    addon_finance BOOLEAN NOT NULL DEFAULT false,
-    addon_analytics BOOLEAN NOT NULL DEFAULT false,
     addon_diary BOOLEAN NOT NULL DEFAULT false,
-    addon_attendance BOOLEAN NOT NULL DEFAULT false,
     email_domain TEXT,
     custom_student_limit INTEGER,
+    currency_id UUID REFERENCES currencies(id),
     category_id UUID REFERENCES school_categories(id),
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+UPDATE institutions i
+SET currency_id = c.id
+FROM currencies c
+WHERE c.code = 'USD'
+  AND i.currency_id IS NULL;
+
+ALTER TABLE institutions
+ALTER COLUMN currency_id SET NOT NULL;
 
 -- 2. Users (Base table for Auth mapping)
 CREATE TABLE users (
@@ -100,9 +134,43 @@ CREATE TABLE admins (
     id TEXT PRIMARY KEY DEFAULT generate_custom_id('ADM'),
     user_id UUID REFERENCES users(id) ON DELETE CASCADE NOT NULL UNIQUE,
     institution_id UUID REFERENCES institutions(id),
+    is_main BOOLEAN NOT NULL DEFAULT false,
+    can_manage_users BOOLEAN NOT NULL DEFAULT false,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- Backward-compatible admin hierarchy columns for existing deployments
+ALTER TABLE admins ADD COLUMN IF NOT EXISTS is_main BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE admins ADD COLUMN IF NOT EXISTS can_manage_users BOOLEAN NOT NULL DEFAULT false;
+
+-- At most one main admin per institution
+WITH ranked_main_admins AS (
+    SELECT
+        user_id,
+        institution_id,
+        ROW_NUMBER() OVER (
+            PARTITION BY institution_id
+            ORDER BY created_at ASC, user_id ASC
+        ) AS rn
+    FROM admins
+    WHERE is_main = true
+)
+UPDATE admins a
+SET is_main = false
+FROM ranked_main_admins r
+WHERE a.user_id = r.user_id
+  AND a.institution_id = r.institution_id
+  AND r.rn > 1;
+
+CREATE UNIQUE INDEX IF NOT EXISTS uq_admins_one_main_per_institution
+ON admins (institution_id)
+WHERE is_main = true;
+
+-- Maintain invariant: main admins can always manage users
+UPDATE admins
+SET can_manage_users = true
+WHERE is_main = true;
 
 CREATE TABLE teachers (
     id TEXT PRIMARY KEY DEFAULT generate_custom_id('TEA'),
@@ -199,8 +267,11 @@ CREATE TABLE class_enrollments (
     class_id UUID REFERENCES classes(id) ON DELETE CASCADE,
     enrolled_at TIMESTAMPTZ DEFAULT NOW(),
     institution_id UUID REFERENCES institutions(id),
-    UNIQUE(student_id, class_id)
+    UNIQUE(student_id)
 );
+
+CREATE UNIQUE INDEX IF NOT EXISTS class_enrollments_student_id_unique
+    ON class_enrollments(student_id);
 
 -- 3. Subjects
 CREATE TABLE subjects (
@@ -376,10 +447,14 @@ CREATE TABLE announcements (
     teacher_id TEXT REFERENCES teachers(id) ON DELETE CASCADE,
     title TEXT NOT NULL,
     message TEXT NOT NULL,
+    expires_at TIMESTAMPTZ,
     institution_id UUID REFERENCES institutions(id),
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+CREATE INDEX IF NOT EXISTS idx_announcements_expires_at
+    ON announcements(expires_at);
 
 -- 11. Diary Entries
 CREATE TABLE diary_entries (
@@ -449,6 +524,7 @@ CREATE TABLE books (
     category TEXT,
     total_quantity INTEGER NOT NULL DEFAULT 1,
     available_quantity INTEGER NOT NULL DEFAULT 1,
+    archived_at TIMESTAMPTZ,
     institution_id UUID REFERENCES institutions(id),
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
@@ -502,8 +578,15 @@ CREATE TABLE fee_structures (
     title TEXT NOT NULL,
     description TEXT,
     amount NUMERIC(10, 2) NOT NULL,
+    due_date DATE,
     academic_year TEXT,
+    academic_year_id UUID,
     term TEXT,
+    term_id UUID,
+    level_scope TEXT,
+    level_value INTEGER,
+    level_from INTEGER,
+    level_to INTEGER,
     is_active BOOLEAN DEFAULT true,
     institution_id UUID REFERENCES institutions(id),
     created_at TIMESTAMPTZ DEFAULT NOW(),
@@ -636,6 +719,7 @@ CREATE TABLE conversations (
     institution_id UUID NOT NULL REFERENCES institutions(id) ON DELETE CASCADE,
     direct_key TEXT,
     last_message_at TIMESTAMPTZ,
+    expires_at TIMESTAMPTZ,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -645,6 +729,9 @@ CREATE UNIQUE INDEX idx_conversations_direct_unique
 
 CREATE INDEX idx_conversations_institution_last_message
     ON conversations(institution_id, last_message_at DESC);
+
+CREATE INDEX IF NOT EXISTS idx_conversations_expires_at
+    ON conversations(expires_at);
 
 -- 2. Conversation participants
 CREATE TABLE conversation_participants (
@@ -707,9 +794,13 @@ CREATE TABLE notifications (
     type TEXT CHECK (type IN ('info', 'success', 'warning', 'error')) DEFAULT 'info',
     is_read BOOLEAN DEFAULT false,
     data JSONB DEFAULT '{}'::jsonb,
+    expires_at TIMESTAMPTZ,
     institution_id UUID REFERENCES institutions(id),
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+CREATE INDEX IF NOT EXISTS idx_notifications_expires_at
+    ON notifications(expires_at);
 
 -- Term lock metadata for grade/report immutability
 
@@ -735,7 +826,7 @@ CREATE POLICY "strict_institution_isolation" ON user_preferences FOR ALL USING (
 
 
 -- ---------------------------------------------------------
--- PART 6: VIEWS & TRIGGERS
+-- PART 6.1: SUPPORTING VIEWS & TRIGGERS
 -- ---------------------------------------------------------
 
 -- 1. Fees View (Library threshold check)
@@ -846,7 +937,13 @@ BEGIN
     END IF;
     INSERT INTO admins (user_id, institution_id, is_main) 
     VALUES (NEW.id, NEW.institution_id, v_is_main) 
-    ON CONFLICT (user_id) DO UPDATE SET is_main = EXCLUDED.is_main;
+    ON CONFLICT (user_id) DO UPDATE SET
+        institution_id = EXCLUDED.institution_id,
+        is_main = EXCLUDED.is_main,
+        can_manage_users = CASE
+            WHEN EXCLUDED.is_main THEN true
+            ELSE admins.can_manage_users
+        END;
   ELSIF NEW.role = 'teacher' THEN
     INSERT INTO teachers (user_id, institution_id) VALUES (NEW.id, NEW.institution_id) ON CONFLICT (user_id) DO NOTHING;
   ELSIF NEW.role = 'student' THEN
@@ -891,23 +988,22 @@ RETURNS UUID LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$
 $$;
 
 CREATE OR REPLACE FUNCTION get_current_user_role()
-RETURNS TEXT LANGUAGE SQL STABLE SECURITY DEFINER SET search_path = public AS $
+RETURNS TEXT LANGUAGE SQL STABLE SECURITY DEFINER SET search_path = public AS $$
   SELECT role FROM users WHERE id = auth.uid();
-$;
+$$;
 
 CREATE OR REPLACE FUNCTION is_subscription_active(p_institution_id UUID)
-RETURNS BOOLEAN LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = public AS $
+RETURNS BOOLEAN LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = public AS $$
 BEGIN
   RETURN EXISTS (
     SELECT 1 FROM institutions
     WHERE id = p_institution_id
     AND subscription_status = 'active'
-    AND (trial_end_date IS NULL OR trial_end_date > NOW())
   );
 END;
-$;
+$$;
 
-CREATE OR REPLACE FUNCTION current_user_student_id() RETURNS TEXT AS $
+CREATE OR REPLACE FUNCTION current_user_student_id() RETURNS TEXT AS $$
     SELECT id FROM students WHERE user_id = auth.uid();
 $$ LANGUAGE sql STABLE SET search_path = public;
 
@@ -918,6 +1014,146 @@ $$ LANGUAGE sql STABLE SET search_path = public;
 CREATE OR REPLACE FUNCTION current_user_bursar_id() RETURNS TEXT AS $$
     SELECT id FROM bursars WHERE user_id = auth.uid();
 $$ LANGUAGE sql STABLE SET search_path = public;
+
+CREATE OR REPLACE FUNCTION public.notify_on_announcement_insert()
+RETURNS TRIGGER AS $$
+DECLARE
+    v_student RECORD;
+    v_parent RECORD;
+    v_user RECORD;
+    v_subject_title TEXT;
+    v_notify_title TEXT;
+    v_notify_message TEXT;
+BEGIN
+    IF NEW.subject_id IS NOT NULL THEN
+        SELECT title INTO v_subject_title FROM public.subjects WHERE id = NEW.subject_id;
+        v_notify_title := '📢 ' || COALESCE(v_subject_title, 'Subject') || ' Announcement: ' || NEW.title;
+        v_notify_message := NEW.message;
+    ELSE
+        v_notify_title := '📢 General Notice: ' || NEW.title;
+        v_notify_message := NEW.message;
+    END IF;
+
+    IF NEW.subject_id IS NOT NULL THEN
+        FOR v_student IN
+            SELECT DISTINCT s.user_id, s.id AS student_internal_id
+            FROM public.students s
+            LEFT JOIN public.enrollments e
+                ON e.student_id = s.id
+               AND e.subject_id = NEW.subject_id
+               AND e.status = 'enrolled'
+            LEFT JOIN public.class_enrollments ce
+                ON ce.student_id = s.id
+               AND ce.class_id = (SELECT class_id FROM public.subjects WHERE id = NEW.subject_id)
+            WHERE s.institution_id = NEW.institution_id
+              AND s.user_id IS NOT NULL
+              AND (e.id IS NOT NULL OR ce.id IS NOT NULL)
+        LOOP
+            INSERT INTO public.notifications (user_id, title, message, type, is_read, data, institution_id, created_at, expires_at)
+            VALUES (
+                v_student.user_id,
+                v_notify_title,
+                v_notify_message,
+                'info',
+                false,
+                jsonb_build_object('type', 'announcement', 'announcement_id', NEW.id, 'subject_id', NEW.subject_id),
+                NEW.institution_id,
+                NOW(),
+                NEW.expires_at
+            )
+            ON CONFLICT DO NOTHING;
+
+            FOR v_parent IN
+                SELECT DISTINCT p.user_id
+                FROM public.parents p
+                JOIN public.parent_students ps ON ps.parent_id = p.id
+                WHERE ps.student_id = v_student.student_internal_id
+                  AND p.institution_id = NEW.institution_id
+                  AND p.user_id IS NOT NULL
+            LOOP
+                INSERT INTO public.notifications (user_id, title, message, type, is_read, data, institution_id, created_at, expires_at)
+                VALUES (
+                    v_parent.user_id,
+                    v_notify_title,
+                    v_notify_message,
+                    'info',
+                    false,
+                    jsonb_build_object('type', 'announcement', 'announcement_id', NEW.id, 'subject_id', NEW.subject_id),
+                    NEW.institution_id,
+                    NOW(),
+                    NEW.expires_at
+                )
+                ON CONFLICT DO NOTHING;
+            END LOOP;
+        END LOOP;
+    ELSE
+        FOR v_user IN
+            SELECT u.id
+            FROM public.users u
+            WHERE u.institution_id = NEW.institution_id
+              AND (auth.uid() IS NULL OR u.id != auth.uid())
+        LOOP
+            INSERT INTO public.notifications (user_id, title, message, type, is_read, data, institution_id, created_at, expires_at)
+            VALUES (
+                v_user.id,
+                v_notify_title,
+                v_notify_message,
+                'info',
+                false,
+                jsonb_build_object('type', 'general_notice', 'announcement_id', NEW.id),
+                NEW.institution_id,
+                NOW(),
+                NEW.expires_at
+            )
+            ON CONFLICT DO NOTHING;
+        END LOOP;
+    END IF;
+
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
+
+CREATE OR REPLACE FUNCTION public.notify_on_message_insert()
+RETURNS TRIGGER AS $$
+DECLARE
+    v_sender_name TEXT;
+    v_preview TEXT;
+BEGIN
+    SELECT full_name INTO v_sender_name
+    FROM public.users
+    WHERE id = NEW.sender_id;
+
+    IF v_sender_name IS NULL THEN
+        v_sender_name := 'Someone';
+    END IF;
+
+    v_preview := COALESCE(NULLIF(TRIM(NEW.subject), ''), NULLIF(TRIM(NEW.content), ''), 'New message');
+
+    INSERT INTO public.notifications (user_id, title, message, type, is_read, data, institution_id, created_at)
+    VALUES (
+        NEW.receiver_id,
+        '✉️ New Message',
+        'You received a new message from ' || v_sender_name || ': "' || v_preview || '"',
+        'info',
+        false,
+        jsonb_build_object('type', 'message', 'message_id', NEW.id, 'sender_id', NEW.sender_id),
+        NEW.institution_id,
+        NOW()
+    );
+
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
+
+DROP TRIGGER IF EXISTS tr_notify_on_announcement_insert ON public.announcements;
+CREATE TRIGGER tr_notify_on_announcement_insert
+AFTER INSERT ON public.announcements
+FOR EACH ROW EXECUTE FUNCTION public.notify_on_announcement_insert();
+
+DROP TRIGGER IF EXISTS tr_notify_on_message_insert ON public.messages;
+CREATE TRIGGER tr_notify_on_message_insert
+AFTER INSERT ON public.messages
+FOR EACH ROW EXECUTE FUNCTION public.notify_on_message_insert();
 
 CREATE OR REPLACE FUNCTION is_student_in_class(p_class_id UUID, p_student_id TEXT)
 RETURNS BOOLEAN LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
@@ -1013,7 +1249,9 @@ CREATE POLICY "strict_institution_isolation" ON teacher_payouts FOR ALL USING (i
 ALTER TABLE teacher_attendance ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "strict_institution_isolation" ON teacher_attendance FOR ALL USING (institution_id = get_current_user_institution_id() OR get_current_user_role() = 'master_admin');
 ALTER TABLE messages ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "strict_institution_isolation" ON messages FOR ALL USING (institution_id = get_current_user_institution_id() OR get_current_user_role() = 'master_admin');
+CREATE POLICY "strict_institution_isolation" ON messages FOR ALL USING (
+    institution_id = get_current_user_institution_id() OR get_current_user_role() = 'master_admin'
+);
 ALTER TABLE notifications ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "strict_institution_isolation" ON notifications FOR ALL USING (institution_id = get_current_user_institution_id() OR get_current_user_role() = 'master_admin');
 ALTER TABLE class_enrollments ENABLE ROW LEVEL SECURITY;
@@ -1023,6 +1261,103 @@ CREATE POLICY "strict_institution_isolation" ON diary_entries FOR ALL USING (ins
 ALTER TABLE institutions ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "strict_institution_isolation" ON institutions FOR ALL USING (id = get_current_user_institution_id() OR get_current_user_role() = 'master_admin');
 CREATE POLICY "public_read_institutions" ON institutions FOR SELECT USING (true);
+
+DROP POLICY IF EXISTS "strict_institution_isolation" ON public.announcements;
+DROP POLICY IF EXISTS "announcements_select" ON public.announcements;
+DROP POLICY IF EXISTS "announcements_insert" ON public.announcements;
+DROP POLICY IF EXISTS "announcements_update" ON public.announcements;
+DROP POLICY IF EXISTS "announcements_delete" ON public.announcements;
+
+CREATE POLICY "announcements_select" ON public.announcements
+FOR SELECT
+USING (
+    institution_id = public.get_current_user_institution_id()
+    OR public.get_current_user_role() = 'master_admin'
+);
+
+CREATE POLICY "announcements_insert" ON public.announcements
+FOR INSERT
+WITH CHECK (
+    (institution_id = public.get_current_user_institution_id() AND public.get_current_user_role() IN ('admin', 'master_admin'))
+    OR public.get_current_user_role() = 'master_admin'
+);
+
+CREATE POLICY "announcements_update" ON public.announcements
+FOR UPDATE
+USING (
+    (institution_id = public.get_current_user_institution_id() AND public.get_current_user_role() IN ('admin', 'master_admin'))
+    OR public.get_current_user_role() = 'master_admin'
+)
+WITH CHECK (
+    (institution_id = public.get_current_user_institution_id() AND public.get_current_user_role() IN ('admin', 'master_admin'))
+    OR public.get_current_user_role() = 'master_admin'
+);
+
+CREATE POLICY "announcements_delete" ON public.announcements
+FOR DELETE
+USING (
+    (institution_id = public.get_current_user_institution_id() AND public.get_current_user_role() IN ('admin', 'master_admin'))
+    OR public.get_current_user_role() = 'master_admin'
+);
+
+DELETE FROM public.role_permissions
+WHERE permission_id IN (SELECT id FROM public.permissions WHERE name = 'announcements:write')
+  AND role_id IN (SELECT id FROM public.roles WHERE name = 'Teacher');
+
+ALTER TABLE public.conversations ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.conversation_participants ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.message_edit_history ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "conversations_participants_select" ON public.conversations;
+CREATE POLICY "conversations_participants_select"
+ON public.conversations
+FOR SELECT
+USING (
+  EXISTS (
+    SELECT 1
+    FROM public.conversation_participants cp
+    WHERE cp.conversation_id = conversations.id
+      AND cp.user_id = auth.uid()
+  )
+);
+
+DROP POLICY IF EXISTS "conversation_participants_self_select" ON public.conversation_participants;
+CREATE POLICY "conversation_participants_self_select"
+ON public.conversation_participants
+FOR SELECT
+USING (
+  user_id = auth.uid()
+);
+
+DROP POLICY IF EXISTS "messages_participants_select" ON public.messages;
+CREATE POLICY "messages_participants_select"
+ON public.messages
+FOR SELECT
+USING (
+  EXISTS (
+    SELECT 1
+    FROM public.conversation_participants cp
+    WHERE cp.conversation_id = messages.conversation_id
+      AND cp.user_id = auth.uid()
+  )
+  OR sender_id = auth.uid()
+  OR receiver_id = auth.uid()
+);
+
+DROP POLICY IF EXISTS "message_edit_history_participants_select" ON public.message_edit_history;
+CREATE POLICY "message_edit_history_participants_select"
+ON public.message_edit_history
+FOR SELECT
+USING (
+  EXISTS (
+    SELECT 1
+    FROM public.messages m
+    JOIN public.conversation_participants cp
+      ON cp.conversation_id = m.conversation_id
+    WHERE m.id = message_edit_history.message_id
+      AND cp.user_id = auth.uid()
+  )
+);
 
 
 -- ---------------------------------------------------------
@@ -1293,7 +1628,7 @@ USING (
 
 
 -- ---------------------------------------------------------
--- PART 6: TRIGGERS & BUSINESS LOGIC
+-- PART 11: ADDITIONAL TRIGGERS & BUSINESS LOGIC
 -- ---------------------------------------------------------
 
 -- 1. Level Enforcement Logic
@@ -1347,7 +1682,7 @@ FOR EACH ROW EXECUTE FUNCTION fn_enforce_level_logic();
 
 
 -- ---------------------------------------------------------
--- PART 7: VIEWS (REPORITNG & UI)
+-- PART 12: VIEWS (REPORTING & UI)
 -- ---------------------------------------------------------
 
 CREATE OR REPLACE VIEW v_classes_detailed AS
@@ -1412,8 +1747,8 @@ BEGIN
         RAISE EXCEPTION 'Recipient must be an admin in the same institution';
     END IF;
 
-    UPDATE admins SET is_main = false WHERE user_id = p_old_admin_user_id;
-    UPDATE admins SET is_main = true WHERE user_id = p_new_admin_user_id;
+    UPDATE admins SET is_main = false, can_manage_users = false WHERE user_id = p_old_admin_user_id;
+    UPDATE admins SET is_main = true, can_manage_users = true WHERE user_id = p_new_admin_user_id;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
@@ -1493,7 +1828,13 @@ BEGIN
             END IF;
             INSERT INTO admins (user_id, institution_id, is_main)
             VALUES (NEW.user_id, v_institution_id, v_is_main)
-            ON CONFLICT (user_id) DO NOTHING;
+            ON CONFLICT (user_id) DO UPDATE SET
+                institution_id = EXCLUDED.institution_id,
+                is_main = EXCLUDED.is_main,
+                can_manage_users = CASE
+                    WHEN EXCLUDED.is_main THEN true
+                    ELSE admins.can_manage_users
+                END;
         END IF;
     ELSIF LOWER(v_role_name) = 'teacher' THEN
         IF NOT EXISTS (SELECT 1 FROM teachers WHERE user_id = NEW.user_id) THEN

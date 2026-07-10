@@ -17,9 +17,23 @@ const Notifications = ({ visible, onClose }: NotificationProps) => {
   const { notifications, unreadCount, markAsRead, markAllAsRead, refreshNotifications, loading, clearAll, deleteNotification } = useNotifications();
   const { isDark } = useTheme();
   const [markingAllRead, setMarkingAllRead] = React.useState(false);
+  const [nowMs, setNowMs] = React.useState(Date.now());
   const { width } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const panelWidth = Math.min(360, width - 24);
+
+  const formatExpiryCountdown = React.useCallback((expiresAt?: string | null) => {
+    if (!expiresAt) return null;
+    const endMs = new Date(expiresAt).getTime();
+    if (!Number.isFinite(endMs)) return null;
+    const remaining = endMs - nowMs;
+    if (remaining <= 0) return 'Expired';
+    const totalMinutes = Math.floor(remaining / (60 * 1000));
+    const days = Math.floor(totalMinutes / (24 * 60));
+    const hours = Math.floor((totalMinutes % (24 * 60)) / 60);
+    const minutes = totalMinutes % 60;
+    return `${days}d ${hours}h ${minutes}m left`;
+  }, [nowMs]);
 
   const tokens = {
     surface:      isDark ? '#1a1a1a' : '#ffffff',
@@ -53,6 +67,11 @@ const Notifications = ({ visible, onClose }: NotificationProps) => {
       setMarkingAllRead(false);
     }
   };
+
+  React.useEffect(() => {
+    const interval = setInterval(() => setNowMs(Date.now()), 30000);
+    return () => clearInterval(interval);
+  }, []);
 
   return (
     <Modal
@@ -181,6 +200,11 @@ const Notifications = ({ visible, onClose }: NotificationProps) => {
                       </Text>
                     </View>
                     <Text style={{ color: tokens.textSecondary, fontSize: 13, lineHeight: 20 }}>{item.message}</Text>
+                    {!!item.expires_at && (
+                      <Text style={{ color: '#D97706', fontSize: 10, marginTop: 6, fontWeight: '700' }}>
+                        {formatExpiryCountdown(item.expires_at)}
+                      </Text>
+                    )}
                   </View>
                   <TouchableOpacity 
                     onPress={() => deleteNotification(item.id)}

@@ -18,16 +18,18 @@ import { useNotifications } from "@/contexts/NotificationContext";
 import { NotificationBellDropdown } from "@/components/common/NotificationBellDropdown";
 import { useState } from "react";
 import { useRouter } from "expo-router";
+import { useSubscriptionTier } from "@/hooks/useSubscriptionTier";
 
 function ParentTabs() {
     const HIDDEN_ROUTES = ["diary", "library", "reports"];
     const insets = useSafeAreaInsets();
     const { isDark } = useTheme();
+    const { hasMessaging } = useSubscriptionTier();
     const { unreadCount } = useNotifications();
     const [showNotifDropdown, setShowNotifDropdown] = useState(false);
     const router = useRouter();
 
-    const NAV_ITEMS = ALL_NAV_ITEMS;
+    const NAV_ITEMS = ALL_NAV_ITEMS.filter((item) => (item.name === 'messages' ? hasMessaging : true));
 
     const tabBarHeight = 60;
 
@@ -130,6 +132,7 @@ function ParentTabs() {
             <Tabs.Screen name="timetable" options={{ href: null, headerShown: false }} />
             <Tabs.Screen name="report-cards" options={{ href: null, headerShown: false }} />
             <Tabs.Screen name="analytics" options={{ href: null, headerShown: false }} />
+            {!hasMessaging && <Tabs.Screen name="messages" options={{ href: null, headerShown: false }} />}
             </Tabs>
 
             <NotificationBellDropdown
@@ -143,7 +146,8 @@ function ParentTabs() {
 }
 
 function ParentSidebar() {
-    const items = ALL_NAV_ITEMS;
+    const { hasMessaging } = useSubscriptionTier();
+    const items = ALL_NAV_ITEMS.filter((item) => (item.name === 'messages' ? hasMessaging : true));
     return (
         <WebSidebar items={items} basePath="(parent)" role="Parent/Guardian">
             <Slot />

@@ -1,7 +1,8 @@
 import { EmptyState } from "@/components/common/EmptyState";
 import { Spinner } from "@/components/ui/Spinner";
+import { TableRowSkeleton } from "@/components/ui/skeletons";
+import { useCurrency } from "@/contexts/CurrencyContext";
 import { useTheme } from "@/contexts/ThemeContext";
-import { formatCurrency } from "@/utils/currency";
 import { supabase } from "@/libs/supabase";
 import { Payment } from "@/types/types";
 import { Ionicons } from "@expo/vector-icons";
@@ -10,11 +11,15 @@ import React, { useEffect, useState } from "react";
 import {
   Alert,
   FlatList,
+  Keyboard,
+  KeyboardAvoidingView,
+  Platform,
   Modal,
   ScrollView,
   Text,
   TextInput,
   TouchableOpacity,
+  TouchableWithoutFeedback,
   View,
   Linking,
 } from "react-native";
@@ -22,6 +27,9 @@ import { FinanceService } from "@/services/FinanceService";
 import { Check, X, ExternalLink, Clock } from "lucide-react-native";
 import { BlurView } from "expo-blur";
 import Toast from 'react-native-toast-message';
+import * as Print from 'expo-print';
+import * as Sharing from 'expo-sharing';
+import { File, Paths } from 'expo-file-system';
 
 
 interface PaymentManagementSectionProps {
@@ -37,6 +45,7 @@ export const PaymentManagementSection: React.FC<
   PaymentManagementSectionProps
 > = ({ payments, loading, onPaymentSubmit, onRefresh }) => {
   const { isDark } = useTheme();
+  const { formatAmount: formatMoney } = useCurrency();
   const [showForm, setShowForm] = useState(false);
   const [formData, setFormData] = useState({
     student_id: "",
@@ -56,6 +65,7 @@ export const PaymentManagementSection: React.FC<
 
   // Payment method picker
   const [showPaymentPicker, setShowPaymentPicker] = useState(false);
+  const [downloadingReceiptId, setDownloadingReceiptId] = useState<string | null>(null);
   const paymentMethods = [
     { label: 'Cash', value: 'cash' },
     { label: 'Bank', value: 'bank_transfer' },
@@ -145,6 +155,30 @@ export const PaymentManagementSection: React.FC<
     }
   };
 
+  const openPaymentReceipt = async (paymentId: string) => {
+    try {
+      setDownloadingReceiptId(paymentId);
+      const html = await FinanceService.getAnyReceiptHtml(paymentId);
+      const { uri } = await Print.printToFileAsync({ html });
+
+      if (await Sharing.isAvailableAsync()) {
+        await Sharing.shareAsync(uri, { UTI: '.pdf', mimeType: 'application/pdf' });
+      } else if (Platform.OS === 'web') {
+        window.open(uri, '_blank', 'noopener,noreferrer');
+      } else {
+        Alert.alert('Receipt Ready', `Receipt saved to: ${uri}`);
+      }
+    } catch (e: any) {
+      Toast.show({
+        type: 'error',
+        text1: 'Receipt',
+        text2: e?.message || 'Unable to open receipt',
+      });
+    } finally {
+      setDownloadingReceiptId(null);
+    }
+  };
+
 
   const filteredStudents = allStudents.filter(
     (s) =>
@@ -179,22 +213,28 @@ export const PaymentManagementSection: React.FC<
   };
 
   const handleSubmit = async () => {
+    const amountValue = Number(formData.amount);
     if (!formData.student_id || !formData.student_name || !formData.amount) {
       Alert.alert("Error", "Please fill in all required fields including Student");
+      return;
+    }
+
+    if (!Number.isFinite(amountValue) || amountValue <= 0) {
+      Alert.alert("Error", "Please enter a valid amount greater than zero.");
       return;
     }
     
     const normalizedPaymentMethod = formData.payment_method?.toLowerCase().replace(/\s+/g, '_');
     
     const payment: Omit<Payment, "id"> = {
-      amount: parseFloat(formData.amount),
+      amount: amountValue,
       payment_date: new Date().toISOString(),
       status: "completed",
       student_id: formData.student_id,
       student_name: "",
       payment_method: normalizedPaymentMethod as Payment["payment_method"],
       reference_number: formData.reference_number,
-      notes: formData.notes,
+      notes: formData.notes.trim(),
     };
 
     setSubmittingPayment(true);
@@ -208,8 +248,7 @@ export const PaymentManagementSection: React.FC<
   };
 
   const formatAmount = (amount: number | null | undefined) => {
-    if (amount === null || amount === undefined) return "KSh 0.00";
-    return formatCurrency(amount);
+    return formatMoney(Number(amount || 0));
   };
 
   const getStatusBg = (status: Payment['status']) => {
@@ -231,6 +270,127 @@ export const PaymentManagementSection: React.FC<
   };
 
   const selectedPaymentLabel = paymentMethods.find(m => m.value === formData.payment_method)?.label ?? 'Select method…';
+
+  const formatDateTime = (value?: string | null) => {
+    if (!value) return 'N/A';
+    const date = new Date(value);
+    if (!Number.isFinite(date.getTime())) return 'N/A';
+    return date.toLocaleString();
+  };
+
+  const getRetentionBadge = (retentionUntil?: string | null) => {
+    if (!retentionUntil) {
+      return {
+        label: 'Not Set',
+        bg: isDark ? '#3f3f46' : '#e5e7eb',
+        color: isDark ? '#d4d4d8' : '#374151',
+      };
+    }
+
+    const retentionDate = new Date(retentionUntil);
+    const retentionMs = retentionDate.getTime();
+    if (!Number.isFinite(retentionMs)) {
+      return {
+        label: 'Invalid Date',
+        bg: isDark ? '#7f1d1d' : '#fee2e2',
+        color: isDark ? '#fecaca' : '#991b1b',
+      };
+    }
+
+    const daysLeft = Math.ceil((retentionMs - Date.now()) / (24 * 60 * 60 * 1000));
+    if (daysLeft < 0) {
+      return {
+        label: 'Floor met',
+        bg: isDark ? '#14532d' : '#dcfce7',
+        color: isDark ? '#86efac' : '#166534',
+      };
+    }
+
+    if (daysLeft < 30) {
+      return {
+        label: '<30 days',
+        bg: isDark ? '#78350f' : '#fef3c7',
+        color: isDark ? '#fcd34d' : '#92400e',
+      };
+    }
+
+    return {
+      label: '>=30 days',
+      bg: isDark ? '#1e3a8a' : '#dbeafe',
+      color: isDark ? '#93c5fd' : '#1d4ed8',
+    };
+  };
+
+  const escapeCsv = (value: unknown) => {
+    const text = String(value ?? '');
+    return `"${text.replace(/"/g, '""')}"`;
+  };
+
+  const exportPaymentsCsv = async () => {
+    try {
+      const headers = [
+        'Student',
+        'Student ID',
+        'Amount',
+        'Method',
+        'Status',
+        'Payment Date',
+        'Completed At',
+        'Retention Until',
+        'Reference',
+      ];
+
+      const rows = filteredPayments.map((payment) => ([
+        payment.student_name,
+        payment.student_display_id || payment.student_id,
+        Number(payment.amount || 0),
+        payment.payment_method,
+        payment.status,
+        formatDateTime(payment.payment_date),
+        formatDateTime(payment.confirmed_at),
+        formatDateTime(payment.retention_until),
+        payment.reference_number || '',
+      ]));
+
+      const csv = [headers, ...rows]
+        .map((row) => row.map(escapeCsv).join(','))
+        .join('\n');
+
+      const filename = `payments_export_${new Date().toISOString().slice(0, 10)}.csv`;
+
+      if (Platform.OS === 'web') {
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.setAttribute('download', filename);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+      } else {
+        const csvFile = new File(Paths.cache, filename);
+        if (!csvFile.exists) {
+          csvFile.create({ overwrite: true });
+        }
+        csvFile.write(csv);
+        const fileUri = csvFile.uri;
+
+        if (await Sharing.isAvailableAsync()) {
+          await Sharing.shareAsync(fileUri, {
+            mimeType: 'text/csv',
+            UTI: 'public.comma-separated-values-text',
+          });
+        } else {
+          Alert.alert('Export Ready', `CSV saved to: ${fileUri}`);
+        }
+      }
+
+      Toast.show({ type: 'success', text1: 'Export complete', text2: 'Payments CSV generated successfully.' });
+    } catch (error: any) {
+      Toast.show({ type: 'error', text1: 'Export failed', text2: error?.message || 'Unable to export CSV.' });
+    }
+  };
 
   const renderPaymentItem = ({ item }: { item: Payment }) => (
     <View className="bg-[#F6F8FA] dark:bg-[#161B22] rounded-lg p-4 mb-3 border border-[#D0D7DE] dark:border-[#21262D]">
@@ -277,6 +437,46 @@ export const PaymentManagementSection: React.FC<
           </Text>
         </View>
 
+        {item.confirmed_at && (
+          <View className="flex-row justify-between">
+            <Text className="text-sm text-gray-600 dark:text-gray-400">Completed at:</Text>
+            <Text className="text-sm text-gray-900 dark:text-white">
+              {new Date(item.confirmed_at).toLocaleString()}
+            </Text>
+          </View>
+        )}
+
+        {item.retention_until && (
+          <View className="flex-row justify-between items-center">
+            <Text className="text-sm text-gray-600 dark:text-gray-400">Retention until:</Text>
+            <View className="flex-row items-center" style={{ gap: 8 }}>
+              <Text className="text-sm text-gray-900 dark:text-white">
+                {new Date(item.retention_until).toLocaleString()}
+              </Text>
+              <View
+                style={{
+                  backgroundColor: getRetentionBadge(item.retention_until).bg,
+                  paddingHorizontal: 8,
+                  paddingVertical: 3,
+                  borderRadius: 999,
+                }}
+              >
+                <Text
+                  style={{
+                    color: getRetentionBadge(item.retention_until).color,
+                    fontSize: 10,
+                    fontWeight: '700',
+                    textTransform: 'uppercase',
+                    letterSpacing: 0.5,
+                  }}
+                >
+                  {getRetentionBadge(item.retention_until).label}
+                </Text>
+              </View>
+            </View>
+          </View>
+        )}
+
         {item.reference_number && (
           <View className="flex-row justify-between">
             <Text className="text-sm text-gray-600 dark:text-gray-400">Reference:</Text>
@@ -285,6 +485,48 @@ export const PaymentManagementSection: React.FC<
             </Text>
           </View>
         )}
+
+        {(item.origin_label || item.origin_type) && (
+          <View className="flex-row justify-between">
+            <Text className="text-sm text-gray-600 dark:text-gray-400">Origin:</Text>
+            <Text className="text-sm text-gray-900 dark:text-white">
+              {item.origin_label || item.origin_type}
+            </Text>
+          </View>
+        )}
+
+        {(item.target_label || item.target_id) && (
+          <View className="flex-row justify-between">
+            <Text className="text-sm text-gray-600 dark:text-gray-400">Target:</Text>
+            <Text className="text-sm text-gray-900 dark:text-white">
+              {item.target_label || item.target_id}
+            </Text>
+          </View>
+        )}
+
+        {(item.recorded_by_label || item.recorded_by_user_id) && (
+          <View className="flex-row justify-between">
+            <Text className="text-sm text-gray-600 dark:text-gray-400">Recorded by:</Text>
+            <Text className="text-sm text-gray-900 dark:text-white">
+              {item.recorded_by_label || item.recorded_by_user_id}
+            </Text>
+          </View>
+        )}
+
+        <TouchableOpacity
+          onPress={() => openPaymentReceipt(String(item.id))}
+          disabled={downloadingReceiptId === String(item.id)}
+          className="mt-3 flex-row items-center justify-center bg-[#EAEEF2] dark:bg-[#0F141C] p-3 rounded-lg border border-[#D0D7DE] dark:border-[#21262D]"
+        >
+          {downloadingReceiptId === String(item.id) ? (
+            <Spinner color={isDark ? '#9CA3AF' : '#4B5563'} size="small" label="Preparing receipt" />
+          ) : (
+            <>
+              <Receipt size={15} color={isDark ? '#9CA3AF' : '#4B5563'} />
+              <Text className="ml-2 text-gray-700 dark:text-gray-300 font-bold text-xs uppercase tracking-widest">Receipt (PDF)</Text>
+            </>
+          )}
+        </TouchableOpacity>
 
         {item.notes && (
           <View className="mt-2 p-2 bg-gray-50 dark:bg-[#0F141C] rounded border border-[#D0D7DE] dark:border-[#21262D]">
@@ -302,12 +544,66 @@ export const PaymentManagementSection: React.FC<
           <Text className="text-2xl font-bold text-gray-800 dark:text-white">Finance</Text>
           <Text className="text-gray-400 text-[10px] font-bold uppercase tracking-widest mt-1">Management Hub</Text>
         </View>
-        <TouchableOpacity
-          onPress={() => setShowForm(true)}
-          className="bg-[#FF6900] px-4 py-2.5 rounded-xl"
-        >
-          <Text className="text-white font-bold text-sm uppercase tracking-widest">Record Payment</Text>
-        </TouchableOpacity>
+        <View className="flex-row" style={{ gap: 8 }}>
+          <TouchableOpacity
+            onPress={exportPaymentsCsv}
+            className="bg-[#0F766E] px-4 py-2.5 rounded-xl"
+          >
+            <Text className="text-white font-bold text-[11px] uppercase tracking-widest">Export CSV</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => setShowForm(true)}
+            className="bg-[#FF6900] px-4 py-2.5 rounded-xl"
+          >
+            <Text className="text-white font-bold text-sm uppercase tracking-widest">Record Payment</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      <View
+        className="mb-4 p-3 rounded-xl border"
+        style={{
+          backgroundColor: isDark ? '#0F141C' : '#F6F8FA',
+          borderColor: isDark ? '#21262D' : '#D0D7DE',
+        }}
+      >
+        <Text className="text-[10px] font-black uppercase tracking-widest mb-2" style={{ color: isDark ? '#9CA3AF' : '#6B7280' }}>
+          Retention Badge Legend
+        </Text>
+        <View className="flex-row" style={{ gap: 8, flexWrap: 'wrap' }}>
+          {['<30 days', '>=30 days', 'Floor met'].map((label) => {
+            const sample =
+              label === '<30 days'
+                ? { bg: isDark ? '#78350f' : '#fef3c7', color: isDark ? '#fcd34d' : '#92400e' }
+                : label === '>=30 days'
+                  ? { bg: isDark ? '#1e3a8a' : '#dbeafe', color: isDark ? '#93c5fd' : '#1d4ed8' }
+                  : { bg: isDark ? '#14532d' : '#dcfce7', color: isDark ? '#86efac' : '#166534' };
+
+            return (
+              <View
+                key={label}
+                style={{
+                  backgroundColor: sample.bg,
+                  paddingHorizontal: 8,
+                  paddingVertical: 4,
+                  borderRadius: 999,
+                }}
+              >
+                <Text
+                  style={{
+                    color: sample.color,
+                    fontSize: 10,
+                    fontWeight: '700',
+                    textTransform: 'uppercase',
+                    letterSpacing: 0.5,
+                  }}
+                >
+                  {label}
+                </Text>
+              </View>
+            );
+          })}
+        </View>
       </View>
 
       {/* Tab Switcher */}
@@ -348,9 +644,8 @@ export const PaymentManagementSection: React.FC<
           </View>
 
       {loading ? (
-        <View className="flex-1 justify-center items-center">
-          <Spinner color="#FF6B00" size="small" label="Loading payments" />
-          <Text className="text-gray-500 dark:text-gray-400 mt-3">Loading payments...</Text>
+        <View className="pb-20">
+          <TableRowSkeleton loading={loading} columns={5} count={8} label="Loading payments..." />
         </View>
       ) : (
         <View className="pb-20">
@@ -379,9 +674,8 @@ export const PaymentManagementSection: React.FC<
       ) : (
         <View className="pb-20">
           {loadingPending ? (
-            <View className="py-20 items-center">
-              <Spinner color="#FF6B00" label="Loading pending receipts" />
-              <Text className="text-gray-400 text-xs mt-4 font-bold uppercase tracking-widest">Scanning receipt bucket...</Text>
+            <View className="pb-20">
+              <TableRowSkeleton loading={loadingPending} columns={4} count={6} label="Loading pending receipts..." />
             </View>
           ) : pendingPayments.length === 0 ? (
             <EmptyState
@@ -420,6 +714,39 @@ export const PaymentManagementSection: React.FC<
                     <Text className="text-gray-500 dark:text-gray-400 text-xs font-bold mb-1">
                       {item.created_at ? new Date(item.created_at).toISOString().split('T')[0] : 'N/A'}
                     </Text>
+                  </View>
+
+                  <View className="mt-4" style={{ gap: 8 }}>
+                    <View className="flex-row justify-between items-center">
+                      <Text className="text-gray-500 dark:text-gray-400 text-xs font-bold uppercase tracking-widest">Completed at</Text>
+                      <Text className="text-gray-900 dark:text-white text-xs font-semibold">{formatDateTime(item.confirmed_at)}</Text>
+                    </View>
+                    <View className="flex-row justify-between items-center">
+                      <Text className="text-gray-500 dark:text-gray-400 text-xs font-bold uppercase tracking-widest">Retention until</Text>
+                      <View className="flex-row items-center" style={{ gap: 8 }}>
+                        <Text className="text-gray-900 dark:text-white text-xs font-semibold">{formatDateTime(item.retention_until)}</Text>
+                        <View
+                          style={{
+                            backgroundColor: getRetentionBadge(item.retention_until).bg,
+                            paddingHorizontal: 8,
+                            paddingVertical: 3,
+                            borderRadius: 999,
+                          }}
+                        >
+                          <Text
+                            style={{
+                              color: getRetentionBadge(item.retention_until).color,
+                              fontSize: 10,
+                              fontWeight: '700',
+                              textTransform: 'uppercase',
+                              letterSpacing: 0.5,
+                            }}
+                          >
+                            {getRetentionBadge(item.retention_until).label}
+                          </Text>
+                        </View>
+                      </View>
+                    </View>
                   </View>
                 </View>
 
@@ -477,34 +804,36 @@ export const PaymentManagementSection: React.FC<
       {/* Payment Form Modal */}
       <Modal
         visible={showForm}
-        animationType="slide"
-        presentationStyle="pageSheet"
+        animationType="fade"
+        transparent
+        onRequestClose={() => { setShowForm(false); resetForm(); }}
       >
-        <View className="flex-1 bg-[#FFFFFF] dark:bg-[#161B22]">
-          <View className="flex-row justify-between items-center p-4 border-b border-[#D0D7DE] dark:border-[#21262D]">
-            <TouchableOpacity onPress={() => { setShowForm(false); resetForm(); }}>
-              <Text className="text-blue-600 dark:text-blue-400 text-lg">Cancel</Text>
-            </TouchableOpacity>
-            <Text className="text-lg font-semibold text-gray-900 dark:text-white">Record Payment</Text>
-            <TouchableOpacity onPress={handleSubmit} disabled={submittingPayment}>
-              <View
-                className="text-sm border border-[#10B981] dark:border-green-500 px-3 py-2 rounded-full"
-                accessibilityState={{ disabled: submittingPayment, busy: submittingPayment }}
-              >
-                {submittingPayment ? (
-                  <Spinner color="#10B981" size="small" label="Saving payment" />
-                ) : (
-                  <Text className="font-semibold text-[#10B981] dark:text-green-500">Save</Text>
-                )}
-              </View>
-            </TouchableOpacity>
-          </View>
+        <KeyboardAvoidingView
+          className="flex-1"
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? 24 : 0}
+        >
+          <View className="flex-1">
+            <TouchableWithoutFeedback onPress={() => { Keyboard.dismiss(); setShowForm(false); resetForm(); }}>
+              <View className="absolute inset-0 bg-black/45" />
+            </TouchableWithoutFeedback>
 
-          <ScrollView className="flex-1 p-4" keyboardShouldPersistTaps="handled">
-            <View className="space-y-4">
+            <View className="flex-1 items-center justify-center p-4">
+              <View className="w-full max-w-3xl bg-[#F6F8FA] dark:bg-[#161B22] rounded-3xl border border-[#D0D7DE] dark:border-[#21262D] overflow-hidden">
+            <View className="flex-row justify-between items-center px-5 py-4 border-b border-[#D0D7DE] dark:border-[#21262D] bg-[#F6F8FA] dark:bg-[#0F141C]">
+              <Text className="text-lg font-semibold text-gray-900 dark:text-white">Record Payment</Text>
+              <TouchableOpacity onPress={() => { setShowForm(false); resetForm(); }}>
+                <View className="bg-gray-100 dark:bg-gray-800 w-9 h-9 rounded-full items-center justify-center">
+                  <Text className="text-gray-700 dark:text-gray-200 font-bold text-base">X</Text>
+                </View>
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView className="max-h-[78vh] p-5" keyboardShouldPersistTaps="handled" nestedScrollEnabled>
+              <View className="space-y-4">
 
               {/* Student Search */}
-              <View style={{ zIndex: 10 }}>
+              <View style={{ zIndex: showStudentDropdown ? 30 : 10, elevation: showStudentDropdown ? 8 : 1 }}>
                 <Text className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Student *
                 </Text>
@@ -617,22 +946,22 @@ export const PaymentManagementSection: React.FC<
               {/* Amount */}
               <View>
                 <Text className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Amount (KSh) *
+                  Amount *
                 </Text>
                 <TextInput
                   value={formData.amount}
                   onChangeText={(text) =>
-                    setFormData({ ...formData, amount: text })
+                    setFormData({ ...formData, amount: text.replace(/[^0-9.]/g, '') })
                   }
                   placeholder="0.00"
                   placeholderTextColor={isDark ? "#6B7280" : "#9CA3AF"}
                   keyboardType="numeric"
-                  className="border border-gray-300 dark:border-gray-700 rounded-lg px-3 py-3 text-base text-gray-900 dark:text-white bg-white dark:bg-[#1a1a1a]"
+                  className="border border-gray-300 dark:border-gray-700 rounded-lg px-3 py-3 text-base text-gray-900 dark:text-white bg-[#F6F8FA] dark:bg-[#0F141C]"
                 />
               </View>
 
               {/* Payment Method — custom picker */}
-              <View>
+              <View style={{ zIndex: 20, elevation: 6 }}>
                 <Text className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Payment Method
                 </Text>
@@ -757,9 +1086,35 @@ export const PaymentManagementSection: React.FC<
                   className="border border-gray-300 dark:border-gray-700 rounded-lg px-3 py-3 text-base text-gray-900 dark:text-white bg-[#F6F8FA] dark:bg-[#0F141C]"
                 />
               </View>
+              </View>
+            </ScrollView>
+
+            <View className="px-5 py-4 border-t border-[#D0D7DE] dark:border-[#21262D] flex-row" style={{ gap: 10 }}>
+              <TouchableOpacity
+                onPress={() => { setShowForm(false); resetForm(); }}
+                className="flex-1 py-3 rounded-xl items-center bg-gray-100 dark:bg-gray-800"
+                disabled={submittingPayment}
+              >
+                <Text className="text-gray-700 dark:text-gray-200 font-bold text-xs uppercase tracking-widest">Cancel</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={handleSubmit}
+                disabled={submittingPayment}
+                className="flex-1 py-3 rounded-xl items-center bg-[#10B981]"
+                accessibilityState={{ disabled: submittingPayment }}
+              >
+                {submittingPayment ? (
+                  <Spinner color="#FFFFFF" size="small" label="Saving payment" />
+                ) : (
+                  <Text className="text-white font-semibold text-xs uppercase tracking-widest">Save Payment</Text>
+                )}
+              </TouchableOpacity>
+              </View>
             </View>
-          </ScrollView>
-        </View>
+          </View>
+          </View>
+        </KeyboardAvoidingView>
       </Modal>
     </View>
   );

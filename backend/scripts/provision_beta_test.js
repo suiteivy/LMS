@@ -1,6 +1,7 @@
 const { createClient } = require('@supabase/supabase-js');
 const dotenv = require('dotenv');
 const path = require('path');
+const { assertStrongSeedPassword } = require('../utils/seedPasswordPolicy.js');
 
 // Load environment variables
 dotenv.config({ path: path.join(__dirname, '../.env') });
@@ -25,7 +26,7 @@ const BETA_ADMIN_EMAIL = "admin@beta-academy.test";
 const BETA_TEACHER_EMAIL = "teacher@beta-academy.test";
 const BETA_STUDENT1_EMAIL = "student1@beta-academy.test";
 const BETA_STUDENT2_EMAIL = "student2@beta-academy.test";
-const TEST_PASSWORD = "CloudoraBeta2026!";
+const TEST_PASSWORD = assertStrongSeedPassword(process.env.BETA_TEST_PASSWORD, 'BETA_TEST_PASSWORD');
 
 async function waitForRoleRecord(table, userId, maxRetries = 10) {
     for (let i = 0; i < maxRetries; i++) {
@@ -151,7 +152,7 @@ async function provision() {
     console.log('--- Provisioning Completed Successfully ---');
     console.log(`\nCREDENTIALS:`);
     console.log(`Admin Email: ${BETA_ADMIN_EMAIL}`);
-    console.log(`Password: ${TEST_PASSWORD}`);
+    console.log(`Password: loaded from BETA_TEST_PASSWORD`);
 
   } catch (error) {
     console.error('PROVISIONING FAILED:');

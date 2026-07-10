@@ -9,6 +9,7 @@ import { ChangePasswordModal } from "./shared/ChangePasswordModal";
 import { SettingsService, UserPreferences } from "@/services/SettingsService";
 import { router } from "expo-router";
 import { ThemeSegmentedControl } from "./settings/ThemeSegmentedControl";
+import { FormFieldSkeleton, TableRowSkeleton } from "@/components/ui/skeletons";
 
 interface SettingRowProps {
     icon: any;
@@ -37,7 +38,7 @@ export default function MasterAdminSettings() {
 
     // Enrollment State
     const [enrollModalVisible, setEnrollModalVisible] = useState(false);
-    const [enrollData, setEnrollData] = useState({ full_name: "", email: "", password: "" });
+    const [enrollData, setEnrollData] = useState({ first_name: "", last_name: "", email: "", password: "" });
     const [enrollLoading, setEnrollLoading] = useState(false);
 
     // Password Audit Logs
@@ -87,13 +88,13 @@ export default function MasterAdminSettings() {
     };
 
     const tokens = {
-        bg: isDark ? "#0F0B2E" : "#f8fafc",
-        surface: isDark ? "#13103A" : "#ffffff",
-        border: isDark ? "rgba(255,255,255,0.05)" : "#e2e8f0",
-        textPrimary: isDark ? "#ffffff" : "#0f172a",
-        textSecondary: isDark ? "#94a3b8" : "#64748b",
-        inputBg: isDark ? "rgba(255,255,255,0.05)" : "#f1f5f9",
-        inputBorder: isDark ? "rgba(255,255,255,0.1)" : "#e2e8f0",
+        bg: isDark ? "#0D1117" : "#F6F8FA",
+        surface: isDark ? "#161B22" : "#FFFFFF",
+        border: isDark ? "#30363D" : "#D0D7DE",
+        textPrimary: isDark ? "#E6EDF3" : "#111827",
+        textSecondary: isDark ? "#8B949E" : "#6B7280",
+        inputBg: isDark ? "#0D1117" : "#FFFFFF",
+        inputBorder: isDark ? "#30363D" : "#D0D7DE",
         primary: "#FF6900",
     };
 
@@ -108,7 +109,7 @@ export default function MasterAdminSettings() {
 
 
     const handleEnrollMasterAdmin = async () => {
-        if (!enrollData.full_name || !enrollData.email || !enrollData.password) {
+        if (!enrollData.first_name || !enrollData.email || !enrollData.password) {
             Toast.show({ type: 'error', text1: 'Validation Error', text2: 'Please fill in all fields.' });
             return;
         }
@@ -136,7 +137,7 @@ export default function MasterAdminSettings() {
             if (res.ok) {
                 Toast.show({ type: 'success', text1: 'Success', text2: 'Master Admin enrolled successfully.' });
                 setEnrollModalVisible(false);
-                setEnrollData({ full_name: "", email: "", password: "" });
+                setEnrollData({ first_name: "", last_name: "", email: "", password: "" });
             } else {
                 Toast.show({ type: 'error', text1: 'Error', text2: data.error || 'Failed to enroll master admin' });
             }
@@ -241,7 +242,9 @@ export default function MasterAdminSettings() {
 
                 <Text style={{ fontSize: 12, fontWeight: 'bold', color: tokens.textSecondary, textTransform: 'uppercase', letterSpacing: 1, marginLeft: 4, marginBottom: 8 }}>Notifications Configuration</Text>
                 {prefsLoading ? (
-                    <ActivityIndicator size="small" color={tokens.primary} style={{ marginBottom: 24 }} />
+                    <View style={{ marginBottom: 24 }}>
+                        <FormFieldSkeleton loading={prefsLoading} count={6} label="Loading notification preferences..." />
+                    </View>
                 ) : (
                     <View style={{ backgroundColor: tokens.surface, borderRadius: 16, borderWidth: 1, borderColor: tokens.border, marginBottom: 24, overflow: 'hidden' }}>
                         <SettingRow
@@ -306,13 +309,22 @@ export default function MasterAdminSettings() {
                             </TouchableOpacity>
                         </View>
 
-                        <Text style={{ color: tokens.textPrimary, fontWeight: '600', marginBottom: 8 }}>Full Name</Text>
+                        <Text style={{ color: tokens.textPrimary, fontWeight: '600', marginBottom: 8 }}>First Name</Text>
                         <TextInput
                             style={{ backgroundColor: tokens.inputBg, color: tokens.textPrimary, borderRadius: 12, padding: 14, marginBottom: 16, borderWidth: 1, borderColor: tokens.inputBorder }}
-                            placeholder="e.g. John Doe"
+                            placeholder="e.g. John"
                             placeholderTextColor={tokens.textSecondary}
-                            value={enrollData.full_name}
-                            onChangeText={(text) => setEnrollData({ ...enrollData, full_name: text })}
+                            value={enrollData.first_name}
+                            onChangeText={(text) => setEnrollData({ ...enrollData, first_name: text })}
+                        />
+
+                        <Text style={{ color: tokens.textPrimary, fontWeight: '600', marginBottom: 8 }}>Last Name (Optional)</Text>
+                        <TextInput
+                            style={{ backgroundColor: tokens.inputBg, color: tokens.textPrimary, borderRadius: 12, padding: 14, marginBottom: 16, borderWidth: 1, borderColor: tokens.inputBorder }}
+                            placeholder="e.g. Doe"
+                            placeholderTextColor={tokens.textSecondary}
+                            value={enrollData.last_name}
+                            onChangeText={(text) => setEnrollData({ ...enrollData, last_name: text })}
                         />
 
                         <Text style={{ color: tokens.textPrimary, fontWeight: '600', marginBottom: 8 }}>Email Address</Text>
@@ -367,8 +379,8 @@ export default function MasterAdminSettings() {
                         </TouchableOpacity>
 
                         {auditLoading ? (
-                            <View style={{ paddingVertical: 24 }}>
-                                <ActivityIndicator color={tokens.primary} />
+                            <View style={{ paddingVertical: 4 }}>
+                                <TableRowSkeleton loading={auditLoading} count={5} columns={3} label="Loading password audit logs..." />
                             </View>
                         ) : auditError ? (
                             <View style={{ paddingVertical: 16 }}>

@@ -17,7 +17,12 @@ const THEME_STORAGE_KEY = '@app_theme_mode';
 export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [theme, setThemeState] = useState<ThemeMode | null>(null);
   const deviceScheme = useColorScheme();
-  const { setColorScheme } = useNativeWindColorScheme();
+  const { colorScheme, setColorScheme } = useNativeWindColorScheme();
+
+  const resolveAppliedScheme = (mode: ThemeMode) => {
+    if (mode === 'dark' || mode === 'light') return mode;
+    return deviceScheme === 'dark' ? 'dark' : 'light';
+  };
 
   // Load persisted theme once on mount
   useEffect(() => {
@@ -26,19 +31,30 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         const resolved: ThemeMode =
           saved === 'light' || saved === 'dark' || saved === 'system'
             ? saved
-            : 'light';
+            : 'system';
         setThemeState(resolved);
-        setColorScheme(resolved === 'system' ? 'system' : resolved);
+        setColorScheme(resolveAppliedScheme(resolved));
       })
       .catch(() => {
-        setThemeState('light');
-        setColorScheme('light');
+        setThemeState('system');
+        setColorScheme(resolveAppliedScheme('system'));
       });
-  }, []);
+  }, [setColorScheme, deviceScheme]);
+
+  useEffect(() => {
+    if (theme !== null) return;
+    if (colorScheme !== 'light' && colorScheme !== 'dark') return;
+    setThemeState(colorScheme);
+  }, [theme, colorScheme]);
+
+  useEffect(() => {
+    if (theme !== 'system') return;
+    setColorScheme(resolveAppliedScheme('system'));
+  }, [theme, deviceScheme, setColorScheme]);
 
   const setTheme = async (newTheme: ThemeMode) => {
     setThemeState(newTheme);
-    setColorScheme(newTheme === 'system' ? 'system' : newTheme);
+    setColorScheme(resolveAppliedScheme(newTheme));
     try {
       await AsyncStorage.setItem(THEME_STORAGE_KEY, newTheme);
     } catch (e) {

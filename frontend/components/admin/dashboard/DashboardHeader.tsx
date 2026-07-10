@@ -3,7 +3,7 @@ import React from 'react';
 import { ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import Feather from 'react-native-vector-icons/Feather';
 
-type SectionType = 'overview' | 'payments' | 'payouts' | 'fees';
+type SectionType = 'overview' | 'payments' | 'fees';
 
 interface DashboardHeaderProps {
     onRefresh?: () => void;
@@ -22,7 +22,6 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({
     const sections = [
         { id: 'overview', label: 'Dashboard', icon: 'ðŸ“Š' },
         { id: 'payments', label: 'Payments', icon: 'ðŸ’°' },
-        { id: 'payouts', label: 'Payouts', icon: 'ðŸ’³' },
         { id: 'fees', label: 'Fee Structure', icon: 'âš™ï¸' },
     ] as const;
 

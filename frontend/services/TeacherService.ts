@@ -45,16 +45,6 @@ export const TeacherAPI = {
     }
   },
 
-  getEarnings: async (): Promise<any> => {
-    try {
-      const response = await api.get("/teacher/earnings");
-      return response.data;
-    } catch (error) {
-      console.error("Get earnings error", error);
-      throw error;
-    }
-  },
-
   fetchTeacherData: async (
     teacherId: string,
     schoolId: string,

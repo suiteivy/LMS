@@ -1,37 +1,22 @@
-import { CustomPicker } from "@/components/form/CustomPicker";
-import { FormInput } from "@/components/form/FormInput";
-import { FormSection } from "@/components/form/FormSection";
-import {
-    IconInput,
-    ImageUpload,
-    LearningOutcomes,
-    SettingsToggle,
-    TagInput,
-} from "@/components/form/IconInput";
 import { useTheme } from "@/contexts/ThemeContext";
-import { CATEGORIES, LEVELS } from "@/hooks/FormOption";
 import { useSubjectForm } from "@/hooks/useSubjectForm";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import React, { useEffect, useRef } from "react";
+import React, { useEffect } from "react";
 import {
-    Animated,
-    Dimensions,
     KeyboardAvoidingView,
+    Modal,
     Platform,
     ScrollView,
     Text,
+    TextInput,
     TouchableOpacity,
-    TouchableWithoutFeedback,
     View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { supabase } from "@/libs/supabase";
 import { useAuth } from "@/contexts/AuthContext";
 import { formatClassLabel } from "@/utils/classLabel";
-
-const { height: SCREEN_HEIGHT } = Dimensions.get('window');
-const MODAL_HEIGHT = SCREEN_HEIGHT * 0.92;
 
 const CreateSubject = () => {
     const router = useRouter();
@@ -41,13 +26,7 @@ const CreateSubject = () => {
         formData,
         isSubmitting,
         handleInputChange,
-        addTag,
-        removeTag,
-        addLearningOutcome,
-        updateLearningOutcome,
-        removeLearningOutcome,
         handleSubmit,
-        saveDraft,
     } = useSubjectForm();
     const { profile } = useAuth();
     const [classes, setClasses] = React.useState<any[]>([]);
@@ -56,7 +35,7 @@ const CreateSubject = () => {
     useEffect(() => {
         const fetchClasses = async () => {
             const { data } = await (supabase.from('classes') as any)
-                .select('id, name, grade_level, form_level, level_label, stream')
+                .select('id, name, grade_level, form_level, stream')
                 .eq('institution_id', profile?.institution_id || '')
                 .order('grade_level', { ascending: true })
                 .order('form_level', { ascending: true })
@@ -103,44 +82,9 @@ const CreateSubject = () => {
         handleInputChange("class_id", next[0] || "");
     };
 
-    // ── Animation values ──────────────────────────────────────────────────────
-    const translateY = useRef(new Animated.Value(MODAL_HEIGHT)).current;
-    const backdropOpacity = useRef(new Animated.Value(0)).current;
-
-    useEffect(() => {
-        // Slide up + fade in backdrop simultaneously
-        Animated.parallel([
-            Animated.spring(translateY, {
-                toValue: 0,
-                useNativeDriver: true,
-                damping: 20,
-                stiffness: 120,
-                mass: 0.8,
-            }),
-            Animated.timing(backdropOpacity, {
-                toValue: 1,
-                duration: 300,
-                useNativeDriver: true,
-            }),
-        ]).start();
-    }, []);
-
     const handleClose = () => {
-        Animated.parallel([
-            Animated.timing(translateY, {
-                toValue: MODAL_HEIGHT,
-                duration: 280,
-                useNativeDriver: true,
-            }),
-            Animated.timing(backdropOpacity, {
-                toValue: 0,
-                duration: 250,
-                useNativeDriver: true,
-            }),
-        ]).start(() => router.back());
+        router.back();
     };
-
-    const categoryOptions = CATEGORIES.map((cat) => ({ value: cat, label: cat }));
 
     // ── Theme tokens ──────────────────────────────────────────────────────────
     const surface = isDark ? '#161B22' : '#F6F8FA';
@@ -151,36 +95,29 @@ const CreateSubject = () => {
     const inputBg = isDark ? '#161B22' : '#FFFFFF';
 
     return (
-        <View style={{ flex: 1 }}>
-            {/* Backdrop */}
-            <TouchableWithoutFeedback onPress={handleClose}>
-                <Animated.View
+        <View style={{ flex: 1, backgroundColor: bg }}>
+            <Modal visible transparent animationType="fade" onRequestClose={handleClose}>
+                <View
                     style={{
-                        position: 'absolute',
-                        top: 0, left: 0, right: 0, bottom: 0,
-                        backgroundColor: 'rgba(0,0,0,0.55)',
-                        opacity: backdropOpacity,
+                        flex: 1,
+                        backgroundColor: isDark ? 'rgba(0,0,0,0.7)' : 'rgba(15,11,46,0.35)',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        padding: 16,
                     }}
-                />
-            </TouchableWithoutFeedback>
-
-            {/* Modal Sheet */}
-            <Animated.View
-                style={{
-                    position: 'absolute',
-                    bottom: 0, left: 0, right: 0,
-                    height: MODAL_HEIGHT,
-                    backgroundColor: bg,
-                    borderTopLeftRadius: 28,
-                    borderTopRightRadius: 28,
-                    overflow: 'hidden',
-                    transform: [{ translateY }],
-                }}
-            >
-                {/* Drag handle */}
-                <View style={{ alignItems: 'center', paddingTop: 12, paddingBottom: 4 }}>
-                    <View style={{ width: 40, height: 4, backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : '#e5e7eb', borderRadius: 2 }} />
-                </View>
+                >
+                    <View
+                        style={{
+                            width: '100%',
+                            maxWidth: 860,
+                            maxHeight: '92%',
+                            backgroundColor: bg,
+                            borderRadius: 20,
+                            overflow: 'hidden',
+                            borderWidth: 1,
+                            borderColor: border,
+                        }}
+                    >
 
                 {/* Modal Header */}
                 <View style={{
@@ -210,37 +147,42 @@ const CreateSubject = () => {
                     </TouchableOpacity>
                 </View>
 
-                {/* Scrollable Form */}
-                <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : "height"}>
-                    <ScrollView
-                        style={{ flex: 1 }}
-                        showsVerticalScrollIndicator={false}
-                        contentContainerStyle={{ paddingHorizontal: 24, paddingTop: 24, paddingBottom: insets.bottom + 120 }}
-                        keyboardShouldPersistTaps="handled"
-                    >
+                        {/* Scrollable Form */}
+                        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : "height"}>
+                            <ScrollView
+                                style={{ flex: 1 }}
+                                showsVerticalScrollIndicator={false}
+                                contentContainerStyle={{ paddingHorizontal: 24, paddingTop: 24, paddingBottom: insets.bottom + 120 }}
+                                keyboardShouldPersistTaps="handled"
+                            >
                         {/* Basic Information */}
-                        <FormSection title="Basic Information">
-                            <FormInput
-                                label="Subject Title"
-                                required
-                                value={formData.title}
-                                onChangeText={(text) => handleInputChange("title", text)}
-                                placeholder="Enter subject title"
-                            />
-                            <CustomPicker
-                                label="Category"
-                                required
-                                value={formData.category}
-                                options={categoryOptions}
-                                onSelect={(value) => handleInputChange("category", value)}
-                                placeholder="Select category"
-                            />
-                            <CustomPicker
-                                label="Level"
-                                value={formData.level}
-                                options={LEVELS}
-                                onSelect={(value) => handleInputChange("level", value)}
-                            />
+                        <View style={{ backgroundColor: surface, borderRadius: 14, padding: 16, borderWidth: 1, borderColor: border, marginBottom: 16 }}>
+                            <Text style={{ fontSize: 18, fontWeight: '700', marginBottom: 16, color: textPrimary }}>
+                                Basic Information
+                            </Text>
+
+                            <View style={{ marginBottom: 16 }}>
+                                <Text style={{ fontSize: 13, fontWeight: '500', color: textSecondary, marginBottom: 6 }}>
+                                    Subject Title *
+                                </Text>
+                                <TextInput
+                                    value={formData.title}
+                                    onChangeText={(text) => handleInputChange("title", text)}
+                                    placeholder="Enter subject title"
+                                    placeholderTextColor={textSecondary}
+                                    style={{
+                                        backgroundColor: inputBg,
+                                        color: textPrimary,
+                                        borderRadius: 12,
+                                        paddingHorizontal: 12,
+                                        paddingVertical: 12,
+                                        borderWidth: 1,
+                                        borderColor: border,
+                                        fontSize: 15,
+                                    }}
+                                />
+                            </View>
+
                             <View style={{ marginBottom: 16 }}>
                                 <Text style={{ fontSize: 13, fontWeight: '500', color: textSecondary, marginBottom: 6 }}>Assigned Classes</Text>
                                 <View style={{ backgroundColor: inputBg, borderRadius: 12, padding: 12, borderWidth: 1, borderColor: border }}>
@@ -309,62 +251,48 @@ const CreateSubject = () => {
                                 </View>
                             </View>
 
-                            <FormInput label="Short Description" value={formData.shortDescription} onChangeText={(text) => handleInputChange("shortDescription", text)} placeholder="Brief description for Subject preview" maxLength={150} />
-                            <FormInput label="Full Description" required value={formData.description} onChangeText={(text) => handleInputChange("description", text)} placeholder="Detailed Subject description" multiline numberOfLines={6} textAlignVertical="top" style={{ minHeight: 120 }} />
-                        </FormSection>
-
-                        {/* Subject Details */}
-                        <FormSection title="Subject Details">
-                            <View style={{ marginBottom: 16 }}>
-                                <Text style={{ fontSize: 13, fontWeight: '500', color: textSecondary, marginBottom: 6 }}>Duration (hours)</Text>
-                                <IconInput iconName="time" value={formData.duration} onChangeText={(text) => handleInputChange("duration", text)} placeholder="0" keyboardType="numeric" />
+                            <View>
+                                <Text style={{ fontSize: 13, fontWeight: '500', color: textSecondary, marginBottom: 6 }}>
+                                    Full Description *
+                                </Text>
+                                <TextInput
+                                    value={formData.description}
+                                    onChangeText={(text) => handleInputChange("description", text)}
+                                    placeholder="Detailed Subject description"
+                                    placeholderTextColor={textSecondary}
+                                    multiline
+                                    numberOfLines={6}
+                                    textAlignVertical="top"
+                                    style={{
+                                        minHeight: 120,
+                                        backgroundColor: inputBg,
+                                        color: textPrimary,
+                                        borderRadius: 12,
+                                        paddingHorizontal: 12,
+                                        paddingVertical: 12,
+                                        borderWidth: 1,
+                                        borderColor: border,
+                                        fontSize: 15,
+                                    }}
+                                />
                             </View>
-                            <View style={{ marginBottom: 16 }}>
-                                <Text style={{ fontSize: 13, fontWeight: '500', color: textSecondary, marginBottom: 6 }}>Max Students</Text>
-                                <IconInput iconName="people" value={formData.maxStudents} onChangeText={(text) => handleInputChange("maxStudents", text)} placeholder="150" keyboardType="numeric" />
-                            </View>
-                            <TagInput tags={formData.tags} onAddTag={addTag} onRemoveTag={removeTag} />
-                        </FormSection>
+                        </View>
+                            </ScrollView>
+                        </KeyboardAvoidingView>
 
-                        {/* Learning Outcomes */}
-                        <FormSection title="Learning Outcomes">
-                            <LearningOutcomes outcomes={formData.learningOutcomes} onUpdateOutcome={updateLearningOutcome} onAddOutcome={addLearningOutcome} onRemoveOutcome={removeLearningOutcome} />
-                        </FormSection>
-
-                        {/* Subject Image */}
-                        <FormSection title="Subject Image">
-                            <ImageUpload imageUri={formData.SubjectImage} onImageSelect={(uri) => handleInputChange("SubjectImage", uri)} />
-                        </FormSection>
-
-                        {/* Settings */}
-                        <FormSection title="Subject Settings">
-                            <SettingsToggle icon="globe" title="Public Subject" description="Anyone can view and enroll" value={formData.isPublic} onValueChange={(value) => handleInputChange("isPublic", value)} />
-                            <SettingsToggle icon="chatbubbles" title="Allow Discussions" description="Students can discuss Subject content" value={formData.allowDiscussions} onValueChange={(value) => handleInputChange("allowDiscussions", value)} />
-                            <SettingsToggle icon="ribbon" title="Certificate" description="Issue certificate upon completion" value={formData.certificateEnabled} onValueChange={(value) => handleInputChange("certificateEnabled", value)} />
-                        </FormSection>
-                    </ScrollView>
-                </KeyboardAvoidingView>
-
-                {/* Sticky Footer Buttons */}
-                <View style={{
-                    position: 'absolute',
-                    bottom: 0, left: 0, right: 0,
-                    backgroundColor: surface,
-                    borderTopWidth: 1,
-                    borderTopColor: border,
-                    paddingHorizontal: 24,
-                    paddingTop: 16,
-                    paddingBottom: insets.bottom + 16,
-                    flexDirection: 'row',
-                    gap: 12,
-                }}>
-                    <TouchableOpacity
-                        style={{ flex: 1, paddingVertical: 14, borderRadius: 16, alignItems: 'center', backgroundColor: isDark ? '#161B22' : '#f3f4f6', borderWidth: 1, borderColor: border }}
-                        onPress={saveDraft}
-                    >
-                        <Text style={{ color: textSecondary, fontWeight: '600' }}>Save Draft</Text>
-                    </TouchableOpacity>
-
+                        {/* Sticky Footer Buttons */}
+                        <View style={{
+                            position: 'absolute',
+                            bottom: 0, left: 0, right: 0,
+                            backgroundColor: surface,
+                            borderTopWidth: 1,
+                            borderTopColor: border,
+                            paddingHorizontal: 24,
+                            paddingTop: 16,
+                            paddingBottom: insets.bottom + 16,
+                            flexDirection: 'row',
+                            gap: 12,
+                        }}>
                     <TouchableOpacity
                         onPress={handleSubmit}
                         disabled={isSubmitting}
@@ -374,8 +302,10 @@ const CreateSubject = () => {
                             {isSubmitting ? "Creating..." : "Create Subject"}
                         </Text>
                     </TouchableOpacity>
+                        </View>
+                    </View>
                 </View>
-            </Animated.View>
+            </Modal>
         </View>
     );
 };

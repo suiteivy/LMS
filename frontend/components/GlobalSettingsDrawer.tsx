@@ -2,6 +2,7 @@ import { UnifiedHeader } from "@/components/common/UnifiedHeader";
 import { useAuth } from '@/contexts/AuthContext';
 import { UserRole } from '@/types/types';
 import { ThemeMode, useTheme } from '@/contexts/ThemeContext';
+import { useNotifications } from '@/contexts/NotificationContext';
 import { ChevronRight, HelpCircle, LogOut, Settings, ShieldCheck, UserCircle, Laptop, AlertTriangle } from 'lucide-react-native';
 import React, { useState } from 'react';
 import { Alert, Image, Platform, ScrollView, Text, TouchableOpacity, View } from 'react-native';
@@ -23,6 +24,106 @@ import ActiveSessions from '@/components/ActiveSessions';
 import ReadOnlyProfile from '@/components/ReadOnlyProfile';
 import { router } from 'expo-router';
 import { resolveAvatarUri } from '@/utils/avatar';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+
+function MasterAdminGlobalSettingsHeader({
+  onBack,
+}: {
+  onBack?: () => void;
+}) {
+  const { isDark } = useTheme();
+  const { profile } = useAuth();
+  const { unreadCount, setShowNotifications } = useNotifications();
+  const accountLabel = `${profile?.first_name || ''} ${profile?.last_name || ''}`.trim() || 'Master Admin';
+
+  return (
+    <View
+      style={{
+        backgroundColor: isDark ? '#161B22' : '#F6F8FA',
+        borderBottomWidth: 1,
+        borderBottomColor: isDark ? '#21262D' : '#D0D7DE',
+        paddingHorizontal: 24,
+        paddingTop: 10,
+        paddingBottom: 16,
+      }}
+    >
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+          {!!onBack && (
+            <TouchableOpacity
+              onPress={onBack}
+              style={{ marginRight: 10, padding: 6, borderRadius: 10, backgroundColor: isDark ? '#111827' : '#EAEEF2' }}
+            >
+              <MaterialCommunityIcons name="chevron-left" size={18} color={isDark ? '#e5e7eb' : '#374151'} />
+            </TouchableOpacity>
+          )}
+
+          <View style={{ marginRight: 10 }}>
+            <MaterialCommunityIcons name="shield-crown" size={22} color="#FF6900" />
+          </View>
+
+          <View>
+            <Text style={{ fontSize: 22, fontWeight: '900', color: isDark ? '#f1f1f1' : '#111827' }}>
+              Platform Admin
+            </Text>
+            <Text
+              style={{
+                fontSize: 11,
+                fontWeight: '700',
+                color: isDark ? '#9ca3af' : '#6b7280',
+                textTransform: 'uppercase',
+                letterSpacing: 1.1,
+                marginTop: 2,
+              }}
+            >
+              {accountLabel}
+            </Text>
+          </View>
+        </View>
+
+        <TouchableOpacity
+          onPress={() => setShowNotifications(true)}
+          style={{
+            width: 36,
+            height: 36,
+            borderRadius: 10,
+            borderWidth: 1,
+            borderColor: isDark ? '#21262D' : '#D0D7DE',
+            backgroundColor: isDark ? '#111827' : '#EAEEF2',
+            alignItems: 'center',
+            justifyContent: 'center',
+            position: 'relative',
+            marginLeft: 10,
+          }}
+          accessibilityRole="button"
+          accessibilityLabel="Open notifications"
+        >
+          <MaterialCommunityIcons name="bell-outline" size={18} color={isDark ? '#e5e7eb' : '#374151'} />
+          {unreadCount > 0 && (
+            <View
+              style={{
+                position: 'absolute',
+                top: -3,
+                right: -3,
+                minWidth: 16,
+                height: 16,
+                borderRadius: 8,
+                backgroundColor: '#ef4444',
+                alignItems: 'center',
+                justifyContent: 'center',
+                paddingHorizontal: 3,
+              }}
+            >
+              <Text style={{ color: '#fff', fontSize: 9, fontWeight: '700' }}>
+                {unreadCount > 99 ? '99+' : unreadCount}
+              </Text>
+            </View>
+          )}
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+}
 
 type MenuItemProps = {
   icon: React.ReactNode;
@@ -80,12 +181,16 @@ function SettingsMenu({ userRole, onNavigate }: { userRole: string; onNavigate: 
 
   return (
     <View style={{ flex: 1 }}>
-      <UnifiedHeader
-        title="Account"
-        subtitle="Settings"
-        role={roleLabel as "Student" | "Teacher" | "Admin" | "Parent/Guardian" | "Master Admin"}
-        showNotification={false}
-      />
+      {isPlatformAdminRole ? (
+        <MasterAdminGlobalSettingsHeader />
+      ) : (
+        <UnifiedHeader
+          title="Account"
+          subtitle="Settings"
+          role={roleLabel as "Student" | "Teacher" | "Admin" | "Parent/Guardian" | "Master Admin"}
+          showNotification={false}
+        />
+      )}
 
       {/* Profile summary */}
       <View style={{ paddingHorizontal: 24, paddingVertical: 24, borderBottomWidth: 1, borderBottomColor: border, backgroundColor: surface }}>
@@ -108,7 +213,7 @@ function SettingsMenu({ userRole, onNavigate }: { userRole: string; onNavigate: 
                 ID: {displayId || '...'}
               </Text>
             </View>
-            <SubscriptionStatusBadge />
+            {!isPlatformAdminRole && <SubscriptionStatusBadge />}
           </View>
         </View>
       </View>
@@ -234,6 +339,7 @@ export function GlobalSettingsContent({
   };
 
   const roleLabel = (userRole === 'master_admin' || userRole === 'platform_admin') ? 'Master Admin' : userRole === 'parent' ? 'Parent/Guardian' : (userRole.charAt(0).toUpperCase() + userRole.slice(1)) as "Student" | "Teacher" | "Admin" | "Parent/Guardian" | "Master Admin";
+  const isPlatformAdminRole = userRole === 'master_admin' || userRole === 'platform_admin';
 
   return (
     <View style={{ flex: 1, backgroundColor: isDark ? '#161B22' : '#ffffff' }}>
@@ -252,13 +358,17 @@ export function GlobalSettingsContent({
         </View>
       )}
       {activeScreen !== 'menu' && (
-        <UnifiedHeader
-          title={roleLabel}
-          subtitle={getTitle()}
-          role={roleLabel as any}
-          showNotification={false}
-          onBack={() => setActiveScreen('menu')}
-        />
+        isPlatformAdminRole ? (
+          <MasterAdminGlobalSettingsHeader onBack={() => setActiveScreen('menu')} />
+        ) : (
+          <UnifiedHeader
+            title={roleLabel}
+            subtitle={getTitle()}
+            role={roleLabel as any}
+            showNotification={false}
+            onBack={() => setActiveScreen('menu')}
+          />
+        )
       )}
       {renderContent()}
     </View>

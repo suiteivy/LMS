@@ -1,12 +1,13 @@
 import { UnifiedHeader } from "@/components/common/UnifiedHeader";
 import { HelpTooltip } from "@/components/settings/HelpTooltip";
+import { ListItemSkeleton } from "@/components/ui/skeletons";
 import { useAuth } from '@/contexts/AuthContext';
 import { useSubscriptionTier } from "@/hooks/useSubscriptionTier";
 import { supabase } from '@/libs/supabase';
 import { router } from 'expo-router';
 import { AlertCircle, Calendar, CheckCircle, Clock, XCircle } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, ScrollView, Text, View } from 'react-native';
+import { ScrollView, Text, View } from 'react-native';
 
 export default function AttendancePage() {
   const { studentId, isDemo } = useAuth();
@@ -139,7 +140,7 @@ export default function AttendancePage() {
                 </View>
 
                 {loading ? (
-                    <ActivityIndicator size="large" color="#FF6900" className="mt-8" />
+                    <ListItemSkeleton loading={loading} count={4} label="Loading attendance records..." />
                 ) : (
                     <ScrollView className="flex-1" showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 200 }}>
                         {attendance.length === 0 ? (

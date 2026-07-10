@@ -1,1784 +1,2010 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, FlatList, TouchableOpacity, ActivityIndicator, Platform, Alert, Modal, TextInput, ScrollView } from 'react-native';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  ActivityIndicator,
+  FlatList,
+  Modal,
+  Platform,
+  SafeAreaView,
+  ScrollView,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 import { Picker } from '@react-native-picker/picker';
-import { useTheme } from '@/contexts/ThemeContext';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { supabase } from '@/libs/supabase';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
-import { SettingsService } from '@/services/SettingsService';
+import { ListItemSkeleton } from '@/components/ui/skeletons';
 
-export default function MasterInstitutions() {
-    const { isDark } = useTheme();
-    const [institutions, setInstitutions] = useState<any[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [activeTab, setActiveTab] = useState<'institutions' | 'requests'>('institutions');
-    const [addonRequests, setAddonRequests] = useState<any[]>([]);
-    const [requestsLoading, setRequestsLoading] = useState(false);
+import { useTheme } from '@/contexts/ThemeContext';
+import { supabase } from '@/libs/supabase';
 
-    // Modals state
-    const [freeModalVisible, setFreeModalVisible] = useState(false);
-    const [selectedInstId, setSelectedInstId] = useState<string | null>(null);
-    const [analyticsModalVisible, setAnalyticsModalVisible] = useState(false);
-    const [analyticsData, setAnalyticsData] = useState<any>(null);
-    const [analyticsLoading, setAnalyticsLoading] = useState(false);
+const NativeDateTimePicker =
+  Platform.OS === 'web' ? null : require('@react-native-community/datetimepicker').default;
+const NativeDateTimePickerAndroid =
+  Platform.OS === 'android' ? require('@react-native-community/datetimepicker').DateTimePickerAndroid : null;
 
-    // Addons State
-    const [addonsModalVisible, setAddonsModalVisible] = useState(false);
-    const [addonsForm, setAddonsForm] = useState({
-        addon_library: false,
-        addon_messaging: false,
-        addon_diary: false,
-        addon_bursary: false,     // Bursary is its own add-on (separate from finance)
-        addon_finance: false,
-        addon_analytics: false,
-        custom_student_limit: null as number | null
+type Institution = {
+  id: string;
+  name: string;
+  location?: string | null;
+  phone?: string | null;
+  email?: string | null;
+  email_domain?: string | null;
+  principal_name?: string | null;
+  category_id?: string | null;
+  currency_id?: string | null;
+  category_ids?: string[];
+  categories?: Array<{ id?: string; name?: string | null; class_type?: string | null; class_types?: string[] | null }>;
+  category_name?: string | null;
+  subscription_plan?: string | null;
+  subscription_status?: string | null;
+  subscription_cycle?: string | null;
+  subscription_tracking_start_date?: string | null;
+  custom_student_limit?: number | null;
+  subscription_start_date?: string | null;
+  admin_first_name?: string | null;
+  admin_last_name?: string | null;
+  addon_library?: boolean;
+  addon_messaging?: boolean;
+  addon_diary?: boolean;
+  addon_bursary?: boolean;
+  users?: Array<{ count: number }>;
+};
+
+type CurrencyOption = {
+  id: string;
+  code: string;
+  name: string;
+  symbol: string;
+  is_default?: boolean;
+  is_active?: boolean;
+};
+
+type SchoolCategory = {
+  id: string;
+  name: string;
+  class_type: string;
+  class_types?: string[];
+};
+
+type AdminUser = {
+  id: string;
+  first_name?: string;
+  last_name?: string;
+  email?: string;
+  is_main?: boolean;
+};
+
+type EnrollmentStep = 0 | 1 | 2 | 3;
+
+const PLAN_OPTIONS = ['basic', 'pro', 'premium', 'beta'];
+const STATUS_OPTIONS = ['active', 'suspended', 'expired', 'cancelled'];
+
+const ADDON_ROWS: Array<{ key: keyof Institution; label: string }> = [
+  { key: 'addon_library', label: 'Digital Library' },
+  { key: 'addon_messaging', label: 'Messaging' },
+  { key: 'addon_diary', label: 'Virtual Diary' },
+  { key: 'addon_bursary', label: 'Bursary' },
+];
+
+const useThemeColors = (isDark: boolean) => ({
+  bg: isDark ? '#0D1117' : '#F6F8FA',
+  card: isDark ? '#161B22' : '#FFFFFF',
+  input: isDark ? '#0F141C' : '#F3F4F6',
+  border: isDark ? '#4B5563' : '#9CA3AF',
+  text: isDark ? '#F0F6FC' : '#1F2328',
+  sub: isDark ? '#8B949E' : '#57606A',
+  primary: '#FF6900',
+  danger: '#CF222E',
+  success: '#1A7F37',
+});
+
+export default function MasterInstitutionsPage() {
+  const { isDark } = useTheme();
+  const c = useThemeColors(isDark);
+
+  const [loading, setLoading] = useState(true);
+  const [institutions, setInstitutions] = useState<Institution[]>([]);
+  const [categories, setCategories] = useState<SchoolCategory[]>([]);
+  const [currencies, setCurrencies] = useState<CurrencyOption[]>([]);
+  const [activeInstitutionId, setActiveInstitutionId] = useState<string | null>(null);
+
+  const [confirmModal, setConfirmModal] = useState<{ open: boolean; title: string; body: string; onConfirm?: () => Promise<void> | void }>({
+    open: false,
+    title: '',
+    body: '',
+  });
+
+  const [categoryModalOpen, setCategoryModalOpen] = useState(false);
+  const [categorySaving, setCategorySaving] = useState(false);
+  const [categoryName, setCategoryName] = useState('');
+  const [categoryClassType, setCategoryClassType] = useState('Grade');
+  const [editCategoryModalOpen, setEditCategoryModalOpen] = useState(false);
+  const [editingCategoryId, setEditingCategoryId] = useState<string | null>(null);
+  const [editCategoryName, setEditCategoryName] = useState('');
+  const [editCategoryClassType, setEditCategoryClassType] = useState('Grade');
+  const [editCategorySaving, setEditCategorySaving] = useState(false);
+
+  const [enrollModalOpen, setEnrollModalOpen] = useState(false);
+  const [enrollSaving, setEnrollSaving] = useState(false);
+  const [enrollStep, setEnrollStep] = useState<EnrollmentStep>(0);
+  const [enrollResult, setEnrollResult] = useState<any>(null);
+  const [enrollForm, setEnrollForm] = useState({
+    institution_name: '',
+    location: '',
+    email_domain: '',
+    admin_first_name: '',
+    admin_last_name: '',
+    subscription_plan: 'basic',
+    subscription_start_date: new Date().toISOString().slice(0, 10),
+    custom_student_limit: '',
+    currency_id: '',
+    category_ids: [] as string[],
+  });
+  const [planStartDateModalOpen, setPlanStartDateModalOpen] = useState(false);
+  const [planStartDateDraft, setPlanStartDateDraft] = useState(new Date());
+
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [editSaving, setEditSaving] = useState(false);
+  const [editForm, setEditForm] = useState<Partial<Institution>>({});
+  const [editPlanStartDateModalOpen, setEditPlanStartDateModalOpen] = useState(false);
+  const [editPlanStartDateDraft, setEditPlanStartDateDraft] = useState(new Date());
+  const [categoryPickerModal, setCategoryPickerModal] = useState<{ open: boolean; target: 'enroll' | 'edit' | null }>({
+    open: false,
+    target: null,
+  });
+  const [editOptionModal, setEditOptionModal] = useState<{ open: boolean; type: 'plan' | null }>({
+    open: false,
+    type: null,
+  });
+  const [planPickerModalOpen, setPlanPickerModalOpen] = useState(false);
+
+  const [adminsModalOpen, setAdminsModalOpen] = useState(false);
+  const [adminsLoading, setAdminsLoading] = useState(false);
+  const [admins, setAdmins] = useState<AdminUser[]>([]);
+  const [adminResetLoadingId, setAdminResetLoadingId] = useState<string | null>(null);
+  const [adminResetResult, setAdminResetResult] = useState<any>(null);
+  const [adminResetResultOpen, setAdminResetResultOpen] = useState(false);
+
+  const [addonsModalOpen, setAddonsModalOpen] = useState(false);
+  const [addonsSaving, setAddonsSaving] = useState(false);
+  const [addonsForm, setAddonsForm] = useState<Record<string, boolean>>({});
+
+  const [statsModalOpen, setStatsModalOpen] = useState(false);
+  const [statsLoading, setStatsLoading] = useState(false);
+  const [statsData, setStatsData] = useState<{ students: number; teachers: number; classes: number } | null>(null);
+
+  const [paymentModalOpen, setPaymentModalOpen] = useState(false);
+  const [paymentSaving, setPaymentSaving] = useState(false);
+  const [paymentForm, setPaymentForm] = useState({
+    amount: '',
+    method: 'bank_transfer',
+    reference_id: '',
+    date: new Date().toISOString().slice(0, 10),
+    notes: '',
+  });
+
+  const activeInstitution = useMemo(
+    () => institutions.find((i) => i.id === activeInstitutionId) || null,
+    [institutions, activeInstitutionId]
+  );
+
+  const backendUrl = useMemo(() => {
+    let url = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:4001';
+    if (Platform.OS === 'android') url = url.replace('localhost', '10.0.2.2');
+    return url;
+  }, []);
+
+  const authedFetch = useCallback(async (path: string, init?: RequestInit) => {
+    const { data } = await supabase.auth.getSession();
+    const token = data.session?.access_token;
+    if (!token) {
+      throw new Error('Session expired. Please sign in again.');
+    }
+    const headers: Record<string, string> = {
+      Accept: 'application/json',
+      ...(init?.headers as Record<string, string>),
+    };
+    headers.Authorization = `Bearer ${token}`;
+    if (init?.body && !headers['Content-Type']) headers['Content-Type'] = 'application/json';
+
+    const response = await fetch(`${backendUrl}${path}`, { ...init, headers });
+    let payload: any = null;
+    try {
+      payload = await response.json();
+    } catch {
+      payload = null;
+    }
+    if (!response.ok) {
+      throw new Error(payload?.error || `Request failed: ${response.status}`);
+    }
+    return payload;
+  }, [backendUrl]);
+
+  const loadInstitutions = useCallback(async () => {
+    try {
+      setLoading(true);
+      const data = await authedFetch('/api/master-admin/institutions');
+      setInstitutions(data?.institutions || []);
+    } catch (e: any) {
+      Toast.show({ type: 'error', text1: 'Institutions', text2: e.message || 'Failed to fetch institutions', position: 'top' });
+    } finally {
+      setLoading(false);
+    }
+  }, [authedFetch]);
+
+  const loadCategories = useCallback(async () => {
+    try {
+      const data = await authedFetch('/api/master-admin/school-categories');
+      setCategories(Array.isArray(data) ? data : data?.categories || []);
+    } catch (e: any) {
+      Toast.show({ type: 'error', text1: 'Categories', text2: e.message || 'Failed to load categories', position: 'top' });
+    }
+  }, [authedFetch]);
+
+  const loadCurrencies = useCallback(async () => {
+    try {
+      const data = await authedFetch('/api/master-admin/currencies');
+      const rows = (data?.currencies || []).filter((item: CurrencyOption) => item.is_active !== false);
+      setCurrencies(rows);
+    } catch (e: any) {
+      Toast.show({ type: 'error', text1: 'Currencies', text2: e.message || 'Failed to load currencies', position: 'top' });
+    }
+  }, [authedFetch]);
+
+  useEffect(() => {
+    loadInstitutions();
+    loadCategories();
+    loadCurrencies();
+  }, [loadCategories, loadInstitutions, loadCurrencies]);
+
+  useEffect(() => {
+    if (!enrollForm.currency_id && currencies.length > 0) {
+      const defaultCurrency = currencies.find((currency) => currency.is_default) || currencies[0];
+      setEnrollForm((prev) => ({ ...prev, currency_id: defaultCurrency?.id || '' }));
+    }
+  }, [currencies, enrollForm.currency_id]);
+
+  const askConfirm = (title: string, body: string, onConfirm: () => Promise<void> | void) => {
+    setConfirmModal({ open: true, title, body, onConfirm });
+  };
+
+  const saveCategory = async () => {
+    if (!categoryName.trim() || !categoryClassType.trim()) {
+      Toast.show({ type: 'error', text1: 'Category', text2: 'Name and class type are required', position: 'top' });
+      return;
+    }
+    try {
+      setCategorySaving(true);
+      await authedFetch('/api/master-admin/school-categories', {
+        method: 'POST',
+        body: JSON.stringify({ name: categoryName.trim(), class_type: categoryClassType.trim() }),
+      });
+      Toast.show({ type: 'success', text1: 'Category', text2: 'Category added', position: 'top' });
+      setCategoryName('');
+      setCategoryClassType('Grade');
+      await loadCategories();
+    } catch (e: any) {
+      Toast.show({ type: 'error', text1: 'Category', text2: e.message || 'Unable to save category', position: 'top' });
+    } finally {
+      setCategorySaving(false);
+    }
+  };
+
+  const startEditCategory = (cat: SchoolCategory) => {
+    setEditingCategoryId(cat.id);
+    setEditCategoryName(cat.name);
+    setEditCategoryClassType(cat.class_type);
+    setEditCategoryModalOpen(true);
+  };
+
+  const saveEditedCategory = async () => {
+    if (!editingCategoryId || !editCategoryName.trim() || !editCategoryClassType.trim()) {
+      Toast.show({ type: 'error', text1: 'Category', text2: 'Name and class type are required', position: 'top' });
+      return;
+    }
+    try {
+      setEditCategorySaving(true);
+      await authedFetch('/api/master-admin/school-categories', {
+        method: 'POST',
+        body: JSON.stringify({ id: editingCategoryId, name: editCategoryName.trim(), class_type: editCategoryClassType.trim() }),
+      });
+      Toast.show({ type: 'success', text1: 'Category', text2: 'Category updated', position: 'top' });
+      setEditCategoryModalOpen(false);
+      setEditingCategoryId(null);
+      setEditCategoryName('');
+      setEditCategoryClassType('Grade');
+      await loadCategories();
+    } catch (e: any) {
+      Toast.show({ type: 'error', text1: 'Category', text2: e.message || 'Unable to save category', position: 'top' });
+    } finally {
+      setEditCategorySaving(false);
+    }
+  };
+
+  const deleteCategory = (cat: SchoolCategory) => {
+    askConfirm('Delete Category', `Delete ${cat.name}?`, async () => {
+      await authedFetch(`/api/master-admin/school-categories/${cat.id}`, { method: 'DELETE' });
+      Toast.show({ type: 'success', text1: 'Category', text2: 'Category deleted', position: 'top' });
+      await loadCategories();
     });
-    const [addonsLoading, setAddonsLoading] = useState(false);
+  };
 
-    // Enrollment State
-    const [enrollModalVisible, setEnrollModalVisible] = useState(false);
-    const [enrollForm, setEnrollForm] = useState({
-        institution_name: '',
-        location: '',
-        admin_full_name: '',
-        admin_email: '',
-        admin_password: '',
-        subscription_plan: '',
-        subscription_status: '',
-        trial_end_date: '',
-        custom_student_limit: '',
-        email_domain: ''
+  const enrollInstitution = async () => {
+    const first = (enrollForm.admin_first_name || '').trim();
+    const last = (enrollForm.admin_last_name || '').trim();
+
+    if (!enrollForm.institution_name || !enrollForm.email_domain.trim() || enrollForm.category_ids.length === 0 || !first || !last || !enrollForm.currency_id) {
+      Toast.show({ type: 'error', text1: 'Enrollment', text2: 'Complete all required fields', position: 'top' });
+      return;
+    }
+    try {
+      setEnrollSaving(true);
+      const data = await authedFetch('/api/master-admin/institutions', {
+        method: 'POST',
+        body: JSON.stringify({
+          institution_name: enrollForm.institution_name,
+          location: enrollForm.location,
+          email_domain: enrollForm.email_domain.trim(),
+          admin_first_name: first,
+          admin_last_name: last,
+          currency_id: enrollForm.currency_id,
+          subscription_plan: enrollForm.subscription_plan,
+          subscription_start_date:
+            enrollForm.subscription_plan === 'beta' ? null : enrollForm.subscription_start_date || null,
+          category_ids: enrollForm.category_ids,
+          custom_student_limit:
+            enrollForm.subscription_plan === 'beta' && enrollForm.custom_student_limit
+              ? Number(enrollForm.custom_student_limit)
+              : null,
+        }),
+      });
+      setEnrollResult(data);
+      setEnrollStep(3);
+      Toast.show({ type: 'success', text1: 'Institution', text2: 'Institution enrolled', position: 'top' });
+      await loadInstitutions();
+    } catch (e: any) {
+      Toast.show({ type: 'error', text1: 'Institution', text2: e.message || 'Enrollment failed', position: 'top' });
+    } finally {
+      setEnrollSaving(false);
+    }
+  };
+
+  const resetEnrollmentState = () => {
+    setEnrollResult(null);
+    setEnrollStep(0);
+    setEnrollSaving(false);
+    setEnrollForm({
+      institution_name: '',
+      location: '',
+      email_domain: '',
+      admin_first_name: '',
+      admin_last_name: '',
+      subscription_plan: 'basic',
+      subscription_start_date: new Date().toISOString().slice(0, 10),
+      custom_student_limit: '',
+      currency_id: currencies.find((currency) => currency.is_default)?.id || currencies[0]?.id || '',
+      category_ids: [],
     });
-    const [enrollLoading, setEnrollLoading] = useState(false);
+    setPlanStartDateModalOpen(false);
+  };
 
-    // Free Form State
-    const [freeDays, setFreeDays] = useState('30');
-    const [freeStudentLimit, setFreeStudentLimit] = useState('');
-    const [isSubmitting, setIsSubmitting] = useState(false); // This is for the free modal submission
-    const [saving, setSaving] = useState(false);
+  const closeEnrollModal = () => {
+    setEnrollModalOpen(false);
+    resetEnrollmentState();
+  };
 
-    // Admin Management State
-    const [adminModalVisible, setAdminModalVisible] = useState(false);
-    const [selectedInstAdmins, setSelectedInstAdmins] = useState<any[]>([]);
-    const [adminLoading, setAdminLoading] = useState(false);
-    const [categories, setCategories] = useState<any[]>([]);
-    const [categoriesLoading, setCategoriesLoading] = useState(false);
-    const [isCategoryModalVisible, setIsCategoryModalVisible] = useState(false);
-    const [categoryForm, setCategoryForm] = useState({ name: '', level_label: 'Grade' });
-    const [isSavingCategory, setIsSavingCategory] = useState(false);
+  const canGoNextEnroll = () => {
+    if (enrollStep === 0) {
+      return !!enrollForm.institution_name.trim()
+        && !!enrollForm.email_domain.trim()
+        && enrollForm.category_ids.length > 0
+        && !!enrollForm.currency_id;
+    }
+    if (enrollStep === 1) {
+      if (!enrollForm.subscription_plan) return false;
+      if (enrollForm.subscription_plan === 'beta') {
+        return !!String(enrollForm.custom_student_limit || '').trim();
+      }
+      return !!enrollForm.subscription_start_date;
+    }
+    if (enrollStep === 2) return !!enrollForm.admin_first_name.trim() && !!enrollForm.admin_last_name.trim();
+    return false;
+  };
 
-    // Edit Institution State
-    const [editModalVisible, setEditModalVisible] = useState(false);
-    const [editForm, setEditForm] = useState<any>({});
-    const [isSavingEdit, setIsSavingEdit] = useState(false);
+  const nextEnrollStep = () => {
+    if (enrollStep < 2 && canGoNextEnroll()) {
+      setEnrollStep((s) => (s + 1) as EnrollmentStep);
+    } else if (enrollStep === 2) {
+      enrollInstitution();
+    }
+  };
 
-    // Payment Recording State
-    const [paymentModalVisible, setPaymentModalVisible] = useState(false);
-    const [paymentForm, setPaymentForm] = useState({
-        amount: '',
-        method: 'manual',
-        reference_id: '',
-        notes: '',
-        date: new Date().toISOString().split('T')[0]
-    });
-    const [isSavingPayment, setIsSavingPayment] = useState(false);
+  const prevEnrollStep = () => {
+    if (enrollStep > 0 && enrollStep < 3) {
+      setEnrollStep((s) => (s - 1) as EnrollmentStep);
+      return;
+    }
+    closeEnrollModal();
+  };
 
-    const themeColors = {
-        bg: isDark ? '#0F0B2E' : '#f8fafc',
-        card: isDark ? '#13103A' : '#ffffff',
-        text: isDark ? '#ffffff' : '#000000',
-        subtext: isDark ? '#94a3b8' : '#64748b',
-        border: isDark ? 'rgba(255,255,255,0.05)' : '#e2e8f0',
-        primary: '#FF6B00'
-    };
+  const openCategoryPicker = (target: 'enroll' | 'edit') => {
+    setCategoryPickerModal({ open: true, target });
+  };
 
-    const getBackendUrl = () => {
-        let url = process.env.EXPO_PUBLIC_API_URL || "http://localhost:4001";
-        if (Platform.OS === 'android') {
-            url = url.replace('localhost', '10.0.2.2');
-        }
-        return url;
-    };
+  const closeCategoryPicker = () => {
+    setCategoryPickerModal({ open: false, target: null });
+  };
 
-    const fetchInstitutions = async () => {
-        try {
-            setLoading(true);
-            const { data: { session } } = await supabase.auth.getSession();
-            if (!session) return;
+  const toggleCategorySelection = (value: string) => {
+    if (!value) return;
+    if (categoryPickerModal.target === 'enroll') {
+      setEnrollForm((p) => {
+        const exists = p.category_ids.includes(value);
+        return {
+          ...p,
+          category_ids: exists
+            ? p.category_ids.filter((id) => id !== value)
+            : [...new Set([...p.category_ids, value])],
+        };
+      });
+    }
+    if (categoryPickerModal.target === 'edit') {
+      setEditForm((p) => {
+        const current = Array.isArray(p.category_ids)
+          ? p.category_ids
+          : (p.category_id ? [String(p.category_id)] : []);
+        const exists = current.includes(value);
+        const next = exists ? current.filter((id) => id !== value) : [...current, value];
+        return {
+          ...p,
+          category_ids: [...new Set(next)],
+          category_id: next[0] || null,
+        };
+      });
+    }
+  };
 
-            const res = await fetch(`${getBackendUrl()}/api/master-admin/institutions`, {
-                headers: {
-                    'Authorization': `Bearer ${session.access_token}`,
-                    'Accept': 'application/json'
-                }
-            });
-            const data = await res.json();
-            if (res.ok) {
-                setInstitutions(data.institutions || []);
-            } else {
-                Toast.show({ type: 'error', text1: 'Error', text2: data.error });
-            }
-        } catch (err) {
-            console.error(err);
-            Toast.show({ type: 'error', text1: 'Error', text2: "Failed to fetch institutions" });
-        } finally {
-            setLoading(false);
-        }
-    };
+  const clearCategorySelection = () => {
+    if (categoryPickerModal.target === 'enroll') {
+      setEnrollForm((p) => ({ ...p, category_ids: [] }));
+    }
+    if (categoryPickerModal.target === 'edit') {
+      setEditForm((p) => ({ ...p, category_ids: [], category_id: null }));
+    }
+  };
 
-    const fetchAddonRequests = async () => {
-        try {
-            setRequestsLoading(true);
-            const { data: { session } } = await supabase.auth.getSession();
-            if (!session) return;
+  const getCategoryNames = (ids: string[]) => {
+    const names = ids
+      .map((id) => categories.find((cat) => cat.id === id)?.name)
+      .filter((name): name is string => !!name);
+    return names;
+  };
 
-            const res = await fetch(`${getBackendUrl()}/api/addon-requests`, {
-                headers: {
-                    'Authorization': `Bearer ${session.access_token}`,
-                    'Accept': 'application/json'
-                }
-            });
+  const selectedEnrollCategoryName = (() => {
+    const names = getCategoryNames(enrollForm.category_ids);
+    if (names.length === 0) return 'Select categories';
+    return names.join(', ');
+  })();
+  const selectedEditCategoryName = (() => {
+    const ids = Array.isArray(editForm.category_ids)
+      ? editForm.category_ids
+      : (editForm.category_id ? [String(editForm.category_id)] : []);
+    const names = getCategoryNames(ids);
+    if (names.length === 0) return 'No category';
+    return names.join(', ');
+  })();
+  const selectedEnrollPlanName = (enrollForm.subscription_plan || 'trial').toUpperCase();
+  const selectedEditPlanName = String(editForm.subscription_plan || 'basic').toUpperCase();
+  const selectedEditPlanStartDate = String(editForm.subscription_start_date || '').slice(0, 10);
+  const editPlanStartDatePlaceholder = new Date().toISOString().slice(0, 10);
+  const hasEditPlanChanged =
+    !!activeInstitution &&
+    String(editForm.subscription_plan || 'basic') !== String(activeInstitution.subscription_plan || 'basic');
 
-            if (!res.ok) {
-                const text = await res.text();
-                let errorMsg = "Failed to fetch addon requests";
-                try {
-                    const errorData = JSON.parse(text);
-                    errorMsg = errorData.error || errorMsg;
-                } catch (e) {
-                    // Not JSON, use generic or status text
-                }
-                Toast.show({ type: 'error', text1: 'Error', text2: errorMsg });
-                return;
-            }
+  const openPlanStartDatePicker = () => {
+    const base = enrollForm.subscription_start_date ? new Date(enrollForm.subscription_start_date) : new Date();
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const todayIso = new Date().toISOString().slice(0, 10);
+    if (Platform.OS === 'web') {
+      if (typeof document !== 'undefined') {
+        const picker = document.createElement('input');
+        picker.type = 'date';
+        picker.value = enrollForm.subscription_start_date || new Date().toISOString().slice(0, 10);
+        picker.min = todayIso;
+        // Keep the input in the viewport so browser date popover can anchor reliably.
+        picker.style.position = 'fixed';
+        picker.style.top = '120px';
+        picker.style.left = '50%';
+        picker.style.transform = 'translateX(-50%)';
+        picker.style.zIndex = '99999';
+        picker.style.opacity = '0.01';
+        picker.style.width = '1px';
+        picker.style.height = '1px';
 
-            const data = await res.json();
-            setAddonRequests(data.requests || []);
-        } catch (err) {
-            console.error(err);
-            Toast.show({ type: 'error', text1: 'Error', text2: "Failed to fetch requests" });
-        } finally {
-            setRequestsLoading(false);
-        }
-    };
-
-    const fetchCategories = async () => {
-        try {
-            setCategoriesLoading(true);
-            const { data: { session } } = await supabase.auth.getSession();
-            if (!session) return;
-
-            const res = await fetch(`${getBackendUrl()}/api/master-admin/school-categories`, {
-                headers: {
-                    'Authorization': `Bearer ${session.access_token}`,
-                    'Accept': 'application/json'
-                }
-            });
-            const data = await res.json();
-            if (res.ok) {
-                setCategories(data.categories || []);
-            }
-        } catch (err) {
-            console.error(err);
-        } finally {
-            setCategoriesLoading(false);
-        }
-    };
-
-    useEffect(() => {
-        if (activeTab === 'institutions') {
-            fetchInstitutions();
-            fetchCategories();
-        } else {
-            fetchAddonRequests();
-        }
-    }, [activeTab]);
-
-    const toggleSubscription = async (id: string, currentStatus: string) => {
-        const nextStatus = currentStatus === 'active' ? 'suspended' : 'active';
-        const msg = nextStatus === 'active'
-            ? "Are you sure you want to enable this institution?"
-            : "Are you sure you want to disable this institution? They will instantly lose access.";
-
-        if (Platform.OS === 'web') {
-            if (window.confirm(msg)) performToggle(id, nextStatus);
-        } else {
-            Alert.alert("Confirm Action", msg, [
-                { text: "Cancel", style: "cancel" },
-                { text: nextStatus === 'active' ? "Enable" : "Disable", style: nextStatus === 'active' ? "default" : "destructive", onPress: () => performToggle(id, nextStatus) }
-            ]);
-        }
-    };
-
-    const performToggle = async (id: string, nextStatus: string) => {
-        try {
-            const { data: { session } } = await supabase.auth.getSession();
-            if (!session) return;
-
-            const res = await fetch(`${getBackendUrl()}/api/master-admin/institutions/${id}`, {
-                method: 'PUT',
-                headers: {
-                    'Authorization': `Bearer ${session.access_token}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ subscription_status: nextStatus })
-            });
-
-            const data = await res.json();
-            if (res.ok) {
-                Toast.show({ type: 'success', text1: 'Success', text2: 'Subscription status updated' });
-                setInstitutions(institutions.map(i => i.id === id ? { ...i, subscription_status: nextStatus } : i));
-            } else {
-                Toast.show({ type: 'error', text1: 'Error', text2: data.error });
-            }
-        } catch (err) {
-            console.error(err);
-        }
-    };
-
-    const handleSaveEdit = async () => {
-        if (!editForm.id) return;
-        try {
-            setIsSavingEdit(true);
-            const { data: { session } } = await supabase.auth.getSession();
-            if (!session) return;
-
-            const res = await fetch(`${getBackendUrl()}/api/master-admin/institutions/${editForm.id}`, {
-                method: 'PUT',
-                headers: {
-                    'Authorization': `Bearer ${session.access_token}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(editForm)
-            });
-
-            const data = await res.json();
-            if (res.ok) {
-                Toast.show({ type: 'success', text1: 'Success', text2: 'Institution updated successfully' });
-                setEditModalVisible(false);
-                fetchInstitutions();
-            } else {
-                Toast.show({ type: 'error', text1: 'Error', text2: data.error });
-            }
-        } catch (err) {
-            console.error(err);
-            Toast.show({ type: 'error', text1: 'Error', text2: 'Failed to update institution' });
-        } finally {
-            setIsSavingEdit(false);
-        }
-    };
-
-    const handleSavePayment = async () => {
-        if (!selectedInstId || !paymentForm.amount) {
-            Toast.show({ type: 'error', text1: 'Error', text2: 'Amount is required' });
+        const handleChange = () => {
+          const selected = picker.value;
+          if (!selected) return;
+          if (selected < todayIso) {
+            Toast.show({ type: 'error', text1: 'Invalid date', text2: 'Start date cannot be before today', position: 'top' });
             return;
-        }
+          }
+          setEnrollForm((p) => ({ ...p, subscription_start_date: selected }));
+        };
 
+        const cleanup = () => {
+          picker.removeEventListener('change', handleChange);
+          picker.removeEventListener('blur', cleanup);
+          if (picker.parentNode) picker.parentNode.removeChild(picker);
+        };
+
+        picker.addEventListener('change', handleChange);
+        picker.addEventListener('blur', cleanup, { once: true });
+        document.body.appendChild(picker);
         try {
-            setIsSavingPayment(true);
-            const { data: { session } } = await supabase.auth.getSession();
-            if (!session) return;
-
-            const res = await fetch(`${getBackendUrl()}/api/master-admin/payments`, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${session.access_token}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    institution_id: selectedInstId,
-                    ...paymentForm
-                })
-            });
-
-            const data = await res.json();
-            if (res.ok) {
-                Toast.show({ type: 'success', text1: 'Success', text2: 'Payment recorded successfully' });
-                setPaymentModalVisible(false);
-                setPaymentForm({
-                    amount: '',
-                    method: 'manual',
-                    reference_id: '',
-                    notes: '',
-                    date: new Date().toISOString().split('T')[0]
-                });
-            } else {
-                Toast.show({ type: 'error', text1: 'Error', text2: data.error });
-            }
-        } catch (err) {
-            console.error(err);
-            Toast.show({ type: 'error', text1: 'Error', text2: 'Failed to record payment' });
-        } finally {
-            setIsSavingPayment(false);
+          if (typeof picker.showPicker === 'function') {
+            picker.showPicker();
+          } else {
+            picker.focus();
+            picker.click();
+          }
+        } catch {
+          picker.focus();
+          picker.click();
         }
-    };
+      }
+      return;
+    }
 
-    const handleEnroll = async () => {
-        if (!enrollForm.institution_name || !enrollForm.admin_email || !enrollForm.admin_password || !enrollForm.admin_full_name) {
-            Toast.show({ type: 'error', text1: 'Validation Error', text2: 'Please fill all required fields.' });
+    if (Platform.OS === 'android') {
+      if (!NativeDateTimePickerAndroid) {
+        Toast.show({ type: 'error', text1: 'Date Picker', text2: 'Date picker is unavailable on this device', position: 'top' });
+        return;
+      }
+      NativeDateTimePickerAndroid.open({
+        value: base,
+        mode: 'date',
+        display: 'calendar',
+        minimumDate: today,
+        is24Hour: true,
+        onChange: (_event: any, selectedDate: Date | undefined) => {
+          if (!selectedDate) return;
+          if (selectedDate < today) {
+            Toast.show({ type: 'error', text1: 'Invalid date', text2: 'Start date cannot be before today', position: 'top' });
             return;
-        }
+          }
+          const yyyy = selectedDate.getFullYear();
+          const mm = String(selectedDate.getMonth() + 1).padStart(2, '0');
+          const dd = String(selectedDate.getDate()).padStart(2, '0');
+          setEnrollForm((p) => ({ ...p, subscription_start_date: `${yyyy}-${mm}-${dd}` }));
+        },
+      });
+      return;
+    }
+    setPlanStartDateDraft(base);
+    setPlanStartDateModalOpen(true);
+  };
 
-        try {
-            setEnrollLoading(true);
-            const { data: { session } } = await supabase.auth.getSession();
-            if (!session) return;
+  const openEditInstitution = (inst: Institution) => {
+    const resolvedCategoryIds = Array.isArray(inst.category_ids)
+      ? inst.category_ids
+      : (inst.category_id ? [String(inst.category_id)] : []);
+    setActiveInstitutionId(inst.id);
+    setEditForm({
+      ...inst,
+      category_ids: resolvedCategoryIds,
+      category_id: resolvedCategoryIds[0] || null,
+      currency_id: inst.currency_id || '',
+      subscription_start_date:
+        String(inst.subscription_tracking_start_date || '').slice(0, 10) || String(inst.subscription_start_date || '').slice(0, 10) || '',
+    });
+    setEditModalOpen(true);
+  };
 
-            const payload = { ...enrollForm };
-            if (payload.subscription_plan === 'free') {
-                if (!payload.trial_end_date) {
-                    const expirationDate = new Date();
-                    expirationDate.setFullYear(expirationDate.getFullYear() + 10); // "Forever" = 10 years for now
-                    payload.trial_end_date = expirationDate.toISOString();
-                }
-                // @ts-ignore - dynamic payload
-                payload.addon_diary = true;
-            }
+  const openEditPlanStartDatePicker = () => {
+    const base = selectedEditPlanStartDate ? new Date(selectedEditPlanStartDate) : new Date();
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const todayIso = new Date().toISOString().slice(0, 10);
 
-            const res = await fetch(`${getBackendUrl()}/api/master-admin/institutions`, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${session.access_token}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(payload)
-            });
+    if (Platform.OS === 'web') {
+      if (typeof document !== 'undefined') {
+        const picker = document.createElement('input');
+        picker.type = 'date';
+        picker.value = selectedEditPlanStartDate || todayIso;
+        picker.min = todayIso;
+        picker.style.position = 'fixed';
+        picker.style.top = '120px';
+        picker.style.left = '50%';
+        picker.style.transform = 'translateX(-50%)';
+        picker.style.zIndex = '99999';
+        picker.style.opacity = '0.01';
+        picker.style.width = '1px';
+        picker.style.height = '1px';
 
-            const data = await res.json();
-            if (res.ok) {
-                Toast.show({ type: 'success', text1: 'Success', text2: 'Institution enrolled successfully' });
-                setEnrollModalVisible(false);
-                setEnrollForm({
-                    institution_name: '',
-                    location: '',
-                    admin_full_name: '',
-                    admin_email: '',
-                    admin_password: '',
-                    subscription_plan: 'trial',
-                    subscription_status: 'trial',
-                    trial_end_date: '',
-                    custom_student_limit: '',
-                    email_domain: '',
-                });
-                fetchInstitutions(); // Refresh the list
-            } else {
-                Toast.show({ type: 'error', text1: 'Failed', text2: data.error });
-            }
-        } catch (err) {
-            console.error(err);
-            Toast.show({ type: 'error', text1: 'Error', text2: 'Network error during enrollment' });
-        } finally {
-            setEnrollLoading(false);
-        }
-    };
-
-    const handleGrantFreeAccess = async () => {
-        if (!selectedInstId || !freeDays) return;
-
-        try {
-            setIsSubmitting(true);
-            const { data: { session } } = await supabase.auth.getSession();
-            if (!session) return;
-
-            // Calculate expiration date
-            const expDate = new Date();
-            expDate.setDate(expDate.getDate() + parseInt(freeDays, 10));
-
-            const res = await fetch(`${getBackendUrl()}/api/master-admin/institutions/${selectedInstId}/subscription`, {
-                method: 'PUT',
-                headers: {
-                    'Authorization': `Bearer ${session.access_token}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    subscription_status: 'active',
-                    subscription_plan: 'free',
-                    trial_end_date: expDate.toISOString(),
-                    addon_diary: true,
-                    custom_student_limit: freeStudentLimit ? parseInt(freeStudentLimit, 10) : null
-                })
-            });
-
-            const data = await res.json();
-            if (res.ok) {
-                Toast.show({ type: 'success', text1: 'Beta Access Granted', text2: `Beta access granted for ${freeDays} days.` });
-                setFreeModalVisible(false);
-                fetchInstitutions(); // refresh list to show updated plan
-            } else {
-                Toast.show({ type: 'error', text1: 'Error', text2: data.error });
-            }
-        } catch (err) {
-            console.error(err);
-            Toast.show({ type: 'error', text1: 'Error', text2: 'Failed to grant Beta access' });
-        } finally {
-            setIsSubmitting(false);
-        }
-    };
-
-    const handleSaveAddons = async () => {
-        if (!selectedInstId) return;
-
-        try {
-            setAddonsLoading(true);
-            const { data: { session } } = await supabase.auth.getSession();
-            if (!session) return;
-
-            const res = await fetch(`${getBackendUrl()}/api/master-admin/institutions/${selectedInstId}/subscription`, {
-                method: 'PUT',
-                headers: {
-                    'Authorization': `Bearer ${session.access_token}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    ...addonsForm,
-                    // Ensure custom_student_limit is handled as a number or null
-                    custom_student_limit: addonsForm.custom_student_limit ? parseInt(addonsForm.custom_student_limit.toString(), 10) : null
-                })
-            });
-
-            const data = await res.json();
-            if (res.ok) {
-                Toast.show({ type: 'success', text1: 'Success', text2: 'Addons updated successfully.' });
-                setAddonsModalVisible(false);
-                fetchInstitutions();
-            } else {
-                Toast.show({ type: 'error', text1: 'Error', text2: data.error });
-            }
-        } catch (err) {
-            console.error(err);
-            Toast.show({ type: 'error', text1: 'Error', text2: 'Failed to update addons' });
-        } finally {
-            setAddonsLoading(false);
-        }
-    };
-
-    const handleUpdateRequestStatus = async (requestId: string, status: 'approved' | 'rejected') => {
-        try {
-            const { data: { session } } = await supabase.auth.getSession();
-            if (!session) return;
-
-            const res = await fetch(`${getBackendUrl()}/api/addon-requests/${requestId}/status`, {
-                method: 'PUT',
-                headers: {
-                    'Authorization': `Bearer ${session.access_token}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ status })
-            });
-
-            const data = await res.json();
-            if (res.ok) {
-                Toast.show({
-                    type: 'success',
-                    text1: status === 'approved' ? 'Request Approved' : 'Request Rejected',
-                    text2: data.message
-                });
-                fetchAddonRequests();
-                if (status === 'approved') fetchInstitutions();
-            } else {
-                Toast.show({ type: 'error', text1: 'Error', text2: data.error });
-            }
-        } catch (err) {
-            console.error(err);
-            Toast.show({ type: 'error', text1: 'Error', text2: 'Failed to update request' });
-        }
-    };
-
-    const handleViewAnalytics = async (id: string) => {
-        try {
-            setSelectedInstId(id);
-            setAnalyticsModalVisible(true);
-            setAnalyticsLoading(true);
-            const { data: { session } } = await supabase.auth.getSession();
-            if (!session) return;
-
-            const res = await fetch(`${getBackendUrl()}/api/master-admin/analytics/${id}`, {
-                headers: {
-                    'Authorization': `Bearer ${session.access_token}`,
-                    'Accept': 'application/json'
-                }
-            });
-            const data = await res.json();
-            if (res.ok) {
-                setAnalyticsData(data);
-            } else {
-                Toast.show({ type: 'error', text1: 'Error', text2: data.error });
-            }
-        } catch (err) {
-            console.error(err);
-            Toast.show({ type: 'error', text1: 'Error', text2: 'Failed to fetch analytics' });
-        } finally {
-            setAnalyticsLoading(false);
-        }
-    };
-
-    const handleDeleteInstitution = async (id: string, name: string) => {
-        const handler = async () => {
-            try {
-                const { data: { session } } = await supabase.auth.getSession();
-                if (!session) return;
-
-                const res = await fetch(`${getBackendUrl()}/api/master-admin/institutions/${id}`, {
-                    method: 'DELETE',
-                    headers: {
-                        'Authorization': `Bearer ${session.access_token}`,
-                    }
-                });
-
-                if (res.ok) {
-                    Toast.show({ type: 'success', text1: 'Success', text2: 'Institution deleted successfully' });
-                    fetchInstitutions();
-                } else {
-                    const data = await res.json();
-                    Toast.show({ type: 'error', text1: 'Error', text2: data.error || 'Failed to delete' });
-                }
-            } catch (err) {
-                console.error(err);
-                Toast.show({ type: 'error', text1: 'Error', text2: 'Failed to delete institution' });
-            }
+        const handleChange = () => {
+          const selected = picker.value;
+          if (!selected) return;
+          if (selected < todayIso) {
+            Toast.show({ type: 'error', text1: 'Invalid date', text2: 'Start date cannot be before today', position: 'top' });
+            return;
+          }
+          setEditForm((p) => ({ ...p, subscription_start_date: selected }));
         };
 
-        if (Platform.OS === 'web') {
-            if (window.confirm(`Are you sure you want to delete ${name}? This action cannot be undone.`)) {
-                handler();
-            }
-        } else {
-            Alert.alert(
-                "Delete Institution",
-                `Are you sure you want to delete ${name}? This action cannot be undone.`,
-                [
-                    { text: "Cancel", style: "cancel" },
-                    { text: "Delete", style: "destructive", onPress: handler }
-                ]
-            );
-        }
-    };
+        const cleanup = () => {
+          picker.removeEventListener('change', handleChange);
+          picker.removeEventListener('blur', cleanup);
+          if (picker.parentNode) picker.parentNode.removeChild(picker);
+        };
 
-    const handleManageAdmins = async (id: string) => {
+        picker.addEventListener('change', handleChange);
+        picker.addEventListener('blur', cleanup, { once: true });
+        document.body.appendChild(picker);
         try {
-            setSelectedInstId(id);
-            setAdminModalVisible(true);
-            setAdminLoading(true);
-            const { data: { session } } = await supabase.auth.getSession();
-            if (!session) return;
-
-            const res = await fetch(`${getBackendUrl()}/api/master-admin/institutions/${id}`, {
-                headers: {
-                    'Authorization': `Bearer ${session.access_token}`,
-                    'Accept': 'application/json'
-                }
-            });
-            const data = await res.json();
-            if (res.ok) {
-                setSelectedInstAdmins(data.admins || []);
-            } else {
-                Toast.show({ type: 'error', text1: 'Error', text2: data.error });
-            }
-        } catch (err) {
-            console.error(err);
-            Toast.show({ type: 'error', text1: 'Error', text2: 'Failed to fetch admins' });
-        } finally {
-            setAdminLoading(false);
+          if (typeof picker.showPicker === 'function') picker.showPicker();
+          else {
+            picker.focus();
+            picker.click();
+          }
+        } catch {
+          picker.focus();
+          picker.click();
         }
-    };
+      }
+      return;
+    }
 
-    const handleResetAdminPassword = (userId: string, userName: string) => {
-        const handler = async (pass: string) => {
-            if (!pass || pass.length < 6) {
-                Toast.show({ type: 'error', text1: 'Error', text2: 'Password must be at least 6 characters' });
-                return;
-            }
-            try {
-                setSaving(true);
-                await SettingsService.adminResetPassword(userId, pass);
-                Toast.show({ type: 'success', text1: 'Success', text2: `Password for ${userName} reset successfully` });
-            } catch (err: any) {
-                Toast.show({ type: 'error', text1: 'Error', text2: err?.message || 'Failed to reset password' });
-            } finally {
-                setSaving(false);
-            }
-        };
+    if (Platform.OS === 'android') {
+      if (!NativeDateTimePickerAndroid) {
+        Toast.show({ type: 'error', text1: 'Date Picker', text2: 'Date picker is unavailable on this device', position: 'top' });
+        return;
+      }
+      NativeDateTimePickerAndroid.open({
+        value: base,
+        mode: 'date',
+        display: 'calendar',
+        minimumDate: today,
+        is24Hour: true,
+        onChange: (_event: any, selectedDate: Date | undefined) => {
+          if (!selectedDate) return;
+          const yyyy = selectedDate.getFullYear();
+          const mm = String(selectedDate.getMonth() + 1).padStart(2, '0');
+          const dd = String(selectedDate.getDate()).padStart(2, '0');
+          setEditForm((p) => ({ ...p, subscription_start_date: `${yyyy}-${mm}-${dd}` }));
+        },
+      });
+      return;
+    }
 
-        if (Platform.OS === 'web') {
-            const pass = window.prompt(`Enter new password for ${userName}:`);
-            if (pass) handler(pass);
-        } else {
-            Alert.prompt(
-                "Reset Password",
-                `Enter new password for ${userName}:`,
-                [
-                    { text: "Cancel", style: "cancel" },
-                    { text: "Reset", onPress: (pass?: string) => pass && handler(pass) }
-                ],
-                "plain-text"
-            );
+    setEditPlanStartDateDraft(base);
+    setEditPlanStartDateModalOpen(true);
+  };
+
+  const submitEditInstitution = async () => {
+    if (!activeInstitutionId) return;
+    try {
+      setEditSaving(true);
+      const response = await authedFetch(`/api/master-admin/institutions/${activeInstitutionId}`, {
+        method: 'PUT',
+        body: JSON.stringify({
+          ...editForm,
+          admin_first_name: String(editForm.admin_first_name || '').trim() || null,
+          admin_last_name: String(editForm.admin_last_name || '').trim() || null,
+          custom_student_limit:
+            editForm.custom_student_limit === null || editForm.custom_student_limit === undefined
+              ? null
+              : Number(editForm.custom_student_limit),
+          currency_id: editForm.currency_id || null,
+          subscription_start_date: editForm.subscription_plan === 'beta' ? null : (editForm.subscription_start_date || null),
+          subscription_tracking_start_date: editForm.subscription_tracking_start_date || null,
+          category_ids: Array.isArray(editForm.category_ids)
+            ? editForm.category_ids
+            : (editForm.category_id ? [String(editForm.category_id)] : []),
+        }),
+      });
+
+      if (response?.main_admin_new_email) {
+        Toast.show({
+          type: 'success',
+          text1: 'Main Admin Login Updated',
+          text2: `New login email: ${response.main_admin_new_email}`,
+          position: 'top',
+        });
+      }
+
+      if (response?.domain_migration?.migrated_count > 0) {
+        Toast.show({
+          type: 'success',
+          text1: 'Domain Migration Completed',
+          text2: `${response.domain_migration.migrated_count} account(s) moved to ${response.domain_migration.next_domain}. Passwords preserved; users notified.`,
+          position: 'top',
+        });
+      } else {
+        Toast.show({ type: 'success', text1: 'Institution', text2: 'Institution updated', position: 'top' });
+      }
+
+      setEditModalOpen(false);
+      await loadInstitutions();
+    } catch (e: any) {
+      Toast.show({ type: 'error', text1: 'Institution', text2: e.message || 'Update failed', position: 'top' });
+    } finally {
+      setEditSaving(false);
+    }
+  };
+
+  const saveEditInstitution = async () => {
+    if (!activeInstitution) {
+      await submitEditInstitution();
+      return;
+    }
+
+    const previousDomain = String(activeInstitution.email_domain || '').trim().toLowerCase();
+    const nextDomain = String(editForm.email_domain || '').trim().toLowerCase();
+    const hasDomainChange = !!previousDomain && !!nextDomain && previousDomain !== nextDomain;
+
+    if (hasDomainChange) {
+      askConfirm(
+        'Confirm Domain Migration',
+        `This will change institution login emails from ${previousDomain} to ${nextDomain} for all institution users and admins. Passwords will remain unchanged, active sessions will be revoked, and users will be notified. Continue?`,
+        async () => {
+          await submitEditInstitution();
         }
-    };
+      );
+      return;
+    }
 
-    const handleRemoveAdmin = (userId: string, userName: string) => {
-        const performRemoval = async () => {
-            try {
-                setSaving(true);
-                await SettingsService.adminRemove(userId);
-                Toast.show({ type: 'success', text1: 'Success', text2: `Admin ${userName} removed successfully` });
+    await submitEditInstitution();
+  };
 
-                // Refresh list
-                if (selectedInstId) {
-                    handleManageAdmins(selectedInstId);
-                }
-            } catch (err: any) {
-                // api.ts already shows a toast, but we can add secondary handling here if needed.
-                // However, the user specifically asked to ensure this is a toast.
-                const msg = err?.message || 'Failed to remove admin';
-                Toast.show({
-                    type: 'error',
-                    text1: 'Management Error',
-                    text2: msg,
-                    visibilityTime: 4000
-                });
-            } finally {
-                setSaving(false);
-            }
-        };
+  const openManageAdmins = async (institutionId: string) => {
+    try {
+      setActiveInstitutionId(institutionId);
+      setAdminsModalOpen(true);
+      setAdminsLoading(true);
+      const data = await authedFetch(`/api/master-admin/institutions/${institutionId}`);
+      setAdmins((data?.admins || []).filter((u: any) => !!u?.id));
+    } catch (e: any) {
+      Toast.show({ type: 'error', text1: 'Admins', text2: e.message || 'Unable to load admins', position: 'top' });
+    } finally {
+      setAdminsLoading(false);
+    }
+  };
 
-        const msg = `Are you sure you want to remove ${userName}? This will permanently delete their account and access.`;
+  const executeAdminPasswordReset = async (adminUser: AdminUser) => {
+    try {
+      setAdminResetLoadingId(adminUser.id);
+      const response = await authedFetch('/api/auth/admin-reset-password', {
+        method: 'POST',
+        body: JSON.stringify({ targetUserId: adminUser.id }),
+      });
 
-        if (Platform.OS === 'web') {
-            if (window.confirm(msg)) performRemoval();
-        } else {
-            Alert.alert(
-                "Remove Administrator",
-                msg,
-                [
-                    { text: "Cancel", style: "cancel" },
-                    { text: "Remove", style: "destructive", onPress: performRemoval }
-                ]
-            );
-        }
-    };
+      setAdminResetResult(response || null);
+      setAdminResetResultOpen(true);
+      Toast.show({
+        type: 'success',
+        text1: 'Admin Password Reset',
+        text2: 'Temporary credential regenerated. All active sessions were revoked.',
+        position: 'top',
+      });
+    } catch (e: any) {
+      Toast.show({ type: 'error', text1: 'Admin', text2: e.message || 'Password reset failed', position: 'top' });
+    } finally {
+      setAdminResetLoadingId(null);
+    }
+  };
 
-    const renderRequestItem = ({ item }: { item: any }) => {
-        const isPending = item.status === 'pending';
-        const date = new Date(item.created_at).toLocaleDateString();
+  const resetAdminPassword = (adminUser: AdminUser) => {
+    askConfirm(
+      'Confirm Password Reset',
+      `Reset password for ${(`${adminUser.first_name || ''} ${adminUser.last_name || ''}`).trim() || adminUser.email}? This will generate a new temporary credential, force logout all active sessions, and require password + security question setup at next login.`,
+      async () => {
+        await executeAdminPasswordReset(adminUser);
+      }
+    );
+  };
 
-        return (
-            <View style={{
-                backgroundColor: themeColors.card,
-                padding: 16,
-                borderRadius: 16,
-                borderWidth: 1,
-                borderColor: themeColors.border,
-                marginBottom: 12,
-                boxShadow: [{ offsetX: 0, offsetY: 2, blurRadius: 8, color: 'rgba(0, 0, 0, 0.1)' }],
-                shadowColor: '#000',
-                }}>
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
-                    <View style={{ flex: 1 }}>
-                        <Text style={{ fontSize: 16, fontWeight: '700', color: themeColors.text }}>
-                            {item.institutions?.name}
-                        </Text>
-                        <Text style={{ color: themeColors.subtext, fontSize: 12, marginTop: 2 }}>
-                            Requested by: {item.users?.full_name}  {date}
-                        </Text>
-                    </View>
-                    <View style={{
-                        backgroundColor: item.status === 'pending' ? '#FEF3C7' : (item.status === 'approved' ? '#D1FAE5' : '#FEE2E2'),
-                        paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6
-                    }}>
-                        <Text style={{
-                            color: item.status === 'pending' ? '#92400E' : (item.status === 'approved' ? '#065F46' : '#991B1B'),
-                            fontSize: 10, fontWeight: '800', textTransform: 'uppercase'
-                        }}>{item.status}</Text>
-                    </View>
-                </View>
+  const removeAdmin = (adminUser: AdminUser) => {
+    if (!activeInstitutionId) return;
+    askConfirm(
+      'Remove Admin',
+      `Remove ${(`${adminUser.first_name || ''} ${adminUser.last_name || ''}`).trim() || adminUser.email} from this institution?`,
+      async () => {
+        await authedFetch(`/api/master-admin/institutions/admins/${adminUser.id}`, { method: 'DELETE' });
+        Toast.show({ type: 'success', text1: 'Admin', text2: 'Admin removed', position: 'top' });
+        await openManageAdmins(activeInstitutionId);
+      }
+    );
+  };
 
-                <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : '#f8fafc', padding: 12, borderRadius: 12, marginBottom: 16 }}>
-                    <View style={{ width: 32, height: 32, borderRadius: 8, backgroundColor: `${themeColors.primary}20`, alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
-                        <MaterialCommunityIcons name="puzzle" size={20} color={themeColors.primary} />
-                    </View>
-                    <View style={{ flex: 1 }}>
-                        <Text style={{ color: themeColors.text, fontWeight: '700', fontSize: 14 }}>
-                            {item.addon_type.charAt(0).toUpperCase() + item.addon_type.slice(1)} Module
-                        </Text>
-                        {item.notes && (
-                            <Text style={{ color: themeColors.subtext, fontSize: 12, marginTop: 2 }} numberOfLines={2}>
-                                {item.notes}
-                            </Text>
-                        )}
-                    </View>
-                </View>
+  const openAddons = (inst: Institution) => {
+    setActiveInstitutionId(inst.id);
+    const next: Record<string, boolean> = {};
+    ADDON_ROWS.forEach((a) => {
+      next[a.key] = !!inst[a.key];
+    });
+    setAddonsForm(next);
+    setAddonsModalOpen(true);
+  };
 
-                {isPending && (
-                    <View style={{ flexDirection: 'row', gap: 12 }}>
-                        <TouchableOpacity
-                            onPress={() => {
-                                if (Platform.OS === 'web') {
-                                    if (window.confirm("Are you sure you want to reject this request?")) {
-                                        handleUpdateRequestStatus(item.id, 'rejected');
-                                    }
-                                } else {
-                                    Alert.alert("Reject Request", "Are you sure you want to reject this request?", [
-                                        { text: "Cancel", style: "cancel" },
-                                        { text: "Reject", style: "destructive", onPress: () => handleUpdateRequestStatus(item.id, 'rejected') }
-                                    ]);
-                                }
-                            }}
-                            style={{ flex: 1, paddingVertical: 12, borderRadius: 12, borderWidth: 1, borderColor: '#fee2e2', alignItems: 'center', backgroundColor: '#fef2f2' }}
-                        >
-                            <Text style={{ color: '#ef4444', fontWeight: 'bold' }}>Reject</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                            onPress={() => {
-                                const msg = `Grant ${item.addon_type} access to ${item.institutions?.name}?`;
-                                if (Platform.OS === 'web') {
-                                    if (window.confirm(msg)) {
-                                        handleUpdateRequestStatus(item.id, 'approved');
-                                    }
-                                } else {
-                                    Alert.alert("Approve Request", msg, [
-                                        { text: "Cancel", style: "cancel" },
-                                        { text: "Approve", style: "default", onPress: () => handleUpdateRequestStatus(item.id, 'approved') }
-                                    ]);
-                                }
-                            }}
-                            style={{ flex: 1, paddingVertical: 12, borderRadius: 12, alignItems: 'center', backgroundColor: '#10b981' }}
-                        >
-                            <Text style={{ color: 'white', fontWeight: 'bold' }}>Approve</Text>
-                        </TouchableOpacity>
-                    </View>
-                )}
-            </View>
-        );
-    };
+  const saveAddons = async () => {
+    if (!activeInstitutionId) return;
+    try {
+      setAddonsSaving(true);
+      await authedFetch(`/api/master-admin/institutions/${activeInstitutionId}/subscription`, {
+        method: 'PUT',
+        body: JSON.stringify(addonsForm),
+      });
+      Toast.show({ type: 'success', text1: 'Add-ons', text2: 'Add-ons updated', position: 'top' });
+      setAddonsModalOpen(false);
+      await loadInstitutions();
+    } catch (e: any) {
+      Toast.show({ type: 'error', text1: 'Add-ons', text2: e.message || 'Unable to update add-ons', position: 'top' });
+    } finally {
+      setAddonsSaving(false);
+    }
+  };
 
-    const renderItem = ({ item }: { item: any }) => {
-        const isActive = item.subscription_status === 'active';
-        const userCount = item.users?.[0]?.count || 0;
+  const openStats = async (institutionId: string) => {
+    try {
+      setActiveInstitutionId(institutionId);
+      setStatsModalOpen(true);
+      setStatsLoading(true);
+      const data = await authedFetch(`/api/master-admin/analytics/${institutionId}`);
+      setStatsData({
+        students: Number(data?.students || 0),
+        teachers: Number(data?.teachers || 0),
+        classes: Number(data?.classes || 0),
+      });
+    } catch (e: any) {
+      Toast.show({ type: 'error', text1: 'Stats', text2: e.message || 'Unable to load stats', position: 'top' });
+    } finally {
+      setStatsLoading(false);
+    }
+  };
 
-        return (
-            <View style={{
-                backgroundColor: themeColors.card,
-                padding: 16,
-                borderRadius: 16,
-                borderWidth: 1,
-                borderColor: themeColors.border,
-                marginBottom: 12,
-                flexDirection: 'row',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                boxShadow: [{ offsetX: 0, offsetY: 2, blurRadius: 8, color: 'rgba(0, 0, 0, 0.1)' }],
-                shadowColor: '#000',
-                }}>
-                <View style={{ flex: 1 }}>
-                    <Text style={{ fontSize: 16, fontWeight: '700', color: themeColors.text, marginBottom: 4 }}>
-                        {item.name}
-                    </Text>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
-                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                            <MaterialCommunityIcons name="at" size={14} color={themeColors.primary} />
-                            <Text style={{ color: themeColors.primary, fontSize: 13, fontWeight: '700' }}>{item.email_domain || 'no-domain.edu'}</Text>
-                        </View>
-                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                            <MaterialCommunityIcons name="email-outline" size={14} color={themeColors.subtext} />
-                            <Text style={{ color: themeColors.subtext, fontSize: 13 }}>{item.email || 'No email'}</Text>
-                        </View>
-                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                            <MaterialCommunityIcons name="account-group" size={14} color={themeColors.subtext} />
-                            <Text style={{ color: themeColors.subtext, fontSize: 13 }}>{userCount} Users</Text>
-                        </View>
-                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                            <MaterialCommunityIcons name={isActive ? 'check-circle' : 'close-circle'} size={14} color={isActive ? '#10b981' : '#f43f5e'} />
-                            <Text style={{ color: isActive ? '#10b981' : '#f43f5e', fontSize: 13, fontWeight: '600' }}>{item.subscription_status?.toUpperCase() || 'UNKNOWN'}</Text>
-                        </View>
-                        {item.subscription_plan && (
-                            <View style={{ backgroundColor: `${themeColors.primary}20`, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 }}>
-                                <Text style={{ color: themeColors.primary, fontSize: 10, fontWeight: '800', textTransform: 'uppercase' }}>{item.subscription_plan}</Text>
-                            </View>
-                        )}
-                        {item.category_name && (
-                            <View style={{ backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : '#f1f5f9', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                                <MaterialCommunityIcons name="school-outline" size={10} color={themeColors.subtext} />
-                                <Text style={{ color: themeColors.subtext, fontSize: 10, fontWeight: '700', textTransform: 'uppercase' }}>{item.category_name}</Text>
-                            </View>
-                        )}
-                    </View>
+  const openRecordPayment = (institutionId: string) => {
+    setActiveInstitutionId(institutionId);
+    setPaymentModalOpen(true);
+  };
 
-                    {/* Access & Addons Buttons */}
-                    <View style={{ marginTop: 12, flexDirection: 'row', alignItems: 'center', gap: 16 }}>
-                        <TouchableOpacity
-                            onPress={() => {
-                                setSelectedInstId(item.id);
-                                setFreeModalVisible(true);
-                            }}
-                            style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}
-                        >
-                            <MaterialCommunityIcons name="star-circle-outline" size={16} color={themeColors.primary} />
-                            <Text style={{ color: themeColors.primary, fontSize: 13, fontWeight: '600' }}>Grant Beta Access</Text>
-                        </TouchableOpacity>
+  const savePayment = async () => {
+    if (!activeInstitutionId) return;
+    if (!paymentForm.amount) {
+      Toast.show({ type: 'error', text1: 'Payment', text2: 'Amount is required', position: 'top' });
+      return;
+    }
+    try {
+      setPaymentSaving(true);
+      await authedFetch('/api/master-admin/payments', {
+        method: 'POST',
+        body: JSON.stringify({
+          institution_id: activeInstitutionId,
+          amount: Number(paymentForm.amount),
+          method: paymentForm.method,
+          reference_id: paymentForm.reference_id,
+          notes: paymentForm.notes,
+          date: paymentForm.date,
+        }),
+      });
+      Toast.show({ type: 'success', text1: 'Payment', text2: 'Payment recorded', position: 'top' });
+      setPaymentModalOpen(false);
+      setPaymentForm({ amount: '', method: 'bank_transfer', reference_id: '', date: new Date().toISOString().slice(0, 10), notes: '' });
+    } catch (e: any) {
+      Toast.show({ type: 'error', text1: 'Payment', text2: e.message || 'Unable to record payment', position: 'top' });
+    } finally {
+      setPaymentSaving(false);
+    }
+  };
 
-                        {/* Manage Add-ons: visible for all paid plans */}
-                        {!['trial', 'free', null, undefined].includes(item.subscription_plan) && (
-                            <TouchableOpacity
-                                onPress={() => {
-                                    setSelectedInstId(item.id);
-                                    setAddonsForm({
-                                        addon_library: item.addon_library || false,
-                                        addon_messaging: item.addon_messaging || false,
-                                        addon_diary: item.addon_diary || false,
-                                        addon_bursary: item.addon_bursary || false,
-                                        addon_finance: item.addon_finance || false,
-                                        addon_analytics: item.addon_analytics || false,
-                                        custom_student_limit: item.custom_student_limit || null
-                                    });
-                                    setAddonsModalVisible(true);
-                                }}
-                                style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}
-                            >
-                                <MaterialCommunityIcons name="puzzle-plus-outline" size={16} color="#3B82F6" />
-                                <Text style={{ color: '#3B82F6', fontSize: 13, fontWeight: '600' }}>Manage Add-ons</Text>
-                            </TouchableOpacity>
-                        )}
+  const toggleInstitutionStatus = (inst: Institution) => {
+    const current = String(inst.subscription_status || '').toLowerCase();
+    const nextStatus = current === 'suspended' ? 'active' : 'suspended';
+    const isDisabling = nextStatus === 'suspended';
+    askConfirm(
+      isDisabling ? 'Disable Institution' : 'Enable Institution',
+      isDisabling
+        ? 'This will immediately block login and revoke active sessions for all users in the institution.'
+        : 'This will restore institution access.',
+      async () => {
+        await authedFetch(`/api/master-admin/institutions/${inst.id}/subscription`, {
+          method: 'PUT',
+          body: JSON.stringify({ subscription_status: nextStatus }),
+        });
+        Toast.show({
+          type: 'success',
+          text1: 'Institution',
+          text2: isDisabling ? 'Institution disabled and active sessions revoked' : 'Institution enabled',
+          position: 'top',
+        });
+        await loadInstitutions();
+      }
+    );
+  };
 
-                        <TouchableOpacity
-                            onPress={() => handleViewAnalytics(item.id)}
-                            style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}
-                        >
-                            <MaterialCommunityIcons name="chart-bar" size={16} color="#8B5CF6" />
-                            <Text style={{ color: '#8B5CF6', fontSize: 13, fontWeight: '600' }}>View Stats</Text>
-                        </TouchableOpacity>
+  const deleteInstitution = (inst: Institution) => {
+    askConfirm('Delete Institution', `Delete ${inst.name}? This cannot be undone.`, async () => {
+      await authedFetch(`/api/master-admin/institutions/${inst.id}`, { method: 'DELETE' });
+      Toast.show({ type: 'success', text1: 'Institution', text2: 'Institution deleted', position: 'top' });
+      await loadInstitutions();
+    });
+  };
 
-                        <TouchableOpacity
-                            onPress={() => handleManageAdmins(item.id)}
-                            style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}
-                        >
-                            <MaterialCommunityIcons name="account-cog" size={16} color="#059669" />
-                            <Text style={{ color: '#059669', fontSize: 13, fontWeight: '600' }}>Manage Admins</Text>
-                        </TouchableOpacity>
-
-                        <TouchableOpacity
-                            onPress={() => {
-                                setEditForm({ ...item });
-                                setEditModalVisible(true);
-                            }}
-                            style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}
-                        >
-                            <MaterialCommunityIcons name="pencil-outline" size={16} color="#3B82F6" />
-                            <Text style={{ color: '#3B82F6', fontSize: 13, fontWeight: '600' }}>Edit Details</Text>
-                        </TouchableOpacity>
-
-                        <TouchableOpacity
-                            onPress={() => {
-                                setSelectedInstId(item.id);
-                                setPaymentModalVisible(true);
-                            }}
-                            style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}
-                        >
-                            <MaterialCommunityIcons name="cash-register" size={16} color="#10b981" />
-                            <Text style={{ color: '#10b981', fontSize: 13, fontWeight: '600' }}>Record Payment</Text>
-                        </TouchableOpacity>
-
-                        <TouchableOpacity
-                            onPress={() => handleDeleteInstitution(item.id, item.name)}
-                            style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}
-                        >
-                            <MaterialCommunityIcons name="trash-can-outline" size={16} color="#ef4444" />
-                            <Text style={{ color: '#ef4444', fontSize: 13, fontWeight: '600' }}>Delete</Text>
-                        </TouchableOpacity>
-                    </View>
-                </View>
-
-                <TouchableOpacity
-                    onPress={() => toggleSubscription(item.id, item.subscription_status)}
-                    style={{
-                        width: 44, height: 44, borderRadius: 22,
-                        backgroundColor: isActive ? 'rgba(244,63,94,0.1)' : 'rgba(16,185,129,0.1)',
-                        justifyContent: 'center', alignItems: 'center',
-                        marginLeft: 16
-                    }}
-                >
-                    <MaterialCommunityIcons
-                        name={isActive ? 'power-plug-off' : 'power-plug'}
-                        size={24}
-                        color={isActive ? '#f43f5e' : '#10b981'}
-                    />
-                </TouchableOpacity>
-            </View>
-        );
-    };
+  const renderInstitution = ({ item }: { item: Institution }) => {
+    const usersCount = item.users?.[0]?.count || 0;
+    const suspended = String(item.subscription_status || '').toLowerCase() === 'suspended';
+    const institutionCurrency = currencies.find((currency) => currency.id === item.currency_id);
 
     return (
-        <SafeAreaView style={{ flex: 1, backgroundColor: themeColors.bg }} edges={['top', 'left', 'right']}>
-            {/* Header */}
-            <View style={{ paddingHorizontal: 20, paddingTop: 10, paddingBottom: 20, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-                    <View style={{ backgroundColor: `${themeColors.primary}20`, padding: 8, borderRadius: 10 }}>
-                        <MaterialCommunityIcons name="office-building-cog" size={24} color={themeColors.primary} />
-                    </View>
-                    <View>
-                        <Text style={{ fontSize: 24, fontWeight: '800', color: themeColors.text }}>Institutions</Text>
-                        <Text style={{ fontSize: 14, color: themeColors.subtext, marginTop: 2 }}>Manage accounts & subscriptions</Text>
-                    </View>
-                </View>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 15 }}>
-                    <TouchableOpacity
-                        onPress={() => setIsCategoryModalVisible(true)}
-                        style={{ backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#f1f5f9', padding: 8, borderRadius: 10, flexDirection: 'row', alignItems: 'center', gap: 6 }}
-                    >
-                        <MaterialCommunityIcons name="tag-outline" size={20} color={themeColors.primary} />
-                        <Text style={{ color: themeColors.text, fontWeight: '600', fontSize: 12 }}>Categories</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity onPress={activeTab === 'institutions' ? fetchInstitutions : fetchAddonRequests}>
-                        <MaterialCommunityIcons name="refresh" size={24} color={themeColors.text} />
-                    </TouchableOpacity>
-                </View>
-            </View>
+      <View
+        style={{
+          backgroundColor: c.card,
+          borderColor: c.border,
+          borderWidth: 1,
+          borderRadius: 16,
+          padding: 16,
+          marginBottom: 12,
+        }}
+      >
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+          <View style={{ flex: 1, paddingRight: 8 }}>
+            <Text style={{ color: c.text, fontSize: 17, fontWeight: '700' }}>{item.name}</Text>
+            <Text style={{ color: c.sub, marginTop: 4 }}>
+              {item.email_domain || 'No domain'}  •  {usersCount} users
+            </Text>
+            <Text style={{ color: c.sub, marginTop: 2 }}>
+              Currency: {institutionCurrency ? `${institutionCurrency.code} (${institutionCurrency.symbol})` : 'USD ($)'}
+            </Text>
+            <Text style={{ color: suspended ? c.danger : c.success, marginTop: 4, fontWeight: '700' }}>
+              {String(item.subscription_status || 'unknown').toUpperCase()}  •  {String(item.subscription_plan || 'basic').toUpperCase()}
+            </Text>
+          </View>
+          <TouchableOpacity
+            onPress={() => toggleInstitutionStatus(item)}
+            style={{
+              backgroundColor: suspended ? 'rgba(26,127,55,0.16)' : 'rgba(207,34,46,0.16)',
+              borderRadius: 999,
+              paddingHorizontal: 14,
+              paddingVertical: 8,
+            }}
+          >
+            <Text style={{ color: suspended ? c.success : c.danger, fontWeight: '700' }}>
+              {suspended ? 'Enable' : 'Disable'}
+            </Text>
+          </TouchableOpacity>
+        </View>
 
-            {/* Tab Switcher */}
-            <View style={{ flexDirection: 'row', marginHorizontal: 20, marginBottom: 20, backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#f1f5f9', borderRadius: 12, padding: 4 }}>
-                <TouchableOpacity
-                    onPress={() => setActiveTab('institutions')}
-                    style={{ flex: 1, paddingVertical: 10, alignItems: 'center', backgroundColor: activeTab === 'institutions' ? themeColors.card : 'transparent', borderRadius: 8 }}
-                >
-                    <Text style={{ color: activeTab === 'institutions' ? themeColors.primary : themeColors.subtext, fontWeight: '700' }}>Institutions</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                    onPress={() => setActiveTab('requests')}
-                    style={{ flex: 1, paddingVertical: 10, alignItems: 'center', backgroundColor: activeTab === 'requests' ? themeColors.card : 'transparent', borderRadius: 8, flexDirection: 'row', justifyContent: 'center', gap: 6 }}
-                >
-                    <Text style={{ color: activeTab === 'requests' ? themeColors.primary : themeColors.subtext, fontWeight: '700' }}>Feature Requests</Text>
-                    {addonRequests.filter(r => r.status === 'pending').length > 0 && (
-                        <View style={{ backgroundColor: '#ef4444', height: 18, minWidth: 18, borderRadius: 9, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4 }}>
-                            <Text style={{ color: 'white', fontSize: 10, fontWeight: 'bold' }}>{addonRequests.filter(r => r.status === 'pending').length}</Text>
-                        </View>
-                    )}
-                </TouchableOpacity>
-            </View>
-
-            {activeTab === 'institutions' ? (
-                loading ? (
-                    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-                        <ActivityIndicator size="large" color={themeColors.primary} />
-                    </View>
-                ) : (
-                    <FlatList
-                        data={institutions}
-                        keyExtractor={item => item.id}
-                        renderItem={renderItem}
-                        contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 100 }}
-                        ItemSeparatorComponent={() => <View style={{ height: 4 }} />}
-                        ListEmptyComponent={
-                            <View style={{ alignItems: 'center', marginTop: 40 }}>
-                                <MaterialCommunityIcons name="domain-off" size={48} color={themeColors.border} />
-                                <Text style={{ color: themeColors.subtext, marginTop: 16, fontSize: 16 }}>No institutions found.</Text>
-                            </View>
-                        }
-                    />
-                )
-            ) : (
-                requestsLoading ? (
-                    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-                        <ActivityIndicator size="large" color={themeColors.primary} />
-                    </View>
-                ) : (
-                    <FlatList
-                        data={addonRequests}
-                        keyExtractor={item => item.id}
-                        renderItem={renderRequestItem}
-                        contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 100 }}
-                        ListEmptyComponent={
-                            <View style={{ alignItems: 'center', marginTop: 40 }}>
-                                <MaterialCommunityIcons name="clipboard-text-outline" size={48} color={themeColors.border} />
-                                <Text style={{ color: themeColors.subtext, marginTop: 16, fontSize: 16 }}>No feature requests yet.</Text>
-                            </View>
-                        }
-                    />
-                )
-            )}
-
-            {/* Enroll Floating Action Button */}
-            <TouchableOpacity
-                onPress={() => setEnrollModalVisible(true)}
-                style={{
-                    position: 'absolute',
-                    bottom: 20,
-                    right: 20,
-                    backgroundColor: themeColors.primary,
-                    width: 56,
-                    height: 56,
-                    borderRadius: 28,
-                    justifyContent: 'center',
-                    alignItems: 'center',
-                    shadowColor: themeColors.primary,
-                    boxShadow: [{
-                        offsetX: 0,
-                        offsetY: 4,
-                        blurRadius: 8,
-                        color: `${themeColors.primary}4D`,
-                    }],
-                }}
-            >
-                <MaterialCommunityIcons name="plus" size={30} color="#fff" />
-            </TouchableOpacity>
-
-            {/* ANALYTICS MODAL */}
-            <Modal visible={analyticsModalVisible} animationType="fade" transparent>
-                <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', padding: 20 }}>
-                    <View style={{ backgroundColor: themeColors.card, borderRadius: 24, padding: 24, width: '100%', maxWidth: 400 }}>
-                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-                            <Text style={{ fontSize: 20, fontWeight: 'bold', color: themeColors.text }}>Institution Stats</Text>
-                            <TouchableOpacity onPress={() => { setAnalyticsModalVisible(false); setAnalyticsData(null); }}>
-                                <MaterialCommunityIcons name="close" size={24} color={themeColors.subtext} />
-                            </TouchableOpacity>
-                        </View>
-
-                        {analyticsLoading ? (
-                            <ActivityIndicator size="large" color={themeColors.primary} style={{ marginVertical: 40 }} />
-                        ) : analyticsData ? (
-                            <View style={{ gap: 16 }}>
-                                <View style={{ flexDirection: 'row', gap: 12 }}>
-                                    <View style={{ flex: 1, backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : '#f8fafc', padding: 16, borderRadius: 16, alignItems: 'center' }}>
-                                        <Text style={{ color: themeColors.subtext, fontSize: 12, marginBottom: 4 }}>Students</Text>
-                                        <Text style={{ color: themeColors.text, fontSize: 24, fontWeight: '800' }}>{analyticsData.students}</Text>
-                                    </View>
-                                    <View style={{ flex: 1, backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : '#f8fafc', padding: 16, borderRadius: 16, alignItems: 'center' }}>
-                                        <Text style={{ color: themeColors.subtext, fontSize: 12, marginBottom: 4 }}>Teachers</Text>
-                                        <Text style={{ color: themeColors.text, fontSize: 24, fontWeight: '800' }}>{analyticsData.teachers}</Text>
-                                    </View>
-                                </View>
-                                <View style={{ flexDirection: 'row', gap: 12 }}>
-                                    <View style={{ flex: 1, backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : '#f8fafc', padding: 16, borderRadius: 16, alignItems: 'center' }}>
-                                        <Text style={{ color: themeColors.subtext, fontSize: 12, marginBottom: 4 }}>Classes</Text>
-                                        <Text style={{ color: themeColors.text, fontSize: 24, fontWeight: '800' }}>{analyticsData.classes}</Text>
-                                    </View>
-                                    <View style={{ flex: 1, backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : '#f8fafc', padding: 16, borderRadius: 16, alignItems: 'center' }}>
-                                        <Text style={{ color: themeColors.subtext, fontSize: 12, marginBottom: 4 }}>Revenue</Text>
-                                        <Text style={{ color: themeColors.primary, fontSize: 20, fontWeight: '800' }}>KES {Number(analyticsData.revenue).toLocaleString()}</Text>
-                                    </View>
-                                </View>
-
-                                <TouchableOpacity
-                                    onPress={() => { setAnalyticsModalVisible(false); setAnalyticsData(null); }}
-                                    style={{ backgroundColor: themeColors.primary, paddingVertical: 14, borderRadius: 12, alignItems: 'center', marginTop: 10 }}
-                                >
-                                    <Text style={{ color: 'white', fontWeight: 'bold' }}>Close</Text>
-                                </TouchableOpacity>
-                            </View>
-                        ) : (
-                            <Text style={{ color: themeColors.subtext, textAlign: 'center', marginVertical: 20 }}>No data available</Text>
-                        )}
-                    </View>
-                </View>
-            </Modal>
-
-            {/* ENROLL MODAL */}
-            <Modal visible={enrollModalVisible} animationType="slide" transparent>
-                <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}>
-                    <View style={{ backgroundColor: themeColors.card, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, maxHeight: '90%' }}>
-                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-                            <Text style={{ fontSize: 20, fontWeight: 'bold', color: themeColors.text }}>Enroll Institution</Text>
-                            <TouchableOpacity onPress={() => setEnrollModalVisible(false)}>
-                                <MaterialCommunityIcons name="close" size={24} color={themeColors.subtext} />
-                            </TouchableOpacity>
-                        </View>
-
-                        <ScrollView showsVerticalScrollIndicator={false} style={{ padding: 5 }}>
-
-                            {/* Section: Institution */}
-                            <Text style={{ fontSize: 11, fontWeight: '600', letterSpacing: 1, textTransform: 'uppercase', color: themeColors.subtext, marginBottom: 10 }}>
-                                Institution details
-                            </Text>
-                            <View style={{ flexDirection: 'row', gap: 10, marginBottom: 10 }}>
-                                <View style={{ flex: 2 }}>
-                                    <Text style={{ fontSize: 12, color: themeColors.subtext, marginBottom: 4 }}>Name <Text style={{ color: themeColors.primary }}>*</Text></Text>
-                                    <TextInput
-                                        style={{ backgroundColor: themeColors.bg, color: themeColors.text, padding: 12, borderRadius: 10, borderWidth: 0.5, borderColor: themeColors.border, fontSize: 14 }}
-                                        placeholder="Alliance Highschool"
-                                        placeholderTextColor={themeColors.subtext}
-                                        value={enrollForm.institution_name}
-                                        onChangeText={t => setEnrollForm(prev => ({ ...prev, institution_name: t }))}
-                                    />
-                                </View>
-                                <View style={{ flex: 1 }}>
-                                    <Text style={{ fontSize: 12, color: themeColors.subtext, marginBottom: 4 }}>Location</Text>
-                                    <TextInput
-                                        style={{ backgroundColor: themeColors.bg, color: themeColors.text, padding: 12, borderRadius: 10, borderWidth: 0.5, borderColor: themeColors.border, fontSize: 14 }}
-                                        placeholder="Nairobi"
-                                        placeholderTextColor={themeColors.subtext}
-                                        value={enrollForm.location}
-                                        onChangeText={t => setEnrollForm(prev => ({ ...prev, location: t }))}
-                                    />
-                                </View>
-                            </View>
-                            <View style={{ marginBottom: 20 }}>
-                                <Text style={{ fontSize: 12, color: themeColors.subtext, marginBottom: 4 }}>Email domain</Text>
-                                <TextInput
-                                    style={{ backgroundColor: themeColors.bg, color: themeColors.text, padding: 12, borderRadius: 10, borderWidth: 0.5, borderColor: themeColors.border, fontSize: 14 }}
-                                    placeholder="e.g. alliance.edu"
-                                    placeholderTextColor={themeColors.subtext}
-                                    autoCapitalize="none"
-                                    value={enrollForm.email_domain}
-                                    onChangeText={t => setEnrollForm(prev => ({ ...prev, email_domain: t }))}
-                                />
-                            </View>
-
-                            {/* Divider */}
-                            <View style={{ height: 0.5, backgroundColor: themeColors.border, marginBottom: 16 }} />
-
-                            {/* Section: Admin */}
-                            <Text style={{ fontSize: 11, fontWeight: '600', letterSpacing: 1, textTransform: 'uppercase', color: themeColors.subtext, marginBottom: 10 }}>
-                                Primary admin
-                            </Text>
-                            <View style={{ marginBottom: 10 }}>
-                                <Text style={{ fontSize: 12, color: themeColors.subtext, marginBottom: 4 }}>Full name <Text style={{ color: themeColors.primary }}>*</Text></Text>
-                                <TextInput
-                                    style={{ backgroundColor: themeColors.bg, color: themeColors.text, padding: 12, borderRadius: 10, borderWidth: 0.5, borderColor: themeColors.border, fontSize: 14 }}
-                                    placeholder="Jane Mwangi"
-                                    placeholderTextColor={themeColors.subtext}
-                                    value={enrollForm.admin_full_name}
-                                    onChangeText={t => setEnrollForm(prev => ({ ...prev, admin_full_name: t }))}
-                                />
-                            </View>
-                            <View style={{ flexDirection: 'row', gap: 10, marginBottom: 20 }}>
-                                <View style={{ flex: 1 }}>
-                                    <Text style={{ fontSize: 12, color: themeColors.subtext, marginBottom: 4 }}>Email <Text style={{ color: themeColors.primary }}>*</Text></Text>
-                                    <TextInput
-                                        style={{ backgroundColor: themeColors.bg, color: themeColors.text, padding: 12, borderRadius: 10, borderWidth: 0.5, borderColor: themeColors.border, fontSize: 14 }}
-                                        placeholder="jane@alliance.edu"
-                                        placeholderTextColor={themeColors.subtext}
-                                        autoCapitalize="none"
-                                        keyboardType="email-address"
-                                        value={enrollForm.admin_email}
-                                        onChangeText={t => setEnrollForm(prev => ({ ...prev, admin_email: t }))}
-                                    />
-                                </View>
-                                <View style={{ flex: 1 }}>
-                                    <Text style={{ fontSize: 12, color: themeColors.subtext, marginBottom: 4 }}>Password <Text style={{ color: themeColors.primary }}>*</Text></Text>
-                                    <TextInput
-                                        style={{ backgroundColor: themeColors.bg, color: themeColors.text, padding: 12, borderRadius: 10, borderWidth: 0.5, borderColor: themeColors.border, fontSize: 14 }}
-                                        placeholder="********"
-                                        placeholderTextColor={themeColors.subtext}
-                                        secureTextEntry
-                                        value={enrollForm.admin_password}
-                                        onChangeText={t => setEnrollForm(prev => ({ ...prev, admin_password: t }))}
-                                    />
-                                </View>
-                            </View>
-
-                            {/* Divider */}
-                            <View style={{ height: 0.5, backgroundColor: themeColors.border, marginBottom: 16 }} />
-
-                            {/* Section: Subscription */}
-                            <Text style={{ fontSize: 11, fontWeight: '600', letterSpacing: 1, textTransform: 'uppercase', color: themeColors.subtext, marginBottom: 10 }}>
-                                Subscription
-                            </Text>
-
-                            {/* Plan picker — grid of chips */}
-                            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
-                                {[
-                                    { label: 'Trial', value: 'trial', sub: '14 days' },
-                                    { label: 'Basic', value: 'basic', sub: '$100/mo' },
-                                    { label: 'Pro', value: 'pro', sub: '$300/mo' },
-                                    { label: 'Premium', value: 'premium', sub: '$500/mo' },
-                                    { label: 'Enterprise', value: 'custom', sub: 'Custom' },
-                                    { label: 'Free', value: 'free', sub: 'Forever' },
-                                ].map(plan => {
-                                    const selected = enrollForm.subscription_plan === plan.value;
-                                    return (
-                                        <TouchableOpacity
-                                            key={plan.value}
-                                            onPress={() => setEnrollForm(prev => ({ ...prev, subscription_plan: plan.value, subscription_status: plan.value === 'trial' ? 'trial' : 'active' }))}
-                                            style={{
-                                                paddingVertical: 8, paddingHorizontal: 14,
-                                                borderRadius: 10,
-                                                borderWidth: selected ? 1.5 : 0.5,
-                                                borderColor: selected ? themeColors.primary : themeColors.border,
-                                                backgroundColor: selected ? `${themeColors.primary}12` : themeColors.bg,
-                                            }}
-                                        >
-                                            <Text style={{ fontSize: 13, fontWeight: '600', color: selected ? themeColors.primary : themeColors.text }}>{plan.label}</Text>
-                                            <Text style={{ fontSize: 11, color: selected ? themeColors.primary : themeColors.subtext, marginTop: 1 }}>{plan.sub}</Text>
-                                        </TouchableOpacity>
-                                    );
-                                })}
-                            </View>
-
-                            {enrollForm.subscription_plan === 'free' && (
-                                <View style={{ marginBottom: 12 }}>
-                                    <Text style={{ fontSize: 12, color: themeColors.subtext, marginBottom: 4 }}>Expiry date <Text style={{ color: themeColors.subtext, fontWeight: '400' }}>(optional, ISO format)</Text></Text>
-                                    <TextInput
-                                        style={{ backgroundColor: themeColors.bg, color: themeColors.text, padding: 12, borderRadius: 10, borderWidth: 0.5, borderColor: themeColors.border, fontSize: 14 }}
-                                        placeholder="e.g. 2026-12-31"
-                                        placeholderTextColor={themeColors.subtext}
-                                        value={enrollForm.trial_end_date}
-                                        onChangeText={t => setEnrollForm(prev => ({ ...prev, trial_end_date: t }))}
-                                    />
-                                </View>
-                            )}
-
-                            {enrollForm.subscription_plan === 'custom' && (
-                                <View style={{ marginBottom: 12 }}>
-                                    <Text style={{ fontSize: 12, color: themeColors.subtext, marginBottom: 4 }}>Custom student limit <Text style={{ color: themeColors.primary }}>*</Text></Text>
-                                    <TextInput
-                                        style={{ backgroundColor: themeColors.bg, color: themeColors.text, padding: 12, borderRadius: 10, borderWidth: 0.5, borderColor: themeColors.border, fontSize: 14 }}
-                                        placeholder="e.g. 2500"
-                                        placeholderTextColor={themeColors.subtext}
-                                        keyboardType="number-pad"
-                                        value={enrollForm.custom_student_limit}
-                                        onChangeText={t => setEnrollForm(prev => ({ ...prev, custom_student_limit: t }))}
-                                    />
-                                </View>
-                            )}
-
-                            <View style={{ marginBottom: 28 }}>
-                                <Text style={{ fontSize: 12, color: themeColors.subtext, marginBottom: 4 }}>Initial status</Text>
-                                <View style={{ backgroundColor: themeColors.bg, borderRadius: 10, borderWidth: 0.5, borderColor: themeColors.border, overflow: 'hidden' }}>
-                                    <Picker
-                                        selectedValue={enrollForm.subscription_status}
-                                        onValueChange={v => setEnrollForm(prev => ({ ...prev, subscription_status: v }))}
-                                        style={{ color: themeColors.text, backgroundColor: themeColors.bg, padding: 10 }}
-                                        dropdownIconColor={themeColors.subtext}
-                                    >
-                                        <Picker.Item label="Trial" value="trial" />
-                                        <Picker.Item label="Active" value="active" />
-                                        <Picker.Item label="Suspended" value="suspended" />
-                                        <Picker.Item label="Expired" value="expired" />
-                                    </Picker>
-                                </View>
-                            </View>
-
-                            <TouchableOpacity
-                                onPress={handleEnroll}
-                                disabled={enrollLoading}
-                                style={{ backgroundColor: themeColors.primary, padding: 14, borderRadius: 12, alignItems: 'center', opacity: enrollLoading ? 0.7 : 1 }}
-                            >
-                                {enrollLoading
-                                    ? <ActivityIndicator color="#fff" />
-                                    : <Text style={{ color: '#fff', fontSize: 15, fontWeight: '600' }}>Enroll institution</Text>
-                                }
-                            </TouchableOpacity>
-
-                        </ScrollView>
-                    </View>
-                </View>
-            </Modal>
-
-            {/* FREE ACCESS MODAL */}
-            <Modal visible={freeModalVisible} animationType="fade" transparent>
-                <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', padding: 20 }}>
-                    <View style={{ backgroundColor: themeColors.card, borderRadius: 20, padding: 24, width: '100%', maxWidth: 400 }}>
-                        <Text style={{ fontSize: 20, fontWeight: 'bold', color: themeColors.text, marginBottom: 8 }}>Grant Beta Access</Text>
-                        <Text style={{ color: themeColors.subtext, fontSize: 14, marginBottom: 20 }}>
-                            This provides the institution full &apos;Basic&apos; features for a limited time duration without payment.
-                        </Text>
-
-                        <Text style={{ color: themeColors.text, marginBottom: 8, fontWeight: '600' }}>Duration (Days)</Text>
-                        <TextInput
-                            style={{ backgroundColor: themeColors.bg, color: themeColors.text, padding: 14, borderRadius: 12, borderWidth: 1, borderColor: themeColors.border, marginBottom: 16 }}
-                            placeholder="e.g. 30"
-                            placeholderTextColor={themeColors.subtext}
-                            keyboardType="number-pad"
-                            value={freeDays}
-                            onChangeText={setFreeDays}
-                        />
-
-                        <Text style={{ color: themeColors.text, marginBottom: 8, fontWeight: '600' }}>Student Limit (Optional)</Text>
-                        <TextInput
-                            style={{ backgroundColor: themeColors.bg, color: themeColors.text, padding: 14, borderRadius: 12, borderWidth: 1, borderColor: themeColors.border, marginBottom: 24 }}
-                            placeholder="e.g. 100"
-                            placeholderTextColor={themeColors.subtext}
-                            keyboardType="number-pad"
-                            value={freeStudentLimit}
-                            onChangeText={setFreeStudentLimit}
-                        />
-
-                        <View style={{ flexDirection: 'row', gap: 12 }}>
-                            <TouchableOpacity
-                                onPress={() => setFreeModalVisible(false)}
-                                style={{ flex: 1, padding: 14, borderRadius: 12, alignItems: 'center', borderWidth: 1, borderColor: themeColors.border }}
-                            >
-                                <Text style={{ color: themeColors.text, fontWeight: '600' }}>Cancel</Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity
-                                onPress={handleGrantFreeAccess}
-                                disabled={isSubmitting}
-                                style={{ flex: 1, padding: 14, borderRadius: 12, alignItems: 'center', backgroundColor: themeColors.primary, opacity: isSubmitting ? 0.7 : 1 }}
-                            >
-                                {isSubmitting ? <ActivityIndicator color="#fff" /> : <Text style={{ color: '#fff', fontWeight: '600' }}>Grant Access</Text>}
-                            </TouchableOpacity>
-                        </View>
-                    </View>
-                </View>
-            </Modal>
-
-            {/* ADMIN MANAGEMENT MODAL */}
-            <Modal visible={adminModalVisible} animationType="fade" transparent>
-                <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', padding: 20 }}>
-                    <View style={{ backgroundColor: themeColors.card, borderRadius: 24, padding: 24, width: '100%', maxWidth: 450 }}>
-                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-                            <Text style={{ fontSize: 20, fontWeight: 'bold', color: themeColors.text }}>Institution Admins</Text>
-                            <TouchableOpacity onPress={() => { setAdminModalVisible(false); setSelectedInstAdmins([]); }}>
-                                <MaterialCommunityIcons name="close" size={24} color={themeColors.subtext} />
-                            </TouchableOpacity>
-                        </View>
-
-                        {adminLoading ? (
-                            <ActivityIndicator size="large" color={themeColors.primary} style={{ marginVertical: 40 }} />
-                        ) : selectedInstAdmins.length > 0 ? (
-                            <View style={{ gap: 12 }}>
-                                {selectedInstAdmins.map((admin) => (
-                                    <View key={admin.id} style={{
-                                        backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : '#f8fafc',
-                                        padding: 16,
-                                        borderRadius: 16,
-                                        flexDirection: 'row',
-                                        justifyContent: 'space-between',
-                                        alignItems: 'center'
-                                    }}>
-                                        <View style={{ flex: 1 }}>
-                                            <Text style={{ color: themeColors.text, fontWeight: '700', fontSize: 15 }}>{admin.full_name}</Text>
-                                            <Text style={{ color: themeColors.subtext, fontSize: 13 }}>{admin.email}</Text>
-                                        </View>
-                                        <View style={{ flexDirection: 'column', gap: 12, alignItems: 'center', justifyContent: 'center' }}>
-                                            <TouchableOpacity
-                                                onPress={() => handleResetAdminPassword(admin.id, admin.full_name)}
-                                                style={{ padding: 2, borderRadius: 10 }}
-                                            >
-                                                <Text style={{ color: themeColors.primary, fontSize: 13, fontWeight: '600' }}>Change password</Text>
-                                            </TouchableOpacity>
-                                            <TouchableOpacity
-                                                onPress={() => handleRemoveAdmin(admin.id, admin.full_name)}
-                                                style={{ padding: 2, borderRadius: 10 }}
-                                            >
-                                                <Text style={{ color: themeColors.primary, fontSize: 13, fontWeight: '600' }}>Remove admin</Text>
-                                            </TouchableOpacity>
-                                        </View>
-                                    </View>
-                                ))}
-                            </View>
-                        ) : (
-                            <Text style={{ color: themeColors.subtext, textAlign: 'center', marginVertical: 20 }}>No admin users found.</Text>
-                        )}
-
-                        <TouchableOpacity
-                            onPress={() => { setAdminModalVisible(false); setSelectedInstAdmins([]); }}
-                            style={{ backgroundColor: themeColors.primary, paddingVertical: 14, borderRadius: 12, alignItems: 'center', marginTop: 20 }}
-                        >
-                            <Text style={{ color: 'white', fontWeight: 'bold' }}>Close</Text>
-                        </TouchableOpacity>
-                    </View>
-                </View>
-            </Modal>
-
-            {/* MANAGE ADDONS MODAL */}
-            <Modal visible={addonsModalVisible} animationType="fade" transparent>
-                <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', padding: 20 }}>
-                    <View style={{ backgroundColor: themeColors.card, borderRadius: 20, padding: 24, width: '100%', maxWidth: 400 }}>
-                        <Text style={{ fontSize: 20, fontWeight: 'bold', color: themeColors.text, marginBottom: 8 }}>Manage Add-ons</Text>
-                        <Text style={{ color: themeColors.subtext, fontSize: 14, marginBottom: 20 }}>
-                            Allocate or revoke add-on modules for this institution. Add-ons are master-admin controlled and independent of the subscription plan.
-                        </Text>
-
-                        <View style={{ marginBottom: 24, gap: 16 }}>
-                            {[
-                                { key: 'addon_library', label: 'Digital Library', sub: 'Enable Library Management' },
-                                { key: 'addon_bursary', label: 'Bursary Module', sub: 'Financial tracking & receipts' },
-                                { key: 'addon_messaging', label: 'Messaging Module', sub: 'Announcements & direct chat' },
-                                { key: 'addon_diary', label: 'Virtual Diary', sub: 'Class entries & daily reports' },
-                                { key: 'addon_finance', label: 'Accounting Plus', sub: 'Advanced financial reports' },
-                                { key: 'addon_analytics', label: 'Performance Analytics', sub: 'Insightful progress tracking' }
-                            ].map((addon) => (
-                                <TouchableOpacity
-                                    key={addon.key}
-                                    style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 12, borderRadius: 12, backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#f1f5f9' }}
-                                    onPress={() => setAddonsForm(prev => ({ ...prev, [addon.key]: !prev[addon.key as keyof typeof prev] }))}
-                                >
-                                    <View>
-                                        <Text style={{ color: themeColors.text, fontSize: 16, fontWeight: '600' }}>{addon.label}</Text>
-                                        <Text style={{ color: themeColors.subtext, fontSize: 11, marginTop: 2 }}>{addon.sub}</Text>
-                                    </View>
-                                    <MaterialCommunityIcons
-                                        name={addonsForm[addon.key as keyof typeof addonsForm] ? "toggle-switch" : "toggle-switch-off"}
-                                        size={36}
-                                        color={addonsForm[addon.key as keyof typeof addonsForm] ? '#10b981' : themeColors.subtext}
-                                    />
-                                </TouchableOpacity>
-                            ))}
-
-                            <View style={{ marginTop: 8 }}>
-                                <Text style={{ color: themeColors.text, fontWeight: '600', marginBottom: 8 }}>Custom Student Limit</Text>
-                                <TextInput
-                                    style={{ backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#f1f5f9', color: themeColors.text, borderRadius: 12, padding: 14 }}
-                                    placeholder="e.g. 5000 (Set to clear for default)"
-                                    placeholderTextColor={themeColors.subtext}
-                                    keyboardType="number-pad"
-                                    value={addonsForm.custom_student_limit?.toString() || ''}
-                                    onChangeText={(t) => setAddonsForm(prev => ({ ...prev, custom_student_limit: t ? parseInt(t, 10) : null }))}
-                                />
-                                <Text style={{ color: themeColors.subtext, fontSize: 10, marginTop: 4 }}>
-                                    Leave empty to use the default plan limits.
-                                </Text>
-                            </View>
-                        </View>
-
-                        <View style={{ flexDirection: 'row', gap: 12 }}>
-                            <TouchableOpacity
-                                onPress={() => setAddonsModalVisible(false)}
-                                style={{ flex: 1, padding: 14, borderRadius: 12, alignItems: 'center', borderWidth: 1, borderColor: themeColors.border }}
-                            >
-                                <Text style={{ color: themeColors.text, fontWeight: '600' }}>Cancel</Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity
-                                onPress={handleSaveAddons}
-                                disabled={addonsLoading}
-                                style={{ flex: 1, padding: 14, borderRadius: 12, alignItems: 'center', backgroundColor: '#3B82F6', opacity: addonsLoading ? 0.7 : 1 }}
-                            >
-                                {addonsLoading ? <ActivityIndicator color="#fff" /> : <Text style={{ color: '#fff', fontWeight: '600' }}>Save Add-ons</Text>}
-                            </TouchableOpacity>
-                        </View>
-                    </View>
-                </View>
-            </Modal>
-
-            {/* CATEGORY MANAGEMENT MODAL */}
-            <Modal visible={isCategoryModalVisible} animationType="fade" transparent>
-                <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', padding: 20 }}>
-                    <View style={{ backgroundColor: themeColors.card, borderRadius: 24, padding: 24, width: '100%', maxWidth: 500, maxHeight: '80%' }}>
-                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-                            <Text style={{ fontSize: 20, fontWeight: 'bold', color: themeColors.text }}>Manage Categories</Text>
-                            <TouchableOpacity onPress={() => setIsCategoryModalVisible(false)}>
-                                <MaterialCommunityIcons name="close" size={24} color={themeColors.subtext} />
-                            </TouchableOpacity>
-                        </View>
-
-                        <ScrollView showsVerticalScrollIndicator={false}>
-                            {/* Add New Category */}
-                            <View style={{ backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : '#f8fafc', padding: 16, borderRadius: 16, marginBottom: 20 }}>
-                                <Text style={{ color: themeColors.primary, fontWeight: 'bold', marginBottom: 12 }}>Add New Category</Text>
-                                <TextInput
-                                    style={{ backgroundColor: themeColors.card, color: themeColors.text, padding: 12, borderRadius: 10, borderWidth: 1, borderColor: themeColors.border, marginBottom: 12 }}
-                                    placeholder="Category Name (e.g. Junior School)"
-                                    placeholderTextColor={themeColors.subtext}
-                                    value={categoryForm.name}
-                                    onChangeText={t => setCategoryForm(prev => ({ ...prev, name: t }))}
-                                />
-                                <TextInput
-                                    style={{ backgroundColor: themeColors.card, color: themeColors.text, padding: 12, borderRadius: 10, borderWidth: 1, borderColor: themeColors.border, marginBottom: 16 }}
-                                    placeholder="Level Label (e.g. Grade, Form, Year)"
-                                    placeholderTextColor={themeColors.subtext}
-                                    value={categoryForm.level_label}
-                                    onChangeText={t => setCategoryForm(prev => ({ ...prev, level_label: t }))}
-                                />
-                                <TouchableOpacity
-                                    onPress={async () => {
-                                        if (!categoryForm.name || !categoryForm.level_label) return;
-                                        try {
-                                            setIsSavingCategory(true);
-                                            const { data: { session } } = await supabase.auth.getSession();
-                                            if (!session) return;
-                                            const res = await fetch(`${getBackendUrl()}/api/master-admin/categories`, {
-                                                method: 'POST',
-                                                headers: {
-                                                    'Authorization': `Bearer ${session.access_token}`,
-                                                    'Content-Type': 'application/json'
-                                                },
-                                                body: JSON.stringify(categoryForm)
-                                            });
-                                            if (res.ok) {
-                                                setCategoryForm({ name: '', level_label: 'Grade' });
-                                                fetchCategories();
-                                                Toast.show({ type: 'success', text1: 'Success', text2: 'Category added' });
-                                            }
-                                        } catch (err) {
-                                            console.error(err);
-                                        } finally {
-                                            setIsSavingCategory(false);
-                                        }
-                                    }}
-                                    disabled={isSavingCategory}
-                                    style={{ backgroundColor: themeColors.primary, padding: 12, borderRadius: 10, alignItems: 'center' }}
-                                >
-                                    {isSavingCategory ? <ActivityIndicator color="#fff" size="small" /> : <Text style={{ color: '#fff', fontWeight: 'bold' }}>Add Category</Text>}
-                                </TouchableOpacity>
-                            </View>
-
-                            {/* Existing Categories */}
-                            <Text style={{ color: themeColors.text, fontWeight: '700', marginBottom: 12 }}>Active Categories</Text>
-                            {categoriesLoading ? (
-                                <ActivityIndicator color={themeColors.primary} />
-                            ) : (
-                                <View style={{ gap: 10 }}>
-                                    {categories.map(cat => (
-                                        <View key={cat.id} style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 12, backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#fff', borderRadius: 12, borderWidth: 1, borderColor: themeColors.border }}>
-                                            <View>
-                                                <Text style={{ color: themeColors.text, fontWeight: '600' }}>{cat.name}</Text>
-                                                <Text style={{ color: themeColors.subtext, fontSize: 12 }}>Label: {cat.level_label}</Text>
-                                            </View>
-                                            <TouchableOpacity
-                                                onPress={async () => {
-                                                    const confirmMsg = "Delete this category? Institutions using it will keep it until updated.";
-                                                    const confirmed = Platform.OS === 'web' ? window.confirm(confirmMsg) : true; // In RN, maybe use Alert.confirm
-                                                    if (!confirmed) return;
-
-                                                    try {
-                                                        const { data: { session } } = await supabase.auth.getSession();
-                                                        if (!session) return;
-                                                        const res = await fetch(`${getBackendUrl()}/api/master-admin/categories/${cat.id}`, {
-                                                            method: 'DELETE',
-                                                            headers: { 'Authorization': `Bearer ${session.access_token}` }
-                                                        });
-                                                        if (res.ok) fetchCategories();
-                                                    } catch (err) { console.error(err); }
-                                                }}
-                                                style={{ padding: 8 }}
-                                            >
-                                                <MaterialCommunityIcons name="trash-can-outline" size={20} color="#ef4444" />
-                                            </TouchableOpacity>
-                                        </View>
-                                    ))}
-                                </View>
-                            )}
-                        </ScrollView>
-                    </View>
-                </View>
-            </Modal>
-
-            {/* EDIT INSTITUTION MODAL */}
-            <Modal visible={editModalVisible} animationType="slide" transparent>
-                <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}>
-                    <View style={{ backgroundColor: themeColors.card, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, maxHeight: '90%' }}>
-                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-                                <MaterialCommunityIcons name="pencil" size={24} color={themeColors.primary} />
-                                <Text style={{ fontSize: 20, fontWeight: 'bold', color: themeColors.text }}>Edit Institution</Text>
-                            </View>
-                            <TouchableOpacity onPress={() => setEditModalVisible(false)}>
-                                <MaterialCommunityIcons name="close" size={24} color={themeColors.subtext} />
-                            </TouchableOpacity>
-                        </View>
-
-                        <ScrollView showsVerticalScrollIndicator={false}>
-                            <Text style={{ color: themeColors.primary, fontWeight: 'bold', marginBottom: 8 }}>Institution Metadata</Text>
-                            <TextInput
-                                style={{ backgroundColor: themeColors.bg, color: themeColors.text, padding: 14, borderRadius: 12, borderWidth: 1, borderColor: themeColors.border, marginBottom: 16 }}
-                                placeholder="Institution Name"
-                                placeholderTextColor={themeColors.subtext}
-                                value={editForm.name}
-                                onChangeText={t => setEditForm((prev: any) => ({ ...prev, name: t }))}
-                            />
-                            <TextInput
-                                style={{ backgroundColor: themeColors.bg, color: themeColors.text, padding: 14, borderRadius: 12, borderWidth: 1, borderColor: themeColors.border, marginBottom: 16 }}
-                                placeholder="Location"
-                                placeholderTextColor={themeColors.subtext}
-                                value={editForm.location}
-                                onChangeText={t => setEditForm((prev: any) => ({ ...prev, location: t }))}
-                            />
-                            <TextInput
-                                style={{ backgroundColor: themeColors.bg, color: themeColors.text, padding: 14, borderRadius: 12, borderWidth: 1, borderColor: themeColors.border, marginBottom: 16 }}
-                                placeholder="Principal/Owner Name"
-                                placeholderTextColor={themeColors.subtext}
-                                value={editForm.principal_name}
-                                onChangeText={t => setEditForm((prev: any) => ({ ...prev, principal_name: t }))}
-                            />
-                            <TextInput
-                                style={{ backgroundColor: themeColors.bg, color: themeColors.text, padding: 14, borderRadius: 12, borderWidth: 1, borderColor: themeColors.border, marginBottom: 16 }}
-                                placeholder="Contact Phone"
-                                placeholderTextColor={themeColors.subtext}
-                                value={editForm.phone}
-                                onChangeText={t => setEditForm((prev: any) => ({ ...prev, phone: t }))}
-                            />
-                            <TextInput
-                                style={{ backgroundColor: themeColors.bg, color: themeColors.text, padding: 14, borderRadius: 12, borderWidth: 1, borderColor: themeColors.border, marginBottom: 16 }}
-                                placeholder="Contact Email"
-                                placeholderTextColor={themeColors.subtext}
-                                value={editForm.email}
-                                onChangeText={t => setEditForm((prev: any) => ({ ...prev, email: t }))}
-                            />
-                            <TextInput
-                                style={{ backgroundColor: themeColors.bg, color: themeColors.text, padding: 14, borderRadius: 12, borderWidth: 1, borderColor: themeColors.border, marginBottom: 16 }}
-                                placeholder="Email Domain"
-                                placeholderTextColor={themeColors.subtext}
-                                autoCapitalize="none"
-                                value={editForm.email_domain}
-                                onChangeText={t => setEditForm((prev: any) => ({ ...prev, email_domain: t }))}
-                            />
-
-                            <Text style={{ color: themeColors.primary, fontWeight: 'bold', marginBottom: 8, marginTop: 10 }}>Subscription & Limits</Text>
-
-                            <Text style={{ color: themeColors.text, fontSize: 13, marginBottom: 4, fontWeight: '600' }}>Plan</Text>
-                            <View style={{ backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#f1f5f9', borderRadius: 12, marginBottom: 16 }}>
-                                <Picker
-                                    selectedValue={editForm.subscription_plan}
-                                    onValueChange={(v) => setEditForm((prev: any) => ({ ...prev, subscription_plan: v }))}
-                                    style={{ color: themeColors.text }}
-                                >
-                                    <Picker.Item label="Trial" value="trial" />
-                                    <Picker.Item label="Basic" value="basic" />
-                                    <Picker.Item label="Pro" value="pro" />
-                                    <Picker.Item label="Premium" value="premium" />
-                                    <Picker.Item label="Beta Partner" value="beta" />
-                                    <Picker.Item label="Custom Enterprise" value="custom" />
-                                    <Picker.Item label="Free Forever" value="free" />
-                                </Picker>
-                            </View>
-
-                            <Text style={{ color: themeColors.text, fontSize: 13, marginBottom: 4, fontWeight: '600' }}>Status</Text>
-                            <View style={{ backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#f1f5f9', borderRadius: 12, marginBottom: 16 }}>
-                                <Picker
-                                    selectedValue={editForm.subscription_status}
-                                    onValueChange={(v) => setEditForm((prev: any) => ({ ...prev, subscription_status: v }))}
-                                    style={{ color: themeColors.text }}
-                                >
-                                    <Picker.Item label="Active" value="active" />
-                                    <Picker.Item label="Suspended" value="suspended" />
-                                    <Picker.Item label="Trialing" value="trial" />
-                                    <Picker.Item label="Expired" value="expired" />
-                                </Picker>
-                            </View>
-
-                            <Text style={{ color: themeColors.text, fontSize: 13, marginBottom: 4, fontWeight: '600' }}>Billing Cycle</Text>
-                            <View style={{ backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#f1f5f9', borderRadius: 12, marginBottom: 16 }}>
-                                <Picker
-                                    selectedValue={editForm.subscription_cycle}
-                                    onValueChange={(v) => setEditForm((prev: any) => ({ ...prev, subscription_cycle: v }))}
-                                    style={{ color: themeColors.text }}
-                                >
-                                    <Picker.Item label="Monthly" value="monthly" />
-                                    <Picker.Item label="Quarterly" value="quarterly" />
-                                    <Picker.Item label="Yearly" value="yearly" />
-                                </Picker>
-                            </View>
-
-                            <Text style={{ color: themeColors.text, fontSize: 13, marginBottom: 4, fontWeight: '600' }}>Custom Student Limit</Text>
-                            <TextInput
-                                style={{ backgroundColor: themeColors.bg, color: themeColors.text, padding: 14, borderRadius: 12, borderWidth: 1, borderColor: themeColors.border, marginBottom: 16 }}
-                                placeholder="e.g. 1000"
-                                placeholderTextColor={themeColors.subtext}
-                                keyboardType="number-pad"
-                                value={editForm.custom_student_limit?.toString() || ''}
-                                onChangeText={t => setEditForm((prev: any) => ({ ...prev, custom_student_limit: t ? parseInt(t, 10) : null }))}
-                            />
-
-                            <Text style={{ color: themeColors.text, fontSize: 13, marginBottom: 4, fontWeight: '600' }}>Plan Expiry Date (YYYY-MM-DD)</Text>
-                            <TextInput
-                                style={{ backgroundColor: themeColors.bg, color: themeColors.text, padding: 14, borderRadius: 12, borderWidth: 1, borderColor: themeColors.border, marginBottom: 24 }}
-                                placeholder="YYYY-MM-DD"
-                                placeholderTextColor={themeColors.subtext}
-                                value={editForm.trial_end_date?.split('T')[0] || ''}
-                                onChangeText={t => setEditForm((prev: any) => ({ ...prev, trial_end_date: t }))}
-                            />
-
-                            <Text style={{ color: themeColors.primary, fontWeight: 'bold', marginBottom: 12 }}>Feature Add-ons</Text>
-                            <View style={{ gap: 12, marginBottom: 30 }}>
-                                {[
-                                    { key: 'addon_library', label: 'Library Module' },
-                                    { key: 'addon_messaging', label: 'Messaging Module' },
-                                    { key: 'addon_diary', label: 'Virtual Diary' },
-                                    { key: 'addon_bursary', label: 'Bursary Tracking' },
-                                    { key: 'addon_finance', label: 'Finance Accounting' },
-                                    { key: 'addon_analytics', label: 'Advanced Analytics' },
-                                    { key: 'addon_attendance', label: 'Digital Attendance' }
-                                ].map(addon => (
-                                    <TouchableOpacity
-                                        key={addon.key}
-                                        style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : '#f8fafc', padding: 14, borderRadius: 12 }}
-                                        onPress={() => setEditForm((prev: any) => ({ ...prev, [addon.key]: !prev[addon.key] }))}
-                                    >
-                                        <Text style={{ color: themeColors.text, fontWeight: '600' }}>{addon.label}</Text>
-                                        <MaterialCommunityIcons
-                                            name={editForm[addon.key] ? "checkbox-marked" : "checkbox-blank-outline"}
-                                            size={24}
-                                            color={editForm[addon.key] ? themeColors.primary : themeColors.subtext}
-                                        />
-                                    </TouchableOpacity>
-                                ))}
-                            </View>
-
-                            <TouchableOpacity
-                                onPress={handleSaveEdit}
-                                disabled={isSavingEdit}
-                                style={{ backgroundColor: themeColors.primary, padding: 18, borderRadius: 14, alignItems: 'center', marginBottom: 40, opacity: isSavingEdit ? 0.7 : 1 }}
-                            >
-                                {isSavingEdit ? <ActivityIndicator color="#fff" /> : <Text style={{ color: '#fff', fontSize: 16, fontWeight: '800' }}>Save Changes</Text>}
-                            </TouchableOpacity>
-                        </ScrollView>
-                    </View>
-                </View>
-            </Modal>
-
-            {/* RECORD PAYMENT MODAL */}
-            <Modal visible={paymentModalVisible} animationType="fade" transparent>
-                <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', padding: 20 }}>
-                    <View style={{ backgroundColor: themeColors.card, borderRadius: 24, padding: 24, width: '100%', maxWidth: 400 }}>
-                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 20 }}>
-                            <MaterialCommunityIcons name="cash-register" size={24} color={themeColors.primary} />
-                            <Text style={{ fontSize: 20, fontWeight: 'bold', color: themeColors.text }}>Record Payment</Text>
-                        </View>
-
-                        <Text style={{ color: themeColors.text, fontWeight: '600', marginBottom: 4 }}>Amount (KES)*</Text>
-                        <TextInput
-                            style={{ backgroundColor: themeColors.bg, color: themeColors.text, padding: 14, borderRadius: 12, borderWidth: 1, borderColor: themeColors.border, marginBottom: 16 }}
-                            placeholder="e.g. 50000"
-                            placeholderTextColor={themeColors.subtext}
-                            keyboardType="numeric"
-                            value={paymentForm.amount}
-                            onChangeText={t => setPaymentForm(prev => ({ ...prev, amount: t }))}
-                        />
-
-                        <Text style={{ color: themeColors.text, fontWeight: '600', marginBottom: 4 }}>Method</Text>
-                        <View style={{ backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#f1f5f9', borderRadius: 12, marginBottom: 16 }}>
-                            <Picker
-                                selectedValue={paymentForm.method}
-                                onValueChange={v => setPaymentForm(prev => ({ ...prev, method: v }))}
-                                style={{ color: themeColors.text }}
-                            >
-                                <Picker.Item label="Bank Transfer" value="bank" />
-                                <Picker.Item label="M-Pesa" value="mpesa" />
-                                <Picker.Item label="Cash" value="cash" />
-                                <Picker.Item label="Cheque" value="cheque" />
-                                <Picker.Item label="Direct Deposit" value="direct" />
-                            </Picker>
-                        </View>
-
-                        <Text style={{ color: themeColors.text, fontWeight: '600', marginBottom: 4 }}>Reference / Receipt ID</Text>
-                        <TextInput
-                            style={{ backgroundColor: themeColors.bg, color: themeColors.text, padding: 14, borderRadius: 12, borderWidth: 1, borderColor: themeColors.border, marginBottom: 16 }}
-                            placeholder="e.g. TR-982173"
-                            placeholderTextColor={themeColors.subtext}
-                            value={paymentForm.reference_id}
-                            onChangeText={t => setPaymentForm(prev => ({ ...prev, reference_id: t }))}
-                        />
-
-                        <Text style={{ color: themeColors.text, fontWeight: '600', marginBottom: 4 }}>Notes</Text>
-                        <TextInput
-                            style={{ backgroundColor: themeColors.bg, color: themeColors.text, padding: 14, borderRadius: 12, borderWidth: 1, borderColor: themeColors.border, marginBottom: 16 }}
-                            placeholder="Internal accounting notes..."
-                            placeholderTextColor={themeColors.subtext}
-                            multiline
-                            numberOfLines={2}
-                            value={paymentForm.notes}
-                            onChangeText={t => setPaymentForm(prev => ({ ...prev, notes: t }))}
-                        />
-
-                        <View style={{ flexDirection: 'row', gap: 12, marginTop: 10 }}>
-                            <TouchableOpacity
-                                onPress={() => setPaymentModalVisible(false)}
-                                style={{ flex: 1, padding: 14, borderRadius: 12, alignItems: 'center', borderWidth: 1, borderColor: themeColors.border }}
-                            >
-                                <Text style={{ color: themeColors.text, fontWeight: '600' }}>Cancel</Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity
-                                onPress={handleSavePayment}
-                                disabled={isSavingPayment}
-                                style={{ flex: 1, padding: 14, borderRadius: 12, alignItems: 'center', backgroundColor: themeColors.primary, opacity: isSavingPayment ? 0.7 : 1 }}
-                            >
-                                {isSavingPayment ? <ActivityIndicator color="#fff" /> : <Text style={{ color: '#fff', fontWeight: 'bold' }}>Record</Text>}
-                            </TouchableOpacity>
-                        </View>
-                    </View>
-                </View>
-            </Modal>
-
-        </SafeAreaView>
+        <View style={{ marginTop: 14, flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+          <ActionChip c={c} icon="puzzle" label="Add-ons" onPress={() => openAddons(item)} />
+          <ActionChip c={c} icon="chart-bar" label="Stats" onPress={() => openStats(item.id)} />
+          <ActionChip c={c} icon="account-cog" label="Admins" onPress={() => openManageAdmins(item.id)} />
+          <ActionChip c={c} icon="pencil" label="Edit" onPress={() => openEditInstitution(item)} />
+          <ActionChip c={c} icon="cash-plus" label="Record Payment" onPress={() => openRecordPayment(item.id)} />
+          <ActionChip c={c} icon="trash-can-outline" danger label="Delete" onPress={() => deleteInstitution(item)} />
+        </View>
+      </View>
     );
+  };
+
+  return (
+    <SafeAreaView style={{ flex: 1, backgroundColor: c.bg }}>
+      <View style={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: 10, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          <MaterialCommunityIcons name="office-building-cog" size={24} color={c.primary} />
+          <View>
+            <Text style={{ color: c.text, fontSize: 23, fontWeight: '800' }}>Institutions</Text>
+            <Text style={{ color: c.sub, marginTop: 2 }}>Manage institutions and operational controls</Text>
+          </View>
+        </View>
+
+        <View style={{ flexDirection: 'row', gap: 10 }}>
+          <TouchableOpacity onPress={() => setCategoryModalOpen(true)}>
+            <MaterialCommunityIcons name="tag-outline" size={22} color={c.primary} />
+          </TouchableOpacity>
+          <TouchableOpacity onPress={loadInstitutions}>
+            <MaterialCommunityIcons name="refresh" size={22} color={c.text} />
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => { resetEnrollmentState(); setEnrollModalOpen(true); }}>
+            <MaterialCommunityIcons name="plus-circle" size={24} color={c.primary} />
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      {loading ? (
+        <View style={{ flex: 1, paddingHorizontal: 16, paddingBottom: 24 }}>
+          <ListItemSkeleton loading={loading} count={6} label="Loading institutions..." />
+        </View>
+      ) : (
+        <FlatList
+          data={institutions}
+          keyExtractor={(i) => i.id}
+          renderItem={renderInstitution}
+          contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 80 }}
+          ListEmptyComponent={
+            <View style={{ alignItems: 'center', paddingTop: 40 }}>
+              <MaterialCommunityIcons name="domain-off" size={48} color={c.border} />
+              <Text style={{ color: c.sub, marginTop: 10 }}>No institutions found.</Text>
+            </View>
+          }
+        />
+      )}
+
+      <ConfirmModal
+        open={confirmModal.open}
+        title={confirmModal.title}
+        body={confirmModal.body}
+        c={c}
+        onCancel={() => setConfirmModal({ open: false, title: '', body: '' })}
+        onConfirm={async () => {
+          const fn = confirmModal.onConfirm;
+          setConfirmModal({ open: false, title: '', body: '' });
+          if (fn) await fn();
+        }}
+      />
+
+      <Modal visible={categoryModalOpen} animationType="fade" transparent>
+        <View style={overlayStyle}>
+          <View style={[modalCardStyle, { backgroundColor: c.card, borderColor: c.border, maxHeight: '82%' }]}>
+            <ModalHeader title="Manage Categories" c={c} onClose={() => setCategoryModalOpen(false)} />
+
+            <ScrollView showsVerticalScrollIndicator={false}>
+              <Text style={{ color: c.sub, fontSize: 12, marginBottom: 6 }}>Category Name</Text>
+              <TextInput
+                value={categoryName}
+                onChangeText={setCategoryName}
+                placeholder="e.g. Senior School"
+                placeholderTextColor={c.sub}
+                style={inputStyle(c)}
+              />
+
+              <Text style={{ color: c.sub, fontSize: 12, marginTop: 10, marginBottom: 6 }}>Class Type</Text>
+              <TextInput
+                value={categoryClassType}
+                onChangeText={setCategoryClassType}
+                placeholder="e.g. Grade/Form/KG"
+                placeholderTextColor={c.sub}
+                style={inputStyle(c)}
+              />
+
+              <TouchableOpacity
+                onPress={saveCategory}
+                disabled={categorySaving}
+                style={{ marginTop: 12, backgroundColor: c.primary, borderRadius: 12, paddingVertical: 12, alignItems: 'center', opacity: categorySaving ? 0.7 : 1 }}
+              >
+                {categorySaving ? <ActivityIndicator color="#fff" /> : <Text style={{ color: '#fff', fontWeight: '800' }}>Add Category</Text>}
+              </TouchableOpacity>
+
+              <Text style={{ color: c.text, fontWeight: '700', marginTop: 18, marginBottom: 10 }}>Active Categories</Text>
+              {categories.map((cat) => (
+                <View
+                  key={cat.id}
+                  style={{
+                    borderWidth: 1,
+                    borderColor: c.border,
+                    borderRadius: 12,
+                    padding: 12,
+                    marginBottom: 8,
+                    backgroundColor: c.bg,
+                    flexDirection: 'row',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                  }}
+                >
+                  <View>
+                    <Text style={{ color: c.text, fontWeight: '700' }}>{cat.name}</Text>
+                    <Text style={{ color: c.sub, marginTop: 2 }}>Type: {cat.class_type}</Text>
+                  </View>
+
+                  <View style={{ flexDirection: 'row', gap: 8 }}>
+                    <TouchableOpacity onPress={() => startEditCategory(cat)}>
+                      <MaterialCommunityIcons name="pencil" size={18} color={c.primary} />
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={() => deleteCategory(cat)}>
+                      <MaterialCommunityIcons name="trash-can-outline" size={18} color={c.danger} />
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              ))}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal visible={enrollModalOpen && enrollStep < 3} animationType="fade" transparent>
+        <View style={overlayStyle}>
+          <View style={[modalCardStyle, { backgroundColor: c.card, borderColor: c.border, maxHeight: '90%' }]}> 
+            <ModalHeader title="Enroll Institution" c={c} onClose={closeEnrollModal} />
+            <ScrollView showsVerticalScrollIndicator={false}>
+              {enrollStep < 3 && (
+                <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 14, gap: 8 }}>
+                  {[0, 1, 2].map((i) => (
+                    <View key={i} style={{ flex: 1, height: 6, borderRadius: 999, backgroundColor: i <= enrollStep ? c.primary : c.border }} />
+                  ))}
+                </View>
+              )}
+
+              {enrollStep === 0 && (
+                <>
+                  <Field label="Institution Name*" c={c} value={enrollForm.institution_name} onChangeText={(v) => setEnrollForm((p) => ({ ...p, institution_name: v }))} />
+                  <Field label="Location" c={c} value={enrollForm.location} onChangeText={(v) => setEnrollForm((p) => ({ ...p, location: v }))} />
+                  <Field label="Email Domain*" c={c} value={enrollForm.email_domain} onChangeText={(v) => setEnrollForm((p) => ({ ...p, email_domain: v }))} />
+
+                  <Text style={labelStyle(c)}>Currency*</Text>
+                  <View style={pickerWrap(c)}>
+                    <Picker
+                      selectedValue={enrollForm.currency_id}
+                      onValueChange={(v) => setEnrollForm((p) => ({ ...p, currency_id: String(v || '') }))}
+                      style={{ color: c.text }}
+                    >
+                      {currencies.map((currency) => (
+                        <Picker.Item
+                          key={currency.id}
+                          label={`${currency.code} (${currency.symbol}) - ${currency.name}`}
+                          value={currency.id}
+                        />
+                      ))}
+                    </Picker>
+                  </View>
+
+                  <Text style={labelStyle(c)}>Category*</Text>
+                  <TouchableOpacity
+                    onPress={() => openCategoryPicker('enroll')}
+                    style={{
+                      borderWidth: 1,
+                      borderColor: c.border,
+                      borderRadius: 12,
+                      backgroundColor: c.bg,
+                      paddingHorizontal: 12,
+                      paddingVertical: 12,
+                      flexDirection: 'row',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                    }}
+                  >
+                    <Text style={{ color: enrollForm.category_ids.length > 0 ? c.text : c.sub, fontWeight: '600' }}>{selectedEnrollCategoryName}</Text>
+                    <MaterialCommunityIcons name="chevron-down" size={20} color={c.sub} />
+                  </TouchableOpacity>
+                </>
+              )}
+
+              {enrollStep === 1 && (
+                <>
+                  <Text style={labelStyle(c)}>Subscription Plan</Text>
+                  <TouchableOpacity
+                    onPress={() => setPlanPickerModalOpen(true)}
+                    style={{
+                      borderWidth: 1,
+                      borderColor: c.border,
+                      borderRadius: 12,
+                      backgroundColor: c.bg,
+                      paddingHorizontal: 12,
+                      paddingVertical: 12,
+                      flexDirection: 'row',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                    }}
+                  >
+                    <Text style={{ color: c.text, fontWeight: '600' }}>{selectedEnrollPlanName}</Text>
+                    <MaterialCommunityIcons name="chevron-down" size={20} color={c.sub} />
+                  </TouchableOpacity>
+
+                  {enrollForm.subscription_plan !== 'beta' && (
+                    <>
+                      <Text style={labelStyle(c)}>Subscription Tracking Start Date*</Text>
+                      <TouchableOpacity
+                        onPress={openPlanStartDatePicker}
+                        style={{
+                          borderWidth: 1,
+                          borderColor: c.border,
+                          borderRadius: 12,
+                          backgroundColor: c.bg,
+                          paddingHorizontal: 12,
+                          paddingVertical: 12,
+                          flexDirection: 'row',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                        }}
+                      >
+                        <Text style={{ color: c.text, fontWeight: '600' }}>{enrollForm.subscription_start_date || 'Select date'}</Text>
+                        <MaterialCommunityIcons name="calendar-month" size={20} color={c.sub} />
+                      </TouchableOpacity>
+                    </>
+                  )}
+
+                  {enrollForm.subscription_plan === 'beta' && (
+                    <Field
+                      label="Custom Student Limit*"
+                      c={c}
+                      value={enrollForm.custom_student_limit}
+                      keyboardType="number-pad"
+                      onChangeText={(v) => {
+                        const numericOnly = String(v || '').replace(/\D/g, '');
+                        setEnrollForm((p) => ({ ...p, custom_student_limit: numericOnly }));
+                      }}
+                    />
+                  )}
+
+                </>
+              )}
+
+              {enrollStep === 2 && (
+                <>
+                  <Field label="Admin First Name*" c={c} value={enrollForm.admin_first_name} onChangeText={(v) => setEnrollForm((p) => ({ ...p, admin_first_name: v }))} />
+                  <Field label="Admin Last Name*" c={c} value={enrollForm.admin_last_name} onChangeText={(v) => setEnrollForm((p) => ({ ...p, admin_last_name: v }))} />
+                  <Text style={{ color: c.sub, marginTop: 10 }}>
+                    Admin email and temporary password will be auto-generated using first + last name and institution domain.
+                  </Text>
+                </>
+              )}
+
+              <View style={{ flexDirection: 'row', gap: 10, marginTop: 14, marginBottom: 24 }}>
+                <TouchableOpacity
+                  onPress={prevEnrollStep}
+                  style={{ flex: 1, borderWidth: 1, borderColor: c.border, borderRadius: 12, paddingVertical: 12, alignItems: 'center' }}
+                >
+                  <Text style={{ color: c.text, fontWeight: '700' }}>{enrollStep === 0 ? 'Cancel' : enrollStep === 3 ? 'Close' : 'Back'}</Text>
+                </TouchableOpacity>
+
+                {enrollStep < 3 && (
+                  <TouchableOpacity
+                    onPress={nextEnrollStep}
+                    disabled={!canGoNextEnroll() || enrollSaving}
+                    style={{
+                      flex: 1,
+                      backgroundColor: c.primary,
+                      borderRadius: 12,
+                      paddingVertical: 12,
+                      alignItems: 'center',
+                      opacity: !canGoNextEnroll() || enrollSaving ? 0.7 : 1,
+                    }}
+                  >
+                    {enrollSaving ? <ActivityIndicator color="#fff" /> : <Text style={{ color: '#fff', fontWeight: '800' }}>{enrollStep === 2 ? 'Confirm & Enroll' : 'Next'}</Text>}
+                  </TouchableOpacity>
+                )}
+              </View>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal visible={enrollModalOpen && enrollStep === 3} animationType="fade" transparent>
+        <View style={overlayStyle}>
+          <View style={[modalCardStyle, { backgroundColor: c.card, borderColor: c.border }]}> 
+            <ModalHeader title="Admin Credentials" c={c} onClose={closeEnrollModal} />
+            <View style={{ borderWidth: 1, borderColor: c.border, borderRadius: 12, padding: 12, backgroundColor: c.bg }}>
+              <Text style={{ color: c.sub, marginBottom: 4 }}>Institution ID: {enrollResult?.institution_id || 'N/A'}</Text>
+              <Text style={{ color: c.sub, marginBottom: 4 }}>Admin Email: {enrollResult?.admin_email || 'N/A'}</Text>
+              <Text style={{ color: c.sub, marginBottom: 4 }}>Temp Password: {enrollResult?.tempPassword || 'N/A'}</Text>
+              {!!enrollResult?.credential_delivery?.url && <Text style={{ color: c.sub, marginTop: 6 }}>One-time credential link generated.</Text>}
+            </View>
+            <TouchableOpacity
+              onPress={closeEnrollModal}
+              style={{ marginTop: 14, backgroundColor: c.primary, borderRadius: 12, paddingVertical: 12, alignItems: 'center' }}
+            >
+              <Text style={{ color: '#fff', fontWeight: '800' }}>Done</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal visible={editCategoryModalOpen} animationType="fade" transparent>
+        <View style={overlayStyle}>
+          <View style={[modalCardStyle, { backgroundColor: c.card, borderColor: c.border }]}> 
+            <ModalHeader
+              title="Edit Category"
+              c={c}
+              onClose={() => {
+                setEditCategoryModalOpen(false);
+                setEditingCategoryId(null);
+              }}
+            />
+
+            <Text style={{ color: c.sub, fontSize: 12, marginBottom: 6 }}>Category Name</Text>
+            <TextInput
+              value={editCategoryName}
+              onChangeText={setEditCategoryName}
+              placeholder="e.g. Senior School"
+              placeholderTextColor={c.sub}
+              style={inputStyle(c)}
+            />
+
+            <Text style={{ color: c.sub, fontSize: 12, marginTop: 10, marginBottom: 6 }}>Class Type</Text>
+            <TextInput
+              value={editCategoryClassType}
+              onChangeText={setEditCategoryClassType}
+              placeholder="e.g. Grade/Form/KG"
+              placeholderTextColor={c.sub}
+              style={inputStyle(c)}
+            />
+
+            <TouchableOpacity
+              onPress={saveEditedCategory}
+              disabled={editCategorySaving}
+              style={{ marginTop: 14, backgroundColor: c.primary, borderRadius: 12, paddingVertical: 12, alignItems: 'center', opacity: editCategorySaving ? 0.7 : 1 }}
+            >
+              {editCategorySaving ? <ActivityIndicator color="#fff" /> : <Text style={{ color: '#fff', fontWeight: '800' }}>Save Category</Text>}
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal visible={editModalOpen} animationType="fade" transparent>
+        <View style={overlayStyle}>
+          <View style={[modalCardStyle, { backgroundColor: c.card, borderColor: c.border, maxHeight: '90%' }]}> 
+            <ModalHeader title="Edit Institution" c={c} onClose={() => setEditModalOpen(false)} />
+            <ScrollView showsVerticalScrollIndicator={false}>
+              <Field label="Institution Name" c={c} value={String(editForm.name || '')} onChangeText={(v) => setEditForm((p) => ({ ...p, name: v }))} />
+              <Field label="Location" c={c} value={String(editForm.location || '')} onChangeText={(v) => setEditForm((p) => ({ ...p, location: v }))} />
+              <Field label="Email Domain" c={c} value={String(editForm.email_domain || '')} onChangeText={(v) => setEditForm((p) => ({ ...p, email_domain: v }))} />
+              <Text style={labelStyle(c)}>Currency</Text>
+              <View style={pickerWrap(c)}>
+                <Picker
+                  selectedValue={String(editForm.currency_id || '')}
+                  onValueChange={(v) => setEditForm((p) => ({ ...p, currency_id: String(v || '') }))}
+                  style={{ color: c.text }}
+                >
+                  {currencies.map((currency) => (
+                    <Picker.Item
+                      key={currency.id}
+                      label={`${currency.code} (${currency.symbol}) - ${currency.name}`}
+                      value={currency.id}
+                    />
+                  ))}
+                </Picker>
+              </View>
+              <Field label="Main Admin First Name" c={c} value={String(editForm.admin_first_name || '')} onChangeText={(v) => setEditForm((p) => ({ ...p, admin_first_name: v }))} />
+              <Field label="Main Admin Last Name" c={c} value={String(editForm.admin_last_name || '')} onChangeText={(v) => setEditForm((p) => ({ ...p, admin_last_name: v }))} />
+
+              <Text style={labelStyle(c)}>Category</Text>
+              <TouchableOpacity
+                onPress={() => openCategoryPicker('edit')}
+                style={{
+                  borderWidth: 1,
+                  borderColor: c.border,
+                  borderRadius: 12,
+                  backgroundColor: c.bg,
+                  paddingHorizontal: 12,
+                  paddingVertical: 12,
+                  flexDirection: 'row',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                }}
+              >
+                <Text style={{
+                  color:
+                    ((Array.isArray(editForm.category_ids) ? editForm.category_ids.length : 0) > 0 || !!editForm.category_id)
+                      ? c.text
+                      : c.sub,
+                  fontWeight: '600',
+                }}>{selectedEditCategoryName}</Text>
+                <MaterialCommunityIcons name="chevron-down" size={20} color={c.sub} />
+              </TouchableOpacity>
+
+              <Text style={labelStyle(c)}>Subscription Plan</Text>
+              <TouchableOpacity
+                onPress={() => setEditOptionModal({ open: true, type: 'plan' })}
+                style={{ borderWidth: 1, borderColor: c.border, borderRadius: 12, backgroundColor: c.bg, paddingHorizontal: 12, paddingVertical: 12, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}
+              >
+                <Text style={{ color: c.text, fontWeight: '600' }}>{selectedEditPlanName}</Text>
+                <MaterialCommunityIcons name="chevron-down" size={20} color={c.sub} />
+              </TouchableOpacity>
+
+              {hasEditPlanChanged && String(editForm.subscription_plan || 'basic') !== 'beta' && (
+                <>
+                  <Text style={labelStyle(c)}>Subscription Tracking Start Date*</Text>
+                  <TouchableOpacity
+                    onPress={openEditPlanStartDatePicker}
+                    style={{ borderWidth: 1, borderColor: c.border, borderRadius: 12, backgroundColor: c.bg, paddingHorizontal: 12, paddingVertical: 12, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}
+                  >
+                    <Text style={{ color: selectedEditPlanStartDate ? c.text : c.sub, fontWeight: '600' }}>{selectedEditPlanStartDate || editPlanStartDatePlaceholder}</Text>
+                    <MaterialCommunityIcons name="calendar-month" size={20} color={c.sub} />
+                  </TouchableOpacity>
+                </>
+              )}
+
+              {String(editForm.subscription_plan || 'basic') === 'beta' && (
+                <Field
+                  label="Custom Student Limit*"
+                  c={c}
+                  value={String(editForm.custom_student_limit ?? '')}
+                  keyboardType="number-pad"
+                  onChangeText={(v) => {
+                    const numericOnly = String(v || '').replace(/\D/g, '');
+                    setEditForm((p) => ({ ...p, custom_student_limit: numericOnly === '' ? null : Number(numericOnly) }));
+                  }}
+                />
+              )}
+
+              <TouchableOpacity
+                onPress={saveEditInstitution}
+                disabled={editSaving}
+                style={{ marginTop: 14, marginBottom: 30, backgroundColor: c.primary, borderRadius: 12, paddingVertical: 13, alignItems: 'center', opacity: editSaving ? 0.7 : 1 }}
+              >
+                {editSaving ? <ActivityIndicator color="#fff" /> : <Text style={{ color: '#fff', fontWeight: '800' }}>Save Changes</Text>}
+              </TouchableOpacity>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal visible={editOptionModal.open} animationType="fade" transparent>
+        <View style={overlayStyle}>
+          <View style={[modalCardStyle, { backgroundColor: c.card, borderColor: c.border, maxHeight: '70%' }]}>
+            <ModalHeader
+              title={
+                editOptionModal.type === 'plan'
+                  ? 'Select Subscription Plan'
+                  : 'Select Option'
+              }
+              c={c}
+              onClose={() => setEditOptionModal({ open: false, type: null })}
+            />
+            <ScrollView showsVerticalScrollIndicator={false}>
+              {(editOptionModal.type === 'plan'
+                ? PLAN_OPTIONS
+                : []
+              ).map((option) => {
+                const selected =
+                  editOptionModal.type === 'plan' && String(editForm.subscription_plan || 'basic') === option;
+                return (
+                  <TouchableOpacity
+                    key={option}
+                    onPress={() => {
+                      if (editOptionModal.type === 'plan') setEditForm((p) => ({ ...p, subscription_plan: option }));
+                      setEditOptionModal({ open: false, type: null });
+                    }}
+                    style={{ borderWidth: 1, borderColor: c.border, borderRadius: 12, paddingVertical: 12, paddingHorizontal: 12, marginBottom: 8, backgroundColor: c.bg, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}
+                  >
+                    <Text style={{ color: c.text, fontWeight: '700' }}>{option.toUpperCase()}</Text>
+                    {selected && <MaterialCommunityIcons name="check-circle" size={18} color={c.primary} />}
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal visible={editPlanStartDateModalOpen} animationType="fade" transparent>
+        <View style={overlayStyle}>
+          <View style={[modalCardStyle, { backgroundColor: c.card, borderColor: c.border }]}> 
+            <ModalHeader title="Select Start Date" c={c} onClose={() => setEditPlanStartDateModalOpen(false)} />
+            {Platform.OS !== 'web' && NativeDateTimePicker && (
+              <NativeDateTimePicker
+                value={editPlanStartDateDraft}
+                mode="date"
+                display="inline"
+                minimumDate={new Date(new Date().setHours(0, 0, 0, 0))}
+                onChange={(_: any, selectedDate: Date | undefined) => {
+                  if (!selectedDate) return;
+                  setEditPlanStartDateDraft(selectedDate);
+                }}
+              />
+            )}
+            <TouchableOpacity
+              onPress={() => {
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                if (editPlanStartDateDraft < today) {
+                  Toast.show({ type: 'error', text1: 'Invalid date', text2: 'Start date cannot be before today', position: 'top' });
+                  return;
+                }
+                const yyyy = editPlanStartDateDraft.getFullYear();
+                const mm = String(editPlanStartDateDraft.getMonth() + 1).padStart(2, '0');
+                const dd = String(editPlanStartDateDraft.getDate()).padStart(2, '0');
+                setEditForm((p) => ({ ...p, subscription_start_date: `${yyyy}-${mm}-${dd}` }));
+                setEditPlanStartDateModalOpen(false);
+              }}
+              style={{ marginTop: 14, backgroundColor: c.primary, borderRadius: 12, paddingVertical: 12, alignItems: 'center' }}
+            >
+              <Text style={{ color: '#fff', fontWeight: '800' }}>Use Selected Date</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal visible={addonsModalOpen} animationType="fade" transparent>
+        <View style={overlayStyle}>
+          <View style={[modalCardStyle, { backgroundColor: c.card, borderColor: c.border }]}>
+            <ModalHeader title="Manage Add-ons" c={c} onClose={() => setAddonsModalOpen(false)} />
+            {ADDON_ROWS.map((row) => {
+              const value = !!addonsForm[row.key];
+              return (
+                <TouchableOpacity
+                  key={String(row.key)}
+                  onPress={() => setAddonsForm((prev) => ({ ...prev, [row.key]: !prev[row.key] }))}
+                  style={{
+                    flexDirection: 'row',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    borderWidth: 1,
+                    borderColor: c.border,
+                    borderRadius: 12,
+                    paddingVertical: 10,
+                    paddingHorizontal: 12,
+                    marginBottom: 8,
+                    backgroundColor: c.bg,
+                  }}
+                >
+                  <Text style={{ color: c.text, fontWeight: '700' }}>{row.label}</Text>
+                  <MaterialCommunityIcons
+                    name={value ? 'toggle-switch' : 'toggle-switch-off-outline'}
+                    size={32}
+                    color={value ? c.success : c.sub}
+                  />
+                </TouchableOpacity>
+              );
+            })}
+
+            <TouchableOpacity
+              onPress={saveAddons}
+              disabled={addonsSaving}
+              style={{ marginTop: 10, backgroundColor: c.primary, borderRadius: 12, paddingVertical: 12, alignItems: 'center', opacity: addonsSaving ? 0.7 : 1 }}
+            >
+              {addonsSaving ? <ActivityIndicator color="#fff" /> : <Text style={{ color: '#fff', fontWeight: '800' }}>Save Add-ons</Text>}
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal visible={adminsModalOpen} animationType="fade" transparent>
+        <View style={overlayStyle}>
+          <View style={[modalCardStyle, { backgroundColor: c.card, borderColor: c.border, maxHeight: '80%' }]}>
+            <ModalHeader title="Institution Admins" c={c} onClose={() => setAdminsModalOpen(false)} />
+
+            {adminsLoading ? (
+              <ListItemSkeleton loading={adminsLoading} count={4} label="Loading institution admins..." />
+            ) : (
+              <ScrollView showsVerticalScrollIndicator={false}>
+                {admins.length === 0 && <Text style={{ color: c.sub, textAlign: 'center' }}>No admins found.</Text>}
+                {admins.map((a) => (
+                  <View
+                    key={a.id}
+                    style={{
+                      borderWidth: 1,
+                      borderColor: c.border,
+                      borderRadius: 12,
+                      padding: 12,
+                      marginBottom: 8,
+                      backgroundColor: c.bg,
+                    }}
+                  >
+                    <Text style={{ color: c.text, fontWeight: '700' }}>{`${a.first_name || ''} ${a.last_name || ''}`.trim() || 'Admin User'}</Text>
+                    <Text style={{ color: c.sub, marginTop: 2 }}>{a.email}</Text>
+                    {a.is_main && <Text style={{ color: c.primary, marginTop: 4, fontWeight: '700' }}>Main Admin</Text>}
+
+                    <View style={{ flexDirection: 'row', gap: 14, marginTop: 10 }}>
+                      <TouchableOpacity onPress={() => resetAdminPassword(a)} disabled={adminResetLoadingId === a.id}>
+                        <Text style={{ color: c.primary, fontWeight: '700' }}>{adminResetLoadingId === a.id ? 'Resetting...' : 'Reset Password'}</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity onPress={() => removeAdmin(a)} disabled={admins.length <= 1 || !!a.is_main}>
+                        <Text style={{ color: admins.length <= 1 || !!a.is_main ? c.sub : c.danger, fontWeight: '700' }}>
+                          Remove Admin
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                ))}
+              </ScrollView>
+            )}
+          </View>
+        </View>
+      </Modal>
+
+      <Modal visible={adminResetResultOpen} animationType="fade" transparent>
+        <View style={overlayStyle}>
+          <View style={[modalCardStyle, { backgroundColor: c.card, borderColor: c.border }]}> 
+            <ModalHeader title="Temporary Credential" c={c} onClose={() => setAdminResetResultOpen(false)} />
+            <View style={{ borderWidth: 1, borderColor: c.border, borderRadius: 12, padding: 12, backgroundColor: c.bg }}>
+              <Text style={{ color: c.sub, marginBottom: 4 }}>Generated Password: {adminResetResult?.tempPassword || 'N/A'}</Text>
+              {!!adminResetResult?.credential_delivery?.url && <Text style={{ color: c.sub, marginBottom: 4 }}>One-time credential link generated.</Text>}
+              <Text style={{ color: c.sub }}>User will be forced to re-login and complete setup on next sign in.</Text>
+            </View>
+            <TouchableOpacity
+              onPress={() => setAdminResetResultOpen(false)}
+              style={{ marginTop: 14, backgroundColor: c.primary, borderRadius: 12, paddingVertical: 12, alignItems: 'center' }}
+            >
+              <Text style={{ color: '#fff', fontWeight: '800' }}>Done</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal visible={statsModalOpen} animationType="fade" transparent>
+        <View style={overlayStyle}>
+          <View style={[modalCardStyle, { backgroundColor: c.card, borderColor: c.border }]}>
+            <ModalHeader title="Institution Stats" c={c} onClose={() => setStatsModalOpen(false)} />
+            {statsLoading ? (
+              <ListItemSkeleton loading={statsLoading} count={3} label="Loading institution stats..." />
+            ) : (
+              <View style={{ gap: 10 }}>
+                <StatRow c={c} label="Students" value={String(statsData?.students || 0)} />
+                <StatRow c={c} label="Teachers" value={String(statsData?.teachers || 0)} />
+                <StatRow c={c} label="Classes" value={String(statsData?.classes || 0)} />
+              </View>
+            )}
+          </View>
+        </View>
+      </Modal>
+
+      <Modal visible={paymentModalOpen} animationType="fade" transparent>
+        <View style={overlayStyle}>
+          <View style={[modalCardStyle, { backgroundColor: c.card, borderColor: c.border }]}>
+            <ModalHeader title="Record Payment" c={c} onClose={() => setPaymentModalOpen(false)} />
+
+            <Field
+              label="Amount*"
+              c={c}
+              value={paymentForm.amount}
+              keyboardType="numeric"
+              onChangeText={(v) => setPaymentForm((p) => ({ ...p, amount: v }))}
+            />
+
+            <Text style={labelStyle(c)}>Method</Text>
+            <View style={pickerWrap(c)}>
+              <Picker
+                selectedValue={paymentForm.method}
+                onValueChange={(v) => setPaymentForm((p) => ({ ...p, method: v }))}
+                style={{ color: c.text }}
+              >
+                <Picker.Item label="BANK_TRANSFER" value="bank_transfer" />
+                <Picker.Item label="MOBILE_MONEY" value="mobile_money" />
+                <Picker.Item label="CARD" value="card" />
+                <Picker.Item label="CASH" value="cash" />
+              </Picker>
+            </View>
+
+            <Field
+              label="Reference"
+              c={c}
+              value={paymentForm.reference_id}
+              onChangeText={(v) => setPaymentForm((p) => ({ ...p, reference_id: v }))}
+            />
+            <Field
+              label="Date"
+              c={c}
+              value={paymentForm.date}
+              onChangeText={(v) => setPaymentForm((p) => ({ ...p, date: v }))}
+            />
+            <Field
+              label="Notes"
+              c={c}
+              value={paymentForm.notes}
+              onChangeText={(v) => setPaymentForm((p) => ({ ...p, notes: v }))}
+            />
+
+            <TouchableOpacity
+              onPress={savePayment}
+              disabled={paymentSaving}
+              style={{ marginTop: 10, backgroundColor: c.primary, borderRadius: 12, paddingVertical: 12, alignItems: 'center', opacity: paymentSaving ? 0.7 : 1 }}
+            >
+              {paymentSaving ? <ActivityIndicator color="#fff" /> : <Text style={{ color: '#fff', fontWeight: '800' }}>Record Payment</Text>}
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal visible={categoryPickerModal.open} animationType="fade" transparent>
+        <View style={overlayStyle}>
+          <View style={[modalCardStyle, { backgroundColor: c.card, borderColor: c.border, maxHeight: '80%' }]}>
+            <ModalHeader title="Select Category" c={c} onClose={closeCategoryPicker} />
+            <ScrollView showsVerticalScrollIndicator={false}>
+              <TouchableOpacity
+                onPress={clearCategorySelection}
+                style={{
+                  borderWidth: 1,
+                  borderColor: c.border,
+                  borderRadius: 12,
+                  paddingVertical: 12,
+                  paddingHorizontal: 12,
+                  marginBottom: 8,
+                  backgroundColor: c.bg,
+                  flexDirection: 'row',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                }}
+              >
+                  <Text style={{ color: c.text, fontWeight: '700' }}>No categories</Text>
+                {((categoryPickerModal.target === 'enroll' && enrollForm.category_ids.length === 0) ||
+                  (categoryPickerModal.target === 'edit' && (!Array.isArray(editForm.category_ids) || editForm.category_ids.length === 0))) && (
+                  <MaterialCommunityIcons name="check-circle" size={18} color={c.primary} />
+                )}
+              </TouchableOpacity>
+
+              {categories.map((cat) => {
+                const editIds = Array.isArray(editForm.category_ids)
+                  ? editForm.category_ids
+                  : (editForm.category_id ? [String(editForm.category_id)] : []);
+                const selected =
+                  (categoryPickerModal.target === 'enroll' && enrollForm.category_ids.includes(cat.id)) ||
+                  (categoryPickerModal.target === 'edit' && editIds.includes(cat.id));
+                return (
+                  <TouchableOpacity
+                    key={cat.id}
+                    onPress={() => toggleCategorySelection(cat.id)}
+                    style={{
+                      borderWidth: 1,
+                      borderColor: c.border,
+                      borderRadius: 12,
+                      paddingVertical: 12,
+                      paddingHorizontal: 12,
+                      marginBottom: 8,
+                      backgroundColor: c.bg,
+                      flexDirection: 'row',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                    }}
+                  >
+                    <View>
+                      <Text style={{ color: c.text, fontWeight: '700' }}>{cat.name}</Text>
+                      <Text style={{ color: c.sub, marginTop: 2 }}>{cat.class_type}</Text>
+                    </View>
+                    {selected && <MaterialCommunityIcons name="check-circle" size={18} color={c.primary} />}
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+            <TouchableOpacity
+              onPress={closeCategoryPicker}
+              style={{ marginTop: 10, backgroundColor: c.primary, borderRadius: 12, paddingVertical: 12, alignItems: 'center' }}
+            >
+              <Text style={{ color: '#fff', fontWeight: '800' }}>Done</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal visible={planPickerModalOpen} animationType="fade" transparent>
+        <View style={overlayStyle}>
+          <View style={[modalCardStyle, { backgroundColor: c.card, borderColor: c.border, maxHeight: '80%' }]}>
+            <ModalHeader title="Select Subscription Plan" c={c} onClose={() => setPlanPickerModalOpen(false)} />
+            <ScrollView showsVerticalScrollIndicator={false}>
+              {PLAN_OPTIONS.map((plan) => {
+                const selected = enrollForm.subscription_plan === plan;
+                return (
+                  <TouchableOpacity
+                    key={plan}
+                    onPress={() => {
+                      setEnrollForm((p) => ({ ...p, subscription_plan: plan }));
+                      setPlanPickerModalOpen(false);
+                    }}
+                    style={{
+                      borderWidth: 1,
+                      borderColor: c.border,
+                      borderRadius: 12,
+                      paddingVertical: 12,
+                      paddingHorizontal: 12,
+                      marginBottom: 8,
+                      backgroundColor: c.bg,
+                      flexDirection: 'row',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                    }}
+                  >
+                    <Text style={{ color: c.text, fontWeight: '700' }}>{plan.toUpperCase()}</Text>
+                    {selected && <MaterialCommunityIcons name="check-circle" size={18} color={c.primary} />}
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal visible={planStartDateModalOpen} animationType="fade" transparent>
+        <View style={overlayStyle}>
+          <View style={[modalCardStyle, { backgroundColor: c.card, borderColor: c.border }]}> 
+            <ModalHeader title="Select Start Date" c={c} onClose={() => setPlanStartDateModalOpen(false)} />
+            {Platform.OS !== 'web' && NativeDateTimePicker && (
+              <NativeDateTimePicker
+                value={planStartDateDraft}
+                mode="date"
+                display="inline"
+                minimumDate={new Date(new Date().setHours(0, 0, 0, 0))}
+                onChange={(_: any, selectedDate: Date | undefined) => {
+                  if (!selectedDate) return;
+                  setPlanStartDateDraft(selectedDate);
+                }}
+              />
+            )}
+            <TouchableOpacity
+              onPress={() => {
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                if (planStartDateDraft < today) {
+                  Toast.show({ type: 'error', text1: 'Invalid date', text2: 'Start date cannot be before today', position: 'top' });
+                  return;
+                }
+                const yyyy = planStartDateDraft.getFullYear();
+                const mm = String(planStartDateDraft.getMonth() + 1).padStart(2, '0');
+                const dd = String(planStartDateDraft.getDate()).padStart(2, '0');
+                setEnrollForm((p) => ({ ...p, subscription_start_date: `${yyyy}-${mm}-${dd}` }));
+                setPlanStartDateModalOpen(false);
+              }}
+              style={{ marginTop: 14, backgroundColor: c.primary, borderRadius: 12, paddingVertical: 12, alignItems: 'center' }}
+            >
+              <Text style={{ color: '#fff', fontWeight: '800' }}>Use Selected Date</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+    </SafeAreaView>
+  );
 }
+
+function ActionChip({
+  c,
+  icon,
+  label,
+  onPress,
+  danger,
+}: {
+  c: ReturnType<typeof useThemeColors>;
+  icon: keyof typeof MaterialCommunityIcons.glyphMap;
+  label: string;
+  onPress: () => void;
+  danger?: boolean;
+}) {
+  return (
+    <TouchableOpacity
+      onPress={onPress}
+      style={{
+        borderWidth: 1,
+        borderColor: danger ? 'rgba(207,34,46,0.35)' : c.border,
+        borderRadius: 999,
+        paddingHorizontal: 10,
+        paddingVertical: 6,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        backgroundColor: danger ? 'rgba(207,34,46,0.08)' : 'transparent',
+      }}
+    >
+      <MaterialCommunityIcons name={icon} size={14} color={danger ? c.danger : c.text} />
+      <Text style={{ color: danger ? c.danger : c.text, fontSize: 12, fontWeight: '700' }}>{label}</Text>
+    </TouchableOpacity>
+  );
+}
+
+function ModalHeader({ title, c, onClose }: { title: string; c: ReturnType<typeof useThemeColors>; onClose: () => void }) {
+  return (
+    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+      <Text style={{ color: c.text, fontSize: 20, fontWeight: '800' }}>{title}</Text>
+      <TouchableOpacity onPress={onClose}>
+        <MaterialCommunityIcons name="close" size={22} color={c.sub} />
+      </TouchableOpacity>
+    </View>
+  );
+}
+
+function ConfirmModal({
+  open,
+  title,
+  body,
+  c,
+  onCancel,
+  onConfirm,
+}: {
+  open: boolean;
+  title: string;
+  body: string;
+  c: ReturnType<typeof useThemeColors>;
+  onCancel: () => void;
+  onConfirm: () => Promise<void> | void;
+}) {
+  return (
+    <Modal visible={open} animationType="fade" transparent>
+      <View style={overlayStyle}>
+        <View style={[modalCardStyle, { backgroundColor: c.card, borderColor: c.border }]}>
+          <Text style={{ color: c.text, fontSize: 19, fontWeight: '800' }}>{title}</Text>
+          <Text style={{ color: c.sub, marginTop: 8 }}>{body}</Text>
+          <View style={{ flexDirection: 'row', gap: 10, marginTop: 18 }}>
+            <TouchableOpacity onPress={onCancel} style={{ flex: 1, borderWidth: 1, borderColor: c.border, borderRadius: 12, alignItems: 'center', paddingVertical: 11 }}>
+              <Text style={{ color: c.text, fontWeight: '700' }}>Cancel</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={onConfirm} style={{ flex: 1, backgroundColor: c.primary, borderRadius: 12, alignItems: 'center', paddingVertical: 11 }}>
+              <Text style={{ color: '#fff', fontWeight: '800' }}>Confirm</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
+function Field({
+  label,
+  c,
+  value,
+  onChangeText,
+  keyboardType,
+  secureTextEntry,
+}: {
+  label: string;
+  c: ReturnType<typeof useThemeColors>;
+  value: string;
+  onChangeText: (v: string) => void;
+  keyboardType?: 'default' | 'numeric' | 'number-pad';
+  secureTextEntry?: boolean;
+}) {
+  return (
+    <>
+      <Text style={labelStyle(c)}>{label}</Text>
+      <TextInput
+        value={value}
+        onChangeText={onChangeText}
+        secureTextEntry={secureTextEntry}
+        keyboardType={keyboardType}
+        style={inputStyle(c)}
+        placeholderTextColor={c.sub}
+      />
+    </>
+  );
+}
+
+function StatRow({ c, label, value }: { c: ReturnType<typeof useThemeColors>; label: string; value: string }) {
+  return (
+    <View style={{ borderWidth: 1, borderColor: c.border, borderRadius: 12, paddingVertical: 10, paddingHorizontal: 12, backgroundColor: c.bg, flexDirection: 'row', justifyContent: 'space-between' }}>
+      <Text style={{ color: c.sub, fontWeight: '700' }}>{label}</Text>
+      <Text style={{ color: c.text, fontWeight: '800' }}>{value}</Text>
+    </View>
+  );
+}
+
+const overlayStyle = {
+  flex: 1,
+  backgroundColor: 'rgba(0,0,0,0.5)',
+  justifyContent: 'center' as const,
+  alignItems: 'center' as const,
+  padding: 16,
+};
+
+const overlayBottomStyle = {
+  flex: 1,
+  backgroundColor: 'rgba(0,0,0,0.5)',
+  justifyContent: 'flex-end' as const,
+};
+
+const modalCardStyle = {
+  width: '100%' as const,
+  maxWidth: 560,
+  borderRadius: 18,
+  borderWidth: 1,
+  padding: 16,
+};
+
+const sheetStyle = {
+  borderTopLeftRadius: 18,
+  borderTopRightRadius: 18,
+  borderWidth: 1,
+  padding: 16,
+  maxHeight: '90%' as const,
+};
+
+const labelStyle = (c: ReturnType<typeof useThemeColors>) => ({
+  color: c.sub,
+  fontSize: 12,
+  marginBottom: 6,
+  marginTop: 8,
+  fontWeight: '700' as const,
+});
+
+const inputStyle = (c: ReturnType<typeof useThemeColors>) => ({
+  borderWidth: 1,
+  borderColor: c.border,
+  borderRadius: 12,
+  paddingHorizontal: 12,
+  paddingVertical: 10,
+  color: c.text,
+  backgroundColor: c.input,
+});
+
+const pickerWrap = (c: ReturnType<typeof useThemeColors>) => ({
+  borderWidth: 1,
+  borderColor: c.border,
+  borderRadius: 12,
+  backgroundColor: c.input,
+  marginBottom: 4,
+});

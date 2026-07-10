@@ -468,6 +468,15 @@ export default function TimetableBuilder() {
         }
     });
 
+    // Keep subject picker labels and slot subject titles fresh
+    // when subjects are edited (title/teacher/class assignments).
+    useRealtimeQuery('subjects', () => {
+        fetchAllEntries();
+        if (selectedClassId) {
+            fetchClassSubjects(selectedClassId);
+        }
+    });
+
     useEffect(() => {
         const loadInstitution = async () => {
             const { data: { session } } = await supabase.auth.getSession();

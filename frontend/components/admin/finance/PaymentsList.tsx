@@ -1,8 +1,8 @@
+import { useCurrency } from '@/contexts/CurrencyContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { Spinner } from '@/components/ui/Spinner';
 import { supabase } from '@/libs/supabase';
 import { Payment } from '@/types/types';
-import { formatCurrency } from '@/utils/currency'; // Assuming this utility exists or I should create it
 import { Ionicons } from '@expo/vector-icons';
 import { format } from 'date-fns';
 import React, { useEffect, useState } from 'react';
@@ -10,6 +10,7 @@ import { FlatList, Text, View } from 'react-native';
 
 export function PaymentsList() {
     const { isDark } = useTheme();
+    const { formatAmount } = useCurrency();
     const [payments, setPayments] = useState<Payment[]>([]);
     const [loading, setLoading] = useState(true);
 
@@ -63,7 +64,7 @@ export function PaymentsList() {
         <View className="bg-[#F6F8FA] dark:bg-navy p-4 rounded-xl mb-3 border border-[#D0D7DE] dark:border-[#21262D]">
             <View className="flex-row justify-between items-start mb-2">
                 <View>
-                    <Text className="text-lg font-bold text-gray-900 dark:text-white">{formatCurrency(item.amount)}</Text>
+                    <Text className="text-lg font-bold text-gray-900 dark:text-white">{formatAmount(Number(item.amount || 0))}</Text>
                     <Text className="text-gray-600 dark:text-gray-300 font-medium">{item.student_name}</Text>
                 </View>
                 <View className={`px-2 py-1 rounded-full ${getStatusColor(item.status).split(' ')[1]}`}>

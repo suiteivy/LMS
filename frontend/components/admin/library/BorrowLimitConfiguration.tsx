@@ -57,12 +57,12 @@ const BorrowLimitConfiguration: React.FC<BorrowLimitConfigurationProps> = ({
   });
 
   // Design system tokens
-  const bg          = isDark ? '#0D1117' : '#FFFFFF';
-  const card        = isDark ? '#161B22' : '#F6F8FA';
+  const bg          = isDark ? '#161B22' : '#FFFFFF';
+  const card        = isDark ? '#161B22' : '#FFFFFF';
   const elevated    = isDark ? '#1C2128' : '#EAEEF2';
   const border      = isDark ? '#21262D' : '#D0D7DE';
-  const textPrimary = isDark ? '#ffffff' : '#111827';
-  const textMuted   = isDark ? '#9ca3af' : '#6b7280';
+  const textPrimary = isDark ? '#F1F5F9' : '#1E293B';
+  const textMuted   = isDark ? '#9CA3AF' : '#64748B';
 
   const defaultRoles: UserRole[] = [
     { id: "1", name: "Student",          description: "Regular students",               maxBooks: 3,  borrowDuration: 14, canRenew: true, maxRenewals: 1, finePerDay: 0.50, isActive: true },

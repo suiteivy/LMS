@@ -1,12 +1,13 @@
 import { UnifiedHeader } from "@/components/common/UnifiedHeader";
+import { ListItemSkeleton } from "@/components/ui/skeletons";
 import { NotificationAPI } from "@/services/NotificationService";
 import { useAuth } from "@/contexts/AuthContext";
 import Toast from 'react-native-toast-message';
 import { formatDistanceToNow } from 'date-fns';
 import { router } from "expo-router";
 import { AlertCircle, Bell, Calendar, CheckCircle2, Info } from 'lucide-react-native';
-import React, { useEffect, useState } from "react";
-import { ActivityIndicator, RefreshControl, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import React, { useCallback, useEffect, useState } from "react";
+import { RefreshControl, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { useRealtimeQuery } from "@/hooks/useRealtimeQuery";
 
 export default function TeacherNotifications() {
@@ -14,6 +15,21 @@ export default function TeacherNotifications() {
     const [notifications, setNotifications] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
+    const [nowMs, setNowMs] = useState(Date.now());
+
+    const formatExpiryCountdown = useCallback((expiresAt?: string | null) => {
+        if (!expiresAt) return null;
+        const endMs = new Date(expiresAt).getTime();
+        if (!Number.isFinite(endMs)) return null;
+        const remaining = endMs - nowMs;
+        if (remaining <= 0) return 'Expired';
+
+        const totalMinutes = Math.floor(remaining / (60 * 1000));
+        const days = Math.floor(totalMinutes / (24 * 60));
+        const hours = Math.floor((totalMinutes % (24 * 60)) / 60);
+        const minutes = totalMinutes % 60;
+        return `${days}d ${hours}h ${minutes}m left`;
+    }, [nowMs]);
 
     // Listen to realtime changes on the notifications table
     useRealtimeQuery('notifications', () => {
@@ -36,6 +52,11 @@ export default function TeacherNotifications() {
 
     useEffect(() => {
         fetchNotifications();
+    }, []);
+
+    useEffect(() => {
+        const interval = setInterval(() => setNowMs(Date.now()), 30000);
+        return () => clearInterval(interval);
     }, []);
 
     const onRefresh = () => {
@@ -100,8 +121,8 @@ export default function TeacherNotifications() {
                 onBack={() => router.back()}
             />
             {loading ? (
-                <View className="flex-1 justify-center items-center">
-                    <ActivityIndicator size="large" color="#FF6900" />
+                <View className="flex-1 p-4 md:p-8">
+                    <ListItemSkeleton loading={loading} count={4} label="Loading notifications..." />
                 </View>
             ) : (
                 <ScrollView
@@ -159,6 +180,11 @@ export default function TeacherNotifications() {
                                                         <Text className="text-gray-400 text-[10px] font-bold uppercase tracking-widest">
                                                             {formatDistanceToNow(new Date(item.created_at), { addSuffix: true })}
                                                         </Text>
+                                                        {!!item.expires_at && (
+                                                            <Text className="text-[#D97706] text-[10px] font-bold mt-1">
+                                                                {formatExpiryCountdown(item.expires_at)}
+                                                            </Text>
+                                                        )}
                                                     </View>
                                                 </TouchableOpacity>
                                             ))

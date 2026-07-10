@@ -1,11 +1,12 @@
 import { Spinner } from '@/components/ui/Spinner';
+import { FormFieldSkeleton, ListItemSkeleton } from '@/components/ui/skeletons';
+import { useCurrency } from '@/contexts/CurrencyContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { ClassService } from '@/services/ClassService';
 import { GradingAPI } from '@/services/GradingService';
 import { FeeStructure } from '@/types/types';
-import { formatCurrency } from '@/utils/currency';
 import React, { useEffect, useMemo, useState } from 'react';
-import { Alert, Modal, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Alert, Keyboard, KeyboardAvoidingView, Modal, Platform, ScrollView, Text, TextInput, TouchableOpacity, TouchableWithoutFeedback, View } from 'react-native';
 
 interface AcademicYearOption {
   id: string;
@@ -26,7 +27,11 @@ interface FeeStructureSectionProps {
   onFeeStructureUpdate: (feeStructure: Partial<FeeStructure>) => void;
   onFeeStructureCreate: (feeStructure: Partial<FeeStructure>) => void;
   onFeeStructureDelete: (feeStructureId: string) => void;
-  onFeeStructureReleaseToggle: (feeStructureId: string, release: boolean) => void;
+  onFeeStructureReleaseToggle: (
+    feeStructureId: string,
+    release: boolean,
+    options?: { strictCurrentPair?: boolean }
+  ) => void;
   onRefresh?: () => void;
 }
 
@@ -44,6 +49,7 @@ const FeeStructureSection: React.FC<FeeStructureSectionProps> = ({
   onFeeStructureReleaseToggle,
 }) => {
   const { isDark } = useTheme();
+  const { formatAmount } = useCurrency();
 
   const [showForm, setShowForm] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -64,6 +70,7 @@ const FeeStructureSection: React.FC<FeeStructureSectionProps> = ({
   const [formData, setFormData] = useState({
     title: '',
     amount: '',
+    due_date: '',
     academic_year: '',
     academic_year_id: '',
     term: ANNUAL_TERM_NAME,
@@ -169,6 +176,7 @@ const FeeStructureSection: React.FC<FeeStructureSectionProps> = ({
     setFormData({
       title: '',
       amount: '',
+      due_date: '',
       academic_year: year?.name || '',
       academic_year_id: year?.id || '',
       term: ANNUAL_TERM_NAME,
@@ -191,6 +199,7 @@ const FeeStructureSection: React.FC<FeeStructureSectionProps> = ({
     setFormData({
       title: (structure as any).title || (structure as any).Subject_name || '',
       amount: String((structure as any).amount ?? (structure as any).base_fee ?? ''),
+      due_date: (structure as any).due_date || '',
       academic_year: (structure as any).academic_year || defaultYear?.name || '',
       academic_year_id: (structure as any).academic_year_id || defaultYear?.id || '',
       term: (structure as any).term || ANNUAL_TERM_NAME,
@@ -256,6 +265,7 @@ const FeeStructureSection: React.FC<FeeStructureSectionProps> = ({
     const payload: Partial<FeeStructure> = {
       title: formData.title.trim(),
       amount: parsedAmount,
+      due_date: formData.due_date ? formData.due_date : null,
       academic_year: formData.academic_year,
       academic_year_id: formData.academic_year_id,
       term: formData.term,
@@ -305,8 +315,11 @@ const FeeStructureSection: React.FC<FeeStructureSectionProps> = ({
     const amount = Number((item as any).amount ?? (item as any).base_fee ?? 0);
     const termLabel = (item as any).term || ANNUAL_TERM_NAME;
     const yearLabel = (item as any).academic_year || 'N/A';
+    const dueDateLabel = (item as any).due_date ? new Date((item as any).due_date).toLocaleDateString() : 'No deadline';
     const description = (item as any).description;
-    const isReleased = item.is_active;
+    const lifecycleStatus = (item as any).lifecycle_status || (item.is_active ? 'Released' : 'Draft');
+    const isCompleted = !!(item as any).is_completed || lifecycleStatus === 'Completed';
+    const isReleased = item.is_active || lifecycleStatus === 'Released';
 
     const openConfirmModal = (
       title: string,
@@ -334,17 +347,30 @@ const FeeStructureSection: React.FC<FeeStructureSectionProps> = ({
             ) : null}
           </View>
           <View className="items-end gap-2">
-            <View className={`px-2 py-1 rounded-full ${isReleased ? 'bg-green-100 dark:bg-green-950/30' : 'bg-gray-100 dark:bg-gray-800'}`}>
-              <Text className={`text-xs font-medium ${isReleased ? 'text-green-800 dark:text-green-400' : 'text-gray-600 dark:text-gray-400'}`}>
-                {isReleased ? 'Released' : 'Draft'}
+            <View className={`px-2 py-1 rounded-full ${isCompleted ? 'bg-violet-100 dark:bg-violet-950/30' : isReleased ? 'bg-green-100 dark:bg-green-950/30' : 'bg-gray-100 dark:bg-gray-800'}`}>
+              <Text className={`text-xs font-medium ${isCompleted ? 'text-violet-800 dark:text-violet-400' : isReleased ? 'text-green-800 dark:text-green-400' : 'text-gray-600 dark:text-gray-400'}`}>
+                {lifecycleStatus}
               </Text>
             </View>
             <View className="flex-row gap-2">
-              <TouchableOpacity onPress={() => openEditForm(item)} className="p-1 px-3 bg-slate-900 dark:bg-gray-700 rounded-xl">
+              <TouchableOpacity
+                onPress={() => {
+                  if (isCompleted) {
+                    Alert.alert('Completed fee structure', 'Completed fee structures are locked and cannot be edited.');
+                    return;
+                  }
+                  openEditForm(item);
+                }}
+                className={`p-1 px-3 rounded-xl ${isCompleted ? 'bg-slate-500 dark:bg-slate-600' : 'bg-slate-900 dark:bg-gray-700'}`}
+              >
                 <Text className="text-white text-[10px] font-black uppercase tracking-widest">Edit</Text>
               </TouchableOpacity>
               <TouchableOpacity
-                onPress={() =>
+                onPress={() => {
+                  if (isCompleted) {
+                    Alert.alert('Completed fee structure', 'Completed fee structures are locked and cannot be deleted.');
+                    return;
+                  }
                   openConfirmModal(
                     'Delete Fee Structure',
                     'This action cannot be undone. Continue?',
@@ -352,27 +378,70 @@ const FeeStructureSection: React.FC<FeeStructureSectionProps> = ({
                       await Promise.resolve(onFeeStructureDelete((item as any).id));
                     },
                     true
-                  )
-                }
-                className="p-1 px-3 bg-red-600 rounded-xl"
+                  );
+                }}
+                className={`p-1 px-3 rounded-xl ${isCompleted ? 'bg-red-300 dark:bg-red-900/40' : 'bg-red-600'}`}
               >
                 <Text className="text-white text-[10px] font-black uppercase tracking-widest">Delete</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 onPress={() => {
+                  if (isCompleted) {
+                    Alert.alert('Completed fee structure', 'Completed fee structures are locked and cannot be released or reverted.');
+                    return;
+                  }
                   const nextActionIsRelease = !isReleased;
+                  const canOverrideStrictRelease = true;
+                  const requiresOverride = !!(item as any).is_current_period === false;
+                  const strictDefaultMessage = requiresOverride
+                    ? 'This fee structure is outside the current term/year. You can release only by institution admin override. Continue?'
+                    : 'This will make the fee structure visible to parents and students for the current term/year only. Continue?';
+
                   openConfirmModal(
                     nextActionIsRelease ? 'Release Fee Structure' : 'Revert Fee Structure Release',
                     nextActionIsRelease
-                      ? 'This will make the fee structure visible to parents and students for the active period. Continue?'
+                      ? strictDefaultMessage
                       : 'This will hide the fee structure from parents and students. Continue?',
                     async () => {
-                      await Promise.resolve(onFeeStructureReleaseToggle((item as any).id, nextActionIsRelease));
+                      if (!nextActionIsRelease) {
+                        await Promise.resolve(onFeeStructureReleaseToggle((item as any).id, false));
+                        return;
+                      }
+
+                      if (!requiresOverride) {
+                        await Promise.resolve(
+                          onFeeStructureReleaseToggle((item as any).id, true, { strictCurrentPair: true })
+                        );
+                        return;
+                      }
+
+                      if (!canOverrideStrictRelease) {
+                        return;
+                      }
+
+                      const confirmed = await new Promise<boolean>((resolve) => {
+                        Alert.alert(
+                          'Outside Current Period',
+                          'This fee structure is not in the current term/year. As institution admin, do you want to override and release anyway?',
+                          [
+                            { text: 'Cancel', style: 'cancel', onPress: () => resolve(false) },
+                            { text: 'Override Release', style: 'destructive', onPress: () => resolve(true) },
+                          ]
+                        );
+                      });
+
+                      if (!confirmed) {
+                        return;
+                      }
+
+                      await Promise.resolve(
+                        onFeeStructureReleaseToggle((item as any).id, true, { strictCurrentPair: false })
+                      );
                     },
                     !nextActionIsRelease
                   );
                 }}
-                className={`p-1 px-3 rounded-xl ${isReleased ? 'bg-amber-600' : 'bg-emerald-600'}`}
+                className={`p-1 px-3 rounded-xl ${isCompleted ? 'bg-slate-500 dark:bg-slate-600' : isReleased ? 'bg-amber-600' : 'bg-emerald-600'}`}
               >
                 <Text className="text-white text-[10px] font-black uppercase tracking-widest">
                   {isReleased ? 'Revert Release' : 'Release'}
@@ -385,7 +454,7 @@ const FeeStructureSection: React.FC<FeeStructureSectionProps> = ({
         <View className="bg-[#111827] rounded-3xl p-6 mb-5 border border-slate-800">
           <View className="flex-row justify-between items-center">
             <Text className="text-slate-400 text-sm font-semibold">Fee Amount</Text>
-            <Text className="text-white text-2xl font-black">{formatCurrency(amount)}</Text>
+            <Text className="text-white text-2xl font-black">{formatAmount(amount)}</Text>
           </View>
 
           <View className="flex-row gap-3 mt-4 pt-4 border-t border-slate-800 flex-wrap">
@@ -396,6 +465,9 @@ const FeeStructureSection: React.FC<FeeStructureSectionProps> = ({
               <Text className="text-slate-300 text-xs font-semibold">{yearLabel}</Text>
             </View>
             {renderLevelBadge(item)}
+            <View className="bg-slate-700/50 px-3 py-1 rounded-full">
+              <Text className="text-slate-300 text-xs font-semibold">Due: {dueDateLabel}</Text>
+            </View>
           </View>
         </View>
       </View>
@@ -415,8 +487,8 @@ const FeeStructureSection: React.FC<FeeStructureSectionProps> = ({
       </View>
 
       {loading ? (
-        <View className="flex-1 items-center justify-center py-20">
-          <Spinner label="Loading fee structures" color={isDark ? '#FF6900' : '#FF6900'} />
+        <View className="py-2">
+          <ListItemSkeleton loading={loading} count={6} label="Loading fee structures..." />
         </View>
       ) : feeStructures.length === 0 ? (
         <View className="flex-1 items-center justify-center py-20 border border-dashed border-gray-200 dark:border-gray-700 rounded-3xl">
@@ -440,7 +512,7 @@ const FeeStructureSection: React.FC<FeeStructureSectionProps> = ({
         }}
       >
         <View className="flex-1 items-center justify-center bg-black/40 px-4">
-          <View className="w-full max-w-md bg-white dark:bg-[#161B22] rounded-3xl border border-gray-200 dark:border-gray-800 p-6">
+          <View className="w-full max-w-md bg-[#F6F8FA] dark:bg-[#161B22] rounded-3xl border border-gray-200 dark:border-gray-800 p-6">
             <Text className="text-gray-900 dark:text-white text-lg font-black mb-2">{confirmTitle}</Text>
             <Text className="text-gray-600 dark:text-gray-300 text-sm mb-6">{confirmMessage}</Text>
             <View className="flex-row" style={{ gap: 10 }}>
@@ -485,167 +557,211 @@ const FeeStructureSection: React.FC<FeeStructureSectionProps> = ({
 
       <Modal
         visible={showForm}
-        animationType="slide"
-        presentationStyle="pageSheet"
+        animationType="fade"
+        transparent
         onRequestClose={() => {
           setShowForm(false);
           resetForm();
         }}
       >
-        <ScrollView className="flex-1 bg-white dark:bg-navy" contentContainerStyle={{ padding: 24, paddingBottom: 80 }}>
-          <View className="flex-row justify-between items-center mb-8">
-            <Text className="text-gray-900 dark:text-white font-black text-2xl">
-              {editingStructure ? 'Edit Fee Structure' : 'New Fee Structure'}
-            </Text>
-            <TouchableOpacity
+        <KeyboardAvoidingView
+          className="flex-1"
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? 24 : 0}
+        >
+          <View className="flex-1">
+            <TouchableWithoutFeedback
               onPress={() => {
+                Keyboard.dismiss();
                 setShowForm(false);
                 resetForm();
               }}
-              className="bg-gray-100 dark:bg-gray-800 w-10 h-10 rounded-full items-center justify-center"
             >
-              <Text className="text-gray-600 dark:text-gray-400 font-bold text-lg">X</Text>
-            </TouchableOpacity>
-          </View>
+              <View className="absolute inset-0 bg-black/45" />
+            </TouchableWithoutFeedback>
 
-          {loadingOptions ? (
-            <View className="py-12 items-center">
-              <Spinner label="Loading academic setup options" color={isDark ? '#FF6900' : '#FF6900'} />
-            </View>
-          ) : null}
-
-          <Text className="text-gray-700 dark:text-gray-300 font-bold mb-2 uppercase text-[10px] tracking-widest">Title *</Text>
-          <TextInput
-            value={formData.title}
-            onChangeText={(v) => setFormData((p) => ({ ...p, title: v }))}
-            placeholder="e.g. Grade 10 Annual Fees"
-            placeholderTextColor="#9CA3AF"
-            className="bg-white dark:bg-[#0F141C] border-2 border-gray-300 dark:border-gray-600 rounded-2xl px-4 py-4 text-gray-900 dark:text-white font-semibold mb-5 shadow-sm"
-          />
-
-          <Text className="text-gray-700 dark:text-gray-300 font-bold mb-2 uppercase text-[10px] tracking-widest">Amount (KSh) *</Text>
-          <TextInput
-            value={formData.amount}
-            onChangeText={(v) => setFormData((p) => ({ ...p, amount: v }))}
-            placeholder="0.00"
-            keyboardType="numeric"
-            placeholderTextColor="#9CA3AF"
-            className="bg-white dark:bg-[#0F141C] border-2 border-gray-300 dark:border-gray-600 rounded-2xl px-4 py-4 text-gray-900 dark:text-white font-semibold mb-5 shadow-sm"
-          />
-
-          <Text className="text-gray-700 dark:text-gray-300 font-bold mb-2 uppercase text-[10px] tracking-widest">Academic Year</Text>
-          <View className="flex-row flex-wrap gap-2 mb-6">
-            {academicYears.map((year) => (
-              <TouchableOpacity
-                key={year.id}
-                onPress={() =>
-                  setFormData((p) => ({
-                    ...p,
-                    academic_year_id: year.id,
-                    academic_year: year.name,
-                    term_id: ANNUAL_TERM_ID,
-                    term: ANNUAL_TERM_NAME,
-                  }))
-                }
-                className={`px-4 py-2 rounded-xl border ${formData.academic_year_id === year.id ? 'bg-gray-900 border-gray-900' : 'bg-gray-100 dark:bg-gray-800 border-gray-200 dark:border-gray-700'}`}
-              >
-                <Text className={`text-xs font-bold ${formData.academic_year_id === year.id ? 'text-white' : 'text-gray-700 dark:text-gray-300'}`}>
-                  {year.name}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-
-          <Text className="text-gray-700 dark:text-gray-300 font-bold mb-2 uppercase text-[10px] tracking-widest">Term</Text>
-          <View className="flex-row flex-wrap gap-2 mb-6">
-            {yearTerms.map((term) => (
-              <TouchableOpacity
-                key={term.id}
-                onPress={() =>
-                  setFormData((p) => ({
-                    ...p,
-                    term_id: term.id,
-                    term: term.name,
-                  }))
-                }
-                className={`px-4 py-2 rounded-xl border ${formData.term_id === term.id ? 'bg-gray-900 border-gray-900' : 'bg-gray-100 dark:bg-gray-800 border-gray-200 dark:border-gray-700'}`}
-              >
-                <Text className={`text-xs font-bold ${formData.term_id === term.id ? 'text-white' : 'text-gray-700 dark:text-gray-300'}`}>
-                  {term.name}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-
-          <Text className="text-gray-700 dark:text-gray-300 font-bold mb-2 uppercase text-[10px] tracking-widest">Level Target</Text>
-          <View className="flex-row flex-wrap gap-2 mb-4">
-            {availableLevelScopes.map((scope) => (
-              <TouchableOpacity
-                key={scope}
-                onPress={() => setFormData((p) => ({ ...p, level_scope: scope }))}
-                className={`px-4 py-2 rounded-xl border ${formData.level_scope === scope ? 'bg-gray-900 border-gray-900' : 'bg-gray-100 dark:bg-gray-800 border-gray-200 dark:border-gray-700'}`}
-              >
-                <Text className={`text-xs font-bold ${formData.level_scope === scope ? 'text-white' : 'text-gray-700 dark:text-gray-300'}`}>
-                  {scope === 'all' ? 'All' : scope === 'grade' ? 'Grade' : scope === 'form' ? 'Form' : 'Range'}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-
-          {(formData.level_scope === 'grade' || formData.level_scope === 'form') ? (
-            <View className="flex-row flex-wrap gap-2 mb-6">
-              {(formData.level_scope === 'grade' ? gradeLevels : formLevels).map((lvl) => (
-                <TouchableOpacity
-                  key={`lvl-${lvl}`}
-                  onPress={() => setFormData((p) => ({ ...p, level_value: String(lvl) }))}
-                  className={`px-4 py-2 rounded-xl border ${formData.level_value === String(lvl) ? 'bg-gray-900 border-gray-900' : 'bg-gray-100 dark:bg-gray-800 border-gray-200 dark:border-gray-700'}`}
-                >
-                  <Text className={`text-xs font-bold ${formData.level_value === String(lvl) ? 'text-white' : 'text-gray-700 dark:text-gray-300'}`}>
-                    {formData.level_scope === 'grade' ? `Grade ${lvl}` : `Form ${lvl}`}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          ) : null}
-
-          {formData.level_scope === 'range' ? (
-            <View className="mb-6">
-              <Text className="text-gray-700 dark:text-gray-300 font-bold mb-2 uppercase text-[10px] tracking-widest">Range From</Text>
-              <TextInput
-                value={formData.level_from}
-                onChangeText={(v) => setFormData((p) => ({ ...p, level_from: v }))}
-                keyboardType="numeric"
-                placeholder="e.g. 1"
-                placeholderTextColor="#9CA3AF"
-                className="bg-white dark:bg-[#0F141C] border-2 border-gray-300 dark:border-gray-600 rounded-2xl px-4 py-4 text-gray-900 dark:text-white font-semibold mb-4 shadow-sm"
-              />
-              <Text className="text-gray-700 dark:text-gray-300 font-bold mb-2 uppercase text-[10px] tracking-widest">Range To</Text>
-              <TextInput
-                value={formData.level_to}
-                onChangeText={(v) => setFormData((p) => ({ ...p, level_to: v }))}
-                keyboardType="numeric"
-                placeholder="e.g. 8"
-                placeholderTextColor="#9CA3AF"
-                className="bg-white dark:bg-[#0F141C] border-2 border-gray-300 dark:border-gray-600 rounded-2xl px-4 py-4 text-gray-900 dark:text-white font-semibold shadow-sm"
-              />
-            </View>
-          ) : null}
-
-          <TouchableOpacity
-            onPress={handleSubmit}
-            className="bg-gray-900 py-5 rounded-2xl items-center"
-            disabled={submitting}
-            accessibilityState={{ disabled: submitting, busy: submitting }}
-          >
-            {submitting ? (
-              <Spinner label={editingStructure ? 'Saving changes' : 'Creating fee structure'} color="#FFFFFF" />
-            ) : (
-              <Text className="text-white font-black text-base uppercase tracking-widest">
-                {editingStructure ? 'Save Changes' : 'Create Fee Structure'}
+            <View className="flex-1 items-center justify-center p-4">
+              <View className="w-full max-w-3xl bg-[#F6F8FA] dark:bg-[#161B22] rounded-3xl border border-gray-200 dark:border-gray-800 overflow-hidden">
+            <View className="flex-row justify-between items-center px-5 py-4 border-b border-gray-200 dark:border-gray-800 bg-[#F6F8FA] dark:bg-[#0F141C]">
+              <Text className="text-gray-900 dark:text-white font-black text-lg">
+                {editingStructure ? 'Edit Fee Structure' : 'New Fee Structure'}
               </Text>
-            )}
-          </TouchableOpacity>
-        </ScrollView>
+              <TouchableOpacity
+                onPress={() => {
+                  setShowForm(false);
+                  resetForm();
+                }}
+                className="bg-gray-100 dark:bg-gray-800 w-9 h-9 rounded-full items-center justify-center"
+              >
+                <Text className="text-gray-600 dark:text-gray-300 font-bold text-base">X</Text>
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView className="max-h-[78vh] px-5 pt-4" contentContainerStyle={{ paddingBottom: 18 }}>
+              {loadingOptions ? (
+                <View className="py-2">
+                  <FormFieldSkeleton loading={loadingOptions} count={5} label="Loading academic setup options..." />
+                </View>
+              ) : null}
+
+              <Text className="text-gray-700 dark:text-gray-300 font-bold mb-2 uppercase text-[10px] tracking-widest">Title *</Text>
+              <TextInput
+                value={formData.title}
+                onChangeText={(v) => setFormData((p) => ({ ...p, title: v }))}
+                placeholder="e.g. Grade 10 Annual Fees"
+                placeholderTextColor="#9CA3AF"
+                className="bg-[#F6F8FA] dark:bg-[#0F141C] border-2 border-gray-300 dark:border-gray-600 rounded-2xl px-4 py-3 text-gray-900 dark:text-white font-semibold mb-4"
+              />
+
+              <Text className="text-gray-700 dark:text-gray-300 font-bold mb-2 uppercase text-[10px] tracking-widest">Amount *</Text>
+              <TextInput
+                value={formData.amount}
+                onChangeText={(v) => setFormData((p) => ({ ...p, amount: v }))}
+                placeholder="0.00"
+                keyboardType="numeric"
+                placeholderTextColor="#9CA3AF"
+                className="bg-[#F6F8FA] dark:bg-[#0F141C] border-2 border-gray-300 dark:border-gray-600 rounded-2xl px-4 py-3 text-gray-900 dark:text-white font-semibold mb-4"
+              />
+
+              <Text className="text-gray-700 dark:text-gray-300 font-bold mb-2 uppercase text-[10px] tracking-widest">Due Date (Optional)</Text>
+              <TextInput
+                value={formData.due_date}
+                onChangeText={(v) => setFormData((p) => ({ ...p, due_date: v }))}
+                placeholder="YYYY-MM-DD"
+                placeholderTextColor="#9CA3AF"
+                className="bg-[#F6F8FA] dark:bg-[#0F141C] border-2 border-gray-300 dark:border-gray-600 rounded-2xl px-4 py-3 text-gray-900 dark:text-white font-semibold mb-4"
+              />
+
+              <Text className="text-gray-700 dark:text-gray-300 font-bold mb-2 uppercase text-[10px] tracking-widest">Academic Year</Text>
+              <View className="flex-row flex-wrap gap-2 mb-5">
+                {academicYears.map((year) => (
+                  <TouchableOpacity
+                    key={year.id}
+                    onPress={() =>
+                      setFormData((p) => ({
+                        ...p,
+                        academic_year_id: year.id,
+                        academic_year: year.name,
+                        term_id: ANNUAL_TERM_ID,
+                        term: ANNUAL_TERM_NAME,
+                      }))
+                    }
+                    className={`px-4 py-2 rounded-xl border ${formData.academic_year_id === year.id ? 'bg-gray-900 border-gray-900' : 'bg-gray-100 dark:bg-gray-800 border-gray-200 dark:border-gray-700'}`}
+                  >
+                    <Text className={`text-xs font-bold ${formData.academic_year_id === year.id ? 'text-white' : 'text-gray-700 dark:text-gray-300'}`}>
+                      {year.name}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              <Text className="text-gray-700 dark:text-gray-300 font-bold mb-2 uppercase text-[10px] tracking-widest">Term</Text>
+              <View className="flex-row flex-wrap gap-2 mb-5">
+                {yearTerms.map((term) => (
+                  <TouchableOpacity
+                    key={term.id}
+                    onPress={() =>
+                      setFormData((p) => ({
+                        ...p,
+                        term_id: term.id,
+                        term: term.name,
+                      }))
+                    }
+                    className={`px-4 py-2 rounded-xl border ${formData.term_id === term.id ? 'bg-gray-900 border-gray-900' : 'bg-gray-100 dark:bg-gray-800 border-gray-200 dark:border-gray-700'}`}
+                  >
+                    <Text className={`text-xs font-bold ${formData.term_id === term.id ? 'text-white' : 'text-gray-700 dark:text-gray-300'}`}>
+                      {term.name}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              <Text className="text-gray-700 dark:text-gray-300 font-bold mb-2 uppercase text-[10px] tracking-widest">Level Target</Text>
+              <View className="flex-row flex-wrap gap-2 mb-4">
+                {availableLevelScopes.map((scope) => (
+                  <TouchableOpacity
+                    key={scope}
+                    onPress={() => setFormData((p) => ({ ...p, level_scope: scope }))}
+                    className={`px-4 py-2 rounded-xl border ${formData.level_scope === scope ? 'bg-gray-900 border-gray-900' : 'bg-gray-100 dark:bg-gray-800 border-gray-200 dark:border-gray-700'}`}
+                  >
+                    <Text className={`text-xs font-bold ${formData.level_scope === scope ? 'text-white' : 'text-gray-700 dark:text-gray-300'}`}>
+                      {scope === 'all' ? 'All' : scope === 'grade' ? 'Grade' : scope === 'form' ? 'Form' : 'Range'}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              {(formData.level_scope === 'grade' || formData.level_scope === 'form') ? (
+                <View className="flex-row flex-wrap gap-2 mb-5">
+                  {(formData.level_scope === 'grade' ? gradeLevels : formLevels).map((lvl) => (
+                    <TouchableOpacity
+                      key={`lvl-${lvl}`}
+                      onPress={() => setFormData((p) => ({ ...p, level_value: String(lvl) }))}
+                      className={`px-4 py-2 rounded-xl border ${formData.level_value === String(lvl) ? 'bg-gray-900 border-gray-900' : 'bg-gray-100 dark:bg-gray-800 border-gray-200 dark:border-gray-700'}`}
+                    >
+                      <Text className={`text-xs font-bold ${formData.level_value === String(lvl) ? 'text-white' : 'text-gray-700 dark:text-gray-300'}`}>
+                        {formData.level_scope === 'grade' ? `Grade ${lvl}` : `Form ${lvl}`}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              ) : null}
+
+              {formData.level_scope === 'range' ? (
+                <View className="mb-5">
+                  <Text className="text-gray-700 dark:text-gray-300 font-bold mb-2 uppercase text-[10px] tracking-widest">Range From</Text>
+                  <TextInput
+                    value={formData.level_from}
+                    onChangeText={(v) => setFormData((p) => ({ ...p, level_from: v }))}
+                    keyboardType="numeric"
+                    placeholder="e.g. 1"
+                    placeholderTextColor="#9CA3AF"
+                    className="bg-[#F6F8FA] dark:bg-[#0F141C] border-2 border-gray-300 dark:border-gray-600 rounded-2xl px-4 py-3 text-gray-900 dark:text-white font-semibold mb-3"
+                  />
+                  <Text className="text-gray-700 dark:text-gray-300 font-bold mb-2 uppercase text-[10px] tracking-widest">Range To</Text>
+                  <TextInput
+                    value={formData.level_to}
+                    onChangeText={(v) => setFormData((p) => ({ ...p, level_to: v }))}
+                    keyboardType="numeric"
+                    placeholder="e.g. 8"
+                    placeholderTextColor="#9CA3AF"
+                    className="bg-[#F6F8FA] dark:bg-[#0F141C] border-2 border-gray-300 dark:border-gray-600 rounded-2xl px-4 py-3 text-gray-900 dark:text-white font-semibold"
+                  />
+                </View>
+              ) : null}
+            </ScrollView>
+
+            <View className="px-5 py-4 border-t border-gray-200 dark:border-gray-800 flex-row" style={{ gap: 10 }}>
+              <TouchableOpacity
+                onPress={() => {
+                  setShowForm(false);
+                  resetForm();
+                }}
+                className="flex-1 bg-gray-100 dark:bg-gray-800 py-3 rounded-xl items-center"
+                disabled={submitting}
+              >
+                <Text className="text-gray-700 dark:text-gray-200 font-bold text-xs uppercase tracking-widest">Cancel</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={handleSubmit}
+                className="flex-1 bg-gray-900 py-3 rounded-xl items-center"
+                disabled={submitting}
+                accessibilityState={{ disabled: submitting, busy: submitting }}
+              >
+                {submitting ? (
+                  <Spinner label={editingStructure ? 'Saving changes' : 'Creating fee structure'} color="#FFFFFF" />
+                ) : (
+                  <Text className="text-white font-black text-xs uppercase tracking-widest">
+                    {editingStructure ? 'Save Changes' : 'Create Fee Structure'}
+                  </Text>
+                )}
+              </TouchableOpacity>
+            </View>
+              </View>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
       </Modal>
     </View>
   );

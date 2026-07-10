@@ -1,19 +1,84 @@
 import { useNotifications } from '@/contexts/NotificationContext';
 import { useTheme } from '@/contexts/ThemeContext';
+import { useAuth } from '@/contexts/AuthContext';
+import { SupportService, type SupportTicket } from '@/services/SupportService';
+import { useSubscriptionTier } from '@/hooks/useSubscriptionTier';
+import { HelpTooltip } from '@/components/settings/HelpTooltip';
 import { formatDistanceToNow } from 'date-fns';
 import { AlertCircle, Bell, CheckCircle, Info, Trash2 } from 'lucide-react-native';
 import React, { useEffect } from "react";
-import { ActivityIndicator, ScrollView, Text, TouchableOpacity, View, Platform } from 'react-native';
+import { ActivityIndicator, Alert, Modal, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { UnifiedHeader } from "./common/UnifiedHeader";
 import { router } from 'expo-router';
+import Toast from 'react-native-toast-message';
 
 export const NotificationsHub = () => {
-  const { notifications, markAllAsRead, refreshNotifications, loading, clearAll, deleteNotification } = useNotifications();
+  const { notifications, markAsRead, markAllAsRead, refreshNotifications, loading, clearAll, deleteNotification } = useNotifications();
+  const { profile } = useAuth();
   const { isDark } = useTheme();
+  const isInstitutionAdmin = profile?.role === 'admin';
+  const tier = useSubscriptionTier();
   const [markingAllRead, setMarkingAllRead] = React.useState(false);
+  const [nowMs, setNowMs] = React.useState(Date.now());
+  const [supportTickets, setSupportTickets] = React.useState<SupportTicket[]>([]);
+  const [loadingTickets, setLoadingTickets] = React.useState(false);
+  const [editingTicket, setEditingTicket] = React.useState<SupportTicket | null>(null);
+  const [editSubject, setEditSubject] = React.useState('');
+  const [editDescription, setEditDescription] = React.useState('');
+  const [savingTicket, setSavingTicket] = React.useState(false);
+
+  const headerRole = profile?.role === 'admin'
+    ? 'Admin'
+    : profile?.role === 'teacher'
+      ? 'Teacher'
+      : profile?.role === 'student'
+        ? 'Student'
+        : profile?.role === 'parent'
+          ? 'Parent/Guardian'
+          : profile?.role === 'master_admin'
+            ? 'Master Admin'
+            : 'Admin';
+
+  const formatExpiryCountdown = React.useCallback((expiresAt?: string | null) => {
+    if (!expiresAt) return null;
+    const endMs = new Date(expiresAt).getTime();
+    if (!Number.isFinite(endMs)) return null;
+    const remaining = endMs - nowMs;
+    if (remaining <= 0) return 'Expired';
+
+    const totalMinutes = Math.floor(remaining / (60 * 1000));
+    const days = Math.floor(totalMinutes / (24 * 60));
+    const hours = Math.floor((totalMinutes % (24 * 60)) / 60);
+    const minutes = totalMinutes % 60;
+    return `${days}d ${hours}h ${minutes}m left`;
+  }, [nowMs]);
 
   useEffect(() => {
     refreshNotifications();
+  }, []);
+
+  const loadSupportTickets = React.useCallback(async () => {
+    if (!isInstitutionAdmin) return;
+    try {
+      setLoadingTickets(true);
+      const tickets = await SupportService.getMyTickets();
+      setSupportTickets(tickets || []);
+    } catch (error: any) {
+      Toast.show({ type: 'error', text1: 'Support', text2: error?.message || 'Failed to load support tickets' });
+    } finally {
+      setLoadingTickets(false);
+    }
+  }, [isInstitutionAdmin]);
+
+  useEffect(() => {
+    if (isInstitutionAdmin) {
+      loadSupportTickets();
+    }
+  }, [isInstitutionAdmin, loadSupportTickets]);
+
+  useEffect(() => {
+    const interval = setInterval(() => setNowMs(Date.now()), 30000);
+    return () => clearInterval(interval);
   }, []);
 
   const tokens = {
@@ -36,6 +101,49 @@ export const NotificationsHub = () => {
 
   const hasUnread = notifications.some((item) => !item.is_read);
 
+  const resolveChatRoute = React.useCallback((conversationId?: string | null) => {
+    if (!conversationId) return;
+    const role = profile?.role;
+    if (role === 'admin') {
+      router.push({ pathname: '/(admin)/communication', params: { conversationId } } as any);
+      return;
+    }
+    if (role === 'teacher') {
+      router.push({ pathname: '/(teacher)/management/messages', params: { conversationId } } as any);
+      return;
+    }
+    if (role === 'parent') {
+      router.push({ pathname: '/(parent)/messages', params: { conversationId } } as any);
+    }
+  }, [profile?.role]);
+
+  const handleNotificationPress = React.useCallback((item: any) => {
+    if (!item.is_read) {
+      markAsRead(item.id);
+    }
+
+    const conversationId = item?.data?.conversation_id || item?.data?.conversationId || null;
+    const source = String(item?.data?.source || '').toLowerCase();
+    const isMessageNotification = source === 'message' || Boolean(conversationId);
+
+    if (!isMessageNotification || !conversationId) {
+      return;
+    }
+
+    const senderName = item?.data?.sender_name ? ` from ${item.data.sender_name}` : '';
+    Alert.alert(
+      'Open message',
+      `Open this message${senderName} in chat?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Open',
+          onPress: () => resolveChatRoute(conversationId),
+        },
+      ]
+    );
+  }, [markAsRead, resolveChatRoute]);
+
   const handleMarkAllAsRead = async () => {
     if (!hasUnread || markingAllRead) return;
     try {
@@ -47,12 +155,49 @@ export const NotificationsHub = () => {
     }
   };
 
+  const openEditTicket = (ticket: SupportTicket) => {
+    setEditingTicket(ticket);
+    setEditSubject(ticket.subject || '');
+    setEditDescription(ticket.description || '');
+  };
+
+  const canEditOrDelete = (ticket: SupportTicket) => !!ticket.can_edit || !!ticket.can_delete;
+
+  const saveTicketEdit = async () => {
+    if (!editingTicket) return;
+    try {
+      setSavingTicket(true);
+      const updated = await SupportService.updateMyTicket(editingTicket.id, {
+        subject: editSubject,
+        description: editDescription,
+      });
+      setSupportTickets((prev) => prev.map((t) => (t.id === updated.id ? updated : t)));
+      setEditingTicket(updated);
+      Toast.show({ type: 'success', text1: 'Support', text2: 'Ticket updated successfully' });
+    } catch (error: any) {
+      Toast.show({ type: 'error', text1: 'Support', text2: error?.message || 'Failed to update ticket' });
+    } finally {
+      setSavingTicket(false);
+    }
+  };
+
+  const deleteTicket = async (ticketId: string) => {
+    try {
+      await SupportService.deleteMyTicket(ticketId);
+      setSupportTickets((prev) => prev.filter((t) => t.id !== ticketId));
+      if (editingTicket?.id === ticketId) setEditingTicket(null);
+      Toast.show({ type: 'success', text1: 'Support', text2: 'Ticket deleted successfully' });
+    } catch (error: any) {
+      Toast.show({ type: 'error', text1: 'Support', text2: error?.message || 'Failed to delete ticket' });
+    }
+  };
+
   return (
     <View style={{ flex: 1, backgroundColor: tokens.surface }}>
       <UnifiedHeader 
         title="Portal" 
         subtitle="Notifications" 
-        role="Teacher" // This should ideally be passed in or derived from context
+        role={headerRole}
         onBack={() => router.back()}
       />
       
@@ -84,6 +229,122 @@ export const NotificationsHub = () => {
         contentContainerStyle={{ padding: 20, paddingBottom: 100 }}
         showsVerticalScrollIndicator={false}
       >
+        {isInstitutionAdmin && (
+          <View style={{ marginBottom: 16 }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <Text style={{ color: tokens.textPrimary, fontWeight: '800', fontSize: 14 }}>Your Support Tickets</Text>
+                <HelpTooltip
+                  id="admin.support.tickets"
+                  role="admin"
+                  tier={tier}
+                  onLearnMore={(anchor) => router.push({ pathname: '/(admin)/accessibility/settings', params: { manual: '1', anchor: anchor || 'reports-ops' } } as any)}
+                />
+              </View>
+              <TouchableOpacity onPress={loadSupportTickets} activeOpacity={0.7}>
+                <Text style={{ color: '#FF6900', fontSize: 11, fontWeight: '700', textTransform: 'uppercase' }}>Refresh</Text>
+              </TouchableOpacity>
+            </View>
+
+            {loadingTickets ? (
+              <View style={{ paddingVertical: 20, alignItems: 'center' }}>
+                <ActivityIndicator color="#FF6900" />
+              </View>
+            ) : supportTickets.length === 0 ? (
+              <View style={{ backgroundColor: tokens.surfaceAlt, borderWidth: 1, borderColor: tokens.border, borderRadius: 12, padding: 12 }}>
+                <Text style={{ color: tokens.textSecondary, fontSize: 12 }}>No support tickets yet.</Text>
+              </View>
+            ) : (
+              supportTickets.map((ticket) => {
+                const wf = ticket.workflow_status || 'pending';
+                const statusColor = wf === 'pending' ? '#B91C1C' : wf === 'acknowledged' ? '#1D4ED8' : wf === 'in_progress' ? '#B45309' : '#15803D';
+                const steps = ['pending', 'acknowledged', 'in_progress', 'resolved'] as const;
+                const currentIndex = steps.indexOf(wf as any);
+                return (
+                  <View key={ticket.id} style={{ backgroundColor: tokens.surfaceAlt, borderWidth: 1, borderColor: tokens.border, borderRadius: 12, padding: 12, marginBottom: 8 }}>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <Text style={{ color: tokens.textPrimary, fontWeight: '700', flex: 1, marginRight: 8 }} numberOfLines={1}>{ticket.subject}</Text>
+                      <Text style={{ color: statusColor, fontSize: 10, fontWeight: '800', textTransform: 'uppercase' }}>{wf.replace('_', ' ')}</Text>
+                    </View>
+                    <Text style={{ color: tokens.textSecondary, marginTop: 6, fontSize: 12 }} numberOfLines={2}>{ticket.description}</Text>
+
+                    <View style={{ marginTop: 8 }}>
+                      <Text style={{ color: tokens.textMuted, fontSize: 10, fontWeight: '700', textTransform: 'uppercase', marginBottom: 6 }}>
+                        Ticket Progress
+                      </Text>
+                      <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
+                        {steps.map((step, index) => {
+                          const reached = currentIndex >= index;
+                          const isCurrent = currentIndex === index;
+                          const chipBg = reached ? (isCurrent ? `${statusColor}25` : (isDark ? 'rgba(34,197,94,0.2)' : '#DCFCE7')) : (isDark ? '#0F141C' : '#FFFFFF');
+                          const chipBorder = reached ? (isCurrent ? statusColor : '#16A34A') : tokens.border;
+                          const chipText = reached ? (isCurrent ? statusColor : (isDark ? '#86EFAC' : '#166534')) : tokens.textSecondary;
+                          return (
+                            <View
+                              key={`${ticket.id}-${step}`}
+                              style={{
+                                paddingHorizontal: 8,
+                                paddingVertical: 5,
+                                borderRadius: 999,
+                                borderWidth: 1,
+                                borderColor: chipBorder,
+                                backgroundColor: chipBg,
+                                marginRight: 6,
+                                marginBottom: 6,
+                              }}
+                            >
+                              <Text style={{ color: chipText, fontSize: 10, fontWeight: '800', textTransform: 'uppercase' }}>
+                                {step.replace('_', ' ')}
+                              </Text>
+                            </View>
+                          );
+                        })}
+                      </View>
+                    </View>
+
+                    {!canEditOrDelete(ticket) && (
+                      <Text style={{ color: '#9A6700', marginTop: 6, fontSize: 11, fontWeight: '700' }}>
+                        Locked after acknowledgement. Editable/deletable once resolved.
+                      </Text>
+                    )}
+                    <View style={{ flexDirection: 'row', marginTop: 10 }}>
+                      <TouchableOpacity
+                        disabled={!ticket.can_edit}
+                        onPress={() => openEditTicket(ticket)}
+                        style={{
+                          paddingHorizontal: 10,
+                          paddingVertical: 7,
+                          borderRadius: 8,
+                          borderWidth: 1,
+                          borderColor: ticket.can_edit ? tokens.border : tokens.textMuted,
+                          opacity: ticket.can_edit ? 1 : 0.5,
+                          marginRight: 8,
+                        }}
+                      >
+                        <Text style={{ color: tokens.textPrimary, fontSize: 11, fontWeight: '700' }}>Edit</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        disabled={!ticket.can_delete}
+                        onPress={() => deleteTicket(ticket.id)}
+                        style={{
+                          paddingHorizontal: 10,
+                          paddingVertical: 7,
+                          borderRadius: 8,
+                          borderWidth: 1,
+                          borderColor: '#CF222E',
+                          opacity: ticket.can_delete ? 1 : 0.5,
+                        }}
+                      >
+                        <Text style={{ color: '#CF222E', fontSize: 11, fontWeight: '700' }}>Delete</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                );
+              })
+            )}
+          </View>
+        )}
+
         {loading && notifications.length === 0 ? (
           <View style={{ padding: 48, alignItems: 'center' }}>
             <ActivityIndicator color="#FF6900" />
@@ -104,8 +365,10 @@ export const NotificationsHub = () => {
         ) : (
           <>
             {notifications.map((item) => (
-              <View
+              <TouchableOpacity
                 key={item.id}
+                activeOpacity={0.85}
+                onPress={() => handleNotificationPress(item)}
                 style={{
                   flexDirection: 'row',
                   padding: 16,
@@ -139,6 +402,11 @@ export const NotificationsHub = () => {
                     </Text>
                   </View>
                   <Text style={{ color: tokens.textSecondary, fontSize: 14, lineHeight: 20 }}>{item.message}</Text>
+                  {!!item.expires_at && (
+                    <Text style={{ color: '#D97706', fontSize: 11, marginTop: 6, fontWeight: '700' }}>
+                      {formatExpiryCountdown(item.expires_at)}
+                    </Text>
+                  )}
                 </View>
                 <TouchableOpacity 
                   onPress={() => deleteNotification(item.id)}
@@ -147,7 +415,7 @@ export const NotificationsHub = () => {
                 >
                   <Trash2 size={16} color={tokens.textMuted} />
                 </TouchableOpacity>
-              </View>
+              </TouchableOpacity>
             ))}
 
             <TouchableOpacity
@@ -179,6 +447,42 @@ export const NotificationsHub = () => {
           </>
         )}
       </ScrollView>
+
+      <Modal visible={!!editingTicket} transparent animationType="fade" onRequestClose={() => setEditingTicket(null)}>
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.55)', justifyContent: 'center', padding: 20 }}>
+          <View style={{ backgroundColor: tokens.surface, borderWidth: 1, borderColor: tokens.border, borderRadius: 12, padding: 14 }}>
+            <Text style={{ color: tokens.textPrimary, fontSize: 16, fontWeight: '800' }}>Edit Support Ticket</Text>
+            <TextInput
+              value={editSubject}
+              onChangeText={setEditSubject}
+              placeholder="Subject"
+              placeholderTextColor={tokens.textMuted}
+              style={{ marginTop: 12, backgroundColor: tokens.surfaceAlt, color: tokens.textPrimary, borderWidth: 1, borderColor: tokens.border, borderRadius: 10, paddingHorizontal: 10, paddingVertical: 10 }}
+            />
+            <TextInput
+              value={editDescription}
+              onChangeText={setEditDescription}
+              placeholder="Description"
+              placeholderTextColor={tokens.textMuted}
+              multiline
+              style={{ marginTop: 10, minHeight: 100, textAlignVertical: 'top', backgroundColor: tokens.surfaceAlt, color: tokens.textPrimary, borderWidth: 1, borderColor: tokens.border, borderRadius: 10, paddingHorizontal: 10, paddingVertical: 10 }}
+            />
+
+            <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginTop: 12 }}>
+              <TouchableOpacity onPress={() => setEditingTicket(null)} style={{ paddingHorizontal: 12, paddingVertical: 10, marginRight: 8 }}>
+                <Text style={{ color: tokens.textSecondary, fontWeight: '700' }}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                disabled={savingTicket}
+                onPress={saveTicketEdit}
+                style={{ backgroundColor: '#FF6900', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 10, opacity: savingTicket ? 0.7 : 1 }}
+              >
+                <Text style={{ color: '#fff', fontWeight: '700' }}>{savingTicket ? 'Saving...' : 'Save'}</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 };

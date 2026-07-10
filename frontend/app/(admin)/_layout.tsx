@@ -83,7 +83,7 @@ import { useRouter } from "expo-router";
 function AdminTabs() {
     const insets = useSafeAreaInsets();
     const { isDark } = useTheme();
-    const { isBeta } = useSubscriptionTier();
+    const { hasMessaging } = useSubscriptionTier();
     const { unreadCount } = useNotifications();
     const [showNotifDropdown, setShowNotifDropdown] = useState(false);
     const router = useRouter();
@@ -222,15 +222,15 @@ function AdminTabs() {
                 }}
             />
 
-            <Tabs.Screen
-                name="settings/settings"
-                options={{ href: null }}
-            />
-
             {/* Hidden items (routes registered but not shown in tab bar) */}
-            {HIDDEN.map((name) => (
+            {HIDDEN.map((name) => {
+                if (name === "communication/index" && !hasMessaging) {
+                    return <Tabs.Screen key={name} name={name} options={{ href: null, headerShown: false }} />;
+                }
+                return (
                 <Tabs.Screen key={name} name={name} options={{ href: null }} />
-            ))}
+                );
+            })}
             </Tabs>
 
             <NotificationBellDropdown
@@ -244,8 +244,9 @@ function AdminTabs() {
 }
 
 function AdminSidebar() {
-    const { isBeta, showFinancials } = useSubscriptionTier();
-    const items = showFinancials ? ALL_NAV_ITEMS : BETA_NAV_ITEMS;
+    const { showFinancials, hasMessaging } = useSubscriptionTier();
+    const items = (showFinancials ? ALL_NAV_ITEMS : BETA_NAV_ITEMS)
+        .filter((item) => (item.name === 'communication/index' ? hasMessaging : true));
     return (
         <WebSidebar items={items} basePath="(admin)" role="Admin">
             <Slot />

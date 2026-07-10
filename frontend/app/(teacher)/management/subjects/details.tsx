@@ -1,4 +1,5 @@
 import { UnifiedHeader } from "@/components/common/UnifiedHeader";
+import { FormFieldSkeleton, ListItemSkeleton } from "@/components/ui/skeletons";
 import { useTheme } from "@/contexts/ThemeContext";
 import { supabase } from "@/libs/supabase";
 import { Ionicons } from "@expo/vector-icons";
@@ -205,8 +206,8 @@ function TeacherSubjectDetailsScreen() {
 
     if (loading) {
         return (
-            <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: isDark ? "#161B22" : "#f9fafb" }}>
-                <ActivityIndicator size="large" color="#FF6B00" />
+            <View style={{ flex: 1, backgroundColor: isDark ? "#161B22" : "#f9fafb", padding: 16 }}>
+                <FormFieldSkeleton loading={loading} count={6} label="Loading subject details..." />
             </View>
         );
     }
@@ -352,7 +353,7 @@ function TeacherSubjectDetailsScreen() {
                         </View>
 
                         {resourcesLoading ? (
-                            <ActivityIndicator color="#FF6B00" style={{ marginVertical: 20 }} />
+                            <ListItemSkeleton loading={resourcesLoading} count={3} label="Loading resources..." />
                         ) : resources.length === 0 ? (
                             <View style={{ padding: 40, alignItems: "center", backgroundColor: inputBg, borderRadius: 24, borderStyle: "dashed", borderWidth: 1, borderColor: border }}>
                                 <FileText size={40} color={textMuted} style={{ opacity: 0.3 }} />

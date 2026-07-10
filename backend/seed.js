@@ -2,11 +2,14 @@ require('dotenv').config();
 const { createClient } = require('@supabase/supabase-js');
 const { faker } = require('@faker-js/faker');
 const crypto = require('crypto');
+const { assertStrongSeedPassword } = require('./utils/seedPasswordPolicy.js');
 
 const supabase = createClient(
     process.env.EXPO_PUBLIC_SUPABASE_URL,
     process.env.SUPABASE_SERVICE_ROLE_KEY
 );
+
+const DEFAULT_SEED_PASSWORD = assertStrongSeedPassword(process.env.SEED_DEFAULT_PASSWORD, 'SEED_DEFAULT_PASSWORD');
 console.log('URL:', process.env.EXPO_PUBLIC_SUPABASE_URL ? 'found' : 'MISSING');
 console.log('KEY:', process.env.SUPABASE_SERVICE_ROLE_KEY ? 'found' : 'MISSING');
 
@@ -519,7 +522,7 @@ async function seedCoreEntities() {
     console.log('Seeding core entities...\n');
 
     // 1. Institution
-    // Required: id, name, addon_bursary, addon_diary, addon_attendance
+    // Required: id, name, addon_bursary, addon_diary
     const { error: instErr } = await supabase.from('institutions').upsert({
         id: INSTITUTION_ID,
         name: 'Cloudora School',
@@ -527,11 +530,8 @@ async function seedCoreEntities() {
         subscription_plan: 'pro',
         addon_bursary: true,
         addon_diary: true,
-        addon_attendance: true,
         addon_library: true,
         addon_messaging: true,
-        addon_finance: true,
-        addon_analytics: true,
     });
     if (instErr) console.error('Institution seed error:', instErr.message);
     else console.log('✓ Institution upserted');
@@ -547,7 +547,7 @@ async function seedCoreEntities() {
         const { error } = await supabase.auth.admin.createUser({
             id: u.id,
             email: u.email,
-            password: 'CloudoraDemo1!',
+            password: DEFAULT_SEED_PASSWORD,
             email_confirm: true,
         });
         if (error && !error.message.toLowerCase().includes('already') && !error.message.includes('unique')) {

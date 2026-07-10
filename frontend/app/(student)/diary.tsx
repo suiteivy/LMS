@@ -1,4 +1,5 @@
 import { UnifiedHeader } from "@/components/common/UnifiedHeader";
+import { ListItemSkeleton } from "@/components/ui/skeletons";
 import { DiaryService, DiaryEntry } from "@/services/DiaryService";
 import { format } from "date-fns";
 import { router } from "expo-router";
@@ -65,7 +66,7 @@ export default function StudentDiaryPage() {
                 </View>
 
                 {loading ? (
-                    <ActivityIndicator size="large" color="#FF6900" className="mt-8" />
+                    <ListItemSkeleton loading={loading} count={4} label="Loading diary entries..." />
                 ) : (
                     <ScrollView
                         className="flex-1"

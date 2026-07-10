@@ -4,10 +4,12 @@ import { useRouter } from "expo-router";
 import { ChevronLeft, Plus, DollarSign, PieChart, Wallet } from "lucide-react-native";
 import { FundsAPI, Fund, Allocation } from "@/services/FundsService";
 import { useSubscriptionTier } from "@/hooks/useSubscriptionTier";
+import { useCurrency } from "@/contexts/CurrencyContext";
 
 export default function FundManager() {
     const router = useRouter();
     const tier = useSubscriptionTier();
+    const { formatAmount } = useCurrency();
     const [loading, setLoading] = useState(true);
     const [funds, setFunds] = useState<Fund[]>([]);
     const [selectedFund, setSelectedFund] = useState<Fund | null>(null);
@@ -131,7 +133,7 @@ export default function FundManager() {
                                     className={`w-64 p-5 rounded-xl border ${selectedFund?.id === fund.id ? 'bg-orange-600 border-orange-600' : 'bg-white border-gray-100'} shadow-sm mr-4`}
                                 >
                                     <Text className={`text-lg font-bold mb-1 ${selectedFund?.id === fund.id ? 'text-white' : 'text-gray-800'}`}>{fund.name}</Text>
-                                    <Text className={`text-xs mb-3 ${selectedFund?.id === fund.id ? 'text-orange-100' : 'text-gray-500'}`}>Total: ${fund.total_amount}</Text>
+                                    <Text className={`text-xs mb-3 ${selectedFund?.id === fund.id ? 'text-orange-100' : 'text-gray-500'}`}>Total: {formatAmount(Number(fund.total_amount || 0))}</Text>
 
                                     <View className="h-2 bg-gray-200 rounded-full overflow-hidden mb-2">
                                         <View
@@ -141,7 +143,7 @@ export default function FundManager() {
                                     </View>
                                     <View className="flex-row justify-between">
                                         <Text className={`text-xs ${selectedFund?.id === fund.id ? 'text-orange-100' : 'text-gray-500'}`}>
-                                            Allocated: ${fund.allocated_amount}
+                                            Allocated: {formatAmount(Number(fund.allocated_amount || 0))}
                                         </Text>
                                         <Text className={`text-xs font-bold ${selectedFund?.id === fund.id ? 'text-white' : 'text-gray-700'}`}>
                                             {Math.round((fund.allocated_amount / fund.total_amount) * 100)}%
@@ -174,7 +176,7 @@ export default function FundManager() {
                                             <Text className="text-base font-bold text-gray-800">{item.title}</Text>
                                             <Text className="text-xs text-gray-400">{item.category}{' \u2022 '}{item.status}</Text>
                                         </View>
-                                        <Text className="text-base font-bold text-green-600">${item.amount}</Text>
+                                        <Text className="text-base font-bold text-green-600">{formatAmount(Number(item.amount || 0))}</Text>
                                     </View>
                                 )}
                                 ListEmptyComponent={<Text className="text-gray-400 text-center mt-4">No allocations yet.</Text>}

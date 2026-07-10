@@ -2,6 +2,7 @@ const process = require("node:process");
 const { createClient } = require('@supabase/supabase-js');
 const dotenv = require('dotenv');
 const path = require('path');
+const { assertStrongSeedPassword } = require('../utils/seedPasswordPolicy.js');
 
 // Load env from backend/.env
 dotenv.config({ path: path.join(__dirname, '../.env') });
@@ -21,7 +22,7 @@ const supabase = createClient(SUPABASE_URL, SERVICE_KEY, {
     }
 });
 
-const DEMO_PASSWORD = 'DemoUser123!';
+const DEMO_PASSWORD = assertStrongSeedPassword(process.env.DEMO_USER_PASSWORD, 'DEMO_USER_PASSWORD');
 
 const DEMO_USERS = [
     {

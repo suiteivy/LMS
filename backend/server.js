@@ -4,6 +4,26 @@ const cors = require("cors");
 const dotenv = require("dotenv");
 dotenv.config();
 
+// Global undici tuning for safer upstream networking behavior (Supabase/Auth)
+try {
+  const { Agent, setGlobalDispatcher } = require('undici');
+  const connectTimeoutMs = Number(process.env.UNDICI_CONNECT_TIMEOUT_MS || 20000);
+  const headersTimeoutMs = Number(process.env.UNDICI_HEADERS_TIMEOUT_MS || 30000);
+  const bodyTimeoutMs = Number(process.env.UNDICI_BODY_TIMEOUT_MS || 30000);
+
+  setGlobalDispatcher(
+    new Agent({
+      connect: { timeout: connectTimeoutMs },
+      headersTimeout: headersTimeoutMs,
+      bodyTimeout: bodyTimeoutMs,
+      keepAliveTimeout: 30_000,
+      keepAliveMaxTimeout: 120_000,
+    })
+  );
+} catch (_e) {
+  // no-op: keep startup resilient if undici API shape differs
+}
+
 // Security & Utility Middleware
 const logger = require("./utils/logger.js");
 const { rateLimiters } = require("./middleware/rateLimiter.js");
@@ -22,6 +42,7 @@ const settingsRoutes = require("./routes/settings.route.js");
 const masterAdminRoutes = require("./routes/master_admin.route.js");
 const addonRequestRoutes = require("./routes/addon_request.routes.js");
 const settingsController = require("./controllers/settings.controller.js");
+const masterAdminController = require("./controllers/master_admin.controller.js");
 
 const app = express();
 
@@ -63,6 +84,7 @@ app.use("/api/notifications", authMiddleware, checkSubscription, notificationRou
 app.use("/api/timetable", authMiddleware, checkSubscription, require("./routes/timetable.route.js"));
 app.use("/api/funds", authMiddleware, checkSubscription, require("./routes/finance_funds.route.js"));
 app.use("/api/attendance", authMiddleware, checkSubscription, require("./routes/attendance.route.js"));
+app.use("/api/hours", authMiddleware, checkSubscription, require("./routes/hours.route.js"));
 app.use("/api/academic", authMiddleware, checkSubscription, require("./routes/academic.route.js"));
 app.use("/api/exams", authMiddleware, checkSubscription, require("./routes/exams.route.js"));
 app.use("/api/parent", authMiddleware, checkSubscription, require("./routes/parent.route.js"));
@@ -82,21 +104,22 @@ app.use("/api/promotions", authMiddleware, checkSubscription, require("./routes/
 app.use("/api/addon-requests", authMiddleware, addonRequestRoutes);
 
 // Explicitly define currency route as public before using auth wrapper on settings
+app.get('/api/settings/currencies', settingsController.getCurrencies);
 app.get("/api/settings/currency", settingsController.getCurrencyRates);
+app.get('/api/settings/maintenance', settingsController.getMaintenanceStatus);
 app.use("/api/settings", authMiddleware, checkSubscription, settingsRoutes);
 
 // Platform Admin Routes (Protected explicitly internally by requirePlatformAdmin)
 app.use("/api/master-admin", authMiddleware, masterAdminRoutes);
 
-// Automated background jobs (Trial Branch)
-const { startTrialNudgesCron } = require('./cron/trialNudges.js');
+// Automated background jobs
 const { cleanupExpiredDemoSessions } = require('./services/demoCleanup.service.js');
 const cron = require('node-cron');
 const { retryScheduledNotificationDeliveries } = require('./services/notificationDelivery.service.js');
-
-if (typeof startTrialNudgesCron === 'function') {
-  startTrialNudgesCron();
-}
+const { runUpcomingClassReminderSweepWithRetry } = require('./services/classReminder.service.js');
+const { runFeeDeadlineReminderSweepWithRetry } = require('./services/feeDeadlineReminder.service.js');
+const { pruneSystemActivityLogs } = require('./services/systemActivityLog.service.js');
+const { recomputePreviousDayForInstitutionsFromAttendance } = require('./services/dailyHours.service.js');
 
 // Notification retry worker: every 5 minutes
 cron.schedule('*/5 * * * *', async () => {
@@ -113,6 +136,86 @@ cron.schedule('*/5 * * * *', async () => {
 // Demo Cleanup: Runs every 10 minutes
 cron.schedule('*/10 * * * *', async () => {
   await cleanupExpiredDemoSessions();
+});
+
+// Class reminder worker: every 5 minutes (notify 10 minutes before class start)
+cron.schedule('*/5 * * * *', async () => {
+  try {
+    const result = await runUpcomingClassReminderSweepWithRetry({
+      leadMinutes: 10,
+      windowMinutes: 5,
+      attempts: 4,
+      baseDelayMs: 1500,
+    });
+    if ((result?.queuedNotifications || 0) > 0) {
+      logger.info('Class reminder worker queued notifications', result);
+    }
+  } catch (error) {
+    logger.error('Class reminder worker failed', { error: error?.message || String(error) });
+  }
+});
+
+// Fee deadline reminders: daily at 08:00 server time
+cron.schedule('0 8 * * *', async () => {
+  try {
+    const result = await runFeeDeadlineReminderSweepWithRetry({
+      attempts: 4,
+      baseDelayMs: 1500,
+    });
+    if ((result?.queuedNotifications || 0) > 0) {
+      logger.info('Fee deadline reminder worker queued notifications', result);
+    }
+  } catch (error) {
+    logger.error('Fee deadline reminder worker failed', { error: error?.message || String(error) });
+  }
+});
+
+// System activity log retention: every 6 hours (5-day retention)
+cron.schedule('0 */6 * * *', async () => {
+  try {
+    const result = pruneSystemActivityLogs();
+    if ((result?.pruned || 0) > 0) {
+      logger.info('Pruned system activity logs', result);
+    }
+  } catch (error) {
+    logger.error('System activity log prune failed', { error: error?.message || String(error) });
+  }
+});
+
+// Daily hours eventual consistency: recompute previous day at 02:30 server time
+cron.schedule('30 2 * * *', async () => {
+  try {
+    const result = await recomputePreviousDayForInstitutionsFromAttendance();
+    if ((result?.institutions_processed || 0) > 0) {
+      logger.info('Daily hours previous-day recompute completed', result);
+    }
+  } catch (error) {
+    logger.error('Daily hours previous-day recompute failed', { error: error?.message || String(error) });
+  }
+});
+
+// Password audit retention: every 6 hours (5-day retention)
+cron.schedule('0 */6 * * *', async () => {
+  try {
+    const result = await masterAdminController.prunePasswordAuditLogs();
+    if ((result?.pruned || 0) > 0) {
+      logger.info('Pruned password audit logs', result);
+    }
+  } catch (error) {
+    logger.error('Password audit log prune failed', { error: error?.message || String(error) });
+  }
+});
+
+// Resolved support tickets retention: prune after 24h, hourly
+cron.schedule('0 * * * *', async () => {
+  try {
+    const result = await masterAdminController.pruneResolvedSupportTickets();
+    if ((result?.pruned || 0) > 0) {
+      logger.info('Pruned resolved support tickets', result);
+    }
+  } catch (error) {
+    logger.error('Support ticket prune failed', { error: error?.message || String(error) });
+  }
 });
 
 // health check

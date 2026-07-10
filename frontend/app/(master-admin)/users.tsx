@@ -1,107 +1,154 @@
-import React, { useEffect, useState, useCallback, useRef } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-    View, Text, FlatList, TouchableOpacity, ActivityIndicator,
-    TextInput, ScrollView
+    ActivityIndicator,
+    FlatList,
+    Modal,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTheme } from '@/contexts/ThemeContext';
 import { supabase } from '@/libs/supabase';
 import Toast from 'react-native-toast-message';
+import { ListItemSkeleton } from '@/components/ui/skeletons';
+
+type Institution = { id: string; name: string };
+type Category = { id: string; name: string };
 
 type UserItem = {
     id: string;
-    full_name: string | null;
+    custom_display_id?: string;
     first_name: string | null;
     last_name: string | null;
     email: string | null;
+    phone?: string | null;
     role: string;
-    status: string | null;
+    canonical_role?: string;
+    role_alias?: string;
     created_at: string;
     institution_id: string | null;
     institutions: { name: string } | null;
 };
 
-const ROLES = ['all', 'student', 'teacher', 'admin', 'parent', 'bursary', 'master_admin'] as const;
-type RoleFilter = typeof ROLES[number];
+type RoleFilter = 'all' | 'teacher' | 'student' | 'parent' | 'admin' | 'master_admin';
 
-const ROLE_COLORS: Record<string, string> = {
+const ROLE_OPTIONS: ReadonlyArray<RoleFilter> = ['all', 'teacher', 'student', 'parent', 'admin', 'master_admin'];
+const PAGE_SIZE = 50;
+
+const ROLE_COLOR: Record<string, string> = {
     student: '#3B82F6',
     teacher: '#10B981',
     admin: '#F59E0B',
+    school_admin: '#F59E0B',
     parent: '#8B5CF6',
+    master_admin: '#FB923C',
+    platform_admin: '#FB923C',
     bursary: '#EC4899',
-    master_admin: '#FF6B00',
 };
 
-const ROLE_ICONS: Record<string, string> = {
+const ROLE_ICON: Record<string, string> = {
     student: 'school-outline',
     teacher: 'human-male-board',
     admin: 'shield-account',
+    school_admin: 'shield-account',
     parent: 'account-heart',
-    bursary: 'currency-usd',
     master_admin: 'crown',
+    platform_admin: 'crown',
+    bursary: 'currency-usd',
 };
 
-const PAGE_SIZE = 30;
-
-// Backend base URL — no trailing /api suffix, we add it per-call
 const getBackendUrl = () => process.env.EXPO_PUBLIC_API_URL || 'http://localhost:4001';
+
+const roleLabel = (role: string) => {
+    if (role === 'school_admin') return 'Admin';
+    if (role === 'platform_admin') return 'Master Admin';
+    return role.replace(/_/g, ' ').replace(/\b\w/g, (m) => m.toUpperCase());
+};
+
+const roleFilterToApi = (role: RoleFilter): string | null => {
+    if (role === 'all') return null;
+    if (role === 'admin') return 'admin';
+    if (role === 'master_admin') return 'master_admin';
+    return role;
+};
+
+const toCanonicalRole = (role: string): string => {
+    if (role === 'admin') return 'school_admin';
+    if (role === 'master_admin') return 'platform_admin';
+    return role;
+};
+
+const platformRoles = new Set(['master_admin', 'platform_admin']);
 
 export default function MasterAdminUsersScreen() {
     const { isDark } = useTheme();
 
     const [users, setUsers] = useState<UserItem[]>([]);
-    const [institutions, setInstitutions] = useState<{ id: string; name: string }[]>([]);
+    const [institutions, setInstitutions] = useState<Institution[]>([]);
+    const [categories, setCategories] = useState<Category[]>([]);
     const [loading, setLoading] = useState(true);
     const [loadingMore, setLoadingMore] = useState(false);
     const [hasMore, setHasMore] = useState(true);
     const [search, setSearch] = useState('');
     const [roleFilter, setRoleFilter] = useState<RoleFilter>('all');
     const [institutionFilter, setInstitutionFilter] = useState<string>('all');
-    const [categoryFilter, setCategoryFilter] = useState<string>('all');
+    const [categoryFilters, setCategoryFilters] = useState<string[]>([]);
     const [showFilters, setShowFilters] = useState(false);
-    const [categories, setCategories] = useState<{ id: string; name: string }[]>([]);
+    const [refreshing, setRefreshing] = useState(false);
 
-    // Use a ref for page to avoid it being a dep in useCallback (prevents infinite loop)
+    const [editVisible, setEditVisible] = useState(false);
+    const [editingUser, setEditingUser] = useState<UserItem | null>(null);
+    const [editFirstName, setEditFirstName] = useState('');
+    const [editLastName, setEditLastName] = useState('');
+    const [editEmail, setEditEmail] = useState('');
+    const [editPhone, setEditPhone] = useState('');
+    const [editRole, setEditRole] = useState<RoleFilter>('teacher');
+    const [editInstitution, setEditInstitution] = useState<string>('none');
+    const [savingEdit, setSavingEdit] = useState(false);
+    const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+    const [deletingUser, setDeletingUser] = useState(false);
+
     const pageRef = useRef(1);
     const isFetchingRef = useRef(false);
+    const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-    const themeColors = {
-        bg: isDark ? '#0F0B2E' : '#f8fafc',
-        card: isDark ? '#13103A' : '#ffffff',
-        text: isDark ? '#ffffff' : '#111827',
-        subtext: isDark ? '#94a3b8' : '#6b7280',
-        border: isDark ? 'rgba(255,255,255,0.07)' : '#e5e7eb',
-        inputBg: isDark ? '#1a1645' : '#f9fafb',
+    const colors = {
+        pageBg: isDark ? '#0D1117' : '#F6F8FA',
+        cardBg: isDark ? '#161B22' : '#FFFFFF',
+        text: isDark ? '#E6EDF3' : '#111827',
+        subtext: isDark ? '#8B949E' : '#6B7280',
+        border: isDark ? '#4B5563' : '#9CA3AF',
+        inputBg: isDark ? '#111827' : '#F3F4F6',
         primary: '#FF6B00',
     };
 
-    const fetchInstitutions = async () => {
-        const { data } = await supabase
-            .from('institutions')
-            .select('id, name')
-            .order('name');
+    const fetchInstitutions = useCallback(async () => {
+        const { data } = await supabase.from('institutions').select('id, name').order('name');
         setInstitutions(data || []);
-    };
+    }, []);
 
-    const fetchCategories = async () => {
+    const fetchCategories = useCallback(async () => {
         try {
             const { data: { session } } = await supabase.auth.getSession();
             if (!session) return;
-            
+
             const res = await fetch(`${getBackendUrl()}/api/master-admin/school-categories`, {
                 headers: {
-                    'Authorization': `Bearer ${session.access_token}`,
-                    'Accept': 'application/json',
-                }
+                    Authorization: `Bearer ${session.access_token}`,
+                    Accept: 'application/json',
+                },
             });
             const data = await res.json();
-            if (res.ok) setCategories(data || []);
+            if (res.ok) {
+                setCategories(Array.isArray(data) ? data : []);
+            }
         } catch (err) {
             console.error('fetchCategories error:', err);
         }
-    };
+    }, []);
 
     const fetchUsers = useCallback(async (reset = false) => {
         if (isFetchingRef.current) return;
@@ -122,353 +169,875 @@ export default function MasterAdminUsersScreen() {
             if (!session) {
                 setLoading(false);
                 setLoadingMore(false);
-                isFetchingRef.current = false;
                 return;
             }
 
             const params = new URLSearchParams({
-                page: currentPage.toString(),
-                limit: PAGE_SIZE.toString(),
+                page: String(currentPage),
+                limit: String(PAGE_SIZE),
             });
-            if (roleFilter !== 'all') params.append('role', roleFilter);
+
+            const roleParam = roleFilterToApi(roleFilter);
+            if (roleParam) params.append('role', roleParam);
             if (institutionFilter !== 'all') params.append('institution_id', institutionFilter);
-            if (categoryFilter !== 'all') params.append('category_id', categoryFilter);
+            if (categoryFilters.length > 0) params.append('category_ids', categoryFilters.join(','));
             if (search.trim()) params.append('search', search.trim());
 
-            const res = await fetch(`${getBackendUrl()}/api/master-admin/users?${params}`, {
+            const response = await fetch(`${getBackendUrl()}/api/master-admin/users?${params.toString()}`, {
                 headers: {
-                    'Authorization': `Bearer ${session.access_token}`,
-                    'Accept': 'application/json',
-                }
+                    Authorization: `Bearer ${session.access_token}`,
+                    Accept: 'application/json',
+                },
             });
 
-            const text = await res.text();
-            let data: any;
+            const text = await response.text();
+            let payload: any;
             try {
-                data = JSON.parse(text);
+                payload = JSON.parse(text);
             } catch {
-                console.error('Non-JSON response from server:', text.slice(0, 200));
-                Toast.show({ type: 'error', text1: 'Server Error', text2: 'Invalid response from server' });
+                Toast.show({ type: 'error', text1: 'Server Error', text2: 'Invalid response body', position: 'top' });
                 return;
             }
 
-            if (res.ok) {
-                const newUsers: UserItem[] = data.users || [];
-                setUsers(prev => {
-                    const combined = reset ? newUsers : [...prev, ...newUsers];
-                    // Deduplicate by ID to prevent "duplicate key" warnings
-                    return combined.filter((u, index, self) => 
-                        index === self.findIndex((t) => t.id === u.id)
-                    );
-                });
-                const more = newUsers.length === PAGE_SIZE;
-                setHasMore(more);
-                if (!reset && more) pageRef.current = currentPage + 1;
-            } else {
-                Toast.show({ type: 'error', text1: 'Error', text2: data.error || 'Failed to fetch users' });
+            if (!response.ok) {
+                Toast.show({ type: 'error', text1: 'Fetch Failed', text2: payload?.error || 'Unable to load users', position: 'top' });
+                return;
+            }
+
+            const incoming = Array.isArray(payload?.users) ? payload.users : [];
+            setUsers((prev) => {
+                const combined: UserItem[] = reset ? incoming : [...prev, ...incoming];
+                return combined.filter((u: UserItem, index: number, self: UserItem[]) => index === self.findIndex((x: UserItem) => x.id === u.id));
+            });
+
+            const more = incoming.length === PAGE_SIZE;
+            setHasMore(more);
+            if (!reset && more) {
+                pageRef.current = currentPage + 1;
             }
         } catch (err) {
             console.error('fetchUsers error:', err);
-            Toast.show({ type: 'error', text1: 'Network Error', text2: 'Could not reach server' });
+            Toast.show({ type: 'error', text1: 'Network Error', text2: 'Could not reach server', position: 'top' });
         } finally {
             setLoading(false);
             setLoadingMore(false);
             isFetchingRef.current = false;
+            setRefreshing(false);
         }
-    }, [roleFilter, institutionFilter, search]);  // ← page NOT in deps
+    }, [categoryFilters, institutionFilter, roleFilter, search]);
+
+    const toggleCategoryFilter = useCallback((id: string) => {
+        setCategoryFilters((prev) =>
+            prev.includes(id)
+                ? prev.filter((item) => item !== id)
+                : [...prev, id]
+        );
+    }, []);
 
     useEffect(() => {
         fetchInstitutions();
         fetchCategories();
-    }, []);
+    }, [fetchCategories, fetchInstitutions]);
 
     useEffect(() => {
-        fetchUsers(true);
-    }, [roleFilter, institutionFilter, categoryFilter]);  // only reset on filter changes
+        if (debounceRef.current) clearTimeout(debounceRef.current);
+        debounceRef.current = setTimeout(() => {
+            fetchUsers(true);
+        }, 300);
 
-    const handleSearch = () => fetchUsers(true);
-    const handleLoadMore = () => { if (hasMore && !loadingMore && !loading) fetchUsers(false); };
-    const toggleFilters = () => setShowFilters(!showFilters);
+        return () => {
+            if (debounceRef.current) clearTimeout(debounceRef.current);
+        };
+    }, [fetchUsers]);
 
-    const renderUser = ({ item }: { item: UserItem }) => {
-        const roleColor = ROLE_COLORS[item.role] || '#6B7280';
-        const roleIcon = ROLE_ICONS[item.role] || 'account';
-        const displayName = item.full_name || `${item.first_name || ''} ${item.last_name || ''}`.trim() || 'Unknown';
-        const initials = displayName.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
-        const joinDate = new Date(item.created_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+    const groupedSections = useMemo(() => {
+        const platformUsers = users.filter((u) => platformRoles.has(u.canonical_role || u.role));
+        const institutionUsers = users.filter((u) => !platformRoles.has(u.canonical_role || u.role));
+
+        const groupedByInstitution = institutionUsers.reduce<Record<string, UserItem[]>>((acc, user) => {
+            const key = user.institution_id || 'no-institution';
+            if (!acc[key]) acc[key] = [];
+            acc[key].push(user);
+            return acc;
+        }, {});
+
+        const sections: Array<{ key: string; title: string; items: UserItem[] }> = [];
+        if (platformUsers.length > 0) {
+            sections.push({ key: 'platform-admins', title: 'Platform Admins', items: platformUsers });
+        }
+
+        Object.entries(groupedByInstitution)
+            .sort((a, b) => {
+                const aName = a[1][0]?.institutions?.name || 'Unknown Institution';
+                const bName = b[1][0]?.institutions?.name || 'Unknown Institution';
+                return aName.localeCompare(bName);
+            })
+            .forEach(([key, value]) => {
+                const title = value[0]?.institutions?.name || 'Unassigned Institution';
+                sections.push({ key, title, items: value });
+            });
+
+        return sections;
+    }, [users]);
+
+    const selectedCategoryCount = categoryFilters.length;
+
+    const openEdit = useCallback((user: UserItem) => {
+        setEditingUser(user);
+        setEditFirstName(user.first_name || '');
+        setEditLastName(user.last_name || '');
+        setEditEmail(user.email || '');
+        setEditPhone(user.phone || '');
+        const canonicalRole = user.canonical_role || user.role;
+        if (canonicalRole === 'school_admin') setEditRole('admin');
+        else if (canonicalRole === 'platform_admin') setEditRole('master_admin');
+        else setEditRole((canonicalRole as RoleFilter) || 'teacher');
+        setEditInstitution(user.institution_id || 'none');
+        setEditVisible(true);
+    }, []);
+
+    const closeEdit = useCallback(() => {
+        setEditVisible(false);
+        setEditingUser(null);
+        setSavingEdit(false);
+        setShowDeleteConfirm(false);
+        setDeletingUser(false);
+    }, []);
+
+    const requestDeleteMasterAdmin = useCallback(() => {
+        if (!editingUser) return;
+        const canonicalRole = editingUser.canonical_role || editingUser.role;
+        if (!platformRoles.has(canonicalRole)) return;
+        setShowDeleteConfirm(true);
+    }, [editingUser]);
+
+    const cancelDeleteMasterAdmin = useCallback(() => {
+        if (deletingUser) return;
+        setShowDeleteConfirm(false);
+    }, [deletingUser]);
+
+    const confirmDeleteMasterAdmin = useCallback(async () => {
+        if (!editingUser || deletingUser) return;
+        setDeletingUser(true);
+
+        try {
+            const { data: { session } } = await supabase.auth.getSession();
+            if (!session) {
+                Toast.show({ type: 'error', text1: 'Unauthorized', text2: 'Please sign in again', position: 'top' });
+                setDeletingUser(false);
+                return;
+            }
+
+            const response = await fetch(`${getBackendUrl()}/api/master-admin/users/${editingUser.id}`, {
+                method: 'DELETE',
+                headers: {
+                    Authorization: `Bearer ${session.access_token}`,
+                    Accept: 'application/json',
+                },
+            });
+
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok) {
+                Toast.show({ type: 'error', text1: 'Delete Failed', text2: data?.error || 'Could not delete user', position: 'top' });
+                setDeletingUser(false);
+                return;
+            }
+
+            setUsers((prev) => prev.filter((u) => u.id !== editingUser.id));
+            Toast.show({ type: 'success', text1: 'Master Admin Deleted', text2: 'User removed successfully', position: 'top' });
+            closeEdit();
+        } catch (err) {
+            console.error('confirmDeleteMasterAdmin error:', err);
+            Toast.show({ type: 'error', text1: 'Network Error', text2: 'Failed to delete user', position: 'top' });
+            setDeletingUser(false);
+        }
+    }, [closeEdit, deletingUser, editingUser]);
+
+    const saveEdit = useCallback(async () => {
+        if (!editingUser || savingEdit) return;
+        setSavingEdit(true);
+
+        try {
+            const { data: { session } } = await supabase.auth.getSession();
+            if (!session) {
+                Toast.show({ type: 'error', text1: 'Unauthorized', text2: 'Please sign in again', position: 'top' });
+                setSavingEdit(false);
+                return;
+            }
+
+            const payload = {
+                first_name: editFirstName.trim() || null,
+                last_name: editLastName.trim() || null,
+                email: editEmail.trim() || null,
+                phone: editPhone.trim() || null,
+                role: editRole,
+                institution_id: editInstitution === 'none' ? null : editInstitution,
+            };
+
+            const response = await fetch(`${getBackendUrl()}/api/master-admin/users/${editingUser.id}`, {
+                method: 'PUT',
+                headers: {
+                    Authorization: `Bearer ${session.access_token}`,
+                    Accept: 'application/json',
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(payload),
+            });
+
+            const data = await response.json();
+            if (!response.ok) {
+                Toast.show({ type: 'error', text1: 'Update Failed', text2: data?.error || 'Could not update user', position: 'top' });
+                setSavingEdit(false);
+                return;
+            }
+
+            const serverUser = data?.user || {};
+            const canonicalRole = toCanonicalRole(editRole);
+            const institutionObj = editInstitution === 'none'
+                ? null
+                : { name: institutions.find((i) => i.id === editInstitution)?.name || 'Unknown Institution' };
+
+            setUsers((prev) => prev.map((u) => {
+                if (u.id !== editingUser.id) return u;
+                return {
+                    ...u,
+                    ...serverUser,
+                    first_name: editFirstName.trim() || u.first_name,
+                    last_name: editLastName.trim() || u.last_name,
+                    email: editEmail.trim() || null,
+                    phone: editPhone.trim() || null,
+                    role: serverUser.role || editRole,
+                    canonical_role: serverUser.canonical_role || canonicalRole,
+                    role_alias: serverUser.role_alias || canonicalRole,
+                    institution_id: editInstitution === 'none' ? null : editInstitution,
+                    institutions: institutionObj,
+                } as UserItem;
+            }));
+
+            Toast.show({ type: 'success', text1: 'User Updated', text2: 'Changes saved successfully', position: 'top' });
+            closeEdit();
+        } catch (err) {
+            console.error('saveEdit error:', err);
+            Toast.show({ type: 'error', text1: 'Network Error', text2: 'Failed to save changes', position: 'top' });
+            setSavingEdit(false);
+        }
+    }, [closeEdit, editEmail, editFirstName, editInstitution, editLastName, editPhone, editRole, editingUser, institutions, savingEdit]);
+
+    const renderUserCard = useCallback(({ item }: { item: UserItem }) => {
+        const roleKey = item.canonical_role || item.role;
+        const color = ROLE_COLOR[roleKey] || '#6B7280';
+        const icon = ROLE_ICON[roleKey] || 'account';
+        const displayName = `${item.first_name || ''} ${item.last_name || ''}`.trim() || 'Unknown User';
+        const initials = displayName.split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase();
 
         return (
             <View style={{
-                backgroundColor: themeColors.card,
-                borderRadius: 16, padding: 16, marginBottom: 10,
-                borderWidth: 1, borderColor: themeColors.border,
-                flexDirection: 'row', alignItems: 'center', gap: 14,
+                backgroundColor: colors.cardBg,
+                borderWidth: 1,
+                borderColor: colors.border,
+                borderRadius: 14,
+                padding: 14,
+                marginBottom: 10,
             }}>
-                <View style={{
-                    width: 48, height: 48, borderRadius: 24,
-                    backgroundColor: `${roleColor}20`,
-                    alignItems: 'center', justifyContent: 'center',
-                    borderWidth: 2, borderColor: `${roleColor}40`,
-                }}>
-                    <Text style={{ color: roleColor, fontWeight: '800', fontSize: 16 }}>{initials}</Text>
-                </View>
-
-                <View style={{ flex: 1 }}>
-                    <Text style={{ color: themeColors.text, fontWeight: '700', fontSize: 15 }} numberOfLines={1}>
-                        {displayName}
-                    </Text>
-                    <Text style={{ color: themeColors.subtext, fontSize: 12, marginTop: 2 }} numberOfLines={1}>
-                        {item.email || 'No email'}
-                    </Text>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 6, flexWrap: 'wrap' }}>
-                        <View style={{
-                            flexDirection: 'row', alignItems: 'center', gap: 4,
-                            backgroundColor: `${roleColor}15`,
-                            paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8,
-                        }}>
-                            <MaterialCommunityIcons name={roleIcon as any} size={12} color={roleColor} />
-                            <Text style={{ color: roleColor, fontSize: 11, fontWeight: '700', textTransform: 'capitalize' }}>
-                                {item.role.replace('_', ' ')}
-                            </Text>
-                        </View>
-                        {item.institutions?.name && (
-                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                                <MaterialCommunityIcons name="office-building" size={11} color={themeColors.subtext} />
-                                <Text style={{ color: themeColors.subtext, fontSize: 11 }} numberOfLines={1}>
-                                    {item.institutions.name}
-                                </Text>
-                            </View>
-                        )}
-                    </View>
-                </View>
-
-                <View style={{ alignItems: 'flex-end', gap: 6 }}>
-                    <Text style={{ color: themeColors.subtext, fontSize: 11 }}>{joinDate}</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                     <View style={{
-                        backgroundColor: item.status === 'approved' ? '#D1FAE5' : '#FEF3C7',
-                        paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6
+                        width: 44,
+                        height: 44,
+                        borderRadius: 22,
+                        backgroundColor: `${color}22`,
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        borderWidth: 1,
+                        borderColor: `${color}55`,
                     }}>
-                        <Text style={{
-                            fontSize: 10, fontWeight: '700',
-                            color: item.status === 'approved' ? '#065F46' : '#92400E',
-                            textTransform: 'uppercase'
-                        }}>
-                            {item.status || 'active'}
-                        </Text>
+                        <Text style={{ color, fontWeight: '800' }}>{initials}</Text>
                     </View>
+
+                    <View style={{ flex: 1, marginLeft: 12 }}>
+                        <Text style={{ color: colors.text, fontWeight: '700', fontSize: 15 }}>{displayName}</Text>
+                        <Text style={{ color: colors.subtext, fontSize: 12 }} numberOfLines={1}>{item.email || 'No email'}</Text>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 6 }}>
+                            <View style={{
+                                flexDirection: 'row',
+                                alignItems: 'center',
+                                backgroundColor: `${color}20`,
+                                paddingHorizontal: 8,
+                                paddingVertical: 3,
+                                borderRadius: 8,
+                                marginRight: 8,
+                            }}>
+                                <MaterialCommunityIcons name={icon as any} size={12} color={color} />
+                                <Text style={{ color, marginLeft: 4, fontWeight: '700', fontSize: 11 }}>{roleLabel(roleKey)}</Text>
+                            </View>
+                            {!!item.custom_display_id && (
+                                <Text style={{ color: colors.subtext, fontSize: 11 }}>ID: {item.custom_display_id}</Text>
+                            )}
+                        </View>
+                    </View>
+
+                    <TouchableOpacity
+                        onPress={() => openEdit(item)}
+                        style={{
+                            backgroundColor: `${colors.primary}18`,
+                            borderColor: `${colors.primary}40`,
+                            borderWidth: 1,
+                            borderRadius: 10,
+                            paddingHorizontal: 10,
+                            paddingVertical: 8,
+                        }}
+                    >
+                        <Text style={{ color: colors.primary, fontWeight: '700', fontSize: 12 }}>Manage</Text>
+                    </TouchableOpacity>
                 </View>
+            </View>
+        );
+    }, [colors.border, colors.cardBg, colors.primary, colors.subtext, colors.text, openEdit]);
+
+    const renderSection = ({ item }: { item: { key: string; title: string; items: UserItem[] } }) => {
+        return (
+            <View style={{ marginBottom: 18 }}>
+                <View style={{
+                    backgroundColor: colors.cardBg,
+                    borderColor: colors.border,
+                    borderWidth: 1,
+                    borderRadius: 12,
+                    paddingHorizontal: 12,
+                    paddingVertical: 10,
+                    marginBottom: 10,
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                }}>
+                    <Text style={{ color: colors.text, fontWeight: '700' }}>{item.title}</Text>
+                    <Text style={{ color: colors.subtext, fontSize: 12 }}>{item.items.length} users</Text>
+                </View>
+                {item.items.map((u) => (
+                    <View key={`${item.key}-${u.id}`}>
+                        {renderUserCard({ item: u })}
+                    </View>
+                ))}
             </View>
         );
     };
 
+    const loadMore = () => {
+        if (hasMore && !loading && !loadingMore) {
+            fetchUsers(false);
+        }
+    };
+
     return (
-        <SafeAreaView style={{ flex: 1, backgroundColor: themeColors.bg }} edges={['top', 'left', 'right']}>
-            {/* Header */}
-            <View style={{
-                paddingHorizontal: 20, paddingTop: 10, paddingBottom: 16,
-                flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center'
-            }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-                    <View style={{ backgroundColor: `${themeColors.primary}20`, padding: 8, borderRadius: 10 }}>
-                        <MaterialCommunityIcons name="account-group" size={24} color={themeColors.primary} />
+        <SafeAreaView style={{ flex: 1, backgroundColor: colors.pageBg }} edges={['top', 'left', 'right']}>
+            <View style={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: 10, flexDirection: 'row', justifyContent: 'space-between' }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    <View style={{ backgroundColor: `${colors.primary}20`, padding: 8, borderRadius: 10, marginRight: 10 }}>
+                        <MaterialCommunityIcons name="account-group" size={22} color={colors.primary} />
                     </View>
                     <View>
-                        <Text style={{ fontSize: 22, fontWeight: '800', color: themeColors.text }}>All Users</Text>
-                        <Text style={{ fontSize: 13, color: themeColors.subtext }}>
-                            {loading ? 'Loading...' : `${users.length} user${users.length !== 1 ? 's' : ''} loaded`}
-                        </Text>
+                        <Text style={{ color: colors.text, fontWeight: '800', fontSize: 22 }}>All Users</Text>
+                        <Text style={{ color: colors.subtext, fontSize: 12 }}>{users.length} loaded</Text>
                     </View>
                 </View>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-                    <TouchableOpacity 
-                        onPress={toggleFilters}
-                        style={{ 
-                            backgroundColor: showFilters ? themeColors.primary : `${themeColors.primary}15`,
-                            padding: 8, borderRadius: 10,
-                            borderWidth: 1, borderColor: showFilters ? themeColors.primary : `${themeColors.primary}40`
+
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    <TouchableOpacity
+                        onPress={() => setShowFilters((v) => !v)}
+                        style={{
+                            backgroundColor: showFilters ? colors.primary : `${colors.primary}18`,
+                            borderColor: `${colors.primary}45`,
+                            borderWidth: 1,
+                            padding: 8,
+                            borderRadius: 10,
+                            marginRight: 8,
                         }}
                     >
-                        <MaterialCommunityIcons 
-                            name={showFilters ? "filter-variant-remove" : "filter-variant"} 
-                            size={22} 
-                            color={showFilters ? "#fff" : themeColors.primary} 
+                        <MaterialCommunityIcons
+                            name={showFilters ? 'filter-remove' : 'filter-variant'}
+                            size={18}
+                            color={showFilters ? '#FFFFFF' : colors.primary}
                         />
                     </TouchableOpacity>
-                    <TouchableOpacity onPress={() => fetchUsers(true)}>
-                        <MaterialCommunityIcons name="refresh" size={24} color={themeColors.text} />
+
+                    <TouchableOpacity
+                        onPress={() => {
+                            setRefreshing(true);
+                            fetchUsers(true);
+                        }}
+                        style={{
+                            backgroundColor: colors.cardBg,
+                            borderColor: colors.border,
+                            borderWidth: 1,
+                            padding: 8,
+                            borderRadius: 10,
+                        }}
+                    >
+                        {refreshing ? (
+                            <ActivityIndicator size="small" color={colors.primary} />
+                        ) : (
+                            <MaterialCommunityIcons name="refresh" size={18} color={colors.text} />
+                        )}
                     </TouchableOpacity>
                 </View>
             </View>
 
-            {/* Collapsible Filter Panel */}
-            {showFilters && (
-                <View style={{ 
-                    backgroundColor: themeColors.card, 
-                    marginHorizontal: 20, 
-                    marginBottom: 16, 
-                    borderRadius: 16, 
-                    padding: 16,
+            <View style={{ paddingHorizontal: 16, marginBottom: 12 }}>
+                <View style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    backgroundColor: colors.inputBg,
+                    borderColor: colors.border,
                     borderWidth: 1,
-                    borderColor: themeColors.border,
-                    boxShadow: [{ offsetX: 0, offsetY: 4, blurRadius: 12, color: 'rgba(0, 0, 0, 0.1)' }],
-                    }}>
-                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                        <Text style={{ color: themeColors.text, fontWeight: '700', fontSize: 14 }}>Advanced Filters</Text>
-                        <TouchableOpacity onPress={toggleFilters}>
-                            <Text style={{ color: themeColors.primary, fontSize: 12, fontWeight: '600' }}>Close</Text>
+                    borderRadius: 12,
+                    paddingHorizontal: 12,
+                    paddingVertical: 10,
+                }}>
+                    <MaterialCommunityIcons name="magnify" size={18} color={colors.subtext} />
+                    <TextInput
+                        value={search}
+                        onChangeText={setSearch}
+                        placeholder="Search by name or email"
+                        placeholderTextColor={colors.subtext}
+                        style={{ flex: 1, marginLeft: 8, color: colors.text, fontSize: 14 }}
+                    />
+                    {search.length > 0 && (
+                        <TouchableOpacity onPress={() => setSearch('')}>
+                            <MaterialCommunityIcons name="close-circle" size={18} color={colors.subtext} />
                         </TouchableOpacity>
-                    </View>
+                    )}
+                </View>
+            </View>
 
-                    {/* Role Selection */}
-                    <Text style={{ color: themeColors.subtext, fontSize: 11, fontWeight: '700', marginBottom: 10, textTransform: 'uppercase' }}>Filter by Role</Text>
-                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
-                        {ROLES.map(role => {
-                            const active = roleFilter === role;
-                            const color = role === 'all' ? themeColors.primary : (ROLE_COLORS[role] || '#6B7280');
+            {showFilters && (
+                <View style={{
+                    marginHorizontal: 16,
+                    marginBottom: 12,
+                    backgroundColor: colors.cardBg,
+                    borderColor: colors.border,
+                    borderWidth: 1,
+                    borderRadius: 12,
+                    padding: 12,
+                }}>
+                    <Text style={{ color: colors.text, fontWeight: '700', marginBottom: 8 }}>Role</Text>
+                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginBottom: 10 }}>
+                        {ROLE_OPTIONS.map((r) => {
+                            const active = roleFilter === r;
                             return (
-                                <TouchableOpacity key={role} onPress={() => setRoleFilter(role)} style={{
-                                    paddingHorizontal: 14, paddingVertical: 8, borderRadius: 12,
-                                    backgroundColor: active ? color : `${color}15`,
-                                    borderWidth: 1, borderColor: active ? color : `${color}30`,
-                                    minWidth: 80, alignItems: 'center'
-                                }}>
-                                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                                        {role !== 'all' && <MaterialCommunityIcons name={ROLE_ICONS[role] as any} size={14} color={active ? '#fff' : color} />}
-                                        <Text style={{ color: active ? '#fff' : color, fontWeight: '700', fontSize: 12, textTransform: 'capitalize' }}>
-                                            {role === 'all' ? 'All Roles' : role.replace('_', ' ')}
-                                        </Text>
-                                    </View>
+                                <TouchableOpacity
+                                    key={r}
+                                    onPress={() => setRoleFilter(r)}
+                                    style={{
+                                        marginRight: 8,
+                                        marginBottom: 8,
+                                        borderRadius: 10,
+                                        paddingHorizontal: 10,
+                                        paddingVertical: 7,
+                                        backgroundColor: active ? colors.primary : colors.inputBg,
+                                        borderWidth: 1,
+                                        borderColor: active ? colors.primary : colors.border,
+                                    }}
+                                >
+                                    <Text style={{ color: active ? '#FFF' : colors.subtext, fontSize: 12, fontWeight: '700' }}>
+                                        {r === 'all' ? 'All Roles' : roleLabel(r)}
+                                    </Text>
                                 </TouchableOpacity>
                             );
                         })}
                     </View>
 
-                    {/* Category Selection */}
-                    <Text style={{ color: themeColors.subtext, fontSize: 11, fontWeight: '700', marginBottom: 10, textTransform: 'uppercase', marginTop: 4 }}>School Category</Text>
-                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
-                        <TouchableOpacity onPress={() => setCategoryFilter('all')} style={{
-                            paddingHorizontal: 14, paddingVertical: 8, borderRadius: 12,
-                            backgroundColor: categoryFilter === 'all' ? themeColors.primary : themeColors.inputBg,
-                            borderWidth: 1, borderColor: categoryFilter === 'all' ? themeColors.primary : themeColors.border,
-                        }}>
-                            <Text style={{ color: categoryFilter === 'all' ? '#fff' : themeColors.subtext, fontSize: 12, fontWeight: '700' }}>All Categories</Text>
+                    <Text style={{ color: colors.text, fontWeight: '700', marginBottom: 8 }}>Category</Text>
+                    {selectedCategoryCount > 0 && (
+                        <Text style={{ color: colors.subtext, marginBottom: 8 }}>
+                            {selectedCategoryCount} selected
+                        </Text>
+                    )}
+                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginBottom: 10 }}>
+                        <TouchableOpacity
+                            onPress={() => setCategoryFilters([])}
+                            style={{
+                                marginRight: 8,
+                                marginBottom: 8,
+                                borderRadius: 10,
+                                paddingHorizontal: 10,
+                                paddingVertical: 7,
+                                backgroundColor: categoryFilters.length === 0 ? colors.primary : colors.inputBg,
+                                borderWidth: 1,
+                                borderColor: categoryFilters.length === 0 ? colors.primary : colors.border,
+                            }}
+                        >
+                            <Text style={{ color: categoryFilters.length === 0 ? '#FFF' : colors.subtext, fontSize: 12, fontWeight: '700' }}>
+                                All Categories
+                            </Text>
                         </TouchableOpacity>
-                        {categories.map(cat => (
-                            <TouchableOpacity key={cat.id} onPress={() => setCategoryFilter(cat.id)} style={{
-                                paddingHorizontal: 14, paddingVertical: 8, borderRadius: 12,
-                                backgroundColor: categoryFilter === cat.id ? themeColors.primary : themeColors.inputBg,
-                                borderWidth: 1, borderColor: categoryFilter === cat.id ? themeColors.primary : themeColors.border,
-                            }}>
-                                <Text style={{ color: categoryFilter === cat.id ? '#fff' : themeColors.subtext, fontSize: 12, fontWeight: '700' }}>{cat.name}</Text>
+                        {categories.map((c) => (
+                            <TouchableOpacity
+                                key={c.id}
+                                onPress={() => toggleCategoryFilter(c.id)}
+                                style={{
+                                    marginRight: 8,
+                                    marginBottom: 8,
+                                    borderRadius: 10,
+                                    paddingHorizontal: 10,
+                                    paddingVertical: 7,
+                                    backgroundColor: categoryFilters.includes(c.id) ? colors.primary : colors.inputBg,
+                                    borderWidth: 1,
+                                    borderColor: categoryFilters.includes(c.id) ? colors.primary : colors.border,
+                                }}
+                            >
+                                <Text style={{ color: categoryFilters.includes(c.id) ? '#FFF' : colors.subtext, fontSize: 12, fontWeight: '700' }}>
+                                    {c.name}
+                                </Text>
                             </TouchableOpacity>
                         ))}
                     </View>
 
-                    {/* Institution Selection */}
-                    <Text style={{ color: themeColors.subtext, fontSize: 11, fontWeight: '700', marginBottom: 10, textTransform: 'uppercase', marginTop: 4 }}>Institution</Text>
-                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-                        <TouchableOpacity onPress={() => setInstitutionFilter('all')} style={{
-                            paddingHorizontal: 14, paddingVertical: 8, borderRadius: 12,
-                            backgroundColor: institutionFilter === 'all' ? themeColors.primary : themeColors.inputBg,
-                            borderWidth: 1, borderColor: institutionFilter === 'all' ? themeColors.primary : themeColors.border,
-                        }}>
-                            <Text style={{ color: institutionFilter === 'all' ? '#fff' : themeColors.subtext, fontSize: 12, fontWeight: '700' }}>All Institutions</Text>
+                    <Text style={{ color: colors.text, fontWeight: '700', marginBottom: 8 }}>Institution</Text>
+                    <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
+                        <TouchableOpacity
+                            onPress={() => setInstitutionFilter('all')}
+                            style={{
+                                marginRight: 8,
+                                marginBottom: 8,
+                                borderRadius: 10,
+                                paddingHorizontal: 10,
+                                paddingVertical: 7,
+                                backgroundColor: institutionFilter === 'all' ? colors.primary : colors.inputBg,
+                                borderWidth: 1,
+                                borderColor: institutionFilter === 'all' ? colors.primary : colors.border,
+                            }}
+                        >
+                            <Text style={{ color: institutionFilter === 'all' ? '#FFF' : colors.subtext, fontSize: 12, fontWeight: '700' }}>
+                                All Institutions
+                            </Text>
                         </TouchableOpacity>
-                        {institutions.slice(0, 10).map(inst => (
-                            <TouchableOpacity key={inst.id} onPress={() => setInstitutionFilter(inst.id)} style={{
-                                paddingHorizontal: 14, paddingVertical: 8, borderRadius: 12,
-                                backgroundColor: institutionFilter === inst.id ? themeColors.primary : themeColors.inputBg,
-                                borderWidth: 1, borderColor: institutionFilter === inst.id ? themeColors.primary : themeColors.border,
-                            }}>
-                                <Text style={{ color: institutionFilter === inst.id ? '#fff' : themeColors.subtext, fontSize: 12, fontWeight: '700' }}>{inst.name}</Text>
+                        {institutions.map((inst) => (
+                            <TouchableOpacity
+                                key={inst.id}
+                                onPress={() => setInstitutionFilter(inst.id)}
+                                style={{
+                                    marginRight: 8,
+                                    marginBottom: 8,
+                                    borderRadius: 10,
+                                    paddingHorizontal: 10,
+                                    paddingVertical: 7,
+                                    backgroundColor: institutionFilter === inst.id ? colors.primary : colors.inputBg,
+                                    borderWidth: 1,
+                                    borderColor: institutionFilter === inst.id ? colors.primary : colors.border,
+                                }}
+                            >
+                                <Text style={{ color: institutionFilter === inst.id ? '#FFF' : colors.subtext, fontSize: 12, fontWeight: '700' }}>
+                                    {inst.name}
+                                </Text>
                             </TouchableOpacity>
                         ))}
-                        {institutions.length > 10 && (
-                            <View style={{ padding: 8 }}>
-                                <Text style={{ color: themeColors.subtext, fontSize: 10 }}>+ {institutions.length - 10} more</Text>
-                            </View>
-                        )}
                     </View>
-                    
-                    <TouchableOpacity 
-                        onPress={() => {
-                            setRoleFilter('all');
-                            setInstitutionFilter('all');
-                            setCategoryFilter('all');
-                            setSearch('');
-                        }}
-                        style={{ marginTop: 16, alignItems: 'center', paddingVertical: 8, borderTopWidth: 1, borderTopColor: themeColors.border }}
-                    >
-                        <Text style={{ color: '#ef4444', fontSize: 12, fontWeight: '700' }}>Reset All Filters</Text>
-                    </TouchableOpacity>
                 </View>
             )}
 
-            {/* Search */}
-            <View style={{ paddingHorizontal: 20, marginBottom: 12 }}>
-                <View style={{
-                    flexDirection: 'row', alignItems: 'center', gap: 10,
-                    backgroundColor: themeColors.inputBg, borderRadius: 14,
-                    paddingHorizontal: 14, paddingVertical: 10,
-                    borderWidth: 1, borderColor: themeColors.border,
-                }}>
-                    <MaterialCommunityIcons name="magnify" size={20} color={themeColors.subtext} />
-                    <TextInput
-                        style={{ flex: 1, color: themeColors.text, fontSize: 14 }}
-                        placeholder="Search by name or email..."
-                        placeholderTextColor={themeColors.subtext}
-                        value={search}
-                        onChangeText={setSearch}
-                        onSubmitEditing={handleSearch}
-                        returnKeyType="search"
-                    />
-                    {search.length > 0 && (
-                        <TouchableOpacity onPress={() => { setSearch(''); fetchUsers(true); }}>
-                            <MaterialCommunityIcons name="close-circle" size={18} color={themeColors.subtext} />
-                        </TouchableOpacity>
-                    )}
-                    <TouchableOpacity
-                        onPress={handleSearch}
-                        style={{ backgroundColor: themeColors.primary, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 6 }}
-                    >
-                        <Text style={{ color: 'white', fontWeight: '700', fontSize: 13 }}>Search</Text>
-                    </TouchableOpacity>
-                </View>
-            </View>
-
-
-            {/* User List */}
             {loading ? (
-                <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-                    <ActivityIndicator size="large" color={themeColors.primary} />
-                    <Text style={{ color: themeColors.subtext, marginTop: 12, fontSize: 14 }}>Loading users...</Text>
+                <View style={{ paddingHorizontal: 16, paddingBottom: 24 }}>
+                    <ListItemSkeleton loading={loading} count={8} label="Loading users..." />
                 </View>
             ) : (
                 <FlatList
-                    data={users}
-                    keyExtractor={item => item.id}
-                    renderItem={renderUser}
-                    contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 100 }}
-                    onEndReached={handleLoadMore}
-                    onEndReachedThreshold={0.4}
+                    data={groupedSections}
+                    keyExtractor={(item) => item.key}
+                    renderItem={renderSection}
+                    contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 120 }}
+                    showsVerticalScrollIndicator={false}
+                    onEndReached={loadMore}
+                    onEndReachedThreshold={0.3}
                     ListFooterComponent={loadingMore ? (
-                        <View style={{ paddingVertical: 20, alignItems: 'center' }}>
-                            <ActivityIndicator size="small" color={themeColors.primary} />
+                        <View style={{ paddingTop: 6, paddingBottom: 14 }}>
+                            <ListItemSkeleton loading={loadingMore} count={1} label="Loading more users..." />
                         </View>
                     ) : null}
                     ListEmptyComponent={
-                        <View style={{ alignItems: 'center', marginTop: 60 }}>
-                            <MaterialCommunityIcons name="account-off-outline" size={56} color={themeColors.border} />
-                            <Text style={{ color: themeColors.subtext, marginTop: 16, fontSize: 16, fontWeight: '600' }}>
-                                No users found
-                            </Text>
-                            <Text style={{ color: themeColors.subtext, marginTop: 4, fontSize: 13, textAlign: 'center' }}>
-                                Try adjusting your filters or search query.
-                            </Text>
+                        <View style={{ alignItems: 'center', marginTop: 80 }}>
+                            <MaterialCommunityIcons name="account-off-outline" size={52} color={colors.border} />
+                            <Text style={{ color: colors.subtext, marginTop: 10 }}>No users match current filters</Text>
                         </View>
                     }
                 />
             )}
+
+            <Modal visible={editVisible} transparent animationType="fade" onRequestClose={closeEdit}>
+                <View style={{
+                    flex: 1,
+                    backgroundColor: 'rgba(0,0,0,0.5)',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    paddingHorizontal: 16,
+                }}>
+                    <View style={{
+                        width: '100%',
+                        maxWidth: 520,
+                        backgroundColor: colors.cardBg,
+                        borderColor: colors.border,
+                        borderWidth: 1,
+                        borderRadius: 14,
+                        padding: 16,
+                    }}>
+                        <Text style={{ color: colors.text, fontWeight: '800', fontSize: 18, marginBottom: 10 }}>
+                            Manage User
+                        </Text>
+
+                        <Text style={{ color: colors.subtext, fontSize: 12, marginBottom: 6 }}>First Name</Text>
+                        <TextInput
+                            value={editFirstName}
+                            onChangeText={setEditFirstName}
+                            placeholder="First name"
+                            placeholderTextColor={colors.subtext}
+                            style={{
+                                color: colors.text,
+                                borderColor: colors.border,
+                                borderWidth: 1,
+                                borderRadius: 10,
+                                paddingHorizontal: 10,
+                                paddingVertical: 10,
+                                marginBottom: 10,
+                                backgroundColor: colors.inputBg,
+                            }}
+                        />
+
+                        <Text style={{ color: colors.subtext, fontSize: 12, marginBottom: 6 }}>Last Name</Text>
+                        <TextInput
+                            value={editLastName}
+                            onChangeText={setEditLastName}
+                            placeholder="Last name"
+                            placeholderTextColor={colors.subtext}
+                            style={{
+                                color: colors.text,
+                                borderColor: colors.border,
+                                borderWidth: 1,
+                                borderRadius: 10,
+                                paddingHorizontal: 10,
+                                paddingVertical: 10,
+                                marginBottom: 10,
+                                backgroundColor: colors.inputBg,
+                            }}
+                        />
+
+                        <Text style={{ color: colors.subtext, fontSize: 12, marginBottom: 6 }}>Email</Text>
+                        <TextInput
+                            value={editEmail}
+                            onChangeText={setEditEmail}
+                            placeholder="Email address"
+                            placeholderTextColor={colors.subtext}
+                            keyboardType="email-address"
+                            autoCapitalize="none"
+                            style={{
+                                color: colors.text,
+                                borderColor: colors.border,
+                                borderWidth: 1,
+                                borderRadius: 10,
+                                paddingHorizontal: 10,
+                                paddingVertical: 10,
+                                marginBottom: 10,
+                                backgroundColor: colors.inputBg,
+                            }}
+                        />
+
+                        <Text style={{ color: colors.subtext, fontSize: 12, marginBottom: 6 }}>Phone</Text>
+                        <TextInput
+                            value={editPhone}
+                            onChangeText={setEditPhone}
+                            placeholder="Phone number"
+                            placeholderTextColor={colors.subtext}
+                            style={{
+                                color: colors.text,
+                                borderColor: colors.border,
+                                borderWidth: 1,
+                                borderRadius: 10,
+                                paddingHorizontal: 10,
+                                paddingVertical: 10,
+                                marginBottom: 10,
+                                backgroundColor: colors.inputBg,
+                            }}
+                        />
+
+                        <Text style={{ color: colors.subtext, fontSize: 12, marginBottom: 6 }}>Role</Text>
+                        <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginBottom: 10 }}>
+                            {ROLE_OPTIONS.filter((r) => r !== 'all').map((r) => {
+                                const active = editRole === r;
+                                return (
+                                    <TouchableOpacity
+                                        key={`edit-${r}`}
+                                        onPress={() => setEditRole(r)}
+                                        style={{
+                                            marginRight: 8,
+                                            marginBottom: 8,
+                                            borderRadius: 10,
+                                            paddingHorizontal: 10,
+                                            paddingVertical: 7,
+                                            backgroundColor: active ? colors.primary : colors.inputBg,
+                                            borderWidth: 1,
+                                            borderColor: active ? colors.primary : colors.border,
+                                        }}
+                                    >
+                                        <Text style={{ color: active ? '#FFF' : colors.subtext, fontSize: 12, fontWeight: '700' }}>
+                                            {roleLabel(r)}
+                                        </Text>
+                                    </TouchableOpacity>
+                                );
+                            })}
+                        </View>
+
+                        <Text style={{ color: colors.subtext, fontSize: 12, marginBottom: 6 }}>Institution</Text>
+                        <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginBottom: 14 }}>
+                            <TouchableOpacity
+                                onPress={() => setEditInstitution('none')}
+                                style={{
+                                    marginRight: 8,
+                                    marginBottom: 8,
+                                    borderRadius: 10,
+                                    paddingHorizontal: 10,
+                                    paddingVertical: 7,
+                                    backgroundColor: editInstitution === 'none' ? colors.primary : colors.inputBg,
+                                    borderWidth: 1,
+                                    borderColor: editInstitution === 'none' ? colors.primary : colors.border,
+                                }}
+                            >
+                                <Text style={{ color: editInstitution === 'none' ? '#FFF' : colors.subtext, fontSize: 12, fontWeight: '700' }}>
+                                    No Institution
+                                </Text>
+                            </TouchableOpacity>
+                            {institutions.map((inst) => (
+                                <TouchableOpacity
+                                    key={`edit-inst-${inst.id}`}
+                                    onPress={() => setEditInstitution(inst.id)}
+                                    style={{
+                                        marginRight: 8,
+                                        marginBottom: 8,
+                                        borderRadius: 10,
+                                        paddingHorizontal: 10,
+                                        paddingVertical: 7,
+                                        backgroundColor: editInstitution === inst.id ? colors.primary : colors.inputBg,
+                                        borderWidth: 1,
+                                        borderColor: editInstitution === inst.id ? colors.primary : colors.border,
+                                    }}
+                                >
+                                    <Text style={{ color: editInstitution === inst.id ? '#FFF' : colors.subtext, fontSize: 12, fontWeight: '700' }}>
+                                        {inst.name}
+                                    </Text>
+                                </TouchableOpacity>
+                            ))}
+                        </View>
+
+                        {(editingUser && platformRoles.has(editingUser.canonical_role || editingUser.role)) && (
+                            <TouchableOpacity
+                                onPress={requestDeleteMasterAdmin}
+                                disabled={savingEdit || deletingUser}
+                                style={{
+                                    borderWidth: 1,
+                                    borderColor: '#EF4444',
+                                    borderRadius: 10,
+                                    paddingHorizontal: 14,
+                                    paddingVertical: 10,
+                                    marginBottom: 12,
+                                    backgroundColor: isDark ? 'rgba(239,68,68,0.14)' : '#FEE2E2',
+                                    alignItems: 'center',
+                                }}
+                            >
+                                <Text style={{ color: '#B91C1C', fontWeight: '800' }}>Delete Master Admin</Text>
+                            </TouchableOpacity>
+                        )}
+
+                        <View style={{ flexDirection: 'row', justifyContent: 'flex-end' }}>
+                            <TouchableOpacity
+                                onPress={closeEdit}
+                                disabled={savingEdit || deletingUser}
+                                style={{
+                                    borderWidth: 1,
+                                    borderColor: colors.border,
+                                    borderRadius: 10,
+                                    paddingHorizontal: 14,
+                                    paddingVertical: 10,
+                                    marginRight: 8,
+                                    backgroundColor: colors.inputBg,
+                                }}
+                            >
+                                <Text style={{ color: colors.subtext, fontWeight: '700' }}>Cancel</Text>
+                            </TouchableOpacity>
+
+                            <TouchableOpacity
+                                onPress={saveEdit}
+                                disabled={savingEdit || deletingUser}
+                                style={{
+                                    borderWidth: 1,
+                                    borderColor: colors.primary,
+                                    borderRadius: 10,
+                                    paddingHorizontal: 14,
+                                    paddingVertical: 10,
+                                    backgroundColor: colors.primary,
+                                    minWidth: 96,
+                                    alignItems: 'center',
+                                }}
+                            >
+                                {savingEdit ? (
+                                    <ActivityIndicator size="small" color="#FFF" />
+                                ) : (
+                                    <Text style={{ color: '#FFF', fontWeight: '800' }}>Save</Text>
+                                )}
+                            </TouchableOpacity>
+                        </View>
+
+                        {showDeleteConfirm && (
+                            <View style={{
+                                marginTop: 14,
+                                borderWidth: 1,
+                                borderColor: isDark ? '#7F1D1D' : '#FCA5A5',
+                                backgroundColor: isDark ? 'rgba(127,29,29,0.25)' : '#FEF2F2',
+                                borderRadius: 12,
+                                padding: 12,
+                            }}>
+                                <Text style={{ color: colors.text, fontWeight: '800', marginBottom: 6 }}>Confirm Delete</Text>
+                                <Text style={{ color: colors.subtext, fontSize: 12, marginBottom: 10 }}>
+                                    This action will permanently delete this Master Admin account. This cannot be undone.
+                                </Text>
+
+                                <View style={{ flexDirection: 'row', justifyContent: 'flex-end' }}>
+                                    <TouchableOpacity
+                                        onPress={cancelDeleteMasterAdmin}
+                                        disabled={deletingUser}
+                                        style={{
+                                            borderWidth: 1,
+                                            borderColor: colors.border,
+                                            borderRadius: 10,
+                                            paddingHorizontal: 12,
+                                            paddingVertical: 8,
+                                            marginRight: 8,
+                                            backgroundColor: colors.inputBg,
+                                        }}
+                                    >
+                                        <Text style={{ color: colors.subtext, fontWeight: '700' }}>Cancel</Text>
+                                    </TouchableOpacity>
+
+                                    <TouchableOpacity
+                                        onPress={confirmDeleteMasterAdmin}
+                                        disabled={deletingUser}
+                                        style={{
+                                            borderWidth: 1,
+                                            borderColor: '#DC2626',
+                                            borderRadius: 10,
+                                            paddingHorizontal: 12,
+                                            paddingVertical: 8,
+                                            backgroundColor: '#DC2626',
+                                            minWidth: 88,
+                                            alignItems: 'center',
+                                        }}
+                                    >
+                                        {deletingUser ? (
+                                            <ActivityIndicator size="small" color="#FFF" />
+                                        ) : (
+                                            <Text style={{ color: '#FFF', fontWeight: '800' }}>Delete</Text>
+                                        )}
+                                    </TouchableOpacity>
+                                </View>
+                            </View>
+                        )}
+                    </View>
+                </View>
+            </Modal>
         </SafeAreaView>
     );
 }

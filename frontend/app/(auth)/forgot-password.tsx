@@ -10,6 +10,7 @@ import {
   Dimensions,
   Easing as EasingRN,
   KeyboardAvoidingView,
+  Modal,
   Platform,
   ScrollView,
   Text,
@@ -247,8 +248,14 @@ const AnimatedInput = ({
 export default function ForgotPassword() {
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
+  const [emailCheckLoading, setEmailCheckLoading] = useState(false);
+  const [emailExists, setEmailExists] = useState<boolean | null>(null);
+  const [emailCheckMessage, setEmailCheckMessage] = useState<string | null>(null);
+  const [emailTouched, setEmailTouched] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
+  const [successModalOpen, setSuccessModalOpen] = useState(false);
+  const [successModalMessage, setSuccessModalMessage] = useState('');
   const [isHierarchical, setIsHierarchical] = useState(false);
 
   //  Entrance animations 
@@ -300,6 +307,50 @@ export default function ForgotPassword() {
     }, 4000);
   };
 
+  const normalizedEmail = email.trim().toLowerCase();
+  const canValidateEmail = validateEmail(normalizedEmail);
+
+  useEffect(() => {
+    if (!emailTouched) return;
+
+    if (!normalizedEmail) {
+      setEmailExists(null);
+      setEmailCheckMessage(null);
+      setEmailCheckLoading(false);
+      return;
+    }
+
+    if (!canValidateEmail) {
+      setEmailExists(null);
+      setEmailCheckMessage('Enter a valid email address.');
+      setEmailCheckLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+    setEmailCheckLoading(true);
+
+    const timer = setTimeout(async () => {
+      try {
+        const result = await SettingsService.checkForgotPasswordEmail(normalizedEmail);
+        if (cancelled) return;
+        setEmailExists(!!result.exists);
+        setEmailCheckMessage(result.message || (result.exists ? 'Email found.' : 'No account exists for this email.'));
+      } catch {
+        if (cancelled) return;
+        setEmailExists(null);
+        setEmailCheckMessage('Unable to verify email right now.');
+      } finally {
+        if (!cancelled) setEmailCheckLoading(false);
+      }
+    }, 350);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [normalizedEmail, canValidateEmail, emailTouched]);
+
   const shakeCard = () => {
     Animated.sequence([
       Animated.timing(shakeX, { toValue: 10, duration: 60, useNativeDriver: true }),
@@ -321,13 +372,19 @@ export default function ForgotPassword() {
   const handleReset = async () => {
     pressBtn();
     setIsHierarchical(false);
-    if (!email) {
+    if (!normalizedEmail) {
       setError("Email is required");
       shakeCard();
       return;
     }
-    if (!validateEmail(email)) {
+    if (!validateEmail(normalizedEmail)) {
       setError("Please enter a valid email");
+      shakeCard();
+      return;
+    }
+
+    if (emailExists !== true) {
+      setError("No account exists for this email");
       shakeCard();
       return;
     }
@@ -335,23 +392,24 @@ export default function ForgotPassword() {
     setLoading(true);
     setError(null);
     try {
-      const response: any = await SettingsService.forgotPassword(email);
+      const response: any = await SettingsService.forgotPassword(normalizedEmail);
       setIsHierarchical(!!response.is_hierarchical);
-      showToast(response.message || "Verification link sent! Please check your inbox.");
-      
-      // If it's hierarchical, don't auto-redirect back immediately so they can read the instruction
-      if (!response.is_hierarchical) {
-        setTimeout(() => router.back(), 4500);
-      }
+      showToast(response.message || "Reset request received. Follow the on-screen instructions.");
+      setSuccessModalMessage(response.message || 'Reset request received successfully.');
+      setSuccessModalOpen(true);
     } catch (err: any) {
       const errorData = err.response?.data || err.data;
       if (errorData?.code === 'RATE_LIMIT_EXCEEDED') {
         setError(errorData.error || "Too many password reset requests. Please try again in an hour.");
         shakeCard();
+      } else if (errorData?.code === 'EMAIL_NOT_FOUND') {
+        setError(errorData.error || 'No account exists for this email.');
+        setEmailExists(false);
+        setEmailCheckMessage(errorData.error || 'No account exists for this email.');
+        shakeCard();
       } else {
-        // In case of real error, we still show a generic success to prevent email enumeration 
-        showToast("If an account with that email exists, a reset link has been sent.");
-        setTimeout(() => router.back(), 4500);
+        setError(errorData?.error || 'Unable to process reset request. Please try again.');
+        shakeCard();
       }
     } finally {
       setLoading(false);
@@ -490,7 +548,7 @@ export default function ForgotPassword() {
                     <Text style={{ fontSize: 34, color: "rgba(255,255,255,0.25)", fontWeight: "300" }}>.</Text>
                   </View>
                   <Text style={{ fontSize: 14, color: "rgba(255,255,255,0.4)", textAlign: "center", lineHeight: 22, paddingHorizontal: 12 }}>
-                    Enter your email address and we&apos;ll send you a link to reset your password.
+                    Enter your email address to request a password reset.
                   </Text>
                 </View>
 
@@ -501,18 +559,37 @@ export default function ForgotPassword() {
                     icon="mail-outline"
                     placeholder="name@example.com"
                     value={email}
-                    onChangeText={setEmail}
+                    onChangeText={(v: string) => {
+                      setEmail(v);
+                      setEmailTouched(true);
+                      setError(null);
+                    }}
                     keyboardType="email-address"
                     autoCapitalize="none"
                     error={error}
+                    suffix={emailCheckLoading ? <ActivityIndicator size="small" color="rgba(255,255,255,0.7)" /> : null}
                   />
+                  {!!emailTouched && !error && !!emailCheckMessage && (
+                    <Text
+                      style={{
+                        color: emailExists === true ? 'rgba(74, 222, 128, 0.95)' : emailExists === false ? 'rgba(252,165,165,0.95)' : 'rgba(255,255,255,0.6)',
+                        fontSize: 12,
+                        marginTop: -10,
+                        marginBottom: 12,
+                        marginLeft: 4,
+                        fontWeight: '600',
+                      }}
+                    >
+                      {emailCheckMessage}
+                    </Text>
+                  )}
                 </Animated.View>
 
                 {/* Reset button */}
                 <Animated.View style={[fieldStyle(field2), { transform: [{ scale: btnScale }] }]}>
                   <TouchableOpacity
                     onPress={handleReset}
-                    disabled={loading}
+                    disabled={loading || !canValidateEmail || emailExists !== true}
                     activeOpacity={0.85}
                     style={{
                       height: 58,
@@ -521,7 +598,7 @@ export default function ForgotPassword() {
                       justifyContent: "center",
                       alignItems: "center",
                       overflow: "hidden",
-                      opacity: loading ? 0.7 : 1,
+                      opacity: (loading || !canValidateEmail || emailExists !== true) ? 0.7 : 1,
                       marginTop: 10,
                       ...(Platform.OS === "web" ? {
                         boxShadow: "0 12px 32px rgba(255,107,0,0.45), 0 2px 8px rgba(255,107,0,0.3)",
@@ -543,7 +620,7 @@ export default function ForgotPassword() {
                     ) : (
                       <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
                         <Shield size={18} color="rgba(255,255,255,0.85)" />
-                        <Text style={{ color: "#ffffff", fontWeight: "800", fontSize: 17, letterSpacing: 0.3 }}>Send Reset Link</Text>
+                        <Text style={{ color: "#ffffff", fontWeight: "800", fontSize: 17, letterSpacing: 0.3 }}>Request Reset</Text>
                       </View>
                     )}
                   </TouchableOpacity>
@@ -553,7 +630,7 @@ export default function ForgotPassword() {
                 <View style={{ alignItems: "center", marginTop: 24 }}>
                   <TouchableOpacity onPress={() => router.push('/(auth)/verify-security-questions' as any)} activeOpacity={0.7} style={{ marginBottom: 10 }}>
                     <Text style={{ color: "#FF6B00", fontWeight: "700", fontSize: 13 }}>
-                      Prefer security questions? Verify here
+                      Prefer security question recovery? Continue here
                     </Text>
                   </TouchableOpacity>
                   <TouchableOpacity onPress={() => router.back()} activeOpacity={0.7}>
@@ -568,6 +645,45 @@ export default function ForgotPassword() {
           </KeyboardAvoidingView>
         </SafeAreaView>
       </View>
+
+      <Modal visible={successModalOpen} animationType="fade" transparent>
+        <View style={{
+          flex: 1,
+          backgroundColor: 'rgba(0,0,0,0.5)',
+          justifyContent: 'center',
+          alignItems: 'center',
+          padding: 24,
+        }}>
+          <View style={{
+            width: '100%',
+            maxWidth: 420,
+            backgroundColor: '#13103A',
+            borderRadius: 16,
+            borderWidth: 1,
+            borderColor: 'rgba(255,255,255,0.12)',
+            padding: 20,
+          }}>
+            <Text style={{ color: '#fff', fontSize: 20, fontWeight: '800', marginBottom: 8 }}>Request Submitted</Text>
+            <Text style={{ color: 'rgba(255,255,255,0.78)', lineHeight: 22 }}>{successModalMessage}</Text>
+
+            <TouchableOpacity
+              onPress={() => {
+                setSuccessModalOpen(false);
+                router.back();
+              }}
+              style={{
+                marginTop: 16,
+                backgroundColor: '#FF6B00',
+                borderRadius: 12,
+                alignItems: 'center',
+                paddingVertical: 12,
+              }}
+            >
+              <Text style={{ color: '#fff', fontWeight: '800' }}>Back to Sign In</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
 
       {/* Styles for web */}
       {Platform.OS === "web" && (

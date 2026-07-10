@@ -1,5 +1,9 @@
 import { UnifiedHeader } from "@/components/common/UnifiedHeader";
+import { HelpTooltip } from "@/components/settings/HelpTooltip";
 import { SubscriptionGate } from "@/components/shared/SubscriptionComponents";
+import { ListItemSkeleton } from "@/components/ui/skeletons";
+import { useCurrency } from "@/contexts/CurrencyContext";
+import { useSubscriptionTier } from "@/hooks/useSubscriptionTier";
 import { useParentStudentContext } from "@/hooks/useParentStudentContext";
 import { ParentService } from "@/services/ParentService";
 import { formatClassLabel } from "@/utils/classLabel";
@@ -8,7 +12,6 @@ import { router, useLocalSearchParams } from "expo-router";
 import { ArrowDownLeft, Wallet } from "lucide-react-native";
 import React, { useEffect, useMemo, useState } from "react";
 import {
-  ActivityIndicator,
   RefreshControl,
   ScrollView,
   Text,
@@ -41,6 +44,7 @@ type FinancePayload = {
     amount: number;
     academic_year?: string;
     term?: string;
+    due_date?: string | null;
   }>;
   transactions: Array<{
     id: string;
@@ -49,12 +53,11 @@ type FinancePayload = {
     date?: string;
     amount: number;
     status?: string;
+    origin_label?: string | null;
+    target_label?: string | null;
+    recorded_by_label?: string | null;
   }>;
 };
-
-function formatCurrency(amount: number) {
-  return `$${Number(amount || 0).toFixed(2)}`;
-}
 
 function displayStudentName(student?: LinkedStudent | null) {
   if (!student) return "Student";
@@ -83,10 +86,15 @@ export default function ParentFinancePage() {
   const [finance, setFinance] = useState<FinancePayload | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const { formatAmount } = useCurrency();
+  const tier = useSubscriptionTier();
+
+  const formatCurrency = (amount: number) => formatAmount(Number(amount || 0));
 
   const selectedName = useMemo(() => displayStudentName(selectedStudent), [selectedStudent]);
   const selectedClassLabel = useMemo(() => displayClassLabel(selectedStudent), [selectedStudent]);
   const paidPercentage = Math.max(0, Math.min(100, Number(finance?.paid_percentage || 0)));
+  const pendingAmount = Math.max(0, (finance?.total_fees || 0) - (finance?.paid_amount || 0));
 
   const fetchLinkedStudents = async () => {
     const students = (await ParentService.getLinkedStudents()) || [];
@@ -155,8 +163,8 @@ export default function ParentFinancePage() {
 
   if (loading && !refreshing) {
     return (
-      <View className="flex-1 justify-center items-center bg-[#F6F8FA] dark:bg-[#161B22]">
-        <ActivityIndicator size="large" color="#FF6900" />
+      <View className="flex-1 bg-[#F6F8FA] dark:bg-[#161B22] p-4 md:p-8">
+        <ListItemSkeleton loading={loading} count={4} label="Loading finance records..." />
       </View>
     );
   }
@@ -237,6 +245,15 @@ export default function ParentFinancePage() {
                 </View>
 
                 <View className="bg-gray-900 p-8 rounded-[40px] mb-6">
+                  <View className="flex-row items-center justify-between mb-4">
+                    <Text className="text-white font-bold text-lg tracking-tight">Finance Overview</Text>
+                    <HelpTooltip
+                      id="parent.finance.overview"
+                      role="parent"
+                      tier={tier}
+                      onLearnMore={(a) => router.push({ pathname: '/(parent)/accessibility/settings', params: { manual: '1', anchor: a || 'parent-workflow' } } as any)}
+                    />
+                  </View>
                   <View className="flex-row justify-between items-center mb-6">
                     <View>
                       <Text className="text-white/40 text-[10px] font-bold uppercase tracking-[3px] mb-2">Outstanding Balance</Text>
@@ -260,7 +277,7 @@ export default function ParentFinancePage() {
                     </View>
                     <View className="flex-1 border-l border-white/10 pl-4">
                       <Text className="text-white/40 text-[8px] font-bold uppercase tracking-widest mb-1">Pending</Text>
-                      <Text className="text-amber-400 font-bold text-base">{formatCurrency(finance?.pending_amount || 0)}</Text>
+                      <Text className="text-amber-400 font-bold text-base">{formatCurrency(pendingAmount)}</Text>
                     </View>
                   </View>
 
@@ -287,7 +304,15 @@ export default function ParentFinancePage() {
                 </View>
 
                 <View className="mb-6">
-                  <Text className="text-gray-900 dark:text-white font-bold text-lg px-1 mb-3">Current Fee Structures</Text>
+                  <View className="px-1 mb-3 flex-row items-center justify-between">
+                    <Text className="text-gray-900 dark:text-white font-bold text-lg">Current Fee Structures</Text>
+                    <HelpTooltip
+                      id="parent.finance.fee_structures"
+                      role="parent"
+                      tier={tier}
+                      onLearnMore={(a) => router.push({ pathname: '/(parent)/accessibility/settings', params: { manual: '1', anchor: a || 'parent-workflow' } } as any)}
+                    />
+                  </View>
                   {(finance?.fee_structures || []).length === 0 ? (
                     <View className="bg-white dark:bg-[#161B22] rounded-3xl border border-gray-100 dark:border-gray-800 p-5">
                       <Text className="text-gray-500 dark:text-gray-400 text-sm">No fee structures for the active period.</Text>
@@ -304,6 +329,9 @@ export default function ParentFinancePage() {
                             <Text className="text-gray-400 dark:text-gray-500 text-[10px] font-bold uppercase tracking-widest mt-1">
                               {fee.term || "Term"} {fee.academic_year || ""}
                             </Text>
+                            <Text className="text-gray-500 dark:text-gray-400 text-[10px] font-semibold mt-2">
+                              Due: {fee.due_date ? new Date(fee.due_date).toLocaleDateString() : 'No deadline'}
+                            </Text>
                           </View>
                           <Text className="text-gray-900 dark:text-white font-black text-base">{formatCurrency(fee.amount || 0)}</Text>
                         </View>
@@ -313,34 +341,60 @@ export default function ParentFinancePage() {
                 </View>
 
                 <View>
-                  <Text className="text-gray-900 dark:text-white font-bold text-lg px-1 mb-3">Recent Transactions</Text>
+                  <View className="px-1 mb-3 flex-row items-center justify-between">
+                    <Text className="text-gray-900 dark:text-white font-bold text-lg">Recent Transactions</Text>
+                    <HelpTooltip
+                      id="parent.finance.transactions"
+                      role="parent"
+                      tier={tier}
+                      onLearnMore={(a) => router.push({ pathname: '/(parent)/accessibility/settings', params: { manual: '1', anchor: a || 'parent-workflow' } } as any)}
+                    />
+                  </View>
                   {(finance?.transactions || []).length === 0 ? (
                     <View className="bg-white dark:bg-[#161B22] rounded-3xl border border-gray-100 dark:border-gray-800 p-5">
                       <Text className="text-gray-500 dark:text-gray-400 text-sm">No transactions found for this student.</Text>
                     </View>
                   ) : (
                     finance?.transactions?.map((tx) => (
-                      <View
-                        key={tx.id}
-                        className="bg-white dark:bg-[#161B22] rounded-3xl border border-gray-100 dark:border-gray-800 p-5 mb-3 flex-row items-center"
-                      >
-                        <View className="w-10 h-10 rounded-2xl items-center justify-center bg-emerald-50 dark:bg-emerald-900/20 mr-3">
-                          <ArrowDownLeft size={18} color="#10B981" />
+                      <View key={tx.id} className="bg-white dark:bg-[#161B22] rounded-3xl border border-gray-100 dark:border-gray-800 p-5 mb-3">
+                        <View className="flex-row items-center">
+                          <View className="w-10 h-10 rounded-2xl items-center justify-center bg-emerald-50 dark:bg-emerald-900/20 mr-3">
+                            <ArrowDownLeft size={18} color="#10B981" />
+                          </View>
+                          <View className="flex-1 mr-2">
+                            <Text className="text-gray-900 dark:text-white font-semibold text-sm">
+                              {tx.description || tx.type || "Payment"}
+                            </Text>
+                            <Text className="text-gray-400 dark:text-gray-500 text-[10px] font-bold uppercase tracking-widest mt-1">
+                              {tx.date ? new Date(tx.date).toLocaleDateString() : "Unknown date"}
+                            </Text>
+                          </View>
+                          <View className="items-end">
+                            <Text className="text-gray-900 dark:text-white font-black text-sm">{formatCurrency(tx.amount || 0)}</Text>
+                            <Text className="text-gray-400 dark:text-gray-500 text-[10px] font-bold uppercase tracking-widest mt-1">
+                              {tx.status || "completed"}
+                            </Text>
+                          </View>
                         </View>
-                        <View className="flex-1 mr-2">
-                          <Text className="text-gray-900 dark:text-white font-semibold text-sm">
-                            {tx.description || tx.type || "Payment"}
-                          </Text>
-                          <Text className="text-gray-400 dark:text-gray-500 text-[10px] font-bold uppercase tracking-widest mt-1">
-                            {tx.date ? new Date(tx.date).toLocaleDateString() : "Unknown date"}
-                          </Text>
-                        </View>
-                        <View className="items-end">
-                          <Text className="text-gray-900 dark:text-white font-black text-sm">{formatCurrency(tx.amount || 0)}</Text>
-                          <Text className="text-gray-400 dark:text-gray-500 text-[10px] font-bold uppercase tracking-widest mt-1">
-                            {tx.status || "completed"}
-                          </Text>
-                        </View>
+                        {(tx.origin_label || tx.target_label || tx.recorded_by_label) && (
+                          <View className="mt-2 border-t border-gray-100 dark:border-gray-800 pt-2" style={{ gap: 4 }}>
+                            {tx.origin_label ? (
+                              <Text className="text-gray-500 dark:text-gray-400 text-[10px] font-bold uppercase tracking-widest">
+                                Origin: <Text className="text-gray-700 dark:text-gray-200 normal-case tracking-normal font-medium">{tx.origin_label}</Text>
+                              </Text>
+                            ) : null}
+                            {tx.target_label ? (
+                              <Text className="text-gray-500 dark:text-gray-400 text-[10px] font-bold uppercase tracking-widest">
+                                Target: <Text className="text-gray-700 dark:text-gray-200 normal-case tracking-normal font-medium">{tx.target_label}</Text>
+                              </Text>
+                            ) : null}
+                            {tx.recorded_by_label ? (
+                              <Text className="text-gray-500 dark:text-gray-400 text-[10px] font-bold uppercase tracking-widest">
+                                Recorded by: <Text className="text-gray-700 dark:text-gray-200 normal-case tracking-normal font-medium">{tx.recorded_by_label}</Text>
+                              </Text>
+                            ) : null}
+                          </View>
+                        )}
                       </View>
                     ))
                   )}

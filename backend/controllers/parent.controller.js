@@ -233,7 +233,29 @@ exports.getStudentFinance = async (req, res) => {
 
         if (!student) return res.status(404).json({ error: "Student not found" });
 
-        // 2. Get fee structures and resolve active/applicable rows using the same active-term strategy as admin finance
+        // 2. Resolve effective student level from current class enrollment when profile level fields are empty/stale.
+        const enrollment = await getStudentCurrentClassEnrollment(student.id, student.institution_id);
+        let classLevel = null;
+        if (enrollment?.class_id) {
+            const { data: klass } = await supabase
+                .from('classes')
+                .select('grade_level, form_level')
+                .eq('id', enrollment.class_id)
+                .maybeSingle();
+            classLevel = klass || null;
+        }
+
+        const effectiveStudent = {
+            ...student,
+            grade_level: Number.isFinite(Number(student?.grade_level))
+                ? student.grade_level
+                : classLevel?.grade_level,
+            form_level: Number.isFinite(Number(student?.form_level))
+                ? student.form_level
+                : classLevel?.form_level,
+        };
+
+        // 3. Get fee structures and resolve active/applicable rows using the same active-term strategy as admin finance
         const activeTerm = await resolveActiveTerm(student.institution_id);
 
         const { data: feeStructureRows } = await supabase
@@ -245,7 +267,7 @@ exports.getStudentFinance = async (req, res) => {
         const feeStructures = (feeStructureRows || [])
             .filter((row) => !!row.is_active)
             .filter((row) => isFeeStructureActiveForTerm(row, activeTerm))
-            .filter((row) => isFeeStructureApplicableToStudent(row, student))
+            .filter((row) => isFeeStructureApplicableToStudent(row, effectiveStudent))
             .map((row) => ({ ...row, is_active: true }));
 
         const hasActiveReleasedStructures = feeStructures.length > 0;
@@ -253,7 +275,7 @@ exports.getStudentFinance = async (req, res) => {
             ? (feeStructures || []).reduce((sum, fee) => sum + Number(fee.amount || 0), 0)
             : 0;
 
-        // 3. Get payment history from payments table
+        // 4. Get payment history from payments table
         const { data: paymentRows } = await supabase
             .from('payments')
             .select("*")
@@ -266,11 +288,7 @@ exports.getStudentFinance = async (req, res) => {
                 .reduce((sum, p) => sum + Number(p.amount || 0), 0)
             : 0;
 
-        const pendingAmount = hasActiveReleasedStructures
-            ? (paymentRows || [])
-                .filter((p) => p.status === 'pending')
-                .reduce((sum, p) => sum + Number(p.amount || 0), 0)
-            : 0;
+        const pendingAmount = Math.max(totalFees - paidAmount, 0);
 
         // Prefer derived balance from active fee structures; fallback to stored student fee balance when no structures exist
         const derivedBalance = Math.max(totalFees - paidAmount, 0);
@@ -285,6 +303,14 @@ exports.getStudentFinance = async (req, res) => {
             status: p.status,
             reference_number: p.reference_number,
             direction: p.status === 'completed' ? 'inflow' : 'outflow',
+            origin_type: p.origin_type || null,
+            origin_id: p.origin_id || null,
+            origin_label: p.origin_label || null,
+            target_type: p.target_type || null,
+            target_id: p.target_id || null,
+            target_label: p.target_label || null,
+            recorded_by_user_id: p.recorded_by_user_id || null,
+            recorded_by_label: p.recorded_by_label || null,
         }));
 
         const paidPercentage = totalFees > 0
@@ -398,6 +424,47 @@ exports.getStudentAnnouncements = async (req, res) => {
         res.json(data || []);
     } catch (err) {
         console.error("Get student announcements (parent) error:", err);
+        res.status(500).json({ error: err.message });
+    }
+};
+
+/**
+ * Get library history for a linked student (Parent View)
+ */
+exports.getStudentLibraryHistory = async (req, res) => {
+    try {
+        const { userId } = req;
+        const { studentId } = req.params;
+
+        const auth = await verifyParentStudentLink(userId, studentId);
+        if (auth.error) return res.status(auth.status).json({ error: auth.error });
+
+        const { data, error } = await supabase
+            .from("borrowed_books")
+            .select(`
+                *,
+                books(title, author, isbn, category),
+                students(
+                    id,
+                    grade_level,
+                    form_level,
+                    academic_year,
+                    users(first_name, last_name, full_name, email, phone)
+                ),
+                teachers(
+                    id,
+                    department,
+                    position,
+                    users(first_name, last_name, full_name, email, phone)
+                )
+            `)
+            .eq("student_id", studentId)
+            .eq("institution_id", req.institution_id)
+            .order("created_at", { ascending: false });
+
+        if (error) throw error;
+        res.json(data || []);
+    } catch (err) {
         res.status(500).json({ error: err.message });
     }
 };

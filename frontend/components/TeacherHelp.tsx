@@ -134,10 +134,6 @@ export default function TeacherHelp() {
  answer="Go to Manage > Assignments and tap the 'Create Assignment' button. Fill in the details including due date and points."
  />
  <FAQItem
- question="Can I export my earnings report?"
- answer="Yes, in the Earnings tab, you can use the download button to export your monthly payment history as a PDF or CSV."
- />
- <FAQItem
  question="Where do I find my Teacher ID?"
  answer="Your Teacher ID is displayed on the Profile page under the 'Professional Info' section."
  />
@@ -198,17 +194,21 @@ export default function TeacherHelp() {
  />
 
  <Text className="text-gray-900 font-semibold mb-2 text-sm uppercase tracking-wider">Description</Text>
-  <TextInput
+ <TextInput
   className="rounded-xl p-4 mb-6 border-2 w-full min-h-[120px]"
-  style={{ backgroundColor: isDark ? '#0F141C' : '#FFFFFF', borderColor: isDark ? '#374151' : '#D0D7DE', color: isDark ? '#F9FAFB' : '#111827' }}
+  style={{
+  backgroundColor: isDark ? '#0F141C' : '#FFFFFF',
+  borderColor: isDark ? '#374151' : '#D0D7DE',
+  color: isDark ? '#F9FAFB' : '#111827',
+  textAlignVertical: 'top'
+  }}
   placeholder="Please describe your issue in detail..."
- placeholderTextColor="#9ca3af"
- multiline
- numberOfLines={5}
- value={ticketDescription}
- onChangeText={setTicketDescription}
- style={{ textAlignVertical: 'top' }}
- />
+  placeholderTextColor="#9ca3af"
+  multiline
+  numberOfLines={5}
+  value={ticketDescription}
+  onChangeText={setTicketDescription}
+  />
 
  <TouchableOpacity
  onPress={handleSubmitTicket}

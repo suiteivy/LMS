@@ -10,6 +10,36 @@ const hydrateSubjectClassIds = (subject) => {
   return { ...subject, class_ids: legacyClassIds };
 };
 
+const isRelationshipResolutionError = (error) => {
+  if (!error) return false;
+  const code = String(error.code || "");
+  const message = String(error.message || "").toLowerCase();
+  return (
+    code === "PGRST200" ||
+    code === "PGRST201" ||
+    message.includes("relationship") ||
+    message.includes("foreign key")
+  );
+};
+
+const attachSubjectRelationsFallback = (rows = []) =>
+  (rows || []).map((row) => ({
+    ...row,
+    teacher: null,
+    subject_teachers: [],
+  }));
+
+const isMissingSubjectClassesTableError = (error) => {
+  if (!error) return false;
+  const code = String(error.code || "");
+  const message = String(error.message || "").toLowerCase();
+  return (
+    code === "42P01" ||
+    code === "PGRST205" ||
+    message.includes("subject_classes")
+  );
+};
+
 const enrichSubjectsWithClassIds = async (subjects = [], institution_id) => {
   if (!subjects || subjects.length === 0) return [];
 
@@ -24,7 +54,7 @@ const enrichSubjectsWithClassIds = async (subjects = [], institution_id) => {
 
   if (error) {
     // Migration not yet applied; keep legacy behavior.
-    if (error.code === "42P01") {
+    if (isMissingSubjectClassesTableError(error)) {
       return subjects.map(hydrateSubjectClassIds);
     }
     throw error;
@@ -53,33 +83,81 @@ exports.createSubject = async (req, res) => {
     let teacherId;
     const institution_id = req.institution_id;
 
-    if (req.userRole !== "teacher" && req.userRole !== "admin") {
+    if (!['teacher', 'admin', 'master_admin'].includes(req.userRole)) {
       return res
         .status(403)
         .json({ error: "Only teachers or admins can create subjects" });
     }
 
     if (req.userRole === "teacher") {
-      const { data: teacher } = await supabase.from('teachers').select('id').eq('user_id', req.userId).single();
+      const { data: teacher } = await supabase
+        .from('teachers')
+        .select('id')
+        .eq('user_id', req.userId)
+        .eq('institution_id', institution_id)
+        .single();
       if (!teacher) return res.status(403).json({ error: "Teacher profile not found" });
       teacherId = teacher.id;
     }
-    if (req.userRole === "admin") {
+    if (req.userRole === "admin" || req.userRole === "master_admin") {
       teacherId = teacher_id || (teacher_ids && teacher_ids.length > 0 ? teacher_ids[0] : null);
     }
 
-    if (!title || !fee_amount) {
-      return res.status(400).json({ error: "Title and fee amount are required" });
+    if (!title) {
+      return res.status(400).json({ error: "Title is required" });
     }
 
     const normalizedClassIds = normalizeClassIds(class_ids, null);
     const primaryClassId = normalizedClassIds.length > 0 ? normalizedClassIds[0] : null;
 
+    if (normalizedClassIds.length > 0) {
+      const { data: validClasses, error: validClassesError } = await supabase
+        .from('classes')
+        .select('id')
+        .eq('institution_id', institution_id)
+        .in('id', normalizedClassIds);
+
+      if (validClassesError) {
+        return res.status(500).json({ error: validClassesError.message });
+      }
+
+      const validClassIds = new Set((validClasses || []).map((row) => row.id));
+      const invalidClassIds = normalizedClassIds.filter((id) => !validClassIds.has(id));
+      if (invalidClassIds.length > 0) {
+        return res.status(400).json({ error: 'Invalid class assignment for institution' });
+      }
+    }
+
+    const allTeacherIds = Array.from(new Set([
+      ...(teacherId ? [teacherId] : []),
+      ...(teacher_ids || [])
+    ]));
+
+    if (allTeacherIds.length > 0) {
+      const { data: validTeachers, error: validTeachersError } = await supabase
+        .from('teachers')
+        .select('id')
+        .eq('institution_id', institution_id)
+        .in('id', allTeacherIds);
+
+      if (validTeachersError) {
+        return res.status(500).json({ error: validTeachersError.message });
+      }
+
+      const validTeacherIds = new Set((validTeachers || []).map((row) => row.id));
+      const invalidTeacherIds = allTeacherIds.filter((id) => !validTeacherIds.has(id));
+      if (invalidTeacherIds.length > 0) {
+        return res.status(400).json({ error: 'Invalid teacher assignment for institution' });
+      }
+    }
+
+    const normalizedFeeAmount = Number.isFinite(Number(fee_amount)) ? Number(fee_amount) : 0;
+
     const { data, error } = await supabase.from("subjects").insert([
       {
         title,
         description,
-        fee_amount: Number(fee_amount),
+        fee_amount: normalizedFeeAmount,
         teacher_id: teacherId,
         class_id: primaryClassId,
         institution_id,
@@ -105,18 +183,17 @@ exports.createSubject = async (req, res) => {
         .from("subject_classes")
         .insert(subjectClassRecords);
 
-      if (subjectClassesError && subjectClassesError.code !== "23505" && subjectClassesError.code !== "42P01") {
+      if (
+        subjectClassesError &&
+        subjectClassesError.code !== "23505" &&
+        !isMissingSubjectClassesTableError(subjectClassesError)
+      ) {
         await supabase.from("subjects").delete().eq("id", data.id).eq("institution_id", institution_id);
         return res.status(500).json({ error: subjectClassesError.message });
       }
     }
 
     // Populate subject_teachers many-to-many table
-    const allTeacherIds = Array.from(new Set([
-      ...(teacherId ? [teacherId] : []),
-      ...(teacher_ids || [])
-    ]));
-
     if (allTeacherIds.length > 0) {
       const records = allTeacherIds.map(tid => ({
         subject_id: data.id,
@@ -151,9 +228,25 @@ exports.enrollStudentInSubject = async (req, res) => {
     }
 
     // 1. Get Student ID
-    const { data: student } = await supabase.from('students').select('id').eq('user_id', appUserId).single();
+    const { data: student } = await supabase
+      .from('students')
+      .select('id')
+      .eq('user_id', appUserId)
+      .eq('institution_id', req.institution_id)
+      .single();
     if (!student) return res.status(404).json({ error: "Student profile not found" });
     const student_id = student.id;
+
+    const { data: subject, error: subjectError } = await supabase
+      .from('subjects')
+      .select('id')
+      .eq('id', subject_id)
+      .eq('institution_id', req.institution_id)
+      .single();
+
+    if (subjectError || !subject) {
+      return res.status(400).json({ error: "Invalid subject for institution" });
+    }
 
     // 2. Check Fees
     const eligible = await hasPaidAtLeastHalf(student_id, subject_id);
@@ -200,9 +293,7 @@ exports.getSubjects = async (req, res) => {
   const { institution_id } = req;
 
   try {
-    const { data, error } = await supabase
-      .from("subjects")
-      .select(`
+    const richSelect = `
         *,
         teacher:teachers(user:users(first_name, last_name, full_name)),
         subject_teachers(
@@ -217,12 +308,30 @@ exports.getSubjects = async (req, res) => {
             )
           )
         )
-      `)
+      `;
+
+    let { data, error } = await supabase
+      .from("subjects")
+      .select(richSelect)
       .eq("institution_id", institution_id)
       .order('title');
 
     if (error) {
-      return res.status(500).json({ error: error.message });
+      if (!isRelationshipResolutionError(error)) {
+        return res.status(500).json({ error: error.message });
+      }
+
+      const fallback = await supabase
+        .from('subjects')
+        .select('*')
+        .eq('institution_id', institution_id)
+        .order('title');
+
+      if (fallback.error) {
+        return res.status(500).json({ error: fallback.error.message });
+      }
+
+      data = attachSubjectRelationsFallback(fallback.data || []);
     }
 
     const subjects = await enrichSubjectsWithClassIds(data || [], institution_id);
@@ -271,8 +380,26 @@ exports.getFilteredSubjects = async (req, res) => {
           )
         `)
         .eq("institution_id", institution_id));
+
+      if (error && isRelationshipResolutionError(error)) {
+        const fallback = await supabase
+          .from("subjects")
+          .select("*")
+          .eq("institution_id", institution_id)
+          .order("title");
+        if (fallback.error) {
+          return res.status(500).json({ error: fallback.error.message });
+        }
+        data = attachSubjectRelationsFallback(fallback.data || []);
+        error = null;
+      }
     } else if (userRole === "teacher") {
-      const { data: teacher, error: tError } = await supabase.from('teachers').select('id').eq('user_id', userId).single();
+      const { data: teacher, error: tError } = await supabase
+        .from('teachers')
+        .select('id')
+        .eq('user_id', userId)
+        .eq('institution_id', institution_id)
+        .single();
 
       if (tError || !teacher) {
         console.warn(`[SubjectController] Teacher profile not found for user ${userId}`);
@@ -285,7 +412,8 @@ exports.getFilteredSubjects = async (req, res) => {
       const { data: subjectIdsData } = await supabase
         .from("subject_teachers")
         .select("subject_id")
-        .eq("teacher_id", teacherId);
+        .eq("teacher_id", teacherId)
+        .eq("institution_id", institution_id);
 
       const subjectIds = (subjectIdsData || []).map(s => s.subject_id);
 
@@ -308,17 +436,45 @@ exports.getFilteredSubjects = async (req, res) => {
         `)
         .eq("institution_id", institution_id)
         .or(`teacher_id.eq.${teacherId}${subjectIds.length > 0 ? `,id.in.(${subjectIds.join(',')})` : ''}`));
+
+      if (error && isRelationshipResolutionError(error)) {
+        const fallback = await supabase
+          .from("subjects")
+          .select("*")
+          .eq("institution_id", institution_id)
+          .or(`teacher_id.eq.${teacherId}${subjectIds.length > 0 ? `,id.in.(${subjectIds.join(',')})` : ''}`)
+          .order("title");
+        if (fallback.error) {
+          return res.status(500).json({ error: fallback.error.message });
+        }
+        data = attachSubjectRelationsFallback(fallback.data || []);
+        error = null;
+      }
     } else if (userRole === "student" || userRole === "parent") {
       // For student or parent, get student enrollments
       let studentId;
       if (userRole === "student") {
-        const { data: student } = await supabase.from('students').select('id').eq('user_id', userId).single();
+        const { data: student } = await supabase
+          .from('students')
+          .select('id')
+          .eq('user_id', userId)
+          .eq('institution_id', institution_id)
+          .single();
         if (student) studentId = student.id;
       } else {
         // Parent: get first student's enrollments for simplicity, or all students linked to the parent
-        const { data: parent } = await supabase.from('parents').select('id').eq('user_id', userId).single();
+        const { data: parent } = await supabase
+          .from('parents')
+          .select('id')
+          .eq('user_id', userId)
+          .eq('institution_id', institution_id)
+          .single();
         if (parent) {
-          const { data: children } = await supabase.from('parent_students').select('student_id').eq('parent_id', parent.id);
+          const { data: children } = await supabase
+            .from('parent_students')
+            .select('student_id')
+            .eq('parent_id', parent.id)
+            .eq('institution_id', institution_id);
           if (children && children.length > 0) {
             studentId = children[0].student_id; // For simplicity, pick first child
           }
@@ -333,6 +489,7 @@ exports.getFilteredSubjects = async (req, res) => {
         .from("enrollments")
         .select("subject_id")
         .eq("student_id", studentId)
+        .eq("institution_id", institution_id)
         .eq("status", "enrolled");
 
       if (enrError) throw enrError;
@@ -360,6 +517,20 @@ exports.getFilteredSubjects = async (req, res) => {
         `)
         .in("id", subjectIds)
         .eq("institution_id", institution_id));
+
+      if (error && isRelationshipResolutionError(error)) {
+        const fallback = await supabase
+          .from("subjects")
+          .select("*")
+          .in("id", subjectIds)
+          .eq("institution_id", institution_id)
+          .order("title");
+        if (fallback.error) {
+          return res.status(500).json({ error: fallback.error.message });
+        }
+        data = attachSubjectRelationsFallback(fallback.data || []);
+        error = null;
+      }
     }
 
     if (error) {
@@ -380,7 +551,7 @@ exports.getSubjectById = async (req, res) => {
   const { institution_id } = req;
 
   try {
-    const { data: subject, error: subjectError } = await supabase
+    let { data: subject, error: subjectError } = await supabase
       .from("subjects")
       .select(`
         *,
@@ -423,11 +594,11 @@ exports.getSubjectsByClass = async (req, res) => {
       .eq("institution_id", institution_id)
       .eq("class_id", classId);
 
-    if (linksError && linksError.code !== "42P01") {
+    if (linksError && !isMissingSubjectClassesTableError(linksError)) {
       return res.status(500).json({ error: linksError.message });
     }
 
-    if (linksError && linksError.code === "42P01") {
+    if (linksError && isMissingSubjectClassesTableError(linksError)) {
       const { data: subjects, error } = await supabase
         .from("subjects")
         .select("*")
@@ -518,5 +689,221 @@ exports.updateProgress = async (req, res) => {
   } catch (err) {
     console.error("updateProgress error:", err);
     res.status(500).json({ error: err.message });
+  }
+};
+
+// DELETE SUBJECT
+exports.deleteSubject = async (req, res) => {
+  const { id } = req.params;
+  const { institution_id } = req;
+
+  try {
+    const { data: existing, error: existingError } = await supabase
+      .from("subjects")
+      .select("id")
+      .eq("id", id)
+      .eq("institution_id", institution_id)
+      .single();
+
+    if (existingError || !existing) {
+      return res.status(404).json({ error: "Subject not found" });
+    }
+
+    const cleanupTargets = [
+      { table: "subject_teachers", column: "subject_id" },
+      { table: "enrollments", column: "subject_id" },
+      { table: "subject_classes", column: "subject_id" },
+    ];
+
+    for (const target of cleanupTargets) {
+      const { error } = await supabase
+        .from(target.table)
+        .delete()
+        .eq(target.column, id)
+        .eq("institution_id", institution_id);
+
+      // subject_classes may not exist yet in mixed rollout envs
+      if (error && !isMissingSubjectClassesTableError(error)) {
+        return res.status(500).json({ error: error.message });
+      }
+    }
+
+    const { error: deleteError } = await supabase
+      .from("subjects")
+      .delete()
+      .eq("id", id)
+      .eq("institution_id", institution_id);
+
+    if (deleteError) {
+      return res.status(500).json({ error: deleteError.message });
+    }
+
+    return res.json({ message: "Subject deleted" });
+  } catch (err) {
+    console.error("deleteSubject error:", err);
+    return res.status(500).json({ error: "Server error" });
+  }
+};
+
+// UPDATE SUBJECT (admin/module-safe update with class + teacher links)
+exports.updateSubject = async (req, res) => {
+  const { id } = req.params;
+  const { institution_id } = req;
+
+  try {
+    const {
+      title,
+      description,
+      fee_amount,
+      teacher_id,
+      teacher_ids,
+      class_id,
+      class_ids,
+      fee_config,
+      materials,
+      metadata,
+    } = req.body || {};
+
+    const { data: existing, error: existingError } = await supabase
+      .from("subjects")
+      .select("id, metadata")
+      .eq("id", id)
+      .eq("institution_id", institution_id)
+      .single();
+
+    if (existingError || !existing) {
+      return res.status(404).json({ error: "Subject not found" });
+    }
+
+    const normalizedClassIds = normalizeClassIds(class_ids, class_id);
+    if (normalizedClassIds.length > 0) {
+      const { data: validClasses, error: validClassesError } = await supabase
+        .from("classes")
+        .select("id")
+        .eq("institution_id", institution_id)
+        .in("id", normalizedClassIds);
+
+      if (validClassesError) {
+        return res.status(500).json({ error: validClassesError.message });
+      }
+
+      const validClassIds = new Set((validClasses || []).map((row) => row.id));
+      const invalidClassIds = normalizedClassIds.filter((cid) => !validClassIds.has(cid));
+      if (invalidClassIds.length > 0) {
+        return res.status(400).json({ error: "Invalid class assignment for institution" });
+      }
+    }
+
+    const allTeacherIds = Array.from(
+      new Set([...(teacher_id ? [teacher_id] : []), ...((teacher_ids || []).filter(Boolean))])
+    );
+
+    if (allTeacherIds.length > 0) {
+      const { data: validTeachers, error: validTeachersError } = await supabase
+        .from("teachers")
+        .select("id")
+        .eq("institution_id", institution_id)
+        .in("id", allTeacherIds);
+
+      if (validTeachersError) {
+        return res.status(500).json({ error: validTeachersError.message });
+      }
+
+      const validTeacherIds = new Set((validTeachers || []).map((row) => row.id));
+      const invalidTeacherIds = allTeacherIds.filter((tid) => !validTeacherIds.has(tid));
+      if (invalidTeacherIds.length > 0) {
+        return res.status(400).json({ error: "Invalid teacher assignment for institution" });
+      }
+    }
+
+    const primaryTeacherId = allTeacherIds.length > 0 ? allTeacherIds[0] : null;
+    const primaryClassId = normalizedClassIds.length > 0 ? normalizedClassIds[0] : null;
+
+    const mergedMetadata = {
+      ...((existing && existing.metadata) || {}),
+      ...(metadata || {}),
+      class_ids: normalizedClassIds,
+    };
+
+    const updatePayload = {
+      ...(title !== undefined ? { title } : {}),
+      ...(description !== undefined ? { description } : {}),
+      ...(fee_amount !== undefined ? { fee_amount: Number.isFinite(Number(fee_amount)) ? Number(fee_amount) : 0 } : {}),
+      teacher_id: primaryTeacherId,
+      class_id: primaryClassId,
+      ...(fee_config !== undefined ? { fee_config } : {}),
+      ...(materials !== undefined ? { materials } : {}),
+      metadata: mergedMetadata,
+    };
+
+    const { error: updateError } = await supabase
+      .from("subjects")
+      .update(updatePayload)
+      .eq("id", id)
+      .eq("institution_id", institution_id);
+
+    if (updateError) {
+      return res.status(500).json({ error: updateError.message });
+    }
+
+    const { error: clearTeacherError } = await supabase
+      .from("subject_teachers")
+      .delete()
+      .eq("subject_id", id)
+      .eq("institution_id", institution_id);
+
+    if (clearTeacherError) {
+      return res.status(500).json({ error: clearTeacherError.message });
+    }
+
+    if (allTeacherIds.length > 0) {
+      const teacherRows = allTeacherIds.map((tid) => ({
+        subject_id: id,
+        teacher_id: tid,
+        institution_id,
+      }));
+      const { error: insertTeacherError } = await supabase
+        .from("subject_teachers")
+        .insert(teacherRows);
+
+      if (insertTeacherError && insertTeacherError.code !== "23505") {
+        return res.status(500).json({ error: insertTeacherError.message });
+      }
+    }
+
+    const { error: clearClassError } = await supabase
+      .from("subject_classes")
+      .delete()
+      .eq("subject_id", id)
+      .eq("institution_id", institution_id);
+
+    if (clearClassError && !isMissingSubjectClassesTableError(clearClassError)) {
+      return res.status(500).json({ error: clearClassError.message });
+    }
+
+    if (normalizedClassIds.length > 0) {
+      const classRows = normalizedClassIds.map((cid) => ({
+        subject_id: id,
+        class_id: cid,
+        institution_id,
+      }));
+      const { error: insertClassError } = await supabase
+        .from("subject_classes")
+        .insert(classRows);
+
+      if (
+        insertClassError &&
+        insertClassError.code !== "23505" &&
+        !isMissingSubjectClassesTableError(insertClassError)
+      ) {
+        return res.status(500).json({ error: insertClassError.message });
+      }
+    }
+
+    req.params.id = id;
+    return exports.getSubjectById(req, res);
+  } catch (err) {
+    console.error("updateSubject error:", err);
+    return res.status(500).json({ error: "Server error" });
   }
 };

@@ -49,8 +49,10 @@ const LibraryAction = () => {
     const [refreshing, setRefreshing] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    const surface = isDark ? '#13103A' : '#ffffff';
-    const border = isDark ? 'rgba(255,255,255,0.1)' : '#e2e8f0';
+    const pageBg = isDark ? '#161B22' : '#FFFFFF';
+    const surface = isDark ? '#161B22' : '#F6F8FA';
+    const cardBg = isDark ? '#161B22' : '#FFFFFF';
+    const border = isDark ? '#21262D' : '#D0D7DE';
     const textSecondary = isDark ? '#9ca3af' : '#64748b';
 
     useEffect(() => { loadInitialData(); }, []);
@@ -170,7 +172,10 @@ const LibraryAction = () => {
         ];
 
         return (
-            <ScrollView refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#FF6900" colors={["#FF6900"]} />}>
+            <ScrollView
+                style={{ backgroundColor: pageBg }}
+                refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#FF6900" colors={["#FF6900"]} />}
+            >
                 <View style={{ padding: 16 }}>
                     {error && (
                         <View style={{ backgroundColor: isDark ? 'rgba(239,68,68,0.1)' : '#fef2f2', borderWidth: 1, borderColor: isDark ? 'rgba(239,68,68,0.2)' : '#fecaca', borderRadius: 12, padding: 12, marginBottom: 16 }}>
@@ -183,10 +188,10 @@ const LibraryAction = () => {
 
                     <Text style={{ fontSize: 19, fontWeight: 'bold', color: isDark ? '#f1f1f1' : '#1e293b', marginBottom: 16 }}>Library Overview</Text>
 
-                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginHorizontal: -8, marginBottom: 24, backgroundColor: isDark ? '#0F0B2E' : '#ffffff' }}>
+                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginHorizontal: -8, marginBottom: 24 }}>
                         {statCards.map((card, i) => (
-                            <View key={i} style={{ width: '50%', paddingHorizontal: 8, marginBottom: 16, backgroundColor: isDark ? '#0F0B2E' : '#ffffff' }}>
-                                <View style={{ borderRadius: 16, padding: 16, borderWidth: 1, borderColor: border, backgroundColor: isDark ? '#0F0B2E' : 'fcfcfc' }}>
+                            <View key={i} style={{ width: '50%', paddingHorizontal: 8, marginBottom: 16 }}>
+                                <View style={{ borderRadius: 16, padding: 16, borderWidth: 1, borderColor: border, backgroundColor: cardBg }}>
                                     <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
                                         <View>
                                             <Text style={{ fontSize: 24, fontWeight: 'bold', color: card.color }}>{card.value}</Text>
@@ -208,7 +213,7 @@ const LibraryAction = () => {
                             { section: "borrowed", label: "Borrowed Books", desc: "Track returns and manage loans", icon: "book-outline" },
                             { section: "config", label: "Borrow Configuration", desc: "Set limits and policies", icon: "settings-outline" },
                         ].map((item) => (
-                            <TouchableOpacity key={item.section} style={{ backgroundColor: isDark ? '#0F0B2E' : 'fcfcfc', borderRadius: 16, padding: 16, borderWidth: 1, borderColor: border, flexDirection: 'row', alignItems: 'center' }} onPress={() => setActiveSection(item.section as LibrarySection)}>
+                            <TouchableOpacity key={item.section} style={{ backgroundColor: cardBg, borderRadius: 16, padding: 16, borderWidth: 1, borderColor: border, flexDirection: 'row', alignItems: 'center' }} onPress={() => setActiveSection(item.section as LibrarySection)}>
                                 <View style={{ width: 40, height: 40, backgroundColor: isDark ? 'rgba(255,107,0,0.12)' : '#fff7ed', borderRadius: 20, alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
                                     <Ionicons name={item.icon as any} size={20} color="#FF6900" />
                                 </View>
@@ -243,7 +248,7 @@ const LibraryAction = () => {
     };
 
     return (
-        <View style={{ flex: 1, backgroundColor: isDark ? '#0F0B2E' : '#fcfcfc' }}>
+        <View style={{ flex: 1, backgroundColor: pageBg }}>
             <UnifiedHeader
                 title="Management"
                 subtitle="Library"
@@ -252,9 +257,9 @@ const LibraryAction = () => {
             />
 
             {/* Section Tabs */}
-            <View style={{ backgroundColor: isDark ? '#0F0B2E' : '#fcfcfc', borderBottomWidth: 1, borderBottomColor: border }}>
+            <View style={{ backgroundColor: pageBg, borderBottomWidth: 1, borderBottomColor: border }}>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ paddingHorizontal: 16, paddingVertical: 12 }}>
-                    <View style={{ flexDirection: 'row', gap: 8, backgroundColor: isDark ? '#0F0B2E' : '#fcfcfc' }}>
+                    <View style={{ flexDirection: 'row', gap: 8, backgroundColor: pageBg }}>
                         {sections.map((section) => {
                             const isActive = activeSection === section.id;
                             return (

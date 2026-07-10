@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, TextInput, TextInputProps } from 'react-native';
+import { useTheme } from '@/contexts/ThemeContext';
 
 interface FormInputProps extends TextInputProps {
   label: string;
@@ -13,18 +14,34 @@ export const FormInput: React.FC<FormInputProps> = ({
   error,
   ...props 
 }) => {
+  const { isDark } = useTheme();
+  const text = isDark ? '#FFFFFF' : '#2C3E50';
+  const inputBg = isDark ? '#161B22' : '#FFFFFF';
+  const border = isDark ? '#21262D' : '#E5E7EB';
+  const placeholder = isDark ? '#9CA3AF' : '#6B7280';
+
   return (
-    <View className="mb-4">
-      <Text className="text-sm font-medium mb-2" style={{ color: "#2C3E50" }}>
+    <View style={{ marginBottom: 16 }}>
+      <Text style={{ fontSize: 14, fontWeight: '500', marginBottom: 8, color: text }}>
         {label} {required && '*'}
       </Text>
       <TextInput
-        className="w-full px-4 py-3 border border-gray-200 rounded-lg"
-        style={{ fontSize: 16 }}
+        placeholderTextColor={placeholder}
+        style={{
+          width: '100%',
+          paddingHorizontal: 16,
+          paddingVertical: 12,
+          borderWidth: 1,
+          borderColor: border,
+          borderRadius: 10,
+          fontSize: 16,
+          color: text,
+          backgroundColor: inputBg,
+        }}
         {...props}
       />
       {error && (
-        <Text className="text-red-500 text-sm mt-1">{error}</Text>
+        <Text style={{ color: '#EF4444', fontSize: 12, marginTop: 4 }}>{error}</Text>
       )}
     </View>
   );

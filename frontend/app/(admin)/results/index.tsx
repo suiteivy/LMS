@@ -35,7 +35,7 @@ import { formatClassLabel } from '@/utils/classLabel';
 interface ClassOption {
     id: string;
     name: string;
-    level_label?: string;
+    class_type?: string;
     grade_level?: number | string | null;
     form_level?: number | string | null;
     stream?: string | null;
@@ -256,7 +256,7 @@ export default function AdminResults() {
                 (Array.isArray(classData) ? classData : []).map((c: any) => ({
                     id: c.id,
                     name: c.name,
-                    level_label: c.level_label,
+                    class_type: c.class_type,
                     grade_level: c.grade_level,
                     form_level: c.form_level,
                     stream: c.stream,

@@ -2,7 +2,6 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, ActivityIndicator, Alert } from 'react-native';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
-import { supabase } from '@/libs/supabase';
 import { Ionicons } from '@expo/vector-icons';
 import { api } from '@/services/api';
 
@@ -12,6 +11,7 @@ export default function InstitutionOwnership() {
  const [admins, setAdmins] = useState<any[]>([]);
  const [loading, setLoading] = useState(true);
  const [transferring, setTransferring] = useState(false);
+ const [delegatingUserId, setDelegatingUserId] = useState<string | null>(null);
 
  const surface = isDark ? '#13103A' : '#ffffff';
  const border = isDark ? 'rgba(255,255,255,0.1)' : '#f3f4f6';
@@ -25,26 +25,68 @@ export default function InstitutionOwnership() {
  const fetchAdmins = async () => {
  try {
  setLoading(true);
- if (!profile?.institution_id || !profile?.id) {
+ if (!profile?.id) {
  setLoading(false);
  return;
  }
 
- // Fetch other admins in the same institution
- const { data, error } = await supabase
- .from('users')
- .select('id, full_name, email')
- .eq('role', 'admin')
- .eq('institution_id', profile.institution_id)
- .neq('id', profile.id);
-
- if (error) throw error;
- setAdmins(data || []);
+ const response = await api.get('/auth/institution-admins');
+ const rows = Array.isArray(response?.data?.admins) ? response.data.admins : [];
+ const normalized = rows
+ .map((row: any) => ({
+ id: row?.user?.id,
+ full_name: row?.user?.full_name || `${row?.user?.first_name || ''} ${row?.user?.last_name || ''}`.trim() || 'Administrator',
+ email: row?.user?.email || '',
+ is_main: !!row?.is_main,
+ can_manage_users: !!row?.can_manage_users,
+ }))
+ .filter((row: any) => !!row.id)
+ .filter((row: any) => row.id !== profile.id);
+ setAdmins(normalized);
  } catch (err: any) {
  console.error('Error fetching admins:', err.message);
  } finally {
  setLoading(false);
  }
+ };
+
+ const handleToggleDelegation = async (targetAdmin: any) => {
+ if (!isMain) {
+ Alert.alert('Permission Denied', 'Only the Main Admin can manage delegated edit rights.');
+ return;
+ }
+
+ if (!targetAdmin?.id || targetAdmin?.is_main) {
+ return;
+ }
+
+ const nextValue = !targetAdmin.can_manage_users;
+ const actionLabel = nextValue ? 'grant' : 'revoke';
+
+ Alert.alert(
+ `${nextValue ? 'Grant' : 'Revoke'} Delegated Edit Rights`,
+ `Are you sure you want to ${actionLabel} user-management rights for ${targetAdmin.full_name}?`,
+ [
+ { text: 'Cancel', style: 'cancel' },
+ {
+ text: nextValue ? 'Grant' : 'Revoke',
+ style: nextValue ? 'default' : 'destructive',
+ onPress: async () => {
+ try {
+ setDelegatingUserId(targetAdmin.id);
+ await api.put('/auth/admin-delegation', {
+ targetAdminUserId: targetAdmin.id,
+ canManageUsers: nextValue,
+ });
+ await fetchAdmins();
+ } catch (err) {
+ } finally {
+ setDelegatingUserId(null);
+ }
+ },
+ },
+ ]
+ );
  };
 
  const handleTransfer = async (targetAdmin: any) => {
@@ -160,9 +202,35 @@ export default function InstitutionOwnership() {
  <View style={{ flex: 1 }}>
  <Text style={{ fontWeight: 'bold', color: textPrimary, fontSize: 15 }}>{admin.full_name}</Text>
  <Text style={{ color: textSecondary, fontSize: 12, marginTop: 2 }}>{admin.email}</Text>
+ <Text style={{ color: admin.can_manage_users ? '#16a34a' : textSecondary, fontSize: 11, marginTop: 4 }}>
+ {admin.can_manage_users ? 'Delegated edit rights enabled' : 'Delegated edit rights disabled'}
+ </Text>
  </View>
+ <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+ {!admin.is_main ? (
+ <TouchableOpacity
+ onPress={() => handleToggleDelegation(admin)}
+ disabled={delegatingUserId === admin.id || transferring}
+ style={{
+ marginRight: 10,
+ paddingHorizontal: 10,
+ paddingVertical: 6,
+ borderRadius: 999,
+ backgroundColor: admin.can_manage_users ? '#fee2e2' : '#dcfce7',
+ }}
+ >
+ <Text style={{
+ fontSize: 11,
+ fontWeight: '700',
+ color: admin.can_manage_users ? '#991b1b' : '#166534',
+ }}>
+ {delegatingUserId === admin.id ? 'Saving...' : admin.can_manage_users ? 'Revoke Edit' : 'Grant Edit'}
+ </Text>
+ </TouchableOpacity>
+ ) : null}
  <View style={{ width: 32, height: 32, borderRadius: 10, backgroundColor: isDark ? '#262626' : '#fff7ed', alignItems: 'center', justifyContent: 'center' }}>
  <Ionicons name="swap-horizontal" size={16} color="#FF6900" />
+ </View>
  </View>
  </TouchableOpacity>
  ))

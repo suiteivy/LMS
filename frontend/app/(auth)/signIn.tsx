@@ -309,9 +309,9 @@ export default function SignIn() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [formData, setFormData] = useState<FormData>({ email: "", password: "" });
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [toastConfig, setToastConfig] = useState<{msg: string, type: "success" | "error"} | null>(null);
+  const [toastConfig, setToastConfig] = useState<{msg: string, type: "success" | "error" | "info"} | null>(null);
   const [logoutReason, setLogoutReason] = useState<LogoutReason | null>(null);
-  const { signIn, loading: isGlobalLoading } = useAuth();
+  const { signIn, loading: isGlobalLoading, maintenanceModeMessage, refreshMaintenanceStatus } = useAuth();
 
   //  Entrance animations 
   const cardFade = useRef(new Animated.Value(0)).current;
@@ -374,7 +374,7 @@ export default function SignIn() {
     };
   }, []);
 
-  const showToast = (msg: string, type: "success" | "error" = "success") => {
+  const showToast = (msg: string, type: "success" | "error" | "info" = "success") => {
     setToastConfig({ msg, type });
     Animated.parallel([
       Animated.spring(toastY, { toValue: 0, useNativeDriver: true, friction: 7 }),
@@ -423,6 +423,7 @@ export default function SignIn() {
 
   const onSubmit = async () => {
     pressBtn();
+
     if (!validateForm()) {
       shakeCard();
       return;
@@ -464,6 +465,15 @@ export default function SignIn() {
 
       if (!userData?.role) {
         setErrorMessage("No role assigned to user.");
+        return;
+      }
+
+      // Global maintenance: allow platform admins, block institution users
+      const maintenance = await refreshMaintenanceStatus();
+      if (Platform.OS === 'web' && maintenance.enabled && !!userData.institution_id) {
+        showToast(maintenance.message || maintenanceModeMessage || 'System maintenance is in progress. Please try again later.', 'info');
+        await safeSignOut('local', LogoutReason.UNKNOWN, true);
+        shakeCard();
         return;
       }
 
@@ -540,29 +550,41 @@ export default function SignIn() {
           }}
         >
           <View style={{
-            backgroundColor: toastConfig?.type === 'error' ? "rgba(239,68,68,0.2)" : "rgba(34,197,94,0.2)",
+            backgroundColor: toastConfig?.type === 'error'
+              ? "rgba(239,68,68,0.2)"
+              : toastConfig?.type === 'info'
+                ? "rgba(59,130,246,0.2)"
+                : "rgba(34,197,94,0.2)",
             borderWidth: 1,
-            borderColor: toastConfig?.type === 'error' ? "rgba(239,68,68,0.4)" : "rgba(34,197,94,0.4)",
+            borderColor: toastConfig?.type === 'error'
+              ? "rgba(239,68,68,0.4)"
+              : toastConfig?.type === 'info'
+                ? "rgba(59,130,246,0.45)"
+                : "rgba(34,197,94,0.4)",
             borderRadius: 16,
             paddingHorizontal: 24,
             paddingVertical: 14,
             flexDirection: "row",
             alignItems: "center",
             gap: 10,
-            shadowColor: toastConfig?.type === 'error' ? "#ef4444" : "#22c55e",
+            shadowColor: toastConfig?.type === 'error' ? "#ef4444" : toastConfig?.type === 'info' ? "#3b82f6" : "#22c55e",
             boxShadow: [{
               offsetX: 0,
               offsetY: 8,
               blurRadius: 16,
-              color: toastConfig?.type === 'error' ? "rgba(239, 68, 68, 0.3)" : "rgba(34, 197, 94, 0.3)",
+              color: toastConfig?.type === 'error'
+                ? "rgba(239, 68, 68, 0.3)"
+                : toastConfig?.type === 'info'
+                  ? "rgba(59,130,246,0.3)"
+                  : "rgba(34, 197, 94, 0.3)",
             }],
           }}>
             <IconIonicons
-              name={toastConfig?.type === 'error' ? "close-circle" : "checkmark-circle"}
+              name={toastConfig?.type === 'error' ? "close-circle" : toastConfig?.type === 'info' ? "information-circle" : "checkmark-circle"}
               size={22}
-              color={toastConfig?.type === 'error' ? "#f87171" : "#4ade80"}
+              color={toastConfig?.type === 'error' ? "#f87171" : toastConfig?.type === 'info' ? "#60a5fa" : "#4ade80"}
             />
-            <Text style={{ color: toastConfig?.type === 'error' ? "#f87171" : "#4ade80", fontWeight: "700", fontSize: 15 }}>
+            <Text style={{ color: toastConfig?.type === 'error' ? "#f87171" : toastConfig?.type === 'info' ? "#60a5fa" : "#4ade80", fontWeight: "700", fontSize: 15 }}>
               {toastConfig?.msg}
             </Text>
           </View>

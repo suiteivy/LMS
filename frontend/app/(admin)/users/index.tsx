@@ -1,6 +1,7 @@
 import { EmptyState } from '@/components/common/EmptyState';
 import { UnifiedHeader } from "@/components/common/UnifiedHeader";
 import { UserCard } from '@/components/common/UserCard';
+import { ListItemSkeleton } from '@/components/ui/skeletons';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { supabase } from '@/libs/supabase';
@@ -10,7 +11,7 @@ import { Href, router, useLocalSearchParams } from 'expo-router';
 import { Users } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
 import {
-    ActivityIndicator, Alert, FlatList, Platform,
+    Alert, FlatList, Platform,
     ScrollView, Text, TextInput, TouchableOpacity, View
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -170,8 +171,8 @@ export default function UsersManagementScreen() {
 
             {/* User list */}
             {loading ? (
-                <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-                    <ActivityIndicator size="large" color={isDark ? '#f9fafb' : '#111827'} />
+                <View style={{ flex: 1, paddingHorizontal: 16, paddingTop: 16 }}>
+                    <ListItemSkeleton loading={loading} count={6} label="Loading users..." />
                 </View>
             ) : (
                 <FlatList

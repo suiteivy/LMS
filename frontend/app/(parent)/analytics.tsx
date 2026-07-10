@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from "react";
+import { ListItemSkeleton } from "@/components/ui/skeletons";
 import {
   View,
   Text,
   ScrollView,
   TouchableOpacity,
-  ActivityIndicator,
   RefreshControl,
   Platform,
 } from "react-native";
@@ -198,7 +198,7 @@ export default function ParentAnalyticsPage() {
             }
           >
             {loading ? (
-              <ActivityIndicator size="large" color="#FF6B00" className="mt-12" />
+              <ListItemSkeleton loading={loading} count={4} label="Loading analytics..." />
             ) : (
               <View>
               {/* GPA Overview Cards */}

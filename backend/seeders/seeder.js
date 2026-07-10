@@ -131,6 +131,7 @@ import { createClient } from "@supabase/supabase-js";
 import dotenv from "dotenv";
 import { v4 as _uuidv4 } from "uuid";
 const process = require("node:process");
+const { assertStrongSeedPassword } = require("../utils/seedPasswordPolicy.js");
 
 dotenv.config();
 
@@ -139,10 +140,12 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
+const SEED_DEFAULT_PASSWORD = assertStrongSeedPassword(process.env.SEED_DEFAULT_PASSWORD, "SEED_DEFAULT_PASSWORD");
+
 const usersToSeed = [
   {
     email: "admin@greenfield.com",
-    password: "admin123",
+    password: SEED_DEFAULT_PASSWORD,
     full_name: "Greenfield Admin",
     role: "admin",
     institution: "Greenfield Academy",
@@ -150,7 +153,7 @@ const usersToSeed = [
   },
   {
     email: "teacher1@greenfield.com",
-    password: "teach123",
+    password: SEED_DEFAULT_PASSWORD,
     full_name: "John Doe",
     role: "teacher",
     institution: "Greenfield Academy",
@@ -158,7 +161,7 @@ const usersToSeed = [
   },
   {
     email: "student1@greenfield.com",
-    password: "stud123",
+    password: SEED_DEFAULT_PASSWORD,
     full_name: "Alice Smith",
     role: "student",
     institution: "Greenfield Academy",

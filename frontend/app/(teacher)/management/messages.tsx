@@ -1,12 +1,16 @@
 import { UnifiedHeader } from "@/components/common/UnifiedHeader";
 import { DirectChatView } from "@/components/chat/DirectChatView";
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import { Plus, RefreshCw, Zap } from "lucide-react-native";
 import React from "react";
 import { TouchableOpacity, View, Text } from "react-native";
 import { SubscriptionGate, AddonRequestButton } from "@/components/shared/SubscriptionComponents";
 
 export default function MessagingPage() {
+  const params = useLocalSearchParams<{ conversationId?: string | string[] }>();
+  const initialConversationId = Array.isArray(params.conversationId)
+    ? params.conversationId[0]
+    : params.conversationId;
   const [directChatRefreshToken, setDirectChatRefreshToken] = React.useState(0);
   const [directChatComposeToken, setDirectChatComposeToken] = React.useState(0);
   const [lastChatRefreshAt, setLastChatRefreshAt] = React.useState<Date | null>(null);
@@ -72,6 +76,7 @@ export default function MessagingPage() {
           emptyListTitle="No secure threads"
           externalRefreshToken={directChatRefreshToken}
           externalComposeToken={directChatComposeToken}
+          initialConversationId={initialConversationId}
         />
       </SubscriptionGate>
     </View>

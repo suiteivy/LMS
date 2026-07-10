@@ -11,8 +11,8 @@ async function restoreDemoAcademy() {
         .update({
             subscription_status: 'active',
             subscription_plan: 'premium',
-            // Set dates far in the future just in case
-            trial_end_date: new Date('2099-12-31')
+            // Ensure tracking starts now for reconciliation logic
+            subscription_tracking_start_date: new Date().toISOString()
         })
         .eq('name', 'Demo Academy')
         .select();

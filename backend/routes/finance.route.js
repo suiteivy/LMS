@@ -8,6 +8,10 @@ const {
     createAllocation,
     getAllocations,
     getTransactions,
+    getRevenueOverview,
+    getRevenueDeductions,
+    createRevenueDeduction,
+    getPayments,
     createTransaction,
     processTransaction,
     getFeeStructures,
@@ -19,7 +23,9 @@ const {
     recordFeePayment,
     submitPaymentEvidence,
     getPendingPayments,
-    confirmPaymentEvidence
+    confirmPaymentEvidence,
+    getPaymentReceipt,
+    getTransactionReceipt,
 } = require("../controllers/finance.controller.js");
 
 // Funds
@@ -30,8 +36,12 @@ router.post("/funds", authMiddleware, authorizeRoles(['admin', 'bursary', 'maste
 router.get("/allocations/:fund_id", authMiddleware, authorizeRoles(['admin', 'bursary', 'master_admin']), getAllocations);
 router.post("/allocations", authMiddleware, authorizeRoles(['admin', 'bursary', 'master_admin']), createAllocation);
 
-// Transactions (Unified Replacement for Payments/Payouts)
+// Transactions
 router.get("/transactions", authMiddleware, getTransactions);
+router.get('/payments', authMiddleware, authorizeRoles(['admin', 'school_admin', 'platform_admin', 'bursary', 'master_admin']), getPayments);
+router.get('/revenue/overview', authMiddleware, authorizeRoles(['admin', 'school_admin', 'platform_admin', 'bursary', 'master_admin']), getRevenueOverview);
+router.get('/revenue/deductions', authMiddleware, authorizeRoles(['admin', 'school_admin', 'platform_admin', 'bursary', 'master_admin']), getRevenueDeductions);
+router.post('/revenue/deductions', authMiddleware, authorizeRoles(['admin', 'school_admin', 'platform_admin', 'bursary', 'master_admin']), createRevenueDeduction);
 router.post("/transactions", authMiddleware, authorizeRoles(['admin', 'bursary', 'master_admin']), createTransaction);
 router.put("/transactions/:id/process", authMiddleware, authorizeRoles(['admin', 'bursary', 'master_admin']), processTransaction);
 
@@ -48,5 +58,7 @@ router.post("/fees/pay", authMiddleware, authorizeRoles(['admin', 'bursary', 'ma
 router.post("/fees/evidence", authMiddleware, submitPaymentEvidence); // Parents can submit
 router.get("/fees/pending", authMiddleware, authorizeRoles(['admin', 'bursary', 'master_admin']), getPendingPayments);
 router.post("/fees/confirm", authMiddleware, authorizeRoles(['admin', 'bursary', 'master_admin']), confirmPaymentEvidence);
+router.get('/fees/:id/receipt', authMiddleware, authorizeRoles(['admin', 'school_admin', 'platform_admin', 'bursary', 'master_admin']), getPaymentReceipt);
+router.get('/transactions/:id/receipt', authMiddleware, authorizeRoles(['admin', 'school_admin', 'platform_admin', 'bursary', 'master_admin']), getTransactionReceipt);
 
 module.exports = router;

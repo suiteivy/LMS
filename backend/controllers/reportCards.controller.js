@@ -148,7 +148,7 @@ const getReportCards = async (req, res) => {
       if (rc.class_id) {
         const { data: c } = await supabase
           .from('classes')
-          .select('grade_level, form_level, stream, level_label')
+          .select('grade_level, form_level, stream')
           .eq('id', rc.class_id)
           .single();
         classInfo = c;
@@ -194,7 +194,7 @@ const getReportCard = async (req, res) => {
       .select(`
         *,
         students (id, user_id, users (first_name, last_name, date_of_birth, gender)),
-        classes (grade_level, form_level, stream, level_label),
+        classes (grade_level, form_level, stream),
         terms (name, academic_year, start_date, end_date),
         report_card_items (
           *,
@@ -792,7 +792,7 @@ const exportReportCardPDF = async (req, res) => {
       .select(`
         *,
         students (id, user_id, users (first_name, last_name, date_of_birth, gender)),
-        classes (grade_level, form_level, stream, level_label),
+        classes (grade_level, form_level, stream),
         terms (name, academic_year, start_date, end_date),
         report_card_items (
           *,

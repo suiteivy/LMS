@@ -1,5 +1,5 @@
 import { api } from "./api";
-import { Payment, TeacherPayout, FeeStructure } from "@/types/types";
+import { Payment, FeeStructure } from "@/types/types";
 
 export class FinanceService {
     static async getPayments(studentId?: string): Promise<Payment[]> {
@@ -38,7 +38,15 @@ export class FinanceService {
                 payment_method: tx.method || tx.payment_method,
                 status: tx.status,
                 reference_number: tx.meta?.reference_number,
-                notes: tx.meta?.notes
+                notes: tx.meta?.notes,
+                origin_type: tx.origin_type || null,
+                origin_id: tx.origin_id || null,
+                origin_label: tx.origin_label || null,
+                target_type: tx.target_type || null,
+                target_id: tx.target_id || null,
+                target_label: tx.target_label || null,
+                recorded_by_user_id: tx.recorded_by_user_id || null,
+                recorded_by_label: tx.recorded_by_label || tx.meta?.recorded_by_name || null,
             };
         });
     }
@@ -49,42 +57,33 @@ export class FinanceService {
         return response.data;
     }
 
-    static async getTeacherPayouts(teacherId: string): Promise<TeacherPayout[]> {
-        let url = '/finance/transactions?type=salary_payout';
-        // Logic for filtering by teacherId could be added here similar to getPayments if needed
-
-        const response = await api.get(url);
-
-        // Map FinancialTransaction -> TeacherPayout
-        return response.data.map((tx: any) => {
-            const userObj = tx.users;
-            const teacherProfile = Array.isArray(userObj?.teachers)
-                ? userObj.teachers[0]
-                : userObj?.teachers;
-            const teacher_name = userObj?.first_name 
-                ? `${userObj.first_name} ${userObj.last_name || ''}`.trim() 
-                : (userObj?.full_name || 'Unknown');
-            const teacher_id = teacherProfile?.id || tx.user_id;
-            const teacher_display_id = tx.teacher_display_id || teacherProfile?.id || tx.user_id;
-
-            return {
-                id: tx.id,
-                teacher_id,
-                teacher_name,
-                teacher_display_id,
-                amount: tx.amount,
-                period_start: tx.date, // Approximate
-                period_end: tx.date,
-                status: tx.status,
-                payment_date: tx.date || tx.created_at,
-                // Meta fields if needed
-            };
-        });
-    }
-
-    static async processPayout(payoutId: string) {
-        const response = await api.put(`/finance/transactions/${payoutId}/process`, {});
-        return response.data;
+    static async getInstitutionPayments(): Promise<Payment[]> {
+        const response = await api.get('/finance/payments');
+        return (response.data || []).map((p: any) => ({
+            id: p.id,
+            student_id: p.student_id,
+            student_name: p.student_name,
+            student_display_id: p.student_display_id,
+            amount: Number(p.amount || 0),
+            payment_date: p.payment_date || p.created_at,
+            payment_method: p.payment_method,
+            status: p.status,
+            reference_number: p.reference_number,
+            notes: p.admin_notes,
+            reviewed_at: p.reviewed_at || null,
+            confirmed_at: p.confirmed_at || null,
+            status_updated_at: p.status_updated_at || null,
+            retention_until: p.retention_until || null,
+            fee_structure_snapshot: p.fee_structure_snapshot || null,
+            origin_type: p.origin_type || null,
+            origin_id: p.origin_id || null,
+            origin_label: p.origin_label || null,
+            target_type: p.target_type || null,
+            target_id: p.target_id || null,
+            target_label: p.target_label || null,
+            recorded_by_user_id: p.recorded_by_user_id || null,
+            recorded_by_label: p.recorded_by_label || null,
+        }));
     }
 
     static async getFeeStructures(): Promise<FeeStructure[]> {
@@ -102,8 +101,12 @@ export class FinanceService {
         return response.data;
     }
 
-    static async releaseFeeStructure(id: string) {
-        const response = await api.put(`/finance/fee-structures/${id}/release`, {});
+    static async releaseFeeStructure(id: string, options?: { strictCurrentPair?: boolean }) {
+        const strictCurrentPair = options?.strictCurrentPair ?? true;
+        const response = await api.put(
+            `/finance/fee-structures/${id}/release?strict_current_pair=${strictCurrentPair ? 'true' : 'false'}`,
+            {}
+        );
         return response.data;
     }
 
@@ -124,7 +127,12 @@ export class FinanceService {
 
     static async getPendingPayments(): Promise<any[]> {
         const response = await api.get('/finance/fees/pending');
-        return response.data;
+        return (response.data || []).map((p: any) => ({
+            ...p,
+            confirmed_at: p.confirmed_at || null,
+            retention_until: p.retention_until || null,
+            status_updated_at: p.status_updated_at || null,
+        }));
     }
 
     static async confirmPaymentEvidence(paymentId: string, action: 'approve' | 'reject', notes: string) {
@@ -134,5 +142,38 @@ export class FinanceService {
             admin_notes: notes
         });
         return response.data;
+    }
+
+    static async getPaymentReceiptHtml(paymentId: string): Promise<string> {
+        const response = await api.get(`/finance/fees/${encodeURIComponent(paymentId)}/receipt`, {
+            responseType: 'text',
+            headers: {
+                Accept: 'text/html',
+            },
+        });
+        return typeof response.data === 'string' ? response.data : String(response.data || '');
+    }
+
+    static async getTransactionReceiptHtml(transactionId: string): Promise<string> {
+        const response = await api.get(`/finance/transactions/${encodeURIComponent(transactionId)}/receipt`, {
+            responseType: 'text',
+            headers: {
+                Accept: 'text/html',
+            },
+        });
+        return typeof response.data === 'string' ? response.data : String(response.data || '');
+    }
+
+    static async getAnyReceiptHtml(id: string): Promise<string> {
+        try {
+            return await this.getTransactionReceiptHtml(id);
+        } catch (error: any) {
+            const status = error?.response?.status;
+            if (status && status !== 404) {
+                throw error;
+            }
+        }
+
+        return this.getPaymentReceiptHtml(id);
     }
 }

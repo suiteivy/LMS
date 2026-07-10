@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, StatusBar, TextInput, Modal } from "react-native";
 import { ArrowLeft, Users, Search, Download, Calendar, GraduationCap, X, Phone, User, MapPin, AlertCircle, ShieldAlert, BookOpen, Award } from "lucide-react-native";
 import { router } from "expo-router";
+import { ListItemSkeleton } from "@/components/ui/skeletons";
 import { useAuth } from "@/contexts/AuthContext";
 import { StudentService } from "@/services/StudentService";
 import { TeacherAPI } from "@/services/TeacherService";
@@ -140,7 +141,7 @@ export default function StudentsPage() {
                 </View>
 
                 {loading ? (
-                    <ActivityIndicator size="large" color="#FF6900" className="mt-10" />
+                    <ListItemSkeleton loading={loading} count={4} label="Loading students..." />
                 ) : (
                     <ScrollView className="flex-1" contentContainerStyle={{ paddingBottom: 100 }} showsVerticalScrollIndicator={false}>
                         {filteredStudents.length === 0 ? (

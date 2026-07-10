@@ -9,6 +9,7 @@ declare module 'axios' {
   interface AxiosRequestConfig {
     skipErrorToast?: boolean;
     retryable?: boolean;
+    skipErrorLog?: boolean;
   }
 }
 
@@ -171,7 +172,12 @@ api.interceptors.request.use(
         config.headers.Authorization = `Bearer ${session.access_token}`;
       } else {
         // Only log warning if it's not a public route
-        if (!config.url?.includes('/auth/') && !config.url?.includes('/demo/')) {
+        if (
+          !config.url?.includes('/auth/') &&
+          !config.url?.includes('/demo/') &&
+          !config.url?.includes('/settings/maintenance') &&
+          !config.url?.includes('/settings/currency')
+        ) {
           console.warn(`[API ${requestId}] No active session for protected route: ${config.url}`);
         }
       }
@@ -316,7 +322,10 @@ api.interceptors.response.use(
     // Enhanced Logging
     const url = error.config?.url;
     const method = error.config?.method?.toUpperCase();
-    console.error(`[API Error] ${method} ${url} (${error.response?.status || 'Network'}):`, message);
+    const skipLog = (error.config as InternalAxiosRequestConfig & { skipErrorLog?: boolean })?.skipErrorLog;
+    if (!skipLog) {
+      console.error(`[API Error] ${method} ${url} (${error.response?.status || 'Network'}):`, message);
+    }
 
     // Only show toast if it's not a "cancelled" request, NOT a 401 (handled by AuthContext),
     // and the caller hasn't opted out via `skipErrorToast: true`.

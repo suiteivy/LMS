@@ -1,5 +1,6 @@
 import { DatePicker } from '@/components/common/DatePicker';
 import { UserCard } from '@/components/common/UserCard';
+import { ListItemSkeleton } from '@/components/ui/skeletons';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/libs/supabase';
@@ -60,7 +61,11 @@ export default function UserDetailsScreen() {
     const inputBg = isDark ? '#161B22' : '#EAEEF2';
     const inputBorder = isDark ? '#21262D' : '#D0D7DE';
     
-    const instLevelLabel = (profile as any)?.institutions?.school_categories?.level_label || 'Grade';
+    const instClassTypeLabel =
+        (profile as any)?.institutions?.school_categories?.class_type ||
+        (profile as any)?.institutions?.categories?.[0]?.class_type ||
+        (profile as any)?.institutions?.school_categories?.level_label ||
+        'Grade';
 
     const [user, setUser] = useState<UserRow | null>(null);
     const [roleData, setRoleData] = useState<any>(null);
@@ -145,8 +150,8 @@ export default function UserDetailsScreen() {
 
         const [classRes, subjectRes, studentRes, parentRes] = await Promise.all([
             supabase
-                .from('v_classes_detailed')
-                .select('id, name, display_name, grade_level, form_level, level_label, stream')
+                .from('classes')
+                .select('id, name, grade_level, form_level, stream')
                 .eq('institution_id', profile?.institution_id || '')
                 .order('grade_level', { ascending: true })
                 .order('form_level', { ascending: true })
@@ -417,8 +422,8 @@ export default function UserDetailsScreen() {
             if (user?.role === 'student') {
                 const numericLevel = parseInt(gradeLevel.replace(/[^0-9]/g, '')) || null;
                 Object.assign(body, {
-                    grade_level: (instLevelLabel === 'Grade' || instLevelLabel === 'KG') ? numericLevel : null,
-                    form_level: (instLevelLabel === 'Form') ? numericLevel : null,
+                    grade_level: (instClassTypeLabel === 'Grade' || instClassTypeLabel === 'KG') ? numericLevel : null,
+                    form_level: (instClassTypeLabel === 'Form') ? numericLevel : null,
                     academic_year: academicYear || null,
                     parent_contact: parentContact || null,
                     emergency_contact_name: emergencyName || null,
@@ -548,8 +553,8 @@ export default function UserDetailsScreen() {
 
     if (loading) {
         return (
-            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: bg }}>
-                <ActivityIndicator size="large" color="#FF6900" />
+            <View style={{ flex: 1, backgroundColor: bg, paddingHorizontal: 16, paddingTop: 20 }}>
+                <ListItemSkeleton loading={loading} count={6} label="Loading user profile..." />
             </View>
         );
     }
@@ -672,7 +677,7 @@ export default function UserDetailsScreen() {
                         <DatePicker label="Admission Date" value={admissionDate} onChange={setAdmissionDate} isDark={isDark} inline />
                         {renderField('Emergency Name', emergencyName, setEmergencyName)}
                         {renderField('Emergency Phone', emergencyPhone, setEmergencyPhone, { type: 'phone' })}
-                        {renderField(`${instLevelLabel} Level`, gradeLevel, setGradeLevel)}
+                        {renderField(`${instClassTypeLabel} Level`, gradeLevel, setGradeLevel)}
                         {renderChipList('Enrolled Class', classes, classId ? [classId] : [],
                             (ids) => setClassId(ids[ids.length - 1] ?? null),
                             c => c.name, '#10b981'
@@ -687,7 +692,7 @@ export default function UserDetailsScreen() {
                         <Text style={{ fontSize: 11, fontWeight: '700', color: '#8b5cf6', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 12 }}>📊 Grades & Academic Performance</Text>
 
                         {loadingAcademics ? (
-                            <ActivityIndicator size="small" color="#FF6900" style={{ marginVertical: 20 }} />
+                            <ListItemSkeleton loading={loadingAcademics} count={3} label="Loading academic performance..." />
                         ) : (
                             <>
                                 {/* GPA Summary Row */}

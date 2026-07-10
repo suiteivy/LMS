@@ -1,9 +1,9 @@
 import { ChevronDown, ChevronUp, LifeBuoy, Mail, MessageSquare, Search, X, Send, ShieldCheck } from 'lucide-react-native';
 import React, { useState } from 'react';
-import { Linking, ScrollView, Text, TextInput, TouchableOpacity, View, Modal, ActivityIndicator, Platform } from 'react-native';
+import { Linking, ScrollView, Text, TextInput, TouchableOpacity, View, Modal, ActivityIndicator } from 'react-native';
 import { useTheme } from '@/contexts/ThemeContext';
 import Toast from 'react-native-toast-message';
-import { supabase } from '@/libs/supabase';
+import { SupportService } from '@/services/SupportService';
 
 interface FAQItemProps {
  question: string;
@@ -57,14 +57,6 @@ export default function AdminHelp() {
  inputBg: isDark ? '#0F141C' : '#FFFFFF'
  };
 
- const getBackendUrl = () => {
- let url = process.env.EXPO_PUBLIC_API_URL ||"http://localhost:4001";
- if (Platform.OS === 'android') {
- url = url.replace('localhost', '10.0.2.2');
- }
- return url;
- };
-
  const handleSubmitTicket = async () => {
  if (!ticketSubject.trim() || !ticketDescription.trim()) {
  Toast.show({ type: 'error', text1: 'Validation Error', text2: 'Please fill in all fields.' });
@@ -73,31 +65,15 @@ export default function AdminHelp() {
 
  setSubmitting(true);
  try {
- const { data: { session } } = await supabase.auth.getSession();
- if (!session) return;
-
- const res = await fetch(`${getBackendUrl()}/api/settings/support`, {
- method: 'POST',
- headers: {
- 'Authorization': `Bearer ${session.access_token}`,
- 'Content-Type': 'application/json'
- },
- body: JSON.stringify({
+ await SupportService.createTicket({
  subject: ticketSubject,
  description: ticketDescription,
  priority: 'high' // Admins get high priority
- })
  });
-
- if (res.ok) {
- Toast.show({ type: 'success', text1: 'Success', text2: 'Support ticket submitted to Platform Admins.' });
- setSelectedTab(null);
- setTicketSubject('');
- setTicketDescription('');
- } else {
- const data = await res.json();
- Toast.show({ type: 'error', text1: 'Error', text2: data.error || 'Failed to submit ticket' });
- }
+  Toast.show({ type: 'success', text1: 'Success', text2: 'Support ticket submitted to Platform Admins.' });
+  setSelectedTab(null);
+  setTicketSubject('');
+  setTicketDescription('');
  } catch (err) {
  console.error("Submit ticket error:", err);
  Toast.show({ type: 'error', text1: 'Error', text2: 'Failed to submit ticket' });

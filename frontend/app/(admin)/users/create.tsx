@@ -38,6 +38,11 @@ interface FormData {
     emergency_contact_phone: string;
     class_id: string;
     class_ids: string[];
+    class_category_id: string;
+    class_level_id: string;
+    class_stream_id: string;
+    existing_parent_id: string;
+    parent_relationship: string;
     department: string;
     qualification: string;
     specialization: string;
@@ -59,6 +64,35 @@ interface FormData {
     };
 }
 
+interface SelectOption {
+    value: string;
+    label: string;
+}
+
+interface ClassOptionLevel {
+    value: number;
+    label: string;
+}
+
+interface DomainCategoryOption {
+    id: string;
+    name: string;
+}
+
+interface DomainLevelOption {
+    id: string;
+    category_id: string;
+    level_number: number;
+    name?: string;
+}
+
+interface DomainStreamOption {
+    id: string;
+    level_id: string;
+    code: string;
+    name?: string;
+}
+
 const calculateAgeFromDob = (dob: string): number | null => {
     if (!dob) return null;
     const birthDate = new Date(dob);
@@ -78,10 +112,15 @@ const calculateAgeFromDob = (dob: string): number | null => {
 const initialFormData: FormData = {
     role: null, first_name: '', last_name: '', full_name: '', email: '', phone: '', gender: '',
     date_of_birth: '', address: '', institution_id: '',
-    grade_level: '', form_level: '', academic_year: new Date().getFullYear().toString(),
+    grade_level: '', form_level: '', academic_year: '',
     parent_contact: '', emergency_contact_name: '', emergency_contact_phone: '',
     class_id: '',
     class_ids: [],
+    class_category_id: '',
+    class_level_id: '',
+    class_stream_id: '',
+    existing_parent_id: '',
+    parent_relationship: 'guardian',
     department: '', qualification: '', specialization: '', position: 'teacher',
     subject_ids: [], class_teacher_id: '',
     occupation: '', parent_address: '',
@@ -101,12 +140,14 @@ export default function CreateUserScreen() {
     const router = useRouter();
     const insets = useSafeAreaInsets();
     const { isDark } = useTheme();
-    const { profile, subscriptionPlan } = useAuth();
+    const { profile } = useAuth();
 
-    const instLevelLabel = (profile as any)?.institutions?.school_categories?.level_label || 'Grade';
-    const isJunior = instLevelLabel === 'Grade';
-    const isSecondary = instLevelLabel === 'Form';
-    const isKG = instLevelLabel === 'KG';
+    const instClassTypeLabel =
+        (profile as any)?.institutions?.school_categories?.class_type ||
+        (profile as any)?.institutions?.categories?.[0]?.class_type ||
+        (profile as any)?.institutions?.school_categories?.level_label ||
+        'Grade';
+    const isSecondary = instClassTypeLabel === 'Form';
 
     const [step, setStep] = useState<Step>(0);
     const [form, setForm] = useState<FormData>({ ...initialFormData });
@@ -116,8 +157,23 @@ export default function CreateUserScreen() {
     const [classes, setClasses] = useState<any[]>([]);
     const [subjects, setSubjects] = useState<any[]>([]);
     const [students, setStudents] = useState<any[]>([]);
+    const [parents, setParents] = useState<any[]>([]);
+    const [domainCategories, setDomainCategories] = useState<DomainCategoryOption[]>([]);
+    const [domainLevels, setDomainLevels] = useState<DomainLevelOption[]>([]);
+    const [domainStreams, setDomainStreams] = useState<DomainStreamOption[]>([]);
+    const [levelOptions, setLevelOptions] = useState<SelectOption[]>([]);
+    const [genderOptions, setGenderOptions] = useState<SelectOption[]>([]);
+    const [positionOptions, setPositionOptions] = useState<SelectOption[]>([]);
+    const [relationshipOptions, setRelationshipOptions] = useState<SelectOption[]>([]);
+    const [academicYearOptions, setAcademicYearOptions] = useState<SelectOption[]>([]);
     const [studentSearch, setStudentSearch] = useState('');
-    const [roleCounts, setRoleCounts] = useState({ student: 0, admin: 0, teacher: 0, parent: 0 });
+    const [slotCapacity, setSlotCapacity] = useState<{
+        plan: string;
+        limits: { student: number | null; admin: number | null };
+        usage: { student: number; admin: number };
+        remaining: { student: number | null; admin: number | null };
+        at_capacity: { student: boolean; admin: boolean };
+    } | null>(null);
 
     const computedAge = calculateAgeFromDob(form.date_of_birth);
 
@@ -125,22 +181,26 @@ export default function CreateUserScreen() {
         if (profile) loadLookupData();
     }, [profile?.institution_id]);
 
+    useEffect(() => {
+        if (!form.academic_year && academicYearOptions.length > 0) {
+            updateForm('academic_year', academicYearOptions[0].value);
+        }
+    }, [academicYearOptions, form.academic_year]);
+
     const loadLookupData = async () => {
-        let classQuery = supabase.from('classes').select('id, name, grade_level');
         let subjectQuery = supabase.from('subjects').select('id, title, teacher_id');
-        let studentQuery = supabase.from('students').select('id, user_id, grade_level, users!inner(first_name, last_name, full_name, institution_id), parent_students(parents(users(full_name)))') as any;
+        let studentQuery = supabase.from('students').select('id, user_id, grade_level, users!inner(first_name, last_name, full_name, institution_id), parent_students(relationship, parents(users(full_name)))') as any;
         let parentQuery = supabase.from('parents').select('id, user_id, users!inner(first_name, last_name, full_name, institution_id)') as any;
 
         if (profile?.institution_id) {
-            classQuery = classQuery.eq('institution_id', profile.institution_id);
             subjectQuery = subjectQuery.eq('institution_id', profile.institution_id);
             studentQuery = studentQuery.eq('users.institution_id', profile.institution_id);
             parentQuery = parentQuery.eq('users.institution_id', profile.institution_id);
         }
 
-        const [classRes, subjectRes, studentRes, parentRes, studentCountRes, adminCountRes, teacherCountRes, parentCountRes] = await Promise.all([
-            supabase.from('v_classes_detailed')
-                .select('id, name, display_name, grade_level, form_level, level_label, stream')
+        const [classRes, subjectRes, studentRes, parentRes, classOptionsRes, yearsRes, gendersRes, positionsRes, slotCapacityRes] = await Promise.all([
+            supabase.from('classes')
+                .select('id, name, grade_level, form_level, stream, level_id, category_id, stream_id, display_name')
                 .eq('institution_id', profile?.institution_id || '')
                 .order('grade_level', { ascending: true })
                 .order('form_level', { ascending: true })
@@ -148,10 +208,11 @@ export default function CreateUserScreen() {
             subjectQuery,
             studentQuery,
             parentQuery,
-            supabase.from('users').select('*', { count: 'exact', head: true }).eq('institution_id', profile?.institution_id || '').eq('role', 'student'),
-            supabase.from('users').select('*', { count: 'exact', head: true }).eq('institution_id', profile?.institution_id || '').eq('role', 'admin'),
-            supabase.from('users').select('*', { count: 'exact', head: true }).eq('institution_id', profile?.institution_id || '').eq('role', 'teacher'),
-            supabase.from('users').select('*', { count: 'exact', head: true }).eq('institution_id', profile?.institution_id || '').eq('role', 'parent')
+            api.get('/classes/options').catch(() => null),
+            supabase.from('academic_years').select('id, name').eq('institution_id', profile?.institution_id || '').order('start_date', { ascending: false }),
+            supabase.from('users').select('gender').eq('institution_id', profile?.institution_id || '').not('gender', 'is', null),
+            supabase.from('teachers').select('position').eq('institution_id', profile?.institution_id || '').not('position', 'is', null),
+            api.get('/auth/enrollment-slot-capacity').catch(() => null)
         ]);
         if (classRes.data) {
             setClasses(
@@ -163,12 +224,104 @@ export default function CreateUserScreen() {
         }
         if (subjectRes.data) setSubjects(subjectRes.data);
         if (studentRes.data) setStudents(studentRes.data);
-        setRoleCounts({
-            student: studentCountRes.count || 0,
-            admin: adminCountRes.count || 0,
-            teacher: teacherCountRes.count || 0,
-            parent: parentCountRes.count || 0
-        });
+        if (parentRes.data) setParents(parentRes.data);
+
+        const classOptionsData = (classOptionsRes && 'data' in classOptionsRes) ? classOptionsRes.data : null;
+        if (classOptionsData?.level_options?.length) {
+            const mappedLevels: ClassOptionLevel[] = classOptionsData.level_options.map((opt: any) => ({
+                value: Number(opt.value),
+                label: String(opt.label),
+                level_id: opt.level_id,
+            })).filter((opt: ClassOptionLevel) => Number.isFinite(opt.value));
+
+            setLevelOptions(mappedLevels.map((opt) => ({ value: String(opt.value), label: opt.label })));
+        }
+
+        if (classOptionsData?.categories) {
+            setDomainCategories((classOptionsData.categories as any[]).map((c) => ({ id: c.id, name: String(c.name || '') })));
+        }
+        if (classOptionsData?.levels) {
+            setDomainLevels((classOptionsData.levels as any[]).map((l) => ({
+                id: l.id,
+                category_id: l.category_id,
+                level_number: Number(l.level_number),
+                name: l.name || undefined,
+            })));
+        }
+        if (classOptionsData?.streams) {
+            setDomainStreams((classOptionsData.streams as any[]).map((s) => ({
+                id: s.id,
+                level_id: s.level_id,
+                code: String(s.code || ''),
+                name: s.name || undefined,
+            })));
+        }
+
+        if (yearsRes.data) {
+            const options = yearsRes.data
+                .map((row: any) => ({ value: String(row.name || ''), label: String(row.name || '') }))
+                .filter((row: SelectOption) => row.value);
+            setAcademicYearOptions(options);
+        }
+
+        if (gendersRes.data) {
+            const genderRows = gendersRes.data as any[];
+            const genderSet = new Set<string>();
+            for (const row of genderRows) {
+                const value = String(row.gender || '').trim().toLowerCase();
+                if (value) genderSet.add(value);
+            }
+            ['male', 'female', 'other'].forEach((value) => genderSet.add(value));
+            setGenderOptions(Array.from(genderSet).map((value) => ({ value, label: value.charAt(0).toUpperCase() + value.slice(1) })));
+        }
+
+        if (positionsRes.data) {
+            const positionRows = positionsRes.data as any[];
+            const positionSet = new Set<string>();
+            for (const row of positionRows) {
+                const value = String(row.position || '').trim();
+                if (value) positionSet.add(value);
+            }
+            ['teacher', 'head_of_department', 'assistant', 'class_teacher', 'dean'].forEach((value) => positionSet.add(value));
+            setPositionOptions(Array.from(positionSet).map((value) => ({ value, label: value.replace(/_/g, ' ') })));
+        }
+
+        if (studentRes.data) {
+            const relationshipRows = (studentRes.data as any[])
+                .flatMap((student) => Array.isArray(student.parent_students) ? student.parent_students : []);
+            const relSet = new Set<string>();
+            for (const row of relationshipRows) {
+                const value = String(row.relationship || '').trim().toLowerCase();
+                if (value) relSet.add(value);
+            }
+            ['father', 'mother', 'guardian', 'sibling', 'other'].forEach((value) => relSet.add(value));
+            setRelationshipOptions(Array.from(relSet).map((value) => ({ value, label: value })));
+        }
+
+        const slotData = (slotCapacityRes && 'data' in slotCapacityRes) ? slotCapacityRes.data : null;
+        if (slotData && slotData.limits && slotData.usage && slotData.remaining && slotData.at_capacity) {
+            setSlotCapacity({
+                plan: String(slotData.plan || ''),
+                limits: {
+                    student: slotData.limits.student === null ? null : Number(slotData.limits.student),
+                    admin: slotData.limits.admin === null ? null : Number(slotData.limits.admin),
+                },
+                usage: {
+                    student: Number(slotData.usage.student || 0),
+                    admin: Number(slotData.usage.admin || 0),
+                },
+                remaining: {
+                    student: slotData.remaining.student === null ? null : Number(slotData.remaining.student),
+                    admin: slotData.remaining.admin === null ? null : Number(slotData.remaining.admin),
+                },
+                at_capacity: {
+                    student: !!slotData.at_capacity.student,
+                    admin: !!slotData.at_capacity.admin,
+                },
+            });
+        } else {
+            setSlotCapacity(null);
+        }
     };
 
     const updateForm = (key: keyof FormData, value: any) => setForm(prev => ({ ...prev, [key]: value }));
@@ -193,9 +346,12 @@ export default function CreateUserScreen() {
 
     // Filtered classes logic
     const getFilteredClasses = () => {
+        if (form.class_stream_id) {
+            return classes.filter((c) => c.stream_id === form.class_stream_id || c.id === form.class_id);
+        }
         const levelStr = form.grade_level || form.form_level;
         if (!levelStr) return [];
-        
+
         const numLevel = parseInt(levelStr.replace(/[^0-9]/g, ''), 10);
         return classes.filter(c => {
             const classLevel = isSecondary ? c.form_level : c.grade_level;
@@ -203,12 +359,91 @@ export default function CreateUserScreen() {
         });
     };
 
+    const levelsForSelectedCategory = domainLevels.filter((level) => level.category_id === form.class_category_id);
+    const streamsForSelectedLevel = domainStreams.filter((stream) => stream.level_id === form.class_level_id);
+    const classesForSelectedStream = classes.filter((cls) => cls.stream_id === form.class_stream_id);
+    const availableParents = parents.filter((p: any) => {
+        const u = p.users as any;
+        if (!u) return false;
+        return !!(u.full_name || u.first_name || u.last_name);
+    });
+
+    const fallbackLevelOptions = React.useMemo(() => {
+        const values = new Set<number>();
+        classes.forEach((c) => {
+            const raw = isSecondary ? c.form_level : c.grade_level;
+            const parsed = Number(raw);
+            if (Number.isFinite(parsed)) values.add(parsed);
+        });
+
+        return Array.from(values)
+            .sort((a, b) => a - b)
+            .map((v) => ({ value: String(v), label: `${instClassTypeLabel} ${v}` }));
+    }, [classes, isSecondary, instClassTypeLabel]);
+
+    const resolvedLevelOptions = levelOptions.length > 0 ? levelOptions : fallbackLevelOptions;
+    const resolvedAcademicYearOptions = academicYearOptions.length > 0
+        ? academicYearOptions
+        : [{ value: new Date().getFullYear().toString(), label: new Date().getFullYear().toString() }];
+    const resolvedGenderOptions = genderOptions.length > 0
+        ? genderOptions
+        : [
+            { value: 'male', label: 'Male' },
+            { value: 'female', label: 'Female' },
+            { value: 'other', label: 'Other' },
+        ];
+    const resolvedPositionOptions = positionOptions.length > 0
+        ? positionOptions
+        : [
+            { value: 'teacher', label: 'teacher' },
+            { value: 'head_of_department', label: 'head of department' },
+            { value: 'assistant', label: 'assistant' },
+            { value: 'class_teacher', label: 'class teacher' },
+            { value: 'dean', label: 'dean' },
+        ];
+    const resolvedRelationshipOptions = relationshipOptions.length > 0
+        ? relationshipOptions
+        : [
+            { value: 'father', label: 'father' },
+            { value: 'mother', label: 'mother' },
+            { value: 'guardian', label: 'guardian' },
+            { value: 'sibling', label: 'sibling' },
+            { value: 'other', label: 'other' },
+        ];
+
     // Reset class when level changes
     useEffect(() => {
         if (form.role === 'student') {
-            setForm(prev => ({ ...prev, class_id: '', class_ids: [] }));
+            setForm(prev => ({
+                ...prev,
+                class_id: '',
+                class_ids: [],
+                class_stream_id: '',
+                class_level_id: '',
+                class_category_id: '',
+            }));
         }
     }, [form.grade_level, form.form_level]);
+
+    useEffect(() => {
+        if (!form.class_category_id) return;
+        if (form.class_level_id) {
+            const stillValid = domainLevels.some((l) => l.id === form.class_level_id && l.category_id === form.class_category_id);
+            if (!stillValid) {
+                setForm((prev) => ({ ...prev, class_level_id: '', class_stream_id: '', class_id: '', class_ids: [] }));
+            }
+        }
+    }, [form.class_category_id, form.class_level_id, domainLevels]);
+
+    useEffect(() => {
+        if (!form.class_level_id) return;
+        if (form.class_stream_id) {
+            const stillValid = domainStreams.some((s) => s.id === form.class_stream_id && s.level_id === form.class_level_id);
+            if (!stillValid) {
+                setForm((prev) => ({ ...prev, class_stream_id: '', class_id: '', class_ids: [] }));
+            }
+        }
+    }, [form.class_level_id, form.class_stream_id, domainStreams]);
 
     const addLinkedStudent = (studentId: string, studentName: string) => {
         if (form.linked_students.some(ls => ls.student_id === studentId)) return;
@@ -225,6 +460,7 @@ export default function CreateUserScreen() {
             return;
         }
         try {
+            setLoading(true);
             // Map the selected level string (e.g. "Grade 1") to numeric fields for the backend
             const levelStr = form.grade_level || form.form_level;
             const numLevel = levelStr ? parseInt(levelStr.replace(/[^0-9]/g, ''), 10) : null;
@@ -241,12 +477,34 @@ export default function CreateUserScreen() {
             if (!form.create_parent) {
                 delete payload.parent_info;
             }
+
+            if (form.role === 'student') {
+                if (form.existing_parent_id) {
+                    payload.linked_parents = [form.existing_parent_id];
+                }
+
+                if (form.parent_relationship && form.create_parent) {
+                    payload.parent_info = {
+                        ...payload.parent_info,
+                        relationship: form.parent_relationship,
+                    };
+                }
+            }
             const response = await api.post('/auth/enroll-user', payload);
             setResult(response.data);
             setStep(4);
         } catch (err: any) {
             const errorData = err.response?.data;
             if (errorData?.code === 'ADMIN_LIMIT_REACHED') {
+                Alert.alert(
+                    'Limit Reached',
+                    errorData.error,
+                    [
+                        { text: 'Cancel', style: 'cancel' },
+                        { text: 'Upgrade Plan', onPress: () => router.push('/(admin)/finance') }
+                    ]
+                );
+            } else if (errorData?.code === 'STUDENT_LIMIT_REACHED') {
                 Alert.alert(
                     'Limit Reached',
                     errorData.error,
@@ -276,6 +534,20 @@ export default function CreateUserScreen() {
             const isParentRole = form.role === 'parent';
             return !!form.first_name.trim() && !!form.last_name.trim() && (isParentRole ? !!form.email.trim() : true);
         }
+        if (step === 2) {
+            if (form.role === 'student') {
+                const hasCoreStudentFields = !!form.class_category_id && !!form.class_level_id && !!form.class_stream_id && !!form.class_id && !!form.academic_year;
+                const hasParentFields = !!form.parent_relationship && (
+                    !!form.existing_parent_id || form.create_parent
+                );
+                const hasCreatedParentFields = !form.create_parent || (
+                    !!form.parent_info.first_name.trim()
+                    && !!form.parent_info.last_name.trim()
+                    && !!form.parent_info.email.trim()
+                );
+                return hasCoreStudentFields && hasParentFields && hasCreatedParentFields;
+            }
+        }
         return true;
     };
     const nextStep = () => { if (step === 3) { handleSubmit(); return; } if (canGoNext()) setStep((step + 1) as Step); };
@@ -287,8 +559,8 @@ export default function CreateUserScreen() {
     const border = isDark ? 'rgba(255,255,255,0.1)' : '#e5e7eb';
     const textPrimary = isDark ? '#f9fafb' : '#111827';
     const textSecondary = isDark ? '#94a3b8' : '#6b7280';
-    const inputBg = isDark ? '#161B22' : '#f9fafb';
-    const inputBorder = isDark ? 'rgba(255,255,255,0.1)' : '#e5e7eb';
+    const inputBg = isDark ? '#0F172A' : '#FFFFFF';
+    const inputBorder = isDark ? '#334155' : '#CBD5E1';
 
     // ---------- Options ----------
     const ROLE_CARDS = [
@@ -297,15 +569,6 @@ export default function CreateUserScreen() {
         { role: 'parent' as Role, icon: 'heart-outline', label: 'Parent/Guardian', desc: 'Register a parent/guardian', color: '#F59E0B' },
         { role: 'admin' as Role, icon: 'shield-outline', label: 'Admin', desc: 'Create an admin account', color: '#EF4444' },
     ];
-    const POSITION_OPTIONS = ['teacher', 'head_of_department', 'assistant', 'class_teacher', 'dean'];
-    const GENDER_OPTIONS = ['male', 'female'];
-    const RELATIONSHIP_OPTIONS = ['father', 'mother', 'guardian', 'sibling', 'other'];
-    // ---------- Dynamic Level Logic ----------
-    const GRADE_OPTIONS = Array.from(
-        { length: isSecondary ? 6 : (isJunior ? 7 : (isKG ? 3 : 8)) },
-        (_, i) => `${instLevelLabel} ${i + 1}`
-    );
-
     // ---------- Sub-renders ----------
     const renderStepIndicator = () => (
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 16, paddingHorizontal: 24, backgroundColor: card, borderBottomWidth: 1, borderBottomColor: border }}>
@@ -323,44 +586,31 @@ export default function CreateUserScreen() {
         </View>
     );
 
-    const getRemainingSlotsText = (role: Role) => {
-        const rawPlan = subscriptionPlan || 'trial';
-        const mapping: Record<string, string> = {
-            beta_free: 'beta',
-            basic_basic: 'basic',
-            basic_pro: 'pro',
-            basic_premium: 'premium',
-            enterprise_basic: 'custom',
-            enterprise_pro: 'custom',
-            enterprise_premium: 'custom',
-            custom_basic: 'custom',
-            custom_pro: 'custom',
-            custom_premium: 'custom'
-        };
-        const canonicalPlan = mapping[rawPlan.toLowerCase()] || rawPlan.toLowerCase() || 'trial';
-        const PLAN_LIMITS: Record<string, { student: number; admin: number }> = {
-            beta: { student: 30, admin: 1 },
-            trial: { student: 50, admin: 1 },
-            basic: { student: 900, admin: 1 },
-            pro: { student: 1000, admin: 3 },
-            premium: { student: 5000, admin: Infinity },
-            custom: { student: Infinity, admin: Infinity },
-        };
-        const limits = PLAN_LIMITS[canonicalPlan] ?? { student: 50, admin: 1 };
-
-        if (role === 'student') {
-            const limit = limits.student;
-            const current = roleCounts.student;
-            if (limit === Infinity) return 'Unlimited slots';
-            const remaining = Math.max(0, limit - current);
-            return `${remaining} of ${limit} slots remaining`;
+    const getRoleCapacityState = (role: Role) => {
+        if (role !== 'student' && role !== 'admin') {
+            return { isAtCapacity: false, unavailable: false, limit: null as number | null, current: 0, remaining: null as number | null };
         }
-        if (role === 'admin') {
-            const limit = limits.admin;
-            const current = roleCounts.admin;
-            if (limit === Infinity) return 'Unlimited slots';
-            const remaining = Math.max(0, limit - current);
-            return `${remaining} of ${limit} slots remaining`;
+
+        if (slotCapacity) {
+            return {
+                isAtCapacity: role === 'student' ? slotCapacity.at_capacity.student : slotCapacity.at_capacity.admin,
+                unavailable: false,
+                limit: role === 'student' ? slotCapacity.limits.student : slotCapacity.limits.admin,
+                current: role === 'student' ? slotCapacity.usage.student : slotCapacity.usage.admin,
+                remaining: role === 'student' ? slotCapacity.remaining.student : slotCapacity.remaining.admin,
+            };
+        }
+
+        return { isAtCapacity: true, unavailable: true, limit: null as number | null, current: 0, remaining: null as number | null };
+    };
+
+    const getRemainingSlotsText = (role: Role) => {
+        if (role === 'student' || role === 'admin') {
+            if (!slotCapacity) return 'Checking capacity...';
+            const limit = role === 'student' ? slotCapacity.limits.student : slotCapacity.limits.admin;
+            const remaining = role === 'student' ? slotCapacity.remaining.student : slotCapacity.remaining.admin;
+            if (limit === null) return 'Unlimited slots';
+            return `${Math.max(0, Number(remaining ?? 0))} of ${limit} slots remaining`;
         }
         return 'Unlimited slots';
     };
@@ -369,9 +619,27 @@ export default function CreateUserScreen() {
         <View style={{ padding: 24 }}>
             <Text style={{ fontSize: 24, fontWeight: '700', color: textPrimary, marginBottom: 6 }}>Select Role</Text>
             <Text style={{ color: textSecondary, marginBottom: 24 }}>Choose the type of user you want to enroll</Text>
-            {ROLE_CARDS.map(roleCard => (
-                <TouchableOpacity key={roleCard.role} onPress={() => updateForm('role', roleCard.role)} activeOpacity={0.7}
-                    style={{ padding: 20, borderRadius: 16, borderWidth: 2, flexDirection: 'row', alignItems: 'center', marginBottom: 12, backgroundColor: form.role === roleCard.role ? (isDark ? '#2a1a0a' : '#fff7ed') : card, borderColor: form.role === roleCard.role ? '#FF6B00' : border }}>
+            {ROLE_CARDS.map(roleCard => {
+                const capacity = getRoleCapacityState(roleCard.role);
+                return (
+                <TouchableOpacity key={roleCard.role} onPress={() => {
+                    if (capacity.unavailable) {
+                        Alert.alert(
+                            'Capacity Unavailable',
+                            'Unable to verify role capacity right now. Please refresh and try again.'
+                        );
+                        return;
+                    }
+                    if (capacity.isAtCapacity) {
+                        Alert.alert(
+                            'Limit Reached',
+                            `${roleCard.label} slots are currently full. Please upgrade your plan to add more ${roleCard.label.toLowerCase()} accounts.`
+                        );
+                        return;
+                    }
+                    updateForm('role', roleCard.role);
+                }} disabled={capacity.isAtCapacity} activeOpacity={0.7}
+                    style={{ padding: 20, borderRadius: 16, borderWidth: 2, flexDirection: 'row', alignItems: 'center', marginBottom: 12, opacity: capacity.isAtCapacity ? 0.55 : 1, backgroundColor: form.role === roleCard.role ? (isDark ? '#2a1a0a' : '#fff7ed') : card, borderColor: form.role === roleCard.role ? '#FF6B00' : border }}>
                     <View style={{ width: 56, height: 56, borderRadius: 12, alignItems: 'center', justifyContent: 'center', marginRight: 16, backgroundColor: roleCard.color + '20' }}>
                         <Ionicons name={roleCard.icon as any} size={28} color={roleCard.color} />
                     </View>
@@ -381,14 +649,19 @@ export default function CreateUserScreen() {
                         <Text style={{ fontSize: 11, fontWeight: '700', color: '#FF6B00', marginTop: 4 }}>
                             {getRemainingSlotsText(roleCard.role)}
                         </Text>
+                        {capacity.isAtCapacity && (
+                            <Text style={{ fontSize: 11, fontWeight: '700', color: '#ef4444', marginTop: 4 }}>
+                                {capacity.unavailable ? 'Capacity unavailable' : 'Full - upgrade plan'}
+                            </Text>
+                        )}
                     </View>
-                    {form.role === roleCard.role && (
+                    {form.role === roleCard.role && !capacity.isAtCapacity && (
                         <View style={{ width: 24, height: 24, borderRadius: 12, backgroundColor: '#FF6B00', alignItems: 'center', justifyContent: 'center' }}>
                             <Ionicons name="checkmark" size={14} color="white" />
                         </View>
                     )}
                 </TouchableOpacity>
-            ))}
+            )})}
         </View>
     );
 
@@ -422,7 +695,7 @@ export default function CreateUserScreen() {
             {form.role !== 'student' && (
                 <RenderInput label="Phone" value={form.phone} onChangeText={(v: string) => updateFormSanitized('phone', v, 'phone')} placeholder="+254 7XX XXX XXX" keyboardType="phone-pad" isDark={isDark} textPrimary={textPrimary} textSecondary={textSecondary} inputBg={inputBg} inputBorder={inputBorder} />
             )}
-            <RenderPicker label="Gender" options={GENDER_OPTIONS} selected={form.gender} onSelect={(v: string) => updateForm('gender', v)} isDark={isDark} textPrimary={textPrimary} textSecondary={textSecondary} border={border} card={card} />
+            <RenderPicker label="Gender" options={resolvedGenderOptions} selected={form.gender} onSelect={(v: string) => updateForm('gender', v)} isDark={isDark} textPrimary={textPrimary} textSecondary={textSecondary} border={border} card={card} />
             <DatePicker label="Date of Birth" value={form.date_of_birth} onChange={(v: string) => updateForm('date_of_birth', v)} isDark={isDark} />
             <View style={{ marginTop: -10, marginBottom: 16 }}>
                 <Text style={{ color: textSecondary, fontSize: 12 }}>
@@ -435,9 +708,75 @@ export default function CreateUserScreen() {
 
     const renderStudentDetails = () => (
         <View>
-            <RenderPicker label={`${instLevelLabel} Level`} options={GRADE_OPTIONS} selected={form.grade_level} onSelect={(v: string) => updateForm('grade_level', v)} isDark={isDark} textPrimary={textPrimary} textSecondary={textSecondary} border={border} card={card} />
-            <RenderInput label="Academic Year" value={form.academic_year} onChangeText={(v: string) => updateFormSanitized('academic_year', v)} placeholder="2026" isDark={isDark} textPrimary={textPrimary} textSecondary={textSecondary} inputBg={inputBg} inputBorder={inputBorder} />
+            <RenderPicker
+                label="Class Category *"
+                options={domainCategories.map((c) => ({ value: c.id, label: c.name }))}
+                selected={form.class_category_id}
+                onSelect={(v: string) => updateForm('class_category_id', v)}
+                isDark={isDark}
+                textPrimary={textPrimary}
+                textSecondary={textSecondary}
+                border={border}
+                card={card}
+            />
+            <RenderPicker
+                label={`${instClassTypeLabel} Level *`}
+                options={levelsForSelectedCategory.map((level) => ({
+                    value: level.id,
+                    label: level.name || `${instClassTypeLabel} ${level.level_number}`,
+                }))}
+                selected={form.class_level_id}
+                onSelect={(v: string) => {
+                    const selectedLevel = levelsForSelectedCategory.find((l) => l.id === v);
+                    if (!selectedLevel) return;
+                    updateForm('class_level_id', v);
+                    const levelNumber = String(selectedLevel.level_number);
+                    updateForm('grade_level', levelNumber);
+                    updateForm('form_level', isSecondary ? levelNumber : '');
+                    updateForm('class_stream_id', '');
+                    updateForm('class_id', '');
+                    updateForm('class_ids', []);
+                }}
+                isDark={isDark}
+                textPrimary={textPrimary}
+                textSecondary={textSecondary}
+                border={border}
+                card={card}
+            />
+            <RenderPicker
+                label="Class Stream *"
+                options={streamsForSelectedLevel.map((stream) => ({ value: stream.id, label: stream.name || stream.code }))}
+                selected={form.class_stream_id}
+                onSelect={(v: string) => {
+                    updateForm('class_stream_id', v);
+                    const candidates = classes.filter((cls) => cls.stream_id === v);
+                    if (candidates.length === 1) {
+                        selectStudentClass(candidates[0].id);
+                    } else {
+                        updateForm('class_id', '');
+                        updateForm('class_ids', []);
+                    }
+                }}
+                isDark={isDark}
+                textPrimary={textPrimary}
+                textSecondary={textSecondary}
+                border={border}
+                card={card}
+            />
+            <RenderPicker label="Academic Year *" options={resolvedAcademicYearOptions} selected={form.academic_year} onSelect={(v: string) => updateForm('academic_year', v)} isDark={isDark} textPrimary={textPrimary} textSecondary={textSecondary} border={border} card={card} />
             <RenderInput label="Parent/Guardian Contact" value={form.parent_contact} onChangeText={(v: string) => updateFormSanitized('parent_contact', v, 'phone')} placeholder="Phone number" keyboardType="phone-pad" isDark={isDark} textPrimary={textPrimary} textSecondary={textSecondary} inputBg={inputBg} inputBorder={inputBorder} />
+
+            <RenderPicker
+                label="Parent Relationship *"
+                options={resolvedRelationshipOptions}
+                selected={form.parent_relationship}
+                onSelect={(v: string) => updateForm('parent_relationship', v)}
+                isDark={isDark}
+                textPrimary={textPrimary}
+                textSecondary={textSecondary}
+                border={border}
+                card={card}
+            />
 
             <View style={{ backgroundColor: isDark ? '#1c1008' : '#fff7ed', borderRadius: 12, padding: 16, marginBottom: 16 }}>
                 <Text style={{ fontSize: 13, fontWeight: '700', color: isDark ? '#fed7aa' : '#7c2d12', marginBottom: 12 }}>Emergency Contact</Text>
@@ -451,7 +790,7 @@ export default function CreateUserScreen() {
                 
                 {!(form.grade_level || form.form_level) ? (
                     <View style={{ backgroundColor: isDark ? '#1e293b' : '#f8fafc', padding: 16, borderRadius: 12, borderStyle: 'dashed', borderWidth: 1, borderColor: border }}>
-                        <Text style={{ color: textSecondary, fontSize: 13, textAlign: 'center' }}>Please select a {instLevelLabel} level first</Text>
+                        <Text style={{ color: textSecondary, fontSize: 13, textAlign: 'center' }}>Please select a {instClassTypeLabel} level first</Text>
                     </View>
                 ) : getFilteredClasses().length === 0 ? (
                     <View style={{ backgroundColor: isDark ? '#450a0a' : '#fef2f2', padding: 16, borderRadius: 12, borderWidth: 1, borderColor: isDark ? '#991b1b' : '#fecaca' }}>
@@ -486,7 +825,7 @@ export default function CreateUserScreen() {
                                 </View>
                                 <View style={{ flex: 1 }}>
                                     <Text style={{ color: textPrimary, fontWeight: '600', fontSize: 15 }}>{c.name}</Text>
-                                    <Text style={{ color: textSecondary, fontSize: 12 }}>{c.level_label} Stream</Text>
+                                     <Text style={{ color: textSecondary, fontSize: 12 }}>Class stream</Text>
                                 </View>
                             </TouchableOpacity>
                         ))}
@@ -495,12 +834,42 @@ export default function CreateUserScreen() {
             </View>
 
             <View style={{ backgroundColor: isDark ? '#0f172a' : '#eff6ff', borderRadius: 16, padding: 20, marginBottom: 16, borderWidth: 1, borderColor: isDark ? '#1e3a5f' : '#bfdbfe' }}>
+                <Text style={{ fontSize: 13, fontWeight: '700', color: isDark ? '#93c5fd' : '#1e3a8a', marginBottom: 8 }}>Link Existing Parent/Guardian</Text>
+                <RenderPicker
+                    label="Choose Existing Parent"
+                    options={availableParents.map((p: any) => ({
+                        value: p.id,
+                        label: (() => {
+                            const u = p.users as any;
+                            return u?.full_name || `${u?.first_name || ''} ${u?.last_name || ''}`.trim() || p.id;
+                        })(),
+                    }))}
+                    selected={form.existing_parent_id}
+                    onSelect={(v: string) => {
+                        updateForm('existing_parent_id', v);
+                        if (v) {
+                            updateForm('create_parent', false);
+                        }
+                    }}
+                    isDark={isDark}
+                    textPrimary={textPrimary}
+                    textSecondary={textSecondary}
+                    border={border}
+                    card={card}
+                />
+
                 <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
                     <View style={{ flex: 1, marginRight: 12 }}>
                         <Text style={{ fontWeight: '700', fontSize: 15, color: isDark ? '#93c5fd' : '#1e3a8a' }}>Create Parent/Guardian Account</Text>
                         <Text style={{ fontSize: 12, color: isDark ? '#60a5fa' : '#3b82f6' }}>Simultaneously register and link a guardian</Text>
                     </View>
-                    <TouchableOpacity onPress={() => updateForm('create_parent', !form.create_parent)}
+                    <TouchableOpacity onPress={() => {
+                        const nextValue = !form.create_parent;
+                        updateForm('create_parent', nextValue);
+                        if (nextValue) {
+                            updateForm('existing_parent_id', '');
+                        }
+                    }}
                         style={{ width: 48, height: 24, borderRadius: 12, paddingHorizontal: 4, justifyContent: 'center', alignItems: form.create_parent ? 'flex-end' : 'flex-start', backgroundColor: form.create_parent ? '#3b82f6' : (isDark ? '#374151' : '#d1d5db') }}>
                         <View style={{ width: 16, height: 16, borderRadius: 8, backgroundColor: 'white' }} />
                     </TouchableOpacity>
@@ -543,7 +912,7 @@ export default function CreateUserScreen() {
                 <RenderInput label="Department" value={form.department} onChangeText={(v: string) => updateFormSanitized('department', v)} placeholder="e.g. Mathematics" isDark={isDark} textPrimary={textPrimary} textSecondary={textSecondary} inputBg={inputBg} inputBorder={inputBorder} />
                 <RenderInput label="Qualification" value={form.qualification} onChangeText={(v: string) => updateFormSanitized('qualification', v)} placeholder="e.g. B.Ed Mathematics" isDark={isDark} textPrimary={textPrimary} textSecondary={textSecondary} inputBg={inputBg} inputBorder={inputBorder} />
                 <RenderInput label="Specialization" value={form.specialization} onChangeText={(v: string) => updateFormSanitized('specialization', v)} placeholder="e.g. Applied Mathematics" isDark={isDark} textPrimary={textPrimary} textSecondary={textSecondary} inputBg={inputBg} inputBorder={inputBorder} />
-                <RenderPicker label="Position" options={POSITION_OPTIONS} selected={form.position} onSelect={(v: string) => updateForm('position', v)} isDark={isDark} textPrimary={textPrimary} textSecondary={textSecondary} border={border} card={card} />
+                <RenderPicker label="Position" options={resolvedPositionOptions} selected={form.position} onSelect={(v: string) => updateForm('position', v)} isDark={isDark} textPrimary={textPrimary} textSecondary={textSecondary} border={border} card={card} />
                 <RenderMultiSelect label="Assign Subjects (unassigned only)" items={unassignedSubjects} selectedIds={form.subject_ids} toggleItem={(id: string) => toggleArrayItem('subject_ids', id)} displayFn={(s: any) => s.title} isDark={isDark} textPrimary={textPrimary} textSecondary={textSecondary} border={border} card={card} />
                 <View style={{ marginBottom: 16 }}>
                     <Text style={{ fontSize: 13, fontWeight: '600', color: textSecondary, marginBottom: 6 }}>Assign as Class Teacher</Text>
@@ -619,10 +988,10 @@ export default function CreateUserScreen() {
                                 </TouchableOpacity>
                             </View>
                             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
-                                {RELATIONSHIP_OPTIONS.map(rel => (
-                                    <TouchableOpacity key={rel} onPress={() => updateLinkedRelationship(ls.student_id, rel)}
-                                        style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, borderWidth: 1, backgroundColor: ls.relationship === rel ? '#FF6B00' : card, borderColor: ls.relationship === rel ? '#FF6B00' : border }}>
-                                        <Text style={{ fontSize: 12, fontWeight: '500', textTransform: 'capitalize', color: ls.relationship === rel ? 'white' : textPrimary }}>{rel}</Text>
+                                {resolvedRelationshipOptions.map(rel => (
+                                    <TouchableOpacity key={rel.value} onPress={() => updateLinkedRelationship(ls.student_id, rel.value)}
+                                        style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, borderWidth: 1, backgroundColor: ls.relationship === rel.value ? '#FF6B00' : card, borderColor: ls.relationship === rel.value ? '#FF6B00' : border }}>
+                                        <Text style={{ fontSize: 12, fontWeight: '500', textTransform: 'capitalize', color: ls.relationship === rel.value ? 'white' : textPrimary }}>{rel.label}</Text>
                                     </TouchableOpacity>
                                 ))}
                             </View>
@@ -678,12 +1047,18 @@ export default function CreateUserScreen() {
             {form.role === 'student' && (
                 <View style={{ backgroundColor: card, borderRadius: 16, borderWidth: 1, borderColor: border, padding: 16, marginBottom: 16 }}>
                     <Text style={{ fontSize: 11, fontWeight: '700', color: textSecondary, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>Student Details</Text>
-                    {renderReviewRow(instLevelLabel, form.grade_level)}
+                    {renderReviewRow(instClassTypeLabel, form.grade_level)}
                     {renderReviewRow('Academic Year', form.academic_year)}
                     {renderReviewRow('Parent Contact', form.parent_contact)}
+                    {renderReviewRow('Parent Relationship', form.parent_relationship)}
                     {renderReviewRow('Emergency Contact', form.emergency_contact_name)}
                     {renderReviewRow('Emergency Phone', form.emergency_contact_phone)}
                     {renderReviewRow('Class', form.class_id ? (classes.find(c => c.id === form.class_id)?.name || form.class_id) : undefined)}
+                    {renderReviewRow('Linked Existing Parent', form.existing_parent_id ? (() => {
+                        const p = parents.find((item: any) => item.id === form.existing_parent_id);
+                        const u = p?.users as any;
+                        return u?.full_name || `${u?.first_name || ''} ${u?.last_name || ''}`.trim() || form.existing_parent_id;
+                    })() : undefined)}
                 </View>
             )}
             {form.role === 'student' && form.create_parent && (
@@ -894,16 +1269,25 @@ const RenderInput = ({ label, value, onChangeText, placeholder, keyboardType, is
 const RenderPicker = ({ label, options, selected, onSelect, isDark, textPrimary, textSecondary, border, card }: any) => (
     <View style={{ marginBottom: 16 }}>
         <Text style={{ fontSize: 13, fontWeight: '600', color: textSecondary, marginBottom: 6 }}>{label}</Text>
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-            {options.map((opt: string) => (
-                <TouchableOpacity key={opt} onPress={() => onSelect(opt)}
-                    style={{ paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, borderWidth: 1, backgroundColor: selected === opt ? '#FF6B00' : card, borderColor: selected === opt ? '#FF6B00' : border }}>
-                    <Text style={{ fontSize: 13, fontWeight: '600', textTransform: 'capitalize', color: selected === opt ? 'white' : textPrimary }}>
-                        {opt.replace(/_/g, ' ')}
-                    </Text>
-                </TouchableOpacity>
-            ))}
-        </View>
+        {(!options || options.length === 0) ? (
+            <Text style={{ color: textSecondary, fontSize: 13, fontStyle: 'italic' }}>No options available</Text>
+        ) : (
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                {options.map((opt: any) => {
+                    const value = typeof opt === 'string' ? opt : String(opt.value);
+                    const labelText = typeof opt === 'string' ? opt.replace(/_/g, ' ') : String(opt.label || opt.value).replace(/_/g, ' ');
+                    const isSelected = selected === value;
+                    return (
+                        <TouchableOpacity key={value} onPress={() => onSelect(value)}
+                            style={{ paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, borderWidth: 1, backgroundColor: isSelected ? '#FF6B00' : card, borderColor: isSelected ? '#FF6B00' : border }}>
+                            <Text style={{ fontSize: 13, fontWeight: '600', textTransform: 'capitalize', color: isSelected ? 'white' : textPrimary }}>
+                                {labelText}
+                            </Text>
+                        </TouchableOpacity>
+                    );
+                })}
+            </View>
+        )}
     </View>
 );
 

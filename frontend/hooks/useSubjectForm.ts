@@ -4,7 +4,6 @@ import { SubjectFormData } from "../types/types";
 import { SubjectAPI } from "../services/SubjectService";
 import { useAuth } from "../contexts/AuthContext";
 import { useRouter } from "expo-router";
-import { supabase } from "../libs/supabase";
 
 // hook to manage Subject form state and actions
 export const useSubjectForm = () => {
@@ -15,21 +14,6 @@ export const useSubjectForm = () => {
   const [formData, setFormData] = useState<SubjectFormData>({
     title: "",
     description: "",
-    shortDescription: "",
-    category: "",
-    level: "beginner",
-    language: "english",
-    price: "",
-    duration: "",
-    maxStudents: "150",
-    startDate: "",
-    tags: [],
-    prerequisites: "",
-    learningOutcomes: [""],
-    SubjectImage: null,
-    isPublic: true,
-    allowDiscussions: true,
-    certificateEnabled: true,
     class_id: "",
     class_ids: [],
     teacher_ids: [],
@@ -46,47 +30,11 @@ export const useSubjectForm = () => {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
-  // Add a new tag to the tags array if it doesn't already exist
-  const addTag = (tag: string) => {
-    if (!formData.tags.includes(tag)) {
-      handleInputChange("tags", [...formData.tags, tag]);
-    }
-  };
-
-  // Remove a specific tag from the tags array
-  const removeTag = (tagToRemove: string) => {
-    handleInputChange(
-      "tags",
-      formData.tags.filter((tag) => tag !== tagToRemove)
-    );
-  };
-
-  // Add a new empty learning outcome to the array
-  const addLearningOutcome = () => {
-    handleInputChange("learningOutcomes", [...formData.learningOutcomes, ""]);
-  };
-
-  // Update a specific learning outcome at the given index
-  const updateLearningOutcome = (index: number, value: string) => {
-    const updated = formData.learningOutcomes.map((item, i) =>
-      i === index ? value : item
-    );
-    handleInputChange("learningOutcomes", updated);
-  };
-
-  // Remove a learning outcome at the given index, ensuring at least one remains
-  const removeLearningOutcome = (index: number) => {
-    if (formData.learningOutcomes.length > 1) {
-      const updated = formData.learningOutcomes.filter((_, i) => i !== index);
-      handleInputChange("learningOutcomes", updated);
-    }
-  };
-
   // Validate required form fields
   const validateForm = () => {
-    const { title, description, category } = formData;
-    if (!title || !description || !category) {
-      Alert.alert("Error", "Please fill in all required fields (Title, Description, Category)");
+    const { title, description } = formData;
+    if (!title || !description) {
+      Alert.alert("Error", "Please fill in all required fields (Title, Description)");
       return false;
     }
     return true;
@@ -98,66 +46,15 @@ export const useSubjectForm = () => {
 
     setIsSubmitting(true);
     try {
-      const metadata = {
-        shortDescription: formData.shortDescription,
-        category: formData.category,
-        level: formData.level,
-        language: formData.language,
-        duration: formData.duration,
-        maxStudents: formData.maxStudents,
-        startDate: formData.startDate,
-        tags: formData.tags,
-        prerequisites: formData.prerequisites,
-        learningOutcomes: formData.learningOutcomes,
-        image: formData.SubjectImage,
-        isPublic: formData.isPublic,
-        allowDiscussions: formData.allowDiscussions,
-        certificateEnabled: formData.certificateEnabled,
-      };
-
       const created = await SubjectAPI.createSubject({
         title: formData.title,
         description: formData.description,
-        fee_amount: parseFloat(formData.price) || 0,
         institution_id: profile?.institution_id || "",
         class_id: formData.class_id || undefined,
         class_ids: formData.class_ids || [],
         teacher_ids: formData.teacher_ids || [],
-        // @ts-ignore - Validated by backend
-        metadata: metadata
+        fee_amount: 0,
       });
-
-      // Handle automatic enrollment if a class was selected
-      const targetClassIds = Array.from(new Set([
-        ...(formData.class_id ? [formData.class_id] : []),
-        ...((formData.class_ids || []).filter(Boolean) as string[]),
-      ]));
-
-      if (targetClassIds.length > 0) {
-        try {
-          // Fetch students in selected classes
-          const { data: studentsInClass } = await (supabase.from('class_enrollments') as any)
-            .select('student_id')
-            .in('class_id', targetClassIds);
-
-          if (studentsInClass && studentsInClass.length > 0) {
-            const uniqueStudentIds = Array.from(new Set((studentsInClass as any[]).map((s: any) => s.student_id)));
-
-            const enrollments = uniqueStudentIds.map((studentId: string) => ({
-              student_id: studentId,
-              subject_id: created.id,
-              institution_id: profile?.institution_id,
-              status: 'enrolled',
-              enrollment_date: new Date().toISOString()
-            }));
-
-            await (supabase.from('enrollments') as any).upsert(enrollments, { onConflict: 'student_id,subject_id' });
-          }
-        } catch (enrollErr) {
-          console.error("Auto-enrollment failed:", enrollErr);
-          // Don't fail the whole subject creation, but log it
-        }
-      }
 
       Alert.alert("Success", "Subject created successfully!");
       router.back();
@@ -180,11 +77,6 @@ export const useSubjectForm = () => {
     formData,
     isSubmitting,
     handleInputChange,
-    addTag,
-    removeTag,
-    addLearningOutcome,
-    updateLearningOutcome,
-    removeLearningOutcome,
     handleSubmit,
     saveDraft,
   };

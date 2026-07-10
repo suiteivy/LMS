@@ -8,6 +8,7 @@ import {
   StyleSheet,
   Dimensions,
 } from 'react-native';
+import { ListItemSkeleton } from '@/components/ui/skeletons';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { UnifiedHeader } from '@/components/common/UnifiedHeader';
@@ -356,8 +357,7 @@ export default function ReportCardsScreen() {
       {/* Content */}
       {loading ? (
         <View style={styles.loadingWrap}>
-          <ActivityIndicator size="large" color="#FF6B00" />
-          <Text style={styles.loadingText}>Loading report cards…</Text>
+          <ListItemSkeleton loading={loading} count={3} label="Loading report cards..." />
         </View>
       ) : reportCards.length === 0 ? (
         <View style={styles.emptyWrap}>

@@ -1,13 +1,14 @@
+import { useCurrency } from '@/contexts/CurrencyContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { Spinner } from '@/components/ui/Spinner';
 import { supabase } from '@/libs/supabase';
-import { formatCurrency } from '@/utils/currency';
 import { Ionicons } from '@expo/vector-icons';
 import React, { useEffect, useState } from 'react';
 import { Text, View } from 'react-native';
 
 export function FeeStructureCard() {
     const { isDark } = useTheme();
+    const { formatAmount } = useCurrency();
     const [feeStructures, setFeeStructures] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
 
@@ -59,7 +60,7 @@ export function FeeStructureCard() {
                         </View>
 
                         <Text className="text-3xl font-extrabold text-teal-700 dark:text-teal-400 mb-2">
-                            {formatCurrency(fee.amount)}
+                            {formatAmount(Number(fee.amount || 0))}
                         </Text>
 
                         <Text className="text-gray-600 dark:text-gray-300 leading-6 mb-4">

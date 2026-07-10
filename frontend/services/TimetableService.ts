@@ -40,7 +40,7 @@ export const TimetableAPI = {
     createEntry: async (data: CreateTimetableDto): Promise<TimetableEntry> => {
         try {
             const response = await api.post("/timetable", data);
-            return response.data;
+            return response.data?.entry || response.data;
         } catch (error) {
             console.error("Create timetable error", error);
             throw error;
@@ -74,7 +74,7 @@ export const TimetableAPI = {
     updateEntry: async (id: string, data: Partial<CreateTimetableDto>): Promise<TimetableEntry> => {
         try {
             const response = await api.put(`/timetable/${id}`, data);
-            return response.data;
+            return response.data?.entry || response.data;
         } catch (error) {
             console.error("Update timetable error", error);
             throw error;

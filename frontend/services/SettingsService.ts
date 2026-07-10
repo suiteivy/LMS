@@ -15,16 +15,43 @@ export interface UserPreferences {
     support_cases_alerts?: boolean;
 }
 
+export interface MaintenanceStatus {
+    enabled: boolean;
+    message: string;
+    updated_at?: string | null;
+}
+
 export const SettingsService = {
     getCurrencyRates: async (): Promise<ExchangeRates> => {
         try {
             const response = await api.get('/settings/currency', { skipErrorToast: true });
             return response.data;
         } catch (error) {
-            console.error('Error fetching currency rates:', error);
+            const e: any = error;
+            if (e?.response?.status !== 401 && e?.code !== 'ERR_NETWORK') {
+                console.error('Error fetching currency rates:', error);
+            }
             // Fallback to default
             return { KES: 130.0, last_updated: null };
         }
+    },
+
+    getMaintenanceStatus: async (): Promise<MaintenanceStatus> => {
+        const response = await api.get('/settings/maintenance', { skipErrorToast: true });
+        return response.data;
+    },
+
+    getMasterMaintenanceMode: async (): Promise<MaintenanceStatus> => {
+        const response = await api.get('/master-admin/maintenance-mode');
+        return response.data;
+    },
+
+    updateMasterMaintenanceMode: async (
+        enabled: boolean,
+        message?: string,
+    ): Promise<{ message: string; maintenance: MaintenanceStatus }> => {
+        const response = await api.put('/master-admin/maintenance-mode', { enabled, message });
+        return response.data;
     },
 
     updateCurrencyRates: async (): Promise<ExchangeRates> => {
@@ -72,36 +99,45 @@ export const SettingsService = {
         return response.data;
     },
 
-    forgotPassword: async (email: string): Promise<{ message: string }> => {
+    forgotPassword: async (email: string): Promise<{ message: string; is_hierarchical?: boolean }> => {
         const response = await api.post('/auth/forgot-password', { email });
         return response.data;
     },
 
+    checkForgotPasswordEmail: async (email: string): Promise<{ exists: boolean; email: string; can_request_reset: boolean; message: string }> => {
+        const response = await api.get('/auth/forgot-password/check-email', {
+            params: { email },
+            skipErrorToast: true,
+        });
+        return response.data;
+    },
+
     setupSecurityQuestions: async (
-        question1: string,
-        question2: string,
-        question3: string,
-    ): Promise<{ message: string }> => {
+        selected_question_key: string,
+        selected_question_answer: string,
+    ): Promise<{ message: string; selected_question_key: string; selected_question_prompt: string }> => {
         const response = await api.post('/auth/security-questions/setup', {
-            question1,
-            question2,
-            question3,
+            selected_question_key,
+            selected_question_answer,
         });
         return response.data;
     },
 
     verifySecurityQuestions: async (
         email: string,
-        question1: string,
-        question2: string,
-        question3: string,
+        selected_question_answer?: string,
         new_password?: string,
-    ): Promise<{ verified: boolean; message: string }> => {
+    ): Promise<{
+        verified: boolean;
+        message: string;
+        requires_answer?: boolean;
+        selected_question_key?: string;
+        selected_question_prompt?: string;
+        attempts_remaining?: number;
+    }> => {
         const response = await api.post('/auth/verify-security-questions', {
             email,
-            question1,
-            question2,
-            question3,
+            selected_question_answer,
             new_password,
         });
         return response.data;

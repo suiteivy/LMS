@@ -9,6 +9,8 @@ interface SubjectCardProps {
   onPress: () => void;
   variant?: "default" | "compact" | "featured";
   kesRate?: number;
+  onDelete?: () => void;
+  deleting?: boolean;
 }
 
 export const SubjectCard: React.FC<SubjectCardProps> = ({
@@ -16,6 +18,8 @@ export const SubjectCard: React.FC<SubjectCardProps> = ({
   onPress,
   variant = "default",
   kesRate = 129,
+  onDelete,
+  deleting = false,
 }) => {
   const { isDark } = useTheme();
 
@@ -45,6 +49,13 @@ export const SubjectCard: React.FC<SubjectCardProps> = ({
     elevation: isDark ? 0 : 2,
   };
 
+  const handleDeletePress = (event: any) => {
+    event?.stopPropagation?.();
+    if (!deleting && onDelete) {
+      onDelete();
+    }
+  };
+
   if (variant === "compact") {
     return (
       <TouchableOpacity
@@ -67,9 +78,6 @@ export const SubjectCard: React.FC<SubjectCardProps> = ({
           resizeMode="cover"
         />
         <View style={{ flex: 1, marginLeft: 12, justifyContent: 'center' }}>
-          <Text style={{ fontSize: 10, fontWeight: '700', color: '#f97316', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 3 }}>
-            {Subject.category}
-          </Text>
           <Text style={{ fontWeight: '700', fontSize: 14, color: t.textPrimary, marginBottom: 4 }} numberOfLines={1}>
             {Subject.title}
           </Text>
@@ -100,14 +108,6 @@ export const SubjectCard: React.FC<SubjectCardProps> = ({
       >
         <View style={{ position: 'relative' }}>
           <Image source={{ uri: Subject.image }} style={{ width: '100%', height: 180 }} resizeMode="cover" />
-          <View style={{ position: 'absolute', top: 12, left: 12, flexDirection: 'row', gap: 6 }}>
-            <View style={{ backgroundColor: t.levelBg, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 99 }}>
-              <Text style={{ color: t.levelText, fontSize: 9, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1 }}>{Subject.level}</Text>
-            </View>
-            <View style={{ backgroundColor: '#f97316', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 99 }}>
-              <Text style={{ color: '#ffffff', fontSize: 9, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1 }}>{Subject.category}</Text>
-            </View>
-          </View>
         </View>
 
         <View style={{ padding: 16 }}>
@@ -152,9 +152,7 @@ export const SubjectCard: React.FC<SubjectCardProps> = ({
 
   // Default variant   smaller
   return (
-    <TouchableOpacity
-      onPress={onPress}
-      activeOpacity={0.8}
+    <View
       style={{
         backgroundColor: t.surface,
         borderRadius: 20,
@@ -166,14 +164,35 @@ export const SubjectCard: React.FC<SubjectCardProps> = ({
         ...shadow,
       }}
     >
-      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-        <Text style={{ fontWeight: '700', fontSize: 15, color: t.textPrimary, flex: 1, marginRight: 10 }} numberOfLines={2}>
+      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+        <Text style={{ fontWeight: '700', fontSize: 15, color: t.textPrimary, flex: 1, marginRight: 8 }} numberOfLines={2}>
           {Subject.title}
         </Text>
-        <View style={{ backgroundColor: '#f97316', width: 34, height: 34, borderRadius: 10, alignItems: 'center', justifyContent: 'center' }}>
+        {onDelete ? (
+          <TouchableOpacity
+            onPress={handleDeletePress}
+            disabled={deleting}
+            style={{
+              width: 34,
+              height: 34,
+              borderRadius: 10,
+              alignItems: 'center',
+              justifyContent: 'center',
+              backgroundColor: deleting ? '#9ca3af' : '#ef4444',
+              marginRight: 8,
+            }}
+          >
+            <Ionicons name={deleting ? 'hourglass-outline' : 'trash-outline'} size={16} color="white" />
+          </TouchableOpacity>
+        ) : null}
+        <TouchableOpacity
+          onPress={onPress}
+          activeOpacity={0.8}
+          style={{ backgroundColor: '#f97316', width: 34, height: 34, borderRadius: 10, alignItems: 'center', justifyContent: 'center' }}
+        >
           <Ionicons name="chevron-forward" size={16} color="white" />
-        </View>
+        </TouchableOpacity>
       </View>
-    </TouchableOpacity>
+    </View>
   );
 };

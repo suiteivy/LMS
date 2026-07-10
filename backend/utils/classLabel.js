@@ -5,8 +5,8 @@ function isPresent(value) {
 function buildClassLabel(classLike = {}) {
   const value = classLike && typeof classLike === 'object' ? classLike : {};
 
-  const levelLabel = isPresent(value.level_label)
-    ? String(value.level_label).trim()
+  const levelLabel = isPresent(value.class_type)
+    ? String(value.class_type).trim()
     : isPresent(value.form_level)
       ? 'Form'
       : 'Grade';

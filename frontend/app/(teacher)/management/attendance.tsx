@@ -1,5 +1,6 @@
 import { UnifiedHeader } from "@/components/common/UnifiedHeader";
 import { HelpTooltip } from "@/components/settings/HelpTooltip";
+import { ListItemSkeleton } from "@/components/ui/skeletons";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRealtimeQuery } from "@/hooks/useRealtimeQuery";
 import { useSubscriptionTier } from "@/hooks/useSubscriptionTier";
@@ -220,7 +221,7 @@ export default function AttendancePage() {
                     </View>
 
                     {loading ? (
-                        <ActivityIndicator size="large" color="#FF6900" className="mt-8" />
+                        <ListItemSkeleton loading={loading} count={5} label="Loading attendance roster..." />
                     ) : students.length === 0 ? (
                         <View className="bg-[#F6F8FA] dark:bg-[#161B22] p-8 rounded-xl items-center border border-[#D0D7DE] dark:border-[#21262D]">
                             <Text className="text-gray-500 dark:text-gray-400 font-bold text-xs uppercase tracking-widest">No students found</Text>

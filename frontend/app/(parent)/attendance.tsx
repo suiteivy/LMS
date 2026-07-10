@@ -1,4 +1,5 @@
 import { UnifiedHeader } from "@/components/common/UnifiedHeader";
+import { ListItemSkeleton } from "@/components/ui/skeletons";
 import { HelpTooltip } from "@/components/settings/HelpTooltip";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSubscriptionTier } from "@/hooks/useSubscriptionTier";
@@ -6,7 +7,7 @@ import { ParentService } from "@/services/ParentService";
 import { router, useLocalSearchParams } from "expo-router";
 import { Calendar as CalendarIcon, CheckCircle2, Clock, Search, XCircle } from "lucide-react-native";
 import React, { useEffect, useState } from "react";
-import { ActivityIndicator, RefreshControl, ScrollView, Text, TouchableOpacity, View } from "react-native";
+import { RefreshControl, ScrollView, Text, TouchableOpacity, View } from "react-native";
 import { useParentStudentContext } from "@/hooks/useParentStudentContext";
 import { formatClassLabel } from "@/utils/classLabel";
 
@@ -142,9 +143,7 @@ export default function StudentAttendancePage() {
           </View>
 
           {loading ? (
-            <View className="flex-1 items-center justify-center py-20">
-              <ActivityIndicator size="large" color="#FF6900" />
-            </View>
+            <ListItemSkeleton loading={loading} count={4} label="Loading attendance..." />
           ) : (
             <>
               {/* Attendance Hero */}

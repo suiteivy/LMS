@@ -6,20 +6,14 @@ const CACHE_TTL = 60000; // 60 seconds
 
 // ─── Plan rank helpers ────────────────────────────────────────────────────────
 //
-// Canonical plan IDs (stored in institutions.subscription_plan):
-//   trial | basic_basic | basic_pro | basic_premium
-//         | enterprise_basic | enterprise_pro | enterprise_premium
-//         | custom_basic | custom_pro | custom_premium
-//
-// Legacy IDs kept for backward compat: beta_free, basic, pro, premium
+// Canonical plan IDs: beta | basic | pro | premium
+// Legacy aliases map into these canonical tiers.
 
 const PLAN_ORDER = [
   'beta',
   'basic',
   'pro',
   'premium',
-  'custom',
-  'trial',
 ];
 
 // Normalise legacy/shorthand plan IDs to canonical ones
@@ -28,79 +22,33 @@ function normalisePlan(plan) {
     'free': 'beta',
     'beta_free': 'beta',
     'beta': 'beta',
-    'trial': 'trial',
     'basic': 'basic',
     'basic_basic': 'basic',
     'pro': 'pro',
     'basic_pro': 'pro',
     'premium': 'premium',
     'basic_premium': 'premium',
-    'enterprise': 'custom',
-    'enterprise_basic': 'custom',
-    'enterprise_pro': 'custom',
-    'enterprise_premium': 'custom',
-    'custom': 'custom',
-    'custom_basic': 'custom',
-    'custom_pro': 'custom',
-    'custom_premium': 'custom',
   };
-  const p = plan ? plan.toLowerCase() : 'trial';
-  return map[p] || p;
+  const p = plan ? plan.toLowerCase() : 'basic';
+  return map[p] || 'basic';
 }
 
 // Return a numeric rank (higher = more capable)
 function planRank(plan) {
   const idx = PLAN_ORDER.indexOf(normalisePlan(plan));
-  return idx === -1 ? 1 : idx; // Default to trial rank (1)
+  return idx === -1 ? 1 : idx; // Default to basic rank (1)
 }
 
 // ─── Student / Admin limits ───────────────────────────────────────────────────
 const PLAN_LIMITS = {
-  'beta': { maxStudents: 30, maxAdmins: 1 },
-  'trial': { maxStudents: Infinity, maxAdmins: Infinity },
-  'basic': { maxStudents: 900, maxAdmins: 1 },
-  'pro': { maxStudents: 1000, maxAdmins: 3 },
+  'beta': { maxStudents: 30, maxAdmins: 2 },
+  'basic': { maxStudents: 900, maxAdmins: Infinity },
+  'pro': { maxStudents: 1000, maxAdmins: Infinity },
   'premium': { maxStudents: 5000, maxAdmins: Infinity },
-  'custom': { maxStudents: Infinity, maxAdmins: Infinity },
 };
 
-// ─── Feature gate definitions ─────────────────────────────────────────────────
-// minPlan is the LOWEST canonical plan ID that unlocks the feature.
-const RESTRICTED_FEATURES = [
-  // ── Finance Base (Fees, Payments, Transactions) — basic+ (Rank 2) ──
-  { path: '/api/finance/fee-structures', minRank: planRank('basic') },
-  { path: '/api/finance/fees', minRank: planRank('basic') },
-  { path: '/api/finance/transactions', minRank: planRank('basic') },
-
-  // ── Advanced Finance (Funds, Allocations, Budgeting) — premium+ (Rank 4) ──
-  { path: '/api/finance/funds', minRank: planRank('premium') },
-  { path: '/api/finance/allocations', minRank: planRank('premium') },
-
-  // ── Analytics — premium+ (Rank 4) ──
-  { path: '/api/analytics', minRank: planRank('premium') },
-  { path: '/api/analytics/advanced', minRank: planRank('premium') },
-
-  // ── Custom reports — premium+ (Rank 4) ──
-  { path: '/api/reports/custom', minRank: planRank('premium') },
-
-  // ── Branding — premium+ (Rank 4) ──
-  { path: '/api/settings/branding', minRank: planRank('premium') },
-
-  // ── Bulk ops — premium+ (Rank 4) ──
-  { path: '/api/bulk', minRank: planRank('premium') },
-
-  // ── Attendance — pro+ (Rank 2) ──
-  { path: '/api/attendance', minRank: planRank('pro') },
-
-];
-
-// Write-specific restrictions (POST/PUT/DELETE) on library for basic
-const WRITE_RESTRICTED = [
-  { path: '/api/library', minRank: planRank('pro') },
-];
-
 /**
- * Middleware to check if the user's institution has an active subscription or a valid trial
+ * Middleware to check if the user's institution has an active subscription
  */
 const checkSubscription = async (req, res, next) => {
   try {
@@ -116,7 +64,7 @@ const checkSubscription = async (req, res, next) => {
     if (!institutionData || (now - institutionData.timestamp > CACHE_TTL)) {
       const { data: institution, error: instError } = await supabase
         .from('institutions')
-        .select('subscription_status, subscription_plan, trial_end_date, addon_library, addon_messaging, addon_diary, addon_bursary, addon_finance, addon_analytics, addon_attendance, custom_student_limit')
+        .select('subscription_status, subscription_plan, addon_library, addon_messaging, addon_diary, addon_bursary, custom_student_limit')
         .eq('id', institutionId)
         .single();
 
@@ -127,19 +75,10 @@ const checkSubscription = async (req, res, next) => {
 
       const canonicalPlan = normalisePlan(institution.subscription_plan);
       let status = institution.subscription_status;
-      const trialEnd = institution.trial_end_date ? new Date(institution.trial_end_date) : null;
+      let limits = PLAN_LIMITS[canonicalPlan] || PLAN_LIMITS['basic'];
 
-      // Auto-expire trial
-      if (canonicalPlan === 'trial' && trialEnd && new Date() > trialEnd && status === 'active') {
-        status = 'expired';
-        supabase.from('institutions').update({ subscription_status: 'expired' }).eq('id', institutionId)
-          .catch(err => console.error('Auto-expire update failed:', err));
-      }
-
-      let limits = PLAN_LIMITS[canonicalPlan] || PLAN_LIMITS['trial'];
-      
-      // Override limits for custom plan if specified
-      if (canonicalPlan === 'custom' && institution.custom_student_limit !== null && institution.custom_student_limit !== undefined) {
+      // Beta allows custom student limit override where configured.
+      if (canonicalPlan === 'beta' && institution.custom_student_limit !== null && institution.custom_student_limit !== undefined) {
         limits = { ...limits, maxStudents: institution.custom_student_limit };
       }
 
@@ -172,19 +111,10 @@ const checkSubscription = async (req, res, next) => {
       subscriptionCache.set(institutionId, institutionData);
     }
 
-    const { subscription_status, subscription_plan, addon_library, addon_messaging, addon_diary, addon_bursary, addon_finance, addon_analytics, addon_attendance } = institutionData.data;
+    const { subscription_status, subscription_plan, addon_library, addon_messaging, addon_diary, addon_bursary } = institutionData.data;
     const fullPath = req.originalUrl || req.url || '';
-    const currentRank = planRank(subscription_plan);
 
     // ── Feature gating ──────────────────────────────────────────────────────
-    // ── Trial/Bypass ────────────────────────────────────────────────────────
-    // Trials and special Beta Academy accounts (if flagged) can get full access
-    if (subscription_plan === 'trial' && subscription_status === 'active') {
-      req.institutionSubscription = subscription_status;
-      req.institutionPlan = subscription_plan;
-      return next();
-    }
-
     // Add-on-only gates for non-beta institutions.
     // Basic/Pro/Premium are capacity tiers; add-ons are independent feature flags.
     if (subscription_plan !== 'beta') {
@@ -223,41 +153,6 @@ const checkSubscription = async (req, res, next) => {
           code: 'ADDON_REQUIRED',
           requiredAddon: 'bursary',
         });
-      }
-    }
-
-    for (const feature of RESTRICTED_FEATURES) {
-      if (fullPath.includes(feature.path)) {
-        // Add-on overrides — each add-on is independently allocated by master admin
-        if (feature.path.startsWith('/api/library') && addon_library) continue;
-        if ((feature.path.startsWith('/api/messaging') || feature.path.startsWith('/api/messages')) && addon_messaging) continue;
-        if (feature.path.startsWith('/api/diary') && addon_diary) continue;
-        if (feature.path.startsWith('/api/bursary') && addon_bursary) continue;
-        if ((feature.path.startsWith('/api/finance') || feature.path.startsWith('/api/funds')) && addon_finance) continue;
-        if (feature.path.startsWith('/api/analytics') && addon_analytics) continue;
-        if (feature.path.startsWith('/api/attendance') && addon_attendance) continue;
-
-        if (currentRank < feature.minRank) {
-          const minPlanLabel = PLAN_ORDER[feature.minRank] || 'higher';
-          return res.status(403).json({
-            error: `Your current plan (${subscription_plan}) does not include this feature. Please upgrade to ${minPlanLabel} or above.`,
-            code: 'PLAN_INSUFFICIENT',
-            currentPlan: subscription_plan,
-            requiredPlan: PLAN_ORDER[feature.minRank],
-          });
-        }
-        // Write-specific library gating (basic_basic can only read without add-on)
-        if (req.method !== 'GET') {
-          for (const wf of WRITE_RESTRICTED) {
-            if (fullPath.includes(wf.path) && currentRank < wf.minRank && !addon_library) {
-              return res.status(403).json({
-                error: `Creating/editing library content requires at least ${PLAN_ORDER[wf.minRank]} or the Digital Library add-on.`,
-                code: 'PLAN_INSUFFICIENT_WRITE',
-              });
-            }
-          }
-        }
-        break; // Only check the most specific matching feature
       }
     }
 

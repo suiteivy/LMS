@@ -1,310 +1,486 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
-    View,
-    Text,
-    StyleSheet,
-    TouchableOpacity,
-    FlatList,
-    ActivityIndicator,
-    Platform,
-    RefreshControl,
-    TextInput
+  ActivityIndicator,
+  FlatList,
+  Linking,
+  Modal,
+  Platform,
+  SafeAreaView,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { Picker } from '@react-native-picker/picker';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { supabase } from '@/libs/supabase';
 import Toast from 'react-native-toast-message';
+import { TableRowSkeleton } from '@/components/ui/skeletons';
+
+import { useCurrency } from '@/contexts/CurrencyContext';
 import { useTheme } from '@/contexts/ThemeContext';
+import { supabase } from '@/libs/supabase';
 
-export default function MasterPayments() {
-    const { isDark } = useTheme();
-    const [payments, setPayments] = useState<any[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [refreshing, setRefreshing] = useState(false);
-    const [searchQuery, setSearchQuery] = useState('');
+type PaymentRow = {
+  id: string;
+  institution_id?: string | null;
+  amount: number;
+  type?: string | null;
+  direction?: string | null;
+  date?: string | null;
+  method?: string | null;
+  status?: string | null;
+  reference_id?: string | null;
+  meta?: Record<string, any> | null;
+  institutions?: { name?: string | null } | null;
+  users?: { first_name?: string | null; last_name?: string | null; email?: string | null } | null;
+};
 
-    const themeColors = {
-        bg: isDark ? '#0F0B2E' : '#f8fafc',
-        card: isDark ? '#13103A' : '#ffffff',
-        text: isDark ? '#ffffff' : '#0f172a',
-        subtext: isDark ? '#94a3b8' : '#64748b',
-        border: isDark ? 'rgba(255,255,255,0.05)' : '#e2e8f0',
-        primary: '#FF6B00'
+type SummaryRow = {
+  institution_id: string;
+  institution_name: string;
+  subscription_plan: string;
+  subscription_status: string;
+  expected_amount: number;
+  paid_amount: number;
+  balance_due: number;
+  excess_amount: number;
+  is_balanced: boolean;
+};
+
+const useThemeColors = (isDark: boolean) => ({
+  bg: isDark ? '#0D1117' : '#F6F8FA',
+  card: isDark ? '#161B22' : '#FFFFFF',
+  input: isDark ? '#0F141C' : '#F3F4F6',
+  border: isDark ? '#4B5563' : '#9CA3AF',
+  text: isDark ? '#F0F6FC' : '#1F2328',
+  sub: isDark ? '#8B949E' : '#57606A',
+  primary: '#FF6900',
+  success: '#1A7F37',
+  danger: '#CF222E',
+  warn: '#9A6700',
+});
+
+export default function MasterPaymentsPage() {
+  const { isDark } = useTheme();
+  const { formatAmount: formatMoney } = useCurrency();
+  const c = useThemeColors(isDark);
+
+  const [loading, setLoading] = useState(true);
+  const [payments, setPayments] = useState<PaymentRow[]>([]);
+  const [summary, setSummary] = useState<SummaryRow[]>([]);
+  const [query, setQuery] = useState('');
+
+  const [editOpen, setEditOpen] = useState(false);
+  const [editSaving, setEditSaving] = useState(false);
+  const [editing, setEditing] = useState<PaymentRow | null>(null);
+  const [editForm, setEditForm] = useState({
+    amount: '',
+    method: 'bank_transfer',
+    status: 'completed',
+    reference_id: '',
+    date: '',
+    notes: '',
+  });
+
+  const backendUrl = useMemo(() => {
+    let url = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:4001';
+    if (Platform.OS === 'android') url = url.replace('localhost', '10.0.2.2');
+    return url;
+  }, []);
+
+  const authedFetch = async (path: string, init?: RequestInit) => {
+    const { data } = await supabase.auth.getSession();
+    const token = data.session?.access_token;
+    const headers: Record<string, string> = {
+      Accept: 'application/json',
+      ...(init?.headers as Record<string, string>),
     };
+    if (token) headers.Authorization = `Bearer ${token}`;
+    if (init?.body && !headers['Content-Type']) headers['Content-Type'] = 'application/json';
 
-    const getBackendUrl = () => {
-        let url = process.env.EXPO_PUBLIC_API_URL || "http://localhost:4001";
-        if (Platform.OS === 'android') {
-            url = url.replace('localhost', '10.0.2.2');
+    const res = await fetch(`${backendUrl}${path}`, { ...init, headers });
+    let payload: any = null;
+    try {
+      payload = await res.json();
+    } catch {
+      payload = null;
+    }
+    if (!res.ok) throw new Error(payload?.error || `Request failed (${res.status})`);
+    return payload;
+  };
+
+  const loadData = async () => {
+    try {
+      setLoading(true);
+      const [payRes, summaryRes] = await Promise.all([
+        authedFetch('/api/master-admin/payments'),
+        authedFetch('/api/master-admin/payments/summary'),
+      ]);
+      setPayments(payRes?.payments || []);
+      setSummary(summaryRes?.summary || []);
+    } catch (e: any) {
+      Toast.show({ type: 'error', text1: 'Payments', text2: e.message || 'Failed to load payments', position: 'top' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const filteredPayments = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return payments;
+    return payments.filter((p) => {
+      const inst = p.institutions?.name || '';
+      const fullName = `${p.users?.first_name || ''} ${p.users?.last_name || ''}`.trim();
+      return (
+        inst.toLowerCase().includes(q) ||
+        fullName.toLowerCase().includes(q) ||
+        String(p.reference_id || '').toLowerCase().includes(q) ||
+        String(p.method || '').toLowerCase().includes(q)
+      );
+    });
+  }, [payments, query]);
+
+  const openEdit = (row: PaymentRow) => {
+    setEditing(row);
+    setEditForm({
+      amount: String(row.amount || ''),
+      method: row.method || 'bank_transfer',
+      status: row.status || 'completed',
+      reference_id: row.reference_id || '',
+      date: (row.date || '').slice(0, 10),
+      notes: String(row.meta?.notes || ''),
+    });
+    setEditOpen(true);
+  };
+
+  const saveEdit = async () => {
+    if (!editing?.id) return;
+    if (!editForm.amount) {
+      Toast.show({ type: 'error', text1: 'Payment', text2: 'Amount is required', position: 'top' });
+      return;
+    }
+    try {
+      setEditSaving(true);
+      await authedFetch(`/api/master-admin/payments/${editing.id}`, {
+        method: 'PUT',
+        body: JSON.stringify({
+          amount: Number(editForm.amount),
+          method: editForm.method,
+          status: editForm.status,
+          reference_id: editForm.reference_id,
+          date: editForm.date || null,
+          notes: editForm.notes,
+        }),
+      });
+      Toast.show({ type: 'success', text1: 'Payment', text2: 'Payment updated', position: 'top' });
+      setEditOpen(false);
+      setEditing(null);
+      await loadData();
+    } catch (e: any) {
+      Toast.show({ type: 'error', text1: 'Payment', text2: e.message || 'Unable to update payment', position: 'top' });
+    } finally {
+      setEditSaving(false);
+    }
+  };
+
+  const exportCsv = async () => {
+    try {
+      const { data } = await supabase.auth.getSession();
+      const token = data.session?.access_token;
+      if (!token) throw new Error('Missing session');
+      const url = `${backendUrl}/api/master-admin/payments/export`;
+
+      if (Platform.OS === 'web') {
+        const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+        if (!res.ok) {
+          const json = await res.json().catch(() => ({}));
+          throw new Error(json?.error || 'Export failed');
         }
-        return url;
-    };
+        const text = await res.text();
+        const blob = new Blob([text], { type: 'text/csv;charset=utf-8;' });
+        const blobUrl = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = blobUrl;
+        a.download = `platform-payments-${new Date().toISOString().slice(0, 10)}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(blobUrl);
+      } else {
+        await Linking.openURL(url);
+      }
 
-    const fetchPayments = async () => {
-        try {
-            setLoading(true);
-            const { data: { session } } = await supabase.auth.getSession();
-            if (!session) return;
+      Toast.show({ type: 'success', text1: 'Export', text2: 'Payments CSV exported', position: 'top' });
+    } catch (e: any) {
+      Toast.show({ type: 'error', text1: 'Export', text2: e.message || 'CSV export failed', position: 'top' });
+    }
+  };
 
-            const res = await fetch(`${getBackendUrl()}/api/master-admin/payments`, {
-                headers: {
-                    'Authorization': `Bearer ${session.access_token}`,
-                    'Accept': 'application/json'
-                }
-            });
-            const data = await res.json();
-            if (res.ok) {
-                setPayments(data.payments || []);
-            } else {
-                Toast.show({ type: 'error', text1: 'Error', text2: data.error });
-            }
-        } catch (err) {
-            console.error(err);
-            Toast.show({ type: 'error', text1: 'Error', text2: "Failed to fetch payments ledger" });
-        } finally {
-            setLoading(false);
-            setRefreshing(false);
+  const openReceipt = async (paymentId: string) => {
+    try {
+      const { data } = await supabase.auth.getSession();
+      const token = data.session?.access_token;
+      if (!token) throw new Error('Missing session');
+
+      const url = `${backendUrl}/api/master-admin/payments/${encodeURIComponent(paymentId)}/receipt`;
+      if (Platform.OS === 'web') {
+        const response = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+        if (!response.ok) {
+          const payload = await response.json().catch(() => ({}));
+          throw new Error(payload?.error || 'Failed to open receipt');
         }
-    };
+        const html = await response.text();
+        const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+        const blobUrl = URL.createObjectURL(blob);
+        window.open(blobUrl, '_blank', 'noopener,noreferrer');
+      } else {
+        await Linking.openURL(url);
+      }
+    } catch (e: any) {
+      Toast.show({ type: 'error', text1: 'Receipt', text2: e.message || 'Unable to open receipt', position: 'top' });
+    }
+  };
 
-    useEffect(() => {
-        fetchPayments();
-    }, []);
+  const formatAmount = (v: number) => formatMoney(Number(v || 0));
 
-    const onRefresh = () => {
-        setRefreshing(true);
-        fetchPayments();
-    };
+  return (
+    <SafeAreaView style={{ flex: 1, backgroundColor: c.bg }}>
+      <View style={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: 8, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+        <View>
+          <Text style={{ color: c.text, fontSize: 23, fontWeight: '800' }}>Payments</Text>
+          <Text style={{ color: c.sub, marginTop: 2 }}>Ledger, edits, export and reconciliation</Text>
+        </View>
 
-    const filteredPayments = payments.filter(p => 
-        p.institutions?.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        p.users?.full_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        p.users?.first_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        p.users?.last_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        p.reference_number?.toLowerCase().includes(searchQuery.toLowerCase())
-    );
+        <View style={{ flexDirection: 'row', gap: 12 }}>
+          <TouchableOpacity onPress={loadData}>
+            <MaterialCommunityIcons name="refresh" size={22} color={c.text} />
+          </TouchableOpacity>
+          <TouchableOpacity onPress={exportCsv}>
+            <MaterialCommunityIcons name="file-download-outline" size={22} color={c.primary} />
+          </TouchableOpacity>
+        </View>
+      </View>
 
-    const renderPaymentItem = ({ item }: { item: any }) => {
-        const date = new Date(item.date).toLocaleDateString();
-        const statusColor = item.status === 'completed' ? '#10b981' : (item.status === 'pending' ? '#f59e0b' : '#f43f5e');
+      <View style={{ paddingHorizontal: 16, marginTop: 6 }}>
+        <TextInput
+          value={query}
+          onChangeText={setQuery}
+          placeholder="Search institution, user, method, reference"
+          placeholderTextColor={c.sub}
+          style={{
+            borderWidth: 1,
+            borderColor: c.border,
+            borderRadius: 12,
+            paddingHorizontal: 12,
+            paddingVertical: 10,
+            color: c.text,
+            backgroundColor: c.card,
+          }}
+        />
+      </View>
 
-        return (
-            <View style={[styles.card, { backgroundColor: themeColors.card, borderColor: themeColors.border }]}>
-                <View style={styles.cardHeader}>
-                    <View style={styles.instInfo}>
-                        <Text style={[styles.instName, { color: themeColors.text }]}>{item.institutions?.name || 'Unknown Institution'}</Text>
-                        <Text style={[styles.subtext, { color: themeColors.subtext }]}>
-                            {item.users?.first_name ? `${item.users.first_name} ${item.users.last_name || ''}`.trim() : (item.users?.full_name || 'Staff')}
-                        </Text>
-                    </View>
-                    <View style={[styles.statusBadge, { backgroundColor: `${statusColor}15` }]}>
-                        <Text style={[styles.statusText, { color: statusColor }]}>{item.status?.toUpperCase()}</Text>
-                    </View>
+      <View style={{ paddingHorizontal: 16, marginTop: 12 }}>
+        <Text style={{ color: c.text, fontWeight: '800', marginBottom: 8 }}>Institution Reconciliation</Text>
+        <View style={{ borderWidth: 1, borderColor: c.border, borderRadius: 12, backgroundColor: c.card, padding: 10 }}>
+          {summary.length === 0 ? (
+            <Text style={{ color: c.sub }}>No summary rows.</Text>
+          ) : (
+            <FlatList
+              data={summary}
+              keyExtractor={(i) => i.institution_id}
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              renderItem={({ item }) => {
+                const badge = item.balance_due > 0 ? 'Balance Due' : item.excess_amount > 0 ? 'Excess' : 'Balanced';
+                const badgeColor = item.balance_due > 0 ? c.warn : item.excess_amount > 0 ? c.success : c.success;
+                return (
+                  <View style={{ borderWidth: 1, borderColor: c.border, borderRadius: 12, padding: 10, marginRight: 10, minWidth: 240, backgroundColor: c.bg }}>
+                    <Text style={{ color: c.text, fontWeight: '800' }} numberOfLines={1}>{item.institution_name}</Text>
+                    <Text style={{ color: c.sub, marginTop: 2 }}>{String(item.subscription_plan || '').toUpperCase()}  •  {String(item.subscription_status || '').toUpperCase()}</Text>
+                    <Text style={{ color: c.sub, marginTop: 6 }}>Expected: {formatAmount(item.expected_amount)}</Text>
+                    <Text style={{ color: c.sub, marginTop: 2 }}>Paid: {formatAmount(item.paid_amount)}</Text>
+                    {item.balance_due > 0 && <Text style={{ color: c.warn, marginTop: 2, fontWeight: '700' }}>Balance: {formatAmount(item.balance_due)}</Text>}
+                    {item.excess_amount > 0 && <Text style={{ color: c.success, marginTop: 2, fontWeight: '700' }}>Excess: {formatAmount(item.excess_amount)}</Text>}
+                    <Text style={{ color: badgeColor, marginTop: 6, fontWeight: '800' }}>{badge}</Text>
+                  </View>
+                );
+              }}
+            />
+          )}
+        </View>
+      </View>
+
+      {loading ? (
+        <View style={{ paddingHorizontal: 16, paddingTop: 12, paddingBottom: 80 }}>
+          <TableRowSkeleton loading={loading} columns={5} count={8} label="Loading payments..." />
+        </View>
+      ) : (
+        <FlatList
+          data={filteredPayments}
+          keyExtractor={(i) => i.id}
+          contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 12, paddingBottom: 80 }}
+          renderItem={({ item }) => {
+            const status = String(item.status || 'unknown').toLowerCase();
+            const statusColor = status === 'completed' ? c.success : status === 'pending' ? c.warn : c.danger;
+            const displayUser = `${item.users?.first_name || ''} ${item.users?.last_name || ''}`.trim() || 'System';
+            return (
+              <View
+                style={{
+                  backgroundColor: c.card,
+                  borderColor: c.border,
+                  borderWidth: 1,
+                  borderRadius: 14,
+                  padding: 14,
+                  marginBottom: 10,
+                }}
+              >
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <View style={{ flex: 1, paddingRight: 8 }}>
+                    <Text style={{ color: c.text, fontWeight: '800' }}>{item.institutions?.name || 'Unknown Institution'}</Text>
+                    <Text style={{ color: c.sub, marginTop: 2 }}>{displayUser}</Text>
+                  </View>
+                  <Text style={{ color: statusColor, fontWeight: '800' }}>{String(item.status || '').toUpperCase()}</Text>
                 </View>
 
-                <View style={styles.divider} />
+                <Text style={{ color: c.text, fontSize: 18, fontWeight: '800', marginTop: 8 }}>{formatAmount(item.amount)}</Text>
+                <Text style={{ color: c.sub, marginTop: 2 }}>
+                  {String(item.method || '').toUpperCase()}  •  {String(item.date || '').slice(0, 10)}
+                </Text>
+                <Text style={{ color: c.sub, marginTop: 2 }}>Ref: {item.reference_id || 'N/A'}</Text>
 
-                <View style={styles.cardContent}>
-                    <View style={styles.infoRow}>
-                        <MaterialCommunityIcons name="cash-multiple" size={16} color={themeColors.subtext} />
-                        <Text style={[styles.amountText, { color: themeColors.text }]}>
-                            {item.currency || 'KES'} {Number(item.amount).toLocaleString()}
-                        </Text>
-                    </View>
-                    <View style={styles.infoRow}>
-                        <MaterialCommunityIcons name="credit-card-outline" size={16} color={themeColors.subtext} />
-                        <Text style={[styles.infoLabel, { color: themeColors.subtext }]}>Method: </Text>
-                        <Text style={[styles.infoValue, { color: themeColors.text }]}>{item.payment_method?.toUpperCase() || 'CASH'}</Text>
-                    </View>
-                    <View style={styles.infoRow}>
-                        <MaterialCommunityIcons name="calendar" size={16} color={themeColors.subtext} />
-                        <Text style={[styles.infoLabel, { color: themeColors.subtext }]}>Date: </Text>
-                        <Text style={[styles.infoValue, { color: themeColors.text }]}>{date}</Text>
-                    </View>
-                    {item.reference_number && (
-                        <View style={styles.infoRow}>
-                            <MaterialCommunityIcons name="identifier" size={16} color={themeColors.subtext} />
-                            <Text style={[styles.infoLabel, { color: themeColors.subtext }]}>Ref: </Text>
-                            <Text style={[styles.infoValue, { color: themeColors.text }]}>{item.reference_number}</Text>
-                        </View>
-                    )}
+                <View style={{ marginTop: 10, flexDirection: 'row', gap: 10 }}>
+                  <TouchableOpacity onPress={() => openEdit(item)}>
+                    <Text style={{ color: c.primary, fontWeight: '700' }}>Edit</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={() => openReceipt(item.id)}>
+                    <Text style={{ color: c.text, fontWeight: '700' }}>Receipt</Text>
+                  </TouchableOpacity>
                 </View>
+              </View>
+            );
+          }}
+          ListEmptyComponent={
+            <View style={{ alignItems: 'center', paddingTop: 40 }}>
+              <MaterialCommunityIcons name="cash-off" size={48} color={c.border} />
+              <Text style={{ color: c.sub, marginTop: 10 }}>No payments found.</Text>
             </View>
-        );
-    };
+          }
+        />
+      )}
 
-    return (
-        <SafeAreaView style={[styles.container, { backgroundColor: themeColors.bg }]} edges={['top', 'left', 'right']}>
-            <View style={styles.header}>
-                <View>
-                    <Text style={[styles.title, { color: themeColors.text }]}>Platform Ledger</Text>
-                    <Text style={[styles.subtitle, { color: themeColors.subtext }]}>Global Transaction History</Text>
-                </View>
-                <View style={[styles.statBadge, { backgroundColor: `${themeColors.primary}20` }]}>
-                    <Text style={[styles.statText, { color: themeColors.primary }]}>
-                        {payments.length} TOTAL
-                    </Text>
-                </View>
+      <Modal visible={editOpen} animationType="fade" transparent>
+        <View style={overlayStyle}>
+          <View style={[modalCardStyle, { backgroundColor: c.card, borderColor: c.border }]}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+              <Text style={{ color: c.text, fontSize: 20, fontWeight: '800' }}>Edit Payment</Text>
+              <TouchableOpacity onPress={() => setEditOpen(false)}>
+                <MaterialCommunityIcons name="close" size={22} color={c.sub} />
+              </TouchableOpacity>
             </View>
 
-            <View style={styles.searchContainer}>
-                <View style={[styles.searchBar, { backgroundColor: themeColors.card, borderColor: themeColors.border }]}>
-                    <MaterialCommunityIcons name="magnify" size={20} color={themeColors.subtext} />
-                    <TextInput
-                        style={[styles.searchInput, { color: themeColors.text }]}
-                        placeholder="Search by institution, name or reference..."
-                        placeholderTextColor={themeColors.subtext}
-                        value={searchQuery}
-                        onChangeText={setSearchQuery}
-                    />
-                </View>
+            <Label c={c} text="Amount" />
+            <Input c={c} value={editForm.amount} keyboardType="numeric" onChangeText={(v) => setEditForm((p) => ({ ...p, amount: v }))} />
+
+            <Label c={c} text="Method" />
+            <View style={pickerWrap(c)}>
+              <Picker selectedValue={editForm.method} onValueChange={(v) => setEditForm((p) => ({ ...p, method: v }))} style={{ color: c.text }}>
+                <Picker.Item label="BANK_TRANSFER" value="bank_transfer" />
+                <Picker.Item label="MOBILE_MONEY" value="mobile_money" />
+                <Picker.Item label="CARD" value="card" />
+                <Picker.Item label="CASH" value="cash" />
+                <Picker.Item label="MANUAL" value="manual" />
+              </Picker>
             </View>
 
-            {loading && !refreshing ? (
-                <View style={styles.center}>
-                    <ActivityIndicator size="large" color={themeColors.primary} />
-                </View>
-            ) : (
-                <FlatList
-                    data={filteredPayments}
-                    keyExtractor={item => item.id}
-                    renderItem={renderPaymentItem}
-                    contentContainerStyle={styles.listContent}
-                    refreshControl={
-                        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={themeColors.primary} />
-                    }
-                    ListEmptyComponent={
-                        <View style={styles.emptyContainer}>
-                            <MaterialCommunityIcons name="cash-off" size={64} color={themeColors.border} />
-                            <Text style={[styles.emptyText, { color: themeColors.subtext }]}>No transactions found.</Text>
-                        </View>
-                    }
-                />
-            )}
-        </SafeAreaView>
-    );
+            <Label c={c} text="Status" />
+            <View style={pickerWrap(c)}>
+              <Picker selectedValue={editForm.status} onValueChange={(v) => setEditForm((p) => ({ ...p, status: v }))} style={{ color: c.text }}>
+                <Picker.Item label="COMPLETED" value="completed" />
+                <Picker.Item label="PENDING" value="pending" />
+                <Picker.Item label="FAILED" value="failed" />
+              </Picker>
+            </View>
+
+            <Label c={c} text="Reference" />
+            <Input c={c} value={editForm.reference_id} onChangeText={(v) => setEditForm((p) => ({ ...p, reference_id: v }))} />
+
+            <Label c={c} text="Date (YYYY-MM-DD)" />
+            <Input c={c} value={editForm.date} onChangeText={(v) => setEditForm((p) => ({ ...p, date: v }))} />
+
+            <Label c={c} text="Notes" />
+            <Input c={c} value={editForm.notes} onChangeText={(v) => setEditForm((p) => ({ ...p, notes: v }))} />
+
+            <TouchableOpacity
+              onPress={saveEdit}
+              disabled={editSaving}
+              style={{ marginTop: 14, backgroundColor: c.primary, borderRadius: 12, paddingVertical: 12, alignItems: 'center', opacity: editSaving ? 0.7 : 1 }}
+            >
+              {editSaving ? <ActivityIndicator color="#fff" /> : <Text style={{ color: '#fff', fontWeight: '800' }}>Save Payment</Text>}
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+    </SafeAreaView>
+  );
 }
 
-const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-    },
-    header: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        paddingHorizontal: 20,
-        paddingTop: 10,
-        paddingBottom: 20,
-    },
-    title: {
-        fontSize: 24,
-        fontWeight: '800',
-    },
-    subtitle: {
-        fontSize: 14,
-        marginTop: 2,
-    },
-    statBadge: {
-        paddingHorizontal: 12,
-        paddingVertical: 6,
-        borderRadius: 20,
-    },
-    statText: {
-        fontSize: 12,
-        fontWeight: '800',
-    },
-    searchContainer: {
-        paddingHorizontal: 20,
-        marginBottom: 16,
-    },
-    searchBar: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingHorizontal: 12,
-        height: 48,
+function Label({ c, text }: { c: ReturnType<typeof useThemeColors>; text: string }) {
+  return <Text style={{ color: c.sub, fontSize: 12, marginTop: 8, marginBottom: 6, fontWeight: '700' }}>{text}</Text>;
+}
+
+function Input({
+  c,
+  value,
+  onChangeText,
+  keyboardType,
+}: {
+  c: ReturnType<typeof useThemeColors>;
+  value: string;
+  onChangeText: (v: string) => void;
+  keyboardType?: 'default' | 'numeric';
+}) {
+  return (
+    <TextInput
+      value={value}
+      onChangeText={onChangeText}
+      keyboardType={keyboardType}
+      style={{
+        borderWidth: 1,
+        borderColor: c.border,
         borderRadius: 12,
-        borderWidth: 1,
-    },
-    searchInput: {
-        flex: 1,
-        marginLeft: 8,
-        fontSize: 14,
-    },
-    listContent: {
-        paddingHorizontal: 20,
-        paddingBottom: 40,
-    },
-    card: {
-        borderRadius: 16,
-        borderWidth: 1,
-        padding: 16,
-        marginBottom: 12,
-        boxShadow: [{ offsetX: 0, offsetY: 2, blurRadius: 8, color: 'rgba(0, 0, 0, 0.1)' }],
-        shadowColor: '#000',
-        },
-    cardHeader: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'flex-start',
-        marginBottom: 12,
-    },
-    instInfo: {
-        flex: 1,
-    },
-    instName: {
-        fontSize: 16,
-        fontWeight: '700',
-        marginBottom: 2,
-    },
-    subtext: {
-        fontSize: 12,
-    },
-    statusBadge: {
-        paddingHorizontal: 8,
-        paddingVertical: 4,
-        borderRadius: 6,
-    },
-    statusText: {
-        fontSize: 10,
-        fontWeight: '800',
-    },
-    divider: {
-        height: 1,
-        backgroundColor: 'rgba(0,0,0,0.05)',
-        marginBottom: 12,
-    },
-    cardContent: {
-        gap: 8,
-    },
-    infoRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 8,
-    },
-    amountText: {
-        fontSize: 18,
-        fontWeight: '800',
-    },
-    infoLabel: {
-        fontSize: 13,
-    },
-    infoValue: {
-        fontSize: 13,
-        fontWeight: '600',
-    },
-    center: {
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    emptyContainer: {
-        alignItems: 'center',
-        marginTop: 60,
-        opacity: 0.5,
-    },
-    emptyText: {
-        marginTop: 16,
-        fontSize: 16,
-    }
+        paddingHorizontal: 12,
+        paddingVertical: 10,
+        color: c.text,
+        backgroundColor: c.input,
+      }}
+      placeholderTextColor={c.sub}
+    />
+  );
+}
+
+const overlayStyle = {
+  flex: 1,
+  backgroundColor: 'rgba(0,0,0,0.5)',
+  justifyContent: 'center' as const,
+  alignItems: 'center' as const,
+  padding: 16,
+};
+
+const modalCardStyle = {
+  width: '100%' as const,
+  maxWidth: 560,
+  borderRadius: 18,
+  borderWidth: 1,
+  padding: 16,
+};
+
+const pickerWrap = (c: ReturnType<typeof useThemeColors>) => ({
+  borderWidth: 1,
+  borderColor: c.border,
+  borderRadius: 12,
+  backgroundColor: c.input,
 });

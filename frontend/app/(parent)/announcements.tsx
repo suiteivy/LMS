@@ -1,12 +1,13 @@
 import { UnifiedHeader } from "@/components/common/UnifiedHeader";
 import { HelpTooltip } from "@/components/settings/HelpTooltip";
+import { ListItemSkeleton } from "@/components/ui/skeletons";
 import { useSubscriptionTier } from "@/hooks/useSubscriptionTier";
 import { ParentService } from "@/services/ParentService";
 import { useLocalSearchParams } from "expo-router";
 import { router } from "expo-router";
 import { AlertTriangle, Bell, Calendar, ChevronRight, Info, MessageSquare } from "lucide-react-native";
 import React, { useEffect, useState } from "react";
-import { ActivityIndicator, RefreshControl, ScrollView, Text, TouchableOpacity, View } from "react-native";
+import { RefreshControl, ScrollView, Text, TouchableOpacity, View } from "react-native";
 import { useParentStudentContext } from "@/hooks/useParentStudentContext";
 
 const getNotificationConfig = (type: string) => {
@@ -61,8 +62,8 @@ export default function StudentAnnouncementsPage() {
 
   if (loading && !refreshing) {
     return (
-      <View className="flex-1 justify-center items-center bg-[#F6F8FA] dark:bg-[#161B22]">
-        <ActivityIndicator size="large" color="#FF6900" />
+      <View className="flex-1 bg-[#F6F8FA] dark:bg-[#161B22] px-4 pt-6">
+        <ListItemSkeleton loading={loading} count={4} label="Loading announcements..." />
       </View>
     );
   }

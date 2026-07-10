@@ -1,7 +1,7 @@
 export interface ClassLabelSource {
   id?: string;
   name?: string | null;
-  level_label?: string | null;
+  class_type?: string | null;
   grade_level?: string | number | null;
   form_level?: string | number | null;
   stream?: string | null;
@@ -14,8 +14,8 @@ function hasValue(value: unknown): boolean {
 export function formatClassLabel(source?: ClassLabelSource | null): string {
   if (!source) return '';
 
-  const levelLabel = hasValue(source.level_label)
-    ? String(source.level_label).trim()
+  const levelLabel = hasValue(source.class_type)
+    ? String(source.class_type).trim()
     : hasValue(source.form_level)
       ? 'Form'
       : 'Grade';

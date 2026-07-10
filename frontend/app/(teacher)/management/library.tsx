@@ -1,4 +1,5 @@
 import { UnifiedHeader } from "@/components/common/UnifiedHeader";
+import { ListItemSkeleton } from "@/components/ui/skeletons";
 import { useAuth } from "@/contexts/AuthContext";
 import { LibraryAPI } from "@/services/LibraryService";
 import { FrontendBook } from "@/types/types";
@@ -121,7 +122,7 @@ export default function TeacherLibraryPage() {
                         </View>
 
                         {loading ? (
-                            <ActivityIndicator size="large" color="#FF6900" className="mt-8" />
+                            <ListItemSkeleton loading={loading} count={4} label="Loading resources..." />
                         ) : filteredBooks.length === 0 ? (
                             <View className="bg-[#FFFFFF] dark:bg-[#161B22] p-12 rounded-[40px] items-center border border-[#D0D7DE] dark:border-[#21262D] border-dashed mt-4">
                                 <BookOpen size={48} color="#e2e8f0" style={{ opacity: 0.5 }} />

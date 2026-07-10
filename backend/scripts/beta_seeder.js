@@ -1,12 +1,13 @@
 const { createClient } = require('@supabase/supabase-js');
 const dotenv = require('dotenv');
 const path = require('path');
+const { assertStrongSeedPassword } = require('../utils/seedPasswordPolicy.js');
 
 dotenv.config({ path: path.join(__dirname, '../.env') });
 
 const SUPABASE_URL = process.env.SUPABASE_URL || process.env.EXPO_PUBLIC_SUPABASE_URL;
 const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
-const TEST_PASSWORD = "CloudoraBeta2026!";
+const TEST_PASSWORD = assertStrongSeedPassword(process.env.BETA_TEST_PASSWORD, 'BETA_TEST_PASSWORD');
 
 const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
 
@@ -31,9 +32,6 @@ async function seed() {
         subscription_status: 'active',
         addon_messaging: true,
         addon_library: true,
-        addon_finance: true,
-        addon_attendance: true,
-        addon_analytics: true,
         addon_bursary: true,
         addon_diary: true,
         category_id: 'ef0056a3-3e0c-4e31-b6c7-119873196624', // Secondary

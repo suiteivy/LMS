@@ -57,9 +57,30 @@ export const SubjectAPI = {
     createSubject: async (data: Partial<SubjectData>): Promise<SubjectData> => {
         try {
             const response = await api.post("/subjects", data);
-            return response.data;
+            return response.data?.data || response.data;
         } catch (error) {
             console.error("Create subject error", error);
+            throw error;
+        }
+    },
+
+    // Delete a subject
+    deleteSubject: async (id: string): Promise<void> => {
+        try {
+            await api.delete(`/subjects/${id}`);
+        } catch (error) {
+            console.error("Delete subject error", error);
+            throw error;
+        }
+    },
+
+    // Update a subject
+    updateSubject: async (id: string, data: Partial<SubjectData>): Promise<SubjectData> => {
+        try {
+            const response = await api.put(`/subjects/${id}`, data);
+            return response.data;
+        } catch (error) {
+            console.error("Update subject error", error);
             throw error;
         }
     },

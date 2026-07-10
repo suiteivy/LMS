@@ -99,16 +99,16 @@ export default function AcademicSetupPage() {
 
     // ─── Theme helpers ─────────────────────────────────────
     const bg = isDark ? '#161B22' : '#FFFFFF';
-    const card = isDark ? '#161B22' : '#F6F8FA';
+    const card = isDark ? '#161B22' : '#FFFFFF';
     const border = isDark ? '#21262D' : '#D0D7DE';
-    const textPrimary = isDark ? '#FFFFFF' : '#111827';
-    const textSecondary = isDark ? '#9CA3AF' : '#6B7280';
+    const textPrimary = isDark ? '#F1F5F9' : '#1E293B';
+    const textSecondary = isDark ? '#9CA3AF' : '#64748B';
     const textMuted = isDark ? '#6B7280' : '#9CA3AF';
     const inputBg = isDark ? '#161B22' : '#EAEEF2';
     const inputBorder = isDark ? '#21262D' : '#D0D7DE';
-    const pillInactive = isDark ? '#0F0B2E' : '#EAEEF2';
+    const pillInactive = isDark ? '#1C2128' : '#EAEEF2';
     const pillInactiveBorder = isDark ? '#21262D' : '#D0D7DE';
-    const pillInactiveText = isDark ? '#9CA3AF' : '#4B5563';
+    const pillInactiveText = isDark ? '#9CA3AF' : '#64748B';
     const sectionBg = isDark ? '#161B22' : '#EAEEF2';
     const accent = '#FF6900';
 
@@ -688,42 +688,52 @@ export default function AcademicSetupPage() {
             />
 
             {/* ── Tab Bar ── */}
-            <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                style={{ maxHeight: 56 }}
-                contentContainerStyle={{ paddingHorizontal: 16, paddingVertical: 8, gap: 8 }}
-            >
-                {TABS.map(tab => {
-                    const isActive = activeTab === tab.key;
-                    return (
-                        <TouchableOpacity
-                            key={tab.key}
-                            onPress={() => setActiveTab(tab.key)}
-                            style={{
-                                flexDirection: 'row',
-                                alignItems: 'center',
-                                paddingHorizontal: 16,
-                                paddingVertical: 10,
-                                borderRadius: 14,
-                                borderWidth: 1.5,
-                                backgroundColor: isActive ? accent : pillInactive,
-                                borderColor: isActive ? accent : pillInactiveBorder,
-                            }}
-                        >
-                            <tab.icon size={16} color={isActive ? 'white' : pillInactiveText} />
-                            <Text style={{
-                                fontSize: 13,
-                                fontWeight: '700',
-                                color: isActive ? 'white' : pillInactiveText,
-                                marginLeft: 6,
-                            }}>
-                                {tab.label}
-                            </Text>
-                        </TouchableOpacity>
-                    );
-                })}
-            </ScrollView>
+            <View style={{ backgroundColor: card, borderBottomWidth: 1, borderBottomColor: border }}>
+                <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    style={{ backgroundColor: card, maxHeight: 56 }}
+                    contentContainerStyle={{
+                        paddingLeft: 16,
+                        paddingRight: 16,
+                        paddingVertical: 8,
+                        justifyContent: 'flex-start',
+                        alignItems: 'center',
+                        gap: 8,
+                    }}
+                >
+                    {TABS.map(tab => {
+                        const isActive = activeTab === tab.key;
+                        return (
+                            <TouchableOpacity
+                                key={tab.key}
+                                onPress={() => setActiveTab(tab.key)}
+                                style={{
+                                    flexDirection: 'row',
+                                    alignItems: 'center',
+                                    justifyContent: 'flex-start',
+                                    paddingHorizontal: 16,
+                                    paddingVertical: 10,
+                                    borderRadius: 14,
+                                    borderWidth: 1.5,
+                                    backgroundColor: isActive ? accent : pillInactive,
+                                    borderColor: isActive ? accent : pillInactiveBorder,
+                                }}
+                            >
+                                <tab.icon size={16} color={isActive ? 'white' : pillInactiveText} />
+                                <Text style={{
+                                    fontSize: 13,
+                                    fontWeight: '700',
+                                    color: isActive ? 'white' : pillInactiveText,
+                                    marginLeft: 6,
+                                }}>
+                                    {tab.label}
+                                </Text>
+                            </TouchableOpacity>
+                        );
+                    })}
+                </ScrollView>
+            </View>
 
             {/* ── Content ── */}
             <ScrollView

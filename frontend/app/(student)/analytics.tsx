@@ -4,7 +4,6 @@ import {
   Text,
   ScrollView,
   TouchableOpacity,
-  ActivityIndicator,
   RefreshControl,
 } from "react-native";
 import { TrendingUp, BarChart3, Award, BookOpen } from "lucide-react-native";
@@ -15,6 +14,7 @@ import { GradingAPI } from "@/services/GradingService";
 import { getPerformanceLabel } from "@/utils/getPerformanceLabel";
 import { TrendChart, SubjectTrendCard } from "@/components/common/TrendChart";
 import { UnifiedHeader } from "@/components/common/UnifiedHeader";
+import { ListItemSkeleton } from "@/components/ui/skeletons";
 
 export default function StudentAnalyticsPage() {
   const { studentId, user, isDemo } = useAuth();
@@ -112,7 +112,7 @@ export default function StudentAnalyticsPage() {
       >
         <View className="p-4">
           {loading ? (
-            <ActivityIndicator size="large" color="#FF6B00" className="mt-12" />
+            <ListItemSkeleton loading={loading} count={4} label="Loading analytics..." />
           ) : !hasData ? (
             <View className="bg-white p-8 rounded-2xl border border-gray-100 items-center mt-6">
               <Award size={32} color="#e5e7eb" />

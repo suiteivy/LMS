@@ -132,6 +132,14 @@ const rateLimiters = {
         differentiateByUser: true
     }),
 
+    // Lighter limiter for live email existence checks on forgot-password UI
+    passwordResetCheckEmail: createRateLimiter({
+        windowMs: 60 * 1000, // 1 minute
+        maxRequests: 30,
+        keyPrefix: 'pwreset-check-email',
+        differentiateByUser: false
+    }),
+
     // Moderate limit for general API
     api: createRateLimiter({
         windowMs: 60 * 1000, // 1 minute

@@ -26,7 +26,7 @@ import {
 type ClassRow = {
   id: string;
   name?: string;
-  level_label?: string;
+  class_type?: string;
   grade_level?: number | string | null;
   form_level?: number | string | null;
   stream?: string | null;

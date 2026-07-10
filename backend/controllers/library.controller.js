@@ -225,6 +225,7 @@ exports.listBooks = async (req, res) => {
       .from("books") // Changed from library_items
       .select("*")
       .eq("institution_id", institution_id)
+      .is("archived_at", null)
       .order("created_at", { ascending: false });
 
     if (!includeUnavailable) {
@@ -259,6 +260,7 @@ exports.issueBook = async (req, res) => {
       .select("*")
       .eq("id", bookId)
       .eq("institution_id", institution_id)
+      .is("archived_at", null)
       .single();
 
     if (itemErr || !item) return res.status(404).json({ error: "Book not found." });
@@ -331,6 +333,7 @@ exports.borrowBook = async (req, res) => {
       .select("*")
       .eq("id", bookId)
       .eq("institution_id", institution_id)
+      .is("archived_at", null)
       .single();
 
     if (itemErr || !item) return res.status(404).json({ error: "Book not found." });
@@ -381,28 +384,6 @@ exports.borrowBook = async (req, res) => {
 
     if (loanErr) return res.status(500).json({ error: loanErr.message });
 
-    // Decrement stock immediately
-    // Note: The trigger might handle this too, check schema triggers.
-    // Assuming manual update is safer if trigger is conditional or missing.
-    // The Schema shows a trigger `tr_validate_borrow`. It DECREMENTS on insert.
-    // So we MIGHT NOT need to update here if the trigger is active.
-    // However, if the trigger fails or is missing on the OLD table (`borrowed_books`), we should check.
-    // `schema.sql` shows `borrowed_books` has `tr_validate_borrow`.
-    // It updates `books` available_quantity.
-    // So we can SKIP manual update if trigger works. 
-    // But to be safe (if trigger is broken/missing), let's rely on trigger OR do it here?
-    // Let's assume the trigger works as per schema.sql line 430. 
-    // Wait, line 430 creates `tr_validate_borrow` on `borrowed_books`.
-    // It decrements `books`.
-    // So I should NOT decrement manually to avoid double decrement.
-    // BUT the old controller DID decrement manually.
-    // I will COMMENT OUT the manual decrement to rely on trigger, or check if it fails.
-    // Actually, safe to just let trigger handle it. If trigger is missing, stock won't update.
-    // But stock update is critical.
-    // Let's check schema.sql again.
-    // It has `_validate_and_decrement_book` triggered BEFORE INSERT.
-    // So, I should REMOVE the manual update.
-
     return res.status(201).json({ message: "Borrowed successfully", borrow: loan, due_date: dueDate });
   } catch (e) {
     console.error("borrowBook error:", e);
@@ -446,13 +427,7 @@ exports.returnBook = async (req, res) => {
 
     if (updErr) return res.status(500).json({ error: updErr.message });
 
-    // Trigger likely handles increment too? 
-    // Schema doesn't show a 'return' trigger explicitly decremented/incremented in the snippet I saw.
-    // WAIT. The snippet `schema.sql` only shows `tr_validate_borrow` BEFORE INSERT.
-    // It does NOT show a trigger for UPDATE (return).
-    // So I MUST increment manually.
-
-    // Increment stock
+    // Increment stock on return (borrow insert decrement is handled by DB trigger)
     const { data: item } = await supabase.from('books').select('available_quantity').eq('id', loan.book_id).single();
     if (item) {
       await supabase.from('books').update({ available_quantity: item.available_quantity + 1 }).eq('id', loan.book_id);
@@ -607,19 +582,151 @@ exports.deleteBook = async (req, res) => {
     if (!bookId) return res.status(400).json({ error: "bookId is required" });
 
     const { error } = await supabase
-      .from("books") // Changed from library_items
-      .delete()
+      .from("books")
+      .update({ archived_at: new Date().toISOString(), updated_at: new Date().toISOString() })
       .eq("id", bookId)
-      .eq("institution_id", institution_id);
+      .eq("institution_id", institution_id)
+      .is("archived_at", null);
 
     if (error) return res.status(500).json({ error: error.message });
-    return res.json({ message: "Book deleted" });
+    return res.json({ message: "Book archived" });
   } catch (e) {
     console.error("deleteBook error:", e);
     return res.status(500).json({ error: "Server error" });
   }
 };
 
-exports.rejectBorrowRequest = exports.updateBorrowStatus;
-exports.sendReminder = (_req, res) => { res.json({ message: "Reminder sent" }) };
-exports.extendDueDate = (_req, res) => { res.json({ message: "Extended" }) };
+exports.rejectBorrowRequest = async (req, res) => {
+  try {
+    const { userRole } = req;
+    const { borrowId } = req.params;
+
+    if (!["admin", "teacher"].includes(userRole)) {
+      return res.status(403).json({ error: "Unauthorized" });
+    }
+
+    const { data: loan, error: fetchErr } = await supabase
+      .from("borrowed_books")
+      .select("id, status, returned_at, institution_id")
+      .eq("id", borrowId)
+      .eq("institution_id", req.institution_id)
+      .single();
+
+    if (fetchErr || !loan) return res.status(404).json({ error: "Loan not found" });
+    if (loan.status === "returned" || loan.returned_at) {
+      return res.status(409).json({ error: "Cannot reject a returned loan" });
+    }
+
+    const { data, error } = await supabase
+      .from("borrowed_books")
+      .update({ status: "overdue", updated_at: new Date().toISOString() })
+      .eq("id", borrowId)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return res.json({ message: "Borrow request rejected", borrow: data });
+  } catch (e) {
+    return res.status(500).json({ error: e.message });
+  }
+};
+
+exports.sendReminder = async (req, res) => {
+  try {
+    if (req.userRole !== "admin") {
+      return res.status(403).json({ error: "Admin only." });
+    }
+
+    const { borrowId } = req.params;
+    const { data: loan, error } = await supabase
+      .from("borrowed_books")
+      .select(`
+        id,
+        institution_id,
+        student_id,
+        teacher_id,
+        books(title),
+        students(users(id, full_name)),
+        teachers(users(id, full_name))
+      `)
+      .eq("id", borrowId)
+      .eq("institution_id", req.institution_id)
+      .single();
+
+    if (error || !loan) return res.status(404).json({ error: "Loan not found" });
+
+    const targetUserId = loan?.students?.users?.id || loan?.teachers?.users?.id;
+    const borrowerName = loan?.students?.users?.full_name || loan?.teachers?.users?.full_name || "Borrower";
+    const bookTitle = loan?.books?.title || "book";
+
+    if (!targetUserId) {
+      return res.status(400).json({ error: "Unable to resolve reminder recipient" });
+    }
+
+    const { error: insertErr } = await supabase
+      .from("notifications")
+      .insert([
+        {
+          user_id: targetUserId,
+          title: "Library Reminder",
+          message: `${borrowerName}, please return or renew \"${bookTitle}\" if still active.`,
+          type: "warning",
+          institution_id: req.institution_id,
+          data: {
+            module: "library",
+            borrow_id: borrowId,
+          },
+        },
+      ]);
+
+    if (insertErr) throw insertErr;
+    return res.json({ message: "Reminder sent" });
+  } catch (e) {
+    return res.status(500).json({ error: e.message });
+  }
+};
+
+exports.extendDueDate = async (req, res) => {
+  try {
+    if (req.userRole !== "admin") {
+      return res.status(403).json({ error: "Admin only." });
+    }
+
+    const { borrowId } = req.params;
+    const { new_due_date } = req.body || {};
+
+    if (!new_due_date) {
+      return res.status(400).json({ error: "new_due_date is required" });
+    }
+
+    const parsed = new Date(new_due_date);
+    if (Number.isNaN(parsed.getTime())) {
+      return res.status(400).json({ error: "Invalid new_due_date" });
+    }
+
+    const normalizedDate = parsed.toISOString().slice(0, 10);
+    const { data: loan, error: fetchErr } = await supabase
+      .from("borrowed_books")
+      .select("id, status, returned_at, institution_id")
+      .eq("id", borrowId)
+      .eq("institution_id", req.institution_id)
+      .single();
+
+    if (fetchErr || !loan) return res.status(404).json({ error: "Loan not found" });
+    if (loan.status === "returned" || loan.returned_at) {
+      return res.status(409).json({ error: "Cannot extend a returned loan" });
+    }
+
+    const { data, error } = await supabase
+      .from("borrowed_books")
+      .update({ due_date: normalizedDate, updated_at: new Date().toISOString() })
+      .eq("id", borrowId)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return res.json({ message: "Extended", borrow: data });
+  } catch (e) {
+    return res.status(500).json({ error: e.message });
+  }
+};

@@ -1,6 +1,7 @@
 import { useAuth } from '@/contexts/AuthContext';
 import { useCurrency } from '@/contexts/CurrencyContext';
 import { supabase } from '@/libs/supabase';
+import { RevenueService } from '@/services/RevenueService';
 import { StatsData } from '@/types/types';
 import { useEffect, useState } from 'react';
 
@@ -9,7 +10,7 @@ export const useDashboardStats = () => {
     const [loading, setLoading] = useState(true);
     const [revenueData, setRevenueData] = useState<{ day: string, amount: number }[]>([]);
     
-    const { formatKES, formatUSD, rates } = useCurrency();
+    const { formatAmount } = useCurrency();
 
     const { isInitializing, session, isDemo, profile } = useAuth(); // Import useAuth to check session status
 
@@ -25,9 +26,7 @@ export const useDashboardStats = () => {
             let studentCount = 0;
             let teacherCount = 0;
             let subjectCount = 0;
-            // Stored transaction amounts are in KES in this codebase.
-            // Keep a canonical KES total and only derive USD as a display conversion.
-            let totalRevenueKES = 0;
+            let totalRevenue = 0;
             let presentToday = 0;
 
             const getLocalDateString = (d: Date) => {
@@ -82,77 +81,76 @@ export const useDashboardStats = () => {
                 ? `${presentToday} present today (${absentCount} absent)`
                 : "No data recorded today";
 
-            // Fetch Revenue & Breakdown (Last 30 days for trend, 7 days for chart)
-            const thirtyDaysAgo = new Date();
-            thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+            try {
+                const overview = await RevenueService.getOverview();
+                totalRevenue = Number(overview?.net_revenue || 0);
+                setRevenueData((overview?.last_7_days || []).map((row) => ({ day: row.day, amount: Number(row.net || 0) })));
 
-            let transQuery = supabase
-                .from('financial_transactions')
-                .select('amount, date')
-                .eq('type', 'fee_payment')
-                .eq('direction', 'inflow')
-                .eq('status', 'completed')
-                .eq('institution_id', profile.institution_id)
-                .gte('date', thirtyDaysAgo.toISOString().split('T')[0]);
+                const paymentsCount = Number(overview?.payment_count || 0);
 
-            const { data: transactionsData, error: transError } = await transQuery;
-            const transactions = transactionsData as { amount: number; date: string | null }[] | null;
+                const statsData: StatsData[] = [
+                    {
+                        label: "Total Students",
+                        value: studentCount.toString(),
+                        icon: "users",
+                        color: "blue",
+                    },
+                    {
+                        label: "Teachers",
+                        value: teacherCount.toString(),
+                        icon: "school",
+                        color: "green",
+                    },
+                    {
+                        label: "Attendance",
+                        value: `${attendanceRate}%`,
+                        subValue: subValue,
+                        icon: "calendar",
+                        color: "orange",
+                    },
+                    {
+                        label: "Revenue",
+                        value: formatAmount(totalRevenue),
+                        subValue: `${paymentsCount} completed payments (net after deductions)`,
+                        icon: "wallet",
+                        color: "yellow",
+                    },
+                ];
+                setStats(statsData);
+            } catch (revenueError) {
+                console.error('Error fetching revenue overview:', revenueError);
+                setRevenueData([]);
 
-
-            if (transError) {
-                console.error('Error fetching transactions:', transError);
-            } else {
-                totalRevenueKES = transactions?.reduce((sum, p) => sum + Number(p.amount || 0), 0) || 0;
-
-                // Group by day for last 7 days chart
-                const last7Days = Array.from({ length: 7 }, (_, i) => {
-                    const d = new Date();
-                    d.setDate(d.getDate() - (6 - i));
-                    return d.toISOString().split('T')[0];
-                });
-
-                const breakdown = last7Days.map(day => ({
-                    day: day.split('-').slice(1).reverse().join('/'), // DD/MM format
-                    amount: transactions
-                        ?.filter(t => t.date === day)
-                        ?.reduce((sum, t) => sum + Number(t.amount || 0), 0) || 0
-                }));
-
-                setRevenueData(breakdown);
+                const statsData: StatsData[] = [
+                    {
+                        label: "Total Students",
+                        value: studentCount.toString(),
+                        icon: "users",
+                        color: "blue",
+                    },
+                    {
+                        label: "Teachers",
+                        value: teacherCount.toString(),
+                        icon: "school",
+                        color: "green",
+                    },
+                    {
+                        label: "Attendance",
+                        value: `${attendanceRate}%`,
+                        subValue: subValue,
+                        icon: "calendar",
+                        color: "orange",
+                    },
+                    {
+                        label: "Revenue",
+                        value: formatAmount(0),
+                        subValue: "Revenue unavailable",
+                        icon: "wallet",
+                        color: "yellow",
+                    },
+                ];
+                setStats(statsData);
             }
-
-            const exchangeRate = rates.KES || 130;
-            const totalRevenueUSD = totalRevenueKES / exchangeRate;
-
-            const statsData: StatsData[] = [
-                {
-                    label: "Total Students",
-                    value: studentCount.toString(),
-                    icon: "users",
-                    color: "blue",
-                },
-                {
-                    label: "Teachers",
-                    value: teacherCount.toString(),
-                    icon: "school",
-                    color: "green",
-                },
-                {
-                    label: "Attendance",
-                    value: `${attendanceRate}%`,
-                    subValue: subValue,
-                    icon: "calendar",
-                    color: "orange",
-                },
-                {
-                    label: "Revenue",
-                    value: formatKES(totalRevenueKES),
-                    subValue: formatUSD(totalRevenueUSD),
-                    icon: "wallet",
-                    color: "yellow",
-                },
-            ];
-            setStats(statsData);
         } catch (e) {
             console.error('Exception in useDashboardStats:', e);
         } finally {

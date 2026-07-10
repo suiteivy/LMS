@@ -10,31 +10,27 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { Picker } from '@react-native-picker/picker';
 import Toast from 'react-native-toast-message';
 
 const securityPrompts = [
-  'What is your childhood nickname?',
-  'What is the name of your first school?',
-  'What city were you born in?',
+  { key: 'q_childhood_nickname', prompt: 'What is your childhood nickname?' },
+  { key: 'q_first_school', prompt: 'What is the name of your first school?' },
+  { key: 'q_birth_city', prompt: 'What city were you born in?' },
 ];
 
 export default function SecurityQuestionsSetup() {
   const { profile } = useAuth();
   const mustChangePassword = !!(profile as any)?.must_change_password;
-  const [answers, setAnswers] = useState(['', '', '']);
+  const [selectedQuestionKey, setSelectedQuestionKey] = useState(securityPrompts[0].key);
+  const [selectedAnswer, setSelectedAnswer] = useState('');
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const update = (idx: number, value: string) => {
-    const clone = [...answers];
-    clone[idx] = value;
-    setAnswers(clone);
-  };
-
   const submit = async () => {
-    if (answers.some((a) => !a.trim())) {
-      Toast.show({ type: 'error', text1: 'Missing answers', text2: 'Please answer all security questions.' });
+    if (!selectedQuestionKey || !selectedAnswer.trim()) {
+      Toast.show({ type: 'error', text1: 'Missing answer', text2: 'Please select one question and provide your answer.' });
       return;
     }
 
@@ -51,7 +47,7 @@ export default function SecurityQuestionsSetup() {
 
     try {
       setLoading(true);
-      await SettingsService.setupSecurityQuestions(answers[0], answers[1], answers[2]);
+      await SettingsService.setupSecurityQuestions(selectedQuestionKey, selectedAnswer.trim());
 
       if (mustChangePassword) {
         await SettingsService.changePassword(currentPassword, newPassword);
@@ -72,29 +68,48 @@ export default function SecurityQuestionsSetup() {
         <View style={{ backgroundColor: '#13103A', borderRadius: 16, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)', padding: 20 }}>
           <Text style={{ color: '#fff', fontSize: 22, fontWeight: '800', marginBottom: 8 }}>Security Questions</Text>
           <Text style={{ color: 'rgba(255,255,255,0.7)', marginBottom: 18 }}>
-            Set your recovery answers now. Answers are stored as hashes.
+            Set your security recovery question now. The answer is stored as a hash.
           </Text>
 
-          {securityPrompts.map((prompt, idx) => (
-            <View key={prompt} style={{ marginBottom: 12 }}>
-              <Text style={{ color: 'rgba(255,255,255,0.75)', marginBottom: 6 }}>{prompt}</Text>
-              <TextInput
-                value={answers[idx]}
-                onChangeText={(txt) => update(idx, txt)}
-                placeholder="Enter answer"
-                placeholderTextColor="rgba(255,255,255,0.4)"
-                style={{
-                  backgroundColor: 'rgba(255,255,255,0.06)',
-                  borderColor: 'rgba(255,255,255,0.12)',
-                  borderWidth: 1,
-                  color: '#fff',
-                  borderRadius: 10,
-                  paddingHorizontal: 12,
-                  paddingVertical: 10,
-                }}
-              />
+          <View style={{ marginBottom: 12 }}>
+            <Text style={{ color: 'rgba(255,255,255,0.75)', marginBottom: 6 }}>Select security question</Text>
+            <View style={{
+              backgroundColor: 'rgba(255,255,255,0.06)',
+              borderColor: 'rgba(255,255,255,0.12)',
+              borderWidth: 1,
+              borderRadius: 10,
+            }}>
+              <Picker
+                selectedValue={selectedQuestionKey}
+                onValueChange={(v) => setSelectedQuestionKey(String(v))}
+                style={{ color: '#fff' }}
+                dropdownIconColor="#fff"
+              >
+                {securityPrompts.map((question) => (
+                  <Picker.Item key={question.key} label={question.prompt} value={question.key} />
+                ))}
+              </Picker>
             </View>
-          ))}
+          </View>
+
+          <View style={{ marginBottom: 12 }}>
+            <Text style={{ color: 'rgba(255,255,255,0.75)', marginBottom: 6 }}>Answer</Text>
+            <TextInput
+              value={selectedAnswer}
+              onChangeText={setSelectedAnswer}
+              placeholder="Enter answer"
+              placeholderTextColor="rgba(255,255,255,0.4)"
+              style={{
+                backgroundColor: 'rgba(255,255,255,0.06)',
+                borderColor: 'rgba(255,255,255,0.12)',
+                borderWidth: 1,
+                color: '#fff',
+                borderRadius: 10,
+                paddingHorizontal: 12,
+                paddingVertical: 10,
+              }}
+            />
+          </View>
 
           {mustChangePassword && (
             <>

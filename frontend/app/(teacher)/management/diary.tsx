@@ -1,4 +1,5 @@
 import { UnifiedHeader } from "@/components/common/UnifiedHeader";
+import { ListItemSkeleton } from "@/components/ui/skeletons";
 import { useAuth } from "@/contexts/AuthContext";
 import Toast from 'react-native-toast-message';
 import { DiaryAPI, DiaryEntry } from "@/services/DiaryService";
@@ -391,7 +392,7 @@ export default function TeacherDiaryPage() {
 
                             <ScrollView className="flex-1" showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
                                 {loading ? (
-                                    <ActivityIndicator size="large" color="#FF6900" className="mt-8" />
+                                    <ListItemSkeleton loading={loading} count={4} label="Loading diary entries..." />
                                 ) : entries.length === 0 ? (
                                     <View className="bg-[#F6F8FA] dark:bg-[#161B22] p-12 rounded-[40px] items-center border border-[#D0D7DE] dark:border-[#21262D] border-dashed">
                                         <BookOpen size={48} color="#E5E7EB" style={{ opacity: 0.3 }} />

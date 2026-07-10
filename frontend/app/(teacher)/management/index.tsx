@@ -155,7 +155,6 @@ export default function ManagementIndex() {
             color: "#FF6900",
             bgColor: "#f3f4f6",
             route: "/(teacher)/management/grades",
-            badge: "Action Required",
             tooltipId: 'teacher.manage.performance'
         },
         {

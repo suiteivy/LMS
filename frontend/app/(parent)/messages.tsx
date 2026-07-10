@@ -1,16 +1,35 @@
 import { UnifiedHeader } from "@/components/common/UnifiedHeader";
 import { DirectChatView } from "@/components/chat/DirectChatView";
-import { router } from "expo-router";
+import { AddonRequestButton, SubscriptionGate } from "@/components/shared/SubscriptionComponents";
+import { router, useLocalSearchParams } from "expo-router";
 import { Plus, RefreshCw } from "lucide-react-native";
 import React from "react";
 import { Text, TouchableOpacity, View } from "react-native";
 
 export default function ParentMessagingPage() {
+  const params = useLocalSearchParams<{ conversationId?: string | string[] }>();
+  const initialConversationId = Array.isArray(params.conversationId)
+    ? params.conversationId[0]
+    : params.conversationId;
   const [directChatRefreshToken, setDirectChatRefreshToken] = React.useState(0);
   const [directChatComposeToken, setDirectChatComposeToken] = React.useState(0);
   const [lastChatRefreshAt, setLastChatRefreshAt] = React.useState<Date | null>(null);
 
   return (
+    <SubscriptionGate
+      feature="messaging"
+      fallback={
+        <View className="flex-1 items-center justify-center p-8 bg-[#F6F8FA] dark:bg-[#161B22]">
+          <View className="bg-[#FFFFFF] dark:bg-[#161B22] p-8 rounded-2xl items-center border border-[#D0D7DE] dark:border-[#21262D] border-dashed max-w-sm">
+            <Text className="text-lg font-bold text-gray-900 dark:text-white text-center mb-2">Messaging Locked</Text>
+            <Text className="text-gray-500 dark:text-gray-400 text-center text-xs mb-6 leading-5">
+              Messaging is not enabled for this institution subscription.
+            </Text>
+            <AddonRequestButton onPress={() => {}} />
+          </View>
+        </View>
+      }
+    >
     <View className="flex-1 bg-[#F6F8FA] dark:bg-[#161B22]">
       <UnifiedHeader
         title="Messaging"
@@ -58,7 +77,9 @@ export default function ParentMessagingPage() {
         compact
         externalRefreshToken={directChatRefreshToken}
         externalComposeToken={directChatComposeToken}
+        initialConversationId={initialConversationId}
       />
     </View>
+    </SubscriptionGate>
   );
 }

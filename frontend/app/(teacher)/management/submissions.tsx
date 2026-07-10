@@ -1,4 +1,5 @@
 import { UnifiedHeader } from "@/components/common/UnifiedHeader";
+import { ListItemSkeleton } from "@/components/ui/skeletons";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTheme } from "@/contexts/ThemeContext";
 import { supabase } from "@/libs/supabase";
@@ -6,7 +7,7 @@ import { Database } from "@/types/database";
 import { router, useLocalSearchParams } from "expo-router";
 import { Check, Edit2, FileText, User, X } from 'lucide-react-native';
 import React, { useEffect, useState } from "react";
-import { ActivityIndicator, Alert, Modal, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Alert, Modal, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import Toast from 'react-native-toast-message';
 
 type TypedSubmission = Database['public']['Tables']['submissions']['Row'];
@@ -298,8 +299,8 @@ export default function SubmissionsPage() {
                 onBack={() => router.push("/(teacher)/management")}
             />
             {loading ? (
-                <View className="flex-1 items-center justify-center">
-                    <ActivityIndicator size="large" color="#FF6900" />
+                <View className="flex-1 p-4 md:p-8">
+                    <ListItemSkeleton loading={loading} count={4} label="Loading submissions..." />
                 </View>
             ) : (
                 // Specific assignment view

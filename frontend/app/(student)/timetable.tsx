@@ -1,10 +1,11 @@
 import { UnifiedHeader } from "@/components/common/UnifiedHeader";
+import { ListItemSkeleton } from "@/components/ui/skeletons";
 import { StudentService } from "@/services/StudentService";
 import { addDays, format, isSameDay, startOfWeek } from "date-fns";
 import { router } from "expo-router";
 import { Calendar, MapPin, User } from "lucide-react-native";
 import React, { useEffect, useState } from "react";
-import { ActivityIndicator, Alert, ScrollView, Text, TouchableOpacity, View } from "react-native";
+import { Alert, ScrollView, Text, TouchableOpacity, View } from "react-native";
 
 export default function StudentTimetablePage() {
     const [loading, setLoading] = useState(true);
@@ -89,7 +90,7 @@ export default function StudentTimetablePage() {
                 </View>
 
                 {loading ? (
-                    <ActivityIndicator size="large" color="#FF6900" className="mt-8" />
+                    <ListItemSkeleton loading={loading} count={4} label="Loading timetable..." />
                 ) : filteredEntries.length > 0 ? (
                     filteredEntries.map((entry) => (
                         <View key={entry.id} className="flex-row mb-6">

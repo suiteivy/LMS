@@ -1,4 +1,5 @@
 import { UnifiedHeader } from "@/components/common/UnifiedHeader";
+import { ListItemSkeleton } from "@/components/ui/skeletons";
 import { useAuth } from '@/contexts/AuthContext';
 import { LibraryAPI } from '@/services/LibraryService';
 import { FrontendBook, FrontendBorrowedBook } from '@/types/types';
@@ -43,7 +44,7 @@ export default function TeacherLibrary() {
         try {
             const [booksData, historyData, allBorrowed, studentsData] = await Promise.all([
                 LibraryAPI.getBooks(),
-                teacherId ? LibraryAPI.getBorrowingHistory(teacherId) : Promise.resolve([]),
+                teacherId ? LibraryAPI.getBorrowingHistory() : Promise.resolve([]),
                 LibraryAPI.getAllBorrowedBooks(),
                 StudentService.getStudents()
             ]);
@@ -178,7 +179,7 @@ export default function TeacherLibrary() {
                     </View>
 
                     {loading ? (
-                        <ActivityIndicator size="large" color="#FF6900" className="mt-8" />
+                        <ListItemSkeleton loading={loading} count={4} label="Loading library data..." />
                     ) : (
                         <ScrollView
                             className="flex-1"
@@ -189,12 +190,12 @@ export default function TeacherLibrary() {
                             {viewMode === 'personal' ? (
                                 <>
                                     {/* Borrowing History */}
-                                    {borrowingHistory.filter(b => ['borrowed', 'waiting', 'ready_for_pickup', 'overdue'].includes(b.status)).length > 0 && (
+                                    {borrowingHistory.filter(b => ['borrowed', 'overdue'].includes(b.status)).length > 0 && (
                                         <>
                                             <View className="px-2 mb-4">
                                                 <Text className="text-gray-400 dark:text-gray-500 font-bold text-[10px] uppercase tracking-[3px]">My Borrowed Books</Text>
                                             </View>
-                                            {borrowingHistory.filter(b => ['borrowed', 'waiting', 'ready_for_pickup', 'overdue'].includes(b.status)).map((borrow) => (
+                                            {borrowingHistory.filter(b => ['borrowed', 'overdue'].includes(b.status)).map((borrow) => (
                                                 <View key={borrow.id} className="bg-[#F6F8FA] dark:bg-[#161B22] p-5 rounded-xl border border-[#D0D7DE] dark:border-[#21262D] mb-3 flex-row items-center">
                                                     <View className="w-12 h-12 rounded-lg bg-orange-50 dark:bg-orange-950/20 items-center justify-center mr-4">
                                                         <BookOpen size={20} color="#FF6900" />
@@ -202,7 +203,7 @@ export default function TeacherLibrary() {
                                                     <View className="flex-1">
                                                         <Text className="text-gray-900 dark:text-white font-bold text-base tracking-tight" numberOfLines={1}>{borrow.bookTitle}</Text>
                                                         <Text className="text-gray-400 dark:text-gray-500 text-[10px] font-bold uppercase tracking-widest mt-1">
-                                                            {borrow.status === 'waiting' ? 'Requested' : borrow.status === 'ready_for_pickup' ? 'Ready for Pickup' : `Due ${new Date(borrow.dueDate).toLocaleDateString()}`}
+                                                            {`Due ${new Date(borrow.dueDate).toLocaleDateString()}`}
                                                         </Text>
                                                     </View>
                                                     <View className={`px-3 py-1 rounded-full ${borrow.status === 'overdue' ? 'bg-red-50 dark:bg-red-950/20 border-red-100 dark:border-red-900' : 'bg-orange-50 dark:bg-orange-950/20 border-orange-100 dark:border-orange-900'} border`}>

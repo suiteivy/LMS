@@ -1,4 +1,5 @@
 import { UnifiedHeader } from "@/components/common/UnifiedHeader";
+import { ListItemSkeleton } from "@/components/ui/skeletons";
 import { useTheme } from '@/contexts/ThemeContext';
 import { formatClassLabel } from '@/utils/classLabel';
 import { ParentService } from '@/services/ParentService';
@@ -52,8 +53,8 @@ export default function ReportsScreen() {
 
     if (loading && !refreshing) {
         return (
-            <View className="flex-1 justify-center items-center bg-[#FFFFFF] dark:bg-[#161B22]">
-                <ActivityIndicator size="large" color="#FF6900" />
+            <View className="flex-1 bg-[#FFFFFF] dark:bg-[#161B22] p-5">
+                <ListItemSkeleton loading={loading} count={4} label="Loading reports..." />
             </View>
         );
     }

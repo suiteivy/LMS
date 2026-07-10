@@ -48,7 +48,7 @@ test('auth middleware returns 428 when password change is required', async () =>
           eq() {
             return this;
           },
-          async single() {
+          async maybeSingle() {
             return {
               data: {
                 id: 'user-1',
@@ -143,19 +143,18 @@ test('verifySecurityQuestions updates password and clears first-login flags', as
           select() {
             return this;
           },
+          ilike(column, value) {
+            assert.equal(column, 'email');
+            assert.equal(value, 'student@example.com');
+            return this;
+          },
+          async maybeSingle() {
+            return {
+              data: { id: 'user-1', email: 'student@example.com' },
+              error: null,
+            };
+          },
           eq(column, value) {
-            if (column === 'email') {
-              assert.equal(value, 'student@example.com');
-              return {
-                async maybeSingle() {
-                  return {
-                    data: { id: 'user-1', email: 'student@example.com' },
-                    error: null,
-                  };
-                },
-              };
-            }
-
             if (column === 'id') {
               return {
                 async then() {
@@ -210,11 +209,39 @@ test('verifySecurityQuestions updates password and clears first-login flags', as
 
       if (table === 'password_audit_logs') {
         return {
+          select() {
+            return this;
+          },
+          eq() {
+            return this;
+          },
+          gt() {
+            return this;
+          },
+          async then(resolve) {
+            return resolve({ count: 0, error: null });
+          },
           async insert(payload) {
             calls.auditInsert += 1;
             assert.equal(payload.action, 'reset_password');
             assert.equal(payload.outcome, 'success');
             return { error: null };
+          },
+        };
+      }
+
+      if (table === 'user_sessions') {
+        return {
+          update() {
+            return {
+              eq() {
+                return {
+                  async eq() {
+                    return { error: null };
+                  },
+                };
+              },
+            };
           },
         };
       }
@@ -228,9 +255,7 @@ test('verifySecurityQuestions updates password and clears first-login flags', as
   const req = {
     body: {
       email: 'student@example.com',
-      question1: q1,
-      question2: q2,
-      question3: q3,
+      selected_question_answer: q1,
       new_password: 'NewPass123',
     },
     headers: { 'user-agent': 'test-agent' },

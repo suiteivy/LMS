@@ -4,7 +4,7 @@ import { ChatMessage, ChatService, ConversationSummary } from "@/services/ChatSe
 import { MessageService } from "@/services/MessageService";
 import { groupMessagesByDate, isDateSeparator } from "@/utils/chatDateGrouping";
 import { Spinner } from "@/components/ui/Spinner";
-import { SkeletonList } from "@/components/ui/Skeleton";
+import { ChatMessageSkeleton, ConversationListItemSkeleton } from "@/components/ui/skeletons";
 import { Alert, Image, Modal, RefreshControl, ScrollView, Text, TextInput, TouchableOpacity, View, useWindowDimensions } from "react-native";
 import { useIsFocused } from "@react-navigation/native";
 import { AlertCircle, Check, CheckCheck, CheckCircle2, ChevronLeft, ChevronRight, Clock3, MessageCircle, MoreVertical, Plus, Search, Send, User } from "lucide-react-native";
@@ -19,6 +19,7 @@ interface DirectChatViewProps {
   compact?: boolean;
   externalRefreshToken?: number;
   externalComposeToken?: number;
+  initialConversationId?: string;
 }
 
 const formatTime = (dateStr?: string | null) => {
@@ -145,6 +146,7 @@ export function DirectChatView({
   compact = false,
   externalRefreshToken,
   externalComposeToken,
+  initialConversationId,
 }: DirectChatViewProps) {
   const { profile, user } = useAuth();
   const isFocused = useIsFocused();
@@ -197,6 +199,7 @@ export function DirectChatView({
   const contactsLoadedRef = useRef(false);
   const lastExternalRefreshTokenRef = useRef<number | undefined>(externalRefreshToken);
   const lastExternalComposeTokenRef = useRef<number | undefined>(externalComposeToken);
+  const lastInitialConversationIdRef = useRef<string | undefined>(initialConversationId);
   const autoRetryTimersRef = useRef<Map<string, any>>(new Map());
   const retryAttemptsRef = useRef<Map<string, number>>(new Map());
 
@@ -730,6 +733,29 @@ export function DirectChatView({
     await fetchConversations();
   };
 
+  useEffect(() => {
+    if (!isFocused) return;
+    const targetConversationId = typeof initialConversationId === "string" ? initialConversationId.trim() : "";
+    if (!targetConversationId) return;
+    if (lastInitialConversationIdRef.current === targetConversationId) return;
+    lastInitialConversationIdRef.current = targetConversationId;
+
+    const openTargetConversation = async () => {
+      try {
+        await fetchConversations(true);
+        const latest = await ChatService.listConversations();
+        const match = (latest || []).find((c: ConversationSummary) => c.id === targetConversationId);
+        if (match) {
+          await openConversation(match);
+        }
+      } catch (error) {
+        console.error("Failed to open target conversation", error);
+      }
+    };
+
+    openTargetConversation().catch(() => {});
+  }, [initialConversationId, isFocused, fetchConversations]);
+
   const startWithContact = async () => {
     if (!selectedContact?.id || startingChat) return;
     setStartingChat(true);
@@ -986,11 +1012,7 @@ export function DirectChatView({
 
         <View className={`flex-1 ${horizontalPaddingClass} mb-2`}>
           <View className="flex-1 rounded-2xl border border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-[#161B22] shadow-sm overflow-hidden">
-            {loadingMessages ? (
-              <View className="px-3 pt-3">
-                <Spinner size="small" color="#FF6900" label="Fetching messages" />
-              </View>
-            ) : null}
+            {loadingMessages ? <ChatMessageSkeleton loading={true} count={6} label="Loading messages..." /> : null}
             <ScrollView
               ref={scrollRef}
               className="flex-1 px-3"
@@ -1302,8 +1324,8 @@ export function DirectChatView({
 
   if (loading) {
     return (
-      <View className={`flex-1 ${horizontalPaddingClass} pt-4`} accessibilityState={{ busy: true }}>
-        <SkeletonList count={5} />
+      <View className={`flex-1 ${horizontalPaddingClass} pt-4`} accessibilityState={{ busy: true }} accessibilityRole="progressbar">
+        <ConversationListItemSkeleton loading={true} count={6} label="Loading conversations..." />
       </View>
     );
   }

@@ -64,21 +64,6 @@ export interface StatsData {
 export interface SubjectFormData {
   title: string;
   description: string;
-  shortDescription: string;
-  category: string;
-  level: string;
-  language: string;
-  price: string;
-  duration: string;
-  maxStudents: string;
-  startDate: string;
-  tags: string[];
-  prerequisites: string;
-  learningOutcomes: string[];
-  SubjectImage: string | null;
-  isPublic: boolean;
-  allowDiscussions: boolean;
-  certificateEnabled: boolean;
   class_id?: string;
   class_ids?: string[];
   teacher_ids?: string[];
@@ -188,6 +173,19 @@ export interface Payment {
   status: "pending" | "completed" | "failed";
   reference_number?: string;
   notes?: string;
+  reviewed_at?: string | null;
+  confirmed_at?: string | null;
+  status_updated_at?: string | null;
+  retention_until?: string | null;
+  fee_structure_snapshot?: Record<string, any> | null;
+  origin_type?: string | null;
+  origin_id?: string | null;
+  origin_label?: string | null;
+  target_type?: string | null;
+  target_id?: string | null;
+  target_label?: string | null;
+  recorded_by_user_id?: string | null;
+  recorded_by_label?: string | null;
 }
 
 export interface Bursary {
@@ -213,26 +211,12 @@ export interface BursaryApplication {
   reviewed_at?: string;
 }
 
-export interface TeacherPayout {
-  id: string;
-  teacher_id: string; // Refers to custom TEA- ID
-  teacher_name: string;
-  teacher_display_id?: string;
-  amount: number;
-  hours_taught?: number;
-  rate_per_hour?: number;
-  period_start: string;
-  period_end: string;
-  status: "pending" | "paid" | "processing" | "failed";
-  payment_date?: string;
-  reference_number?: string;
-}
-
 export interface FeeStructure {
   id: string;
   title?: string;
   description?: string;
   amount?: number;
+  due_date?: string | null;
   academic_year?: string;
   academic_year_id?: string | null;
   term?: string;
@@ -243,6 +227,10 @@ export interface FeeStructure {
   level_to?: number | null;
   is_released?: boolean;
   released_at?: string | null;
+  completed_at?: string | null;
+  status_updated_at?: string | null;
+  lifecycle_status?: 'Draft' | 'Released' | 'Completed';
+  is_completed?: boolean;
 
   // Legacy fields retained for backward compatibility
   Subject_id?: string;
@@ -261,13 +249,11 @@ export interface AdminDashboardProps extends BaseComponentProps {
   recentUsers?: User[];
   allUsers?: User[];
   payments?: Payment[];
-  teacherPayouts?: TeacherPayout[];
   feeStructures?: FeeStructure[];
   statsLoading?: boolean;
   usersLoading?: boolean;
   tableLoading?: boolean;
   paymentsLoading?: boolean;
-  payoutsLoading?: boolean;
   feeStructuresLoading?: boolean;
   onStatsPress?: (stat: StatsData) => void;
   onUserPress?: (user: User) => void;
@@ -276,7 +262,6 @@ export interface AdminDashboardProps extends BaseComponentProps {
   showRecentUsers?: boolean;
   showUsersTable?: boolean;
   showPaymentManagement?: boolean;
-  showTeacherPayouts?: boolean;
   showFeeStructure?: boolean;
   maxRecentUsers?: number;
 }
@@ -314,7 +299,7 @@ export interface BorrowedBook {
   dueDate: Date;
   returnDate?: Date;
   borrowerPhone?: string;
-  status: "borrowed" | "overdue" | "returned" | "waiting" | "ready_for_pickup" | "rejected";
+  status: "borrowed" | "overdue" | "returned";
 }
 
 // export interface BorrowedBooks {
@@ -454,7 +439,7 @@ export interface BackendBorrowedBook {
   borrowed_at: string; // Changed from borrow_date
   due_date: string;
   returned_at?: string; // Changed from return_date
-  status: "borrowed" | "overdue" | "returned" | "waiting" | "ready_for_pickup" | "rejected";
+  status: "borrowed" | "overdue" | "returned";
   notes?: string;
 }
 
@@ -480,7 +465,7 @@ export interface FrontendBorrowedBook {
   borrowDate: Date;
   dueDate: Date;
   returnDate?: Date;
-  status: "borrowed" | "overdue" | "returned" | "waiting" | "ready_for_pickup" | "rejected";
+  status: "borrowed" | "overdue" | "returned";
   notes?: string;
 }
 

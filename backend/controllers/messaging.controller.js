@@ -1,4 +1,5 @@
 const supabase = require("../utils/supabaseClient.js");
+const { sendInAppNotificationWithHistory } = require("../services/notificationDelivery.service.js");
 
 const ADMIN_ROLES = new Set(["admin", "master_admin", "school_admin", "platform_admin"]);
 const DEFAULT_DELETE_FOR_EVERYONE_WINDOW_MINUTES = Number(process.env.MESSAGE_DELETE_FOR_EVERYONE_WINDOW_MINUTES || 15);
@@ -144,7 +145,7 @@ const ensureConversationMembership = async (conversationId, userId, institutionI
 const getAuthorizedMessageContext = async (messageId, userId, institutionId) => {
     const { data: message, error: messageError } = await supabase
         .from("messages")
-        .select("id, conversation_id, sender_id, receiver_id, content, created_at, deleted_for_everyone_at, hidden_for_user_ids")
+        .select("id, conversation_id, sender_id, receiver_id, institution_id, content, created_at, deleted_for_everyone_at, hidden_for_user_ids")
         .eq("id", messageId)
         .maybeSingle();
 
@@ -155,6 +156,7 @@ const getAuthorizedMessageContext = async (messageId, userId, institutionId) => 
     if (!message.conversation_id) {
         const legacyAllowed = message.sender_id === userId || message.receiver_id === userId;
         if (!legacyAllowed) return null;
+        if (message.institution_id && message.institution_id !== institutionId) return null;
         return { message, membership: null, conversation: null };
     }
 
@@ -598,6 +600,33 @@ exports.sendConversationMessage = async (req, res) => {
             .update({ deleted_at: null })
             .eq("conversation_id", conversationId);
 
+        try {
+            const { data: senderUser } = await supabase
+                .from("users")
+                .select("full_name")
+                .eq("id", userId)
+                .maybeSingle();
+
+            const senderName = senderUser?.full_name || "Someone";
+
+            await sendInAppNotificationWithHistory({
+                user_id: partnerUserId,
+                title: `New message from ${senderName}`,
+                message: trimmed.length > 120 ? `${trimmed.slice(0, 117)}...` : trimmed,
+                type: "info",
+                institution_id,
+                data: {
+                    source: "message",
+                    conversation_id: conversationId,
+                    conversationId,
+                    sender_id: userId,
+                    sender_name: senderName,
+                },
+            });
+        } catch (notificationError) {
+            console.error("Failed to send message notification:", notificationError?.message || notificationError);
+        }
+
         return res.status(201).json(message);
     } catch (err) {
         console.error("sendConversationMessage error:", err);
@@ -1026,7 +1055,7 @@ exports.getMessages = async (req, res) => {
  */
 exports.markAsRead = async (req, res) => {
     try {
-        const { userId } = req;
+        const { userId, institution_id } = req;
         const { id } = req.params;
 
         const { data, error } = await supabase
@@ -1034,6 +1063,7 @@ exports.markAsRead = async (req, res) => {
             .update({ is_read: true })
             .eq("id", id)
             .eq("receiver_id", userId)
+            .eq("institution_id", institution_id)
             .select()
             .single();
 

@@ -1,4 +1,5 @@
 import { UnifiedHeader } from "@/components/common/UnifiedHeader";
+import { ListItemSkeleton } from "@/components/ui/skeletons";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTheme } from "@/contexts/ThemeContext";
 import { api } from "@/services/api";
@@ -1220,18 +1221,8 @@ export default function ReportCardsPage() {
                     </View>
 
                     {loading ? (
-                        <View style={{ alignItems: "center", marginTop: 48 }}>
-                            <ActivityIndicator size="large" color={accentColor} />
-                            <Text
-                                style={{
-                                    color: isDark ? "#6B7280" : "#9CA3AF",
-                                    fontSize: 13,
-                                    marginTop: 12,
-                                    fontWeight: "500",
-                                }}
-                            >
-                                Loading report cards...
-                            </Text>
+                        <View style={{ marginTop: 12 }}>
+                            <ListItemSkeleton loading={loading} count={4} label="Loading report cards..." />
                         </View>
                     ) : filteredCards.length === 0 ? (
                         <View

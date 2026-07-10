@@ -15,6 +15,8 @@ export type TooltipTargetId =
   | 'promotion.execute'
   | 'promotion.reload'
   | 'admin.manage.analytics'
+  | 'admin.analytics.core_metrics'
+  | 'admin.analytics.student_performance'
   | 'admin.manage.library'
   | 'admin.manage.subjects'
   | 'admin.manage.roles'
@@ -25,12 +27,14 @@ export type TooltipTargetId =
   | 'admin.manage.resources'
   | 'admin.manage.academic_setup'
   | 'admin.manage.results'
+  | 'admin.support.tickets'
   | 'teacher.manage.performance'
   | 'teacher.manage.coursework'
   | 'teacher.manage.registrar'
   | 'teacher.manage.announcements'
   | 'teacher.manage.insights'
-  | 'teacher.manage.finance'
+  | 'teacher.analytics.overview_metrics'
+  | 'teacher.analytics.performance_trends'
   | 'teacher.manage.resources'
   | 'teacher.manage.grade_entry'
   | 'teacher.manage.report_cards'
@@ -62,9 +66,14 @@ export type TooltipTargetId =
   | 'settings.notifications.submission'
   | 'settings.notifications.priority'
   | 'admin.finance.payments'
-  | 'admin.finance.payouts'
+  | 'admin.finance.revenue'
   | 'admin.finance.fee_structures'
   | 'admin.finance.bursaries'
+  | 'student.finance.overview'
+  | 'student.finance.ledger'
+  | 'parent.finance.overview'
+  | 'parent.finance.fee_structures'
+  | 'parent.finance.transactions'
   | 'settings.language'
   | 'settings.language.admin'
   | 'settings.language.teacher'
@@ -84,6 +93,18 @@ export interface TooltipEntry {
   feature?: AccessFeatureKey;
   roles?: SettingsRole[];
 }
+
+/*
+  Tooltip Copy Style Guide
+  - Keep title short: 1-3 words, module-specific.
+  - Keep text to one sentence (~12-20 words), plain language.
+  - Start with an action verb where possible: View, Manage, Review, Set, Use.
+  - Describe user value and scope, not implementation details.
+  - Match role context (admin/teacher/student/parent) and avoid cross-role wording.
+  - Use consistent terms across modules (e.g., "linked child", "active period", "grading records").
+  - Avoid hype, ambiguity, and punctuation-heavy copy.
+  - Keep learnMoreAnchor aligned to the owning workflow doc section.
+*/
 
 const ROLE_DEFAULT: SettingsRole[] = ['admin', 'teacher'];
 const EXTENDED_SETTINGS_ROLES: SettingsRole[] = ['admin', 'teacher', 'student', 'parent'];
@@ -198,6 +219,22 @@ export const SETTINGS_TOOLTIPS: Record<TooltipTargetId, TooltipEntry> = {
     feature: 'analytics',
     roles: ['admin'],
   },
+  'admin.analytics.core_metrics': {
+    id: 'admin.analytics.core_metrics',
+    title: 'Core metrics',
+    text: 'Top-line institution indicators for learners, attendance, class activity, and revenue visibility in one snapshot.',
+    learnMoreAnchor: 'promotion-engine',
+    feature: 'analytics',
+    roles: ['admin'],
+  },
+  'admin.analytics.student_performance': {
+    id: 'admin.analytics.student_performance',
+    title: 'Student performance overview',
+    text: 'Summarizes subject-level outcomes and trend quality so admins can prioritize intervention areas.',
+    learnMoreAnchor: 'grading-ops',
+    feature: 'analytics',
+    roles: ['admin'],
+  },
   'admin.manage.library': {
     id: 'admin.manage.library',
     title: 'Library Management',
@@ -273,6 +310,13 @@ export const SETTINGS_TOOLTIPS: Record<TooltipTargetId, TooltipEntry> = {
     feature: 'reports',
     roles: ['admin'],
   },
+  'admin.support.tickets': {
+    id: 'admin.support.tickets',
+    title: 'Your Support Tickets',
+    text: 'Create and track support requests with clear issue details so resolution and follow-up stay auditable.',
+    learnMoreAnchor: 'reports-ops',
+    roles: ['admin'],
+  },
   'teacher.manage.performance': {
     id: 'teacher.manage.performance',
     title: 'Performance',
@@ -299,7 +343,7 @@ export const SETTINGS_TOOLTIPS: Record<TooltipTargetId, TooltipEntry> = {
   'teacher.manage.announcements': {
     id: 'teacher.manage.announcements',
     title: 'Announcements',
-    text: 'Institution broadcast feed for policy updates, reminders, and urgent notices.',
+    text: 'Publish class and school notices with clear visibility windows and update history.',
     learnMoreAnchor: 'reports-ops',
     roles: ['teacher'],
   },
@@ -311,18 +355,26 @@ export const SETTINGS_TOOLTIPS: Record<TooltipTargetId, TooltipEntry> = {
     feature: 'analytics',
     roles: ['teacher'],
   },
-  'teacher.manage.finance': {
-    id: 'teacher.manage.finance',
-    title: 'Finance',
-    text: 'Displays teacher-linked financial records where institution finance visibility is enabled.',
-    learnMoreAnchor: 'billing-ops',
-    feature: 'billing',
+  'teacher.analytics.overview_metrics': {
+    id: 'teacher.analytics.overview_metrics',
+    title: 'Overview metrics',
+    text: 'High-level classroom signals for student volume, completion behavior, and average grading outcomes.',
+    learnMoreAnchor: 'grading-ops',
+    feature: 'analytics',
+    roles: ['teacher'],
+  },
+  'teacher.analytics.performance_trends': {
+    id: 'teacher.analytics.performance_trends',
+    title: 'Performance trends',
+    text: 'Term-over-term trend view of class averages to spot momentum shifts and early learning risk.',
+    learnMoreAnchor: 'promotion-engine',
+    feature: 'analytics',
     roles: ['teacher'],
   },
   'teacher.manage.resources': {
     id: 'teacher.manage.resources',
     title: 'Academic Vault',
-    text: 'Store and version teaching resources with institution moderation controls.',
+    text: 'Store, organize, and publish teaching resources with institution moderation controls.',
     learnMoreAnchor: 'reports-ops',
     roles: ['teacher'],
   },
@@ -344,7 +396,7 @@ export const SETTINGS_TOOLTIPS: Record<TooltipTargetId, TooltipEntry> = {
   'teacher.manage.messages': {
     id: 'teacher.manage.messages',
     title: 'Direct Connect',
-    text: 'Role-based communication channel with students and guardians for interventions.',
+    text: 'Use role-based messaging with students and guardians for timely intervention and follow-up.',
     learnMoreAnchor: 'reports-ops',
     feature: 'messaging',
     roles: ['teacher'],
@@ -352,42 +404,42 @@ export const SETTINGS_TOOLTIPS: Record<TooltipTargetId, TooltipEntry> = {
   'teacher.manage.diary': {
     id: 'teacher.manage.diary',
     title: 'Virtual Diary',
-    text: 'Daily instructional log for continuity, handoffs, and classroom evidence trails.',
+    text: 'Maintain a daily instructional log for continuity, handoffs, and classroom evidence.',
     learnMoreAnchor: 'reports-ops',
     roles: ['teacher'],
   },
   'student.dashboard.metrics': {
     id: 'student.dashboard.metrics',
     title: 'Academic metrics',
-    text: 'Shows GPA and attendance signals based on your latest graded and attendance records.',
+    text: 'View GPA and attendance indicators based on your latest graded and attendance records.',
     learnMoreAnchor: 'student-workflow',
     roles: ['student'],
   },
   'student.dashboard.schedule': {
     id: 'student.dashboard.schedule',
     title: 'Today\'s lectures',
-    text: 'Displays your timetable for today from active class enrollment and subject assignments.',
+    text: 'See today\'s timetable from your active class enrollment and subject assignments.',
     learnMoreAnchor: 'student-workflow',
     roles: ['student'],
   },
   'student.dashboard.tools': {
     id: 'student.dashboard.tools',
     title: 'Academic tools',
-    text: 'Quick links to the core student modules used daily for coursework and tracking progress.',
+    text: 'Open core student modules quickly for coursework, schedules, and progress tracking.',
     learnMoreAnchor: 'student-workflow',
     roles: ['student'],
   },
   'student.assignments.filters': {
     id: 'student.assignments.filters',
     title: 'Assignment filters',
-    text: 'Current shows pending or overdue items. History shows already submitted work.',
+    text: 'Use Current for pending or overdue work and History for submitted records.',
     learnMoreAnchor: 'student-workflow',
     roles: ['student'],
   },
   'student.assignments.submission': {
     id: 'student.assignments.submission',
     title: 'Submission flow',
-    text: 'Upload your assignment file to submit. Status updates after successful upload and record creation.',
+    text: 'Upload assignment files to submit work and monitor status as records update.',
     learnMoreAnchor: 'student-workflow',
     roles: ['student'],
   },
@@ -408,126 +460,126 @@ export const SETTINGS_TOOLTIPS: Record<TooltipTargetId, TooltipEntry> = {
   'parent.dashboard.child_profile': {
     id: 'parent.dashboard.child_profile',
     title: 'Child profile',
-    text: 'Shows the currently selected linked child. Switching child updates all dashboard cards and modules.',
+    text: 'Shows the currently selected linked child; switching child refreshes all dashboard modules.',
     learnMoreAnchor: 'parent-workflow',
     roles: ['parent'],
   },
   'parent.dashboard.oversight': {
     id: 'parent.dashboard.oversight',
     title: 'Academic oversight',
-    text: 'Quick actions open student-specific parent views using the selected child context.',
+    text: 'Quick actions open student-specific views using the selected child context.',
     learnMoreAnchor: 'parent-workflow',
     roles: ['parent'],
   },
   'parent.dashboard.updates': {
     id: 'parent.dashboard.updates',
     title: 'Institutional updates',
-    text: 'Announcements are scoped to your linked child and filtered by current visibility/expiry rules.',
+    text: 'View announcements scoped to your linked child with visibility and expiry rules applied.',
     learnMoreAnchor: 'parent-workflow',
     roles: ['parent'],
   },
   'parent.attendance.summary': {
     id: 'parent.attendance.summary',
     title: 'Attendance summary',
-    text: 'Provides a parent view of attendance rate and counts for the selected child.',
+    text: 'View attendance rate and session counts for the selected child.',
     learnMoreAnchor: 'parent-workflow',
     roles: ['parent'],
   },
   'parent.attendance.logs': {
     id: 'parent.attendance.logs',
     title: 'Daily log entry',
-    text: 'Chronological attendance details for each recorded session and subject.',
+    text: 'Review chronological attendance details by session and subject.',
     learnMoreAnchor: 'parent-workflow',
     roles: ['parent'],
   },
   'student.grades.summary': {
     id: 'student.grades.summary',
     title: 'Grade summary',
-    text: 'Shows your GPA, rank context, and weighted performance from published grading records.',
+    text: 'View GPA, rank context, and weighted performance from published grading records.',
     learnMoreAnchor: 'student-workflow',
     roles: ['student'],
   },
   'student.grades.transcript': {
     id: 'student.grades.transcript',
     title: 'Transcript records',
-    text: 'Per-subject grade rows with score context and detailed breakdown available by selection.',
+    text: 'Review per-subject grades with score context and detailed breakdowns.',
     learnMoreAnchor: 'student-workflow',
     roles: ['student'],
   },
   'student.announcements.feed': {
     id: 'student.announcements.feed',
     title: 'Announcements feed',
-    text: 'Displays active school and subject announcements relevant to your enrollment context.',
+    text: 'Read active school and subject announcements relevant to your enrollment.',
     learnMoreAnchor: 'student-workflow',
     roles: ['student'],
   },
   'parent.grades.summary': {
     id: 'parent.grades.summary',
     title: 'Academic report summary',
-    text: 'Highlights your child\'s cumulative standing, attendance context, and institution ranking signal.',
+    text: 'Highlights your child\'s cumulative standing, attendance context, and ranking signal.',
     learnMoreAnchor: 'parent-workflow',
     roles: ['parent'],
   },
   'parent.grades.transcript': {
     id: 'parent.grades.transcript',
     title: 'Academic transcript',
-    text: 'Detailed subject performance records used for parent-side academic monitoring.',
+    text: 'Review detailed subject performance records for parent-side academic monitoring.',
     learnMoreAnchor: 'parent-workflow',
     roles: ['parent'],
   },
   'parent.announcements.feed': {
     id: 'parent.announcements.feed',
     title: 'Announcements archive',
-    text: 'Shows active announcements tied to the selected linked student and current institution scope.',
+    text: 'Shows active announcements for the selected linked student within institution scope.',
     learnMoreAnchor: 'parent-workflow',
     roles: ['parent'],
   },
   'settings.notifications.general': {
     id: 'settings.notifications.general',
     title: 'General notifications',
-    text: 'Controls routine app alerts for your role and daily workflow events.',
+    text: 'Control routine app alerts for your role and daily workflow events.',
     learnMoreAnchor: 'student-workflow',
     roles: EXTENDED_SETTINGS_ROLES,
   },
   'settings.notifications.general.admin': {
     id: 'settings.notifications.general.admin',
     title: 'System notifications',
-    text: 'Alerts for platform operations, institution-level changes, and urgent admin actions.',
+    text: 'Manage alerts for platform operations, institution-level changes, and urgent admin actions.',
     learnMoreAnchor: 'reports-ops',
     roles: ['admin'],
   },
   'settings.notifications.general.teacher': {
     id: 'settings.notifications.general.teacher',
     title: 'Teaching notifications',
-    text: 'Classroom and learner alerts tied to submissions, attendance activity, and grading flow.',
+    text: 'Manage classroom and learner alerts tied to submissions, attendance, and grading flow.',
     learnMoreAnchor: 'grading-ops',
     roles: ['teacher'],
   },
   'settings.notifications.general.student': {
     id: 'settings.notifications.general.student',
     title: 'Learning notifications',
-    text: 'Assignment deadlines, grade releases, and schedule reminders for your active classes.',
+    text: 'Manage assignment, grade-release, and schedule reminders for your active classes.',
     learnMoreAnchor: 'student-workflow',
     roles: ['student'],
   },
   'settings.notifications.general.parent': {
     id: 'settings.notifications.general.parent',
     title: 'Guardian notifications',
-    text: 'Linked-child updates for attendance, announcements, and academic progress visibility.',
+    text: 'Manage linked-child updates for attendance, announcements, and academic progress.',
     learnMoreAnchor: 'parent-workflow',
     roles: ['parent'],
   },
   'settings.notifications.submission': {
     id: 'settings.notifications.submission',
     title: 'Submission alerts',
-    text: 'Notifies when coursework submissions are created, updated, or require grading action.',
+    text: 'Get alerts when coursework submissions are created, updated, or require grading action.',
     learnMoreAnchor: 'grading-ops',
     roles: ['teacher'],
   },
   'settings.notifications.priority': {
     id: 'settings.notifications.priority',
     title: 'Priority alerts',
-    text: 'Critical notices like system incidents and urgent operational warnings.',
+    text: 'Receive critical notices for system incidents and urgent operational warnings.',
     learnMoreAnchor: 'reports-ops',
     roles: ['admin'],
   },
@@ -539,10 +591,10 @@ export const SETTINGS_TOOLTIPS: Record<TooltipTargetId, TooltipEntry> = {
     feature: 'billing',
     roles: ['admin'],
   },
-  'admin.finance.payouts': {
-    id: 'admin.finance.payouts',
-    title: 'Teacher payouts',
-    text: 'Tracks pending, processing, and paid teacher payouts for each period and workload.',
+  'admin.finance.revenue': {
+    id: 'admin.finance.revenue',
+    title: 'Revenue overview',
+    text: 'Shows net revenue as completed fee payments minus approved revenue deductions, with finance-origin metadata retained for audit.',
     learnMoreAnchor: 'billing-ops',
     feature: 'billing',
     roles: ['admin'],
@@ -563,10 +615,45 @@ export const SETTINGS_TOOLTIPS: Record<TooltipTargetId, TooltipEntry> = {
     feature: 'billing',
     roles: ['admin'],
   },
+  'student.finance.overview': {
+    id: 'student.finance.overview',
+    title: 'Finance overview',
+    text: 'Displays your active-period balance, total fee obligation, paid amount, and any due deadlines from released fee structures.',
+    learnMoreAnchor: 'student-workflow',
+    roles: ['student'],
+  },
+  'student.finance.ledger': {
+    id: 'student.finance.ledger',
+    title: 'Ledger statements',
+    text: 'Lists finance transactions chronologically so you can track payments, charges, and status history for your account.',
+    learnMoreAnchor: 'student-workflow',
+    roles: ['student'],
+  },
+  'parent.finance.overview': {
+    id: 'parent.finance.overview',
+    title: 'Child finance overview',
+    text: 'Summarizes selected-child totals, paid progress, pending amount, and outstanding balance for the active fee period.',
+    learnMoreAnchor: 'parent-workflow',
+    roles: ['parent'],
+  },
+  'parent.finance.fee_structures': {
+    id: 'parent.finance.fee_structures',
+    title: 'Fee structures',
+    text: 'Shows currently released fee items for the selected child, including term context and deadline visibility.',
+    learnMoreAnchor: 'parent-workflow',
+    roles: ['parent'],
+  },
+  'parent.finance.transactions': {
+    id: 'parent.finance.transactions',
+    title: 'Transaction history',
+    text: 'Chronological record of child-related finance activity, including status and origin/target metadata when available.',
+    learnMoreAnchor: 'parent-workflow',
+    roles: ['parent'],
+  },
   'settings.language': {
     id: 'settings.language',
     title: 'Language',
-    text: 'Changes text language where translations are available across supported modules.',
+    text: 'Set text language where translations are available across supported modules.',
     learnMoreAnchor: 'student-workflow',
     roles: EXTENDED_SETTINGS_ROLES,
   },
@@ -601,35 +688,35 @@ export const SETTINGS_TOOLTIPS: Record<TooltipTargetId, TooltipEntry> = {
   'settings.password': {
     id: 'settings.password',
     title: 'Password',
-    text: 'Update login credentials. This signs out other sessions depending on security policy.',
+    text: 'Update login credentials; this may sign out other sessions per security policy.',
     learnMoreAnchor: 'student-workflow',
     roles: EXTENDED_SETTINGS_ROLES,
   },
   'settings.password.admin': {
     id: 'settings.password.admin',
     title: 'Admin password',
-    text: 'Protects elevated operations. Rotation signs out stale sessions based on security policy.',
+    text: 'Protect elevated operations by rotating credentials and clearing stale sessions.',
     learnMoreAnchor: 'reports-ops',
     roles: ['admin'],
   },
   'settings.password.teacher': {
     id: 'settings.password.teacher',
     title: 'Teacher password',
-    text: 'Protects instructional records and grading actions linked to your classroom scope.',
+    text: 'Protect instructional records and grading actions linked to your classroom scope.',
     learnMoreAnchor: 'grading-ops',
     roles: ['teacher'],
   },
   'settings.password.student': {
     id: 'settings.password.student',
     title: 'Student password',
-    text: 'Protects your personal learning records, submissions, and account access.',
+    text: 'Protect personal learning records, submissions, and account access.',
     learnMoreAnchor: 'student-workflow',
     roles: ['student'],
   },
   'settings.password.parent': {
     id: 'settings.password.parent',
     title: 'Parent password',
-    text: 'Protects guardian access to linked-child records and communication history.',
+    text: 'Protect guardian access to linked-child records and communication history.',
     learnMoreAnchor: 'parent-workflow',
     roles: ['parent'],
   },

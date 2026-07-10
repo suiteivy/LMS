@@ -1,7 +1,10 @@
 import { UnifiedHeader } from "@/components/common/UnifiedHeader";
+import { HelpTooltip } from "@/components/settings/HelpTooltip";
+import { ListItemSkeleton } from "@/components/ui/skeletons";
 import { useAuth } from "@/contexts/AuthContext";
+import { useCurrency } from "@/contexts/CurrencyContext";
 import { useTheme } from "@/contexts/ThemeContext";
-import { supabase } from "@/libs/supabase";
+import { useSubscriptionTier } from "@/hooks/useSubscriptionTier";
 import { BursaryService } from "@/services/BursaryService";
 import { StudentService } from "@/services/StudentService";
 import { router } from "expo-router";
@@ -16,7 +19,6 @@ import {
 } from "lucide-react-native";
 import React, { useEffect, useState } from "react";
 import {
-    ActivityIndicator,
     Alert,
     ScrollView,
     Text,
@@ -27,11 +29,12 @@ import {
 export default function StudentFinancePage() {
     const { studentId, isDemo } = useAuth();
     const { isDark } = useTheme();
+    const { formatAmount } = useCurrency();
+    const tier = useSubscriptionTier();
     const [loading, setLoading] = useState(true);
     const [financeData, setFinanceData] = useState<any>(null);
     const [bursaries, setBursaries] = useState<any[]>([]);
     const [bursaryLoading, setBursaryLoading] = useState(false);
-    const [kesRate, setKesRate] = useState<number>(129);
     const [activeTab, setActiveTab] = useState<'fees' | 'bursaries'>('fees');
 
     useEffect(() => {
@@ -69,9 +72,6 @@ export default function StudentFinancePage() {
             ]);
             setFinanceData(data);
 
-            const { data: exchangeData } = await (supabase.from('system_settings').select('value').eq('key', 'exchange_rates').single() as any);
-            if (exchangeData?.value?.KES) setKesRate(exchangeData.value.KES);
-
         } catch (error) {
             console.error(error);
             Alert.alert("Error", "Failed to load financial records");
@@ -98,17 +98,12 @@ export default function StudentFinancePage() {
         if (tab === 'bursaries') fetchBursaries();
     };
 
-    const formatKES = (usdAmount: number) => {
-        const ksh = Math.round(usdAmount * kesRate);
-        return `${ksh.toLocaleString()} KSh`;
-    };
-
-    const formatUSD = (usdAmount: number) => `$${usdAmount.toFixed(2)} USD`;
+    const formatKES = (amount: number) => formatAmount(Number(amount || 0));
 
     if (loading) {
         return (
-            <View className="flex-1 justify-center items-center bg-[#F6F8FA] dark:bg-[#161B22]">
-                <ActivityIndicator size="large" color="#FF6900" />
+            <View className="flex-1 bg-[#F6F8FA] dark:bg-[#161B22] p-4 md:p-8">
+                <ListItemSkeleton loading={loading} count={4} label="Loading finance records..." />
             </View>
         );
     }
@@ -145,6 +140,15 @@ export default function StudentFinancePage() {
                     {activeTab === 'fees' ? (
                         <>
                             {/* Balance Hero */}
+                            <View className="flex-row items-center justify-between px-2 mb-3">
+                                <Text className="text-gray-900 dark:text-white font-bold text-lg tracking-tight">Finance Overview</Text>
+                                <HelpTooltip
+                                    id="student.finance.overview"
+                                    role="student"
+                                    tier={tier}
+                                    onLearnMore={(a) => router.push({ pathname: '/(student)/accessibility/settings', params: { manual: '1', anchor: a || 'student-workflow' } } as any)}
+                                />
+                            </View>
                             <View 
                                 style={{
                                     boxShadow: [{
@@ -165,7 +169,7 @@ export default function StudentFinancePage() {
                                         {financeData?.balance > 0 && (
                                             <View className="bg-[#FF6900]/20 self-start px-3 py-1 rounded-full mt-2">
                                                 <Text className="text-[#FF6900] text-[10px] font-bold tracking-widest uppercase">
-                                                    {formatUSD(financeData?.balance)}
+                                                    Due
                                                 </Text>
                                             </View>
                                         )}
@@ -192,6 +196,31 @@ export default function StudentFinancePage() {
                                     <Text className="text-gray-500 dark:text-gray-400 text-sm font-semibold text-center">
                                         No fee structures for the active period.
                                     </Text>
+                                </View>
+                            )}
+
+                            {(financeData?.fee_structures || []).length > 0 && (
+                                <View className="mb-8">
+                                    <Text className="text-gray-900 dark:text-white font-bold text-lg tracking-tight mb-4 px-2">Current Fee Structures</Text>
+                                    {financeData.fee_structures.map((fee: any) => (
+                                        <View
+                                            key={fee.id}
+                                            className="bg-[#FFFFFF] dark:bg-[#161B22] p-5 rounded-xl mb-3 border border-[#D0D7DE] dark:border-[#21262D]"
+                                        >
+                                            <View className="flex-row justify-between items-start">
+                                                <View className="flex-1 mr-3">
+                                                    <Text className="text-gray-900 dark:text-white font-bold text-sm tracking-tight">{fee.title || 'Fee item'}</Text>
+                                                    <Text className="text-gray-400 text-[10px] font-bold uppercase tracking-widest mt-1">
+                                                        {fee.term || 'Term'} {fee.academic_year || ''}
+                                                    </Text>
+                                                    <Text className="text-gray-500 dark:text-gray-400 text-[10px] font-semibold mt-2">
+                                                        Due: {fee.due_date ? new Date(fee.due_date).toLocaleDateString() : 'No deadline'}
+                                                    </Text>
+                                                </View>
+                                                <Text className="text-gray-900 dark:text-white font-black text-base">{formatKES(fee.amount || 0)}</Text>
+                                            </View>
+                                        </View>
+                                    ))}
                                 </View>
                             )}
 
@@ -230,6 +259,12 @@ export default function StudentFinancePage() {
                             {/* Transaction History */}
                             <View className="px-2 flex-row justify-between items-center mb-6">
                                 <Text className="text-gray-900 dark:text-white font-bold text-xl tracking-tight">Ledger Statements</Text>
+                                <HelpTooltip
+                                    id="student.finance.ledger"
+                                    role="student"
+                                    tier={tier}
+                                    onLearnMore={(a) => router.push({ pathname: '/(student)/accessibility/settings', params: { manual: '1', anchor: a || 'student-workflow' } } as any)}
+                                />
                                  <TouchableOpacity 
                                      style={{
                                          boxShadow: [{
@@ -273,7 +308,6 @@ export default function StudentFinancePage() {
                                             <Text className={`font-bold text-base ${tx.direction === 'inflow' ? 'text-green-600' : 'text-gray-900 dark:text-white'}`}>
                                                 {tx.direction === 'inflow' ? '+' : '-'}{formatKES(tx.amount)}
                                             </Text>
-                                            <Text className="text-[8px] text-gray-400 font-bold uppercase tracking-widest">{formatUSD(tx.amount)}</Text>
                                         </View>
                                     </View>
                                 ))
@@ -290,7 +324,7 @@ export default function StudentFinancePage() {
                             <Text className="text-gray-900 dark:text-white font-bold text-xl tracking-tight mb-6 px-2">My Approved Bursaries</Text>
 
                             {bursaryLoading ? (
-                                <ActivityIndicator size="large" color="#FF6900" />
+                                <ListItemSkeleton loading={bursaryLoading} count={3} label="Loading bursaries..." />
                             ) : bursaries.length > 0 ? (
                                 bursaries.map((item: any) => (
                                      <View 
@@ -327,7 +361,6 @@ export default function StudentFinancePage() {
                                                 <View>
                                                     <Text className="text-white/40 text-[9px] font-bold uppercase tracking-widest mb-1">Amount Awarded</Text>
                                                     <Text className="text-white text-3xl font-black">{formatKES(item.amount_awarded || item.bursary?.amount || 0)}</Text>
-                                                    <Text className="text-white/40 text-[10px] font-bold mt-1">{formatUSD(item.amount_awarded || item.bursary?.amount || 0)}</Text>
                                                 </View>
                                                 <View className="w-14 h-14 rounded-full bg-emerald-500/10 border border-emerald-500/20 items-center justify-center">
                                                     <Award size={26} color="#10B981" />

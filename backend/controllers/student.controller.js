@@ -103,6 +103,28 @@ exports.getMyFinance = async (req, res) => {
 
         if (!student) return res.status(404).json({ error: "Student profile not found" });
 
+        // Resolve effective student level from current class enrollment when profile level fields are empty/stale.
+        const enrollment = await getStudentCurrentClassEnrollment(student.id, student.institution_id);
+        let classLevel = null;
+        if (enrollment?.class_id) {
+            const { data: klass } = await supabase
+                .from('classes')
+                .select('grade_level, form_level')
+                .eq('id', enrollment.class_id)
+                .maybeSingle();
+            classLevel = klass || null;
+        }
+
+        const effectiveStudent = {
+            ...student,
+            grade_level: Number.isFinite(Number(student?.grade_level))
+                ? student.grade_level
+                : classLevel?.grade_level,
+            form_level: Number.isFinite(Number(student?.form_level))
+                ? student.form_level
+                : classLevel?.form_level,
+        };
+
         // 2. Get active, released fee structures for current term/year only
         const activeTerm = await resolveActiveTerm(student.institution_id);
 
@@ -115,7 +137,7 @@ exports.getMyFinance = async (req, res) => {
 
         const feeStructures = (feeStructureRows || [])
             .filter((row) => isFeeStructureActiveForTerm(row, activeTerm))
-            .filter((row) => isFeeStructureApplicableToStudent(row, student));
+            .filter((row) => isFeeStructureApplicableToStudent(row, effectiveStudent));
 
         const hasActiveReleasedStructures = feeStructures.length > 0;
 
@@ -142,7 +164,7 @@ exports.getMyFinance = async (req, res) => {
             ? Math.max(totalFees - paidAmount, 0)
             : 0;
 
-        const pendingAmount = 0;
+        const pendingAmount = Math.max(totalFees - paidAmount, 0);
         const paidPercentage = totalFees > 0
             ? Math.min(100, Math.round((paidAmount / totalFees) * 100))
             : 0;

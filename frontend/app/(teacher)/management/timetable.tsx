@@ -1,10 +1,11 @@
 import { UnifiedHeader } from "@/components/common/UnifiedHeader";
+import { ListItemSkeleton } from "@/components/ui/skeletons";
 import { useTheme } from "@/contexts/ThemeContext";
 import { TimetableAPI, TimetableEntry } from "@/services/TimetableService";
 import { router } from "expo-router";
 import { Calendar, Clock, MapPin, Users } from 'lucide-react-native';
 import React, { useEffect, useState } from "react";
-import { ActivityIndicator, Alert, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
@@ -107,9 +108,8 @@ export default function TimetablePage() {
 
             <ScrollView className="flex-1 px-5" showsVerticalScrollIndicator={false}>
                 {loading ? (
-                    <View className="flex-1 items-center justify-center pt-20">
-                        <ActivityIndicator size="large" color="#FF6900" />
-                        <Text className={`${isDark ? 'text-gray-300' : 'text-gray-400'} font-bold mt-4 tracking-tight`}>Loading schedule...</Text>
+                    <View className="pt-4">
+                        <ListItemSkeleton loading={loading} count={4} label="Loading schedule..." />
                     </View>
                 ) : filteredEntries.length > 0 ? (
                     filteredEntries.map((entry) => (

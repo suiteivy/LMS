@@ -118,6 +118,8 @@ Automatic retry worker:
 
 Testing:
 - `npm test` runs backend node:test suites.
+- `npm run lint` runs backend lint checks.
+- `npm run lint:security` runs explicit security-focused lint checks.
 - Current suite includes promotion eligibility service coverage and notification retry worker contract check.
 - DM RLS integration harness: `tests/messaging-rls.integration.test.js`
   - Uses JWT-scoped Supabase clients (anon key + user bearer token) to assert real RLS behavior.

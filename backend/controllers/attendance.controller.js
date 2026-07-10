@@ -2,6 +2,39 @@
 const supabase = require("../utils/supabaseClient.js");
 const { createNotificationInternal } = require("./notification.controller.js");
 const { authorizeTeacherForSubject } = require("../middleware/resolveTeacher.js");
+const { recomputeDailyHoursForInstitutionDate } = require('../services/dailyHours.service.js');
+
+const getSubjectLinkedClassIds = async (subjectId, institutionId) => {
+    const classIds = new Set();
+
+    const { data: subjectRow, error: subjectErr } = await supabase
+        .from('subjects')
+        .select('class_id, metadata')
+        .eq('id', subjectId)
+        .eq('institution_id', institutionId)
+        .single();
+
+    if (subjectErr) throw subjectErr;
+
+    if (subjectRow?.class_id) classIds.add(subjectRow.class_id);
+    if (Array.isArray(subjectRow?.metadata?.class_ids)) {
+        subjectRow.metadata.class_ids.filter(Boolean).forEach((id) => classIds.add(id));
+    }
+
+    const { data: linkRows, error: linkErr } = await supabase
+        .from('subject_classes')
+        .select('class_id')
+        .eq('subject_id', subjectId)
+        .eq('institution_id', institutionId);
+
+    if (linkErr && linkErr.code !== '42P01') throw linkErr;
+
+    (linkRows || []).forEach((row) => {
+        if (row.class_id) classIds.add(row.class_id);
+    });
+
+    return Array.from(classIds);
+};
 
 /**
  * Get Student Attendance for a class/subject on a date
@@ -30,19 +63,20 @@ exports.getStudentAttendance = async (req, res) => {
 
         if (eError) throw eError;
 
-        // Also get students enrolled via class_enrollments (class → subject link)
+        // Also get students enrolled via class_enrollments (class → subject links)
         let classEnrolledStudents = [];
-        const { data: subjectRow } = await supabase
-            .from('subjects')
-            .select('class_id')
-            .eq('id', subject_id)
-            .single();
+        const linkedClassIds = await getSubjectLinkedClassIds(subject_id, institution_id);
+        if (_class_id && !linkedClassIds.includes(String(_class_id))) {
+            return res.status(400).json({ error: "Class is not linked to this subject" });
+        }
+        const classIdsToCheck = _class_id ? [String(_class_id)] : linkedClassIds;
 
-        if (subjectRow?.class_id) {
+        if (classIdsToCheck.length > 0) {
             const { data: classEnrolls } = await supabase
                 .from('class_enrollments')
                 .select('student_id')
-                .eq('class_id', subjectRow.class_id);
+                .eq('institution_id', institution_id)
+                .in('class_id', classIdsToCheck);
             classEnrolledStudents = (classEnrolls || []).map(e => e.student_id);
         }
 
@@ -52,7 +86,7 @@ exports.getStudentAttendance = async (req, res) => {
 
         // Fetch student details for class-enrolled students not already in enrollments
         let allStudents = [...(enrollments || [])];
-        const newIds = [...enrollmentStudentIds].filter(id => !enrollmentStudentIds.has(id) || !allStudents.find(s => s.id === id));
+        const newIds = [...enrollmentStudentIds].filter(id => !allStudents.find(s => s.id === id));
         if (newIds.length > 0) {
             const { data: extraStudents } = await supabase
                 .from('students')
@@ -66,7 +100,8 @@ exports.getStudentAttendance = async (req, res) => {
             .from("attendance")
             .select("*")
             .eq("date", date)
-            .eq("subject_id", subject_id);
+            .eq("subject_id", subject_id)
+            .eq("institution_id", institution_id);
 
         if (aError) throw aError;
 
@@ -114,14 +149,60 @@ exports.markStudentAttendance = async (req, res) => {
 
         const markDate = date || new Date().toISOString().split('T')[0];
 
+        const { data: studentRow, error: studentErr } = await supabase
+            .from('students')
+            .select('id')
+            .eq('id', student_id)
+            .eq('institution_id', institution_id)
+            .single();
+        if (studentErr || !studentRow) {
+            return res.status(400).json({ error: 'Invalid student for institution' });
+        }
+
+        const { data: subjectRow, error: subjectErr } = await supabase
+            .from('subjects')
+            .select('id')
+            .eq('id', subject_id)
+            .eq('institution_id', institution_id)
+            .single();
+        if (subjectErr || !subjectRow) {
+            return res.status(400).json({ error: 'Invalid subject for institution' });
+        }
+
+        const linkedClassIds = await getSubjectLinkedClassIds(subject_id, institution_id);
+        const enrollmentChecks = [
+            supabase
+                .from('enrollments')
+                .select('id')
+                .eq('student_id', student_id)
+                .eq('subject_id', subject_id)
+                .eq('institution_id', institution_id)
+                .eq('status', 'enrolled')
+                .maybeSingle(),
+        ];
+
+        if (linkedClassIds.length > 0) {
+            enrollmentChecks.push(
+                supabase
+                    .from('class_enrollments')
+                    .select('id')
+                    .eq('student_id', student_id)
+                    .eq('institution_id', institution_id)
+                    .in('class_id', linkedClassIds)
+                    .maybeSingle()
+            );
+        }
+
+        const enrollmentResults = await Promise.all(enrollmentChecks);
+        const hasValidEnrollment = enrollmentResults.some((result) => !!result.data);
+        if (!hasValidEnrollment) {
+            return res.status(403).json({ error: 'Student is not enrolled for this subject' });
+        }
+
         let targetClassId = class_id;
         if (!targetClassId) {
-            const { data: subjectRow } = await supabase
-                .from("subjects")
-                .select("class_id")
-                .eq("id", subject_id)
-                .single();
-            targetClassId = subjectRow?.class_id || null;
+            const linkedClassIds = await getSubjectLinkedClassIds(subject_id, institution_id);
+            targetClassId = linkedClassIds[0] || null;
         }
 
         // Upsert
@@ -147,13 +228,15 @@ exports.markStudentAttendance = async (req, res) => {
                 .from('students')
                 .select('users(full_name)')
                 .eq('id', student_id)
+                .eq('institution_id', institution_id)
                 .single();
 
             // Find all parents linked to this student
             const { data: parentRelations } = await supabase
                 .from('parent_students')
                 .select('parent_id, parents(user_id)')
-                .eq('student_id', student_id);
+                .eq('student_id', student_id)
+                .eq('institution_id', institution_id);
 
             if (parentRelations && parentRelations.length > 0) {
                 const studentName = student?.users?.full_name || 'Your child';
@@ -169,6 +252,16 @@ exports.markStudentAttendance = async (req, res) => {
                     }
                 }
             }
+        }
+
+        try {
+            await recomputeDailyHoursForInstitutionDate({
+                institution_id,
+                date: markDate,
+                student_ids: [student_id],
+            });
+        } catch (hoursError) {
+            console.error('[Attendance] student daily hours recompute failed:', hoursError?.message || hoursError);
         }
 
         res.json(data[0]);
@@ -192,13 +285,58 @@ exports.getTeacherAttendance = async (req, res) => {
 
         if (!date) return res.status(400).json({ error: "Date required" });
 
-        // 1. Get all teachers
-        const { data: teachers, error: tError } = await supabase
-            .from("teachers")
-            .select("id, users!inner(first_name, last_name, full_name, avatar_url)")
-            .eq("institution_id", institution_id);
+        const weekday = new Date(`${date}T00:00:00`).toLocaleDateString('en-US', { weekday: 'long' });
 
-        if (tError) throw tError;
+        // 1. Resolve teachers scheduled for this weekday only.
+        //    Teachers with no timetable-linked subject must not appear.
+        const { data: timetableRows, error: ttError } = await supabase
+            .from("timetables")
+            .select("subject_id")
+            .eq("institution_id", institution_id)
+            .eq("day_of_week", weekday);
+
+        if (ttError && ttError.code !== "42P01") {
+            throw ttError;
+        }
+
+        let teachers = [];
+        const hasTimetableRows = !ttError && (timetableRows || []).length > 0;
+
+        if (hasTimetableRows) {
+            const subjectIds = Array.from(new Set((timetableRows || []).map((r) => r.subject_id).filter(Boolean)));
+
+            const { data: subjects, error: subjectsError } = await supabase
+                .from("subjects")
+                .select("id, teacher_id")
+                .in("id", subjectIds)
+                .eq("institution_id", institution_id);
+            if (subjectsError) throw subjectsError;
+
+            const { data: subjectTeachers, error: stError } = await supabase
+                .from("subject_teachers")
+                .select("subject_id, teacher_id")
+                .in("subject_id", subjectIds)
+                .eq("institution_id", institution_id);
+            if (stError && stError.code !== "42P01") throw stError;
+
+            const teacherIds = new Set();
+            (subjects || []).forEach((s) => { if (s.teacher_id) teacherIds.add(s.teacher_id); });
+            (subjectTeachers || []).forEach((st) => { if (st.teacher_id) teacherIds.add(st.teacher_id); });
+
+            const teacherIdList = Array.from(teacherIds);
+            if (teacherIdList.length > 0) {
+                const { data: scheduledTeachers, error: tError } = await supabase
+                    .from("teachers")
+                    .select("id, users!inner(first_name, last_name, full_name, avatar_url)")
+                    .eq("institution_id", institution_id)
+                    .in("id", teacherIdList);
+                if (tError) throw tError;
+                teachers = scheduledTeachers || [];
+            }
+        }
+
+        // No fallback to all teachers by design.
+        // If no timetable rows exist for the weekday, return an empty attendance list.
 
         // 2. Get attendance records for date
         const { data: attendance, error: aError } = await supabase
@@ -239,13 +377,37 @@ exports.markTeacherAttendance = async (req, res) => {
             return res.status(403).json({ error: "Unauthorized" });
         }
 
+        const { data: teacherRow, error: teacherErr } = await supabase
+            .from('teachers')
+            .select('id')
+            .eq('id', teacher_id)
+            .eq('institution_id', institution_id)
+            .single();
+
+        if (teacherErr || !teacherRow) {
+            return res.status(400).json({ error: 'Invalid teacher for institution' });
+        }
+
+        const markDate = date || new Date().toISOString().split('T')[0];
+
         // Upsert
         const { data, error } = await supabase
             .from("teacher_attendance")
-            .upsert({ teacher_id, date, status, notes, institution_id }, { onConflict: "teacher_id, date" })
+            .upsert({ teacher_id, date: markDate, status, notes, institution_id }, { onConflict: "teacher_id, date" })
             .select();
 
         if (error) throw error;
+
+        try {
+            await recomputeDailyHoursForInstitutionDate({
+                institution_id,
+                date: markDate,
+                teacher_ids: [teacher_id],
+            });
+        } catch (hoursError) {
+            console.error('[Attendance] teacher daily hours recompute failed:', hoursError?.message || hoursError);
+        }
+
         res.json(data[0]);
     } catch (err) {
         res.status(500).json({ error: err.message });

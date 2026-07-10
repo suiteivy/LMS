@@ -1,6 +1,7 @@
 const { createClient } = require("@supabase/supabase-js");
 const dotenv = require("dotenv");
 const path = require("path");
+const { assertStrongSeedPassword } = require("../utils/seedPasswordPolicy.js");
 
 dotenv.config({ path: path.join(__dirname, "../.env") });
 
@@ -8,6 +9,8 @@ const supabase = createClient(
     process.env.EXPO_PUBLIC_SUPABASE_URL,
     process.env.SUPABASE_SERVICE_ROLE_KEY
 );
+
+const BETA_TEST_PASSWORD = assertStrongSeedPassword(process.env.BETA_TEST_PASSWORD, "BETA_TEST_PASSWORD");
 
 async function seedBetaInstitution() {
     console.log("🚀 Starting Beta Seeding for Beta Partner Academy...");
@@ -29,9 +32,7 @@ async function seedBetaInstitution() {
                 type: "secondary",
                 subscription_plan: "beta",
                 subscription_status: "active",
-                addon_finance: true,
                 addon_library: true,
-                addon_attendance: true,
                 addon_diary: true,
                 addon_messaging: true,
                 email_domain: "beta-academy.test"
@@ -78,7 +79,7 @@ async function seedBetaInstitution() {
         }
     };
 
-    const password = "CloudoraBeta2026!";
+    const password = BETA_TEST_PASSWORD;
 
     // 2. Administrators
     const adminId = await createBetaUser("admin@beta-academy.test", password, "Main Administrator", "admin");

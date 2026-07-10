@@ -7,6 +7,12 @@ const { canonicalRoleFrom, withRoleAliases } = require("../utils/roleAlias.js");
 const { assignStudentToSingleClass } = require('../utils/studentClassEnrollment');
 
 const IDLE_TIMEOUT_MS = 30 * 60 * 1000;
+const ADMIN_DELEGATED_USER_EDIT_PERMISSIONS = new Set([
+  'users:write',
+  'users:manage',
+  'admin:users:edit',
+  'admin:users:manage',
+]);
 
 const parseUserAgent = (userAgent) => {
   const ua = String(userAgent || '').toLowerCase();
@@ -62,6 +68,49 @@ const generateTempPassword = () => {
   return password;
 };
 
+const normalizeEmail = (value) => String(value || '').trim().toLowerCase();
+
+const sanitizeNameForEmail = (value) => String(value || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+
+const buildEmailBaseFromNames = (firstName, lastName) => {
+  const cleanFirst = sanitizeNameForEmail(firstName);
+  const cleanLast = sanitizeNameForEmail(lastName);
+  if (cleanFirst && cleanLast) return `${cleanFirst}.${cleanLast}`;
+  return cleanFirst;
+};
+
+const generateUniqueInstitutionEmail = async ({
+  firstName,
+  lastName,
+  emailDomain,
+  excludeUserId = null,
+}) => {
+  const baseEmailName = buildEmailBaseFromNames(firstName, lastName);
+  if (!baseEmailName) throw new Error('Unable to generate email from provided name.');
+  if (!emailDomain) throw new Error('Institution email domain is missing.');
+
+  let candidate = `${baseEmailName}@${String(emailDomain).trim().toLowerCase()}`;
+  let suffix = 1;
+
+  for (;;) {
+    const { data: existingRows, error } = await supabase
+      .from('users')
+      .select('id')
+      .ilike('email', candidate)
+      .limit(1);
+    if (error) throw error;
+
+    const existing = Array.isArray(existingRows) ? existingRows[0] : null;
+
+    if (!existing || (excludeUserId && existing.id === excludeUserId)) {
+      return candidate;
+    }
+
+    suffix += 1;
+    candidate = `${baseEmailName}${suffix}@${String(emailDomain).trim().toLowerCase()}`;
+  }
+};
+
 const getRequestContext = (req) => ({
   ip_address: req?.headers?.['x-forwarded-for'] || req?.socket?.remoteAddress || null,
   user_agent: req?.headers?.['user-agent'] || null,
@@ -105,6 +154,116 @@ const hashSecurityAnswer = (answer, salt) => {
     .createHash('sha256')
     .update(`${salt}:${normalizeSecurityAnswer(answer)}`)
     .digest('hex');
+};
+
+const isMissingCanManageUsersColumnError = (error) => {
+  const message = String(error?.message || '');
+  return /can_manage_users does not exist/i.test(message);
+};
+
+const fetchAdminRowWithDelegationFallback = async (userId) => {
+  let { data, error } = await supabase
+    .from('admins')
+    .select('id, is_main, can_manage_users')
+    .eq('user_id', userId)
+    .maybeSingle();
+
+  if (error && isMissingCanManageUsersColumnError(error)) {
+    const fallback = await supabase
+      .from('admins')
+      .select('id, is_main')
+      .eq('user_id', userId)
+      .maybeSingle();
+
+    return {
+      data: fallback.data
+        ? { ...fallback.data, can_manage_users: !!fallback.data?.is_main }
+        : null,
+      error: fallback.error,
+      delegationColumnMissing: true,
+    };
+  }
+
+  return {
+    data,
+    error,
+    delegationColumnMissing: false,
+  };
+};
+
+const updateAdminManageUsersWithFallback = async (userId, canManageUsers) => {
+  const updateResult = await supabase
+    .from('admins')
+    .update({ can_manage_users: !!canManageUsers })
+    .eq('user_id', userId);
+
+  if (updateResult.error && isMissingCanManageUsersColumnError(updateResult.error)) {
+    return { error: null, skipped: true };
+  }
+
+  return { error: updateResult.error, skipped: false };
+};
+
+const hasDelegatedUserEditPermission = (req) => {
+  if (req?.user?.can_manage_users) return true;
+  const permissions = Array.isArray(req?.user?.permissions) ? req.user.permissions : [];
+  return permissions.some((permission) =>
+    ADMIN_DELEGATED_USER_EDIT_PERMISSIONS.has(String(permission || '').trim().toLowerCase())
+  );
+};
+
+const canAdminManageUsers = ({ isMain = false, hasDelegatedPermission = false }) => {
+  return !!isMain || !!hasDelegatedPermission;
+};
+
+const SECURITY_QUESTIONS = {
+  q_childhood_nickname: 'What is your childhood nickname?',
+  q_first_school: 'What is the name of your first school?',
+  q_birth_city: 'What city were you born in?',
+};
+
+const SECURITY_QUESTION_KEY_PREFIX = '__question_key__:';
+
+const isValidSecurityQuestionKey = (key) => Object.prototype.hasOwnProperty.call(SECURITY_QUESTIONS, key);
+
+const encodeSecurityQuestionKey = (key) => `${SECURITY_QUESTION_KEY_PREFIX}${key}`;
+
+const decodeSecurityQuestionKey = (value) => {
+  const raw = String(value || '');
+  if (!raw.startsWith(SECURITY_QUESTION_KEY_PREFIX)) return null;
+  const key = raw.slice(SECURITY_QUESTION_KEY_PREFIX.length);
+  return isValidSecurityQuestionKey(key) ? key : null;
+};
+
+const getStoredSecurityQuestionKey = (answersRow) => {
+  return decodeSecurityQuestionKey(answersRow?.question2_salt) || 'q_childhood_nickname';
+};
+
+const getSecurityQuestionAttemptCount = async ({ email, userId }) => {
+  const normalizedEmail = normalizeEmail(email);
+  let query = supabase
+    .from('password_audit_logs')
+    .select('id', { count: 'exact', head: true })
+    .eq('action', 'forgot_password_request')
+    .eq('outcome', 'failure')
+    .eq('reason', 'security_question_attempt_failed')
+    .gt('created_at', new Date(Date.now() - 3600000).toISOString());
+
+  if (userId) query = query.eq('target_user_id', userId);
+  else query = query.eq('target_email', normalizedEmail);
+
+  const { count, error } = await query;
+  if (error) throw error;
+  return Number(count || 0);
+};
+
+const revokeAllUserSessions = async (userId) => {
+  if (!userId) return;
+  await supabase
+    .from('user_sessions')
+    .update({ is_revoked: true })
+    .eq('user_id', userId)
+    .eq('is_revoked', false);
 };
 
 const buildCredentialDeliveryUrl = (token) => {
@@ -172,6 +331,104 @@ const buildCredentialDocument = ({
   return lines.join('\n');
 };
 
+const PLAN_NORMALIZATION_MAP = {
+  free: 'beta',
+  beta_free: 'beta',
+  basic_basic: 'basic',
+  basic_pro: 'pro',
+  basic_premium: 'premium',
+  trial: 'basic',
+  enterprise_basic: 'premium',
+  enterprise_pro: 'premium',
+  enterprise_premium: 'premium',
+  custom_basic: 'premium',
+  custom_pro: 'premium',
+  custom_premium: 'premium',
+};
+
+const canonicalPlanFrom = (value) => {
+  const raw = String(value || '').trim().toLowerCase();
+  const mapped = PLAN_NORMALIZATION_MAP[raw] || raw || 'basic';
+  return ['beta', 'basic', 'pro', 'premium'].includes(mapped) ? mapped : 'basic';
+};
+
+const PLAN_LIMITS = {
+  beta: { maxStudents: 30, maxAdmins: 2 },
+  basic: { maxStudents: 900, maxAdmins: Infinity },
+  pro: { maxStudents: 1000, maxAdmins: Infinity },
+  premium: { maxStudents: 5000, maxAdmins: Infinity },
+};
+
+const getInstitutionSlotCapacity = async (institutionId) => {
+  if (!institutionId) {
+    throw new Error('Institution ID is required to resolve slot capacity.');
+  }
+
+  const { data: institution, error: institutionError } = await supabase
+    .from('institutions')
+    .select('id, subscription_plan, custom_student_limit')
+    .eq('id', institutionId)
+    .single();
+
+  if (institutionError || !institution) {
+    const message = institutionError?.message || 'Institution not found.';
+    throw new Error(message);
+  }
+
+  const canonicalPlan = canonicalPlanFrom(institution.subscription_plan || 'basic');
+  const baseLimits = PLAN_LIMITS[canonicalPlan] || PLAN_LIMITS.basic;
+  let maxStudents = baseLimits.maxStudents;
+  const maxAdmins = baseLimits.maxAdmins;
+
+  if (canonicalPlan === 'beta') {
+    const parsed = Number(institution.custom_student_limit);
+    if (Number.isFinite(parsed) && parsed > 0) {
+      maxStudents = parsed;
+    }
+  }
+
+  const [{ count: studentCount = 0, error: studentCountError }, { count: adminCount = 0, error: adminCountError }] = await Promise.all([
+    supabase
+      .from('users')
+      .select('*', { count: 'exact', head: true })
+      .eq('institution_id', institutionId)
+      .eq('role', 'student'),
+    supabase
+      .from('users')
+      .select('*', { count: 'exact', head: true })
+      .eq('institution_id', institutionId)
+      .eq('role', 'admin'),
+  ]);
+
+  if (studentCountError) throw studentCountError;
+  if (adminCountError) throw adminCountError;
+
+  const remainingStudents = maxStudents === Infinity ? Infinity : Math.max(0, maxStudents - Number(studentCount || 0));
+  const remainingAdmins = maxAdmins === Infinity ? Infinity : Math.max(0, maxAdmins - Number(adminCount || 0));
+  const serializeLimit = (value) => (value === Infinity ? null : value);
+
+  return {
+    institution_id: institutionId,
+    plan: canonicalPlan,
+    limits: {
+      student: serializeLimit(maxStudents),
+      admin: serializeLimit(maxAdmins),
+    },
+    usage: {
+      student: Number(studentCount || 0),
+      admin: Number(adminCount || 0),
+    },
+    remaining: {
+      student: serializeLimit(remainingStudents),
+      admin: serializeLimit(remainingAdmins),
+    },
+    at_capacity: {
+      student: maxStudents !== Infinity && Number(studentCount || 0) >= maxStudents,
+      admin: maxAdmins !== Infinity && Number(adminCount || 0) >= maxAdmins,
+    },
+  };
+};
+
 exports.login = async (req, res) => {
   const body = req.body;
   const email = body?.email;
@@ -180,6 +437,22 @@ exports.login = async (req, res) => {
     return res.status(400).json({ error: "Email and password are required" });
   }
   try {
+    const { data: maintenanceRow, error: maintenanceError } = await supabase
+      .from('system_settings')
+      .select('value')
+      .eq('key', 'maintenance_mode')
+      .maybeSingle();
+
+    if (maintenanceError) throw maintenanceError;
+
+    const maintenanceValue = maintenanceRow?.value || {};
+    if (maintenanceValue.enabled === true) {
+      return res.status(503).json({
+        error: String(maintenanceValue.message || 'System maintenance is in progress. Please try again later.'),
+        code: 'MAINTENANCE_MODE',
+      });
+    }
+
     // Use a fresh client to avoid polluting global state
 const { createClient } = require("@supabase/supabase-js");
     const scopedClient = createClient(
@@ -248,15 +521,22 @@ const { createClient } = require("@supabase/supabase-js");
     if (userData.institution_id) {
       const { data: instData } = await supabase
         .from('institutions')
-        .select('subscription_status, subscription_plan, trial_end_date, has_used_trial')
+        .select('subscription_status, subscription_plan, subscription_tracking_start_date, has_used_trial')
         .eq('id', userData.institution_id)
         .single();
 
       if (instData) {
+        if (instData.subscription_status === 'suspended') {
+          return res.status(403).json({
+            error: 'Your institution account is currently disabled. Please contact the platform administrator.',
+            code: 'INSTITUTION_SUSPENDED',
+          });
+        }
+
         subscription = {
           status: instData.subscription_status,
           plan: instData.subscription_plan,
-          trialEndDate: instData.trial_end_date,
+          subscriptionTrackingStartDate: instData.subscription_tracking_start_date,
           hasUsedTrial: instData.has_used_trial
         };
       }
@@ -326,6 +606,8 @@ exports.enrollUser = async (req, res) => {
     occupation,
     parent_address,
     linked_students, // array of { student_id, relationship }
+    linked_parents,  // array of parent IDs to link to student
+    parent_relationship, // relationship used when linking parent-student
   } = req.body;
 
   // Derive first/last from full_name if provided and first_name is missing
@@ -351,6 +633,22 @@ exports.enrollUser = async (req, res) => {
   }
 
   try {
+    const requesterRole = canonicalRoleFrom(req.userRole);
+    const requesterIsPlatformAdmin = requesterRole === 'platform_admin';
+    const requesterCanManageUsers = requesterIsPlatformAdmin
+      ? true
+      : canAdminManageUsers({
+          isMain: !!req.isMain,
+          hasDelegatedPermission: hasDelegatedUserEditPermission(req),
+        });
+
+    if (!requesterCanManageUsers) {
+      return res.status(403).json({
+        error: 'Only main administrators or delegated administrators can enroll users.',
+        code: 'ADMIN_USER_MANAGEMENT_DENIED',
+      });
+    }
+
     // Automatically assign institution based on admin session (Strict Scoping)
     // Only Platform Admins can override the target institution.
     const targetInstitutionId = req.isPlatformAdmin ? (institution_id || req.institution_id) : req.institution_id;
@@ -359,42 +657,22 @@ exports.enrollUser = async (req, res) => {
     if (targetInstitutionId) {
       const { data: inst } = await supabase
         .from('institutions')
-        .select('subscription_plan, email_domain')
+        .select('subscription_plan, email_domain, custom_student_limit')
         .eq('id', targetInstitutionId)
         .single();
 
       const _institutionDomain = inst?.email_domain;
 
-      // Normalise legacy IDs to canonical plan IDs
-      const rawPlan = inst?.subscription_plan || 'trial';
-      const normPlan = (p) => {
-        const mapping = {
-          beta_free: 'beta',
-          basic_basic: 'basic',
-          basic_pro: 'pro',
-          basic_premium: 'premium',
-          enterprise_basic: 'custom',
-          enterprise_pro: 'custom',
-          enterprise_premium: 'custom',
-          custom_basic: 'custom',
-          custom_pro: 'custom',
-          custom_premium: 'custom'
-        };
-        return mapping[p] || p || 'trial';
-      };
-      const canonicalPlan = normPlan(rawPlan);
+      const canonicalPlan = canonicalPlanFrom(inst?.subscription_plan || 'basic');
+      let limits = PLAN_LIMITS[canonicalPlan] ?? { maxStudents: 900, maxAdmins: Infinity };
 
-      // Limits aligned with landing page promises
-      const LIMITS = {
-        beta: { maxStudents: 30, maxAdmins: 1 },
-        trial: { maxStudents: 50, maxAdmins: 1 },
-        basic: { maxStudents: 900, maxAdmins: 1 },
-        pro: { maxStudents: 1000, maxAdmins: 3 },
-        premium: { maxStudents: 5000, maxAdmins: Infinity },
-        custom: { maxStudents: Infinity, maxAdmins: Infinity },
-      };
-
-      const limits = LIMITS[canonicalPlan] ?? { maxStudents: 50, maxAdmins: 1 };
+      // Beta supports institution-level custom student limit override.
+      if (canonicalPlan === 'beta' && inst?.custom_student_limit !== null && inst?.custom_student_limit !== undefined) {
+        const parsedLimit = Number(inst.custom_student_limit);
+        if (Number.isFinite(parsedLimit) && parsedLimit > 0) {
+          limits = { ...limits, maxStudents: parsedLimit };
+        }
+      }
 
       if (role === 'admin' && limits.maxAdmins !== Infinity) {
         const { count: adminCount } = await supabase
@@ -429,7 +707,7 @@ exports.enrollUser = async (req, res) => {
 
 
     // 0.5 Generate custom email if not provided
-    let finalEmail = email;
+    let finalEmail = normalizeEmail(email);
     if (!finalEmail && targetInstitutionId) {
       const { data: inst } = await supabase
         .from('institutions')
@@ -458,7 +736,7 @@ exports.enrollUser = async (req, res) => {
             const { data: existing } = await supabase
               .from('users')
               .select('id')
-              .eq('email', finalEmail)
+              .ilike('email', finalEmail)
               .maybeSingle();
             
             if (existing) {
@@ -488,6 +766,8 @@ exports.enrollUser = async (req, res) => {
     }
 
     // Validate required fields again with potentially updated email
+    finalEmail = normalizeEmail(finalEmail);
+
     if (!finalEmail || !fName || !role) {
       return res.status(400).json({
         error: "first_name and role are required. email generation failed or missing.",
@@ -534,7 +814,7 @@ exports.enrollUser = async (req, res) => {
     let customId = null;
     let parentResult = null;
 
-    if (role === 'student') {
+      if (role === 'student') {
       const updateFields = {};
       if (grade_level) updateFields.grade_level = grade_level;
       if (academic_year) updateFields.academic_year = academic_year;
@@ -560,20 +840,106 @@ exports.enrollUser = async (req, res) => {
         });
       }
 
+      // Link existing parent(s) selected during student enrollment flow.
+      // UI currently sends one ID, but backend supports multiple for compatibility.
+      if (linked_parents && linked_parents.length > 0 && customId) {
+        const uniqueParentIds = Array.from(
+          new Set(
+            linked_parents
+              .map((value) => String(value || '').trim())
+              .filter(Boolean)
+          )
+        );
+
+        if (uniqueParentIds.length > 0) {
+          if (!targetInstitutionId) {
+            return res.status(400).json({
+              error: 'Cannot link parent accounts without a target institution.',
+              code: 'INVALID_PARENT_LINKS',
+            });
+          }
+
+          const { data: allowedParentRows, error: allowedParentsError } = await supabase
+            .from('parents')
+            .select('id, users!inner(institution_id)')
+            .in('id', uniqueParentIds)
+            .eq('users.institution_id', targetInstitutionId);
+
+          if (allowedParentsError) throw allowedParentsError;
+
+          const allowedParentIds = new Set(
+            (allowedParentRows || []).map((row) => String(row.id || '').trim()).filter(Boolean)
+          );
+
+          const invalidParentIds = uniqueParentIds.filter((parentId) => !allowedParentIds.has(parentId));
+          if (invalidParentIds.length > 0) {
+            return res.status(400).json({
+              error: 'One or more selected parents are invalid for this institution.',
+              code: 'INVALID_PARENT_LINKS',
+            });
+          }
+
+          const relationship = String(parent_relationship || 'guardian').trim() || 'guardian';
+          const { data: existingParentLinks, error: existingParentLinksError } = await supabase
+            .from('parent_students')
+            .select('parent_id')
+            .eq('student_id', customId)
+            .in('parent_id', uniqueParentIds);
+
+          if (existingParentLinksError) throw existingParentLinksError;
+
+          const linkedParentIds = new Set((existingParentLinks || []).map((row) => row.parent_id));
+          const linkRows = uniqueParentIds
+            .filter((parentId) => !linkedParentIds.has(parentId))
+            .map((parentId) => ({
+              parent_id: parentId,
+              student_id: customId,
+              relationship,
+            }));
+
+          if (linkRows.length > 0) {
+            const { error: linkedParentError } = await supabase
+              .from('parent_students')
+              .insert(linkRows);
+
+            if (linkedParentError) throw linkedParentError;
+          }
+        }
+      }
+
       // Optional Atomic Parent Creation
       if (parent_info && parent_info.email && (parent_info.full_name || parent_info.first_name)) {
         try {
+          const parentEmail = normalizeEmail(parent_info.email);
+          if (!parentEmail) {
+            throw new Error('Parent email is required to create a linked parent account.');
+          }
+
+          let parentFirstName = String(parent_info.first_name || '').trim();
+          let parentLastName = String(parent_info.last_name || '').trim();
+
+          if (!parentFirstName && parent_info.full_name) {
+            const parentNameParts = String(parent_info.full_name).trim().split(/\s+/);
+            parentFirstName = parentNameParts[0] || '';
+            parentLastName = parentNameParts.slice(1).join(' ');
+          }
+
+          if (!parentFirstName) {
+            throw new Error('Parent first name is required to create a linked parent account.');
+          }
+
+          const parentFullName = `${parentFirstName} ${parentLastName}`.trim();
           const parentTempPass = generateTempPassword();
 
           // Create Parent Auth
           const { data: pAuthData, error: pAuthError } = await supabase.auth.admin.createUser({
-            email: parent_info.email,
+            email: parentEmail,
             password: parentTempPass,
             email_confirm: true,
             user_metadata: { 
-              full_name: `${parent_info.first_name || ''} ${parent_info.last_name || ''}`.trim(),
-              first_name: parent_info.first_name || '',
-              last_name: parent_info.last_name || ''
+              full_name: parentFullName,
+              first_name: parentFirstName,
+              last_name: parentLastName,
             },
           });
 
@@ -584,10 +950,10 @@ exports.enrollUser = async (req, res) => {
           // Create Parent User
           const { error: pUserError } = await supabase.from("users").insert({
             id: pUid,
-            email: parent_info.email,
-            full_name: `${parent_info.first_name || ''} ${parent_info.last_name || ''}`.trim(),
-            first_name: parent_info.first_name || '',
-            last_name: parent_info.last_name || '',
+            email: parentEmail,
+            full_name: parentFullName,
+            first_name: parentFirstName,
+            last_name: parentLastName,
             role: 'parent',
             must_change_password: true,
             requires_security_questions_setup: true,
@@ -623,7 +989,7 @@ exports.enrollUser = async (req, res) => {
             const { error: linkErr } = await supabase.from('parent_students').insert({
               parent_id: pData.id,
               student_id: customId,
-              relationship: 'guardian'
+              relationship: parent_info.relationship || parent_relationship || 'guardian'
             });
 
             if (linkErr) throw linkErr;
@@ -631,7 +997,7 @@ exports.enrollUser = async (req, res) => {
             const parentCredentialDelivery = await createCredentialDeliveryToken({
               createdBy: req.userId || null,
               targetUserId: pUid,
-              targetEmail: parent_info.email,
+              targetEmail: parentEmail,
               temporaryPassword: parentTempPass,
               metadata: {
                 role: 'parent',
@@ -640,24 +1006,24 @@ exports.enrollUser = async (req, res) => {
             });
 
             parentResult = {
-              email: parent_info.email,
+              email: parentEmail,
               tempPassword: parentTempPass,
               credential_delivery: parentCredentialDelivery,
               credential_document: buildCredentialDocument({
-                fullName: `${parent_info.first_name || ''} ${parent_info.last_name || ''}`.trim(),
+                fullName: parentFullName,
                 role: 'parent',
-                email: parent_info.email,
+                email: parentEmail,
                 temporaryPassword: parentTempPass,
                 credentialUrl: parentCredentialDelivery.url,
                 expiresAt: parentCredentialDelivery.expiresAt,
               }),
               customId: pData.id,
-              full_name: `${parent_info.first_name || ''} ${parent_info.last_name || ''}`.trim()
+              full_name: parentFullName,
             };
 
             // Send Enrollment Email to Parent (async)
             sendEmail({
-              to: parent_info.email,
+              to: parentEmail,
               subject: "Welcome to Cloudora LMS - Parent Account Details",
               html: `
                 <div style="font-family: Arial, sans-serif; color: #333; max-width: 600px; margin: 0 auto; border: 1px solid #e0e0e0; border-radius: 8px; overflow: hidden;">
@@ -665,12 +1031,12 @@ exports.enrollUser = async (req, res) => {
                     <h2 style="color: white; margin: 0;">Account Created Successfully</h2>
                   </div>
                   <div style="padding: 24px;">
-                    <p>Dear ${parent_info.first_name || 'Parent'},</p>
+                    <p>Dear ${parentFirstName || 'Parent'},</p>
                     <p>Your parent account for the Cloudora LMS platform has been created. You can now log in to monitor your child's academic progress.</p>
                     
                     <div style="background-color: #f9f9f9; padding: 20px; border-radius: 8px; margin: 24px 0; border: 1px solid #eee;">
                       <p style="margin: 0 0 10px 0;"><strong>Login Credentials:</strong></p>
-                      <p style="margin: 5px 0;">Email: <span style="color: #FF6B00; font-weight: bold;">${parent_info.email}</span></p>
+                      <p style="margin: 5px 0;">Email: <span style="color: #FF6B00; font-weight: bold;">${parentEmail}</span></p>
                       <p style="margin: 5px 0;">Temporary Password: <span style="color: #FF6B00; font-weight: bold;">${parentTempPass}</span></p>
                     </div>
 
@@ -685,8 +1051,8 @@ exports.enrollUser = async (req, res) => {
                   </div>
                 </div>
               `,
-              text: `Dear ${parent_info.first_name || 'Parent'},\n\nYour parent account for Cloudora LMS has been created.\n\nLogin Credentials:\nEmail: ${parent_info.email}\nTemporary Password: ${parentTempPass}\n\nPlease change your password after your first login.`
-            }).catch(e => console.error("Failed to send parent enrollment email:", e));
+               text: `Dear ${parentFirstName || 'Parent'},\n\nYour parent account for Cloudora LMS has been created.\n\nLogin Credentials:\nEmail: ${parentEmail}\nTemporary Password: ${parentTempPass}\n\nPlease change your password after your first login.`
+             }).catch(e => console.error("Failed to send parent enrollment email:", e));
           } else {
              throw new Error("Missing Student ID to link with Parent");
           }
@@ -747,8 +1113,13 @@ exports.enrollUser = async (req, res) => {
     }
 
     if (role === 'admin') {
-      const { data: adminData } = await supabase
-        .from('admins').select('id').eq('user_id', uid).single();
+      const { data: adminData, error: adminDataError } = await supabase
+        .from('admins').select('id, is_main').eq('user_id', uid).single();
+      if (adminDataError) throw adminDataError;
+
+      const { error: adminPermissionError } = await updateAdminManageUsersWithFallback(uid, !!adminData?.is_main);
+      if (adminPermissionError) throw adminPermissionError;
+
       customId = adminData?.id;
     }
 
@@ -838,12 +1209,53 @@ exports.adminUpdateUser = async (req, res) => {
   }
 
   try {
+    const { data: targetUser, error: targetUserError } = await supabase
+      .from('users')
+      .select('id, role, institution_id, first_name, last_name')
+      .eq('id', id)
+      .single();
+
+    if (targetUserError || !targetUser) {
+      return res.status(404).json({ error: 'Target user not found' });
+    }
+
+    const requesterRole = canonicalRoleFrom(req.userRole);
+    const targetRole = canonicalRoleFrom(targetUser.role);
+    const requesterIsPlatformAdmin = requesterRole === 'platform_admin';
+    const requesterHasDelegatedEdit = hasDelegatedUserEditPermission(req);
+    const requesterCanManageUsers = requesterIsPlatformAdmin
+      ? true
+      : canAdminManageUsers({
+          isMain: !!req.isMain,
+          hasDelegatedPermission: requesterHasDelegatedEdit,
+        });
+
+    if (!requesterCanManageUsers) {
+      return res.status(403).json({
+        error: 'Only main administrators or delegated administrators can edit users.',
+        code: 'ADMIN_USER_MANAGEMENT_DENIED',
+      });
+    }
+
+    if (!requesterIsPlatformAdmin && targetUser.institution_id !== req.institution_id) {
+      return res.status(403).json({
+        error: 'Cannot edit users outside your institution.',
+        code: 'CROSS_INSTITUTION_DENIED',
+      });
+    }
+
+    if (!requesterIsPlatformAdmin && (first_name !== undefined || last_name !== undefined || full_name !== undefined || email !== undefined)) {
+      return res.status(403).json({
+        error: 'Only Master Admin can edit first name, last name, full name, or email.',
+      });
+    }
+
     // 1. Build users table update
     const userUpdates = {};
-    if (first_name !== undefined) userUpdates.first_name = first_name;
-    if (last_name !== undefined) userUpdates.last_name = last_name;
-    if (full_name !== undefined) userUpdates.full_name = full_name;
-    if (email !== undefined) userUpdates.email = email;
+    if (first_name !== undefined) userUpdates.first_name = String(first_name || '').trim();
+    if (last_name !== undefined) userUpdates.last_name = String(last_name || '').trim();
+    if (full_name !== undefined) userUpdates.full_name = String(full_name || '').trim();
+    if (email !== undefined) userUpdates.email = String(email || '').trim().toLowerCase();
     if (phone !== undefined) userUpdates.phone = phone || null;
     if (gender !== undefined) userUpdates.gender = gender || null;
     if (date_of_birth !== undefined) userUpdates.date_of_birth = date_of_birth || null;
@@ -858,7 +1270,32 @@ exports.adminUpdateUser = async (req, res) => {
        const lName = last_name !== undefined ? (last_name || '') : '';
        if (fName || lName) {
            userUpdates.full_name = `${fName} ${lName}`.trim();
-       }
+        }
+    }
+
+    // For master admin identity edits, regenerate institution-domain email from names.
+    if (requesterIsPlatformAdmin && (first_name !== undefined || last_name !== undefined) && targetUser.institution_id) {
+      const nextFirst = first_name !== undefined ? String(first_name || '').trim() : String(targetUser.first_name || '').trim();
+      const nextLast = last_name !== undefined ? String(last_name || '').trim() : String(targetUser.last_name || '').trim();
+
+      if (nextFirst) {
+        const { data: institution, error: institutionError } = await supabase
+          .from('institutions')
+          .select('email_domain')
+          .eq('id', targetUser.institution_id)
+          .single();
+        if (institutionError) throw institutionError;
+
+        const nextEmail = await generateUniqueInstitutionEmail({
+          firstName: nextFirst,
+          lastName: nextLast,
+          emailDomain: institution?.email_domain,
+          excludeUserId: id,
+        });
+
+        userUpdates.email = nextEmail;
+        userUpdates.full_name = `${nextFirst} ${nextLast}`.trim();
+      }
     }
 
     if (Object.keys(userUpdates).length > 0) {
@@ -909,11 +1346,52 @@ exports.adminUpdateUser = async (req, res) => {
         const customStudentId = studentData?.id;
 
         if (customStudentId) {
+          const uniqueParentIds = Array.from(
+            new Set(
+              (Array.isArray(linked_parents) ? linked_parents : [])
+                .map((value) => String(value || '').trim())
+                .filter(Boolean)
+            )
+          );
+
+          if (uniqueParentIds.length > 0) {
+            const institutionScopeId = requesterIsPlatformAdmin
+              ? (targetUser.institution_id || institution_id || null)
+              : req.institution_id;
+
+            if (!institutionScopeId) {
+              return res.status(400).json({
+                error: 'Cannot link parents without a valid institution scope.',
+                code: 'INVALID_PARENT_LINKS',
+              });
+            }
+
+            const { data: allowedParentRows, error: allowedParentsError } = await supabase
+              .from('parents')
+              .select('id, users!inner(institution_id)')
+              .in('id', uniqueParentIds)
+              .eq('users.institution_id', institutionScopeId);
+
+            if (allowedParentsError) throw allowedParentsError;
+
+            const allowedParentIds = new Set(
+              (allowedParentRows || []).map((row) => String(row.id || '').trim()).filter(Boolean)
+            );
+
+            const invalidParentIds = uniqueParentIds.filter((parentId) => !allowedParentIds.has(parentId));
+            if (invalidParentIds.length > 0) {
+              return res.status(400).json({
+                error: 'One or more selected parents are invalid for this institution.',
+                code: 'INVALID_PARENT_LINKS',
+              });
+            }
+          }
+
           const { error: delErr } = await supabase.from('parent_students').delete().eq('student_id', customStudentId);
           if (delErr) console.error('[AdminUpdate] Delete parent_students (student side) error:', delErr);
 
-          if (linked_parents && linked_parents.length > 0) {
-            const inserts = linked_parents.map(pid => ({ parent_id: pid, student_id: customStudentId, relationship: 'guardian' }));
+          if (uniqueParentIds.length > 0) {
+            const inserts = uniqueParentIds.map(pid => ({ parent_id: pid, student_id: customStudentId, relationship: 'guardian' }));
             const { error: insErr } = await supabase.from('parent_students').insert(inserts);
             if (insErr) console.error('[AdminUpdate] Insert parent_students (student side) error:', insErr);
             else console.log('[AdminUpdate] Successfully linked parents to student');
@@ -996,6 +1474,23 @@ exports.adminUpdateUser = async (req, res) => {
           console.warn('[AdminUpdate] No parent record found for user_id:', id);
         }
       }
+    }
+
+    if (requesterIsPlatformAdmin && (userUpdates.email !== undefined || userUpdates.first_name !== undefined || userUpdates.last_name !== undefined || userUpdates.full_name !== undefined)) {
+      const { data: updatedUserForAuth } = await supabase
+        .from('users')
+        .select('email, first_name, last_name, full_name')
+        .eq('id', id)
+        .single();
+
+      await supabase.auth.admin.updateUserById(id, {
+        ...(updatedUserForAuth?.email ? { email: updatedUserForAuth.email } : {}),
+        user_metadata: {
+          full_name: updatedUserForAuth?.full_name || '',
+          first_name: updatedUserForAuth?.first_name || '',
+          last_name: updatedUserForAuth?.last_name || '',
+        },
+      });
     }
 
     res.status(200).json({ message: "User updated successfully" });
@@ -1203,25 +1698,50 @@ exports.adminResetPassword = async (req, res) => {
     const adminId = req.userId;
     const adminRole = req.userRole;
     const adminInstId = req.institution_id;
+    const adminIsMain = !!req.isMain;
+    const adminHasDelegatedEdit = hasDelegatedUserEditPermission(req);
+    const adminCanManageUsers = adminRole === 'master_admin'
+      ? true
+      : canAdminManageUsers({ isMain: adminIsMain, hasDelegatedPermission: adminHasDelegatedEdit });
     const { ip_address: ipAddress, user_agent: userAgent } = getRequestContext(req);
 
-    if (!targetUserId || !newPassword) {
-      return res.status(400).json({ error: "Target user ID and new password are required" });
+    if (!targetUserId) {
+      return res.status(400).json({ error: "Target user ID is required" });
     }
 
-    if (newPassword.length < 6) {
+    const generatedPassword = !newPassword;
+    const finalPassword = generatedPassword ? generateTempPassword() : String(newPassword || '');
+
+    if (finalPassword.length < 6) {
       return res.status(400).json({ error: "Password must be at least 6 characters" });
     }
 
     // Fetch target user info
     const { data: targetUser, error: targetError } = await supabase
       .from('users')
-      .select('institution_id, role')
+      .select('institution_id, role, email, full_name')
       .eq('id', targetUserId)
       .single();
 
     if (targetError || !targetUser) {
       return res.status(404).json({ error: "Target user not found" });
+    }
+
+    if (!adminCanManageUsers) {
+      await writePasswordAuditLog({
+        action: 'admin_reset_password',
+        actorUserId: adminId,
+        targetUserId,
+        outcome: 'failure',
+        reason: 'admin_user_management_denied',
+        ipAddress,
+        userAgent,
+        metadata: { admin_role: adminRole, admin_is_main: adminIsMain },
+      });
+      return res.status(403).json({
+        error: 'Only main administrators or delegated administrators can reset passwords.',
+        code: 'ADMIN_USER_MANAGEMENT_DENIED',
+      });
     }
 
     // Role-based hierarchy enforcement
@@ -1242,20 +1762,66 @@ exports.adminResetPassword = async (req, res) => {
         });
         return res.status(403).json({ error: "Access denied. Target user belongs to a different institution." });
       }
-      // Admins cannot reset other admins (except themselves via changePassword)
-      // They must contact Master Admin for platform-level reset as per user request
-      if (targetUser.role === 'admin' && targetUserId !== adminId) {
+      // Non-main admins cannot reset other admins unless delegated permission exists
+      if (!adminIsMain && targetUser.role === 'admin' && targetUserId !== adminId) {
         await writePasswordAuditLog({
           action: 'admin_reset_password',
           actorUserId: adminId,
           targetUserId,
           outcome: 'failure',
-          reason: 'admin_to_admin_denied',
+          reason: 'non_main_admin_to_admin_denied',
           ipAddress,
           userAgent,
-          metadata: { admin_role: adminRole },
+          metadata: { admin_role: adminRole, admin_is_main: adminIsMain },
         });
-        return res.status(403).json({ error: "As an institution administrator, you cannot reset other administrators. Please contact the Master Admin." });
+        return res.status(403).json({
+          error: 'Non-main administrators cannot reset other administrators unless ownership is delegated.',
+          code: 'NON_MAIN_ADMIN_RESET_DENIED',
+        });
+      }
+
+      if (adminIsMain && targetUser.role === 'admin' && targetUserId !== adminId) {
+        const { data: targetAdminRow, error: targetAdminErr } = await supabase
+          .from('admins')
+          .select('is_main, institution_id')
+          .eq('user_id', targetUserId)
+          .maybeSingle();
+
+        if (targetAdminErr) throw targetAdminErr;
+
+        if (!targetAdminRow || targetAdminRow.institution_id !== adminInstId) {
+          await writePasswordAuditLog({
+            action: 'admin_reset_password',
+            actorUserId: adminId,
+            targetUserId,
+            outcome: 'failure',
+            reason: 'target_admin_not_in_institution',
+            ipAddress,
+            userAgent,
+            metadata: { admin_role: adminRole, admin_is_main: adminIsMain },
+          });
+          return res.status(403).json({
+            error: 'Target administrator not found in your institution.',
+            code: 'TARGET_ADMIN_NOT_FOUND',
+          });
+        }
+
+        if (!!targetAdminRow.is_main) {
+          await writePasswordAuditLog({
+            action: 'admin_reset_password',
+            actorUserId: adminId,
+            targetUserId,
+            outcome: 'failure',
+            reason: 'main_admin_to_main_admin_denied',
+            ipAddress,
+            userAgent,
+            metadata: { admin_role: adminRole, admin_is_main: adminIsMain },
+          });
+          return res.status(403).json({
+            error: 'Main admin cannot reset another main admin password.',
+            code: 'MAIN_ADMIN_RESET_MAIN_ADMIN_DENIED',
+          });
+        }
       }
     } else {
       await writePasswordAuditLog({
@@ -1273,7 +1839,7 @@ exports.adminResetPassword = async (req, res) => {
 
     // Update password via admin API (requires Service Role key)
     const { error: updateError } = await supabase.auth.admin.updateUserById(targetUserId, {
-      password: newPassword,
+      password: finalPassword,
     });
 
     if (updateError) throw updateError;
@@ -1286,19 +1852,53 @@ exports.adminResetPassword = async (req, res) => {
       })
       .eq('id', targetUserId);
 
-    const { data: targetEmailRow } = await supabase.from('users').select('email').eq('id', targetUserId).maybeSingle();
+    await revokeAllUserSessions(targetUserId);
+
+    let credentialDelivery = null;
+    if (generatedPassword) {
+      credentialDelivery = await createCredentialDeliveryToken({
+        createdBy: adminId,
+        targetUserId,
+        targetEmail: targetUser.email,
+        temporaryPassword: finalPassword,
+        metadata: {
+          role: targetUser.role,
+          institution_id: targetUser.institution_id,
+          action: 'admin_reset_password',
+        },
+      });
+    }
+
     await writePasswordAuditLog({
       action: 'admin_reset_password',
       actorUserId: adminId,
       targetUserId,
-      targetEmail: targetEmailRow?.email || null,
+      targetEmail: targetUser.email || null,
       outcome: 'success',
       ipAddress,
       userAgent,
-      metadata: { admin_role: adminRole },
+      metadata: { admin_role: adminRole, generated_password: generatedPassword },
     });
 
-    res.status(200).json({ message: "User password has been reset successfully." });
+    res.status(200).json({
+      message: "User password has been reset successfully.",
+      force_logout: true,
+      must_change_password: true,
+      requires_security_questions_setup: true,
+      generated_password: generatedPassword,
+      tempPassword: generatedPassword ? finalPassword : undefined,
+      credential_delivery: credentialDelivery,
+      credential_document: generatedPassword
+        ? buildCredentialDocument({
+            fullName: targetUser.full_name,
+            role: targetUser.role,
+            email: targetUser.email,
+            temporaryPassword: finalPassword,
+            credentialUrl: credentialDelivery?.url,
+            expiresAt: credentialDelivery?.expiresAt,
+          })
+        : undefined,
+    });
   } catch (err) {
     console.error("adminResetPassword error:", err);
     await writePasswordAuditLog({
@@ -1320,7 +1920,7 @@ exports.adminResetPassword = async (req, res) => {
  */
 exports.forgotPassword = async (req, res) => {
   try {
-    const { email } = req.body;
+    const email = normalizeEmail(req.body?.email);
     const { ip_address: ipAddress, user_agent: userAgent } = getRequestContext(req);
 
     if (!email) {
@@ -1332,7 +1932,7 @@ exports.forgotPassword = async (req, res) => {
     const { data: recentRequests, error: _rateError } = await supabase
       .from('password_reset_requests')
       .select('id')
-      .eq('email', email)
+      .ilike('email', email)
       .gt('requested_at', new Date(Date.now() - 3600000).toISOString()); // Last 1 hour
 
     if (recentRequests && recentRequests.length >= 3) {
@@ -1357,89 +1957,93 @@ exports.forgotPassword = async (req, res) => {
     const { data: userData } = await supabase
       .from("users")
       .select("id, full_name, role, institution_id, institutions!institution_id(subscription_plan)")
-      .eq("email", email)
-      .single();
+      .ilike("email", email)
+      .maybeSingle();
 
-    if (userData) {
+    if (!userData) {
       await writePasswordAuditLog({
         action: 'forgot_password_request',
-        targetUserId: userData.id,
         targetEmail: email,
-        outcome: 'requested',
+        outcome: 'failure',
+        reason: 'email_not_found',
         ipAddress,
         userAgent,
-        metadata: { role: userData.role, institution_id: userData.institution_id || null },
       });
+      return res.status(404).json({
+        error: 'No account exists for this email.',
+        code: 'EMAIL_NOT_FOUND',
+      });
+    }
 
-      const rawPlan = userData.institutions?.subscription_plan;
-      const plan = ((p) => {
-        const mapping = {
-          beta_free: 'beta',
-          free: 'beta'
-        };
-        return mapping[p] || p;
-      })(rawPlan);
-      const role = userData.role;
+    await writePasswordAuditLog({
+      action: 'forgot_password_request',
+      targetUserId: userData.id,
+      targetEmail: email,
+      outcome: 'requested',
+      ipAddress,
+      userAgent,
+      metadata: { role: userData.role, institution_id: userData.institution_id || null },
+    });
 
-      // Hierarchical recovery for Beta Tier (formerly free)
-      if (plan === 'beta') {
-        if (role === 'student' || role === 'parent' || role === 'teacher' || role === 'bursary') {
-          // Notify Institution Admins
-          const { data: admins } = await supabase
-            .from('users')
-            .select('id')
-            .eq('institution_id', userData.institution_id)
-            .eq('role', 'admin');
+    const rawPlan = userData.institutions?.subscription_plan;
+    const plan = ((p) => {
+      const mapping = {
+        beta_free: 'beta',
+        free: 'beta'
+      };
+      return mapping[p] || p;
+    })(rawPlan);
+    const role = userData.role;
 
-          if (admins && admins.length > 0) {
-            const notifications = admins.map(admin => ({
-              user_id: admin.id,
-              title: "Password Reset Request",
-              message: `${userData.full_name} (${role}) has requested a password reset. Please assist them in the User Management section.`,
-              type: 'warning',
-              institution_id: userData.institution_id,
-              data: { target_user_id: userData.id, target_name: userData.full_name }
-            }));
-            await sendBulkInAppNotificationsWithHistory(notifications);
-          }
+    // Hierarchical recovery for Beta Tier (formerly free)
+    if (plan === 'beta') {
+      if (role === 'student' || role === 'parent' || role === 'teacher' || role === 'bursary') {
+        // Notify Institution Admins
+        const { data: admins } = await supabase
+          .from('users')
+          .select('id')
+          .eq('institution_id', userData.institution_id)
+          .eq('role', 'admin');
 
-          return res.status(200).json({ 
-            message: "Your institution is on the Beta Tier. Please contact your internal school administrator to reset your password.",
-            is_hierarchical: true
-          });
-        } else if (role === 'admin') {
-          // Notify Master Admins
-          const { data: masterAdmins } = await supabase
-            .from('users')
-            .select('id')
-            .eq('role', 'master_admin');
-
-          if (masterAdmins && masterAdmins.length > 0) {
-            const notifications = masterAdmins.map(ma => ({
-              user_id: ma.id,
-              title: "Admin Password Reset Request",
-              message: `Administrator ${userData.full_name} from a Beta Tier institution has requested a password reset.`,
-              type: 'error',
-              data: { target_user_id: userData.id, target_name: userData.full_name, institution_id: userData.institution_id }
-            }));
-            await sendBulkInAppNotificationsWithHistory(notifications);
-          }
-
-          return res.status(200).json({ 
-            message: "Administrative reset requested. Please contact the platform support (Master Admin) to reset your password.",
-            is_hierarchical: true
-          });
+        if (admins && admins.length > 0) {
+          const notifications = admins.map(admin => ({
+            user_id: admin.id,
+            title: "Password Reset Request",
+            message: `${userData.full_name} (${role}) has requested a password reset. Please assist them in the User Management section.`,
+            type: 'warning',
+            institution_id: userData.institution_id,
+            data: { target_user_id: userData.id, target_name: userData.full_name }
+          }));
+          await sendBulkInAppNotificationsWithHistory(notifications);
         }
+
+        return res.status(200).json({ 
+          message: "Your institution is on the Beta Tier. Please contact your internal school administrator to reset your password.",
+          is_hierarchical: true
+        });
+      } else if (role === 'admin') {
+        // Notify Master Admins
+        const { data: masterAdmins } = await supabase
+          .from('users')
+          .select('id')
+          .eq('role', 'master_admin');
+
+        if (masterAdmins && masterAdmins.length > 0) {
+          const notifications = masterAdmins.map(ma => ({
+            user_id: ma.id,
+            title: "Admin Password Reset Request",
+            message: `Administrator ${userData.full_name} from a Beta Tier institution has requested a password reset.`,
+            type: 'error',
+            data: { target_user_id: userData.id, target_name: userData.full_name, institution_id: userData.institution_id }
+          }));
+          await sendBulkInAppNotificationsWithHistory(notifications);
+        }
+
+        return res.status(200).json({ 
+          message: "Administrative reset requested. Please contact the platform support (Master Admin) to reset your password.",
+          is_hierarchical: true
+        });
       }
-    } else {
-      await writePasswordAuditLog({
-        action: 'forgot_password_request',
-        targetEmail: email,
-        outcome: 'requested',
-        reason: 'email_not_found_or_hidden',
-        ipAddress,
-        userAgent,
-      });
     }
 
     const { createClient } = require("@supabase/supabase-js");
@@ -1455,20 +2059,208 @@ exports.forgotPassword = async (req, res) => {
 
     if (error) throw error;
 
-    // Always return success to not leak whether email exists
-    res.status(200).json({ message: "If an account with that email exists, a reset link has been sent." });
+    res.status(200).json({ message: "Reset link sent. Please check your inbox." });
   } catch (err) {
     console.error("forgotPassword error:", err);
     await writePasswordAuditLog({
       action: 'forgot_password_request',
-      targetEmail: req.body?.email || null,
+      targetEmail: normalizeEmail(req.body?.email) || null,
       outcome: 'failure',
       reason: err?.message || 'forgot_password_failed',
       ipAddress: req?.headers?.['x-forwarded-for'] || req?.socket?.remoteAddress || null,
       userAgent: req?.headers?.['user-agent'] || null,
     });
-    // Still return 200 to not leak info
-    res.status(200).json({ message: "If an account with that email exists, a reset link has been sent." });
+    res.status(500).json({ error: err.message || "Failed to process password reset request" });
+  }
+};
+
+exports.getEnrollmentSlotCapacity = async (req, res) => {
+  try {
+    const requestedInstitutionId = String(req.query?.institution_id || '').trim();
+    const institutionId = req.isPlatformAdmin
+      ? (requestedInstitutionId || req.institution_id)
+      : req.institution_id;
+
+    if (!institutionId) {
+      return res.status(400).json({
+        error: 'Institution ID is required',
+        code: 'INSTITUTION_REQUIRED',
+      });
+    }
+
+    const capacity = await getInstitutionSlotCapacity(institutionId);
+    return res.status(200).json({
+      ...capacity,
+      generated_at: new Date().toISOString(),
+    });
+  } catch (err) {
+    console.error('getEnrollmentSlotCapacity error:', err);
+    return res.status(500).json({ error: err.message || 'Failed to fetch slot capacity' });
+  }
+};
+
+/**
+ * List administrators in an institution with main/delegation flags.
+ */
+exports.getInstitutionAdmins = async (req, res) => {
+  try {
+    const requesterRole = req.userRole;
+    const requesterInstitutionId = req.institution_id;
+
+    if (!['admin', 'master_admin'].includes(requesterRole)) {
+      return res.status(403).json({ error: 'Unauthorized. Insufficient permissions.' });
+    }
+
+    const requestedInstitutionId = String(req.query?.institution_id || '').trim() || null;
+    const targetInstitutionId = requesterRole === 'master_admin'
+      ? (requestedInstitutionId || requesterInstitutionId)
+      : requesterInstitutionId;
+
+    if (!targetInstitutionId) {
+      return res.status(400).json({ error: 'Institution ID is required.' });
+    }
+
+    let { data: adminRows, error } = await supabase
+      .from('admins')
+      .select('user_id, institution_id, is_main, can_manage_users, users:user_id(id, first_name, last_name, full_name, email)')
+      .eq('institution_id', targetInstitutionId)
+      .order('is_main', { ascending: false });
+
+    if (error && isMissingCanManageUsersColumnError(error)) {
+      ({ data: adminRows, error } = await supabase
+        .from('admins')
+        .select('user_id, institution_id, is_main, users:user_id(id, first_name, last_name, full_name, email)')
+        .eq('institution_id', targetInstitutionId)
+        .order('is_main', { ascending: false }));
+    }
+
+    if (error) throw error;
+
+    const admins = (adminRows || [])
+      .map((row) => ({
+        user_id: row.user_id,
+        institution_id: row.institution_id,
+        is_main: !!row.is_main,
+        can_manage_users: !!row.can_manage_users,
+        user: row.users || null,
+      }))
+      .filter((row) => !!row.user?.id);
+
+    return res.status(200).json({ admins });
+  } catch (err) {
+    console.error('getInstitutionAdmins error:', err);
+    return res.status(500).json({ error: err.message || 'Failed to fetch institution administrators' });
+  }
+};
+
+/**
+ * Main admin delegation: grant/revoke user-management capability for another admin.
+ */
+exports.updateAdminDelegation = async (req, res) => {
+  try {
+    const requesterRole = req.userRole;
+    const requesterInstitutionId = req.institution_id;
+    const requesterIsMain = !!req.isMain;
+    const { targetAdminUserId, canManageUsers } = req.body || {};
+
+    if (!targetAdminUserId) {
+      return res.status(400).json({ error: 'targetAdminUserId is required' });
+    }
+
+    if (typeof canManageUsers !== 'boolean') {
+      return res.status(400).json({ error: 'canManageUsers must be a boolean' });
+    }
+
+    if (!['admin', 'master_admin'].includes(requesterRole)) {
+      return res.status(403).json({ error: 'Unauthorized. Insufficient permissions.' });
+    }
+
+    if (requesterRole === 'admin' && !requesterIsMain) {
+      return res.status(403).json({
+        error: 'Only main administrators can grant or revoke delegated user-management permissions.',
+        code: 'MAIN_ADMIN_REQUIRED',
+      });
+    }
+
+    const {
+      data: targetAdmin,
+      error: targetAdminError,
+      delegationColumnMissing,
+    } = await fetchAdminRowWithDelegationFallback(targetAdminUserId);
+
+    if (targetAdminError) throw targetAdminError;
+
+    if (!targetAdmin) {
+      return res.status(404).json({ error: 'Target administrator not found' });
+    }
+
+    if (requesterRole === 'admin' && targetAdmin.institution_id !== requesterInstitutionId) {
+      return res.status(403).json({
+        error: 'Access denied. Target administrator belongs to a different institution.',
+        code: 'CROSS_INSTITUTION_DENIED',
+      });
+    }
+
+    const nextCanManageUsers = targetAdmin.is_main ? true : !!canManageUsers;
+
+    const { error: updateError } = await updateAdminManageUsersWithFallback(targetAdminUserId, nextCanManageUsers);
+
+    let updatedRow = targetAdmin;
+    if (!delegationColumnMissing) {
+      const { data: refreshedAdmin, error: refreshedAdminError } = await supabase
+        .from('admins')
+        .select('user_id, institution_id, is_main, can_manage_users')
+        .eq('user_id', targetAdminUserId)
+        .single();
+      if (refreshedAdminError && !isMissingCanManageUsersColumnError(refreshedAdminError)) {
+        throw refreshedAdminError;
+      }
+      if (refreshedAdmin) {
+        updatedRow = refreshedAdmin;
+      }
+    } else {
+      updatedRow = {
+        ...targetAdmin,
+        can_manage_users: nextCanManageUsers,
+      };
+    }
+
+    if (updateError) throw updateError;
+
+    return res.status(200).json({
+      message: 'Delegated user-management permission updated successfully.',
+      admin: updatedRow,
+    });
+  } catch (err) {
+    console.error('updateAdminDelegation error:', err);
+    return res.status(500).json({ error: err.message || 'Failed to update delegation settings' });
+  }
+};
+
+/**
+ * Lightweight endpoint for forgot-password email existence checks.
+ */
+exports.checkPasswordRecoveryEmail = async (req, res) => {
+  try {
+    const email = normalizeEmail(req.query?.email);
+    if (!email) return res.status(400).json({ error: 'Email is required' });
+
+    const { data: userRow, error } = await supabase
+      .from('users')
+      .select('id, email')
+      .ilike('email', email)
+      .maybeSingle();
+
+    if (error) throw error;
+
+    return res.status(200).json({
+      exists: !!userRow,
+      email,
+      can_request_reset: !!userRow,
+      message: userRow ? 'Email found.' : 'No account exists for this email.',
+    });
+  } catch (err) {
+    return res.status(500).json({ error: err.message || 'Failed to verify email' });
   }
 };
 
@@ -1523,11 +2315,13 @@ exports.resetPassword = async (req, res) => {
       })
       .eq('id', user.id);
 
+    await revokeAllUserSessions(user.id);
+
     await writePasswordAuditLog({
       action: 'reset_password',
       actorUserId: user.id,
       targetUserId: user.id,
-      targetEmail: user.email || null,
+      targetEmail: normalizeEmail(user.email) || null,
       outcome: 'success',
       ipAddress,
       userAgent,
@@ -1553,32 +2347,29 @@ exports.resetPassword = async (req, res) => {
 exports.setupSecurityQuestions = async (req, res) => {
   try {
     const userId = req.userId;
-    const { question1, question2, question3 } = req.body || {};
+    const { selected_question_key, selected_question_answer } = req.body || {};
 
-    if (!question1 || !question2 || !question3) {
-      return res.status(400).json({ error: 'All security questions are required' });
+    if (!isValidSecurityQuestionKey(selected_question_key)) {
+      return res.status(400).json({ error: 'A valid security question selection is required' });
     }
 
-    const q1 = normalizeSecurityAnswer(question1);
-    const q2 = normalizeSecurityAnswer(question2);
-    const q3 = normalizeSecurityAnswer(question3);
+    const normalizedAnswer = normalizeSecurityAnswer(selected_question_answer);
 
-    if (!q1 || !q2 || !q3) {
-      return res.status(400).json({ error: 'Security question answers cannot be empty' });
+    if (!normalizedAnswer) {
+      return res.status(400).json({ error: 'Security answer cannot be empty' });
     }
 
     const s1 = crypto.randomBytes(16).toString('hex');
-    const s2 = crypto.randomBytes(16).toString('hex');
-    const s3 = crypto.randomBytes(16).toString('hex');
+    const unusedSalt = crypto.randomBytes(16).toString('hex');
 
     const payload = {
       user_id: userId,
       question1_salt: s1,
-      question1_hash: hashSecurityAnswer(q1, s1),
-      question2_salt: s2,
-      question2_hash: hashSecurityAnswer(q2, s2),
-      question3_salt: s3,
-      question3_hash: hashSecurityAnswer(q3, s3),
+      question1_hash: hashSecurityAnswer(normalizedAnswer, s1),
+      question2_salt: encodeSecurityQuestionKey(selected_question_key),
+      question2_hash: hashSecurityAnswer(`unused:${unusedSalt}`, unusedSalt),
+      question3_salt: unusedSalt,
+      question3_hash: hashSecurityAnswer(`unused:${unusedSalt}:2`, unusedSalt),
       updated_at: new Date().toISOString(),
     };
 
@@ -1593,7 +2384,11 @@ exports.setupSecurityQuestions = async (req, res) => {
       .update({ requires_security_questions_setup: false })
       .eq('id', userId);
 
-    return res.status(200).json({ message: 'Security questions saved successfully' });
+    return res.status(200).json({
+      message: 'Security question saved successfully',
+      selected_question_key,
+      selected_question_prompt: SECURITY_QUESTIONS[selected_question_key],
+    });
   } catch (err) {
     console.error('setupSecurityQuestions error:', err);
     return res.status(500).json({ error: err.message || 'Failed to save security questions' });
@@ -1605,21 +2400,22 @@ exports.setupSecurityQuestions = async (req, res) => {
  */
 exports.verifySecurityQuestions = async (req, res) => {
   try {
-    const { email, question1, question2, question3, new_password } = req.body || {};
+    const email = normalizeEmail(req.body?.email);
+    const { selected_question_answer, new_password } = req.body || {};
     const { ip_address: ipAddress, user_agent: userAgent } = getRequestContext(req);
 
-    if (!email || !question1 || !question2 || !question3) {
-      return res.status(400).json({ error: 'Email and all security question answers are required' });
+    if (!email) {
+      return res.status(400).json({ error: 'Email is required' });
     }
 
     const { data: userRow } = await supabase
       .from('users')
       .select('id, email')
-      .eq('email', email)
+      .ilike('email', email)
       .maybeSingle();
 
     if (!userRow) {
-      return res.status(200).json({ verified: false, message: 'Invalid verification details' });
+      return res.status(404).json({ verified: false, message: 'No account exists for this email' });
     }
 
     const { data: answers, error: answersError } = await supabase
@@ -1632,22 +2428,59 @@ exports.verifySecurityQuestions = async (req, res) => {
       return res.status(200).json({ verified: false, message: 'Security questions are not configured for this account' });
     }
 
-    const isValid =
-      hashSecurityAnswer(question1, answers.question1_salt) === answers.question1_hash &&
-      hashSecurityAnswer(question2, answers.question2_salt) === answers.question2_hash &&
-      hashSecurityAnswer(question3, answers.question3_salt) === answers.question3_hash;
+    const selectedQuestionKey = getStoredSecurityQuestionKey(answers);
+    const selectedQuestionPrompt = SECURITY_QUESTIONS[selectedQuestionKey];
+
+    if (!selected_question_answer) {
+      const failedAttempts = await getSecurityQuestionAttemptCount({ email, userId: userRow.id });
+      const attemptsRemaining = Math.max(0, 3 - failedAttempts);
+      return res.status(200).json({
+        verified: false,
+        requires_answer: true,
+        selected_question_key: selectedQuestionKey,
+        selected_question_prompt: selectedQuestionPrompt,
+        attempts_remaining: attemptsRemaining,
+        message: attemptsRemaining > 0
+          ? 'Provide your selected security question answer'
+          : 'Maximum attempts reached. Try again in one hour.',
+      });
+    }
+
+    const failedAttempts = await getSecurityQuestionAttemptCount({ email, userId: userRow.id });
+    if (failedAttempts >= 3) {
+      return res.status(429).json({
+        verified: false,
+        code: 'SECURITY_ATTEMPTS_LIMIT',
+        attempts_remaining: 0,
+        message: 'Maximum attempts reached. Try again in one hour.',
+      });
+    }
+
+    const isValid = hashSecurityAnswer(selected_question_answer, answers.question1_salt) === answers.question1_hash;
 
     if (!isValid) {
       await writePasswordAuditLog({
         action: 'forgot_password_request',
         targetUserId: userRow.id,
-        targetEmail: userRow.email,
+        targetEmail: normalizeEmail(userRow.email),
         outcome: 'failure',
-        reason: 'security_questions_verification_failed',
+        reason: 'security_question_attempt_failed',
         ipAddress,
         userAgent,
       });
-      return res.status(200).json({ verified: false, message: 'Invalid verification details' });
+
+      const updatedFailedAttempts = await getSecurityQuestionAttemptCount({ email, userId: userRow.id });
+      const attemptsRemaining = Math.max(0, 3 - updatedFailedAttempts);
+
+      return res.status(200).json({
+        verified: false,
+        selected_question_key: selectedQuestionKey,
+        selected_question_prompt: selectedQuestionPrompt,
+        attempts_remaining: attemptsRemaining,
+        message: attemptsRemaining > 0
+          ? `Incorrect answer. ${attemptsRemaining} attempt(s) remaining this hour.`
+          : 'Maximum attempts reached. Try again in one hour.',
+      });
     }
 
     if (new_password) {
@@ -1668,11 +2501,13 @@ exports.verifySecurityQuestions = async (req, res) => {
         })
         .eq('id', userRow.id);
 
+      await revokeAllUserSessions(userRow.id);
+
       await writePasswordAuditLog({
         action: 'reset_password',
         actorUserId: userRow.id,
         targetUserId: userRow.id,
-        targetEmail: userRow.email,
+        targetEmail: normalizeEmail(userRow.email),
         outcome: 'success',
         reason: 'security_questions_verified',
         ipAddress,
@@ -1682,6 +2517,9 @@ exports.verifySecurityQuestions = async (req, res) => {
 
     return res.status(200).json({
       verified: true,
+      selected_question_key: selectedQuestionKey,
+      selected_question_prompt: selectedQuestionPrompt,
+      attempts_remaining: 3,
       message: new_password
         ? 'Security verification complete and password updated'
         : 'Security verification complete',
@@ -1750,12 +2588,40 @@ exports.transferMainAdmin = async (req, res) => {
       return res.status(400).json({ error: "Recipient admin user ID is required" });
     }
 
+    const { data: currentAdminRow, error: currentAdminError } = await supabase
+      .from('admins')
+      .select('institution_id, is_main')
+      .eq('user_id', currentUserId)
+      .maybeSingle();
+
+    if (currentAdminError) throw currentAdminError;
+    if (!currentAdminRow || !currentAdminRow.is_main) {
+      return res.status(403).json({ error: 'Only current main admin can transfer ownership.' });
+    }
+
+    const { data: targetAdminRow, error: targetAdminError } = await supabase
+      .from('admins')
+      .select('institution_id')
+      .eq('user_id', targetAdminUserId)
+      .maybeSingle();
+
+    if (targetAdminError) throw targetAdminError;
+    if (!targetAdminRow || targetAdminRow.institution_id !== currentAdminRow.institution_id) {
+      return res.status(400).json({ error: 'Recipient must be an admin in the same institution.' });
+    }
+
     const { error } = await supabase.rpc('transfer_main_admin_status', {
       p_old_admin_user_id: currentUserId,
       p_new_admin_user_id: targetAdminUserId
     });
 
     if (error) throw error;
+
+    const { error: permissionUpdateError } = await updateAdminManageUsersWithFallback(currentUserId, false);
+    if (permissionUpdateError) throw permissionUpdateError;
+
+    const { error: targetPermissionUpdateError } = await updateAdminManageUsersWithFallback(targetAdminUserId, true);
+    if (targetPermissionUpdateError) throw targetPermissionUpdateError;
 
     res.json({ message: "Main Admin status transferred successfully" });
   } catch (err) {

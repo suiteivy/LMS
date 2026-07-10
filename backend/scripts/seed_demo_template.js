@@ -329,7 +329,6 @@ async function seed() {
   await insert('financial_transactions', [
     { institution_id: TEMPLATE_ID, type: 'fee_payment',   direction: 'inflow',  amount: 25000, date: '2026-05-01', method: 'mobile_money', status: 'completed', reference_id: 'MPD20261001', meta: { student: 'Amina Hassan' } },
     { institution_id: TEMPLATE_ID, type: 'fee_payment',   direction: 'inflow',  amount: 20000, date: '2026-05-03', method: 'bank_transfer', status: 'completed', reference_id: 'KCB2026051X', meta: { student: 'Kelson Otieno' } },
-    { institution_id: TEMPLATE_ID, type: 'salary_payout', direction: 'outflow', amount: 45000, date: '2026-04-30', method: 'bank_transfer', status: 'completed', reference_id: 'SAL-APR-001',  meta: { teacher: 'Sarah Chemutai' } },
     { institution_id: TEMPLATE_ID, type: 'expense',       direction: 'outflow', amount: 8500,  date: '2026-05-10', method: 'cash',          status: 'completed', reference_id: 'EXP-001',       meta: { description: 'Lab supplies' } },
     { institution_id: TEMPLATE_ID, type: 'fee_payment',   direction: 'inflow',  amount: 4500,  date: '2026-05-01', method: 'mobile_money', status: 'completed', reference_id: 'MPD20261002', meta: { student: 'Amina Hassan' } },
   ]);

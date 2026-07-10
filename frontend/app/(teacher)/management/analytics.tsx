@@ -1,13 +1,15 @@
 import React, { useState, useEffect } from "react";
-import { View, Text, ScrollView, TouchableOpacity, StatusBar, ActivityIndicator } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, StatusBar } from 'react-native';
 import { ArrowLeft, TrendingUp, Users, BookOpen, Award, Download, Zap } from 'lucide-react-native';
 import { router } from "expo-router";
 import { supabase } from "@/libs/supabase";
 import { useAuth } from "@/contexts/AuthContext";
 import { TeacherAPI } from "@/services/TeacherService";
+import { SubjectAPI } from "@/services/SubjectService";
 import { GradingAPI } from "@/services/GradingService";
 import { SubscriptionBanner, SubscriptionGate } from "@/components/shared/SubscriptionComponents";
 import { UnifiedHeader } from "@/components/common/UnifiedHeader";
+import { ListItemSkeleton } from "@/components/ui/skeletons";
 import { TrendChart, SubjectTrendCard } from "@/components/common/TrendChart";
 import { HelpTooltip } from "@/components/settings/HelpTooltip";
 import { useSubscriptionTier } from "@/hooks/useSubscriptionTier";
@@ -99,21 +101,16 @@ export default function AnalyticsPage() {
             const data = await TeacherAPI.getAnalytics();
             setSubjectAnalytics(data);
 
+            const assignedSubjects = await SubjectAPI.getFilteredSubjects();
+            const assignedSubjectIds = (assignedSubjects || []).map((s: any) => s.id).filter(Boolean);
+
             // Fetch performance trends for first subject (overview)
             if (data.length > 0) {
                 const trendData = await GradingAPI.getPerformanceTrends({}).catch(() => ({ terms: [], subjects: [] }));
                 setTrends(trendData);
             }
 
-            const { data: Subjects, error: SubjectsError } = (await supabase
-                .from('subjects')
-                .select('id, title, class_id')
-                .eq('teacher_id', (teacherId as string))) as any;
-
-            if (SubjectsError) throw SubjectsError;
-
-            const classIds = (Subjects as any[]).map(s => s.class_id).filter(Boolean);
-            if (classIds.length === 0) {
+            if (assignedSubjectIds.length === 0) {
                 setTopPerformers([]);
                 setLoading(false);
                 return;
@@ -126,12 +123,10 @@ export default function AnalyticsPage() {
                     student_id,
                     students (full_name),
                     assignment:assignments!inner (
-                        subject:subjects!inner (
-                            teacher_id
-                        )
+                        subject_id
                     )
                 `)
-                .eq('assignment.subject.teacher_id', (teacherId as string))
+                .in('assignment.subject_id', assignedSubjectIds)
                 .eq('status', 'graded');
 
             if (submissionError) throw submissionError;
@@ -224,7 +219,7 @@ export default function AnalyticsPage() {
                                 {/* Overview Stats */}
                                 <View className="flex-row items-center mb-3">
                                     <Text className="text-gray-700 dark:text-gray-300 text-sm font-bold">Overview Metrics</Text>
-                                    <HelpTooltip id="teacher.manage.insights" role="teacher" tier={tier} onLearnMore={openManual} />
+                                    <HelpTooltip id="teacher.analytics.overview_metrics" role="teacher" tier={tier} onLearnMore={openManual} />
                                 </View>
                                 <View className="flex-row gap-3 mb-3">
                                     <StatBox icon={Users} label="Total Students" value={totalStudents.toString()} color="#FF6900" bgColor={isDark ? "rgba(255, 105, 0, 0.1)" : "#fff7ed"} />
@@ -236,7 +231,7 @@ export default function AnalyticsPage() {
                                 </View>
 
                                 {loading ? (
-                                    <ActivityIndicator size="large" color="#FF6900" className="mt-8" />
+                                    <ListItemSkeleton loading={loading} count={4} label="Loading analytics..." />
                                 ) : (
                                     <>
                                         <View className="bg-[#F6F8FA] dark:bg-[#161B22] p-5 rounded-xl border border-[#D0D7DE] dark:border-[#21262D] mb-6 items-center flex-row">
@@ -257,7 +252,7 @@ export default function AnalyticsPage() {
                                             <View className="mt-6">
                                                 <View className="flex-row items-center mb-3">
                                                     <Text className="text-lg font-bold text-gray-900 dark:text-white">Performance Trends</Text>
-                                                    <HelpTooltip id="teacher.manage.insights" role="teacher" tier={tier} onLearnMore={openManual} />
+                                                    <HelpTooltip id="teacher.analytics.performance_trends" role="teacher" tier={tier} onLearnMore={openManual} />
                                                 </View>
                                                 <TrendChart
                                                     title="Class Average by Term"

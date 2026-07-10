@@ -1,4 +1,5 @@
 import { UnifiedHeader } from "@/components/common/UnifiedHeader";
+import { ListItemSkeleton } from "@/components/ui/skeletons";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/libs/supabase";
 import { AttendanceService } from "@/services/AttendanceService";
@@ -530,7 +531,9 @@ const ByClassTab = ({ classId }: { classId: string }) => {
         return null;
     };
 
-    if (loading) return <ActivityIndicator size="large" color="#FF6900" className="mt-10" />;
+    if (loading) {
+        return <ListItemSkeleton loading={loading} count={4} label="Loading attendance history..." />;
+    }
 
     if (sessions.length === 0) {
         return (
@@ -801,9 +804,7 @@ export default function TeacherClasses() {
                     </View>
 
                     {loading ? (
-                        <View className="items-center justify-center p-8">
-                            <ActivityIndicator size="large" color="#FF6900" />
-                        </View>
+                        <ListItemSkeleton loading={loading} count={4} label="Loading classes..." />
                     ) : (
                         <View>
                             {classes.length === 0 ? (

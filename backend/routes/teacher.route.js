@@ -3,7 +3,6 @@ const router = express.Router();
 const {
     getDashboardStats,
     getAnalytics,
-    getEarnings,
     getStudentPerformance,
     getStudentDetails,
     getSubjectClasses,
@@ -17,7 +16,6 @@ router.use(authorizeRoles(["teacher"]));
 
 router.get("/dashboard/stats", getDashboardStats);
 router.get("/analytics", getAnalytics);
-router.get("/earnings", getEarnings);
 router.get("/subject-classes", getSubjectClasses);
 router.get("/list-students", listClassStudents);
 router.get("/students/performance", getStudentPerformance);

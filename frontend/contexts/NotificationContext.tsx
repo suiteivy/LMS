@@ -34,7 +34,15 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
             setNotifications(data);
         } catch (error: any) {
             // Avoid noisy logs for expected auth expiry/session invalidation paths.
-            if (error?.isAuthError || error?.response?.status === 401) {
+            if (
+                error?.isAuthError ||
+                error?.response?.status === 401 ||
+                error?.response?.status === 403 ||
+                error?.code === 'ERR_NETWORK' ||
+                error?.code === 'ECONNABORTED' ||
+                error?.message?.toLowerCase?.().includes('timeout')
+            ) {
+                setNotifications([]);
                 return;
             }
             console.error("Failed to fetch notifications:", error);

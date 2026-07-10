@@ -1,4 +1,5 @@
 import { UnifiedHeader } from "@/components/common/UnifiedHeader";
+import { ListItemSkeleton } from "@/components/ui/skeletons";
 import { TimetableAPI } from "@/services/TimetableService";
 import { addDays, format, isSameDay, startOfWeek } from "date-fns";
 import { router, useLocalSearchParams } from "expo-router";
@@ -119,7 +120,7 @@ export default function ParentStudentTimetablePage() {
                         <Text className="text-gray-400 text-xs text-center mt-2">This student is not currently enrolled in any class stream.</Text>
                     </View>
                 ) : loading ? (
-                    <ActivityIndicator size="large" color="#FF6900" className="mt-8" />
+                    <ListItemSkeleton loading={loading} count={4} label="Loading timetable..." />
                 ) : filteredEntries.length > 0 ? (
                     filteredEntries.map((entry) => (
                         <View key={entry.id} className="flex-row mb-6">

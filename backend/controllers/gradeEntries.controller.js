@@ -79,7 +79,7 @@ async function getGradeEntries(req, res) {
         *,
         assessment_types ( name, code, category ),
         subjects ( title ),
-        classes ( grade_level, form_level, stream, level_label )
+        classes ( grade_level, form_level, stream )
       `)
       .eq('institution_id', institution_id);
 
@@ -254,7 +254,7 @@ async function createGradeEntry(req, res) {
         *,
         assessment_types ( name, code, category ),
         subjects ( title ),
-        classes ( grade_level, form_level, stream, level_label )
+        classes ( grade_level, form_level, stream )
       `)
       .single();
 
@@ -368,7 +368,7 @@ async function updateGradeEntry(req, res) {
         *,
         assessment_types ( name, code, category ),
         subjects ( title ),
-        classes ( grade_level, form_level, stream, level_label )
+        classes ( grade_level, form_level, stream )
       `)
       .single();
 

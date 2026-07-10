@@ -23,10 +23,25 @@ interface Teacher {
     full_name: string;
 }
 
-const PRIMARY_LEVELS = ["Grade 1", "Grade 2", "Grade 3", "Grade 4", "Grade 5", "Grade 6"];
-const SECONDARY_LEVELS = ["Form 1", "Form 2", "Form 3", "Form 4"];
-const KG_LEVELS = ["Baby Class", "Middle Class", "Top Class"];
-const GLOBAL_LEVELS = ["Pre-Primary", ...PRIMARY_LEVELS, ...SECONDARY_LEVELS, "Grade 9", "Grade 10", "Grade 11", "Grade 12"];
+interface DomainCategory {
+    id: string;
+    name: string;
+}
+
+interface DomainLevel {
+    id: string;
+    category_id: string;
+    level_number: number;
+    name?: string | null;
+    class_type?: string;
+}
+
+interface DomainStream {
+    id: string;
+    level_id: string | null;
+    code: string;
+    label: string;
+}
 
 export default function CreateClassScreen() {
     const router = useRouter();
@@ -36,11 +51,19 @@ export default function CreateClassScreen() {
     const [loadingTeachers, setLoadingTeachers] = useState(true);
 
     // Form state
-    const [name, setName] = useState("");
     const [gradeLevel, setGradeLevel] = useState("");
     const [capacity, setCapacity] = useState("");
     const [teacherId, setTeacherId] = useState("");
     const [showTeacherModal, setShowTeacherModal] = useState(false);
+    const [levels, setLevels] = useState<string[]>([]);
+    const [categories, setCategories] = useState<DomainCategory[]>([]);
+    const [domainLevels, setDomainLevels] = useState<DomainLevel[]>([]);
+    const [domainStreams, setDomainStreams] = useState<DomainStream[]>([]);
+    const [categoryId, setCategoryId] = useState('');
+    const [levelId, setLevelId] = useState('');
+    const [streamId, setStreamId] = useState('');
+    const [classType, setClassType] = useState('Grade');
+    const [classTypes, setClassTypes] = useState<string[]>(['Grade']);
 
     const surface = isDark ? "#161B22" : "#ffffff";
     const border = isDark ? "rgba(255,255,255,0.1)" : "#e5e7eb";
@@ -50,18 +73,57 @@ export default function CreateClassScreen() {
     const labelColor = isDark ? "#9ca3af" : "#374151";
     
     const { profile } = useAuth();
-    const inst = (profile as any)?.institutions;
-    const instLevelLabel = inst?.school_categories?.level_label || 'Grade';
-    const categoryName = inst?.school_categories?.name?.toLowerCase() || '';
+    const instLevelLabel = classType || 'Grade';
+    const fallbackLevels = Array.from(
+        { length: instLevelLabel === 'Form' ? 6 : (instLevelLabel === 'KG' ? 3 : 7) },
+        (_, i) => `${instLevelLabel} ${i + 1}`
+    );
 
-    const levels = categoryName.includes('primary') ? PRIMARY_LEVELS 
-                 : categoryName.includes('secondary') ? SECONDARY_LEVELS
-                 : categoryName.includes('kind') ? KG_LEVELS
-                 : GLOBAL_LEVELS;
+    const availableLevels = categoryId
+        ? domainLevels.filter((item) => item.category_id === categoryId && item.class_type === classType)
+        : [];
+
+    const availableStreams = levelId
+        ? domainStreams.filter((item) => item.level_id === levelId)
+        : [];
 
     useEffect(() => {
-        loadTeachers();
+        const init = async () => {
+            await Promise.all([loadTeachers(), loadClassOptions()]);
+        };
+        init();
     }, []);
+
+    const loadClassOptions = async () => {
+        try {
+            const options = await ClassService.getClassOptions();
+            const optionMap = new Map((options.level_options || []).map((item) => [item.level_id, item]));
+            const optionLabels = (options.level_options || []).map((item) => item.label).filter(Boolean);
+            setLevels(optionLabels.length > 0 ? optionLabels : fallbackLevels);
+            setClassType(options.class_type || 'Grade');
+            setClassTypes((options.class_types || [options.class_type || 'Grade']).filter(Boolean));
+            setCategories((options.categories || []).map((item) => ({ id: item.id, name: item.name })));
+            setDomainLevels((options.levels || []).map((item) => ({
+                id: item.id,
+                category_id: item.category_id,
+                level_number: item.level_number,
+                name: item.name,
+                class_type: optionMap.get(item.id)?.class_type || options.class_type || 'Grade',
+            })));
+            setDomainStreams((options.stream_options || []).map((item) => ({
+                id: item.id,
+                level_id: item.level_id,
+                code: item.code,
+                label: item.label,
+            })));
+        } catch (error) {
+            console.error("Error loading class options:", error);
+            setLevels(fallbackLevels);
+            setCategories([]);
+            setDomainLevels([]);
+            setDomainStreams([]);
+        }
+    };
 
     const loadTeachers = async () => {
         try {
@@ -85,16 +147,14 @@ export default function CreateClassScreen() {
     };
 
     const handleCreate = async () => {
-        if (!name.trim()) {
-            Alert.alert("Validation", "Class name is required");
-            return;
-        }
-
         try {
             setLoading(true);
             const numLevel = gradeLevel ? parseInt(gradeLevel.replace(/[^0-9]/g, '')) : undefined;
             await ClassService.createClass({
-                name: name.trim(),
+                class_type: classType,
+                category_id: categoryId || undefined,
+                level_id: levelId || undefined,
+                stream_id: streamId || undefined,
                 grade_level: (instLevelLabel === 'Grade' || instLevelLabel === 'KG') ? numLevel : undefined,
                 form_level: instLevelLabel === 'Form' ? numLevel : undefined,
                 capacity: capacity ? parseInt(capacity) : undefined,
@@ -121,27 +181,38 @@ export default function CreateClassScreen() {
             />
 
             <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16 }}>
-                {/* Class Name */}
                 <View style={{ marginBottom: 20 }}>
                     <Text style={{ color: labelColor, fontSize: 14, fontWeight: "600", marginBottom: 8 }}>
-                        Class Name *
+                        Type
                     </Text>
-                    <TextInput
-                        style={{
-                            backgroundColor: inputBg,
-                            borderRadius: 10,
-                            paddingHorizontal: 14,
-                            paddingVertical: 14,
-                            fontSize: 16,
-                            color: textPrimary,
-                            borderWidth: 1,
-                            borderColor: border,
-                        }}
-                        placeholder="e.g. Form 1 East"
-                        placeholderTextColor={textSecondary}
-                        value={name}
-                        onChangeText={setName}
-                    />
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                        <View style={{ flexDirection: "row", gap: 8 }}>
+                            {classTypes.map((typeName) => (
+                                <TouchableOpacity
+                                    key={typeName}
+                                    onPress={() => {
+                                        setClassType(typeName);
+                                        setCategoryId('');
+                                        setLevelId('');
+                                        setStreamId('');
+                                        setGradeLevel('');
+                                    }}
+                                    style={{
+                                        paddingHorizontal: 14,
+                                        paddingVertical: 8,
+                                        borderRadius: 20,
+                                        borderWidth: 1.5,
+                                        backgroundColor: classType === typeName ? "#0EA5E9" : inputBg,
+                                        borderColor: classType === typeName ? "#0EA5E9" : border,
+                                    }}
+                                >
+                                    <Text style={{ color: classType === typeName ? "white" : textPrimary, fontSize: 12, fontWeight: "700" }}>
+                                        {typeName}
+                                    </Text>
+                                </TouchableOpacity>
+                            ))}
+                        </View>
+                    </ScrollView>
                 </View>
 
                 <View style={{ marginBottom: 20 }}>
@@ -177,6 +248,117 @@ export default function CreateClassScreen() {
                         </View>
                     </ScrollView>
                 </View>
+
+                {categories.length > 0 && (
+                    <View style={{ marginBottom: 20 }}>
+                        <Text style={{ color: labelColor, fontSize: 14, fontWeight: "600", marginBottom: 8 }}>
+                            Category
+                        </Text>
+                        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                            <View style={{ flexDirection: "row", gap: 8 }}>
+                                {categories.map((category) => (
+                                    <TouchableOpacity
+                                        key={category.id}
+                                        onPress={() => {
+                                            const nextCategoryId = categoryId === category.id ? '' : category.id;
+                                            setCategoryId(nextCategoryId);
+                                            setLevelId('');
+                                            setStreamId('');
+                                        }}
+                                        style={{
+                                            paddingHorizontal: 14,
+                                            paddingVertical: 8,
+                                            borderRadius: 20,
+                                            borderWidth: 1.5,
+                                            backgroundColor: categoryId === category.id ? "#0EA5E9" : inputBg,
+                                            borderColor: categoryId === category.id ? "#0EA5E9" : border,
+                                        }}
+                                    >
+                                        <Text style={{ fontSize: 12, fontWeight: "700", color: categoryId === category.id ? "white" : textPrimary }}>
+                                            {category.name}
+                                        </Text>
+                                    </TouchableOpacity>
+                                ))}
+                            </View>
+                        </ScrollView>
+                    </View>
+                )}
+
+                {availableLevels.length > 0 && (
+                    <View style={{ marginBottom: 20 }}>
+                        <Text style={{ color: labelColor, fontSize: 14, fontWeight: "600", marginBottom: 8 }}>
+                            Level
+                        </Text>
+                        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                            <View style={{ flexDirection: "row", gap: 8 }}>
+                                {availableLevels.map((level) => (
+                                    <TouchableOpacity
+                                        key={level.id}
+                                        onPress={() => {
+                                            const nextLevelId = levelId === level.id ? '' : level.id;
+                                            setLevelId(nextLevelId);
+                                            setStreamId('');
+                                            if (nextLevelId) {
+                                                setGradeLevel(`${instLevelLabel} ${level.level_number}`);
+                                            }
+                                        }}
+                                        style={{
+                                            paddingHorizontal: 14,
+                                            paddingVertical: 8,
+                                            borderRadius: 20,
+                                            borderWidth: 1.5,
+                                            backgroundColor: levelId === level.id ? "#0EA5E9" : inputBg,
+                                            borderColor: levelId === level.id ? "#0EA5E9" : border,
+                                        }}
+                                    >
+                                        <Text style={{ fontSize: 12, fontWeight: "700", color: levelId === level.id ? "white" : textPrimary }}>
+                                            {level.name || `${instLevelLabel} ${level.level_number}`}
+                                        </Text>
+                                    </TouchableOpacity>
+                                ))}
+                            </View>
+                        </ScrollView>
+                    </View>
+                )}
+
+                {availableStreams.length > 0 && (
+                    <View style={{ marginBottom: 20 }}>
+                        <Text style={{ color: labelColor, fontSize: 14, fontWeight: "600", marginBottom: 8 }}>
+                            Stream
+                        </Text>
+                        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                            <View style={{ flexDirection: "row", gap: 8 }}>
+                                {availableStreams.map((streamItem) => (
+                                    <TouchableOpacity
+                                        key={streamItem.id}
+                                        onPress={() => {
+                                            const nextStreamId = streamId === streamItem.id ? '' : streamItem.id;
+                                            setStreamId(nextStreamId);
+                                            if (nextStreamId && !gradeLevel && levelId) {
+                                                const selectedLevel = domainLevels.find((item) => item.id === levelId);
+                                                if (selectedLevel) {
+                                                    setGradeLevel(`${instLevelLabel} ${selectedLevel.level_number}`);
+                                                }
+                                            }
+                                        }}
+                                        style={{
+                                            paddingHorizontal: 14,
+                                            paddingVertical: 8,
+                                            borderRadius: 20,
+                                            borderWidth: 1.5,
+                                            backgroundColor: streamId === streamItem.id ? "#0EA5E9" : inputBg,
+                                            borderColor: streamId === streamItem.id ? "#0EA5E9" : border,
+                                        }}
+                                    >
+                                        <Text style={{ fontSize: 12, fontWeight: "700", color: streamId === streamItem.id ? "white" : textPrimary }}>
+                                            {streamItem.label}
+                                        </Text>
+                                    </TouchableOpacity>
+                                ))}
+                            </View>
+                        </ScrollView>
+                    </View>
+                )}
 
                 {/* Capacity */}
                 <View style={{ marginBottom: 20 }}>

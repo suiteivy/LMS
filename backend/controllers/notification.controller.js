@@ -3,6 +3,7 @@ const {
     sendInAppNotificationWithHistory,
     retryScheduledNotificationDeliveries,
 } = require('../services/notificationDelivery.service.js');
+const { isTransientSupabaseError, withSupabaseRetry } = require('../utils/supabaseRetry.js');
 
 exports.createNotificationInternal = async ({ userId, title, message, type = 'info', data = {} }) => {
     try {
@@ -59,11 +60,14 @@ exports.getUserNotifications = async (req, res) => {
         const now = new Date().toISOString();
 
         if (institution_id) {
-            await supabase
-                .from("notifications")
-                .delete()
-                .eq("institution_id", institution_id)
-                .lt("expires_at", now);
+            await withSupabaseRetry(() =>
+                supabase
+                    .from("notifications")
+                    .delete()
+                    .eq("institution_id", institution_id)
+                    .lt("expires_at", now),
+                { attempts: 1 }
+            );
         }
 
         let query = supabase
@@ -89,19 +93,28 @@ exports.getUserNotifications = async (req, res) => {
             }
         }
 
-        const { data, error } = await query
-            .or(`expires_at.is.null,expires_at.gt.${now}`)
-            .order("created_at", { ascending: false })
-            .limit(50);
+        const { data, error } = await withSupabaseRetry(
+            () => query
+                .or(`expires_at.is.null,expires_at.gt.${now}`)
+                .order("created_at", { ascending: false })
+                .limit(50),
+            { attempts: 1 }
+        );
 
         if (error) {
             console.error("getUserNotifications Supabase error:", error);
+            if (isTransientSupabaseError(error)) {
+                return res.status(200).json([]);
+            }
             return res.status(500).json({ error: error.message });
         }
 
         return res.status(200).json(data);
     } catch (err) {
         console.error("getUserNotifications error:", err);
+        if (isTransientSupabaseError(err)) {
+            return res.status(200).json([]);
+        }
         return res.status(500).json({ error: "Server error" });
     }
 };

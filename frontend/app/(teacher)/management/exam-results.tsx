@@ -1,4 +1,5 @@
 import { UnifiedHeader } from"@/components/common/UnifiedHeader";
+import { ListItemSkeleton } from "@/components/ui/skeletons";
 import { ExamService } from"@/services/ExamService";
 import { useAuth } from "@/contexts/AuthContext";
 import Toast from 'react-native-toast-message';
@@ -138,7 +139,7 @@ export default function ExamResultsPage() {
  </View>
 
  {loading ? (
- <ActivityIndicator size="large" color="#FF6900" className="mt-8" />
+ <ListItemSkeleton loading={loading} count={4} label="Loading exam results..." />
  ) : (
  <ScrollView className="flex-1" showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 200 }}>
  {filteredStudents.map((student) => (

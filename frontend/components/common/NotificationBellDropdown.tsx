@@ -2,10 +2,13 @@ import { useNotifications } from "@/contexts/NotificationContext";
 import { useTheme } from "@/contexts/ThemeContext";
 import { Spinner } from "@/components/ui/Spinner";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useAuth } from "@/contexts/AuthContext";
 import { formatDistanceToNow } from "date-fns";
 import { AlertCircle, Bell, CheckCircle, Info, Trash2, X } from "lucide-react-native";
+import { router } from "expo-router";
 import React from "react";
 import {
+    Alert,
     Pressable,
     ScrollView,
     Text,
@@ -30,12 +33,60 @@ export function NotificationBellDropdown({
     tabBarHeight = 70,
 }: NotificationBellDropdownProps) {
     const { isDark } = useTheme();
+    const { profile } = useAuth();
     const insets = useSafeAreaInsets();
     const { width } = useWindowDimensions();
     const { notifications, markAsRead, markAllAsRead, loading, refreshNotifications } = useNotifications();
+    const [nowMs, setNowMs] = React.useState(Date.now());
     const menuWidth = Math.min(340, width - 24);
 
     const recentNotifications = notifications.slice(0, 6);
+
+    const resolveChatRoute = React.useCallback((conversationId?: string | null) => {
+        if (!conversationId) return;
+        const role = profile?.role;
+        if (role === "admin") {
+            router.push({ pathname: "/(admin)/communication", params: { conversationId } } as any);
+            return;
+        }
+        if (role === "teacher") {
+            router.push({ pathname: "/(teacher)/management/messages", params: { conversationId } } as any);
+            return;
+        }
+        if (role === "parent") {
+            router.push({ pathname: "/(parent)/messages", params: { conversationId } } as any);
+        }
+    }, [profile?.role]);
+
+    const handleNotificationPress = React.useCallback((item: any) => {
+        if (!item.is_read) {
+            markAsRead(item.id);
+        }
+
+        const conversationId = item?.data?.conversation_id || item?.data?.conversationId || null;
+        const source = String(item?.data?.source || "").toLowerCase();
+        const isMessageNotification = source === "message" || Boolean(conversationId);
+
+        if (!isMessageNotification || !conversationId) {
+            return;
+        }
+
+        onClose();
+        setTimeout(() => {
+            const senderName = item?.data?.sender_name ? ` from ${item.data.sender_name}` : "";
+            Alert.alert(
+                "Open message",
+                `Open this message${senderName} in chat?`,
+                [
+                    { text: "Cancel", style: "cancel" },
+                    {
+                        text: "Open",
+                        onPress: () => resolveChatRoute(conversationId),
+                    },
+                ]
+            );
+        }, 50);
+    }, [markAsRead, onClose, resolveChatRoute]);
 
     const iconBg = (type: string) => {
         if (type === "error") return isDark ? "rgba(127,29,29,0.3)" : "#fef2f2";
@@ -54,6 +105,25 @@ export function NotificationBellDropdown({
         unreadBg: isDark ? "rgba(255,105,0,0.12)" : "rgba(255,247,237,0.8)",
         unreadBorder: isDark ? "rgba(255,105,0,0.25)" : "#fed7aa",
     };
+
+    const formatExpiryCountdown = React.useCallback((expiresAt?: string | null) => {
+        if (!expiresAt) return null;
+        const endMs = new Date(expiresAt).getTime();
+        if (!Number.isFinite(endMs)) return null;
+        const remaining = endMs - nowMs;
+        if (remaining <= 0) return 'Expired';
+
+        const totalMinutes = Math.floor(remaining / (60 * 1000));
+        const days = Math.floor(totalMinutes / (24 * 60));
+        const hours = Math.floor((totalMinutes % (24 * 60)) / 60);
+        const minutes = totalMinutes % 60;
+        return `${days}d ${hours}h ${minutes}m left`;
+    }, [nowMs]);
+
+    React.useEffect(() => {
+        const interval = setInterval(() => setNowMs(Date.now()), 30000);
+        return () => clearInterval(interval);
+    }, []);
 
     if (!visible) return null;
 
@@ -207,9 +277,7 @@ export function NotificationBellDropdown({
                                     {recentNotifications.map((item) => (
                                         <TouchableOpacity
                                             key={item.id}
-                                            onPress={() => {
-                                                if (!item.is_read) markAsRead(item.id);
-                                            }}
+                                            onPress={() => handleNotificationPress(item)}
                                             activeOpacity={0.7}
                                             style={{
                                                 flexDirection: "row",
@@ -291,6 +359,18 @@ export function NotificationBellDropdown({
                                                 >
                                                     {item.message}
                                                 </Text>
+                                                {!!item.expires_at && (
+                                                    <Text
+                                                        style={{
+                                                            color: '#D97706',
+                                                            fontSize: 10,
+                                                            marginTop: 4,
+                                                            fontWeight: '700',
+                                                        }}
+                                                    >
+                                                        {formatExpiryCountdown(item.expires_at)}
+                                                    </Text>
+                                                )}
                                             </View>
                                             {!item.is_read && (
                                                 <View

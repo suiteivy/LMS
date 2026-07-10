@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from "react";
-import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, StatusBar } from "react-native";
+import { View, Text, ScrollView, TouchableOpacity, StatusBar } from "react-native";
 import { ArrowLeft, Plus, BookOpen, Clock, ChevronRight, Filter } from "lucide-react-native";
 import { router } from "expo-router";
 import { useAuth } from "@/contexts/AuthContext";
 import { TeacherAPI } from "@/services/TeacherService";
+import { SubjectAPI } from "@/services/SubjectService";
 import { Edit, Eye, TrendingUp, Users } from 'lucide-react-native';
 import { SubscriptionBanner } from "@/components/shared/SubscriptionComponents";
+import { ListItemSkeleton } from "@/components/ui/skeletons";
 
 interface Subject {
     id: string;
@@ -85,13 +87,13 @@ export default function SubjectsPage() {
     const fetchSubjects = async () => {
         try {
             setLoading(true);
-            const data = await TeacherAPI.getAnalytics();
+            const data = await SubjectAPI.getFilteredSubjects();
 
             const mappedSubjects: Subject[] = (data || []).map((s: any) => ({
                 id: s.id,
-                title: s.name || "Untitled Subject",
-                students: s.students || 0,
-                completion: s.completionRate || 0,
+                title: s.title || s.name || "Untitled Subject",
+                students: Number(s.students || 0),
+                completion: Number(s.completionRate || 0),
                 status: "active",
                 lastUpdated: "Recently"
             }));
@@ -138,7 +140,7 @@ export default function SubjectsPage() {
                 </View>
 
                 {loading ? (
-                    <ActivityIndicator size="large" color="#FF6900" className="mt-10" />
+                    <ListItemSkeleton loading={loading} count={4} label="Loading subjects..." />
                 ) : filteredSubjects.length === 0 ? (
                     <View className="items-center justify-center py-20">
                         <BookOpen size={48} color="#E5E7EB" />

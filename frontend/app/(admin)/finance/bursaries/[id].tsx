@@ -1,7 +1,7 @@
 import { UnifiedHeader } from "@/components/common/UnifiedHeader";
+import { useCurrency } from "@/contexts/CurrencyContext";
 import { useTheme } from "@/contexts/ThemeContext";
 import { BursaryService } from '@/services/BursaryService';
-import { formatCurrency } from '@/utils/currency';
 import { format } from 'date-fns';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
@@ -12,6 +12,7 @@ export default function BursaryDetailsScreen() {
     const { id } = useLocalSearchParams<{ id: string }>();
     const router = useRouter();
     const { isDark } = useTheme();
+    const { formatAmount } = useCurrency();
     const tier = useSubscriptionTier();
     const [bursary, setBursary] = useState<any>(null);
     const [applications, setApplications] = useState<any[]>([]);
@@ -85,7 +86,7 @@ export default function BursaryDetailsScreen() {
                         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
                             <View style={{ flex: 1 }}>
                                 <Text style={{ fontSize: 22, fontWeight: 'bold', color: textPrimary }}>{bursary.title}</Text>
-                                <Text style={{ fontSize: 28, fontWeight: '900', color: '#FF6B00', marginTop: 6 }}>{formatCurrency(bursary.amount)}</Text>
+                                <Text style={{ fontSize: 28, fontWeight: '900', color: '#FF6B00', marginTop: 6 }}>{formatAmount(Number(bursary.amount || 0))}</Text>
                             </View>
                             <View style={{ paddingHorizontal: 12, paddingVertical: 4, borderRadius: 999, backgroundColor: isOpen ? (isDark ? '#052e16' : '#dcfce7') : (isDark ? '#1f2937' : '#fee2e2') }}>
                                 <Text style={{ fontSize: 11, fontWeight: 'bold', textTransform: 'uppercase', color: isOpen ? '#10b981' : (isDark ? '#9ca3af' : '#b91c1c') }}>

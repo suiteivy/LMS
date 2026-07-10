@@ -1,6 +1,7 @@
 // controllers/timetable.controller.js
 const supabase = require("../utils/supabaseClient.js");
 const { buildClassLabel } = require('../utils/classLabel');
+const { recomputeForTimetableDayMutation } = require('../services/dailyHours.service.js');
 
 // ── Shared helpers ────────────────────────────────────────────────────────────
 
@@ -10,6 +11,65 @@ const toMin = (t) => {
 };
 
 const overlaps = (s1, e1, s2, e2) => s1 < e2 && s2 < e1;
+
+async function validateClassAndSubject({ class_id, subject_id, institution_id }) {
+  const { data: cls, error: classError } = await supabase
+    .from("classes")
+    .select("id")
+    .eq("id", class_id)
+    .eq("institution_id", institution_id)
+    .single();
+
+  if (classError || !cls) {
+    return { ok: false, status: 400, error: "Invalid class for institution" };
+  }
+
+  const { data: subject, error: subjectError } = await supabase
+    .from("subjects")
+    .select("id,class_id,metadata")
+    .eq("id", subject_id)
+    .eq("institution_id", institution_id)
+    .single();
+
+  if (subjectError || !subject) {
+    return { ok: false, status: 400, error: "Invalid subject for institution" };
+  }
+
+  const { data: links, error: linkError } = await supabase
+    .from("subject_classes")
+    .select("class_id")
+    .eq("institution_id", institution_id)
+    .eq("subject_id", subject_id);
+
+  if (linkError && linkError.code !== "42P01") {
+    throw linkError;
+  }
+
+  let allowedClassIds = [];
+  if (!linkError) {
+    allowedClassIds = (links || []).map((l) => l.class_id).filter(Boolean);
+  }
+
+  if (allowedClassIds.length === 0) {
+    const metadataClassIds = Array.isArray(subject?.metadata?.class_ids)
+      ? subject.metadata.class_ids
+      : [];
+    allowedClassIds = [
+      ...(subject.class_id ? [subject.class_id] : []),
+      ...metadataClassIds,
+    ];
+  }
+
+  if (allowedClassIds.length > 0 && !allowedClassIds.includes(class_id)) {
+    return {
+      ok: false,
+      status: 400,
+      error: "Selected subject is not assigned to this class",
+    };
+  }
+
+  return { ok: true };
+}
 
 /**
  * Run institution-wide conflict checks before inserting/updating.
@@ -120,7 +180,7 @@ async function checkConflicts(
 exports.createTimetableEntry = async (req, res) => {
   try {
     const { userRole, institution_id } = req;
-    if (userRole !== "admin") {
+    if (!["admin", "master_admin"].includes(userRole)) {
       return res.status(403).json({ error: "Admin only." });
     }
 
@@ -135,6 +195,17 @@ exports.createTimetableEntry = async (req, res) => {
 
     if (!class_id || !subject_id || !day_of_week || !start_time || !end_time) {
       return res.status(400).json({ error: "Missing required fields" });
+    }
+
+    const classSubjectValidation = await validateClassAndSubject({
+      class_id,
+      subject_id,
+      institution_id,
+    });
+    if (!classSubjectValidation.ok) {
+      return res
+        .status(classSubjectValidation.status)
+        .json({ error: classSubjectValidation.error });
     }
 
     // Institution-wide conflict check
@@ -163,6 +234,13 @@ exports.createTimetableEntry = async (req, res) => {
       .single();
 
     if (error) throw error;
+
+    try {
+      await recomputeForTimetableDayMutation({ institution_id, day_name: day_of_week });
+    } catch (hoursError) {
+      console.error('[Timetable] daily hours recompute failed after create:', hoursError?.message || hoursError);
+    }
+
     res.status(201).json({ message: "Timetable entry created", entry: data });
   } catch (err) {
     console.error("Create timetable error:", err);
@@ -188,8 +266,8 @@ exports.getClassTimetable = async (req, res) => {
       .from("timetables")
       .select(
         `
-        id, day_of_week, start_time, end_time, room_number,
-        subjects ( title, teacher_id, teachers(users(full_name)) )
+        id, class_id, subject_id, institution_id, day_of_week, start_time, end_time, room_number,
+        subjects ( id, title, teacher_id, teachers(users(full_name)) )
       `,
       )
       .eq("class_id", class_id)
@@ -266,7 +344,7 @@ exports.getTeacherTimetable = async (req, res) => {
       .select(
         `
         id, day_of_week, start_time, end_time, room_number,
-        classes ( grade_level, form_level, stream, level_label ),
+        classes ( grade_level, form_level, stream ),
         subjects ( title )
         `,
       )
@@ -294,12 +372,38 @@ exports.updateTimetableEntry = async (req, res) => {
   try {
     const { id } = req.params;
     const { userRole, institution_id } = req;
-    if (userRole !== "admin")
+    if (!["admin", "master_admin"].includes(userRole))
       return res.status(403).json({ error: "Admin only" });
 
     const updates = { ...req.body };
     delete updates.id;
     delete updates.created_at;
+
+    const { data: current } = await supabase
+      .from("timetables")
+      .select(
+        "id,class_id,subject_id,day_of_week,start_time,end_time,room_number,institution_id",
+      )
+      .eq("id", id)
+      .eq("institution_id", institution_id)
+      .single();
+
+    if (!current) {
+      return res.status(404).json({ error: "Timetable entry not found" });
+    }
+
+    const merged = { ...current, ...updates };
+
+    const classSubjectValidation = await validateClassAndSubject({
+      class_id: merged.class_id,
+      subject_id: merged.subject_id,
+      institution_id,
+    });
+    if (!classSubjectValidation.ok) {
+      return res
+        .status(classSubjectValidation.status)
+        .json({ error: classSubjectValidation.error });
+    }
 
     // If timing/room/subject fields are being changed, re-run conflict check
     const needsCheck =
@@ -310,20 +414,9 @@ exports.updateTimetableEntry = async (req, res) => {
       updates.subject_id;
 
     if (needsCheck) {
-      // Fetch the existing entry to fill in any fields not being updated
-      const { data: current } = await supabase
-        .from("timetables")
-        .select(
-          "class_id, subject_id, day_of_week, start_time, end_time, room_number",
-        )
-        .eq("id", id)
-        .single();
-      if (current) {
-        const merged = { ...current, ...updates };
-        const issues = await checkConflicts(merged, institution_id, id);
-        if (issues.length > 0) {
-          return res.status(409).json({ error: issues[0], conflicts: issues });
-        }
+      const issues = await checkConflicts(merged, institution_id, id);
+      if (issues.length > 0) {
+        return res.status(409).json({ error: issues[0], conflicts: issues });
       }
     }
 
@@ -336,6 +429,16 @@ exports.updateTimetableEntry = async (req, res) => {
       .single();
 
     if (error) throw error;
+
+    try {
+      await recomputeForTimetableDayMutation({ institution_id, day_name: current.day_of_week });
+      if (merged.day_of_week && merged.day_of_week !== current.day_of_week) {
+        await recomputeForTimetableDayMutation({ institution_id, day_name: merged.day_of_week });
+      }
+    } catch (hoursError) {
+      console.error('[Timetable] daily hours recompute failed after update:', hoursError?.message || hoursError);
+    }
+
     res.json({ message: "Updated", entry: data });
   } catch (err) {
     console.error("Update timetable error:", err);
@@ -350,8 +453,15 @@ exports.deleteTimetableEntry = async (req, res) => {
   try {
     const { id } = req.params;
     const { userRole, institution_id } = req;
-    if (userRole !== "admin")
+    if (!["admin", "master_admin"].includes(userRole))
       return res.status(403).json({ error: "Admin only" });
+
+    const { data: existing } = await supabase
+      .from('timetables')
+      .select('day_of_week')
+      .eq('id', id)
+      .eq('institution_id', institution_id)
+      .single();
 
     const { error } = await supabase
       .from("timetables")
@@ -359,6 +469,13 @@ exports.deleteTimetableEntry = async (req, res) => {
       .eq("id", id)
       .eq("institution_id", institution_id);
     if (error) throw error;
+
+    try {
+      await recomputeForTimetableDayMutation({ institution_id, day_name: existing?.day_of_week });
+    } catch (hoursError) {
+      console.error('[Timetable] daily hours recompute failed after delete:', hoursError?.message || hoursError);
+    }
+
     res.json({ message: "Deleted" });
   } catch (err) {
     console.error("Delete timetable error:", err);

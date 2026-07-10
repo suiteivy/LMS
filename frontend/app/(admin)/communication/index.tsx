@@ -5,15 +5,17 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useTheme } from "@/contexts/ThemeContext";
 import { supabase } from "@/libs/supabase";
 import { showSuccess, showError } from "@/utils/toast";
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import { api } from "@/services/api";
+import { AddonRequestButton, SubscriptionGate } from "@/components/shared/SubscriptionComponents";
 import {
     Edit2,
     Plus,
     RefreshCw,
     X,
     Megaphone,
-    Trash2
+    Trash2,
+    Zap
 } from "lucide-react-native";
 import React, { useEffect, useState, useCallback, useRef } from "react";
 import {
@@ -34,6 +36,10 @@ type MainTab = "messages" | "announcements";
 export default function CommunicationPage() {
     const { isDark } = useTheme();
     const { profile } = useAuth();
+    const params = useLocalSearchParams<{ conversationId?: string | string[] }>();
+    const initialConversationId = Array.isArray(params.conversationId)
+        ? params.conversationId[0]
+        : params.conversationId;
 
     // Tabs
     const [mainTab, setMainTab] = useState<MainTab>("messages");
@@ -250,6 +256,7 @@ export default function CommunicationPage() {
                     emptyListTitle="No direct conversations"
                     externalRefreshToken={directChatRefreshToken}
                     externalComposeToken={directChatComposeToken}
+                    initialConversationId={initialConversationId}
                 />
             </View>
         );
@@ -315,6 +322,21 @@ export default function CommunicationPage() {
     };
 
     return (
+        <SubscriptionGate
+            feature="messaging"
+            fallback={
+                <View className="flex-1 items-center justify-center p-8" style={{ backgroundColor: bgContainer }}>
+                    <View className="bg-[#F6F8FA] dark:bg-[#161B22] p-8 rounded-2xl items-center border border-[#D0D7DE] dark:border-[#21262D] border-dashed max-w-sm">
+                        <Zap size={40} color="#FF6900" style={{ marginBottom: 20 }} />
+                        <Text className="text-lg font-bold text-gray-900 dark:text-white text-center mb-2">Messaging Locked</Text>
+                        <Text className="text-gray-500 dark:text-gray-400 text-center text-xs mb-6 leading-5">
+                            Direct messaging is not enabled for this institution subscription.
+                        </Text>
+                        <AddonRequestButton onPress={() => {}} />
+                    </View>
+                </View>
+            }
+        >
         <View className="flex-1" style={{ backgroundColor: bgContainer }}>
             <UnifiedHeader
                 title="Communication"
@@ -478,5 +500,6 @@ export default function CommunicationPage() {
                 </View>
             </Modal>
         </View>
+        </SubscriptionGate>
     );
 }

@@ -1,359 +1,525 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, Modal, Platform, TextInput } from 'react-native';
-import { useTheme } from '@/contexts/ThemeContext';
-import { useAuth } from '@/contexts/AuthContext';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  Modal,
+  SafeAreaView,
+  ScrollView,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { supabase } from '@/libs/supabase';
+import Toast from 'react-native-toast-message';
+import { ListItemSkeleton } from '@/components/ui/skeletons';
 
-export default function MasterSupport() {
-    const { isDark } = useTheme();
-    const { profile } = useAuth();
+import { useTheme } from '@/contexts/ThemeContext';
+import { MasterSupportService } from '@/services/MasterSupportService';
+import type { SupportTicket, SupportWorkflowStatus } from '@/services/SupportService';
 
-    const [loading, setLoading] = useState(true);
-    const [tickets, setTickets] = useState<any[]>([]);
-    const [selectedTicket, setSelectedTicket] = useState<any | null>(null);
-    const [statusUpdating, setStatusUpdating] = useState(false);
-    const [messages, setMessages] = useState<any[]>([]);
-    const [newMessage, setNewMessage] = useState('');
-    const [sendingMessage, setSendingMessage] = useState(false);
+const useThemeColors = (isDark: boolean) => ({
+  bg: isDark ? '#0D1117' : '#F6F8FA',
+  card: isDark ? '#161B22' : '#FFFFFF',
+  border: isDark ? '#4B5563' : '#9CA3AF',
+  text: isDark ? '#F0F6FC' : '#1F2328',
+  sub: isDark ? '#8B949E' : '#57606A',
+  primary: '#FF6900',
+  success: '#1A7F37',
+  danger: '#CF222E',
+  warn: '#9A6700',
+  info: '#3B82F6',
+  overlay: 'rgba(0,0,0,0.5)',
+  input: isDark ? '#0F141C' : '#F3F4F6',
+});
 
-    const getBackendUrl = () => {
-        let url = process.env.EXPO_PUBLIC_API_URL || "http://localhost:4001";
-        if (Platform.OS === 'android') {
-            url = url.replace('localhost', '10.0.2.2');
-        }
-        return url;
-    };
+const statusColor = (status: SupportWorkflowStatus, isDark: boolean) => {
+  if (status === 'pending') return isDark ? '#F87171' : '#B91C1C';
+  if (status === 'acknowledged') return isDark ? '#60A5FA' : '#1D4ED8';
+  if (status === 'in_progress') return isDark ? '#FBBF24' : '#B45309';
+  return isDark ? '#34D399' : '#15803D';
+};
 
-    const fetchTickets = useCallback(async () => {
-        try {
-            const { data: { session } } = await supabase.auth.getSession();
-            if (!session) return;
-            const res = await fetch(`${getBackendUrl()}/api/master-admin/support-requests`, {
-                headers: { 'Authorization': `Bearer ${session.access_token}` }
-            });
-            const data = await res.json();
-            if (res.ok) {
-                setTickets(data.requests || []);
-            }
-        } catch (err) {
-            console.error("Error fetching support requests:", err);
-        } finally {
-            setLoading(false);
-        }
-    }, []);
+const PRIORITY_LEVELS = ['high', 'medium', 'low'] as const;
+type TicketPriority = (typeof PRIORITY_LEVELS)[number];
 
-    const fetchMessages = async (ticketId: string) => {
-        try {
-            const { data: { session } } = await supabase.auth.getSession();
-            if (!session) return;
-            const res = await fetch(`${getBackendUrl()}/api/master-admin/support-requests/${ticketId}/messages`, {
-                headers: { 'Authorization': `Bearer ${session.access_token}` }
-            });
-            const data = await res.json();
-            if (res.ok) setMessages(data.messages || []);
-        } catch (err) {
-            console.error("Error fetching messages:", err);
-        }
-    };
+const normalizePriority = (value: string | null | undefined): TicketPriority | null => {
+  const normalized = String(value || '').trim().toLowerCase();
+  if (PRIORITY_LEVELS.includes(normalized as TicketPriority)) return normalized as TicketPriority;
+  return null;
+};
 
-    useEffect(() => {
-        fetchTickets();
-    }, [fetchTickets]);
+const priorityOrder: Record<TicketPriority, number> = {
+  high: 0,
+  medium: 1,
+  low: 2,
+};
 
-    useEffect(() => {
-        if (selectedTicket) {
-            fetchMessages(selectedTicket.id);
-        } else {
-            setMessages([]);
-        }
-    }, [selectedTicket]);
+const priorityColor = (priority: TicketPriority, isDark: boolean) => {
+  if (priority === 'high') return isDark ? '#F87171' : '#B91C1C';
+  if (priority === 'medium') return isDark ? '#FBBF24' : '#B45309';
+  return isDark ? '#34D399' : '#15803D';
+};
 
-    const updateTicketDetails = async (id: string, updates: any) => {
-        setStatusUpdating(true);
-        try {
-            const { data: { session } } = await supabase.auth.getSession();
-            if (!session) return;
-            const res = await fetch(`${getBackendUrl()}/api/master-admin/support-requests/${id}`, {
-                method: 'PUT',
-                headers: {
-                    'Authorization': `Bearer ${session.access_token}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(updates)
-            });
+export default function MasterSupportPage() {
+  const { isDark } = useTheme();
+  const c = useThemeColors(isDark);
 
-            if (res.ok) {
-                setTickets(tickets.map(t => t.id === id ? { ...t, ...updates } : t));
-                if (selectedTicket?.id === id) {
-                    setSelectedTicket({ ...selectedTicket, ...updates });
-                }
-            }
-        } catch (err) {
-            console.error("Error updating ticket:", err);
-        } finally {
-            setStatusUpdating(false);
-        }
-    };
+  const [loading, setLoading] = useState(true);
+  const [tickets, setTickets] = useState<SupportTicket[]>([]);
+  const [selectedTicket, setSelectedTicket] = useState<SupportTicket | null>(null);
+  const [statusSaving, setStatusSaving] = useState(false);
+  const [deleteSaving, setDeleteSaving] = useState(false);
+  const [queuePage, setQueuePage] = useState<'unassigned' | 'assigned'>('unassigned');
 
-    const sendMessage = async () => {
-        if (!newMessage.trim() || !selectedTicket) return;
-        setSendingMessage(true);
-        try {
-            const { data: { session } } = await supabase.auth.getSession();
-            if (!session) return;
-            const res = await fetch(`${getBackendUrl()}/api/master-admin/support-requests/${selectedTicket.id}/messages`, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${session.access_token}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ message: newMessage, is_internal: false })
-            });
+  const [resolveConfirmOpen, setResolveConfirmOpen] = useState(false);
+  const [resolutionNote, setResolutionNote] = useState('');
 
-            if (res.ok) {
-                setNewMessage('');
-                fetchMessages(selectedTicket.id);
-                // Also update status to 'in_progress' locally if it was 'pending'
-                if (selectedTicket.status === 'pending') {
-                    setTickets(tickets.map(t => t.id === selectedTicket.id ? { ...t, status: 'in_progress' } : t));
-                    setSelectedTicket({ ...selectedTicket, status: 'in_progress' });
-                }
-            }
-        } catch (err) {
-            console.error("Error sending message:", err);
-        } finally {
-            setSendingMessage(false);
-        }
-    };
+  const loadTickets = useCallback(async () => {
+    try {
+      setLoading(true);
+      const data = await MasterSupportService.getSupportRequests();
+      setTickets(data);
+    } catch (e: any) {
+      Toast.show({ type: 'error', text1: 'Support', text2: e.message || 'Failed to load support tickets' });
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
-    const themeColors = {
-        bg: isDark ? '#0F0B2E' : '#f8fafc',
-        card: isDark ? '#13103A' : '#ffffff',
-        text: isDark ? '#ffffff' : '#0f172a',
-        subtext: isDark ? '#94a3b8' : '#64748b',
-        border: isDark ? 'rgba(255,255,255,0.05)' : '#e2e8f0',
-        primary: '#FF6B00',
-        modalBg: 'rgba(0,0,0,0.5)',
-        inputBg: isDark ? 'rgba(255,255,255,0.05)' : '#f1f5f9'
-    };
+  useEffect(() => {
+    loadTickets();
+  }, [loadTickets]);
 
-    const getStatusColor = (status: string) => {
-        switch (status) {
-            case 'pending': return '#ef4444';
-            case 'in_progress': return '#f59e0b';
-            case 'awaiting_customer': return '#3b82f6';
-            case 'resolved': return '#10b981';
-            case 'closed': return themeColors.subtext;
-            default: return themeColors.subtext;
-        }
-    };
+  const workflowStatus: SupportWorkflowStatus = useMemo(() => {
+    if (!selectedTicket?.workflow_status) return 'pending';
+    return selectedTicket.workflow_status;
+  }, [selectedTicket]);
 
-    const getPriorityColor = (priority: string) => {
-        switch (priority) {
-            case 'urgent': return '#ef4444';
-            case 'high': return '#f59e0b';
-            case 'normal': return '#3b82f6';
-            case 'low': return '#10b981';
-            default: return themeColors.subtext;
-        }
-    };
+  const canMarkAcknowledged = workflowStatus === 'pending';
+  const canMarkInProgress = workflowStatus === 'acknowledged';
+  const canResolve = workflowStatus === 'in_progress';
+  const canDelete = selectedTicket?.can_delete === true;
+  const selectedPriority = normalizePriority(selectedTicket?.priority);
 
-    return (
-        <SafeAreaView style={{ flex: 1, backgroundColor: themeColors.bg }} edges={['top', 'left', 'right']}>
-            <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 40, paddingTop: 10 }}>
-                {/* Header */}
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 24 }}>
-                    <View style={{ backgroundColor: `${themeColors.primary}20`, padding: 8, borderRadius: 10 }}>
-                        <MaterialCommunityIcons name="headphones" size={24} color={themeColors.primary} />
-                    </View>
-                    <View>
-                        <Text style={{ fontSize: 24, fontWeight: '800', color: themeColors.text }}>Support Desk</Text>
-                        <Text style={{ fontSize: 14, color: themeColors.subtext, marginTop: 2 }}>Banking-grade Ticketing & Escalation</Text>
-                    </View>
-                </View>
+  const { unassignedTickets, assignedTickets } = useMemo(() => {
+    const sorted = [...tickets].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    const unassigned: SupportTicket[] = [];
+    const assigned: SupportTicket[] = [];
 
-                {loading ? (
-                    <ActivityIndicator size="large" color={themeColors.primary} style={{ marginTop: 40 }} />
+    for (const ticket of sorted) {
+      const priority = normalizePriority(ticket.priority);
+      if (!priority) {
+        unassigned.push(ticket);
+      } else {
+        assigned.push(ticket);
+      }
+    }
+
+    assigned.sort((a, b) => {
+      const aPriority = normalizePriority(a.priority) || 'low';
+      const bPriority = normalizePriority(b.priority) || 'low';
+      const diff = priorityOrder[aPriority] - priorityOrder[bPriority];
+      if (diff !== 0) return diff;
+      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+    });
+
+    return { unassignedTickets: unassigned, assignedTickets: assigned };
+  }, [tickets]);
+
+  const applyTicketUpdateLocally = (updated: SupportTicket) => {
+    setTickets((prev) => prev.map((t) => (t.id === updated.id ? { ...t, ...updated } : t)));
+    setSelectedTicket((prev) => (prev && prev.id === updated.id ? { ...prev, ...updated } : prev));
+  };
+
+  const updateTicketStatus = async (status: SupportWorkflowStatus, note?: string) => {
+    if (!selectedTicket) return;
+    try {
+      setStatusSaving(true);
+      const updated = await MasterSupportService.updateSupportRequest(selectedTicket.id, {
+        status,
+        resolution_note: note,
+      });
+      applyTicketUpdateLocally(updated);
+      Toast.show({ type: 'success', text1: 'Support', text2: `Ticket marked ${status.replace('_', ' ')}` });
+    } catch (e: any) {
+      Toast.show({ type: 'error', text1: 'Support', text2: e.message || 'Failed to update ticket status' });
+    } finally {
+      setStatusSaving(false);
+    }
+  };
+
+  const updateTicketPriority = async (priority: TicketPriority) => {
+    if (!selectedTicket) return;
+    try {
+      setStatusSaving(true);
+      const updated = await MasterSupportService.updateSupportRequest(selectedTicket.id, {
+        priority,
+      });
+      applyTicketUpdateLocally(updated);
+      Toast.show({ type: 'success', text1: 'Support', text2: `Priority set to ${priority}` });
+    } catch (e: any) {
+      Toast.show({ type: 'error', text1: 'Support', text2: e.message || 'Failed to update ticket priority' });
+    } finally {
+      setStatusSaving(false);
+    }
+  };
+
+  const deleteTicket = async () => {
+    if (!selectedTicket) return;
+    try {
+      setDeleteSaving(true);
+      await MasterSupportService.deleteSupportRequest(selectedTicket.id);
+      setTickets((prev) => prev.filter((t) => t.id !== selectedTicket.id));
+      setSelectedTicket(null);
+      Toast.show({ type: 'success', text1: 'Support', text2: 'Ticket deleted successfully' });
+    } catch (e: any) {
+      Toast.show({ type: 'error', text1: 'Support', text2: e.message || 'Failed to delete ticket' });
+    } finally {
+      setDeleteSaving(false);
+    }
+  };
+
+  const openTicket = (ticket: SupportTicket) => {
+    setSelectedTicket(ticket);
+    setResolutionNote('');
+  };
+
+  return (
+    <SafeAreaView style={{ flex: 1, backgroundColor: c.bg }}>
+      <ScrollView contentContainerStyle={{ paddingHorizontal: 16, paddingVertical: 12, paddingBottom: 40 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <View style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: `${c.primary}20`, alignItems: 'center', justifyContent: 'center', marginRight: 10 }}>
+              <MaterialCommunityIcons name="headphones" size={20} color={c.primary} />
+            </View>
+            <View>
+              <Text style={{ color: c.text, fontSize: 22, fontWeight: '800' }}>Support Desk</Text>
+              <Text style={{ color: c.sub, fontSize: 12 }}>Ticket lifecycle management</Text>
+            </View>
+          </View>
+          <TouchableOpacity onPress={loadTickets}>
+            <MaterialCommunityIcons name="refresh" size={22} color={c.primary} />
+          </TouchableOpacity>
+        </View>
+
+        {loading ? (
+          <View style={{ paddingVertical: 8 }}>
+            <ListItemSkeleton loading={loading} count={6} label="Loading support tickets..." />
+          </View>
+        ) : tickets.length === 0 ? (
+          <View style={{ backgroundColor: c.card, borderWidth: 1, borderColor: c.border, borderRadius: 16, padding: 28, alignItems: 'center' }}>
+            <MaterialCommunityIcons name="check-all" size={38} color={c.sub} />
+            <Text style={{ color: c.text, fontWeight: '800', marginTop: 10 }}>No active tickets</Text>
+            <Text style={{ color: c.sub, marginTop: 6, textAlign: 'center' }}>No pending support tickets at the moment.</Text>
+          </View>
+        ) : (
+          <>
+            <View style={{ flexDirection: 'row', marginBottom: 10 }}>
+              <TouchableOpacity
+                onPress={() => setQueuePage('unassigned')}
+                style={{
+                  flex: 1,
+                  borderWidth: 1,
+                  borderColor: queuePage === 'unassigned' ? c.primary : c.border,
+                  backgroundColor: queuePage === 'unassigned' ? `${c.primary}20` : c.card,
+                  borderRadius: 10,
+                  paddingVertical: 10,
+                  alignItems: 'center',
+                  marginRight: 6,
+                }}
+              >
+                <Text style={{ color: queuePage === 'unassigned' ? c.primary : c.text, fontWeight: '800', fontSize: 12 }}>
+                  Unassigned ({unassignedTickets.length})
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => setQueuePage('assigned')}
+                style={{
+                  flex: 1,
+                  borderWidth: 1,
+                  borderColor: queuePage === 'assigned' ? c.primary : c.border,
+                  backgroundColor: queuePage === 'assigned' ? `${c.primary}20` : c.card,
+                  borderRadius: 10,
+                  paddingVertical: 10,
+                  alignItems: 'center',
+                  marginLeft: 6,
+                }}
+              >
+                <Text style={{ color: queuePage === 'assigned' ? c.primary : c.text, fontWeight: '800', fontSize: 12 }}>
+                  Assigned ({assignedTickets.length})
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            {queuePage === 'unassigned' ? (
+              <>
+                {unassignedTickets.length === 0 ? (
+                  <View style={{ backgroundColor: c.card, borderWidth: 1, borderColor: c.border, borderRadius: 14, padding: 14 }}>
+                    <Text style={{ color: c.sub, fontSize: 12 }}>All open tickets have a priority assignment.</Text>
+                  </View>
                 ) : (
-                    <>
-                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-                            <Text style={{ fontSize: 16, fontWeight: '700', color: themeColors.text }}>Active Tickets</Text>
-                            <TouchableOpacity onPress={fetchTickets} style={{ padding: 4 }}>
-                                <MaterialCommunityIcons name="refresh" size={20} color={themeColors.primary} />
-                            </TouchableOpacity>
+                  unassignedTickets.map((ticket) => {
+                    const wf = (ticket.workflow_status || 'pending') as SupportWorkflowStatus;
+                    return (
+                      <TouchableOpacity
+                        key={ticket.id}
+                        onPress={() => openTicket(ticket)}
+                        style={{
+                          backgroundColor: c.card,
+                          borderWidth: 1,
+                          borderColor: c.border,
+                          borderRadius: 14,
+                          padding: 14,
+                          marginBottom: 10,
+                        }}
+                      >
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                          <Text style={{ color: c.text, fontWeight: '800', flex: 1, marginRight: 10 }} numberOfLines={1}>{ticket.subject}</Text>
+                          <View style={{ backgroundColor: `${statusColor(wf, isDark)}20`, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 }}>
+                            <Text style={{ color: statusColor(wf, isDark), fontSize: 10, fontWeight: '800', textTransform: 'uppercase' }}>{wf.replace('_', ' ')}</Text>
+                          </View>
                         </View>
-
-                        {tickets.length === 0 ? (
-                            <View style={{ backgroundColor: themeColors.card, padding: 40, borderRadius: 24, alignItems: 'center', borderWidth: 1, borderColor: themeColors.border }}>
-                                <MaterialCommunityIcons name="check-all" size={48} color={`${themeColors.primary}40`} />
-                                <Text style={{ color: themeColors.text, fontWeight: '700', marginTop: 16 }}>Safe & Sound</Text>
-                                <Text style={{ color: themeColors.subtext, textAlign: 'center', marginTop: 4 }}>No pending support tickets at the moment.</Text>
-                            </View>
-                        ) : (
-                            tickets.map(t => (
-                                <TouchableOpacity
-                                    key={t.id}
-                                    onPress={() => setSelectedTicket(t)}
-                                    style={{
-                                        backgroundColor: themeColors.card,
-                                        padding: 16,
-                                        borderRadius: 16,
-                                        borderWidth: 1,
-                                        borderColor: themeColors.border,
-                                        marginBottom: 12
-                                    }}>
-                                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
-                                        <Text style={{ fontSize: 16, fontWeight: '700', color: themeColors.text, flex: 1 }}>{t.subject}</Text>
-                                        <View style={{ flexDirection: 'row', gap: 6 }}>
-                                            <View style={{ backgroundColor: `${getPriorityColor(t.priority)}20`, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 }}>
-                                                <Text style={{ color: getPriorityColor(t.priority), fontSize: 10, fontWeight: '800', textTransform: 'uppercase' }}>{t.priority}</Text>
-                                            </View>
-                                            <View style={{ backgroundColor: `${getStatusColor(t.status)}20`, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 }}>
-                                                <Text style={{ color: getStatusColor(t.status), fontSize: 10, fontWeight: '800', textTransform: 'uppercase' }}>{t.status.replace('_', ' ')}</Text>
-                                            </View>
-                                        </View>
-                                    </View>
-
-                                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-                                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-                                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                                                <MaterialCommunityIcons name="domain" size={14} color={themeColors.subtext} />
-                                                <Text style={{ color: themeColors.subtext, fontSize: 12 }}>{t.institution?.name || 'Legacy'}</Text>
-                                            </View>
-                                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                                                <MaterialCommunityIcons name="account" size={14} color={themeColors.subtext} />
-                                                <Text style={{ color: themeColors.subtext, fontSize: 12 }}>{t.assigned_name || 'Unassigned'}</Text>
-                                            </View>
-                                        </View>
-                                        <Text style={{ color: themeColors.subtext, fontSize: 12 }}>{new Date(t.created_at).toLocaleDateString()}</Text>
-                                    </View>
-                                </TouchableOpacity>
-                            ))
-                        )}
-                    </>
+                        <Text style={{ color: c.sub, fontSize: 12 }} numberOfLines={2}>{ticket.description}</Text>
+                        <Text style={{ color: c.warn, fontSize: 11, fontWeight: '700', marginTop: 8 }}>Assign priority to move this ticket to active queue.</Text>
+                      </TouchableOpacity>
+                    );
+                  })
                 )}
-            </ScrollView>
-
-            <Modal visible={!!selectedTicket} transparent animationType="slide" onRequestClose={() => setSelectedTicket(null)}>
-                <View style={{ flex: 1, backgroundColor: themeColors.modalBg, justifyContent: 'flex-end' }}>
-                    <View style={{
-                        backgroundColor: themeColors.card,
-                        height: '92%',
-                        borderTopLeftRadius: 32,
-                        borderTopRightRadius: 32,
-                        borderWidth: 1,
-                        borderColor: themeColors.border,
-                        overflow: 'hidden'
-                    }}>
-                        {/* Modal Header */}
-                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 20, borderBottomWidth: 1, borderBottomColor: themeColors.border }}>
-                            <View>
-                                <Text style={{ fontSize: 18, fontWeight: '700', color: themeColors.text }}>Ticket Info</Text>
-                                <Text style={{ fontSize: 12, color: themeColors.subtext }}>Escalation Level: {selectedTicket?.escalation_level || 0}</Text>
+              </>
+            ) : (
+              <>
+                {assignedTickets.length === 0 ? (
+                  <View style={{ backgroundColor: c.card, borderWidth: 1, borderColor: c.border, borderRadius: 14, padding: 14 }}>
+                    <Text style={{ color: c.sub, fontSize: 12 }}>No tickets with assigned priority yet.</Text>
+                  </View>
+                ) : (
+                  assignedTickets.map((ticket) => {
+                    const wf = (ticket.workflow_status || 'pending') as SupportWorkflowStatus;
+                    const ticketPriority = normalizePriority(ticket.priority) || 'low';
+                    const pColor = priorityColor(ticketPriority, isDark);
+                    return (
+                      <TouchableOpacity
+                        key={ticket.id}
+                        onPress={() => openTicket(ticket)}
+                        style={{
+                          backgroundColor: c.card,
+                          borderWidth: 1,
+                          borderColor: c.border,
+                          borderRadius: 14,
+                          padding: 14,
+                          marginBottom: 10,
+                        }}
+                      >
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                          <Text style={{ color: c.text, fontWeight: '800', flex: 1, marginRight: 10 }} numberOfLines={1}>{ticket.subject}</Text>
+                          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                            <View style={{ backgroundColor: `${pColor}20`, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8, marginRight: 8 }}>
+                              <Text style={{ color: pColor, fontSize: 10, fontWeight: '800', textTransform: 'uppercase' }}>{ticketPriority}</Text>
                             </View>
-                            <TouchableOpacity onPress={() => setSelectedTicket(null)} style={{ padding: 8 }}>
-                                <MaterialCommunityIcons name="close" size={24} color={themeColors.subtext} />
-                            </TouchableOpacity>
+                            <View style={{ backgroundColor: `${statusColor(wf, isDark)}20`, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 }}>
+                              <Text style={{ color: statusColor(wf, isDark), fontSize: 10, fontWeight: '800', textTransform: 'uppercase' }}>{wf.replace('_', ' ')}</Text>
+                            </View>
+                          </View>
                         </View>
+                        <Text style={{ color: c.sub, fontSize: 12 }} numberOfLines={2}>{ticket.description}</Text>
+                      </TouchableOpacity>
+                    );
+                  })
+                )}
+              </>
+            )}
+          </>
+        )}
+      </ScrollView>
 
-                        {selectedTicket && (
-                            <>
-                                <ScrollView style={{ flex: 1, padding: 20 }} showsVerticalScrollIndicator={false}>
-                                    <View style={{ marginBottom: 24 }}>
-                                        <Text style={{ fontSize: 20, fontWeight: '800', color: themeColors.text, marginBottom: 12 }}>{selectedTicket.subject}</Text>
-                                        
-                                        <View style={{ backgroundColor: themeColors.inputBg, padding: 20, borderRadius: 20, borderWidth: 1, borderColor: themeColors.border, marginBottom: 24 }}>
-                                            <Text style={{ color: themeColors.text, lineHeight: 24, fontSize: 15 }}>{selectedTicket.description}</Text>
-                                        </View>
+      <Modal visible={!!selectedTicket} transparent animationType="fade" onRequestClose={() => setSelectedTicket(null)}>
+        <View style={{ flex: 1, backgroundColor: c.overlay, justifyContent: 'center', padding: 16 }}>
+          <View style={{ backgroundColor: c.card, borderRadius: 16, borderWidth: 1, borderColor: c.border, width: '100%', maxWidth: 560, alignSelf: 'center' }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 14, borderBottomWidth: 1, borderBottomColor: c.border }}>
+              <Text style={{ color: c.text, fontSize: 17, fontWeight: '800' }}>View Ticket</Text>
+              <TouchableOpacity onPress={() => setSelectedTicket(null)}>
+                <MaterialCommunityIcons name="close" size={22} color={c.sub} />
+              </TouchableOpacity>
+            </View>
 
-                                        {/* Status & Actions */}
-                                        <View style={{ flexDirection: 'row', gap: 12, marginBottom: 24 }}>
-                                            <TouchableOpacity 
-                                                onPress={() => updateTicketDetails(selectedTicket.id, { assigned_to_id: profile?.id })}
-                                                style={{ flex: 1, backgroundColor: themeColors.primary, paddingVertical: 12, borderRadius: 12, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 8 }}
-                                            >
-                                                <MaterialCommunityIcons name="account-check" size={18} color="#fff" />
-                                                <Text style={{ color: '#fff', fontWeight: '700' }}>Assign to Me</Text>
-                                            </TouchableOpacity>
-                                            <TouchableOpacity 
-                                                onPress={() => updateTicketDetails(selectedTicket.id, { escalation_level: (selectedTicket.escalation_level || 0) + 1, priority: 'urgent' })}
-                                                style={{ flex: 1, backgroundColor: '#ef4444', paddingVertical: 12, borderRadius: 12, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 8 }}
-                                            >
-                                                <MaterialCommunityIcons name="trending-up" size={18} color="#fff" />
-                                                <Text style={{ color: '#fff', fontWeight: '700' }}>Escalate</Text>
-                                            </TouchableOpacity>
-                                        </View>
+            {!!selectedTicket && (
+              <View style={{ padding: 14, paddingBottom: 18 }}>
+                <Text style={{ color: c.sub, fontSize: 11, textTransform: 'uppercase', fontWeight: '700' }}>Subject</Text>
+                <Text style={{ color: c.text, fontSize: 17, fontWeight: '800', marginTop: 4 }}>{selectedTicket.subject}</Text>
 
-                                        <Text style={{ fontSize: 13, fontWeight: '700', color: themeColors.text, marginBottom: 16, textTransform: 'uppercase', letterSpacing: 1 }}>Communication Thread</Text>
-                                        
-                                        {messages.length === 0 ? (
-                                            <Text style={{ color: themeColors.subtext, textAlign: 'center', paddingVertical: 20 }}>No messages yet. Send a reply below.</Text>
-                                        ) : (
-                                            messages.map((m, idx) => (
-                                                <View key={m.id} style={{
-                                                    alignSelf: m.sender_id === profile?.id ? 'flex-end' : 'flex-start',
-                                                    maxWidth: '85%',
-                                                    marginBottom: 12,
-                                                    backgroundColor: m.sender_id === profile?.id ? themeColors.primary : (m.sender?.role === 'master_admin' ? '#4f46e5' : themeColors.inputBg),
-                                                    padding: 12,
-                                                    borderRadius: 16,
-                                                    borderBottomRightRadius: m.sender_id === profile?.id ? 4 : 16,
-                                                    borderBottomLeftRadius: m.sender_id === profile?.id ? 16 : 4,
-                                                }}>
-                                                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 }}>
-                                                        <Text style={{ color: m.sender_id === profile?.id ? '#fff' : (m.sender?.role === 'master_admin' ? '#fff' : themeColors.text), fontSize: 11, fontWeight: '700' }}>
-                                                            {m.sender?.first_name ? `${m.sender.first_name} ${m.sender.last_name || ''}`.trim() : (m.sender?.full_name || 'System')}
-                                                        </Text>
-                                                        <Text style={{ color: m.sender_id === profile?.id ? 'rgba(255,255,255,0.7)' : themeColors.subtext, fontSize: 10, marginLeft: 12 }}>{new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</Text>
-                                                    </View>
-                                                    <Text style={{ color: m.sender_id === profile?.id || m.sender?.role === 'master_admin' ? '#fff' : themeColors.text, fontSize: 14 }}>{m.message}</Text>
-                                                </View>
-                                            ))
-                                        )}
-                                    </View>
-                                </ScrollView>
-
-                                {/* Message Input */}
-                                <View style={{ padding: 20, borderTopWidth: 1, borderTopColor: themeColors.border, backgroundColor: themeColors.card, paddingBottom: Platform.OS === 'ios' ? 40 : 20 }}>
-                                    <View style={{ flexDirection: 'row', gap: 12, alignItems: 'center' }}>
-                                        <View style={{ flex: 1, backgroundColor: themeColors.inputBg, borderRadius: 24, paddingHorizontal: 20, paddingVertical: 12, borderWidth: 1, borderColor: themeColors.border }}>
-                                            <TextInput
-                                                placeholder="Type your reply..."
-                                                placeholderTextColor={themeColors.subtext}
-                                                style={{ color: themeColors.text, fontSize: 15 }}
-                                                value={newMessage}
-                                                onChangeText={setNewMessage}
-                                                multiline
-                                            />
-                                        </View>
-                                        <TouchableOpacity 
-                                            onPress={sendMessage}
-                                            disabled={sendingMessage || !newMessage.trim()}
-                                            style={{ backgroundColor: themeColors.primary, width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center', opacity: sendingMessage || !newMessage.trim() ? 0.6 : 1 }}
-                                        >
-                                            {sendingMessage ? <ActivityIndicator size="small" color="#fff" /> : <MaterialCommunityIcons name="send" size={20} color="#fff" />}
-                                        </TouchableOpacity>
-                                    </View>
-                                    
-                                    <View style={{ flexDirection: 'row', gap: 8, marginTop: 16 }}>
-                                        {['pending', 'in_progress', 'awaiting_customer', 'resolved', 'closed'].map(st => (
-                                            <TouchableOpacity 
-                                                key={st} 
-                                                onPress={() => updateTicketDetails(selectedTicket.id, { status: st })}
-                                                style={{ paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, borderWidth: 1, borderColor: selectedTicket.status === st ? getStatusColor(st) : themeColors.border, backgroundColor: selectedTicket.status === st ? `${getStatusColor(st) }15` : 'transparent' }}
-                                            >
-                                                <Text style={{ fontSize: 11, color: selectedTicket.status === st ? getStatusColor(st) : themeColors.subtext, fontWeight: '700', textTransform: 'capitalize' }}>{st.replace('_', ' ')}</Text>
-                                            </TouchableOpacity>
-                                        ))}
-                                    </View>
-                                </View>
-                            </>
-                        )}
-                    </View>
+                <View style={{ marginTop: 12 }}>
+                  <Text style={{ color: c.sub, fontSize: 11, textTransform: 'uppercase', fontWeight: '700' }}>Description</Text>
+                  <Text style={{ color: c.text, marginTop: 4, lineHeight: 20 }}>{selectedTicket.description}</Text>
                 </View>
-            </Modal>
-        </SafeAreaView>
-    );
+
+                <View style={{ marginTop: 12, flexDirection: 'row', flexWrap: 'wrap' }}>
+                  <View style={{ marginRight: 14, marginBottom: 8 }}>
+                    <Text style={{ color: c.sub, fontSize: 11 }}>Priority</Text>
+                    <Text style={{ color: selectedPriority ? priorityColor(selectedPriority, isDark) : c.text, fontWeight: '700', textTransform: 'uppercase' }}>
+                      {selectedPriority || 'unassigned'}
+                    </Text>
+                  </View>
+                  <View style={{ marginRight: 14, marginBottom: 8 }}>
+                    <Text style={{ color: c.sub, fontSize: 11 }}>Status</Text>
+                    <Text style={{ color: statusColor(workflowStatus, isDark), fontWeight: '800' }}>{workflowStatus.replace('_', ' ')}</Text>
+                  </View>
+                  <View style={{ marginRight: 14, marginBottom: 8 }}>
+                    <Text style={{ color: c.sub, fontSize: 11 }}>Created</Text>
+                    <Text style={{ color: c.text, fontWeight: '700' }}>{new Date(selectedTicket.created_at).toLocaleString()}</Text>
+                  </View>
+                  {selectedTicket?.resolved_at ? (
+                    <View style={{ marginRight: 14, marginBottom: 8 }}>
+                      <Text style={{ color: c.sub, fontSize: 11 }}>Resolved</Text>
+                      <Text style={{ color: c.text, fontWeight: '700' }}>{new Date(selectedTicket.resolved_at).toLocaleString()}</Text>
+                    </View>
+                  ) : null}
+                </View>
+
+                <View style={{ marginTop: 14, borderTopWidth: 1, borderTopColor: c.border, paddingTop: 12 }}>
+                  <Text style={{ color: c.text, fontSize: 13, fontWeight: '800', marginBottom: 8 }}>Priority Assignment</Text>
+                  <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginBottom: 10 }}>
+                    {PRIORITY_LEVELS.map((priority) => {
+                      const active = selectedPriority === priority;
+                      const pColor = priorityColor(priority, isDark);
+                      return (
+                        <TouchableOpacity
+                          key={priority}
+                          disabled={statusSaving}
+                          onPress={() => updateTicketPriority(priority)}
+                          style={{
+                            borderWidth: 1,
+                            borderColor: active ? pColor : c.border,
+                            backgroundColor: active ? `${pColor}20` : c.card,
+                            borderRadius: 10,
+                            paddingHorizontal: 12,
+                            paddingVertical: 9,
+                            marginRight: 8,
+                            marginBottom: 8,
+                            opacity: statusSaving ? 0.6 : 1,
+                          }}
+                        >
+                          <Text style={{ color: active ? pColor : c.text, fontWeight: '800', fontSize: 12, textTransform: 'uppercase' }}>{priority}</Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+
+                  <Text style={{ color: c.text, fontSize: 13, fontWeight: '800', marginBottom: 8 }}>Lifecycle Actions</Text>
+                  <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
+                    <TouchableOpacity
+                      disabled={!canMarkAcknowledged || statusSaving}
+                      onPress={() => updateTicketStatus('acknowledged')}
+                      style={{
+                        backgroundColor: canMarkAcknowledged ? c.info : c.border,
+                        opacity: (!canMarkAcknowledged || statusSaving) ? 0.6 : 1,
+                        borderRadius: 10,
+                        paddingHorizontal: 12,
+                        paddingVertical: 10,
+                        marginRight: 8,
+                        marginBottom: 8,
+                      }}
+                    >
+                      <Text style={{ color: '#fff', fontWeight: '700', fontSize: 12 }}>Mark Acknowledged</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      disabled={!canMarkInProgress || statusSaving}
+                      onPress={() => updateTicketStatus('in_progress')}
+                      style={{
+                        backgroundColor: canMarkInProgress ? c.warn : c.border,
+                        opacity: (!canMarkInProgress || statusSaving) ? 0.6 : 1,
+                        borderRadius: 10,
+                        paddingHorizontal: 12,
+                        paddingVertical: 10,
+                        marginRight: 8,
+                        marginBottom: 8,
+                      }}
+                    >
+                      <Text style={{ color: '#fff', fontWeight: '700', fontSize: 12 }}>Mark In Progress</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      disabled={!canResolve || statusSaving}
+                      onPress={() => setResolveConfirmOpen(true)}
+                      style={{
+                        backgroundColor: canResolve ? c.success : c.border,
+                        opacity: (!canResolve || statusSaving) ? 0.6 : 1,
+                        borderRadius: 10,
+                        paddingHorizontal: 12,
+                        paddingVertical: 10,
+                        marginRight: 8,
+                        marginBottom: 8,
+                      }}
+                    >
+                      <Text style={{ color: '#fff', fontWeight: '700', fontSize: 12 }}>Mark Resolved</Text>
+                    </TouchableOpacity>
+                  </View>
+
+                  <TouchableOpacity
+                    disabled={!canDelete || deleteSaving}
+                    onPress={deleteTicket}
+                    style={{
+                      borderWidth: 1,
+                      borderColor: c.danger,
+                      opacity: (!canDelete || deleteSaving) ? 0.5 : 1,
+                      borderRadius: 10,
+                      paddingHorizontal: 12,
+                      paddingVertical: 10,
+                      marginTop: 4,
+                      alignSelf: 'flex-start',
+                    }}
+                  >
+                    <Text style={{ color: c.danger, fontWeight: '700', fontSize: 12 }}>Delete Ticket</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            )}
+          </View>
+        </View>
+      </Modal>
+
+      <Modal visible={resolveConfirmOpen} transparent animationType="fade" onRequestClose={() => setResolveConfirmOpen(false)}>
+        <View style={{ flex: 1, backgroundColor: c.overlay, justifyContent: 'center', padding: 18 }}>
+          <View style={{ backgroundColor: c.card, borderWidth: 1, borderColor: c.border, borderRadius: 14, padding: 14 }}>
+            <Text style={{ color: c.text, fontSize: 16, fontWeight: '800' }}>Confirm Resolution</Text>
+            <Text style={{ color: c.sub, marginTop: 8 }}>You are about to mark this ticket as resolved. You can add an optional note for the institution admin.</Text>
+
+            <TextInput
+              value={resolutionNote}
+              onChangeText={setResolutionNote}
+              placeholder="Optional resolution note"
+              placeholderTextColor={c.sub}
+              multiline
+              style={{
+                marginTop: 12,
+                minHeight: 90,
+                borderWidth: 1,
+                borderColor: c.border,
+                borderRadius: 10,
+                padding: 10,
+                color: c.text,
+                backgroundColor: c.input,
+                textAlignVertical: 'top',
+              }}
+            />
+
+            <View style={{ marginTop: 12, flexDirection: 'row', justifyContent: 'flex-end' }}>
+              <TouchableOpacity onPress={() => setResolveConfirmOpen(false)} style={{ paddingHorizontal: 12, paddingVertical: 10, marginRight: 8 }}>
+                <Text style={{ color: c.sub, fontWeight: '700' }}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={async () => {
+                  setResolveConfirmOpen(false);
+                  await updateTicketStatus('resolved', resolutionNote.trim());
+                  setResolutionNote('');
+                }}
+                style={{ backgroundColor: c.success, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10 }}
+              >
+                <Text style={{ color: '#fff', fontWeight: '700' }}>Confirm Resolve</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+    </SafeAreaView>
+  );
 }

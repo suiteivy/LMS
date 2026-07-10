@@ -1,4 +1,5 @@
 import { UnifiedHeader } from "@/components/common/UnifiedHeader";
+import { ListItemSkeleton } from "@/components/ui/skeletons";
 import { SubscriptionBanner, SubscriptionGate } from "@/components/shared/SubscriptionComponents";
 import { HelpTooltip } from "@/components/settings/HelpTooltip";
 import { useAuth } from "@/contexts/AuthContext";
@@ -20,7 +21,6 @@ import {
 } from 'lucide-react-native';
 import React, { useEffect, useState } from "react";
 import {
-  ActivityIndicator,
   RefreshControl,
   ScrollView,
   Text,
@@ -371,8 +371,8 @@ export default function Index() {
 
   if (authLoading) {
     return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: isDark ? '#161B22' : '#f8fafc' }}>
-        <ActivityIndicator size="large" color="#FF6900" />
+      <View style={{ flex: 1, backgroundColor: isDark ? '#161B22' : '#f8fafc', paddingHorizontal: 16, paddingTop: 20 }}>
+        <ListItemSkeleton loading={authLoading} count={4} label="Loading dashboard..." />
       </View>
     );
   }
@@ -497,9 +497,7 @@ export default function Index() {
             </View>
 
             {loadingData ? (
-              <View style={{ paddingVertical: 32, alignItems: 'center' }}>
-                <ActivityIndicator color="#FF6900" />
-              </View>
+              <ListItemSkeleton loading={loadingData} count={3} label="Loading today's schedule..." />
             ) : todaysSchedule.length > 0 ? (
               useScheduleGrid ? (
                 // Grid layout on wider screens

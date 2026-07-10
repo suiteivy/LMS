@@ -1,10 +1,11 @@
 import { UnifiedHeader } from "@/components/common/UnifiedHeader";
+import { ListItemSkeleton } from "@/components/ui/skeletons";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/libs/supabase";
 import { router } from "expo-router";
 import { Megaphone } from 'lucide-react-native';
 import React, { useEffect, useState } from "react";
-import { ActivityIndicator, RefreshControl, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { RefreshControl, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 
 interface Announcement {
     id: string;
@@ -135,7 +136,7 @@ export default function AnnouncementsPage() {
 
                     {/* Announcements List */}
                     {loading ? (
-                        <ActivityIndicator size="large" color="#FF6900" className="mt-8" />
+                        <ListItemSkeleton loading={loading} count={4} label="Loading announcements..." />
                     ) : announcements.length === 0 ? (
                         <View className="bg-white dark:bg-[#161B22] p-12 rounded-[40px] items-center border border-gray-100 dark:border-gray-800 border-dashed">
                             <Megaphone size={48} color="#E5E7EB" style={{ opacity: 0.3 }} />

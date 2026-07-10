@@ -1,6 +1,7 @@
 import { UnifiedHeader } from "@/components/common/UnifiedHeader";
 import { HelpTooltip } from "@/components/settings/HelpTooltip";
 import { SubscriptionGate } from "@/components/shared/SubscriptionComponents";
+import { useCurrency } from "@/contexts/CurrencyContext";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useSubscriptionTier } from "@/hooks/useSubscriptionTier";
 import { useDashboardStats } from "@/hooks/useDashboardStats";
@@ -32,6 +33,7 @@ export default function AnalyticsScreen() {
     const tier = useSubscriptionTier();
     const { showFinancials } = tier;
     const { isDark } = useTheme();
+    const { formatAmount } = useCurrency();
     const [refreshing, setRefreshing] = useState(false);
 
     const onRefresh = async () => {
@@ -76,9 +78,8 @@ export default function AnalyticsScreen() {
     const teachers = parseInt(stats.find(s => s.label === "Teachers")?.value || "0", 10) || 0;
     const attendanceRate = parseInt((stats.find(s => s.label === "Attendance")?.value || "0").replace('%', ''), 10) || 0;
     const studentTeacherRatio = teachers > 0 ? (totalStudents / teachers).toFixed(1) : "0.0";
-    const engagementRate = Math.round((attendanceRate + Math.min(attendanceRate + 8, 100)) / 2);
-    const formatLargeNumber = (value: number) => (value > 100 ? value.toLocaleString() : `${value}`);
-
+    const engagementRate = attendanceRate;
+    const attendanceSummary = stats.find(s => s.label === "Attendance")?.subValue || "No data recorded today";
     const toPercent = (value: number): `${number}%` => `${Math.min(Math.max(value, 0), 100)}%`;
 
     const analyticsOverview = [
@@ -99,7 +100,7 @@ export default function AnalyticsScreen() {
         {
             title: "Engagement Index",
             value: `${engagementRate}%`,
-            helper: "Derived from attendance consistency",
+            helper: attendanceSummary,
             color: "#10b981",
             width: toPercent(engagementRate)
         },
@@ -139,7 +140,7 @@ export default function AnalyticsScreen() {
                             {/* Stats Grid */}
                             <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
                                 <Text style={{ color: textPrimary, fontSize: 15, fontWeight: '700' }}>Core Metrics</Text>
-                                <HelpTooltip id="admin.manage.analytics" role="admin" tier={tier} onLearnMore={openManual} />
+                                <HelpTooltip id="admin.analytics.core_metrics" role="admin" tier={tier} onLearnMore={openManual} />
                             </View>
                             <View className="flex-row flex-wrap justify-between mb-4">
                                 {stats.filter(s => showFinancials || s.label !== "Revenue").map((stat, index) => (
@@ -158,7 +159,7 @@ export default function AnalyticsScreen() {
                             <View className="bg-[#F6F8FA] dark:bg-[#161B22] border border-[#D0D7DE] dark:border-[#21262D] rounded-xl p-5 mb-4">
                                 <View className="flex-row items-center mb-4">
                                     <Text className="text-gray-900 dark:text-white font-bold text-base">Student Performance Overview</Text>
-                                    <HelpTooltip id="admin.manage.analytics" role="admin" tier={tier} onLearnMore={openManual} />
+                                    <HelpTooltip id="admin.analytics.student_performance" role="admin" tier={tier} onLearnMore={openManual} />
                                 </View>
                                 {analyticsOverview.map((metric) => (
                                     <View key={metric.title} className="mb-4">
@@ -189,7 +190,7 @@ export default function AnalyticsScreen() {
                                             const height = (data.amount / maxRevenue) * 100;
                                             return (
                                                 <View key={i} style={{ alignItems: 'center', flex: 1 }}>
-                                                    <Text className="text-gray-500 dark:text-gray-400 text-[9px] font-bold mb-1">${formatLargeNumber(data.amount)}</Text>
+                                                    <Text className="text-gray-500 dark:text-gray-400 text-[9px] font-bold mb-1">{formatAmount(data.amount)}</Text>
                                                     <View style={{
                                                         height: `${Math.max(height, 5)}%`,
                                                         width: 24,

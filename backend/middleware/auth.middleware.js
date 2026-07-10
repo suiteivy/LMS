@@ -1,5 +1,6 @@
 const supabase = require("../utils/supabaseClient.js");
 const { canonicalRoleFrom } = require("../utils/roleAlias.js");
+const { isTransientSupabaseError, withSupabaseRetry } = require('../utils/supabaseRetry.js');
 
 // Simple in-memory cache for profiles: userId -> { profile, timestamp }
 const profileCache = new Map();
@@ -81,10 +82,16 @@ async function authMiddleware(req, res, next) {
     const {
       data: { user },
       error,
-    } = await supabase.auth.getUser(token);
+    } = await withSupabaseRetry(() => supabase.auth.getUser(token), { attempts: 1 });
 
     if (error || !user) {
-      console.error(`[AuthMiddleware] Supabase auth error for ${req.url}:`, error?.message || "Invalid user");
+      const msg = error?.message || 'Invalid user';
+      if (isTransientSupabaseError(error || msg)) {
+        console.error(`[AuthMiddleware] Supabase auth transient error for ${req.url}:`, msg);
+        res.setHeader('Retry-After', '5');
+        return res.status(503).json({ error: 'Authentication service unavailable', code: 'AUTH_SERVICE_UNAVAILABLE' });
+      }
+      console.error(`[AuthMiddleware] Supabase auth error for ${req.url}:`, msg);
       return res.status(401).json({ error: "Invalid token" });
     }
 
@@ -203,7 +210,9 @@ async function authMiddleware(req, res, next) {
           }
         };
 
-        resolveAndRegister();
+        resolveAndRegister().catch((e) => {
+          console.warn('[AuthMiddleware] Session async registration skipped:', e?.message || e);
+        });
       }
     }
 
@@ -247,14 +256,35 @@ async function authMiddleware(req, res, next) {
       profile = cached.profile;
     } else {
       // Query the extended profile from 'users' table (which includes platform_admins join if applicable)
-      const { data: profileData, error: profileError } = await supabase
-        .from('users')
-        .select('*, admins(id, is_main), platform_admins(id)')
-        .eq('id', user.id)
-        .single();
+      let profileData = null;
+      let profileError = null;
 
-      if (profileError || !profileData) {
-        console.error(`[AuthMiddleware] Profile fetch error for ${user.id}:`, profileError?.message);
+      ({ data: profileData, error: profileError } = await withSupabaseRetry(() =>
+        supabase
+          .from('users')
+          .select('*, admins(id, is_main, can_manage_users), platform_admins(id)')
+          .eq('id', user.id)
+          .maybeSingle()
+      ));
+
+      if (profileError?.message && /can_manage_users does not exist/i.test(profileError.message)) {
+        ({ data: profileData, error: profileError } = await withSupabaseRetry(() =>
+          supabase
+            .from('users')
+            .select('*, admins(id, is_main), platform_admins(id)')
+            .eq('id', user.id)
+            .maybeSingle()
+        ));
+      }
+
+    if (profileError || !profileData) {
+        const msg = profileError?.message || 'Profile lookup failed';
+        const timeoutLike = /fetch failed|timeout|und_err_connect_timeout/i.test(msg);
+        console.error(`[AuthMiddleware] Profile fetch error for ${user.id}:`, msg);
+        if (timeoutLike) {
+          res.setHeader('Retry-After', '5');
+          return res.status(503).json({ error: 'Authentication service unavailable', code: 'AUTH_SERVICE_UNAVAILABLE' });
+        }
         return res.status(403).json({ error: "Unauthorized" });
       }
 
@@ -270,6 +300,7 @@ async function authMiddleware(req, res, next) {
       }
 
       const isMain = profileData.admins?.[0]?.is_main || false;
+      const canManageUsers = profileData.admins?.[0]?.can_manage_users || false;
 
       // Query custom roles and permissions
       const { data: userRolesData } = await supabase
@@ -313,6 +344,7 @@ async function authMiddleware(req, res, next) {
         requires_security_questions_setup: !!profileData.requires_security_questions_setup,
         role_alias: canonicalRoleFrom(profileData.role, isPlatformAdmin),
         is_main: isMain,
+        can_manage_users: canManageUsers,
         isPlatformAdmin: isPlatformAdmin,
         customRoles,
         permissions
@@ -342,6 +374,7 @@ async function authMiddleware(req, res, next) {
       roles: profile.customRoles || [],
       permissions: profile.permissions || [],
       is_main: profile.is_main || false,
+      can_manage_users: profile.can_manage_users || false,
       is_platform_admin: profile.isPlatformAdmin || false
     };
 
@@ -398,7 +431,13 @@ async function authMiddleware(req, res, next) {
 
     next();
   } catch (err) {
+    const msg = err?.message || String(err);
+    const timeoutLike = /fetch failed|timeout|und_err_connect_timeout/i.test(msg);
     console.error("authMiddleware unexpected error:", err);
+    if (timeoutLike) {
+      res.setHeader('Retry-After', '5');
+      return res.status(503).json({ error: 'Authentication service unavailable', code: 'AUTH_SERVICE_UNAVAILABLE' });
+    }
     return res.status(500).json({ error: "Authorization failed" });
   }
 }

@@ -1,5 +1,6 @@
 import { UnifiedHeader } from "@/components/common/UnifiedHeader";
 import { HelpTooltip } from "@/components/settings/HelpTooltip";
+import { ListItemSkeleton } from "@/components/ui/skeletons";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSubscriptionTier } from "@/hooks/useSubscriptionTier";
 import { supabase } from "@/libs/supabase";
@@ -173,7 +174,7 @@ export default function StudentsAssignments() {
         </View>
 
         {loading ? (
-          <ActivityIndicator size="large" color="#FF6900" className="mt-8" />
+          <ListItemSkeleton loading={loading} count={4} label="Loading assignments..." />
         ) : (
           <ScrollView className="flex-1" showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 200 }}>
             {displayList.length === 0 ? (

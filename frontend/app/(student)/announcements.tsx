@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from "react";
-import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, RefreshControl } from "react-native";
+import { View, Text, ScrollView, TouchableOpacity, RefreshControl } from "react-native";
 import { ChevronLeft, Megaphone, BookOpen, User, Clock } from "lucide-react-native";
 import { router } from "expo-router";
 import { StudentService } from "@/services/StudentService";
 import { format } from "date-fns";
 import { HelpTooltip } from "@/components/settings/HelpTooltip";
 import { useSubscriptionTier } from "@/hooks/useSubscriptionTier";
+import { ListItemSkeleton } from "@/components/ui/skeletons";
 
 interface Announcement {
     id: string;
@@ -72,7 +73,7 @@ export default function StudentAnnouncementsPage() {
                 refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#FF6B00" />}
             >
                 {loading ? (
-                    <ActivityIndicator size="large" color="#FF6B00" className="mt-20" />
+                    <ListItemSkeleton loading={loading} count={4} label="Loading announcements..." />
                 ) : announcements.length > 0 ? (
                     announcements.map((item) => {
                         const isExpanded = expandedId === item.id;

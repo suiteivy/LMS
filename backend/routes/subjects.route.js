@@ -7,9 +7,11 @@ const {
   getSubjects,
   getSubjectById,
   createSubject,
+  updateSubject,
   getFilteredSubjects,
   getSubjectsByClass,
   updateProgress,
+  deleteSubject,
 } = require("../controllers/subject.controller.js");
 
 const { authorizeRoles } = require("../middleware/authRole.js");
@@ -17,10 +19,10 @@ const { authorizeRoles } = require("../middleware/authRole.js");
 router.use(authMiddleware);
 
 // Create a new subject
-router.post("/", authorizeRoles(["admin", "master_admin"]), createSubject);
+router.post("/", authorizeRoles(["admin", "master_admin", "teacher"]), createSubject);
 
 // Get all subjects for an institution
-router.get("/", authorizeRoles(["admin", "teacher", "student", "parent"]), getSubjects);
+router.get("/", authorizeRoles(["admin", "teacher"]), getSubjects);
 
 // Get subjects filtered by user role and ID
 router.get("/filtered", authorizeRoles(["admin", "teacher", "student", "parent"]), getFilteredSubjects);
@@ -36,5 +38,11 @@ router.post("/enroll", authorizeRoles(["admin", "teacher", "student"]), enrollSt
 
 // Update subject progress
 router.patch("/:id/progress", authorizeRoles(["admin", "teacher"]), updateProgress);
+
+// Update subject details
+router.put("/:id", authorizeRoles(["admin", "master_admin", "teacher"]), updateSubject);
+
+// Delete subject
+router.delete("/:id", authorizeRoles(["admin", "master_admin"]), deleteSubject);
 
 module.exports = router;

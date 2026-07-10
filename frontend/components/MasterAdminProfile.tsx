@@ -65,8 +65,8 @@ export default function MasterAdminProfile() {
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({
-                    first_name: firstName,
-                    last_name: lastName,
+                    first_name: firstName.trim(),
+                    last_name: lastName.trim(),
                     phone
                 })
             });
