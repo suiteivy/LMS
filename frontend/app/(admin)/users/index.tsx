@@ -12,7 +12,7 @@ import { Users } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
 import {
     Alert, FlatList, Platform,
-    ScrollView, Text, TextInput, TouchableOpacity, View
+    ScrollView, Text, TextInput, TouchableOpacity, View, useWindowDimensions
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -20,6 +20,10 @@ export default function UsersManagementScreen() {
     const params = useLocalSearchParams();
     const { isDark } = useTheme();
     const insets = useSafeAreaInsets();
+    const { width } = useWindowDimensions();
+
+    const numColumns = width >= 1024 ? 3 : width >= 640 ? 2 : 1;
+    const cardWidth = numColumns === 3 ? '31.5%' : numColumns === 2 ? '48.5%' : '100%';
 
     const [users, setUsers] = useState<User[]>([]);
     const [loading, setLoading] = useState(true);
@@ -43,7 +47,6 @@ export default function UsersManagementScreen() {
         try {
             setLoading(true);
 
-            // Guard: every admin must belong to an institution
             if (!profile?.institution_id) {
                 console.warn('[UsersManagement] No institution_id on session — aborting fetch');
                 setUsers([]);
@@ -53,7 +56,7 @@ export default function UsersManagementScreen() {
             let query = supabase
                 .from('users')
                 .select(`id, full_name, first_name, last_name, email, role, created_at, students(id), teachers(id), admins(id), parents(id)`)
-                .eq('institution_id', profile.institution_id)   // ← scope to this institution only
+                .eq('institution_id', profile.institution_id)
                 .order('created_at', { ascending: false });
 
             if (activeFilter !== 'all') query = query.eq('role', activeFilter);
@@ -86,7 +89,6 @@ export default function UsersManagementScreen() {
         }
     };
 
-    // Sanitize search input   no dangerous chars
     const DANGEROUS_CHARS = /['"`;\\<>{}()\[\]|&$#%^*+=~]/g;
     const handleSearch = (text: string) => setSearchQuery(text.replace(DANGEROUS_CHARS, ''));
 
@@ -179,11 +181,11 @@ export default function UsersManagementScreen() {
                     data={filteredUsers}
                     keyExtractor={item => item.id}
                     contentContainerStyle={{ padding: 16, paddingBottom: insets.bottom + 24 }}
-                    numColumns={Platform.OS === 'web' ? 3 : 1}
-                    key={Platform.OS === 'web' ? 'web-grid' : 'mobile-list'}
-                    columnWrapperStyle={Platform.OS === 'web' ? { gap: 16 } : undefined}
+                    numColumns={numColumns}
+                    key={`user-grid-${numColumns}`}
+                    columnWrapperStyle={numColumns > 1 ? { gap: 16 } : undefined}
                     renderItem={({ item }) => (
-                        <View style={Platform.OS === 'web' ? { width: '31.5%' } : { width: '100%' }}>
+                        <View style={{ width: cardWidth }}>
                             <UserCard user={item} onPress={u => router.push(`/(admin)/users/${u.id}` as Href)} />
                         </View>
                     )}

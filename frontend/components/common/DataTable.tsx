@@ -192,19 +192,21 @@ export const DataTable: React.FC<DataTableProps> = ({
  );
 
  const tableContent = (
- <View className={`bg-[#F6F8FA] dark:bg-navy rounded-xl border border-[#D0D7DE] dark:border-[#21262D] overflow-hidden ${className}`}>
- {renderTableHeader()}
+  <ScrollView horizontal showsHorizontalScrollIndicator={true} contentContainerStyle={{ minWidth: '100%' }}>
+    <View className={`bg-[#F6F8FA] dark:bg-navy rounded-xl border border-[#D0D7DE] dark:border-[#21262D] overflow-hidden ${className}`}>
+      {renderTableHeader()}
 
- {loading ? (
- renderLoadingState()
- ) : sortedData.length > 0 ? (
- <View>
- {sortedData.map((row, index) => renderTableRow(row, index))}
- </View>
- ) : (
- renderEmptyState()
- )}
- </View>
+      {loading ? (
+        renderLoadingState()
+      ) : sortedData.length > 0 ? (
+        <View>
+          {sortedData.map((row, index) => renderTableRow(row, index))}
+        </View>
+      ) : (
+        renderEmptyState()
+      )}
+    </View>
+  </ScrollView>
  );
 
  if (maxHeight) {
