@@ -58,8 +58,6 @@ app.use(express.urlencoded({ extended: true }));
 
 // Apply rate limiting to public endpoints
 app.use("/api/auth", rateLimiters.authPublic);
-app.use("/api/auth/forgot-password", rateLimiters.passwordReset);
-app.use("/api/auth/reset-password", rateLimiters.passwordReset);
 
 // Subscription Check Middleware (Trial Branch specific)
 const { authMiddleware } = require("./middleware/auth.middleware.js");

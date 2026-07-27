@@ -395,10 +395,12 @@ async function authMiddleware(req, res, next) {
       const method = (req.method || 'GET').toUpperCase();
       const allowed = [
         '/api/auth/change-password',
+        '/api/auth/complete-credential-setup',
         '/api/auth/security-questions/setup',
         '/api/auth/logout',
         '/api/auth/ping',
         '/change-password',
+        '/complete-credential-setup',
         '/security-questions/setup',
         '/logout',
         '/ping',

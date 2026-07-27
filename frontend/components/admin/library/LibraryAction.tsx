@@ -24,18 +24,6 @@ import { BorrowedBooksOverview } from "./BorrowedBooksOverview";
 import { BorrowLimitConfiguration } from "./BorrowLimitConfiguration";
 import { UnifiedHeader } from "@/components/common/UnifiedHeader";
 
-const DEMO_BOOKS: FrontendBook[] = [
-    { id: "1", title: "Advanced Calculus", author: "G.B. Thomas", isbn: "978-0201163209", category: "Mathematics", quantity: 5, available: 3, institutionId: "INST001" },
-    { id: "2", title: "Introduction to Algorithms", author: "Cormen, Leiserson", isbn: "978-0262033848", category: "Computer Science", quantity: 3, available: 0, institutionId: "INST001" },
-    { id: "3", title: "Physics for Scientists", author: "Paul Tipler", isbn: "978-1429201247", category: "Physics", quantity: 8, available: 7, institutionId: "INST001" },
-    { id: "4", title: "Mechanical Engineering", author: "R.K. Rajput", isbn: "978-8131804414", category: "Engineering", quantity: 4, available: 4, institutionId: "INST001" },
-];
-
-const DEMO_BORROWED: FrontendBorrowedBook[] = [
-    { id: "101", bookTitle: "Introduction to Algorithms", author: "Cormen, Leiserson", isbn: "978-0262033848", borrowerName: "John Doe", borrowerId: "STU001", borrowerEmail: "john@example.com", borrowDate: new Date("2024-02-01"), dueDate: new Date("2024-02-15"), status: "overdue", borrowerType: "student" },
-    { id: "102", bookTitle: "Advanced Calculus", author: "G.B. Thomas", isbn: "978-0201163209", borrowerName: "Jane Smith", borrowerId: "STU005", borrowerEmail: "jane@example.com", borrowDate: new Date("2024-02-10"), dueDate: new Date("2024-02-24"), status: "borrowed", borrowerType: "student" },
-];
-
 type LibrarySection = "overview" | "books" | "borrowed" | "config";
 
 const LibraryAction = () => {
@@ -78,7 +66,7 @@ const LibraryAction = () => {
         try {
             const booksData = await LibraryAPI.getBooks();
             const transformed = booksData.map(LibraryAPI.transformBookData);
-            setBooks(transformed.length > 0 ? transformed : DEMO_BOOKS);
+            setBooks(transformed);
         } catch (error) { throw error; }
     };
 
@@ -86,7 +74,7 @@ const LibraryAction = () => {
         try {
             const borrowedData = await LibraryAPI.getAllBorrowedBooks();
             const transformed = borrowedData.map(LibraryAPI.transformBorrowedBookData);
-            setBorrowedBooks(transformed.length > 0 ? transformed : DEMO_BORROWED);
+            setBorrowedBooks(transformed);
         } catch (error) { throw error; }
     };
 

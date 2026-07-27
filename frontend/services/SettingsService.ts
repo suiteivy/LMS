@@ -84,8 +84,10 @@ export const SettingsService = {
     },
 
     // Password management
-    changePassword: async (current_password: string, new_password: string): Promise<{ message: string }> => {
-        const response = await api.put('/auth/change-password', { current_password, new_password });
+    changePassword: async (new_password: string, current_password?: string): Promise<{ message: string }> => {
+        const payload: { new_password: string; current_password?: string } = { new_password };
+        if (current_password) payload.current_password = current_password;
+        const response = await api.put('/auth/change-password', payload);
         return response.data;
     },
 
@@ -119,6 +121,19 @@ export const SettingsService = {
         const response = await api.post('/auth/security-questions/setup', {
             selected_question_key,
             selected_question_answer,
+        });
+        return response.data;
+    },
+
+    completeCredentialSetup: async (
+        selected_question_key: string,
+        selected_question_answer: string,
+        new_password: string,
+    ): Promise<{ message: string; selected_question_key: string; selected_question_prompt: string }> => {
+        const response = await api.post('/auth/complete-credential-setup', {
+            selected_question_key,
+            selected_question_answer,
+            new_password,
         });
         return response.data;
     },

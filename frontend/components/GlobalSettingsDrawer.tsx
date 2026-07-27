@@ -264,7 +264,7 @@ function SettingsMenu({ userRole, onNavigate }: { userRole: string; onNavigate: 
 
         <View style={{ paddingHorizontal: 24, paddingTop: 20 }}>
           <Text style={{ fontSize: 10, fontWeight: 'bold', color: textSecondary, textTransform: 'uppercase', letterSpacing: 3, marginBottom: 12 }}>App Theme</Text>
-          <View style={{ borderRadius: 16, borderOpacity: 1, borderWidth: 1, borderColor: border, overflow: 'hidden' }}>
+          <View style={{ borderRadius: 16, borderWidth: 1, borderColor: border, overflow: 'hidden' }}>
             <ThemeSegmentedControl />
           </View>
         </View>

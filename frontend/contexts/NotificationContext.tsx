@@ -21,13 +21,14 @@ interface NotificationContextType {
 const NotificationContext = createContext<NotificationContextType | undefined>(undefined);
 
 export const NotificationProvider = ({ children }: { children: ReactNode }) => {
-    const { session, isDemo } = useAuth();
+    const { session, isDemo, profile } = useAuth();
     const [notifications, setNotifications] = useState<Notification[]>([]);
     const [loading, setLoading] = useState(false);
     const [showNotifications, setShowNotifications] = useState(false);
+    const requiresCredentialSetup = !!profile?.must_change_password || !!profile?.requires_security_questions_setup;
 
     const fetchNotifications = useCallback(async () => {
-        if (!session) return;
+        if (!session || requiresCredentialSetup) return;
         try {
             setLoading(true);
             const data = await NotificationAPI.getUserNotifications();
@@ -38,6 +39,7 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
                 error?.isAuthError ||
                 error?.response?.status === 401 ||
                 error?.response?.status === 403 ||
+                error?.response?.status === 428 ||
                 error?.code === 'ERR_NETWORK' ||
                 error?.code === 'ECONNABORTED' ||
                 error?.message?.toLowerCase?.().includes('timeout')
@@ -49,7 +51,7 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
         } finally {
             setLoading(false);
         }
-    }, [session]);
+    }, [session, requiresCredentialSetup]);
 
     // Listen to realtime changes on the notifications table
     useRealtimeQuery('notifications', fetchNotifications);
@@ -59,7 +61,7 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
     useEffect(() => {
         const currentToken = session?.access_token || null;
 
-        if (currentToken) {
+        if (currentToken && !requiresCredentialSetup) {
             if (lastToken.current !== currentToken) {
                 lastToken.current = currentToken;
                 fetchNotifications();
@@ -73,7 +75,7 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
             lastToken.current = null;
             setNotifications([]);
         }
-    }, [session?.access_token]);
+    }, [session?.access_token, requiresCredentialSetup]);
 
     const markAsRead = async (id: string) => {
         try {

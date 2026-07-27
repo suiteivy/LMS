@@ -13,9 +13,10 @@ export const useDashboardStats = () => {
     const { formatAmount } = useCurrency();
 
     const { isInitializing, session, isDemo, profile } = useAuth(); // Import useAuth to check session status
+    const requiresCredentialSetup = !!profile?.must_change_password || !!profile?.requires_security_questions_setup;
 
     const fetchStats = async () => {
-        if (!profile?.institution_id) {
+        if (requiresCredentialSetup || !profile?.institution_id) {
             setStats([]);
             setRevenueData([]);
             setLoading(false);
@@ -118,7 +119,9 @@ export const useDashboardStats = () => {
                 ];
                 setStats(statsData);
             } catch (revenueError) {
-                console.error('Error fetching revenue overview:', revenueError);
+                if ((revenueError as any)?.response?.status !== 401 && (revenueError as any)?.response?.status !== 428) {
+                    console.error('Error fetching revenue overview:', revenueError);
+                }
                 setRevenueData([]);
 
                 const statsData: StatsData[] = [
@@ -161,7 +164,7 @@ export const useDashboardStats = () => {
     useEffect(() => {
         if (isInitializing) return;
 
-        if (!session) {
+        if (!session || requiresCredentialSetup) {
             setLoading(false);
             return;
         }
@@ -221,7 +224,7 @@ export const useDashboardStats = () => {
             supabase.removeChannel(transactionChannel);
             supabase.removeChannel(attendanceChannel);
         };
-    }, [isInitializing, session]);
+    }, [isInitializing, session, requiresCredentialSetup]);
 
     return { stats, loading, revenueData, refresh: fetchStats };
 };

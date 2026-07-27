@@ -124,11 +124,29 @@ const rateLimiters = {
         differentiateByUser: false
     }),
 
-    // Very strict limit for password reset (3 per hour per email)
-    passwordReset: createRateLimiter({
+    // Password reset request endpoints (forgot/reset)
+    passwordResetRequest: createRateLimiter({
         windowMs: 60 * 60 * 1000, // 1 hour
         maxRequests: 3,
-        keyPrefix: 'pwreset',
+        keyPrefix: 'pwreset-request',
+        differentiateByUser: true
+    }),
+
+    // Security question verification has its own per-user attempt checks in controller.
+    // Keep transport-level throttling lighter so legitimate recovery is not blocked by
+    // forgot/reset traffic from the same network.
+    passwordResetVerify: createRateLimiter({
+        windowMs: 15 * 60 * 1000, // 15 minutes
+        maxRequests: 10,
+        keyPrefix: 'pwreset-verify',
+        differentiateByUser: true
+    }),
+
+    // Backward compatibility alias (legacy imports)
+    passwordReset: createRateLimiter({
+        windowMs: 60 * 60 * 1000,
+        maxRequests: 3,
+        keyPrefix: 'pwreset-request',
         differentiateByUser: true
     }),
 

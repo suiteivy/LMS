@@ -2,13 +2,18 @@
 const supabase = require("../utils/supabaseClient.js");
 
 /** Pull active config, fall back to sane defaults */
-async function getActiveConfig() {
-  const { data, error } = await supabase
+async function getActiveConfig(institution_id) {
+  let query = supabase
     .from("library_config")
     .select("min_fee_percent_for_borrow, default_borrow_limit")
     .eq("active", true)
-    .limit(1)
-    .single();
+    .limit(1);
+
+  if (institution_id) {
+    query = query.eq('institution_id', institution_id);
+  }
+
+  const { data, error } = await query.maybeSingle();
 
   if (error || !data) {
     return {
@@ -19,16 +24,56 @@ async function getActiveConfig() {
   return data;
 }
 
+let booksArchivedAtSupportPromise = null;
+async function supportsBooksArchivedAt() {
+  if (!booksArchivedAtSupportPromise) {
+    booksArchivedAtSupportPromise = (async () => {
+      let probe;
+      try {
+        probe = supabase.from('books');
+      } catch {
+        return true;
+      }
+
+      if (!probe || typeof probe.select !== 'function') {
+        return true;
+      }
+
+      const { error } = await probe.select('archived_at').limit(1);
+      if (!error) return true;
+
+      const message = String(error?.message || '').toLowerCase();
+      const details = String(error?.details || '').toLowerCase();
+      const code = String(error?.code || '').toLowerCase();
+      if (message.includes('archived_at') || details.includes('archived_at') || code === '42703') {
+        return false;
+      }
+      throw error;
+    })().catch((error) => {
+      booksArchivedAtSupportPromise = null;
+      throw error;
+    });
+  }
+
+  return booksArchivedAtSupportPromise;
+}
+
 /** Compute student's overall fee % */
 async function getStudentOverallFeePercent(userId, institution_id) {
   // 1. Get enrolled subjects to calculate total fee due
-  const { data: student } = await supabase.from('students').select('id, user_id').eq('user_id', userId).single();
+  const { data: student } = await supabase
+    .from('students')
+    .select('id, user_id')
+    .eq('user_id', userId)
+    .eq('institution_id', institution_id)
+    .single();
   if (!student) return 0; // Not a student
 
   const { data: enrollments, error: enrErr } = await supabase
     .from('enrollments')
     .select('subject_id, subjects(fee_amount)')
-    .eq('student_id', student.id);
+    .eq('student_id', student.id)
+    .eq('institution_id', institution_id);
 
   if (enrErr) {
     console.error("Fee check enrollment error", enrErr);
@@ -64,31 +109,37 @@ async function getStudentOverallFeePercent(userId, institution_id) {
 }
 
 /** Helper to get STUDENT ID (TEXT) from USER ID (UUID) */
-async function getStudentId(userId) {
-  const { data, error } = await supabase
+async function getStudentId(userId, institution_id = null) {
+  let query = supabase
     .from('students')
     .select('id')
-    .eq('user_id', userId)
-    .single();
+    .eq('user_id', userId);
+
+  if (institution_id) query = query.eq('institution_id', institution_id);
+
+  const { data, error } = await query.single();
 
   if (error || !data) return null;
   return data.id;
 }
 
 /** Helper to get TEACHER ID (TEXT) from USER ID (UUID) */
-async function getTeacherId(userId) {
-  const { data, error } = await supabase
+async function getTeacherId(userId, institution_id = null) {
+  let query = supabase
     .from('teachers')
     .select('id')
-    .eq('user_id', userId)
-    .single();
+    .eq('user_id', userId);
+
+  if (institution_id) query = query.eq('institution_id', institution_id);
+
+  const { data, error } = await query.single();
 
   if (error || !data) return null;
   return data.id;
 }
 
 /** Check if borrower has any overdue, unreturned books */
-async function hasOverdueBooks({ studentId, teacherId }) {
+async function hasOverdueBooks({ studentId, teacherId, institution_id }) {
   const query = supabase
     .from("borrowed_books")
     .select("id")
@@ -98,6 +149,7 @@ async function hasOverdueBooks({ studentId, teacherId }) {
 
   if (studentId) query.eq("student_id", studentId);
   if (teacherId) query.eq("teacher_id", teacherId);
+  if (institution_id) query.eq('institution_id', institution_id);
 
   const { data, error } = await query;
   if (error) throw error;
@@ -105,7 +157,7 @@ async function hasOverdueBooks({ studentId, teacherId }) {
 }
 
 /** Count actively borrowed (not yet returned) */
-async function activeBorrowCount({ studentId, teacherId }) {
+async function activeBorrowCount({ studentId, teacherId, institution_id }) {
   const query = supabase
     .from("borrowed_books")
     .select("id", { count: "exact", head: true })
@@ -114,6 +166,7 @@ async function activeBorrowCount({ studentId, teacherId }) {
 
   if (studentId) query.eq("student_id", studentId);
   if (teacherId) query.eq("teacher_id", teacherId);
+  if (institution_id) query.eq('institution_id', institution_id);
 
   const { count, error } = await query;
   if (error) throw error;
@@ -220,13 +273,17 @@ exports.listBooks = async (req, res) => {
   try {
     const { institution_id } = req;
     const includeUnavailable = (req.query.includeUnavailable || "").toString().toLowerCase() === "true";
+    const hasArchivedAt = await supportsBooksArchivedAt();
 
     let query = supabase
       .from("books") // Changed from library_items
       .select("*")
       .eq("institution_id", institution_id)
-      .is("archived_at", null)
       .order("created_at", { ascending: false });
+
+    if (hasArchivedAt) {
+      query = query.is('archived_at', null);
+    }
 
     if (!includeUnavailable) {
       query = query.gt("available_quantity", 0);
@@ -255,13 +312,17 @@ exports.issueBook = async (req, res) => {
       return res.status(400).json({ error: "Book ID and Student ID are required" });
     }
 
-    const { data: item, error: itemErr } = await supabase
+    const hasArchivedAt = await supportsBooksArchivedAt();
+
+    let itemQuery = supabase
       .from("books")
       .select("*")
       .eq("id", bookId)
-      .eq("institution_id", institution_id)
-      .is("archived_at", null)
-      .single();
+      .eq("institution_id", institution_id);
+
+    if (hasArchivedAt) itemQuery = itemQuery.is('archived_at', null);
+
+    const { data: item, error: itemErr } = await itemQuery.single();
 
     if (itemErr || !item) return res.status(404).json({ error: "Book not found." });
     if (item.available_quantity <= 0) return res.status(400).json({ error: "Book out of stock" });
@@ -284,7 +345,7 @@ exports.issueBook = async (req, res) => {
         {
           book_id: bookId,
           student_id: studentId,
-          teacher_id: userRole === "teacher" ? await getTeacherId(req.userId) : null,
+          teacher_id: userRole === "teacher" ? await getTeacherId(req.userId, institution_id) : null,
           status: 'borrowed',
           borrowed_at: new Date().toISOString(),
           due_date: dueDate.toISOString().slice(0, 10),
@@ -320,28 +381,32 @@ exports.borrowBook = async (req, res) => {
     let teacherId = null;
 
     if (userRole === "student") {
-      studentId = await getStudentId(appUserId);
+      studentId = await getStudentId(appUserId, institution_id);
       if (!studentId) return res.status(400).json({ error: "Student profile not found" });
     } else {
-      teacherId = await getTeacherId(appUserId);
+      teacherId = await getTeacherId(appUserId, institution_id);
       if (!teacherId) return res.status(400).json({ error: "Teacher profile not found" });
     }
 
+    const hasArchivedAt = await supportsBooksArchivedAt();
+
     // 1) Book must exist
-    const { data: item, error: itemErr } = await supabase
+    let itemQuery = supabase
       .from("books") // Changed from library_items
       .select("*")
       .eq("id", bookId)
-      .eq("institution_id", institution_id)
-      .is("archived_at", null)
-      .single();
+      .eq("institution_id", institution_id);
+
+    if (hasArchivedAt) itemQuery = itemQuery.is('archived_at', null);
+
+    const { data: item, error: itemErr } = await itemQuery.single();
 
     if (itemErr || !item) return res.status(404).json({ error: "Book not found." });
     if (item.available_quantity <= 0) return res.status(400).json({ error: "Book out of stock" });
 
     // 2) Fee threshold (Students only)
     if (userRole === "student") {
-      const cfg = await getActiveConfig();
+      const cfg = await getActiveConfig(institution_id);
       const overallPct = await getStudentOverallFeePercent(appUserId, institution_id);
       if (overallPct < Number(cfg.min_fee_percent_for_borrow)) {
         return res.status(403).json({
@@ -352,13 +417,13 @@ exports.borrowBook = async (req, res) => {
     }
 
     // 3) No overdue books
-    if (await hasOverdueBooks({ studentId, teacherId })) {
+    if (await hasOverdueBooks({ studentId, teacherId, institution_id })) {
       return res.status(403).json({ error: "You have overdue books. Return them first." });
     }
 
     // 4) Borrow count < limit
-    const cfg = await getActiveConfig();
-    const activeCount = await activeBorrowCount({ studentId, teacherId });
+    const cfg = await getActiveConfig(institution_id);
+    const activeCount = await activeBorrowCount({ studentId, teacherId, institution_id });
     if (activeCount >= Number(cfg.default_borrow_limit)) {
       return res.status(403).json({ error: `Borrow limit reached (${cfg.default_borrow_limit}).` });
     }
@@ -394,9 +459,13 @@ exports.borrowBook = async (req, res) => {
 /** Return a borrowed book */
 exports.returnBook = async (req, res) => {
   try {
-    const { userRole } = req;
+    const { userRole, institution_id } = req;
     const appUserId = req.userId;
     const { borrowId } = req.params;
+
+    if (!institution_id) {
+      return res.status(400).json({ error: "Institution context is required" });
+    }
 
     if (!borrowId) return res.status(400).json({ error: "borrowId is required" });
 
@@ -404,12 +473,13 @@ exports.returnBook = async (req, res) => {
       .from("borrowed_books") // Changed from library_loans
       .select("*")
       .eq("id", borrowId)
+      .eq("institution_id", institution_id)
       .is("returned_at", null); // Changed from return_date
 
     // If student or teacher, ensure it owns the loan
     if (!["admin", "master_admin"].includes(userRole)) {
-      const studentId = await getStudentId(appUserId);
-      const teacherId = await getTeacherId(appUserId);
+      const studentId = await getStudentId(appUserId, institution_id);
+      const teacherId = await getTeacherId(appUserId, institution_id);
       
       if (studentId) query = query.eq("student_id", studentId);
       else if (teacherId) query = query.eq("teacher_id", teacherId);
@@ -423,14 +493,24 @@ exports.returnBook = async (req, res) => {
     const { error: updErr } = await supabase
       .from("borrowed_books") // Changed from library_loans
       .update({ returned_at: new Date().toISOString(), status: "returned" })
-      .eq("id", loan.id);
+      .eq("id", loan.id)
+      .eq("institution_id", institution_id);
 
     if (updErr) return res.status(500).json({ error: updErr.message });
 
     // Increment stock on return (borrow insert decrement is handled by DB trigger)
-    const { data: item } = await supabase.from('books').select('available_quantity').eq('id', loan.book_id).single();
+    const { data: item } = await supabase
+      .from('books')
+      .select('available_quantity')
+      .eq('id', loan.book_id)
+      .eq('institution_id', institution_id)
+      .single();
     if (item) {
-      await supabase.from('books').update({ available_quantity: item.available_quantity + 1 }).eq('id', loan.book_id);
+      await supabase
+        .from('books')
+        .update({ available_quantity: item.available_quantity + 1 })
+        .eq('id', loan.book_id)
+        .eq('institution_id', institution_id);
     }
 
     return res.json({ message: "Returned" });
@@ -452,8 +532,8 @@ exports.history = async (req, res) => {
       }
     } else {
       // If student or teacher viewing own history
-      const sId = await getStudentId(req.userId);
-      const tId = await getTeacherId(req.userId);
+      const sId = await getStudentId(req.userId, req.institution_id);
+      const tId = await getTeacherId(req.userId, req.institution_id);
       
       if (sId) {
         targetStudentId = sId;
@@ -463,6 +543,7 @@ exports.history = async (req, res) => {
           .from("borrowed_books")
           .select("*, books(title, author, isbn)")
           .eq("teacher_id", tId)
+          .eq('institution_id', req.institution_id)
           .order("created_at", { ascending: false });
         if (error) return res.status(500).json({ error: error.message });
         return res.json(data);
@@ -475,6 +556,7 @@ exports.history = async (req, res) => {
       .from("borrowed_books")
       .select("*, books(title, author, isbn)") // Join books
       .eq("student_id", targetStudentId)
+      .eq('institution_id', req.institution_id)
       .order("created_at", { ascending: false });
 
     if (error) return res.status(500).json({ error: error.message });
@@ -534,7 +616,12 @@ exports.updateBorrowStatus = async (req, res) => {
 
     if (!["admin", "teacher"].includes(userRole)) return res.status(403).json({ error: "Unauthorized" });
 
-    const { data: loan, error: fetchErr } = await supabase.from("borrowed_books").select("*, books(available_quantity)").eq("id", borrowId).single();
+    const { data: loan, error: fetchErr } = await supabase
+      .from("borrowed_books")
+      .select("*, books(available_quantity)")
+      .eq("id", borrowId)
+      .eq("institution_id", req.institution_id)
+      .single();
     if (fetchErr || !loan) return res.status(404).json({ error: "Loan not found" });
 
     const updates = { status, updated_at: new Date().toISOString() };
@@ -550,17 +637,33 @@ exports.updateBorrowStatus = async (req, res) => {
       if (loan.books?.available_quantity > 0) {
         await supabase.from('books')
           .update({ available_quantity: loan.books.available_quantity - 1 })
-          .eq('id', loan.book_id);
+          .eq('id', loan.book_id)
+          .eq('institution_id', req.institution_id);
       }
     } else if (status === 'returned' && loan.status !== 'returned') {
       updates.returned_at = new Date().toISOString();
-      const { data: item } = await supabase.from('books').select('available_quantity').eq('id', loan.book_id).single();
+      const { data: item } = await supabase
+        .from('books')
+        .select('available_quantity')
+        .eq('id', loan.book_id)
+        .eq('institution_id', req.institution_id)
+        .single();
       if (item) {
-        await supabase.from('books').update({ available_quantity: item.available_quantity + 1 }).eq('id', loan.book_id);
+        await supabase
+          .from('books')
+          .update({ available_quantity: item.available_quantity + 1 })
+          .eq('id', loan.book_id)
+          .eq('institution_id', req.institution_id);
       }
     }
 
-    const { data, error } = await supabase.from("borrowed_books").update(updates).eq("id", borrowId).select().single();
+    const { data, error } = await supabase
+      .from("borrowed_books")
+      .update(updates)
+      .eq("id", borrowId)
+      .eq('institution_id', req.institution_id)
+      .select()
+      .single();
     if (error) throw error;
 
     res.json({ message: "Status updated", borrow: data });
@@ -581,12 +684,23 @@ exports.deleteBook = async (req, res) => {
 
     if (!bookId) return res.status(400).json({ error: "bookId is required" });
 
-    const { error } = await supabase
-      .from("books")
-      .update({ archived_at: new Date().toISOString(), updated_at: new Date().toISOString() })
-      .eq("id", bookId)
-      .eq("institution_id", institution_id)
-      .is("archived_at", null);
+    const hasArchivedAt = await supportsBooksArchivedAt();
+
+    let deleteQuery = supabase
+      .from('books')
+      .update(
+        hasArchivedAt
+          ? { archived_at: new Date().toISOString(), updated_at: new Date().toISOString() }
+          : { updated_at: new Date().toISOString(), available_quantity: 0 }
+      )
+      .eq('id', bookId)
+      .eq('institution_id', institution_id);
+
+    if (hasArchivedAt) {
+      deleteQuery = deleteQuery.is('archived_at', null);
+    }
+
+    const { error } = await deleteQuery;
 
     if (error) return res.status(500).json({ error: error.message });
     return res.json({ message: "Book archived" });
@@ -621,6 +735,7 @@ exports.rejectBorrowRequest = async (req, res) => {
       .from("borrowed_books")
       .update({ status: "overdue", updated_at: new Date().toISOString() })
       .eq("id", borrowId)
+      .eq("institution_id", req.institution_id)
       .select()
       .single();
 
@@ -721,6 +836,7 @@ exports.extendDueDate = async (req, res) => {
       .from("borrowed_books")
       .update({ due_date: normalizedDate, updated_at: new Date().toISOString() })
       .eq("id", borrowId)
+      .eq("institution_id", req.institution_id)
       .select()
       .single();
 

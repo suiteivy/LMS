@@ -41,6 +41,20 @@ const fetchKesRateFromProviders = async () => {
     throw err;
 };
 
+const isSubscriptionTransaction = (row) => {
+    const txType = String(row?.type || '').toLowerCase();
+    if (txType === 'subscription') return true;
+
+    if (txType !== 'other') return false;
+    const meta = row?.meta && typeof row.meta === 'object' ? row.meta : {};
+    const legacyType = String(meta.legacy_type || '').toLowerCase();
+    const subscriptionFlag =
+        meta.subscription_entry === true ||
+        String(meta.subscription_entry || '').toLowerCase() === 'true';
+
+    return legacyType === 'subscription' || subscriptionFlag;
+};
+
 const getCurrentKesRate = async () => {
     const { data } = await supabase
         .from('currencies')
@@ -180,9 +194,8 @@ exports.getInstitutionSubscriptionSnapshot = async (req, res) => {
                 .single(),
             supabase
                 .from('financial_transactions')
-                .select('amount, status, type, direction')
+                .select('amount, status, type, direction, meta')
                 .eq('institution_id', institutionId)
-                .eq('type', 'subscription')
                 .eq('direction', 'inflow'),
         ]);
 
@@ -199,6 +212,7 @@ exports.getInstitutionSubscriptionSnapshot = async (req, res) => {
         const plan = String(institution.subscription_plan || 'basic').toLowerCase();
         const expectedAmount = planPrice[plan] ?? 0;
         const paidAmount = (txRows || []).reduce((sum, row) => {
+            if (!isSubscriptionTransaction(row)) return sum;
             if (row.status !== 'completed') return sum;
             return sum + Number(row.amount || 0);
         }, 0);

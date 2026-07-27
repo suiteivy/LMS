@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { Spinner } from '@/components/ui/Spinner';
 import {
     View,
     Text,
@@ -58,7 +57,7 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ visibl
 
         setLoading(true);
         try {
-            await SettingsService.changePassword(currentPassword, newPassword);
+            await SettingsService.changePassword(newPassword, currentPassword);
             Toast.show({ type: 'success', text1: 'Success', text2: 'Password updated successfully' });
             handleClose();
         } catch (error: any) {
@@ -131,7 +130,7 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ visibl
                                     Reset password for {profile?.email}?
                                 </Text>
                                 <Text style={{ fontSize: 12, color: tokens.textSecondary, marginBottom: 16 }}>
-                                    A reset link will be sent and you'll be logged out to complete this process.
+                                    A reset link will be sent and you will be logged out to complete this process.
                                 </Text>
                                 <View style={{ flexDirection: 'row', gap: 12 }}>
                                     <TouchableOpacity

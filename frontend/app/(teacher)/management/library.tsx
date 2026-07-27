@@ -29,12 +29,8 @@ export default function TeacherLibraryPage() {
         try {
             setLoading(true);
             if (isDemo) {
-                const mockBooks: FrontendBook[] = [
-                    { id: '1', title: "Advanced Calculus", author: "Dr. Smith", isbn: "1234567890", category: "Mathematics", available: 5, quantity: 10, publisher: "Oxford", publicationYear: 2022, createdAt: new Date().toISOString(), institutionId: 'mock-inst-1' },
-                    { id: '2', title: "Physics Vol 1", author: "Newton", isbn: "0987654321", category: "Science", available: 2, quantity: 5, publisher: "Cambridge", publicationYear: 2021, createdAt: new Date().toISOString(), institutionId: 'mock-inst-1' }
-                ];
-                setBooks(mockBooks);
-                setStudents([{ id: 'stu1', name: 'John Doe' }, { id: 'stu2', name: 'Jane Smith' }]);
+                setBooks([]);
+                setStudents([]);
                 return;
             }
             const [booksData, studentsData] = await Promise.all([

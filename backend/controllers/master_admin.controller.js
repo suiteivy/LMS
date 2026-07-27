@@ -4,7 +4,7 @@ const _supabase = require("../utils/supabaseClient.js");
 const { createClient } = require("@supabase/supabase-js");
 const { sendBulkInAppNotificationsWithHistory } = require('../services/notificationDelivery.service.js');
 const { logSystemActivity, readSystemActivityLogs, clearSystemActivityLogs } = require('../services/systemActivityLog.service.js');
-const { canonicalRoleFrom, withRoleAliases } = require("../utils/roleAlias.js");
+const { canonicalRoleFrom, databaseRoleFrom, withRoleAliases } = require("../utils/roleAlias.js");
 const { isTransientSupabaseError, withSupabaseRetry } = require('../utils/supabaseRetry.js');
 const { buildReceiptHtml } = require('../utils/receiptTemplate.js');
 
@@ -67,6 +67,20 @@ const normalizeInstitutionPlan = (plan) => {
     };
     const p = String(plan || 'basic').toLowerCase();
     return map[p] || 'basic';
+};
+
+const isSubscriptionTransaction = (row) => {
+    const txType = String(row?.type || '').toLowerCase();
+    if (txType === 'subscription') return true;
+
+    if (txType !== 'other') return false;
+    const meta = row?.meta && typeof row.meta === 'object' ? row.meta : {};
+    const legacyType = String(meta.legacy_type || '').toLowerCase();
+    const subscriptionFlag =
+        meta.subscription_entry === true ||
+        String(meta.subscription_entry || '').toLowerCase() === 'true';
+
+    return legacyType === 'subscription' || subscriptionFlag;
 };
 
 const resolveInstitutionAddonFlags = ({ plan, addon_library, addon_messaging, addon_diary, addon_bursary }) => {
@@ -749,13 +763,13 @@ exports.getDashboardStats = async (_req, res) => {
                 .select('id, name, subscription_plan, subscription_status, subscription_cycle, subscription_tracking_start_date'),
             adminClient
                 .from('financial_transactions')
-                .select('institution_id, amount, status, type, direction')
-                .eq('type', 'subscription')
+                .select('institution_id, amount, status, type, direction, meta')
                 .eq('direction', 'inflow')
         ]);
 
         const paidByInstitution = new Map();
         for (const row of (paymentRows || [])) {
+            if (!isSubscriptionTransaction(row)) continue;
             if (!row?.institution_id || row?.status !== 'completed') continue;
             const prev = paidByInstitution.get(row.institution_id) || 0;
             paidByInstitution.set(row.institution_id, prev + Number(row.amount || 0));
@@ -1828,6 +1842,7 @@ exports.enrollInstitution = async (req, res) => {
         const {
             institution_name,
             location,
+            phone,
             admin_full_name,
             admin_first_name,
             admin_last_name,
@@ -1909,6 +1924,7 @@ exports.enrollInstitution = async (req, res) => {
             .insert([{
                 name: institution_name,
                 location: location || '',
+                phone: phone || null,
                 email_domain: resolvedDomain,
                 currency_id: resolvedCurrencyId,
                 type: req.body.type || 'secondary', 
@@ -2661,8 +2677,7 @@ exports.getPaymentsSummaryByInstitution = async (_req, res) => {
                 .select('id, name, subscription_plan, subscription_status, subscription_tracking_start_date, subscription_cycle'),
             adminClient
                 .from('financial_transactions')
-                .select('institution_id, amount, status, type, direction')
-                .eq('type', 'subscription')
+                .select('institution_id, amount, status, type, direction, meta')
                 .eq('direction', 'inflow'),
         ]);
 
@@ -2671,6 +2686,7 @@ exports.getPaymentsSummaryByInstitution = async (_req, res) => {
 
         const totalsByInstitution = new Map();
         for (const tx of txs || []) {
+            if (!isSubscriptionTransaction(tx)) continue;
             if (!tx?.institution_id) continue;
             const amount = Number(tx.amount || 0);
             const key = tx.institution_id;
@@ -2895,6 +2911,7 @@ exports.getAllUsers = async (req, res) => {
 exports.updateUser = async (req, res) => {
     try {
         const adminClient = getServiceSupabase();
+        const allowedDatabaseRoles = new Set(['admin', 'student', 'teacher', 'parent', 'bursary', 'master_admin']);
         const { id } = req.params;
         const {
             first_name,
@@ -2911,7 +2928,13 @@ exports.updateUser = async (req, res) => {
 
         const updates = {};
         if (phone !== undefined) updates.phone = phone;
-        if (role !== undefined) updates.role = canonicalRoleFrom(role);
+        if (role !== undefined) {
+            const dbRole = databaseRoleFrom(String(role || '').trim());
+            if (!allowedDatabaseRoles.has(dbRole)) {
+                return res.status(400).json({ error: 'Invalid role supplied' });
+            }
+            updates.role = dbRole;
+        }
         if (institution_id !== undefined) updates.institution_id = institution_id || null;
 
         const requesterCanonicalRole = canonicalRoleFrom(req.userRole);
@@ -3343,11 +3366,13 @@ exports.recordPlatformPayment = async (req, res) => {
             .insert([{
                 institution_id,
                 amount: Number(amount),
-                type: 'subscription',
+                type: 'other',
                 direction: 'inflow',
                 method: method || 'manual',
                 reference_id: reference_id || `PLAT-${Date.now()}`,
                 meta: {
+                    subscription_entry: true,
+                    legacy_type: 'subscription',
                     notes: notes || 'Manual platform entry',
                     recorded_by_role: recordedByRole,
                     recorded_by_user_id: recordedByUserId,
@@ -3398,8 +3423,7 @@ exports.runSubscriptionLifecycleSweep = async (_req, res) => {
                 .select('id, name, subscription_plan, subscription_status, subscription_cycle, subscription_tracking_start_date'),
             adminClient
                 .from('financial_transactions')
-                .select('institution_id, amount, status, type, direction')
-                .eq('type', 'subscription')
+                .select('institution_id, amount, status, type, direction, meta')
                 .eq('direction', 'inflow'),
         ]);
 
@@ -3408,6 +3432,7 @@ exports.runSubscriptionLifecycleSweep = async (_req, res) => {
 
         const paidByInstitution = new Map();
         for (const row of (txs || [])) {
+            if (!isSubscriptionTransaction(row)) continue;
             if (!row?.institution_id || row?.status !== 'completed') continue;
             const prev = paidByInstitution.get(row.institution_id) || 0;
             paidByInstitution.set(row.institution_id, prev + Number(row.amount || 0));
@@ -3493,8 +3518,7 @@ exports.previewSubscriptionLifecycleSweep = async (_req, res) => {
                 .select('id, name, subscription_plan, subscription_status, subscription_cycle, subscription_tracking_start_date'),
             adminClient
                 .from('financial_transactions')
-                .select('institution_id, amount, status, type, direction')
-                .eq('type', 'subscription')
+                .select('institution_id, amount, status, type, direction, meta')
                 .eq('direction', 'inflow'),
         ]);
 
@@ -3503,6 +3527,7 @@ exports.previewSubscriptionLifecycleSweep = async (_req, res) => {
 
         const paidByInstitution = new Map();
         for (const row of (txs || [])) {
+            if (!isSubscriptionTransaction(row)) continue;
             if (!row?.institution_id || row?.status !== 'completed') continue;
             const prev = paidByInstitution.get(row.institution_id) || 0;
             paidByInstitution.set(row.institution_id, prev + Number(row.amount || 0));

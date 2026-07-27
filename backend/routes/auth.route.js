@@ -8,6 +8,7 @@ const {
   searchUsers,
   logout,
   changePassword,
+  completeCredentialSetup,
   forgotPassword,
   checkPasswordRecoveryEmail,
   resetPassword,
@@ -36,13 +37,13 @@ router.post("/login", validate(schemas.login), login);
 // Public: Password reset with strict rate limiting
 router.post(
   "/forgot-password",
-  rateLimiters.passwordReset,
+  rateLimiters.passwordResetRequest,
   validate({ email: schemas.login.email }),
   forgotPassword,
 );
 router.get("/forgot-password/check-email", rateLimiters.passwordResetCheckEmail, checkPasswordRecoveryEmail);
-router.post("/reset-password", rateLimiters.passwordReset, resetPassword);
-router.post("/verify-security-questions", rateLimiters.passwordReset, verifySecurityQuestions);
+router.post("/reset-password", rateLimiters.passwordResetRequest, resetPassword);
+router.post("/verify-security-questions", rateLimiters.passwordResetVerify, verifySecurityQuestions);
 router.get("/credential-delivery/:token", getCredentialDeliveryByToken);
 
 // Protected: User management with subscription check, admin role check, and validation
@@ -90,6 +91,7 @@ router.post("/logout", authMiddleware, logout);
 
 // Password management
 router.put("/change-password", authMiddleware, changePassword);
+router.post("/complete-credential-setup", authMiddleware, completeCredentialSetup);
 router.post("/admin-reset-password", authMiddleware, adminResetPassword);
 router.post("/security-questions/setup", authMiddleware, setupSecurityQuestions);
 

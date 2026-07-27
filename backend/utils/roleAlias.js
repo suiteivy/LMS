@@ -5,6 +5,13 @@ const canonicalRoleFrom = (role, isPlatformAdmin = false) => {
   return role;
 };
 
+const databaseRoleFrom = (role, isPlatformAdmin = false) => {
+  if (isPlatformAdmin) return "master_admin";
+  if (role === "platform_admin" || role === "master_admin") return "master_admin";
+  if (role === "school_admin" || role === "admin") return "admin";
+  return role;
+};
+
 const withRoleAliases = (userLike = {}, options = {}) => {
   const role = userLike.role || null;
   const isPlatformAdmin =
@@ -21,5 +28,6 @@ const withRoleAliases = (userLike = {}, options = {}) => {
 
 module.exports = {
   canonicalRoleFrom,
+  databaseRoleFrom,
   withRoleAliases,
 };

@@ -1603,8 +1603,12 @@ exports.logout = async (req, res) => {
 };
 
 /**
- * Change password for authenticated user
- * Requires current_password and new_password in body
+ * Change password for authenticated user.
+ *
+ * Normal flow requires current_password + new_password.
+ * First-login setup flow (must_change_password=true) allows setting
+ * new_password without current_password because the user is already
+ * constrained by the credential-setup gate.
  */
 exports.changePassword = async (req, res) => {
   try {
@@ -1612,8 +1616,8 @@ exports.changePassword = async (req, res) => {
     const userId = req.userId;
     const { ip_address: ipAddress, user_agent: userAgent } = getRequestContext(req);
 
-    if (!current_password || !new_password) {
-      return res.status(400).json({ error: "Current password and new password are required" });
+    if (!new_password) {
+      return res.status(400).json({ error: "New password is required" });
     }
 
     if (new_password.length < 6) {
@@ -1621,8 +1625,25 @@ exports.changePassword = async (req, res) => {
     }
 
     // Verify current password by attempting sign-in
-    const { data: userData } = await supabase.from('users').select('email').eq('id', userId).single();
+    const { data: userData } = await supabase
+      .from('users')
+      .select('email, must_change_password, requires_security_questions_setup')
+      .eq('id', userId)
+      .single();
     if (!userData) return res.status(404).json({ error: "User not found" });
+
+    const isFirstLoginCredentialSetup = !!userData.must_change_password && !!userData.requires_security_questions_setup;
+
+    if (isFirstLoginCredentialSetup) {
+      return res.status(409).json({
+        error: 'Complete security question setup together with password update',
+        code: 'USE_COMPLETE_CREDENTIAL_SETUP',
+      });
+    }
+
+    if (!current_password) {
+      return res.status(400).json({ error: "Current password is required" });
+    }
 
     const { createClient } = require("@supabase/supabase-js");
     const scopedClient = createClient(
@@ -2392,6 +2413,147 @@ exports.setupSecurityQuestions = async (req, res) => {
   } catch (err) {
     console.error('setupSecurityQuestions error:', err);
     return res.status(500).json({ error: err.message || 'Failed to save security questions' });
+  }
+};
+
+/**
+ * Complete first-login credential setup atomically at API level.
+ *
+ * This endpoint is only valid while both first-login flags are active:
+ * - must_change_password = true
+ * - requires_security_questions_setup = true
+ *
+ * Note: Supabase Auth password update and Postgres writes are separate systems,
+ * so strict database-level atomicity is not possible. This endpoint enforces
+ * a single orchestration flow with explicit partial-failure reporting.
+ */
+exports.completeCredentialSetup = async (req, res) => {
+  try {
+    const userId = req.userId;
+    const {
+      selected_question_key,
+      selected_question_answer,
+      new_password,
+    } = req.body || {};
+    const { ip_address: ipAddress, user_agent: userAgent } = getRequestContext(req);
+
+    if (!isValidSecurityQuestionKey(selected_question_key)) {
+      return res.status(400).json({ error: 'A valid security question selection is required' });
+    }
+
+    const normalizedAnswer = normalizeSecurityAnswer(selected_question_answer);
+    if (!normalizedAnswer) {
+      return res.status(400).json({ error: 'Security answer cannot be empty' });
+    }
+
+    if (!new_password || String(new_password).length < 6) {
+      return res.status(400).json({ error: 'Password must be at least 6 characters' });
+    }
+
+    const { data: userRow, error: userError } = await supabase
+      .from('users')
+      .select('id, email, must_change_password, requires_security_questions_setup')
+      .eq('id', userId)
+      .maybeSingle();
+
+    if (userError) throw userError;
+    if (!userRow) return res.status(404).json({ error: 'User not found' });
+
+    const inFirstLoginSetupState = !!userRow.must_change_password && !!userRow.requires_security_questions_setup;
+    if (!inFirstLoginSetupState) {
+      return res.status(409).json({
+        error: 'Credential setup is not required for this account',
+        code: 'CREDENTIAL_SETUP_NOT_REQUIRED',
+      });
+    }
+
+    // Step 1: Update password first. If this fails, no DB setup state mutates.
+    const { error: passwordUpdateError } = await supabase.auth.admin.updateUserById(userId, {
+      password: String(new_password),
+    });
+    if (passwordUpdateError) throw passwordUpdateError;
+
+    // Step 2: Persist selected security question answer hash.
+    const s1 = crypto.randomBytes(16).toString('hex');
+    const unusedSalt = crypto.randomBytes(16).toString('hex');
+    const payload = {
+      user_id: userId,
+      question1_salt: s1,
+      question1_hash: hashSecurityAnswer(normalizedAnswer, s1),
+      question2_salt: encodeSecurityQuestionKey(selected_question_key),
+      question2_hash: hashSecurityAnswer(`unused:${unusedSalt}`, unusedSalt),
+      question3_salt: unusedSalt,
+      question3_hash: hashSecurityAnswer(`unused:${unusedSalt}:2`, unusedSalt),
+      updated_at: new Date().toISOString(),
+    };
+
+    const { error: upsertError } = await supabase
+      .from('user_security_answers')
+      .upsert(payload, { onConflict: 'user_id' });
+
+    if (upsertError) {
+      await writePasswordAuditLog({
+        action: 'change_password',
+        actorUserId: userId,
+        targetUserId: userId,
+        targetEmail: normalizeEmail(userRow.email),
+        outcome: 'failure',
+        reason: 'credential_setup_partial_security_question_failed',
+        ipAddress,
+        userAgent,
+      });
+
+      return res.status(500).json({
+        error: 'Password updated, but security question setup failed. Please retry setup.',
+        code: 'CREDENTIAL_SETUP_PARTIAL_PASSWORD_UPDATED',
+      });
+    }
+
+    const { error: updateFlagsError } = await supabase
+      .from('users')
+      .update({
+        must_change_password: false,
+        requires_security_questions_setup: false,
+      })
+      .eq('id', userId);
+
+    if (updateFlagsError) {
+      await writePasswordAuditLog({
+        action: 'change_password',
+        actorUserId: userId,
+        targetUserId: userId,
+        targetEmail: normalizeEmail(userRow.email),
+        outcome: 'failure',
+        reason: 'credential_setup_partial_flags_update_failed',
+        ipAddress,
+        userAgent,
+      });
+
+      return res.status(500).json({
+        error: 'Password and security question were saved, but setup state update failed. Please retry once.',
+        code: 'CREDENTIAL_SETUP_PARTIAL_FLAGS_NOT_CLEARED',
+      });
+    }
+
+    await writePasswordAuditLog({
+      action: 'change_password',
+      actorUserId: userId,
+      targetUserId: userId,
+      targetEmail: normalizeEmail(userRow.email),
+      outcome: 'success',
+      reason: 'credential_setup_completed',
+      ipAddress,
+      userAgent,
+    });
+
+    return res.status(200).json({
+      message: 'Security question and password updated successfully',
+      selected_question_key,
+      selected_question_prompt: SECURITY_QUESTIONS[selected_question_key],
+    });
+  } catch (err) {
+    console.error('completeCredentialSetup error:', err);
+    return res.status(500).json({ error: 'Failed to complete credential setup' });
   }
 };
 

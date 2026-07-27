@@ -89,6 +89,70 @@ const getBaseUrl = (): string => {
 
 const baseURL = getBaseUrl();
 
+let latestAccessToken: string | null = null;
+let authContextReady = false;
+
+const setLatestAccessToken = (token?: string | null) => {
+  latestAccessToken = token || null;
+};
+
+supabase.auth.getSession()
+  .then(({ data }) => {
+    setLatestAccessToken(data?.session?.access_token || null);
+    authContextReady = true;
+  })
+  .catch(() => {
+    authContextReady = true;
+  });
+
+supabase.auth.onAuthStateChange((_event, session) => {
+  setLatestAccessToken(session?.access_token || null);
+  authContextReady = true;
+});
+
+const isLikelyPublicRoute = (url?: string) => {
+  const target = String(url || '');
+  return (
+    target.includes('/auth/login') ||
+    target.includes('/auth/forgot-password') ||
+    target.includes('/auth/reset-password') ||
+    target.includes('/auth/verify-security-questions') ||
+    target.includes('/auth/credential-delivery') ||
+    target.includes('/demo/') ||
+    target.includes('/settings/maintenance') ||
+    target.includes('/settings/currency')
+  );
+};
+
+const waitForAuthToken = (timeoutMs: number): Promise<string | null> => {
+  return new Promise((resolve) => {
+    let settled = false;
+    let unsubscribe: (() => void) | null = null;
+
+    const finish = (token: string | null) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timeout);
+      if (unsubscribe) {
+        unsubscribe();
+      }
+      resolve(token);
+    };
+
+    const timeout = setTimeout(() => {
+      finish(latestAccessToken);
+    }, timeoutMs);
+
+    const { data } = supabase.auth.onAuthStateChange((_event, session) => {
+      const token = session?.access_token || null;
+      if (!token) return;
+      finish(token);
+    });
+
+    unsubscribe = () => data.subscription.unsubscribe();
+  });
+};
+
 /**
  * To Do:
  * Axios instance configured with appropriate base URL and default headers
@@ -125,6 +189,22 @@ const setRateLimitHold = (config: InternalAxiosRequestConfig | undefined, retryA
   rateLimitHolds.set(key, Date.now() + (Math.max(1, retryAfterSeconds) * 1000));
 };
 
+const formatRetryAfter = (retryAfterSeconds: number) => {
+  const raw = Number(retryAfterSeconds);
+  const safe = Number.isFinite(raw) ? raw : 10;
+  const total = Math.max(1, Math.floor(safe));
+  const hours = Math.floor(total / 3600);
+  const minutes = Math.floor((total % 3600) / 60);
+  const seconds = total % 60;
+
+  const parts: string[] = [];
+  if (hours > 0) parts.push(`${hours}h`);
+  if (minutes > 0) parts.push(`${minutes}m`);
+  if (seconds > 0 || parts.length === 0) parts.push(`${seconds}s`);
+
+  return parts.join(' ');
+};
+
 const clearExpiredRateLimitHolds = () => {
   const now = Date.now();
   for (const [key, until] of rateLimitHolds.entries()) {
@@ -159,32 +239,25 @@ api.interceptors.request.use(
     
     
     try {
-      // Race protection: if getSession hangs, don't block the whole app.
-      // 5s limit for session retrieval in the interceptor.
-      const sessionPromise = supabase.auth.getSession();
-      const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Session retrieval timeout')), 5000)
-      );
+      let token = latestAccessToken;
 
-      const { data: { session } } = await Promise.race([sessionPromise, timeoutPromise]) as any;
+      if (!token) {
+        const { data: { session } } = await supabase.auth.getSession();
+        token = session?.access_token || null;
+        setLatestAccessToken(token);
+        authContextReady = true;
+      }
 
-      if (session?.access_token) {
-        config.headers.Authorization = `Bearer ${session.access_token}`;
-      } else {
-        // Only log warning if it's not a public route
-        if (
-          !config.url?.includes('/auth/') &&
-          !config.url?.includes('/demo/') &&
-          !config.url?.includes('/settings/maintenance') &&
-          !config.url?.includes('/settings/currency')
-        ) {
-          console.warn(`[API ${requestId}] No active session for protected route: ${config.url}`);
-        }
+      if (!token && !isLikelyPublicRoute(config.url)) {
+        token = await waitForAuthToken(1200);
+        setLatestAccessToken(token);
+      }
+
+      if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
       }
     } catch (error: any) {
-      console.error(`[API ${requestId}] Auth Interceptor Error/Timeout for ${config.url}:`, error.message);
-      // We still return config to let the request proceed (it will likely 401, 
-      // but that's better than hanging the UI forever).
+      console.error(`[API ${requestId}] Auth interceptor failure for ${config.url}:`, error.message);
     }
     
     return config;
@@ -262,7 +335,7 @@ api.interceptors.response.use(
           title = "Too Many Requests";
           const retryAfter = Number(data?.retryAfter || 10);
           setRateLimitHold(error.config as InternalAxiosRequestConfig, retryAfter);
-          message = `You're doing that too often. Please wait ${retryAfter}s.`;
+          message = `You're doing that too often. Please wait ${formatRetryAfter(retryAfter)}.`;
           severity = 'warning';
           break;
         }

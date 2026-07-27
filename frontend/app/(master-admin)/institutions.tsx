@@ -133,6 +133,7 @@ export default function MasterInstitutionsPage() {
   const [enrollForm, setEnrollForm] = useState({
     institution_name: '',
     location: '',
+    phone: '',
     email_domain: '',
     admin_first_name: '',
     admin_last_name: '',
@@ -177,6 +178,8 @@ export default function MasterInstitutionsPage() {
 
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
   const [paymentSaving, setPaymentSaving] = useState(false);
+  const [paymentDateModalOpen, setPaymentDateModalOpen] = useState(false);
+  const [paymentDateDraft, setPaymentDateDraft] = useState(new Date());
   const [paymentForm, setPaymentForm] = useState({
     amount: '',
     method: 'bank_transfer',
@@ -346,6 +349,7 @@ export default function MasterInstitutionsPage() {
         body: JSON.stringify({
           institution_name: enrollForm.institution_name,
           location: enrollForm.location,
+          phone: enrollForm.phone || null,
           email_domain: enrollForm.email_domain.trim(),
           admin_first_name: first,
           admin_last_name: last,
@@ -378,6 +382,7 @@ export default function MasterInstitutionsPage() {
     setEnrollForm({
       institution_name: '',
       location: '',
+      phone: '',
       email_domain: '',
       admin_first_name: '',
       admin_last_name: '',
@@ -892,11 +897,86 @@ export default function MasterInstitutionsPage() {
       Toast.show({ type: 'success', text1: 'Payment', text2: 'Payment recorded', position: 'top' });
       setPaymentModalOpen(false);
       setPaymentForm({ amount: '', method: 'bank_transfer', reference_id: '', date: new Date().toISOString().slice(0, 10), notes: '' });
+      setPaymentDateModalOpen(false);
     } catch (e: any) {
       Toast.show({ type: 'error', text1: 'Payment', text2: e.message || 'Unable to record payment', position: 'top' });
     } finally {
       setPaymentSaving(false);
     }
+  };
+
+  const openPaymentDatePicker = () => {
+    const base = paymentForm.date ? new Date(paymentForm.date) : new Date();
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const todayIso = new Date().toISOString().slice(0, 10);
+
+    if (Platform.OS === 'web') {
+      if (typeof document !== 'undefined') {
+        const picker = document.createElement('input');
+        picker.type = 'date';
+        picker.value = paymentForm.date || todayIso;
+        picker.style.position = 'fixed';
+        picker.style.top = '120px';
+        picker.style.left = '50%';
+        picker.style.transform = 'translateX(-50%)';
+        picker.style.zIndex = '99999';
+        picker.style.opacity = '0.01';
+        picker.style.width = '1px';
+        picker.style.height = '1px';
+
+        const handleChange = () => {
+          const selected = picker.value;
+          if (!selected) return;
+          setPaymentForm((p) => ({ ...p, date: selected }));
+        };
+
+        const cleanup = () => {
+          picker.removeEventListener('change', handleChange);
+          picker.removeEventListener('blur', cleanup);
+          if (picker.parentNode) picker.parentNode.removeChild(picker);
+        };
+
+        picker.addEventListener('change', handleChange);
+        picker.addEventListener('blur', cleanup);
+        document.body.appendChild(picker);
+        setTimeout(() => {
+          try {
+            picker.focus();
+            picker.click();
+            const anyPicker = picker as any;
+            if (typeof anyPicker.showPicker === 'function') anyPicker.showPicker();
+          } catch {
+            cleanup();
+          }
+        }, 0);
+      }
+      return;
+    }
+
+    if (Platform.OS === 'android') {
+      if (!NativeDateTimePickerAndroid) {
+        Toast.show({ type: 'error', text1: 'Date Picker', text2: 'Date picker is unavailable on this device', position: 'top' });
+        return;
+      }
+      NativeDateTimePickerAndroid.open({
+        value: base,
+        mode: 'date',
+        display: 'calendar',
+        is24Hour: true,
+        onChange: (_event: any, selectedDate: Date | undefined) => {
+          if (!selectedDate) return;
+          const yyyy = selectedDate.getFullYear();
+          const mm = String(selectedDate.getMonth() + 1).padStart(2, '0');
+          const dd = String(selectedDate.getDate()).padStart(2, '0');
+          setPaymentForm((p) => ({ ...p, date: `${yyyy}-${mm}-${dd}` }));
+        },
+      });
+      return;
+    }
+
+    setPaymentDateDraft(base < today ? today : base);
+    setPaymentDateModalOpen(true);
   };
 
   const toggleInstitutionStatus = (inst: Institution) => {
@@ -954,6 +1034,11 @@ export default function MasterInstitutionsPage() {
             <Text style={{ color: c.sub, marginTop: 4 }}>
               {item.email_domain || 'No domain'}  •  {usersCount} users
             </Text>
+            {!!item.phone && (
+              <Text style={{ color: c.sub, marginTop: 2 }}>
+                Phone: {item.phone}
+              </Text>
+            )}
             <Text style={{ color: c.sub, marginTop: 2 }}>
               Currency: {institutionCurrency ? `${institutionCurrency.code} (${institutionCurrency.symbol})` : 'USD ($)'}
             </Text>
@@ -1129,6 +1214,7 @@ export default function MasterInstitutionsPage() {
                 <>
                   <Field label="Institution Name*" c={c} value={enrollForm.institution_name} onChangeText={(v) => setEnrollForm((p) => ({ ...p, institution_name: v }))} />
                   <Field label="Location" c={c} value={enrollForm.location} onChangeText={(v) => setEnrollForm((p) => ({ ...p, location: v }))} />
+                  <Field label="Phone" c={c} value={enrollForm.phone} keyboardType="phone-pad" onChangeText={(v) => setEnrollForm((p) => ({ ...p, phone: v }))} />
                   <Field label="Email Domain*" c={c} value={enrollForm.email_domain} onChangeText={(v) => setEnrollForm((p) => ({ ...p, email_domain: v }))} />
 
                   <Text style={labelStyle(c)}>Currency*</Text>
@@ -1337,6 +1423,7 @@ export default function MasterInstitutionsPage() {
             <ScrollView showsVerticalScrollIndicator={false}>
               <Field label="Institution Name" c={c} value={String(editForm.name || '')} onChangeText={(v) => setEditForm((p) => ({ ...p, name: v }))} />
               <Field label="Location" c={c} value={String(editForm.location || '')} onChangeText={(v) => setEditForm((p) => ({ ...p, location: v }))} />
+              <Field label="Phone" c={c} value={String(editForm.phone || '')} keyboardType="phone-pad" onChangeText={(v) => setEditForm((p) => ({ ...p, phone: v }))} />
               <Field label="Email Domain" c={c} value={String(editForm.email_domain || '')} onChangeText={(v) => setEditForm((p) => ({ ...p, email_domain: v }))} />
               <Text style={labelStyle(c)}>Currency</Text>
               <View style={pickerWrap(c)}>
@@ -1577,7 +1664,7 @@ export default function MasterInstitutionsPage() {
 
                     <View style={{ flexDirection: 'row', gap: 14, marginTop: 10 }}>
                       <TouchableOpacity onPress={() => resetAdminPassword(a)} disabled={adminResetLoadingId === a.id}>
-                        <Text style={{ color: c.primary, fontWeight: '700' }}>{adminResetLoadingId === a.id ? 'Resetting...' : 'Reset Password'}</Text>
+                        <Text style={{ color: c.primary, fontWeight: '700' }}>{adminResetLoadingId === a.id ? 'Regenerating...' : 'Regenerate Password'}</Text>
                       </TouchableOpacity>
                       <TouchableOpacity onPress={() => removeAdmin(a)} disabled={admins.length <= 1 || !!a.is_main}>
                         <Text style={{ color: admins.length <= 1 || !!a.is_main ? c.sub : c.danger, fontWeight: '700' }}>
@@ -1598,7 +1685,7 @@ export default function MasterInstitutionsPage() {
           <View style={[modalCardStyle, { backgroundColor: c.card, borderColor: c.border }]}> 
             <ModalHeader title="Temporary Credential" c={c} onClose={() => setAdminResetResultOpen(false)} />
             <View style={{ borderWidth: 1, borderColor: c.border, borderRadius: 12, padding: 12, backgroundColor: c.bg }}>
-              <Text style={{ color: c.sub, marginBottom: 4 }}>Generated Password: {adminResetResult?.tempPassword || 'N/A'}</Text>
+              <Text style={{ color: c.sub, marginBottom: 4 }}>Regenerated Password: {adminResetResult?.tempPassword || 'N/A'}</Text>
               {!!adminResetResult?.credential_delivery?.url && <Text style={{ color: c.sub, marginBottom: 4 }}>One-time credential link generated.</Text>}
               <Text style={{ color: c.sub }}>User will be forced to re-login and complete setup on next sign in.</Text>
             </View>
@@ -1667,6 +1754,8 @@ export default function MasterInstitutionsPage() {
               c={c}
               value={paymentForm.date}
               onChangeText={(v) => setPaymentForm((p) => ({ ...p, date: v }))}
+              editable={false}
+              onPressIn={openPaymentDatePicker}
             />
             <Field
               label="Notes"
@@ -1830,6 +1919,37 @@ export default function MasterInstitutionsPage() {
           </View>
         </View>
       </Modal>
+
+      <Modal visible={paymentDateModalOpen} animationType="fade" transparent>
+        <View style={overlayStyle}>
+          <View style={[modalCardStyle, { backgroundColor: c.card, borderColor: c.border }]}> 
+            <ModalHeader title="Select Payment Date" c={c} onClose={() => setPaymentDateModalOpen(false)} />
+            {Platform.OS !== 'web' && NativeDateTimePicker && (
+              <NativeDateTimePicker
+                value={paymentDateDraft}
+                mode="date"
+                display="inline"
+                onChange={(_: any, selectedDate: Date | undefined) => {
+                  if (!selectedDate) return;
+                  setPaymentDateDraft(selectedDate);
+                }}
+              />
+            )}
+            <TouchableOpacity
+              onPress={() => {
+                const yyyy = paymentDateDraft.getFullYear();
+                const mm = String(paymentDateDraft.getMonth() + 1).padStart(2, '0');
+                const dd = String(paymentDateDraft.getDate()).padStart(2, '0');
+                setPaymentForm((p) => ({ ...p, date: `${yyyy}-${mm}-${dd}` }));
+                setPaymentDateModalOpen(false);
+              }}
+              style={{ marginTop: 14, backgroundColor: c.primary, borderRadius: 12, paddingVertical: 12, alignItems: 'center' }}
+            >
+              <Text style={{ color: '#fff', fontWeight: '800' }}>Use Selected Date</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -1921,13 +2041,17 @@ function Field({
   onChangeText,
   keyboardType,
   secureTextEntry,
+  editable,
+  onPressIn,
 }: {
   label: string;
   c: ReturnType<typeof useThemeColors>;
   value: string;
   onChangeText: (v: string) => void;
-  keyboardType?: 'default' | 'numeric' | 'number-pad';
+  keyboardType?: 'default' | 'numeric' | 'number-pad' | 'phone-pad';
   secureTextEntry?: boolean;
+  editable?: boolean;
+  onPressIn?: () => void;
 }) {
   return (
     <>
@@ -1937,6 +2061,8 @@ function Field({
         onChangeText={onChangeText}
         secureTextEntry={secureTextEntry}
         keyboardType={keyboardType}
+        editable={editable}
+        onPressIn={onPressIn}
         style={inputStyle(c)}
         placeholderTextColor={c.sub}
       />

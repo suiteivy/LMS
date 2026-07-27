@@ -37,7 +37,10 @@ export interface RevenueDeductionLog {
 
 export class RevenueService {
   static async getOverview(): Promise<RevenueOverview> {
-    const response = await api.get('/finance/revenue/overview');
+    const response = await api.get('/finance/revenue/overview', {
+      skipErrorToast: true,
+      skipErrorLog: true,
+    });
     return response.data;
   }
 

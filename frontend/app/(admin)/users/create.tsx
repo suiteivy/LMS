@@ -140,7 +140,7 @@ export default function CreateUserScreen() {
     const router = useRouter();
     const insets = useSafeAreaInsets();
     const { isDark } = useTheme();
-    const { profile } = useAuth();
+    const { profile, session, isProfileLoading } = useAuth();
 
     const instClassTypeLabel =
         (profile as any)?.institutions?.school_categories?.class_type ||
@@ -174,12 +174,14 @@ export default function CreateUserScreen() {
         remaining: { student: number | null; admin: number | null };
         at_capacity: { student: boolean; admin: boolean };
     } | null>(null);
+    const [slotCapacityStatus, setSlotCapacityStatus] = useState<'loading' | 'ready' | 'error'>('loading');
 
     const computedAge = calculateAgeFromDob(form.date_of_birth);
 
     useEffect(() => {
-        if (profile) loadLookupData();
-    }, [profile?.institution_id]);
+        if (!session?.access_token || !profile?.institution_id || isProfileLoading) return;
+        loadLookupData();
+    }, [session?.access_token, profile?.institution_id, isProfileLoading]);
 
     useEffect(() => {
         if (!form.academic_year && academicYearOptions.length > 0) {
@@ -188,6 +190,9 @@ export default function CreateUserScreen() {
     }, [academicYearOptions, form.academic_year]);
 
     const loadLookupData = async () => {
+        if (!profile?.institution_id) return;
+        setSlotCapacityStatus('loading');
+
         let subjectQuery = supabase.from('subjects').select('id, title, teacher_id');
         let studentQuery = supabase.from('students').select('id, user_id, grade_level, users!inner(first_name, last_name, full_name, institution_id), parent_students(relationship, parents(users(full_name)))') as any;
         let parentQuery = supabase.from('parents').select('id, user_id, users!inner(first_name, last_name, full_name, institution_id)') as any;
@@ -200,8 +205,8 @@ export default function CreateUserScreen() {
 
         const [classRes, subjectRes, studentRes, parentRes, classOptionsRes, yearsRes, gendersRes, positionsRes, slotCapacityRes] = await Promise.all([
             supabase.from('classes')
-                .select('id, name, grade_level, form_level, stream, level_id, category_id, stream_id, display_name')
-                .eq('institution_id', profile?.institution_id || '')
+                .select('id, grade_level, form_level, stream, display_name')
+                .eq('institution_id', profile.institution_id)
                 .order('grade_level', { ascending: true })
                 .order('form_level', { ascending: true })
                 .order('stream', { ascending: true }),
@@ -212,7 +217,7 @@ export default function CreateUserScreen() {
             supabase.from('academic_years').select('id, name').eq('institution_id', profile?.institution_id || '').order('start_date', { ascending: false }),
             supabase.from('users').select('gender').eq('institution_id', profile?.institution_id || '').not('gender', 'is', null),
             supabase.from('teachers').select('position').eq('institution_id', profile?.institution_id || '').not('position', 'is', null),
-            api.get('/auth/enrollment-slot-capacity').catch(() => null)
+            api.get('/auth/enrollment-slot-capacity', { skipErrorToast: true, skipErrorLog: true }).catch(() => null)
         ]);
         if (classRes.data) {
             setClasses(
@@ -319,8 +324,10 @@ export default function CreateUserScreen() {
                     admin: !!slotData.at_capacity.admin,
                 },
             });
+            setSlotCapacityStatus('ready');
         } else {
             setSlotCapacity(null);
+            setSlotCapacityStatus('error');
         }
     };
 
@@ -588,25 +595,31 @@ export default function CreateUserScreen() {
 
     const getRoleCapacityState = (role: Role) => {
         if (role !== 'student' && role !== 'admin') {
-            return { isAtCapacity: false, unavailable: false, limit: null as number | null, current: 0, remaining: null as number | null };
+            return { isAtCapacity: false, unavailable: false, checking: false, limit: null as number | null, current: 0, remaining: null as number | null };
+        }
+
+        if (slotCapacityStatus === 'loading') {
+            return { isAtCapacity: false, unavailable: false, checking: true, limit: null as number | null, current: 0, remaining: null as number | null };
         }
 
         if (slotCapacity) {
             return {
                 isAtCapacity: role === 'student' ? slotCapacity.at_capacity.student : slotCapacity.at_capacity.admin,
                 unavailable: false,
+                checking: false,
                 limit: role === 'student' ? slotCapacity.limits.student : slotCapacity.limits.admin,
                 current: role === 'student' ? slotCapacity.usage.student : slotCapacity.usage.admin,
                 remaining: role === 'student' ? slotCapacity.remaining.student : slotCapacity.remaining.admin,
             };
         }
 
-        return { isAtCapacity: true, unavailable: true, limit: null as number | null, current: 0, remaining: null as number | null };
+        return { isAtCapacity: true, unavailable: true, checking: false, limit: null as number | null, current: 0, remaining: null as number | null };
     };
 
     const getRemainingSlotsText = (role: Role) => {
         if (role === 'student' || role === 'admin') {
-            if (!slotCapacity) return 'Checking capacity...';
+            if (slotCapacityStatus === 'loading') return 'Checking capacity...';
+            if (!slotCapacity) return 'Capacity unavailable';
             const limit = role === 'student' ? slotCapacity.limits.student : slotCapacity.limits.admin;
             const remaining = role === 'student' ? slotCapacity.remaining.student : slotCapacity.remaining.admin;
             if (limit === null) return 'Unlimited slots';
@@ -623,6 +636,10 @@ export default function CreateUserScreen() {
                 const capacity = getRoleCapacityState(roleCard.role);
                 return (
                 <TouchableOpacity key={roleCard.role} onPress={() => {
+                    if (capacity.checking) {
+                        Alert.alert('Checking Capacity', 'Please wait while slot capacity is being verified.');
+                        return;
+                    }
                     if (capacity.unavailable) {
                         Alert.alert(
                             'Capacity Unavailable',
@@ -638,7 +655,7 @@ export default function CreateUserScreen() {
                         return;
                     }
                     updateForm('role', roleCard.role);
-                }} disabled={capacity.isAtCapacity} activeOpacity={0.7}
+                }} disabled={capacity.isAtCapacity || capacity.checking} activeOpacity={0.7}
                     style={{ padding: 20, borderRadius: 16, borderWidth: 2, flexDirection: 'row', alignItems: 'center', marginBottom: 12, opacity: capacity.isAtCapacity ? 0.55 : 1, backgroundColor: form.role === roleCard.role ? (isDark ? '#2a1a0a' : '#fff7ed') : card, borderColor: form.role === roleCard.role ? '#FF6B00' : border }}>
                     <View style={{ width: 56, height: 56, borderRadius: 12, alignItems: 'center', justifyContent: 'center', marginRight: 16, backgroundColor: roleCard.color + '20' }}>
                         <Ionicons name={roleCard.icon as any} size={28} color={roleCard.color} />
@@ -649,9 +666,14 @@ export default function CreateUserScreen() {
                         <Text style={{ fontSize: 11, fontWeight: '700', color: '#FF6B00', marginTop: 4 }}>
                             {getRemainingSlotsText(roleCard.role)}
                         </Text>
-                        {capacity.isAtCapacity && (
+                        {capacity.unavailable && (
                             <Text style={{ fontSize: 11, fontWeight: '700', color: '#ef4444', marginTop: 4 }}>
-                                {capacity.unavailable ? 'Capacity unavailable' : 'Full - upgrade plan'}
+                                Capacity unavailable
+                            </Text>
+                        )}
+                        {capacity.isAtCapacity && !capacity.unavailable && !capacity.checking && (
+                            <Text style={{ fontSize: 11, fontWeight: '700', color: '#ef4444', marginTop: 4 }}>
+                                Full - upgrade plan
                             </Text>
                         )}
                     </View>
