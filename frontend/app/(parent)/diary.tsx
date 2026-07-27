@@ -1,4 +1,5 @@
 import { UnifiedHeader } from "@/components/common/UnifiedHeader";
+import { DatePicker } from "@/components/common/DatePicker";
 import { ListItemSkeleton } from "@/components/ui/skeletons";
 import { useAuth } from "@/contexts/AuthContext";
 import { DiaryAPI, DiaryEntry } from "@/services/DiaryService";
@@ -527,95 +528,21 @@ export default function ParentDiaryPage() {
                             {/* Date range pickers */}
                             <View className="flex-row gap-4">
                                 <View className="flex-1">
-                                    <Text className="text-gray-400 dark:text-gray-500 font-bold text-[10px] uppercase tracking-wider mb-2 ml-1">Start Date</Text>
-                                    {Platform.OS === 'web' ? (
-                                        <input
-                                            type="date"
-                                            aria-label="Start Date"
-                                            title="Start Date"
-                                            placeholder="yyyy-mm-dd"
-                                            value={startDate}
-                                            onChange={(e) => setStartDate(e.target.value)}
-                                            style={{
-                                                backgroundColor: '#f9fafb',
-                                                padding: '10px 16px',
-                                                borderRadius: '16px',
-                                                border: '1px solid #f3f4f6',
-                                                fontSize: '12px',
-                                                fontWeight: 'bold',
-                                                color: '#111827',
-                                                width: '100%',
-                                                outline: 'none'
-                                            }}
-                                        />
-                                    ) : (
-                                        <TouchableOpacity
-                                            onPress={() => setShowStartPicker(true)}
-                                            className="bg-gray-50 dark:bg-[#161B22] rounded-2xl px-4 py-3 border border-gray-100 dark:border-gray-800 flex-row justify-between items-center"
-                                        >
-                                            <Text className="text-gray-950 dark:text-white font-bold text-xs">
-                                                {startDate || "Select date"}
-                                            </Text>
-                                            <Calendar size={14} color="#FF6900" />
-                                        </TouchableOpacity>
-                                    )}
-                                    {showStartPicker && (
-                                        <DateTimePicker
-                                            value={startDate ? new Date(startDate) : new Date()}
-                                            mode="date"
-                                            display="default"
-                                            onChange={(event, date) => {
-                                                setShowStartPicker(false);
-                                                if (date) setStartDate(date.toISOString().split('T')[0]);
-                                            }}
-                                        />
-                                    )}
+                                    <DatePicker
+                                        label="Start Date"
+                                        value={startDate}
+                                        onChange={setStartDate}
+                                        isDark={false}
+                                    />
                                 </View>
 
                                 <View className="flex-1">
-                                    <Text className="text-gray-400 dark:text-gray-500 font-bold text-[10px] uppercase tracking-wider mb-2 ml-1">End Date</Text>
-                                    {Platform.OS === 'web' ? (
-                                        <input
-                                            type="date"
-                                            aria-label="End Date"
-                                            title="End Date"
-                                            placeholder="yyyy-mm-dd"
-                                            value={endDate}
-                                            onChange={(e) => setEndDate(e.target.value)}
-                                            style={{
-                                                backgroundColor: '#f9fafb',
-                                                padding: '10px 16px',
-                                                borderRadius: '16px',
-                                                border: '1px solid #f3f4f6',
-                                                fontSize: '12px',
-                                                fontWeight: 'bold',
-                                                color: '#111827',
-                                                width: '100%',
-                                                outline: 'none'
-                                            }}
-                                        />
-                                    ) : (
-                                        <TouchableOpacity
-                                            onPress={() => setShowEndPicker(true)}
-                                            className="bg-gray-50 dark:bg-[#161B22] rounded-2xl px-4 py-3 border border-gray-100 dark:border-gray-800 flex-row justify-between items-center"
-                                        >
-                                            <Text className="text-gray-900 dark:text-white font-bold text-xs">
-                                                {endDate || "Select date"}
-                                            </Text>
-                                            <Calendar size={14} color="#FF6900" />
-                                        </TouchableOpacity>
-                                    )}
-                                    {showEndPicker && (
-                                        <DateTimePicker
-                                            value={endDate ? new Date(endDate) : new Date()}
-                                            mode="date"
-                                            display="default"
-                                            onChange={(event, date) => {
-                                                setShowEndPicker(false);
-                                                if (date) setEndDate(date.toISOString().split('T')[0]);
-                                            }}
-                                        />
-                                    )}
+                                    <DatePicker
+                                        label="End Date"
+                                        value={endDate}
+                                        onChange={setEndDate}
+                                        isDark={false}
+                                    />
                                 </View>
                             </View>
 

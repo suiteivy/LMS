@@ -31,6 +31,7 @@ type UserItem = {
     created_at: string;
     institution_id: string | null;
     institutions: { name: string } | null;
+    otp_reset_pending?: boolean;
 };
 
 type RoleFilter = 'all' | 'teacher' | 'student' | 'parent' | 'admin' | 'master_admin';
@@ -110,6 +111,10 @@ export default function MasterAdminUsersScreen() {
     const [savingEdit, setSavingEdit] = useState(false);
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
     const [deletingUser, setDeletingUser] = useState(false);
+
+    const [showResetModal, setShowResetModal] = useState(false);
+    const [resettingUser, setResettingUser] = useState<UserItem | null>(null);
+    const [resettingLoading, setResettingLoading] = useState(false);
 
     const pageRef = useRef(1);
     const isFetchingRef = useRef(false);
@@ -353,6 +358,72 @@ export default function MasterAdminUsersScreen() {
         }
     }, [closeEdit, deletingUser, editingUser]);
 
+    const openCredentialReset = useCallback((user: UserItem) => {
+        setResettingUser(user);
+        setShowResetModal(true);
+    }, []);
+
+    const closeCredentialReset = useCallback(() => {
+        if (resettingLoading) return;
+        setShowResetModal(false);
+        setResettingUser(null);
+    }, [resettingLoading]);
+
+    const confirmCredentialReset = useCallback(async () => {
+        if (!resettingUser || resettingLoading) return;
+        setResettingLoading(true);
+
+        try {
+            const { data: { session } } = await supabase.auth.getSession();
+            if (!session) {
+                Toast.show({ type: 'error', text1: 'Unauthorized', text2: 'Please sign in again', position: 'top' });
+                setResettingLoading(false);
+                return;
+            }
+
+            const response = await fetch(`${getBackendUrl()}/api/auth/admin-reset-password`, {
+                method: 'POST',
+                headers: {
+                    Authorization: `Bearer ${session.access_token}`,
+                    Accept: 'application/json',
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    targetUserId: resettingUser.id,
+                    otpReset: true,
+                }),
+            });
+
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok) {
+                Toast.show({ type: 'error', text1: 'Reset Failed', text2: data?.error || 'Could not reset credentials', position: 'top' });
+                setResettingLoading(false);
+                return;
+            }
+
+            setUsers((prev) => prev.map((u) => {
+                if (u.id !== resettingUser.id) return u;
+                return { ...u, otp_reset_pending: true };
+            }));
+
+            Toast.show({
+                type: 'success',
+                text1: 'Credentials Reset Successfully',
+                text2: 'Password invalidated, active sessions revoked, and OTP verification dispatched.',
+                position: 'top',
+                visibilityTime: 5000,
+            });
+
+            setShowResetModal(false);
+            setResettingUser(null);
+        } catch (err) {
+            console.error('confirmCredentialReset error:', err);
+            Toast.show({ type: 'error', text1: 'Network Error', text2: 'Failed to trigger credential reset', position: 'top' });
+        } finally {
+            setResettingLoading(false);
+        }
+    }, [resettingUser, resettingLoading]);
+
     const saveEdit = useCallback(async () => {
         if (!editingUser || savingEdit) return;
         setSavingEdit(true);
@@ -470,28 +541,56 @@ export default function MasterAdminUsersScreen() {
                                 <Text style={{ color, marginLeft: 4, fontWeight: '700', fontSize: 11 }}>{roleLabel(roleKey)}</Text>
                             </View>
                             {!!item.custom_display_id && (
-                                <Text style={{ color: colors.subtext, fontSize: 11 }}>ID: {item.custom_display_id}</Text>
+                                <Text style={{ color: colors.subtext, fontSize: 11, marginRight: 8 }}>ID: {item.custom_display_id}</Text>
+                            )}
+                            {!!item.otp_reset_pending && (
+                                <View style={{
+                                    backgroundColor: '#FEF3C7',
+                                    borderWidth: 1,
+                                    borderColor: '#F59E0B',
+                                    borderRadius: 6,
+                                    paddingHorizontal: 6,
+                                    paddingVertical: 2,
+                                }}>
+                                    <Text style={{ color: '#D97706', fontSize: 10, fontWeight: '800' }}>Pending OTP</Text>
+                                </View>
                             )}
                         </View>
                     </View>
 
-                    <TouchableOpacity
-                        onPress={() => openEdit(item)}
-                        style={{
-                            backgroundColor: `${colors.primary}18`,
-                            borderColor: `${colors.primary}40`,
-                            borderWidth: 1,
-                            borderRadius: 10,
-                            paddingHorizontal: 10,
-                            paddingVertical: 8,
-                        }}
-                    >
-                        <Text style={{ color: colors.primary, fontWeight: '700', fontSize: 12 }}>Manage</Text>
-                    </TouchableOpacity>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                        <TouchableOpacity
+                            onPress={() => openCredentialReset(item)}
+                            style={{
+                                backgroundColor: '#FEE2E2',
+                                borderColor: '#FCA5A5',
+                                borderWidth: 1,
+                                borderRadius: 10,
+                                paddingHorizontal: 10,
+                                paddingVertical: 8,
+                            }}
+                        >
+                            <Text style={{ color: '#DC2626', fontWeight: '700', fontSize: 12 }}>Reset Access</Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                            onPress={() => openEdit(item)}
+                            style={{
+                                backgroundColor: `${colors.primary}18`,
+                                borderColor: `${colors.primary}40`,
+                                borderWidth: 1,
+                                borderRadius: 10,
+                                paddingHorizontal: 10,
+                                paddingVertical: 8,
+                            }}
+                        >
+                            <Text style={{ color: colors.primary, fontWeight: '700', fontSize: 12 }}>Manage</Text>
+                        </TouchableOpacity>
+                    </View>
                 </View>
             </View>
         );
-    }, [colors.border, colors.cardBg, colors.primary, colors.subtext, colors.text, openEdit]);
+    }, [colors.border, colors.cardBg, colors.primary, colors.subtext, colors.text, openCredentialReset, openEdit]);
 
     const renderSection = ({ item }: { item: { key: string; title: string; items: UserItem[] } }) => {
         return (
@@ -1035,6 +1134,119 @@ export default function MasterAdminUsersScreen() {
                                 </View>
                             </View>
                         )}
+                    </View>
+                </View>
+            </Modal>
+
+            {/* Credential Reset Confirmation Modal */}
+            <Modal
+                visible={showResetModal}
+                transparent
+                animationType="fade"
+                onRequestClose={closeCredentialReset}
+            >
+                <View style={{
+                    flex: 1,
+                    backgroundColor: 'rgba(0,0,0,0.6)',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    padding: 16,
+                }}>
+                    <View style={{
+                        backgroundColor: colors.cardBg,
+                        borderColor: colors.border,
+                        borderWidth: 1,
+                        borderRadius: 16,
+                        padding: 20,
+                        width: '100%',
+                        maxWidth: 440,
+                    }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
+                            <View style={{ backgroundColor: '#FEE2E2', padding: 8, borderRadius: 10, marginRight: 10 }}>
+                                <MaterialCommunityIcons name="lock-reset" size={24} color="#DC2626" />
+                            </View>
+                            <Text style={{ color: colors.text, fontWeight: '800', fontSize: 18 }}>
+                                Confirm Credential Reset
+                            </Text>
+                        </View>
+
+                        {!!resettingUser && (
+                            <View style={{
+                                backgroundColor: colors.inputBg,
+                                borderColor: colors.border,
+                                borderWidth: 1,
+                                borderRadius: 10,
+                                padding: 12,
+                                marginBottom: 14,
+                            }}>
+                                <Text style={{ color: colors.text, fontWeight: '700', fontSize: 14 }}>
+                                    {`${resettingUser.first_name || ''} ${resettingUser.last_name || ''}`.trim() || 'User'}
+                                </Text>
+                                <Text style={{ color: colors.subtext, fontSize: 12, marginTop: 2 }}>
+                                    Email: {resettingUser.email || 'N/A'}
+                                </Text>
+                                <Text style={{ color: colors.subtext, fontSize: 12, marginTop: 2 }}>
+                                    Role: {roleLabel(resettingUser.canonical_role || resettingUser.role)}
+                                </Text>
+                                <Text style={{ color: colors.subtext, fontSize: 12, marginTop: 2 }}>
+                                    Institution: {resettingUser.institutions?.name || 'Unassigned'}
+                                </Text>
+                            </View>
+                        )}
+
+                        <View style={{
+                            backgroundColor: isDark ? 'rgba(239,68,68,0.12)' : '#FEF2F2',
+                            borderColor: '#FCA5A5',
+                            borderWidth: 1,
+                            borderRadius: 10,
+                            padding: 12,
+                            marginBottom: 16,
+                        }}>
+                            <Text style={{ color: '#B91C1C', fontWeight: '700', fontSize: 13, marginBottom: 4 }}>
+                                Security Action Notice
+                            </Text>
+                            <Text style={{ color: isDark ? '#FCA5A5' : '#991B1B', fontSize: 12, lineHeight: 18 }}>
+                                Confirming will <Text style={{ fontWeight: '800' }}>immediately invalidate</Text> this user's current password and <Text style={{ fontWeight: '800' }}>synchronously revoke all active sessions</Text>. The user must complete standard OTP verification to regain access.
+                            </Text>
+                        </View>
+
+                        <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: 10 }}>
+                            <TouchableOpacity
+                                onPress={closeCredentialReset}
+                                disabled={resettingLoading}
+                                style={{
+                                    borderWidth: 1,
+                                    borderColor: colors.border,
+                                    borderRadius: 10,
+                                    paddingHorizontal: 14,
+                                    paddingVertical: 10,
+                                    backgroundColor: colors.inputBg,
+                                }}
+                            >
+                                <Text style={{ color: colors.subtext, fontWeight: '700' }}>Cancel</Text>
+                            </TouchableOpacity>
+
+                            <TouchableOpacity
+                                onPress={confirmCredentialReset}
+                                disabled={resettingLoading}
+                                style={{
+                                    borderWidth: 1,
+                                    borderColor: '#DC2626',
+                                    borderRadius: 10,
+                                    paddingHorizontal: 16,
+                                    paddingVertical: 10,
+                                    backgroundColor: '#DC2626',
+                                    minWidth: 110,
+                                    alignItems: 'center',
+                                }}
+                            >
+                                {resettingLoading ? (
+                                    <ActivityIndicator size="small" color="#FFF" />
+                                ) : (
+                                    <Text style={{ color: '#FFF', fontWeight: '800' }}>Confirm Reset</Text>
+                                )}
+                            </TouchableOpacity>
+                        </View>
                     </View>
                 </View>
             </Modal>

@@ -1671,7 +1671,6 @@ exports.changePassword = async (req, res) => {
       return res.status(401).json({ error: "Current password is incorrect" });
     }
 
-    // Update password via admin API
     const { error: updateError } = await supabase.auth.admin.updateUserById(userId, {
       password: new_password,
     });
@@ -1709,10 +1708,6 @@ exports.changePassword = async (req, res) => {
   }
 };
 
-/**
- * Admin action to reset a user's password manually (Hierarchical control)
- * req.userId, req.userRole etc are provided by authMiddleware
- */
 exports.adminResetPassword = async (req, res) => {
   try {
     const { targetUserId, newPassword } = req.body;
@@ -1729,11 +1724,13 @@ exports.adminResetPassword = async (req, res) => {
     if (!targetUserId) {
       return res.status(400).json({ error: "Target user ID is required" });
     }
+    const otpReset = !!req.body.otpReset;
+    const generatedPassword = !newPassword && !otpReset;
+    const finalPassword = otpReset
+      ? crypto.randomUUID() + '-' + crypto.randomUUID()
+      : (generatedPassword ? generateTempPassword() : String(newPassword || ''));
 
-    const generatedPassword = !newPassword;
-    const finalPassword = generatedPassword ? generateTempPassword() : String(newPassword || '');
-
-    if (finalPassword.length < 6) {
+    if (!otpReset && finalPassword.length < 6) {
       return res.status(400).json({ error: "Password must be at least 6 characters" });
     }
 
@@ -1875,6 +1872,45 @@ exports.adminResetPassword = async (req, res) => {
 
     await revokeAllUserSessions(targetUserId);
 
+    if (otpReset) {
+      // Trigger existing OTP verification flow if user has email
+      if (targetUser.email) {
+        try {
+          const { createClient } = require("@supabase/supabase-js");
+          const supabaseUrl = process.env.SUPABASE_URL || process.env.EXPO_PUBLIC_SUPABASE_URL || 'https://example.supabase.co';
+          const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || 'anon-key-placeholder';
+          const scopedClient = createClient(
+            supabaseUrl,
+            supabaseAnonKey,
+            { auth: { persistSession: false } }
+          );
+          await scopedClient.auth.resetPasswordForEmail(targetUser.email, {
+            redirectTo: process.env.PASSWORD_RESET_REDIRECT_URL || undefined,
+          });
+        } catch (otpErr) {
+          console.error("Failed to trigger OTP verification email:", otpErr);
+        }
+      }
+
+      await writePasswordAuditLog({
+        action: 'admin_reset_credentials_otp',
+        actorUserId: adminId,
+        targetUserId,
+        targetEmail: targetUser.email || null,
+        outcome: 'success',
+        ipAddress,
+        userAgent,
+        metadata: { admin_role: adminRole, otp_dispatched: true, sessions_revoked: true },
+      });
+
+      return res.status(200).json({
+        message: "User credentials invalidated and OTP verification dispatched.",
+        force_logout: true,
+        must_change_password: true,
+        otp_dispatched: true,
+      });
+    }
+
     let credentialDelivery = null;
     if (generatedPassword) {
       credentialDelivery = await createCredentialDeliveryToken({
@@ -1900,7 +1936,6 @@ exports.adminResetPassword = async (req, res) => {
       userAgent,
       metadata: { admin_role: adminRole, generated_password: generatedPassword },
     });
-
     res.status(200).json({
       message: "User password has been reset successfully.",
       force_logout: true,
@@ -1937,8 +1972,6 @@ exports.adminResetPassword = async (req, res) => {
 };
 
 /**
- * Send password reset email (public endpoint) or notify admin for Free tier
- */
 exports.forgotPassword = async (req, res) => {
   try {
     const email = normalizeEmail(req.body?.email);

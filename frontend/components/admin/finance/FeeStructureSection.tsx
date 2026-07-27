@@ -1,4 +1,5 @@
 import { Spinner } from '@/components/ui/Spinner';
+import { DatePicker } from '@/components/common/DatePicker';
 import { FormFieldSkeleton, ListItemSkeleton } from '@/components/ui/skeletons';
 import { useCurrency } from '@/contexts/CurrencyContext';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -623,13 +624,11 @@ const FeeStructureSection: React.FC<FeeStructureSectionProps> = ({
                 className="bg-[#F6F8FA] dark:bg-[#0F141C] border-2 border-gray-300 dark:border-gray-600 rounded-2xl px-4 py-3 text-gray-900 dark:text-white font-semibold mb-4"
               />
 
-              <Text className="text-gray-700 dark:text-gray-300 font-bold mb-2 uppercase text-[10px] tracking-widest">Due Date (Optional)</Text>
-              <TextInput
+              <DatePicker
+                label="Due Date (Optional)"
                 value={formData.due_date}
-                onChangeText={(v) => setFormData((p) => ({ ...p, due_date: v }))}
-                placeholder="YYYY-MM-DD"
-                placeholderTextColor="#9CA3AF"
-                className="bg-[#F6F8FA] dark:bg-[#0F141C] border-2 border-gray-300 dark:border-gray-600 rounded-2xl px-4 py-3 text-gray-900 dark:text-white font-semibold mb-4"
+                onChange={(v) => setFormData((p) => ({ ...p, due_date: v }))}
+                isDark={isDark}
               />
 
               <Text className="text-gray-700 dark:text-gray-300 font-bold mb-2 uppercase text-[10px] tracking-widest">Academic Year</Text>

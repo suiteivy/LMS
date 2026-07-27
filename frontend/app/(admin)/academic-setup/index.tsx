@@ -1,4 +1,5 @@
 import { UnifiedHeader } from '@/components/common/UnifiedHeader';
+import { DatePicker } from '@/components/common/DatePicker';
 import { Spinner } from '@/components/ui/Spinner';
 import { useTheme } from '@/contexts/ThemeContext';
 import { GradingAPI } from '@/services/GradingService';
@@ -1269,40 +1270,20 @@ export default function AcademicSetupPage() {
                             </View>
 
                             {/* Start Date */}
-                            <View style={{ marginBottom: 20 }}>
-                                <Text style={{ fontSize: 13, fontWeight: '700', color: textSecondary, marginBottom: 10, textTransform: 'uppercase', letterSpacing: 0.5 }}>
-                                    Start Date *
-                                </Text>
-                                <TextInput
-                                    style={{
-                                        backgroundColor: inputBg, borderWidth: 1.5, borderColor: inputBorder,
-                                        borderRadius: 14, paddingHorizontal: 16, paddingVertical: 14,
-                                        color: textPrimary, fontSize: 15, fontWeight: '500',
-                                    }}
-                                    placeholder="YYYY-MM-DD"
-                                    value={yearFormStart}
-                                    onChangeText={setYearFormStart}
-                                    placeholderTextColor={textMuted}
-                                />
-                            </View>
+                            <DatePicker
+                                label="Start Date *"
+                                value={yearFormStart}
+                                onChange={setYearFormStart}
+                                isDark={isDark}
+                            />
 
                             {/* End Date */}
-                            <View style={{ marginBottom: 20 }}>
-                                <Text style={{ fontSize: 13, fontWeight: '700', color: textSecondary, marginBottom: 10, textTransform: 'uppercase', letterSpacing: 0.5 }}>
-                                    End Date *
-                                </Text>
-                                <TextInput
-                                    style={{
-                                        backgroundColor: inputBg, borderWidth: 1.5, borderColor: inputBorder,
-                                        borderRadius: 14, paddingHorizontal: 16, paddingVertical: 14,
-                                        color: textPrimary, fontSize: 15, fontWeight: '500',
-                                    }}
-                                    placeholder="YYYY-MM-DD"
-                                    value={yearFormEnd}
-                                    onChangeText={setYearFormEnd}
-                                    placeholderTextColor={textMuted}
-                                />
-                            </View>
+                            <DatePicker
+                                label="End Date *"
+                                value={yearFormEnd}
+                                onChange={setYearFormEnd}
+                                isDark={isDark}
+                            />
 
                             {/* Is Current Toggle */}
                             <TouchableOpacity
@@ -1378,39 +1359,19 @@ export default function AcademicSetupPage() {
                                 />
                             </View>
 
-                            <View style={{ marginBottom: 20 }}>
-                                <Text style={{ fontSize: 13, fontWeight: '700', color: textSecondary, marginBottom: 10, textTransform: 'uppercase', letterSpacing: 0.5 }}>
-                                    Start Date *
-                                </Text>
-                                <TextInput
-                                    style={{
-                                        backgroundColor: inputBg, borderWidth: 1.5, borderColor: inputBorder,
-                                        borderRadius: 14, paddingHorizontal: 16, paddingVertical: 14,
-                                        color: textPrimary, fontSize: 15, fontWeight: '500',
-                                    }}
-                                    placeholder="YYYY-MM-DD"
-                                    value={termFormStart}
-                                    onChangeText={setTermFormStart}
-                                    placeholderTextColor={textMuted}
-                                />
-                            </View>
+                            <DatePicker
+                                label="Start Date *"
+                                value={termFormStart}
+                                onChange={setTermFormStart}
+                                isDark={isDark}
+                            />
 
-                            <View style={{ marginBottom: 24 }}>
-                                <Text style={{ fontSize: 13, fontWeight: '700', color: textSecondary, marginBottom: 10, textTransform: 'uppercase', letterSpacing: 0.5 }}>
-                                    End Date *
-                                </Text>
-                                <TextInput
-                                    style={{
-                                        backgroundColor: inputBg, borderWidth: 1.5, borderColor: inputBorder,
-                                        borderRadius: 14, paddingHorizontal: 16, paddingVertical: 14,
-                                        color: textPrimary, fontSize: 15, fontWeight: '500',
-                                    }}
-                                    placeholder="YYYY-MM-DD"
-                                    value={termFormEnd}
-                                    onChangeText={setTermFormEnd}
-                                    placeholderTextColor={textMuted}
-                                />
-                            </View>
+                            <DatePicker
+                                label="End Date *"
+                                value={termFormEnd}
+                                onChange={setTermFormEnd}
+                                isDark={isDark}
+                            />
 
                             <TouchableOpacity
                                 onPress={handleSaveTerm}

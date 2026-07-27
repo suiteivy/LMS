@@ -1,4 +1,5 @@
 import { UnifiedHeader } from "@/components/common/UnifiedHeader";
+import { DatePicker } from "@/components/common/DatePicker";
 import { useTheme } from "@/contexts/ThemeContext";
 import { BursaryService } from '@/services/BursaryService';
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -112,24 +113,14 @@ export default function CreateBursaryScreen() {
                     />
                 </Field>
 
-                <Field label="Deadline" labelColor={labelColor}>
-                    <TouchableOpacity
-                        onPress={() => setShowDatePicker(true)}
-                        style={{ ...inputStyle, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}
-                    >
-                        <Text style={{ color: textPrimary, fontWeight: '500', fontSize: 15 }}>{format(deadline, 'MMMM dd, yyyy')}</Text>
-                        <Ionicons name="calendar-outline" size={20} color={textSecondary} />
-                    </TouchableOpacity>
-                    {showDatePicker && (
-                        <DateTimePicker
-                            value={deadline}
-                            mode="date"
-                            display="default"
-                            onChange={onDateChange}
-                            minimumDate={new Date()}
-                        />
-                    )}
-                </Field>
+                <DatePicker
+                    label="Deadline"
+                    value={format(deadline, 'yyyy-MM-dd')}
+                    onChange={(v) => {
+                        if (v) setDeadline(new Date(v + 'T00:00:00'));
+                    }}
+                    isDark={isDark}
+                />
 
                 <Field label="Description" labelColor={labelColor}>
                     <TextInput

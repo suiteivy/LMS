@@ -187,3 +187,86 @@ test('transferMainAdmin updates delegation flags after successful transfer', asy
   assert.deepEqual(updates[0], { user_id: 'old-admin', payload: { can_manage_users: false } });
   assert.deepEqual(updates[1], { user_id: 'new-admin', payload: { can_manage_users: true } });
 });
+
+test('adminResetPassword with otpReset triggers session revocation and OTP dispatch without returning plaintext password', async () => {
+  const auditLogs = [];
+  let userUpdated = false;
+
+  const mockSupabase = {
+    auth: {
+      admin: {
+        updateUserById(userId, payload) {
+          assert.equal(userId, 'target-user-1');
+          assert.ok(payload.password);
+          return Promise.resolve({ error: null });
+        },
+      },
+    },
+    from(table) {
+      return {
+        select() {
+          return {
+            eq() {
+              return {
+                single() {
+                  return Promise.resolve({
+                    data: { id: 'target-user-1', email: 'user1@example.com', role: 'student', full_name: 'User One', institution_id: 'inst-1' },
+                    error: null,
+                  });
+                },
+              };
+            },
+          };
+        },
+        update(payload) {
+          userUpdated = true;
+          const chain = {
+            eq() {
+              return chain;
+            },
+            then(resolve) {
+              resolve({ error: null });
+            },
+          };
+          return chain;
+        },
+        delete() {
+          return {
+            eq() {
+              return Promise.resolve({ error: null });
+            },
+          };
+        },
+        insert(payload) {
+          if (table === 'password_audit_logs') {
+            auditLogs.push(payload);
+          }
+          return Promise.resolve({ error: null });
+        },
+      };
+    },
+  };
+
+  const authController = loadWithSupabaseMock('../controllers/auth.controller.js', mockSupabase);
+
+  const req = {
+    body: { targetUserId: 'target-user-1', otpReset: true },
+    userId: 'master-admin-1',
+    userRole: 'master_admin',
+    headers: { 'user-agent': 'node-test' },
+    socket: { remoteAddress: '127.0.0.1' },
+  };
+
+  const res = createRes();
+  await authController.adminResetPassword(req, res);
+
+  assert.equal(res.statusCode, 200);
+  assert.equal(res.payload.otp_dispatched, true);
+  assert.equal(res.payload.force_logout, true);
+  assert.equal(res.payload.tempPassword, undefined);
+  assert.ok(!res.payload.generated_password);
+  assert.equal(userUpdated, true);
+  assert.equal(auditLogs.length, 1);
+  assert.equal(auditLogs[0].action, 'admin_reset_credentials_otp');
+  assert.equal(auditLogs[0].outcome, 'success');
+});

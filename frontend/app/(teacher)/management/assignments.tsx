@@ -1,4 +1,5 @@
 import { UnifiedHeader } from "@/components/common/UnifiedHeader";
+import { DatePicker } from "@/components/common/DatePicker";
 import { HelpTooltip } from "@/components/settings/HelpTooltip";
 import { ListItemSkeleton } from "@/components/ui/skeletons";
 import { useAuth } from "@/contexts/AuthContext";
@@ -877,39 +878,15 @@ export default function AssignmentsPage() {
 
                                     <View className="flex-row gap-3 mb-5">
                                         <View className="flex-1">
-                                            <Text className="text-gray-500 dark:text-gray-400 text-[10px] font-bold uppercase tracking-widest ml-1 mb-2">Due Date</Text>
-                                            {Platform.OS === 'web' ? (
-                                                <input
-                                                    type="date"
-                                                    aria-label="Due Date"
-                                                    title="Due Date"
-                                                    value={dueDate}
-                                                    onChange={(e) => {
-                                                        const v = e.target.value;
-                                                        setDueDate(v);
-                                                        if (v) setDateObject(new Date(v));
-                                                    }}
-                                                    className="bg-[#F6F8FA] dark:bg-[#161B22] rounded-xl px-5 py-4 text-gray-900 dark:text-white font-bold border border-[#D0D7DE] dark:border-[#21262D]"
-                                                    style={{
-                                                        minHeight: 52,
-                                                        colorScheme: isDark ? 'dark' : 'light',
-                                                        outline: 'none',
-                                                        fontFamily: 'inherit',
-                                                        fontSize: '14px'
-                                                    }}
-                                                />
-                                            ) : (
-                                                <TouchableOpacity
-                                                    onPress={() => setShowDatePicker(true)}
-                                                    className="bg-[#F6F8FA] dark:bg-[#161B22] rounded-xl px-5 py-4 flex-row justify-between items-center border border-[#D0D7DE] dark:border-[#21262D]"
-                                                    style={{ minHeight: 52 }}
-                                                >
-                                                    <Text className={`font-bold ${dueDate ? "text-gray-900 dark:text-white" : "text-gray-400 dark:text-gray-500"}`}>
-                                                        {dueDate ? dueDate : "Select"}
-                                                    </Text>
-                                                    <Calendar size={16} color="#FF6900" />
-                                                </TouchableOpacity>
-                                            )}
+                                            <DatePicker
+                                                label="Due Date"
+                                                value={dueDate}
+                                                onChange={(v) => {
+                                                    setDueDate(v);
+                                                    if (v) setDateObject(new Date(v));
+                                                }}
+                                                isDark={isDark}
+                                            />
                                         </View>
 
                                         <View className="flex-1">
