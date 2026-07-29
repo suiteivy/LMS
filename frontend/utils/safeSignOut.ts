@@ -6,8 +6,9 @@ import { Platform } from 'react-native';
 
 function getApiBaseUrl(): string {
   // App backend API base URL (not Supabase REST URL)
-  if (process.env.EXPO_PUBLIC_URL) {
-    return process.env.EXPO_PUBLIC_URL;
+  const envUrl = process.env.EXPO_PUBLIC_API_URL || process.env.EXPO_PUBLIC_URL;
+  if (envUrl) {
+    return envUrl;
   }
 
   if (__DEV__) {

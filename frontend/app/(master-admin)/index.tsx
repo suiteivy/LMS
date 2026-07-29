@@ -69,7 +69,7 @@ export default function MasterDashboard() {
                 return;
             }
 
-            let backendUrl = process.env.EXPO_PUBLIC_API_URL || "http://localhost:4001";
+            let backendUrl = (process.env.EXPO_PUBLIC_API_URL || process.env.EXPO_PUBLIC_URL || "http://localhost:4001").replace(/\/api\/?$/, '');
             if (Platform.OS === 'android') {
                 backendUrl = backendUrl.replace('localhost', '10.0.2.2');
             }
@@ -102,7 +102,7 @@ export default function MasterDashboard() {
             const { data: { session } } = await supabase.auth.getSession();
             if (!session) return;
 
-            let backendUrl = process.env.EXPO_PUBLIC_API_URL || "http://localhost:4001";
+            let backendUrl = (process.env.EXPO_PUBLIC_API_URL || process.env.EXPO_PUBLIC_URL || "http://localhost:4001").replace(/\/api\/?$/, '');
             if (Platform.OS === 'android') backendUrl = backendUrl.replace('localhost', '10.0.2.2');
 
             const res = await fetch(`${backendUrl}/api/master-admin/subscriptions/lifecycle-sweep/preview`, {
@@ -131,7 +131,7 @@ export default function MasterDashboard() {
             const { data: { session } } = await supabase.auth.getSession();
             if (!session) return;
 
-            let backendUrl = process.env.EXPO_PUBLIC_API_URL || "http://localhost:4001";
+            let backendUrl = (process.env.EXPO_PUBLIC_API_URL || process.env.EXPO_PUBLIC_URL || "http://localhost:4001").replace(/\/api\/?$/, '');
             if (Platform.OS === 'android') backendUrl = backendUrl.replace('localhost', '10.0.2.2');
 
             const res = await fetch(`${backendUrl}/api/master-admin/subscriptions/lifecycle-sweep`, {

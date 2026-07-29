@@ -41,12 +41,12 @@ export default function MasterAdminProfile() {
     }, [profile]);
 
     const getBackendUrl = () => {
-        let url = process.env.EXPO_PUBLIC_API_URL || "http://localhost:4001";
+        let url = (process.env.EXPO_PUBLIC_API_URL || process.env.EXPO_PUBLIC_URL || "http://localhost:4001").replace(/\/api\/?$/, '');
         if (Platform.OS === 'android') {
             url = url.replace('localhost', '10.0.2.2');
         }
         return url;
-    }
+    };
 
     const handleSave = async () => {
         if (!firstName.trim()) {

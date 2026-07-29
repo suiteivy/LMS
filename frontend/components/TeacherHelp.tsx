@@ -1,4 +1,4 @@
-import { ChevronDown, ChevronUp, LifeBuoy, Mail, MessageSquare, Search, X, Send } from 'lucide-react-native';
+import { ChevronDown, ChevronUp, LifeBuoy, Mail, Search, X, Send } from 'lucide-react-native';
 import React, { useState } from 'react';
 import { Linking, ScrollView, Text, TextInput, TouchableOpacity, View, Modal, ActivityIndicator, Platform } from 'react-native';
 import Toast from 'react-native-toast-message';
@@ -51,7 +51,7 @@ export default function TeacherHelp() {
     const [isFocused, setIsFocused] = useState(false);
 
     const getBackendUrl = () => {
-        let url = process.env.EXPO_PUBLIC_API_URL || "http://localhost:4001";
+        let url = (process.env.EXPO_PUBLIC_API_URL || process.env.EXPO_PUBLIC_URL || "http://localhost:4001").replace(/\/api\/?$/, '');
         if (Platform.OS === 'android') {
             url = url.replace('localhost', '10.0.2.2');
         }

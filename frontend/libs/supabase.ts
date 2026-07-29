@@ -7,7 +7,7 @@ import { Platform } from "react-native";
 
 // Helper to resolve backend API base URL (mirrors logic in api.ts)
 const getApiBaseUrl = (): string => {
-  const envUrl = process.env.EXPO_PUBLIC_URL;
+  const envUrl = process.env.EXPO_PUBLIC_API_URL || process.env.EXPO_PUBLIC_URL;
   if (envUrl) return envUrl;
   const debuggerHost = Constants.expoConfig?.hostUri;
   if (debuggerHost) {

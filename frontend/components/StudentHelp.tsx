@@ -1,5 +1,5 @@
 import { useTheme } from "@/contexts/ThemeContext";
-import { ChevronDown, ChevronUp, LifeBuoy, Mail, MessageSquare, Search, X, Send } from 'lucide-react-native';
+import { ChevronDown, ChevronUp, LifeBuoy, Mail, Search, X, Send } from 'lucide-react-native';
 import React, { useState } from 'react';
 import { Linking, Modal, ScrollView, Text, TextInput, TouchableOpacity, View, ActivityIndicator, Platform } from 'react-native';
 import Toast from 'react-native-toast-message';
@@ -67,7 +67,7 @@ export default function StudentHelp() {
     const [submitting, setSubmitting] = useState(false);
 
     const getBackendUrl = () => {
-        let url = process.env.EXPO_PUBLIC_API_URL || "http://localhost:4001";
+        let url = (process.env.EXPO_PUBLIC_API_URL || process.env.EXPO_PUBLIC_URL || "http://localhost:4001").replace(/\/api\/?$/, '');
         if (Platform.OS === 'android') {
             url = url.replace('localhost', '10.0.2.2');
         }
@@ -335,7 +335,7 @@ export default function StudentHelp() {
                                                 color: 'rgba(249, 115, 22, 0.3)' 
                                             }],
                                             shadowColor: '#f97316',
-                                            }}
+                                        }}
                                         onPress={() => {
                                             Linking.openURL('mailto:Support@cloudoraltd@gmail.com');
                                             setSelectedTab(null);

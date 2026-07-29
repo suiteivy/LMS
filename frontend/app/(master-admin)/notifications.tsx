@@ -34,7 +34,7 @@ type NoticeItem = {
     expires_at?: string | null;
 };
 
-const getBackendUrl = () => process.env.EXPO_PUBLIC_API_URL || 'http://localhost:4001';
+const getBackendUrl = () => (process.env.EXPO_PUBLIC_API_URL || process.env.EXPO_PUBLIC_URL || 'http://localhost:4001').replace(/\/api\/?$/, '');
 
 const NOTICE_EXPIRY_DEFAULT_DAYS = 2;
 const NOTICE_EXPIRY_MIN_DAYS = 1;

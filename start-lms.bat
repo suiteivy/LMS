@@ -11,6 +11,6 @@ start "LMS Frontend" powershell -NoExit -Command "cd '%ROOT%frontend'; npx expo 
 
 echo.
 echo [LMS] Both backend and frontend are starting in separate windows.
-echo [LMS] Backend:  http://localhost:5000
+echo [LMS] Backend:  http://localhost:4001
 echo [LMS] Frontend: Expo dev server
 echo.

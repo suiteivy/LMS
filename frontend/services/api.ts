@@ -51,6 +51,8 @@ let _lastRateLimitToast = 0;
 let _pendingRetry: (() => Promise<any>) | null = null;
 
 export const getPendingRetry = () => _pendingRetry;
+
+export const getPendingRetry = () => _pendingRetry;
 export const clearPendingRetry = () => { _pendingRetry = null; };
 export const retryLastRequest = async () => {
   const fn = _pendingRetry;
@@ -60,20 +62,21 @@ export const retryLastRequest = async () => {
 };
 
 /**
- * To Do:
  * Determine the appropriate base URL for API calls based on environment and platform
  * Priority: Environment variable -> Expo Host URI -> Platform-specific defaults
  * @returns {string} The base URL for API requests
  */
 const getBaseUrl = (): string => {
   // 1. Check for explicit environment variable override
+  if (process.env.EXPO_PUBLIC_API_URL) {
+    return process.env.EXPO_PUBLIC_API_URL;
+  }
   if (process.env.EXPO_PUBLIC_URL) {
     return process.env.EXPO_PUBLIC_URL;
   }
 
   // 2. Fallbacks for local development
   if (__DEV__) {
-    // For Android physical devices/emulators when not using a tunnel
     if (Platform.OS === "android") {
       // 10.0.2.2 is the alias to the host loopback (localhost) on the Android emulator
       return "http://10.0.2.2:4001/api";

@@ -59,7 +59,7 @@ export default function AdminMaterialsScreen() {
         primary: '#FF6B00',
     };
 
-    const apiUrl = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:4001';
+    const apiUrl = (process.env.EXPO_PUBLIC_API_URL || process.env.EXPO_PUBLIC_URL || 'http://localhost:4001').replace(/\/api\/?$/, '');
 
     const fetchPending = async () => {
         try {

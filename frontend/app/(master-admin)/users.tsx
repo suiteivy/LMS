@@ -61,7 +61,7 @@ const ROLE_ICON: Record<string, string> = {
     bursary: 'currency-usd',
 };
 
-const getBackendUrl = () => process.env.EXPO_PUBLIC_API_URL || 'http://localhost:4001';
+const getBackendUrl = () => (process.env.EXPO_PUBLIC_API_URL || process.env.EXPO_PUBLIC_URL || 'http://localhost:4001').replace(/\/api\/?$/, '');
 
 const roleLabel = (role: string) => {
     if (role === 'school_admin') return 'Admin';
