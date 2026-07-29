@@ -8,12 +8,17 @@ import { Platform } from "react-native";
 // Helper to resolve backend API base URL (mirrors logic in api.ts)
 const getApiBaseUrl = (): string => {
   const envUrl = process.env.EXPO_PUBLIC_API_URL || process.env.EXPO_PUBLIC_URL;
-  if (envUrl) return envUrl;
-  const debuggerHost = Constants.expoConfig?.hostUri;
-  if (debuggerHost) {
-    const ip = debuggerHost.split(':')[0];
-    return `http://${ip}:4001/api`;
+  if (__DEV__ && Platform.OS !== 'web') {
+    const hostUri = Constants.expoConfig?.hostUri;
+    const devIp = hostUri ? hostUri.split(':')[0] : (Platform.OS === 'android' ? '10.0.2.2' : 'localhost');
+    if (envUrl && envUrl.includes('localhost')) {
+      return envUrl.replace('localhost', devIp);
+    }
+    if (!envUrl) {
+      return `http://${devIp}:4001/api`;
+    }
   }
+  if (envUrl) return envUrl;
   if (Platform.OS === 'android') return 'http://10.0.2.2:4001/api';
   return 'http://localhost:4001/api';
 };

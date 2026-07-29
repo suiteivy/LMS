@@ -1972,6 +1972,8 @@ exports.adminResetPassword = async (req, res) => {
 };
 
 /**
+ * Handle forgot password request
+ */
 exports.forgotPassword = async (req, res) => {
   try {
     const email = normalizeEmail(req.body?.email);

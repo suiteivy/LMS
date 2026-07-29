@@ -67,26 +67,33 @@ export const retryLastRequest = async () => {
  * @returns {string} The base URL for API requests
  */
 const getBaseUrl = (): string => {
-  // 1. Check for explicit environment variable override
-  if (process.env.EXPO_PUBLIC_API_URL) {
-    return process.env.EXPO_PUBLIC_API_URL;
-  }
-  if (process.env.EXPO_PUBLIC_URL) {
-    return process.env.EXPO_PUBLIC_URL;
+  const envUrl = process.env.EXPO_PUBLIC_API_URL || process.env.EXPO_PUBLIC_URL;
+
+  // In local development on mobile, replace localhost with the Metro bundler host IP or 10.0.2.2 for Android emulator
+  if (__DEV__ && Platform.OS !== "web") {
+    const hostUri = Constants.expoConfig?.hostUri;
+    const devIp = hostUri ? hostUri.split(":")[0] : (Platform.OS === "android" ? "10.0.2.2" : "localhost");
+
+    if (envUrl && envUrl.includes("localhost")) {
+      return envUrl.replace("localhost", devIp);
+    }
+    if (!envUrl) {
+      return `http://${devIp}:4001/api`;
+    }
   }
 
-  // 2. Fallbacks for local development
+  if (envUrl) {
+    return envUrl;
+  }
+
+  // Fallbacks for local development
   if (__DEV__) {
     if (Platform.OS === "android") {
-      // 10.0.2.2 is the alias to the host loopback (localhost) on the Android emulator
       return "http://10.0.2.2:4001/api";
     }
-    
-    // Default fallback (iOS simulator or local web)
     return "http://localhost:4001/api";
   }
 
-  // 3. Last resort fallback (historical hardcoded IP - kept as low priority)
   return "http://192.168.56.1:4001/api";
 };
 
