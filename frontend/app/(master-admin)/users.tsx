@@ -14,6 +14,7 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { supabase } from '@/libs/supabase';
 import Toast from 'react-native-toast-message';
 import { ListItemSkeleton } from '@/components/ui/skeletons';
+import { getApiBaseUrl } from '@/utils/backendUrl';
 
 type Institution = { id: string; name: string };
 type Category = { id: string; name: string };
@@ -61,7 +62,7 @@ const ROLE_ICON: Record<string, string> = {
     bursary: 'currency-usd',
 };
 
-const getBackendUrl = () => (process.env.EXPO_PUBLIC_API_URL || process.env.EXPO_PUBLIC_URL || 'http://localhost:4001').replace(/\/api\/?$/, '');
+
 
 const roleLabel = (role: string) => {
     if (role === 'school_admin') return 'Admin';
@@ -140,7 +141,7 @@ export default function MasterAdminUsersScreen() {
             const { data: { session } } = await supabase.auth.getSession();
             if (!session) return;
 
-            const res = await fetch(`${getBackendUrl()}/api/master-admin/school-categories`, {
+            const res = await fetch(`${getApiBaseUrl()}/master-admin/school-categories`, {
                 headers: {
                     Authorization: `Bearer ${session.access_token}`,
                     Accept: 'application/json',
@@ -188,7 +189,7 @@ export default function MasterAdminUsersScreen() {
             if (categoryFilters.length > 0) params.append('category_ids', categoryFilters.join(','));
             if (search.trim()) params.append('search', search.trim());
 
-            const response = await fetch(`${getBackendUrl()}/api/master-admin/users?${params.toString()}`, {
+            const response = await fetch(`${getApiBaseUrl()}/master-admin/users?${params.toString()}`, {
                 headers: {
                     Authorization: `Bearer ${session.access_token}`,
                     Accept: 'application/json',
@@ -333,7 +334,7 @@ export default function MasterAdminUsersScreen() {
                 return;
             }
 
-            const response = await fetch(`${getBackendUrl()}/api/master-admin/users/${editingUser.id}`, {
+            const response = await fetch(`${getApiBaseUrl()}/master-admin/users/${editingUser.id}`, {
                 method: 'DELETE',
                 headers: {
                     Authorization: `Bearer ${session.access_token}`,
@@ -381,7 +382,7 @@ export default function MasterAdminUsersScreen() {
                 return;
             }
 
-            const response = await fetch(`${getBackendUrl()}/api/auth/admin-reset-password`, {
+            const response = await fetch(`${getApiBaseUrl()}/auth/admin-reset-password`, {
                 method: 'POST',
                 headers: {
                     Authorization: `Bearer ${session.access_token}`,
@@ -445,7 +446,7 @@ export default function MasterAdminUsersScreen() {
                 institution_id: editInstitution === 'none' ? null : editInstitution,
             };
 
-            const response = await fetch(`${getBackendUrl()}/api/master-admin/users/${editingUser.id}`, {
+            const response = await fetch(`${getApiBaseUrl()}/master-admin/users/${editingUser.id}`, {
                 method: 'PUT',
                 headers: {
                     Authorization: `Bearer ${session.access_token}`,

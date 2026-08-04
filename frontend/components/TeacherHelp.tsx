@@ -4,6 +4,7 @@ import { Linking, ScrollView, Text, TextInput, TouchableOpacity, View, Modal, Ac
 import Toast from 'react-native-toast-message';
 import { supabase } from '@/libs/supabase';
 import { useTheme } from '@/contexts/ThemeContext';
+import { getApiBaseUrl } from '@/utils/backendUrl';
 
 interface FAQItemProps {
     question: string;
@@ -50,13 +51,7 @@ export default function TeacherHelp() {
     const [submitting, setSubmitting] = useState(false);
     const [isFocused, setIsFocused] = useState(false);
 
-    const getBackendUrl = () => {
-        let url = (process.env.EXPO_PUBLIC_API_URL || process.env.EXPO_PUBLIC_URL || "http://localhost:4001").replace(/\/api\/?$/, '');
-        if (Platform.OS === 'android') {
-            url = url.replace('localhost', '10.0.2.2');
-        }
-        return url;
-    };
+
 
     const handleSubmitTicket = async () => {
         if (!ticketSubject.trim() || !ticketDescription.trim()) {
@@ -69,7 +64,7 @@ export default function TeacherHelp() {
             const { data: { session } } = await supabase.auth.getSession();
             if (!session) return;
 
-            const res = await fetch(`${getBackendUrl()}/api/settings/support`, {
+            const res = await fetch(`${getApiBaseUrl()}/settings/support`, {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${session.access_token}`,

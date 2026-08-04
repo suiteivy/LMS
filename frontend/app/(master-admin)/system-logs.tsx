@@ -6,6 +6,7 @@ import Toast from 'react-native-toast-message';
 import { useTheme } from '@/contexts/ThemeContext';
 import { supabase } from '@/libs/supabase';
 import { TableRowSkeleton } from '@/components/ui/skeletons';
+import { getApiBaseUrl } from '@/utils/backendUrl';
 
 const NativeDateTimePicker =
   Platform.OS === 'web' ? null : require('@react-native-community/datetimepicker').default;
@@ -21,13 +22,7 @@ type SystemActivityLog = {
   details?: Record<string, unknown>;
 };
 
-const getBackendUrl = () => {
-  let url = (process.env.EXPO_PUBLIC_API_URL || process.env.EXPO_PUBLIC_URL || 'http://localhost:4001').replace(/\/api\/?$/, '');
-  if (Platform.OS === 'android') {
-    url = url.replace('localhost', '10.0.2.2');
-  }
-  return url;
-};
+
 
 const toLocalDayKey = (date: Date) => {
   const yyyy = date.getFullYear();
@@ -108,7 +103,7 @@ export default function MasterSystemLogsPage() {
       if (fromDate.trim()) params.append('from', `${fromDate.trim()}T00:00:00.000Z`);
       if (toDate.trim()) params.append('to', `${toDate.trim()}T23:59:59.999Z`);
 
-      const response = await fetch(`${getBackendUrl()}/api/master-admin/logs/system-activity?${params.toString()}`, {
+      const response = await fetch(`${getApiBaseUrl()}/master-admin/logs/system-activity?${params.toString()}`, {
         method: 'GET',
         headers: {
           Authorization: `Bearer ${session.access_token}`,
@@ -233,7 +228,7 @@ export default function MasterSystemLogsPage() {
         return;
       }
 
-      const response = await fetch(`${getBackendUrl()}/api/master-admin/logs/system-activity/clear`, {
+      const response = await fetch(`${getApiBaseUrl()}/master-admin/logs/system-activity/clear`, {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${session.access_token}`,

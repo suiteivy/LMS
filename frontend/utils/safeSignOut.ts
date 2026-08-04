@@ -2,36 +2,8 @@ import { LogoutReason, LOGOUT_MESSAGES } from '@/types/logout';
 import { supabase } from '@/libs/supabase';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Toast from 'react-native-toast-message';
-import Constants from 'expo-constants';
-import { Platform } from 'react-native';
+import { getApiBaseUrl } from '@/utils/backendUrl';
 
-function getApiBaseUrl(): string {
-  // App backend API base URL (not Supabase REST URL)
-  const envUrl = process.env.EXPO_PUBLIC_API_URL || process.env.EXPO_PUBLIC_URL;
-  if (__DEV__ && Platform.OS !== 'web') {
-    const hostUri = Constants.expoConfig?.hostUri;
-    const devIp = hostUri ? hostUri.split(':')[0] : (Platform.OS === 'android' ? '10.0.2.2' : 'localhost');
-    if (envUrl && envUrl.includes('localhost')) {
-      return envUrl.replace('localhost', devIp);
-    }
-    if (!envUrl) {
-      return `http://${devIp}:4001/api`;
-    }
-  }
-
-  if (envUrl) {
-    return envUrl;
-  }
-
-  if (__DEV__) {
-    if (Platform.OS === 'android') {
-      return 'http://10.0.2.2:4001/api';
-    }
-    return 'http://localhost:4001/api';
-  }
-
-  return 'http://192.168.56.1:4001/api';
-}
 
 /**
  * Centralized, never-fails sign-out wrapper.

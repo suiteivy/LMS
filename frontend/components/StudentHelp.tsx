@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { Linking, Modal, ScrollView, Text, TextInput, TouchableOpacity, View, ActivityIndicator, Platform } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { supabase } from '@/libs/supabase';
+import { getApiBaseUrl } from '@/utils/backendUrl';
 
 interface FAQItemProps {
     question: string;
@@ -66,13 +67,7 @@ export default function StudentHelp() {
     const [ticketDescription, setTicketDescription] = useState('');
     const [submitting, setSubmitting] = useState(false);
 
-    const getBackendUrl = () => {
-        let url = (process.env.EXPO_PUBLIC_API_URL || process.env.EXPO_PUBLIC_URL || "http://localhost:4001").replace(/\/api\/?$/, '');
-        if (Platform.OS === 'android') {
-            url = url.replace('localhost', '10.0.2.2');
-        }
-        return url;
-    };
+
 
     const handleSubmitTicket = async () => {
         if (!ticketSubject.trim() || !ticketDescription.trim()) {
@@ -85,7 +80,7 @@ export default function StudentHelp() {
             const { data: { session } } = await supabase.auth.getSession();
             if (!session) return;
 
-            const res = await fetch(`${getBackendUrl()}/api/settings/support`, {
+            const res = await fetch(`${getApiBaseUrl()}/settings/support`, {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${session.access_token}`,

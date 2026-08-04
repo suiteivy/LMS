@@ -5,6 +5,7 @@ import { ActivityIndicator, Modal, Platform, ScrollView, Text, TextInput, Toucha
 import Toast from 'react-native-toast-message';
 import { supabase } from '@/libs/supabase';
 import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { getApiBaseUrl } from '@/utils/backendUrl';
 import { ChangePasswordModal } from "./shared/ChangePasswordModal";
 import { SettingsService, UserPreferences } from "@/services/SettingsService";
 import { router } from "expo-router";
@@ -99,13 +100,7 @@ export default function MasterAdminSettings() {
     };
 
 
-    const getBackendUrl = () => {
-        let url = (process.env.EXPO_PUBLIC_API_URL || process.env.EXPO_PUBLIC_URL || "http://localhost:4001").replace(/\/api\/?$/, '');
-        if (Platform.OS === 'android') {
-            url = url.replace('localhost', '10.0.2.2');
-        }
-        return url;
-    }
+
 
 
     const handleEnrollMasterAdmin = async () => {
@@ -124,7 +119,7 @@ export default function MasterAdminSettings() {
             const { data: { session } } = await supabase.auth.getSession();
             if (!session) return;
 
-            const res = await fetch(`${getBackendUrl()}/api/master-admin/enroll-master-admin`, {
+            const res = await fetch(`${getApiBaseUrl()}/master-admin/enroll-master-admin`, {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${session.access_token}`,
@@ -160,7 +155,7 @@ export default function MasterAdminSettings() {
                 return;
             }
 
-            const res = await fetch(`${getBackendUrl()}/api/master-admin/password-audit-logs?limit=100`, {
+            const res = await fetch(`${getApiBaseUrl()}/master-admin/password-audit-logs?limit=100`, {
                 method: 'GET',
                 headers: {
                     'Authorization': `Bearer ${session.access_token}`,

@@ -15,6 +15,7 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { supabase } from '@/libs/supabase';
 import Toast from 'react-native-toast-message';
 import { ListItemSkeleton } from '@/components/ui/skeletons';
+import { getApiBaseUrl } from '@/utils/backendUrl';
 
 type Institution = { id: string; name: string };
 
@@ -34,7 +35,7 @@ type NoticeItem = {
     expires_at?: string | null;
 };
 
-const getBackendUrl = () => (process.env.EXPO_PUBLIC_API_URL || process.env.EXPO_PUBLIC_URL || 'http://localhost:4001').replace(/\/api\/?$/, '');
+
 
 const NOTICE_EXPIRY_DEFAULT_DAYS = 2;
 const NOTICE_EXPIRY_MIN_DAYS = 1;
@@ -97,12 +98,8 @@ export default function MasterNotifications() {
         inputBg: isDark ? '#111827' : '#F3F4F6',
     };
 
-    const backendUrl = useMemo(() => {
-        let url = getBackendUrl();
-        if (Platform.OS === 'android') {
-            url = url.replace('localhost', '10.0.2.2');
-        }
-        return url;
+    const apiBaseUrl = useMemo(() => {
+        return getApiBaseUrl();
     }, []);
 
     const selectedInstitutionName = useMemo(() => {
@@ -132,7 +129,7 @@ export default function MasterNotifications() {
                 return;
             }
 
-            const res = await fetch(`${backendUrl}/api/master-admin/notifications/history`, {
+            const res = await fetch(`${apiBaseUrl}/master-admin/notifications/history`, {
                 headers: {
                     Authorization: `Bearer ${session.access_token}`,
                     Accept: 'application/json',
@@ -155,7 +152,7 @@ export default function MasterNotifications() {
         } finally {
             setHistoryLoading(false);
         }
-    }, [backendUrl]);
+    }, [apiBaseUrl]);
 
     useEffect(() => {
         fetchInstitutions();
@@ -209,7 +206,7 @@ export default function MasterNotifications() {
             };
             if (target === 'specific') payload.institution_id = institutionId;
 
-            const res = await fetch(`${backendUrl}/api/master-admin/notifications`, {
+            const res = await fetch(`${apiBaseUrl}/master-admin/notifications`, {
                 method: 'POST',
                 headers: {
                     Authorization: `Bearer ${session.access_token}`,
@@ -276,7 +273,7 @@ export default function MasterNotifications() {
             const { data: { session } } = await supabase.auth.getSession();
             if (!session) return;
 
-            const res = await fetch(`${backendUrl}/api/master-admin/notifications/${noticeId}`, {
+            const res = await fetch(`${apiBaseUrl}/master-admin/notifications/${noticeId}`, {
                 method: 'PUT',
                 headers: {
                     Authorization: `Bearer ${session.access_token}`,
@@ -325,7 +322,7 @@ export default function MasterNotifications() {
             const { data: { session } } = await supabase.auth.getSession();
             if (!session) return;
 
-            const res = await fetch(`${backendUrl}/api/master-admin/notifications/${noticeId}`, {
+            const res = await fetch(`${apiBaseUrl}/master-admin/notifications/${noticeId}`, {
                 method: 'DELETE',
                 headers: {
                     Authorization: `Bearer ${session.access_token}`,
@@ -382,7 +379,7 @@ export default function MasterNotifications() {
             const { data: { session } } = await supabase.auth.getSession();
             if (!session) return;
 
-            const res = await fetch(`${backendUrl}/api/master-admin/notifications/${noticeId}/extend-expiry`, {
+            const res = await fetch(`${apiBaseUrl}/master-admin/notifications/${noticeId}/extend-expiry`, {
                 method: 'PUT',
                 headers: {
                     Authorization: `Bearer ${session.access_token}`,
