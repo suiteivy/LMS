@@ -5,6 +5,7 @@ yarn-error.log
 access.log
 build/
 .vscode/
+frontend/dist/
 
 # React Native
 .expo/

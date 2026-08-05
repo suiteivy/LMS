@@ -1,5 +1,40 @@
 const express = require("express");
 const router = express.Router();
+// const {
+//   login,
+//   enrollUser,
+//   adminUpdateUser,
+//   deleteUser,
+//   searchUsers,
+//   logout,
+//   changePassword,
+//   completeCredentialSetup,
+//   forgotPassword,
+//   checkPasswordRecoveryEmail,
+//   resetPassword,
+//   adminResetPassword,
+//   setupSecurityQuestions,
+//   verifySecurityQuestions,
+//   getCredentialDeliveryByToken,
+//   transferMainAdmin,
+//   getInstitutionAdmins,
+//   updateAdminDelegation,
+//   getActiveSessions,
+//   revokeSession,
+//   revokeAllOtherSessions,
+//   pingSession,
+//   getEnrollmentSlotCapacity,
+// } = require("../controllers/auth.controller.js");
+
+const authController = require("../controllers/auth.controller.js");
+
+console.log("AUTH CONTROLLER EXPORTS:");
+console.log(Object.keys(authController));
+
+console.log(
+  "checkPasswordRecoveryEmail:",
+  typeof authController.checkPasswordRecoveryEmail
+);
 const {
   login,
   enrollUser,
@@ -24,15 +59,48 @@ const {
   revokeAllOtherSessions,
   pingSession,
   getEnrollmentSlotCapacity,
-} = require("../controllers/auth.controller.js");
+} = authController;
+
 const { authMiddleware } = require("../middleware/auth.middleware.js");
 const checkSubscription = require("../middleware/subscriptionCheck.js");
 const { validate, schemas } = require("../middleware/inputValidator.js");
 const { rateLimiters } = require("../middleware/rateLimiter.js");
+// const rateLimiterModule = require("../middleware/rateLimiter.js");
+// const { rateLimiters } = require("../middleware/rateLimiter.js").rateLimiters;
 const { requireAdmin, requireRole } = require("../middleware/roleCheck.js");
+
+// DEBUG: Log what was imported
+console.log('rateLimiters keys:', Object.keys(rateLimiters));
+console.log('passwordResetCheckEmail exists?', !!rateLimiters.passwordResetCheckEmail);
+console.log('Type of passwordResetCheckEmail:', typeof rateLimiters.passwordResetCheckEmail);
 
 // Public: Login with validation
 router.post("/login", validate(schemas.login), login);
+
+console.log(
+  "passwordResetRequest:",
+  typeof rateLimiters.passwordResetRequest
+);
+
+console.log(
+  "validate:",
+  typeof validate
+);
+
+console.log(
+  "schemas.login:",
+  schemas.login
+);
+
+console.log(
+  "validate(...) returns:",
+  typeof validate({ email: schemas.login.email })
+);
+
+console.log(
+  "forgotPassword:",
+  typeof forgotPassword
+);
 
 // Public: Password reset with strict rate limiting
 router.post(

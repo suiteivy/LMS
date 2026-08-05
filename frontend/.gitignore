@@ -37,3 +37,6 @@ access.log
 *.tsbuildinfo
 
 app-example
+
+# dist
+dist/

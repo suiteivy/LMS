@@ -92,7 +92,7 @@ const generateUniqueInstitutionEmail = async ({
   let candidate = `${baseEmailName}@${String(emailDomain).trim().toLowerCase()}`;
   let suffix = 1;
 
-  for (;;) {
+  for (; ;) {
     const { data: existingRows, error } = await supabase
       .from('users')
       .select('id')
@@ -454,7 +454,7 @@ exports.login = async (req, res) => {
     }
 
     // Use a fresh client to avoid polluting global state
-const { createClient } = require("@supabase/supabase-js");
+    const { createClient } = require("@supabase/supabase-js");
     const scopedClient = createClient(
       process.env.SUPABASE_URL || process.env.EXPO_PUBLIC_SUPABASE_URL,
       process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY, // Use Anon Key for login check
@@ -638,9 +638,9 @@ exports.enrollUser = async (req, res) => {
     const requesterCanManageUsers = requesterIsPlatformAdmin
       ? true
       : canAdminManageUsers({
-          isMain: !!req.isMain,
-          hasDelegatedPermission: hasDelegatedUserEditPermission(req),
-        });
+        isMain: !!req.isMain,
+        hasDelegatedPermission: hasDelegatedUserEditPermission(req),
+      });
 
     if (!requesterCanManageUsers) {
       return res.status(403).json({
@@ -714,11 +714,11 @@ exports.enrollUser = async (req, res) => {
         .select('email_domain')
         .eq('id', targetInstitutionId)
         .single();
-      
+
       if (inst?.email_domain && ['student', 'teacher', 'admin'].includes(role)) {
         const cleanF = fName.toLowerCase().replace(/[^a-z0-9]/g, '');
         const cleanL = (lName || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-        
+
         let baseEmail = '';
         if (cleanF && cleanL) {
           baseEmail = `${cleanF}.${cleanL}`;
@@ -728,7 +728,7 @@ exports.enrollUser = async (req, res) => {
 
         if (baseEmail) {
           finalEmail = `${baseEmail}@${inst.email_domain}`;
-          
+
           // Collision Check
           let isAvailable = false;
           let counter = 1;
@@ -738,7 +738,7 @@ exports.enrollUser = async (req, res) => {
               .select('id')
               .ilike('email', finalEmail)
               .maybeSingle();
-            
+
             if (existing) {
               counter++;
               finalEmail = `${baseEmail}${counter}@${inst.email_domain}`;
@@ -753,7 +753,7 @@ exports.enrollUser = async (req, res) => {
           code: 'MISSING_EMAIL_DOMAIN'
         });
       } else {
-         return res.status(400).json({
+        return res.status(400).json({
           error: `Email generation is not supported for role: ${role}. Please provide an email manually.`,
           code: 'EMAIL_REQUIRED_FOR_ROLE'
         });
@@ -814,7 +814,7 @@ exports.enrollUser = async (req, res) => {
     let customId = null;
     let parentResult = null;
 
-      if (role === 'student') {
+    if (role === 'student') {
       const updateFields = {};
       if (grade_level) updateFields.grade_level = grade_level;
       if (academic_year) updateFields.academic_year = academic_year;
@@ -936,7 +936,7 @@ exports.enrollUser = async (req, res) => {
             email: parentEmail,
             password: parentTempPass,
             email_confirm: true,
-            user_metadata: { 
+            user_metadata: {
               full_name: parentFullName,
               first_name: parentFirstName,
               last_name: parentLastName,
@@ -975,7 +975,7 @@ exports.enrollUser = async (req, res) => {
           }
 
           if (!pData) {
-             throw new Error("The 'parents' record was not created fast enough by the database trigger.");
+            throw new Error("The 'parents' record was not created fast enough by the database trigger.");
           }
 
           // Update Parent role entry
@@ -984,7 +984,7 @@ exports.enrollUser = async (req, res) => {
             address: parent_info.address || null,
           }).eq('id', pData.id);
 
-            if (customId) {
+          if (customId) {
             // Link parent to student
             const { error: linkErr } = await supabase.from('parent_students').insert({
               parent_id: pData.id,
@@ -1051,10 +1051,10 @@ exports.enrollUser = async (req, res) => {
                   </div>
                 </div>
               `,
-               text: `Dear ${parentFirstName || 'Parent'},\n\nYour parent account for Cloudora LMS has been created.\n\nLogin Credentials:\nEmail: ${parentEmail}\nTemporary Password: ${parentTempPass}\n\nPlease change your password after your first login.`
-             }).catch(e => console.error("Failed to send parent enrollment email:", e));
+              text: `Dear ${parentFirstName || 'Parent'},\n\nYour parent account for Cloudora LMS has been created.\n\nLogin Credentials:\nEmail: ${parentEmail}\nTemporary Password: ${parentTempPass}\n\nPlease change your password after your first login.`
+            }).catch(e => console.error("Failed to send parent enrollment email:", e));
           } else {
-             throw new Error("Missing Student ID to link with Parent");
+            throw new Error("Missing Student ID to link with Parent");
           }
         } catch (parentError) {
           console.error("============= [ATOMIC PARENT CREATION ERROR] =============", parentError);
@@ -1226,9 +1226,9 @@ exports.adminUpdateUser = async (req, res) => {
     const requesterCanManageUsers = requesterIsPlatformAdmin
       ? true
       : canAdminManageUsers({
-          isMain: !!req.isMain,
-          hasDelegatedPermission: requesterHasDelegatedEdit,
-        });
+        isMain: !!req.isMain,
+        hasDelegatedPermission: requesterHasDelegatedEdit,
+      });
 
     if (!requesterCanManageUsers) {
       return res.status(403).json({
@@ -1265,12 +1265,12 @@ exports.adminUpdateUser = async (req, res) => {
 
     // Derived full_name if first_name and last_name are provided but full_name is not
     if (full_name === undefined && (first_name !== undefined || last_name !== undefined)) {
-       // Best effort to construct it from the request body
-       const fName = first_name !== undefined ? (first_name || '') : '';
-       const lName = last_name !== undefined ? (last_name || '') : '';
-       if (fName || lName) {
-           userUpdates.full_name = `${fName} ${lName}`.trim();
-        }
+      // Best effort to construct it from the request body
+      const fName = first_name !== undefined ? (first_name || '') : '';
+      const lName = last_name !== undefined ? (last_name || '') : '';
+      if (fName || lName) {
+        userUpdates.full_name = `${fName} ${lName}`.trim();
+      }
     }
 
     // For master admin identity edits, regenerate institution-domain email from names.
@@ -1946,13 +1946,13 @@ exports.adminResetPassword = async (req, res) => {
       credential_delivery: credentialDelivery,
       credential_document: generatedPassword
         ? buildCredentialDocument({
-            fullName: targetUser.full_name,
-            role: targetUser.role,
-            email: targetUser.email,
-            temporaryPassword: finalPassword,
-            credentialUrl: credentialDelivery?.url,
-            expiresAt: credentialDelivery?.expiresAt,
-          })
+          fullName: targetUser.full_name,
+          role: targetUser.role,
+          email: targetUser.email,
+          temporaryPassword: finalPassword,
+          credentialUrl: credentialDelivery?.url,
+          expiresAt: credentialDelivery?.expiresAt,
+        })
         : undefined,
     });
   } catch (err) {
@@ -1971,7 +1971,7 @@ exports.adminResetPassword = async (req, res) => {
   }
 };
 
-/**
+
 exports.forgotPassword = async (req, res) => {
   try {
     const email = normalizeEmail(req.body?.email);
@@ -1998,7 +1998,7 @@ exports.forgotPassword = async (req, res) => {
         ipAddress,
         userAgent,
       });
-      return res.status(429).json({ 
+      return res.status(429).json({
         error: "Too many password reset requests. Please try again in an hour.",
         code: 'RATE_LIMIT_EXCEEDED'
       });
@@ -2071,7 +2071,7 @@ exports.forgotPassword = async (req, res) => {
           await sendBulkInAppNotificationsWithHistory(notifications);
         }
 
-        return res.status(200).json({ 
+        return res.status(200).json({
           message: "Your institution is on the Beta Tier. Please contact your internal school administrator to reset your password.",
           is_hierarchical: true
         });
@@ -2093,7 +2093,7 @@ exports.forgotPassword = async (req, res) => {
           await sendBulkInAppNotificationsWithHistory(notifications);
         }
 
-        return res.status(200).json({ 
+        return res.status(200).json({
           message: "Administrative reset requested. Please contact the platform support (Master Admin) to reset your password.",
           is_hierarchical: true
         });
