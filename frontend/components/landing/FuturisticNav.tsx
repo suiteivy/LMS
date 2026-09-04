@@ -169,7 +169,9 @@ export const FuturisticNav: React.FC<FuturisticNavProps> = ({ onScrollTo, active
                     },
                     isWeb
                       ? ({
-                          transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
+                          transitionProperty: 'all',
+                          transitionDuration: '0.2s',
+                          transitionTimingFunction: 'cubic-bezier(0.16, 1, 0.3, 1)',
                           cursor: 'pointer',
                         } as any)
                       : {},
@@ -220,7 +222,9 @@ export const FuturisticNav: React.FC<FuturisticNavProps> = ({ onScrollTo, active
               },
               isWeb
                 ? ({
-                    transition: 'all 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
+                    transitionProperty: 'all',
+                    transitionDuration: '0.25s',
+                    transitionTimingFunction: 'cubic-bezier(0.16, 1, 0.3, 1)',
                     transform: demoHovered ? [{ translateY: -2 }, { scale: 1.04 }] : [{ translateY: 0 }, { scale: 1 }],
                     cursor: 'pointer',
                   } as any)

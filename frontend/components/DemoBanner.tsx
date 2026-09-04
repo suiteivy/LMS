@@ -111,21 +111,10 @@ export default function DemoBanner() {
         return () => clearInterval(interval);
     }, [expiryTime]);
 
-    const callCleanup = async () => {
-        try {
-            const institutionId = (profile as any)?.institution_id;
-            const userId = user?.id;
-            if (institutionId && userId) await authService.endDemoSession(institutionId, userId);
-        } catch (e) {
-            console.warn('Demo cleanup non-fatal:', e);
-        }
-    };
-
     const handleExpiry = async () => {
         if (isCleaning) return;
         setIsCleaning(true);
         try {
-            await callCleanup();
             await AsyncStorage.removeItem('demo_expiry');
             setShowExpiredModal(true);
             await logout();
@@ -141,7 +130,6 @@ export default function DemoBanner() {
         if (isCleaning) return;
         setIsCleaning(true);
         try {
-            await callCleanup();
             await AsyncStorage.removeItem('demo_expiry');
             await logout();
             router.replace('/(auth)/demo');

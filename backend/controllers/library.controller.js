@@ -568,15 +568,21 @@ exports.history = async (req, res) => {
           .eq('institution_id', req.institution_id)
           .order("created_at", { ascending: false });
         if (error) return res.status(500).json({ error: error.message });
-        return res.json(data);
+        return res.json(data || []);
       } else {
         return res.status(400).json({ error: "Profile not found" });
       }
     }
 
     const { data, error } = await supabase
+      .from("borrowed_books")
+      .select("*, books(title, author, isbn), issuer:issued_by(full_name), returner:returned_by(full_name)")
+      .eq("student_id", targetStudentId)
+      .eq("institution_id", req.institution_id)
+      .order("created_at", { ascending: false });
+
     if (error) return res.status(500).json({ error: error.message });
-    return res.json(data);
+    return res.json(data || []);
   } catch (e) {
     console.error("history error:", e);
     return res.status(500).json({ error: "Server error" });

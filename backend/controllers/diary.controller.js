@@ -25,7 +25,14 @@ exports.createEntry = async (req, res) => {
             if (!cls) {
                 // Also check if they teach any subject in this class
                 const { data: sub } = await supabase.from('subjects').select('id').eq('class_id', class_id).eq('teacher_id', teacher.id).single();
-                if (!sub) return res.status(403).json({ error: "Access denied: You are not assigned to this class" });
+                if (!sub) {
+                    const { data: subTeacher } = await supabase.from('subject_teachers')
+                        .select('id, subjects!inner(class_id)')
+                        .eq('teacher_id', teacher.id)
+                        .eq('subjects.class_id', class_id)
+                        .maybeSingle();
+                    if (!subTeacher) return res.status(403).json({ error: "Access denied: You are not assigned to this class" });
+                }
             }
 
             effectiveTeacherId = teacher.id;
@@ -87,7 +94,7 @@ exports.getEntries = async (req, res) => {
             if (!student) return res.status(404).json({ error: "Student profile not found" });
 
             const enrollment = await getStudentCurrentClassEnrollment(student.id, institution_id);
-            if (!enrollment) return res.status(404).json({ error: "Student not enrolled in any class" });
+            if (!enrollment) return res.json([]);
             targetClassId = enrollment.class_id;
             targetStudentId = student.id;
         } else if (userRole === 'parent') {
@@ -101,7 +108,7 @@ exports.getEntries = async (req, res) => {
             if (!linkage) return res.status(403).json({ error: "Access denied: Not linked to this student" });
 
             const enrollment = await getStudentCurrentClassEnrollment(student_id, institution_id);
-            if (!enrollment) return res.status(404).json({ error: "Student not enrolled in any class" });
+            if (!enrollment) return res.json([]);
             targetClassId = enrollment.class_id;
             targetStudentId = student_id;
         }

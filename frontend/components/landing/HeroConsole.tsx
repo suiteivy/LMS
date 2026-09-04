@@ -335,7 +335,9 @@ export const HeroConsole: React.FC<HeroConsoleProps> = ({ onExplorePricing, onOp
                 },
                 isWeb
                   ? ({
-                      transition: 'transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s ease',
+                      transitionProperty: 'transform, box-shadow',
+                      transitionDuration: '0.2s, 0.25s',
+                      transitionTimingFunction: 'cubic-bezier(0.16, 1, 0.3, 1), ease',
                       transform: demoHovered ? [{ translateY: -3 }, { scale: 1.02 }] : [{ translateY: 0 }],
                       cursor: 'pointer',
                     } as any)
@@ -380,7 +382,9 @@ export const HeroConsole: React.FC<HeroConsoleProps> = ({ onExplorePricing, onOp
                   ? ({
                       backdropFilter: 'blur(16px)',
                       WebkitBackdropFilter: 'blur(16px)',
-                      transition: 'all 0.2s ease',
+                      transitionProperty: 'all',
+                      transitionDuration: '0.2s',
+                      transitionTimingFunction: 'ease',
                       transform: pricingHovered ? [{ translateY: -2 }] : [{ translateY: 0 }],
                       cursor: 'pointer',
                     } as any)
@@ -505,32 +509,6 @@ export const HeroConsole: React.FC<HeroConsoleProps> = ({ onExplorePricing, onOp
                   live preview
                 </Text>
               </View>
-
-              <View
-                style={{
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  gap: 5,
-                  backgroundColor: 'rgba(16, 185, 129, 0.12)',
-                  paddingHorizontal: 8,
-                  paddingVertical: 2,
-                  borderRadius: 10,
-                  borderWidth: 1,
-                  borderColor: 'rgba(16, 185, 129, 0.25)',
-                }}
-              >
-                <View style={{ width: 5, height: 5, borderRadius: 2.5, backgroundColor: '#10B981' }} />
-                <Text
-                  style={{
-                    color: '#10B981',
-                    fontSize: 10,
-                    fontWeight: '700',
-                    letterSpacing: 0.5,
-                  }}
-                >
-                  CONNECTED
-                </Text>
-              </View>
             </View>
 
             {/* Role Switcher Matrix */}
@@ -580,7 +558,7 @@ export const HeroConsole: React.FC<HeroConsoleProps> = ({ onExplorePricing, onOp
                             color: `${cfg.accent}40`,
                           }] : [],
                         },
-                        isWeb ? ({ cursor: 'pointer', transition: 'all 0.25s cubic-bezier(0.16, 1, 0.3, 1)' } as any) : {},
+                        isWeb ? ({ cursor: 'pointer', transitionProperty: 'all', transitionDuration: '0.25s', transitionTimingFunction: 'cubic-bezier(0.16, 1, 0.3, 1)' } as any) : {},
                       ]}
                     >
                       {React.cloneElement(cfg.icon, {

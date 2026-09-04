@@ -246,7 +246,9 @@ export const FuturisticContact: React.FC<FuturisticContactProps> = ({ onOpenBook
             },
             isWeb
               ? ({
-                  transition: 'all 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
+                  transitionProperty: 'all',
+                  transitionDuration: '0.25s',
+                  transitionTimingFunction: 'cubic-bezier(0.16, 1, 0.3, 1)',
                   transform: setupBtnHovered
                     ? [{ translateY: -3 }, { scale: 1.03 }]
                     : [{ translateY: 0 }, { scale: 1 }],

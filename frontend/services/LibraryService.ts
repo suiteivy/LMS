@@ -64,7 +64,7 @@ export class LibraryAPI {
   static async getBooks(): Promise<BackendBook[]> {
     try {
       const response = await api.get<BackendBook[]>("/library/books");
-      return response.data;
+      return Array.isArray(response.data) ? response.data : [];
     } catch (error) {
       console.error("Error fetching books:", error);
       throw error;
@@ -176,7 +176,7 @@ export class LibraryAPI {
     try {
       const url = studentId ? `/library/history/${studentId}` : "/library/history";
       const response = await api.get<BackendBorrowedBook[]>(url);
-      return response.data;
+      return Array.isArray(response.data) ? response.data : [];
     } catch (error) {
       console.error("Error fetching borrowing history:", error);
       throw error;

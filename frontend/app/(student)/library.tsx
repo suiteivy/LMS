@@ -36,8 +36,8 @@ export default function StudentLibrary() {
                 LibraryAPI.getBorrowingHistory()
             ]);
 
-            const finalBooks = booksData.map(LibraryAPI.transformBookData);
-            const finalHistory = historyData.map(LibraryAPI.transformBorrowedBookData);
+            const finalBooks = (Array.isArray(booksData) ? booksData : []).map(LibraryAPI.transformBookData);
+            const finalHistory = (Array.isArray(historyData) ? historyData : []).map(LibraryAPI.transformBorrowedBookData);
 
             setBooks(finalBooks);
             setBorrowingHistory(finalHistory);

@@ -25,6 +25,8 @@ export async function safeSignOut(
   scope: 'local' | 'global' = 'local',
   reason: LogoutReason = LogoutReason.UNKNOWN,
   silent: boolean = false,
+  isDemoSession?: boolean,
+  demoUserId?: string | null,
 ): Promise<void> {
   // 1. Persist reason before clearing anything
   try {
@@ -33,15 +35,25 @@ export async function safeSignOut(
     // storage failure is non-critical
   }
 
-  // 2. Notify backend to clean up server-side session row (best-effort)
+  // 2. Check session and notify backend
+  let isDemoUser = !!isDemoSession;
+  let targetDemoUserId: string | null = demoUserId || null;
+  let accessToken: string | null = null;
   try {
     const { data: { session } } = await supabase.auth.getSession();
-    if (session?.access_token) {
+    if (session?.user) {
+      if (!targetDemoUserId) targetDemoUserId = session.user.id;
+      if (!isDemoUser) isDemoUser = session.user.email?.startsWith('demo.') || false;
+      accessToken = session.access_token;
+    }
+
+    // Regular users: notify backend /auth/logout (best-effort)
+    if (!isDemoUser && accessToken) {
       await fetch(`${getApiBaseUrl()}/auth/logout`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`,
+          'Authorization': `Bearer ${accessToken}`,
         },
       }).catch(() => {}); // swallow network errors
     }
@@ -49,13 +61,29 @@ export async function safeSignOut(
     // non-critical – continue with local sign-out
   }
 
-  // 3. Call Supabase signOut – guard against 403 / network errors
+  // 3. Call Supabase signOut FIRST (before demo user deletion)
   try {
-    await supabase.auth.signOut({ scope } as any);
+    const { error: signOutError } = await supabase.auth.signOut({ scope } as any);
+    if (signOutError) {
+      console.warn('[safeSignOut] supabase.auth.signOut error (non-fatal):', signOutError?.message || signOutError);
+    }
   } catch (e: any) {
     // Supabase may throw if the refresh token is already invalid (403).
     // This is expected during token-expired or revocation flows – swallow it.
     console.warn('[safeSignOut] supabase.auth.signOut error (non-fatal):', e?.message ?? e);
+  }
+
+  // 4. If demo user, trigger demo cleanup AFTER signout
+  if (isDemoUser && targetDemoUserId) {
+    try {
+      await fetch(`${getApiBaseUrl()}/demo/end`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user_id: targetDemoUserId }),
+      }).catch(() => {});
+    } catch {
+      // non-critical
+    }
   }
 
   // 4. Clear demo-related keys (best-effort)

@@ -35,8 +35,8 @@ export default function TeacherLibrary() {
                 teacherId ? LibraryAPI.getBorrowingHistory() : Promise.resolve([])
             ]);
 
-            const finalBooks = booksData.map(LibraryAPI.transformBookData);
-            const finalHistory = historyData.map(LibraryAPI.transformBorrowedBookData);
+            const finalBooks = (Array.isArray(booksData) ? booksData : []).map(LibraryAPI.transformBookData);
+            const finalHistory = (Array.isArray(historyData) ? historyData : []).map(LibraryAPI.transformBorrowedBookData);
 
             setBooks(finalBooks as any);
             setBorrowingHistory(finalHistory as any);

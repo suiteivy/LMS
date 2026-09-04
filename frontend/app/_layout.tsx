@@ -193,7 +193,7 @@ function AuthHandler() {
     if (!session) {
       if (!inAuthGroup && !isRoot && !isCredentialDelivery && !isNotFound) {
         if (wasDemo) {
-          handleRedirect("/");
+          handleRedirect("/(auth)/demo");
           clearWasDemo();
         } else {
           handleRedirect("/(auth)/signIn");

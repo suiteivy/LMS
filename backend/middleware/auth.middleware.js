@@ -74,7 +74,12 @@ async function authMiddleware(req, res, next) {
       ? authHeader.split(" ")[1]
       : null;
 
+    const isLogoutPath = (req.originalUrl || req.url || '').includes('/logout');
+
     if (!token) {
+      if (isLogoutPath) {
+        return res.status(200).json({ message: "Already logged out" });
+      }
       console.warn("[AuthMiddleware] No token provided for:", req.url);
       return res.status(401).json({ error: "No token provided" });
     }
@@ -85,6 +90,9 @@ async function authMiddleware(req, res, next) {
     } = await withSupabaseRetry(() => supabase.auth.getUser(token), { attempts: 1 });
 
     if (error || !user) {
+      if (isLogoutPath) {
+        return res.status(200).json({ message: "Already logged out" });
+      }
       const msg = error?.message || 'Invalid user';
       if (isTransientSupabaseError(error || msg)) {
         console.error(`[AuthMiddleware] Supabase auth transient error for ${req.url}:`, msg);
@@ -125,6 +133,7 @@ async function authMiddleware(req, res, next) {
       if (sessionRow) {
         // Enforce revocation
         if (sessionRow.is_revoked) {
+          if (isLogoutPath) return res.status(200).json({ message: "Already logged out" });
           console.warn(`[AuthMiddleware] Revoked session access attempt: ${sessionId}`);
           return res.status(401).json({ error: "Session has been revoked", code: "SESSION_REVOKED" });
         }
@@ -132,6 +141,7 @@ async function authMiddleware(req, res, next) {
         // Enforce absolute timeout (10 hours)
         const expiresAt = new Date(sessionRow.expires_at).getTime();
         if (now > expiresAt) {
+          if (isLogoutPath) return res.status(200).json({ message: "Already logged out" });
           console.warn(`[AuthMiddleware] Session absolute timeout exceeded: ${sessionId}`);
           await supabase.from('user_sessions').update({ is_revoked: true }).eq('session_id', sessionId);
           return res.status(401).json({ error: "Session expired", code: "SESSION_TIMEOUT" });
@@ -140,6 +150,7 @@ async function authMiddleware(req, res, next) {
         // Enforce idle timeout (30 minutes)
         const lastActive = new Date(sessionRow.last_active_at).getTime();
         if (now - lastActive > IDLE_TIMEOUT_MS) {
+          if (isLogoutPath) return res.status(200).json({ message: "Already logged out" });
           console.warn(`[AuthMiddleware] Session idle timeout exceeded: ${sessionId}`);
           await supabase.from('user_sessions').update({ is_revoked: true }).eq('session_id', sessionId);
             return res.status(401).json({ error: "You've been logged out due to inactivity.", code: "SESSION_IDLE_TIMEOUT" });
@@ -233,12 +244,14 @@ async function authMiddleware(req, res, next) {
       const trialSession = trialSessions?.[0];
 
       if (trialError || !trialSession) {
+        if (isLogoutPath) return res.status(200).json({ message: "Already logged out" });
         console.warn(`[AuthMiddleware] No trial session found for demo user: ${user.id}`);
         return res.status(401).json({ error: "Trial session missing or expired" });
       }
 
       const expiresAt = new Date(trialSession.expires_at).getTime();
       if (Date.now() > expiresAt) {
+        if (isLogoutPath) return res.status(200).json({ message: "Already logged out" });
         console.log(`[AuthMiddleware] Trial session expired for demo user: ${user.id}`);
         // Clean up if expired
         await supabase.from('trial_sessions').delete().eq('demo_user_id', user.id).catch(() => { });
@@ -278,6 +291,7 @@ async function authMiddleware(req, res, next) {
       }
 
     if (profileError || !profileData) {
+        if (isLogoutPath) return res.status(200).json({ message: "Already logged out" });
         const msg = profileError?.message || 'Profile lookup failed';
         const timeoutLike = /fetch failed|timeout|und_err_connect_timeout/i.test(msg);
         console.error(`[AuthMiddleware] Profile fetch error for ${user.id}:`, msg);

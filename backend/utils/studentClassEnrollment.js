@@ -16,7 +16,24 @@ async function getStudentCurrentClassEnrollment(studentId, institutionId) {
 
   const { data, error } = await query;
   if (error) throw error;
-  return (data || [])[0] || null;
+  if (data && data.length > 0) return data[0];
+
+  // Fallback: check students table for direct class_id assignment
+  const { data: studentRow } = await supabase
+    .from('students')
+    .select('id, class_id, institution_id')
+    .eq('id', studentId)
+    .single();
+
+  if (studentRow?.class_id) {
+    return {
+      student_id: studentId,
+      class_id: studentRow.class_id,
+      institution_id: studentRow.institution_id || institutionId,
+    };
+  }
+
+  return null;
 }
 
 async function assignStudentToSingleClass({ studentId, classId, institutionId, syncStudentLevel = true }) {

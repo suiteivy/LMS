@@ -441,7 +441,9 @@ export const FuturisticPricing: React.FC<FuturisticPricingProps> = ({ onSelectPl
                     },
                     isWeb ? ({
                       cursor: 'pointer',
-                      transition: 'all 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
+                      transitionProperty: 'all',
+                      transitionDuration: '0.25s',
+                      transitionTimingFunction: 'cubic-bezier(0.16, 1, 0.3, 1)',
                       transform: isActive ? [{ scale: 1.04 }] : [{ scale: 1 }],
                     } as any) : {},
                   ]}
@@ -707,7 +709,7 @@ export const FuturisticPricing: React.FC<FuturisticPricingProps> = ({ onSelectPl
                           : 'transparent',
                       }],
                     },
-                    isWeb ? ({ cursor: 'pointer', transition: 'all 0.2s ease' } as any) : {},
+                    isWeb ? ({ cursor: 'pointer', transitionProperty: 'all', transitionDuration: '0.2s', transitionTimingFunction: 'ease' } as any) : {},
                   ]}
                 >
                   <Text style={{ color: '#FFFFFF', fontWeight: '800', fontSize: 14 }}>
@@ -949,7 +951,9 @@ export const FuturisticPricing: React.FC<FuturisticPricingProps> = ({ onSelectPl
               },
               isWeb
                 ? ({
-                    transition: 'all 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
+                    transitionProperty: 'all',
+                    transitionDuration: '0.25s',
+                    transitionTimingFunction: 'cubic-bezier(0.16, 1, 0.3, 1)',
                     transform: trialBtnHovered
                       ? [{ translateY: -3 }, { scale: 1.03 }]
                       : [{ translateY: 0 }, { scale: 1 }],
@@ -1145,7 +1149,9 @@ export const FuturisticPricing: React.FC<FuturisticPricingProps> = ({ onSelectPl
                   },
                   isWeb
                     ? ({
-                        transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
+                        transitionProperty: 'all',
+                        transitionDuration: '0.2s',
+                        transitionTimingFunction: 'cubic-bezier(0.16, 1, 0.3, 1)',
                         transform: isBtnHovered ? [{ translateY: -2 }, { scale: 1.02 }] : [{ translateY: 0 }, { scale: 1 }],
                         cursor: 'pointer',
                       } as any)

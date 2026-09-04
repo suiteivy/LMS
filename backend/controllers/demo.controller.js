@@ -108,12 +108,20 @@ exports.startDemo = async (req, res) => {
             }));
             await supabase.from('enrollments').insert(enrollments);
 
+            // Enroll demo student in the class for diary, attendance, and exam visibility
+            await supabase.from('class_enrollments').insert({
+                student_id: stu.id,
+                class_id: '417561a5-48c5-4c45-b736-97d49e74bd35',
+                institution_id: TEMPLATE_INSTITUTION_ID,
+                enrolled_at: new Date().toISOString()
+            });
+
         } else if (role === 'admin') {
             const { error: e } = await supabase.from('admins').insert({
                 id: `ADM-DEMO-${sessionId}`,
                 user_id: userId,
                 institution_id: TEMPLATE_INSTITUTION_ID,
-                is_main: false
+                is_main: true
             });
             if (e) throw new Error(`Admin insert failed: ${e.message}`);
 
@@ -204,7 +212,15 @@ exports.endDemo = async (req, res) => {
 
         // Delete role-specific profile
         if (user.role === 'teacher') {
-            await supabase.from('teachers').delete().eq('user_id', user_id);
+            const { data: teacher } = await supabase
+                .from('teachers')
+                .select('id')
+                .eq('user_id', user_id)
+                .single();
+            if (teacher) {
+                await supabase.from('subject_teachers').delete().eq('teacher_id', teacher.id);
+                await supabase.from('teachers').delete().eq('id', teacher.id);
+            }
 
         } else if (user.role === 'student') {
             const { data: stu } = await supabase
@@ -215,6 +231,9 @@ exports.endDemo = async (req, res) => {
 
             if (stu) {
                 await supabase.from('enrollments').delete()
+                    .eq('student_id', stu.id)
+                    .eq('institution_id', TEMPLATE_INSTITUTION_ID);
+                await supabase.from('class_enrollments').delete()
                     .eq('student_id', stu.id)
                     .eq('institution_id', TEMPLATE_INSTITUTION_ID);
                 await supabase.from('students').delete().eq('id', stu.id);

@@ -61,9 +61,11 @@ export const authService = {
   // Sign out
   signOut: async () => {
     try {
-      // 1. Try to notify backend to clean up trial session
       const { data: { session } } = await supabase.auth.getSession();
-      if (session?.access_token) {
+      const isDemo = session?.user?.email?.startsWith('demo.') || false;
+      const userId = session?.user?.id;
+
+      if (!isDemo && session?.access_token) {
         try {
           await fetch(`${getApiBaseUrl()}/auth/logout`, {
             method: 'POST',
@@ -74,11 +76,23 @@ export const authService = {
           });
         } catch (e) {
           console.warn("Backend logout failed", e);
-          // Continue to local sign out anyway
         }
       }
 
       const { error } = await supabase.auth.signOut();
+
+      if (isDemo && userId) {
+        try {
+          await fetch(`${getApiBaseUrl()}/demo/end`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ user_id: userId })
+          });
+        } catch (e) {
+          console.warn("Demo cleanup failed", e);
+        }
+      }
+
       return { error };
     } catch (error) {
       return { error };

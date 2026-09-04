@@ -253,6 +253,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     isManualLogout.current = true;
 
     try {
+      // Capture demo status and IDs BEFORE clearing session / user
+      const isDemoSession = isDemoRef.current || wasDemo || userRef.current?.email?.startsWith('demo.') || currentSessionRef.current?.user?.email?.startsWith('demo.') || false;
+      const demoUserId = userRef.current?.id || currentSessionRef.current?.user?.id || null;
+      if (isDemoSession) {
+        setWasDemo(true);
+      }
+
       // Clear all local state first (before signOut call, in case Supabase throws)
       setSession(null);
       setUser(null);
@@ -285,12 +292,18 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       }
 
       // Use centralized safeSignOut – never fails, persists reason, shows toast
-      await safeSignOut('local', reason, silent || isDemoRef.current);
+      await safeSignOut('local', reason, silent || isDemoSession, isDemoSession, demoUserId);
 
-      // Final AsyncStorage wipe (safeSignOut already clears demo keys)
-      try { await AsyncStorage.clear(); } catch { /* non-critical */ }
+      // Selectively clear auth storage rather than wiping everything
+      try {
+        await Promise.allSettled([
+          AsyncStorage.removeItem('session_start_time'),
+          AsyncStorage.removeItem('demo_expiry'),
+          AsyncStorage.removeItem('is_demo_mode'),
+        ]);
+      } catch { /* non-critical */ }
 
-      if (!silent && isDemoRef.current) {
+      if (!silent && isDemoSession) {
         Toast.show({ type: 'info', text1: 'Session ended', text2: 'Demo session ended.', position: 'top' });
       }
     } finally {
