@@ -168,6 +168,7 @@ function AuthHandler() {
     const currentPath = normalizePath(`/${segments.join('/')}`);
     const isRoot = currentPath === '/' || currentPath === '';
     const isCredentialDelivery = currentPath === '/credential-delivery';
+    const isNotFound = (segments as string[]).includes('+not-found') || currentPath === '/+not-found';
 
 
     const handleRedirect = (path: string) => {
@@ -190,7 +191,7 @@ function AuthHandler() {
     };
 
     if (!session) {
-      if (!inAuthGroup && !isRoot && !isCredentialDelivery) {
+      if (!inAuthGroup && !isRoot && !isCredentialDelivery && !isNotFound) {
         if (wasDemo) {
           handleRedirect("/");
           clearWasDemo();
@@ -243,6 +244,7 @@ function AuthHandler() {
         <Stack.Screen name="(auth)/verify-security-questions" />
         <Stack.Screen name="credential-delivery" />
         <Stack.Screen name="(auth)/demo" />
+        <Stack.Screen name="+not-found" options={{ headerShown: false, title: 'Not Found' }} />
       </Stack>
 
       <GlobalNotifications />

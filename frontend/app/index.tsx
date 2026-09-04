@@ -1333,7 +1333,7 @@ export default function Index() {
                     marginLeft: 6,
                   }}
                 >
-                  Next-Gen School Platform
+                  Digital School Management Platform
                 </Text>
               </View>
 
@@ -1363,7 +1363,7 @@ export default function Index() {
                   lineHeight: 22,
                 }}
               >
-                Empower your institution with a modern, cloud-based LMS.{"\n"}
+                Empower your institution with a modern, cloud-based Learning Management System.{"\n"}
                 Courses, resources, payments, analytics all in one place.
               </Text>
 

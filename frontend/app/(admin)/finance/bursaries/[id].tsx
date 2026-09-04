@@ -1,4 +1,5 @@
 import { UnifiedHeader } from "@/components/common/UnifiedHeader";
+import { NotFoundView } from "@/components/common/NotFoundView";
 import { useCurrency } from "@/contexts/CurrencyContext";
 import { useTheme } from "@/contexts/ThemeContext";
 import { BursaryService } from '@/services/BursaryService';
@@ -37,10 +38,10 @@ export default function BursaryDetailsScreen() {
             setLoading(true);
             const data = await BursaryService.getBursaryDetails(id);
             setBursary(data);
-            setApplications(data.applications || []);
+            setApplications(data?.applications || []);
         } catch (error: any) {
-            Alert.alert('Error', error.message);
-            router.back();
+            console.error('Failed to load bursary:', error);
+            setBursary(null);
         } finally {
             setLoading(false);
         }
@@ -65,6 +66,17 @@ export default function BursaryDetailsScreen() {
             <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: isDark ? '#161B22' : '#f9fafb' }}>
                 <ActivityIndicator size="large" color="#FF6B00" />
             </View>
+        );
+    }
+
+    if (!bursary) {
+        return (
+            <NotFoundView
+                mode="record"
+                recordType="Bursary"
+                backPath="/(admin)/finance"
+                onRetry={fetchDetails}
+            />
         );
     }
 

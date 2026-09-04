@@ -1,5 +1,6 @@
 import { DatePicker } from '@/components/common/DatePicker';
 import { UserCard } from '@/components/common/UserCard';
+import { NotFoundView } from '@/components/common/NotFoundView';
 import { ListItemSkeleton } from '@/components/ui/skeletons';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -251,7 +252,10 @@ export default function UserDetailsScreen() {
                 }
             }
         } catch (error: any) {
-            Alert.alert('Error', error.message);
+            // If the record doesn't exist, NotFoundView renders cleanly without an intrusive alert
+            if (error?.code !== 'PGRST116' && !error?.message?.includes('0 rows')) {
+                Alert.alert('Error', error.message);
+            }
         } finally {
             setLoading(false);
         }
@@ -561,9 +565,12 @@ export default function UserDetailsScreen() {
 
     if (!user) {
         return (
-            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: bg }}>
-                <Text style={{ color: textSecondary }}>User not found</Text>
-            </View>
+            <NotFoundView
+                mode="record"
+                recordType="User"
+                backPath="/(admin)/users"
+                onRetry={fetchUserDetails}
+            />
         );
     }
 
