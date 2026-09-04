@@ -18,6 +18,30 @@
   z-index: -1;
 }
 
+/* Futuristic Glass & Glow Tokens */
+.futuristic-glass {
+  background: rgba(19, 16, 58, 0.45);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.futuristic-glass-hover:hover {
+  border-color: rgba(255, 107, 0, 0.4);
+  box-shadow: 0 12px 36px rgba(255, 107, 0, 0.15);
+}
+
+/* Font smoothing & typography polish */
+html, body {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background-color: #080616;
+}
+
+.text-tabular {
+  font-variant-numeric: tabular-nums;
+}
+
 /* Global focus styling for React Native Web inputs */
 input:focus, textarea:focus, select:focus {
   outline: none !important;
@@ -25,11 +49,67 @@ input:focus, textarea:focus, select:focus {
   box-shadow: 0 0 0 2px rgba(255, 105, 0, 0.25) !important;
 }
 
-/* #2C3E50
-#F1FFF8
-#A1EBE5
-#1ABC9C
-#16A085
-#D0E8E6
-#FFFFFF
-#128C7E */
+/* Futuristic animations */
+@keyframes nebulaDrift {
+  0% { transform: translate(0px, 0px) scale(1); }
+  33% { transform: translate(30px, -40px) scale(1.08); }
+  66% { transform: translate(-25px, 20px) scale(0.95); }
+  100% { transform: translate(0px, 0px) scale(1); }
+}
+
+@keyframes pulseGlow {
+  0%, 100% { opacity: 0.35; transform: scale(1); }
+  50% { opacity: 0.7; transform: scale(1.04); }
+}
+
+@keyframes scanline {
+  0% { transform: translateY(-100%); }
+  100% { transform: translateY(1000%); }
+}
+
+@keyframes floatParticle {
+  0%, 100% { transform: translateY(0px) translateX(0px); opacity: 0.3; }
+  50% { transform: translateY(-18px) translateX(8px); opacity: 0.8; }
+}
+
+@keyframes tierContentFadeIn {
+  0% {
+    opacity: 0;
+    transform: translateY(14px) scale(0.995);
+  }
+  100% {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.anim-tier-content {
+  animation: tierContentFadeIn 0.28s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  will-change: opacity, transform;
+}
+
+.anim-nebula-slow {
+  animation: nebulaDrift 22s ease-in-out infinite;
+}
+
+.anim-nebula-alt {
+  animation: nebulaDrift 28s ease-in-out infinite reverse;
+}
+
+.anim-pulse-glow {
+  animation: pulseGlow 4s ease-in-out infinite;
+}
+
+.anim-float-particle {
+  animation: floatParticle 6s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .anim-nebula-slow,
+  .anim-nebula-alt,
+  .anim-pulse-glow,
+  .anim-float-particle,
+  .anim-tier-content {
+    animation: none !important;
+  }
+}

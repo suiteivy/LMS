@@ -1,1087 +1,114 @@
-import { AppLoading } from "@/components/AppLoading";
-import { useAuth } from "@/contexts/AuthContext";
-import { api } from "@/services/api";
-import { BlurView } from 'expo-blur';
-import { router, usePathname } from "expo-router";
+import React, { useRef, useState } from 'react';
 import {
-  BadgeCheck,
-  BarChart2,
-  BookOpen,
-  Check,
-  Coins,
-  CreditCard,
-  Crown,
-  Library,
-  MoveRight,
-  Package,
-  Plus,
-  School,
-  Building,
-  Settings,
-  Sparkles,
-  Timer,
-  Users,
-  Mail,
-  Phone,
-  Instagram,
-  Linkedin,
-  LogIn,
-  ClipboardList
-} from "lucide-react-native";
-import React, { useEffect, useRef, useState } from 'react';
-import {
-  ActivityIndicator, Alert, Animated, Dimensions, KeyboardAvoidingView,
-  Modal,
+  View,
+  Text,
+  ScrollView,
+  StatusBar,
+  KeyboardAvoidingView,
   Platform,
-  ScrollView, StatusBar, Text,
+  Modal,
   TextInput,
-  TouchableOpacity, View
-} from "react-native";
-import Reanimated, {
-  Easing,
-  interpolate,
-  useAnimatedProps,
-  useAnimatedStyle,
-  useSharedValue,
-  withRepeat,
-  withSequence,
-  withTiming
-} from 'react-native-reanimated';
-import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
-import Svg, { Circle, Defs, LinearGradient, Stop } from 'react-native-svg';
-
-const { width: SCREEN_WIDTH } = Dimensions.get("window");
-
-export function priceConverter(price: string) {
-  if (price.toLowerCase() === 'custom') return price;
-  
-  // Hardcoded exchange rate
-  const exchangeRate = 130;
-  
-  // Strip '$' and commas before parsing
-  const numericPrice = price.replace(/[^0-9.]/g, '');
-  const priceInUsd = parseFloat(numericPrice);
-  
-  if (isNaN(priceInUsd)) return price;
-  
-  const priceInKsh = priceInUsd * exchangeRate;
-  return `KSH. ${priceInKsh.toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
-}
-
-// Pricing Components
-const AnimatedCircle = Reanimated.createAnimatedComponent(Circle);
-
-//Tier Tab Pill
-const PackageTierTab = ({ tier, label, icon, tagline, isActive, onPress }: any) => {
-  const [hovered, setHovered] = useState(false);
-  const glow = useSharedValue(0);
-
-  useEffect(() => {
-    if (isActive) {
-      glow.value = withRepeat(
-        withSequence(
-          withTiming(1, { duration: 2000, easing: Easing.inOut(Easing.sin) }),
-          withTiming(0.5, { duration: 2000, easing: Easing.inOut(Easing.sin) })
-        ), -1, true
-      );
-    } else {
-      glow.value = withTiming(0, { duration: 300 });
-    }
-  }, [isActive]);
-
-  const glowStyle = useAnimatedStyle(() => ({
-    opacity: interpolate(glow.value, [0, 1], [0, 0.5]),
-  }));
-
-  const isWeb = Platform.OS === 'web';
-
-  return (
-    <TouchableOpacity
-      onPress={onPress}
-      activeOpacity={0.8}
-      //@ts-ignore
-      onPointerEnter={() => setHovered(true)}
-      onPointerLeave={() => setHovered(false)}
-      style={[
-        {
-          // Wide screens (>= 768px): flex fills equal share; narrow: fixed compact width
-          ...(SCREEN_WIDTH >= 768
-            ? { flex: 1, minWidth: 110, maxWidth: 200 }
-            : { width: 118, flexShrink: 0 }),
-          paddingVertical: 16,
-          paddingHorizontal: 14,
-          borderRadius: 20,
-          alignItems: 'center',
-          borderWidth: 1.5,
-          position: 'relative',
-          overflow: 'hidden',
-          borderColor: isActive ? `${tier.accent}66` : 'rgba(255,255,255,0.08)',
-          backgroundColor: isActive ? `${tier.accent}12` : hovered ? 'rgba(255,255,255,0.04)' : 'transparent',
-        },
-        isWeb ? {
-          transition: 'background-color 0.3s ease, border-color 0.3s ease, transform 0.2s ease',
-          transform: hovered && !isActive ? [{ scale: 1.02 }] : [{ scale: 1 }],
-          cursor: 'pointer',
-        } as any : {},
-      ]}
-    >
-      {/* Glow blob behind active */}
-      {isActive && (
-        <Reanimated.View style={[{
-          position: 'absolute',
-          top: '-50%', left: '-50%',
-          width: '200%', height: '200%',
-          borderRadius: 999,
-          opacity: 0.15,
-        } as any, glowStyle]} />
-      )}
-
-      {/* Active underline bar */}
-      {isActive && (
-        <View style={{
-          position: 'absolute', bottom: 0, left: '20%', right: '20%',
-          height: 2.5, borderRadius: 2,
-          backgroundColor: tier.accent,
-        }} />
-      )}
-
-      <View style={{
-        width: 36, height: 36, borderRadius: 12,
-        backgroundColor: isActive ? `${tier.accent}25` : 'rgba(255,255,255,0.06)',
-        alignItems: 'center', justifyContent: 'center',
-        marginBottom: 8,
-        borderWidth: 1,
-        borderColor: isActive ? `${tier.accent}40` : 'rgba(255,255,255,0.08)',
-      }}>
-        {React.cloneElement(icon, { size: 16, color: isActive ? tier.accent : 'rgba(255,255,255,0.45)' })}
-      </View>
-
-      <Text style={{
-        color: isActive ? 'white' : 'rgba(255,255,255,0.6)',
-        fontWeight: '800',
-        fontSize: 13,
-        marginBottom: 2,
-      }}>{label}</Text>
-
-      <Text style={{
-        color: isActive ? `${tier.accent}CC` : 'rgba(255,255,255,0.3)',
-        fontSize: 10,
-        textAlign: 'center',
-        lineHeight: 13,
-      }}>{tagline}</Text>
-    </TouchableOpacity>
-  );
-};
-
-//  Plan Card within a tier 
-const PlanCard = ({ plan, tierAccent, openRegistrationModal }: any) => {
-  const [hovered, setHovered] = useState(false);
-  const animValue = useSharedValue(0);
-  const borderAnim = useSharedValue(0);
-
-  const borderStyle = useAnimatedStyle(() => ({
-    transform: [{ rotate: `${borderAnim.value * 360}deg` }]
-  }));
-
-  useEffect(() => {
-    animValue.value = withRepeat(
-      withTiming(1, { duration: 6000, easing: Easing.inOut(Easing.ease) }),
-      -1,
-      true
-    );
-    if (plan.premium) {
-      borderAnim.value = withRepeat(withTiming(1, { duration: 4000 }), -1, false);
-    }
-  }, []);
-
-  const blob1Style = useAnimatedStyle(() => ({
-    transform: [
-      { translateX: interpolate(animValue.value, [0, 1], [-40, 40]) },
-      { translateY: interpolate(animValue.value, [0, 1], [-20, 50]) }
-    ],
-    opacity: 0.4
-  }));
-
-  const blob2Style = useAnimatedStyle(() => ({
-    transform: [
-      { translateX: interpolate(animValue.value, [0, 1], [40, -40]) },
-      { translateY: interpolate(animValue.value, [0, 1], [30, -50]) }
-    ],
-    opacity: 0.35
-  }));
-
-  const nativeHover = useSharedValue(0);
-  const nativeAnimStyle = useAnimatedStyle(() => ({
-    transform: [
-      { translateY: interpolate(nativeHover.value, [0, 1], [0, -12]) },
-      { scale: interpolate(nativeHover.value, [0, 1], [1, 1.03]) },
-    ],
-  }));
-
-  const cardWidth = Platform.OS === 'web' && SCREEN_WIDTH > 1100
-    ? '30%'
-    : Platform.OS === 'web' && SCREEN_WIDTH > 768
-      ? '46%'
-      : '100%';
-
-  const webHoverStyle = Platform.OS === 'web' ? {
-    transform: hovered ? [{ translateY: -12 }, { scale: 1.03 }] : [{ translateY: 0 }, { scale: 1 }],
-    transition: 'transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.4s ease',
-    boxShadow: hovered
-      ? `0 24px 48px ${plan.accent}55, 0 8px 24px ${plan.accent}33`
-      : `0 8px 24px rgba(0,0,0,0.3)`,
-    cursor: 'pointer',
-  } : {};
-
-  const sharedContainerStyle: any = {
-    width: cardWidth,
-    minWidth: 260,
-    marginVertical: 12,
-    position: 'relative',
-    borderRadius: 36,
-    // isolate rendering context to fix backdrop-filter clip bugs
-    ...(Platform.OS === 'web' && { transform: [{ translateZ: '0' }] })
-  };
-
-  const containerStyle = Platform.OS === 'web'
-    ? [sharedContainerStyle, webHoverStyle]
-    : [sharedContainerStyle, nativeAnimStyle];
-
-  const onHoverIn = () => setHovered(true);
-  const onHoverOut = () => setHovered(false);
-
-  return (
-    <Reanimated.View
-      style={containerStyle as any}
-      //@ts-ignore
-      onPointerEnter={onHoverIn}
-      onPointerLeave={onHoverOut}
-    >
-      {/* Premium rotating border */}
-      {plan.premium && Platform.OS === 'web' && (
-        <View style={{ position: 'absolute', top: -2, left: -2, right: -2, bottom: -2, borderRadius: 38, overflow: 'hidden' }}>
-          <Reanimated.View
-            style={[borderStyle, {
-              width: '200%', height: '200%',
-              position: 'absolute', top: '-50%', left: '-50%',
-              //@ts-ignore
-              backgroundImage: `conic-gradient(from 0deg, transparent, ${plan.accent}, #EC4899, ${tierAccent}, transparent)`,
-            }] as any}
-          />
-        </View>
-      )}
-
-      {/* Main Inner Card container */}
-      <View style={{
-        borderRadius: 36, overflow: 'hidden',
-        borderWidth: 1.5,
-        borderColor: plan.popular ? `${plan.accent}66` : 'rgba(255,255,255,0.1)',
-        height: '100%', flex: 1,
-        backgroundColor: 'rgba(255,255,255,0.02)',
-        position: 'relative',
-      }}>
-
-        {/* Decorative blobs (behind glass layer) */}
-        <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 0, overflow: 'hidden', borderRadius: 36 }}>
-          <Reanimated.View style={[blob1Style, { position: 'absolute', top: '-15%', left: '-10%' }]}>
-            <View style={{
-              width: 180, height: 180, borderRadius: 90,
-              backgroundColor: plan.accent,
-              ...(Platform.OS === 'web' && { filter: 'blur(60px)' })
-            } as any} />
-          </Reanimated.View>
-          <Reanimated.View style={[blob2Style, { position: 'absolute', bottom: '-15%', right: '-10%' }]}>
-            <View style={{
-              width: 200, height: 200, borderRadius: 100,
-              backgroundColor: tierAccent || plan.accent,
-              ...(Platform.OS === 'web' && { filter: 'blur(60px)' })
-            } as any} />
-          </Reanimated.View>
-        </View>
-
-        {/* Backdrop filter container (the glass effect) */}
-        <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, overflow: 'hidden', borderRadius: 36, zIndex: 1 }}>
-          {Platform.OS === 'web' ? (
-            <div className="glass-blur-30" />
-          ) : (
-            <BlurView intensity={30} style={{ flex: 1 }} tint="dark" />
-          )}
-        </View>
-
-        {(plan.popular || plan.premium) && (
-          <View style={{
-            position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
-            backgroundColor: plan.accent, opacity: hovered ? 0.08 : 0.03,
-            zIndex: 2, transition: 'opacity 0.4s ease', pointerEvents: 'none'
-          } as any} />
-        )}
-
-        {/* Shine sweep locked to bounds */}
-        {Platform.OS === 'web' && (
-          <View pointerEvents="none" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', zIndex: 10, overflow: 'hidden', borderRadius: 36 } as any}>
-            <View style={{
-              position: 'absolute', top: 0, width: 80, height: '100%',
-              background: 'linear-gradient(105deg, transparent, rgba(255,255,255,0.08), transparent)',
-              transform: [{ skewX: '-20deg' }],
-              transition: 'left 0.7s ease',
-              left: hovered ? '150%' : '-80px',
-            } as any} />
-          </View>
-        )}
-
-        <View style={{ padding: 32, flex: 1, zIndex: 10, position: 'relative' }}>
-          {/* Popular / Elite ribbon */}
-          {(plan.popular || plan.premium) && (
-            <View style={{
-              position: 'absolute', top: 20, right: -30,
-              backgroundColor: plan.premium ? '#8B5CF6' : plan.accent,
-              paddingHorizontal: 40, paddingVertical: 6,
-              transform: [{ rotate: '45deg' }],
-              flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4,
-              zIndex: 20
-            }}>
-              <Text style={{ color: 'white', fontWeight: '900', fontSize: 9, textTransform: 'uppercase', letterSpacing: 1 }}>
-                {plan.premium ? 'Elite' : 'Popular'}
-              </Text>
-            </View>
-          )}
-
-          {/* Icon */}
-          <View style={{
-            marginBottom: 22,
-            backgroundColor: `${plan.accent}15`,
-            width: 56, height: 56, borderRadius: 18,
-            alignItems: 'center', justifyContent: 'center',
-            borderWidth: 1.5, borderColor: `${plan.accent}33`
-          }}>
-            {React.cloneElement(plan.icon, { size: 24, color: plan.accent })}
-          </View>
-
-          {/* Plan name */}
-          <Text style={{
-            color: plan.accent, fontWeight: '800', fontSize: 12,
-            textTransform: 'uppercase', letterSpacing: 3, marginBottom: 10
-          }}>{plan.name}</Text>
-
-          {/* Price */}
-          <View style={{ flexDirection: 'row', alignItems: 'flex-end', marginBottom: 10 }}>
-            <Text style={{ color: 'white', fontWeight: '900', fontSize: 44 }}>{
-              
-            priceConverter(plan.price)}</Text>
-            {plan.period ? (
-              <Text style={{ color: 'rgba(255,255,255,0.4)', fontWeight: '600', fontSize: 17, marginBottom: 10, marginLeft: 4 }}>{plan.period}</Text>
-            ) : null}
-          </View>
-
-          <Text style={{ color: 'rgba(255,255,255,0.5)', fontSize: 14, marginBottom: 28, lineHeight: 21 }}>{plan.desc}</Text>
-
-          {/* Features */}
-          <View style={{ gap: 14, marginBottom: 36, flex: 1 }}>
-            {plan.features.map((feat: string, i: number) => (
-              <View key={i} style={{ flexDirection: 'row', alignItems: 'center' }}>
-                <View style={{
-                  width: 22, height: 22, borderRadius: 7,
-                  backgroundColor: plan.premium ? 'rgba(255,255,255,0.15)' : `${plan.accent}15`,
-                  alignItems: 'center', justifyContent: 'center',
-                  marginRight: 14, borderWidth: 1, borderColor: plan.premium ? 'rgba(255,255,255,0.3)' : `${plan.accent}33`,
-                  flexShrink: 0
-                }}>
-                  <Check size={13} color={plan.premium ? '#FFF' : plan.accent} strokeWidth={3} />
-                </View>
-                <Text style={{ color: 'rgba(255,255,255,0.88)', fontSize: 14, fontWeight: '500', flexShrink: 1 }}>{feat}</Text>
-              </View>
-            ))}
-          </View>
-
-          {/* CTA */}
-          <TouchableOpacity
-            style={{
-              width: '100%', paddingVertical: 18, borderRadius: 22,
-              alignItems: 'center',
-              backgroundColor: plan.popular || plan.premium ? plan.accent : 'transparent',
-              borderWidth: 1.5,
-              borderColor: plan.popular || plan.premium ? 'rgba(255,255,255,0.2)' : `${plan.accent}55`,
-              shadowColor: plan.accent,
-              shadowOpacity: plan.popular || plan.premium ? 0.4 : 0.1,
-              boxShadow: [{
-                offsetX: 0,
-                offsetY: 10,
-                blurRadius: 16,
-                color: `rgba(${plan.accent === '#FF6B00' ? '255, 107, 0' : '0, 0, 0'}, ${plan.popular || plan.premium ? 0.4 : 0.1})`,
-              }],
-            }}
-            onPress={() => openRegistrationModal(plan.name)}
-            activeOpacity={0.85}
-          >
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-              <Text style={{
-                color: plan.popular || plan.premium ? 'white' : plan.accent,
-                fontWeight: '800', fontSize: 15,
-              }}>
-                {plan.cta ?? 'Get Started'}
-              </Text>
-              <MoveRight size={18} color={plan.popular || plan.premium ? 'white' : plan.accent} />
-            </View>
-          </TouchableOpacity>
-        </View>
-      </View>
-    </Reanimated.View>
-  );
-};
-
-// 
-// Tier & plan data.....change to addons
-// 
-const TIERS = [
-  { key: 'plans', label: 'Subscription Plans', tagline: 'For schools of all sizes', description: 'Everything you need to grow your institution. Choose Basic, Pro, or Premium.', accent: '#FF6B00', icon: <Package size={16} /> },
-  { key: 'custom', label: 'Custom Enterprise', tagline: 'Tailored for scale', description: 'A tailored platform deployment configured for your exact needs.', accent: '#8B5CF6', icon: <Building size={16} /> },
-] as const;
-
-type TierKey = 'plans' | 'custom' | 'addOns'
-
-const TIER_PLANS: Record<TierKey, any[]> = {
-  plans: [
-    {
-      name: 'Basic',
-      price: '$100',
-      period: '/month',
-      desc: 'Perfect for small schools and early adopters starting their digital journey.',
-      features: [
-        'Student module',
-        'Teacher module',
-        'Parent/Guardian module',
-        'Up to 900 students',
-        'One-time setup: $20'
-      ],
-      icon: <BookOpen size={24} color="#3B82F6" />,
-      accent: '#3B82F6',
-      cta: 'Get Basic',
-    },
-    {
-      name: 'Pro',
-      price: '$300',
-      period: '/month',
-      desc: 'Ideal for mid-sized schools & training centers needing more capacity and tools.',
-      features: [
-        'Student module',
-        'Teacher module',
-        'Parent/Guardian module',
-        'Library add-on included',
-        'Messaging + Diary included',
-        'Up to 1,000 students',
-        'One-time setup: $60'
-      ],
-      icon: <Crown size={24} color="#F59E0B" />,
-      accent: '#F59E0B',
-      popular: true,
-      cta: 'Get Pro',
-    },
-    {
-      name: 'Premium',
-      price: '$500',
-      period: '/month',
-      desc: 'Built for large private schools & tertiary institutions operating at scale.',
-      features: [
-        'Student module',
-        'Teacher module',
-        'Parent/Guardian module',
-        'All add-ons included',
-        '5,000+ students',
-        'Priority support',
-        'One-time setup: $100'
-      ],
-      icon: <Sparkles size={24} color="#8B5CF6" />,
-      accent: '#8B5CF6',
-      premium: true,
-      cta: 'Get Premium',
-    },
-  ],
-  custom: [
-    {
-      name: 'Custom',
-      price: 'Custom',
-      period: '',
-      desc: 'A customized LMS deployed to meet your specific organizational workflows and learning needs.',
-      features: [
-        'Client-specific courses & learning paths',
-        'HR system & attendance integration',
-        'Custom progress & certification reports',
-        'UI adjustments (dashboards, labels, branding)',
-        'All add-ons included (Library, Bursary, Messaging)',
-        'Dedicated onboarding & support'
-      ],
-      icon: <Sparkles size={24} color="#8B5CF6" />,
-      accent: '#8B5CF6',
-      premium: true,
-      cta: 'Contact Sales',
-    },
-  ],
-  addOns: [
-    {
-      name: 'Digital Library',
-      tagline: 'Add-On Module',
-      price: '$30/mo',
-      desc: 'Manage library and virtual learning materials on a main dashboard',
-      features: [],
-      icon: <Library size={24} color="#8B5CF6" />,
-      accent: '#8B5CF6',
-      cta: 'Add Library'
-    },
-    {
-      name: 'Bursary Module',
-      tagline: 'Add-On Module',
-      price: '$30/mo',
-      desc: 'Manage student accounts and financial logs on a main dashboard',
-      features: [],
-      icon: <CreditCard size={24} color="#F59E0B" />,
-      accent: '#F59E0B',
-      cta: 'Add Bursary'
-    },
-    {
-      name: 'Messaging Module',
-      tagline: 'Add-On Module',
-      price: '$5/mo',
-      desc: 'Direct messaging and announcement sharing on e-learning platform',
-      features: [],
-      icon: <BadgeCheck size={24} color="#10B981" />,
-      accent: '#10B981',
-      cta: 'Add Messaging'
-    },
-    {
-      name: 'Virtual Diary',
-      tagline: 'Add-On Module',
-      price: '$5/mo',
-      desc: 'Digital class entries, daily reports and performance tracking for students',
-      features: [],
-      icon: <ClipboardList size={24} color="#3B82F6" />,
-      accent: '#3B82F6',
-      cta: 'Add Diary'
-    }
-  ]
-};
-
-
-// Feature Card Component 
-const FeatureCard = ({ icon, title, desc, accent, tag }: any) => {
-  const hoverVal = useSharedValue(0);
-  const glowVal = useSharedValue(0);
-
-  useEffect(() => {
-    glowVal.value = withRepeat(
-      withSequence(
-        withTiming(1, { duration: 2500, easing: Easing.inOut(Easing.sin) }),
-        withTiming(0.4, { duration: 2500, easing: Easing.inOut(Easing.sin) })
-      ),
-      -1,
-      true
-    );
-  }, []);
-
-  const cardStyle = useAnimatedStyle(() => ({
-    transform: [
-      { translateY: interpolate(hoverVal.value, [0, 1], [0, -10]) },
-      { scale: interpolate(hoverVal.value, [0, 1], [1, 1.025]) },
-    ],
-    boxShadow: [{
-      offsetX: 0,
-      offsetY: 8,
-      blurRadius: interpolate(hoverVal.value, [0, 1], [8, 28]),
-      color: `rgba(${accent === '#FF6B00' ? '255, 107, 0' : '0, 0, 0'}, ${interpolate(hoverVal.value, [0, 1], [0.08, 0.35])})`,
-    }],
-    shadowOpacity: interpolate(hoverVal.value, [0, 1], [0.08, 0.35]),
-    shadowRadius: interpolate(hoverVal.value, [0, 1], [8, 28]),
-  }));
-
-  const glowStyle = useAnimatedStyle(() => ({
-    opacity: interpolate(glowVal.value, [0, 1], [0.25, 0.7]),
-    transform: [{ scale: interpolate(glowVal.value, [0, 1], [0.95, 1.05]) }],
-  }));
-
-  const onHoverIn = () => {
-    if (Platform.OS === 'web') hoverVal.value = withTiming(1, { duration: 400, easing: Easing.out(Easing.cubic) });
-  };
-  const onHoverOut = () => {
-    if (Platform.OS === 'web') hoverVal.value = withTiming(0, { duration: 350, easing: Easing.inOut(Easing.cubic) });
-  };
-
-  const cardWidth = Platform.OS === 'web' && SCREEN_WIDTH >= 1100
-    ? '30%'
-    : Platform.OS === 'web' && SCREEN_WIDTH >= 700
-      ? '46%'
-      : '100%';
-
-  return (
-    <Reanimated.View
-      style={[{
-        width: cardWidth,
-        minWidth: 240,
-        margin: 10,
-        borderRadius: 24,
-        backgroundColor: 'rgba(255,255,255,0.04)',
-        borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.08)',
-        overflow: 'hidden',
-        shadowColor: accent,
-        boxShadow: [{
-          offsetX: 0,
-          offsetY: 8,
-          blurRadius: 16, // Matching common pattern
-          color: `${accent}20`,
-        }],
-      }, cardStyle]}
-      //@ts-ignore
-      onPointerEnter={onHoverIn}
-      onPointerLeave={onHoverOut}
-    >
-      {/* Top accent bar */}
-      <View style={{ height: 3, backgroundColor: accent, opacity: 0.7 }} />
-
-      <View style={{ padding: 26 }}>
-        {/* Icon with animated glow */}
-        <View style={{ marginBottom: 20, alignSelf: 'flex-start' }}>
-          <Reanimated.View style={[{
-            position: 'absolute',
-            width: 56,
-            height: 56,
-            borderRadius: 18,
-            backgroundColor: accent,
-            opacity: 0.1,
-          }, glowStyle]} />
-          <View style={{
-            width: 52,
-            height: 52,
-            borderRadius: 16,
-            backgroundColor: `${accent}1A`,
-            borderWidth: 1,
-            borderColor: `${accent}35`,
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}>
-            {icon}
-          </View>
-        </View>
-
-        {/* Tag */}
-        {tag && (
-          <View style={{
-            alignSelf: 'flex-start',
-            backgroundColor: `${accent}18`,
-            borderRadius: 8,
-            paddingHorizontal: 8,
-            paddingVertical: 3,
-            marginBottom: 10,
-            borderWidth: 1,
-            borderColor: `${accent}30`,
-          }}>
-            <Text style={{ color: accent, fontSize: 10, fontWeight: '800', letterSpacing: 1.5, textTransform: 'uppercase' }}>{tag}</Text>
-          </View>
-        )}
-
-        <Text style={{ color: '#ffffff', fontWeight: '800', fontSize: 18, marginBottom: 8, letterSpacing: -0.3 }}>
-          {title}
-        </Text>
-        <Text style={{ color: 'rgba(255,255,255,0.5)', fontSize: 13.5, lineHeight: 21 }}>
-          {desc}
-        </Text>
-
-        {/* Arrow indicator */}
-        <View style={{
-          marginTop: 20,
-          flexDirection: 'row',
-          alignItems: 'center',
-          gap: 6,
-        }}>
-          <View style={{ width: 20, height: 1.5, backgroundColor: accent, opacity: 0.6 }} />
-          <MoveRight size={14} color={accent} />
-        </View>
-      </View>
-    </Reanimated.View>
-  );
-};
-
-// Discount Banner
-// Offer ends Saturday 2026-02-28 00:00:00 EAT (UTC+3)
-const OFFER_END = new Date('2026-02-28T00:00:00+03:00').getTime();
-
-function useCountdown(targetMs: number) {
-  const calc = () => {
-    const diff = Math.max(0, targetMs - Date.now());
-    return {
-      days: Math.floor(diff / 86_400_000),
-      hours: Math.floor((diff % 86_400_000) / 3_600_000),
-      minutes: Math.floor((diff % 3_600_000) / 60_000),
-      seconds: Math.floor((diff % 60_000) / 1_000),
-      expired: diff === 0,
-    };
-  };
-  const [time, setTime] = useState(calc);
-  useEffect(() => {
-    const id = setInterval(() => setTime(calc()), 1000);
-    return () => clearInterval(id);
-  }, []);
-  return time;
-}
-
-function DiscountBanner() {
-  const { days, hours, minutes, seconds, expired } = useCountdown(OFFER_END);
-  const insets = useSafeAreaInsets();
-  const pulse = useRef(new Animated.Value(1)).current;
-
-  useEffect(() => {
-    const anim = Animated.loop(
-      Animated.sequence([
-        Animated.timing(pulse, { toValue: 1.06, duration: 900, useNativeDriver: true }),
-        Animated.timing(pulse, { toValue: 1, duration: 900, useNativeDriver: true }),
-      ])
-    );
-    anim.start();
-    return () => anim.stop();
-  }, []);
-
-  if (expired) return null;
-
-  const pad = (n: number) => String(n).padStart(2, '0');
-
-  return (
-    <View
-      pointerEvents="none"
-      style={{
-        position: 'absolute',
-        top: 0,
-        left: 0,
-        right: 0,
-        zIndex: 50,
-        backgroundColor: '#EA580C',
-        paddingTop: Math.max(insets.top, 8),
-        paddingBottom: 8,
-        paddingHorizontal: 16,
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: 10,
-        flexWrap: 'wrap',
-        // subtle glow shadow
-        shadowColor: '#FF6B00',
-        boxShadow: [{
-          offsetX: 0,
-          offsetY: 2,
-          blurRadius: 8,
-          color: 'rgba(255, 107, 0, 0.6)',
-        }],
-        }}
-    >
-      {/* Left: sparkle + offer text */}
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-        <Sparkles size={15} color="#FEF3C7" />
-        <Text style={{ color: 'white', fontWeight: '700', fontSize: 13 }}>
-          Limited-Time: 10% OFF all Cloudora services
-        </Text>
-      </View>
-
-      {/* Divider */}
-      <View style={{ width: 1, height: 16, backgroundColor: 'rgba(255,255,255,0.35)' }} />
-
-      {/* Right: live countdown */}
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-        <Timer size={13} color="#FEF3C7" />
-        {[
-          { v: days, l: 'd' },
-          { v: hours, l: 'h' },
-          { v: minutes, l: 'm' },
-          { v: seconds, l: 's' },
-        ].map(({ v, l }, i) => (
-          <View key={l} style={{ flexDirection: 'row', alignItems: 'center' }}>
-            {i > 0 && <Text style={{ color: 'rgba(255,255,255,0.6)', fontSize: 12, marginHorizontal: 1 }}>:</Text>}
-            <Animated.View
-              style={{
-                backgroundColor: 'rgba(0,0,0,0.25)',
-                borderRadius: 6,
-                paddingHorizontal: 6,
-                paddingVertical: 2,
-                transform: [{ scale: l === 's' ? pulse : 1 }],
-              }}
-            >
-              <Text style={{ color: 'white', fontWeight: '800', fontSize: 13, letterSpacing: 0.5 }}>
-                {pad(v)}{l}
-              </Text>
-            </Animated.View>
-          </View>
-        ))}
-      </View>
-    </View>
-  );
-}
-
-//Hover Animated Buttons
-
-
-const SignInButtonMain = () => {
-  const hoverVal = useSharedValue(0);
-
-  const animatedStyle = useAnimatedStyle(() => ({
-    transform: [
-      { scale: interpolate(hoverVal.value, [0, 1], [1, 1.05]) },
-      { translateY: interpolate(hoverVal.value, [0, 1], [0, -4]) }
-    ],
-    boxShadow: [{
-      offsetX: 0,
-      offsetY: 8,
-      blurRadius: interpolate(hoverVal.value, [0, 1], [24, 32]),
-      color: `rgba(255, 107, 0, ${interpolate(hoverVal.value, [0, 1], [0.4, 0.7])})`,
-    }],
-    shadowOpacity: interpolate(hoverVal.value, [0, 1], [0.4, 0.7]),
-    shadowRadius: interpolate(hoverVal.value, [0, 1], [24, 32]),
-  }));
-
-  const onHoverIn = () => {
-    if (Platform.OS === 'web') hoverVal.value = withTiming(1, { duration: 200, easing: Easing.out(Easing.ease) });
-  };
-  const onHoverOut = () => {
-    if (Platform.OS === 'web') hoverVal.value = withTiming(0, { duration: 250, easing: Easing.inOut(Easing.ease) });
-  };
-
-  return (
-    <Reanimated.View
-      style={[{
-        borderRadius: 100,
-        shadowColor: '#FF6B00',
-        boxShadow: [{
-          offsetX: 0,
-          offsetY: 8,
-          blurRadius: 24,
-          color: 'rgba(255, 107, 0, 0.4)',
-        }],
-      }, animatedStyle]}
-    >
-      <TouchableOpacity
-        //@ts-ignore
-        onPointerEnter={onHoverIn}
-        onPointerLeave={onHoverOut}
-        style={{
-          backgroundColor: '#FF6B00',
-          paddingHorizontal: 48,
-          paddingVertical: 20,
-          borderRadius: 100,
-          flexDirection: 'row',
-          alignItems: 'center',
-          gap: 12,
-        }}
-        onPress={() => router.push("/(auth)/signIn")}
-        activeOpacity={0.8}
-      >
-        <Text style={{ color: 'white', fontWeight: '800', fontSize: 16, letterSpacing: 0.5 }}>Sign In to Account</Text>
-        <MoveRight size={18} color="white" />
-      </TouchableOpacity>
-    </Reanimated.View>
-  );
-};
-
+  TouchableOpacity,
+  ActivityIndicator,
+  Alert,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { useAuth } from '@/contexts/AuthContext';
+import { AppLoading } from '@/components/AppLoading';
+import { api } from '@/services/api';
+import { LivingBackground } from '@/components/landing/LivingBackground';
+import { FuturisticNav } from '@/components/landing/FuturisticNav';
+import { HeroConsole } from '@/components/landing/HeroConsole';
+import { BentoFeatures } from '@/components/landing/BentoFeatures';
+import { TelemetryStrip } from '@/components/landing/TelemetryStrip';
+import { FuturisticPricing } from '@/components/landing/FuturisticPricing';
+import { FuturisticContact } from '@/components/landing/FuturisticContact';
+import {
+  Building,
+  Plus,
+  Settings,
+  Check,
+  MoveRight,
+  Sparkles,
+  ShieldCheck,
+  X,
+} from 'lucide-react-native';
+
+const ADDONS_DATA = [
+  {
+    name: 'Digital Library',
+    tagline: 'Add-On Module',
+    price: '$30/mo',
+    desc: 'Manage library and virtual learning materials on a main dashboard',
+  },
+  {
+    name: 'Bursary Module',
+    tagline: 'Add-On Module',
+    price: '$30/mo',
+    desc: 'Manage student accounts and financial logs on a main dashboard',
+  },
+  {
+    name: 'Messaging Module',
+    tagline: 'Add-On Module',
+    price: '$5/mo',
+    desc: 'Direct messaging and announcement sharing on e-learning platform',
+  },
+  {
+    name: 'Virtual Diary',
+    tagline: 'Add-On Module',
+    price: '$5/mo',
+    desc: 'Digital class entries, daily reports and performance tracking for students',
+  },
+];
+
+const CUSTOM_FEATURES_DATA = [
+  'Client-specific courses & learning paths',
+  'HR system & attendance integration',
+  'Custom progress & certification reports',
+  'UI adjustments (dashboards, labels, branding)',
+  'All add-ons included (Library, Bursary, Messaging)',
+  'Dedicated onboarding & support',
+];
 
 export default function Index() {
-  const { session, loading, isInitializing, profile, isPlatformAdmin, isNavReady } = useAuth();
-  const formRef = useRef<View>(null);
+  const { session, loading, isInitializing, isNavReady } = useAuth();
   const scrollRef = useRef<ScrollView>(null);
-  const pathname = usePathname();
+
+  // Section position tracking for smooth scrolling
+  const [sectionPositions, setSectionPositions] = useState<Record<string, number>>({});
+  const [activeNavSection, setActiveNavSection] = useState<string>('hero');
+
+  // Booking & Modal State
   const [modalVisible, setModalVisible] = useState(false);
-  const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
-  const [selectedTier, setSelectedTier] = useState<TierKey>('plans');
-  const [form, setForm] = useState({ name: '', email: '', message: '' });
-  const [submitting, setSubmitting] = useState(false);
-  const [submitted, setSubmitted] = useState(false);
   const [addonModalVisible, setAddonModalVisible] = useState(false);
   const [customModalVisible, setCustomModalVisible] = useState(false);
+  const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
   const [selectedAddons, setSelectedAddons] = useState<string[]>([]);
   const [selectedCustomFeatures, setSelectedCustomFeatures] = useState<string[]>([]);
   const [selectedCoreModules, setSelectedCoreModules] = useState<string[]>([]);
-  const { expired } = useCountdown(OFFER_END);
+  const [form, setForm] = useState({ name: '', email: '', message: '' });
+  const [submitting, setSubmitting] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
 
-  // Show AppLoading for 5s before redirecting to dashboard
-  const [navigating, setNavigating] = useState(false);
-  const pendingRoute = useRef<string | null>(null);
-
-  // Section refs for smooth scrolling
-  const featuresRef = useRef<View>(null);
-  const pricingRef = useRef<View>(null);
-  const getInTouchRef = useRef<View>(null);
-  // Y-offset of the plan-cards block (so we can scroll to it on mobile tier tap)
-  const [pricingCardsY, setPricingCardsY] = useState<number | null>(null);
-
-  // Sticky nav visibility
-  const [showNav, setShowNav] = useState(false);
-  const navOpacity = useRef(new Animated.Value(0)).current;
-  const [sectionPositions, setSectionPositions] = useState<
-    Record<string, number>
-  >({});
+  // Show AppLoading during session initialization or redirect
+  if (isInitializing || (session && !isNavReady)) {
+    return <AppLoading />;
+  }
 
   const handleLayout = (key: string, y: number) => {
     setSectionPositions((prev) => ({ ...prev, [key]: y }));
   };
 
-  // Animation Refs
-  const scrollAnimation = useRef(new Animated.Value(0)).current;
-  const scrollY = useRef(new Animated.Value(0)).current;
-  const heroFade = useRef(new Animated.Value(0)).current;
-  const heroSlide = useRef(new Animated.Value(30)).current;
-  const ctaPulse = useRef(new Animated.Value(1)).current;
-
-  // Floating orbs animation
-  const orb1 = useRef(new Animated.Value(0)).current;
-  const orb2 = useRef(new Animated.Value(0)).current;
-  const orb3 = useRef(new Animated.Value(0)).current;
-
-  // Hero fade in
-  useEffect(() => {
-    Animated.parallel([
-      Animated.timing(heroFade, {
-        toValue: 1,
-        duration: 1000,
-        useNativeDriver: true,
-      }),
-      Animated.timing(heroSlide, {
-        toValue: 0,
-        duration: 800,
-        useNativeDriver: true,
-      }),
-    ]).start();
-  }, []);
-
-  // CTA pulse
-  useEffect(() => {
-    const pulse = Animated.loop(
-      Animated.sequence([
-        Animated.timing(ctaPulse, {
-          toValue: 1.05,
-          duration: 1500,
-          useNativeDriver: true,
-        }),
-        Animated.timing(ctaPulse, {
-          toValue: 1,
-          duration: 1500,
-          useNativeDriver: true,
-        }),
-      ]),
-    );
-    pulse.start();
-    return () => pulse.stop();
-  }, []);
-
-  // Floating orbs
-  useEffect(() => {
-    const animate = (val: Animated.Value, dur: number) =>
-      Animated.loop(
-        Animated.sequence([
-          Animated.timing(val, {
-            toValue: 1,
-            duration: dur,
-            useNativeDriver: true,
-          }),
-          Animated.timing(val, {
-            toValue: 0,
-            duration: dur,
-            useNativeDriver: true,
-          }),
-        ]),
-      );
-    const a1 = animate(orb1, 4000);
-    const a2 = animate(orb2, 5000);
-    const a3 = animate(orb3, 3500);
-    a1.start();
-    a2.start();
-    a3.start();
-    return () => {
-      a1.stop();
-      a2.stop();
-      a3.stop();
-    };
-  }, []);
-
-  // Scroll arrows loop
-  useEffect(() => {
-    const anim = Animated.loop(
-      Animated.sequence([
-        Animated.timing(scrollAnimation, {
-          toValue: 1,
-          duration: 1200,
-          useNativeDriver: true,
-        }),
-        Animated.timing(scrollAnimation, {
-          toValue: 0,
-          duration: 0,
-          useNativeDriver: true,
-        }),
-      ]),
-    );
-    anim.start();
-    return () => anim.stop();
-  }, []);
-
-  const handleScroll = Animated.event(
-    [{ nativeEvent: { contentOffset: { y: scrollY } } }],
-    {
-      useNativeDriver: false,
-      listener: (e: any) => {
-        const y = e.nativeEvent.contentOffset.y;
-        const shouldShow = y > 300;
-        if (shouldShow !== showNav) {
-          setShowNav(shouldShow);
-          Animated.timing(navOpacity, {
-            toValue: shouldShow ? 1 : 0,
-            duration: 250,
-            useNativeDriver: true,
-          }).start();
-        }
-      },
-    },
-  );
-
-  // Smooth scroll to section
   const scrollToSection = (key: string) => {
-    const y = sectionPositions[key];
-    if (typeof y === "number") {
-      scrollRef.current?.scrollTo({ y: y - 60, animated: true });
-    }
-  };
-
-
-
-  // Show AppLoading immediately when session exists (prevents seeing landing page during redirect)
-  if (isInitializing || navigating || (session && !isNavReady)) {
-    return <AppLoading />;
-  }
-
-  // Orb translations
-  const orb1Y = orb1.interpolate({ inputRange: [0, 1], outputRange: [0, -30] });
-  const orb1X = orb1.interpolate({ inputRange: [0, 1], outputRange: [0, 15] });
-  const orb2Y = orb2.interpolate({ inputRange: [0, 1], outputRange: [0, 25] });
-  const orb2X = orb2.interpolate({ inputRange: [0, 1], outputRange: [0, -20] });
-  const orb3Y = orb3.interpolate({ inputRange: [0, 1], outputRange: [0, -20] });
-
-  const handleSignup = async () => {
-    if (!form.name.trim() || !form.email.trim()) {
-      Alert.alert("Missing Info", "Please fill in your name and email.");
+    if (key === 'hero') {
+      scrollRef.current?.scrollTo({ y: 0, animated: true });
+      setActiveNavSection('hero');
       return;
     }
-
-    setSubmitting(true);
-    try {
-      const response = await api.post('/contact/booking', {
-        name: form.name,
-        email: form.email,
-        plan: selectedPlan,
-        addons: selectedAddons,
-        customFeatures: selectedCustomFeatures,
-        coreModules: selectedCoreModules,
-        message: form.message || `Setup request for ${selectedPlan} plan${selectedCoreModules.length > 0 ? ` with core modules: ${selectedCoreModules.join(', ')}` : ''}${selectedAddons.length > 0 ? ` with addons: ${selectedAddons.join(', ')}` : ''}${selectedCustomFeatures.length > 0 ? ` with custom features: ${selectedCustomFeatures.join(', ')}` : ''}`
-      });
-
-      if (response.data.success) {
-        setSubmitted(true);
-      }
-    } catch (error: any) {
-      console.error("Booking error:", error);
-      Alert.alert("Error", error.message || "Something went wrong. Please try again.");
-    } finally {
-      setSubmitting(false);
+    const y = sectionPositions[key];
+    if (typeof y === 'number') {
+      scrollRef.current?.scrollTo({ y: Math.max(0, y - 40), animated: true });
+      setActiveNavSection(key);
     }
   };
 
@@ -1093,9 +120,9 @@ export default function Index() {
     setSelectedCoreModules([]);
     setSubmitted(false);
 
-    if (planName.toLowerCase().includes("free trial")) {
+    if (planName.toLowerCase().includes('free trial')) {
       setModalVisible(true);
-    } else if (planName.toLowerCase().includes("custom")) {
+    } else if (planName.toLowerCase().includes('custom')) {
       setCustomModalVisible(true);
     } else {
       setAddonModalVisible(true);
@@ -1108,967 +135,196 @@ export default function Index() {
     setModalVisible(true);
   };
 
+  const handleSignup = async () => {
+    if (!form.name.trim() || !form.email.trim()) {
+      Alert.alert('Missing Info', 'Please fill in your institution name and contact email.');
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      const response = await api.post('/contact/booking', {
+        name: form.name,
+        email: form.email,
+        plan: selectedPlan,
+        addons: selectedAddons,
+        customFeatures: selectedCustomFeatures,
+        coreModules: selectedCoreModules,
+        message:
+          form.message ||
+          `Setup request for ${selectedPlan} plan${
+            selectedCoreModules.length > 0 ? ` with core modules: ${selectedCoreModules.join(', ')}` : ''
+          }${selectedAddons.length > 0 ? ` with addons: ${selectedAddons.join(', ')}` : ''}${
+            selectedCustomFeatures.length > 0
+              ? ` with custom features: ${selectedCustomFeatures.join(', ')}`
+              : ''
+          }`,
+      });
+
+      if (response.data.success) {
+        setSubmitted(true);
+      }
+    } catch (error: any) {
+      console.error('Booking error:', error);
+      Alert.alert('Error', error.message || 'Something went wrong. Please try again.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#0F0B2E" }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: '#070514' }} edges={['left', 'right']}>
       <StatusBar barStyle="light-content" />
 
-      {/*FIXED DISCOUNT BANNER */}
-      <DiscountBanner />
+      {/* SINGLE CONTINUOUS LIVING BACKGROUND CANVAS (persists across whole page) */}
+      <LivingBackground />
 
-      {/*FLOATING TOP-RIGHT SIGN IN*/}
+      {/* FLOATING FUTURISTIC HUD NAVIGATION */}
+      <FuturisticNav onScrollTo={scrollToSection} activeSection={activeNavSection} />
 
-
-      {/*FLOATING STICKY NAV*/}
-      <Animated.View
-        pointerEvents={showNav ? "auto" : "none"}
-        style={{
-          position: "absolute",
-          top: !expired ? (Platform.OS === "web" ? 70 : 110) : (Platform.OS === "web" ? 10 : 50),
-          left: 0,
-          right: 0,
-          zIndex: 100,
-          alignItems: "center",
-          opacity: navOpacity,
-        }}
-      >
-        <View
-          style={{
-            flexDirection: "row",
-            backgroundColor: "rgba(15, 11, 46, 0.85)",
-            borderRadius: 20,
-            paddingHorizontal: 6,
-            paddingVertical: 6,
-            borderWidth: 1,
-            borderColor: "rgba(255,255,255,0.1)",
-            boxShadow: [{
-              offsetX: 0,
-              offsetY: 4,
-              blurRadius: 12,
-              color: 'rgba(0, 0, 0, 0.3)',
-            }],
-            gap: 2,
-          }}
-        >
-          {[
-            { label: "Features", onPress: () => scrollToSection("features") },
-            { label: "Pricing", onPress: () => scrollToSection("pricing") },
-            { label: "Contact", onPress: () => scrollToSection("getInTouch") },
-          ].map((item: { label: string; onPress: () => void; accent?: boolean }) => (
-            <TouchableOpacity
-              key={item.label}
-              onPress={item.onPress}
-              style={{
-                paddingHorizontal: 16,
-                paddingVertical: 8,
-                borderRadius: 14,
-                backgroundColor: item.accent ? "#FF6B00" : "transparent",
-              }}
-            >
-              <Text
-                style={{
-                  color: item.accent ? "white" : "rgba(255,255,255,0.7)",
-                  fontWeight: "700",
-                  fontSize: 13,
-                }}
-              >
-                {item.label}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-      </Animated.View>
+      {/* MAIN SCROLLABLE CONTENT CANVAS */}
       <KeyboardAvoidingView
         style={{ flex: 1 }}
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
-        keyboardVerticalOffset={80}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         <ScrollView
           ref={scrollRef}
-          onScroll={handleScroll}
-          scrollEventThrottle={16}
           style={{ flex: 1 }}
           contentContainerStyle={{ paddingBottom: 60 }}
           showsVerticalScrollIndicator={false}
+          scrollEventThrottle={32}
+          onScroll={(e) => {
+            const y = e.nativeEvent.contentOffset.y;
+            if (y < 400) setActiveNavSection('hero');
+            else if (y < 1200) setActiveNavSection('features');
+            else if (y < 1800) setActiveNavSection('architecture');
+            else if (y < 2600) setActiveNavSection('pricing');
+            else setActiveNavSection('contact');
+          }}
         >
-          {/*  HERO SECTION  */}
-          <View
-            style={{
-              minHeight: Dimensions.get("window").height * 0.92,
-              justifyContent: "center",
-              alignItems: "center",
-              paddingHorizontal: 24,
-              position: "relative",
-              overflow: "hidden",
-            }}
-          >
-            {/* Gradient background layers */}
-            <View
-              style={{
-                position: "absolute",
-                top: 0,
-                left: 0,
-                right: 0,
-                bottom: 0,
-                backgroundColor: "#0F0B2E",
-              }}
+          {/* 1. ASYMMETRIC COMMAND CONSOLE HERO */}
+          <View onLayout={(e) => handleLayout('hero', e.nativeEvent.layout.y)}>
+            <HeroConsole
+              onExplorePricing={() => scrollToSection('pricing')}
+              onOpenTrial={() => openRegistrationModal('Free Trial')}
             />
-            <View
-              style={{
-                position: "absolute",
-                top: "10%",
-                left: "-20%",
-                width: 400,
-                height: 400,
-                borderRadius: 200,
-                backgroundColor: "rgba(255, 107, 0, 0.08)",
-              }}
-            />
-            <View
-              style={{
-                position: "absolute",
-                bottom: "5%",
-                right: "-15%",
-                width: 350,
-                height: 350,
-                borderRadius: 175,
-                backgroundColor: "rgba(139, 92, 246, 0.08)",
-              }}
-            />
-
-            {/* Floating Orbs */}
-            <Animated.View
-              style={{
-                position: "absolute",
-                top: "15%",
-                left: "10%",
-                width: 80,
-                height: 80,
-                borderRadius: 40,
-                backgroundColor: "rgba(255, 107, 0, 0.15)",
-                transform: [{ translateY: orb1Y }, { translateX: orb1X }],
-              }}
-            />
-            <Animated.View
-              style={{
-                position: "absolute",
-                top: "60%",
-                right: "8%",
-                width: 60,
-                height: 60,
-                borderRadius: 30,
-                backgroundColor: "rgba(139, 92, 246, 0.2)",
-                transform: [{ translateY: orb2Y }, { translateX: orb2X }],
-              }}
-            />
-            <Animated.View
-              style={{
-                position: "absolute",
-                bottom: "25%",
-                left: "20%",
-                width: 40,
-                height: 40,
-                borderRadius: 20,
-                backgroundColor: "rgba(59, 130, 246, 0.15)",
-                transform: [{ translateY: orb3Y }],
-              }}
-            />
-
-            {/* Hero Content */}
-            <Animated.View
-              style={{
-                opacity: heroFade,
-                transform: [{ translateY: heroSlide }],
-                alignItems: "center",
-                zIndex: 10,
-              }}
-            >
-              <View
-                style={{
-                  width: 90,
-                  height: 90,
-                  borderRadius: 24,
-                  backgroundColor: "rgba(255, 107, 0, 0.15)",
-                  borderWidth: 1,
-                  borderColor: "rgba(255, 107, 0, 0.3)",
-                  justifyContent: "center",
-                  alignItems: "center",
-                  marginBottom: 32,
-                }}
-              >
-                <View
-                  style={{
-                    width: 62,
-                    height: 62,
-                    borderRadius: 16,
-                    justifyContent: "center",
-                    alignItems: "center",
-                    backgroundColor: "#FF6B00",
-                  }}
-                >
-                  <School size={34} color="white" />
-                </View>
-              </View>
-
-              <View
-                style={{
-                  backgroundColor: "rgba(255,107,0,0.12)",
-                  borderRadius: 20,
-                  paddingHorizontal: 16,
-                  paddingVertical: 6,
-                  borderWidth: 1,
-                  borderColor: "rgba(255,107,0,0.25)",
-                  marginBottom: 20,
-                  flexDirection: "row",
-                  alignItems: "center",
-                }}
-              >
-                <Sparkles size={14} color="#FF8C40" />
-                <Text
-                  style={{
-                    color: "#FF8C40",
-                    fontSize: 12,
-                    fontWeight: "700",
-                    letterSpacing: 1.5,
-                    textTransform: "uppercase",
-                    marginLeft: 6,
-                  }}
-                >
-                  Digital School Management Platform
-                </Text>
-              </View>
-
-              <Text
-                style={{
-                  color: "white",
-                  fontSize: 36,
-                  fontWeight: "900",
-                  textAlign: "center",
-                  lineHeight: 44,
-                  maxWidth: 600,
-                }}
-              >
-                All-in-one{"\n"}
-                <Text style={{ color: "#FF8C40" }}>Learning</Text>,{" "}
-                <Text style={{ color: "#A78BFA" }}>Teaching</Text> &{"\n"}
-                <Text style={{ color: "#60A5FA" }}>Management</Text> Hub
-              </Text>
-
-              <Text
-                style={{
-                  color: "rgba(255,255,255,0.6)",
-                  fontSize: 15,
-                  textAlign: "center",
-                  maxWidth: 450,
-                  marginTop: 16,
-                  lineHeight: 22,
-                }}
-              >
-                Empower your institution with a modern, cloud-based Learning Management System.{"\n"}
-                Courses, resources, payments, analytics all in one place.
-              </Text>
-
-              <View style={{ flexDirection: "row", marginTop: 32, gap: 12 }}>
-                <Animated.View style={{ transform: [{ scale: ctaPulse }] }}>
-                  {/* <TouchableOpacity
-                    style={{
-                      paddingHorizontal: 32, paddingVertical: 18,
-                      borderRadius: 16, backgroundColor: "white",
-                      boxShadow: [{
-                        offsetX: 0,
-                        offsetY: 4,
-                        blurRadius: 15,
-                        color: 'rgba(255, 255, 255, 0.3)',
-                      }],
-                      flexDirection: "row", alignItems: "center",
-                    }}
-                    onPress={() => openRegistrationModal("Free Trial")}
-                    activeOpacity={0.9}
-                  >
-                    <Text style={{
-                      color: "#0F172A", fontWeight: "900",
-                      fontSize: 14, letterSpacing: 1.5, textTransform: "uppercase", marginRight: 12,
-                    }}>
-                      Start Free Trial
-                    </Text>
-                  </TouchableOpacity> */}
-                </Animated.View>
-                <TouchableOpacity
-                  style={{
-                      paddingHorizontal: 32, paddingVertical: 18,
-                      borderRadius: 16, backgroundColor: "white",
-                      boxShadow: [{
-                        offsetX: 0,
-                        offsetY: 4,
-                        blurRadius: 15,
-                        color: 'rgba(255, 255, 255, 0.3)',
-                      }],
-                      flexDirection: "row", alignItems: "center",
-                    }}
-                  onPress={() => router.push("/demo" as any)}
-                >
-                  <Text
-                    style={{
-                      color: "rgba(0, 0, 0, 0.9)",
-                      fontWeight: "700",
-                      fontSize: 15,
-                    }}
-                  >
-                    Try Demo
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            </Animated.View>
           </View>
 
-          {/*  FEATURES SECTION  */}
-          <View
-            ref={featuresRef}
-            onLayout={(e) => handleLayout("features", e.nativeEvent.layout.y)}
-            style={{
-              paddingHorizontal: 20,
-              paddingTop: 72,
-              paddingBottom: 72,
-              backgroundColor: "#13103A",
-              position: 'relative',
-              overflow: 'hidden',
-            }}
-          >
-            {/* Section background mesh */}
-            <View style={{
-              position: 'absolute', top: '10%', left: '-5%',
-              width: 320, height: 320, borderRadius: 160,
-              backgroundColor: 'rgba(255,107,0,0.05)',
-            } as any} />
-            <View style={{
-              position: 'absolute', bottom: '5%', right: '-5%',
-              width: 280, height: 280, borderRadius: 140,
-              backgroundColor: 'rgba(99,102,241,0.07)',
-            } as any} />
-
-            {/* Section header */}
-            <View style={{ alignItems: 'center', marginBottom: 52 }}>
-              {/* Badge */}
-              <View style={{
-                flexDirection: 'row', alignItems: 'center', gap: 7,
-                backgroundColor: 'rgba(255,107,0,0.1)',
-                borderRadius: 20, paddingHorizontal: 14, paddingVertical: 6,
-                borderWidth: 1, borderColor: 'rgba(255,107,0,0.22)',
-                marginBottom: 20,
-              }}>
-                <BadgeCheck size={14} color="#FF8C40" />
-                <Text style={{ color: '#FF8C40', fontSize: 11, fontWeight: '800', letterSpacing: 2, textTransform: 'uppercase' }}>
-                  Platform Capabilities
-                </Text>
-              </View>
-
-              <Text style={{ color: '#ffffff', fontSize: Platform.OS === 'web' && SCREEN_WIDTH > 768 ? 40 : 30, fontWeight: '900', textAlign: 'center', letterSpacing: -0.5, lineHeight: Platform.OS === 'web' && SCREEN_WIDTH > 768 ? 48 : 38 }}>
-                Everything You{' '}
-                <Text style={{ color: '#FF8C40' }}>Need</Text>
-              </Text>
-
-              {/* Animated underline */}
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 10 }}>
-                <View style={{ width: 32, height: 2, borderRadius: 2, backgroundColor: 'rgba(255,107,0,0.3)' }} />
-                <View style={{ width: 64, height: 2, borderRadius: 2, backgroundColor: '#FF6B00' }} />
-                <View style={{ width: 32, height: 2, borderRadius: 2, backgroundColor: 'rgba(255,107,0,0.3)' }} />
-              </View>
-
-              <Text style={{ color: 'rgba(255,255,255,0.45)', fontSize: 15, textAlign: 'center', marginTop: 18, maxWidth: 520, lineHeight: 23 }}>
-                A unified platform built for every stakeholder  from admin and teachers to students and Parents/Guardians.
-              </Text>
-            </View>
-
-            {/* Feature cards grid */}
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', marginHorizontal: -10 }}>
-              {[
-                {
-                  icon: <BookOpen size={24} color="#FF8C40" />,
-                  title: 'Course Management',
-                  desc: 'Create, publish and manage rich courses with videos, quizzes, and assignments  all in one editor.',
-                  accent: '#FF6B00',
-                  tag: 'Core',
-                },
-                {
-                  icon: <Library size={24} color="#A78BFA" />,
-                  title: 'Digital Library',
-                  desc: 'Give students and teachers instant access to a searchable library of books, PDFs, and media.',
-                  accent: '#7C3AED',
-                  tag: 'Resources',
-                },
-                {
-                  icon: <CreditCard size={24} color="#60A5FA" />,
-                  title: 'Fee & Payments',
-                  desc: 'Automate invoicing, track outstanding fees, and accept payments  with real-time dashboards.',
-                  accent: '#2563EB',
-                  tag: 'Finance',
-                },
-                {
-                  icon: <BarChart2 size={24} color="#34D399" />,
-                  title: 'Advanced Analytics',
-                  desc: 'Drill into performance trends, attendance, and engagement with beautiful, exportable reports.',
-                  accent: '#059669',
-                  tag: 'Insights',
-                },
-                {
-                  icon: <Users size={24} color="#F472B6" />,
-                  title: 'User Management',
-                  desc: 'Onboard and manage admins, teachers, students, and Parents/Guardians with role-based access control.',
-                  accent: '#DB2777',
-                  tag: 'Admin',
-                },
-                {
-                  icon: <Settings size={24} color="#FBBF24" />,
-                  title: 'Smart Configuration',
-                  desc: 'Customize branding, modules, permissions and notifications to perfectly fit your institution.',
-                  accent: '#D97706',
-                  tag: 'Setup',
-                },
-              ].map((feat) => (
-                <FeatureCard key={feat.title} {...feat} />
-              ))}
-            </View>
-
+          {/* 2. ASYMMETRIC BENTO FEATURES MATRIX */}
+          <View onLayout={(e) => handleLayout('features', e.nativeEvent.layout.y)}>
+            <BentoFeatures />
           </View>
 
-          {/*  PRICING SECTION  */}
-          <View
-            ref={pricingRef}
-            onLayout={(e) => handleLayout("pricing", e.nativeEvent.layout.y)}
-            style={{
-              paddingHorizontal: 20,
-              paddingTop: 72,
-              paddingBottom: 80,
-              backgroundColor: '#0A0820',
-              position: 'relative',
-              overflow: 'hidden',
-            }}
-          >
-            {/* Background mesh blobs */}
-            <View style={{ position: 'absolute', top: '5%', left: '-10%', width: 380, height: 380, borderRadius: 190, backgroundColor: 'rgba(255,107,0,0.05)' } as any} />
-            <View style={{ position: 'absolute', bottom: '5%', right: '-10%', width: 340, height: 340, borderRadius: 170, backgroundColor: 'rgba(139,92,246,0.06)' } as any} />
-
-            {/* Section header */}
-            <View style={{ alignItems: 'center', marginBottom: 52 }}>
-              <View style={{
-                flexDirection: 'row', alignItems: 'center', gap: 7,
-                backgroundColor: 'rgba(255,107,0,0.1)',
-                borderRadius: 20, paddingHorizontal: 14, paddingVertical: 6,
-                borderWidth: 1, borderColor: 'rgba(255,107,0,0.22)',
-                marginBottom: 20,
-              }}>
-                <CreditCard size={14} color="#FF8C40" />
-                <Text style={{ color: '#FF8C40', fontSize: 11, fontWeight: '800', letterSpacing: 2, textTransform: 'uppercase' }}>
-                  Flexible Pricing
-                </Text>
-              </View>
-
-              <Text style={{
-                color: '#ffffff',
-                fontSize: Platform.OS === 'web' && SCREEN_WIDTH > 768 ? 42 : 30,
-                fontWeight: '900',
-                textAlign: 'center',
-                letterSpacing: -0.5,
-                lineHeight: Platform.OS === 'web' && SCREEN_WIDTH > 768 ? 50 : 38,
-                marginBottom: 12,
-              }}>
-                Choose Your{' '}
-                <Text style={{ color: '#FF8C40' }}>Package</Text>
-              </Text>
-
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 16 }}>
-                <View style={{ width: 32, height: 2, borderRadius: 2, backgroundColor: 'rgba(255,107,0,0.3)' }} />
-                <View style={{ width: 64, height: 2, borderRadius: 2, backgroundColor: '#FF6B00' }} />
-                <View style={{ width: 32, height: 2, borderRadius: 2, backgroundColor: 'rgba(255,107,0,0.3)' }} />
-              </View>
-
-              <Text style={{ color: 'rgba(255,255,255,0.45)', fontSize: 15, textAlign: 'center', maxWidth: 520, lineHeight: 23 }}>
-                Select your deployment scale, then pick the plan that fits your institution.
-              </Text>
-            </View>
-
-            {/*  LEVEL 1: Tier Selector  */}
-            {SCREEN_WIDTH >= 768 ? (
-              /* Wide screen (>=768px): centred flex row */
-              <View style={{
-                flexDirection: 'row',
-                justifyContent: 'center',
-                gap: 10,
-                flexWrap: 'wrap',
-                marginBottom: 16,
-                paddingHorizontal: 40,
-              }}>
-                {TIERS.map((tier) => (
-                  <PackageTierTab
-                    key={tier.key}
-                    tier={tier}
-                    label={tier.label}
-                    icon={tier.icon}
-                    tagline={tier.tagline}
-                    isActive={selectedTier === tier.key}
-                    onPress={() => setSelectedTier(tier.key)}
-                  />
-                ))}
-              </View>
-            ) : (
-              /* Narrow screen (<768px): horizontal scroll strip */
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={{
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  gap: 10,
-                  paddingHorizontal: 20,
-                  paddingBottom: 4,
-                }}
-                style={{ marginBottom: 16 }}
-              >
-                {TIERS.map((tier) => (
-                  <PackageTierTab
-                    key={tier.key}
-                    tier={tier}
-                    label={tier.label}
-                    icon={tier.icon}
-                    tagline={tier.tagline}
-                    isActive={selectedTier === tier.key}
-                    onPress={() => {
-                      setSelectedTier(tier.key);
-                      // Gently scroll so the plan cards come into view
-                      if (pricingCardsY !== null) {
-                        scrollRef.current?.scrollTo({
-                          y: pricingCardsY - 80,
-                          animated: true,
-                        });
-                      }
-                    }}
-                  />
-                ))}
-              </ScrollView>
-            )}
-
-            {/* Active tier description */}
-            <View style={{ alignItems: 'center', marginBottom: 40 }}>
-              <Text style={{
-                color: 'rgba(255,255,255,0.38)',
-                fontSize: 13,
-                textAlign: 'center',
-                maxWidth: 480,
-                lineHeight: 20,
-              }}>
-                {TIERS.find(t => t.key === selectedTier)?.description}
-              </Text>
-            </View>
-
-            {/*  LEVEL 2: Plan Cards  */}
-            <View
-              onLayout={(e) => setPricingCardsY(e.nativeEvent.layout.y + (sectionPositions['pricing'] ?? 0))}
-              style={{
-                flexDirection: 'row',
-                flexWrap: 'wrap',
-                justifyContent: 'center',
-                gap: Platform.OS === 'web' ? 24 : 0,
-                width: '100%',
-              }}>
-              {TIER_PLANS[selectedTier].map((plan) => (
-                <PlanCard
-                  key={`${selectedTier}-${plan.name}`}
-                  plan={plan}
-                  tierAccent={TIERS.find(t => t.key === selectedTier)?.accent ?? '#FF6B00'}
-                  openRegistrationModal={(planName: string) =>
-                    openRegistrationModal(`${TIERS.find(t => t.key === selectedTier)?.label} ${planName}`)
-                  }
-                />
-              ))}
-            </View>
-
-            {/* Free Trial Card */}
-            <View style={{
-              width: '100%',
-              marginTop: 40,
-              alignItems: 'center',
-            }}>
-              <View style={{
-                width: Platform.OS === 'web' && SCREEN_WIDTH > 768 ? '70%' : '100%',
-                maxWidth: 700,
-                borderRadius: 28,
-                overflow: 'hidden',
-                borderWidth: 1.5,
-                borderColor: 'rgba(52,211,153,0.35)',
-                backgroundColor: 'rgba(52,211,153,0.05)',
-              }}>
-                {/* Top accent bar */}
-                <View style={{ height: 3, backgroundColor: '#10B981', opacity: 0.8 }} />
-
-                <View style={{
-                  padding: 28,
-                  flexDirection: Platform.OS === 'web' && SCREEN_WIDTH > 600 ? 'row' : 'column',
-                  alignItems: 'center',
-                  gap: 24,
-                }}>
-                  {/* Icon + label */}
-                  <View style={{ alignItems: 'center', gap: 10, minWidth: 80 }}>
-                    <View style={{
-                      width: 56, height: 56, borderRadius: 18,
-                      backgroundColor: 'rgba(16,185,129,0.12)',
-                      borderWidth: 1.5, borderColor: 'rgba(16,185,129,0.3)',
-                      alignItems: 'center', justifyContent: 'center',
-                    }}>
-                      <Sparkles size={24} color="#10B981" />
-                    </View>
-                    <View style={{
-                      backgroundColor: 'rgba(16,185,129,0.15)',
-                      borderRadius: 10, paddingHorizontal: 10, paddingVertical: 3,
-                      borderWidth: 1, borderColor: 'rgba(16,185,129,0.25)',
-                    }}>
-                      <Text style={{ color: '#10B981', fontSize: 10, fontWeight: '800', letterSpacing: 1.5, textTransform: 'uppercase' }}>Free</Text>
-                    </View>
-                  </View>
-
-                  {/* Text */}
-                  <View style={{ flex: 1 }}>
-                    <Text style={{ color: 'white', fontWeight: '800', fontSize: 20, marginBottom: 6 }}>
-                      Try Cloudora Free for 14 Days
-                    </Text>
-                    <Text style={{ color: 'rgba(255,255,255,0.5)', fontSize: 14, lineHeight: 21 }}>
-                      No credit card required. Get full access to all core features and see how Cloudora transforms your institution.
-                    </Text>
-                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 14 }}>
-                      {['Unlimited Students', 'All Core Modules', 'Email Support', 'No Commitment'].map((feat) => (
-                        <View key={feat} style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
-                          <Check size={12} color="#10B981" strokeWidth={3} />
-                          <Text style={{ color: 'rgba(255,255,255,0.7)', fontSize: 12, fontWeight: '500' }}>{feat}</Text>
-                        </View>
-                      ))}
-                    </View>
-                  </View>
-
-                  {/* CTA button */}
-                  <TouchableOpacity
-                    onPress={() => openRegistrationModal('Free Trial')}
-                    activeOpacity={0.85}
-                    style={{
-                      paddingVertical: 16, paddingHorizontal: 28,
-                      borderRadius: 18,
-                      backgroundColor: '#10B981',
-                      alignItems: 'center',
-                      shadowColor: '#10B981',
-                      boxShadow: [{
-                        offsetX: 0,
-                        offsetY: 8,
-                        blurRadius: 16,
-                        color: 'rgba(16, 185, 129, 0.35)',
-                      }],
-                      minWidth: 160,
-                    }}
-                  >
-                    <Text style={{ color: 'white', fontWeight: '800', fontSize: 14 }}>Start Free Trial</Text>
-                    {/* <Text style={{ color: 'rgba(255,255,255,0.7)', fontSize: 11, marginTop: 2 }}>No card needed</Text> */}
-                  </TouchableOpacity>
-                </View>
-              </View>
-            </View>
-
-            {/*  Add-Ons Section  */}
-            <View style={{ width: '100%', marginTop: 56 }}>
-              {/* Header */}
-              <View style={{ alignItems: 'center', marginBottom: 28 }}>
-                <View style={{
-                  flexDirection: 'row', alignItems: 'center', gap: 7,
-                  backgroundColor: 'rgba(139,92,246,0.1)',
-                  borderRadius: 20, paddingHorizontal: 14, paddingVertical: 6,
-                  borderWidth: 1, borderColor: 'rgba(139,92,246,0.22)',
-                  marginBottom: 14,
-                }}>
-                  <Sparkles size={14} color="#A78BFA" />
-                  <Text style={{ color: '#A78BFA', fontSize: 11, fontWeight: '800', letterSpacing: 2, textTransform: 'uppercase' }}>
-                    Add-Ons
-                  </Text>
-                </View>
-                <Text style={{ color: 'white', fontWeight: '800', fontSize: 22, textAlign: 'center', marginBottom: 6 }}>
-                  Enhance Your Plan
-                </Text>
-                <Text style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13, textAlign: 'center', maxWidth: 460, lineHeight: 20 }}>
-                  Bolt on powerful modules to any plan  available standalone or bundled with Pro &amp; above.
-                </Text>
-              </View>
-
-              {/* Add-on cards */}
-              <View style={{
-                flexDirection: Platform.OS === 'web' && SCREEN_WIDTH > 700 ? 'row' : 'column',
-                gap: 20, justifyContent: 'center', flexWrap: 'wrap',
-                paddingHorizontal: Platform.OS === 'web' ? 40 : 0,
-              }}>
-                {[
-                  {
-                    icon: <Library size={28} color="#A78BFA" />,
-                    name: 'Digital Library',
-                    tagline: 'Add-On Module',
-                    price: '$30/mo',
-                    accent: '#8B5CF6',
-                    desc: 'Give your institution a fully searchable digital library  books, PDFs, videos and more.',
-                    features: [
-                      'Unlimited uploads & categories',
-                      'Student & teacher access controls',
-                      'Search, filter & bookmarking',
-                      'Mobile-friendly reader',
-                    ],
-                    includedIn: 'Included in Pro, Premium & Custom plans',
-                  },
-                  {
-                    icon: <CreditCard size={28} color="#FBBF24" />,
-                    name: 'Bursary Module',
-                    tagline: 'Add-On Module',
-                    price: '$30/mo',
-                    accent: '#D97706',
-                    desc: 'Manage student accounts and financial logs on a centralised dashboard.',
-                    features: [
-                      'Student fee tracking',
-                      'Financial log dashboard',
-                      'Bursary award management',
-                      'Payment history & reports',
-                    ],
-                    includedIn: 'Included in Premium & Custom plans',
-                  },
-                  {
-                    icon: <BadgeCheck size={28} color="#34D399" />,
-                    name: 'Messaging + Virtual Diary',
-                    tagline: 'Add-On Module',
-                    price: '$10/mo',
-                    accent: '#10B981',
-                    desc: 'Real-time in-app messaging between teachers, students and Parents/Guardians. Keep communication within the platform.',
-                    features: [
-                      'Direct & group messaging',
-                      'Announcements & broadcasts',
-                      'File & image sharing',
-                      'Read receipts & notifications',
-                    ],
-                    includedIn: 'Included in Pro, Premium & Custom plans',
-                  },
-                ].map((addon) => (
-                  <View
-                    key={addon.name}
-                    style={Platform.OS === 'web' ? {
-                      flex: 1, minWidth: 280, maxWidth: 440,
-                    } : { width: '100%' }}
-                  >
-                    <View style={{
-                      borderRadius: 28, overflow: 'hidden',
-                      borderWidth: 1.5, borderColor: `${addon.accent}33`,
-                      backgroundColor: `${addon.accent}08`,
-                    }}>
-                      {/* Top accent line */}
-                      <View style={{ height: 3, backgroundColor: addon.accent, opacity: 0.7 }} />
-                      <View style={{ padding: 28 }}>
-                        {/* Icon + prices row */}
-                        <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 16 }}>
-                          <View style={{
-                            width: 54, height: 54, borderRadius: 16,
-                            backgroundColor: `${addon.accent}15`,
-                            borderWidth: 1, borderColor: `${addon.accent}30`,
-                            alignItems: 'center', justifyContent: 'center',
-                          }}>
-                            {addon.icon}
-                          </View>
-                          <View style={{ alignItems: 'flex-end' }}>
-                            <View style={{
-                              backgroundColor: `${addon.accent}18`, borderRadius: 8,
-                              paddingHorizontal: 10, paddingVertical: 3,
-                              borderWidth: 1, borderColor: `${addon.accent}28`, marginBottom: 6,
-                            }}>
-                              <Text style={{ color: addon.accent, fontSize: 9, fontWeight: '800', letterSpacing: 1.5, textTransform: 'uppercase' }}>
-                                {addon.tagline}
-                              </Text>
-                            </View>
-                            <Text style={{ color: 'white', fontWeight: '900', fontSize: 22 }}>{priceConverter(addon.price)}</Text>
-                          </View>
-                        </View>
-
-                        <Text style={{ color: 'white', fontWeight: '800', fontSize: 18, marginBottom: 8 }}>{addon.name}</Text>
-                        <Text style={{ color: 'rgba(255,255,255,0.5)', fontSize: 13, lineHeight: 20, marginBottom: 18 }}>{addon.desc}</Text>
-
-                        {/* Features */}
-                        <View style={{ gap: 10, marginBottom: 20 }}>
-                          {addon.features.map((feat) => (
-                            <View key={feat} style={{ flexDirection: 'row', alignItems: 'center' }}>
-                              <View style={{
-                                width: 20, height: 20, borderRadius: 6,
-                                backgroundColor: `${addon.accent}15`,
-                                alignItems: 'center', justifyContent: 'center',
-                                marginRight: 12, borderWidth: 1, borderColor: `${addon.accent}30`,
-                              }}>
-                                <Check size={12} color={addon.accent} strokeWidth={3} />
-                              </View>
-                              <Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: 13 }}>{feat}</Text>
-                            </View>
-                          ))}
-                        </View>
-
-                        {/* Included-in note */}
-                        <View style={{
-                          backgroundColor: `${addon.accent}10`, borderRadius: 10,
-                          paddingHorizontal: 14, paddingVertical: 8,
-                          borderWidth: 1, borderColor: `${addon.accent}20`, marginBottom: 20,
-                          flexDirection: 'row', alignItems: 'center', gap: 8,
-                        }}>
-                          <Check size={13} color={addon.accent} strokeWidth={3} />
-                          <Text style={{ color: addon.accent, fontSize: 11, fontWeight: '600', flex: 1 }}>{addon.includedIn}</Text>
-                        </View>
-
-                        {/* CTA */}
-                        <TouchableOpacity
-                          style={{
-                            width: '100%', paddingVertical: 14, borderRadius: 18,
-                            alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 8,
-                            borderWidth: 1.5, borderColor: `${addon.accent}55`,
-                            backgroundColor: 'transparent',
-                          }}
-                          onPress={() => openRegistrationModal(`${addon.name} Add-On`)}
-                          activeOpacity={0.8}
-                        >
-                          <Text style={{ color: addon.accent, fontWeight: '700', fontSize: 14 }}>Talk to Sales</Text>
-                          <MoveRight size={16} color={addon.accent} />
-                        </TouchableOpacity>
-                      </View>
-                    </View>
-                  </View>
-                ))}
-              </View>
-            </View>
-
-            {/* Contact CTA for Custom */}
-            {selectedTier === 'custom' && (
-              <View style={{ alignItems: 'center', marginTop: 36 }}>
-                <Text style={{ color: 'rgba(255,255,255,0.45)', fontSize: 13, marginBottom: 12 }}>
-                  Need a fully custom quote? Talk to our team directly.
-                </Text>
-                <TouchableOpacity
-                  style={{
-                    flexDirection: 'row', alignItems: 'center', gap: 8,
-                    backgroundColor: 'rgba(139,92,246,0.12)',
-                    borderWidth: 1.5, borderColor: 'rgba(139,92,246,0.35)',
-                    borderRadius: 16, paddingVertical: 14, paddingHorizontal: 28,
-                  }}
-                  onPress={() => openRegistrationModal('Custom Enterprise')}
-                  activeOpacity={0.8}
-                >
-                  <Text style={{ color: '#A78BFA', fontWeight: '700', fontSize: 14 }}>Schedule a Demo</Text>
-                  <MoveRight size={16} color="#A78BFA" />
-                </TouchableOpacity>
-              </View>
-            )}
+          {/* 3. ENTERPRISE INFRASTRUCTURE TELEMETRY */}
+          <View onLayout={(e) => handleLayout('architecture', e.nativeEvent.layout.y)}>
+            <TelemetryStrip />
           </View>
 
-          {/*  GET IN TOUCH FOOTER  */}
-          <View
-            ref={getInTouchRef}
-            onLayout={(e) => handleLayout("getInTouch", e.nativeEvent.layout.y)}
-            style={{ paddingHorizontal: 24, paddingBottom: 60, paddingTop: 60, borderTopWidth: 1, borderColor: 'rgba(255,255,255,0.05)', marginTop: 40, width: '100%', alignItems: 'center' }}
-          >
-            <View style={{ marginBottom: 48, alignItems: 'center' }}>
-              <View style={{
-                width: 48, height: 48, borderRadius: 16, backgroundColor: 'rgba(139, 92, 246, 0.1)',
-                alignItems: 'center', justifyContent: 'center', marginBottom: 16,
-                borderWidth: 1, borderColor: 'rgba(139, 92, 246, 0.2)'
-              }}>
-                <Mail size={24} color="#8B5CF6" />
-              </View>
-              <Text style={{ color: 'white', fontSize: 36, fontWeight: '900', marginBottom: 12, textAlign: 'center', letterSpacing: -1 }}>Get In Touch</Text>
-              <Text style={{ color: 'rgba(255,255,255,0.5)', fontSize: 16, textAlign: 'center', maxWidth: 500, lineHeight: 24 }}>
-                Ready to transform your institution or need help with your current setup? We are here for you.
-              </Text>
-            </View>
+          {/* 4. FUTURISTIC GLASS ARMOR PRICING & ADD-ONS */}
+          <View onLayout={(e) => handleLayout('pricing', e.nativeEvent.layout.y)}>
+            <FuturisticPricing onSelectPlan={openRegistrationModal} />
+          </View>
 
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 20, justifyContent: 'center', maxWidth: 1000, alignSelf: 'center' }}>
-              {[
-                { title: 'Email Us', value: 'Support@cloudoraltd.live', icon: <Mail size={22} color="#8B5CF6" /> },
-                { title: 'Call Us', value: '+254 759 585 197', icon: <Phone size={22} color="#8B5CF6" /> },
-                { title: 'Instagram', value: '@cloudora.solutions', icon: <Instagram size={22} color="#8B5CF6" /> },
-                { title: 'LinkedIn', value: 'Cloudora Solutions', icon: <Linkedin size={22} color="#8B5CF6" /> },
-              ].map((item, idx) => (
-                <View key={idx} style={{
-                  width: Platform.OS === 'web' && SCREEN_WIDTH > 768 ? '48%' : '100%',
-                  backgroundColor: 'rgba(255,255,255,0.03)',
-                  borderRadius: 24,
-                  padding: 24,
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  gap: 20,
-                  borderWidth: 1,
-                  borderColor: 'rgba(255,255,255,0.08)',
-                }}>
-                  <View style={{
-                    width: 56, height: 56, borderRadius: 20,
-                    backgroundColor: 'rgba(139, 92, 246, 0.1)',
-                    borderWidth: 1,
-                    borderColor: 'rgba(139, 92, 246, 0.2)',
-                    alignItems: 'center', justifyContent: 'center'
-                  }}>
-                    {item.icon}
-                  </View>
-                  <View>
-                    <Text style={{ color: 'rgba(255,255,255,0.5)', fontSize: 13, marginBottom: 4, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.5 }}>{item.title}</Text>
-                    <Text style={{ color: 'white', fontSize: 16, fontWeight: '800' }}>{item.value}</Text>
-                  </View>
-                </View>
-              ))}
-            </View>
-
-            <View style={{ marginTop: 80, borderTopWidth: 1, borderColor: 'rgba(255,255,255,0.05)', paddingTop: 32, width: '100%', maxWidth: 1000, flexDirection: 'row', justifyContent: 'center' }}>
-              <Text style={{ color: 'rgba(255,255,255,0.4)', textAlign: 'center', fontSize: 14, fontWeight: '500' }}>
-                © {new Date().getFullYear()} Cloudora Limited. All rights reserved.
-              </Text>
-            </View>
+          {/* 5. HYPER-CONNECT COMMUNICATION PORTAL & FOOTER */}
+          <View onLayout={(e) => handleLayout('contact', e.nativeEvent.layout.y)}>
+            <FuturisticContact onOpenBooking={() => openRegistrationModal('Custom Institutional Deployment')} />
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
 
-      {/* Addon Modal */}
+      {/* MODAL 1: ADDON SELECTOR MODAL */}
       <Modal
         animationType="fade"
         transparent={true}
         visible={addonModalVisible}
         onRequestClose={() => setAddonModalVisible(false)}
       >
-        <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "rgba(0,0,0,0.8)" }}>
-          <View style={{
-            backgroundColor: "#13103A",
-            borderRadius: 32,
-            padding: 24,
-            width: Platform.OS === 'web' ? 500 : '90%',
-            maxWidth: 500,
-            borderWidth: 1,
-            borderColor: "rgba(255,255,255,0.1)"
-          }}>
+        <View
+          style={{
+            flex: 1,
+            justifyContent: 'center',
+            alignItems: 'center',
+            backgroundColor: 'rgba(5, 3, 15, 0.85)',
+            padding: 16,
+            ...(Platform.OS === 'web' ? ({ backdropFilter: 'blur(24px)' } as any) : {}),
+          }}
+        >
+          <View
+            style={{
+              backgroundColor: '#0F0B2E',
+              borderRadius: 30,
+              padding: 26,
+              width: '100%',
+              maxWidth: 520,
+              borderWidth: 1.5,
+              borderColor: 'rgba(255, 107, 0, 0.3)',
+              boxShadow: [{
+                offsetX: 0,
+                offsetY: 24,
+                blurRadius: 48,
+                color: 'rgba(0, 0, 0, 0.6)',
+              }],
+            }}
+          >
+            {/* Close Button */}
             <TouchableOpacity
-              style={{ position: "absolute", top: 20, right: 20, zIndex: 10 }}
+              style={{
+                position: 'absolute',
+                top: 20,
+                right: 20,
+                zIndex: 10,
+                width: 32,
+                height: 32,
+                borderRadius: 16,
+                backgroundColor: 'rgba(255, 255, 255, 0.06)',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
               onPress={() => setAddonModalVisible(false)}
             >
-              <Text style={{ color: "rgba(255,255,255,0.6)", fontSize: 24, fontWeight: "bold" }}>x</Text>
+              <X size={18} color="rgba(255, 255, 255, 0.7)" />
             </TouchableOpacity>
 
-            <View style={{ alignItems: 'center', marginBottom: 24 }}>
-              <View style={{
-                width: 64, height: 64, borderRadius: 20,
-                backgroundColor: "rgba(255, 107, 0, 0.1)",
-                justifyContent: "center", alignItems: "center",
-                marginBottom: 16,
-                borderWidth: 1, borderColor: "rgba(255, 107, 0, 0.3)"
-              }}>
-                <Plus size={32} color="#FF6B00" />
+            <View style={{ alignItems: 'center', marginBottom: 22 }}>
+              <View
+                style={{
+                  width: 54,
+                  height: 54,
+                  borderRadius: 18,
+                  backgroundColor: 'rgba(255, 107, 0, 0.15)',
+                  borderWidth: 1,
+                  borderColor: 'rgba(255, 107, 0, 0.35)',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  marginBottom: 14,
+                }}
+              >
+                <Plus size={26} color="#FF8C40" />
               </View>
-              <Text style={{ color: "white", fontSize: 24, fontWeight: "900", textAlign: "center" }}>Boost Your Plan</Text>
-              <Text style={{ color: "rgba(255,255,255,0.5)", textAlign: "center", marginTop: 8 }}>Enhance your {selectedPlan} with powerful add-ons.</Text>
+              <Text style={{ color: '#FFFFFF', fontSize: 22, fontWeight: '900', textAlign: 'center' }}>
+                Augment Your {selectedPlan}
+              </Text>
+              <Text
+                style={{
+                  color: 'rgba(255, 255, 255, 0.55)',
+                  textAlign: 'center',
+                  fontSize: 13.5,
+                  marginTop: 6,
+                }}
+              >
+                Select optional institutional modules to bundle into your deployment.
+              </Text>
             </View>
 
-            <View style={{ gap: 12, marginBottom: 24 }}>
-              {TIER_PLANS.addOns.map((addon) => {
+            <View style={{ gap: 10, marginBottom: 24 }}>
+              {ADDONS_DATA.map((addon) => {
                 const isSelected = selectedAddons.includes(addon.name);
                 return (
                   <TouchableOpacity
                     key={addon.name}
                     onPress={() => {
                       if (isSelected) {
-                        setSelectedAddons(selectedAddons.filter(a => a !== addon.name));
+                        setSelectedAddons(selectedAddons.filter((a) => a !== addon.name));
                       } else {
                         setSelectedAddons([...selectedAddons, addon.name]);
                       }
@@ -2076,22 +332,49 @@ export default function Index() {
                     style={{
                       flexDirection: 'row',
                       alignItems: 'center',
-                      backgroundColor: isSelected ? "rgba(255, 107, 0, 0.15)" : "rgba(255,255,255,0.05)",
-                      padding: 16,
-                      borderRadius: 18,
+                      backgroundColor: isSelected
+                        ? 'rgba(255, 107, 0, 0.14)'
+                        : 'rgba(255, 255, 255, 0.04)',
+                      padding: 14,
+                      borderRadius: 16,
                       borderWidth: 1.5,
-                      borderColor: isSelected ? "#FF6B00" : "rgba(255,255,255,0.1)",
+                      borderColor: isSelected ? '#FF6B00' : 'rgba(255, 255, 255, 0.08)',
                     }}
                   >
                     <View style={{ flex: 1 }}>
-                      <Text style={{ color: isSelected ? "white" : "rgba(255,255,255,0.9)", fontWeight: "700", fontSize: 16 }}>{addon.name}</Text>
-                      <Text style={{ color: "rgba(255,255,255,0.45)", fontSize: 12, marginTop: 2 }}>{addon.desc}</Text>
+                      <Text
+                        style={{
+                          color: isSelected ? '#FFFFFF' : 'rgba(255, 255, 255, 0.85)',
+                          fontWeight: '700',
+                          fontSize: 14.5,
+                        }}
+                      >
+                        {addon.name}
+                      </Text>
+                      <Text
+                        style={{
+                          color: 'rgba(255, 255, 255, 0.45)',
+                          fontSize: 12,
+                          marginTop: 2,
+                        }}
+                      >
+                        {addon.desc}
+                      </Text>
                     </View>
-                    <View style={{ alignItems: 'flex-end' }}>
-                      <Text style={{ color: "#FF8C40", fontWeight: "800", fontSize: 14 }}>{addon.price}</Text>
+                    <View style={{ alignItems: 'flex-end', marginLeft: 10 }}>
+                      <Text style={{ color: '#FF8C40', fontWeight: '800', fontSize: 13.5 }}>
+                        {addon.price}
+                      </Text>
                       {isSelected && (
-                        <View style={{ backgroundColor: "#FF6B00", borderRadius: 8, padding: 2, marginTop: 4 }}>
-                          <Check size={12} color="white" strokeWidth={3} />
+                        <View
+                          style={{
+                            backgroundColor: '#FF6B00',
+                            borderRadius: 6,
+                            padding: 2,
+                            marginTop: 4,
+                          }}
+                        >
+                          <Check size={11} color="white" strokeWidth={3} />
                         </View>
                       )}
                     </View>
@@ -2100,81 +383,137 @@ export default function Index() {
               })}
             </View>
 
-            <View style={{ gap: 12 }}>
+            <View style={{ gap: 10 }}>
               <TouchableOpacity
                 style={{
-                  backgroundColor: "#FF6B00",
-                  paddingVertical: 18,
-                  borderRadius: 18,
-                  alignItems: "center",
+                  backgroundColor: '#FF6B00',
+                  paddingVertical: 16,
+                  borderRadius: 16,
+                  alignItems: 'center',
                   boxShadow: [{
                     offsetX: 0,
                     offsetY: 8,
-                    blurRadius: 12,
-                    color: 'rgba(255, 107, 0, 0.3)',
+                    blurRadius: 18,
+                    color: 'rgba(255, 107, 0, 0.4)',
                   }],
                 }}
                 onPress={proceedToRegistration}
               >
-                <Text style={{ color: "white", fontWeight: "900", fontSize: 16 }}>
-                  {selectedAddons.length > 0 ? "Add & Continue" : "Skip & Continue"}
+                <Text style={{ color: '#FFFFFF', fontWeight: '900', fontSize: 15 }}>
+                  {selectedAddons.length > 0 ? 'Apply Add-Ons & Continue' : 'Skip & Continue'}
                 </Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={{ paddingVertical: 12, alignItems: "center" }}
-                onPress={() => setAddonModalVisible(false)}
-              >
-                <Text style={{ color: "rgba(255,255,255,0.4)", fontWeight: "600" }}>Cancel</Text>
               </TouchableOpacity>
             </View>
           </View>
         </View>
       </Modal>
 
-      {/* Custom Features Modal */}
+      {/* MODAL 2: CUSTOM PLAN CONFIGURATION MODAL */}
       <Modal
         animationType="fade"
         transparent={true}
         visible={customModalVisible}
         onRequestClose={() => setCustomModalVisible(false)}
       >
-        <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "rgba(0,0,0,0.8)" }}>
-          <View style={{
-            backgroundColor: "#13103A",
-            borderRadius: 32,
-            padding: 24,
-            width: Platform.OS === 'web' ? 600 : '95%',
-            maxWidth: 600,
-            borderWidth: 1,
-            borderColor: "rgba(255,255,255,0.1)"
-          }}>
+        <View
+          style={{
+            flex: 1,
+            justifyContent: 'center',
+            alignItems: 'center',
+            backgroundColor: 'rgba(5, 3, 15, 0.85)',
+            padding: 16,
+            ...(Platform.OS === 'web' ? ({ backdropFilter: 'blur(24px)' } as any) : {}),
+          }}
+        >
+          <View
+            style={{
+              backgroundColor: '#0F0B2E',
+              borderRadius: 30,
+              padding: 26,
+              width: '100%',
+              maxWidth: 620,
+              borderWidth: 1.5,
+              borderColor: 'rgba(139, 92, 246, 0.35)',
+              boxShadow: [{
+                offsetX: 0,
+                offsetY: 24,
+                blurRadius: 48,
+                color: 'rgba(0, 0, 0, 0.6)',
+              }],
+            }}
+          >
             <TouchableOpacity
-              style={{ position: "absolute", top: 20, right: 20, zIndex: 10 }}
+              style={{
+                position: 'absolute',
+                top: 20,
+                right: 20,
+                zIndex: 10,
+                width: 32,
+                height: 32,
+                borderRadius: 16,
+                backgroundColor: 'rgba(255, 255, 255, 0.06)',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
               onPress={() => setCustomModalVisible(false)}
             >
-              <Text style={{ color: "rgba(255,255,255,0.6)", fontSize: 24, fontWeight: "bold" }}>x</Text>
+              <X size={18} color="rgba(255, 255, 255, 0.7)" />
             </TouchableOpacity>
 
-            <View style={{ alignItems: 'center', marginBottom: 24 }}>
-              <View style={{
-                width: 64, height: 64, borderRadius: 20,
-                backgroundColor: "rgba(139, 92, 246, 0.1)",
-                justifyContent: "center", alignItems: "center",
-                marginBottom: 16,
-                borderWidth: 1, borderColor: "rgba(139, 92, 246, 0.3)"
-              }}>
-                <Settings size={32} color="#8B5CF6" />
+            <View style={{ alignItems: 'center', marginBottom: 20 }}>
+              <View
+                style={{
+                  width: 54,
+                  height: 54,
+                  borderRadius: 18,
+                  backgroundColor: 'rgba(139, 92, 246, 0.15)',
+                  borderWidth: 1,
+                  borderColor: 'rgba(139, 92, 246, 0.35)',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  marginBottom: 12,
+                }}
+              >
+                <Settings size={26} color="#A78BFA" />
               </View>
-              <Text style={{ color: "white", fontSize: 24, fontWeight: "900", textAlign: "center" }}>Configure Custom Plan</Text>
-              <Text style={{ color: "rgba(255,255,255,0.5)", textAlign: "center", marginTop: 8 }}>Select the specialized features and modules for your institution.</Text>
+              <Text style={{ color: '#FFFFFF', fontSize: 22, fontWeight: '900', textAlign: 'center' }}>
+                Configure Custom Deployment
+              </Text>
+              <Text
+                style={{
+                  color: 'rgba(255, 255, 255, 0.55)',
+                  textAlign: 'center',
+                  fontSize: 13,
+                  marginTop: 4,
+                }}
+              >
+                Select the specialized architectural features and modules required.
+              </Text>
             </View>
 
-            <View style={{ maxHeight: 400 }}>
+            <View style={{ maxHeight: 380 }}>
               <ScrollView showsVerticalScrollIndicator={false}>
-                {/* Core Modules Section */}
-                <Text style={{ color: "rgba(255,255,255,0.4)", fontSize: 11, fontWeight: "800", letterSpacing: 1.5, textTransform: "uppercase", marginBottom: 12, marginLeft: 4 }}>Core Modules</Text>
-                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 24, justifyContent: 'flex-start' }}>
+                {/* Core Modules */}
+                <Text
+                  style={{
+                    color: 'rgba(255, 255, 255, 0.45)',
+                    fontSize: 11,
+                    fontWeight: '800',
+                    letterSpacing: 1.5,
+                    textTransform: 'uppercase',
+                    marginBottom: 10,
+                  }}
+                >
+                  Core Portals
+                </Text>
+                <View
+                  style={{
+                    flexDirection: 'row',
+                    flexWrap: 'wrap',
+                    gap: 8,
+                    marginBottom: 20,
+                  }}
+                >
                   {['Student module', 'Teacher module', 'Parent/Guardian module'].map((mod) => {
                     const isSelected = selectedCoreModules.includes(mod);
                     return (
@@ -2182,98 +521,97 @@ export default function Index() {
                         key={mod}
                         onPress={() => {
                           if (isSelected) {
-                            setSelectedCoreModules(selectedCoreModules.filter(m => m !== mod));
+                            setSelectedCoreModules(selectedCoreModules.filter((m) => m !== mod));
                           } else {
                             setSelectedCoreModules([...selectedCoreModules, mod]);
                           }
                         }}
                         style={{
-                          backgroundColor: isSelected ? "rgba(59, 130, 246, 0.2)" : "rgba(255,255,255,0.04)",
-                          paddingHorizontal: 16,
-                          paddingVertical: 12,
-                          borderRadius: 14,
+                          backgroundColor: isSelected
+                            ? 'rgba(59, 130, 246, 0.2)'
+                            : 'rgba(255, 255, 255, 0.04)',
+                          paddingHorizontal: 14,
+                          paddingVertical: 10,
+                          borderRadius: 12,
                           borderWidth: 1.5,
-                          borderColor: isSelected ? "#3B82F6" : "rgba(255,255,255,0.08)",
+                          borderColor: isSelected ? '#3B82F6' : 'rgba(255, 255, 255, 0.08)',
                           flexDirection: 'row',
                           alignItems: 'center',
-                          gap: 8
+                          gap: 6,
                         }}
                       >
-                        <Text style={{ color: isSelected ? "white" : "rgba(255,255,255,0.7)", fontWeight: "600", fontSize: 13 }}>{mod}</Text>
-                        {isSelected && <Check size={14} color="#3B82F6" strokeWidth={3} />}
+                        <Text
+                          style={{
+                            color: isSelected ? '#FFFFFF' : 'rgba(255, 255, 255, 0.75)',
+                            fontWeight: '600',
+                            fontSize: 12.5,
+                          }}
+                        >
+                          {mod}
+                        </Text>
+                        {isSelected && <Check size={13} color="#3B82F6" strokeWidth={3} />}
                       </TouchableOpacity>
                     );
                   })}
                 </View>
 
-                {/* Custom Modules Section */}
-                <Text style={{ color: "rgba(255,255,255,0.4)", fontSize: 11, fontWeight: "800", letterSpacing: 1.5, textTransform: "uppercase", marginBottom: 12, marginLeft: 4 }}>Custom Modules</Text>
-                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 24, justifyContent: 'flex-start' }}>
-                  {TIER_PLANS.custom[0].features.map((feat: string) => {
+                {/* Custom Modules */}
+                <Text
+                  style={{
+                    color: 'rgba(255, 255, 255, 0.45)',
+                    fontSize: 11,
+                    fontWeight: '800',
+                    letterSpacing: 1.5,
+                    textTransform: 'uppercase',
+                    marginBottom: 10,
+                  }}
+                >
+                  Enterprise Integrations
+                </Text>
+                <View
+                  style={{
+                    flexDirection: 'row',
+                    flexWrap: 'wrap',
+                    gap: 8,
+                    marginBottom: 20,
+                  }}
+                >
+                  {CUSTOM_FEATURES_DATA.map((feat) => {
                     const isSelected = selectedCustomFeatures.includes(feat);
                     return (
                       <TouchableOpacity
                         key={feat}
                         onPress={() => {
                           if (isSelected) {
-                            setSelectedCustomFeatures(selectedCustomFeatures.filter(f => f !== feat));
+                            setSelectedCustomFeatures(selectedCustomFeatures.filter((f) => f !== feat));
                           } else {
                             setSelectedCustomFeatures([...selectedCustomFeatures, feat]);
                           }
                         }}
                         style={{
-                          backgroundColor: isSelected ? "rgba(139, 92, 246, 0.2)" : "rgba(255,255,255,0.04)",
-                          paddingHorizontal: 16,
-                          paddingVertical: 12,
-                          borderRadius: 14,
+                          backgroundColor: isSelected
+                            ? 'rgba(139, 92, 246, 0.2)'
+                            : 'rgba(255, 255, 255, 0.04)',
+                          paddingHorizontal: 14,
+                          paddingVertical: 10,
+                          borderRadius: 12,
                           borderWidth: 1.5,
-                          borderColor: isSelected ? "#8B5CF6" : "rgba(255,255,255,0.08)",
+                          borderColor: isSelected ? '#8B5CF6' : 'rgba(255, 255, 255, 0.08)',
                           flexDirection: 'row',
                           alignItems: 'center',
-                          gap: 8
+                          gap: 6,
                         }}
                       >
-                        <Text style={{ color: isSelected ? "white" : "rgba(255,255,255,0.7)", fontWeight: "600", fontSize: 13 }}>{feat}</Text>
-                        {isSelected && <Check size={14} color="#8B5CF6" strokeWidth={3} />}
-                      </TouchableOpacity>
-                    );
-                  })}
-                </View>
-
-                {/* Add-on Modules Section */}
-                <Text style={{ color: "rgba(255,255,255,0.4)", fontSize: 11, fontWeight: "800", letterSpacing: 1.5, textTransform: "uppercase", marginBottom: 12, marginLeft: 4 }}>Add-on Modules (Included in Custom)</Text>
-                <View style={{ gap: 10, marginBottom: 24 }}>
-                  {TIER_PLANS.addOns.map((addon) => {
-                    const isSelected = selectedAddons.includes(addon.name);
-                    return (
-                      <TouchableOpacity
-                        key={addon.name}
-                        onPress={() => {
-                          if (isSelected) {
-                            setSelectedAddons(selectedAddons.filter(a => a !== addon.name));
-                          } else {
-                            setSelectedAddons([...selectedAddons, addon.name]);
-                          }
-                        }}
-                        style={{
-                          flexDirection: 'row',
-                          alignItems: 'center',
-                          backgroundColor: isSelected ? "rgba(255, 107, 0, 0.15)" : "rgba(255,255,255,0.04)",
-                          padding: 14,
-                          borderRadius: 16,
-                          borderWidth: 1.5,
-                          borderColor: isSelected ? "#FF6B00" : "rgba(255,255,255,0.08)",
-                        }}
-                      >
-                        <View style={{ flex: 1 }}>
-                          <Text style={{ color: isSelected ? "white" : "rgba(255,255,255,0.9)", fontWeight: "700", fontSize: 14 }}>{addon.name}</Text>
-                          <Text style={{ color: "rgba(255,255,255,0.4)", fontSize: 11, marginTop: 1 }}>{addon.desc}</Text>
-                        </View>
-                        {isSelected && (
-                          <View style={{ backgroundColor: "#FF6B00", borderRadius: 8, padding: 2 }}>
-                            <Check size={12} color="white" strokeWidth={3} />
-                          </View>
-                        )}
+                        <Text
+                          style={{
+                            color: isSelected ? '#FFFFFF' : 'rgba(255, 255, 255, 0.75)',
+                            fontWeight: '600',
+                            fontSize: 12.5,
+                          }}
+                        >
+                          {feat}
+                        </Text>
+                        {isSelected && <Check size={13} color="#8B5CF6" strokeWidth={3} />}
                       </TouchableOpacity>
                     );
                   })}
@@ -2281,156 +619,322 @@ export default function Index() {
               </ScrollView>
             </View>
 
-            <View style={{ gap: 12 }}>
-              <TouchableOpacity
-                style={{
-                  backgroundColor: "#8B5CF6",
-                  paddingVertical: 18,
-                  borderRadius: 18,
-                  alignItems: "center",
-                  boxShadow: [{
-                    offsetX: 0,
-                    offsetY: 8,
-                    blurRadius: 12,
-                    color: 'rgba(139, 92, 246, 0.3)',
-                  }],
-                }}
-                onPress={proceedToRegistration}
-              >
-                <Text style={{ color: "white", fontWeight: "900", fontSize: 16 }}>
-                  {(selectedCustomFeatures.length > 0 || selectedCoreModules.length > 0 || selectedAddons.length > 0) ? "Apply & Continue" : "Skip & Continue"}
-                </Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={{ paddingVertical: 12, alignItems: "center" }}
-                onPress={() => setCustomModalVisible(false)}
-              >
-                <Text style={{ color: "rgba(255,255,255,0.4)", fontWeight: "600" }}>Cancel</Text>
-              </TouchableOpacity>
-            </View>
+            <TouchableOpacity
+              style={{
+                backgroundColor: '#8B5CF6',
+                paddingVertical: 16,
+                borderRadius: 16,
+                alignItems: 'center',
+                marginTop: 18,
+                boxShadow: [{
+                  offsetX: 0,
+                  offsetY: 8,
+                  blurRadius: 18,
+                  color: 'rgba(139, 92, 246, 0.4)',
+                }],
+              }}
+              onPress={proceedToRegistration}
+            >
+              <Text style={{ color: '#FFFFFF', fontWeight: '900', fontSize: 15 }}>
+                Apply Custom Configuration & Continue
+              </Text>
+            </TouchableOpacity>
           </View>
         </View>
       </Modal>
 
-      {/* Registration Modal */}
+      {/* MODAL 3: REGISTRATION & SETUP REQUEST MODAL */}
       <Modal
         animationType="slide"
         transparent={true}
         visible={modalVisible}
         onRequestClose={() => setModalVisible(false)}
       >
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
-          <View style={{ flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(0,0,0,0.75)" }}>
-            <View style={{
-              backgroundColor: "#13103A",
-              borderTopLeftRadius: 36,
-              borderTopRightRadius: 36,
-              padding: 32,
-              paddingTop: 24,
-              minHeight: 520,
-              borderWidth: 1,
-              borderColor: 'rgba(255, 107, 0, 0.15)',
-              borderBottomWidth: 0,
-            }}>
-              <View style={{ width: 48, height: 5, backgroundColor: "rgba(255,255,255,0.15)", borderRadius: 3, alignSelf: "center", marginBottom: 32 }} />
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          style={{ flex: 1 }}
+        >
+          <View
+            style={{
+              flex: 1,
+              justifyContent: 'flex-end',
+              backgroundColor: 'rgba(5, 3, 15, 0.8)',
+              ...(Platform.OS === 'web' ? ({ backdropFilter: 'blur(16px)' } as any) : {}),
+            }}
+          >
+            <View
+              style={{
+                backgroundColor: '#0F0B2E',
+                borderTopLeftRadius: 36,
+                borderTopRightRadius: 36,
+                padding: 32,
+                paddingTop: 24,
+                minHeight: 520,
+                borderWidth: 1.5,
+                borderColor: 'rgba(255, 107, 0, 0.25)',
+                borderBottomWidth: 0,
+              }}
+            >
+              {/* Drag Handle */}
+              <View
+                style={{
+                  width: 48,
+                  height: 5,
+                  backgroundColor: 'rgba(255, 255, 255, 0.15)',
+                  borderRadius: 3,
+                  alignSelf: 'center',
+                  marginBottom: 24,
+                }}
+              />
 
               <TouchableOpacity
-                style={{ position: "absolute", top: 24, right: 28, zIndex: 10, width: 32, height: 32, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: 16 }}
+                style={{
+                  position: 'absolute',
+                  top: 24,
+                  right: 28,
+                  zIndex: 10,
+                  width: 34,
+                  height: 34,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  backgroundColor: 'rgba(255, 255, 255, 0.06)',
+                  borderRadius: 17,
+                }}
                 onPress={() => setModalVisible(false)}
               >
-                <Text style={{ color: "rgba(255,255,255,0.7)", fontSize: 20, fontWeight: "600", lineHeight: 22 }}>x</Text>
+                <X size={18} color="rgba(255, 255, 255, 0.7)" />
               </TouchableOpacity>
 
               {submitted ? (
-                <View style={{ alignItems: "center", paddingVertical: 60, flex: 1, justifyContent: 'center' }}>
-                <View style={{ width: 90, height: 90, borderRadius: 45, backgroundColor: "rgba(16, 185, 129, 0.15)", justifyContent: "center", alignItems: "center", marginBottom: 24, shadowColor: '#10B981', boxShadow: [{ offsetX: 0, offsetY: 8, blurRadius: 16, color: 'rgba(16, 185, 129, 0.4)' }] }}>
-                    <Check size={44} color="#10B981" strokeWidth={3} />
+                <View
+                  style={{
+                    alignItems: 'center',
+                    paddingVertical: 48,
+                    flex: 1,
+                    justifyContent: 'center',
+                  }}
+                >
+                  <View
+                    style={{
+                      width: 80,
+                      height: 80,
+                      borderRadius: 40,
+                      backgroundColor: 'rgba(16, 185, 129, 0.15)',
+                      justifyContent: 'center',
+                      alignItems: 'center',
+                      marginBottom: 20,
+                      borderWidth: 1,
+                      borderColor: 'rgba(16, 185, 129, 0.35)',
+                    }}
+                  >
+                    <Check size={40} color="#10B981" strokeWidth={3} />
                   </View>
-                  <Text style={{ color: "white", fontSize: 28, fontWeight: "900", textAlign: "center", marginBottom: 12, letterSpacing: -0.5 }}>Request Received!</Text>
-                  <Text style={{ color: "rgba(255,255,255,0.6)", textAlign: "center", marginBottom: 40, fontSize: 16, lineHeight: 24, paddingHorizontal: 20 }}>
-                    Thank you! Our team will reach out to you within 24 hours to set up your {selectedPlan} account.
+                  <Text
+                    style={{
+                      color: '#FFFFFF',
+                      fontSize: 26,
+                      fontWeight: '900',
+                      textAlign: 'center',
+                      marginBottom: 10,
+                    }}
+                  >
+                    Request Registered Successfully!
+                  </Text>
+                  <Text
+                    style={{
+                      color: 'rgba(255, 255, 255, 0.6)',
+                      textAlign: 'center',
+                      marginBottom: 32,
+                      fontSize: 15,
+                      lineHeight: 22,
+                      maxWidth: 480,
+                    }}
+                  >
+                    Thank you! Our implementation engineering team will reach out within 24 hours
+                    to configure your {selectedPlan} platform.
                   </Text>
                   <TouchableOpacity
-                    style={{ backgroundColor: "#10B981", paddingHorizontal: 48, paddingVertical: 18, borderRadius: 20, shadowColor: '#10B981', boxShadow: [{ offsetX: 0, offsetY: 8, blurRadius: 16, color: 'rgba(16, 185, 129, 0.3)' }] }}
+                    style={{
+                      backgroundColor: '#10B981',
+                      paddingHorizontal: 40,
+                      paddingVertical: 16,
+                      borderRadius: 16,
+                    }}
                     onPress={() => setModalVisible(false)}
                   >
-                    <Text style={{ color: "white", fontWeight: "800", fontSize: 16 }}>Return to Home</Text>
+                    <Text style={{ color: '#FFFFFF', fontWeight: '800', fontSize: 15 }}>
+                      Return to Command Center
+                    </Text>
                   </TouchableOpacity>
                 </View>
               ) : (
-                <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 20 }}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 8 }}>
-                    <View style={{ width: 44, height: 44, borderRadius: 16, backgroundColor: 'rgba(255, 107, 0, 0.15)', alignItems: 'center', justifyContent: 'center' }}>
+                <ScrollView showsVerticalScrollIndicator={false}>
+                  <View
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      gap: 12,
+                      marginBottom: 10,
+                    }}
+                  >
+                    <View
+                      style={{
+                        width: 44,
+                        height: 44,
+                        borderRadius: 14,
+                        backgroundColor: 'rgba(255, 107, 0, 0.15)',
+                        borderWidth: 1,
+                        borderColor: 'rgba(255, 107, 0, 0.3)',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}
+                    >
                       <Building size={22} color="#FF6B00" />
                     </View>
                     <View>
-                      <Text style={{ color: "white", fontSize: 24, fontWeight: "900", letterSpacing: -0.5 }}>Request {selectedPlan}</Text>
-                      <Text style={{ color: "#FF6B00", fontWeight: "600", fontSize: 13, textTransform: 'uppercase', letterSpacing: 1 }}>Setup & Onboarding</Text>
+                      <Text style={{ color: '#FFFFFF', fontSize: 22, fontWeight: '900' }}>
+                        Deploy {selectedPlan}
+                      </Text>
+                      <Text
+                        style={{
+                          color: '#FF8C40',
+                          fontWeight: '700',
+                          fontSize: 12,
+                          textTransform: 'uppercase',
+                          letterSpacing: 1,
+                        }}
+                      >
+                        Institutional Setup & Architecture
+                      </Text>
                     </View>
                   </View>
 
-                  <Text style={{ color: "rgba(255,255,255,0.5)", marginBottom: 32, fontSize: 15, lineHeight: 22, marginTop: 8 }}>Fill out the details below, and our implementation team will contact you to start the process.</Text>
+                  <Text
+                    style={{
+                      color: 'rgba(255, 255, 255, 0.55)',
+                      fontSize: 14,
+                      lineHeight: 20,
+                      marginBottom: 24,
+                    }}
+                  >
+                    Complete the institutional details below to initialize deployment provisioning.
+                  </Text>
 
-                  <View style={{ gap: 20, marginBottom: 40 }}>
+                  <View style={{ gap: 16, marginBottom: 32 }}>
                     <View>
-                      <Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: 13, fontWeight: '700', marginBottom: 8, marginLeft: 4 }}>Institution Name</Text>
+                      <Text
+                        style={{
+                          color: 'rgba(255, 255, 255, 0.8)',
+                          fontSize: 13,
+                          fontWeight: '700',
+                          marginBottom: 6,
+                        }}
+                      >
+                        Institution or Academy Name
+                      </Text>
                       <TextInput
-                        style={{ backgroundColor: "rgba(255,255,255,0.04)", borderRadius: 16, padding: 18, color: "white", borderWidth: 1.5, borderColor: "rgba(255,255,255,0.08)", fontSize: 15 }}
-                        placeholder="E.g. Greenfield Academy"
-                        placeholderTextColor="rgba(255,255,255,0.25)"
+                        style={{
+                          backgroundColor: 'rgba(255, 255, 255, 0.04)',
+                          borderRadius: 14,
+                          padding: 16,
+                          color: '#FFFFFF',
+                          borderWidth: 1.5,
+                          borderColor: 'rgba(255, 255, 255, 0.1)',
+                          fontSize: 14.5,
+                        }}
+                        placeholder="E.g. Strathmore Academy"
+                        placeholderTextColor="rgba(255, 255, 255, 0.3)"
                         value={form.name}
-                        onChangeText={(t) => setForm(prev => ({ ...prev, name: t }))}
+                        onChangeText={(t) => setForm((prev) => ({ ...prev, name: t }))}
                       />
                     </View>
+
                     <View>
-                      <Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: 13, fontWeight: '700', marginBottom: 8, marginLeft: 4 }}>Contact Email</Text>
+                      <Text
+                        style={{
+                          color: 'rgba(255, 255, 255, 0.8)',
+                          fontSize: 13,
+                          fontWeight: '700',
+                          marginBottom: 6,
+                        }}
+                      >
+                        Administrator Contact Email
+                      </Text>
                       <TextInput
-                        style={{ backgroundColor: "rgba(255,255,255,0.04)", borderRadius: 16, padding: 18, color: "white", borderWidth: 1.5, borderColor: "rgba(255,255,255,0.08)", fontSize: 15 }}
-                        placeholder="admin@school.com"
-                        placeholderTextColor="rgba(255,255,255,0.25)"
+                        style={{
+                          backgroundColor: 'rgba(255, 255, 255, 0.04)',
+                          borderRadius: 14,
+                          padding: 16,
+                          color: '#FFFFFF',
+                          borderWidth: 1.5,
+                          borderColor: 'rgba(255, 255, 255, 0.1)',
+                          fontSize: 14.5,
+                        }}
+                        placeholder="admin@institution.ac.ke"
+                        placeholderTextColor="rgba(255, 255, 255, 0.3)"
                         keyboardType="email-address"
                         value={form.email}
-                        onChangeText={(t) => setForm(prev => ({ ...prev, email: t }))}
+                        onChangeText={(t) => setForm((prev) => ({ ...prev, email: t }))}
                       />
                     </View>
+
                     <View>
-                      <Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: 13, fontWeight: '700', marginBottom: 8, marginLeft: 4 }}>Additional Requirements (Optional)</Text>
+                      <Text
+                        style={{
+                          color: 'rgba(255, 255, 255, 0.8)',
+                          fontSize: 13,
+                          fontWeight: '700',
+                          marginBottom: 6,
+                        }}
+                      >
+                        Deployment Specifications & Student Capacity (Optional)
+                      </Text>
                       <TextInput
-                        style={{ backgroundColor: "rgba(255,255,255,0.04)", borderRadius: 16, padding: 18, color: "white", borderWidth: 1.5, borderColor: "rgba(255,255,255,0.08)", minHeight: 100, fontSize: 15, textAlignVertical: 'top' }}
-                        placeholder="Tell us about your specific goals, student count, or any integrations needed..."
-                        placeholderTextColor="rgba(255,255,255,0.25)"
+                        style={{
+                          backgroundColor: 'rgba(255, 255, 255, 0.04)',
+                          borderRadius: 14,
+                          padding: 16,
+                          color: '#FFFFFF',
+                          borderWidth: 1.5,
+                          borderColor: 'rgba(255, 255, 255, 0.1)',
+                          fontSize: 14.5,
+                          minHeight: 90,
+                          textAlignVertical: 'top',
+                        }}
+                        placeholder="Describe campus count, current SIS/ERP system, or specific timeline..."
+                        placeholderTextColor="rgba(255, 255, 255, 0.3)"
                         multiline
                         value={form.message}
-                        onChangeText={(t) => setForm(prev => ({ ...prev, message: t }))}
+                        onChangeText={(t) => setForm((prev) => ({ ...prev, message: t }))}
                       />
                     </View>
                   </View>
 
                   <TouchableOpacity
                     style={{
-                      backgroundColor: "#FF6B00",
-                      paddingVertical: 20,
-                      borderRadius: 18,
-                      alignItems: "center",
+                      backgroundColor: '#FF6B00',
+                      paddingVertical: 18,
+                      borderRadius: 16,
+                      alignItems: 'center',
                       flexDirection: 'row',
                       justifyContent: 'center',
-                      shadowColor: '#FF6B00',
                       boxShadow: [{
                         offsetX: 0,
                         offsetY: 8,
-                        blurRadius: 16,
-                        color: 'rgba(255, 107, 0, 0.35)',
+                        blurRadius: 20,
+                        color: 'rgba(255, 107, 0, 0.45)',
                       }],
                     }}
                     onPress={handleSignup}
                     disabled={submitting}
                   >
-                    {submitting ? <ActivityIndicator color="white" style={{ marginRight: 12 }} /> : null}
-                    <Text style={{ color: "white", fontWeight: "900", fontSize: 16 }}>
-                      {submitting ? "Sending Request..." : "Request Setup Now"}
+                    {submitting ? (
+                      <ActivityIndicator color="white" style={{ marginRight: 10 }} />
+                    ) : null}
+                    <Text style={{ color: '#FFFFFF', fontWeight: '900', fontSize: 15 }}>
+                      {submitting ? 'Transmitting Request...' : 'Authorize Setup Request'}
                     </Text>
-                    {!submitting && <MoveRight size={18} color="white" style={{ marginLeft: 8 }} />}
+                    {!submitting && <MoveRight size={18} color="#FFFFFF" style={{ marginLeft: 8 }} />}
                   </TouchableOpacity>
                 </ScrollView>
               )}
