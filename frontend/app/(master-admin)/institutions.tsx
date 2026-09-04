@@ -19,10 +19,7 @@ import { ListItemSkeleton } from '@/components/ui/skeletons';
 import { useTheme } from '@/contexts/ThemeContext';
 import { supabase } from '@/libs/supabase';
 
-const NativeDateTimePicker =
-  Platform.OS === 'web' ? null : require('@react-native-community/datetimepicker').default;
-const NativeDateTimePickerAndroid =
-  Platform.OS === 'android' ? require('@react-native-community/datetimepicker').DateTimePickerAndroid : null;
+import { DatePicker } from '@/components/common/DatePicker';
 
 type Institution = {
   id: string;
@@ -143,14 +140,9 @@ export default function MasterInstitutionsPage() {
     currency_id: '',
     category_ids: [] as string[],
   });
-  const [planStartDateModalOpen, setPlanStartDateModalOpen] = useState(false);
-  const [planStartDateDraft, setPlanStartDateDraft] = useState(new Date());
-
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [editSaving, setEditSaving] = useState(false);
   const [editForm, setEditForm] = useState<Partial<Institution>>({});
-  const [editPlanStartDateModalOpen, setEditPlanStartDateModalOpen] = useState(false);
-  const [editPlanStartDateDraft, setEditPlanStartDateDraft] = useState(new Date());
   const [categoryPickerModal, setCategoryPickerModal] = useState<{ open: boolean; target: 'enroll' | 'edit' | null }>({
     open: false,
     target: null,
@@ -178,8 +170,6 @@ export default function MasterInstitutionsPage() {
 
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
   const [paymentSaving, setPaymentSaving] = useState(false);
-  const [paymentDateModalOpen, setPaymentDateModalOpen] = useState(false);
-  const [paymentDateDraft, setPaymentDateDraft] = useState(new Date());
   const [paymentForm, setPaymentForm] = useState({
     amount: '',
     method: 'bank_transfer',
@@ -392,7 +382,6 @@ export default function MasterInstitutionsPage() {
       currency_id: currencies.find((currency) => currency.is_default)?.id || currencies[0]?.id || '',
       category_ids: [],
     });
-    setPlanStartDateModalOpen(false);
   };
 
   const closeEnrollModal = () => {
@@ -508,89 +497,7 @@ export default function MasterInstitutionsPage() {
     !!activeInstitution &&
     String(editForm.subscription_plan || 'basic') !== String(activeInstitution.subscription_plan || 'basic');
 
-  const openPlanStartDatePicker = () => {
-    const base = enrollForm.subscription_start_date ? new Date(enrollForm.subscription_start_date) : new Date();
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const todayIso = new Date().toISOString().slice(0, 10);
-    if (Platform.OS === 'web') {
-      if (typeof document !== 'undefined') {
-        const picker = document.createElement('input');
-        picker.type = 'date';
-        picker.value = enrollForm.subscription_start_date || new Date().toISOString().slice(0, 10);
-        picker.min = todayIso;
-        // Keep the input in the viewport so browser date popover can anchor reliably.
-        picker.style.position = 'fixed';
-        picker.style.top = '120px';
-        picker.style.left = '50%';
-        picker.style.transform = 'translateX(-50%)';
-        picker.style.zIndex = '99999';
-        picker.style.opacity = '0.01';
-        picker.style.width = '1px';
-        picker.style.height = '1px';
 
-        const handleChange = () => {
-          const selected = picker.value;
-          if (!selected) return;
-          if (selected < todayIso) {
-            Toast.show({ type: 'error', text1: 'Invalid date', text2: 'Start date cannot be before today', position: 'top' });
-            return;
-          }
-          setEnrollForm((p) => ({ ...p, subscription_start_date: selected }));
-        };
-
-        const cleanup = () => {
-          picker.removeEventListener('change', handleChange);
-          picker.removeEventListener('blur', cleanup);
-          if (picker.parentNode) picker.parentNode.removeChild(picker);
-        };
-
-        picker.addEventListener('change', handleChange);
-        picker.addEventListener('blur', cleanup, { once: true });
-        document.body.appendChild(picker);
-        try {
-          if (typeof picker.showPicker === 'function') {
-            picker.showPicker();
-          } else {
-            picker.focus();
-            picker.click();
-          }
-        } catch {
-          picker.focus();
-          picker.click();
-        }
-      }
-      return;
-    }
-
-    if (Platform.OS === 'android') {
-      if (!NativeDateTimePickerAndroid) {
-        Toast.show({ type: 'error', text1: 'Date Picker', text2: 'Date picker is unavailable on this device', position: 'top' });
-        return;
-      }
-      NativeDateTimePickerAndroid.open({
-        value: base,
-        mode: 'date',
-        display: 'calendar',
-        minimumDate: today,
-        is24Hour: true,
-        onChange: (_event: any, selectedDate: Date | undefined) => {
-          if (!selectedDate) return;
-          if (selectedDate < today) {
-            Toast.show({ type: 'error', text1: 'Invalid date', text2: 'Start date cannot be before today', position: 'top' });
-            return;
-          }
-          const yyyy = selectedDate.getFullYear();
-          const mm = String(selectedDate.getMonth() + 1).padStart(2, '0');
-          const dd = String(selectedDate.getDate()).padStart(2, '0');
-          setEnrollForm((p) => ({ ...p, subscription_start_date: `${yyyy}-${mm}-${dd}` }));
-        },
-      });
-      return;
-    }
-    setPlanStartDateDraft(base);
-    setPlanStartDateModalOpen(true);
-  };
 
   const openEditInstitution = (inst: Institution) => {
     const resolvedCategoryIds = Array.isArray(inst.category_ids)
@@ -608,85 +515,7 @@ export default function MasterInstitutionsPage() {
     setEditModalOpen(true);
   };
 
-  const openEditPlanStartDatePicker = () => {
-    const base = selectedEditPlanStartDate ? new Date(selectedEditPlanStartDate) : new Date();
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const todayIso = new Date().toISOString().slice(0, 10);
 
-    if (Platform.OS === 'web') {
-      if (typeof document !== 'undefined') {
-        const picker = document.createElement('input');
-        picker.type = 'date';
-        picker.value = selectedEditPlanStartDate || todayIso;
-        picker.min = todayIso;
-        picker.style.position = 'fixed';
-        picker.style.top = '120px';
-        picker.style.left = '50%';
-        picker.style.transform = 'translateX(-50%)';
-        picker.style.zIndex = '99999';
-        picker.style.opacity = '0.01';
-        picker.style.width = '1px';
-        picker.style.height = '1px';
-
-        const handleChange = () => {
-          const selected = picker.value;
-          if (!selected) return;
-          if (selected < todayIso) {
-            Toast.show({ type: 'error', text1: 'Invalid date', text2: 'Start date cannot be before today', position: 'top' });
-            return;
-          }
-          setEditForm((p) => ({ ...p, subscription_start_date: selected }));
-        };
-
-        const cleanup = () => {
-          picker.removeEventListener('change', handleChange);
-          picker.removeEventListener('blur', cleanup);
-          if (picker.parentNode) picker.parentNode.removeChild(picker);
-        };
-
-        picker.addEventListener('change', handleChange);
-        picker.addEventListener('blur', cleanup, { once: true });
-        document.body.appendChild(picker);
-        try {
-          if (typeof picker.showPicker === 'function') picker.showPicker();
-          else {
-            picker.focus();
-            picker.click();
-          }
-        } catch {
-          picker.focus();
-          picker.click();
-        }
-      }
-      return;
-    }
-
-    if (Platform.OS === 'android') {
-      if (!NativeDateTimePickerAndroid) {
-        Toast.show({ type: 'error', text1: 'Date Picker', text2: 'Date picker is unavailable on this device', position: 'top' });
-        return;
-      }
-      NativeDateTimePickerAndroid.open({
-        value: base,
-        mode: 'date',
-        display: 'calendar',
-        minimumDate: today,
-        is24Hour: true,
-        onChange: (_event: any, selectedDate: Date | undefined) => {
-          if (!selectedDate) return;
-          const yyyy = selectedDate.getFullYear();
-          const mm = String(selectedDate.getMonth() + 1).padStart(2, '0');
-          const dd = String(selectedDate.getDate()).padStart(2, '0');
-          setEditForm((p) => ({ ...p, subscription_start_date: `${yyyy}-${mm}-${dd}` }));
-        },
-      });
-      return;
-    }
-
-    setEditPlanStartDateDraft(base);
-    setEditPlanStartDateModalOpen(true);
-  };
 
   const submitEditInstitution = async () => {
     if (!activeInstitutionId) return;
@@ -897,86 +726,11 @@ export default function MasterInstitutionsPage() {
       Toast.show({ type: 'success', text1: 'Payment', text2: 'Payment recorded', position: 'top' });
       setPaymentModalOpen(false);
       setPaymentForm({ amount: '', method: 'bank_transfer', reference_id: '', date: new Date().toISOString().slice(0, 10), notes: '' });
-      setPaymentDateModalOpen(false);
     } catch (e: any) {
       Toast.show({ type: 'error', text1: 'Payment', text2: e.message || 'Unable to record payment', position: 'top' });
     } finally {
       setPaymentSaving(false);
     }
-  };
-
-  const openPaymentDatePicker = () => {
-    const base = paymentForm.date ? new Date(paymentForm.date) : new Date();
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const todayIso = new Date().toISOString().slice(0, 10);
-
-    if (Platform.OS === 'web') {
-      if (typeof document !== 'undefined') {
-        const picker = document.createElement('input');
-        picker.type = 'date';
-        picker.value = paymentForm.date || todayIso;
-        picker.style.position = 'fixed';
-        picker.style.top = '120px';
-        picker.style.left = '50%';
-        picker.style.transform = 'translateX(-50%)';
-        picker.style.zIndex = '99999';
-        picker.style.opacity = '0.01';
-        picker.style.width = '1px';
-        picker.style.height = '1px';
-
-        const handleChange = () => {
-          const selected = picker.value;
-          if (!selected) return;
-          setPaymentForm((p) => ({ ...p, date: selected }));
-        };
-
-        const cleanup = () => {
-          picker.removeEventListener('change', handleChange);
-          picker.removeEventListener('blur', cleanup);
-          if (picker.parentNode) picker.parentNode.removeChild(picker);
-        };
-
-        picker.addEventListener('change', handleChange);
-        picker.addEventListener('blur', cleanup);
-        document.body.appendChild(picker);
-        setTimeout(() => {
-          try {
-            picker.focus();
-            picker.click();
-            const anyPicker = picker as any;
-            if (typeof anyPicker.showPicker === 'function') anyPicker.showPicker();
-          } catch {
-            cleanup();
-          }
-        }, 0);
-      }
-      return;
-    }
-
-    if (Platform.OS === 'android') {
-      if (!NativeDateTimePickerAndroid) {
-        Toast.show({ type: 'error', text1: 'Date Picker', text2: 'Date picker is unavailable on this device', position: 'top' });
-        return;
-      }
-      NativeDateTimePickerAndroid.open({
-        value: base,
-        mode: 'date',
-        display: 'calendar',
-        is24Hour: true,
-        onChange: (_event: any, selectedDate: Date | undefined) => {
-          if (!selectedDate) return;
-          const yyyy = selectedDate.getFullYear();
-          const mm = String(selectedDate.getMonth() + 1).padStart(2, '0');
-          const dd = String(selectedDate.getDate()).padStart(2, '0');
-          setPaymentForm((p) => ({ ...p, date: `${yyyy}-${mm}-${dd}` }));
-        },
-      });
-      return;
-    }
-
-    setPaymentDateDraft(base < today ? today : base);
-    setPaymentDateModalOpen(true);
   };
 
   const toggleInstitutionStatus = (inst: Institution) => {
@@ -1277,26 +1031,16 @@ export default function MasterInstitutionsPage() {
                   </TouchableOpacity>
 
                   {enrollForm.subscription_plan !== 'beta' && (
-                    <>
+                    <View style={{ marginTop: 8 }}>
                       <Text style={labelStyle(c)}>Subscription Tracking Start Date*</Text>
-                      <TouchableOpacity
-                        onPress={openPlanStartDatePicker}
-                        style={{
-                          borderWidth: 1,
-                          borderColor: c.border,
-                          borderRadius: 12,
-                          backgroundColor: c.bg,
-                          paddingHorizontal: 12,
-                          paddingVertical: 12,
-                          flexDirection: 'row',
-                          justifyContent: 'space-between',
-                          alignItems: 'center',
-                        }}
-                      >
-                        <Text style={{ color: c.text, fontWeight: '600' }}>{enrollForm.subscription_start_date || 'Select date'}</Text>
-                        <MaterialCommunityIcons name="calendar-month" size={20} color={c.sub} />
-                      </TouchableOpacity>
-                    </>
+                      <DatePicker
+                        value={enrollForm.subscription_start_date}
+                        onChange={(d) => setEnrollForm((p) => ({ ...p, subscription_start_date: d }))}
+                        isDark={isDark}
+                        minDate={new Date().toISOString().slice(0, 10)}
+                        placeholder="Select start date"
+                      />
+                    </View>
                   )}
 
                   {enrollForm.subscription_plan === 'beta' && (
@@ -1479,16 +1223,16 @@ export default function MasterInstitutionsPage() {
               </TouchableOpacity>
 
               {hasEditPlanChanged && String(editForm.subscription_plan || 'basic') !== 'beta' && (
-                <>
+                <View style={{ marginTop: 8 }}>
                   <Text style={labelStyle(c)}>Subscription Tracking Start Date*</Text>
-                  <TouchableOpacity
-                    onPress={openEditPlanStartDatePicker}
-                    style={{ borderWidth: 1, borderColor: c.border, borderRadius: 12, backgroundColor: c.bg, paddingHorizontal: 12, paddingVertical: 12, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}
-                  >
-                    <Text style={{ color: selectedEditPlanStartDate ? c.text : c.sub, fontWeight: '600' }}>{selectedEditPlanStartDate || editPlanStartDatePlaceholder}</Text>
-                    <MaterialCommunityIcons name="calendar-month" size={20} color={c.sub} />
-                  </TouchableOpacity>
-                </>
+                  <DatePicker
+                    value={selectedEditPlanStartDate}
+                    onChange={(d) => setEditForm((p) => ({ ...p, subscription_start_date: d }))}
+                    isDark={isDark}
+                    minDate={new Date().toISOString().slice(0, 10)}
+                    placeholder={editPlanStartDatePlaceholder}
+                  />
+                </View>
               )}
 
               {String(editForm.subscription_plan || 'basic') === 'beta' && (
@@ -1550,44 +1294,6 @@ export default function MasterInstitutionsPage() {
                 );
               })}
             </ScrollView>
-          </View>
-        </View>
-      </Modal>
-
-      <Modal visible={editPlanStartDateModalOpen} animationType="fade" transparent>
-        <View style={overlayStyle}>
-          <View style={[modalCardStyle, { backgroundColor: c.card, borderColor: c.border }]}> 
-            <ModalHeader title="Select Start Date" c={c} onClose={() => setEditPlanStartDateModalOpen(false)} />
-            {Platform.OS !== 'web' && NativeDateTimePicker && (
-              <NativeDateTimePicker
-                value={editPlanStartDateDraft}
-                mode="date"
-                display="inline"
-                minimumDate={new Date(new Date().setHours(0, 0, 0, 0))}
-                onChange={(_: any, selectedDate: Date | undefined) => {
-                  if (!selectedDate) return;
-                  setEditPlanStartDateDraft(selectedDate);
-                }}
-              />
-            )}
-            <TouchableOpacity
-              onPress={() => {
-                const today = new Date();
-                today.setHours(0, 0, 0, 0);
-                if (editPlanStartDateDraft < today) {
-                  Toast.show({ type: 'error', text1: 'Invalid date', text2: 'Start date cannot be before today', position: 'top' });
-                  return;
-                }
-                const yyyy = editPlanStartDateDraft.getFullYear();
-                const mm = String(editPlanStartDateDraft.getMonth() + 1).padStart(2, '0');
-                const dd = String(editPlanStartDateDraft.getDate()).padStart(2, '0');
-                setEditForm((p) => ({ ...p, subscription_start_date: `${yyyy}-${mm}-${dd}` }));
-                setEditPlanStartDateModalOpen(false);
-              }}
-              style={{ marginTop: 14, backgroundColor: c.primary, borderRadius: 12, paddingVertical: 12, alignItems: 'center' }}
-            >
-              <Text style={{ color: '#fff', fontWeight: '800' }}>Use Selected Date</Text>
-            </TouchableOpacity>
           </View>
         </View>
       </Modal>
@@ -1749,14 +1455,15 @@ export default function MasterInstitutionsPage() {
               value={paymentForm.reference_id}
               onChangeText={(v) => setPaymentForm((p) => ({ ...p, reference_id: v }))}
             />
-            <Field
-              label="Date"
-              c={c}
-              value={paymentForm.date}
-              onChangeText={(v) => setPaymentForm((p) => ({ ...p, date: v }))}
-              editable={false}
-              onPressIn={openPaymentDatePicker}
-            />
+            <View style={{ marginBottom: 10 }}>
+              <Text style={labelStyle(c)}>Date</Text>
+              <DatePicker
+                value={paymentForm.date}
+                onChange={(d) => setPaymentForm((p) => ({ ...p, date: d }))}
+                isDark={isDark}
+                placeholder="Select date"
+              />
+            </View>
             <Field
               label="Notes"
               c={c}
@@ -1878,75 +1585,6 @@ export default function MasterInstitutionsPage() {
                 );
               })}
             </ScrollView>
-          </View>
-        </View>
-      </Modal>
-
-      <Modal visible={planStartDateModalOpen} animationType="fade" transparent>
-        <View style={overlayStyle}>
-          <View style={[modalCardStyle, { backgroundColor: c.card, borderColor: c.border }]}> 
-            <ModalHeader title="Select Start Date" c={c} onClose={() => setPlanStartDateModalOpen(false)} />
-            {Platform.OS !== 'web' && NativeDateTimePicker && (
-              <NativeDateTimePicker
-                value={planStartDateDraft}
-                mode="date"
-                display="inline"
-                minimumDate={new Date(new Date().setHours(0, 0, 0, 0))}
-                onChange={(_: any, selectedDate: Date | undefined) => {
-                  if (!selectedDate) return;
-                  setPlanStartDateDraft(selectedDate);
-                }}
-              />
-            )}
-            <TouchableOpacity
-              onPress={() => {
-                const today = new Date();
-                today.setHours(0, 0, 0, 0);
-                if (planStartDateDraft < today) {
-                  Toast.show({ type: 'error', text1: 'Invalid date', text2: 'Start date cannot be before today', position: 'top' });
-                  return;
-                }
-                const yyyy = planStartDateDraft.getFullYear();
-                const mm = String(planStartDateDraft.getMonth() + 1).padStart(2, '0');
-                const dd = String(planStartDateDraft.getDate()).padStart(2, '0');
-                setEnrollForm((p) => ({ ...p, subscription_start_date: `${yyyy}-${mm}-${dd}` }));
-                setPlanStartDateModalOpen(false);
-              }}
-              style={{ marginTop: 14, backgroundColor: c.primary, borderRadius: 12, paddingVertical: 12, alignItems: 'center' }}
-            >
-              <Text style={{ color: '#fff', fontWeight: '800' }}>Use Selected Date</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
-
-      <Modal visible={paymentDateModalOpen} animationType="fade" transparent>
-        <View style={overlayStyle}>
-          <View style={[modalCardStyle, { backgroundColor: c.card, borderColor: c.border }]}> 
-            <ModalHeader title="Select Payment Date" c={c} onClose={() => setPaymentDateModalOpen(false)} />
-            {Platform.OS !== 'web' && NativeDateTimePicker && (
-              <NativeDateTimePicker
-                value={paymentDateDraft}
-                mode="date"
-                display="inline"
-                onChange={(_: any, selectedDate: Date | undefined) => {
-                  if (!selectedDate) return;
-                  setPaymentDateDraft(selectedDate);
-                }}
-              />
-            )}
-            <TouchableOpacity
-              onPress={() => {
-                const yyyy = paymentDateDraft.getFullYear();
-                const mm = String(paymentDateDraft.getMonth() + 1).padStart(2, '0');
-                const dd = String(paymentDateDraft.getDate()).padStart(2, '0');
-                setPaymentForm((p) => ({ ...p, date: `${yyyy}-${mm}-${dd}` }));
-                setPaymentDateModalOpen(false);
-              }}
-              style={{ marginTop: 14, backgroundColor: c.primary, borderRadius: 12, paddingVertical: 12, alignItems: 'center' }}
-            >
-              <Text style={{ color: '#fff', fontWeight: '800' }}>Use Selected Date</Text>
-            </TouchableOpacity>
           </View>
         </View>
       </Modal>

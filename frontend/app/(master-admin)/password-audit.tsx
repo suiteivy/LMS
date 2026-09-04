@@ -8,11 +8,7 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { supabase } from '@/libs/supabase';
 import { TableRowSkeleton } from '@/components/ui/skeletons';
 import { getApiBaseUrl } from '@/utils/backendUrl';
-
-const NativeDateTimePicker =
-  Platform.OS === 'web' ? null : require('@react-native-community/datetimepicker').default;
-const NativeDateTimePickerAndroid =
-  Platform.OS === 'android' ? require('@react-native-community/datetimepicker').DateTimePickerAndroid : null;
+import { DateRangePicker } from '@/components/common/DatePicker';
 
 type AuditOutcome = 'success' | 'failure' | 'requested';
 type AuditAction = 'change_password' | 'admin_reset_password' | 'forgot_password_request' | 'reset_password';
@@ -94,10 +90,6 @@ export default function MasterPasswordAuditPage() {
   const [targetEmail, setTargetEmail] = useState('');
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
-  const [fromDateModalOpen, setFromDateModalOpen] = useState(false);
-  const [toDateModalOpen, setToDateModalOpen] = useState(false);
-  const [fromDateDraft, setFromDateDraft] = useState(new Date());
-  const [toDateDraft, setToDateDraft] = useState(new Date());
   const [clearWindow, setClearWindow] = useState<'1h' | '5h' | '10h' | '1d' | '7d' | 'all'>('1d');
   const [clearing, setClearing] = useState(false);
   const [confirmAllOpen, setConfirmAllOpen] = useState(false);
@@ -174,87 +166,7 @@ export default function MasterPasswordAuditPage() {
     }
   }, [action, outcome, targetEmail, fromDate, toDate, pagination.limit]);
 
-  const openDatePicker = useCallback((field: 'from' | 'to') => {
-    const value = field === 'from' ? fromDate : toDate;
-    const base = value ? new Date(value) : new Date();
-    const safeBase = Number.isFinite(base.getTime()) ? base : new Date();
 
-    if (Platform.OS === 'web') {
-      if (typeof document !== 'undefined') {
-        const picker = document.createElement('input');
-        picker.type = 'date';
-        picker.value = value || new Date().toISOString().slice(0, 10);
-        picker.style.position = 'fixed';
-        picker.style.top = '120px';
-        picker.style.left = '50%';
-        picker.style.transform = 'translateX(-50%)';
-        picker.style.zIndex = '99999';
-        picker.style.opacity = '0.01';
-        picker.style.width = '1px';
-        picker.style.height = '1px';
-
-        const handleChange = () => {
-          const selected = picker.value;
-          if (!selected) return;
-          if (field === 'from') setFromDate(selected);
-          else setToDate(selected);
-        };
-
-        const cleanup = () => {
-          picker.removeEventListener('change', handleChange);
-          picker.removeEventListener('blur', cleanup);
-          if (picker.parentNode) picker.parentNode.removeChild(picker);
-        };
-
-        picker.addEventListener('change', handleChange);
-        picker.addEventListener('blur', cleanup, { once: true });
-        document.body.appendChild(picker);
-        try {
-          if (typeof (picker as any).showPicker === 'function') {
-            (picker as any).showPicker();
-          } else {
-            picker.focus();
-            picker.click();
-          }
-        } catch {
-          picker.focus();
-          picker.click();
-        }
-      }
-      return;
-    }
-
-    if (Platform.OS === 'android') {
-      if (!NativeDateTimePickerAndroid) {
-        Toast.show({ type: 'error', text1: 'Date Picker', text2: 'Date picker is unavailable on this device' });
-        return;
-      }
-      NativeDateTimePickerAndroid.open({
-        value: safeBase,
-        mode: 'date',
-        display: 'calendar',
-        is24Hour: true,
-        onChange: (_event: any, selectedDate: Date | undefined) => {
-          if (!selectedDate) return;
-          const yyyy = selectedDate.getFullYear();
-          const mm = String(selectedDate.getMonth() + 1).padStart(2, '0');
-          const dd = String(selectedDate.getDate()).padStart(2, '0');
-          const iso = `${yyyy}-${mm}-${dd}`;
-          if (field === 'from') setFromDate(iso);
-          else setToDate(iso);
-        },
-      });
-      return;
-    }
-
-    if (field === 'from') {
-      setFromDateDraft(safeBase);
-      setFromDateModalOpen(true);
-    } else {
-      setToDateDraft(safeBase);
-      setToDateModalOpen(true);
-    }
-  }, [fromDate, toDate]);
 
   useEffect(() => {
     fetchLogs(1);
@@ -388,49 +300,19 @@ export default function MasterPasswordAuditPage() {
             style={{ backgroundColor: tokens.inputBg, color: tokens.text, borderRadius: 10, borderWidth: 1, borderColor: tokens.border, paddingHorizontal: 12, paddingVertical: 10, marginBottom: 10 }}
           />
 
-          <Text style={{ color: tokens.subtext, fontSize: 12, marginBottom: 8 }}>From Date</Text>
-          <TouchableOpacity
-            onPress={() => openDatePicker('from')}
-            style={{
-              backgroundColor: tokens.inputBg,
-              borderRadius: 10,
-              borderWidth: 1,
-              borderColor: tokens.border,
-              paddingHorizontal: 12,
-              paddingVertical: 10,
-              marginBottom: 10,
-              flexDirection: 'row',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-            }}
-          >
-            <Text style={{ color: fromDate ? tokens.text : tokens.subtext }}>
-              {fromDate || 'Select date'}
-            </Text>
-            <MaterialCommunityIcons name="calendar-month" size={18} color={tokens.subtext} />
-          </TouchableOpacity>
-
-          <Text style={{ color: tokens.subtext, fontSize: 12, marginBottom: 8 }}>To Date</Text>
-          <TouchableOpacity
-            onPress={() => openDatePicker('to')}
-            style={{
-              backgroundColor: tokens.inputBg,
-              borderRadius: 10,
-              borderWidth: 1,
-              borderColor: tokens.border,
-              paddingHorizontal: 12,
-              paddingVertical: 10,
-              marginBottom: 10,
-              flexDirection: 'row',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-            }}
-          >
-            <Text style={{ color: toDate ? tokens.text : tokens.subtext }}>
-              {toDate || 'Select date'}
-            </Text>
-            <MaterialCommunityIcons name="calendar-month" size={18} color={tokens.subtext} />
-          </TouchableOpacity>
+          <Text style={{ color: tokens.subtext, fontSize: 12, marginBottom: 8 }}>Date Range</Text>
+          <View style={{ marginBottom: 10 }}>
+            <DateRangePicker
+              startDate={fromDate}
+              endDate={toDate}
+              onRangeChange={({ startDate, endDate }) => {
+                setFromDate(startDate);
+                setToDate(endDate);
+              }}
+              isDark={isDark}
+              label="Filter Audit Logs by Date Range"
+            />
+          </View>
 
           <Text style={{ color: tokens.subtext, fontSize: 12, marginBottom: 8 }}>Action</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 10 }}>
@@ -618,38 +500,6 @@ export default function MasterPasswordAuditPage() {
             <Text style={{ color: '#fff', fontWeight: '700' }}>Next</Text>
           </TouchableOpacity>
       </View>
-
-      {Platform.OS !== 'web' && NativeDateTimePicker && fromDateModalOpen && (
-        <NativeDateTimePicker
-          value={fromDateDraft}
-          mode="date"
-          display="default"
-          onChange={(_event: any, selectedDate?: Date) => {
-            setFromDateModalOpen(false);
-            if (!selectedDate) return;
-            const yyyy = selectedDate.getFullYear();
-            const mm = String(selectedDate.getMonth() + 1).padStart(2, '0');
-            const dd = String(selectedDate.getDate()).padStart(2, '0');
-            setFromDate(`${yyyy}-${mm}-${dd}`);
-          }}
-        />
-      )}
-
-      {Platform.OS !== 'web' && NativeDateTimePicker && toDateModalOpen && (
-        <NativeDateTimePicker
-          value={toDateDraft}
-          mode="date"
-          display="default"
-          onChange={(_event: any, selectedDate?: Date) => {
-            setToDateModalOpen(false);
-            if (!selectedDate) return;
-            const yyyy = selectedDate.getFullYear();
-            const mm = String(selectedDate.getMonth() + 1).padStart(2, '0');
-            const dd = String(selectedDate.getDate()).padStart(2, '0');
-            setToDate(`${yyyy}-${mm}-${dd}`);
-          }}
-        />
-      )}
     </SafeAreaView>
   );
 }
