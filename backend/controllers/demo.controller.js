@@ -4,7 +4,7 @@ const crypto = require('crypto');
 const { clearUserCache } = require("../middleware/auth.middleware.js");
 
 const TEMPLATE_INSTITUTION_ID = process.env.TEMPLATE_INSTITUTION_ID || 'b5bd788c-8297-4a96-b8b3-157814504fba';
-const TEMPLATE_TEACHER_ID = process.env.TEMPLATE_TEACHER_ID || 'TCH-MOMENTUM-001';
+const TEMPLATE_TEACHER_ID = process.env.TEMPLATE_TEACHER_ID || 'TCH-DEMO-001';
 
 const FULL_NAME_MAP = {
     teacher: 'Sarah Chemutai',
@@ -59,32 +59,54 @@ exports.startDemo = async (req, res) => {
 
         // 3. Create role-specific profile
         if (role === 'teacher') {
+            const teacherId = `TEA-DEMO-${sessionId}`;
             const { error: e } = await supabase.from('teachers').insert({
-                id: `TEA-DEMO-${sessionId}`,
+                id: teacherId,
                 user_id: userId,
                 institution_id: TEMPLATE_INSTITUTION_ID,
-                department: 'Mathematics',
-                qualification: 'MEd'
+                department: 'Mathematics & Sciences',
+                position: 'class_teacher',
+                qualification: 'B.Ed Science (Mathematics)'
             });
             if (e) throw new Error(`Teacher insert failed: ${e.message}`);
+
+            // Link demo teacher as subject teacher so their portal has active subjects and class access
+            await supabase.from('subject_teachers').insert([
+                { subject_id: 'a9aca035-bf32-4876-85ec-ea0b7bc972fb', teacher_id: teacherId, institution_id: TEMPLATE_INSTITUTION_ID },
+                { subject_id: 'b1000000-0000-4000-8000-000000000001', teacher_id: teacherId, institution_id: TEMPLATE_INSTITUTION_ID }
+            ]);
 
         } else if (role === 'student') {
             const { data: stu, error: e } = await supabase.from('students').insert({
                 user_id: userId,
                 institution_id: TEMPLATE_INSTITUTION_ID,
                 class_id: '417561a5-48c5-4c45-b736-97d49e74bd35',
-                form_level: 2
+                form_level: 3,
+                academic_year: '2026'
             }).select('id').single();
             if (e) throw new Error(`Student insert failed: ${e.message}`);
 
-            await supabase.from('enrollments').insert({
+            const f3Subjects = [
+                'a9aca035-bf32-4876-85ec-ea0b7bc972fb', // Mathematics
+                'b1000000-0000-4000-8000-000000000001', // English Language
+                'b1000000-0000-4000-8000-000000000002', // Kiswahili
+                'b1000000-0000-4000-8000-000000000003', // Biology
+                'b1000000-0000-4000-8000-000000000004', // Chemistry
+                'b1000000-0000-4000-8000-000000000005', // Physics
+                'b1000000-0000-4000-8000-000000000006', // History
+                'b1000000-0000-4000-8000-000000000007', // Geography
+                'b1000000-0000-4000-8000-000000000008', // Agriculture
+                'b1000000-0000-4000-8000-000000000009', // Business Studies
+            ];
+            const enrollments = f3Subjects.map(subId => ({
                 student_id: stu.id,
-                subject_id: 'a9aca035-bf32-4876-85ec-ea0b7bc972fb',
+                subject_id: subId,
                 class_id: '417561a5-48c5-4c45-b736-97d49e74bd35',
                 institution_id: TEMPLATE_INSTITUTION_ID,
                 status: 'enrolled',
                 enrollment_date: new Date().toISOString().split('T')[0]
-            });
+            }));
+            await supabase.from('enrollments').insert(enrollments);
 
         } else if (role === 'admin') {
             const { error: e } = await supabase.from('admins').insert({
@@ -104,12 +126,12 @@ exports.startDemo = async (req, res) => {
             });
             if (e) throw new Error(`Parent insert failed: ${e.message}`);
 
-            const { error: linkErr } = await supabase.from('parent_students').insert({
+            const { error: linkErr } = await supabase.from('parent_students').upsert({
                 parent_id: parentId,
                 student_id: 'c6306d7b-ad5e-4f5b-8118-47fcd462bd25',
                 institution_id: TEMPLATE_INSTITUTION_ID,
                 relationship: 'guardian'
-            });
+            }, { onConflict: 'parent_id,student_id' });
             if (linkErr) throw new Error(`Parent-student link failed: ${linkErr.message}`);
         }
 
@@ -157,7 +179,7 @@ exports.startDemo = async (req, res) => {
         console.error('Critical Error starting demo session:', err);
         res.status(500).json({
             error: 'Failed to start demo session. Please try again.',
-            details: process.env.NODE_ENV === 'development' ? err.message : undefined
+            details: err.message || undefined
         });
     }
 };
