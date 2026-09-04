@@ -439,8 +439,44 @@ export interface BackendBorrowedBook {
   borrowed_at: string; // Changed from borrow_date
   due_date: string;
   returned_at?: string; // Changed from return_date
-  status: "borrowed" | "overdue" | "returned";
+  status: "borrowed" | "active" | "overdue" | "returned" | "lost" | "damaged";
   notes?: string;
+  issued_by?: string;
+  returned_by?: string;
+  return_notes?: string;
+  issuer?: { id?: string; full_name?: string };
+  returner?: { id?: string; full_name?: string };
+}
+
+export interface LibrarianStaffItem {
+  user_id: string;
+  full_name: string;
+  email: string;
+  role: 'teacher' | 'admin';
+  is_main: boolean;
+  phone?: string | null;
+  is_librarian: boolean;
+  designated_at?: string | null;
+  designated_by?: string | null;
+  designated_by_name?: string | null;
+}
+
+export interface LibrarianAuditLogItem {
+  id: string;
+  action: 'grant' | 'revoke';
+  notes?: string;
+  created_at: string;
+  target?: {
+    id: string;
+    full_name: string;
+    email: string;
+    role: string;
+  };
+  performer?: {
+    id: string;
+    full_name: string;
+    email: string;
+  };
 }
 
 export interface FrontendBorrowedBook {
@@ -465,8 +501,13 @@ export interface FrontendBorrowedBook {
   borrowDate: Date;
   dueDate: Date;
   returnDate?: Date;
-  status: "borrowed" | "overdue" | "returned";
+  status: "borrowed" | "overdue" | "returned" | "active" | "lost" | "damaged";
   notes?: string;
+  issuedBy?: string;
+  returnedBy?: string;
+  returnNotes?: string;
+  issuerName?: string;
+  returnerName?: string;
 }
 
 export interface AddBookRequest {

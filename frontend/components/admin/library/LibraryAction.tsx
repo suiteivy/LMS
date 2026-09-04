@@ -22,12 +22,14 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { AddUpdateDeleteBooksForm } from "./AddUpdateDeleteBooksForm";
 import { BorrowedBooksOverview } from "./BorrowedBooksOverview";
 import { BorrowLimitConfiguration } from "./BorrowLimitConfiguration";
+import { LibrarianManagement } from "./LibrarianManagement";
 import { UnifiedHeader } from "@/components/common/UnifiedHeader";
 
-type LibrarySection = "overview" | "books" | "borrowed" | "config";
+type LibrarySection = "overview" | "books" | "borrowed" | "config" | "librarians";
 
 const LibraryAction = () => {
-    const { profile } = useAuth();
+    const { isMain, profile } = useAuth();
+    const isMainAdmin = isMain === true;
     const { isDark } = useTheme();
     const [activeSection, setActiveSection] = useState<LibrarySection>("overview");
     const [books, setBooks] = useState<FrontendBook[]>([]);
@@ -106,11 +108,11 @@ const LibraryAction = () => {
         ]);
     };
 
-    const handleReturnBook = async (borrowId: string) => {
+    const handleReturnBook = async (borrowId: string, fineAmount?: number, condition?: string) => {
         try {
             setLoading(true);
-            await LibraryAPI.returnBook(borrowId);
-            setBorrowedBooks(prev => prev.map(b => b.id === borrowId ? { ...b, status: "returned" as const, returnDate: new Date().toISOString() as any } : b));
+            await LibraryAPI.returnBook(borrowId, condition);
+            setBorrowedBooks(prev => prev.map(b => b.id === borrowId ? { ...b, status: "returned" as const, returnDate: new Date().toISOString() as any, returnNotes: condition } : b));
             loadBooks();
             showSuccess("Success", "Book returned successfully!");
         } catch { showError("Error", "Failed to return book."); } finally { setLoading(false); }
@@ -138,6 +140,7 @@ const LibraryAction = () => {
         { id: "books", title: "Books", icon: "library-outline" },
         { id: "borrowed", title: "Borrowed", icon: "book-outline" },
         { id: "config", title: "Config", icon: "settings-outline" },
+        ...(isMainAdmin ? [{ id: "librarians", title: "Librarians", icon: "people-outline" }] : []),
     ];
 
     const getOverviewStats = () => {
@@ -200,6 +203,7 @@ const LibraryAction = () => {
                             { section: "books", label: "Manage Books", desc: "Add, edit, or delete books", icon: "library-outline" },
                             { section: "borrowed", label: "Borrowed Books", desc: "Track returns and manage loans", icon: "book-outline" },
                             { section: "config", label: "Borrow Configuration", desc: "Set limits and policies", icon: "settings-outline" },
+                            ...(isMainAdmin ? [{ section: "librarians", label: "Manage Librarians", desc: "Designate staff & view audit logs", icon: "people-outline" }] : []),
                         ].map((item) => (
                             <TouchableOpacity key={item.section} style={{ backgroundColor: cardBg, borderRadius: 16, padding: 16, borderWidth: 1, borderColor: border, flexDirection: 'row', alignItems: 'center' }} onPress={() => setActiveSection(item.section as LibrarySection)}>
                                 <View style={{ width: 40, height: 40, backgroundColor: isDark ? 'rgba(255,107,0,0.12)' : '#fff7ed', borderRadius: 20, alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
@@ -231,6 +235,7 @@ const LibraryAction = () => {
                     onDeleteRole={(roleId) => setUserRoles(userRoles.filter(r => r.id !== roleId))}
                 />
             );
+            case "librarians": return <LibrarianManagement />;
             default: return renderOverview();
         }
     };

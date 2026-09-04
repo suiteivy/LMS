@@ -1,4 +1,4 @@
-// routes/libraryRoutes.js
+// routes/library.route.js
 const express = require("express");
 
 const {
@@ -13,106 +13,134 @@ const {
   rejectBorrowRequest,
   sendReminder,
   deleteBook,
-  issueBook
+  issueBook,
+  getLibrariansList,
+  toggleLibrarianDesignation,
+  getLibrarianAuditLogs,
+  getMyDesignation
 } = require("../controllers/library.controller.js");
 const { authMiddleware } = require("../middleware/auth.middleware.js");
-const { authorizeRoles } = require("../middleware/authRole.js");
+const { authorizeRoles, authorizeLibrarian, authorizeMainAdmin } = require("../middleware/authRole.js");
 
 const router = express.Router();
 
+// Book catalog management: Main Admin & designated Librarians
 router.post(
   "/books",
   authMiddleware,
-  authorizeRoles(["admin"]),
+  authorizeLibrarian(),
   addOrUpdateBook
 );
 
-// Admin: update book
 router.put(
   "/books/:bookId",
   authMiddleware,
-  authorizeRoles(["admin"]),
+  authorizeLibrarian(),
   addOrUpdateBook
 );
 
-// Admin: delete book
 router.delete(
   "/books/:bookId",
   authMiddleware,
-  authorizeRoles(["admin"]),
+  authorizeLibrarian(),
   deleteBook
 );
 
-// Anyone (scoped by institution): list books
+// Anyone (scoped by institution): list books (read-only)
 router.get("/books", authMiddleware, listBooks);
 
-// Student/Teacher: borrow
+// Self-service borrow: strictly disabled (returns 403)
 router.post(
   "/borrow",
   authMiddleware,
-  authorizeRoles(["student", "teacher"]),
   borrowBook
 );
 
-// Teacher/Admin: issue to student
+// In-person checkout: Librarian / Main Admin only
 router.post(
   "/issue",
   authMiddleware,
-  authorizeRoles(["teacher", "admin"]),
+  authorizeLibrarian(),
   issueBook
 );
 
-
-// Student/Teacher/Admin: return
+// In-person return: Librarian / Main Admin only
 router.post(
   "/return/:borrowId",
   authMiddleware,
-  authorizeRoles(["student", "teacher", "admin"]),
+  authorizeLibrarian(),
   returnBook
 );
 
-// History: admin can pass :studentId, student sees own if omitted
-router.get("/history", authMiddleware, history);
-router.get("/history/:studentId", authMiddleware, history);
-
-// Admin/librarian: get all borrowed books (for overview)
+// Circulation overview with filters: Librarian / Main Admin only
 router.get(
   "/borrowed",
   authMiddleware,
-  authorizeRoles(["admin", "teacher"]),
+  authorizeLibrarian(),
   getAllBorrowedBooks
 );
 
-// Admin/librarian: send reminder about overdue or soon-due book
-router.post(
-  "/reminder/:borrowId",
-  authMiddleware,
-  authorizeRoles(["admin"]),
-  sendReminder
-);
-
-// Admin/librarian: extend a borrow due date
+// Loan management: extend, update status, reject, remind
 router.put(
   "/extend/:borrowId",
   authMiddleware,
-  authorizeRoles(["admin"]),
+  authorizeLibrarian(),
   extendDueDate
 );
 
-// Admin/librarian: update borrow status
 router.put(
   "/status/:borrowId",
   authMiddleware,
-  authorizeRoles(["admin"]),
+  authorizeLibrarian(),
   updateBorrowStatus
 );
 
-// Admin/librarian: reject a borrow request
+router.post(
+  "/reminder/:borrowId",
+  authMiddleware,
+  authorizeLibrarian(),
+  sendReminder
+);
+
 router.post(
   "/reject/:borrowId",
   authMiddleware,
-  authorizeRoles(["admin"]),
+  authorizeLibrarian(),
   rejectBorrowRequest
+);
+
+// History: students & teachers see own; librarians/admins can see specific student
+router.get("/history", authMiddleware, history);
+router.get("/history/:studentId", authMiddleware, history);
+
+// Librarian designation management: Main Admin only
+router.get(
+  "/librarians",
+  authMiddleware,
+  authorizeMainAdmin(),
+  getLibrariansList
+);
+
+router.post(
+  "/librarians/toggle",
+  authMiddleware,
+  authorizeMainAdmin(),
+  toggleLibrarianDesignation
+);
+
+// Librarian audit logs: Librarians and Admins
+router.get(
+  "/librarians/audit",
+  authMiddleware,
+  authorizeLibrarian(),
+  getLibrarianAuditLogs
+);
+
+// Current user's designation status
+router.get(
+  "/me/designation",
+  authMiddleware,
+  getMyDesignation
 );
 
 module.exports = router;

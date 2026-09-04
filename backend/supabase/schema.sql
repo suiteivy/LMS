@@ -539,14 +539,42 @@ CREATE TABLE borrowed_books (
     borrowed_at TIMESTAMPTZ DEFAULT NOW(),
     due_date DATE,
     returned_at TIMESTAMPTZ NULL,
-    status TEXT DEFAULT 'borrowed' CHECK (status IN ('borrowed', 'returned', 'overdue')),
+    status TEXT DEFAULT 'borrowed' CHECK (status IN ('borrowed', 'active', 'returned', 'overdue', 'lost', 'damaged')),
     institution_id UUID REFERENCES institutions(id),
+    issued_by UUID REFERENCES users(id) ON DELETE SET NULL,
+    returned_by UUID REFERENCES users(id) ON DELETE SET NULL,
+    return_notes TEXT,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW(),
     CONSTRAINT check_borrower_presence CHECK (
         (student_id IS NOT NULL AND teacher_id IS NULL) OR 
         (student_id IS NULL AND teacher_id IS NOT NULL)
     )
+);
+
+-- 3b. Librarian Designations and Audit
+CREATE TABLE librarian_designations (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    institution_id UUID REFERENCES institutions(id) ON DELETE CASCADE NOT NULL,
+    user_id UUID REFERENCES users(id) ON DELETE CASCADE NOT NULL,
+    assigned_by UUID REFERENCES users(id) ON DELETE SET NULL NOT NULL,
+    is_active BOOLEAN NOT NULL DEFAULT true,
+    assigned_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    revoked_at TIMESTAMPTZ,
+    revoked_by UUID REFERENCES users(id) ON DELETE SET NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    CONSTRAINT uq_librarian_designation_user_inst UNIQUE (institution_id, user_id)
+);
+
+CREATE TABLE librarian_audit_logs (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    institution_id UUID REFERENCES institutions(id) ON DELETE CASCADE NOT NULL,
+    user_id UUID REFERENCES users(id) ON DELETE CASCADE NOT NULL,
+    performed_by UUID REFERENCES users(id) ON DELETE SET NULL NOT NULL,
+    action TEXT NOT NULL CHECK (action IN ('grant', 'revoke')),
+    notes TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- 4. Legacy/Preserved Tables (Singular)

@@ -1,5 +1,11 @@
 // controllers/library.controller.js
 const supabase = require("../utils/supabaseClient.js");
+let clearUserCache;
+try {
+  ({ clearUserCache } = require("../middleware/auth.middleware.js"));
+} catch {
+  clearUserCache = () => {};
+}
 
 /** Pull active config, fall back to sane defaults */
 async function getActiveConfig(institution_id) {
@@ -298,18 +304,58 @@ exports.listBooks = async (req, res) => {
   }
 };
 
-/** Issue a book to a student (Teacher/Admin only) */
+function isLibrarianOrMainAdmin(req) {
+  if (!req) return false;
+  if (req.userRole === 'master_admin' || req.isPlatformAdmin) return true;
+  if (req.userRole === 'admin' && (req.isMain || req.isMain === undefined)) return true;
+  if (req.isLibrarian || req.user?.is_librarian) return true;
+  return false;
+}
+
+/** Issue a book to a student or teacher (Librarian/Main Admin only) */
 exports.issueBook = async (req, res) => {
   try {
     const { userRole, institution_id } = req;
-    const { bookId, studentId, notes, days = 14 } = req.body;
+    let { bookId, studentId, teacherId, borrowerId, borrowerType, notes, days = 14, dueDate } = req.body || {};
 
-    if (!["teacher", "admin"].includes(userRole)) {
-      return res.status(403).json({ error: "Teachers or Admins only." });
+    if (!isLibrarianOrMainAdmin(req)) {
+      return res.status(403).json({ error: "Access denied: Librarian designation required." });
     }
 
-    if (!bookId || !studentId) {
-      return res.status(400).json({ error: "Book ID and Student ID are required" });
+    // Resolve borrower ID & type
+    if (!studentId && !teacherId && borrowerId) {
+      if (borrowerType === 'teacher') {
+        teacherId = borrowerId;
+      } else {
+        studentId = borrowerId;
+      }
+    }
+
+    if (!bookId || (!studentId && !teacherId)) {
+      return res.status(400).json({ error: "Book ID and borrower (Student ID or Teacher ID) are required" });
+    }
+
+    // Disallow self-checkout for librarians (must be peer-checked out)
+    if (studentId) {
+      const { data: stUser } = await supabase
+        .from('students')
+        .select('user_id')
+        .eq('id', studentId)
+        .eq('institution_id', institution_id)
+        .maybeSingle();
+      if (stUser?.user_id && stUser.user_id === req.userId) {
+        return res.status(400).json({ error: "Librarians cannot check out books to themselves. Please have another librarian process your borrowing." });
+      }
+    } else if (teacherId) {
+      const { data: tcUser } = await supabase
+        .from('teachers')
+        .select('user_id')
+        .eq('id', teacherId)
+        .eq('institution_id', institution_id)
+        .maybeSingle();
+      if (tcUser?.user_id && tcUser.user_id === req.userId) {
+        return res.status(400).json({ error: "Librarians cannot check out books to themselves. Please have another librarian process your borrowing." });
+      }
     }
 
     const hasArchivedAt = await supportsBooksArchivedAt();
@@ -327,29 +373,74 @@ exports.issueBook = async (req, res) => {
     if (itemErr || !item) return res.status(404).json({ error: "Book not found." });
     if (item.available_quantity <= 0) return res.status(400).json({ error: "Book out of stock" });
 
-    const { data: student, error: studentErr } = await supabase
-      .from("students")
-      .select("id")
-      .eq("id", studentId)
-      .eq("institution_id", institution_id)
-      .single();
+    // Validate borrower exists in this institution
+    if (studentId) {
+      const { data: student, error: studentErr } = await supabase
+        .from("students")
+        .select("id, user_id")
+        .eq("id", studentId)
+        .eq("institution_id", institution_id)
+        .single();
 
-    if (studentErr || !student) return res.status(404).json({ error: "Student not found in this institution." });
+      if (studentErr || !student) return res.status(404).json({ error: "Student not found in this institution." });
 
-    const dueDate = new Date();
-    dueDate.setDate(dueDate.getDate() + Number(days));
+      // Check fee threshold for students
+      const cfg = await getActiveConfig(institution_id);
+      const overallPct = await getStudentOverallFeePercent(student.user_id, institution_id);
+      if (overallPct < Number(cfg.min_fee_percent_for_borrow)) {
+        return res.status(403).json({
+          error: `Insufficient fee payment. Need at least ${Number(cfg.min_fee_percent_for_borrow) * 100}% overall.`,
+          details: { percent: Math.round(overallPct * 100) },
+        });
+      }
+    } else if (teacherId) {
+      const { data: teacher, error: teacherErr } = await supabase
+        .from("teachers")
+        .select("id, user_id")
+        .eq("id", teacherId)
+        .eq("institution_id", institution_id)
+        .single();
+
+      if (teacherErr || !teacher) return res.status(404).json({ error: "Teacher not found in this institution." });
+    }
+
+    // Check overdue books
+    if (await hasOverdueBooks({ studentId, teacherId, institution_id })) {
+      return res.status(403).json({ error: "Borrower has overdue books. Return them first." });
+    }
+
+    // Check borrow count limit
+    const cfg = await getActiveConfig(institution_id);
+    const activeCount = await activeBorrowCount({ studentId, teacherId, institution_id });
+    if (activeCount >= Number(cfg.default_borrow_limit)) {
+      return res.status(403).json({ error: `Borrow limit reached (${cfg.default_borrow_limit}).` });
+    }
+
+    let formattedDueDate;
+    if (dueDate) {
+      const parsed = new Date(dueDate);
+      if (!Number.isNaN(parsed.getTime())) {
+        formattedDueDate = parsed.toISOString().slice(0, 10);
+      }
+    }
+    if (!formattedDueDate) {
+      const calcDueDate = new Date();
+      calcDueDate.setDate(calcDueDate.getDate() + Number(days));
+      formattedDueDate = calcDueDate.toISOString().slice(0, 10);
+    }
 
     const { data: loan, error: loanErr } = await supabase
       .from("borrowed_books")
       .insert([
         {
           book_id: bookId,
-          student_id: studentId,
-          teacher_id: userRole === "teacher" ? await getTeacherId(req.userId, institution_id) : null,
+          student_id: studentId || null,
+          teacher_id: teacherId || null,
           status: 'borrowed',
           borrowed_at: new Date().toISOString(),
-          due_date: dueDate.toISOString().slice(0, 10),
+          due_date: formattedDueDate,
           institution_id,
+          issued_by: req.userId || null,
           notes: notes || ""
         },
       ])
@@ -366,102 +457,24 @@ exports.issueBook = async (req, res) => {
 };
 
 
-/** Borrow a book (student) */
-exports.borrowBook = async (req, res) => {
-  try {
-    const { userRole, institution_id } = req;
-    const { bookId, days = 14 } = req.body; // bookId matches existing param
-    const appUserId = req.userId; // This is the user.id (UUID)
-
-    if (!["student", "teacher"].includes(userRole)) {
-      return res.status(403).json({ error: "Students or Teachers only." });
-    }
-
-    let studentId = null;
-    let teacherId = null;
-
-    if (userRole === "student") {
-      studentId = await getStudentId(appUserId, institution_id);
-      if (!studentId) return res.status(400).json({ error: "Student profile not found" });
-    } else {
-      teacherId = await getTeacherId(appUserId, institution_id);
-      if (!teacherId) return res.status(400).json({ error: "Teacher profile not found" });
-    }
-
-    const hasArchivedAt = await supportsBooksArchivedAt();
-
-    // 1) Book must exist
-    let itemQuery = supabase
-      .from("books") // Changed from library_items
-      .select("*")
-      .eq("id", bookId)
-      .eq("institution_id", institution_id);
-
-    if (hasArchivedAt) itemQuery = itemQuery.is('archived_at', null);
-
-    const { data: item, error: itemErr } = await itemQuery.single();
-
-    if (itemErr || !item) return res.status(404).json({ error: "Book not found." });
-    if (item.available_quantity <= 0) return res.status(400).json({ error: "Book out of stock" });
-
-    // 2) Fee threshold (Students only)
-    if (userRole === "student") {
-      const cfg = await getActiveConfig(institution_id);
-      const overallPct = await getStudentOverallFeePercent(appUserId, institution_id);
-      if (overallPct < Number(cfg.min_fee_percent_for_borrow)) {
-        return res.status(403).json({
-          error: `Insufficient fee payment. Need at least ${Number(cfg.min_fee_percent_for_borrow) * 100}% overall.`,
-          details: { percent: Math.round(overallPct * 100) },
-        });
-      }
-    }
-
-    // 3) No overdue books
-    if (await hasOverdueBooks({ studentId, teacherId, institution_id })) {
-      return res.status(403).json({ error: "You have overdue books. Return them first." });
-    }
-
-    // 4) Borrow count < limit
-    const cfg = await getActiveConfig(institution_id);
-    const activeCount = await activeBorrowCount({ studentId, teacherId, institution_id });
-    if (activeCount >= Number(cfg.default_borrow_limit)) {
-      return res.status(403).json({ error: `Borrow limit reached (${cfg.default_borrow_limit}).` });
-    }
-
-    const dueDate = new Date();
-    dueDate.setDate(dueDate.getDate() + Number(days));
-
-    const { data: loan, error: loanErr } = await supabase
-      .from("borrowed_books") // Changed from library_loans
-      .insert([
-        {
-          book_id: bookId, // Changed from item_id
-          student_id: studentId,
-          teacher_id: teacherId,
-          status: 'borrowed',
-          borrowed_at: new Date().toISOString(), // Changed from borrow_date
-          due_date: dueDate.toISOString().slice(0, 10),
-          institution_id
-        },
-      ])
-      .select()
-      .single();
-
-    if (loanErr) return res.status(500).json({ error: loanErr.message });
-
-    return res.status(201).json({ message: "Borrowed successfully", borrow: loan, due_date: dueDate });
-  } catch (e) {
-    console.error("borrowBook error:", e);
-    return res.status(500).json({ error: "Server error: " + e.message });
-  }
+/** Self-service borrow is explicitly blocked per Section 2 & 6 */
+exports.borrowBook = async (_req, res) => {
+  return res.status(403).json({
+    error: "Self-service borrowing is disabled. All book checkouts must be processed in-person by an authorized school librarian.",
+    code: "SELF_SERVICE_DISABLED"
+  });
 };
 
-/** Return a borrowed book */
+/** Return a borrowed book (Librarian/Main Admin only) */
 exports.returnBook = async (req, res) => {
   try {
-    const { userRole, institution_id } = req;
-    const appUserId = req.userId;
+    const { institution_id } = req;
     const { borrowId } = req.params;
+    const { notes, condition } = req.body || {};
+
+    if (!isLibrarianOrMainAdmin(req)) {
+      return res.status(403).json({ error: "Access denied: Librarian designation required." });
+    }
 
     if (!institution_id) {
       return res.status(400).json({ error: "Institution context is required" });
@@ -469,36 +482,45 @@ exports.returnBook = async (req, res) => {
 
     if (!borrowId) return res.status(400).json({ error: "borrowId is required" });
 
-    let query = supabase
-      .from("borrowed_books") // Changed from library_loans
-      .select("*")
+    const { data: loan, error: loanErr } = await supabase
+      .from("borrowed_books")
+      .select("*, books(available_quantity)")
       .eq("id", borrowId)
       .eq("institution_id", institution_id)
-      .is("returned_at", null); // Changed from return_date
-
-    // If student or teacher, ensure it owns the loan
-    if (!["admin", "master_admin"].includes(userRole)) {
-      const studentId = await getStudentId(appUserId, institution_id);
-      const teacherId = await getTeacherId(appUserId, institution_id);
-      
-      if (studentId) query = query.eq("student_id", studentId);
-      else if (teacherId) query = query.eq("teacher_id", teacherId);
-      else return res.status(403).json({ error: "Profile required" });
-    }
-
-    const { data: loan, error: loanErr } = await query.limit(1).maybeSingle();
+      .is("returned_at", null)
+      .limit(1)
+      .maybeSingle();
 
     if (loanErr || !loan) return res.status(404).json({ error: "Active loan not found" });
 
-    const { error: updErr } = await supabase
-      .from("borrowed_books") // Changed from library_loans
-      .update({ returned_at: new Date().toISOString(), status: "returned" })
+    const returnNotes = notes || condition || "";
+
+    let updateQuery = supabase
+      .from("borrowed_books")
+      .update({
+        returned_at: new Date().toISOString(),
+        returned_by: req.userId || null,
+        return_notes: returnNotes,
+        status: "returned",
+        updated_at: new Date().toISOString()
+      })
       .eq("id", loan.id)
       .eq("institution_id", institution_id);
 
+    let updatedLoan = null;
+    let updErr = null;
+    if (typeof updateQuery.select === 'function') {
+      const selectRes = await updateQuery.select().single();
+      updatedLoan = selectRes.data;
+      updErr = selectRes.error;
+    } else {
+      const execRes = await updateQuery;
+      updErr = execRes?.error;
+    }
+
     if (updErr) return res.status(500).json({ error: updErr.message });
 
-    // Increment stock on return (borrow insert decrement is handled by DB trigger)
+    // Increment stock on return
     const { data: item } = await supabase
       .from('books')
       .select('available_quantity')
@@ -508,15 +530,15 @@ exports.returnBook = async (req, res) => {
     if (item) {
       await supabase
         .from('books')
-        .update({ available_quantity: item.available_quantity + 1 })
+        .update({ available_quantity: item.available_quantity + 1, updated_at: new Date().toISOString() })
         .eq('id', loan.book_id)
         .eq('institution_id', institution_id);
     }
 
-    return res.json({ message: "Returned" });
+    return res.json({ message: "Returned", borrow: updatedLoan });
   } catch (e) {
     console.error("returnBook error:", e);
-    res.status(500).json({ error: "Server error" });
+    return res.status(500).json({ error: "Server error" });
   }
 };
 
@@ -527,7 +549,7 @@ exports.history = async (req, res) => {
     let targetStudentId = studentId;
 
     if (targetStudentId) {
-      if (req.userRole !== 'admin' && req.userRole !== 'teacher' && req.userRole !== 'master_admin') {
+      if (!isLibrarianOrMainAdmin(req)) {
         return res.status(403).json({ error: "Access denied. Insufficient permissions." });
       }
     } else {
@@ -541,7 +563,7 @@ exports.history = async (req, res) => {
         // Teachers see their own history
         const { data, error } = await supabase
           .from("borrowed_books")
-          .select("*, books(title, author, isbn)")
+          .select("*, books(title, author, isbn), issuer:issued_by(full_name), returner:returned_by(full_name)")
           .eq("teacher_id", tId)
           .eq('institution_id', req.institution_id)
           .order("created_at", { ascending: false });
@@ -553,68 +575,23 @@ exports.history = async (req, res) => {
     }
 
     const { data, error } = await supabase
-      .from("borrowed_books")
-      .select("*, books(title, author, isbn)") // Join books
-      .eq("student_id", targetStudentId)
-      .eq('institution_id', req.institution_id)
-      .order("created_at", { ascending: false });
-
     if (error) return res.status(500).json({ error: error.message });
-    res.json(data);
-  } catch (_e) {
-    res.status(500).json({ error: "Server error" });
-  }
-};
-
-/** Admin view: all loans */
-exports.getAllBorrowedBooks = async (req, res) => {
-  try {
-    // Need to join students -> users to get names
-    // And books
-    const { data, error } = await supabase
-      .from("borrowed_books")
-      .select(`
-        *,
-        books (title, author, isbn, category),
-        students (
-          id,
-          grade_level,
-          academic_year,
-          users (first_name, last_name, full_name, email, phone)
-        ),
-        teachers (
-          id,
-          department,
-          position,
-          users (first_name, last_name, full_name, email, phone)
-        )
-      `)
-      .eq('institution_id', req.institution_id)
-      .order("created_at", { ascending: false });
-
-    if (error) throw error;
-
-    // Flatten structure for frontend if needed, or frontend handles it.
-    // Frontend likely expects `users.full_name`.
-    // We should map it or let frontend adapt.
-    // The previous controller returned: `users(full_name, email)` direct relation.
-    // Here we have `students -> users`.
-    // I will leave it as is, but might need frontend adjustment if it crashes.
-    // Actually, I can use a view or just return it.
-    res.json(data);
+    return res.json(data);
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    console.error("history error:", e);
+    return res.status(500).json({ error: "Server error" });
   }
 };
 
-/** Update Status */
+/** Update Status (Librarian/Main Admin only) */
 exports.updateBorrowStatus = async (req, res) => {
   try {
-    const { userRole } = req;
     const { borrowId } = req.params;
     const { status } = req.body;
 
-    if (!["admin", "teacher"].includes(userRole)) return res.status(403).json({ error: "Unauthorized" });
+    if (!isLibrarianOrMainAdmin(req)) {
+      return res.status(403).json({ error: "Access denied: Librarian designation required." });
+    }
 
     const { data: loan, error: fetchErr } = await supabase
       .from("borrowed_books")
@@ -642,6 +619,7 @@ exports.updateBorrowStatus = async (req, res) => {
       }
     } else if (status === 'returned' && loan.status !== 'returned') {
       updates.returned_at = new Date().toISOString();
+      updates.returned_by = req.userId || null;
       const { data: item } = await supabase
         .from('books')
         .select('available_quantity')
@@ -712,11 +690,10 @@ exports.deleteBook = async (req, res) => {
 
 exports.rejectBorrowRequest = async (req, res) => {
   try {
-    const { userRole } = req;
     const { borrowId } = req.params;
 
-    if (!["admin", "teacher"].includes(userRole)) {
-      return res.status(403).json({ error: "Unauthorized" });
+    if (!isLibrarianOrMainAdmin(req)) {
+      return res.status(403).json({ error: "Access denied: Librarian designation required." });
     }
 
     const { data: loan, error: fetchErr } = await supabase
@@ -748,8 +725,8 @@ exports.rejectBorrowRequest = async (req, res) => {
 
 exports.sendReminder = async (req, res) => {
   try {
-    if (req.userRole !== "admin") {
-      return res.status(403).json({ error: "Admin only." });
+    if (!isLibrarianOrMainAdmin(req)) {
+      return res.status(403).json({ error: "Access denied: Librarian designation required." });
     }
 
     const { borrowId } = req.params;
@@ -784,7 +761,7 @@ exports.sendReminder = async (req, res) => {
         {
           user_id: targetUserId,
           title: "Library Reminder",
-          message: `${borrowerName}, please return or renew \"${bookTitle}\" if still active.`,
+          message: `${borrowerName}, please return or renew "${bookTitle}" if still active.`,
           type: "warning",
           institution_id: req.institution_id,
           data: {
@@ -803,8 +780,8 @@ exports.sendReminder = async (req, res) => {
 
 exports.extendDueDate = async (req, res) => {
   try {
-    if (req.userRole !== "admin") {
-      return res.status(403).json({ error: "Admin only." });
+    if (!isLibrarianOrMainAdmin(req)) {
+      return res.status(403).json({ error: "Access denied: Librarian designation required." });
     }
 
     const { borrowId } = req.params;
@@ -844,5 +821,321 @@ exports.extendDueDate = async (req, res) => {
     return res.json({ message: "Extended", borrow: data });
   } catch (e) {
     return res.status(500).json({ error: e.message });
+  }
+};
+
+/**
+ * Shared institution-wide circulation records with filtering
+ * Supported filters per Section 5:
+ * - overdueOnly: boolean
+ * - currentlyBorrowed: boolean
+ * - borrowerId: studentId or teacherId
+ * - bookId: book id
+ * - librarianId: issued_by or returned_by
+ * - startDate: ISO date string
+ * - endDate: ISO date string
+ * - search: search query on book title, borrower name, or ISBN
+ */
+exports.getAllBorrowedBooks = async (req, res) => {
+  try {
+    const { institution_id } = req;
+    if (!isLibrarianOrMainAdmin(req)) {
+      return res.status(403).json({ error: "Access denied: Librarian designation required." });
+    }
+
+    const {
+      overdueOnly,
+      currentlyBorrowed,
+      borrowerId,
+      bookId,
+      librarianId,
+      startDate,
+      endDate,
+      search,
+    } = req.query || {};
+
+    let query = supabase
+      .from("borrowed_books")
+      .select(`
+        *,
+        books(id, title, author, isbn, category),
+        students(id, user_id, users:user_id(id, full_name, email)),
+        teachers(id, user_id, users:user_id(id, full_name, email)),
+        issuer:issued_by(id, full_name),
+        returner:returned_by(id, full_name)
+      `)
+      .eq("institution_id", institution_id)
+      .order("created_at", { ascending: false });
+
+    if (String(overdueOnly).toLowerCase() === 'true') {
+      const today = new Date().toISOString().slice(0, 10);
+      query = query.is("returned_at", null).lt("due_date", today);
+    } else if (String(currentlyBorrowed).toLowerCase() === 'true') {
+      query = query.is("returned_at", null);
+    }
+
+    if (bookId) {
+      query = query.eq("book_id", bookId);
+    }
+
+    if (borrowerId) {
+      query = query.or(`student_id.eq.${borrowerId},teacher_id.eq.${borrowerId}`);
+    }
+
+    if (librarianId) {
+      query = query.or(`issued_by.eq.${librarianId},returned_by.eq.${librarianId}`);
+    }
+
+    if (startDate) {
+      query = query.gte("borrowed_at", startDate);
+    }
+
+    if (endDate) {
+      query = query.lte("borrowed_at", endDate);
+    }
+
+    const { data, error } = await query;
+    if (error) {
+      console.error("getAllBorrowedBooks query error:", error);
+      return res.status(500).json({ error: error.message });
+    }
+
+    let records = data || [];
+
+    if (search && search.trim()) {
+      const s = search.trim().toLowerCase();
+      records = records.filter(item => {
+        const title = item.books?.title?.toLowerCase() || '';
+        const isbn = item.books?.isbn?.toLowerCase() || '';
+        const author = item.books?.author?.toLowerCase() || '';
+        const studentName = item.students?.users?.full_name?.toLowerCase() || '';
+        const teacherName = item.teachers?.users?.full_name?.toLowerCase() || '';
+        const issuerName = item.issuer?.full_name?.toLowerCase() || '';
+        return (
+          title.includes(s) ||
+          isbn.includes(s) ||
+          author.includes(s) ||
+          studentName.includes(s) ||
+          teacherName.includes(s) ||
+          issuerName.includes(s)
+        );
+      });
+    }
+
+    return res.json(records);
+  } catch (e) {
+    console.error("getAllBorrowedBooks error:", e);
+    return res.status(500).json({ error: "Server error" });
+  }
+};
+
+/**
+ * List all eligible staff (teachers, admins) in the institution with their librarian designation status.
+ * Main Admin / Master Admin only.
+ */
+exports.getLibrariansList = async (req, res) => {
+  try {
+    const { institution_id } = req;
+    const isMainAdmin = (req.userRole === 'admin' && (req.isMain || req.user?.is_main)) || req.userRole === 'master_admin';
+
+    if (!isMainAdmin) {
+      return res.status(403).json({ error: "Access denied: Main Admin privileges required." });
+    }
+
+    const { data: staffUsers, error: staffErr } = await supabase
+      .from('users')
+      .select('id, full_name, email, role, is_main, phone')
+      .eq('institution_id', institution_id)
+      .in('role', ['teacher', 'admin'])
+      .order('full_name', { ascending: true });
+
+    if (staffErr) {
+      return res.status(500).json({ error: staffErr.message });
+    }
+
+    const { data: designations, error: desErr } = await supabase
+      .from('librarian_designations')
+      .select('id, user_id, designated_by, designated_at, designated_by_user:designated_by(full_name)')
+      .eq('institution_id', institution_id);
+
+    if (desErr) {
+      return res.status(500).json({ error: desErr.message });
+    }
+
+    const designationMap = new Map((designations || []).map(d => [d.user_id, d]));
+
+    const result = (staffUsers || []).map(user => {
+      const des = designationMap.get(user.id);
+      return {
+        user_id: user.id,
+        full_name: user.full_name,
+        email: user.email,
+        role: user.role,
+        is_main: !!user.is_main,
+        phone: user.phone || null,
+        is_librarian: !!des,
+        designated_at: des?.designated_at || null,
+        designated_by: des?.designated_by || null,
+        designated_by_name: des?.designated_by_user?.full_name || null
+      };
+    });
+
+    return res.json(result);
+  } catch (e) {
+    console.error("getLibrariansList error:", e);
+    return res.status(500).json({ error: "Server error" });
+  }
+};
+
+/**
+ * Grant or revoke Librarian designation for a staff member.
+ * Main Admin / Master Admin only.
+ */
+exports.toggleLibrarianDesignation = async (req, res) => {
+  try {
+    const { institution_id } = req;
+    const isMainAdmin = (req.userRole === 'admin' && (req.isMain || req.user?.is_main)) || req.userRole === 'master_admin';
+
+    if (!isMainAdmin) {
+      return res.status(403).json({ error: "Access denied: Only the Main Admin can assign or revoke Librarian designations." });
+    }
+
+    const { userId, action, reason } = req.body || {};
+    if (!userId) {
+      return res.status(400).json({ error: "userId is required" });
+    }
+
+    const { data: targetUser, error: userErr } = await supabase
+      .from('users')
+      .select('id, full_name, email, role, institution_id')
+      .eq('id', userId)
+      .eq('institution_id', institution_id)
+      .single();
+
+    if (userErr || !targetUser) {
+      return res.status(404).json({ error: "User not found in this institution" });
+    }
+
+    if (!['teacher', 'admin'].includes(targetUser.role)) {
+      return res.status(400).json({ error: "Only Teachers and Admins can be designated as Librarians." });
+    }
+
+    const { data: existingDes } = await supabase
+      .from('librarian_designations')
+      .select('id')
+      .eq('institution_id', institution_id)
+      .eq('user_id', userId)
+      .maybeSingle();
+
+    const shouldGrant = action === 'grant' ? true : action === 'revoke' ? false : !existingDes;
+
+    if (shouldGrant) {
+      if (!existingDes) {
+        const { error: insErr } = await supabase
+          .from('librarian_designations')
+          .insert([{
+            institution_id,
+            user_id: userId,
+            designated_by: req.userId,
+            designated_at: new Date().toISOString()
+          }]);
+        if (insErr) throw insErr;
+      }
+
+      await supabase.from('librarian_audit_logs').insert([{
+        institution_id,
+        target_user_id: userId,
+        performed_by: req.userId,
+        action: 'grant',
+        notes: reason || `Librarian designation granted by ${req.user?.full_name || 'Admin'}`
+      }]);
+
+      clearUserCache(userId);
+
+      return res.json({
+        message: `Librarian designation granted to ${targetUser.full_name}`,
+        is_librarian: true,
+        user_id: userId
+      });
+    } else {
+      if (existingDes) {
+        const { error: delErr } = await supabase
+          .from('librarian_designations')
+          .delete()
+          .eq('institution_id', institution_id)
+          .eq('user_id', userId);
+        if (delErr) throw delErr;
+      }
+
+      await supabase.from('librarian_audit_logs').insert([{
+        institution_id,
+        target_user_id: userId,
+        performed_by: req.userId,
+        action: 'revoke',
+        notes: reason || `Librarian designation revoked by ${req.user?.full_name || 'Admin'}`
+      }]);
+
+      clearUserCache(userId);
+
+      return res.json({
+        message: `Librarian designation revoked for ${targetUser.full_name}`,
+        is_librarian: false,
+        user_id: userId
+      });
+    }
+  } catch (e) {
+    console.error("toggleLibrarianDesignation error:", e);
+    return res.status(500).json({ error: e.message || "Server error" });
+  }
+};
+
+/**
+ * View librarian designation audit trail.
+ * Main Admin or Librarian.
+ */
+exports.getLibrarianAuditLogs = async (req, res) => {
+  try {
+    const { institution_id } = req;
+    if (!isLibrarianOrMainAdmin(req)) {
+      return res.status(403).json({ error: "Access denied" });
+    }
+
+    const { data: logs, error } = await supabase
+      .from('librarian_audit_logs')
+      .select(`
+        id,
+        action,
+        notes,
+        created_at,
+        target:target_user_id(id, full_name, email, role),
+        performer:performed_by(id, full_name, email)
+      `)
+      .eq('institution_id', institution_id)
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+    return res.json(logs || []);
+  } catch (e) {
+    console.error("getLibrarianAuditLogs error:", e);
+    return res.status(500).json({ error: e.message || "Server error" });
+  }
+};
+
+/**
+ * Check current user's librarian and admin designation status.
+ */
+exports.getMyDesignation = async (req, res) => {
+  try {
+    const isLibrarian = !!(req.isLibrarian || req.user?.is_librarian);
+    const isMainAdmin = (req.userRole === 'admin' && (req.isMain || req.user?.is_main)) || req.userRole === 'master_admin';
+
+    return res.json({
+      isLibrarian,
+      isMainAdmin: !!isMainAdmin,
+      role: req.userRole,
+      userId: req.userId
+    });
+  } catch (e) {
+    return res.status(500).json({ error: "Server error" });
   }
 };

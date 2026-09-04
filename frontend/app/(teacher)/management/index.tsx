@@ -60,7 +60,7 @@ const FeatureCard = ({ icon: Icon, title, description, color, bgColor, route, ba
 export default function ManagementIndex() {
     const tier = useSubscriptionTier();
     const { hasDiary, hasAnalytics } = tier;
-    const { teacherId, isDemo } = useAuth();
+    const { teacherId, isDemo, isLibrarian } = useAuth();
     const [pendingCount, setPendingCount] = useState<number | null>(null);
     const [submittedCount, setSubmittedCount] = useState<number | null>(null);
     const [statsLoading, setStatsLoading] = useState(true);
@@ -237,6 +237,16 @@ export default function ManagementIndex() {
             bgColor: "#fef3c7",
             route: "/(teacher)/management/diary",
             tooltipId: 'teacher.manage.diary'
+        }] : []),
+        ...(isLibrarian ? [{
+            icon: BookOpen,
+            title: "Library Circulation",
+            description: "Issue & return books (Librarian Desk)",
+            color: "#FF6900",
+            bgColor: "#fff7ed",
+            route: "/(teacher)/management/library",
+            badge: "Librarian",
+            tooltipId: 'teacher.manage.library'
         }] : [])
     ];
 

@@ -27,6 +27,7 @@ interface AuthContextType {
   institutionName: string | null
   isMain: boolean
   isPlatformAdmin: boolean
+  isLibrarian: boolean
   canonicalRole: string | null
   loading: boolean
   setLoading: (loading: boolean) => void
@@ -117,6 +118,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [institutionName, setInstitutionName] = useState<string | null>(null)
   const [isMain, setIsMain] = useState(false)
   const [isPlatformAdmin, setIsPlatformAdmin] = useState(false)
+  const [isLibrarian, setIsLibrarian] = useState(false)
   const canonicalRole = (profile as any)?.role_alias || profile?.role || null;
   const [addonFlags, setAddonFlags] = useState({
     messaging: false,
@@ -268,6 +270,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setInstitutionName(null);
       setIsMain(false);
       setIsPlatformAdmin(false);
+      setIsLibrarian(false);
       setAddonFlags({ messaging: false, library: false, finance: true, analytics: true, bursary: false, attendance: true, diary: false });
       setCustomStudentLimit(null);
       setLoading(false);
@@ -468,6 +471,18 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
       // 1. Calculate all derived states FIRST
       const isPlatformAdminFlag = !!userData.platform_admins?.[0] || userData.role === 'master_admin';
+      let isLibrarianFlag = false;
+      try {
+        const { data: libData } = await supabase
+          .from('librarian_designations')
+          .select('id')
+          .eq('user_id', userId)
+          .maybeSingle();
+        isLibrarianFlag = !!libData;
+      } catch {
+        isLibrarianFlag = false;
+      }
+      setIsLibrarian(isLibrarianFlag);
       const isMainFlag = userData.admins?.[0]?.is_main || false;
 
       let newSubscriptionStatus = null;
@@ -778,6 +793,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     isTrial: subscriptionStatus === 'trial' || subscriptionPlan === 'trial',
     isMain,
     isPlatformAdmin,
+    isLibrarian,
     canonicalRole,
     addonMessaging: addonFlags.messaging,
     addonLibrary: addonFlags.library,
@@ -791,7 +807,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     maintenanceModeEnabled,
     maintenanceModeMessage,
     refreshMaintenanceStatus,
-  }), [session, user, profile, roleInfo, subscriptionStatus, subscriptionPlan, trialEndDate, institutionName, loading, isInitializing, isNavReady, isProfileLoading, isSessionExpiring, sessionWarningDismissed, isDemo, wasDemo, clearWasDemo, isMain, isPlatformAdmin, canonicalRole, addonFlags, customStudentLimit, maintenanceModeEnabled, maintenanceModeMessage, refreshMaintenanceStatus]);
+  }), [session, user, profile, roleInfo, subscriptionStatus, subscriptionPlan, trialEndDate, institutionName, loading, isInitializing, isNavReady, isProfileLoading, isSessionExpiring, sessionWarningDismissed, isDemo, wasDemo, clearWasDemo, isMain, isPlatformAdmin, isLibrarian, canonicalRole, addonFlags, customStudentLimit, maintenanceModeEnabled, maintenanceModeMessage, refreshMaintenanceStatus]);
 
   return (
     <AuthContext.Provider value={value}>

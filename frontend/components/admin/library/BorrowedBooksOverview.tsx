@@ -213,10 +213,14 @@ const BorrowedBooksOverview: React.FC<BorrowedBooksOverviewProps> = ({
         setShowReturnConfirm(false)
 
         try {
+            const notesToSubmit = returnCondition
+                ? `${returnCondition.toUpperCase()} condition. ${notes}`.trim()
+                : notes;
+
             if (onReturnBook) {
-                onReturnBook(selectedBook.id, finalFine, returnCondition)
+                onReturnBook(selectedBook.id, finalFine, notesToSubmit)
             } else {
-                await executeWithLoading(() => LibraryAPI.returnBook(selectedBook.id))
+                await executeWithLoading(() => LibraryAPI.returnBook(selectedBook.id, notesToSubmit))
                 await fetchBorrowedBooks()
             }
 
@@ -561,6 +565,27 @@ const BorrowedBooksOverview: React.FC<BorrowedBooksOverviewProps> = ({
                             )}
                         </View>
                     </View>
+
+                    {/* Circulation Staff Details */}
+                    {(borrowedBook.issuerName || borrowedBook.returnerName || borrowedBook.returnNotes) && (
+                        <View className="mt-2 pt-2 border-t border-gray-200 dark:border-gray-700">
+                            {borrowedBook.issuerName && (
+                                <Text className="text-[11px] text-gray-500 dark:text-gray-400">
+                                    Issued By: <Text className="font-semibold text-gray-700 dark:text-gray-200">{borrowedBook.issuerName}</Text>
+                                </Text>
+                            )}
+                            {borrowedBook.returnerName && (
+                                <Text className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">
+                                    Returned By: <Text className="font-semibold text-gray-700 dark:text-gray-200">{borrowedBook.returnerName}</Text>
+                                </Text>
+                            )}
+                            {borrowedBook.returnNotes && (
+                                <Text className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5 italic">
+                                    Return Notes: "{borrowedBook.returnNotes}"
+                                </Text>
+                            )}
+                        </View>
+                    )}
                 </View>
 
                 {borrowedBook.status !== "returned" && (

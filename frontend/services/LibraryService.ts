@@ -11,7 +11,31 @@ import {
   FrontendBorrowedBook,
   ReturnBookRequest,
   UpdateBookRequest,
+  LibrarianStaffItem,
+  LibrarianAuditLogItem,
 } from "@/types/types";
+
+export interface IssueBookParams {
+  bookId: string;
+  studentId?: string;
+  teacherId?: string;
+  borrowerId?: string;
+  borrowerType?: 'student' | 'teacher';
+  notes?: string;
+  days?: number;
+  dueDate?: string;
+}
+
+export interface CirculationFilters {
+  overdueOnly?: boolean;
+  currentlyBorrowed?: boolean;
+  borrowerId?: string;
+  bookId?: string;
+  librarianId?: string;
+  startDate?: string;
+  endDate?: string;
+  search?: string;
+}
 
 /**
  * Library API Wrapper
@@ -103,26 +127,19 @@ export class LibraryAPI {
   }
 
   /**
-   * Issue a book to a student (Teacher/Admin only)
-   * @param {string} bookId
-   * @param {string} studentId
-   * @param {string} notes
-   * @param {number} days
-   * @returns {Promise<any>}
+   * Issue a book to a student or teacher (Librarian/Main Admin only)
    */
   static async issueBook(
-    bookId: string,
-    studentId: string,
-    notes: string,
+    params: IssueBookParams | string,
+    studentId?: string,
+    notes: string = "",
     days: number = 14
   ): Promise<any> {
     try {
-      const response = await api.post("/library/issue", {
-        bookId,
-        studentId,
-        notes,
-        days,
-      });
+      const payload = typeof params === 'string'
+        ? { bookId: params, studentId, notes, days }
+        : params;
+      const response = await api.post("/library/issue", payload);
       return response.data;
     } catch (error) {
       console.error("Error issuing book:", error);
@@ -130,24 +147,20 @@ export class LibraryAPI {
     }
   }
 
-
   /**
-   * Return a borrowed book
-   * @param {string} borrowId
-   * @param {string} returnedAt
-   * @returns {Promise<void>}
+   * Return a borrowed book (Librarian/Main Admin only)
    */
   static async returnBook(
     borrowId: string,
-    returnedAt: string = new Date().toISOString()
-  ): Promise<void> {
+    notes?: string,
+    condition?: string
+  ): Promise<any> {
     try {
-      await api.post(
-        `/library/return/${borrowId}`,
-        {
-          returned_at: returnedAt,
-        } as ReturnBookRequest
-      );
+      const response = await api.post(`/library/return/${borrowId}`, {
+        notes,
+        condition,
+      });
+      return response.data;
     } catch (error) {
       console.error("Error returning book:", error);
       throw error;
@@ -155,9 +168,7 @@ export class LibraryAPI {
   }
 
   /**
-   * Get borrowing history for a student
-   * @param {string} studentId - Student ID
-   * @returns {Promise<BackendBorrowedBook[]>} Borrowing history
+   * Get borrowing history for a student or own history
    */
   static async getBorrowingHistory(
     studentId?: string
@@ -188,13 +199,15 @@ export class LibraryAPI {
   }
 
   /**
-   * Get all borrowed books (for admin/librarian view)
-   * @returns {Promise<BackendBorrowedBook[]>} List of all borrowed books
+   * Get all borrowed books (Circulation overview with filters)
    */
-  static async getAllBorrowedBooks(): Promise<BackendBorrowedBook[]> {
+  static async getAllBorrowedBooks(
+    filters?: CirculationFilters
+  ): Promise<BackendBorrowedBook[]> {
     try {
       const response = await api.get<BackendBorrowedBook[]>(
-        "/library/borrowed"
+        "/library/borrowed",
+        { params: filters }
       );
       return response.data;
     } catch (error) {
@@ -204,9 +217,76 @@ export class LibraryAPI {
   }
 
   /**
+   * Get list of staff and their librarian designation status (Main Admin only)
+   */
+  static async getLibrariansList(): Promise<LibrarianStaffItem[]> {
+    try {
+      const response = await api.get<LibrarianStaffItem[]>("/library/librarians");
+      return response.data;
+    } catch (error) {
+      console.error("Error fetching librarians list:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Toggle or set librarian designation for a user (Main Admin only)
+   */
+  static async toggleLibrarianDesignation(
+    userId: string,
+    action?: 'grant' | 'revoke',
+    reason?: string
+  ): Promise<{ message: string; is_librarian: boolean; user_id: string }> {
+    try {
+      const response = await api.post<{ message: string; is_librarian: boolean; user_id: string }>(
+        "/library/librarians/toggle",
+        { userId, action, reason }
+      );
+      return response.data;
+    } catch (error) {
+      console.error("Error toggling librarian designation:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get librarian designation audit trail (Librarian/Admin only)
+   */
+  static async getLibrarianAuditLogs(): Promise<LibrarianAuditLogItem[]> {
+    try {
+      const response = await api.get<LibrarianAuditLogItem[]>("/library/librarians/audit");
+      return response.data;
+    } catch (error) {
+      console.error("Error fetching librarian audit logs:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Check current user's librarian and admin designation
+   */
+  static async getMyDesignation(): Promise<{
+    isLibrarian: boolean;
+    isMainAdmin: boolean;
+    role: string;
+    userId: string;
+  }> {
+    try {
+      const response = await api.get<{
+        isLibrarian: boolean;
+        isMainAdmin: boolean;
+        role: string;
+        userId: string;
+      }>("/library/me/designation");
+      return response.data;
+    } catch (error) {
+      console.error("Error fetching user designation:", error);
+      throw error;
+    }
+  }
+
+  /**
    * Send reminder to student about overdue book
-   * @param {string} borrowId - Borrow record ID
-   * @returns {Promise<{ message: string }>} Reminder sent confirmation
    */
   static async sendReminder(borrowId: string): Promise<{ message: string }> {
     try {
@@ -223,9 +303,6 @@ export class LibraryAPI {
 
   /**
    * Extend due date for a borrowed book
-   * @param {string} borrowId - Borrow record ID
-   * @param {string} newDueDate - New due date (YYYY-MM-DD format)
-   * @returns {Promise<BackendBorrowedBook>}
    */
   static async extendDueDate(
     borrowId: string,
@@ -247,15 +324,10 @@ export class LibraryAPI {
 
   /**
    * Reject a borrow request
-   * @param {string} borrowId
-   * @returns {Promise<any>}
    */
   static async rejectBorrowRequest(borrowId: string): Promise<any> {
     try {
-      const response = await api.post(
-        `/library/reject/${borrowId}`,
-        {}
-      );
+      const response = await api.post(`/library/reject/${borrowId}`, {});
       return response.data;
     } catch (error) {
       console.error("Error rejecting borrow request:", error);
@@ -265,18 +337,17 @@ export class LibraryAPI {
 
   /**
    * Update borrow status
-   * @param {string} borrowId
-   * @param {'borrowed' | 'returned' | 'overdue'} status
-   * @returns {Promise<BackendBorrowedBook>}
    */
   static async updateBorrowStatus(
     borrowId: string,
-    status: 'borrowed' | 'returned' | 'overdue'
+    status: "borrowed" | "returned" | "overdue"
   ): Promise<BackendBorrowedBook> {
     try {
       const response = await api.put<{ message: string; borrow: BackendBorrowedBook }>(
         `/library/status/${borrowId}`,
-        { status }
+        {
+          status,
+        }
       );
       return response.data.borrow;
     } catch (error) {
@@ -287,8 +358,6 @@ export class LibraryAPI {
 
   /**
    * Transform backend book data to frontend format
-   * @param {BackendBook} backendBook
-   * @returns {FrontendBook}
    */
   static transformBookData(backendBook: BackendBook): FrontendBook {
     return {
@@ -299,13 +368,6 @@ export class LibraryAPI {
       category: backendBook.category || "General",
       quantity: backendBook.total_quantity,
       available: backendBook.available_quantity,
-      publisher: backendBook.publisher,
-      publicationYear: backendBook.publication_year,
-      edition: backendBook.edition,
-      description: backendBook.description,
-      callNumber: backendBook.call_number,
-      language: backendBook.language,
-      pageCount: backendBook.page_count,
       institutionId: backendBook.institution_id,
       createdAt: backendBook.created_at,
     };
@@ -313,8 +375,6 @@ export class LibraryAPI {
 
   /**
    * Transform backend borrowed book data to frontend format
-   * @param {BackendBorrowedBook} backendBorrow
-   * @returns {FrontendBorrowedBook}
    */
   static transformBorrowedBookData(
     backendBorrow: BackendBorrowedBook
@@ -350,6 +410,11 @@ export class LibraryAPI {
         : undefined,
       status: backendBorrow.status,
       notes: backendBorrow.notes,
+      issuedBy: backendBorrow.issued_by,
+      returnedBy: backendBorrow.returned_by,
+      returnNotes: backendBorrow.return_notes,
+      issuerName: backendBorrow.issuer?.full_name,
+      returnerName: backendBorrow.returner?.full_name,
     };
   }
 }

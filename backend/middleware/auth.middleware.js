@@ -324,6 +324,7 @@ async function authMiddleware(req, res, next) {
         userRolesData.forEach(ur => {
           if (ur.roles) {
             customRoles.push(ur.roles.name);
+
             if (ur.roles.role_permissions) {
               ur.roles.role_permissions.forEach(rp => {
                 if (rp.permissions) {
@@ -333,6 +334,20 @@ async function authMiddleware(req, res, next) {
             }
           }
         });
+      }
+
+      // Query active librarian designation
+      let isLibrarian = false;
+      try {
+        const { data: librarianRow } = await supabase
+          .from('librarian_designations')
+          .select('id')
+          .eq('user_id', user.id)
+          .eq('is_active', true)
+          .maybeSingle();
+        isLibrarian = !!librarianRow;
+      } catch (err) {
+        console.error("[AuthMiddleware] Error fetching librarian designation:", err.message);
       }
 
       profile = {
@@ -346,6 +361,7 @@ async function authMiddleware(req, res, next) {
         is_main: isMain,
         can_manage_users: canManageUsers,
         isPlatformAdmin: isPlatformAdmin,
+        is_librarian: isLibrarian,
         customRoles,
         permissions
       };
@@ -375,7 +391,8 @@ async function authMiddleware(req, res, next) {
       permissions: profile.permissions || [],
       is_main: profile.is_main || false,
       can_manage_users: profile.can_manage_users || false,
-      is_platform_admin: profile.isPlatformAdmin || false
+      is_platform_admin: profile.isPlatformAdmin || false,
+      is_librarian: profile.is_librarian || false
     };
 
     // Convenience shorthands (ensure always set)
@@ -387,6 +404,7 @@ async function authMiddleware(req, res, next) {
     req.userRole = profile.role || null;
     req.isMain = req.user.is_main;
     req.isPlatformAdmin = req.user.is_platform_admin;
+    req.isLibrarian = req.user.is_librarian;
 
     // First-login enforcement gate: force password update and security setup
     // before allowing access to broader application endpoints.

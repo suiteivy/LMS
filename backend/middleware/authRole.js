@@ -81,4 +81,73 @@ function authorizePermissions(requiredPermissions = []) {
   };
 }
 
-module.exports = { authorizeRoles, authorizePermissions };
+/**
+ * Middleware to check if user has the active Librarian designation
+ * or is Main Admin / Master Admin.
+ */
+function authorizeLibrarian() {
+  return (req, res, next) => {
+    try {
+      const user = req.user;
+      if (!user) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
+
+      // Master admin always has access
+      if (user.role === 'master_admin' || user.is_platform_admin) {
+        return next();
+      }
+
+      // Main Admin of the institution has access
+      if (user.role === 'admin' && user.is_main) {
+        return next();
+      }
+
+      // User with active librarian designation
+      if (user.is_librarian || req.isLibrarian) {
+        return next();
+      }
+
+      return res.status(403).json({
+        error: "Access denied: Librarian designation required.",
+        code: "LIBRARIAN_REQUIRED"
+      });
+    } catch (err) {
+      console.error("authorizeLibrarian error:", err);
+      res.status(500).json({ error: "Authorization error" });
+    }
+  };
+}
+
+/**
+ * Middleware to check if user is the Main Admin or Master Admin.
+ */
+function authorizeMainAdmin() {
+  return (req, res, next) => {
+    try {
+      const user = req.user;
+      if (!user) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
+
+      if (user.role === 'master_admin' || user.is_platform_admin) {
+        return next();
+      }
+
+      if (user.role === 'admin' && user.is_main) {
+        return next();
+      }
+
+      return res.status(403).json({
+        error: "Access denied: Main Admin privilege required.",
+        code: "MAIN_ADMIN_REQUIRED"
+      });
+    } catch (err) {
+      console.error("authorizeMainAdmin error:", err);
+      res.status(500).json({ error: "Authorization error" });
+    }
+  };
+}
+
+module.exports = { authorizeRoles, authorizePermissions, authorizeLibrarian, authorizeMainAdmin };
+
