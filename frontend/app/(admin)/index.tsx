@@ -18,6 +18,7 @@ import React, { useCallback, useState } from "react";
 import { ActivityIndicator, DimensionValue, RefreshControl, ScrollView, StatusBar, Text, TouchableOpacity, View } from "react-native";
 import { SubscriptionBanner, SubscriptionGate } from "@/components/shared/SubscriptionComponents";
 import { useSubscriptionTier } from "@/hooks/useSubscriptionTier";
+import { AdminDashboardSkeleton } from "@/components/ui/skeletons";
 
 // Cast icons for RN compatibility
 const IconUserPlus = UserPlus as any;
@@ -56,7 +57,7 @@ export default function AdminDashboard() {
     isMain,
     logout,
   } = useAuth();
-  const { stats, refresh: refreshStats } = useDashboardStats();
+  const { stats, loading, refresh: refreshStats } = useDashboardStats();
   const { isDark } = useTheme();
   const { formatAmount } = useCurrency();
   const [refreshing, setRefreshing] = useState(false);
@@ -92,6 +93,15 @@ export default function AdminDashboard() {
         showMainBadge={isMain}
       />
 
+      {loading && stats.length === 0 ? (
+        <ScrollView
+          className="flex-1"
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ paddingBottom: 60 }}
+        >
+          <AdminDashboardSkeleton loading={true} label="Loading administrator dashboard..." />
+        </ScrollView>
+      ) : (
       <ScrollView
         className="flex-1"
         showsVerticalScrollIndicator={false}
@@ -195,6 +205,7 @@ export default function AdminDashboard() {
         </View>
 
       </ScrollView>
+      )}
 
     </View>
   );

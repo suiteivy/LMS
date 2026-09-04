@@ -1,11 +1,12 @@
 import { UnifiedHeader } from "@/components/common/UnifiedHeader";
-import { ListItemSkeleton } from "@/components/ui/skeletons";
+import { ListItemSkeleton, ParentDashboardSkeleton } from "@/components/ui/skeletons";
 import { HelpTooltip } from "@/components/settings/HelpTooltip";
 import { SubscriptionGate } from "@/components/shared/SubscriptionComponents";
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { formatClassLabel } from '@/utils/classLabel';
 import { ParentService } from '@/services/ParentService';
+import { CacheService } from '@/services/CacheService';
 import { router } from 'expo-router';
 import {
   Award,
@@ -31,8 +32,8 @@ export default function ParentIndex() {
 
   if (loading) {
     return (
-      <View className="flex-1 bg-[#F6F8FA] dark:bg-[#161B22] px-4 pt-6">
-        <ListItemSkeleton loading={loading} count={4} label="Loading parent dashboard..." />
+      <View className="flex-1 bg-[#F6F8FA] dark:bg-[#161B22]">
+        <ParentDashboardSkeleton loading={loading} label="Loading parent dashboard..." />
       </View>
     );
   }
@@ -54,11 +55,27 @@ function ParentDashboard({ user, logout }: any) {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
+  const cacheKey = user?.id ? `parent_linked_students_${user.id}` : null;
+
   const fetchLinkedStudents = async () => {
+    // Check cache first
+    if (cacheKey && linkedStudents.length === 0) {
+      const cached = await CacheService.get<any[]>(cacheKey, { allowStale: true });
+      if (cached.data && cached.data.length > 0) {
+        setLinkedStudents(cached.data);
+        const initial = cached.data[0];
+        setSelectedStudent(initial);
+        setLoading(false);
+      }
+    }
+
     try {
       const students = await ParentService.getLinkedStudents();
       setLinkedStudents(students);
       if (students.length > 0) {
+        if (cacheKey) {
+          CacheService.set(cacheKey, students, 15 * 60 * 1000);
+        }
         const saved = await getParentSelectedChild();
         const matched = saved?.studentId
           ? students.find((s: any) => s.id === saved.studentId)
@@ -82,6 +99,12 @@ function ParentDashboard({ user, logout }: any) {
   };
 
   const fetchStudentDetails = async (studentId: string) => {
+    const detailCacheKey = `parent_child_detail_${studentId}`;
+    const cached = await CacheService.get<any>(detailCacheKey, { allowStale: true });
+    if (cached.data) {
+      setStudentData(cached.data);
+    }
+
     try {
       const [performance, attendance] = await Promise.all([
         ParentService.getStudentPerformance(studentId),
@@ -99,10 +122,12 @@ function ParentDashboard({ user, logout }: any) {
         attendancePct = `${Math.round((present / attendance.length) * 100)}%`;
       }
 
-      setStudentData({
+      const computed = {
         performance: { average_grade: avgGrade },
         attendance: { overall_percentage: attendancePct }
-      });
+      };
+      setStudentData(computed);
+      CacheService.set(detailCacheKey, computed, 10 * 60 * 1000);
     } catch (error) {
       console.error("Error fetching student details:", error);
     }
@@ -201,10 +226,16 @@ function ParentDashboard({ user, logout }: any) {
     },
   ].filter((action) => action.show);
 
-  if (loading && !refreshing) {
+  if (loading && !refreshing && linkedStudents.length === 0) {
     return (
-      <View className="flex-1 bg-[#F6F8FA] dark:bg-[#161B22] px-4 pt-6">
-        <ListItemSkeleton loading={loading} count={4} label="Loading student dashboard..." />
+      <View className="flex-1 bg-[#F6F8FA] dark:bg-[#161B22]">
+        <UnifiedHeader
+          title="Welcome back"
+          subtitle={user?.full_name || "Parent Portal"}
+          role="Parent/Guardian"
+          showNotification={true}
+        />
+        <ParentDashboardSkeleton loading={true} label="Loading student dashboard..." />
       </View>
     );
   }

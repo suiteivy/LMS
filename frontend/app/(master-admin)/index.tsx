@@ -9,6 +9,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
 import { SettingsService } from '@/services/SettingsService';
 import { DashboardStatCardSkeleton } from '@/components/ui/skeletons';
+import { CacheService } from '@/services/CacheService';
 
 /*
   Calls the master_admin backend to fetch platform-wide stats
@@ -69,6 +70,15 @@ export default function MasterDashboard() {
                 return;
             }
 
+            // Hydrate from cache first if not yet loaded
+            if (!stats) {
+                const cached = await CacheService.get<any>('master_admin_platform_stats', { allowStale: true });
+                if (cached.data) {
+                    setStats(cached.data);
+                    setLoading(false);
+                }
+            }
+
             let backendUrl = (process.env.EXPO_PUBLIC_API_URL || process.env.EXPO_PUBLIC_URL || "http://localhost:4001").replace(/\/api\/?$/, '');
             if (Platform.OS === 'android') {
                 backendUrl = backendUrl.replace('localhost', '10.0.2.2');
@@ -83,6 +93,7 @@ export default function MasterDashboard() {
             const data = await res.json();
             if (res.ok) {
                 setStats(data);
+                CacheService.set('master_admin_platform_stats', data, 5 * 60 * 1000);
             } else {
                 console.error("Failed to fetch platform stats:", data);
                 setFetchError(data?.error || 'Failed to load platform stats.');
@@ -94,7 +105,7 @@ export default function MasterDashboard() {
             setLoading(false);
             setRefreshing(false);
         }
-    }, []);
+    }, [stats]);
 
     const previewLifecycleSweep = useCallback(async () => {
         try {

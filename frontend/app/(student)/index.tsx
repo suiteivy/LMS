@@ -1,11 +1,12 @@
 import { UnifiedHeader } from "@/components/common/UnifiedHeader";
-import { ListItemSkeleton } from "@/components/ui/skeletons";
+import { ListItemSkeleton, StudentDashboardSkeleton } from "@/components/ui/skeletons";
 import { SubscriptionBanner, SubscriptionGate } from "@/components/shared/SubscriptionComponents";
 import { HelpTooltip } from "@/components/settings/HelpTooltip";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSubscriptionTier } from "@/hooks/useSubscriptionTier";
 import { useNotifications } from "@/contexts/NotificationContext";
 import { useTheme } from "@/contexts/ThemeContext";
+import { CacheService } from "@/services/CacheService";
 import { supabase } from "@/libs/supabase";
 import { useRouter } from "expo-router";
 import {
@@ -261,6 +262,8 @@ export default function Index() {
   const [loadingData, setLoadingData] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
+  const cacheKey = studentId ? `student_dashboard_${studentId}` : null;
+
   useEffect(() => {
     if (authLoading) return;
     if (studentId || isDemo) fetchDashboardData();
@@ -268,6 +271,16 @@ export default function Index() {
   }, [studentId, isDemo, authLoading]);
 
   const fetchDashboardData = async () => {
+    if (cacheKey && todaysSchedule.length === 0) {
+      const cached = await CacheService.get<any>(cacheKey, { allowStale: true });
+      if (cached.data) {
+        setGpa(cached.data.gpa || "0.00");
+        setAttendancePct(cached.data.attendancePct || "0%");
+        setTodaysSchedule(cached.data.todaysSchedule || []);
+        setLoadingData(false);
+      }
+    }
+
     try {
       setLoadingData(true);
 
@@ -302,6 +315,7 @@ export default function Index() {
 
       if (!studentId) return;
 
+      let calculatedGpa = "0.00";
       const { data: gradesData } = await supabase
         .from('grades')
         .select('total_grade')
@@ -313,7 +327,8 @@ export default function Index() {
           .map(g => g.total_grade);
         if (scores.length > 0) {
           const avg = scores.reduce((a: number, b: number) => a + b, 0) / scores.length;
-          setGpa((avg / 25).toFixed(2));
+          calculatedGpa = (avg / 25).toFixed(2);
+          setGpa(calculatedGpa);
         } else {
           setGpa("0.00");
         }
@@ -321,6 +336,7 @@ export default function Index() {
         setGpa("0.00");
       }
 
+      let calculatedAttendance = "–%";
       const { data: attendanceData } = await supabase
         .from('attendance')
         .select('status')
@@ -329,7 +345,8 @@ export default function Index() {
       if (attendanceData && attendanceData.length > 0) {
         const total = attendanceData.length;
         const present = (attendanceData as any[]).filter((r: any) => r.status === 'present' || r.status === 'late').length;
-        setAttendancePct(`${Math.round((present / total) * 100)}%`);
+        calculatedAttendance = `${Math.round((present / total) * 100)}%`;
+        setAttendancePct(calculatedAttendance);
       } else {
         setAttendancePct("–%");
       }
@@ -337,6 +354,7 @@ export default function Index() {
       const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'] as const;
       const today = days[new Date().getDay()];
 
+      let fetchedSchedule: any[] = [];
       const { data: myClasses } = await supabase
         .from('class_enrollments')
         .select('class_id')
@@ -351,9 +369,18 @@ export default function Index() {
           .eq('day_of_week', today)
           .order('start_time', { ascending: true });
 
-        setTodaysSchedule(schedule || []);
+        fetchedSchedule = schedule || [];
+        setTodaysSchedule(fetchedSchedule);
       } else {
         setTodaysSchedule([]);
+      }
+
+      if (cacheKey) {
+        CacheService.set(cacheKey, {
+          gpa: calculatedGpa,
+          attendancePct: calculatedAttendance,
+          todaysSchedule: fetchedSchedule,
+        }, 10 * 60 * 1000);
       }
     } catch (error) {
       console.error("Error fetching dashboard data:", error);
@@ -369,10 +396,16 @@ export default function Index() {
     else setRefreshing(false);
   }, [studentId]);
 
-  if (authLoading) {
+  if (authLoading || (loadingData && todaysSchedule.length === 0 && gpa === "0.00")) {
     return (
-      <View style={{ flex: 1, backgroundColor: isDark ? '#161B22' : '#f8fafc', paddingHorizontal: 16, paddingTop: 20 }}>
-        <ListItemSkeleton loading={authLoading} count={4} label="Loading dashboard..." />
+      <View style={{ flex: 1, backgroundColor: isDark ? '#161B22' : '#f8fafc' }}>
+        <UnifiedHeader
+          title="Dashboard"
+          subtitle={profile?.full_name || "Student Portal"}
+          role="Student"
+          showNotification={true}
+        />
+        <StudentDashboardSkeleton loading={true} label="Loading student dashboard..." />
       </View>
     );
   }

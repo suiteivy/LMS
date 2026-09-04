@@ -2,6 +2,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useCurrency } from '@/contexts/CurrencyContext';
 import { supabase } from '@/libs/supabase';
 import { RevenueService } from '@/services/RevenueService';
+import { CacheService } from '@/services/CacheService';
 import { StatsData } from '@/types/types';
 import { useEffect, useState } from 'react';
 
@@ -14,6 +15,7 @@ export const useDashboardStats = () => {
 
     const { isInitializing, session, isDemo, profile } = useAuth(); // Import useAuth to check session status
     const requiresCredentialSetup = !!profile?.must_change_password || !!profile?.requires_security_questions_setup;
+    const cacheKey = profile?.institution_id ? `admin_dashboard_stats_${profile.institution_id}` : null;
 
     const fetchStats = async () => {
         if (requiresCredentialSetup || !profile?.institution_id) {
@@ -22,6 +24,17 @@ export const useDashboardStats = () => {
             setLoading(false);
             return;
         }
+
+        // Try to hydrate from cache first to avoid blank UI
+        if (cacheKey && stats.length === 0) {
+            const cached = await CacheService.get<{ stats: StatsData[]; revenueData: { day: string; amount: number }[] }>(cacheKey, { allowStale: true });
+            if (cached.data) {
+                setStats(cached.data.stats || []);
+                setRevenueData(cached.data.revenueData || []);
+                setLoading(false);
+            }
+        }
+
         setLoading(true);
         try {
             let studentCount = 0;
@@ -118,6 +131,9 @@ export const useDashboardStats = () => {
                     },
                 ];
                 setStats(statsData);
+                if (cacheKey) {
+                    CacheService.set(cacheKey, { stats: statsData, revenueData }, 5 * 60 * 1000);
+                }
             } catch (revenueError) {
                 if ((revenueError as any)?.response?.status !== 401 && (revenueError as any)?.response?.status !== 428) {
                     console.error('Error fetching revenue overview:', revenueError);
@@ -153,6 +169,9 @@ export const useDashboardStats = () => {
                     },
                 ];
                 setStats(statsData);
+                if (cacheKey) {
+                    CacheService.set(cacheKey, { stats: statsData, revenueData: [] }, 5 * 60 * 1000);
+                }
             }
         } catch (e) {
             console.error('Exception in useDashboardStats:', e);

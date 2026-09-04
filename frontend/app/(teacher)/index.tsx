@@ -1,8 +1,9 @@
 import { UnifiedHeader } from "@/components/common/UnifiedHeader";
-import { ListItemSkeleton } from "@/components/ui/skeletons";
+import { ListItemSkeleton, TeacherDashboardSkeleton } from "@/components/ui/skeletons";
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from "@/contexts/ThemeContext";
 import { TeacherAPI } from "@/services/TeacherService";
+import { CacheService } from "@/services/CacheService";
 import { router } from "expo-router";
 import { ArrowRight, BookOpen, Calendar, Clock, GraduationCap, MessageSquare, School, Users, LogOut, ShieldAlert } from 'lucide-react-native';
 import React, { useEffect, useState } from "react";
@@ -72,8 +73,23 @@ export default function TeacherHome() {
     const [selectedSubjectTitle, setSelectedSubjectTitle] = useState<string>('');
     const [selectedClassId, setSelectedClassId] = useState<string>('');
 
+    const cacheKey = profile?.id ? `teacher_dashboard_${profile.id}` : null;
+
     const fetchDashboardData = async () => {
         if (!isDemo && (isInitializing || !session)) return;
+
+        // Try to hydrate from cache first to avoid blank screen
+        if (cacheKey && !stats) {
+            const cached = await CacheService.get<any>(cacheKey, { allowStale: true });
+            if (cached.data) {
+                setStats(cached.data.stats || null);
+                setSchedule(cached.data.schedule || []);
+                setRoles(cached.data.roles || []);
+                setClassTeacherOf(cached.data.classTeacherOf || []);
+                setAssignedSubjects(cached.data.assignedSubjects || []);
+                setLoading(false);
+            }
+        }
 
         try {
             setLoading(true);
@@ -172,6 +188,16 @@ export default function TeacherHome() {
                     setSelectedClassId(initialSubject.class.id);
                 }
             }
+
+            if (cacheKey) {
+                CacheService.set(cacheKey, {
+                    stats: data.stats,
+                    schedule: data.schedule,
+                    roles: fetchedRoles,
+                    classTeacherOf: data.classTeacherOf || [],
+                    assignedSubjects: fetchedSubjects,
+                }, 10 * 60 * 1000);
+            }
         } catch (error) {
             console.error("Error fetching dashboard data:", error);
         } finally {
@@ -219,6 +245,15 @@ export default function TeacherHome() {
                 showNotification={true}
             />
 
+            {loading && !stats ? (
+                <ScrollView
+                    className="flex-1"
+                    showsVerticalScrollIndicator={false}
+                    contentContainerStyle={{ paddingBottom: 100 }}
+                >
+                    <TeacherDashboardSkeleton loading={true} label="Loading teacher dashboard..." />
+                </ScrollView>
+            ) : (
             <ScrollView
                 className="flex-1"
                 showsVerticalScrollIndicator={false}
@@ -567,6 +602,7 @@ export default function TeacherHome() {
                     </View>
                 </View>
             </ScrollView>
+            )}
         </View>
     );
 }
