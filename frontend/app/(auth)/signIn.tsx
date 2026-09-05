@@ -28,22 +28,23 @@ import { LivingBackground } from "@/components/landing/LivingBackground";
 const IconIonicons = Ionicons as any;
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
-// ─── Design tokens (shared across all four elements) ──────────────────────────
+// ─── Design tokens ──────────────────────────────────────────────────────────
 const FLAME      = "#FF6B00";
 const FLAME_DIM  = "rgba(255,107,0,0.8)";
 const FLAME_GLOW = "rgba(255,107,0,0.35)";
 const FLAME_BG   = "rgba(255,107,0,0.12)";
-const GLASS_BG   = "rgba(8,5,28,0.72)";       // liquid glass card surface
+const GLASS_BG   = "rgba(8,5,28,0.72)";
 const GLASS_BORDER = "rgba(255,255,255,0.09)";
-const GLASS_TOP  = "rgba(255,255,255,0.13)";   // top highlight sheen
-const INPUT_BG   = "rgba(255,255,255,0.04)";   // inset glass look
-const INPUT_HOVER_BG = "rgba(255,255,255,0.07)";
+const GLASS_TOP  = "rgba(255,255,255,0.13)";
+const INPUT_BG   = "rgba(255,255,255,0.04)";
 const WHITE_DIM  = "rgba(255,255,255,0.35)";
 const WHITE_FADE = "rgba(255,255,255,0.18)";
 
-// ─── GlassInput — redesigned input with hover + focus states ─────────────────
+// ─── GlassInput — label-above layout, pill shape, clean interior ──────────
+// Reference adaptation: static label above field (muted tone), pill radius (24),
+// no leading icon (label provides identification), placeholder dimmer than text.
+// All focus/hover border animations preserved.
 const GlassInput = ({
-  icon,
   placeholder,
   value,
   onChangeText,
@@ -57,36 +58,22 @@ const GlassInput = ({
   const [focused, setFocused] = useState(false);
   const [hovered, setHovered] = useState(false);
 
-  // Animated values
-  const focusAnim  = useRef(new Animated.Value(0)).current; // 0→1 on focus
-  const hoverAnim  = useRef(new Animated.Value(0)).current; // 0→1 on hover
-  const iconScale  = useRef(new Animated.Value(1)).current;
-  const labelUp    = useRef(new Animated.Value(value ? 1 : 0)).current; // floating label
-
-  // Keep label floated when value is pre-filled
-  useEffect(() => {
-    Animated.timing(labelUp, {
-      toValue: value || focused ? 1 : 0,
-      duration: 180,
-      easing: EasingRN.out(EasingRN.cubic),
-      useNativeDriver: false,
-    }).start();
-  }, [value, focused]);
+  const focusAnim = useRef(new Animated.Value(0)).current;
+  const hoverAnim = useRef(new Animated.Value(0)).current;
 
   const onFocus = () => {
     setFocused(true);
-    Animated.parallel([
-      Animated.timing(focusAnim, { toValue: 1, duration: 260, easing: EasingRN.out(EasingRN.quad), useNativeDriver: false }),
-      Animated.spring(iconScale, { toValue: 1.18, useNativeDriver: true, friction: 4, tension: 120 }),
-    ]).start();
+    Animated.timing(focusAnim, {
+      toValue: 1,
+      duration: 260,
+      easing: EasingRN.out(EasingRN.quad),
+      useNativeDriver: false,
+    }).start();
   };
 
   const onBlur = () => {
     setFocused(false);
-    Animated.parallel([
-      Animated.timing(focusAnim, { toValue: 0, duration: 240, useNativeDriver: false }),
-      Animated.spring(iconScale, { toValue: 1, useNativeDriver: true, friction: 5, tension: 100 }),
-    ]).start();
+    Animated.timing(focusAnim, { toValue: 0, duration: 240, useNativeDriver: false }).start();
   };
 
   const onHoverIn = () => {
@@ -100,7 +87,7 @@ const GlassInput = ({
     Animated.timing(hoverAnim, { toValue: 0, duration: 220, useNativeDriver: false }).start();
   };
 
-  // Interpolated colours — border warms on hover, intensifies on focus
+  // Border warms on hover, intensifies to flame on focus
   const borderColor = focusAnim.interpolate({
     inputRange: [0, 1],
     outputRange: [
@@ -111,132 +98,126 @@ const GlassInput = ({
 
   const outerGlowOpacity = focusAnim.interpolate({ inputRange: [0, 1], outputRange: [0, 1] });
 
-  // Floating label interpolations
-  const labelY    = labelUp.interpolate({ inputRange: [0, 1], outputRange: [0, -22] });
-  const labelSize = labelUp.interpolate({ inputRange: [0, 1], outputRange: [15, 11] });
-  const labelColor = focusAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: [
-      error ? "rgba(239,68,68,0.7)" : "rgba(255,255,255,0.35)",
-      error ? "rgba(239,68,68,0.9)" : "rgba(255,107,0,0.9)",
-    ],
-  });
-
-  const iconColor = focused
-    ? (error ? "rgba(239,68,68,0.9)" : FLAME)
-    : error
-      ? "rgba(239,68,68,0.7)"
-      : WHITE_DIM;
+  // Hover brightens the input surface
+  const hoverBgOpacity = hoverAnim.interpolate({ inputRange: [0, 1], outputRange: [0, 1] });
 
   return (
-    <View style={{ marginBottom: 28 }}>
-      {/* Outer glow ring (focus only) */}
-      <Animated.View
-        pointerEvents="none"
+    <View style={{ marginBottom: 24 }}>
+      {/* Static label above the input — changes color on focus/error */}
+      <Text
         style={{
-          position: "absolute",
-          top: -4, left: -4, right: -4, bottom: -4,
-          borderRadius: 20,
-          borderWidth: 1.5,
-          borderColor: error ? "rgba(239,68,68,0.3)" : FLAME_GLOW,
-          opacity: outerGlowOpacity,
-        } as any}
-      />
-
-
-      {/* Animated border */}
-      <Animated.View
-        pointerEvents="none"
-        style={{
-          position: "absolute",
-          top: 0, left: 0, right: 0, bottom: 0,
-          borderRadius: 16,
-          borderWidth: 1,
-          borderColor,
-        } as any}
-      />
-
-      {/* Main input surface */}
-      <Pressable
-        onHoverIn={onHoverIn}
-        onHoverOut={onHoverOut}
-        style={{
-          height: 60,
-          backgroundColor: "transparent",
-          borderRadius: 16,
-          paddingHorizontal: 16,
-          flexDirection: "row",
-          alignItems: "center",
-          position: "relative",
-          overflow: "hidden",
-          ...(Platform.OS === "web" ? { outline: "none" } : {}),
-        } as any}
+          color: error
+            ? "rgba(239,68,68,0.75)"
+            : focused
+              ? "rgba(255,107,0,0.85)"
+              : "rgba(255,255,255,0.45)",
+          fontSize: 13,
+          fontWeight: "600",
+          letterSpacing: 0.4,
+          marginBottom: 8,
+          marginLeft: 4,
+        }}
       >
-        {/* Top-edge micro-highlight (emboss) */}
-        <View
+        {label}
+      </Text>
+
+      {/* Input container wrapper — keeps border and glow perfectly aligned with the surface */}
+      <View style={{ position: "relative", height: 58, justifyContent: "center" }}>
+        {/* Outer glow ring — appears on focus */}
+        <Animated.View
           pointerEvents="none"
           style={{
             position: "absolute",
-            top: 0, left: 12, right: 12,
-            height: 1,
-            backgroundColor: WHITE_FADE,
-            borderRadius: 1,
-          }}
+            top: -4, left: -4, right: -4, bottom: -4,
+            borderRadius: 28,
+            borderWidth: 1.5,
+            borderColor: error ? "rgba(239,68,68,0.3)" : FLAME_GLOW,
+            opacity: outerGlowOpacity,
+          } as any}
         />
 
-        {/* Floating label */}
-        <Animated.Text
+        {/* Animated border layer */}
+        <Animated.View
           pointerEvents="none"
           style={{
             position: "absolute",
-            left: 52,
-            top: 19,
-            fontSize: labelSize,
-            color: labelColor,
-            fontWeight: "600",
-            letterSpacing: 0.3,
-            transform: [{ translateY: labelY }],
-            zIndex: 2,
+            top: 0, left: 0, right: 0, bottom: 0,
+            borderRadius: 24,
+            borderWidth: 1,
+            borderColor,
+          } as any}
+        />
+
+        {/* Main input surface — pill shape */}
+        <Pressable
+          onHoverIn={onHoverIn}
+          onHoverOut={onHoverOut}
+          style={{
+            height: "100%",
+            width: "100%",
+            backgroundColor: INPUT_BG,
+            borderRadius: 24,
+            paddingHorizontal: 20,
+            flexDirection: "row",
+            alignItems: "center",
+            position: "relative",
+            overflow: "hidden",
+            ...(Platform.OS === "web" ? { outline: "none" } : {}),
           } as any}
         >
-          {label}
-        </Animated.Text>
+          {/* Hover background brightener overlay */}
+          <Animated.View
+            pointerEvents="none"
+            style={{
+              position: "absolute",
+              top: 0, left: 0, right: 0, bottom: 0,
+              borderRadius: 24,
+              backgroundColor: "rgba(255,255,255,0.04)",
+              opacity: hoverBgOpacity,
+            } as any}
+          />
 
-        {/* Icon */}
-        <Animated.View style={{ transform: [{ scale: iconScale }], zIndex: 3 }}>
-          <IconIonicons name={icon} size={20} color={iconColor} />
-        </Animated.View>
+          {/* Top-edge micro-highlight (glass emboss) */}
+          <View
+            pointerEvents="none"
+            style={{
+              position: "absolute",
+              top: 0, left: 16, right: 16,
+              height: 1,
+              backgroundColor: WHITE_FADE,
+              borderRadius: 1,
+            }}
+          />
 
-        {/* Text input */}
-        <TextInput
-          style={{
-            flex: 1,
-            marginLeft: 12,
-            color: "#ffffff",
-            fontWeight: "500",
-            fontSize: 15,
-            paddingTop: value || focused ? 10 : 0,
-            backgroundColor: "transparent",
-            outline: "none",
-            zIndex: 3,
-          } as any}
-          placeholder={value || focused ? placeholder : ""}
-          placeholderTextColor="rgba(255,255,255,0.25)"
-          value={value}
-          onChangeText={onChangeText}
-          onFocus={onFocus}
-          onBlur={onBlur}
-          secureTextEntry={secureTextEntry}
-          keyboardType={keyboardType}
-          autoCapitalize={autoCapitalize}
-        />
-        {suffix && <View style={{ zIndex: 3 }}>{suffix}</View>}
-      </Pressable>
+          {/* Text input — no icon offset, full width */}
+          <TextInput
+            style={{
+              flex: 1,
+              height: "100%",
+              color: "#ffffff",
+              fontWeight: "500",
+              fontSize: 15,
+              backgroundColor: "transparent",
+              outline: "none",
+              zIndex: 3,
+            } as any}
+            placeholder={placeholder}
+            placeholderTextColor="rgba(255,255,255,0.22)"
+            value={value}
+            onChangeText={onChangeText}
+            onFocus={onFocus}
+            onBlur={onBlur}
+            secureTextEntry={secureTextEntry}
+            keyboardType={keyboardType}
+            autoCapitalize={autoCapitalize}
+          />
+          {suffix && <View style={{ zIndex: 3 }}>{suffix}</View>}
+        </Pressable>
+      </View>
 
-
-      {/* Error message */}
+      {/* Inline error message */}
       {error && (
-        <View style={{ flexDirection: "row", alignItems: "center", marginTop: 6, marginLeft: 2 }}>
+        <View style={{ flexDirection: "row", alignItems: "center", marginTop: 6, marginLeft: 4 }}>
           <IconIonicons name="alert-circle" size={13} color="rgba(252,165,165,0.9)" />
           <Text style={{ color: "rgba(252,165,165,0.9)", fontSize: 12, marginLeft: 4, fontWeight: "600" }}>
             {error}
@@ -247,7 +228,7 @@ const GlassInput = ({
   );
 };
 
-// ─── ForgotLink — animated underline draw on hover ───────────────────────────
+// ─── ForgotLink — animated underline draw on hover ────────────────────────
 const ForgotLink = ({ onPress }: { onPress: () => void }) => {
   const underlineAnim = useRef(new Animated.Value(0)).current;
 
@@ -267,7 +248,7 @@ const ForgotLink = ({ onPress }: { onPress: () => void }) => {
       useNativeDriver: true,
     }).start();
 
-  const scaleX = underlineAnim; // 0 → 1, origin left
+  const scaleX = underlineAnim;
 
   return (
     <Pressable
@@ -289,7 +270,10 @@ const ForgotLink = ({ onPress }: { onPress: () => void }) => {
             height: "100%",
             width: "100%",
             backgroundColor: FLAME,
-            transform: [{ scaleX }, { translateX: underlineAnim.interpolate({ inputRange: [0, 1], outputRange: ["-50%", "0%"] }) }],
+            transform: [
+              { scaleX },
+              { translateX: underlineAnim.interpolate({ inputRange: [0, 1], outputRange: ["-50%", "0%"] }) },
+            ],
             transformOrigin: "left",
             borderRadius: 1,
             ...(Platform.OS === "web" ? { boxShadow: `0 0 6px ${FLAME_GLOW}` } : {}),
@@ -300,7 +284,7 @@ const ForgotLink = ({ onPress }: { onPress: () => void }) => {
   );
 };
 
-// ─── PrimaryButton — gradient + animated loading state ───────────────────────
+// ─── PrimaryButton — liquid glass gradient + animated loading state ────────
 const PrimaryButton = ({
   onPress,
   loading,
@@ -320,7 +304,7 @@ const PrimaryButton = ({
     const pulse = Animated.loop(
       Animated.sequence([
         Animated.timing(pulseAnim, { toValue: 1.12, duration: 1600, easing: EasingRN.inOut(EasingRN.sin), useNativeDriver: true }),
-        Animated.timing(pulseAnim, { toValue: 1, duration: 1600, easing: EasingRN.inOut(EasingRN.sin), useNativeDriver: true }),
+        Animated.timing(pulseAnim, { toValue: 1,    duration: 1600, easing: EasingRN.inOut(EasingRN.sin), useNativeDriver: true }),
       ])
     );
     pulse.start();
@@ -360,21 +344,15 @@ const PrimaryButton = ({
     outputRange: [-300, 300],
   });
 
-  // Pop-out lift: smoothly floats up 4px on hover
-  const hoverLiftY = hoverAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0, -4],
-  });
-  const hoverScalePop = hoverAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: [1, 1.015],
-  });
+  // Pop-out lift on hover
+  const hoverLiftY = hoverAnim.interpolate({ inputRange: [0, 1], outputRange: [0, -4] });
+  const hoverScalePop = hoverAnim.interpolate({ inputRange: [0, 1], outputRange: [1, 1.015] });
 
   return (
     <Animated.View
       style={{
         transform: [{ scale }, { translateY: hoverLiftY }, { scale: hoverScalePop }],
-        borderRadius: 20,
+        borderRadius: 24,
         overflow: "hidden",
         alignSelf: "center",
         width: "88%",
@@ -386,7 +364,7 @@ const PrimaryButton = ({
         style={{
           position: "absolute",
           top: -6, left: -6, right: -6, bottom: -6,
-          borderRadius: 26,
+          borderRadius: 30,
           backgroundColor: "rgba(255,107,0,0.18)",
           transform: [{ scale: pulseAnim }],
         } as any}
@@ -399,7 +377,7 @@ const PrimaryButton = ({
         style={[
           {
             height: 60,
-            borderRadius: 20,
+            borderRadius: 24,
             justifyContent: "center",
             alignItems: "center",
             overflow: "hidden",
@@ -423,15 +401,15 @@ const PrimaryButton = ({
           } as any,
         ]}
       >
-        {/* Top sheen highlight (always visible — adds depth) */}
+        {/* Top sheen highlight */}
         <View
           pointerEvents="none"
           style={{
             position: "absolute",
             top: 0, left: 0, right: 0, height: "50%",
             backgroundColor: "rgba(255,255,255,0.12)",
-            borderTopLeftRadius: 20,
-            borderTopRightRadius: 20,
+            borderTopLeftRadius: 24,
+            borderTopRightRadius: 24,
           }}
         />
 
@@ -480,23 +458,21 @@ const PrimaryButton = ({
   );
 };
 
-// ─── LogoLockup — enhanced logo + name with entrance + idle animation ─────────
+// ─── LogoLockup — enhanced logo + name with entrance + idle animation ─────
 const LogoLockup = ({ entranceAnim }: { entranceAnim: Animated.Value }) => {
-  const pulseScale = useRef(new Animated.Value(1)).current;
+  const pulseScale  = useRef(new Animated.Value(1)).current;
   const glowOpacity = useRef(new Animated.Value(0.5)).current;
 
   useEffect(() => {
-    // Gentle idle scale pulse
     const pulse = Animated.loop(
       Animated.sequence([
-        Animated.timing(pulseScale, { toValue: 1.1, duration: 2400, easing: EasingRN.inOut(EasingRN.sin), useNativeDriver: true }),
-        Animated.timing(pulseScale, { toValue: 1, duration: 2400, easing: EasingRN.inOut(EasingRN.sin), useNativeDriver: true }),
+        Animated.timing(pulseScale,  { toValue: 1.1, duration: 2400, easing: EasingRN.inOut(EasingRN.sin), useNativeDriver: true }),
+        Animated.timing(pulseScale,  { toValue: 1,   duration: 2400, easing: EasingRN.inOut(EasingRN.sin), useNativeDriver: true }),
       ])
     );
-    // Glow breathe
     const glow = Animated.loop(
       Animated.sequence([
-        Animated.timing(glowOpacity, { toValue: 1, duration: 2000, easing: EasingRN.inOut(EasingRN.sin), useNativeDriver: true }),
+        Animated.timing(glowOpacity, { toValue: 1,   duration: 2000, easing: EasingRN.inOut(EasingRN.sin), useNativeDriver: true }),
         Animated.timing(glowOpacity, { toValue: 0.4, duration: 2000, easing: EasingRN.inOut(EasingRN.sin), useNativeDriver: true }),
       ])
     );
@@ -505,7 +481,7 @@ const LogoLockup = ({ entranceAnim }: { entranceAnim: Animated.Value }) => {
     return () => { pulse.stop(); glow.stop(); };
   }, []);
 
-  const entranceOpacity = entranceAnim;
+  const entranceOpacity    = entranceAnim;
   const entranceTranslateY = entranceAnim.interpolate({ inputRange: [0, 1], outputRange: [-12, 0] });
 
   return (
@@ -565,28 +541,29 @@ const LogoLockup = ({ entranceAnim }: { entranceAnim: Animated.Value }) => {
   );
 };
 
-// ─── Main Component ───────────────────────────────────────────────────────────
+// ─── Main Component ───────────────────────────────────────────────────────
 interface FormData {
   email: string;
   password: string;
 }
 
 export default function SignIn() {
-  const [showPassword, setShowPassword] = useState(false);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [formData, setFormData] = useState<FormData>({ email: "", password: "" });
-  const [errors, setErrors] = useState<Record<string, string>>({});
-  const [toastConfig, setToastConfig] = useState<{ msg: string; type: "success" | "error" | "info" } | null>(null);
-  const [logoutReason, setLogoutReason] = useState<LogoutReason | null>(null);
+  const [showPassword, setShowPassword]     = useState(false);
+  const [errorMessage, setErrorMessage]     = useState<string | null>(null);
+  const [formData, setFormData]             = useState<FormData>({ email: "", password: "" });
+  const [errors, setErrors]                 = useState<Record<string, string>>({});
+  const [toastConfig, setToastConfig]       = useState<{ msg: string; type: "success" | "error" | "info" } | null>(null);
+  const [logoutReason, setLogoutReason]     = useState<LogoutReason | null>(null);
   const { signIn, loading: isGlobalLoading, maintenanceModeMessage, refreshMaintenanceStatus } = useAuth();
 
-  // ── Entrance animations ──────────────────────────────────────────────────
-  const cardFade    = useRef(new Animated.Value(0)).current;
-  const cardSlide   = useRef(new Animated.Value(60)).current;
+  // ── Entrance animations ──────────────────────────────────────────────
+  const cardFade     = useRef(new Animated.Value(0)).current;
+  const cardSlide    = useRef(new Animated.Value(60)).current;
+  const cardScale    = useRef(new Animated.Value(0.97)).current;  // scale-in on entrance
   const logoEntrance = useRef(new Animated.Value(0)).current;
-  const btnScale    = useRef(new Animated.Value(1)).current;
-  const shakeX      = useRef(new Animated.Value(0)).current;
-  const toastY      = useRef(new Animated.Value(-80)).current;
+  const btnScale     = useRef(new Animated.Value(1)).current;
+  const shakeX       = useRef(new Animated.Value(0)).current;
+  const toastY       = useRef(new Animated.Value(-80)).current;
   const toastOpacity = useRef(new Animated.Value(0)).current;
 
   // Staggered field anims
@@ -596,14 +573,19 @@ export default function SignIn() {
 
   useEffect(() => {
     // Logo fades in first
-    Animated.timing(logoEntrance, { toValue: 1, duration: 500, easing: EasingRN.out(EasingRN.cubic), useNativeDriver: true }).start();
+    Animated.timing(logoEntrance, {
+      toValue: 1, duration: 500,
+      easing: EasingRN.out(EasingRN.cubic),
+      useNativeDriver: true,
+    }).start();
 
-    // Card rises up with a spring after a short delay
+    // Card: fade + slide-up spring + scale-in spring
     Animated.parallel([
-      Animated.timing(cardFade, { toValue: 1, duration: 700, easing: EasingRN.out(EasingRN.quad), useNativeDriver: true }),
+      Animated.timing(cardFade,  { toValue: 1, duration: 700, easing: EasingRN.out(EasingRN.quad), useNativeDriver: true }),
       Animated.spring(cardSlide, { toValue: 0, useNativeDriver: true, friction: 8, tension: 55 }),
+      Animated.spring(cardScale, { toValue: 1, useNativeDriver: true, friction: 8, tension: 55 }),
     ]).start(() => {
-      // Fields stagger in
+      // Fields stagger in after card settles
       Animated.stagger(100, [
         Animated.spring(field1, { toValue: 1, useNativeDriver: true, friction: 7, tension: 80 }),
         Animated.spring(field2, { toValue: 1, useNativeDriver: true, friction: 7, tension: 80 }),
@@ -623,32 +605,32 @@ export default function SignIn() {
   const showToast = (msg: string, type: "success" | "error" | "info" = "success") => {
     setToastConfig({ msg, type });
     Animated.parallel([
-      Animated.spring(toastY, { toValue: 0, useNativeDriver: true, friction: 7 }),
+      Animated.spring(toastY,      { toValue: 0, useNativeDriver: true, friction: 7 }),
       Animated.timing(toastOpacity, { toValue: 1, duration: 300, useNativeDriver: true }),
     ]).start();
     setTimeout(() => {
       Animated.parallel([
-        Animated.timing(toastY, { toValue: -80, duration: 400, useNativeDriver: true }),
-        Animated.timing(toastOpacity, { toValue: 0, duration: 300, useNativeDriver: true }),
+        Animated.timing(toastY,      { toValue: -80, duration: 400, useNativeDriver: true }),
+        Animated.timing(toastOpacity, { toValue: 0,   duration: 300, useNativeDriver: true }),
       ]).start(() => setToastConfig(null));
     }, 3000);
   };
 
   const shakeCard = () => {
     Animated.sequence([
-      Animated.timing(shakeX, { toValue: 10, duration: 55, useNativeDriver: true }),
+      Animated.timing(shakeX, { toValue:  10, duration: 55, useNativeDriver: true }),
       Animated.timing(shakeX, { toValue: -10, duration: 55, useNativeDriver: true }),
-      Animated.timing(shakeX, { toValue: 8, duration: 55, useNativeDriver: true }),
-      Animated.timing(shakeX, { toValue: -8, duration: 55, useNativeDriver: true }),
-      Animated.timing(shakeX, { toValue: 4, duration: 55, useNativeDriver: true }),
-      Animated.timing(shakeX, { toValue: 0, duration: 55, useNativeDriver: true }),
+      Animated.timing(shakeX, { toValue:   8, duration: 55, useNativeDriver: true }),
+      Animated.timing(shakeX, { toValue:  -8, duration: 55, useNativeDriver: true }),
+      Animated.timing(shakeX, { toValue:   4, duration: 55, useNativeDriver: true }),
+      Animated.timing(shakeX, { toValue:   0, duration: 55, useNativeDriver: true }),
     ]).start();
   };
 
   const pressBtn = () => {
     Animated.sequence([
       Animated.timing(btnScale, { toValue: 0.94, duration: 80, useNativeDriver: true }),
-      Animated.spring(btnScale, { toValue: 1, useNativeDriver: true, friction: 4, tension: 140 }),
+      Animated.spring(btnScale,  { toValue: 1, useNativeDriver: true, friction: 4, tension: 140 }),
     ]).start();
   };
 
@@ -774,7 +756,7 @@ export default function SignIn() {
       <LivingBackground />
 
       <View style={{ flex: 1, backgroundColor: "transparent" }}>
-        {/* Toast */}
+        {/* ── TOAST ─────────────────────────────────────────────────── */}
         <Animated.View
           pointerEvents="none"
           style={{
@@ -843,28 +825,29 @@ export default function SignIn() {
               <Animated.View
                 style={{
                   opacity: cardFade,
-                  transform: [{ translateY: cardSlide }, { translateX: shakeX }],
-                  borderRadius: 32,
+                  transform: [{ translateY: cardSlide }, { translateX: shakeX }, { scale: cardScale }],
+                  borderRadius: 28,
                   overflow: "hidden",
                   ...(Platform.OS === "web" ? {
-                    // Full liquid glass treatment on web
-                    backdropFilter: "blur(32px) saturate(180%)",
-                    WebkitBackdropFilter: "blur(32px) saturate(180%)",
+                    backdropFilter: "blur(40px) saturate(190%)",
+                    WebkitBackdropFilter: "blur(40px) saturate(190%)",
                     background: `
                       linear-gradient(
-                        160deg,
-                        rgba(255,255,255,0.065) 0%,
-                        rgba(8,5,28,0.72) 35%,
-                        rgba(8,5,28,0.78) 100%
+                        165deg,
+                        rgba(24, 15, 52, 0.82) 0%,
+                        rgba(11, 7, 30, 0.88) 40%,
+                        rgba(6, 4, 20, 0.94) 100%
                       )
                     `,
                     boxShadow: [
-                      "0 0 0 1px rgba(255,255,255,0.09)",           // outer border
-                      "inset 0 1px 0 rgba(255,255,255,0.14)",       // top sheen
-                      "inset 0 -1px 0 rgba(0,0,0,0.2)",            // bottom depth
-                      "inset 1px 0 0 rgba(255,255,255,0.07)",       // left edge
-                      "0 32px 80px rgba(0,0,0,0.6)",               // drop shadow
-                      "0 0 60px rgba(255,107,0,0.06)",              // ambient flame glow
+                      "0 0 0 1px rgba(255,255,255,0.1)",
+                      "0 2px 4px rgba(0,0,0,0.35)",
+                      "0 12px 24px -4px rgba(0,0,0,0.5)",
+                      "0 24px 48px -8px rgba(0,0,0,0.65)",
+                      "0 44px 88px -12px rgba(0,0,0,0.8)",
+                      "0 0 90px -10px rgba(255,107,0,0.14)",
+                      "inset 0 1px 1px 0 rgba(255,255,255,0.18)",
+                      "inset 0 -1px 1px 0 rgba(0,0,0,0.45)",
                     ].join(", "),
                   } : {
                     backgroundColor: GLASS_BG,
@@ -872,12 +855,12 @@ export default function SignIn() {
                     borderColor: GLASS_BORDER,
                     boxShadow: [{
                       offsetX: 0, offsetY: 28, blurRadius: 60,
-                      color: "rgba(0,0,0,0.6)",
+                      color: "rgba(0,0,0,0.7)",
                     }],
                   }),
                 } as any}
               >
-                {/* Top refraction sheen overlay — gives the glass "depth" */}
+                {/* Top refraction sheen — glass depth */}
                 <View
                   pointerEvents="none"
                   style={{
@@ -894,7 +877,7 @@ export default function SignIn() {
                   } as any}
                 />
 
-                {/* Orange accent line at the very top edge */}
+                {/* Orange accent line at top card edge */}
                 <View
                   pointerEvents="none"
                   style={{
@@ -907,50 +890,67 @@ export default function SignIn() {
                 />
 
                 {/* Card content */}
-                <View style={{ padding: 32 }}>
+                <View style={{ padding: 36 }}>
 
-                  {/* ── HEADER ROW ──────────────────────────────────── */}
+                  {/* ── TOP ROW: Back button left / Logo right ──────── */}
                   <View style={{
                     flexDirection: "row",
                     alignItems: "center",
-                    justifyContent: "center",
-                    position: "relative",
-                    height: 48,
+                    justifyContent: "space-between",
                     marginBottom: 32,
                   }}>
-                    {/* Back button */}
+                    {/* Back to landing — left */}
                     <TouchableOpacity
                       onPress={() => router.replace("/")}
                       activeOpacity={0.7}
                       style={{
-                        position: "absolute", left: 0,
-                        width: 42, height: 42,
+                        width: 38, height: 38,
                         alignItems: "center", justifyContent: "center",
-                        borderRadius: 14,
+                        borderRadius: 13,
                         backgroundColor: "rgba(255,255,255,0.06)",
                         borderWidth: 1,
                         borderColor: GLASS_BORDER,
                       }}
                     >
-                      <IconIonicons name="arrow-back" size={20} color="rgba(255,255,255,0.6)" />
+                      <IconIonicons name="arrow-back" size={18} color="rgba(255,255,255,0.5)" />
                     </TouchableOpacity>
 
-                    {/* Logo lockup */}
+                    {/* Logo lockup — right */}
                     <LogoLockup entranceAnim={logoEntrance} />
                   </View>
 
-                  {/* ── HERO TEXT ────────────────────────────────────── */}
-                  <View style={{ alignItems: "center", marginBottom: 36 }}>
-                    <View style={{ flexDirection: "row", alignItems: "baseline", marginBottom: 6 }}>
-                      <Text style={{ fontSize: 34, color: "#ffffff", fontWeight: "800", letterSpacing: -0.5 }}>
-                        Welcome{" "}
-                      </Text>
-                      <Text style={{ fontSize: 34, color: FLAME, fontWeight: "800", letterSpacing: -0.5 }}>
-                        back
-                      </Text>
-                      <Text style={{ fontSize: 34, color: "rgba(255,255,255,0.22)", fontWeight: "300" }}>.</Text>
-                    </View>
-                    <Text style={{ fontSize: 14, color: "rgba(255,255,255,0.38)", textAlign: "center", lineHeight: 22, paddingHorizontal: 16 }}>
+                  {/* ── HEADING BLOCK — left-aligned, accent underline ── */}
+                  {/* Reference pattern: large heading + accent-coloured bar beneath active tab.
+                      Since this app has no register route, we render a single heading with
+                      a static orange underline bar (same visual rhythm, no fake second tab). */}
+                  <View style={{ marginBottom: 36 }}>
+                    <Text style={{
+                      fontSize: 32,
+                      color: "#ffffff",
+                      fontWeight: "800",
+                      letterSpacing: -0.5,
+                      marginBottom: 6,
+                    }}>
+                      Sign In
+                    </Text>
+
+                    {/* Accent underline bar — reference's active-tab indicator */}
+                    <View style={{
+                      width: 44,
+                      height: 2.5,
+                      backgroundColor: FLAME,
+                      borderRadius: 2,
+                      marginBottom: 12,
+                      ...(Platform.OS === "web" ? {
+                        boxShadow: `0 0 10px ${FLAME_GLOW}, 0 0 4px rgba(255,107,0,0.5)`,
+                      } : {}),
+                    } as any} />
+
+                    <Text style={{
+                      fontSize: 13,
+                      color: "rgba(255,255,255,0.38)",
+                      lineHeight: 20,
+                    }}>
                       Sign in to securely access your dashboard
                     </Text>
                   </View>
@@ -1037,7 +1037,6 @@ export default function SignIn() {
                   <Animated.View style={fieldStyle(field1)}>
                     <GlassInput
                       label="Email"
-                      icon="mail-outline"
                       placeholder="name@example.com"
                       value={formData.email}
                       onChangeText={(v: string) => handleInputChange("email", v)}
@@ -1051,7 +1050,6 @@ export default function SignIn() {
                   <Animated.View style={fieldStyle(field2)}>
                     <GlassInput
                       label="Password"
-                      icon="lock-closed-outline"
                       placeholder="••••••••"
                       value={formData.password}
                       onChangeText={(v: string) => handleInputChange("password", v)}
