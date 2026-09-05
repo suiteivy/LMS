@@ -2,7 +2,6 @@ import { UnifiedHeader } from "@/components/common/UnifiedHeader";
 import { DatePicker } from "@/components/common/DatePicker";
 import { useTheme } from "@/contexts/ThemeContext";
 import { BursaryService } from '@/services/BursaryService';
-import DateTimePicker from '@react-native-community/datetimepicker';
 import { format } from 'date-fns';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -45,7 +44,6 @@ export default function CreateBursaryScreen() {
     const [amount, setAmount] = useState('');
     const [requirements, setRequirements] = useState('');
     const [deadline, setDeadline] = useState(new Date());
-    const [showDatePicker, setShowDatePicker] = useState(false);
 
     if (!tier.hasBursary) {
         return null;
@@ -73,11 +71,6 @@ export default function CreateBursaryScreen() {
         } finally {
             setLoading(false);
         }
-    };
-
-    const onDateChange = (event: any, selectedDate?: Date) => {
-        setShowDatePicker(Platform.OS === 'ios');
-        if (selectedDate) setDeadline(selectedDate);
     };
 
     const inputStyle = createInputStyle(inputBg, border, textPrimary);

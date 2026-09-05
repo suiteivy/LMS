@@ -11,7 +11,6 @@ import React, { useEffect, useState } from "react";
 import { ActivityIndicator, Alert, ScrollView, Text, TouchableOpacity, View, Platform } from 'react-native';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
-import DateTimePicker from '@react-native-community/datetimepicker';
 import * as WebBrowser from 'expo-web-browser';
 import { setParentSelectedChild } from '@/utils/parentSelectedChild';
 import { useParentStudentContext } from '@/hooks/useParentStudentContext';

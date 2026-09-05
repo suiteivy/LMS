@@ -39,6 +39,13 @@ export default function AdminStudentAttendance() {
         loadInstitutionStats();
     });
 
+    const toLocalDateString = (d: Date) => {
+        const year = d.getFullYear();
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    };
+
     const loadInstitutionStats = async () => {
         if (!profile?.institution_id) {
             setStats({ total: 0, present: 0, absent: 0, late: 0, percentage: 0 });
@@ -48,7 +55,7 @@ export default function AdminStudentAttendance() {
         }
         setLoading(true);
         try {
-            const dateStr = date.toISOString().split('T')[0];
+            const dateStr = toLocalDateString(date);
             const data = await AttendanceService.getInstitutionAttendanceStats(dateStr, profile.institution_id);
             
             // Calculate Stats
@@ -103,8 +110,8 @@ export default function AdminStudentAttendance() {
                     <View style={{ flex: 1, marginRight: 12 }}>
                         <DatePicker
                             label="Attendance Date"
-                            value={date.toISOString().split('T')[0]}
-                            onChange={(d) => setDate(new Date(d))}
+                            value={toLocalDateString(date)}
+                            onChange={(d) => setDate(new Date(d + 'T00:00:00'))}
                             isDark={isDark}
                         />
                     </View>

@@ -7,7 +7,6 @@ import { useTheme } from "@/contexts/ThemeContext";
 import { useSubscriptionTier } from "@/hooks/useSubscriptionTier";
 import Toast from 'react-native-toast-message';
 import { supabase } from "@/libs/supabase";
-import DateTimePicker from '@react-native-community/datetimepicker';
 import { decode } from "base64-arraybuffer";
 import * as DocumentPicker from 'expo-document-picker';
 import { File } from 'expo-file-system';
@@ -146,7 +145,6 @@ export default function AssignmentsPage() {
     const [points, setPoints] = useState("");
     const [selectedSubjectId, setSelectedSubjectId] = useState("");
     const [dateObject, setDateObject] = useState(new Date())
-    const [showDatePicker, setShowDatePicker] = useState(false)
     const [selectedFile, setSelectedFile] = useState<DocumentPickerAsset | null>(null);
     const [uploading, setUploading] = useState(false);
     const [weight, setWeight] = useState("");
@@ -154,14 +152,6 @@ export default function AssignmentsPage() {
     const openManual = (anchor?: string) => {
         router.push({ pathname: '/(teacher)/accessibility/settings', params: { manual: '1', anchor: anchor || 'grading-ops' } } as any);
     };
-
-    const onDateChange = (_event: any, selectedDate?: Date) => {
-        setShowDatePicker(false)
-        if (selectedDate) {
-            setDateObject(selectedDate)
-            setDueDate(selectedDate.toISOString().split('T')[0])
-        }
-    }
 
     const filteredAssignments = useMemo(() => {
         return filter === "all"
@@ -939,17 +929,6 @@ export default function AssignmentsPage() {
                                             />
                                         </View >
                                     </View >
-
-                                    {showDatePicker && (
-                                        <DateTimePicker
-                                            value={dateObject}
-                                            mode="date"
-                                            display="default"
-                                            onChange={onDateChange}
-                                            minimumDate={new Date()}
-                                        />
-                                    )
-                                    }
 
                                     <View className="mb-8">
                                         <Text className="text-gray-500 dark:text-gray-400 text-[10px] font-bold uppercase tracking-widest ml-1 mb-2">Attachments</Text>

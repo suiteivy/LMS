@@ -689,3 +689,5 @@ export function DateRangePicker({
     </>
   );
 }
+
+export default DatePicker;

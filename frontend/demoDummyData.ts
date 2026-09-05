@@ -856,6 +856,7 @@ const libraryLoans = [
     status: 'borrowed' as const,
     notes: null,
     institution_id: 'DEMO-INST-001',
+    books: { title: 'Form 2 Mathematics Textbook', author: 'Kenya Institute of Curriculum Development' },
     library_items: { title: 'Form 2 Mathematics Textbook', author: 'Kenya Institute of Curriculum Development' },
   },
   {
@@ -868,6 +869,7 @@ const libraryLoans = [
     status: 'returned' as const,
     notes: 'Returned in good condition.',
     institution_id: 'DEMO-INST-001',
+    books: { title: 'Things Fall Apart', author: 'Chinua Achebe' },
     library_items: { title: 'Things Fall Apart', author: 'Chinua Achebe' },
   },
 ];

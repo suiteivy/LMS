@@ -58,8 +58,6 @@ export default function ParentProfile() {
   const [saving, setSaving] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
-  const DatePicker = require('@/components/common/DatePicker').default;
-
   const [linkedStudents, setLinkedStudents] = useState<LinkedStudent[]>([]);
   const [loadingStudents, setLoadingStudents] = useState(true);
   const avatarUri = resolveAvatarUri(profile?.avatar_url);
