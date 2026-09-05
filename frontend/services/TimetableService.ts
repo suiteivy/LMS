@@ -22,7 +22,8 @@ export interface TimetableEntry {
         }
     };
     classes?: {
-        name: string;
+        display_name?: string;
+        name?: string;
     };
 }
 

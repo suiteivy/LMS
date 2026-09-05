@@ -364,7 +364,7 @@ export default function Index() {
         const classIds = (myClasses as any[]).map((c: any) => c.class_id);
         const { data: schedule } = await supabase
           .from('timetables')
-          .select(`*, subjects(title, teachers(users(full_name))), classes(name)`)
+          .select(`*, subjects(title, teachers(users(full_name))), classes(display_name)`)
           .in('class_id', classIds)
           .eq('day_of_week', today)
           .order('start_time', { ascending: true });

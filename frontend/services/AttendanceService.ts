@@ -77,7 +77,7 @@ export const AttendanceService = {
             .from("attendance")
             .select(`
                 status,
-                class:classes(name, grade_level, form_level)
+                class:classes(display_name, grade_level, form_level)
             `)
             .eq("date", date)
             .eq("institution_id", institutionId);

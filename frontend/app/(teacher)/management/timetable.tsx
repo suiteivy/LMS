@@ -19,7 +19,7 @@ const TimetableCard = ({ entry, isDark }: { entry: TimetableEntry; isDark: boole
                         <View className={`${isDark ? 'bg-white/10' : 'bg-gray-50'} p-1 rounded-lg mr-2`}>
                             <Users size={14} color="#6B7280" />
                         </View>
-                        <Text className={`${isDark ? 'text-gray-300' : 'text-gray-500'} text-xs font-bold`}>{entry.classes?.name || "No Class"}</Text>
+                        <Text className={`${isDark ? 'text-gray-300' : 'text-gray-500'} text-xs font-bold`}>{entry.classes?.display_name || entry.classes?.name || "No Class"}</Text>
                     </View>
                 </View>
                 <View className={`${isDark ? 'bg-orange-950/40 border-orange-900' : 'bg-orange-50 border-orange-100'} px-3 py-1 rounded-full border`}>

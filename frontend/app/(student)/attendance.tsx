@@ -51,7 +51,7 @@ export default function AttendancePage() {
             if (!studentId) return;
             const { data, error } = await supabase
                 .from('attendance')
-                .select(`*, classes ( name )`)
+                .select(`*, classes ( display_name )`)
                 .eq('student_id', studentId!)
                 .order('date', { ascending: false });
 
@@ -154,7 +154,7 @@ export default function AttendancePage() {
                                 return (
                                     <View key={record.id} className="bg-[#FFFFFF] dark:bg-[#161B22] p-5 rounded-xl border border-[#D0D7DE] dark:border-[#21262D] mb-4 flex-row justify-between items-center shadow-sm">
                                         <View className="flex-1">
-                                            <Text className="font-bold text-gray-900 dark:text-white text-base tracking-tight mb-1">{record.classes?.name || 'Academic Session'}</Text>
+                                            <Text className="font-bold text-gray-900 dark:text-white text-base tracking-tight mb-1">{record.classes?.display_name || record.classes?.name || 'Academic Session'}</Text>
                                             <View className="flex-row items-center">
                                                 <Calendar size={12} color="#9CA3AF" />
                                                 <Text className="text-gray-400 text-[10px] font-bold uppercase tracking-widest ml-1.5">{new Date(record.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</Text>

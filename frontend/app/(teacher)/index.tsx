@@ -549,7 +549,7 @@ export default function TeacherHome() {
                                         {item.subjects?.title}
                                     </Text>
                                     <Text className="text-gray-650 dark:text-gray-300 text-sm">
-                                        {item.classes?.name} {item.room_number ? ` \u00B7 Room ${item.room_number}` : ''}
+                                        {item.classes?.display_name || item.classes?.name || 'Class'} {item.room_number ? ` \u00B7 Room ${item.room_number}` : ''}
                                     </Text>
                                 </View>
                             ))}

@@ -228,7 +228,7 @@ exports.getMyApprovedBursaries = async (req, res) => {
     const { data, error } = await supabase
       .from("bursary_applications")
       .select(`
-        id, status, amount_awarded, notes, created_at,
+        id, status, amount_awarded, notes, applied_at, reviewed_at,
         bursary:bursaries (
           id, title, description, amount, deadline, status
         )
@@ -236,7 +236,7 @@ exports.getMyApprovedBursaries = async (req, res) => {
       .eq("student_id", student.id)
       .eq("institution_id", institution_id)
       .eq("status", "approved")
-      .order("created_at", { ascending: false });
+      .order("applied_at", { ascending: false });
 
     if (error) throw error;
     res.json(data);

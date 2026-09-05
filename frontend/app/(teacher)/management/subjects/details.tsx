@@ -55,8 +55,8 @@ function TeacherSubjectDetailsScreen() {
     }, [id]);
 
     const loadLookupData = async () => {
-        const { data } = await supabase.from("classes").select("id, name").order("name");
-        if (data) setClasses(data as { id: string; name: string }[]);
+        const { data } = await supabase.from("classes").select("id, display_name").order("display_name");
+        if (data) setClasses(data.map(c => ({ id: c.id, name: c.display_name || "Unnamed Class" })));
     };
 
     const fetchSubject = async () => {

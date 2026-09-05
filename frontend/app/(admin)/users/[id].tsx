@@ -666,7 +666,7 @@ export default function UserDetailsScreen() {
                     <Text style={{ fontSize: 11, fontWeight: '700', color: textSecondary, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 4 }}>Profile Information</Text>
                     {renderReadOnly('User ID', roleData?.id || 'N/A')}
                     {renderReadOnly('Role', user.role)}
-                    {renderReadOnly('Joined', format(new Date(user.created_at), 'MMM dd, yyyy'))}
+                    {renderReadOnly('Joined', user.created_at ? format(new Date(user.created_at), 'MMM dd, yyyy') : 'N/A')}
                     {renderField('First Name', firstName, setFirstName)}
                     {renderField('Last Name', lastName, setLastName)}
                     {renderField('Email', email, setEmail, { type: 'email' })}

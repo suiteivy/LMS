@@ -63,7 +63,7 @@ export default function AdminStudentAttendance() {
             // Class Breakdown
             const breakdownMap = new Map();
             data.forEach((a: any) => {
-                const className = a.class?.name || "Unassigned";
+                const className = a.class?.display_name || a.class?.name || "Unassigned";
                 if (!breakdownMap.has(className)) {
                     breakdownMap.set(className, { name: className, present: 0, absent: 0, late: 0, total: 0 });
                 }
