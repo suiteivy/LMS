@@ -167,6 +167,7 @@ function AuthHandler() {
 
     const currentPath = normalizePath(`/${segments.join('/')}`);
     const isRoot = currentPath === '/' || currentPath === '';
+    const isMarketing = currentPath === '/marketing';
     const isCredentialDelivery = currentPath === '/credential-delivery';
     const isNotFound = (segments as string[]).includes('+not-found') || currentPath === '/+not-found';
 
@@ -191,7 +192,7 @@ function AuthHandler() {
     };
 
     if (!session) {
-      if (!inAuthGroup && !isRoot && !isCredentialDelivery && !isNotFound) {
+      if (!inAuthGroup && !isRoot && !isMarketing && !isCredentialDelivery && !isNotFound) {
         if (wasDemo) {
           handleRedirect("/(auth)/demo");
           clearWasDemo();
@@ -233,6 +234,7 @@ function AuthHandler() {
     >
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="index" />
+        <Stack.Screen name="marketing" />
         <Stack.Screen name="(auth)/signIn" />
         <Stack.Screen name="(master-admin)" />
         <Stack.Screen name="(admin)" />
