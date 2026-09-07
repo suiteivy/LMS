@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -23,6 +23,7 @@ import { BentoFeatures } from '@/components/landing/BentoFeatures';
 import { TelemetryStrip } from '@/components/landing/TelemetryStrip';
 import { FuturisticPricing } from '@/components/landing/FuturisticPricing';
 import { FuturisticContact } from '@/components/landing/FuturisticContact';
+import { FloatingScrollTop } from '@/components/landing/FloatingScrollTop';
 import { GlassCard } from '@/components/ui/GlassCard';
 import {
   Building,
@@ -79,6 +80,7 @@ export default function Index() {
   // Section position tracking for smooth scrolling
   const [sectionPositions, setSectionPositions] = useState<Record<string, number>>({});
   const [activeNavSection, setActiveNavSection] = useState<string>('hero');
+  const [showScrollTop, setShowScrollTop] = useState(false);
 
   // Booking & Modal State
   const [modalVisible, setModalVisible] = useState(false);
@@ -92,6 +94,17 @@ export default function Index() {
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
 
+  // Sync scroll on web in case window/body scroll is triggered
+  useEffect(() => {
+    if (Platform.OS !== 'web' || typeof window === 'undefined') return;
+    const handleWindowScroll = () => {
+      const y = window.scrollY || document.documentElement.scrollTop || 0;
+      setShowScrollTop(y > 350);
+    };
+    window.addEventListener('scroll', handleWindowScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleWindowScroll);
+  }, []);
+
   // Show AppLoading during session initialization or redirect
   if (isInitializing || (session && !isNavReady)) {
     return <AppLoading />;
@@ -101,10 +114,17 @@ export default function Index() {
     setSectionPositions((prev) => ({ ...prev, [key]: y }));
   };
 
+  const handleScrollToTop = () => {
+    scrollRef.current?.scrollTo({ y: 0, animated: true });
+    setActiveNavSection('hero');
+    if (Platform.OS === 'web' && typeof window !== 'undefined') {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+
   const scrollToSection = (key: string) => {
     if (key === 'hero') {
-      scrollRef.current?.scrollTo({ y: 0, animated: true });
-      setActiveNavSection('hero');
+      handleScrollToTop();
       return;
     }
     const y = sectionPositions[key];
@@ -194,9 +214,10 @@ export default function Index() {
           style={{ flex: 1 }}
           contentContainerStyle={{ paddingBottom: 60 }}
           showsVerticalScrollIndicator={false}
-          scrollEventThrottle={32}
+          scrollEventThrottle={16}
           onScroll={(e) => {
             const y = e.nativeEvent.contentOffset.y;
+            setShowScrollTop(y > 350);
             if (y < 400) setActiveNavSection('hero');
             else if (y < 1200) setActiveNavSection('features');
             else if (y < 1800) setActiveNavSection('architecture');
@@ -233,6 +254,9 @@ export default function Index() {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
+
+      {/* FLOATING BACK TO TOP BUTTON */}
+      <FloatingScrollTop visible={showScrollTop} onPress={handleScrollToTop} />
 
       {/* MODAL 1: ADDON SELECTOR MODAL */}
       <Modal
