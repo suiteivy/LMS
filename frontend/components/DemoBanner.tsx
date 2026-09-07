@@ -1,5 +1,6 @@
 import { useAuth } from '@/contexts/AuthContext';
 import { authService } from '@/libs/supabase';
+import { AppLoading } from '@/components/AppLoading';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
 import { AlertTriangle, Clock, LogOut, Rocket, X, Zap } from 'lucide-react-native';
@@ -64,7 +65,7 @@ function getBannerMessage(timeLeft: number) {
 }
 
 export default function DemoBanner() {
-    const { isDemo, logout, session, user, profile } = useAuth();
+    const { isDemo, logout, session, user, profile, exitDemoSession } = useAuth();
     const [expiryTime, setExpiryTime] = useState<number | null>(null);
     const [timeLeft, setTimeLeft] = useState(TOTAL_SECONDS);
     const [showWarningModal, setShowWarningModal] = useState(false);
@@ -115,10 +116,7 @@ export default function DemoBanner() {
         if (isCleaning) return;
         setIsCleaning(true);
         try {
-            await AsyncStorage.removeItem('demo_expiry');
-            setShowExpiredModal(true);
-            await logout();
-            router.replace('/(auth)/demo');
+            await exitDemoSession();
         } catch (e) {
             console.error('Expiry logout failed', e);
         } finally {
@@ -130,9 +128,7 @@ export default function DemoBanner() {
         if (isCleaning) return;
         setIsCleaning(true);
         try {
-            await AsyncStorage.removeItem('demo_expiry');
-            await logout();
-            router.replace('/(auth)/demo');
+            await exitDemoSession();
         } catch (e) {
             console.error('Exit demo failed', e);
         } finally {
@@ -140,7 +136,7 @@ export default function DemoBanner() {
         }
     };
 
-    if (!isDemo || !session) return null;
+    if ((!isDemo || !session) && !isCleaning) return null;
 
     const s = getBannerStyle(timeLeft);
     const msg = getBannerMessage(timeLeft);
@@ -264,7 +260,7 @@ export default function DemoBanner() {
 
                         <TouchableOpacity
                             style={{ backgroundColor: '#6366f1', borderRadius: 14, paddingVertical: 15, alignItems: 'center', marginBottom: 10, flexDirection: 'row', justifyContent: 'center', gap: 8 }}
-                            onPress={() => { setShowExpiredModal(false); router.replace('/(auth)/demo'); }}
+                            onPress={() => { setShowExpiredModal(false); handleEndDemo(); }}
                         >
                             <Rocket size={17} color="#fff" />
                             <Text style={{ color: '#fff', fontWeight: '800', fontSize: 15 }}>Create Free Account</Text>
@@ -272,13 +268,30 @@ export default function DemoBanner() {
 
                         <TouchableOpacity
                             style={{ paddingVertical: 12, alignItems: 'center' }}
-                            onPress={() => { setShowExpiredModal(false); router.replace('/(auth)/demo'); }}
+                            onPress={() => { setShowExpiredModal(false); handleEndDemo(); }}
                         >
                             <Text style={{ color: '#475569', fontWeight: '600', fontSize: 13 }}>Back to Demo Page</Text>
                         </TouchableOpacity>
                     </View>
                 </View>
             </Modal>
+
+            {/* ── Fullscreen Exit Loader Overlay ── */}
+            {isCleaning && (
+                <View
+                    style={{
+                        position: Platform.OS === 'web' ? ('fixed' as any) : 'absolute',
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        zIndex: 999999,
+                        backgroundColor: '#070514',
+                    }}
+                >
+                    <AppLoading message="Exiting Demo Session..." />
+                </View>
+            )}
         </>
     );
 }

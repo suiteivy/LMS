@@ -85,8 +85,13 @@ export interface ClassOptions {
 }
 
 export const ClassService = {
-    async getClasses(): Promise<ClassItem[]> {
-        const res = await api.get('/classes');
+    async getClasses(params?: { page?: number; limit?: number }): Promise<ClassItem[]> {
+        const res = await api.get('/classes', { params });
+        return Array.isArray(res.data) ? res.data : (res.data?.data || []);
+    },
+
+    async getClassesPaginated(params?: { page?: number; limit?: number }): Promise<any> {
+        const res = await api.get('/classes', { params });
         return res.data;
     },
 

@@ -35,23 +35,49 @@ export const validatePassword = (
 
 // errorMessages
 export const getAuthErrorMessage = (error: any): string => {
-  if (!error) return "An unknown error occurred";
+  if (!error) return "Invalid email or password";
 
-  const message =
-    error?.message || error?.toString() || "An unknown error occurred";
+  const rawMessage =
+    error?.message || (typeof error === "string" ? error : error?.toString() || "");
+
+  // Detect raw database / backend / schema errors
+  const isRawInternalError =
+    /database|schema|postgres|relation|pg_|constraint|foreign key|syntax error|internal server|column|500/i.test(
+      rawMessage
+    );
+
+  if (isRawInternalError) {
+    return "Invalid email or password. Please check your credentials and try again.";
+  }
 
   // Map common Supabase auth errors to user-friendly messages
   const errorMappings: Record<string, string> = {
     "Invalid login credentials": "Invalid email or password",
+    "invalid_credentials": "Invalid email or password",
     "Email not confirmed":
       "Please check your email and click the confirmation link",
+    "email_not_confirmed":
+      "Please check your email and click the confirmation link",
     "User already registered": "An account with this email already exists",
+    "user_already_exists": "An account with this email already exists",
     "Password should be at least 6 characters":
       "Password must be at least 6 characters long",
     "Unable to validate email address: invalid format":
       "Please enter a valid email address",
     "Signup requires a valid password": "Please enter a valid password",
+    "Email rate limit exceeded": "Too many attempts. Please try again in a few minutes.",
+    "over_email_send_rate_limit": "Too many attempts. Please try again in a few minutes.",
+    "User not found": "Invalid email or password",
   };
 
-  return errorMappings[message] || message;
+  if (errorMappings[rawMessage]) {
+    return errorMappings[rawMessage];
+  }
+
+  // Fallback to safe message if it's unknown or contains exception phrasing
+  if (!rawMessage || rawMessage.includes("Error") || rawMessage.includes("Exception") || rawMessage.length > 100) {
+    return "Invalid email or password. Please check your credentials and try again.";
+  }
+
+  return rawMessage;
 };

@@ -36,7 +36,6 @@ class LoggingService {
           this.pendingLogs = [];
         }
         this.isInitialized = true;
-        this.info('LoggingService initialized and synchronized');
       } catch (e) {
         console.error('Failed to initialize LoggingService:', e);
       }

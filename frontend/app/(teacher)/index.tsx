@@ -10,6 +10,7 @@ import React, { useEffect, useState } from "react";
 import { RefreshControl, ScrollView, Text, TouchableOpacity, View, StatusBar } from 'react-native';
 import { SubscriptionBanner, SubscriptionGate, SubscriptionBadge } from '@/components/shared/SubscriptionComponents';
 import { formatClassLabel } from '@/utils/classLabel';
+import { useTeacherRoleMode } from '@/hooks/useTeacherRoleMode';
 
 // Define Interface for the QuickAction props
 interface QuickActionProps {
@@ -66,10 +67,10 @@ export default function TeacherHome() {
     const { isDark } = useTheme();
 
     // Switcher/Role state
+    const { mode, setMode, syncRoles, canToggle } = useTeacherRoleMode();
     const [roles, setRoles] = useState<string[]>([]);
     const [classTeacherOf, setClassTeacherOf] = useState<any[]>([]);
     const [assignedSubjects, setAssignedSubjects] = useState<any[]>([]);
-    const [mode, setMode] = useState<'subject' | 'class'>('subject');
     const [selectedSubjectTitle, setSelectedSubjectTitle] = useState<string>('');
     const [selectedClassId, setSelectedClassId] = useState<string>('');
 
@@ -84,7 +85,9 @@ export default function TeacherHome() {
             if (cached.data) {
                 setStats(cached.data.stats || null);
                 setSchedule(cached.data.schedule || []);
-                setRoles(cached.data.roles || []);
+                const cachedRoles = cached.data.roles || [];
+                setRoles(cachedRoles);
+                syncRoles(cachedRoles);
                 setClassTeacherOf(cached.data.classTeacherOf || []);
                 setAssignedSubjects(cached.data.assignedSubjects || []);
                 setLoading(false);
@@ -157,6 +160,7 @@ export default function TeacherHome() {
                 ];
 
                 setRoles(mockRoles);
+                syncRoles(mockRoles);
                 setClassTeacherOf(mockCT);
                 setAssignedSubjects(mockAssigned);
 
@@ -171,6 +175,7 @@ export default function TeacherHome() {
             setSchedule(data.schedule);
             const fetchedRoles = data.roles || [];
             setRoles(fetchedRoles);
+            syncRoles(fetchedRoles);
             setClassTeacherOf(data.classTeacherOf || []);
             
             // If Class Teacher but not Subject Teacher, default to class mode
@@ -354,7 +359,7 @@ export default function TeacherHome() {
                     {/* --- 3. Switcher Card (Subjects / Classes / CT Mode) --- */}
                     <View className="bg-white dark:bg-[#161B22] rounded-[32px] border border-gray-100 dark:border-gray-800 p-5 mb-8 shadow-sm">
                         {/* Mode Selector - Tabs */}
-                        {roles.includes('Class Teacher') && (
+                        {canToggle && (
                             <View className="flex-row bg-gray-105 dark:bg-[#161B22] rounded-2xl p-1 mb-5">
                                 <TouchableOpacity 
                                     onPress={() => setMode('subject')}

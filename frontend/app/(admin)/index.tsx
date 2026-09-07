@@ -124,7 +124,7 @@ export default function AdminDashboard() {
           </TouchableOpacity>
 
           <TouchableOpacity
-            onPress={async () => { await logout(); router.replace("/(auth)/signIn"); }}
+            onPress={async () => { await logout(); }}
             className="flex-row items-center bg-[#F6F8FA] dark:bg-[#161B22] px-4 py-2 rounded-xl border border-[#D0D7DE] dark:border-[#21262D]"
             activeOpacity={0.7}
           >
@@ -172,7 +172,7 @@ export default function AdminDashboard() {
         <View className="bg-[#F6F8FA] dark:bg-[#161B22] border border-[#D0D7DE] dark:border-[#21262D] rounded-xl p-5 mb-4">
           <View className="flex-row justify-between items-center mb-3">
             <View>
-              <Text className="text-gray-900 dark:text-white font-bold text-base">Today's Presence</Text>
+              <Text className="text-gray-900 dark:text-white font-bold text-base">{"Today's Presence"}</Text>
               <Text className="text-gray-500 dark:text-gray-400 text-[10px] font-bold uppercase tracking-widest mt-0.5">Real-time Engagement</Text>
             </View>
             <Text className="text-gray-900 dark:text-white text-2xl font-black">{attendanceValue}</Text>

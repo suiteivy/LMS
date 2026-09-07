@@ -266,6 +266,12 @@ api.interceptors.response.use(
         message = `${message}:\n\u2022 ${data.details.join('\n\u2022 ')}`;
       }
 
+      // Sanitize raw database or schema errors from leaking to UI
+      const rawDbPatterns = /database|schema|relation|syntax error|pg_|supabase|postgres/i;
+      if (rawDbPatterns.test(message)) {
+        message = "An unexpected error occurred. Please try again.";
+      }
+
       switch (status) {
         case 400:
           title = "Invalid Request";
@@ -319,9 +325,7 @@ api.interceptors.response.use(
         }
         case 500:
           title = "Server Error";
-          if (!data?.error && !data?.message) {
-            message = "Something went wrong on our end.";
-          }
+          message = "An unexpected error occurred. Please try again.";
           break;
         case 502:
         case 503:
@@ -329,7 +333,6 @@ api.interceptors.response.use(
           title = "Service Unavailable";
           message = "The server is temporarily unavailable. Please try again shortly.";
           severity = 'warning';
-          // Store retry function for these transient errors
           if (error.config) {
             const cfg = { ...error.config };
             _pendingRetry = () => api.request(cfg);

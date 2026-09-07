@@ -1,5 +1,6 @@
 const supabase = require("../utils/supabaseClient.js");
 const { hasPaidAtLeastHalf } = require("../utils/feeUtils.js");
+const { parsePagination, paginatedResponse } = require("../utils/pagination.js");
 
 const normalizeClassIds = (class_ids = [], class_id = null) => {
   return Array.from(new Set([...(class_ids || []).filter(Boolean), ...(class_id ? [class_id] : [])]));
@@ -291,6 +292,7 @@ exports.enrollStudentInSubject = async (req, res) => {
 // GET SUBJECTS (unfiltered list for institution)
 exports.getSubjects = async (req, res) => {
   const { institution_id } = req;
+  const { page, limit, from, to } = parsePagination(req.query);
 
   try {
     const richSelect = `
@@ -310,11 +312,12 @@ exports.getSubjects = async (req, res) => {
         )
       `;
 
-    let { data, error } = await supabase
+    let { data, error, count } = await supabase
       .from("subjects")
-      .select(richSelect)
+      .select(richSelect, { count: 'exact' })
       .eq("institution_id", institution_id)
-      .order('title');
+      .order('title')
+      .range(from, to);
 
     if (error) {
       if (!isRelationshipResolutionError(error)) {
@@ -323,19 +326,21 @@ exports.getSubjects = async (req, res) => {
 
       const fallback = await supabase
         .from('subjects')
-        .select('*')
+        .select('*', { count: 'exact' })
         .eq('institution_id', institution_id)
-        .order('title');
+        .order('title')
+        .range(from, to);
 
       if (fallback.error) {
         return res.status(500).json({ error: fallback.error.message });
       }
 
       data = attachSubjectRelationsFallback(fallback.data || []);
+      count = fallback.count;
     }
 
     const subjects = await enrichSubjectsWithClassIds(data || [], institution_id);
-    return res.json(subjects);
+    return res.json(paginatedResponse(subjects, count, page, limit));
   } catch (err) {
     console.error("getSubjects error:", err);
     res.status(500).json({ error: "Server error" });

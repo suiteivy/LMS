@@ -4,26 +4,18 @@ import {
   Text,
   Platform,
   Dimensions,
-  TouchableOpacity,
 } from 'react-native';
 import {
   BookOpen,
   Library,
   CreditCard,
   BarChart2,
-  Users,
   MessageSquare,
   Sparkles,
-  MoveRight,
   CheckCircle2,
-  FileText,
-  Video,
-  Database,
-  Cpu,
-  ShieldCheck,
   Search,
-  BellRing
 } from 'lucide-react-native';
+import { GlassCard } from '@/components/ui/GlassCard';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -32,7 +24,6 @@ export const BentoFeatures: React.FC = () => {
   const isDesktop = SCREEN_WIDTH >= 1024;
   const isTablet = SCREEN_WIDTH >= 768 && SCREEN_WIDTH < 1024;
 
-  const [hoveredTile, setHoveredTile] = useState<number | null>(null);
 
   return (
     <View
@@ -47,18 +38,33 @@ export const BentoFeatures: React.FC = () => {
       {/* Section Header */}
       <View style={{ alignItems: 'center', marginBottom: 54 }}>
         <View
-          style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            gap: 7,
-            paddingHorizontal: 14,
-            paddingVertical: 6,
-            borderRadius: 30,
-            backgroundColor: 'rgba(139, 92, 246, 0.12)',
-            borderWidth: 1,
-            borderColor: 'rgba(139, 92, 246, 0.3)',
-            marginBottom: 18,
-          }}
+          style={[
+            {
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 7,
+              paddingHorizontal: 16,
+              paddingVertical: 7,
+              borderRadius: 30,
+              backgroundColor: 'rgba(139, 92, 246, 0.12)',
+              borderWidth: 1,
+              borderColor: 'rgba(139, 92, 246, 0.35)',
+              marginBottom: 18,
+              boxShadow: [{
+                offsetX: 0,
+                offsetY: 4,
+                blurRadius: 16,
+                color: 'rgba(139, 92, 246, 0.2)',
+              }],
+            },
+            isWeb
+              ? ({
+                  backdropFilter: 'blur(20px) saturate(180%)',
+                  WebkitBackdropFilter: 'blur(20px) saturate(180%)',
+                  background: 'linear-gradient(135deg, rgba(139, 92, 246, 0.2) 0%, rgba(24, 15, 52, 0.6) 100%)',
+                } as any)
+              : {},
+          ]}
         >
           <Sparkles size={13} color="#A78BFA" />
           <Text
@@ -114,37 +120,18 @@ export const BentoFeatures: React.FC = () => {
         }}
       >
         {/* TILE 1: Course Studio & Interactive Syllabus (Hero Tile - 2 Columns on Desktop) */}
-        <View
-          style={[
-            {
-              width: isDesktop ? '64%' : '100%',
-              minHeight: 340,
-              backgroundColor: 'rgba(15, 11, 46, 0.55)',
-              borderRadius: 28,
-              borderWidth: 1.5,
-              borderColor: hoveredTile === 1 ? 'rgba(255, 107, 0, 0.45)' : 'rgba(255, 255, 255, 0.1)',
-              padding: isDesktop ? 34 : 24,
-              overflow: 'hidden',
-              position: 'relative',
-              boxShadow: [{
-                offsetX: 0,
-                offsetY: 16,
-                blurRadius: 36,
-                color: hoveredTile === 1 ? 'rgba(255, 107, 0, 0.12)' : 'rgba(0, 0, 0, 0.3)',
-              }],
-            },
-            isWeb
-              ? ({
-                  backdropFilter: 'blur(24px)',
-                  WebkitBackdropFilter: 'blur(24px)',
-                  transition: 'border-color 0.3s ease, transform 0.3s ease, box-shadow 0.3s ease',
-                  transform: hoveredTile === 1 ? [{ translateY: -4 }] : [{ translateY: 0 }],
-                } as any)
-              : {},
-          ]}
-          //@ts-ignore
-          onPointerEnter={() => setHoveredTile(1)}
-          onPointerLeave={() => setHoveredTile(null)}
+        <GlassCard
+          variant="interactive"
+          hoverable
+          accentColor="#FF6B00"
+          borderRadius={28}
+          style={{
+            width: isDesktop ? '64%' : '100%',
+            minHeight: 340,
+          }}
+          contentStyle={{
+            padding: isDesktop ? 34 : 24,
+          }}
         >
           {/* Subtle accent glow blob */}
           <View
@@ -294,39 +281,21 @@ export const BentoFeatures: React.FC = () => {
               </View>
             ))}
           </View>
-        </View>
+        </GlassCard>
 
         {/* TILE 2: Digital Resource Vault & Library (Single Column) */}
-        <View
-          style={[
-            {
-              width: isDesktop ? '32.5%' : '100%',
-              minHeight: 340,
-              backgroundColor: 'rgba(15, 11, 46, 0.55)',
-              borderRadius: 28,
-              borderWidth: 1.5,
-              borderColor: hoveredTile === 2 ? 'rgba(139, 92, 246, 0.45)' : 'rgba(255, 255, 255, 0.1)',
-              padding: 26,
-              overflow: 'hidden',
-              boxShadow: [{
-                offsetX: 0,
-                offsetY: 16,
-                blurRadius: 36,
-                color: hoveredTile === 2 ? 'rgba(139, 92, 246, 0.12)' : 'rgba(0, 0, 0, 0.3)',
-              }],
-            },
-            isWeb
-              ? ({
-                  backdropFilter: 'blur(24px)',
-                  WebkitBackdropFilter: 'blur(24px)',
-                  transition: 'border-color 0.3s ease, transform 0.3s ease',
-                  transform: hoveredTile === 2 ? [{ translateY: -4 }] : [{ translateY: 0 }],
-                } as any)
-              : {},
-          ]}
-          //@ts-ignore
-          onPointerEnter={() => setHoveredTile(2)}
-          onPointerLeave={() => setHoveredTile(null)}
+        <GlassCard
+          variant="interactive"
+          hoverable
+          accentColor="#8B5CF6"
+          borderRadius={28}
+          style={{
+            width: isDesktop ? '32.5%' : '100%',
+            minHeight: 340,
+          }}
+          contentStyle={{
+            padding: 26,
+          }}
         >
           <View
             style={{
@@ -410,38 +379,21 @@ export const BentoFeatures: React.FC = () => {
               </View>
             ))}
           </View>
-        </View>
+        </GlassCard>
 
         {/* TILE 3: Automated Financial & Bursary Engine */}
-        <View
-          style={[
-            {
-              width: isDesktop ? '32.5%' : isTablet ? '48%' : '100%',
-              minHeight: 280,
-              backgroundColor: 'rgba(15, 11, 46, 0.55)',
-              borderRadius: 28,
-              borderWidth: 1.5,
-              borderColor: hoveredTile === 3 ? 'rgba(16, 185, 129, 0.45)' : 'rgba(255, 255, 255, 0.1)',
-              padding: 26,
-              boxShadow: [{
-                offsetX: 0,
-                offsetY: 16,
-                blurRadius: 36,
-                color: hoveredTile === 3 ? 'rgba(16, 185, 129, 0.12)' : 'rgba(0, 0, 0, 0.3)',
-              }],
-            },
-            isWeb
-              ? ({
-                  backdropFilter: 'blur(24px)',
-                  WebkitBackdropFilter: 'blur(24px)',
-                  transition: 'border-color 0.3s ease, transform 0.3s ease',
-                  transform: hoveredTile === 3 ? [{ translateY: -4 }] : [{ translateY: 0 }],
-                } as any)
-              : {},
-          ]}
-          //@ts-ignore
-          onPointerEnter={() => setHoveredTile(3)}
-          onPointerLeave={() => setHoveredTile(null)}
+        <GlassCard
+          variant="interactive"
+          hoverable
+          accentColor="#10B981"
+          borderRadius={28}
+          style={{
+            width: isDesktop ? '32.5%' : isTablet ? '48%' : '100%',
+            minHeight: 280,
+          }}
+          contentStyle={{
+            padding: 26,
+          }}
         >
           <View
             style={{
@@ -469,10 +421,10 @@ export const BentoFeatures: React.FC = () => {
               marginBottom: 4,
             }}
           >
-            FEES & PAYMENTS
+            FEE COLLECTION & PAYMENTS
           </Text>
           <Text style={{ color: '#FFFFFF', fontSize: 19, fontWeight: '800', marginBottom: 10 }}>
-            School Fees & Invoicing
+            Fee Invoicing & Online Payments
           </Text>
           <Text
             style={{
@@ -505,38 +457,21 @@ export const BentoFeatures: React.FC = () => {
               98.2% Paid
             </Text>
           </View>
-        </View>
+        </GlassCard>
 
         {/* TILE 4: Real-time Telemetry & Grade Analytics */}
-        <View
-          style={[
-            {
-              width: isDesktop ? '32.5%' : isTablet ? '48%' : '100%',
-              minHeight: 280,
-              backgroundColor: 'rgba(15, 11, 46, 0.55)',
-              borderRadius: 28,
-              borderWidth: 1.5,
-              borderColor: hoveredTile === 4 ? 'rgba(59, 130, 246, 0.45)' : 'rgba(255, 255, 255, 0.1)',
-              padding: 26,
-              boxShadow: [{
-                offsetX: 0,
-                offsetY: 16,
-                blurRadius: 36,
-                color: hoveredTile === 4 ? 'rgba(59, 130, 246, 0.12)' : 'rgba(0, 0, 0, 0.3)',
-              }],
-            },
-            isWeb
-              ? ({
-                  backdropFilter: 'blur(24px)',
-                  WebkitBackdropFilter: 'blur(24px)',
-                  transition: 'border-color 0.3s ease, transform 0.3s ease',
-                  transform: hoveredTile === 4 ? [{ translateY: -4 }] : [{ translateY: 0 }],
-                } as any)
-              : {},
-          ]}
-          //@ts-ignore
-          onPointerEnter={() => setHoveredTile(4)}
-          onPointerLeave={() => setHoveredTile(null)}
+        <GlassCard
+          variant="interactive"
+          hoverable
+          accentColor="#3B82F6"
+          borderRadius={28}
+          style={{
+            width: isDesktop ? '32.5%' : isTablet ? '48%' : '100%',
+            minHeight: 280,
+          }}
+          contentStyle={{
+            padding: 26,
+          }}
         >
           <View
             style={{
@@ -600,38 +535,21 @@ export const BentoFeatures: React.FC = () => {
               B+ (Improving)
             </Text>
           </View>
-        </View>
+        </GlassCard>
 
         {/* TILE 5: Synchronized Messaging & Virtual Diary */}
-        <View
-          style={[
-            {
-              width: isDesktop ? '31%' : '100%',
-              minHeight: 280,
-              backgroundColor: 'rgba(15, 11, 46, 0.55)',
-              borderRadius: 28,
-              borderWidth: 1.5,
-              borderColor: hoveredTile === 5 ? 'rgba(245, 158, 11, 0.45)' : 'rgba(255, 255, 255, 0.1)',
-              padding: 26,
-              boxShadow: [{
-                offsetX: 0,
-                offsetY: 16,
-                blurRadius: 36,
-                color: hoveredTile === 5 ? 'rgba(245, 158, 11, 0.12)' : 'rgba(0, 0, 0, 0.3)',
-              }],
-            },
-            isWeb
-              ? ({
-                  backdropFilter: 'blur(24px)',
-                  WebkitBackdropFilter: 'blur(24px)',
-                  transition: 'border-color 0.3s ease, transform 0.3s ease',
-                  transform: hoveredTile === 5 ? [{ translateY: -4 }] : [{ translateY: 0 }],
-                } as any)
-              : {},
-          ]}
-          //@ts-ignore
-          onPointerEnter={() => setHoveredTile(5)}
-          onPointerLeave={() => setHoveredTile(null)}
+        <GlassCard
+          variant="interactive"
+          hoverable
+          accentColor="#F59E0B"
+          borderRadius={28}
+          style={{
+            width: isDesktop ? '31%' : '100%',
+            minHeight: 280,
+          }}
+          contentStyle={{
+            padding: 26,
+          }}
         >
           <View
             style={{
@@ -673,7 +591,7 @@ export const BentoFeatures: React.FC = () => {
             }}
           >
             Send homework reminders, urgent announcements, and teacher notes directly to
-            parents' phones with zero hassle.
+            parents&apos; phones with zero hassle.
           </Text>
 
           <View
@@ -695,7 +613,7 @@ export const BentoFeatures: React.FC = () => {
               99.1% Delivered
             </Text>
           </View>
-        </View>
+        </GlassCard>
       </View>
     </View>
   );

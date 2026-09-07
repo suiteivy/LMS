@@ -116,6 +116,7 @@ export default function ExamResultsPage() {
  onBack={() => router.back()}
  />
 
+ <ScrollView className="flex-1" showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 200 }}>
  <View className="p-4 md:p-8">
  {/* Actions Row */}
  <View className="flex-row items-center gap-3 mb-6">
@@ -141,7 +142,7 @@ export default function ExamResultsPage() {
  {loading ? (
  <ListItemSkeleton loading={loading} count={4} label="Loading exam results..." />
  ) : (
- <ScrollView className="flex-1" showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 200 }}>
+ <>
  {filteredStudents.map((student) => (
  <View key={student.student_id} className="bg-white p-5 rounded-[32px] mb-4 border border-gray-50">
  <View className="flex-row items-center mb-5">
@@ -183,9 +184,10 @@ export default function ExamResultsPage() {
  <Text className="text-gray-400 font-bold text-center mt-6">No matches found</Text>
  </View>
  )}
- </ScrollView>
+ </>
  )}
  </View>
+ </ScrollView>
  </View>
  );
 }

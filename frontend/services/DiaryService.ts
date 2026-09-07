@@ -43,8 +43,16 @@ export interface DiaryEntry {
 }
 
 export const DiaryService = {
-    async getEntries(classId?: string, studentId?: string): Promise<DiaryEntry[]> {
-        const params: any = {};
+    async getEntries(classId?: string, studentId?: string, pagination?: { page?: number; limit?: number }): Promise<DiaryEntry[]> {
+        const params: any = { ...(pagination || {}) };
+        if (classId) params.class_id = classId;
+        if (studentId) params.student_id = studentId;
+        const res = await api.get('/diary', { params });
+        return Array.isArray(res.data) ? res.data : (res.data?.data || []);
+    },
+
+    async getEntriesPaginated(classId?: string, studentId?: string, pagination?: { page?: number; limit?: number }): Promise<any> {
+        const params: any = { ...(pagination || {}) };
         if (classId) params.class_id = classId;
         if (studentId) params.student_id = studentId;
         const res = await api.get('/diary', { params });

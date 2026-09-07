@@ -27,12 +27,15 @@ export async function safeSignOut(
   silent: boolean = false,
   isDemoSession?: boolean,
   demoUserId?: string | null,
+  skipDemoCleanup?: boolean,
 ): Promise<void> {
-  // 1. Persist reason before clearing anything
-  try {
-    await AsyncStorage.setItem('logout_reason', reason);
-  } catch {
-    // storage failure is non-critical
+  // 1. Persist reason before clearing anything (skip for demo sessions)
+  if (!isDemoSession) {
+    try {
+      await AsyncStorage.setItem('logout_reason', reason);
+    } catch {
+      // storage failure is non-critical
+    }
   }
 
   // 2. Check session and notify backend
@@ -73,8 +76,8 @@ export async function safeSignOut(
     console.warn('[safeSignOut] supabase.auth.signOut error (non-fatal):', e?.message ?? e);
   }
 
-  // 4. If demo user, trigger demo cleanup AFTER signout
-  if (isDemoUser && targetDemoUserId) {
+  // 4. If demo user, trigger demo cleanup AFTER signout (unless already handled and confirmed)
+  if (isDemoUser && targetDemoUserId && !skipDemoCleanup) {
     try {
       await fetch(`${getApiBaseUrl()}/demo/end`, {
         method: 'POST',
@@ -98,8 +101,8 @@ export async function safeSignOut(
     // non-critical
   }
 
-  // 5. Show toast unless silent
-  if (!silent) {
+  // 5. Show toast unless silent or demo session
+  if (!silent && !isDemoSession) {
     const msg = LOGOUT_MESSAGES[reason] ?? LOGOUT_MESSAGES[LogoutReason.UNKNOWN];
     Toast.show({
       type: reason === LogoutReason.INSTITUTION_SUSPENDED ? 'error' : 'info',

@@ -9,6 +9,7 @@ import Toast from 'react-native-toast-message'
 import { api } from '@/services/api'
 import { safeSignOut } from '@/utils/safeSignOut'
 import { LogoutReason, LOGOUT_MESSAGES } from '@/types/logout'
+import { getApiBaseUrl } from '@/utils/backendUrl'
 
 type UserProfile = Database['public']['Tables']['users']['Row']
 
@@ -44,6 +45,8 @@ interface AuthContextType {
   resetSessionTimer: () => void
   startDemo: (role: string) => Promise<{ data: any; error: any }>
   isDemo: boolean
+  isDemoExiting: boolean
+  exitDemoSession: () => Promise<{ error: any }>
   wasDemo: boolean
   clearWasDemo: () => void
   isTrial: boolean
@@ -139,6 +142,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   useEffect(() => { isInitializingRef.current = isInitializing; }, [isInitializing]);
   useEffect(() => { isNavReadyRef.current = isNavReady; }, [isNavReady]);
   const [isDemo, setIsDemo] = useState(false)
+  const [isDemoExiting, setIsDemoExiting] = useState(false)
   const [wasDemo, setWasDemo] = useState(false)
 
   const clearWasDemo = React.useCallback(() => {
@@ -238,7 +242,74 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }, 10 * 1000); // every 10 seconds
   }, [clearHeartbeat]);
 
-  const handleLogout = async (silent: boolean = false, reason: LogoutReason = LogoutReason.USER_INITIATED) => {
+  const exitDemoSession = async (): Promise<{ error: any }> => {
+    if (isDemoExiting) return { error: null };
+    setIsDemoExiting(true);
+    setLoading(true);
+
+    try {
+      const demoUserId = userRef.current?.id || currentSessionRef.current?.user?.id || null;
+      const accessToken = currentSessionRef.current?.access_token || null;
+
+      // 1. Confirm session exit on backend before clearing state
+      if (demoUserId) {
+        try {
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 12000);
+
+          const response = await fetch(`${getApiBaseUrl()}/demo/end`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+            },
+            body: JSON.stringify({ user_id: demoUserId }),
+            signal: controller.signal,
+          });
+          clearTimeout(timeoutId);
+
+          if (!response.ok) {
+            const errData = await response.json().catch(() => null);
+            console.warn('[AuthContext] Demo end returned non-OK status:', response.status, errData);
+          }
+        } catch (apiErr: any) {
+          console.warn('[AuthContext] Demo end backend confirmation error:', apiErr?.message || apiErr);
+        }
+      }
+
+      // 2. Clear demo storage
+      try {
+        await Promise.allSettled([
+          AsyncStorage.removeItem('demo_expiry'),
+          AsyncStorage.removeItem('is_demo_mode'),
+          AsyncStorage.removeItem('session_start_time'),
+        ]);
+      } catch {}
+
+      // 3. Mark wasDemo and perform signout without redundant backend call
+      setWasDemo(true);
+      await handleLogout(true, LogoutReason.USER_INITIATED, true /* skipDemoExitCheck */, true /* skipDemoCleanup */);
+
+      // 4. Navigate directly to demo page
+      router.replace('/(auth)/demo');
+      return { error: null };
+    } catch (err: any) {
+      console.error('[AuthContext] exitDemoSession error:', err);
+      return { error: err };
+    } finally {
+      setTimeout(() => {
+        setIsDemoExiting(false);
+        setLoading(false);
+      }, 400);
+    }
+  };
+
+  const handleLogout = async (
+    silent: boolean = false,
+    reason: LogoutReason = LogoutReason.USER_INITIATED,
+    skipDemoExitCheck: boolean = false,
+    skipDemoCleanup: boolean = false
+  ) => {
     // Prevent recursion if already logging out or already logged out
     if (isManualLogout.current) return { error: null };
 
@@ -248,6 +319,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setIsInitializing(false);
       setLoading(false);
       return { error: null };
+    }
+
+    const isDemoSession = isDemoRef.current || wasDemo || userRef.current?.email?.startsWith('demo.') || currentSessionRef.current?.user?.email?.startsWith('demo.') || false;
+    if (isDemoSession && !skipDemoExitCheck) {
+      return await exitDemoSession();
     }
 
     isManualLogout.current = true;
@@ -292,7 +368,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       }
 
       // Use centralized safeSignOut – never fails, persists reason, shows toast
-      await safeSignOut('local', reason, silent || isDemoSession, isDemoSession, demoUserId);
+      await safeSignOut('local', reason, silent || isDemoSession, isDemoSession, demoUserId, skipDemoCleanup);
 
       // Selectively clear auth storage rather than wiping everything
       try {
@@ -737,11 +813,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         currentSessionRef.current = null;
         lastLoadedUserId.current = null;
         
-        // Read persisted logout reason and show the appropriate toast
-        AsyncStorage.getItem('logout_reason').then((rawReason) => {
-          const reason = (rawReason as LogoutReason) || LogoutReason.UNKNOWN;
-          const msg = LOGOUT_MESSAGES[reason] ?? LOGOUT_MESSAGES[LogoutReason.UNKNOWN];
-          if (!silent) {
+        // Read persisted logout reason and show the appropriate toast (only if not already handled by manual logout)
+        if (!isManualLogout.current) {
+          AsyncStorage.getItem('logout_reason').then((rawReason) => {
+            const reason = (rawReason as LogoutReason) || LogoutReason.UNKNOWN;
+            const msg = LOGOUT_MESSAGES[reason] ?? LOGOUT_MESSAGES[LogoutReason.UNKNOWN];
+            if (!silent) {
               Toast.show({
                 type: reason === LogoutReason.INSTITUTION_SUSPENDED ? 'error' : 'info',
                 text1: msg.title,
@@ -749,12 +826,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
                 position: 'top',
               });
             }
+            AsyncStorage.removeItem('logout_reason').catch(() => {});
+          }).catch(() => {
+            if (!silent) {
+              Toast.show({ type: 'info', text1: 'Logged Out', text2: 'You have been logged out.', position: 'top' });
+            }
+          });
+        } else {
           AsyncStorage.removeItem('logout_reason').catch(() => {});
-        }).catch(() => {
-          if (!silent) {
-            Toast.show({ type: 'info', text1: 'Logged Out', text2: 'You have been logged out.', position: 'top' });
-          }
-        });
+        }
       }
     });
 
@@ -801,6 +881,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     resetSessionTimer,
     startDemo: handleStartDemo,
     isDemo,
+    isDemoExiting,
+    exitDemoSession,
     wasDemo,
     clearWasDemo,
     isTrial: subscriptionStatus === 'trial' || subscriptionPlan === 'trial',
@@ -820,7 +902,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     maintenanceModeEnabled,
     maintenanceModeMessage,
     refreshMaintenanceStatus,
-  }), [session, user, profile, roleInfo, subscriptionStatus, subscriptionPlan, trialEndDate, institutionName, loading, isInitializing, isNavReady, isProfileLoading, isSessionExpiring, sessionWarningDismissed, isDemo, wasDemo, clearWasDemo, isMain, isPlatformAdmin, isLibrarian, canonicalRole, addonFlags, customStudentLimit, maintenanceModeEnabled, maintenanceModeMessage, refreshMaintenanceStatus]);
+  }), [session, user, profile, roleInfo, subscriptionStatus, subscriptionPlan, trialEndDate, institutionName, loading, isInitializing, isNavReady, isProfileLoading, isSessionExpiring, sessionWarningDismissed, isDemo, isDemoExiting, exitDemoSession, wasDemo, clearWasDemo, isMain, isPlatformAdmin, isLibrarian, canonicalRole, addonFlags, customStudentLimit, maintenanceModeEnabled, maintenanceModeMessage, refreshMaintenanceStatus]);
 
   return (
     <AuthContext.Provider value={value}>

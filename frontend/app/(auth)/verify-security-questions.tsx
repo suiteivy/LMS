@@ -2,7 +2,8 @@ import { SettingsService } from '@/services/SettingsService';
 import { validateEmail } from '@/utils/validation';
 import { Ionicons } from '@expo/vector-icons';
 import { router, Stack } from 'expo-router';
-import { Shield, GraduationCap } from 'lucide-react-native';
+import { Shield } from 'lucide-react-native';
+import { CloudoraLogo } from '@/components/common/CloudoraLogo';
 import React, { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
@@ -19,8 +20,9 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import Toast from 'react-native-toast-message';
+import { showError, showSuccess, showInfo } from '@/utils/toast';
 import { LivingBackground } from '@/components/landing/LivingBackground';
+import { GlassCard } from '@/components/ui/GlassCard';
 
 const IconIonicons = Ionicons as any;
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -395,26 +397,18 @@ const PrimaryButton = ({
 
 // ─── LogoLockup Component ───────────────────────────────────────────────────
 const LogoLockup = ({ entranceAnim }: { entranceAnim: Animated.Value }) => {
-  const pulseScale  = useRef(new Animated.Value(1)).current;
-  const glowOpacity = useRef(new Animated.Value(0.5)).current;
+  const pulseScale = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
     const pulse = Animated.loop(
       Animated.sequence([
-        Animated.timing(pulseScale,  { toValue: 1.1, duration: 2400, easing: EasingRN.inOut(EasingRN.sin), useNativeDriver: true }),
-        Animated.timing(pulseScale,  { toValue: 1,   duration: 2400, easing: EasingRN.inOut(EasingRN.sin), useNativeDriver: true }),
-      ])
-    );
-    const glow = Animated.loop(
-      Animated.sequence([
-        Animated.timing(glowOpacity, { toValue: 1,   duration: 2000, easing: EasingRN.inOut(EasingRN.sin), useNativeDriver: true }),
-        Animated.timing(glowOpacity, { toValue: 0.4, duration: 2000, easing: EasingRN.inOut(EasingRN.sin), useNativeDriver: true }),
+        Animated.timing(pulseScale, { toValue: 1.08, duration: 2400, easing: EasingRN.inOut(EasingRN.sin), useNativeDriver: true }),
+        Animated.timing(pulseScale, { toValue: 1,    duration: 2400, easing: EasingRN.inOut(EasingRN.sin), useNativeDriver: true }),
       ])
     );
     pulse.start();
-    glow.start();
-    return () => { pulse.stop(); glow.stop(); };
-  }, []);
+    return () => { pulse.stop(); };
+  }, [pulseScale]);
 
   const entranceOpacity    = entranceAnim;
   const entranceTranslateY = entranceAnim.interpolate({ inputRange: [0, 1], outputRange: [-12, 0] });
@@ -429,33 +423,16 @@ const LogoLockup = ({ entranceAnim }: { entranceAnim: Animated.Value }) => {
         transform: [{ translateY: entranceTranslateY }],
       }}
     >
-      <View style={{ position: 'relative', width: 38, height: 38 }}>
-        <Animated.View
-          pointerEvents="none"
-          style={{
-            position: 'absolute',
-            top: -8, left: -8, right: -8, bottom: -8,
-            borderRadius: 27,
-            backgroundColor: FLAME_GLOW,
-            opacity: glowOpacity,
-            ...(Platform.OS === 'web' ? { filter: 'blur(8px)' } : {}),
-          } as any}
-        />
-        <Animated.View
-          style={{
-            width: 38, height: 38, borderRadius: 12,
-            backgroundColor: FLAME_BG,
-            borderWidth: 1.5, borderColor: 'rgba(255,107,0,0.5)',
-            alignItems: 'center', justifyContent: 'center',
-            transform: [{ scale: pulseScale }],
-            ...(Platform.OS === 'web' ? {
-              boxShadow: '0 0 12px rgba(255,107,0,0.35), inset 0 1px 0 rgba(255,255,255,0.15)',
-            } : {}),
-          } as any}
-        >
-          <GraduationCap size={20} color={FLAME} />
-        </Animated.View>
-      </View>
+      {/* Unboxed Logo mark */}
+      <Animated.View
+        style={{
+          alignItems: 'center',
+          justifyContent: 'center',
+          transform: [{ scale: pulseScale }],
+        }}
+      >
+        <CloudoraLogo size={30} glow glowIntensity={0.65} />
+      </Animated.View>
 
       <Text
         style={{
@@ -488,7 +465,6 @@ export default function VerifySecurityQuestionsScreen() {
   const [showPassword, setShowPassword]             = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading]                       = useState(false);
-  const [error, setError]                           = useState<string | null>(null);
 
   // Entrance animations
   const cardFade     = useRef(new Animated.Value(0)).current;
@@ -579,20 +555,18 @@ export default function VerifySecurityQuestionsScreen() {
   };
 
   const handleNextFromEmail = async () => {
-    setError(null);
-
     if (!normalizedEmail) {
-      setError('Email is required.');
+      showError('Email Required', 'Please enter your account email.');
       shakeCard();
       return;
     }
     if (!validateEmail(normalizedEmail)) {
-      setError('Please enter a valid email address.');
+      showError('Invalid Email', 'Please enter a valid email address.');
       shakeCard();
       return;
     }
     if (emailExists !== true) {
-      setError('No account exists for this email.');
+      showError('Account Not Found', 'No account exists for this email address.');
       shakeCard();
       return;
     }
@@ -601,7 +575,7 @@ export default function VerifySecurityQuestionsScreen() {
       setLoading(true);
       const probe = await SettingsService.verifySecurityQuestions(normalizedEmail);
       if (!probe.requires_answer) {
-        setError(probe.message || 'Unable to load your security question.');
+        showError('Unavailable', probe.message || 'Unable to load your security question.');
         shakeCard();
         return;
       }
@@ -609,7 +583,9 @@ export default function VerifySecurityQuestionsScreen() {
       setAttemptsRemaining(typeof probe.attempts_remaining === 'number' ? probe.attempts_remaining : null);
       setStep('question');
     } catch (err: any) {
-      setError(err?.response?.data?.error || err?.message || 'Unable to load your security question.');
+      const raw = err?.response?.data?.error || err?.response?.data?.message || err?.message;
+      const safe = (raw && !/database|schema|relation|syntax/i.test(raw)) ? raw : 'Unable to load your security question.';
+      showError('Recovery Failed', safe);
       shakeCard();
     } finally {
       setLoading(false);
@@ -617,10 +593,8 @@ export default function VerifySecurityQuestionsScreen() {
   };
 
   const handleNextFromQuestion = async () => {
-    setError(null);
-
     if (!answer.trim()) {
-      setError('Enter your security question answer.');
+      showError('Answer Required', 'Enter your security question answer.');
       shakeCard();
       return;
     }
@@ -631,7 +605,7 @@ export default function VerifySecurityQuestionsScreen() {
 
       if (!result.verified) {
         setAttemptsRemaining(typeof result.attempts_remaining === 'number' ? result.attempts_remaining : attemptsRemaining);
-        setError(result.message || 'Invalid answer.');
+        showError('Verification Failed', result.message || 'Invalid answer.');
         shakeCard();
         return;
       }
@@ -642,7 +616,9 @@ export default function VerifySecurityQuestionsScreen() {
       if (code === 'SECURITY_ATTEMPTS_LIMIT') {
         setAttemptsRemaining(0);
       }
-      setError(err?.response?.data?.message || err?.response?.data?.error || err?.message || 'Verification failed');
+      const raw = err?.response?.data?.message || err?.response?.data?.error || err?.message;
+      const safe = (raw && !/database|schema|relation|syntax/i.test(raw)) ? raw : 'Verification failed. Please try again.';
+      showError('Verification Failed', safe);
       shakeCard();
     } finally {
       setLoading(false);
@@ -650,20 +626,18 @@ export default function VerifySecurityQuestionsScreen() {
   };
 
   const handleResetPassword = async () => {
-    setError(null);
-
     if (!newPassword.trim() || !confirmPassword.trim()) {
-      setError('Fill both password fields.');
+      showError('Missing Password', 'Fill both password fields.');
       shakeCard();
       return;
     }
     if (newPassword.length < 6) {
-      setError('Password must be at least 6 characters.');
+      showError('Password Too Short', 'Password must be at least 6 characters.');
       shakeCard();
       return;
     }
     if (newPassword !== confirmPassword) {
-      setError('Passwords do not match.');
+      showError('Mismatch', 'Passwords do not match.');
       shakeCard();
       return;
     }
@@ -672,15 +646,17 @@ export default function VerifySecurityQuestionsScreen() {
       setLoading(true);
       const result = await SettingsService.verifySecurityQuestions(normalizedEmail, answer.trim(), newPassword);
       if (!result.verified) {
-        setError(result.message || 'Unable to reset password.');
+        showError('Reset Failed', result.message || 'Unable to reset password.');
         shakeCard();
         return;
       }
 
-      Toast.show({ type: 'success', text1: 'Password updated', text2: 'Sign in with your new password.' });
+      showSuccess('Password Updated', 'Sign in with your new password.');
       router.replace('/(auth)/signIn' as any);
     } catch (err: any) {
-      setError(err?.response?.data?.error || err?.message || 'Unable to reset password.');
+      const raw = err?.response?.data?.error || err?.response?.data?.message || err?.message;
+      const safe = (raw && !/database|schema|relation|syntax/i.test(raw)) ? raw : 'Unable to reset password.';
+      showError('Reset Failed', safe);
       shakeCard();
     } finally {
       setLoading(false);
@@ -690,10 +666,8 @@ export default function VerifySecurityQuestionsScreen() {
   const handleBackNavigation = () => {
     if (step === 'password') {
       setStep('question');
-      setError(null);
     } else if (step === 'question') {
       setStep('email');
-      setError(null);
     } else {
       router.back();
     }
@@ -736,72 +710,17 @@ export default function VerifySecurityQuestionsScreen() {
                 style={{
                   opacity: cardFade,
                   transform: [{ translateY: cardSlide }, { translateX: shakeX }, { scale: cardScale }],
-                  borderRadius: 28,
-                  overflow: 'hidden',
-                  ...(Platform.OS === 'web' ? {
-                    backdropFilter: 'blur(40px) saturate(190%)',
-                    WebkitBackdropFilter: 'blur(40px) saturate(190%)',
-                    background: `
-                      linear-gradient(
-                        165deg,
-                        rgba(24, 15, 52, 0.82) 0%,
-                        rgba(11, 7, 30, 0.88) 40%,
-                        rgba(6, 4, 20, 0.94) 100%
-                      )
-                    `,
-                    boxShadow: [
-                      '0 0 0 1px rgba(255,255,255,0.1)',
-                      '0 2px 4px rgba(0,0,0,0.35)',
-                      '0 12px 24px -4px rgba(0,0,0,0.5)',
-                      '0 24px 48px -8px rgba(0,0,0,0.65)',
-                      '0 44px 88px -12px rgba(0,0,0,0.8)',
-                      '0 0 90px -10px rgba(255,107,0,0.14)',
-                      'inset 0 1px 1px 0 rgba(255,255,255,0.18)',
-                      'inset 0 -1px 1px 0 rgba(0,0,0,0.45)',
-                    ].join(', '),
-                  } : {
-                    backgroundColor: GLASS_BG,
-                    borderWidth: 1,
-                    borderColor: GLASS_BORDER,
-                    boxShadow: [{
-                      offsetX: 0, offsetY: 28, blurRadius: 60,
-                      color: 'rgba(0,0,0,0.7)',
-                    }],
-                  }),
-                } as any}
+                  width: '100%',
+                }}
               >
-                {/* Top refraction sheen */}
-                <View
-                  pointerEvents="none"
-                  style={{
-                    position: 'absolute',
-                    top: 0, left: 0, right: 0,
-                    height: 80,
-                    borderTopLeftRadius: 28,
-                    borderTopRightRadius: 28,
-                    ...(Platform.OS === 'web' ? {
-                      background: 'linear-gradient(180deg, rgba(255,255,255,0.09) 0%, transparent 100%)',
-                    } : {
-                      backgroundColor: 'rgba(255,255,255,0.05)',
-                    }),
-                  } as any}
-                />
-
-                {/* Orange accent line at top card edge */}
-                <View
-                  pointerEvents="none"
-                  style={{
-                    position: 'absolute',
-                    top: 0, left: 32, right: 32,
-                    height: 1,
-                    backgroundColor: 'rgba(255,107,0,0.3)',
-                    borderRadius: 1,
-                  }}
-                />
-
-                {/* Card content */}
-                <View style={{ padding: 36 }}>
-
+                <GlassCard
+                  variant="modal"
+                  accentColor={FLAME}
+                  glowColor="rgba(255, 107, 0, 0.25)"
+                  borderRadius={28}
+                  style={{ width: '100%' }}
+                  contentStyle={{ padding: 36 }}
+                >
                   {/* ── TOP ROW: Back button left / Logo right ──────── */}
                   <View style={{
                     flexDirection: 'row',
@@ -882,24 +801,6 @@ export default function VerifySecurityQuestionsScreen() {
                     </Text>
                   </View>
 
-                  {/* ── ERROR BANNER ─────────────────────────────────── */}
-                  {error && (
-                    <Animated.View style={{
-                      backgroundColor: 'rgba(239,68,68,0.1)',
-                      borderWidth: 1,
-                      borderColor: 'rgba(239,68,68,0.28)',
-                      padding: 14,
-                      borderRadius: 14,
-                      marginBottom: 20,
-                      flexDirection: 'row',
-                      alignItems: 'center',
-                      gap: 10,
-                    }}>
-                      <IconIonicons name="alert-circle" size={20} color="#f87171" />
-                      <Text style={{ color: '#fca5a5', fontWeight: '600', flex: 1, fontSize: 13 }}>{error}</Text>
-                    </Animated.View>
-                  )}
-
                   {/* ── STEP 1: EMAIL ─────────────────────────────────── */}
                   {step === 'email' && (
                     <Animated.View style={fieldStyle(field1)}>
@@ -910,15 +811,14 @@ export default function VerifySecurityQuestionsScreen() {
                         onChangeText={(value: string) => {
                           setEmail(value);
                           setEmailTouched(true);
-                          setError(null);
                         }}
                         keyboardType="email-address"
                         autoCapitalize="none"
-                        error={error}
+                        error={emailTouched && emailExists === false}
                         suffix={emailCheckLoading ? <ActivityIndicator size="small" color="rgba(255,255,255,0.6)" /> : null}
                       />
 
-                      {!!emailTouched && !error && !!emailCheckMessage && (
+                      {!!emailTouched && !!emailCheckMessage && (
                         <Text
                           style={{
                             color:
@@ -985,10 +885,8 @@ export default function VerifySecurityQuestionsScreen() {
                         value={answer}
                         onChangeText={(value: string) => {
                           setAnswer(value);
-                          setError(null);
                         }}
                         autoCapitalize="none"
-                        error={error}
                       />
 
                       {typeof attemptsRemaining === 'number' && (
@@ -1028,7 +926,6 @@ export default function VerifySecurityQuestionsScreen() {
                         value={newPassword}
                         onChangeText={(value: string) => {
                           setNewPassword(value);
-                          setError(null);
                         }}
                         secureTextEntry={!showPassword}
                         autoCapitalize="none"
@@ -1053,7 +950,6 @@ export default function VerifySecurityQuestionsScreen() {
                         value={confirmPassword}
                         onChangeText={(value: string) => {
                           setConfirmPassword(value);
-                          setError(null);
                         }}
                         secureTextEntry={!showConfirmPassword}
                         autoCapitalize="none"
@@ -1092,8 +988,7 @@ export default function VerifySecurityQuestionsScreen() {
                       </Text>
                     </TouchableOpacity>
                   </View>
-
-                </View>
+                </GlassCard>
               </Animated.View>
             </ScrollView>
           </KeyboardAvoidingView>

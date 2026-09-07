@@ -10,18 +10,36 @@ type Resource = Database['public']['Tables']['resources']['Row'] & {
 
 export const ResourceAPI = {
     // Get all resources (filtered by subject optional)
-    getResources: async (subjectId?: string): Promise<Resource[]> => {
+    getResources: async (subjectId?: string, pagination?: { page?: number; limit?: number }): Promise<Resource[]> => {
         try {
-            const params = subjectId ? { subject_id: subjectId } : {};
+            const params = {
+                ...(subjectId ? { subject_id: subjectId } : {}),
+                ...(pagination || {}),
+            };
             const response = await api.get("/resources", { params });
+            const list = Array.isArray(response.data) ? response.data : (response.data?.data || []);
 
             // Transform to match frontend expectations if necessary
-            return response.data.map((r: any) => ({
+            return list.map((r: any) => ({
                 ...r,
                 Subject_title: r.subject?.title || "Unknown Subject"
             }));
         } catch (error) {
             console.error("Get resources error", error);
+            throw error;
+        }
+    },
+
+    getResourcesPaginated: async (subjectId?: string, pagination?: { page?: number; limit?: number }): Promise<any> => {
+        try {
+            const params = {
+                ...(subjectId ? { subject_id: subjectId } : {}),
+                ...(pagination || {}),
+            };
+            const response = await api.get("/resources", { params });
+            return response.data;
+        } catch (error) {
+            console.error("Get resources paginated error", error);
             throw error;
         }
     },

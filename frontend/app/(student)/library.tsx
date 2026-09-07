@@ -89,114 +89,116 @@ export default function StudentLibrary() {
                 }
             >
 
-            <View className="p-4 md:p-8">
-                {/* Informative Librarian-Mediated Banner */}
-                <View className="bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-900/40 rounded-xl p-4 mb-5 flex-row items-start">
-                    <Info size={18} color="#2563EB" style={{ marginTop: 2, marginRight: 10 }} />
-                    <View className="flex-1">
-                        <Text className="text-blue-900 dark:text-blue-200 font-bold text-xs">Librarian-Assisted Circulation</Text>
-                        <Text className="text-blue-700 dark:text-blue-300 text-xs mt-0.5 leading-4">
-                            All book checkouts and returns are processed in person by the school librarian. Browse available titles below and visit the library with your Student ID.
-                        </Text>
+            <ScrollView
+                className="flex-1"
+                showsVerticalScrollIndicator={false}
+                refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={["#FF6900"]} />}
+                contentContainerStyle={{ paddingBottom: 200 }}
+            >
+                <View className="p-4 md:p-8">
+                    {/* Informative Librarian-Mediated Banner */}
+                    <View className="bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-900/40 rounded-xl p-4 mb-5 flex-row items-start">
+                        <Info size={18} color="#2563EB" style={{ marginTop: 2, marginRight: 10 }} />
+                        <View className="flex-1">
+                            <Text className="text-blue-900 dark:text-blue-200 font-bold text-xs">Librarian-Assisted Circulation</Text>
+                            <Text className="text-blue-700 dark:text-blue-300 text-xs mt-0.5 leading-4">
+                                All book checkouts and returns are processed in person by the school librarian. Browse available titles below and visit the library with your Student ID.
+                            </Text>
+                        </View>
                     </View>
-                </View>
 
-                {/* Search Header */}
-                <View className="flex-row gap-3 mb-6">
-                    <View className="flex-1 flex-row items-center bg-[#FFFFFF] dark:bg-[#161B22] px-5 py-3.5 rounded-xl border border-[#D0D7DE] dark:border-[#21262D] shadow-sm">
-                        <Search size={18} color="#9CA3AF" />
-                        <TextInput
-                            placeholder="Find publications..."
-                            placeholderTextColor="#9CA3AF"
-                            className="flex-1 ml-3 text-gray-900 dark:text-white font-bold text-xs uppercase tracking-widest"
-                            value={searchQuery}
-                            onChangeText={setSearchQuery}
-                        />
+                    {/* Search Header */}
+                    <View className="flex-row gap-3 mb-6">
+                        <View className="flex-1 flex-row items-center bg-[#FFFFFF] dark:bg-[#161B22] px-5 py-3.5 rounded-xl border border-[#D0D7DE] dark:border-[#21262D] shadow-sm">
+                            <Search size={18} color="#9CA3AF" />
+                            <TextInput
+                                placeholder="Find publications..."
+                                placeholderTextColor="#9CA3AF"
+                                className="flex-1 ml-3 text-gray-900 dark:text-white font-bold text-xs uppercase tracking-widest"
+                                value={searchQuery}
+                                onChangeText={setSearchQuery}
+                            />
+                        </View>
+                        <TouchableOpacity className="w-14 h-14 bg-[#FFFFFF] dark:bg-[#161B22] rounded-xl items-center justify-center border border-[#D0D7DE] dark:border-[#21262D] shadow-sm active:bg-gray-50">
+                            <Filter size={20} color="#FF6900" />
+                        </TouchableOpacity>
                     </View>
-                    <TouchableOpacity className="w-14 h-14 bg-[#FFFFFF] dark:bg-[#161B22] rounded-xl items-center justify-center border border-[#D0D7DE] dark:border-[#21262D] shadow-sm active:bg-gray-50">
-                        <Filter size={20} color="#FF6900" />
-                    </TouchableOpacity>
-                </View>
 
-                {loading ? (
-                    <ListItemSkeleton loading={loading} count={4} label="Loading library books..." />
-                ) : (
-                    <ScrollView
-                        className="flex-1"
-                        showsVerticalScrollIndicator={false}
-                        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={["#FF6900"]} />}
-                        contentContainerStyle={{ paddingBottom: 200 }}
-                    >
-                        {/* Borrowing History */}
-                        {borrowingHistory.filter(b => ['borrowed', 'active', 'overdue'].includes(b.status)).length > 0 && (
-                            <>
-                                <View className="px-2 mb-4">
-                                    <Text className="text-gray-500 dark:text-gray-400 font-bold text-[10px] uppercase tracking-[3px]">Active Borrowing</Text>
+                    {loading ? (
+                        <ListItemSkeleton loading={loading} count={4} label="Loading library books..." />
+                    ) : (
+                        <>
+                            {/* Borrowing History */}
+                            {borrowingHistory.filter(b => ['borrowed', 'active', 'overdue'].includes(b.status)).length > 0 && (
+                                <>
+                                    <View className="px-2 mb-4">
+                                        <Text className="text-gray-500 dark:text-gray-400 font-bold text-[10px] uppercase tracking-[3px]">Active Borrowing</Text>
+                                    </View>
+                                    {borrowingHistory.filter(b => ['borrowed', 'active', 'overdue'].includes(b.status)).map((borrow) => (
+                                        <View key={borrow.id} className="bg-[#FFFFFF] dark:bg-[#161B22] p-5 rounded-xl border border-[#D0D7DE] dark:border-[#21262D] mb-3 flex-row items-center shadow-sm">
+                                            <View className="w-12 h-12 rounded-xl bg-orange-50 dark:bg-orange-950/20 items-center justify-center mr-4">
+                                                <BookOpen size={20} color="#FF6900" />
+                                            </View>
+                                            <View className="flex-1">
+                                                <Text className="text-gray-900 dark:text-white font-bold text-base tracking-tight" numberOfLines={1}>{borrow.bookTitle}</Text>
+                                                <Text className="text-gray-500 dark:text-gray-400 text-[10px] font-bold uppercase tracking-widest mt-1">
+                                                    {`Due ${new Date(borrow.dueDate).toLocaleDateString()}`}
+                                                </Text>
+                                                {borrow.issuerName && (
+                                                    <Text className="text-gray-400 text-[9px] mt-0.5">
+                                                        Issued by: {borrow.issuerName}
+                                                    </Text>
+                                                )}
+                                            </View>
+                                            <View className={`px-3 py-1 rounded-full ${borrow.status === 'overdue' ? 'bg-red-50 dark:bg-red-950/20 border-red-100 dark:border-red-900' : 'bg-orange-50 dark:bg-orange-950/20 border-orange-100 dark:border-orange-900'} border`}>
+                                                <Text className={`font-bold text-[8px] uppercase tracking-widest ${borrow.status === 'overdue' ? 'text-red-600' : 'text-[#FF6900]'}`}>{borrow.status}</Text>
+                                            </View>
+                                        </View>
+                                    ))}
+                                    <View className="h-6" />
+                                </>
+                            )}
+
+                            {/* Catalog */}
+                            <View className="px-2 mb-4">
+                                <Text className="text-gray-500 dark:text-gray-400 font-bold text-[10px] uppercase tracking-[3px]">Digital Catalog</Text>
+                            </View>
+                            {filteredBooks.length === 0 ? (
+                                <View className="bg-[#FFFFFF] dark:bg-[#161B22] p-12 rounded-xl items-center border border-[#D0D7DE] dark:border-[#21262D] border-dashed mt-4">
+                                    <Search size={48} color="#E5E7EB" style={{ opacity: 0.3 }} />
+                                    <Text className="text-gray-500 dark:text-gray-400 font-bold text-center mt-6">No matches found</Text>
                                 </View>
-                                {borrowingHistory.filter(b => ['borrowed', 'active', 'overdue'].includes(b.status)).map((borrow) => (
-                                    <View key={borrow.id} className="bg-[#FFFFFF] dark:bg-[#161B22] p-5 rounded-xl border border-[#D0D7DE] dark:border-[#21262D] mb-3 flex-row items-center shadow-sm">
-                                        <View className="w-12 h-12 rounded-xl bg-orange-50 dark:bg-orange-950/20 items-center justify-center mr-4">
-                                            <BookOpen size={20} color="#FF6900" />
+                            ) : (
+                                filteredBooks.map((item) => (
+                                    <TouchableOpacity
+                                        key={item.id}
+                                        activeOpacity={0.7}
+                                        onPress={() => {
+                                            setSelectedBook(item);
+                                            setModalVisible(true);
+                                        }}
+                                        className="bg-[#FFFFFF] dark:bg-[#161B22] p-5 rounded-xl border border-[#D0D7DE] dark:border-[#21262D] mb-4 flex-row items-center shadow-sm active:bg-gray-50 dark:active:bg-gray-900"
+                                    >
+                                        <View className={`p-4 rounded-xl mr-4 ${item.available > 0 ? 'bg-orange-50 dark:bg-orange-950/20' : 'bg-gray-50 dark:bg-[#161B22]'}`}>
+                                            <BookOpen size={22} color={item.available > 0 ? "#FF6900" : "#9CA3AF"} />
                                         </View>
                                         <View className="flex-1">
-                                            <Text className="text-gray-900 dark:text-white font-bold text-base tracking-tight" numberOfLines={1}>{borrow.bookTitle}</Text>
-                                            <Text className="text-gray-500 dark:text-gray-400 text-[10px] font-bold uppercase tracking-widest mt-1">
-                                                {`Due ${new Date(borrow.dueDate).toLocaleDateString()}`}
+                                            <Text className="text-[#FF6900] text-[8px] font-bold uppercase tracking-[2px] mb-1">{item.category}</Text>
+                                            <Text className="text-gray-900 dark:text-white font-bold text-base leading-tight" numberOfLines={1}>{item.title}</Text>
+                                            <Text className="text-gray-500 dark:text-gray-400 text-xs font-medium">{item.author}</Text>
+                                        </View>
+                                        <View className={`px-2 py-0.5 rounded-full ${item.available > 0 ? 'bg-orange-500' : 'bg-gray-100 dark:bg-[#161B22]'}`}>
+                                            <Text className={`font-bold text-[8px] uppercase tracking-widest ${item.available > 0 ? 'text-white' : 'text-gray-500 dark:text-gray-400'}`}>
+                                                {item.available > 0 ? `${item.available} Left` : 'Out of stock'}
                                             </Text>
-                                            {borrow.issuerName && (
-                                                <Text className="text-gray-400 text-[9px] mt-0.5">
-                                                    Issued by: {borrow.issuerName}
-                                                </Text>
-                                            )}
                                         </View>
-                                        <View className={`px-3 py-1 rounded-full ${borrow.status === 'overdue' ? 'bg-red-50 dark:bg-red-950/20 border-red-100 dark:border-red-900' : 'bg-orange-50 dark:bg-orange-950/20 border-orange-100 dark:border-orange-900'} border`}>
-                                            <Text className={`font-bold text-[8px] uppercase tracking-widest ${borrow.status === 'overdue' ? 'text-red-600' : 'text-[#FF6900]'}`}>{borrow.status}</Text>
-                                        </View>
-                                    </View>
-                                ))}
-                                <View className="h-6" />
-                            </>
-                        )}
-
-                        {/* Catalog */}
-                        <View className="px-2 mb-4">
-                            <Text className="text-gray-500 dark:text-gray-400 font-bold text-[10px] uppercase tracking-[3px]">Digital Catalog</Text>
-                        </View>
-                        {filteredBooks.length === 0 ? (
-                            <View className="bg-[#FFFFFF] dark:bg-[#161B22] p-12 rounded-xl items-center border border-[#D0D7DE] dark:border-[#21262D] border-dashed mt-4">
-                                <Search size={48} color="#E5E7EB" style={{ opacity: 0.3 }} />
-                                <Text className="text-gray-500 dark:text-gray-400 font-bold text-center mt-6">No matches found</Text>
-                            </View>
-                        ) : (
-                            filteredBooks.map((item) => (
-                                <TouchableOpacity
-                                    key={item.id}
-                                    activeOpacity={0.7}
-                                    onPress={() => {
-                                        setSelectedBook(item);
-                                        setModalVisible(true);
-                                    }}
-                                    className="bg-[#FFFFFF] dark:bg-[#161B22] p-5 rounded-xl border border-[#D0D7DE] dark:border-[#21262D] mb-4 flex-row items-center shadow-sm active:bg-gray-50 dark:active:bg-gray-900"
-                                >
-                                    <View className={`p-4 rounded-xl mr-4 ${item.available > 0 ? 'bg-orange-50 dark:bg-orange-950/20' : 'bg-gray-50 dark:bg-[#161B22]'}`}>
-                                        <BookOpen size={22} color={item.available > 0 ? "#FF6900" : "#9CA3AF"} />
-                                    </View>
-                                    <View className="flex-1">
-                                        <Text className="text-[#FF6900] text-[8px] font-bold uppercase tracking-[2px] mb-1">{item.category}</Text>
-                                        <Text className="text-gray-900 dark:text-white font-bold text-base leading-tight" numberOfLines={1}>{item.title}</Text>
-                                        <Text className="text-gray-500 dark:text-gray-400 text-xs font-medium">{item.author}</Text>
-                                    </View>
-                                    <View className={`px-2 py-0.5 rounded-full ${item.available > 0 ? 'bg-orange-500' : 'bg-gray-100 dark:bg-[#161B22]'}`}>
-                                        <Text className={`font-bold text-[8px] uppercase tracking-widest ${item.available > 0 ? 'text-white' : 'text-gray-500 dark:text-gray-400'}`}>
-                                            {item.available > 0 ? `${item.available} Left` : 'Out of stock'}
-                                        </Text>
-                                    </View>
-                                </TouchableOpacity>
-                            ))
-                        )}
-                    </ScrollView>
-                )}
-            </View>
+                                    </TouchableOpacity>
+                                ))
+                            )}
+                        </>
+                    )}
+                </View>
+            </ScrollView>
 
             {/* Read-only Book Details Modal */}
             <Modal animationType="slide" transparent visible={modalVisible}>

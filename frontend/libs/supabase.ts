@@ -202,7 +202,6 @@ export const authService = {
         },
         body: JSON.stringify({ role }),
       });
-      console.log('[startDemoSession] hitting:', response)
       
       const data = await response.json();
 
@@ -218,8 +217,6 @@ export const authService = {
 
       if (sessionError) return { data: null, error: sessionError };
 
-      console.log('[startDemoSession] data from server:', JSON.stringify(data));
-      console.log('[startDemoSession] sessionError:', sessionError);
 
       return { data, error: null };
     } catch (error: any) {

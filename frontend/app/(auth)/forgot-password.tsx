@@ -1,8 +1,10 @@
 import { SettingsService } from "@/services/SettingsService";
 import { validateEmail } from "@/utils/validation";
+import { showError, showSuccess, showInfo } from "@/utils/toast";
 import { Ionicons } from "@expo/vector-icons";
 import { router, Stack } from "expo-router";
-import { Shield, GraduationCap } from "lucide-react-native";
+import { Shield } from "lucide-react-native";
+import { CloudoraLogo } from "@/components/common/CloudoraLogo";
 import React, { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -21,6 +23,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LivingBackground } from "@/components/landing/LivingBackground";
+import { GlassCard } from "@/components/ui/GlassCard";
 
 const IconIonicons = Ionicons as any;
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
@@ -398,26 +401,18 @@ const PrimaryButton = ({
 
 // ─── LogoLockup Component ───────────────────────────────────────────────────
 const LogoLockup = ({ entranceAnim }: { entranceAnim: Animated.Value }) => {
-  const pulseScale  = useRef(new Animated.Value(1)).current;
-  const glowOpacity = useRef(new Animated.Value(0.5)).current;
+  const pulseScale = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
     const pulse = Animated.loop(
       Animated.sequence([
-        Animated.timing(pulseScale,  { toValue: 1.1, duration: 2400, easing: EasingRN.inOut(EasingRN.sin), useNativeDriver: true }),
-        Animated.timing(pulseScale,  { toValue: 1,   duration: 2400, easing: EasingRN.inOut(EasingRN.sin), useNativeDriver: true }),
-      ])
-    );
-    const glow = Animated.loop(
-      Animated.sequence([
-        Animated.timing(glowOpacity, { toValue: 1,   duration: 2000, easing: EasingRN.inOut(EasingRN.sin), useNativeDriver: true }),
-        Animated.timing(glowOpacity, { toValue: 0.4, duration: 2000, easing: EasingRN.inOut(EasingRN.sin), useNativeDriver: true }),
+        Animated.timing(pulseScale, { toValue: 1.08, duration: 2400, easing: EasingRN.inOut(EasingRN.sin), useNativeDriver: true }),
+        Animated.timing(pulseScale, { toValue: 1,    duration: 2400, easing: EasingRN.inOut(EasingRN.sin), useNativeDriver: true }),
       ])
     );
     pulse.start();
-    glow.start();
-    return () => { pulse.stop(); glow.stop(); };
-  }, []);
+    return () => { pulse.stop(); };
+  }, [pulseScale]);
 
   const entranceOpacity    = entranceAnim;
   const entranceTranslateY = entranceAnim.interpolate({ inputRange: [0, 1], outputRange: [-12, 0] });
@@ -432,33 +427,16 @@ const LogoLockup = ({ entranceAnim }: { entranceAnim: Animated.Value }) => {
         transform: [{ translateY: entranceTranslateY }],
       }}
     >
-      <View style={{ position: "relative", width: 38, height: 38 }}>
-        <Animated.View
-          pointerEvents="none"
-          style={{
-            position: "absolute",
-            top: -8, left: -8, right: -8, bottom: -8,
-            borderRadius: 27,
-            backgroundColor: FLAME_GLOW,
-            opacity: glowOpacity,
-            ...(Platform.OS === "web" ? { filter: "blur(8px)" } : {}),
-          } as any}
-        />
-        <Animated.View
-          style={{
-            width: 38, height: 38, borderRadius: 12,
-            backgroundColor: FLAME_BG,
-            borderWidth: 1.5, borderColor: "rgba(255,107,0,0.5)",
-            alignItems: "center", justifyContent: "center",
-            transform: [{ scale: pulseScale }],
-            ...(Platform.OS === "web" ? {
-              boxShadow: "0 0 12px rgba(255,107,0,0.35), inset 0 1px 0 rgba(255,255,255,0.15)",
-            } : {}),
-          } as any}
-        >
-          <GraduationCap size={20} color={FLAME} />
-        </Animated.View>
-      </View>
+      {/* Unboxed Logo mark */}
+      <Animated.View
+        style={{
+          alignItems: "center",
+          justifyContent: "center",
+          transform: [{ scale: pulseScale }],
+        }}
+      >
+        <CloudoraLogo size={30} glow glowIntensity={0.65} />
+      </Animated.View>
 
       <Text
         style={{
@@ -483,8 +461,6 @@ export default function ForgotPassword() {
   const [emailExists, setEmailExists]                 = useState<boolean | null>(null);
   const [emailCheckMessage, setEmailCheckMessage]     = useState<string | null>(null);
   const [emailTouched, setEmailTouched]               = useState(false);
-  const [error, setError]                             = useState<string | null>(null);
-  const [successMsg, setSuccessMsg]                   = useState<string | null>(null);
   const [successModalOpen, setSuccessModalOpen]       = useState(false);
   const [successModalMessage, setSuccessModalMessage] = useState("");
   const [isHierarchical, setIsHierarchical]           = useState(false);
@@ -496,8 +472,6 @@ export default function ForgotPassword() {
   const logoEntrance = useRef(new Animated.Value(0)).current;
   const btnScale     = useRef(new Animated.Value(1)).current;
   const shakeX       = useRef(new Animated.Value(0)).current;
-  const toastY       = useRef(new Animated.Value(-80)).current;
-  const toastOpacity = useRef(new Animated.Value(0)).current;
 
   // Staggered field anims
   const field1 = useRef(new Animated.Value(0)).current;
@@ -521,20 +495,6 @@ export default function ForgotPassword() {
       ]).start();
     });
   }, []);
-
-  const showToast = (msg: string) => {
-    setSuccessMsg(msg);
-    Animated.parallel([
-      Animated.spring(toastY, { toValue: 0, useNativeDriver: true, friction: 7 }),
-      Animated.timing(toastOpacity, { toValue: 1, duration: 300, useNativeDriver: true }),
-    ]).start();
-    setTimeout(() => {
-      Animated.parallel([
-        Animated.timing(toastY, { toValue: -80, duration: 400, useNativeDriver: true }),
-        Animated.timing(toastOpacity, { toValue: 0, duration: 300, useNativeDriver: true }),
-      ]).start(() => setSuccessMsg(null));
-    }, 4000);
-  };
 
   const normalizedEmail = email.trim().toLowerCase();
   const canValidateEmail = validateEmail(normalizedEmail);
@@ -594,44 +554,49 @@ export default function ForgotPassword() {
   const handleReset = async () => {
     setIsHierarchical(false);
     if (!normalizedEmail) {
-      setError("Email is required");
+      showError("Email Required", "Please enter your email address.");
       shakeCard();
       return;
     }
     if (!validateEmail(normalizedEmail)) {
-      setError("Please enter a valid email");
+      showError("Invalid Email", "Please enter a valid email address.");
       shakeCard();
       return;
     }
 
     if (emailExists !== true) {
-      setError("No account exists for this email");
+      showError("Account Not Found", "No account exists for this email address.");
       shakeCard();
       return;
     }
 
     setLoading(true);
-    setError(null);
     try {
       const response: any = await SettingsService.forgotPassword(normalizedEmail);
       setIsHierarchical(!!response.is_hierarchical);
-      showToast(response.message || "Reset request received. Follow the on-screen instructions.");
+      if (response.is_hierarchical) {
+        showInfo("Reset Request", response.message || "Reset request received. Follow the on-screen instructions.");
+      } else {
+        showSuccess("Request Received", response.message || "Password reset instructions sent.");
+      }
       setSuccessModalMessage(response.message || "Reset request received successfully.");
       setSuccessModalOpen(true);
     } catch (err: any) {
       const errorData = err.response?.data || err.data;
       if (errorData?.code === "RATE_LIMIT_EXCEEDED") {
-        setError(errorData.error || "Too many password reset requests. Please try again in an hour.");
-        shakeCard();
+        showError("Too Many Requests", errorData.error || "Too many password reset requests. Please try again in an hour.");
       } else if (errorData?.code === "EMAIL_NOT_FOUND") {
-        setError(errorData.error || "No account exists for this email.");
+        showError("Account Not Found", errorData.error || "No account exists for this email.");
         setEmailExists(false);
         setEmailCheckMessage(errorData.error || "No account exists for this email.");
-        shakeCard();
       } else {
-        setError(errorData?.error || "Unable to process reset request. Please try again.");
-        shakeCard();
+        const raw = errorData?.error || errorData?.message || err?.message;
+        const safe = (raw && !/database|schema|relation|syntax/i.test(raw))
+          ? raw
+          : "Unable to process reset request. Please try again.";
+        showError("Reset Failed", safe);
       }
+      shakeCard();
     } finally {
       setLoading(false);
     }
@@ -649,54 +614,6 @@ export default function ForgotPassword() {
       <LivingBackground />
 
       <View style={{ flex: 1, backgroundColor: "transparent" }}>
-        {/* Toast notification */}
-        <Animated.View
-          pointerEvents="none"
-          style={{
-            position: "absolute",
-            top: 0, left: 0, right: 0, zIndex: 999,
-            alignItems: "center",
-            paddingTop: 60,
-            transform: [{ translateY: toastY }],
-            opacity: toastOpacity,
-          }}
-        >
-          <View
-            style={{
-              backgroundColor: isHierarchical ? "rgba(255,107,0,0.18)" : "rgba(34,197,94,0.2)",
-              borderWidth: 1,
-              borderColor: isHierarchical ? "rgba(255,107,0,0.4)" : "rgba(34,197,94,0.4)",
-              borderRadius: 16,
-              paddingHorizontal: 24,
-              paddingVertical: 14,
-              flexDirection: "row",
-              alignItems: "center",
-              gap: 10,
-              maxWidth: SCREEN_WIDTH * 0.9,
-              boxShadow: [{
-                offsetX: 0, offsetY: 8, blurRadius: 16,
-                color: isHierarchical ? "rgba(255,107,0,0.3)" : "rgba(34,197,94,0.3)",
-              }],
-            } as any}
-          >
-            <IconIonicons
-              name={isHierarchical ? "information-circle" : "checkmark-circle"}
-              size={22}
-              color={isHierarchical ? "#FF6B00" : "#4ade80"}
-            />
-            <Text
-              style={{
-                color: isHierarchical ? "#FF6B00" : "#4ade80",
-                fontWeight: "700",
-                fontSize: 14,
-                flexShrink: 1,
-              }}
-            >
-              {successMsg}
-            </Text>
-          </View>
-        </Animated.View>
-
         <SafeAreaView style={{ flex: 1, width: "100%", maxWidth: 500, alignSelf: "center" }}>
           <KeyboardAvoidingView
             style={{ flex: 1 }}
@@ -713,72 +630,17 @@ export default function ForgotPassword() {
                 style={{
                   opacity: cardFade,
                   transform: [{ translateY: cardSlide }, { translateX: shakeX }, { scale: cardScale }],
-                  borderRadius: 28,
-                  overflow: "hidden",
-                  ...(Platform.OS === "web" ? {
-                    backdropFilter: "blur(40px) saturate(190%)",
-                    WebkitBackdropFilter: "blur(40px) saturate(190%)",
-                    background: `
-                      linear-gradient(
-                        165deg,
-                        rgba(24, 15, 52, 0.82) 0%,
-                        rgba(11, 7, 30, 0.88) 40%,
-                        rgba(6, 4, 20, 0.94) 100%
-                      )
-                    `,
-                    boxShadow: [
-                      "0 0 0 1px rgba(255,255,255,0.1)",
-                      "0 2px 4px rgba(0,0,0,0.35)",
-                      "0 12px 24px -4px rgba(0,0,0,0.5)",
-                      "0 24px 48px -8px rgba(0,0,0,0.65)",
-                      "0 44px 88px -12px rgba(0,0,0,0.8)",
-                      "0 0 90px -10px rgba(255,107,0,0.14)",
-                      "inset 0 1px 1px 0 rgba(255,255,255,0.18)",
-                      "inset 0 -1px 1px 0 rgba(0,0,0,0.45)",
-                    ].join(", "),
-                  } : {
-                    backgroundColor: GLASS_BG,
-                    borderWidth: 1,
-                    borderColor: GLASS_BORDER,
-                    boxShadow: [{
-                      offsetX: 0, offsetY: 28, blurRadius: 60,
-                      color: "rgba(0,0,0,0.7)",
-                    }],
-                  }),
-                } as any}
+                  width: "100%",
+                }}
               >
-                {/* Top refraction sheen */}
-                <View
-                  pointerEvents="none"
-                  style={{
-                    position: "absolute",
-                    top: 0, left: 0, right: 0,
-                    height: 80,
-                    borderTopLeftRadius: 28,
-                    borderTopRightRadius: 28,
-                    ...(Platform.OS === "web" ? {
-                      background: "linear-gradient(180deg, rgba(255,255,255,0.09) 0%, transparent 100%)",
-                    } : {
-                      backgroundColor: "rgba(255,255,255,0.05)",
-                    }),
-                  } as any}
-                />
-
-                {/* Orange accent line at top card edge */}
-                <View
-                  pointerEvents="none"
-                  style={{
-                    position: "absolute",
-                    top: 0, left: 32, right: 32,
-                    height: 1,
-                    backgroundColor: "rgba(255,107,0,0.3)",
-                    borderRadius: 1,
-                  }}
-                />
-
-                {/* Card content */}
-                <View style={{ padding: 36 }}>
-
+                <GlassCard
+                  variant="modal"
+                  accentColor={FLAME}
+                  glowColor="rgba(255, 107, 0, 0.25)"
+                  borderRadius={28}
+                  style={{ width: "100%" }}
+                  contentStyle={{ padding: 36 }}
+                >
                   {/* ── TOP ROW: Back button left / Logo right ──────── */}
                   <View style={{
                     flexDirection: "row",
@@ -839,24 +701,6 @@ export default function ForgotPassword() {
                     </Text>
                   </View>
 
-                  {/* ── ERROR BANNER ─────────────────────────────────── */}
-                  {error && (
-                    <Animated.View style={{
-                      backgroundColor: "rgba(239,68,68,0.1)",
-                      borderWidth: 1,
-                      borderColor: "rgba(239,68,68,0.28)",
-                      padding: 14,
-                      borderRadius: 14,
-                      marginBottom: 20,
-                      flexDirection: "row",
-                      alignItems: "center",
-                      gap: 10,
-                    }}>
-                      <IconIonicons name="alert-circle" size={20} color="#f87171" />
-                      <Text style={{ color: "#fca5a5", fontWeight: "600", flex: 1, fontSize: 13 }}>{error}</Text>
-                    </Animated.View>
-                  )}
-
                   {/* ── EMAIL INPUT ──────────────────────────────────── */}
                   <Animated.View style={fieldStyle(field1)}>
                     <GlassInput
@@ -866,16 +710,15 @@ export default function ForgotPassword() {
                       onChangeText={(v: string) => {
                         setEmail(v);
                         setEmailTouched(true);
-                        setError(null);
                       }}
                       keyboardType="email-address"
                       autoCapitalize="none"
-                      error={error}
+                      error={emailTouched && emailExists === false}
                       suffix={emailCheckLoading ? <ActivityIndicator size="small" color="rgba(255,255,255,0.6)" /> : null}
                     />
 
                     {/* Live email verification status badge */}
-                    {!!emailTouched && !error && !!emailCheckMessage && (
+                    {!!emailTouched && !!emailCheckMessage && (
                       <Text
                         style={{
                           color: emailExists === true ? "rgba(74, 222, 128, 0.95)" : emailExists === false ? "rgba(252,165,165,0.95)" : "rgba(255,255,255,0.5)",
@@ -920,8 +763,7 @@ export default function ForgotPassword() {
                       </Text>
                     </TouchableOpacity>
                   </View>
-
-                </View>
+                </GlassCard>
               </Animated.View>
             </ScrollView>
           </KeyboardAvoidingView>
@@ -937,29 +779,19 @@ export default function ForgotPassword() {
           alignItems: "center",
           padding: 24,
         }}>
-          <View style={{
-            width: "100%",
-            maxWidth: 420,
-            borderRadius: 24,
-            overflow: "hidden",
-            padding: 28,
-            ...(Platform.OS === "web" ? {
-              backdropFilter: "blur(32px) saturate(180%)",
-              WebkitBackdropFilter: "blur(32px) saturate(180%)",
-              background: `
-                linear-gradient(
-                  165deg,
-                  rgba(24, 15, 52, 0.9) 0%,
-                  rgba(11, 7, 30, 0.94) 100%
-                )
-              `,
-              boxShadow: "0 0 0 1px rgba(255,255,255,0.1), 0 24px 60px rgba(0,0,0,0.8)",
-            } : {
-              backgroundColor: "#13103A",
-              borderWidth: 1,
-              borderColor: "rgba(255,255,255,0.12)",
-            }),
-          } as any}>
+          <GlassCard
+            variant="modal"
+            accentColor="#22C55E"
+            glowColor="rgba(34, 197, 94, 0.35)"
+            borderRadius={24}
+            style={{
+              width: "100%",
+              maxWidth: 420,
+            }}
+            contentStyle={{
+              padding: 28,
+            }}
+          >
             <View style={{
               width: 44, height: 44, borderRadius: 14,
               backgroundColor: "rgba(34,197,94,0.15)",
@@ -995,7 +827,7 @@ export default function ForgotPassword() {
             >
               <Text style={{ color: "#fff", fontWeight: "800", fontSize: 15 }}>Back to Sign In</Text>
             </TouchableOpacity>
-          </View>
+          </GlassCard>
         </View>
       </Modal>
 

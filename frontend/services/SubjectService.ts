@@ -21,12 +21,22 @@ export interface SubjectData {
 
 export const SubjectAPI = {
     // Get all subjects
-    getSubjects: async (): Promise<SubjectData[]> => {
+    getSubjects: async (params?: { page?: number; limit?: number }): Promise<SubjectData[]> => {
         try {
-            const response = await api.get("/subjects");
-            return response.data;
+            const response = await api.get("/subjects", { params });
+            return Array.isArray(response.data) ? response.data : (response.data?.data || []);
         } catch (error) {
             console.error("Get subjects error", error);
+            throw error;
+        }
+    },
+
+    getSubjectsPaginated: async (params?: { page?: number; limit?: number }): Promise<any> => {
+        try {
+            const response = await api.get("/subjects", { params });
+            return response.data;
+        } catch (error) {
+            console.error("Get subjects paginated error", error);
             throw error;
         }
     },

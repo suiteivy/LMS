@@ -1,6 +1,7 @@
 const supabase = require("../utils/supabaseClient.js");
 const { buildClassLabel } = require('../utils/classLabel');
 const { assignStudentToSingleClass } = require('../utils/studentClassEnrollment');
+const { parsePagination, paginatedResponse } = require("../utils/pagination.js");
 
 function toFiniteNumber(value) {
     if (value === null || value === undefined || value === '') return undefined;
@@ -901,12 +902,15 @@ exports.getClasses = async (req, res) => {
             ...(hasClassType ? ['class_type'] : []),
         ].join(', ');
 
+        const { page, limit, from, to } = parsePagination(req.query, { defaultLimit: 50 });
+
         let query = supabase
             .from('classes')
-            .select(classSelectFields)
+            .select(classSelectFields, { count: 'exact' })
             .order('grade_level', { ascending: true })
             .order('form_level', { ascending: true })
-            .order('stream', { ascending: true });
+            .order('stream', { ascending: true })
+            .range(from, to);
 
         if (institution_id) {
             query = query.eq("institution_id", institution_id);
@@ -950,31 +954,34 @@ exports.getClasses = async (req, res) => {
             if (streamIdValue) query = query.eq('stream_id', streamIdValue);
         }
 
-        const { data: classes, error } = await query;
+        const { data: classes, error, count } = await query;
 
         if (error) throw error;
 
         const classTypeByLevelId = await getClassTypesByLevelIds((classes || []).map((row) => row.level_id));
 
-        // Get student counts for each class
-        const classesWithCounts = await Promise.all(
-            (classes || []).map(async (cls) => {
-                const { count } = await supabase
-                    .from("class_enrollments")
-                    .select("id", { count: "exact", head: true })
-                    .eq("class_id", cls.id);
+        // Get student counts for all classes in this page via single batch query
+        const classIds = (classes || []).map((c) => c.id).filter(Boolean);
+        const studentCountMap = new Map();
+        if (classIds.length > 0) {
+            const { data: enrollments } = await supabase
+                .from("class_enrollments")
+                .select("class_id")
+                .in("class_id", classIds);
+            for (const row of enrollments || []) {
+                studentCountMap.set(row.class_id, (studentCountMap.get(row.class_id) || 0) + 1);
+            }
+        }
 
-                return {
-                    ...normalizeClassRecord({
-                        ...cls,
-                        class_type: cls.class_type || classTypeByLevelId[cls.level_id] || meta.class_type,
-                    }, meta),
-                    student_count: count || 0,
-                };
-            })
-        );
+        const classesWithCounts = (classes || []).map((cls) => ({
+            ...normalizeClassRecord({
+                ...cls,
+                class_type: cls.class_type || classTypeByLevelId[cls.level_id] || meta.class_type,
+            }, meta),
+            student_count: studentCountMap.get(cls.id) || 0,
+        }));
 
-        res.json(classesWithCounts);
+        res.json(paginatedResponse(classesWithCounts, count, page, limit));
     } catch (err) {
         console.error("getClasses error:", err);
         res.status(500).json({ error: err.message });

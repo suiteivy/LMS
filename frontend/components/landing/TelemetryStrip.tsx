@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, Platform, Dimensions } from 'react-native';
 import { Cpu, ShieldCheck, Zap, Database, Server } from 'lucide-react-native';
+import { GlassCard } from '@/components/ui/GlassCard';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -45,30 +46,16 @@ export const TelemetryStrip: React.FC = () => {
         paddingHorizontal: 20,
       }}
     >
-      <View
-        style={[
-          {
-            borderRadius: 28,
-            backgroundColor: 'rgba(15, 11, 46, 0.45)',
-            borderWidth: 1.5,
-            borderColor: 'rgba(255, 255, 255, 0.08)',
-            paddingVertical: 32,
-            paddingHorizontal: isDesktop ? 36 : 20,
-            boxShadow: [{
-              offsetX: 0,
-              offsetY: 16,
-              blurRadius: 36,
-              color: 'rgba(0, 0, 0, 0.35)',
-            }],
-          },
-          isWeb
-            ? ({
-                backdropFilter: 'blur(20px)',
-                WebkitBackdropFilter: 'blur(20px)',
-              } as any)
-            : {},
-        ]}
+      <GlassCard
+        variant="standard"
+        accentColor="#FF6B00"
+        borderRadius={28}
+        contentStyle={{
+          paddingVertical: 32,
+          paddingHorizontal: isDesktop ? 36 : 20,
+        }}
       >
+
         <View
           style={{
             flexDirection: 'row',
@@ -77,6 +64,8 @@ export const TelemetryStrip: React.FC = () => {
             marginBottom: 28,
             flexWrap: 'wrap',
             gap: 12,
+            position: 'relative',
+            zIndex: 3,
           }}
         >
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
@@ -99,19 +88,31 @@ export const TelemetryStrip: React.FC = () => {
           style={{
             flexDirection: isDesktop ? 'row' : 'column',
             gap: 20,
+            position: 'relative',
+            zIndex: 3,
           }}
         >
           {pillars.map((p, idx) => (
             <View
               key={idx}
-              style={{
-                flex: 1,
-                backgroundColor: 'rgba(255, 255, 255, 0.025)',
-                borderRadius: 20,
-                padding: 20,
-                borderWidth: 1,
-                borderColor: 'rgba(255, 255, 255, 0.06)',
-              }}
+              style={[
+                {
+                  flex: 1,
+                  backgroundColor: 'rgba(255, 255, 255, 0.03)',
+                  borderRadius: 20,
+                  padding: 20,
+                  borderWidth: 1,
+                  borderColor: 'rgba(255, 255, 255, 0.08)',
+                  position: 'relative',
+                  overflow: 'hidden',
+                },
+                isWeb ? ({
+                  backdropFilter: 'blur(20px)',
+                  WebkitBackdropFilter: 'blur(20px)',
+                  background: 'linear-gradient(145deg, rgba(255, 255, 255, 0.04) 0%, rgba(15, 11, 46, 0.5) 100%)',
+                  boxShadow: 'inset 0 1px 1px 0 rgba(255, 255, 255, 0.1)',
+                } as any) : {},
+              ]}
             >
               <View
                 style={{
@@ -135,28 +136,18 @@ export const TelemetryStrip: React.FC = () => {
                 >
                   {p.icon}
                 </View>
-                <Text
-                  style={{
-                    color: p.accent,
-                    fontSize: 20,
-                    fontWeight: '900',
-                    letterSpacing: -0.5,
-                    ...(isWeb ? ({ fontVariantNumeric: 'tabular-nums' } as any) : {}),
-                  }}
-                >
-                </Text>
               </View>
 
               <Text style={{ color: '#FFFFFF', fontSize: 15, fontWeight: '800', marginBottom: 6 }}>
                 {p.title}
               </Text>
-              <Text style={{ color: 'rgba(255, 255, 255, 0.5)', fontSize: 12.5, lineHeight: 18 }}>
+              <Text style={{ color: 'rgba(255, 255, 255, 0.55)', fontSize: 12.5, lineHeight: 18 }}>
                 {p.desc}
               </Text>
             </View>
           ))}
         </View>
-      </View>
+      </GlassCard>
     </View>
   );
 };

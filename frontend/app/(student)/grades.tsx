@@ -9,7 +9,7 @@ import { router } from "expo-router";
 import { useTheme } from "@/contexts/ThemeContext";
 import { Award, BarChart3, Star, TrendingUp } from "lucide-react-native";
 import { useEffect, useState } from "react";
-import { ActivityIndicator, Alert, ScrollView, Text, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, Alert, Platform, ScrollView, Text, TouchableOpacity, View } from "react-native";
 
 interface GradeProps {
     SubjectName: string;
@@ -361,9 +361,13 @@ export default function Grades() {
                         </View>
                     </View>
 
-                    {/* Report Cards Navigation */}
                     <TouchableOpacity
-                        onPress={() => router.push('/(student)/report-cards' as any)}
+                        onPress={() => {
+                            if (Platform.OS === 'web' && typeof document !== 'undefined') {
+                                (document.activeElement as HTMLElement)?.blur?.();
+                            }
+                            router.push('/(student)/report-cards' as any);
+                        }}
                         style={{
                             boxShadow: [{
                                 offsetX: 0,

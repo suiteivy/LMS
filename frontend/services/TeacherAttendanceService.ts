@@ -20,9 +20,9 @@ export interface TeacherAttendance {
 
 export const TeacherAttendanceAPI = {
     // Teacher Attendance
-    getAttendance: async (date: string) => {
-        const response = await api.get(`/attendance/teachers?date=${date}`);
-        return response.data;
+    getAttendance: async (date: string, pagination?: { page?: number; limit?: number }) => {
+        const response = await api.get(`/attendance/teachers`, { params: { date, ...(pagination || {}) } });
+        return Array.isArray(response.data) ? response.data : (response.data?.data || []);
     },
 
     markAttendance: async (data: { teacher_id: string; date: string; status: string; notes?: string }) => {
@@ -31,9 +31,9 @@ export const TeacherAttendanceAPI = {
     },
 
     // Student Attendance
-    getStudentAttendance: async (date: string, subjectId: string) => {
-        const response = await api.get(`/attendance/students`, { params: { date, subject_id: subjectId } });
-        return response.data;
+    getStudentAttendance: async (date: string, subjectId: string, pagination?: { page?: number; limit?: number }) => {
+        const response = await api.get(`/attendance/students`, { params: { date, subject_id: subjectId, ...(pagination || {}) } });
+        return Array.isArray(response.data) ? response.data : (response.data?.data || []);
     },
 
     markStudentAttendance: async (data: {

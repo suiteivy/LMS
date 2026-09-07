@@ -103,6 +103,7 @@ export default function MasterInstitutionsPage() {
 
   const [loading, setLoading] = useState(true);
   const [institutions, setInstitutions] = useState<Institution[]>([]);
+  const [searchQuery, setSearchQuery] = useState('');
   const [categories, setCategories] = useState<SchoolCategory[]>([]);
   const [currencies, setCurrencies] = useState<CurrencyOption[]>([]);
   const [activeInstitutionId, setActiveInstitutionId] = useState<string | null>(null);
@@ -182,6 +183,38 @@ export default function MasterInstitutionsPage() {
     () => institutions.find((i) => i.id === activeInstitutionId) || null,
     [institutions, activeInstitutionId]
   );
+
+  const filteredInstitutions = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return institutions;
+
+    return institutions.filter((inst) => {
+      const name = String(inst.name || '').toLowerCase();
+      const domain = String(inst.email_domain || '').toLowerCase();
+      const location = String(inst.location || '').toLowerCase();
+      const phone = String(inst.phone || '').toLowerCase();
+      const adminName = `${inst.admin_first_name || ''} ${inst.admin_last_name || ''}`.toLowerCase();
+      const plan = String(inst.subscription_plan || '').toLowerCase();
+      const status = String(inst.subscription_status || '').toLowerCase();
+      const catNames = (inst.categories || []).map((cat) => cat.name || '').join(' ').toLowerCase();
+      const currency = currencies.find((cur) => cur.id === inst.currency_id);
+      const currencyCode = String(currency?.code || '').toLowerCase();
+      const currencyName = String(currency?.name || '').toLowerCase();
+
+      return (
+        name.includes(q) ||
+        domain.includes(q) ||
+        location.includes(q) ||
+        phone.includes(q) ||
+        adminName.includes(q) ||
+        plan.includes(q) ||
+        status.includes(q) ||
+        catNames.includes(q) ||
+        currencyCode.includes(q) ||
+        currencyName.includes(q)
+      );
+    });
+  }, [institutions, searchQuery, currencies]);
 
   const backendUrl = useMemo(() => {
     let url = (process.env.EXPO_PUBLIC_API_URL || process.env.EXPO_PUBLIC_URL || 'http://localhost:4001').replace(/\/api\/?$/, '');
@@ -851,20 +884,92 @@ export default function MasterInstitutionsPage() {
         </View>
       </View>
 
+      <View style={{ paddingHorizontal: 16, marginBottom: 12 }}>
+        <View
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            backgroundColor: c.card,
+            borderColor: c.border,
+            borderWidth: 1,
+            borderRadius: 12,
+            paddingHorizontal: 12,
+            paddingVertical: Platform.OS === 'ios' ? 10 : 6,
+          }}
+        >
+          <MaterialCommunityIcons name="magnify" size={20} color={c.sub} />
+          <TextInput
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            placeholder="Search institutions by name, domain, admin, location..."
+            placeholderTextColor={c.sub}
+            style={{
+              flex: 1,
+              marginLeft: 8,
+              color: c.text,
+              fontSize: 14,
+              paddingVertical: 2,
+            }}
+            autoCapitalize="none"
+            autoCorrect={false}
+          />
+          {searchQuery.length > 0 && (
+            <TouchableOpacity
+              onPress={() => setSearchQuery('')}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <MaterialCommunityIcons name="close-circle" size={18} color={c.sub} />
+            </TouchableOpacity>
+          )}
+        </View>
+        {searchQuery.trim().length > 0 && (
+          <Text style={{ color: c.sub, fontSize: 12, marginTop: 6, marginLeft: 4 }}>
+            Showing {filteredInstitutions.length} of {institutions.length} institution{institutions.length === 1 ? '' : 's'}
+          </Text>
+        )}
+      </View>
+
       {loading ? (
         <View style={{ flex: 1, paddingHorizontal: 16, paddingBottom: 24 }}>
           <ListItemSkeleton loading={loading} count={6} label="Loading institutions..." />
         </View>
       ) : (
         <FlatList
-          data={institutions}
+          data={filteredInstitutions}
           keyExtractor={(i) => i.id}
           renderItem={renderInstitution}
           contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 80 }}
           ListEmptyComponent={
-            <View style={{ alignItems: 'center', paddingTop: 40 }}>
-              <MaterialCommunityIcons name="domain-off" size={48} color={c.border} />
-              <Text style={{ color: c.sub, marginTop: 10 }}>No institutions found.</Text>
+            <View style={{ alignItems: 'center', paddingTop: 40, paddingHorizontal: 20 }}>
+              <MaterialCommunityIcons
+                name={searchQuery.trim() ? 'magnify-close' : 'domain-off'}
+                size={48}
+                color={c.border}
+              />
+              <Text style={{ color: c.text, fontSize: 16, fontWeight: '700', marginTop: 12 }}>
+                {searchQuery.trim() ? 'No matching institutions' : 'No institutions found'}
+              </Text>
+              <Text style={{ color: c.sub, marginTop: 4, textAlign: 'center' }}>
+                {searchQuery.trim()
+                  ? `No institutions match "${searchQuery.trim()}"`
+                  : 'Get started by adding or enrolling your first institution.'}
+              </Text>
+              {searchQuery.trim().length > 0 && (
+                <TouchableOpacity
+                  onPress={() => setSearchQuery('')}
+                  style={{
+                    marginTop: 14,
+                    paddingHorizontal: 16,
+                    paddingVertical: 8,
+                    backgroundColor: c.card,
+                    borderColor: c.border,
+                    borderWidth: 1,
+                    borderRadius: 8,
+                  }}
+                >
+                  <Text style={{ color: c.primary, fontWeight: '600', fontSize: 13 }}>Clear Search</Text>
+                </TouchableOpacity>
+              )}
             </View>
           }
         />

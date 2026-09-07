@@ -17,6 +17,8 @@ import { ScrollView, Text, TouchableOpacity, View, ActivityIndicator } from 'rea
 import { useSubscriptionTier } from "@/hooks/useSubscriptionTier";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/libs/supabase";
+import { useTeacherRoleMode } from "@/hooks/useTeacherRoleMode";
+import { CacheService } from "@/services/CacheService";
 import React, { useEffect, useState } from "react";
 
 interface FeatureCardProps {
@@ -61,87 +63,115 @@ export default function ManagementIndex() {
     const tier = useSubscriptionTier();
     const { hasDiary, hasAnalytics } = tier;
     const { teacherId, isDemo, isLibrarian } = useAuth();
+    const { mode, setMode, canToggle } = useTeacherRoleMode();
     const [pendingCount, setPendingCount] = useState<number | null>(null);
     const [submittedCount, setSubmittedCount] = useState<number | null>(null);
+    const [classCount, setClassCount] = useState<number | null>(null);
+    const [classStudentCount, setClassStudentCount] = useState<number | null>(null);
     const [statsLoading, setStatsLoading] = useState(true);
 
     useEffect(() => {
         if (teacherId || isDemo) {
-            fetchSubmissionStats();
+            fetchAllStats();
         } else {
             setStatsLoading(false);
         }
     }, [teacherId, isDemo]);
 
-    const fetchSubmissionStats = async () => {
+    const fetchAllStats = async () => {
         try {
             setStatsLoading(true);
             if (isDemo) {
                 setPendingCount(12);
                 setSubmittedCount(28);
+                setClassCount(1);
+                setClassStudentCount(35);
                 return;
             }
 
-            if (!isDemo && !teacherId) {
+            if (!teacherId) {
                 setPendingCount(0);
                 setSubmittedCount(0);
+                setClassCount(0);
+                setClassStudentCount(0);
                 return;
             }
 
-            // Guard: verify teacher has assigned subjects before querying submissions
+            // 1. Fetch Subject submissions stats
             const { data: primarySubjects } = await supabase
                 .from('subjects')
                 .select('id')
-                .eq('teacher_id', teacherId!);
+                .eq('teacher_id', teacherId);
 
             const { data: assocSubjects } = await supabase
                 .from('subject_teachers')
                 .select('subject_id')
-                .eq('teacher_id', teacherId!);
+                .eq('teacher_id', teacherId);
 
             const hasSubjects = (primarySubjects || []).length > 0 || (assocSubjects || []).length > 0;
-            if (!hasSubjects) {
+            if (hasSubjects) {
+                const { data: assignmentsData } = await supabase
+                    .from('assignments')
+                    .select('id')
+                    .eq('teacher_id', teacherId);
+
+                const assignmentIds = (assignmentsData || []).map((a: any) => a.id);
+                if (assignmentIds.length > 0) {
+                    const { count: pending } = await supabase
+                        .from('submissions')
+                        .select('id', { count: 'exact', head: true })
+                        .in('assignment_id', assignmentIds)
+                        .neq('status', 'graded');
+
+                    const { count: submitted } = await supabase
+                        .from('submissions')
+                        .select('id', { count: 'exact', head: true })
+                        .in('assignment_id', assignmentIds);
+
+                    setPendingCount(pending || 0);
+                    setSubmittedCount(submitted || 0);
+                } else {
+                    setPendingCount(0);
+                    setSubmittedCount(0);
+                }
+            } else {
                 setPendingCount(0);
                 setSubmittedCount(0);
-                return;
             }
 
-            const { data: assignmentsData, error: assignmentsError } = await supabase
-                .from('assignments')
-                .select('id')
-                .eq('teacher_id', teacherId!);
+            // 2. Fetch Class Teacher stats
+            const cacheKey = `teacher_dashboard_${teacherId}`;
+            const cached = await CacheService.get<any>(cacheKey, { allowStale: true });
+            let ctClasses = cached?.data?.classTeacherOf;
 
-            if (assignmentsError) throw assignmentsError;
-
-            const assignmentIds = (assignmentsData || []).map((a: any) => a.id);
-
-            if (assignmentIds.length === 0) {
-                setPendingCount(0);
-                setSubmittedCount(0);
-                return;
+            if (!ctClasses) {
+                const { data: directClasses } = await supabase
+                    .from('classes')
+                    .select('id, grade_level, form_level, stream')
+                    .eq('teacher_id', teacherId);
+                ctClasses = directClasses || [];
             }
 
-            const { count: pending, error: pendingErr } = await supabase
-                .from('submissions')
-                .select('id', { count: 'exact', head: true })
-                .in('assignment_id', assignmentIds)
-                .neq('status', 'graded');
+            const ctClassIds = (ctClasses || []).map((c: any) => c.id);
+            setClassCount(ctClassIds.length);
 
-            if (pendingErr) throw pendingErr;
-
-            const { count: submitted, error: submittedErr } = await supabase
-                .from('submissions')
-                .select('id', { count: 'exact', head: true })
-                .in('assignment_id', assignmentIds);
-
-            if (submittedErr) throw submittedErr;
-
-            setPendingCount(pending || 0);
-            setSubmittedCount(submitted || 0);
+            if (ctClassIds.length > 0) {
+                const { data: ctEnrollments } = await supabase
+                    .from('class_enrollments')
+                    .select('student_id')
+                    .in('class_id', ctClassIds)
+                    .eq('status', 'enrolled');
+                const uniqueStudents = new Set((ctEnrollments || []).map((e: any) => e.student_id));
+                setClassStudentCount(uniqueStudents.size);
+            } else {
+                setClassStudentCount(0);
+            }
         } catch (error) {
-            console.error("Error fetching submission stats:", error);
+            console.error("Error fetching management stats:", error);
             setPendingCount(0);
             setSubmittedCount(0);
+            setClassCount(0);
+            setClassStudentCount(0);
         } finally {
             setStatsLoading(false);
         }
@@ -251,9 +281,28 @@ export default function ManagementIndex() {
     ];
 
     const visibleFeatures = features.filter((feature) => {
-        if (feature.route === "/(teacher)/management/analytics") {
-            return hasAnalytics;
+        if (feature.route === "/(teacher)/management/analytics" && !hasAnalytics) {
+            return false;
         }
+
+        // In Subject Mode: hide Class-mode-only cards (Report Cards, Virtual Diary)
+        if (mode === 'subject') {
+            if (feature.route === "/(teacher)/management/report-cards" || feature.route === "/(teacher)/management/diary") {
+                return false;
+            }
+        }
+
+        // In Class Mode: hide Subject-mode-only cards (Coursework, Grade Entry, Academic Vault)
+        if (mode === 'class') {
+            if (
+                feature.route === "/(teacher)/management/assignments" ||
+                feature.route === "/(teacher)/management/grade-entry" ||
+                feature.route === "/(teacher)/management/resources"
+            ) {
+                return false;
+            }
+        }
+
         return true;
     });
 
@@ -272,27 +321,57 @@ export default function ManagementIndex() {
             >
                 <View className="p-4 md:p-8">
                     {/* Header Text */}
-                    <View className="mb-8 px-2">
+                    <View className="mb-6 px-2">
                         <Text className="text-gray-400 dark:text-gray-500 font-bold text-[10px] uppercase tracking-[3px] mb-2">Faculty Hub</Text>
                         <Text className="text-gray-900 dark:text-white font-bold text-3xl tracking-tight">Academic Tools</Text>
                     </View>
 
+                    {/* Mode Selector - Tabs */}
+                    {canToggle && (
+                        <View className="flex-row bg-gray-105 dark:bg-[#161B22] rounded-2xl p-1 mb-6 border border-gray-100 dark:border-gray-800">
+                            <TouchableOpacity 
+                                onPress={() => setMode('subject')}
+                                className={`flex-1 py-2.5 rounded-xl items-center ${mode === 'subject' ? 'bg-[#FF6900]' : 'bg-transparent'}`}
+                            >
+                                <Text className={`font-bold text-xs uppercase tracking-wider ${mode === 'subject' ? 'text-white' : 'text-gray-500 dark:text-gray-400'}`}>
+                                    Subject Teacher Mode
+                                </Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity 
+                                onPress={() => setMode('class')}
+                                className={`flex-1 py-2.5 rounded-xl items-center ${mode === 'class' ? 'bg-[#FF6900]' : 'bg-transparent'}`}
+                            >
+                                <Text className={`font-bold text-xs uppercase tracking-wider ${mode === 'class' ? 'text-white' : 'text-gray-500 dark:text-gray-400'}`}>
+                                    Class Teacher Mode
+                                </Text>
+                            </TouchableOpacity>
+                        </View>
+                    )}
+
                     {/* Quick Stats Row */}
                     <View className="flex-row gap-4 mb-8">
                         <View className="flex-1 bg-gray-900 dark:bg-[#161B22] p-6 rounded-[32px] shadow-lg border border-transparent dark:border-gray-800 justify-center">
-                            <Text className="text-white/40 dark:text-gray-500 text-[8px] font-bold uppercase tracking-widest">Pending</Text>
+                            <Text className="text-white/40 dark:text-gray-500 text-[8px] font-bold uppercase tracking-widest">
+                                {mode === 'class' ? 'Designated Classes' : 'Pending'}
+                            </Text>
                             {statsLoading ? (
                                 <ActivityIndicator size="small" color="white" className="mt-2" style={{ alignSelf: 'flex-start' }} />
                             ) : (
-                                <Text className="text-white text-3xl font-bold mt-1">{pendingCount ?? 0}</Text>
+                                <Text className="text-white text-3xl font-bold mt-1">
+                                    {mode === 'class' ? (classCount ?? 0) : (pendingCount ?? 0)}
+                                </Text>
                             )}
                         </View>
                         <View className="flex-1 bg-[#F6F8FA] dark:bg-[#161B22] p-6 rounded-[32px] border border-gray-100 dark:border-gray-800 shadow-sm justify-center">
-                            <Text className="text-gray-400 dark:text-gray-500 text-[8px] font-bold uppercase tracking-widest">Submitted</Text>
+                            <Text className="text-gray-400 dark:text-gray-500 text-[8px] font-bold uppercase tracking-widest">
+                                {mode === 'class' ? 'Class Students' : 'Submitted'}
+                            </Text>
                             {statsLoading ? (
                                 <ActivityIndicator size="small" color="#FF6900" className="mt-2" style={{ alignSelf: 'flex-start' }} />
                             ) : (
-                                <Text className="text-gray-900 dark:text-white text-3xl font-bold mt-1">{submittedCount ?? 0}</Text>
+                                <Text className="text-gray-900 dark:text-white text-3xl font-bold mt-1">
+                                    {mode === 'class' ? (classStudentCount ?? 0) : (submittedCount ?? 0)}
+                                </Text>
                             )}
                         </View>
                     </View>

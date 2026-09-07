@@ -1,4 +1,3 @@
-import demoDummyData from '@/demoDummyData';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const DEMO_STATE_KEY = 'demo_state_v1';
@@ -41,16 +40,28 @@ export const resetDemoState = async () => {
   await AsyncStorage.removeItem(DEMO_STATE_KEY);
 };
 
-const seedDemoUsers = (): DemoUser[] => [
-  { user: demoDummyData.users.admin, roleRecord: demoDummyData.roleRecords.admin },
-  { user: demoDummyData.users.teacher, roleRecord: demoDummyData.roleRecords.teacher },
-  { user: demoDummyData.users.student, roleRecord: demoDummyData.roleRecords.student },
-  { user: demoDummyData.users.parent, roleRecord: demoDummyData.roleRecords.parent },
-];
+let cachedDemoData: any = null;
+export const getDemoDummyData = async () => {
+  if (!cachedDemoData) {
+    const mod = await import('@/demoDummyData');
+    cachedDemoData = mod.default || mod;
+  }
+  return cachedDemoData;
+};
+
+const seedDemoUsers = async (): Promise<DemoUser[]> => {
+  const dummy = await getDemoDummyData();
+  return [
+    { user: dummy.users.admin, roleRecord: dummy.roleRecords.admin },
+    { user: dummy.users.teacher, roleRecord: dummy.roleRecords.teacher },
+    { user: dummy.users.student, roleRecord: dummy.roleRecords.student },
+    { user: dummy.users.parent, roleRecord: dummy.roleRecords.parent },
+  ];
+};
 
 export const getDemoUsers = async (): Promise<DemoUser[]> => {
-  const state = await loadDemoState();
-  const users = [...seedDemoUsers(), ...state.createdUsers]
+  const [state, seeded] = await Promise.all([loadDemoState(), seedDemoUsers()]);
+  const users = [...seeded, ...state.createdUsers]
     .filter(item => !state.deletedUserIds.includes(item.user.id))
     .map(item => {
       const override = state.userOverrides[item.user.id] || {};

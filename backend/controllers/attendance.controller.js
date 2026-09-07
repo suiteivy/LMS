@@ -3,6 +3,7 @@ const supabase = require("../utils/supabaseClient.js");
 const { createNotificationInternal } = require("./notification.controller.js");
 const { authorizeTeacherForSubject } = require("../middleware/resolveTeacher.js");
 const { recomputeDailyHoursForInstitutionDate } = require('../services/dailyHours.service.js');
+const { parsePagination, paginatedResponse } = require("../utils/pagination.js");
 
 const getSubjectLinkedClassIds = async (subjectId, institutionId) => {
     const classIds = new Set();
@@ -121,7 +122,9 @@ exports.getStudentAttendance = async (req, res) => {
             };
         });
 
-        res.json(result);
+        const { page, limit, from, to } = parsePagination(req.query, { defaultLimit: 50 });
+        const pagedResult = result.slice(from, to + 1);
+        res.json(paginatedResponse(pagedResult, result.length, page, limit));
     } catch (err) {
         console.error("[Attendance] getStudentAttendance error:", err);
         res.status(500).json({ error: err.message });
@@ -223,34 +226,37 @@ exports.markStudentAttendance = async (req, res) => {
 
         // Real-time Notification for Parents on Absence
         if (status === 'absent') {
-            // Find student's name
-            const { data: student } = await supabase
-                .from('students')
-                .select('users(full_name)')
-                .eq('id', student_id)
-                .eq('institution_id', institution_id)
-                .single();
-
-            // Find all parents linked to this student
-            const { data: parentRelations } = await supabase
-                .from('parent_students')
-                .select('parent_id, parents(user_id)')
-                .eq('student_id', student_id)
-                .eq('institution_id', institution_id);
+            // Parallel: fetch student name + parent links
+            const [{ data: student }, { data: parentRelations }] = await Promise.all([
+                supabase
+                    .from('students')
+                    .select('users(full_name)')
+                    .eq('id', student_id)
+                    .eq('institution_id', institution_id)
+                    .single(),
+                supabase
+                    .from('parent_students')
+                    .select('parent_id, parents(user_id)')
+                    .eq('student_id', student_id)
+                    .eq('institution_id', institution_id),
+            ]);
 
             if (parentRelations && parentRelations.length > 0) {
                 const studentName = student?.users?.full_name || 'Your child';
-                for (const relation of parentRelations) {
-                    if (relation.parents && relation.parents.user_id) {
-                        await createNotificationInternal({
-                            userId: relation.parents.user_id,
-                            title: 'Attendance Alert',
-                            message: `${studentName} was marked ABSENT today (${markDate}).`,
-                            type: 'warning',
-                            data: { student_id, date: markDate, type: 'attendance_absence' }
-                        });
-                    }
-                }
+                // Batch: send all notifications in parallel instead of sequential loop
+                await Promise.all(
+                    parentRelations
+                        .filter(r => r.parents?.user_id)
+                        .map(relation =>
+                            createNotificationInternal({
+                                userId: relation.parents.user_id,
+                                title: 'Attendance Alert',
+                                message: `${studentName} was marked ABSENT today (${markDate}).`,
+                                type: 'warning',
+                                data: { student_id, date: markDate, type: 'attendance_absence' }
+                            })
+                        )
+                );
             }
         }
 
@@ -362,7 +368,9 @@ exports.getTeacherAttendance = async (req, res) => {
             };
         });
 
-        res.json(result);
+        const { page, limit, from, to } = parsePagination(req.query, { defaultLimit: 50 });
+        const pagedResult = result.slice(from, to + 1);
+        res.json(paginatedResponse(pagedResult, result.length, page, limit));
     } catch (err) {
         res.status(500).json({ error: err.message });
     }

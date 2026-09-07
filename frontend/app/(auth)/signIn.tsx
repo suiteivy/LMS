@@ -1,12 +1,13 @@
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/libs/supabase";
 import { safeSignOut } from "@/utils/safeSignOut";
-import { LogoutReason, LOGOUT_MESSAGES } from "@/types/logout";
+import { LogoutReason } from "@/types/logout";
 import { getAuthErrorMessage, validateEmail } from "@/utils/validation";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import { showError, showSuccess, showInfo } from "@/utils/toast";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
-import { Shield, GraduationCap } from "lucide-react-native";
+import { Shield } from "lucide-react-native";
+import { CloudoraLogo } from "@/components/common/CloudoraLogo";
 import React, { useEffect, useRef, useState } from "react";
 import {
   Animated,
@@ -24,6 +25,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LivingBackground } from "@/components/landing/LivingBackground";
+import { GlassCard } from "@/components/ui/GlassCard";
 
 const IconIonicons = Ionicons as any;
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
@@ -458,28 +460,20 @@ const PrimaryButton = ({
   );
 };
 
-// ─── LogoLockup — enhanced logo + name with entrance + idle animation ─────
+// ─── LogoLockup — enhanced unboxed logo + name with entrance + idle animation ──
 const LogoLockup = ({ entranceAnim }: { entranceAnim: Animated.Value }) => {
-  const pulseScale  = useRef(new Animated.Value(1)).current;
-  const glowOpacity = useRef(new Animated.Value(0.5)).current;
+  const pulseScale = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
     const pulse = Animated.loop(
       Animated.sequence([
-        Animated.timing(pulseScale,  { toValue: 1.1, duration: 2400, easing: EasingRN.inOut(EasingRN.sin), useNativeDriver: true }),
-        Animated.timing(pulseScale,  { toValue: 1,   duration: 2400, easing: EasingRN.inOut(EasingRN.sin), useNativeDriver: true }),
-      ])
-    );
-    const glow = Animated.loop(
-      Animated.sequence([
-        Animated.timing(glowOpacity, { toValue: 1,   duration: 2000, easing: EasingRN.inOut(EasingRN.sin), useNativeDriver: true }),
-        Animated.timing(glowOpacity, { toValue: 0.4, duration: 2000, easing: EasingRN.inOut(EasingRN.sin), useNativeDriver: true }),
+        Animated.timing(pulseScale, { toValue: 1.08, duration: 2400, easing: EasingRN.inOut(EasingRN.sin), useNativeDriver: true }),
+        Animated.timing(pulseScale, { toValue: 1,    duration: 2400, easing: EasingRN.inOut(EasingRN.sin), useNativeDriver: true }),
       ])
     );
     pulse.start();
-    glow.start();
-    return () => { pulse.stop(); glow.stop(); };
-  }, []);
+    return () => { pulse.stop(); };
+  }, [pulseScale]);
 
   const entranceOpacity    = entranceAnim;
   const entranceTranslateY = entranceAnim.interpolate({ inputRange: [0, 1], outputRange: [-12, 0] });
@@ -494,36 +488,16 @@ const LogoLockup = ({ entranceAnim }: { entranceAnim: Animated.Value }) => {
         transform: [{ translateY: entranceTranslateY }],
       }}
     >
-      {/* Logo mark */}
-      <View style={{ position: "relative", width: 38, height: 38 }}>
-        {/* Ambient glow behind the badge */}
-        <Animated.View
-          pointerEvents="none"
-          style={{
-            position: "absolute",
-            top: -8, left: -8, right: -8, bottom: -8,
-            borderRadius: 27,
-            backgroundColor: FLAME_GLOW,
-            opacity: glowOpacity,
-            ...(Platform.OS === "web" ? { filter: "blur(8px)" } : {}),
-          } as any}
-        />
-        {/* Badge */}
-        <Animated.View
-          style={{
-            width: 38, height: 38, borderRadius: 12,
-            backgroundColor: FLAME_BG,
-            borderWidth: 1.5, borderColor: "rgba(255,107,0,0.5)",
-            alignItems: "center", justifyContent: "center",
-            transform: [{ scale: pulseScale }],
-            ...(Platform.OS === "web" ? {
-              boxShadow: "0 0 12px rgba(255,107,0,0.35), inset 0 1px 0 rgba(255,255,255,0.15)",
-            } : {}),
-          } as any}
-        >
-          <GraduationCap size={20} color={FLAME} />
-        </Animated.View>
-      </View>
+      {/* Unboxed Logo mark */}
+      <Animated.View
+        style={{
+          alignItems: "center",
+          justifyContent: "center",
+          transform: [{ scale: pulseScale }],
+        }}
+      >
+        <CloudoraLogo size={30} glow glowIntensity={0.65} />
+      </Animated.View>
 
       {/* App name */}
       <Text
@@ -549,11 +523,8 @@ interface FormData {
 
 export default function SignIn() {
   const [showPassword, setShowPassword]     = useState(false);
-  const [errorMessage, setErrorMessage]     = useState<string | null>(null);
   const [formData, setFormData]             = useState<FormData>({ email: "", password: "" });
   const [errors, setErrors]                 = useState<Record<string, string>>({});
-  const [toastConfig, setToastConfig]       = useState<{ msg: string; type: "success" | "error" | "info" } | null>(null);
-  const [logoutReason, setLogoutReason]     = useState<LogoutReason | null>(null);
   const { signIn, loading: isGlobalLoading, maintenanceModeMessage, refreshMaintenanceStatus } = useAuth();
 
   // ── Entrance animations ──────────────────────────────────────────────
@@ -563,8 +534,6 @@ export default function SignIn() {
   const logoEntrance = useRef(new Animated.Value(0)).current;
   const btnScale     = useRef(new Animated.Value(1)).current;
   const shakeX       = useRef(new Animated.Value(0)).current;
-  const toastY       = useRef(new Animated.Value(-80)).current;
-  const toastOpacity = useRef(new Animated.Value(0)).current;
 
   // Staggered field anims
   const field1 = useRef(new Animated.Value(0)).current;
@@ -592,29 +561,7 @@ export default function SignIn() {
         Animated.spring(field3, { toValue: 1, useNativeDriver: true, friction: 7, tension: 80 }),
       ]).start();
     });
-
-    // Persisted logout reason
-    AsyncStorage.getItem("logout_reason").then((raw) => {
-      if (raw && raw in LOGOUT_MESSAGES) {
-        setLogoutReason(raw as LogoutReason);
-        AsyncStorage.removeItem("logout_reason").catch(() => {});
-      }
-    }).catch(() => {});
   }, []);
-
-  const showToast = (msg: string, type: "success" | "error" | "info" = "success") => {
-    setToastConfig({ msg, type });
-    Animated.parallel([
-      Animated.spring(toastY,      { toValue: 0, useNativeDriver: true, friction: 7 }),
-      Animated.timing(toastOpacity, { toValue: 1, duration: 300, useNativeDriver: true }),
-    ]).start();
-    setTimeout(() => {
-      Animated.parallel([
-        Animated.timing(toastY,      { toValue: -80, duration: 400, useNativeDriver: true }),
-        Animated.timing(toastOpacity, { toValue: 0,   duration: 300, useNativeDriver: true }),
-      ]).start(() => setToastConfig(null));
-    }, 3000);
-  };
 
   const shakeCard = () => {
     Animated.sequence([
@@ -637,7 +584,6 @@ export default function SignIn() {
   const handleInputChange = (field: keyof FormData, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
     if (errors[field]) setErrors((prev) => ({ ...prev, [field]: "" }));
-    if (errorMessage) setErrorMessage(null);
   };
 
   const validateForm = (): boolean => {
@@ -653,21 +599,22 @@ export default function SignIn() {
     pressBtn();
     if (!validateForm()) {
       shakeCard();
+      showError("Incomplete Form", "Please enter a valid email and password.");
       return;
     }
-    setErrorMessage(null);
 
     try {
       const { error, data } = await signIn(formData.email, formData.password);
 
       if (error) {
-        setErrorMessage(getAuthErrorMessage(error));
+        showError("Sign In Failed", getAuthErrorMessage(error));
         shakeCard();
         return;
       }
 
       if (!data?.user) {
-        setErrorMessage("No user data returned");
+        showError("Sign In Failed", "Unable to complete sign in. Please try again.");
+        shakeCard();
         return;
       }
 
@@ -686,19 +633,21 @@ export default function SignIn() {
         .single() as { data: UserRow | null; error: any };
 
       if (roleError || !userData) {
-        setErrorMessage("Could not fetch user role");
+        showError("Sign In Failed", "Could not load user profile. Please try again.");
+        shakeCard();
         return;
       }
 
       if (!userData?.role) {
-        setErrorMessage("No role assigned to user.");
+        showError("Sign In Failed", "No role assigned to this account. Please contact your administrator.");
+        shakeCard();
         return;
       }
 
       // Global maintenance: allow platform admins, block institution users
       const maintenance = await refreshMaintenanceStatus();
       if (Platform.OS === "web" && maintenance.enabled && !!userData.institution_id) {
-        showToast(maintenance.message || maintenanceModeMessage || "System maintenance is in progress. Please try again later.", "info");
+        showInfo("Maintenance", maintenance.message || maintenanceModeMessage || "System maintenance is in progress. Please try again later.");
         await safeSignOut("local", LogoutReason.UNKNOWN, true);
         shakeCard();
         return;
@@ -713,21 +662,21 @@ export default function SignIn() {
           .single() as { data: { subscription_status: string | null } | null; error: any };
 
         if (instError || !instData) {
-          setErrorMessage("Could not verify institution status");
+          showError("Access Denied", "Could not verify institution status.");
           await safeSignOut("local", LogoutReason.AUTH_ERROR_403, true);
           return;
         }
 
         // Master admin sets status to 'suspended' when disabling an institution
         if (instData.subscription_status === "suspended" || instData.subscription_status === "cancelled") {
-          showToast("Access Denied: Your institution's account has been disabled.", "error");
+          showError("Access Denied", "Your institution's account has been disabled.");
           shakeCard();
           await safeSignOut("local", LogoutReason.INSTITUTION_SUSPENDED, true);
           return;
         }
       }
 
-      showToast(`Welcome back, ${userData.full_name || "there"}!`);
+      showSuccess("Welcome", `Welcome back, ${userData.full_name || "there"}!`);
 
       if ((userData as any).must_change_password || (userData as any).requires_security_questions_setup) {
         setTimeout(() => {
@@ -737,10 +686,8 @@ export default function SignIn() {
 
       // Let AuthHandler detect session change and handle the transition
     } catch (error: unknown) {
-      setErrorMessage(
-        "An unexpected error occurred: " +
-        (error instanceof Error ? error.message : String(error))
-      );
+      console.error("[SignIn] Unhandled error:", error);
+      showError("Sign In Failed", "An unexpected error occurred. Please check your connection and try again.");
       shakeCard();
     }
   };
@@ -756,59 +703,6 @@ export default function SignIn() {
       <LivingBackground />
 
       <View style={{ flex: 1, backgroundColor: "transparent" }}>
-        {/* ── TOAST ─────────────────────────────────────────────────── */}
-        <Animated.View
-          pointerEvents="none"
-          style={{
-            position: "absolute",
-            top: 0, left: 0, right: 0,
-            zIndex: 999,
-            alignItems: "center",
-            paddingTop: 60,
-            transform: [{ translateY: toastY }],
-            opacity: toastOpacity,
-          }}
-        >
-          <View style={{
-            backgroundColor: toastConfig?.type === "error"
-              ? "rgba(239,68,68,0.2)"
-              : toastConfig?.type === "info"
-                ? "rgba(59,130,246,0.2)"
-                : "rgba(34,197,94,0.2)",
-            borderWidth: 1,
-            borderColor: toastConfig?.type === "error"
-              ? "rgba(239,68,68,0.4)"
-              : toastConfig?.type === "info"
-                ? "rgba(59,130,246,0.45)"
-                : "rgba(34,197,94,0.4)",
-            borderRadius: 16,
-            paddingHorizontal: 24,
-            paddingVertical: 14,
-            flexDirection: "row",
-            alignItems: "center",
-            gap: 10,
-            boxShadow: [{
-              offsetX: 0, offsetY: 8, blurRadius: 16,
-              color: toastConfig?.type === "error"
-                ? "rgba(239,68,68,0.3)"
-                : toastConfig?.type === "info"
-                  ? "rgba(59,130,246,0.3)"
-                  : "rgba(34,197,94,0.3)",
-            }],
-          } as any}>
-            <IconIonicons
-              name={toastConfig?.type === "error" ? "close-circle" : toastConfig?.type === "info" ? "information-circle" : "checkmark-circle"}
-              size={22}
-              color={toastConfig?.type === "error" ? "#f87171" : toastConfig?.type === "info" ? "#60a5fa" : "#4ade80"}
-            />
-            <Text style={{
-              color: toastConfig?.type === "error" ? "#f87171" : toastConfig?.type === "info" ? "#60a5fa" : "#4ade80",
-              fontWeight: "700", fontSize: 15,
-            }}>
-              {toastConfig?.msg}
-            </Text>
-          </View>
-        </Animated.View>
 
         <SafeAreaView style={{ flex: 1, width: "100%", maxWidth: 500, alignSelf: "center" }}>
           <KeyboardAvoidingView
@@ -826,72 +720,17 @@ export default function SignIn() {
                 style={{
                   opacity: cardFade,
                   transform: [{ translateY: cardSlide }, { translateX: shakeX }, { scale: cardScale }],
-                  borderRadius: 28,
-                  overflow: "hidden",
-                  ...(Platform.OS === "web" ? {
-                    backdropFilter: "blur(40px) saturate(190%)",
-                    WebkitBackdropFilter: "blur(40px) saturate(190%)",
-                    background: `
-                      linear-gradient(
-                        165deg,
-                        rgba(24, 15, 52, 0.82) 0%,
-                        rgba(11, 7, 30, 0.88) 40%,
-                        rgba(6, 4, 20, 0.94) 100%
-                      )
-                    `,
-                    boxShadow: [
-                      "0 0 0 1px rgba(255,255,255,0.1)",
-                      "0 2px 4px rgba(0,0,0,0.35)",
-                      "0 12px 24px -4px rgba(0,0,0,0.5)",
-                      "0 24px 48px -8px rgba(0,0,0,0.65)",
-                      "0 44px 88px -12px rgba(0,0,0,0.8)",
-                      "0 0 90px -10px rgba(255,107,0,0.14)",
-                      "inset 0 1px 1px 0 rgba(255,255,255,0.18)",
-                      "inset 0 -1px 1px 0 rgba(0,0,0,0.45)",
-                    ].join(", "),
-                  } : {
-                    backgroundColor: GLASS_BG,
-                    borderWidth: 1,
-                    borderColor: GLASS_BORDER,
-                    boxShadow: [{
-                      offsetX: 0, offsetY: 28, blurRadius: 60,
-                      color: "rgba(0,0,0,0.7)",
-                    }],
-                  }),
-                } as any}
+                  width: "100%",
+                }}
               >
-                {/* Top refraction sheen — glass depth */}
-                <View
-                  pointerEvents="none"
-                  style={{
-                    position: "absolute",
-                    top: 0, left: 0, right: 0,
-                    height: 80,
-                    borderTopLeftRadius: 32,
-                    borderTopRightRadius: 32,
-                    ...(Platform.OS === "web" ? {
-                      background: "linear-gradient(180deg, rgba(255,255,255,0.09) 0%, transparent 100%)",
-                    } : {
-                      backgroundColor: "rgba(255,255,255,0.05)",
-                    }),
-                  } as any}
-                />
-
-                {/* Orange accent line at top card edge */}
-                <View
-                  pointerEvents="none"
-                  style={{
-                    position: "absolute",
-                    top: 0, left: 32, right: 32,
-                    height: 1,
-                    backgroundColor: "rgba(255,107,0,0.3)",
-                    borderRadius: 1,
-                  }}
-                />
-
-                {/* Card content */}
-                <View style={{ padding: 36 }}>
-
+                <GlassCard
+                  variant="modal"
+                  accentColor={FLAME}
+                  glowColor="rgba(255, 107, 0, 0.25)"
+                  borderRadius={28}
+                  style={{ width: "100%" }}
+                  contentStyle={{ padding: 36 }}
+                >
                   {/* ── TOP ROW: Back button left / Logo right ──────── */}
                   <View style={{
                     flexDirection: "row",
@@ -955,84 +794,6 @@ export default function SignIn() {
                     </Text>
                   </View>
 
-                  {/* ── ERROR BANNER ─────────────────────────────────── */}
-                  {errorMessage && (
-                    <Animated.View style={{
-                      backgroundColor: "rgba(239,68,68,0.1)",
-                      borderWidth: 1,
-                      borderColor: "rgba(239,68,68,0.28)",
-                      padding: 14,
-                      borderRadius: 14,
-                      marginBottom: 20,
-                      flexDirection: "row",
-                      alignItems: "center",
-                      gap: 10,
-                    }}>
-                      <IconIonicons name="alert-circle" size={20} color="#f87171" />
-                      <Text style={{ color: "#fca5a5", fontWeight: "600", flex: 1, fontSize: 13 }}>{errorMessage}</Text>
-                    </Animated.View>
-                  )}
-
-                  {/* ── LOGOUT REASON BANNER ─────────────────────────── */}
-                  {logoutReason && (
-                    <Animated.View style={{
-                      backgroundColor: logoutReason === LogoutReason.INSTITUTION_SUSPENDED
-                        ? "rgba(239,68,68,0.1)"
-                        : logoutReason === LogoutReason.REVOKED_BY_OTHER_DEVICE || logoutReason === LogoutReason.ADMIN_REVOKED_ALL
-                          ? "rgba(251,146,60,0.1)"
-                          : "rgba(99,102,241,0.1)",
-                      borderWidth: 1,
-                      borderColor: logoutReason === LogoutReason.INSTITUTION_SUSPENDED
-                        ? "rgba(239,68,68,0.28)"
-                        : logoutReason === LogoutReason.REVOKED_BY_OTHER_DEVICE || logoutReason === LogoutReason.ADMIN_REVOKED_ALL
-                          ? "rgba(251,146,60,0.28)"
-                          : "rgba(99,102,241,0.28)",
-                      padding: 14,
-                      borderRadius: 14,
-                      marginBottom: 20,
-                      flexDirection: "row",
-                      alignItems: "flex-start",
-                      gap: 10,
-                    }}>
-                      <IconIonicons
-                        name={
-                          logoutReason === LogoutReason.INSTITUTION_SUSPENDED ? "ban"
-                            : logoutReason === LogoutReason.REVOKED_BY_OTHER_DEVICE ? "phone-portrait-outline"
-                              : logoutReason === LogoutReason.ADMIN_REVOKED_ALL ? "shield-checkmark-outline"
-                                : "time-outline"
-                        }
-                        size={20}
-                        color={
-                          logoutReason === LogoutReason.INSTITUTION_SUSPENDED ? "#f87171"
-                            : logoutReason === LogoutReason.REVOKED_BY_OTHER_DEVICE || logoutReason === LogoutReason.ADMIN_REVOKED_ALL
-                              ? "#fb923c"
-                              : "#818cf8"
-                        }
-                      />
-                      <View style={{ flex: 1 }}>
-                        <Text style={{
-                          color: logoutReason === LogoutReason.INSTITUTION_SUSPENDED
-                            ? "#fca5a5"
-                            : logoutReason === LogoutReason.REVOKED_BY_OTHER_DEVICE || logoutReason === LogoutReason.ADMIN_REVOKED_ALL
-                              ? "#fed7aa"
-                              : "#c7d2fe",
-                          fontWeight: "700", fontSize: 13, marginBottom: 2,
-                        }}>
-                          {LOGOUT_MESSAGES[logoutReason]?.title ?? "Signed Out"}
-                        </Text>
-                        <Text style={{ color: "rgba(255,255,255,0.42)", fontSize: 12, lineHeight: 18 }}>
-                          {LOGOUT_MESSAGES[logoutReason]?.body ?? "You have been signed out."}
-                        </Text>
-                      </View>
-                      <TouchableOpacity
-                        onPress={() => setLogoutReason(null)}
-                        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                      >
-                        <IconIonicons name="close" size={16} color="rgba(255,255,255,0.3)" />
-                      </TouchableOpacity>
-                    </Animated.View>
-                  )}
-
                   {/* ── EMAIL INPUT ──────────────────────────────────── */}
                   <Animated.View style={fieldStyle(field1)}>
                     <GlassInput
@@ -1082,8 +843,7 @@ export default function SignIn() {
                     loading={isGlobalLoading}
                     scale={btnScale}
                   />
-
-                </View>
+                </GlassCard>
               </Animated.View>
             </ScrollView>
           </KeyboardAvoidingView>

@@ -23,15 +23,17 @@ import { BentoFeatures } from '@/components/landing/BentoFeatures';
 import { TelemetryStrip } from '@/components/landing/TelemetryStrip';
 import { FuturisticPricing } from '@/components/landing/FuturisticPricing';
 import { FuturisticContact } from '@/components/landing/FuturisticContact';
+import { GlassCard } from '@/components/ui/GlassCard';
 import {
   Building,
   Plus,
   Settings,
   Check,
   MoveRight,
-  Sparkles,
-  ShieldCheck,
   X,
+  Mail,
+  Shield,
+  Sparkles,
 } from 'lucide-react-native';
 
 const ADDONS_DATA = [
@@ -71,7 +73,7 @@ const CUSTOM_FEATURES_DATA = [
 ];
 
 export default function MarketingPage() {
-  const { session, loading, isInitializing, isNavReady } = useAuth();
+  const { session, isInitializing, isNavReady } = useAuth();
   const scrollRef = useRef<ScrollView>(null);
 
   // Section position tracking for smooth scrolling
@@ -249,21 +251,19 @@ export default function MarketingPage() {
             ...(Platform.OS === 'web' ? ({ backdropFilter: 'blur(24px)' } as any) : {}),
           }}
         >
-          <View
+          <GlassCard
+            variant="modal"
+            borderRadius={28}
+            accentColor="#FF6B00"
+            sheen={true}
+            accentTop={true}
             style={{
-              backgroundColor: '#0F0B2E',
-              borderRadius: 30,
-              padding: 26,
               width: '100%',
               maxWidth: 520,
-              borderWidth: 1.5,
-              borderColor: 'rgba(255, 107, 0, 0.3)',
-              boxShadow: [{
-                offsetX: 0,
-                offsetY: 24,
-                blurRadius: 48,
-                color: 'rgba(0, 0, 0, 0.6)',
-              }],
+              maxHeight: '90%',
+            }}
+            contentStyle={{
+              padding: 26,
             }}
           >
             {/* Close Button */}
@@ -404,7 +404,7 @@ export default function MarketingPage() {
                 </Text>
               </TouchableOpacity>
             </View>
-          </View>
+          </GlassCard>
         </View>
       </Modal>
 
@@ -425,21 +425,19 @@ export default function MarketingPage() {
             ...(Platform.OS === 'web' ? ({ backdropFilter: 'blur(24px)' } as any) : {}),
           }}
         >
-          <View
+          <GlassCard
+            variant="modal"
+            borderRadius={28}
+            accentColor="#8B5CF6"
+            sheen={true}
+            accentTop={true}
             style={{
-              backgroundColor: '#0F0B2E',
-              borderRadius: 30,
-              padding: 26,
               width: '100%',
               maxWidth: 620,
-              borderWidth: 1.5,
-              borderColor: 'rgba(139, 92, 246, 0.35)',
-              boxShadow: [{
-                offsetX: 0,
-                offsetY: 24,
-                blurRadius: 48,
-                color: 'rgba(0, 0, 0, 0.6)',
-              }],
+              maxHeight: '90%',
+            }}
+            contentStyle={{
+              padding: 26,
             }}
           >
             <TouchableOpacity
@@ -639,13 +637,13 @@ export default function MarketingPage() {
                 Apply Custom Configuration & Continue
               </Text>
             </TouchableOpacity>
-          </View>
+          </GlassCard>
         </View>
       </Modal>
 
-      {/* MODAL 3: REGISTRATION & SETUP REQUEST MODAL */}
+      {/* MODAL 3: REGISTRATION & SETUP REQUEST POPUP MODAL */}
       <Modal
-        animationType="slide"
+        animationType="fade"
         transparent={true}
         visible={modalVisible}
         onRequestClose={() => setModalVisible(false)}
@@ -657,109 +655,191 @@ export default function MarketingPage() {
           <View
             style={{
               flex: 1,
-              justifyContent: 'flex-end',
-              backgroundColor: 'rgba(5, 3, 15, 0.8)',
-              ...(Platform.OS === 'web' ? ({ backdropFilter: 'blur(16px)' } as any) : {}),
+              justifyContent: 'center',
+              alignItems: 'center',
+              padding: 16,
+              backgroundColor: 'rgba(5, 3, 15, 0.85)',
+              ...(Platform.OS === 'web' ? ({ backdropFilter: 'blur(24px)' } as any) : {}),
             }}
           >
-            <View
+            <GlassCard
+              variant="modal"
+              borderRadius={28}
+              accentColor="#FF6B00"
+              sheen={true}
+              accentTop={true}
               style={{
-                backgroundColor: '#0F0B2E',
-                borderTopLeftRadius: 36,
-                borderTopRightRadius: 36,
-                padding: 32,
-                paddingTop: 24,
-                minHeight: 520,
-                borderWidth: 1.5,
-                borderColor: 'rgba(255, 107, 0, 0.25)',
-                borderBottomWidth: 0,
+                width: '100%',
+                maxWidth: 580,
+                maxHeight: '90%',
+              }}
+              contentStyle={{
+                padding: 26,
               }}
             >
-              {/* Drag Handle */}
-              <View
-                style={{
-                  width: 48,
-                  height: 5,
-                  backgroundColor: 'rgba(255, 255, 255, 0.15)',
-                  borderRadius: 3,
-                  alignSelf: 'center',
-                  marginBottom: 24,
-                }}
-              />
-
+              {/* Close Button */}
               <TouchableOpacity
                 style={{
                   position: 'absolute',
-                  top: 24,
-                  right: 28,
-                  zIndex: 10,
-                  width: 34,
-                  height: 34,
+                  top: 20,
+                  right: 20,
+                  zIndex: 20,
+                  width: 36,
+                  height: 36,
+                  borderRadius: 18,
+                  backgroundColor: 'rgba(255, 255, 255, 0.08)',
+                  borderWidth: 1,
+                  borderColor: 'rgba(255, 255, 255, 0.12)',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  backgroundColor: 'rgba(255, 255, 255, 0.06)',
-                  borderRadius: 17,
+                  ...(Platform.OS === 'web' ? ({ cursor: 'pointer' } as any) : {}),
                 }}
                 onPress={() => setModalVisible(false)}
               >
-                <X size={18} color="rgba(255, 255, 255, 0.7)" />
+                <X size={18} color="rgba(255, 255, 255, 0.75)" />
               </TouchableOpacity>
 
               {submitted ? (
                 <View
                   style={{
                     alignItems: 'center',
-                    paddingVertical: 48,
-                    flex: 1,
+                    paddingVertical: 28,
+                    paddingHorizontal: 8,
                     justifyContent: 'center',
                   }}
                 >
                   <View
                     style={{
-                      width: 80,
-                      height: 80,
-                      borderRadius: 40,
-                      backgroundColor: 'rgba(16, 185, 129, 0.15)',
+                      width: 76,
+                      height: 76,
+                      borderRadius: 38,
+                      backgroundColor: 'rgba(16, 185, 129, 0.16)',
                       justifyContent: 'center',
                       alignItems: 'center',
-                      marginBottom: 20,
-                      borderWidth: 1,
-                      borderColor: 'rgba(16, 185, 129, 0.35)',
+                      marginBottom: 18,
+                      borderWidth: 1.5,
+                      borderColor: 'rgba(16, 185, 129, 0.45)',
+                      boxShadow: [{
+                        offsetX: 0,
+                        offsetY: 0,
+                        blurRadius: 32,
+                        color: 'rgba(16, 185, 129, 0.4)',
+                      }],
                     }}
                   >
-                    <Check size={40} color="#10B981" strokeWidth={3} />
+                    <Check size={38} color="#10B981" strokeWidth={3} />
                   </View>
+
+                  <View
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      gap: 6,
+                      paddingHorizontal: 12,
+                      paddingVertical: 4,
+                      borderRadius: 12,
+                      backgroundColor: 'rgba(16, 185, 129, 0.12)',
+                      borderWidth: 1,
+                      borderColor: 'rgba(16, 185, 129, 0.3)',
+                      marginBottom: 12,
+                    }}
+                  >
+                    <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: '#10B981' }} />
+                    <Text style={{ color: '#10B981', fontSize: 11, fontWeight: '800', letterSpacing: 1, textTransform: 'uppercase' }}>
+                      Deployment Queue Initialized
+                    </Text>
+                  </View>
+
                   <Text
                     style={{
                       color: '#FFFFFF',
-                      fontSize: 26,
+                      fontSize: 24,
                       fontWeight: '900',
                       textAlign: 'center',
-                      marginBottom: 10,
+                      marginBottom: 8,
+                      letterSpacing: -0.5,
                     }}
                   >
-                    Request Registered Successfully!
+                    Setup Request Transmitted!
                   </Text>
                   <Text
                     style={{
-                      color: 'rgba(255, 255, 255, 0.6)',
+                      color: 'rgba(255, 255, 255, 0.65)',
                       textAlign: 'center',
-                      marginBottom: 32,
-                      fontSize: 15,
+                      marginBottom: 22,
+                      fontSize: 14,
                       lineHeight: 22,
-                      maxWidth: 480,
+                      maxWidth: 440,
                     }}
                   >
-                    Thank you! Our implementation engineering team will reach out within 24 hours
-                    to configure your {selectedPlan} platform.
+                    Thank you! Our cloud architecture and implementation engineering team has received your institutional parameters and will dispatch provisioning credentials within 24 business hours.
                   </Text>
-                  <TouchableOpacity
+
+                  {/* Summary Ticket Card */}
+                  <View
                     style={{
-                      backgroundColor: '#10B981',
-                      paddingHorizontal: 40,
-                      paddingVertical: 16,
+                      width: '100%',
+                      backgroundColor: 'rgba(255, 255, 255, 0.04)',
                       borderRadius: 16,
+                      borderWidth: 1,
+                      borderColor: 'rgba(255, 255, 255, 0.08)',
+                      padding: 16,
+                      marginBottom: 24,
+                      gap: 10,
                     }}
+                  >
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <Text style={{ color: 'rgba(255, 255, 255, 0.5)', fontSize: 12.5, fontWeight: '600' }}>Platform Tier</Text>
+                      <Text style={{ color: '#FF8C40', fontSize: 13, fontWeight: '800' }}>{selectedPlan || 'Enterprise'}</Text>
+                    </View>
+                    <View style={{ height: 1, backgroundColor: 'rgba(255, 255, 255, 0.06)' }} />
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <Text style={{ color: 'rgba(255, 255, 255, 0.5)', fontSize: 12.5, fontWeight: '600' }}>Institution Name</Text>
+                      <Text style={{ color: '#FFFFFF', fontSize: 13, fontWeight: '700' }}>{form.name}</Text>
+                    </View>
+                    <View style={{ height: 1, backgroundColor: 'rgba(255, 255, 255, 0.06)' }} />
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <Text style={{ color: 'rgba(255, 255, 255, 0.5)', fontSize: 12.5, fontWeight: '600' }}>Admin Contact</Text>
+                      <Text style={{ color: '#FFFFFF', fontSize: 13, fontWeight: '700' }}>{form.email}</Text>
+                    </View>
+                    {(selectedAddons.length > 0 || selectedCoreModules.length > 0 || selectedCustomFeatures.length > 0) && (
+                      <>
+                        <View style={{ height: 1, backgroundColor: 'rgba(255, 255, 255, 0.06)' }} />
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <Text style={{ color: 'rgba(255, 255, 255, 0.5)', fontSize: 12.5, fontWeight: '600' }}>Configured Modules</Text>
+                          <Text style={{ color: '#A78BFA', fontSize: 13, fontWeight: '700' }}>
+                            {[
+                              selectedAddons.length > 0 ? `${selectedAddons.length} Add-on(s)` : null,
+                              selectedCoreModules.length > 0 ? `${selectedCoreModules.length} Portal(s)` : null,
+                              selectedCustomFeatures.length > 0 ? `${selectedCustomFeatures.length} Custom` : null,
+                            ].filter(Boolean).join(' ┬╖ ')}
+                          </Text>
+                        </View>
+                      </>
+                    )}
+                  </View>
+
+                  <TouchableOpacity
+                    style={[
+                      {
+                        backgroundColor: '#10B981',
+                        paddingHorizontal: 36,
+                        paddingVertical: 15,
+                        borderRadius: 16,
+                        width: '100%',
+                        alignItems: 'center',
+                        boxShadow: [{
+                          offsetX: 0,
+                          offsetY: 6,
+                          blurRadius: 20,
+                          color: 'rgba(16, 185, 129, 0.4)',
+                        }],
+                      },
+                      Platform.OS === 'web' ? ({
+                        background: 'linear-gradient(135deg, #10B981 0%, #059669 100%)',
+                        cursor: 'pointer',
+                      } as any) : {},
+                    ]}
                     onPress={() => setModalVisible(false)}
                   >
                     <Text style={{ color: '#FFFFFF', fontWeight: '800', fontSize: 15 }}>
@@ -768,177 +848,339 @@ export default function MarketingPage() {
                   </TouchableOpacity>
                 </View>
               ) : (
-                <ScrollView showsVerticalScrollIndicator={false}>
-                  <View
-                    style={{
-                      flexDirection: 'row',
-                      alignItems: 'center',
-                      gap: 12,
-                      marginBottom: 10,
-                    }}
-                  >
+                <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 6 }}>
+                  {/* Header */}
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14, marginBottom: 14 }}>
                     <View
                       style={{
-                        width: 44,
-                        height: 44,
-                        borderRadius: 14,
+                        width: 50,
+                        height: 50,
+                        borderRadius: 16,
                         backgroundColor: 'rgba(255, 107, 0, 0.15)',
-                        borderWidth: 1,
-                        borderColor: 'rgba(255, 107, 0, 0.3)',
+                        borderWidth: 1.5,
+                        borderColor: 'rgba(255, 107, 0, 0.35)',
                         alignItems: 'center',
                         justifyContent: 'center',
                       }}
                     >
-                      <Building size={22} color="#FF6B00" />
+                      <Building size={24} color="#FF8C40" />
                     </View>
-                    <View>
-                      <Text style={{ color: '#FFFFFF', fontSize: 22, fontWeight: '900' }}>
-                        Deploy {selectedPlan}
+                    <View style={{ flex: 1, paddingRight: 32 }}>
+                      <Text style={{ color: '#FFFFFF', fontSize: 22, fontWeight: '900', letterSpacing: -0.5 }}>
+                        Deploy {selectedPlan || 'Platform'}
                       </Text>
-                      <Text
-                        style={{
-                          color: '#FF8C40',
-                          fontWeight: '700',
-                          fontSize: 12,
-                          textTransform: 'uppercase',
-                          letterSpacing: 1,
-                        }}
-                      >
-                        Institutional Setup & Architecture
-                      </Text>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 3 }}>
+                        <Sparkles size={13} color="#FF8C40" />
+                        <Text
+                          style={{
+                            color: '#FF8C40',
+                            fontWeight: '800',
+                            fontSize: 11.5,
+                            textTransform: 'uppercase',
+                            letterSpacing: 1,
+                          }}
+                        >
+                          Institutional Setup & Architecture
+                        </Text>
+                      </View>
                     </View>
                   </View>
+
+                  {/* Configuration Badges strip (if any addons or custom modules selected) */}
+                  {(selectedAddons.length > 0 || selectedCoreModules.length > 0 || selectedCustomFeatures.length > 0) && (
+                    <View
+                      style={{
+                        flexDirection: 'row',
+                        flexWrap: 'wrap',
+                        gap: 6,
+                        padding: 10,
+                        borderRadius: 12,
+                        backgroundColor: 'rgba(255, 255, 255, 0.03)',
+                        borderWidth: 1,
+                        borderColor: 'rgba(255, 255, 255, 0.07)',
+                        marginBottom: 14,
+                      }}
+                    >
+                      <Text style={{ color: 'rgba(255, 255, 255, 0.45)', fontSize: 11, fontWeight: '700', alignSelf: 'center', marginRight: 4 }}>
+                        Bundled:
+                      </Text>
+                      {selectedAddons.map((addon) => (
+                        <View
+                          key={addon}
+                          style={{
+                            backgroundColor: 'rgba(255, 107, 0, 0.15)',
+                            paddingHorizontal: 8,
+                            paddingVertical: 3,
+                            borderRadius: 8,
+                            borderWidth: 1,
+                            borderColor: 'rgba(255, 107, 0, 0.3)',
+                          }}
+                        >
+                          <Text style={{ color: '#FF8C40', fontSize: 11, fontWeight: '700' }}>+{addon}</Text>
+                        </View>
+                      ))}
+                      {selectedCoreModules.map((mod) => (
+                        <View
+                          key={mod}
+                          style={{
+                            backgroundColor: 'rgba(59, 130, 246, 0.15)',
+                            paddingHorizontal: 8,
+                            paddingVertical: 3,
+                            borderRadius: 8,
+                            borderWidth: 1,
+                            borderColor: 'rgba(59, 130, 246, 0.3)',
+                          }}
+                        >
+                          <Text style={{ color: '#60A5FA', fontSize: 11, fontWeight: '700' }}>{mod}</Text>
+                        </View>
+                      ))}
+                      {selectedCustomFeatures.length > 0 && (
+                        <View
+                          style={{
+                            backgroundColor: 'rgba(139, 92, 246, 0.15)',
+                            paddingHorizontal: 8,
+                            paddingVertical: 3,
+                            borderRadius: 8,
+                            borderWidth: 1,
+                            borderColor: 'rgba(139, 92, 246, 0.3)',
+                          }}
+                        >
+                          <Text style={{ color: '#C084FC', fontSize: 11, fontWeight: '700' }}>
+                            +{selectedCustomFeatures.length} Custom Integrations
+                          </Text>
+                        </View>
+                      )}
+                    </View>
+                  )}
 
                   <Text
                     style={{
-                      color: 'rgba(255, 255, 255, 0.55)',
-                      fontSize: 14,
-                      lineHeight: 20,
-                      marginBottom: 24,
+                      color: 'rgba(255, 255, 255, 0.6)',
+                      fontSize: 13.5,
+                      lineHeight: 19,
+                      marginBottom: 18,
                     }}
                   >
-                    Complete the institutional details below to initialize deployment provisioning.
+                    Enter your institution details below. Our enterprise solutions team will prepare a tailored sandbox and initiate guided onboarding.
                   </Text>
 
-                  <View style={{ gap: 16, marginBottom: 32 }}>
+                  {/* Form Fields */}
+                  <View style={{ gap: 14, marginBottom: 22 }}>
+                    {/* Field 1: Institution Name */}
                     <View>
-                      <Text
-                        style={{
-                          color: 'rgba(255, 255, 255, 0.8)',
-                          fontSize: 13,
-                          fontWeight: '700',
-                          marginBottom: 6,
-                        }}
+                      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                        <Text style={{ color: 'rgba(255, 255, 255, 0.85)', fontSize: 13, fontWeight: '700' }}>
+                          Institution or Academy Name <Text style={{ color: '#FF6B00' }}>*</Text>
+                        </Text>
+                      </View>
+                      <View
+                        style={[
+                          {
+                            flexDirection: 'row',
+                            alignItems: 'center',
+                            backgroundColor: 'rgba(255, 255, 255, 0.04)',
+                            borderRadius: 14,
+                            borderWidth: 1,
+                            borderColor: 'rgba(255, 255, 255, 0.12)',
+                            paddingHorizontal: 14,
+                          },
+                          Platform.OS === 'web'
+                            ? ({
+                                backdropFilter: 'blur(16px)',
+                                WebkitBackdropFilter: 'blur(16px)',
+                              } as any)
+                            : {},
+                        ]}
                       >
-                        Institution or Academy Name
-                      </Text>
-                      <TextInput
-                        style={{
-                          backgroundColor: 'rgba(255, 255, 255, 0.04)',
-                          borderRadius: 14,
-                          padding: 16,
-                          color: '#FFFFFF',
-                          borderWidth: 1.5,
-                          borderColor: 'rgba(255, 255, 255, 0.1)',
-                          fontSize: 14.5,
-                        }}
-                        placeholder="E.g. Strathmore Academy"
-                        placeholderTextColor="rgba(255, 255, 255, 0.3)"
-                        value={form.name}
-                        onChangeText={(t) => setForm((prev) => ({ ...prev, name: t }))}
-                      />
+                        <Building size={17} color="rgba(255, 107, 0, 0.75)" style={{ marginRight: 10 }} />
+                        <TextInput
+                          style={[
+                            {
+                              flex: 1,
+                              paddingVertical: 14,
+                              color: '#FFFFFF',
+                              fontSize: 14,
+                            },
+                            Platform.OS === 'web' ? ({ outline: 'none' } as any) : {},
+                          ]}
+                          placeholder="e.g. Strathmore University / St. Jude High"
+                          placeholderTextColor="rgba(255, 255, 255, 0.3)"
+                          value={form.name}
+                          onChangeText={(t) => setForm((prev) => ({ ...prev, name: t }))}
+                        />
+                      </View>
                     </View>
 
+                    {/* Field 2: Admin Contact Email */}
                     <View>
-                      <Text
-                        style={{
-                          color: 'rgba(255, 255, 255, 0.8)',
-                          fontSize: 13,
-                          fontWeight: '700',
-                          marginBottom: 6,
-                        }}
+                      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                        <Text style={{ color: 'rgba(255, 255, 255, 0.85)', fontSize: 13, fontWeight: '700' }}>
+                          Administrator Contact Email <Text style={{ color: '#FF6B00' }}>*</Text>
+                        </Text>
+                      </View>
+                      <View
+                        style={[
+                          {
+                            flexDirection: 'row',
+                            alignItems: 'center',
+                            backgroundColor: 'rgba(255, 255, 255, 0.04)',
+                            borderRadius: 14,
+                            borderWidth: 1,
+                            borderColor: 'rgba(255, 255, 255, 0.12)',
+                            paddingHorizontal: 14,
+                          },
+                          Platform.OS === 'web'
+                            ? ({
+                                backdropFilter: 'blur(16px)',
+                                WebkitBackdropFilter: 'blur(16px)',
+                              } as any)
+                            : {},
+                        ]}
                       >
-                        Administrator Contact Email
-                      </Text>
-                      <TextInput
-                        style={{
-                          backgroundColor: 'rgba(255, 255, 255, 0.04)',
-                          borderRadius: 14,
-                          padding: 16,
-                          color: '#FFFFFF',
-                          borderWidth: 1.5,
-                          borderColor: 'rgba(255, 255, 255, 0.1)',
-                          fontSize: 14.5,
-                        }}
-                        placeholder="admin@institution.ac.ke"
-                        placeholderTextColor="rgba(255, 255, 255, 0.3)"
-                        keyboardType="email-address"
-                        value={form.email}
-                        onChangeText={(t) => setForm((prev) => ({ ...prev, email: t }))}
-                      />
+                        <Mail size={17} color="rgba(255, 107, 0, 0.75)" style={{ marginRight: 10 }} />
+                        <TextInput
+                          style={[
+                            {
+                              flex: 1,
+                              paddingVertical: 14,
+                              color: '#FFFFFF',
+                              fontSize: 14,
+                            },
+                            Platform.OS === 'web' ? ({ outline: 'none' } as any) : {},
+                          ]}
+                          placeholder="admin@institution.ac.ke"
+                          placeholderTextColor="rgba(255, 255, 255, 0.3)"
+                          keyboardType="email-address"
+                          autoCapitalize="none"
+                          value={form.email}
+                          onChangeText={(t) => setForm((prev) => ({ ...prev, email: t }))}
+                        />
+                      </View>
                     </View>
 
+                    {/* Field 3: Scope & Specifications (Optional) */}
                     <View>
-                      <Text
-                        style={{
-                          color: 'rgba(255, 255, 255, 0.8)',
-                          fontSize: 13,
-                          fontWeight: '700',
-                          marginBottom: 6,
-                        }}
+                      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                        <Text style={{ color: 'rgba(255, 255, 255, 0.85)', fontSize: 13, fontWeight: '700' }}>
+                          Deployment Scope & Student Capacity
+                        </Text>
+                        <Text style={{ color: 'rgba(255, 255, 255, 0.4)', fontSize: 11.5, fontWeight: '600' }}>
+                          Optional
+                        </Text>
+                      </View>
+                      <View
+                        style={[
+                          {
+                            backgroundColor: 'rgba(255, 255, 255, 0.04)',
+                            borderRadius: 14,
+                            borderWidth: 1,
+                            borderColor: 'rgba(255, 255, 255, 0.12)',
+                            padding: 14,
+                          },
+                          Platform.OS === 'web'
+                            ? ({
+                                backdropFilter: 'blur(16px)',
+                                WebkitBackdropFilter: 'blur(16px)',
+                              } as any)
+                            : {},
+                        ]}
                       >
-                        Deployment Specifications & Student Capacity (Optional)
-                      </Text>
-                      <TextInput
-                        style={{
-                          backgroundColor: 'rgba(255, 255, 255, 0.04)',
-                          borderRadius: 14,
-                          padding: 16,
-                          color: '#FFFFFF',
-                          borderWidth: 1.5,
-                          borderColor: 'rgba(255, 255, 255, 0.1)',
-                          fontSize: 14.5,
-                          minHeight: 90,
-                          textAlignVertical: 'top',
-                        }}
-                        placeholder="Describe campus count, current SIS/ERP system, or specific timeline..."
-                        placeholderTextColor="rgba(255, 255, 255, 0.3)"
-                        multiline
-                        value={form.message}
-                        onChangeText={(t) => setForm((prev) => ({ ...prev, message: t }))}
-                      />
+                        <TextInput
+                          style={[
+                            {
+                              color: '#FFFFFF',
+                              fontSize: 13.5,
+                              minHeight: 80,
+                              textAlignVertical: 'top',
+                            },
+                            Platform.OS === 'web' ? ({ outline: 'none' } as any) : {},
+                          ]}
+                          placeholder="Mention estimated student count, existing SIS/ERP systems, or desired launch timeline..."
+                          placeholderTextColor="rgba(255, 255, 255, 0.3)"
+                          multiline
+                          value={form.message}
+                          onChangeText={(t) => setForm((prev) => ({ ...prev, message: t }))}
+                        />
+                      </View>
                     </View>
                   </View>
 
+                  {/* Submit Action */}
                   <TouchableOpacity
-                    style={{
-                      backgroundColor: '#FF6B00',
-                      paddingVertical: 18,
-                      borderRadius: 16,
-                      alignItems: 'center',
-                      flexDirection: 'row',
-                      justifyContent: 'center',
-                      boxShadow: [{
-                        offsetX: 0,
-                        offsetY: 8,
-                        blurRadius: 20,
-                        color: 'rgba(255, 107, 0, 0.45)',
-                      }],
-                    }}
+                    style={[
+                      {
+                        backgroundColor: '#FF6B00',
+                        paddingVertical: 17,
+                        borderRadius: 16,
+                        alignItems: 'center',
+                        flexDirection: 'row',
+                        justifyContent: 'center',
+                        borderWidth: 1,
+                        borderColor: 'rgba(255, 255, 255, 0.3)',
+                        overflow: 'hidden',
+                        position: 'relative',
+                        boxShadow: [{
+                          offsetX: 0,
+                          offsetY: 8,
+                          blurRadius: 24,
+                          color: 'rgba(255, 107, 0, 0.5)',
+                        }],
+                      },
+                      Platform.OS === 'web'
+                        ? ({
+                            background: 'linear-gradient(135deg, #FF8C40 0%, #FF6B00 50%, #E65100 100%)',
+                            cursor: 'pointer',
+                            transition: 'transform 0.2s ease, box-shadow 0.2s ease',
+                          } as any)
+                        : {},
+                    ]}
                     onPress={handleSignup}
                     disabled={submitting}
                   >
+                    {/* Sheen reflection */}
+                    <View
+                      pointerEvents="none"
+                      style={{
+                        position: 'absolute',
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        height: '45%',
+                        opacity: 0.6,
+                        ...(Platform.OS === 'web'
+                          ? ({
+                              background: 'linear-gradient(180deg, rgba(255, 255, 255, 0.35) 0%, rgba(255, 255, 255, 0) 100%)',
+                            } as any)
+                          : {}),
+                      }}
+                    />
                     {submitting ? (
                       <ActivityIndicator color="white" style={{ marginRight: 10 }} />
                     ) : null}
-                    <Text style={{ color: '#FFFFFF', fontWeight: '900', fontSize: 15 }}>
+                    <Text style={{ color: '#FFFFFF', fontWeight: '900', fontSize: 15, letterSpacing: 0.2 }}>
                       {submitting ? 'Transmitting Request...' : 'Authorize Setup Request'}
                     </Text>
                     {!submitting && <MoveRight size={18} color="#FFFFFF" style={{ marginLeft: 8 }} />}
                   </TouchableOpacity>
+
+                  {/* Trust Footer */}
+                  <View
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: 6,
+                      marginTop: 14,
+                    }}
+                  >
+                    <Shield size={12} color="rgba(255, 255, 255, 0.4)" />
+                    <Text style={{ color: 'rgba(255, 255, 255, 0.4)', fontSize: 11.5, textAlign: 'center' }}>
+                      256-bit Encrypted ┬╖ Zero commitment ┬╖ SLA response &lt; 24h
+                    </Text>
+                  </View>
                 </ScrollView>
               )}
-            </View>
+            </GlassCard>
           </View>
         </KeyboardAvoidingView>
       </Modal>

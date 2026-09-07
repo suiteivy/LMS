@@ -2,6 +2,7 @@ const { createClient } = require('@supabase/supabase-js');
 const dotenv = require('dotenv');
 const path = require('path');
 const { isTeacherAssignedToSubject, resolveTeacher } = require('../middleware/resolveTeacher.js');
+const { parsePagination, paginatedResponse } = require('../utils/pagination.js');
 
 dotenv.config({ path: path.join(__dirname, '../.env') });
 
@@ -16,6 +17,7 @@ exports.getReports = async (req, res) => {
     try {
         const { studentId, term, academicYear } = req.query;
         const user = req.user;
+        const { page, limit, from, to } = parsePagination(req.query, { defaultLimit: 25 });
 
         let query = supabase
             .from('academic_reports')
@@ -26,8 +28,9 @@ exports.getReports = async (req, res) => {
                     user_id,
                     users (full_name)
                 )
-            `)
-            .order('created_at', { ascending: false });
+            `, { count: 'exact' })
+            .order('created_at', { ascending: false })
+            .range(from, to);
 
         // Institutional Isolation
         if (user.role !== 'master_admin') {
@@ -70,10 +73,10 @@ exports.getReports = async (req, res) => {
         if (term) query = query.eq('term', term);
         if (academicYear) query = query.eq('academic_year', academicYear);
 
-        const { data, error } = await query;
+        const { data, error, count } = await query;
         if (error) throw error;
 
-        res.json({ success: true, data });
+        res.json({ success: true, ...paginatedResponse(data, count, page, limit) });
     } catch (error) {
         console.error('Error in getReports:', error);
         res.status(500).json({ success: false, message: error.message });

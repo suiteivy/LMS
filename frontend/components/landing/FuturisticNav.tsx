@@ -1,7 +1,15 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, Platform, StyleSheet, Dimensions } from 'react-native';
-import { School, Sparkles, MoveRight, LogIn, Cpu, Layers } from 'lucide-react-native';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  Platform,
+  Dimensions,
+  StyleSheet,
+} from 'react-native';
+import { Sparkles, Menu, X } from 'lucide-react-native';
 import { router } from 'expo-router';
+import { CloudoraLogo } from '@/components/common/CloudoraLogo';
 
 interface FuturisticNavProps {
   onScrollTo: (sectionKey: string) => void;
@@ -10,253 +18,328 @@ interface FuturisticNavProps {
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
-export const FuturisticNav: React.FC<FuturisticNavProps> = ({ onScrollTo, activeSection }) => {
-  const isWeb = Platform.OS === 'web';
-  const isMobile = SCREEN_WIDTH < 768;
-  const [hoveredItem, setHoveredItem] = useState<string | null>(null);
-  const [demoHovered, setDemoHovered] = useState(false);
+const NAV_ITEMS = [
+  { key: 'features', label: 'Capabilities' },
+  { key: 'architecture', label: 'Architecture' },
+  { key: 'pricing', label: 'Pricing' },
+  { key: 'contact', label: 'Connect' },
+];
 
-  const navItems = [
-    { key: 'features', label: 'Capabilities' },
-    { key: 'architecture', label: 'Architecture' },
-    { key: 'pricing', label: 'Pricing' },
-    { key: 'contact', label: 'Connect' },
-  ];
+// Respect prefers-reduced-motion on web; native has no equivalent signal here.
+const prefersReducedMotion =
+  Platform.OS === 'web' &&
+  typeof window !== 'undefined' &&
+  window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+
+const transitionSpeed = prefersReducedMotion ? '0s' : '0.25s';
+
+// Track whether the last input was a mouse or a keyboard, so the focus
+// ring only appears for keyboard/tab navigation — a mouse click on the
+// active link should just trigger the lift/glow, not a boxed outline.
+let lastInputWasKeyboard = false;
+if (Platform.OS === 'web' && typeof window !== 'undefined') {
+  window.addEventListener('keydown', (e) => {
+    if (e.key === 'Tab') lastInputWasKeyboard = true;
+  });
+  window.addEventListener('mousedown', () => {
+    lastInputWasKeyboard = false;
+  });
+}
+
+export const FuturisticNav: React.FC<FuturisticNavProps> = ({
+  onScrollTo,
+  activeSection = 'hero',
+}) => {
+  const isWeb = Platform.OS === 'web';
+  const isMobile = SCREEN_WIDTH < 900;
+
+  const [hoveredKey, setHoveredKey] = useState<string | null>(null);
+  const [focusedKey, setFocusedKey] = useState<string | null>(null);
+  const [ctaHovered, setCtaHovered] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  const handleNavClick = (key: string) => {
+    onScrollTo(key);
+    setMobileMenuOpen(false);
+  };
+
+  const focusRing = (key: string) =>
+    isWeb && focusedKey === key
+      ? ({
+          outlineStyle: 'solid',
+          outlineWidth: 2,
+          outlineColor: 'rgba(255, 146, 72, 0.65)',
+          outlineOffset: 4,
+        } as any)
+      : {};
 
   return (
     <View
       style={{
         width: '100%',
         alignItems: 'center',
-        paddingTop: Platform.OS === 'ios' ? 12 : 16,
-        paddingHorizontal: 20,
+        paddingTop: Platform.OS === 'ios' ? 16 : 18,
+        paddingHorizontal: isMobile ? 16 : 28,
         zIndex: 100,
       }}
     >
-      <View
-        style={[
-          {
-            flexDirection: 'row',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            width: '100%',
-            maxWidth: 1200,
-            borderRadius: 24,
-            paddingVertical: 10,
-            paddingHorizontal: isMobile ? 14 : 20,
-            backgroundColor: 'rgba(15, 11, 46, 0.65)',
-            borderWidth: 1,
-            borderColor: 'rgba(255, 255, 255, 0.1)',
-            boxShadow: [{
-              offsetX: 0,
-              offsetY: 12,
-              blurRadius: 32,
-              color: 'rgba(0, 0, 0, 0.45)',
-            }],
-          },
-          isWeb
-            ? ({
-                backdropFilter: 'blur(24px)',
-                WebkitBackdropFilter: 'blur(24px)',
-                transition: 'border-color 0.3s ease, box-shadow 0.3s ease',
-              } as any)
-            : {},
-        ]}
-      >
-        {/* Left: Brand Identity with Glowing Core */}
+      {/* ── UNBOXED NAV ROW — no shared background, border, or shadow.
+          Every element floats directly on the page. ── */}
+      <View style={styles.navRow}>
+        {/* ── LEFT: WORDMARK ── */}
         <TouchableOpacity
-          onPress={() => onScrollTo('hero')}
-          activeOpacity={0.8}
-          style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}
+          onPress={() => handleNavClick('hero')}
+          activeOpacity={0.75}
+          style={styles.brandRow}
+          accessibilityRole="link"
         >
-          <View
-            style={{
-              width: 40,
-              height: 40,
-              borderRadius: 13,
-              backgroundColor: 'rgba(255, 107, 0, 0.16)',
-              borderWidth: 1,
-              borderColor: 'rgba(255, 107, 0, 0.4)',
-              alignItems: 'center',
-              justifyContent: 'center',
-              shadowColor: '#FF6B00',
-              boxShadow: [{
-                offsetX: 0,
-                offsetY: 0,
-                blurRadius: 14,
-                color: 'rgba(255, 107, 0, 0.4)',
-              }],
-            }}
-          >
-            <School size={20} color="#FF8C40" />
-          </View>
-          <View>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-              <Text
-                style={{
-                  color: '#FFFFFF',
-                  fontWeight: '900',
-                  fontSize: 17,
-                  letterSpacing: -0.3,
-                }}
-              >
-                Cloudora
-              </Text>
-              <View
-                style={{
-                  backgroundColor: 'rgba(255, 107, 0, 0.18)',
-                  paddingHorizontal: 6,
-                  paddingVertical: 1.5,
-                  borderRadius: 6,
-                  borderWidth: 0.5,
-                  borderColor: 'rgba(255, 107, 0, 0.35)',
-                }}
-              >
-                <Text
-                  style={{
-                    color: '#FF8C40',
-                    fontSize: 9,
-                    fontWeight: '800',
-                    letterSpacing: 0.8,
-                  }}
-                >
-                  LMS
-                </Text>
-              </View>
-            </View>
-          </View>
+          <CloudoraLogo
+            size={26}
+            glow
+            glowIntensity={0.65}
+          />
+          <Text style={styles.brandTitle}>
+            Cloudora <Text style={styles.brandSuffix}>LMS</Text>
+          </Text>
         </TouchableOpacity>
 
-        {/* Center: Desktop Navigation Pills */}
+        {/* ── CENTER: LINKS SPREAD ACROSS THE AVAILABLE SPACE.
+            Each item rises and glows on its own — a lit-from-within
+            label with a small pulse-dot beneath it — rather than a
+            single shared indicator sliding between them. ── */}
         {!isMobile && (
-          <View
-            style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              backgroundColor: 'rgba(255, 255, 255, 0.03)',
-              borderRadius: 16,
-              padding: 4,
-              borderWidth: 1,
-              borderColor: 'rgba(255, 255, 255, 0.06)',
-            }}
-          >
-            {navItems.map((item) => {
-              const isHovered = hoveredItem === item.key;
+          <View style={styles.navLinksRow}>
+            {NAV_ITEMS.map((item) => {
               const isActive = activeSection === item.key;
-
+              const isHovered = hoveredKey === item.key;
+              const isLit = isActive || isHovered;
               return (
                 <TouchableOpacity
                   key={item.key}
-                  onPress={() => onScrollTo(item.key)}
+                  onPress={() => handleNavClick(item.key)}
                   activeOpacity={0.8}
-                  //@ts-ignore
-                  onPointerEnter={() => setHoveredItem(item.key)}
-                  onPointerLeave={() => setHoveredItem(null)}
+                  accessibilityRole="link"
+                  //@ts-ignore — web-only pointer + focus events
+                  onPointerEnter={() => setHoveredKey(item.key)}
+                  onPointerLeave={() => setHoveredKey(null)}
+                  onFocus={() => {
+                    if (lastInputWasKeyboard) setFocusedKey(item.key);
+                  }}
+                  onBlur={() => setFocusedKey(null)}
                   style={[
-                    {
-                      paddingHorizontal: 16,
-                      paddingVertical: 7,
-                      borderRadius: 12,
-                      backgroundColor: isActive
-                        ? 'rgba(255, 107, 0, 0.15)'
-                        : isHovered
-                        ? 'rgba(255, 255, 255, 0.08)'
-                        : 'transparent',
-                      borderWidth: 1,
-                      borderColor: isActive
-                        ? 'rgba(255, 107, 0, 0.3)'
-                        : 'transparent',
-                    },
-                    isWeb
-                      ? ({
-                          transitionProperty: 'all',
-                          transitionDuration: '0.2s',
-                          transitionTimingFunction: 'cubic-bezier(0.16, 1, 0.3, 1)',
-                          cursor: 'pointer',
-                        } as any)
-                      : {},
+                    styles.navLink,
+                    focusRing(item.key),
+                    isWeb ? ({ cursor: 'pointer' } as any) : {},
                   ]}
                 >
                   <Text
-                    style={{
-                      color: isActive ? '#FF8C40' : isHovered ? '#FFFFFF' : 'rgba(255, 255, 255, 0.7)',
-                      fontSize: 13,
-                      fontWeight: isActive || isHovered ? '700' : '500',
-                      letterSpacing: 0.2,
-                    }}
+                    style={[
+                      styles.navLinkText,
+                      {
+                        color: isLit ? '#FFFFFF' : 'rgba(255,255,255,0.6)',
+                        fontWeight: isActive ? '700' : '500',
+                        textShadowColor: isLit
+                          ? 'rgba(255,140,64,0.6)'
+                          : 'transparent',
+                        textShadowRadius: isLit ? 10 : 0,
+                        textShadowOffset: { width: 0, height: 0 },
+                      },
+                      isWeb
+                        ? ({
+                            letterSpacing: isLit ? 1 : 0.2,
+                            transform: isLit
+                              ? [{ translateY: -2 }]
+                              : [{ translateY: 0 }],
+                            transition: `all ${transitionSpeed} cubic-bezier(0.16,1,0.3,1)`,
+                          } as any)
+                        : {},
+                    ]}
                   >
                     {item.label}
                   </Text>
+
                 </TouchableOpacity>
               );
             })}
           </View>
         )}
 
-        {/* Right: Interactive Demo Action */}
-        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+        {/* ── RIGHT: THE ONE SOLID ELEMENT ON THE BAR ── */}
+        <View style={styles.rightCluster}>
           <TouchableOpacity
             onPress={() => router.push('/demo' as any)}
             activeOpacity={0.85}
             //@ts-ignore
-            onPointerEnter={() => setDemoHovered(true)}
-            onPointerLeave={() => setDemoHovered(false)}
+            onPointerEnter={() => setCtaHovered(true)}
+            onPointerLeave={() => setCtaHovered(false)}
             style={[
+              styles.ctaButton,
               {
-                flexDirection: 'row',
-                alignItems: 'center',
-                gap: 7,
-                paddingHorizontal: isMobile ? 14 : 18,
-                paddingVertical: 9,
-                borderRadius: 14,
-                backgroundColor: demoHovered ? '#FF6B00' : 'rgba(255, 107, 0, 0.15)',
-                borderWidth: 1.5,
-                borderColor: demoHovered ? 'rgba(255, 255, 255, 0.3)' : 'rgba(255, 107, 0, 0.45)',
-                shadowColor: '#FF6B00',
-                boxShadow: [{
-                  offsetX: 0,
-                  offsetY: demoHovered ? 6 : 2,
-                  blurRadius: demoHovered ? 20 : 10,
-                  color: demoHovered ? 'rgba(255, 107, 0, 0.6)' : 'rgba(255, 107, 0, 0.2)',
-                }],
+                paddingHorizontal: isMobile ? 14 : 20,
+                paddingVertical: isMobile ? 8 : 9,
               },
               isWeb
                 ? ({
-                    transitionProperty: 'all',
-                    transitionDuration: '0.25s',
-                    transitionTimingFunction: 'cubic-bezier(0.16, 1, 0.3, 1)',
-                    transform: demoHovered ? [{ translateY: -2 }, { scale: 1.04 }] : [{ translateY: 0 }, { scale: 1 }],
+                    background: ctaHovered
+                      ? 'linear-gradient(135deg, #FF9142 0%, #FF6500 55%, #E65500 100%)'
+                      : 'linear-gradient(135deg, #FF7F2E 0%, #FF5A00 55%, #D94F00 100%)',
+                    boxShadow: ctaHovered
+                      ? '0 8px 22px rgba(255,107,0,0.45), inset 0 1px 0 rgba(255,255,255,0.3)'
+                      : '0 4px 14px rgba(255,107,0,0.3), inset 0 1px 0 rgba(255,255,255,0.2)',
+                    transform: ctaHovered ? [{ translateY: -1 }] : [{ translateY: 0 }],
+                    transition: 'all 0.2s cubic-bezier(0.16,1,0.3,1)',
                     cursor: 'pointer',
                   } as any)
                 : {},
             ]}
           >
-            <Sparkles size={15} color={demoHovered ? '#FFFFFF' : '#FF8C40'} />
-            <Text
-              style={{
-                color: demoHovered ? '#FFFFFF' : '#FF8C40',
-                fontWeight: '800',
-                fontSize: 13,
-                letterSpacing: 0.3,
-              }}
-            >
-              Interactive Demo
-            </Text>
-            <MoveRight
-              size={14}
-              color={demoHovered ? '#FFFFFF' : '#FF8C40'}
-              style={
-                isWeb
-                  ? ({
-                      transition: 'transform 0.2s ease',
-                      transform: demoHovered ? [{ translateX: 2 }] : [{ translateX: 0 }],
-                    } as any)
-                  : {}
-              }
-            />
+            <Sparkles size={14} color="#FFFFFF" />
+            <Text style={styles.ctaText}>{isMobile ? 'Demo' : 'Interactive Demo'}</Text>
           </TouchableOpacity>
+
+          {isMobile && (
+            <TouchableOpacity
+              onPress={() => setMobileMenuOpen((v) => !v)}
+              activeOpacity={0.7}
+              accessibilityRole="button"
+              accessibilityLabel={mobileMenuOpen ? 'Close menu' : 'Open menu'}
+              style={styles.menuToggle}
+            >
+              {mobileMenuOpen ? (
+                <X size={20} color="#FF9248" />
+              ) : (
+                <Menu size={20} color="#FFFFFF" />
+              )}
+            </TouchableOpacity>
+          )}
         </View>
       </View>
+
+      {/* ── MOBILE MENU: an edge-to-edge sheet, not a boxed card. ── */}
+      {isMobile && mobileMenuOpen && (
+        <View
+          style={[
+            styles.mobileSheet,
+            isWeb
+              ? ({
+                  backdropFilter: 'blur(24px) saturate(180%)',
+                  WebkitBackdropFilter: 'blur(24px) saturate(180%)',
+                } as any)
+              : {},
+          ]}
+        >
+          {NAV_ITEMS.map((item, i) => {
+            const isActive = activeSection === item.key;
+            return (
+              <TouchableOpacity
+                key={item.key}
+                onPress={() => handleNavClick(item.key)}
+                activeOpacity={0.7}
+                style={[styles.mobileItem, i === 0 && { borderTopWidth: 0 }]}
+              >
+                <Text
+                  style={[
+                    styles.mobileItemText,
+                    { color: isActive ? '#FFA35C' : 'rgba(255,255,255,0.82)' },
+                  ]}
+                >
+                  {item.label}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      )}
     </View>
   );
 };
+
+const styles = StyleSheet.create({
+  navRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    width: '100%',
+    maxWidth: 1240,
+    height: 50,
+  },
+  brandRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 9,
+  },
+  brandTitle: {
+    color: '#FFFFFF',
+    fontWeight: '700',
+    fontSize: 16,
+    letterSpacing: -0.3,
+  },
+  brandSuffix: {
+    color: 'rgba(255,255,255,0.4)',
+    fontWeight: '500',
+    fontSize: 13,
+  },
+  navLinksRow: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-evenly',
+    maxWidth: 640,
+    marginHorizontal: 24,
+  },
+  navLink: {
+    flexDirection: 'column',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 4,
+  },
+  navLinkText: {
+    fontSize: 14,
+  },
+  navDot: {
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+  },
+  rightCluster: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  ctaButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 7,
+    borderRadius: 12,
+    backgroundColor: '#FF6B00',
+  },
+  ctaText: {
+    color: '#FFFFFF',
+    fontWeight: '700',
+    fontSize: 12.5,
+    letterSpacing: 0.2,
+  },
+  menuToggle: {
+    width: 36,
+    height: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  mobileSheet: {
+    width: '100%',
+    maxWidth: 1240,
+    marginTop: 14,
+    backgroundColor: 'rgba(8, 6, 20, 0.9)',
+  },
+  mobileItem: {
+    paddingVertical: 14,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255,255,255,0.08)',
+  },
+  mobileItemText: {
+    fontSize: 15,
+    fontWeight: '500',
+  },
+});
+
+export default FuturisticNav;
