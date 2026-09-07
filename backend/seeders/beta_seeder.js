@@ -187,7 +187,9 @@ async function seedBetaInstitution() {
         }
     }
 
-    console.log("✅ Beta Seeding Completed Successfully.");
+    console.log("✅ Beta Base Seeding Completed Successfully. Now triggering full showcase dataset...");
+    const { seedBetaShowcaseData } = require("../scripts/seed_beta_showcase_data");
+    await seedBetaShowcaseData();
 }
 
 seedBetaInstitution().catch(e => console.error("🔥 Seeder crashed:", e));

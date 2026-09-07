@@ -250,7 +250,9 @@ async function seed() {
         }
     }
 
-    console.log('--- Seeding Completed Successfully ---');
+    console.log('--- Seeding Completed Successfully. Now triggering full showcase dataset... ---');
+    const { seedBetaShowcaseData } = require('./seed_beta_showcase_data');
+    await seedBetaShowcaseData();
   } catch (err) {
     console.error('SEEDING FAILED:', err);
   }
