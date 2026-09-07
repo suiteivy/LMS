@@ -2081,10 +2081,13 @@ exports.deleteInstitution = async (req, res) => {
             .select('id')
             .eq('institution_id', id);
 
-        // 2. Delete each user from auth (cascade will handle DB rows)
+        // 2. Delete users from auth in parallel batches of 10
+        //    (auth.admin.deleteUser is an HTTP call with no bulk API)
         if (instUsers && instUsers.length > 0) {
-            for (const u of instUsers) {
-                await adminClient.auth.admin.deleteUser(u.id);
+            const BATCH_SIZE = 10;
+            for (let i = 0; i < instUsers.length; i += BATCH_SIZE) {
+                const batch = instUsers.slice(i, i + BATCH_SIZE);
+                await Promise.all(batch.map(u => adminClient.auth.admin.deleteUser(u.id)));
             }
         }
 

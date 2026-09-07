@@ -233,41 +233,73 @@ exports.getAnalytics = async (req, res) => {
         const subjects = Array.from(subjectsMap.values());
         if (subjects.length === 0) return res.json([]);
 
-        // 2. Fetch Analytics for each subject
-        const analytics = await Promise.all(subjects.map(async (subject) => {
-            // A. Student Count
-            const { count: studentCount } = await supabase
+        // 2. Batch-fetch analytics data for ALL subjects at once (N+1 → 3 queries)
+        const subjectIds = subjects.map(s => s.id);
+
+        const [enrollmentResult, assignmentResult] = await Promise.all([
+            // A. All enrollments for these subjects
+            supabase
                 .from('enrollments')
-                .select('*', { count: 'exact', head: true })
-                .eq('subject_id', subject.id)
-                .eq('status', 'enrolled');
-
-            // B. Assignments
-            const { data: assignments } = await supabase
+                .select('subject_id')
+                .in('subject_id', subjectIds)
+                .eq('status', 'enrolled'),
+            // B. All assignments for these subjects
+            supabase
                 .from('assignments')
-                .select('id')
-                .eq('subject_id', subject.id);
+                .select('id, subject_id')
+                .in('subject_id', subjectIds),
+        ]);
 
-            const assignmentIds = (assignments || []).map(a => a.id);
+        const allEnrollments = enrollmentResult.data || [];
+        const allAssignments = assignmentResult.data || [];
+        const allAssignmentIds = allAssignments.map(a => a.id);
 
-            // C. Stats
+        // C. All submissions for those assignments (single query)
+        let allSubmissions = [];
+        if (allAssignmentIds.length > 0) {
+            const { data: subs } = await supabase
+                .from('submissions')
+                .select('assignment_id, grade, status')
+                .in('assignment_id', allAssignmentIds);
+            allSubmissions = subs || [];
+        }
+
+        // Build lookup maps
+        const enrollCountBySubject = new Map();
+        for (const e of allEnrollments) {
+            enrollCountBySubject.set(e.subject_id, (enrollCountBySubject.get(e.subject_id) || 0) + 1);
+        }
+
+        const assignmentsBySubject = new Map();
+        for (const a of allAssignments) {
+            if (!assignmentsBySubject.has(a.subject_id)) assignmentsBySubject.set(a.subject_id, []);
+            assignmentsBySubject.get(a.subject_id).push(a.id);
+        }
+
+        const submissionsByAssignment = new Map();
+        for (const s of allSubmissions) {
+            if (!submissionsByAssignment.has(s.assignment_id)) submissionsByAssignment.set(s.assignment_id, []);
+            submissionsByAssignment.get(s.assignment_id).push(s);
+        }
+
+        // Aggregate per subject in memory
+        const analytics = subjects.map((subject) => {
+            const studentCount = enrollCountBySubject.get(subject.id) || 0;
+            const assignmentIds = assignmentsBySubject.get(subject.id) || [];
+
             let avgGrade = 0;
             let completionRate = 0;
 
             if (assignmentIds.length > 0) {
-                const { data: submissions } = await supabase
-                    .from('submissions')
-                    .select('grade, status')
-                    .in('assignment_id', assignmentIds);
-
-                if (submissions && submissions.length > 0) {
+                const submissions = assignmentIds.flatMap(aid => submissionsByAssignment.get(aid) || []);
+                if (submissions.length > 0) {
                     const gradedSubs = submissions.filter(s => s.grade !== null);
                     if (gradedSubs.length > 0) {
                         const totalScore = gradedSubs.reduce((sum, s) => sum + (s.grade || 0), 0);
                         avgGrade = Math.round(totalScore / gradedSubs.length);
                     }
 
-                    const expectedSubmissions = assignmentIds.length * (studentCount || 0);
+                    const expectedSubmissions = assignmentIds.length * studentCount;
                     if (expectedSubmissions > 0) {
                         completionRate = Math.round((submissions.length / expectedSubmissions) * 100);
                     }
@@ -277,11 +309,11 @@ exports.getAnalytics = async (req, res) => {
             return {
                 id: subject.id,
                 name: subject.title,
-                students: studentCount || 0,
+                students: studentCount,
                 avgGrade,
                 completionRate
             };
-        }));
+        });
 
         res.json(analytics);
     } catch (err) {
@@ -479,17 +511,12 @@ exports.getStudentDetails = async (req, res) => {
         const isClassTeacher = !!(classEnrollment && classEnrollment.classes?.teacher_id === teacherId);
 
         // 4. Determine if teacher is Subject Teacher for this student
-        // Get all subject IDs taught by this teacher
-        const { data: primarySubjects } = await supabase
-            .from('subjects')
-            .select('id')
-            .eq('teacher_id', teacherId);
+        // Get all subject IDs taught by this teacher (parallel)
+        const [{ data: primarySubjects }, { data: assocSubjects }] = await Promise.all([
+            supabase.from('subjects').select('id').eq('teacher_id', teacherId),
+            supabase.from('subject_teachers').select('subject_id').eq('teacher_id', teacherId),
+        ]);
         const primarySubjectIds = (primarySubjects || []).map(s => s.id);
-
-        const { data: assocSubjects } = await supabase
-            .from('subject_teachers')
-            .select('subject_id')
-            .eq('teacher_id', teacherId);
         const assocSubjectIds = (assocSubjects || []).map(s => s.subject_id);
 
         const teacherSubjectIds = [...new Set([...primarySubjectIds, ...assocSubjectIds])];

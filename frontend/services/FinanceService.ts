@@ -86,8 +86,13 @@ export class FinanceService {
         }));
     }
 
-    static async getFeeStructures(): Promise<FeeStructure[]> {
-        const response = await api.get('/finance/fee-structures');
+    static async getFeeStructures(params?: { page?: number; limit?: number }): Promise<FeeStructure[]> {
+        const response = await api.get('/finance/fee-structures', { params });
+        return Array.isArray(response.data) ? response.data : (response.data?.data || []);
+    }
+
+    static async getFeeStructuresPaginated(params?: { page?: number; limit?: number }): Promise<any> {
+        const response = await api.get('/finance/fee-structures', { params });
         return response.data;
     }
 

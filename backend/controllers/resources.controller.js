@@ -1,4 +1,5 @@
 const supabase = require("../utils/supabaseClient.js");
+const { parsePagination, paginatedResponse } = require("../utils/pagination.js");
 
 /**
  * Create a resource (status defaults to 'pending' for teacher uploads)
@@ -55,12 +56,14 @@ exports.getResources = async (req, res) => {
     try {
         const { subject_id, status } = req.query;
         const { userId, userRole } = req;
+        const { page, limit, from, to } = parsePagination(req.query, { defaultLimit: 25 });
 
         let query = supabase
             .from("resources")
-            .select(`*, subject:subjects(title)`)
+            .select(`*, subject:subjects(title)`, { count: 'exact' })
             .eq("institution_id", req.institution_id)
-            .order('created_at', { ascending: false });
+            .order('created_at', { ascending: false })
+            .range(from, to);
 
         if (subject_id) query = query.eq("subject_id", subject_id);
         if (status) query = query.eq("status", status);
@@ -73,12 +76,12 @@ exports.getResources = async (req, res) => {
                 if (subjectIds.length > 0) {
                     query = query.in('subject_id', subjectIds);
                 } else {
-                    return res.json([]);
+                    return res.json(paginatedResponse([], 0, page, limit));
                 }
             }
         } else if (userRole === 'student') {
             const { data: student } = await supabase.from('students').select('id').eq('user_id', userId).single();
-            if (!student) return res.json([]);
+            if (!student) return res.json(paginatedResponse([], 0, page, limit));
 
             const { data: enrollments } = await supabase.from('enrollments').select('subject_id').eq('student_id', student.id).eq('status', 'enrolled');
             const subjectIds = (enrollments || []).map(e => e.subject_id);
@@ -86,7 +89,7 @@ exports.getResources = async (req, res) => {
             if (subjectIds.length > 0) {
                 query = query.in('subject_id', subjectIds).eq('status', 'approved');
             } else {
-                return res.json([]);
+                return res.json(paginatedResponse([], 0, page, limit));
             }
 
             if (subject_id && !subjectIds.includes(subject_id)) {
@@ -94,9 +97,9 @@ exports.getResources = async (req, res) => {
             }
         }
 
-        const { data, error } = await query;
+        const { data, error, count } = await query;
         if (error) throw error;
-        res.json(data);
+        res.json(paginatedResponse(data || [], count, page, limit));
     } catch (err) {
         console.error("getResources error:", err);
         res.status(500).json({ error: err.message });
@@ -108,7 +111,8 @@ exports.getResources = async (req, res) => {
  */
 exports.getPendingResources = async (req, res) => {
     try {
-        const { data, error } = await supabase
+        const { page, limit, from, to } = parsePagination(req.query, { defaultLimit: 25 });
+        const { data, error, count } = await supabase
             .from("resources")
             .select(`
                 *,
@@ -116,13 +120,14 @@ exports.getPendingResources = async (req, res) => {
                 teacher:teachers(
                     user:users(full_name, email)
                 )
-            `)
+            `, { count: 'exact' })
             .eq("institution_id", req.institution_id)
             .eq("status", "pending")
-            .order('created_at', { ascending: false });
+            .order('created_at', { ascending: false })
+            .range(from, to);
 
         if (error) throw error;
-        res.json(data || []);
+        res.json(paginatedResponse(data || [], count, page, limit));
     } catch (err) {
         console.error("getPendingResources error:", err);
         res.status(500).json({ error: err.message });

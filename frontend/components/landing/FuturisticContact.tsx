@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, Platform, Dimensions } from 'react-native';
-import { Mail, Phone, Instagram, Linkedin, MoveRight, ShieldCheck, Sparkles } from 'lucide-react-native';
+import { Mail, Phone, Instagram, Linkedin, MoveRight } from 'lucide-react-native';
+import { GlassCard } from '../ui/GlassCard';
 
 interface FuturisticContactProps {
   onOpenBooking: () => void;
@@ -60,17 +61,32 @@ export const FuturisticContact: React.FC<FuturisticContactProps> = ({ onOpenBook
       {/* Header */}
       <View style={{ alignItems: 'center', marginBottom: 44 }}>
         <View
-          style={{
-            width: 48,
-            height: 48,
-            borderRadius: 16,
-            backgroundColor: 'rgba(139, 92, 246, 0.15)',
-            borderWidth: 1,
-            borderColor: 'rgba(139, 92, 246, 0.35)',
-            alignItems: 'center',
-            justifyContent: 'center',
-            marginBottom: 16,
-          }}
+          style={[
+            {
+              width: 52,
+              height: 52,
+              borderRadius: 18,
+              backgroundColor: 'rgba(139, 92, 246, 0.15)',
+              borderWidth: 1,
+              borderColor: 'rgba(139, 92, 246, 0.35)',
+              alignItems: 'center',
+              justifyContent: 'center',
+              marginBottom: 16,
+              boxShadow: [{
+                offsetX: 0,
+                offsetY: 8,
+                blurRadius: 20,
+                color: 'rgba(139, 92, 246, 0.25)',
+              }],
+            },
+            isWeb
+              ? ({
+                  backdropFilter: 'blur(20px) saturate(180%)',
+                  WebkitBackdropFilter: 'blur(20px) saturate(180%)',
+                  background: 'linear-gradient(135deg, rgba(139, 92, 246, 0.25) 0%, rgba(24, 15, 52, 0.6) 100%)',
+                } as any)
+              : {},
+          ]}
         >
           <Mail size={24} color="#A78BFA" />
         </View>
@@ -112,34 +128,23 @@ export const FuturisticContact: React.FC<FuturisticContactProps> = ({ onOpenBook
         }}
       >
         {contacts.map((c, i) => (
-          <View
+          <GlassCard
             key={i}
-            style={[
-              {
-                width: isDesktop || isTablet ? '48%' : '100%',
-                backgroundColor: 'rgba(15, 11, 46, 0.5)',
-                borderRadius: 24,
-                padding: 24,
-                borderWidth: 1.5,
-                borderColor: 'rgba(255, 255, 255, 0.08)',
-                flexDirection: 'row',
-                alignItems: 'center',
-                gap: 18,
-                boxShadow: [{
-                  offsetX: 0,
-                  offsetY: 12,
-                  blurRadius: 28,
-                  color: 'rgba(0, 0, 0, 0.3)',
-                }],
-              },
-              isWeb
-                ? ({
-                    backdropFilter: 'blur(20px)',
-                    WebkitBackdropFilter: 'blur(20px)',
-                    transition: 'border-color 0.25s ease, transform 0.25s ease',
-                  } as any)
-                : {},
-            ]}
+            variant="interactive"
+            hoverable
+            accentColor={c.accent}
+            glowColor={`${c.accent}35`}
+            borderRadius={24}
+            style={{
+              width: isDesktop || isTablet ? '48%' : '100%',
+              minWidth: 280,
+            }}
+            contentStyle={{
+              padding: 24,
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 18,
+            }}
           >
             <View
               style={{
@@ -184,32 +189,27 @@ export const FuturisticContact: React.FC<FuturisticContactProps> = ({ onOpenBook
                 {c.sub}
               </Text>
             </View>
-          </View>
+          </GlassCard>
         ))}
       </View>
 
       {/* Interactive Quick Dispatch Banner */}
-      <View
-        style={[
-          {
-            borderRadius: 24,
-            backgroundColor: 'rgba(255, 107, 0, 0.08)',
-            borderWidth: 1.5,
-            borderColor: 'rgba(255, 107, 0, 0.3)',
-            padding: 28,
-            flexDirection: isDesktop ? 'row' : 'column',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: 20,
-            marginBottom: 60,
-          },
-          isWeb
-            ? ({
-                backdropFilter: 'blur(20px)',
-                WebkitBackdropFilter: 'blur(20px)',
-              } as any)
-            : {},
-        ]}
+      <GlassCard
+        variant="elevated"
+        accentColor="#FF6B00"
+        glowColor="rgba(255, 107, 0, 0.35)"
+        borderRadius={24}
+        style={{
+          width: '100%',
+          marginBottom: 60,
+        }}
+        contentStyle={{
+          padding: 28,
+          flexDirection: isDesktop ? 'row' : 'column',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 20,
+        }}
       >
         <View style={{ flex: 1 }}>
           <Text style={{ color: '#FFFFFF', fontSize: 20, fontWeight: '900', marginBottom: 4 }}>
@@ -228,7 +228,7 @@ export const FuturisticContact: React.FC<FuturisticContactProps> = ({ onOpenBook
           onPointerLeave={() => setSetupBtnHovered(false)}
           style={[
             {
-              backgroundColor: setupBtnHovered ? '#FF7A1A' : '#FF6B00',
+              backgroundColor: '#FF6B00',
               paddingVertical: 16,
               paddingHorizontal: 30,
               borderRadius: 16,
@@ -236,16 +236,21 @@ export const FuturisticContact: React.FC<FuturisticContactProps> = ({ onOpenBook
               alignItems: 'center',
               gap: 8,
               borderWidth: 1,
-              borderColor: setupBtnHovered ? 'rgba(255, 255, 255, 0.4)' : 'rgba(255, 107, 0, 0.3)',
+              borderColor: setupBtnHovered ? 'rgba(255, 255, 255, 0.4)' : 'rgba(255, 255, 255, 0.25)',
+              position: 'relative',
+              overflow: 'hidden',
               boxShadow: [{
                 offsetX: 0,
                 offsetY: setupBtnHovered ? 12 : 8,
                 blurRadius: setupBtnHovered ? 28 : 20,
-                color: setupBtnHovered ? 'rgba(255, 107, 0, 0.65)' : 'rgba(255, 107, 0, 0.4)',
+                color: setupBtnHovered ? 'rgba(255, 107, 0, 0.7)' : 'rgba(255, 107, 0, 0.45)',
               }],
             },
             isWeb
               ? ({
+                  background: setupBtnHovered
+                    ? 'linear-gradient(135deg, #FF8C40 0%, #FF6B00 50%, #E65100 100%)'
+                    : 'linear-gradient(135deg, #FF7A1A 0%, #FF6B00 60%, #EA580C 100%)',
                   transitionProperty: 'all',
                   transitionDuration: '0.25s',
                   transitionTimingFunction: 'cubic-bezier(0.16, 1, 0.3, 1)',
@@ -257,6 +262,21 @@ export const FuturisticContact: React.FC<FuturisticContactProps> = ({ onOpenBook
               : {},
           ]}
         >
+          {/* Top button sheen */}
+          <View
+            pointerEvents="none"
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              height: '45%',
+              opacity: 0.6,
+              ...(isWeb ? ({
+                background: 'linear-gradient(180deg, rgba(255, 255, 255, 0.3) 0%, rgba(255, 255, 255, 0) 100%)',
+              } as any) : {}),
+            }}
+          />
           <Text style={{ color: '#FFFFFF', fontWeight: '800', fontSize: 14 }}>
             Request Institutional Setup
           </Text>
@@ -273,7 +293,7 @@ export const FuturisticContact: React.FC<FuturisticContactProps> = ({ onOpenBook
             }
           />
         </TouchableOpacity>
-      </View>
+      </GlassCard>
 
       {/* Cyber Footer */}
       <View

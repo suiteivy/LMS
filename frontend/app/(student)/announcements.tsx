@@ -83,10 +83,6 @@ export default function StudentAnnouncementsPage() {
                                 className="mb-3 bg-white rounded-3xl border border-gray-100 overflow-hidden"
                                 onPress={() => {
                                     setExpandedId(isExpanded ? null : item.id);
-                                    // Mark notification as read when announcement is expanded
-                                    if (!isExpanded) {
-                                        console.log('Marking announcement as read:', item.id);
-                                    }
                                 }}
                                 activeOpacity={0.7}
                             >

@@ -95,86 +95,84 @@ export default function AttendancePage() {
                 onBack={() => router.back()}
             />
 
-            <View className="p-4 md:p-8">
-                {/* Score Hero */}
-                <View className="flex-row justify-end mb-2">
-                    <HelpTooltip id="student.attendance.summary" role="student" tier={tier} onLearnMore={(a) => router.push({ pathname: '/(student)/accessibility/settings', params: { manual: '1', anchor: a || 'student-workflow' } } as any)} />
-                </View>
-                <View className="bg-gray-900 p-8 rounded-[40px] shadow-xl mb-8 flex-row items-center">
-                    <View className="flex-1">
-                        <Text className="text-white/40 text-[10px] font-bold uppercase tracking-[3px] mb-2">Performance Rate</Text>
-                        <Text className="text-white text-5xl font-black tracking-tighter">{stats.percentage}%</Text>
-                        <Text className="text-gray-400 text-sm font-medium mt-2">from {stats.total} sessions recorded</Text>
+            <ScrollView className="flex-1" showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 200 }}>
+                <View className="p-4 md:p-8">
+                    {/* Score Hero */}
+                    <View className="flex-row justify-end mb-2">
+                        <HelpTooltip id="student.attendance.summary" role="student" tier={tier} onLearnMore={(a) => router.push({ pathname: '/(student)/accessibility/settings', params: { manual: '1', anchor: a || 'student-workflow' } } as any)} />
                     </View>
-                    <View className="w-16 h-16 rounded-full bg-[#FF6900] items-center justify-center shadow-lg">
-                        <Calendar size={32} color="white" />
+                    <View className="bg-gray-900 p-8 rounded-[40px] shadow-xl mb-8 flex-row items-center">
+                        <View className="flex-1">
+                            <Text className="text-white/40 text-[10px] font-bold uppercase tracking-[3px] mb-2">Performance Rate</Text>
+                            <Text className="text-white text-5xl font-black tracking-tighter">{stats.percentage}%</Text>
+                            <Text className="text-gray-400 text-sm font-medium mt-2">from {stats.total} sessions recorded</Text>
+                        </View>
+                        <View className="w-16 h-16 rounded-full bg-[#FF6900] items-center justify-center shadow-lg">
+                            <Calendar size={32} color="white" />
+                        </View>
                     </View>
-                </View>
 
-                {/* Mini Stats Grid */}
-                <View className="flex-row flex-wrap gap-3 mb-10 px-2">
-                    <View className="w-[47%] bg-[#FFFFFF] dark:bg-[#161B22] p-5 rounded-xl border border-[#D0D7DE] dark:border-[#21262D] shadow-sm items-center">
-                        <Text className="text-green-600 text-2xl font-bold">{stats.present}</Text>
-                        <Text className="text-gray-400 text-[8px] font-bold uppercase tracking-widest mt-1">Present</Text>
+                    {/* Mini Stats Grid */}
+                    <View className="flex-row flex-wrap gap-3 mb-10 px-2">
+                        <View className="w-[47%] bg-[#FFFFFF] dark:bg-[#161B22] p-5 rounded-xl border border-[#D0D7DE] dark:border-[#21262D] shadow-sm items-center">
+                            <Text className="text-green-600 text-2xl font-bold">{stats.present}</Text>
+                            <Text className="text-gray-400 text-[8px] font-bold uppercase tracking-widest mt-1">Present</Text>
+                        </View>
+                        <View className="w-[47%] bg-[#FFFFFF] dark:bg-[#161B22] p-5 rounded-xl border border-[#D0D7DE] dark:border-[#21262D] shadow-sm items-center">
+                            <Text className="text-red-600 text-2xl font-bold">{stats.absent}</Text>
+                            <Text className="text-gray-400 text-[8px] font-bold uppercase tracking-widest mt-1">Absent</Text>
+                        </View>
+                        <View className="w-[47%] bg-[#FFFFFF] dark:bg-[#161B22] p-5 rounded-xl border border-[#D0D7DE] dark:border-[#21262D] shadow-sm items-center">
+                            <Text className="text-orange-600 text-2xl font-bold">{stats.late}</Text>
+                            <Text className="text-gray-400 text-[8px] font-bold uppercase tracking-widest mt-1">Late</Text>
+                        </View>
+                        <View className="w-[47%] bg-[#FFFFFF] dark:bg-[#161B22] p-5 rounded-xl border border-[#D0D7DE] dark:border-[#21262D] shadow-sm items-center">
+                            <Text className="text-gray-900 dark:text-white text-2xl font-bold">{stats.excused}</Text>
+                            <Text className="text-gray-400 text-[8px] font-bold uppercase tracking-widest mt-1">Excused</Text>
+                        </View>
                     </View>
-                    <View className="w-[47%] bg-[#FFFFFF] dark:bg-[#161B22] p-5 rounded-xl border border-[#D0D7DE] dark:border-[#21262D] shadow-sm items-center">
-                        <Text className="text-red-600 text-2xl font-bold">{stats.absent}</Text>
-                        <Text className="text-gray-400 text-[8px] font-bold uppercase tracking-widest mt-1">Absent</Text>
-                    </View>
-                    <View className="w-[47%] bg-[#FFFFFF] dark:bg-[#161B22] p-5 rounded-xl border border-[#D0D7DE] dark:border-[#21262D] shadow-sm items-center">
-                        <Text className="text-orange-600 text-2xl font-bold">{stats.late}</Text>
-                        <Text className="text-gray-400 text-[8px] font-bold uppercase tracking-widest mt-1">Late</Text>
-                    </View>
-                    <View className="w-[47%] bg-[#FFFFFF] dark:bg-[#161B22] p-5 rounded-xl border border-[#D0D7DE] dark:border-[#21262D] shadow-sm items-center">
-                        <Text className="text-gray-900 dark:text-white text-2xl font-bold">{stats.excused}</Text>
-                        <Text className="text-gray-400 text-[8px] font-bold uppercase tracking-widest mt-1">Excused</Text>
-                    </View>
-                </View>
 
-                {/* Detailed Logs */}
-                <View className="px-2 mb-4">
-                    <View className="flex-row items-center justify-between">
-                        <Text className="text-gray-400 font-bold text-[10px] uppercase tracking-[3px]">Session Logs</Text>
-                        <HelpTooltip id="student.attendance.logs" role="student" tier={tier} onLearnMore={(a) => router.push({ pathname: '/(student)/accessibility/settings', params: { manual: '1', anchor: a || 'student-workflow' } } as any)} />
+                    {/* Detailed Logs */}
+                    <View className="px-2 mb-4">
+                        <View className="flex-row items-center justify-between">
+                            <Text className="text-gray-400 font-bold text-[10px] uppercase tracking-[3px]">Session Logs</Text>
+                            <HelpTooltip id="student.attendance.logs" role="student" tier={tier} onLearnMore={(a) => router.push({ pathname: '/(student)/accessibility/settings', params: { manual: '1', anchor: a || 'student-workflow' } } as any)} />
+                        </View>
                     </View>
-                </View>
 
-                {loading ? (
-                    <ListItemSkeleton loading={loading} count={4} label="Loading attendance records..." />
-                ) : (
-                    <ScrollView className="flex-1" showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 200 }}>
-                        {attendance.length === 0 ? (
-                            <View className="bg-[#FFFFFF] dark:bg-[#161B22] p-12 rounded-xl items-center border border-[#D0D7DE] dark:border-[#21262D] border-dashed mt-4">
-                                <Calendar size={48} color="#E5E7EB" />
-                                <Text className="text-gray-400 font-bold text-center mt-6">No records found</Text>
-                            </View>
-                        ) : (
-                            attendance.map((record) => {
-                                const styles = getStatusStyles(record.status);
-                                return (
-                                    <View key={record.id} className="bg-[#FFFFFF] dark:bg-[#161B22] p-5 rounded-xl border border-[#D0D7DE] dark:border-[#21262D] mb-4 flex-row justify-between items-center shadow-sm">
-                                        <View className="flex-1">
-                                            <Text className="font-bold text-gray-900 dark:text-white text-base tracking-tight mb-1">{record.classes?.display_name || record.classes?.name || 'Academic Session'}</Text>
-                                            <View className="flex-row items-center">
-                                                <Calendar size={12} color="#9CA3AF" />
-                                                <Text className="text-gray-400 text-[10px] font-bold uppercase tracking-widest ml-1.5">{new Date(record.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</Text>
-                                            </View>
-                                        </View>
+                    {loading ? (
+                        <ListItemSkeleton loading={loading} count={4} label="Loading attendance records..." />
+                    ) : attendance.length === 0 ? (
+                        <View className="bg-[#FFFFFF] dark:bg-[#161B22] p-12 rounded-xl items-center border border-[#D0D7DE] dark:border-[#21262D] border-dashed mt-4">
+                            <Calendar size={48} color="#E5E7EB" />
+                            <Text className="text-gray-400 font-bold text-center mt-6">No records found</Text>
+                        </View>
+                    ) : (
+                        attendance.map((record) => {
+                            const styles = getStatusStyles(record.status);
+                            return (
+                                <View key={record.id} className="bg-[#FFFFFF] dark:bg-[#161B22] p-5 rounded-xl border border-[#D0D7DE] dark:border-[#21262D] mb-4 flex-row justify-between items-center shadow-sm">
+                                    <View className="flex-1">
+                                        <Text className="font-bold text-gray-900 dark:text-white text-base tracking-tight mb-1">{record.classes?.display_name || record.classes?.name || 'Academic Session'}</Text>
                                         <View className="flex-row items-center">
-                                            <View className={`${styles.bg} px-3 py-1.5 rounded-full mr-3 border border-black/5`}>
-                                                <Text className={`${styles.text} text-[8px] font-black uppercase tracking-widest`}>{record.status}</Text>
-                                            </View>
-                                            <View className="w-10 h-10 rounded-xl bg-gray-50 dark:bg-[#161B22] items-center justify-center border border-[#D0D7DE] dark:border-[#21262D]">
-                                                {styles.icon}
-                                            </View>
+                                            <Calendar size={12} color="#9CA3AF" />
+                                            <Text className="text-gray-400 text-[10px] font-bold uppercase tracking-widest ml-1.5">{new Date(record.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</Text>
                                         </View>
                                     </View>
-                                );
-                            })
-                        )}
-                    </ScrollView>
-                )}
-            </View>
+                                    <View className="flex-row items-center">
+                                        <View className={`${styles.bg} px-3 py-1.5 rounded-full mr-3 border border-black/5`}>
+                                            <Text className={`${styles.text} text-[8px] font-black uppercase tracking-widest`}>{record.status}</Text>
+                                        </View>
+                                        <View className="w-10 h-10 rounded-xl bg-gray-50 dark:bg-[#161B22] items-center justify-center border border-[#D0D7DE] dark:border-[#21262D]">
+                                            {styles.icon}
+                                        </View>
+                                    </View>
+                                </View>
+                            );
+                        })
+                    )}
+                </View>
+            </ScrollView>
         </View>
     );
 }

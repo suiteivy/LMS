@@ -5,30 +5,21 @@ import {
   TouchableOpacity,
   Platform,
   Dimensions,
-  StyleSheet,
   Animated,
   Easing,
 } from 'react-native';
 import {
   Sparkles,
   MoveRight,
-  ShieldCheck,
-  Zap,
-  Layers,
   GraduationCap,
   Users,
   Building,
   HeartHandshake,
-  CheckCircle2,
-  BarChart3,
   TrendingUp,
-  Clock,
-  BookOpen,
   CreditCard,
-  Bell,
-  Cpu
 } from 'lucide-react-native';
 import { router } from 'expo-router';
+import { GlassCard } from '@/components/ui/GlassCard';
 
 interface HeroConsoleProps {
   onExplorePricing: () => void;
@@ -204,19 +195,34 @@ export const HeroConsole: React.FC<HeroConsoleProps> = ({ onExplorePricing, onOp
         <View style={{ flex: isDesktop ? 1 : undefined, maxWidth: isDesktop ? 580 : '100%' }}>
           {/* Status Telemetry Pill */}
           <View
-            style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              gap: 8,
-              alignSelf: 'flex-start',
-              paddingHorizontal: 14,
-              paddingVertical: 6,
-              borderRadius: 30,
-              backgroundColor: 'rgba(255, 107, 0, 0.1)',
-              borderWidth: 1,
-              borderColor: 'rgba(255, 107, 0, 0.28)',
-              marginBottom: 24,
-            }}
+            style={[
+              {
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 8,
+                alignSelf: 'flex-start',
+                paddingHorizontal: 16,
+                paddingVertical: 7,
+                borderRadius: 30,
+                backgroundColor: 'rgba(255, 107, 0, 0.12)',
+                borderWidth: 1,
+                borderColor: 'rgba(255, 107, 0, 0.35)',
+                marginBottom: 24,
+                boxShadow: [{
+                  offsetX: 0,
+                  offsetY: 4,
+                  blurRadius: 16,
+                  color: 'rgba(255, 107, 0, 0.15)',
+                }],
+              },
+              isWeb
+                ? ({
+                    backdropFilter: 'blur(20px) saturate(180%)',
+                    WebkitBackdropFilter: 'blur(20px) saturate(180%)',
+                    background: 'linear-gradient(135deg, rgba(255, 107, 0, 0.18) 0%, rgba(24, 15, 52, 0.6) 100%)',
+                  } as any)
+                : {},
+            ]}
           >
             <View
               style={{
@@ -315,6 +321,7 @@ export const HeroConsole: React.FC<HeroConsoleProps> = ({ onExplorePricing, onOp
               onPointerLeave={() => setDemoHovered(false)}
               style={[
                 {
+                  position: 'relative',
                   flexDirection: 'row',
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -324,26 +331,47 @@ export const HeroConsole: React.FC<HeroConsoleProps> = ({ onExplorePricing, onOp
                   paddingHorizontal: 28,
                   borderRadius: 18,
                   borderWidth: 1,
-                  borderColor: 'rgba(255, 255, 255, 0.25)',
+                  borderColor: 'rgba(255, 255, 255, 0.35)',
+                  overflow: 'hidden',
                   shadowColor: '#FF6B00',
                   boxShadow: [{
                     offsetX: 0,
                     offsetY: 10,
                     blurRadius: 28,
-                    color: demoHovered ? 'rgba(255, 107, 0, 0.65)' : 'rgba(255, 107, 0, 0.4)',
+                    color: demoHovered ? 'rgba(255, 107, 0, 0.7)' : 'rgba(255, 107, 0, 0.45)',
                   }],
                 },
                 isWeb
                   ? ({
-                      transitionProperty: 'transform, box-shadow',
-                      transitionDuration: '0.2s, 0.25s',
-                      transitionTimingFunction: 'cubic-bezier(0.16, 1, 0.3, 1), ease',
+                      background: demoHovered
+                        ? 'linear-gradient(135deg, #FF8C40 0%, #FF6B00 50%, #E65100 100%)'
+                        : 'linear-gradient(135deg, #FF7A1A 0%, #FF6B00 60%, #EA580C 100%)',
+                      backdropFilter: 'blur(20px) saturate(180%)',
+                      WebkitBackdropFilter: 'blur(20px) saturate(180%)',
+                      transitionProperty: 'transform, box-shadow, background',
+                      transitionDuration: '0.2s, 0.25s, 0.25s',
+                      transitionTimingFunction: 'cubic-bezier(0.16, 1, 0.3, 1), ease, ease',
                       transform: demoHovered ? [{ translateY: -3 }, { scale: 1.02 }] : [{ translateY: 0 }],
                       cursor: 'pointer',
                     } as any)
                   : {},
               ]}
             >
+              {/* Top refraction sheen */}
+              <View
+                pointerEvents="none"
+                style={{
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  height: '45%',
+                  opacity: 0.8,
+                  ...(isWeb ? ({
+                    background: 'linear-gradient(180deg, rgba(255, 255, 255, 0.35) 0%, rgba(255, 255, 255, 0) 100%)',
+                  } as any) : {}),
+                }}
+              />
               <Sparkles size={18} color="#FFFFFF" />
               <Text
                 style={{
@@ -367,6 +395,7 @@ export const HeroConsole: React.FC<HeroConsoleProps> = ({ onExplorePricing, onOp
               onPointerLeave={() => setPricingHovered(false)}
               style={[
                 {
+                  position: 'relative',
                   flexDirection: 'row',
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -376,12 +405,22 @@ export const HeroConsole: React.FC<HeroConsoleProps> = ({ onExplorePricing, onOp
                   paddingHorizontal: 24,
                   borderRadius: 18,
                   borderWidth: 1.5,
-                  borderColor: pricingHovered ? 'rgba(255, 255, 255, 0.3)' : 'rgba(255, 255, 255, 0.12)',
+                  borderColor: pricingHovered ? 'rgba(255, 255, 255, 0.35)' : 'rgba(255, 255, 255, 0.14)',
+                  overflow: 'hidden',
+                  boxShadow: [{
+                    offsetX: 0,
+                    offsetY: 8,
+                    blurRadius: 24,
+                    color: 'rgba(0, 0, 0, 0.35)',
+                  }],
                 },
                 isWeb
                   ? ({
-                      backdropFilter: 'blur(16px)',
-                      WebkitBackdropFilter: 'blur(16px)',
+                      backdropFilter: 'blur(28px) saturate(190%)',
+                      WebkitBackdropFilter: 'blur(28px) saturate(190%)',
+                      background: pricingHovered
+                        ? 'linear-gradient(165deg, rgba(35, 22, 75, 0.85) 0%, rgba(18, 12, 50, 0.9) 100%)'
+                        : 'linear-gradient(165deg, rgba(255, 255, 255, 0.08) 0%, rgba(15, 11, 46, 0.65) 100%)',
                       transitionProperty: 'all',
                       transitionDuration: '0.2s',
                       transitionTimingFunction: 'ease',
@@ -391,6 +430,21 @@ export const HeroConsole: React.FC<HeroConsoleProps> = ({ onExplorePricing, onOp
                   : {},
               ]}
             >
+              {/* Top refraction sheen */}
+              <View
+                pointerEvents="none"
+                style={{
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  height: '40%',
+                  opacity: 0.6,
+                  ...(isWeb ? ({
+                    background: 'linear-gradient(180deg, rgba(255, 255, 255, 0.18) 0%, rgba(255, 255, 255, 0) 100%)',
+                  } as any) : {}),
+                }}
+              />
               <Text
                 style={{
                   color: '#FFFFFF',
@@ -409,7 +463,7 @@ export const HeroConsole: React.FC<HeroConsoleProps> = ({ onExplorePricing, onOp
             style={{
               flexDirection: 'row',
               flexWrap: 'wrap',
-              gap: 20,
+              gap: 12,
               paddingTop: 20,
               borderTopWidth: 1,
               borderColor: 'rgba(255, 255, 255, 0.08)',
@@ -420,7 +474,13 @@ export const HeroConsole: React.FC<HeroConsoleProps> = ({ onExplorePricing, onOp
               { label: 'Fee Invoicing', val: 'Automated' },
               { label: 'Digital Library', val: 'Built-in' },
             ].map((item, idx) => (
-              <View key={idx} style={{ minWidth: 90 }}>
+              <GlassCard
+                key={idx}
+                variant="subtle"
+                borderRadius={14}
+                style={{ minWidth: 100 }}
+                contentStyle={{ paddingVertical: 10, paddingHorizontal: 14 }}
+              >
                 <Text
                   style={{
                     color: '#FFFFFF',
@@ -434,9 +494,9 @@ export const HeroConsole: React.FC<HeroConsoleProps> = ({ onExplorePricing, onOp
                 </Text>
                 <Text
                   style={{
-                    color: 'rgba(255, 255, 255, 0.45)',
-                    fontSize: 11,
-                    fontWeight: '600',
+                    color: 'rgba(255, 255, 255, 0.48)',
+                    fontSize: 10.5,
+                    fontWeight: '700',
                     marginTop: 2,
                     textTransform: 'uppercase',
                     letterSpacing: 0.5,
@@ -444,7 +504,7 @@ export const HeroConsole: React.FC<HeroConsoleProps> = ({ onExplorePricing, onOp
                 >
                   {item.label}
                 </Text>
-              </View>
+              </GlassCard>
             ))}
           </View>
         </View>
@@ -458,28 +518,12 @@ export const HeroConsole: React.FC<HeroConsoleProps> = ({ onExplorePricing, onOp
           }}
         >
           {/* Main Glass HUD Container */}
-          <View
-            style={[
-              {
-                borderRadius: 28,
-                backgroundColor: 'rgba(15, 11, 46, 0.65)',
-                borderWidth: 1.5,
-                borderColor: 'rgba(255, 255, 255, 0.12)',
-                overflow: 'hidden',
-                boxShadow: [{
-                  offsetX: 0,
-                  offsetY: 24,
-                  blurRadius: 48,
-                  color: 'rgba(0, 0, 0, 0.5)',
-                }],
-              },
-              isWeb
-                ? ({
-                    backdropFilter: 'blur(30px)',
-                    WebkitBackdropFilter: 'blur(30px)',
-                  } as any)
-                : {},
-            ]}
+          <GlassCard
+            variant="elevated"
+            accentColor={currentRole.accent}
+            glowColor={`${currentRole.accent}33`}
+            borderRadius={28}
+            style={{ width: '100%' }}
           >
             {/* Top Console Bar */}
             <View
@@ -820,7 +864,7 @@ export const HeroConsole: React.FC<HeroConsoleProps> = ({ onExplorePricing, onOp
               </View>
             </View>
             </Animated.View>
-          </View>
+          </GlassCard>
 
           {/* Floating Atmospheric Badge 1: Real-time Attendance */}
           {isDesktop && (
@@ -830,30 +874,49 @@ export const HeroConsole: React.FC<HeroConsoleProps> = ({ onExplorePricing, onOp
                   position: 'absolute',
                   top: -24,
                   right: -20,
-                  backgroundColor: 'rgba(15, 11, 46, 0.85)',
-                  borderRadius: 16,
-                  paddingHorizontal: 16,
-                  paddingVertical: 10,
+                  backgroundColor: 'rgba(15, 11, 46, 0.88)',
+                  borderRadius: 18,
+                  paddingHorizontal: 18,
+                  paddingVertical: 12,
                   borderWidth: 1,
-                  borderColor: 'rgba(16, 185, 129, 0.35)',
+                  borderColor: 'rgba(16, 185, 129, 0.4)',
                   flexDirection: 'row',
                   alignItems: 'center',
                   gap: 10,
+                  overflow: 'hidden',
                   boxShadow: [{
                     offsetX: 0,
                     offsetY: 12,
                     blurRadius: 24,
-                    color: 'rgba(0, 0, 0, 0.4)',
+                    color: 'rgba(0, 0, 0, 0.55)',
                   }],
+                  zIndex: 50,
                 },
                 isWeb
                   ? ({
-                      backdropFilter: 'blur(20px)',
-                      WebkitBackdropFilter: 'blur(20px)',
+                      backdropFilter: 'blur(32px) saturate(190%)',
+                      WebkitBackdropFilter: 'blur(32px) saturate(190%)',
+                      background: 'linear-gradient(165deg, rgba(24, 15, 52, 0.9) 0%, rgba(11, 7, 30, 0.95) 100%)',
+                      boxShadow: '0 0 0 1px rgba(255,255,255,0.1), 0 8px 24px rgba(0,0,0,0.5), 0 0 30px -6px rgba(16, 185, 129, 0.35), inset 0 1px 1px 0 rgba(255,255,255,0.18)',
                     } as any)
                   : {},
               ]}
             >
+              {/* Top refraction sheen */}
+              <View
+                pointerEvents="none"
+                style={{
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  height: '45%',
+                  opacity: 0.6,
+                  ...(isWeb ? ({
+                    background: 'linear-gradient(180deg, rgba(255, 255, 255, 0.2) 0%, rgba(255, 255, 255, 0) 100%)',
+                  } as any) : {}),
+                }}
+              />
               <View
                 style={{
                   width: 8,
@@ -870,10 +933,10 @@ export const HeroConsole: React.FC<HeroConsoleProps> = ({ onExplorePricing, onOp
                 }}
               />
               <View>
-                <Text style={{ color: '#FFFFFF', fontSize: 11, fontWeight: '800' }}>
+                <Text style={{ color: '#FFFFFF', fontSize: 11.5, fontWeight: '800' }}>
                   Daily Attendance Tracker
                 </Text>
-                <Text style={{ color: 'rgba(255, 255, 255, 0.45)', fontSize: 9.5 }}>
+                <Text style={{ color: 'rgba(255, 255, 255, 0.5)', fontSize: 9.5 }}>
                   Real-time updates for parents
                 </Text>
               </View>
@@ -888,36 +951,55 @@ export const HeroConsole: React.FC<HeroConsoleProps> = ({ onExplorePricing, onOp
                   position: 'absolute',
                   bottom: -18,
                   left: -20,
-                  backgroundColor: 'rgba(15, 11, 46, 0.85)',
-                  borderRadius: 16,
-                  paddingHorizontal: 16,
-                  paddingVertical: 10,
+                  backgroundColor: 'rgba(15, 11, 46, 0.88)',
+                  borderRadius: 18,
+                  paddingHorizontal: 18,
+                  paddingVertical: 12,
                   borderWidth: 1,
-                  borderColor: 'rgba(255, 107, 0, 0.35)',
+                  borderColor: 'rgba(255, 107, 0, 0.4)',
                   flexDirection: 'row',
                   alignItems: 'center',
                   gap: 10,
+                  overflow: 'hidden',
                   boxShadow: [{
                     offsetX: 0,
                     offsetY: 12,
                     blurRadius: 24,
-                    color: 'rgba(0, 0, 0, 0.4)',
+                    color: 'rgba(0, 0, 0, 0.55)',
                   }],
+                  zIndex: 50,
                 },
                 isWeb
                   ? ({
-                      backdropFilter: 'blur(20px)',
-                      WebkitBackdropFilter: 'blur(20px)',
+                      backdropFilter: 'blur(32px) saturate(190%)',
+                      WebkitBackdropFilter: 'blur(32px) saturate(190%)',
+                      background: 'linear-gradient(165deg, rgba(24, 15, 52, 0.9) 0%, rgba(11, 7, 30, 0.95) 100%)',
+                      boxShadow: '0 0 0 1px rgba(255,255,255,0.1), 0 8px 24px rgba(0,0,0,0.5), 0 0 30px -6px rgba(255, 107, 0, 0.35), inset 0 1px 1px 0 rgba(255,255,255,0.18)',
                     } as any)
                   : {},
               ]}
             >
+              {/* Top refraction sheen */}
+              <View
+                pointerEvents="none"
+                style={{
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  height: '45%',
+                  opacity: 0.6,
+                  ...(isWeb ? ({
+                    background: 'linear-gradient(180deg, rgba(255, 255, 255, 0.2) 0%, rgba(255, 255, 255, 0) 100%)',
+                  } as any) : {}),
+                }}
+              />
               <CreditCard size={16} color="#FF8C40" />
               <View>
-                <Text style={{ color: '#FFFFFF', fontSize: 11, fontWeight: '800' }}>
+                <Text style={{ color: '#FFFFFF', fontSize: 11.5, fontWeight: '800' }}>
                   Automated Fees & M-Pesa
                 </Text>
-                <Text style={{ color: 'rgba(255, 255, 255, 0.45)', fontSize: 9.5 }}>
+                <Text style={{ color: 'rgba(255, 255, 255, 0.5)', fontSize: 9.5 }}>
                   Instant receipts for parents
                 </Text>
               </View>

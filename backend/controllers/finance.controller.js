@@ -1,5 +1,6 @@
 // controllers/finance.controller.js
 const supabase = require("../utils/supabaseClient.js");
+const { parsePagination, paginatedResponse } = require("../utils/pagination.js");
 const { resolveActiveTerm } = require('../utils/resolveActiveTerm');
 const { buildReceiptHtml } = require('../utils/receiptTemplate.js');
 
@@ -1027,12 +1028,14 @@ exports.recordFeePayment = async (req, res) => {
 exports.getFeeStructures = async (req, res) => {
     try {
         const { institution_id } = req;
+        const { page, limit, from, to } = parsePagination(req.query, { defaultLimit: 25 });
 
-        const { data, error } = await supabase
+        const { data, error, count } = await supabase
             .from("fee_structures")
-            .select("*")
+            .select("*", { count: "exact" })
             .eq("institution_id", institution_id)
-            .order('created_at', { ascending: false });
+            .order('created_at', { ascending: false })
+            .range(from, to);
 
         if (error) throw error;
 
@@ -1052,7 +1055,7 @@ exports.getFeeStructures = async (req, res) => {
             };
         }));
 
-        res.json(transformed);
+        res.json(paginatedResponse(transformed, count, page, limit));
     } catch (err) {
         console.error("Get fee structures error:", err);
         res.status(500).json({ error: err.message });

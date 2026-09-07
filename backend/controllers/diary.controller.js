@@ -1,5 +1,6 @@
 const supabase = require("../utils/supabaseClient.js");
 const { getStudentCurrentClassEnrollment } = require('../utils/studentClassEnrollment');
+const { parsePagination, paginatedResponse } = require("../utils/pagination.js");
 
 /**
  * Create a new diary entry (Teacher only or Admin)
@@ -84,6 +85,7 @@ exports.getEntries = async (req, res) => {
     try {
         const { class_id, student_id } = req.query;
         const { userId, userRole, institution_id } = req;
+        const { page, limit, from, to } = parsePagination(req.query, { defaultLimit: 25 });
 
         let targetClassId = class_id;
         let targetStudentId = student_id;
@@ -94,7 +96,7 @@ exports.getEntries = async (req, res) => {
             if (!student) return res.status(404).json({ error: "Student profile not found" });
 
             const enrollment = await getStudentCurrentClassEnrollment(student.id, institution_id);
-            if (!enrollment) return res.json([]);
+            if (!enrollment) return res.json(paginatedResponse([], 0, page, limit));
             targetClassId = enrollment.class_id;
             targetStudentId = student.id;
         } else if (userRole === 'parent') {
@@ -108,7 +110,7 @@ exports.getEntries = async (req, res) => {
             if (!linkage) return res.status(403).json({ error: "Access denied: Not linked to this student" });
 
             const enrollment = await getStudentCurrentClassEnrollment(student_id, institution_id);
-            if (!enrollment) return res.json([]);
+            if (!enrollment) return res.json(paginatedResponse([], 0, page, limit));
             targetClassId = enrollment.class_id;
             targetStudentId = student_id;
         }
@@ -132,7 +134,7 @@ exports.getEntries = async (req, res) => {
                 grades_released,
                 subject:subjects(id, title)
             )
-        `);
+        `, { count: 'exact' });
 
         if (targetStudentId) {
             // Fetch entries targeted to this student OR class-wide entries with student_id IS NULL
@@ -141,9 +143,10 @@ exports.getEntries = async (req, res) => {
             query = query.eq("class_id", targetClassId);
         }
 
-        const { data, error } = await query
+        const { data, error, count } = await query
             .eq("institution_id", institution_id)
-            .order("entry_date", { ascending: false });
+            .order("entry_date", { ascending: false })
+            .range(from, to);
 
         if (error) throw error;
 
@@ -219,7 +222,7 @@ exports.getEntries = async (req, res) => {
             };
         });
 
-        res.json(enriched);
+        res.json(paginatedResponse(enriched, count, page, limit));
     } catch (err) {
         console.error("Error fetching diary entries:", err);
         res.status(500).json({ error: err.message });

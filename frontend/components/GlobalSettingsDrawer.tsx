@@ -173,7 +173,6 @@ function SettingsMenu({ userRole, onNavigate }: { userRole: string; onNavigate: 
     try {
       const { error } = await signOut();
       if (error) Alert.alert('Logout Error', error.message || 'Failed to sign out');
-      router.push('/(auth)/signIn');
     } catch (err: any) {
       Alert.alert('Error', err.message || 'An unexpected error occurred');
     }

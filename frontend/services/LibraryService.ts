@@ -61,12 +61,22 @@ export class LibraryAPI {
    * Get all books in the library
    * @returns {Promise<BackendBook[]>}
    */
-  static async getBooks(): Promise<BackendBook[]> {
+  static async getBooks(params?: { page?: number; limit?: number }): Promise<BackendBook[]> {
     try {
-      const response = await api.get<BackendBook[]>("/library/books");
-      return Array.isArray(response.data) ? response.data : [];
+      const response = await api.get<any>("/library/books", { params });
+      return Array.isArray(response.data) ? response.data : (response.data?.data || []);
     } catch (error) {
       console.error("Error fetching books:", error);
+      throw error;
+    }
+  }
+
+  static async getBooksPaginated(params?: { page?: number; limit?: number }): Promise<any> {
+    try {
+      const response = await api.get<any>("/library/books", { params });
+      return response.data;
+    } catch (error) {
+      console.error("Error fetching books paginated:", error);
       throw error;
     }
   }

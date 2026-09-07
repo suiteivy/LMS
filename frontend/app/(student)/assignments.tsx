@@ -153,63 +153,61 @@ export default function StudentsAssignments() {
         showNotification={false}
       />
 
-      <View className="p-4 md:p-8">
-        {/* Toggle Controls */}
-        <View className="flex-row justify-end mb-2">
-          <HelpTooltip id="student.assignments.filters" role="student" tier={tier} onLearnMore={(a) => router.push({ pathname: '/(student)/accessibility/settings', params: { manual: '1', anchor: a || 'student-workflow' } } as any)} />
-        </View>
-        <View className="flex-row bg-white dark:bg-[#161B22] p-1.5 rounded-[24px] border border-gray-100 dark:border-gray-800 shadow-sm mb-8">
-          <TouchableOpacity
-            onPress={() => setFilter("pending")}
-            className={`flex-1 py-3.5 rounded-2xl items-center ${filter === "pending" ? "bg-[#FF6900]" : ""}`}
-          >
-            <Text className={`text-xs font-bold uppercase tracking-widest ${filter === "pending" ? "text-white" : "text-gray-400 dark:text-gray-500"}`}>Current</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            onPress={() => setFilter("completed")}
-            className={`flex-1 py-3.5 rounded-2xl items-center ${filter === "completed" ? "bg-gray-900 dark:bg-[#161B22]" : ""}`}
-          >
-            <Text className={`text-xs font-bold uppercase tracking-widest ${filter === "completed" ? "text-white" : "text-gray-400 dark:text-gray-500"}`}>History</Text>
-          </TouchableOpacity>
-        </View>
+      <ScrollView className="flex-1" showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 200 }}>
+        <View className="p-4 md:p-8">
+          {/* Toggle Controls */}
+          <View className="flex-row justify-end mb-2">
+            <HelpTooltip id="student.assignments.filters" role="student" tier={tier} onLearnMore={(a) => router.push({ pathname: '/(student)/accessibility/settings', params: { manual: '1', anchor: a || 'student-workflow' } } as any)} />
+          </View>
+          <View className="flex-row bg-white dark:bg-[#161B22] p-1.5 rounded-[24px] border border-gray-100 dark:border-gray-800 shadow-sm mb-8">
+            <TouchableOpacity
+              onPress={() => setFilter("pending")}
+              className={`flex-1 py-3.5 rounded-2xl items-center ${filter === "pending" ? "bg-[#FF6900]" : ""}`}
+            >
+              <Text className={`text-xs font-bold uppercase tracking-widest ${filter === "pending" ? "text-white" : "text-gray-400 dark:text-gray-500"}`}>Current</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => setFilter("completed")}
+              className={`flex-1 py-3.5 rounded-2xl items-center ${filter === "completed" ? "bg-gray-900 dark:bg-[#161B22]" : ""}`}
+            >
+              <Text className={`text-xs font-bold uppercase tracking-widest ${filter === "completed" ? "text-white" : "text-gray-400 dark:text-gray-500"}`}>History</Text>
+            </TouchableOpacity>
+          </View>
 
-        {loading ? (
-          <ListItemSkeleton loading={loading} count={4} label="Loading assignments..." />
-        ) : (
-          <ScrollView className="flex-1" showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 200 }}>
-            {displayList.length === 0 ? (
-              <View className="bg-white dark:bg-[#161B22] p-16 rounded-[40px] items-center border border-gray-100 dark:border-gray-800 border-dashed mt-8">
-                <CheckCircle2 size={64} color="#E5E7EB" style={{ opacity: 0.3 }} />
-                <Text className="text-gray-400 dark:text-gray-500 font-bold text-center mt-6 tracking-tight">
-                  {filter === 'pending' ? "No pending tasks." : "No records found."}
-                </Text>
-              </View>
-            ) : (
-              displayList.map((item) => (
-                <TouchableOpacity
-                  key={item.id}
-                  activeOpacity={0.7}
-                  onPress={() => setSelectedAssignment(item)}
-                  className="bg-white dark:bg-[#161B22] p-5 rounded-[32px] border border-gray-50 dark:border-gray-800 mb-4 flex-row items-center shadow-sm"
-                >
-                  <View className={`w-14 h-14 rounded-2xl items-center justify-center mr-4 ${item.status === "completed" ? "bg-green-50 dark:bg-green-950/20" : (item.status === 'overdue' ? "bg-red-50 dark:bg-red-950/20" : "bg-orange-50 dark:bg-orange-950/20")}`}>
-                    {item.status === "completed" ? <CheckCircle2 size={24} color="#16a34a" /> : (item.status === 'overdue' ? <Clock size={24} color="#dc2626" /> : <Activity size={24} color="#FF6900" />)}
+          {loading ? (
+            <ListItemSkeleton loading={loading} count={4} label="Loading assignments..." />
+          ) : displayList.length === 0 ? (
+            <View className="bg-white dark:bg-[#161B22] p-16 rounded-[40px] items-center border border-gray-100 dark:border-gray-800 border-dashed mt-8">
+              <CheckCircle2 size={64} color="#E5E7EB" style={{ opacity: 0.3 }} />
+              <Text className="text-gray-400 dark:text-gray-500 font-bold text-center mt-6 tracking-tight">
+                {filter === 'pending' ? "No pending tasks." : "No records found."}
+              </Text>
+            </View>
+          ) : (
+            displayList.map((item) => (
+              <TouchableOpacity
+                key={item.id}
+                activeOpacity={0.7}
+                onPress={() => setSelectedAssignment(item)}
+                className="bg-white dark:bg-[#161B22] p-5 rounded-[32px] border border-gray-50 dark:border-gray-800 mb-4 flex-row items-center shadow-sm"
+              >
+                <View className={`w-14 h-14 rounded-2xl items-center justify-center mr-4 ${item.status === "completed" ? "bg-green-50 dark:bg-green-950/20" : (item.status === 'overdue' ? "bg-red-50 dark:bg-red-950/20" : "bg-orange-50 dark:bg-orange-950/20")}`}>
+                  {item.status === "completed" ? <CheckCircle2 size={24} color="#16a34a" /> : (item.status === 'overdue' ? <Clock size={24} color="#dc2626" /> : <Activity size={24} color="#FF6900" />)}
+                </View>
+                <View className="flex-1">
+                  <Text className="text-[#FF6900] text-[8px] font-bold uppercase tracking-[2px] mb-1">{item.subject?.title}</Text>
+                  <Text className="text-gray-900 dark:text-gray-100 font-bold text-base leading-tight mb-1" numberOfLines={1}>{item.title}</Text>
+                  <View className="flex-row items-center">
+                    <Calendar size={12} color="#9CA3AF" />
+                    <Text className="text-gray-400 dark:text-gray-500 text-xs font-medium ml-1.5">{item.due_date}</Text>
                   </View>
-                  <View className="flex-1">
-                    <Text className="text-[#FF6900] text-[8px] font-bold uppercase tracking-[2px] mb-1">{item.subject?.title}</Text>
-                    <Text className="text-gray-900 dark:text-gray-100 font-bold text-base leading-tight mb-1" numberOfLines={1}>{item.title}</Text>
-                    <View className="flex-row items-center">
-                      <Calendar size={12} color="#9CA3AF" />
-                      <Text className="text-gray-400 dark:text-gray-500 text-xs font-medium ml-1.5">{item.due_date}</Text>
-                    </View>
-                  </View>
-                  <ChevronRight size={18} color="#D1D5DB" />
-                </TouchableOpacity>
-              ))
-            )}
-          </ScrollView>
-        )}
-      </View>
+                </View>
+                <ChevronRight size={18} color="#D1D5DB" />
+              </TouchableOpacity>
+            ))
+          )}
+        </View>
+      </ScrollView>
 
       <Modal animationType="slide" transparent visible={!!selectedAssignment}>
         <View className="flex-1 bg-black/60 justify-end">

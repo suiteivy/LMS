@@ -1,6 +1,7 @@
 const supabase = require('../utils/supabaseClient.js');
 const { isTermLocked } = require('../utils/resolveActiveTerm');
 const { buildClassLabel } = require('../utils/classLabel');
+const { parsePagination, paginatedResponse } = require('../utils/pagination.js');
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -65,6 +66,8 @@ async function getGradeEntries(req, res) {
 
     if (!institution_id) return sendError(res, 401, 'Institution not found');
 
+    const { page, limit, from, to } = parsePagination(req.query, { defaultLimit: 50 });
+
     const {
       subject_id,
       class_id,
@@ -80,7 +83,7 @@ async function getGradeEntries(req, res) {
         assessment_types ( name, code, category ),
         subjects ( title ),
         classes ( grade_level, form_level, stream )
-      `)
+      `, { count: 'exact' })
       .eq('institution_id', institution_id);
 
     if (subject_id) query = query.eq('subject_id', subject_id);
@@ -108,7 +111,7 @@ async function getGradeEntries(req, res) {
         .maybeSingle();
 
       if (!parent?.id) {
-        return sendSuccess(res, []);
+        return res.json({ success: true, ...paginatedResponse([], 0, page, limit) });
       }
 
       const { data: children } = await supabase
@@ -117,7 +120,7 @@ async function getGradeEntries(req, res) {
         .eq('parent_id', parent.id);
 
       if (!children || children.length === 0) {
-        return sendSuccess(res, []);
+        return res.json({ success: true, ...paginatedResponse([], 0, page, limit) });
       }
       query = query.in('student_id', children.map((c) => c.student_id));
     } else if (student_id) {
@@ -125,9 +128,9 @@ async function getGradeEntries(req, res) {
       query = query.eq('student_id', student_id);
     }
 
-    query = query.order('created_at', { ascending: false });
+    query = query.order('created_at', { ascending: false }).range(from, to);
 
-    const { data, error } = await query;
+    const { data, error, count } = await query;
     if (error) throw error;
 
     const normalized = (data || []).map((row) => ({
@@ -136,7 +139,7 @@ async function getGradeEntries(req, res) {
       classes: row.classes ? { ...row.classes, name: buildClassLabel(row.classes) } : row.classes,
     }));
 
-    return sendSuccess(res, normalized);
+    return res.json({ success: true, ...paginatedResponse(normalized, count, page, limit) });
   } catch (err) {
     return sendError(res, 500, err.message);
   }
@@ -476,6 +479,33 @@ async function bulkCreateGradeEntries(req, res) {
 
     const lockCache = new Map();
 
+    // --- Batch duplicate check: fetch all existing entries for this institution
+    //     that match any of the incoming composite keys (N+1 → 1 query) ---
+    const incomingStudentIds = [...new Set(entries.map(e => e.student_id).filter(Boolean))];
+    const incomingSubjectIds = [...new Set(entries.map(e => e.subject_id).filter(Boolean))];
+    const incomingTermIds = [...new Set(entries.map(e => e.term_id).filter(Boolean))];
+
+    let existingEntries = [];
+    if (incomingStudentIds.length > 0 && incomingSubjectIds.length > 0 && incomingTermIds.length > 0) {
+      const { data: existingData } = await supabase
+        .from('grade_entries')
+        .select('student_id, subject_id, assessment_type_id, class_id, term_id, source_id')
+        .eq('institution_id', institution_id)
+        .in('student_id', incomingStudentIds)
+        .in('subject_id', incomingSubjectIds)
+        .in('term_id', incomingTermIds);
+      existingEntries = existingData || [];
+    }
+
+    // Build a Set of composite keys for O(1) duplicate lookups
+    const existingKeySet = new Set(
+      existingEntries.map(e =>
+        `${e.student_id}|${e.subject_id}|${e.assessment_type_id}|${e.class_id}|${e.term_id}|${e.source_id || ''}`
+      )
+    );
+
+    const toInsert = [];
+
     for (let i = 0; i < entries.length; i++) {
       const entry = entries[i];
       const {
@@ -525,48 +555,41 @@ async function bulkCreateGradeEntries(req, res) {
         continue;
       }
 
-      // Check duplicate
-      let dupQuery = supabase
-        .from('grade_entries')
-        .select('id')
-        .eq('student_id', student_id)
-        .eq('subject_id', subject_id)
-        .eq('assessment_type_id', assessment_type_id)
-        .eq('class_id', class_id)
-        .eq('term_id', term_id)
-        .eq('institution_id', institution_id);
-
-      if (source_id) {
-        dupQuery = dupQuery.eq('source_id', source_id);
-      }
-
-      const { data: existing } = await dupQuery.limit(1);
-      if (existing && existing.length > 0) {
+      // Check duplicate in memory (O(1) lookup instead of DB query)
+      const compositeKey = `${student_id}|${subject_id}|${assessment_type_id}|${class_id}|${term_id}|${source_id || ''}`;
+      if (existingKeySet.has(compositeKey)) {
         skipped++;
         continue;
       }
+      // Also prevent duplicates within the same batch
+      existingKeySet.add(compositeKey);
 
+      toInsert.push({
+        student_id,
+        subject_id,
+        class_id,
+        term_id,
+        assessment_type_id,
+        score: Number(score),
+        max_score: Number(max_score),
+        feedback: feedback || null,
+        source: source || 'manual',
+        source_id: source_id || null,
+        graded_by,
+        institution_id,
+      });
+    }
+
+    // Batch insert all valid entries at once (N inserts → 1 insert)
+    if (toInsert.length > 0) {
       const { error: insertErr } = await supabase
         .from('grade_entries')
-        .insert({
-          student_id,
-          subject_id,
-          class_id,
-          term_id,
-          assessment_type_id,
-          score: Number(score),
-          max_score: Number(max_score),
-          feedback: feedback || null,
-          source: source || 'manual',
-          source_id: source_id || null,
-          graded_by,
-          institution_id,
-        });
+        .insert(toInsert);
 
       if (insertErr) {
-        errors.push({ index: i, error: insertErr.message });
+        errors.push({ index: -1, error: insertErr.message });
       } else {
-        created++;
+        created = toInsert.length;
       }
     }
 
@@ -645,6 +668,21 @@ async function bulkImportGrades(req, res) {
     let skipped = 0;
     const errors = [];
 
+    // Batch duplicate check: single query for all existing entries matching
+    // the fixed subject/class/term/assessment combo (N queries → 1)
+    const { data: existingData } = await supabase
+      .from('grade_entries')
+      .select('student_id')
+      .eq('subject_id', subject_id)
+      .eq('assessment_type_id', assessment_type_id)
+      .eq('class_id', class_id)
+      .eq('term_id', term_id)
+      .eq('institution_id', institution_id);
+
+    const existingStudentIds = new Set((existingData || []).map(e => e.student_id));
+
+    const toInsert = [];
+
     for (let i = 0; i < grades.length; i++) {
       const { student_id, score, max_score } = grades[i];
 
@@ -663,42 +701,37 @@ async function bulkImportGrades(req, res) {
         continue;
       }
 
-      // Check duplicate
-      const { data: existing } = await supabase
-        .from('grade_entries')
-        .select('id')
-        .eq('student_id', student_id)
-        .eq('subject_id', subject_id)
-        .eq('assessment_type_id', assessment_type_id)
-        .eq('class_id', class_id)
-        .eq('term_id', term_id)
-        .eq('institution_id', institution_id)
-        .limit(1);
-
-      if (existing && existing.length > 0) {
+      // Check duplicate in memory
+      if (existingStudentIds.has(student_id)) {
         skipped++;
         continue;
       }
+      existingStudentIds.add(student_id); // prevent within-batch dupes
 
+      toInsert.push({
+        student_id,
+        subject_id,
+        class_id,
+        term_id,
+        assessment_type_id,
+        score: Number(score),
+        max_score: Number(max_score),
+        source: 'import',
+        graded_by,
+        institution_id,
+      });
+    }
+
+    // Batch insert
+    if (toInsert.length > 0) {
       const { error: insertErr } = await supabase
         .from('grade_entries')
-        .insert({
-          student_id,
-          subject_id,
-          class_id,
-          term_id,
-          assessment_type_id,
-          score: Number(score),
-          max_score: Number(max_score),
-          source: 'import',
-          graded_by,
-          institution_id,
-        });
+        .insert(toInsert);
 
       if (insertErr) {
-        errors.push({ index: i, student_id, error: insertErr.message });
+        errors.push({ index: -1, error: insertErr.message });
       } else {
-        created++;
+        created = toInsert.length;
       }
     }
 

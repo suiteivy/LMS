@@ -5,12 +5,10 @@ import {
   TouchableOpacity,
   Platform,
   Dimensions,
-  StyleSheet,
   Animated,
   Easing,
 } from 'react-native';
 import {
-  Package,
   Building,
   Check,
   MoveRight,
@@ -19,11 +17,11 @@ import {
   BookOpen,
   Library,
   CreditCard,
-  BadgeCheck,
-  ShieldAlert,
-  Layers,
+  MessageSquare,
+  FileSpreadsheet,
   Zap,
 } from 'lucide-react-native';
+import { GlassCard } from '@/components/ui/GlassCard';
 
 export function priceConverter(price: string, currency: 'USD' | 'KSH' = 'KSH') {
   if (price.toLowerCase() === 'custom') return price;
@@ -50,7 +48,6 @@ type TierType = 'plans' | 'custom';
 export const FuturisticPricing: React.FC<FuturisticPricingProps> = ({ onSelectPlan }) => {
   const isWeb = Platform.OS === 'web';
   const isDesktop = SCREEN_WIDTH >= 1024;
-  const isTablet = SCREEN_WIDTH >= 768 && SCREEN_WIDTH < 1024;
 
   const tierBtnWidth = isDesktop ? 165 : 145;
 
@@ -61,7 +58,7 @@ export const FuturisticPricing: React.FC<FuturisticPricingProps> = ({ onSelectPl
   const [hoveredAddon, setHoveredAddon] = useState<string | null>(null);
   const [hoveredAddonBtn, setHoveredAddonBtn] = useState<string | null>(null);
 
-  // Smooth cool transition animation refs
+  // Smooth transition animation refs
   const tierFadeAnim = useRef(new Animated.Value(1)).current;
   const tierSlideAnim = useRef(new Animated.Value(0)).current;
   const currencyAnim = useRef(new Animated.Value(1)).current;
@@ -116,7 +113,8 @@ export const FuturisticPricing: React.FC<FuturisticPricingProps> = ({ onSelectPl
       period: '/month',
       desc: 'Great for growing primary and secondary schools getting started with digital management.',
       accent: '#3B82F6',
-      badge: 'STARTER',
+      accentGlow: 'rgba(59, 130, 246, 0.38)',
+      badge: 'STARTER TIER',
       icon: <BookOpen size={22} color="#3B82F6" />,
       features: [
         'Student Learning Portal',
@@ -135,6 +133,7 @@ export const FuturisticPricing: React.FC<FuturisticPricingProps> = ({ onSelectPl
       period: '/month',
       desc: 'Ideal for established schools needing digital library books, parent diaries, and daily roll-calls.',
       accent: '#FF6B00',
+      accentGlow: 'rgba(255, 107, 0, 0.45)',
       badge: 'MOST POPULAR',
       icon: <Crown size={22} color="#FF6B00" />,
       features: [
@@ -155,6 +154,7 @@ export const FuturisticPricing: React.FC<FuturisticPricingProps> = ({ onSelectPl
       period: '/month',
       desc: 'Built for large private schools and colleges needing complete features and dedicated support.',
       accent: '#8B5CF6',
+      accentGlow: 'rgba(139, 92, 246, 0.40)',
       badge: 'ALL INCLUSIVE',
       icon: <Sparkles size={22} color="#8B5CF6" />,
       features: [
@@ -178,23 +178,31 @@ export const FuturisticPricing: React.FC<FuturisticPricingProps> = ({ onSelectPl
       accent: '#8B5CF6',
       desc: 'Searchable collection of textbooks, revision guides, and past exam papers for students.',
       included: 'Included in Pro & Premium',
-      icon: <Library size={22} color="#8B5CF6" />,
+      icon: <Library size={20} color="#8B5CF6" />,
     },
     {
-      name: 'School Fees & Invoicing',
+      name: 'Bursary & Fee Invoicing',
       price: '$30/mo',
-      accent: '#F59E0B',
-      desc: 'Automated term fee invoices, M-Pesa receipts, and printable balance statements.',
-      included: 'Included in Premium & Custom',
-      icon: <CreditCard size={22} color="#F59E0B" />,
+      accent: '#10B981',
+      desc: 'Auto fee invoices, SMS reminders to parents, and direct M-Pesa transaction tracking.',
+      included: 'Included in Premium',
+      icon: <CreditCard size={20} color="#10B981" />,
     },
     {
-      name: 'Parent Messaging & Diary',
-      price: '$10/mo',
-      accent: '#10B981',
-      desc: 'Instant school notice alerts, daily homework diary, and direct parent messages.',
+      name: 'Direct Parent Messaging',
+      price: '$5/mo',
+      accent: '#FF6B00',
+      desc: 'Send fast school announcements, fee reminders, and student reports straight to phone.',
       included: 'Included in Pro & Premium',
-      icon: <BadgeCheck size={22} color="#10B981" />,
+      icon: <MessageSquare size={20} color="#FF6B00" />,
+    },
+    {
+      name: 'Class Diary & Daily Attendance',
+      price: '$5/mo',
+      accent: '#3B82F6',
+      desc: 'Daily teacher entries, student conduct notes, and instant absence alerts for parents.',
+      included: 'Included in Pro & Premium',
+      icon: <FileSpreadsheet size={20} color="#3B82F6" />,
     },
   ];
 
@@ -208,26 +216,8 @@ export const FuturisticPricing: React.FC<FuturisticPricingProps> = ({ onSelectPl
         paddingHorizontal: 20,
       }}
     >
-      {isWeb && (
-        <style
-          dangerouslySetInnerHTML={{
-            __html: `
-              @keyframes tierContentFadeIn {
-                0% {
-                  opacity: 0;
-                  transform: translateY(12px) scale(0.995);
-                }
-                100% {
-                  opacity: 1;
-                  transform: none;
-                }
-              }
-            `,
-          }}
-        />
-      )}
-      {/* Header */}
-      <View style={{ alignItems: 'center', marginBottom: 44 }}>
+      {/* ── SECTION HEADER ── */}
+      <View style={{ alignItems: 'center', marginBottom: 54 }}>
         <View
           style={{
             flexDirection: 'row',
@@ -239,10 +229,17 @@ export const FuturisticPricing: React.FC<FuturisticPricingProps> = ({ onSelectPl
             backgroundColor: 'rgba(255, 107, 0, 0.12)',
             borderWidth: 1,
             borderColor: 'rgba(255, 107, 0, 0.3)',
-            marginBottom: 16,
+            marginBottom: 18,
+            ...(isWeb
+              ? ({
+                  backdropFilter: 'blur(16px)',
+                  WebkitBackdropFilter: 'blur(16px)',
+                  boxShadow: '0 0 16px rgba(255,107,0,0.18)',
+                } as any)
+              : {}),
           }}
         >
-          <CreditCard size={13} color="#FF8C40" />
+          <Zap size={13} color="#FF8C40" />
           <Text
             style={{
               color: '#FF8C40',
@@ -259,7 +256,7 @@ export const FuturisticPricing: React.FC<FuturisticPricingProps> = ({ onSelectPl
         <Text
           style={{
             color: '#FFFFFF',
-            fontSize: isDesktop ? 42 : 30,
+            fontSize: isDesktop ? 44 : 32,
             fontWeight: '900',
             textAlign: 'center',
             letterSpacing: -0.8,
@@ -278,14 +275,14 @@ export const FuturisticPricing: React.FC<FuturisticPricingProps> = ({ onSelectPl
             textAlign: 'center',
             maxWidth: 520,
             lineHeight: 24,
-            marginBottom: 28,
+            marginBottom: 32,
             ...(isWeb ? ({ textWrap: 'pretty' } as any) : {}),
           }}
         >
           Select the plan that best meets the needs of your Institution
         </Text>
 
-        {/* Currency & Tier Switcher Row */}
+        {/* ── LIQUID-GLASS SWITCHER ROW ── */}
         <View
           style={{
             flexDirection: 'row',
@@ -297,27 +294,37 @@ export const FuturisticPricing: React.FC<FuturisticPricingProps> = ({ onSelectPl
         >
           {/* Tier Mode Selector */}
           <View
-            style={{
-              flexDirection: 'row',
-              backgroundColor: 'rgba(15, 11, 46, 0.85)',
-              borderRadius: 18,
-              padding: 4,
-              borderWidth: 1,
-              borderColor: 'rgba(255, 255, 255, 0.12)',
-              position: 'relative',
-              overflow: 'hidden',
-            }}
+            style={[
+              {
+                flexDirection: 'row',
+                backgroundColor: 'rgba(12, 8, 34, 0.85)',
+                borderRadius: 20,
+                padding: 5,
+                borderWidth: 1,
+                borderColor: 'rgba(255, 255, 255, 0.1)',
+                position: 'relative',
+                overflow: 'hidden',
+              },
+              isWeb
+                ? ({
+                    backdropFilter: 'blur(24px)',
+                    WebkitBackdropFilter: 'blur(24px)',
+                    boxShadow:
+                      '0 4px 20px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.12)',
+                  } as any)
+                : {},
+            ]}
           >
             {/* Sliding Active Indicator Pill */}
             <View
               style={[
                 {
                   position: 'absolute',
-                  top: 4,
-                  bottom: 4,
-                  left: 4,
+                  top: 5,
+                  bottom: 5,
+                  left: 5,
                   width: tierBtnWidth,
-                  borderRadius: 14,
+                  borderRadius: 15,
                   backgroundColor: selectedTier === 'plans' ? '#FF6B00' : '#8B5CF6',
                   boxShadow: [{
                     offsetX: 0,
@@ -331,8 +338,16 @@ export const FuturisticPricing: React.FC<FuturisticPricingProps> = ({ onSelectPl
                 },
                 isWeb
                   ? ({
+                      background:
+                        selectedTier === 'plans'
+                          ? 'linear-gradient(135deg, #FFA05C 0%, #FF6B00 50%, #E85D00 100%)'
+                          : 'linear-gradient(135deg, #A78BFA 0%, #8B5CF6 50%, #6D28D9 100%)',
+                      boxShadow:
+                        selectedTier === 'plans'
+                          ? '0 0 18px rgba(255,107,0,0.5), inset 0 1px 0 rgba(255,255,255,0.25)'
+                          : '0 0 18px rgba(139,92,246,0.5), inset 0 1px 0 rgba(255,255,255,0.25)',
                       transition:
-                        'transform 0.28s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.28s ease, box-shadow 0.28s ease',
+                        'transform 0.28s cubic-bezier(0.16, 1, 0.3, 1), background 0.28s ease, box-shadow 0.28s ease',
                       transform:
                         selectedTier === 'plans'
                           ? [{ translateX: 0 }]
@@ -350,7 +365,7 @@ export const FuturisticPricing: React.FC<FuturisticPricingProps> = ({ onSelectPl
                 {
                   width: tierBtnWidth,
                   paddingVertical: 10,
-                  borderRadius: 14,
+                  borderRadius: 15,
                   alignItems: 'center',
                   justifyContent: 'center',
                   backgroundColor: !isWeb && selectedTier === 'plans' ? '#FF6B00' : 'transparent',
@@ -362,7 +377,7 @@ export const FuturisticPricing: React.FC<FuturisticPricingProps> = ({ onSelectPl
               <Text
                 style={[
                   {
-                    color: selectedTier === 'plans' ? '#FFFFFF' : 'rgba(255, 255, 255, 0.6)',
+                    color: selectedTier === 'plans' ? '#FFFFFF' : 'rgba(255, 255, 255, 0.65)',
                     fontSize: 13,
                     fontWeight: '800',
                     letterSpacing: 0.2,
@@ -381,7 +396,7 @@ export const FuturisticPricing: React.FC<FuturisticPricingProps> = ({ onSelectPl
                 {
                   width: tierBtnWidth,
                   paddingVertical: 10,
-                  borderRadius: 14,
+                  borderRadius: 15,
                   alignItems: 'center',
                   justifyContent: 'center',
                   backgroundColor: !isWeb && selectedTier === 'custom' ? '#8B5CF6' : 'transparent',
@@ -393,7 +408,7 @@ export const FuturisticPricing: React.FC<FuturisticPricingProps> = ({ onSelectPl
               <Text
                 style={[
                   {
-                    color: selectedTier === 'custom' ? '#FFFFFF' : 'rgba(255, 255, 255, 0.6)',
+                    color: selectedTier === 'custom' ? '#FFFFFF' : 'rgba(255, 255, 255, 0.65)',
                     fontSize: 13,
                     fontWeight: '800',
                     letterSpacing: 0.2,
@@ -406,16 +421,26 @@ export const FuturisticPricing: React.FC<FuturisticPricingProps> = ({ onSelectPl
             </TouchableOpacity>
           </View>
 
-          {/* Currency Toggle */}
+          {/* Currency Toggle (Liquid Glass) */}
           <View
-            style={{
-              flexDirection: 'row',
-              backgroundColor: 'rgba(255, 255, 255, 0.04)',
-              borderRadius: 14,
-              padding: 3,
-              borderWidth: 1,
-              borderColor: 'rgba(255, 255, 255, 0.08)',
-            }}
+            style={[
+              {
+                flexDirection: 'row',
+                backgroundColor: 'rgba(12, 8, 34, 0.85)',
+                borderRadius: 16,
+                padding: 4,
+                borderWidth: 1,
+                borderColor: 'rgba(255, 255, 255, 0.1)',
+              },
+              isWeb
+                ? ({
+                    backdropFilter: 'blur(24px)',
+                    WebkitBackdropFilter: 'blur(24px)',
+                    boxShadow:
+                      '0 4px 16px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.1)',
+                  } as any)
+                : {},
+            ]}
           >
             {(['KSH', 'USD'] as const).map((curr) => {
               const isActive = currency === curr;
@@ -426,9 +451,9 @@ export const FuturisticPricing: React.FC<FuturisticPricingProps> = ({ onSelectPl
                   activeOpacity={0.8}
                   style={[
                     {
-                      paddingVertical: 7,
+                      paddingVertical: 8,
                       paddingHorizontal: 16,
-                      borderRadius: 11,
+                      borderRadius: 12,
                       backgroundColor: isActive ? 'rgba(255, 255, 255, 0.18)' : 'transparent',
                       borderWidth: 1,
                       borderColor: isActive ? 'rgba(255, 255, 255, 0.25)' : 'transparent',
@@ -450,9 +475,10 @@ export const FuturisticPricing: React.FC<FuturisticPricingProps> = ({ onSelectPl
                 >
                   <Text
                     style={{
-                      color: isActive ? '#FFFFFF' : 'rgba(255, 255, 255, 0.5)',
+                      color: isActive ? '#FFFFFF' : 'rgba(255, 255, 255, 0.55)',
                       fontSize: 12,
                       fontWeight: '800',
+                      letterSpacing: 0.5,
                     }}
                   >
                     {curr}
@@ -464,7 +490,7 @@ export const FuturisticPricing: React.FC<FuturisticPricingProps> = ({ onSelectPl
         </View>
       </View>
 
-      {/* PLAN CARDS ANIMATED CONTAINER */}
+      {/* ── PLAN CARDS CONTAINER ── */}
       <Animated.View
         key={selectedTier}
         style={[
@@ -487,57 +513,40 @@ export const FuturisticPricing: React.FC<FuturisticPricingProps> = ({ onSelectPl
           style={{
             flexDirection: isDesktop ? 'row' : 'column',
             gap: 24,
-            alignItems: 'stretch',
+            alignItems: isDesktop ? 'flex-start' : 'stretch',
             justifyContent: 'center',
             marginBottom: 44,
           }}
         >
           {planConfigs.map((plan) => {
             const isHovered = hoveredCard === plan.name;
+            const isPopular = plan.popular;
 
             return (
-              <View
+              <GlassCard
                 key={plan.name}
+                variant={isPopular ? 'elevated' : 'standard'}
+                accentColor={plan.accent}
+                glowColor={isPopular ? 'rgba(255, 107, 0, 0.4)' : `${plan.accentGlow}`}
+                borderRadius={30}
                 style={[
                   {
                     flex: 1,
                     minWidth: isDesktop ? 300 : '100%',
-                    borderRadius: 30,
-                    backgroundColor: 'rgba(15, 11, 46, 0.58)',
-                    borderWidth: plan.popular || plan.elite ? 2 : 1.5,
-                    borderColor: plan.popular
-                      ? 'rgba(255, 107, 0, 0.55)'
-                      : plan.elite
-                      ? 'rgba(139, 92, 246, 0.55)'
-                      : 'rgba(255, 255, 255, 0.1)',
-                    padding: 30,
-                    position: 'relative',
-                    overflow: 'hidden',
-                    boxShadow: [{
-                      offsetX: 0,
-                      offsetY: 20,
-                      blurRadius: 40,
-                      color: plan.popular
-                        ? 'rgba(255, 107, 0, 0.2)'
-                        : plan.elite
-                        ? 'rgba(139, 92, 246, 0.2)'
-                        : 'rgba(0, 0, 0, 0.4)',
-                    }],
+                    transform: isHovered
+                      ? [{ translateY: isPopular ? -16 : -8 }]
+                      : [{ translateY: isPopular && isDesktop ? -10 : 0 }],
                   },
-                  isWeb
-                    ? ({
-                        backdropFilter: 'blur(28px)',
-                        WebkitBackdropFilter: 'blur(28px)',
-                        transition: 'transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.3s ease',
-                        transform: isHovered ? [{ translateY: -8 }] : [{ translateY: 0 }],
-                      } as any)
-                    : {},
                 ]}
+                contentStyle={{
+                  padding: 32,
+                }}
                 //@ts-ignore
                 onPointerEnter={() => setHoveredCard(plan.name)}
                 onPointerLeave={() => setHoveredCard(null)}
               >
-                {/* Popular / Elite Badge */}
+
+                {/* Popular / Elite Floating Holographic Badge */}
                 {(plan.popular || plan.elite) && (
                   <View
                     style={{
@@ -545,23 +554,42 @@ export const FuturisticPricing: React.FC<FuturisticPricingProps> = ({ onSelectPl
                       top: 18,
                       right: 18,
                       backgroundColor: plan.popular
-                        ? 'rgba(255, 107, 0, 0.2)'
-                        : 'rgba(139, 92, 246, 0.2)',
-                      paddingHorizontal: 10,
-                      paddingVertical: 4,
-                      borderRadius: 10,
+                        ? '#FF6B00'
+                        : 'rgba(139, 92, 246, 0.25)',
+                      paddingHorizontal: 12,
+                      paddingVertical: 5,
+                      borderRadius: 12,
                       borderWidth: 1,
                       borderColor: plan.popular
-                        ? 'rgba(255, 107, 0, 0.4)'
-                        : 'rgba(139, 92, 246, 0.4)',
+                        ? 'rgba(255, 255, 255, 0.35)'
+                        : 'rgba(139, 92, 246, 0.5)',
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      gap: 5,
+                      ...(isWeb
+                        ? ({
+                            background: plan.popular
+                              ? 'linear-gradient(135deg, #FFA05C 0%, #FF6B00 50%, #E85D00 100%)'
+                              : 'rgba(139, 92, 246, 0.25)',
+                            boxShadow: plan.popular
+                              ? '0 0 16px rgba(255,107,0,0.55), inset 0 1px 0 rgba(255,255,255,0.3)'
+                              : '0 0 14px rgba(139,92,246,0.4)',
+                          } as any)
+                        : {}),
                     }}
                   >
+                    {plan.popular ? (
+                      <Crown size={12} color="#FFFFFF" />
+                    ) : (
+                      <Sparkles size={12} color="#A78BFA" />
+                    )}
                     <Text
                       style={{
-                        color: plan.popular ? '#FF8C40' : '#A78BFA',
-                        fontSize: 10,
+                        color: plan.popular ? '#FFFFFF' : '#A78BFA',
+                        fontSize: 10.5,
                         fontWeight: '900',
-                        letterSpacing: 1,
+                        letterSpacing: 1.2,
+                        textTransform: 'uppercase',
                       }}
                     >
                       {plan.badge}
@@ -569,28 +597,33 @@ export const FuturisticPricing: React.FC<FuturisticPricingProps> = ({ onSelectPl
                   </View>
                 )}
 
-                {/* Plan Icon */}
+                {/* Plan Icon Squircle */}
                 <View
                   style={{
-                    width: 48,
-                    height: 48,
-                    borderRadius: 16,
+                    width: 52,
+                    height: 52,
+                    borderRadius: 18,
                     backgroundColor: `${plan.accent}18`,
-                    borderWidth: 1,
-                    borderColor: `${plan.accent}35`,
+                    borderWidth: 1.5,
+                    borderColor: `${plan.accent}45`,
                     alignItems: 'center',
                     justifyContent: 'center',
-                    marginBottom: 18,
+                    marginBottom: 20,
+                    ...(isWeb
+                      ? ({
+                          boxShadow: `0 0 16px ${plan.accent}30, inset 0 1px 0 rgba(255,255,255,0.2)`,
+                        } as any)
+                      : {}),
                   }}
                 >
                   {plan.icon}
                 </View>
 
-                {/* Name */}
+                {/* Plan Name */}
                 <Text
                   style={{
                     color: plan.accent,
-                    fontSize: 12,
+                    fontSize: 12.5,
                     fontWeight: '800',
                     letterSpacing: 2,
                     textTransform: 'uppercase',
@@ -605,7 +638,7 @@ export const FuturisticPricing: React.FC<FuturisticPricingProps> = ({ onSelectPl
                   style={{
                     flexDirection: 'row',
                     alignItems: 'baseline',
-                    marginBottom: 10,
+                    marginBottom: 12,
                     opacity: currencyAnim,
                     transform: [{ scale: currencyAnim }],
                   }}
@@ -613,9 +646,9 @@ export const FuturisticPricing: React.FC<FuturisticPricingProps> = ({ onSelectPl
                   <Text
                     style={{
                       color: '#FFFFFF',
-                      fontSize: 34,
+                      fontSize: 38,
                       fontWeight: '900',
-                      letterSpacing: -0.8,
+                      letterSpacing: -1,
                       ...(isWeb ? ({ fontVariantNumeric: 'tabular-nums' } as any) : {}),
                     }}
                   >
@@ -623,9 +656,9 @@ export const FuturisticPricing: React.FC<FuturisticPricingProps> = ({ onSelectPl
                   </Text>
                   <Text
                     style={{
-                      color: 'rgba(255, 255, 255, 0.45)',
-                      fontSize: 14,
-                      fontWeight: '600',
+                      color: 'rgba(255, 255, 255, 0.48)',
+                      fontSize: 14.5,
+                      fontWeight: '700',
                       marginLeft: 6,
                     }}
                   >
@@ -633,41 +666,43 @@ export const FuturisticPricing: React.FC<FuturisticPricingProps> = ({ onSelectPl
                   </Text>
                 </Animated.View>
 
+                {/* Plan Description */}
                 <Text
                   style={{
-                    color: 'rgba(255, 255, 255, 0.55)',
-                    fontSize: 13.5,
-                    lineHeight: 20,
-                    marginBottom: 24,
+                    color: 'rgba(255, 255, 255, 0.62)',
+                    fontSize: 14,
+                    lineHeight: 21,
+                    marginBottom: 26,
                   }}
                 >
                   {plan.desc}
                 </Text>
 
                 {/* Feature Checklist */}
-                <View style={{ gap: 12, marginBottom: 32, flex: 1 }}>
+                <View style={{ gap: 14, marginBottom: 34, flex: 1 }}>
                   {plan.features.map((feat, i) => (
-                    <View key={i} style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                    <View key={i} style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
                       <View
                         style={{
-                          width: 20,
-                          height: 20,
-                          borderRadius: 6,
-                          backgroundColor: `${plan.accent}18`,
+                          width: 22,
+                          height: 22,
+                          borderRadius: 7,
+                          backgroundColor: `${plan.accent}20`,
                           borderWidth: 1,
-                          borderColor: `${plan.accent}35`,
+                          borderColor: `${plan.accent}55`,
                           alignItems: 'center',
                           justifyContent: 'center',
                           flexShrink: 0,
                         }}
                       >
-                        <Check size={12} color={plan.accent} strokeWidth={3} />
+                        <Check size={13} color={plan.accent} strokeWidth={3} />
                       </View>
                       <Text
                         style={{
-                          color: 'rgba(255, 255, 255, 0.85)',
-                          fontSize: 13.5,
-                          fontWeight: '500',
+                          color: 'rgba(255, 255, 255, 0.88)',
+                          fontSize: 14,
+                          fontWeight: '600',
+                          lineHeight: 20,
                         }}
                       >
                         {feat}
@@ -676,85 +711,82 @@ export const FuturisticPricing: React.FC<FuturisticPricingProps> = ({ onSelectPl
                   ))}
                 </View>
 
-                {/* Deploy Button */}
+                {/* ── LIQUID GLASS CTA BUTTON ── */}
                 <TouchableOpacity
                   onPress={() => onSelectPlan(`Subscription Plans ${plan.name}`)}
                   activeOpacity={0.85}
                   style={[
                     {
                       width: '100%',
-                      paddingVertical: 16,
-                      borderRadius: 16,
+                      paddingVertical: 17,
+                      borderRadius: 18,
                       flexDirection: 'row',
                       alignItems: 'center',
                       justifyContent: 'center',
                       gap: 8,
-                      backgroundColor: plan.popular
-                        ? '#FF6B00'
-                        : plan.elite
-                        ? '#8B5CF6'
-                        : 'rgba(255, 255, 255, 0.08)',
+                      backgroundColor: plan.accent,
                       borderWidth: 1,
-                      borderColor: plan.popular || plan.elite
-                        ? 'rgba(255, 255, 255, 0.25)'
-                        : 'rgba(255, 255, 255, 0.15)',
+                      borderColor: 'rgba(255, 255, 255, 0.25)',
                       boxShadow: [{
                         offsetX: 0,
                         offsetY: 8,
-                        blurRadius: 20,
-                        color: plan.popular
-                          ? 'rgba(255, 107, 0, 0.35)'
-                          : plan.elite
-                          ? 'rgba(139, 92, 246, 0.35)'
-                          : 'transparent',
+                        blurRadius: 22,
+                        color: `${plan.accent}50`,
                       }],
                     },
-                    isWeb ? ({ cursor: 'pointer', transitionProperty: 'all', transitionDuration: '0.2s', transitionTimingFunction: 'ease' } as any) : {},
+                    isWeb
+                      ? ({
+                          background: isPopular
+                            ? isHovered
+                              ? 'linear-gradient(135deg, #FFA05C 0%, #FF6B00 50%, #E85D00 100%)'
+                              : 'linear-gradient(135deg, #FF8C40 0%, #FF6B00 50%, #E85D00 100%)'
+                            : isHovered
+                            ? `linear-gradient(135deg, ${plan.accent}FF 0%, ${plan.accent} 60%, #0A061C 120%)`
+                            : `linear-gradient(135deg, ${plan.accent}DD 0%, ${plan.accent} 50%, #0A061C 120%)`,
+                          boxShadow: isHovered
+                            ? `0 0 0 1px ${plan.accent}80, 0 14px 36px ${plan.accentGlow}, inset 0 1px 0 rgba(255,255,255,0.3)`
+                            : `0 8px 24px ${plan.accentGlow}, inset 0 1px 0 rgba(255,255,255,0.2)`,
+                          transitionProperty: 'all',
+                          transitionDuration: '0.22s',
+                          transitionTimingFunction: 'cubic-bezier(0.16, 1, 0.3, 1)',
+                          transform: isHovered ? [{ translateY: -2 }, { scale: 1.02 }] : [{ translateY: 0 }, { scale: 1 }],
+                          cursor: 'pointer',
+                        } as any)
+                      : {},
                   ]}
                 >
-                  <Text style={{ color: '#FFFFFF', fontWeight: '800', fontSize: 14 }}>
+                  <Text style={{ color: '#FFFFFF', fontWeight: '900', fontSize: 15, letterSpacing: 0.3 }}>
                     {plan.cta}
                   </Text>
                   <MoveRight size={16} color="#FFFFFF" />
                 </TouchableOpacity>
-              </View>
+              </GlassCard>
             );
           })}
         </View>
       ) : (
-        /* CUSTOM ENTERPRISE CARD */
-        <View
-          style={[
-            {
-              width: '100%',
-              maxWidth: 900,
-              alignSelf: 'center',
-              borderRadius: 32,
-              backgroundColor: 'rgba(15, 11, 46, 0.65)',
-              borderWidth: 2,
-              borderColor: 'rgba(139, 92, 246, 0.5)',
-              padding: isDesktop ? 40 : 28,
-              marginBottom: 44,
-              boxShadow: [{
-                offsetX: 0,
-                offsetY: 20,
-                blurRadius: 40,
-                color: 'rgba(139, 92, 246, 0.25)',
-              }],
-            },
-            isWeb
-              ? ({
-                  backdropFilter: 'blur(30px)',
-                  WebkitBackdropFilter: 'blur(30px)',
-                } as any)
-              : {},
-          ]}
+        /* ── CUSTOM ENTERPRISE LIQUID GLASS CONSOLE ── */
+        <GlassCard
+          variant="elevated"
+          accentColor="#8B5CF6"
+          glowColor="rgba(139, 92, 246, 0.3)"
+          borderRadius={32}
+          style={{
+            width: '100%',
+            maxWidth: 960,
+            alignSelf: 'center',
+            marginBottom: 44,
+          }}
+          contentStyle={{
+            padding: isDesktop ? 44 : 28,
+          }}
         >
+
           <View
             style={{
               flexDirection: isDesktop ? 'row' : 'column',
               alignItems: isDesktop ? 'center' : 'flex-start',
-              gap: 30,
+              gap: 32,
             }}
           >
             <View style={{ flex: 1 }}>
@@ -763,7 +795,7 @@ export const FuturisticPricing: React.FC<FuturisticPricingProps> = ({ onSelectPl
                   flexDirection: 'row',
                   alignItems: 'center',
                   gap: 8,
-                  marginBottom: 12,
+                  marginBottom: 14,
                 }}
               >
                 <Building size={22} color="#A78BFA" />
@@ -780,18 +812,18 @@ export const FuturisticPricing: React.FC<FuturisticPricingProps> = ({ onSelectPl
                 </Text>
               </View>
 
-              <Text style={{ color: '#FFFFFF', fontSize: 28, fontWeight: '900', marginBottom: 12 }}>
+              <Text style={{ color: '#FFFFFF', fontSize: 32, fontWeight: '900', marginBottom: 14, letterSpacing: -0.5 }}>
                 Custom School Solution
               </Text>
               <Text
                 style={{
-                  color: 'rgba(255, 255, 255, 0.6)',
-                  fontSize: 15,
-                  lineHeight: 23,
-                  marginBottom: 20,
+                  color: 'rgba(255, 255, 255, 0.65)',
+                  fontSize: 15.5,
+                  lineHeight: 24,
+                  marginBottom: 24,
                 }}
               >
-                Tailored cloud setup designed specifically for your school's unique rules,
+                Tailored cloud setup designed specifically for your school&apos;s unique rules,
                 custom subjects, existing attendance systems, and accounting software.
               </Text>
 
@@ -804,9 +836,24 @@ export const FuturisticPricing: React.FC<FuturisticPricingProps> = ({ onSelectPl
                   'Guaranteed 99.9% Uptime Support',
                   'Dedicated Support Manager',
                 ].map((feat) => (
-                  <View key={feat} style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <View
+                    key={feat}
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      gap: 7,
+                      backgroundColor: 'rgba(139, 92, 246, 0.12)',
+                      paddingHorizontal: 12,
+                      paddingVertical: 6,
+                      borderRadius: 10,
+                      borderWidth: 1,
+                      borderColor: 'rgba(139, 92, 246, 0.25)',
+                    }}
+                  >
                     <Check size={14} color="#A78BFA" strokeWidth={3} />
-                    <Text style={{ color: 'rgba(255, 255, 255, 0.8)', fontSize: 13 }}>{feat}</Text>
+                    <Text style={{ color: 'rgba(255, 255, 255, 0.85)', fontSize: 13, fontWeight: '600' }}>
+                      {feat}
+                    </Text>
                   </View>
                 ))}
               </View>
@@ -815,110 +862,120 @@ export const FuturisticPricing: React.FC<FuturisticPricingProps> = ({ onSelectPl
             <TouchableOpacity
               onPress={() => onSelectPlan('Custom Enterprise')}
               activeOpacity={0.85}
-              style={{
-                backgroundColor: '#8B5CF6',
-                paddingVertical: 20,
-                paddingHorizontal: 36,
-                borderRadius: 18,
-                alignItems: 'center',
-                justifyContent: 'center',
-                minWidth: 200,
-                boxShadow: [{
-                  offsetX: 0,
-                  offsetY: 10,
-                  blurRadius: 24,
-                  color: 'rgba(139, 92, 246, 0.4)',
-                }],
-              }}
+              style={[
+                {
+                  backgroundColor: '#8B5CF6',
+                  paddingVertical: 20,
+                  paddingHorizontal: 36,
+                  borderRadius: 20,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  minWidth: 220,
+                  borderWidth: 1,
+                  borderColor: 'rgba(255, 255, 255, 0.3)',
+                  boxShadow: [{
+                    offsetX: 0,
+                    offsetY: 10,
+                    blurRadius: 28,
+                    color: 'rgba(139, 92, 246, 0.5)',
+                  }],
+                },
+                isWeb
+                  ? ({
+                      background: 'linear-gradient(135deg, #A78BFA 0%, #8B5CF6 50%, #6D28D9 100%)',
+                      boxShadow: '0 0 24px rgba(139,92,246,0.45), inset 0 1px 0 rgba(255,255,255,0.3)',
+                      transition: 'all 0.22s ease',
+                      cursor: 'pointer',
+                    } as any)
+                  : {},
+              ]}
             >
-              <Text style={{ color: '#FFFFFF', fontWeight: '900', fontSize: 15 }}>
+              <Text style={{ color: '#FFFFFF', fontWeight: '900', fontSize: 16, letterSpacing: 0.3 }}>
                 Request Custom Plan
               </Text>
-              <Text style={{ color: 'rgba(255, 255, 255, 0.7)', fontSize: 11, marginTop: 4 }}>
+              <Text style={{ color: 'rgba(255, 255, 255, 0.8)', fontSize: 11.5, marginTop: 4, fontWeight: '600' }}>
                 Quick Contact Form
               </Text>
             </TouchableOpacity>
           </View>
-        </View>
+        </GlassCard>
       )}
       </Animated.View>
 
-      {/* 14-DAY ZERO-RISK TRIAL CARD */}
-      <View
-        style={[
-          {
-            width: '100%',
-            maxWidth: 1000,
-            alignSelf: 'center',
-            borderRadius: 28,
-            backgroundColor: 'rgba(16, 185, 129, 0.06)',
-            borderWidth: 1.5,
-            borderColor: 'rgba(16, 185, 129, 0.35)',
-            padding: 28,
-            marginBottom: 54,
-            boxShadow: [{
-              offsetX: 0,
-              offsetY: 16,
-              blurRadius: 36,
-              color: 'rgba(16, 185, 129, 0.12)',
-            }],
-          },
-          isWeb
-            ? ({
-                backdropFilter: 'blur(20px)',
-                WebkitBackdropFilter: 'blur(20px)',
-              } as any)
-            : {},
-        ]}
+      {/* ── 14-DAY ZERO-RISK TRIAL (EMERALD LIQUID GLASS) ── */}
+      <GlassCard
+        variant="elevated"
+        accentColor="#10B981"
+        glowColor="rgba(16, 185, 129, 0.35)"
+        borderRadius={28}
+        style={{
+          width: '100%',
+          maxWidth: 1040,
+          alignSelf: 'center',
+          marginBottom: 58,
+        }}
+        contentStyle={{
+          padding: 30,
+        }}
       >
+
         <View
           style={{
-            flexDirection: isDesktop || isTablet ? 'row' : 'column',
+            flexDirection: isDesktop ? 'row' : 'column',
             alignItems: 'center',
             justifyContent: 'space-between',
-            gap: 20,
+            gap: 24,
           }}
         >
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16, flex: 1 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 18, flex: 1 }}>
             <View
               style={{
-                width: 54,
-                height: 54,
-                borderRadius: 18,
-                backgroundColor: 'rgba(16, 185, 129, 0.16)',
-                borderWidth: 1,
-                borderColor: 'rgba(16, 185, 129, 0.4)',
+                width: 58,
+                height: 58,
+                borderRadius: 20,
+                backgroundColor: 'rgba(16, 185, 129, 0.2)',
+                borderWidth: 1.5,
+                borderColor: 'rgba(16, 185, 129, 0.5)',
                 alignItems: 'center',
                 justifyContent: 'center',
+                ...(isWeb
+                  ? ({
+                      boxShadow: '0 0 18px rgba(16,185,129,0.4), inset 0 1px 0 rgba(255,255,255,0.25)',
+                    } as any)
+                  : {}),
               }}
             >
-              <Sparkles size={24} color="#10B981" />
+              <Sparkles size={26} color="#10B981" />
             </View>
             <View style={{ flex: 1 }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                <Text style={{ color: '#FFFFFF', fontSize: 19, fontWeight: '800' }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                <Text style={{ color: '#FFFFFF', fontSize: 21, fontWeight: '900', letterSpacing: -0.3 }}>
                   Experience Cloudora Free for 14 Days
                 </Text>
                 <View
                   style={{
-                    backgroundColor: 'rgba(16, 185, 129, 0.2)',
-                    paddingHorizontal: 8,
-                    paddingVertical: 2,
+                    backgroundColor: 'rgba(16, 185, 129, 0.22)',
+                    paddingHorizontal: 9,
+                    paddingVertical: 3,
                     borderRadius: 8,
+                    borderWidth: 1,
+                    borderColor: 'rgba(16, 185, 129, 0.45)',
                   }}
                 >
-                  <Text style={{ color: '#10B981', fontSize: 10, fontWeight: '800' }}>NO CARD NEEDED</Text>
+                  <Text style={{ color: '#34D399', fontSize: 10.5, fontWeight: '800', letterSpacing: 0.8 }}>
+                    NO CREDIT CARD NEEDED
+                  </Text>
                 </View>
               </View>
               <Text
                 style={{
-                  color: 'rgba(255, 255, 255, 0.55)',
-                  fontSize: 13.5,
-                  marginTop: 4,
-                  lineHeight: 20,
+                  color: 'rgba(255, 255, 255, 0.62)',
+                  fontSize: 14,
+                  marginTop: 6,
+                  lineHeight: 21,
                 }}
               >
-                Instant access to all 4 portals. Try it out with sample or real school data with no commitment.
+                Instant access to all 4 portals. Try it out with sample or real school data with zero commitment.
               </Text>
             </View>
           </View>
@@ -931,28 +988,34 @@ export const FuturisticPricing: React.FC<FuturisticPricingProps> = ({ onSelectPl
             onPointerLeave={() => setTrialBtnHovered(false)}
             style={[
               {
-                backgroundColor: trialBtnHovered ? '#059669' : '#10B981',
-                paddingVertical: 16,
-                paddingHorizontal: 28,
-                borderRadius: 16,
+                backgroundColor: '#10B981',
+                paddingVertical: 17,
+                paddingHorizontal: 30,
+                borderRadius: 18,
                 alignItems: 'center',
                 justifyContent: 'center',
-                minWidth: 170,
+                minWidth: 180,
                 flexDirection: 'row',
                 gap: 8,
                 borderWidth: 1,
-                borderColor: trialBtnHovered ? 'rgba(255, 255, 255, 0.4)' : 'rgba(16, 185, 129, 0.3)',
+                borderColor: 'rgba(255, 255, 255, 0.3)',
                 boxShadow: [{
                   offsetX: 0,
-                  offsetY: trialBtnHovered ? 12 : 8,
-                  blurRadius: trialBtnHovered ? 28 : 20,
-                  color: trialBtnHovered ? 'rgba(16, 185, 129, 0.65)' : 'rgba(16, 185, 129, 0.4)',
+                  offsetY: 8,
+                  blurRadius: 22,
+                  color: 'rgba(16, 185, 129, 0.5)',
                 }],
               },
               isWeb
                 ? ({
+                    background: trialBtnHovered
+                      ? 'linear-gradient(135deg, #34D399 0%, #10B981 50%, #059669 100%)'
+                      : 'linear-gradient(135deg, #10B981 0%, #059669 100%)',
+                    boxShadow: trialBtnHovered
+                      ? '0 0 28px rgba(16,185,129,0.65), inset 0 1px 0 rgba(255,255,255,0.3)'
+                      : '0 8px 22px rgba(16,185,129,0.4), inset 0 1px 0 rgba(255,255,255,0.2)',
                     transitionProperty: 'all',
-                    transitionDuration: '0.25s',
+                    transitionDuration: '0.22s',
                     transitionTimingFunction: 'cubic-bezier(0.16, 1, 0.3, 1)',
                     transform: trialBtnHovered
                       ? [{ translateY: -3 }, { scale: 1.03 }]
@@ -962,7 +1025,7 @@ export const FuturisticPricing: React.FC<FuturisticPricingProps> = ({ onSelectPl
                 : {},
             ]}
           >
-            <Text style={{ color: '#FFFFFF', fontWeight: '900', fontSize: 14 }}>
+            <Text style={{ color: '#FFFFFF', fontWeight: '900', fontSize: 15, letterSpacing: 0.3 }}>
               Start Free Trial
             </Text>
             <MoveRight
@@ -979,25 +1042,26 @@ export const FuturisticPricing: React.FC<FuturisticPricingProps> = ({ onSelectPl
             />
           </TouchableOpacity>
         </View>
-      </View>
+      </GlassCard>
 
-      {/* ADD-ONS MATRIX */}
-      <View style={{ alignItems: 'center', marginBottom: 24 }}>
+      {/* ── OPTIONAL EXTRA MODULES (ADD-ONS MATRIX) ── */}
+      <View style={{ alignItems: 'center', marginBottom: 28 }}>
         <Text
           style={{
             color: '#FFFFFF',
-            fontSize: 22,
-            fontWeight: '800',
+            fontSize: 24,
+            fontWeight: '900',
             textAlign: 'center',
-            marginBottom: 6,
+            marginBottom: 8,
+            letterSpacing: -0.3,
           }}
         >
           Optional Extra Modules
         </Text>
         <Text
           style={{
-            color: 'rgba(255, 255, 255, 0.5)',
-            fontSize: 14,
+            color: 'rgba(255, 255, 255, 0.52)',
+            fontSize: 14.5,
             textAlign: 'center',
             maxWidth: 500,
           }}
@@ -1009,6 +1073,7 @@ export const FuturisticPricing: React.FC<FuturisticPricingProps> = ({ onSelectPl
       <View
         style={{
           flexDirection: isDesktop ? 'row' : 'column',
+          flexWrap: isDesktop ? 'wrap' : 'nowrap',
           gap: 20,
           justifyContent: 'center',
         }}
@@ -1018,45 +1083,23 @@ export const FuturisticPricing: React.FC<FuturisticPricingProps> = ({ onSelectPl
           const isBtnHovered = hoveredAddonBtn === addon.name;
 
           return (
-            <View
+            <GlassCard
               key={addon.name}
-              //@ts-ignore
+              variant="interactive"
+              hoverable
+              accentColor={addon.accent}
+              glowColor={`${addon.accent}35`}
+              borderRadius={24}
               onPointerEnter={() => setHoveredAddon(addon.name)}
               onPointerLeave={() => setHoveredAddon(null)}
-              style={[
-                {
-                  flex: 1,
-                  minWidth: 280,
-                  borderRadius: 24,
-                  backgroundColor: isCardHovered
-                    ? 'rgba(20, 15, 58, 0.75)'
-                    : 'rgba(15, 11, 46, 0.5)',
-                  borderWidth: 1.5,
-                  borderColor: isCardHovered ? addon.accent : `${addon.accent}30`,
-                  padding: 24,
-                  boxShadow: isCardHovered
-                    ? [{
-                        offsetX: 0,
-                        offsetY: 16,
-                        blurRadius: 36,
-                        color: `${addon.accent}35`,
-                      }]
-                    : [{
-                        offsetX: 0,
-                        offsetY: 4,
-                        blurRadius: 16,
-                        color: 'rgba(0, 0, 0, 0.2)',
-                      }],
-                },
-                isWeb
-                  ? ({
-                      backdropFilter: 'blur(20px)',
-                      WebkitBackdropFilter: 'blur(20px)',
-                      transition: 'transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.25s ease, background-color 0.25s ease, box-shadow 0.25s ease',
-                      transform: isCardHovered ? [{ translateY: -6 }] : [{ translateY: 0 }],
-                    } as any)
-                  : {},
-              ]}
+              style={{
+                flex: isDesktop ? 1 : undefined,
+                width: isDesktop ? '48%' : '100%',
+                minWidth: 280,
+              }}
+              contentStyle={{
+                padding: 26,
+              }}
             >
               <View
                 style={{
@@ -1069,19 +1112,18 @@ export const FuturisticPricing: React.FC<FuturisticPricingProps> = ({ onSelectPl
                 <View
                   style={[
                     {
-                      width: 44,
-                      height: 44,
-                      borderRadius: 14,
-                      backgroundColor: isCardHovered ? `${addon.accent}28` : `${addon.accent}18`,
-                      borderWidth: 1,
-                      borderColor: isCardHovered ? addon.accent : `${addon.accent}35`,
+                      width: 46,
+                      height: 46,
+                      borderRadius: 15,
+                      backgroundColor: `${addon.accent}20`,
+                      borderWidth: 1.5,
+                      borderColor: `${addon.accent}45`,
                       alignItems: 'center',
                       justifyContent: 'center',
                     },
                     isWeb
                       ? ({
-                          transition: 'transform 0.25s ease, background-color 0.25s ease',
-                          transform: isCardHovered ? [{ scale: 1.08 }] : [{ scale: 1 }],
+                          boxShadow: `0 0 14px ${addon.accent}30, inset 0 1px 0 rgba(255,255,255,0.2)`,
                         } as any)
                       : {},
                   ]}
@@ -1094,21 +1136,21 @@ export const FuturisticPricing: React.FC<FuturisticPricingProps> = ({ onSelectPl
                     transform: [{ scale: currencyAnim }],
                   }}
                 >
-                  <Text style={{ color: '#FFFFFF', fontSize: 18, fontWeight: '900' }}>
+                  <Text style={{ color: '#FFFFFF', fontSize: 19, fontWeight: '900', letterSpacing: -0.3 }}>
                     {priceConverter(addon.price, currency)}
                   </Text>
                 </Animated.View>
               </View>
 
-              <Text style={{ color: '#FFFFFF', fontSize: 17, fontWeight: '800', marginBottom: 6 }}>
+              <Text style={{ color: '#FFFFFF', fontSize: 18, fontWeight: '800', marginBottom: 6 }}>
                 {addon.name}
               </Text>
               <Text
                 style={{
-                  color: 'rgba(255, 255, 255, 0.55)',
-                  fontSize: 13,
-                  lineHeight: 19,
-                  marginBottom: 16,
+                  color: 'rgba(255, 255, 255, 0.58)',
+                  fontSize: 13.5,
+                  lineHeight: 20,
+                  marginBottom: 18,
                 }}
               >
                 {addon.desc}
@@ -1116,16 +1158,17 @@ export const FuturisticPricing: React.FC<FuturisticPricingProps> = ({ onSelectPl
 
               <View
                 style={{
-                  backgroundColor: `${addon.accent}12`,
+                  backgroundColor: `${addon.accent}14`,
                   paddingHorizontal: 12,
                   paddingVertical: 6,
                   borderRadius: 10,
                   marginBottom: 20,
-                  borderWidth: 0.5,
-                  borderColor: isCardHovered ? `${addon.accent}40` : `${addon.accent}25`,
+                  borderWidth: 1,
+                  borderColor: isCardHovered ? `${addon.accent}50` : `${addon.accent}30`,
+                  alignSelf: 'flex-start',
                 }}
               >
-                <Text style={{ color: addon.accent, fontSize: 11, fontWeight: '700' }}>
+                <Text style={{ color: addon.accent, fontSize: 11.5, fontWeight: '800' }}>
                   {addon.included}
                 </Text>
               </View>
@@ -1139,13 +1182,13 @@ export const FuturisticPricing: React.FC<FuturisticPricingProps> = ({ onSelectPl
                 style={[
                   {
                     width: '100%',
-                    paddingVertical: 12,
-                    borderRadius: 12,
+                    paddingVertical: 14,
+                    borderRadius: 14,
                     borderWidth: 1.5,
-                    borderColor: isBtnHovered ? addon.accent : `${addon.accent}45`,
+                    borderColor: isBtnHovered ? addon.accent : `${addon.accent}50`,
                     alignItems: 'center',
                     justifyContent: 'center',
-                    backgroundColor: isBtnHovered ? `${addon.accent}25` : 'transparent',
+                    backgroundColor: isBtnHovered ? `${addon.accent}30` : `${addon.accent}14`,
                   },
                   isWeb
                     ? ({
@@ -1153,6 +1196,7 @@ export const FuturisticPricing: React.FC<FuturisticPricingProps> = ({ onSelectPl
                         transitionDuration: '0.2s',
                         transitionTimingFunction: 'cubic-bezier(0.16, 1, 0.3, 1)',
                         transform: isBtnHovered ? [{ translateY: -2 }, { scale: 1.02 }] : [{ translateY: 0 }, { scale: 1 }],
+                        boxShadow: isBtnHovered ? `0 4px 16px ${addon.accent}40` : 'none',
                         cursor: 'pointer',
                       } as any)
                     : {},
@@ -1162,13 +1206,14 @@ export const FuturisticPricing: React.FC<FuturisticPricingProps> = ({ onSelectPl
                   style={{
                     color: isBtnHovered ? '#FFFFFF' : addon.accent,
                     fontWeight: '800',
-                    fontSize: 13,
+                    fontSize: 14,
+                    letterSpacing: 0.3,
                   }}
                 >
                   Add to Plan
                 </Text>
               </TouchableOpacity>
-            </View>
+            </GlassCard>
           );
         })}
       </View>

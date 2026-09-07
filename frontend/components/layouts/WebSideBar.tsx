@@ -8,6 +8,7 @@ import {
 import React, { useState } from "react";
 import { Text, TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { CloudoraLogo } from "@/components/common/CloudoraLogo";
 
 export interface NavItem {
   name: string;
@@ -54,24 +55,23 @@ export const WebSidebar = ({ items, basePath, role, children }: WebSidebarProps)
         transition: 'width 0.2s',
       } as any}
     >
-        {/* Logo / Role badge */}
+        {/* Unboxed Logo / Role badge */}
         {!collapsed && (
-          <View style={{ paddingHorizontal: 24, marginBottom: 32 }}>
-            <Text style={{ fontSize: 10, fontWeight: '800', color: '#FF6900', textTransform: 'uppercase', letterSpacing: 2 }}>
-              {role}
-            </Text>
-            <Text style={{ fontSize: 20, fontWeight: '900', color: textPrimary, marginTop: 2 }}>
-              Portal
-            </Text>
+          <View style={{ paddingHorizontal: 24, marginBottom: 28, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+            <CloudoraLogo size={32} glow glowIntensity={0.6} />
+            <View>
+              <Text style={{ fontSize: 10, fontWeight: '800', color: '#FF6900', textTransform: 'uppercase', letterSpacing: 2 }}>
+                {role}
+              </Text>
+              <Text style={{ fontSize: 18, fontWeight: '900', color: textPrimary, marginTop: 1 }}>
+                Portal
+              </Text>
+            </View>
           </View>
         )}
         {collapsed && (
-          <View style={{ alignItems: 'center', marginBottom: 32 }}>
-            <View style={{ width: 40, height: 40, backgroundColor: '#FF6900', borderRadius: 12, alignItems: 'center', justifyContent: 'center' }}>
-              <Text style={{ color: 'white', fontWeight: '900', fontSize: 16 }}>
-                {role.charAt(0)}
-              </Text>
-            </View>
+          <View style={{ alignItems: 'center', marginBottom: 28 }}>
+            <CloudoraLogo size={28} glow glowIntensity={0.6} />
           </View>
         )}
 

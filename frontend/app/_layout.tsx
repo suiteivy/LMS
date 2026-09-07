@@ -2,7 +2,6 @@ import { AppLoading } from "@/components/AppLoading";
 import { toastConfig } from "@/components/CustomToast";
 import Notifications from "@/components/Notifications";
 import DemoBanner from "@/components/DemoBanner";
-import { OfflineBanner } from "@/components/OfflineBanner";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { CurrencyProvider } from "@/contexts/CurrencyContext";
 import { NotificationProvider, useNotifications } from "@/contexts/NotificationContext";
@@ -49,6 +48,7 @@ console.error = (...args: unknown[]) => {
   const all = args.map((arg) => (arg instanceof Error ? arg.message : String(arg ?? ''))).join(' ');
   if (msg.includes("Couldn't find a navigation context")) return;
   if (all.includes("non-boolean attribute") && all.includes("collapsable")) return;
+  if (all.includes("reportAllChanges") || (all.includes("startTime") && all.includes("Cannot read properties of undefined"))) return;
   _origConsoleError(...args);
 };
 
@@ -59,10 +59,29 @@ console.warn = (...args: unknown[]) => {
   _origConsoleWarn(...args);
 };
 
+if (Platform.OS === 'web' && typeof window !== 'undefined') {
+  window.addEventListener(
+    'error',
+    (event: ErrorEvent) => {
+      const msg = event?.message || event?.error?.message || '';
+      const stack = event?.error?.stack || '';
+      if (
+        msg.includes("Cannot read properties of undefined (reading 'startTime')") ||
+        stack.includes('reportAllChanges')
+      ) {
+        event.preventDefault();
+        event.stopImmediatePropagation?.();
+      }
+    },
+    true
+  );
+}
+
 LogBox.ignoreLogs([
   "Couldn't find a navigation context",
   "Received `false` for a non-boolean attribute `collapsable`",
-  "non-boolean attribute `collapsable`"
+  "non-boolean attribute `collapsable`",
+  "reportAllChanges"
 ]);
 
 // SuiteIvy Dark color palette (matches landing page)
@@ -93,11 +112,7 @@ export default function RootLayout() {
 
 // AppShell 
 function AppShell() {
-  const { isDark, theme } = useTheme();
-
-  React.useEffect(() => {
-    logger.info(`Theme changed. Mode: ${theme}, isDark: ${isDark}`);
-  }, [theme, isDark]);
+  const { isDark } = useTheme();
 
   return (
     <>
@@ -111,7 +126,6 @@ function AppShell() {
         <StatusBar style={isDark ? "light" : "dark"} />
       )}
       <DemoBanner />
-      <OfflineBanner />
       <AuthHandler />
     </>
   );
@@ -130,7 +144,7 @@ function GlobalNotifications() {
 
 // AuthHandler 
 function AuthHandler() {
-  const { loading, isInitializing, isNavReady, resetSessionTimer, session, profile, isPlatformAdmin, getRoleRedirect, signOut, wasDemo, clearWasDemo, maintenanceModeEnabled, maintenanceModeMessage } = useAuth();
+  const { loading, isInitializing, isNavReady, resetSessionTimer, session, profile, isPlatformAdmin, getRoleRedirect, signOut, wasDemo, clearWasDemo, maintenanceModeEnabled, maintenanceModeMessage, isDemoExiting } = useAuth();
   const { isDark } = useTheme();
   const segments = useSegments();
   const router = useRouter();
@@ -155,6 +169,15 @@ function AuthHandler() {
   const redirectCount = React.useRef(0);
   const lastRedirectPath = React.useRef<string | null>(null);
 
+  // On web, proactively blur active element on route changes so no descendant retains focus when a screen is hidden
+  React.useEffect(() => {
+    if (Platform.OS === 'web' && typeof document !== 'undefined') {
+      if (document.activeElement && document.activeElement !== document.body && document.activeElement instanceof HTMLElement) {
+        document.activeElement.blur();
+      }
+    }
+  }, [segments]);
+
   React.useEffect(() => {
     if (isInitializing || !isNavReady) return;
 
@@ -169,6 +192,7 @@ function AuthHandler() {
     const isRoot = currentPath === '/' || currentPath === '';
     const isCredentialDelivery = currentPath === '/credential-delivery';
     const isNotFound = (segments as string[]).includes('+not-found') || currentPath === '/+not-found';
+    const isLoader = currentPath === '/loader';
 
 
     const handleRedirect = (path: string) => {
@@ -191,10 +215,13 @@ function AuthHandler() {
     };
 
     if (!session) {
-      if (!inAuthGroup && !isRoot && !isCredentialDelivery && !isNotFound) {
+      if (inAuthGroup) {
+        if (currentPath === '/(auth)/demo' && wasDemo) {
+          clearWasDemo();
+        }
+      } else if (!isRoot && !isCredentialDelivery && !isNotFound && !isLoader) {
         if (wasDemo) {
           handleRedirect("/(auth)/demo");
-          clearWasDemo();
         } else {
           handleRedirect("/(auth)/signIn");
         }
@@ -224,7 +251,7 @@ function AuthHandler() {
     return false;
   }, [resetSessionTimer, session]);
 
-  const isLoadingOverlayVisible = isInitializing || loading
+  const isLoadingOverlayVisible = isInitializing || loading || isDemoExiting;
 
   return (
     <View
@@ -244,6 +271,7 @@ function AuthHandler() {
         <Stack.Screen name="(auth)/verify-security-questions" />
         <Stack.Screen name="credential-delivery" />
         <Stack.Screen name="(auth)/demo" />
+        <Stack.Screen name="loader" />
         <Stack.Screen name="+not-found" options={{ headerShown: false, title: 'Not Found' }} />
       </Stack>
 
@@ -257,7 +285,7 @@ function AuthHandler() {
             zIndex: 100000,
           }}
         >
-          <AppLoading onLogout={signOut} />
+          <AppLoading message={isDemoExiting ? "Exiting Demo Session..." : undefined} onLogout={signOut} />
         </View>
       )}
 

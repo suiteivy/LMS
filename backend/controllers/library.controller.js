@@ -1,5 +1,6 @@
 // controllers/library.controller.js
 const supabase = require("../utils/supabaseClient.js");
+const { parsePagination, paginatedResponse } = require("../utils/pagination.js");
 let clearUserCache;
 try {
   ({ clearUserCache } = require("../middleware/auth.middleware.js"));
@@ -280,12 +281,14 @@ exports.listBooks = async (req, res) => {
     const { institution_id } = req;
     const includeUnavailable = (req.query.includeUnavailable || "").toString().toLowerCase() === "true";
     const hasArchivedAt = await supportsBooksArchivedAt();
+    const { page, limit, from, to } = parsePagination(req.query, { defaultLimit: 25 });
 
     let query = supabase
       .from("books") // Changed from library_items
-      .select("*")
+      .select("*", { count: "exact" })
       .eq("institution_id", institution_id)
-      .order("created_at", { ascending: false });
+      .order("created_at", { ascending: false })
+      .range(from, to);
 
     if (hasArchivedAt) {
       query = query.is('archived_at', null);
@@ -295,9 +298,9 @@ exports.listBooks = async (req, res) => {
       query = query.gt("available_quantity", 0);
     }
 
-    const { data, error } = await query;
+    const { data, error, count } = await query;
     if (error) return res.status(500).json({ error: error.message });
-    return res.json(data);
+    return res.json(paginatedResponse(data, count, page, limit));
   } catch (e) {
     console.error("listBooks error:", e);
     return res.status(500).json({ error: "Server error" });

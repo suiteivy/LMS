@@ -148,6 +148,10 @@ export const GradingAPI = {
     const res = await api.get('/grade-entries', { params });
     return res.data.data;
   },
+  getGradeEntriesPaginated: async (params?: any) => {
+    const res = await api.get('/grade-entries', { params });
+    return res.data;
+  },
   createGradeEntry: async (data: any) => {
     const res = await api.post('/grade-entries', data);
     return res.data.data;
