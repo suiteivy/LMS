@@ -10,6 +10,7 @@ import { useTheme } from "@/contexts/ThemeContext";
 import { Award, BarChart3, Star, TrendingUp } from "lucide-react-native";
 import { useEffect, useState } from "react";
 import { ActivityIndicator, Alert, Platform, ScrollView, Text, TouchableOpacity, View } from "react-native";
+import { showFetchError } from "@/utils/toast";
 
 interface GradeProps {
     SubjectName: string;
@@ -184,6 +185,7 @@ export default function Grades() {
             });
         } catch (error) {
             console.error(error);
+            showFetchError("grades", error);
         } finally {
             setLoading(false);
         }
@@ -244,7 +246,7 @@ export default function Grades() {
             setShowModal(true);
         } catch (error) {
             console.error("Error fetching subject details:", error);
-            Alert.alert("Error", "Failed to fetch grade breakdown");
+            showFetchError("grade breakdown", error);
         } finally {
             setFetchingDetails(false);
         }

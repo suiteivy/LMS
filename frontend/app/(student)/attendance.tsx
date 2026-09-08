@@ -8,6 +8,7 @@ import { router } from 'expo-router';
 import { AlertCircle, Calendar, CheckCircle, Clock, XCircle } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
 import { ScrollView, Text, View } from 'react-native';
+import { showFetchError } from "@/utils/toast";
 
 export default function AttendancePage() {
   const { studentId, isDemo } = useAuth();
@@ -60,6 +61,7 @@ export default function AttendancePage() {
             calculateStats(data || []);
         } catch (error) {
             console.error('Error fetching attendance:', error);
+            showFetchError("attendance records", error);
         } finally {
             setLoading(false);
         }

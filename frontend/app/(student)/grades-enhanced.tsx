@@ -25,6 +25,7 @@ import {
   getPerformanceFromGpa,
   type GradingScaleRow,
 } from "@/utils/getPerformanceLabel";
+import { showFetchError } from "@/utils/toast";
 import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -728,6 +729,7 @@ export default function GradesEnhanced() {
       }
     } catch (error) {
       console.error("Grades load error:", error);
+      showFetchError("grades", error);
     } finally {
       setLoading(false);
     }
@@ -849,7 +851,7 @@ export default function GradesEnhanced() {
       setShowModal(true);
     } catch (error) {
       console.error("Error fetching subject details:", error);
-      Alert.alert("Error", "Failed to fetch grade breakdown");
+      showFetchError("grade breakdown", error);
     } finally {
       setFetchingDetails(false);
     }

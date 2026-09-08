@@ -496,6 +496,101 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     await resetSessionTimer();
   };
 
+  const isNetworkLikeError = (err: any) => {
+    const msg = String(err?.message || err?.details || err?.code || err || '').toLowerCase();
+    return (
+      msg.includes('fetch') ||
+      msg.includes('network') ||
+      msg.includes('timeout') ||
+      msg.includes('und_err_socket') ||
+      msg.includes('other side closed') ||
+      msg.includes('socket') ||
+      msg.includes('abort')
+    );
+  };
+
+  const applyProfileData = (userData: any, userId: string): UserProfile => {
+    if (userData?.institutions) {
+      const categoryIdsFromLinks = Array.isArray(userData.institutions.institution_categories)
+        ? userData.institutions.institution_categories
+          .map((row: any) => row?.category_id)
+          .filter(Boolean)
+        : [];
+      const singleCategoryId = userData.institutions.category_id;
+      userData.institutions.category_ids = [...new Set([
+        ...categoryIdsFromLinks,
+        ...(singleCategoryId ? [singleCategoryId] : []),
+      ])];
+    }
+
+    const isPlatformAdminFlag = !!userData.platform_admins?.[0] || userData.role === 'master_admin';
+    const isMainFlag = userData.admins?.[0]?.is_main || false;
+
+    let newSubscriptionStatus = null;
+    let newSubscriptionPlan = null;
+    let newTrialEndDate = null;
+    let newInstitutionName = null;
+
+    if (userData.institutions) {
+      newSubscriptionStatus = userData.institutions.subscription_status || null;
+      newSubscriptionPlan = userData.institutions.subscription_plan || null;
+      newTrialEndDate = userData.institutions.subscription_tracking_start_date || null;
+      newInstitutionName = userData.institutions.name || null;
+      const normalizedPlan = normalizeSubscriptionPlan(userData.institutions.subscription_plan);
+      const isBetaPlan = normalizedPlan === 'beta';
+
+      setAddonFlags({
+        messaging: isBetaPlan ? true : !!userData.institutions.addon_messaging,
+        library: isBetaPlan ? true : !!userData.institutions.addon_library,
+        finance: true,
+        analytics: true,
+        bursary: isBetaPlan ? true : !!userData.institutions.addon_bursary,
+        attendance: true,
+        diary: isBetaPlan ? true : !!userData.institutions.addon_diary,
+      });
+      setCustomStudentLimit(userData.institutions.custom_student_limit || null);
+    }
+
+    const getRoleId = (roleData: any) => {
+      if (!roleData) return null;
+      if (Array.isArray(roleData)) return roleData[0]?.id || null;
+      return roleData.id || null;
+    };
+
+    let newRoleInfo = { studentId: null, teacherId: null, adminId: null, parentId: null, displayId: null };
+    if (userData.role === 'student') {
+      const id = getRoleId(userData.students);
+      newRoleInfo = { ...newRoleInfo, studentId: id, displayId: id };
+    } else if (userData.role === 'teacher') {
+      const id = getRoleId(userData.teachers);
+      newRoleInfo = { ...newRoleInfo, teacherId: id, displayId: id };
+    } else if (userData.role === 'admin' || userData.role === 'master_admin') {
+      const id = getRoleId(userData.admins);
+      newRoleInfo = { ...newRoleInfo, adminId: id, displayId: id };
+    } else if (userData.role === 'parent') {
+      const id = getRoleId(userData.parents);
+      newRoleInfo = { ...newRoleInfo, parentId: id, displayId: id };
+    }
+
+    if (subscriptionStatus !== newSubscriptionStatus) setSubscriptionStatus(newSubscriptionStatus);
+    if (subscriptionPlan !== newSubscriptionPlan) setSubscriptionPlan(newSubscriptionPlan);
+    if (trialEndDate !== newTrialEndDate) setTrialEndDate(newTrialEndDate);
+    if (institutionName !== newInstitutionName) setInstitutionName(newInstitutionName);
+    if (isPlatformAdmin !== isPlatformAdminFlag) setIsPlatformAdmin(isPlatformAdminFlag);
+    if (isMain !== isMainFlag) setIsMain(isMainFlag);
+
+    if (!isDataEqual(roleInfo, newRoleInfo)) {
+      setRoleInfo(newRoleInfo);
+    }
+
+    if (!isDataEqual(profile, userData)) {
+      setProfile(userData as UserProfile);
+    }
+
+    lastLoadedUserId.current = userId;
+    return userData as UserProfile;
+  };
+
   const lastLoadedUserId = useRef<string | null>(null);
   const loadingUserId = useRef<string | null>(null);
 
@@ -523,12 +618,24 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         .from('users')
         .select('*, students(id), teachers(id), admins(id, is_main), parents(id), institutions(name, category_id, subscription_status, subscription_plan, subscription_tracking_start_date, addon_messaging, addon_library, addon_diary, addon_bursary, custom_student_limit, currency_id, institution_categories(category_id), currency:currency_id(code, symbol, decimal_places)), platform_admins(id)')
         .eq('id', userId)
-        .maybeSingle()
-      const result = data as any
+        .maybeSingle();
+
       if (error) {
-        console.error('[AuthContext] Profile load error:', error);
-        // If profile doesn't exist but user does, it might be a newly created user without a record yet
-        // or a legacy data issue. We'll set a minimal profile to allow partial access if possible.
+        if (isNetworkLikeError(error)) {
+          console.warn('[AuthContext] Network error loading profile, attempting offline cache recovery:', error.message || error);
+          try {
+            const cachedRaw = await AsyncStorage.getItem(`lms_cached_profile_${userId}`);
+            if (cachedRaw) {
+              const cachedData = JSON.parse(cachedRaw);
+              if (cachedData && cachedData.id === userId) {
+                console.info('[AuthContext] Restored user profile from cache for', userId);
+                return applyProfileData(cachedData, userId);
+              }
+            }
+          } catch {}
+        } else {
+          console.warn('[AuthContext] Profile load error:', error.message || error);
+        }
         setIsProfileLoading(false);
         setLoading(false);
         loadingUserId.current = null;
@@ -536,7 +643,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       }
 
       if (!data) {
-        console.error('[AuthContext] Profile load error: missing public.users row for authenticated user', { userId });
+        console.warn('[AuthContext] Profile load: missing public.users row for user', { userId });
         setIsProfileLoading(false);
         setLoading(false);
         loadingUserId.current = null;
@@ -545,21 +652,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
       const userData = data as any;
 
-      if (userData?.institutions) {
-        const categoryIdsFromLinks = Array.isArray(userData.institutions.institution_categories)
-          ? userData.institutions.institution_categories
-            .map((row: any) => row?.category_id)
-            .filter(Boolean)
-          : [];
-        const singleCategoryId = userData.institutions.category_id;
-        userData.institutions.category_ids = [...new Set([
-          ...categoryIdsFromLinks,
-          ...(singleCategoryId ? [singleCategoryId] : []),
-        ])];
-      }
-
-      // 1. Calculate all derived states FIRST
-      const isPlatformAdminFlag = !!userData.platform_admins?.[0] || userData.role === 'master_admin';
       let isLibrarianFlag = false;
       try {
         const { data: libData } = await supabase
@@ -572,93 +664,43 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         isLibrarianFlag = false;
       }
       setIsLibrarian(isLibrarianFlag);
-      const isMainFlag = userData.admins?.[0]?.is_main || false;
 
-      let newSubscriptionStatus = null;
-      let newSubscriptionPlan = null;
-      let newTrialEndDate = null;
-      let newInstitutionName = null;
+      // Cache profile locally for offline resilience
+      try {
+        await AsyncStorage.setItem(`lms_cached_profile_${userId}`, JSON.stringify(userData));
+      } catch {}
 
-      if (userData.institutions) {
-        newSubscriptionStatus = userData.institutions.subscription_status || null;
-        newSubscriptionPlan = userData.institutions.subscription_plan || null;
-        newTrialEndDate = userData.institutions.subscription_tracking_start_date || null;
-        newInstitutionName = userData.institutions.name || null;
-        const normalizedPlan = normalizeSubscriptionPlan(userData.institutions.subscription_plan);
-        const isBetaPlan = normalizedPlan === 'beta';
-
-        setAddonFlags({
-          messaging: isBetaPlan ? true : !!userData.institutions.addon_messaging,
-          library: isBetaPlan ? true : !!userData.institutions.addon_library,
-          finance: true,
-          analytics: true,
-          bursary: isBetaPlan ? true : !!userData.institutions.addon_bursary,
-          attendance: true,
-          diary: isBetaPlan ? true : !!userData.institutions.addon_diary,
-        });
-        setCustomStudentLimit(userData.institutions.custom_student_limit || null);
-      }
-
-      const getRoleId = (roleData: any) => {
-        if (!roleData) return null;
-        if (Array.isArray(roleData)) return roleData[0]?.id || null;
-        return roleData.id || null;
-      };
-
-      let newRoleInfo = { studentId: null, teacherId: null, adminId: null, parentId: null, displayId: null };
-      if (userData.role === 'student') {
-        const id = getRoleId(userData.students);
-        newRoleInfo = { ...newRoleInfo, studentId: id, displayId: id };
-      } else if (userData.role === 'teacher') {
-        const id = getRoleId(userData.teachers);
-        newRoleInfo = { ...newRoleInfo, teacherId: id, displayId: id };
-      } else if (userData.role === 'admin' || userData.role === 'master_admin') {
-        const id = getRoleId(userData.admins);
-        newRoleInfo = { ...newRoleInfo, adminId: id, displayId: id };
-      } else if (userData.role === 'parent') {
-        const id = getRoleId(userData.parents);
-        newRoleInfo = { ...newRoleInfo, parentId: id, displayId: id };
-      }
-
-      // 2. Batch State Updates only if changed
-      if (subscriptionStatus !== newSubscriptionStatus) setSubscriptionStatus(newSubscriptionStatus);
-      if (subscriptionPlan !== newSubscriptionPlan) setSubscriptionPlan(newSubscriptionPlan);
-      if (trialEndDate !== newTrialEndDate) setTrialEndDate(newTrialEndDate);
-      if (institutionName !== newInstitutionName) setInstitutionName(newInstitutionName);
-      if (isPlatformAdmin !== isPlatformAdminFlag) setIsPlatformAdmin(isPlatformAdminFlag);
-      if (isMain !== isMainFlag) setIsMain(isMainFlag);
-
-      if (!isDataEqual(roleInfo, newRoleInfo)) {
-        setRoleInfo(newRoleInfo);
-      }
-
-      // Setting profile LAST ensures that any effects watching 'profile' 
-      // see the most current version of all other auth states.
-      // We only update if the underlying data has changed to prevent render loops.
-      if (!isDataEqual(profile, userData)) {
-        setProfile(userData as UserProfile);
+      return applyProfileData(userData, userId);
+    } catch (err: any) {
+      if (isNetworkLikeError(err)) {
+        console.warn('[AuthContext] Network exception in loadUserProfile, attempting cache recovery:', err?.message || err);
+        try {
+          const cachedRaw = await AsyncStorage.getItem(`lms_cached_profile_${userId}`);
+          if (cachedRaw) {
+            const cachedData = JSON.parse(cachedRaw);
+            if (cachedData && cachedData.id === userId) {
+              return applyProfileData(cachedData, userId);
+            }
+          }
+        } catch {}
       } else {
+        console.warn('[AuthContext] Error loading profile:', err?.message || err);
       }
-
-      lastLoadedUserId.current = userId;
-      return userData as UserProfile;
-    } catch (err) {
-      console.error('Error loading profile:', err)
-      setProfile(null)
+      setProfile(null);
       lastLoadedUserId.current = null;
-      return null
+      return null;
     } finally {
       clearTimeout(safetyTimeout);
       setIsProfileLoading(false);
       setLoading(false);
       loadingUserId.current = null;
     }
-  }
+  };
 
   const refreshProfile = async (): Promise<UserProfile | null> => {
-    if (user) return await loadUserProfile(user.id, true)
-    return null
-  }
+    if (user) return await loadUserProfile(user.id, true);
+    return null;
+  };
 
   const getRoleRedirect = React.useCallback((userProfile: UserProfile | null, platformAdmin: boolean): string | null => {
     if (!userProfile) return null;
@@ -679,45 +721,67 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       try {
         await refreshMaintenanceStatus();
         const sessionPromise = supabase.auth.getSession();
-        const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('getSession timeout')), 15000));
+        const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('getSession timeout')), 6000));
 
-        const { data: { session: initialSession } } = await Promise.race([sessionPromise, timeoutPromise]) as any;
+        let initialSession: Session | null = null;
+        try {
+          const result = await Promise.race([sessionPromise, timeoutPromise]) as any;
+          initialSession = result?.data?.session || null;
+        } catch (sessErr: any) {
+          console.warn('[AuthContext] getSession timeout/error:', sessErr?.message || sessErr);
+        }
 
         if (initialSession) {
-          // Race protection: timeout for getUser
+          // Race protection: timeout for getUser (5 seconds instead of 15 seconds)
           const userPromise = supabase.auth.getUser();
-          const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('getUser timeout')), 15000));
+          const userTimeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('getUser timeout')), 5000));
 
+          let activeUser: User | null = initialSession.user;
           try {
-            const { data: { user: validatedUser } } = await Promise.race([userPromise, timeoutPromise]) as any;
+            const { data: { user: validatedUser } } = await Promise.race([userPromise, userTimeoutPromise]) as any;
             if (validatedUser) {
-              setSession(initialSession);
-              currentSessionRef.current = initialSession;
-              setUser(validatedUser);
-              const isDemoUser = validatedUser.email?.startsWith('demo.') || false;
-              setIsDemo(isDemoUser);
-              if (isDemoUser) {
-                setWasDemo(true);
-              }
-              await loadUserProfile(validatedUser.id);
-              await startTimeoutTimer(isDemoUser);
-            } else {
-              console.warn('[AuthContext] getUser returned no data during init');
-              setIsInitializing(false);
-              setLoading(false);
+              activeUser = validatedUser;
             }
-          } catch (e) {
-            console.error('[AuthContext] Error or timeout in getUser during init:', e);
-            setIsInitializing(false);
-            setLoading(false);
+          } catch (e: any) {
+            if (isNetworkLikeError(e)) {
+              console.warn('[AuthContext] Network or timeout in getUser during init, using local session fallback:', e?.message || e);
+              Toast.show({
+                type: 'info',
+                text1: 'Slow Connection / Offline',
+                text2: 'Operating with cached session while reconnecting.',
+                position: 'top',
+                visibilityTime: 4000,
+              });
+            } else {
+              console.warn('[AuthContext] Auth rejection in getUser during init:', e?.message || e);
+              activeUser = null;
+            }
+          }
+
+          if (activeUser) {
+            setSession(initialSession);
+            currentSessionRef.current = initialSession;
+            setUser(activeUser);
+            const isDemoUser = activeUser.email?.startsWith('demo.') || false;
+            setIsDemo(isDemoUser);
+            if (isDemoUser) {
+              setWasDemo(true);
+            }
+            await loadUserProfile(activeUser.id);
+            await startTimeoutTimer(isDemoUser);
+          } else {
+            console.warn('[AuthContext] User validation rejected or missing data during init');
+            setSession(null);
+            currentSessionRef.current = null;
+            setUser(null);
           }
         } else {
           setSession(null);
           currentSessionRef.current = null;
           setUser(null);
         }
-      } catch (error) {
-        console.error('[AuthContext] Error in initializeAuth:', error);
+      } catch (error: any) {
+        console.warn('[AuthContext] Notice in initializeAuth:', error?.message || error);
       } finally {
         setIsInitializing(false);
         setLoading(false);
@@ -726,11 +790,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
     const watchdog = setTimeout(() => {
       if (isInitializing || loading) {
-        console.warn(`[AuthContext] Watchdog triggered (20s limit): clearing stuck loading states. Initializing: ${isInitializing}, Loading: ${loading}`);
+        console.warn(`[AuthContext] Watchdog triggered (10s limit): clearing stuck loading states. Initializing: ${isInitializing}, Loading: ${loading}`);
         setIsInitializing(false);
         setLoading(false);
       }
-    }, 20000);
+    }, 10000);
 
     initializeAuth();
 
@@ -819,8 +883,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             const reason = (rawReason as LogoutReason) || LogoutReason.UNKNOWN;
             const msg = LOGOUT_MESSAGES[reason] ?? LOGOUT_MESSAGES[LogoutReason.UNKNOWN];
             if (!silent) {
+              const isError = reason === LogoutReason.INSTITUTION_SUSPENDED || reason === LogoutReason.AUTH_ERROR_403;
+              const isSuccess = reason === LogoutReason.USER_INITIATED || reason === LogoutReason.UNKNOWN;
               Toast.show({
-                type: reason === LogoutReason.INSTITUTION_SUSPENDED ? 'error' : 'info',
+                type: isError ? 'error' : (isSuccess ? 'success' : 'info'),
                 text1: msg.title,
                 text2: msg.body,
                 position: 'top',
@@ -829,7 +895,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             AsyncStorage.removeItem('logout_reason').catch(() => {});
           }).catch(() => {
             if (!silent) {
-              Toast.show({ type: 'info', text1: 'Logged Out', text2: 'You have been logged out.', position: 'top' });
+              Toast.show({ type: 'success', text1: 'Logged Out', text2: 'You have been logged out successfully.', position: 'top' });
             }
           });
         } else {

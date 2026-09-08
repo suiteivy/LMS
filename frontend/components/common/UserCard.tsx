@@ -1,6 +1,6 @@
 import { useTheme } from '@/contexts/ThemeContext';
 import { BaseComponentProps, User } from '@/types/types';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import React from 'react';
 import { Image, Text, TouchableOpacity, View } from 'react-native';
 
@@ -12,6 +12,7 @@ interface UserCardProps extends BaseComponentProps {
  onPress?: (user: User) => void;
  showActions?: boolean;
  onEditPress?: (user: User) => void;
+ onResetCredentialsPress?: (user: User) => void;
  onDeletePress?: (user: User) => void;
  showBackButton?: boolean;
  onBackPress?: () => void;
@@ -23,6 +24,7 @@ export const UserCard: React.FC<UserCardProps> = ({
  onPress,
  showActions = false,
  onEditPress,
+ onResetCredentialsPress,
  onDeletePress,
  showBackButton = false,
  onBackPress,
@@ -72,6 +74,11 @@ export const UserCard: React.FC<UserCardProps> = ({
  const handleEditPress = (e: any) => {
  e.stopPropagation();
  onEditPress?.(user);
+ };
+
+ const handleResetCredentialsPress = (e: any) => {
+ e.stopPropagation();
+ onResetCredentialsPress?.(user);
  };
 
  const handleDeletePress = (e: any) => {
@@ -191,6 +198,15 @@ export const UserCard: React.FC<UserCardProps> = ({
 
  {showActions && (
  <View className="flex-row gap-1.5">
+ {onResetCredentialsPress && (
+ <TouchableOpacity
+ onPress={handleResetCredentialsPress}
+ className="w-9 h-9 rounded-xl bg-orange-50 dark:bg-orange-950/20 border border-orange-100 dark:border-orange-500/20 items-center justify-center"
+ activeOpacity={0.7}
+ >
+ <MaterialCommunityIcons name="lock-reset" size={16} color="#FF6900" />
+ </TouchableOpacity>
+ )}
  <TouchableOpacity
  onPress={handleEditPress}
  className="w-9 h-9 rounded-xl bg-gray-50 dark:bg-[#161B22] border border-[#D0D7DE] dark:border-[#21262D] items-center justify-center"
@@ -270,6 +286,15 @@ export const UserCard: React.FC<UserCardProps> = ({
 
  {showActions && (
  <View className="flex-col gap-1.5">
+ {onResetCredentialsPress && (
+ <TouchableOpacity
+ onPress={handleResetCredentialsPress}
+ className="w-10 h-10 rounded-lg bg-orange-50 dark:bg-orange-950/20 border border-orange-100 dark:border-orange-500/20 items-center justify-center"
+ activeOpacity={0.7}
+ >
+ <MaterialCommunityIcons name="lock-reset" size={18} color="#FF6900" />
+ </TouchableOpacity>
+ )}
  <TouchableOpacity
  onPress={handleEditPress}
  className="w-10 h-10 rounded-lg bg-gray-50 dark:bg-[#161B22] border border-[#D0D7DE] dark:border-[#21262D] items-center justify-center"

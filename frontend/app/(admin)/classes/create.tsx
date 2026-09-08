@@ -74,14 +74,10 @@ export default function CreateClassScreen() {
     
     const { profile } = useAuth();
     const instLevelLabel = classType || 'Grade';
-    const fallbackLevels = Array.from(
-        { length: instLevelLabel === 'Form' ? 6 : (instLevelLabel === 'KG' ? 3 : 7) },
-        (_, i) => `${instLevelLabel} ${i + 1}`
-    );
 
     const availableLevels = categoryId
-        ? domainLevels.filter((item) => item.category_id === categoryId && item.class_type === classType)
-        : [];
+        ? domainLevels.filter((item) => item.category_id === categoryId)
+        : domainLevels;
 
     const availableStreams = levelId
         ? domainStreams.filter((item) => item.level_id === levelId)
@@ -99,7 +95,7 @@ export default function CreateClassScreen() {
             const options = await ClassService.getClassOptions();
             const optionMap = new Map((options.level_options || []).map((item) => [item.level_id, item]));
             const optionLabels = (options.level_options || []).map((item) => item.label).filter(Boolean);
-            setLevels(optionLabels.length > 0 ? optionLabels : fallbackLevels);
+            setLevels(optionLabels);
             setClassType(options.class_type || 'Grade');
             setClassTypes((options.class_types || [options.class_type || 'Grade']).filter(Boolean));
             setCategories((options.categories || []).map((item) => ({ id: item.id, name: item.name })));
@@ -118,7 +114,7 @@ export default function CreateClassScreen() {
             })));
         } catch (error) {
             console.error("Error loading class options:", error);
-            setLevels(fallbackLevels);
+            setLevels([]);
             setCategories([]);
             setDomainLevels([]);
             setDomainStreams([]);

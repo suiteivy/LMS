@@ -104,8 +104,10 @@ export async function safeSignOut(
   // 5. Show toast unless silent or demo session
   if (!silent && !isDemoSession) {
     const msg = LOGOUT_MESSAGES[reason] ?? LOGOUT_MESSAGES[LogoutReason.UNKNOWN];
+    const isError = reason === LogoutReason.INSTITUTION_SUSPENDED || reason === LogoutReason.AUTH_ERROR_403;
+    const isSuccess = reason === LogoutReason.USER_INITIATED;
     Toast.show({
-      type: reason === LogoutReason.INSTITUTION_SUSPENDED ? 'error' : 'info',
+      type: isError ? 'error' : (isSuccess ? 'success' : 'info'),
       text1: msg.title,
       text2: msg.body,
       position: 'top',

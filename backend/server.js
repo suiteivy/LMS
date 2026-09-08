@@ -107,12 +107,14 @@ app.get("/api/settings/currency", settingsController.getCurrencyRates);
 app.get('/api/settings/maintenance', settingsController.getMaintenanceStatus);
 app.use("/api/settings", authMiddleware, checkSubscription, settingsRoutes);
 
+
 // Platform Admin Routes (Protected explicitly internally by requirePlatformAdmin)
 app.use("/api/master-admin", authMiddleware, masterAdminRoutes);
 
 // Automated background jobs
 const { cleanupExpiredDemoSessions } = require('./services/demoCleanup.service.js');
 const cron = require('node-cron');
+const { isTransientSupabaseError } = require('./utils/supabaseRetry.js');
 const { retryScheduledNotificationDeliveries } = require('./services/notificationDelivery.service.js');
 const { runUpcomingClassReminderSweepWithRetry } = require('./services/classReminder.service.js');
 const { runFeeDeadlineReminderSweepWithRetry } = require('./services/feeDeadlineReminder.service.js');
@@ -127,13 +129,25 @@ cron.schedule('*/5 * * * *', async () => {
       logger.info('Notification retry worker processed jobs', result);
     }
   } catch (error) {
-    logger.error('Notification retry worker failed', { error: error?.message || String(error) });
+    if (isTransientSupabaseError(error)) {
+      logger.warn('Notification retry worker deferred due to transient network error', { error: error?.message || String(error) });
+    } else {
+      logger.error('Notification retry worker failed', { error: error?.message || String(error) });
+    }
   }
 });
 
 // Demo Cleanup: Runs every 10 minutes
 cron.schedule('*/10 * * * *', async () => {
-  await cleanupExpiredDemoSessions();
+  try {
+    await cleanupExpiredDemoSessions();
+  } catch (error) {
+    if (isTransientSupabaseError(error)) {
+      logger.warn('[DemoCleanup] Transient database error, will retry next cycle', { error: error?.message || String(error) });
+    } else {
+      logger.error('[DemoCleanup] Failed to run:', error);
+    }
+  }
 });
 
 // Class reminder worker: every 5 minutes (notify 10 minutes before class start)

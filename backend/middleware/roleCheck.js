@@ -46,9 +46,9 @@ const requireRole = (...allowedRoles) => {
 };
 
 /**
- * Middleware to ensure user is an admin
+ * Middleware to ensure user is an admin (institution admin or master platform admin)
  */
-const requireAdmin = requireRole('admin');
+const requireAdmin = requireRole('admin', 'master_admin');
 
 /**
  * Middleware to ensure user is admin or bursary (for finance operations)

@@ -7,6 +7,7 @@ import { format } from "date-fns";
 import { HelpTooltip } from "@/components/settings/HelpTooltip";
 import { useSubscriptionTier } from "@/hooks/useSubscriptionTier";
 import { ListItemSkeleton } from "@/components/ui/skeletons";
+import { showFetchError } from "@/utils/toast";
 
 interface Announcement {
     id: string;
@@ -43,6 +44,7 @@ export default function StudentAnnouncementsPage() {
             setAnnouncements(data || []);
         } catch (error) {
             console.error("Error fetching announcements:", error);
+            showFetchError("announcements", error);
         } finally {
             setLoading(false);
         }

@@ -8,6 +8,7 @@ import { SubjectAPI } from "@/services/SubjectService";
 import { Edit, Eye, TrendingUp, Users } from 'lucide-react-native';
 import { SubscriptionBanner } from "@/components/shared/SubscriptionComponents";
 import { ListItemSkeleton } from "@/components/ui/skeletons";
+import { showFetchError } from "@/utils/toast";
 
 interface Subject {
     id: string;
@@ -101,6 +102,7 @@ export default function SubjectsPage() {
             setSubjects(mappedSubjects);
         } catch (error) {
             console.error("Error fetching Subjects:", error);
+            showFetchError("subjects", error);
         } finally {
             setLoading(false);
         }

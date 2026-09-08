@@ -6,6 +6,7 @@ import { router } from "expo-router";
 import { Calendar, MapPin, User } from "lucide-react-native";
 import React, { useEffect, useState } from "react";
 import { Alert, ScrollView, Text, TouchableOpacity, View } from "react-native";
+import { showFetchError } from "@/utils/toast";
 
 export default function StudentTimetablePage() {
     const [loading, setLoading] = useState(true);
@@ -23,7 +24,7 @@ export default function StudentTimetablePage() {
             setTimetable(data);
         } catch (error) {
             console.error(error);
-            Alert.alert("Error", "Failed to load timetable");
+            showFetchError("timetable", error);
         } finally {
             setLoading(false);
         }

@@ -125,7 +125,7 @@ export const ClassService = {
         return res.data;
     },
 
-    async createDomainLevel(data: { category_id: string; level_number: number; name?: string; sort_order?: number }): Promise<ClassDomainLevel> {
+    async createDomainLevel(data: { category_id?: string; level_number: number; name?: string; sort_order?: number }): Promise<ClassDomainLevel> {
         const res = await api.post('/classes/domain/levels', data);
         return res.data;
     },

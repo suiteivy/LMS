@@ -12,6 +12,7 @@ import { Calendar, Check } from 'lucide-react-native';
 import React, { useEffect, useState } from "react";
 import { ActivityIndicator, Alert, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import Toast from 'react-native-toast-message';
+import { showFetchError } from '@/utils/toast';
 
 interface Student {
     student_id: string;
@@ -91,6 +92,7 @@ export default function AttendancePage() {
             }
         } catch (error) {
             console.error("Fetch subjects error:", error);
+            showFetchError("subjects", error);
         } finally {
             setLoading(false);
         }
@@ -105,7 +107,7 @@ export default function AttendancePage() {
             setStudents(data);
         } catch (error) {
             console.error(error);
-            Alert.alert("Error", "Failed to load attendance");
+            showFetchError("attendance records", error);
         } finally {
             setLoading(false);
         }

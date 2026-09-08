@@ -3,6 +3,7 @@ import {
     ActivityIndicator,
     FlatList,
     Modal,
+    Platform,
     Text,
     TextInput,
     TouchableOpacity,
@@ -32,7 +33,6 @@ type UserItem = {
     created_at: string;
     institution_id: string | null;
     institutions: { name: string } | null;
-    otp_reset_pending?: boolean;
 };
 
 type RoleFilter = 'all' | 'teacher' | 'student' | 'parent' | 'admin' | 'master_admin';
@@ -116,6 +116,8 @@ export default function MasterAdminUsersScreen() {
     const [showResetModal, setShowResetModal] = useState(false);
     const [resettingUser, setResettingUser] = useState<UserItem | null>(null);
     const [resettingLoading, setResettingLoading] = useState(false);
+    const [resetResult, setResetResult] = useState<any>(null);
+    const [showResultModal, setShowResultModal] = useState(false);
 
     const pageRef = useRef(1);
     const isFetchingRef = useRef(false);
@@ -391,7 +393,6 @@ export default function MasterAdminUsersScreen() {
                 },
                 body: JSON.stringify({
                     targetUserId: resettingUser.id,
-                    otpReset: true,
                 }),
             });
 
@@ -402,21 +403,20 @@ export default function MasterAdminUsersScreen() {
                 return;
             }
 
-            setUsers((prev) => prev.map((u) => {
-                if (u.id !== resettingUser.id) return u;
-                return { ...u, otp_reset_pending: true };
-            }));
+            setResetResult({
+                ...data,
+                user: resettingUser,
+            });
+            setShowResetModal(false);
+            setShowResultModal(true);
+            setResettingUser(null);
 
             Toast.show({
                 type: 'success',
-                text1: 'Credentials Reset Successfully',
-                text2: 'Password invalidated, active sessions revoked, and OTP verification dispatched.',
+                text1: 'Password Reset',
+                text2: 'Temporary credential regenerated. All active sessions were revoked.',
                 position: 'top',
-                visibilityTime: 5000,
             });
-
-            setShowResetModal(false);
-            setResettingUser(null);
         } catch (err) {
             console.error('confirmCredentialReset error:', err);
             Toast.show({ type: 'error', text1: 'Network Error', text2: 'Failed to trigger credential reset', position: 'top' });
@@ -543,18 +543,6 @@ export default function MasterAdminUsersScreen() {
                             </View>
                             {!!item.custom_display_id && (
                                 <Text style={{ color: colors.subtext, fontSize: 11, marginRight: 8 }}>ID: {item.custom_display_id}</Text>
-                            )}
-                            {!!item.otp_reset_pending && (
-                                <View style={{
-                                    backgroundColor: '#FEF3C7',
-                                    borderWidth: 1,
-                                    borderColor: '#F59E0B',
-                                    borderRadius: 6,
-                                    paddingHorizontal: 6,
-                                    paddingVertical: 2,
-                                }}>
-                                    <Text style={{ color: '#D97706', fontSize: 10, fontWeight: '800' }}>Pending OTP</Text>
-                                </View>
                             )}
                         </View>
                     </View>
@@ -1167,7 +1155,7 @@ export default function MasterAdminUsersScreen() {
                                 <MaterialCommunityIcons name="lock-reset" size={24} color="#DC2626" />
                             </View>
                             <Text style={{ color: colors.text, fontWeight: '800', fontSize: 18 }}>
-                                Confirm Credential Reset
+                                Confirm Password Reset
                             </Text>
                         </View>
 
@@ -1207,7 +1195,7 @@ export default function MasterAdminUsersScreen() {
                                 Security Action Notice
                             </Text>
                             <Text style={{ color: isDark ? '#FCA5A5' : '#991B1B', fontSize: 12, lineHeight: 18 }}>
-                                Confirming will <Text style={{ fontWeight: '800' }}>immediately invalidate</Text> this user's current password and <Text style={{ fontWeight: '800' }}>synchronously revoke all active sessions</Text>. The user must complete standard OTP verification to regain access.
+                                Reset password for <Text style={{ fontWeight: '800' }}>{`${resettingUser?.first_name || ''} ${resettingUser?.last_name || ''}`.trim() || resettingUser?.email || 'this user'}</Text>? This will generate a new temporary credential, force logout all active sessions, and require password + security question setup at next login.
                             </Text>
                         </View>
 
@@ -1248,6 +1236,104 @@ export default function MasterAdminUsersScreen() {
                                 )}
                             </TouchableOpacity>
                         </View>
+                    </View>
+                </View>
+            </Modal>
+
+            {/* Temporary Credential Result Modal */}
+            <Modal
+                visible={showResultModal}
+                transparent
+                animationType="fade"
+                onRequestClose={() => setShowResultModal(false)}
+            >
+                <View style={{
+                    flex: 1,
+                    backgroundColor: 'rgba(0,0,0,0.6)',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    padding: 16,
+                    zIndex: 100000,
+                    elevation: 100000,
+                }}>
+                    <View style={{
+                        backgroundColor: colors.cardBg,
+                        borderColor: colors.border,
+                        borderWidth: 1,
+                        borderRadius: 16,
+                        padding: 20,
+                        width: '100%',
+                        maxWidth: 460,
+                    }}>
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+                            <Text style={{ color: colors.text, fontSize: 19, fontWeight: '800' }}>Temporary Credential</Text>
+                            <TouchableOpacity onPress={() => setShowResultModal(false)}>
+                                <MaterialCommunityIcons name="close" size={22} color={colors.subtext} />
+                            </TouchableOpacity>
+                        </View>
+
+                        <View style={{ borderWidth: 1, borderColor: colors.border, borderRadius: 12, padding: 14, backgroundColor: colors.inputBg }}>
+                            {!!(resetResult?.user?.email || resetResult?.email) && (
+                                <Text style={{ color: colors.subtext, fontSize: 13, marginBottom: 8 }}>
+                                    Login Email: <Text style={{ color: colors.text, fontWeight: '700' }}>{resetResult?.user?.email || resetResult?.email}</Text>
+                                </Text>
+                            )}
+
+                            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                                <Text style={{ color: colors.subtext, fontSize: 13 }}>Temporary Password:</Text>
+                                <TouchableOpacity
+                                    onPress={() => {
+                                        const pwd = resetResult?.tempPassword;
+                                        if (pwd) {
+                                            if (Platform.OS === 'web' && (navigator as any)?.clipboard) {
+                                                (navigator as any).clipboard.writeText(pwd);
+                                            }
+                                            Toast.show({ type: 'success', text1: 'Copied', text2: 'Password copied to clipboard', position: 'top' });
+                                        }
+                                    }}
+                                    style={{ backgroundColor: colors.primary, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 }}
+                                >
+                                    <Text style={{ color: '#fff', fontSize: 11, fontWeight: '700' }}>Copy Password</Text>
+                                </TouchableOpacity>
+                            </View>
+
+                            <Text style={{ color: colors.text, fontWeight: '800', fontSize: 16, marginBottom: 10, letterSpacing: 1 }}>
+                                {resetResult?.tempPassword || 'N/A'}
+                            </Text>
+
+                            {!!resetResult?.credential_delivery?.url && (
+                                <View style={{ marginTop: 6, paddingTop: 10, borderTopWidth: 1, borderTopColor: colors.border }}>
+                                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+                                        <Text style={{ color: colors.subtext, fontSize: 12 }}>One-Time Credential Link:</Text>
+                                        <TouchableOpacity
+                                            onPress={() => {
+                                                const url = resetResult.credential_delivery.url;
+                                                if (url) {
+                                                    if (Platform.OS === 'web' && (navigator as any)?.clipboard) {
+                                                        (navigator as any).clipboard.writeText(url);
+                                                    }
+                                                    Toast.show({ type: 'success', text1: 'Copied', text2: 'Link copied to clipboard', position: 'top' });
+                                                }
+                                            }}
+                                            style={{ borderWidth: 1, borderColor: colors.border, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 }}
+                                        >
+                                            <Text style={{ color: colors.text, fontSize: 11, fontWeight: '700' }}>Copy Link</Text>
+                                        </TouchableOpacity>
+                                    </View>
+                                </View>
+                            )}
+
+                            <Text style={{ color: colors.subtext, fontSize: 12, marginTop: 8 }}>
+                                User will be forced to logout of all sessions and complete password and security question setup at next login.
+                            </Text>
+                        </View>
+
+                        <TouchableOpacity
+                            onPress={() => setShowResultModal(false)}
+                            style={{ marginTop: 14, backgroundColor: colors.primary, borderRadius: 12, paddingVertical: 12, alignItems: 'center' }}
+                        >
+                            <Text style={{ color: '#fff', fontWeight: '800' }}>Done</Text>
+                        </TouchableOpacity>
                     </View>
                 </View>
             </Modal>

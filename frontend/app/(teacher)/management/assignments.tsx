@@ -16,6 +16,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, Alert, Modal, ScrollView, Text, TextInput, TouchableOpacity, View, Platform } from 'react-native';
 import { DiaryAPI } from "@/services/DiaryService";
 import { SubjectAPI } from "@/services/SubjectService";
+import { showFetchError } from "@/utils/toast";
 import * as Print from 'expo-print';
 
 import * as Sharing from 'expo-sharing';
@@ -173,6 +174,7 @@ export default function AssignmentsPage() {
             setSubjects((data || []).map(s => ({ id: s.id, title: s.title })));
         } catch (error) {
             console.error("Error fetching filtered subjects:", error);
+            showFetchError("subjects", error);
             setSubjects([]);
         }
     };
@@ -286,6 +288,7 @@ export default function AssignmentsPage() {
             setAssignments(formatted);
         } catch (error) {
             console.error('[fetchAssignments] Error:', error);
+            showFetchError("assignments", error);
         } finally {
             setLoading(false);
         }

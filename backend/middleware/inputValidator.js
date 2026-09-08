@@ -202,6 +202,10 @@ const schemas = {
         emergency_contact_name: { ...commonRules.name, required: false },
         emergency_contact_phone: { ...commonRules.phone, required: false },
         class_ids: { type: 'array', required: false },
+        class_id: { ...commonRules.uuid, required: false },
+        class_category_id: { ...commonRules.uuid, required: false },
+        class_level_id: { ...commonRules.uuid, required: false },
+        class_stream_id: { ...commonRules.uuid, required: false },
         department: { type: 'string', required: false },
         qualification: { type: 'string', required: false },
         specialization: { type: 'string', required: false },
@@ -212,7 +216,10 @@ const schemas = {
         parent_address: { type: 'string', maxLength: 500, required: false },
         linked_students: { type: 'array', required: false },
         create_parent: { type: 'boolean', required: false },
-        parent_info: { type: 'object', required: false }
+        parent_info: { type: 'object', required: false },
+        existing_parent_id: { ...commonRules.uuid, required: false },
+        parent_relationship: { type: 'string', required: false },
+        linked_parents: { type: 'array', required: false }
     },
 
     createInstitution: {

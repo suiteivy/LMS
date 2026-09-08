@@ -15,6 +15,7 @@ import { getPerformanceLabel } from "@/utils/getPerformanceLabel";
 import { TrendChart, SubjectTrendCard } from "@/components/common/TrendChart";
 import { UnifiedHeader } from "@/components/common/UnifiedHeader";
 import { ListItemSkeleton } from "@/components/ui/skeletons";
+import { showFetchError } from "@/utils/toast";
 
 export default function StudentAnalyticsPage() {
   const { studentId, user, isDemo } = useAuth();
@@ -42,6 +43,7 @@ export default function StudentAnalyticsPage() {
       setReportCards(Array.isArray(cards) ? cards : []);
     } catch (error) {
       console.error("Error fetching analytics:", error);
+      showFetchError("analytics data", error);
     } finally {
       setLoading(false);
       setRefreshing(false);

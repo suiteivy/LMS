@@ -8,6 +8,7 @@ import { SubjectAPI } from "@/services/SubjectService";
 import { Check, Download, Edit2, Search, X } from 'lucide-react-native';
 import React, { useEffect, useState } from "react";
 import { ActivityIndicator, Alert, Modal, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { showFetchError } from "@/utils/toast";
 
 interface StudentGrade {
     id: string;
@@ -110,6 +111,7 @@ export default function GradesPage() {
             if (data) setSubjects(data.map(s => ({ id: s.id, title: s.title })));
         } catch (error) {
             console.error("Error fetching filtered subjects in grades:", error);
+            showFetchError("subjects", error);
             setSubjects([]);
         }
     };
@@ -199,6 +201,7 @@ export default function GradesPage() {
             setSubmissions(formatted);
         } catch (error) {
             console.error("Error fetching grades:", error);
+            showFetchError("grades", error);
         } finally {
             setLoading(false);
         }

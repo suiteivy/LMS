@@ -25,6 +25,7 @@ router.get("/institutions", masterAdminController.getAllInstitutions);
 router.get("/institutions/:id", masterAdminController.getInstitutionDetails);
 router.put("/institutions/:id", masterAdminController.updateInstitutionDetails);
 router.put("/institutions/:id/subscription", masterAdminController.updateSubscriptionStatus);
+router.post("/institutions/:id/admins", masterAdminController.addInstitutionAdmin);
 router.delete("/institutions/admins/:userId", masterAdminController.removeInstitutionAdmin);
 
 router.post('/institutions', masterAdminController.enrollInstitution);

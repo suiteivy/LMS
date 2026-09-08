@@ -9,6 +9,7 @@ import { Check, Edit2, FileText, User, X } from 'lucide-react-native';
 import React, { useEffect, useState } from "react";
 import { Alert, Modal, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import Toast from 'react-native-toast-message';
+import { showFetchError } from '@/utils/toast';
 
 type TypedSubmission = Database['public']['Tables']['submissions']['Row'];
 
@@ -178,7 +179,7 @@ export default function SubmissionsPage() {
             setSubmissions(merged);
         } catch (error) {
             console.error("Error fetching submissions:", error);
-            Alert.alert("Error", "Failed to load submissions");
+            showFetchError("submissions", error);
         } finally {
             setLoading(false);
         }

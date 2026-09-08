@@ -17,6 +17,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { supabase } from "@/libs/supabase";
 import { useAuth } from "@/contexts/AuthContext";
 import { formatClassLabel } from "@/utils/classLabel";
+import { ClassService } from "@/services/ClassService";
 
 const CreateSubject = () => {
     const router = useRouter();
@@ -34,8 +35,22 @@ const CreateSubject = () => {
 
     useEffect(() => {
         const fetchClasses = async () => {
+            try {
+                const data = await ClassService.getClasses();
+                if (data && data.length > 0) {
+                    const options = data.map((c: any) => ({
+                        value: c.id,
+                        label: formatClassLabel(c)
+                    }));
+                    setClasses(options);
+                    return;
+                }
+            } catch (err) {
+                console.warn('ClassService.getClasses error, falling back to direct query:', err);
+            }
+
             const { data } = await (supabase.from('classes') as any)
-                .select('id, name, grade_level, form_level, stream')
+                .select('id, display_name, grade_level, form_level, stream')
                 .eq('institution_id', profile?.institution_id || '')
                 .order('grade_level', { ascending: true })
                 .order('form_level', { ascending: true })
@@ -249,32 +264,6 @@ const CreateSubject = () => {
                                         </Text>
                                     )}
                                 </View>
-                            </View>
-
-                            <View>
-                                <Text style={{ fontSize: 13, fontWeight: '500', color: textSecondary, marginBottom: 6 }}>
-                                    Full Description *
-                                </Text>
-                                <TextInput
-                                    value={formData.description}
-                                    onChangeText={(text) => handleInputChange("description", text)}
-                                    placeholder="Detailed Subject description"
-                                    placeholderTextColor={textSecondary}
-                                    multiline
-                                    numberOfLines={6}
-                                    textAlignVertical="top"
-                                    style={{
-                                        minHeight: 120,
-                                        backgroundColor: inputBg,
-                                        color: textPrimary,
-                                        borderRadius: 12,
-                                        paddingHorizontal: 12,
-                                        paddingVertical: 12,
-                                        borderWidth: 1,
-                                        borderColor: border,
-                                        fontSize: 15,
-                                    }}
-                                />
                             </View>
                         </View>
                             </ScrollView>

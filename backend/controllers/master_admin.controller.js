@@ -19,6 +19,10 @@ const getServiceSupabase = () => {
     );
 };
 
+exports.__setServiceClientFactory = (factory) => {
+    serviceClientFactory = factory;
+};
+
 const NOTICE_EXPIRY_DEFAULT_DAYS = 2;
 const NOTICE_EXPIRY_MIN_DAYS = 1;
 const NOTICE_EXPIRY_MAX_DAYS = 365;
@@ -67,6 +71,13 @@ const normalizeInstitutionPlan = (plan) => {
     };
     const p = String(plan || 'basic').toLowerCase();
     return map[p] || 'basic';
+};
+
+const INSTITUTION_PLAN_LIMITS = {
+    beta: { maxStudents: 30, maxAdmins: 2 },
+    basic: { maxStudents: 900, maxAdmins: Infinity },
+    pro: { maxStudents: 1000, maxAdmins: Infinity },
+    premium: { maxStudents: 5000, maxAdmins: Infinity },
 };
 
 const isSubscriptionTransaction = (row) => {
@@ -1093,10 +1104,17 @@ exports.getInstitutionDetails = async (req, res) => {
 
         const categoryMap = await loadInstitutionCategoryMap(adminClient, [id]);
         const institutionCategories = categoryMap.get(id) || [];
+        const normalizedPlan = normalizeInstitutionPlan(institution.subscription_plan);
+        const planLimit = INSTITUTION_PLAN_LIMITS[normalizedPlan] || { maxStudents: 900, maxAdmins: Infinity };
+        const maxAdmins = planLimit.maxAdmins === Infinity ? null : planLimit.maxAdmins;
 
         res.status(200).json({
             institution: {
                 ...institution,
+                subscription_plan: normalizedPlan,
+                max_admins: maxAdmins,
+                admin_count: normalizedAdmins.length,
+                at_admin_capacity: maxAdmins !== null && normalizedAdmins.length >= maxAdmins,
                 category_ids: institutionCategories.map((cat) => cat.id).filter(Boolean),
                 categories: institutionCategories,
                 ...resolveInstitutionAddonFlags({
@@ -2358,6 +2376,199 @@ exports.deleteSupportRequest = async (req, res) => {
     } catch (error) {
         console.error('Error deleting support ticket:', error);
         return res.status(500).json({ error: 'Failed to delete support ticket' });
+    }
+};
+
+/**
+ * Add an institution administrator (secondary admin) to an existing institution
+ */
+exports.addInstitutionAdmin = async (req, res) => {
+    try {
+        const { id: institutionId } = req.params;
+        const { first_name, last_name, email, phone, can_manage_users } = req.body;
+        const adminClient = getServiceSupabase();
+
+        const fName = String(first_name || '').trim();
+        const lName = String(last_name || '').trim();
+        if (!fName || !lName) {
+            return res.status(400).json({ error: "First name and last name are required." });
+        }
+
+        // 1. Get institution & verify existence
+        const { data: institution, error: instError } = await adminClient
+            .from('institutions')
+            .select('id, name, email_domain, subscription_plan, subscription_status')
+            .eq('id', institutionId)
+            .single();
+
+        if (instError || !institution) {
+            return res.status(404).json({ error: "Institution not found." });
+        }
+
+        // 2. Check admin capacity based on subscription plan
+        const normalizedPlan = normalizeInstitutionPlan(institution.subscription_plan);
+        const limits = INSTITUTION_PLAN_LIMITS[normalizedPlan] || { maxStudents: 900, maxAdmins: Infinity };
+
+        const { data: existingAdmins, error: adminCountErr } = await adminClient
+            .from('admins')
+            .select('user_id')
+            .eq('institution_id', institutionId);
+
+        if (adminCountErr) throw adminCountErr;
+
+        const currentAdminCount = (existingAdmins || []).length;
+        if (limits.maxAdmins !== Infinity && currentAdminCount >= limits.maxAdmins) {
+            return res.status(403).json({
+                error: `Administrative account limit reached for this institution's current plan (${normalizedPlan.toUpperCase()}: max ${limits.maxAdmins} admins). Upgrade the institution subscription plan to add more administrators.`,
+                code: 'ADMIN_LIMIT_REACHED',
+                current_count: currentAdminCount,
+                max_admins: limits.maxAdmins,
+                plan: normalizedPlan,
+            });
+        }
+
+        // 3. Resolve Admin Email
+        const resolvedDomain = institution.email_domain ? String(institution.email_domain).trim().toLowerCase() : null;
+        let admin_email = String(email || '').trim().toLowerCase();
+
+        if (admin_email) {
+            if (resolvedDomain && !admin_email.endsWith(`@${resolvedDomain}`)) {
+                return res.status(400).json({
+                    error: `Email address must belong to the institution domain (@${resolvedDomain}).`,
+                });
+            }
+            const { data: existingUser } = await adminClient
+                .from('users')
+                .select('id')
+                .ilike('email', admin_email)
+                .maybeSingle();
+
+            if (existingUser) {
+                return res.status(409).json({ error: "A user with this email address already exists." });
+            }
+        } else {
+            if (!resolvedDomain) {
+                return res.status(400).json({ error: "Email is required when institution does not have a domain set." });
+            }
+            const baseEmailName = `${fName.toLowerCase().replace(/[^a-z0-9]/g, '')}.${lName.toLowerCase().replace(/[^a-z0-9]/g, '')}`;
+            let suffix = 0;
+            admin_email = `${baseEmailName}@${resolvedDomain}`;
+            while (true) {
+                const { data: existingRows, error: emailCheckErr } = await adminClient
+                    .from('users')
+                    .select('id')
+                    .ilike('email', admin_email)
+                    .limit(1);
+                if (emailCheckErr) throw emailCheckErr;
+                const existing = Array.isArray(existingRows) ? existingRows[0] : null;
+                if (!existing) break;
+                suffix += 1;
+                admin_email = `${baseEmailName}${suffix}@${resolvedDomain}`;
+            }
+        }
+
+        const admin_password = generateTempPassword();
+        const finalFullName = `${fName} ${lName}`.trim();
+
+        // 4. Create Auth User
+        const { data: authUser, error: authError } = await adminClient.auth.admin.createUser({
+            email: admin_email,
+            password: admin_password,
+            email_confirm: true,
+            user_metadata: {
+                full_name: finalFullName,
+                first_name: fName,
+                last_name: lName,
+                role: 'admin',
+            },
+        });
+
+        if (authError || !authUser?.user) {
+            console.error("Error creating auth user:", authError);
+            return res.status(400).json({ error: authError?.message || "Failed to create administrator account." });
+        }
+
+        const newUserId = authUser.user.id;
+
+        // 5. Insert public.users profile
+        const { error: profileError } = await adminClient
+            .from('users')
+            .upsert({
+                id: newUserId,
+                email: admin_email,
+                role: 'admin',
+                institution_id: institutionId,
+                status: 'approved',
+                must_change_password: true,
+                requires_security_questions_setup: true,
+                full_name: finalFullName,
+                first_name: fName,
+                last_name: lName,
+                phone: phone ? String(phone).trim() : null,
+            }, { onConflict: 'id' });
+
+        if (profileError) {
+            console.error("Error creating admin profile:", profileError);
+            await adminClient.auth.admin.deleteUser(newUserId);
+            return res.status(500).json({ error: "Failed to map admin user profile.", details: profileError.message });
+        }
+
+        // 6. Ensure admins row has is_main = false
+        const { error: adminRowError } = await adminClient
+            .from('admins')
+            .upsert({
+                user_id: newUserId,
+                institution_id: institutionId,
+                is_main: false,
+                can_manage_users: can_manage_users !== undefined ? !!can_manage_users : true,
+            }, { onConflict: 'user_id' });
+
+        if (adminRowError) {
+            console.error("Failed to update admins table:", adminRowError);
+        }
+
+        // 7. Create Credential Delivery Token
+        const credentialDelivery = await createCredentialDeliveryToken({
+            adminClient,
+            createdBy: req.userId || null,
+            targetUserId: newUserId,
+            targetEmail: admin_email,
+            temporaryPassword: admin_password,
+            metadata: {
+                role: 'admin',
+                institution_id: institutionId,
+            },
+        });
+
+        return res.status(201).json({
+            message: "Administrator added successfully.",
+            admin: {
+                id: newUserId,
+                email: admin_email,
+                first_name: fName,
+                last_name: lName,
+                full_name: finalFullName,
+                phone: phone || null,
+                is_main: false,
+            },
+            tempPassword: admin_password,
+            temporary_credentials: {
+                email: admin_email,
+                password: admin_password,
+            },
+            credential_delivery: credentialDelivery,
+            credential_document: buildCredentialDocument({
+                fullName: finalFullName,
+                role: 'admin',
+                email: admin_email,
+                temporaryPassword: admin_password,
+                credentialUrl: credentialDelivery?.url,
+                expiresAt: credentialDelivery?.expiresAt,
+            }),
+        });
+    } catch (error) {
+        console.error("addInstitutionAdmin error:", error);
+        return res.status(500).json({ error: error.message || "Failed to add administrator." });
     }
 };
 

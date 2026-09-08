@@ -4,7 +4,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useTheme } from "@/contexts/ThemeContext";
 import { api } from "@/services/api";
 import { GradingAPI } from "@/services/GradingService";
-import { showError } from "@/utils/toast";
+import { showError, showFetchError } from "@/utils/toast";
 import { getPerformanceLabel, type GradingScaleRow } from "@/utils/getPerformanceLabel";
 import { router } from "expo-router";
 import {
@@ -758,7 +758,7 @@ export default function ReportCardsPage() {
             setReportCards(safe);
         } catch (error: any) {
             console.error("Error fetching report cards:", error);
-            showError("Error", "Failed to load report cards");
+            showFetchError("report cards", error);
             setReportCards([]);
         } finally {
             setLoading(false);

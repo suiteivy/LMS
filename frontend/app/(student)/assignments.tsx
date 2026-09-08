@@ -9,6 +9,7 @@ import { router } from "expo-router";
 import { Activity, Calendar, CheckCircle2, ChevronRight, Clock, Download, FileText, X } from "lucide-react-native";
 import React, { useEffect, useState } from "react";
 import { ActivityIndicator, Alert, Linking, Modal, ScrollView, Text, TouchableOpacity, View } from "react-native";
+import { showFetchError } from "@/utils/toast";
 
 interface Assignments {
   id: string
@@ -84,7 +85,7 @@ export default function StudentsAssignments() {
       }
     } catch (error: any) {
       console.error(error.message);
-      Alert.alert("Error", "Failed to load assignments.");
+      showFetchError("assignments", error);
     } finally {
       setLoading(false)
     }

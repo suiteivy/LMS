@@ -8,6 +8,7 @@ import React, { useEffect, useState } from "react";
 import { useRealtimeQuery } from "@/hooks/useRealtimeQuery";
 import { ActivityIndicator, Alert, ScrollView, Text, TouchableOpacity, View, Platform } from "react-native";
 import * as WebBrowser from 'expo-web-browser';
+import { showFetchError } from "@/utils/toast";
 
 export default function StudentDiaryPage() {
     const [entries, setEntries] = useState<DiaryEntry[]>([]);
@@ -31,7 +32,7 @@ export default function StudentDiaryPage() {
             setEntries(data);
         } catch (error) {
             console.error(error);
-            Alert.alert("Error", "Failed to fetch diary entries");
+            showFetchError("diary entries", error);
         } finally {
             setLoading(false);
         }

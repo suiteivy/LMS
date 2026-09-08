@@ -2,6 +2,7 @@ import { AppLoading } from "@/components/AppLoading";
 import { toastConfig } from "@/components/CustomToast";
 import Notifications from "@/components/Notifications";
 import DemoBanner from "@/components/DemoBanner";
+import { OfflineBanner } from "@/components/OfflineBanner";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { CurrencyProvider } from "@/contexts/CurrencyContext";
 import { NotificationProvider, useNotifications } from "@/contexts/NotificationContext";
@@ -49,6 +50,21 @@ console.error = (...args: unknown[]) => {
   if (msg.includes("Couldn't find a navigation context")) return;
   if (all.includes("non-boolean attribute") && all.includes("collapsable")) return;
   if (all.includes("reportAllChanges") || (all.includes("startTime") && all.includes("Cannot read properties of undefined"))) return;
+
+  // Prevent transient auth timeouts or socket drops from triggering fatal LogBox web error overlays
+  if (
+    all.includes("getUser timeout") ||
+    all.includes("getSession timeout") ||
+    all.includes("[AuthContext] Error or timeout in getUser during init") ||
+    all.includes("Error or timeout in getUser during init") ||
+    all.includes("UND_ERR_SOCKET") ||
+    all.includes("other side closed") ||
+    (all.includes("fetch failed") && all.includes("Supabase"))
+  ) {
+    _origConsoleWarn("[Auth Notice - Retrying/Fallback Active]:", ...args);
+    return;
+  }
+
   _origConsoleError(...args);
 };
 
@@ -67,7 +83,9 @@ if (Platform.OS === 'web' && typeof window !== 'undefined') {
       const stack = event?.error?.stack || '';
       if (
         msg.includes("Cannot read properties of undefined (reading 'startTime')") ||
-        stack.includes('reportAllChanges')
+        stack.includes('reportAllChanges') ||
+        msg.includes("getUser timeout") ||
+        msg.includes("getSession timeout")
       ) {
         event.preventDefault();
         event.stopImmediatePropagation?.();
@@ -81,7 +99,14 @@ LogBox.ignoreLogs([
   "Couldn't find a navigation context",
   "Received `false` for a non-boolean attribute `collapsable`",
   "non-boolean attribute `collapsable`",
-  "reportAllChanges"
+  "reportAllChanges",
+  "getUser timeout",
+  "getSession timeout",
+  "[AuthContext] Error or timeout in getUser during init",
+  "Error or timeout in getUser during init",
+  "fetch failed",
+  "UND_ERR_SOCKET",
+  "SocketError: other side closed",
 ]);
 
 // SuiteIvy Dark color palette (matches landing page)
@@ -125,6 +150,7 @@ function AppShell() {
       ) : (
         <StatusBar style={isDark ? "light" : "dark"} />
       )}
+      <OfflineBanner />
       <DemoBanner />
       <AuthHandler />
     </>

@@ -59,3 +59,25 @@ export const showInfo = (title: string, message?: string) => {
         onHide: () => activeToasts.delete(key),
     });
 };
+
+/**
+ * Gracefully displays a non-blocking toast when data fetching fails.
+ * Protects users from raw technical error dumps while ensuring silent failures do not leave
+ * the screen in an unexplained empty/broken state.
+ */
+export const showFetchError = (resource: string, error?: any) => {
+    const rawMessage = typeof error === 'string'
+        ? error
+        : error?.message || error?.error_description || error?.error;
+
+    // Suppress if the error indicates deliberate cancellation or abort
+    if (rawMessage && /abort|cancelled|canceled/i.test(rawMessage)) {
+        return;
+    }
+
+    const title = `Unable to load ${resource}`;
+    const message = "Please check your connection or try again shortly.";
+
+    showError(title, message);
+};
+

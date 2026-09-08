@@ -4,6 +4,7 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { supabase } from '@/libs/supabase';
 import { api } from '@/services/api';
 import { formatClassLabel } from '@/utils/classLabel';
+import { showSuccess } from '@/utils/toast';
 import { Ionicons } from '@expo/vector-icons';
 import { Stack, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
@@ -243,7 +244,11 @@ export default function CreateUserScreen() {
         }
 
         if (classOptionsData?.categories) {
-            setDomainCategories((classOptionsData.categories as any[]).map((c) => ({ id: c.id, name: String(c.name || '') })));
+            const mappedCats = (classOptionsData.categories as any[]).map((c) => ({ id: c.id, name: String(c.name || '') }));
+            setDomainCategories(mappedCats);
+            if (mappedCats.length === 1) {
+                setForm((prev) => prev.class_category_id ? prev : ({ ...prev, class_category_id: mappedCats[0].id }));
+            }
         }
         if (classOptionsData?.levels) {
             setDomainLevels((classOptionsData.levels as any[]).map((l) => ({
@@ -366,7 +371,9 @@ export default function CreateUserScreen() {
         });
     };
 
-    const levelsForSelectedCategory = domainLevels.filter((level) => level.category_id === form.class_category_id);
+    const levelsForSelectedCategory = form.class_category_id
+        ? domainLevels.filter((level) => level.category_id === form.class_category_id)
+        : domainLevels;
     const streamsForSelectedLevel = domainStreams.filter((stream) => stream.level_id === form.class_level_id);
     const classesForSelectedStream = classes.filter((cls) => cls.stream_id === form.class_stream_id);
     const availableParents = parents.filter((p: any) => {
@@ -521,39 +528,89 @@ export default function CreateUserScreen() {
                     ]
                 );
             } else {
-                Alert.alert('Error', err.message || 'Failed to enroll user');
+                Alert.alert('Error', errorData?.error || errorData?.message || err.message || 'Failed to enroll user');
             }
         } finally {
             setLoading(false);
         }
     };
 
-    const copyToClipboard = async (text: string) => {
+    const copyToClipboard = async (text: string, label: string = 'Credentials') => {
         try {
-            if (Platform.OS === 'web' && navigator?.clipboard) await navigator.clipboard.writeText(text);
-            Alert.alert('Copied', 'Credentials copied to clipboard');
-        } catch { Alert.alert('Copy', `Password: ${text}`); }
+            if (Platform.OS === 'web' && typeof navigator !== 'undefined' && navigator?.clipboard) {
+                await navigator.clipboard.writeText(text);
+            }
+            showSuccess('Copied to Clipboard', `${label} copied successfully`);
+        } catch {
+            Alert.alert('Copy', `${label}: ${text}`);
+        }
     };
 
     const canGoNext = (): boolean => {
-        if (step === 0) return !!form.role;
+        if (step === 0) {
+            if (!form.role) return false;
+            const cap = getRoleCapacityState(form.role);
+            return !cap.isAtCapacity;
+        }
         if (step === 1) {
             const isParentRole = form.role === 'parent';
-            return !!form.first_name.trim() && !!form.last_name.trim() && (isParentRole ? !!form.email.trim() : true);
+            const hasFirstName = !!form.first_name.trim();
+            const hasLastName = !!form.last_name.trim();
+            const hasEmail = isParentRole ? !!form.email.trim() : true;
+            return hasFirstName && hasLastName && hasEmail;
         }
         if (step === 2) {
             if (form.role === 'student') {
-                const hasCoreStudentFields = !!form.class_category_id && !!form.class_level_id && !!form.class_stream_id && !!form.class_id && !!form.academic_year;
-                const hasParentFields = !!form.parent_relationship && (
-                    !!form.existing_parent_id || form.create_parent
+                const hasCategory = domainCategories.length === 0 || !!form.class_category_id;
+                const hasLevel = domainLevels.length === 0 || !!form.class_level_id;
+                const hasStream = streamsForSelectedLevel.length === 0 || !!form.class_stream_id;
+                const hasCoreStudentFields = hasCategory && 
+                                             hasLevel && 
+                                             hasStream && 
+                                             !!form.class_id && 
+                                             !!form.academic_year;
+                const hasParentRelationship = !!form.parent_relationship;
+                const hasParentSelection = !!form.existing_parent_id || (
+                    form.create_parent &&
+                    !!form.parent_info.first_name.trim() &&
+                    !!form.parent_info.last_name.trim() &&
+                    !!form.parent_info.email.trim()
                 );
-                const hasCreatedParentFields = !form.create_parent || (
-                    !!form.parent_info.first_name.trim()
-                    && !!form.parent_info.last_name.trim()
-                    && !!form.parent_info.email.trim()
-                );
-                return hasCoreStudentFields && hasParentFields && hasCreatedParentFields;
+                return hasCoreStudentFields && hasParentRelationship && hasParentSelection;
             }
+            if (form.role === 'teacher') {
+                return !!form.position;
+            }
+            return true;
+        }
+        if (step === 3) {
+            if (!form.role) return false;
+            const isParentRole = form.role === 'parent';
+            const hasPersonalFields = !!form.first_name.trim() && !!form.last_name.trim() && (isParentRole ? !!form.email.trim() : true);
+            if (!hasPersonalFields) return false;
+
+            if (form.role === 'student') {
+                const hasCategory = domainCategories.length === 0 || !!form.class_category_id;
+                const hasLevel = domainLevels.length === 0 || !!form.class_level_id;
+                const hasStream = streamsForSelectedLevel.length === 0 || !!form.class_stream_id;
+                const hasCoreStudentFields = hasCategory && 
+                                             hasLevel && 
+                                             hasStream && 
+                                             !!form.class_id && 
+                                             !!form.academic_year;
+                const hasParentRelationship = !!form.parent_relationship;
+                const hasParentSelection = !!form.existing_parent_id || (
+                    form.create_parent &&
+                    !!form.parent_info.first_name.trim() &&
+                    !!form.parent_info.last_name.trim() &&
+                    !!form.parent_info.email.trim()
+                );
+                return hasCoreStudentFields && hasParentRelationship && hasParentSelection;
+            }
+            if (form.role === 'teacher') {
+                return !!form.position;
+            }
+            return true;
         }
         return true;
     };
@@ -718,13 +775,13 @@ export default function CreateUserScreen() {
                 <RenderInput label="Phone" value={form.phone} onChangeText={(v: string) => updateFormSanitized('phone', v, 'phone')} placeholder="+254 7XX XXX XXX" keyboardType="phone-pad" isDark={isDark} textPrimary={textPrimary} textSecondary={textSecondary} inputBg={inputBg} inputBorder={inputBorder} />
             )}
             <RenderPicker label="Gender" options={resolvedGenderOptions} selected={form.gender} onSelect={(v: string) => updateForm('gender', v)} isDark={isDark} textPrimary={textPrimary} textSecondary={textSecondary} border={border} card={card} />
-            <DatePicker label="Date of Birth" value={form.date_of_birth} onChange={(v: string) => updateForm('date_of_birth', v)} isDark={isDark} />
+            <DatePicker label="Date of Birth (Optional)" value={form.date_of_birth} onChange={(v: string) => updateForm('date_of_birth', v)} isDark={isDark} />
             <View style={{ marginTop: -10, marginBottom: 16 }}>
                 <Text style={{ color: textSecondary, fontSize: 12 }}>
                     Age: <Text style={{ color: textPrimary, fontWeight: '700' }}>{computedAge !== null ? `${computedAge} years` : 'Set date of birth to calculate'}</Text>
                 </Text>
             </View>
-            <RenderInput label="Address" value={form.address} onChangeText={(v: string) => updateFormSanitized('address', v)} placeholder="Enter physical address" isDark={isDark} textPrimary={textPrimary} textSecondary={textSecondary} inputBg={inputBg} inputBorder={inputBorder} />
+            <RenderInput label="Address (Optional)" value={form.address} onChangeText={(v: string) => updateFormSanitized('address', v)} placeholder="Enter physical address" isDark={isDark} textPrimary={textPrimary} textSecondary={textSecondary} inputBg={inputBg} inputBorder={inputBorder} />
         </View>
     );
 
@@ -930,11 +987,9 @@ export default function CreateUserScreen() {
         const unassignedSubjects = subjects.filter(s => !s.teacher_id);
         return (
             <View>
-                <Text style={{ fontSize: 18, fontWeight: '700', color: textPrimary, marginBottom: 16 }}> Teacher Details</Text>
-                <RenderInput label="Department" value={form.department} onChangeText={(v: string) => updateFormSanitized('department', v)} placeholder="e.g. Mathematics" isDark={isDark} textPrimary={textPrimary} textSecondary={textSecondary} inputBg={inputBg} inputBorder={inputBorder} />
-                <RenderInput label="Qualification" value={form.qualification} onChangeText={(v: string) => updateFormSanitized('qualification', v)} placeholder="e.g. B.Ed Mathematics" isDark={isDark} textPrimary={textPrimary} textSecondary={textSecondary} inputBg={inputBg} inputBorder={inputBorder} />
-                <RenderInput label="Specialization" value={form.specialization} onChangeText={(v: string) => updateFormSanitized('specialization', v)} placeholder="e.g. Applied Mathematics" isDark={isDark} textPrimary={textPrimary} textSecondary={textSecondary} inputBg={inputBg} inputBorder={inputBorder} />
-                <RenderPicker label="Position" options={resolvedPositionOptions} selected={form.position} onSelect={(v: string) => updateForm('position', v)} isDark={isDark} textPrimary={textPrimary} textSecondary={textSecondary} border={border} card={card} />
+                <Text style={{ fontSize: 18, fontWeight: '700', color: textPrimary, marginBottom: 16 }}>Teacher Details</Text>
+                <RenderInput label="Department (Optional)" value={form.department} onChangeText={(v: string) => updateFormSanitized('department', v)} placeholder="e.g. Mathematics" isDark={isDark} textPrimary={textPrimary} textSecondary={textSecondary} inputBg={inputBg} inputBorder={inputBorder} />
+                <RenderPicker label="Position *" options={resolvedPositionOptions} selected={form.position} onSelect={(v: string) => updateForm('position', v)} isDark={isDark} textPrimary={textPrimary} textSecondary={textSecondary} border={border} card={card} />
                 <RenderMultiSelect label="Assign Subjects (unassigned only)" items={unassignedSubjects} selectedIds={form.subject_ids} toggleItem={(id: string) => toggleArrayItem('subject_ids', id)} displayFn={(s: any) => s.title} isDark={isDark} textPrimary={textPrimary} textSecondary={textSecondary} border={border} card={card} />
                 <View style={{ marginBottom: 16 }}>
                     <Text style={{ fontSize: 13, fontWeight: '600', color: textSecondary, marginBottom: 6 }}>Assign as Class Teacher</Text>
@@ -958,9 +1013,9 @@ export default function CreateUserScreen() {
         });
         return (
             <View>
-                <Text style={{ fontSize: 18, fontWeight: '700', color: textPrimary, marginBottom: 16 }}> Parent/Guardian Details</Text>
-                <RenderInput label="Occupation" value={form.occupation} onChangeText={(v: string) => updateFormSanitized('occupation', v)} placeholder="e.g. Engineer" isDark={isDark} textPrimary={textPrimary} textSecondary={textSecondary} inputBg={inputBg} inputBorder={inputBorder} />
-                <RenderInput label="Home Address" value={form.parent_address} onChangeText={(v: string) => updateFormSanitized('parent_address', v)} placeholder="Physical address" isDark={isDark} textPrimary={textPrimary} textSecondary={textSecondary} inputBg={inputBg} inputBorder={inputBorder} />
+                <Text style={{ fontSize: 18, fontWeight: '700', color: textPrimary, marginBottom: 16 }}>Parent/Guardian Details</Text>
+                <RenderInput label="Occupation (Optional)" value={form.occupation} onChangeText={(v: string) => updateFormSanitized('occupation', v)} placeholder="e.g. Engineer" isDark={isDark} textPrimary={textPrimary} textSecondary={textSecondary} inputBg={inputBg} inputBorder={inputBorder} />
+                <RenderInput label="Home Address (Optional)" value={form.parent_address} onChangeText={(v: string) => updateFormSanitized('parent_address', v)} placeholder="Physical address" isDark={isDark} textPrimary={textPrimary} textSecondary={textSecondary} inputBg={inputBg} inputBorder={inputBorder} />
                 <View style={{ marginBottom: 16 }}>
                     <Text style={{ fontSize: 13, fontWeight: '600', color: textSecondary, marginBottom: 8 }}>Link to Student(s)</Text>
                     <TextInput
@@ -1097,8 +1152,6 @@ export default function CreateUserScreen() {
                 <View style={{ backgroundColor: card, borderRadius: 16, borderWidth: 1, borderColor: border, padding: 16, marginBottom: 16 }}>
                     <Text style={{ fontSize: 11, fontWeight: '700', color: textSecondary, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>Teacher Details</Text>
                     {renderReviewRow('Department', form.department)}
-                    {renderReviewRow('Qualification', form.qualification)}
-                    {renderReviewRow('Specialization', form.specialization)}
                     {renderReviewRow('Position', form.position?.replace(/_/g, ' '))}
                     {renderReviewRow('Subjects', form.subject_ids.length > 0 ? form.subject_ids.map(id => subjects.find(s => s.id === id)?.title || id).join(', ') : undefined)}
                     {renderReviewRow('Class Teacher', form.class_teacher_id ? classes.find(c => c.id === form.class_teacher_id)?.name : undefined)}
@@ -1146,7 +1199,7 @@ export default function CreateUserScreen() {
                     <Text style={{ color: textSecondary }}>Temp Password</Text>
                     <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                         <Text style={{ fontFamily: 'monospace', fontWeight: '700', fontSize: 17, color: '#FF6B00', marginRight: 8 }}>{result?.tempPassword}</Text>
-                        <TouchableOpacity onPress={() => copyToClipboard(result?.tempPassword || '')}>
+                        <TouchableOpacity onPress={() => copyToClipboard(result?.tempPassword || '', 'Temporary password')}>
                             <Ionicons name="copy-outline" size={20} color={textSecondary} />
                         </TouchableOpacity>
                     </View>
@@ -1154,7 +1207,7 @@ export default function CreateUserScreen() {
                 {!!result?.credential_delivery?.url && (
                     <View style={{ paddingTop: 8 }}>
                         <Text style={{ color: textSecondary, marginBottom: 4 }}>One-time credential link</Text>
-                        <TouchableOpacity onPress={() => copyToClipboard(result?.credential_delivery?.url || '')}>
+                        <TouchableOpacity onPress={() => copyToClipboard(result?.credential_delivery?.url || '', 'Secure link')}>
                             <Text style={{ color: '#FF6B00', fontWeight: '700' }}>Copy secure link</Text>
                         </TouchableOpacity>
                     </View>
@@ -1162,7 +1215,7 @@ export default function CreateUserScreen() {
                 {!!result?.credential_document && (
                     <View style={{ paddingTop: 8 }}>
                         <Text style={{ color: textSecondary, marginBottom: 4 }}>Credential document</Text>
-                        <TouchableOpacity onPress={() => copyToClipboard(result?.credential_document || '')}>
+                        <TouchableOpacity onPress={() => copyToClipboard(result?.credential_document || '', 'Credential document')}>
                             <Text style={{ color: '#FF6B00', fontWeight: '700' }}>Copy credential document</Text>
                         </TouchableOpacity>
                     </View>
@@ -1192,7 +1245,7 @@ export default function CreateUserScreen() {
                                     <Text style={{ color: textSecondary }}>Temp Password</Text>
                                     <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                                         <Text style={{ fontFamily: 'monospace', fontWeight: '700', fontSize: 17, color: '#3b82f6', marginRight: 8 }}>{result.parentResult.tempPassword}</Text>
-                                        <TouchableOpacity onPress={() => copyToClipboard(result.parentResult.tempPassword)}>
+                                        <TouchableOpacity onPress={() => copyToClipboard(result.parentResult.tempPassword, 'Parent temporary password')}>
                                             <Ionicons name="copy-outline" size={20} color={textSecondary} />
                                         </TouchableOpacity>
                                     </View>
@@ -1200,7 +1253,7 @@ export default function CreateUserScreen() {
                                 {!!result?.parentResult?.credential_delivery?.url && (
                                     <View style={{ paddingTop: 8 }}>
                                         <Text style={{ color: textSecondary, marginBottom: 4 }}>One-time credential link</Text>
-                                        <TouchableOpacity onPress={() => copyToClipboard(result?.parentResult?.credential_delivery?.url || '')}>
+                                        <TouchableOpacity onPress={() => copyToClipboard(result?.parentResult?.credential_delivery?.url || '', 'Parent secure link')}>
                                             <Text style={{ color: '#3b82f6', fontWeight: '700' }}>Copy secure link</Text>
                                         </TouchableOpacity>
                                     </View>
@@ -1208,7 +1261,7 @@ export default function CreateUserScreen() {
                                 {!!result?.parentResult?.credential_document && (
                                     <View style={{ paddingTop: 8 }}>
                                         <Text style={{ color: textSecondary, marginBottom: 4 }}>Credential document</Text>
-                                        <TouchableOpacity onPress={() => copyToClipboard(result?.parentResult?.credential_document || '')}>
+                                        <TouchableOpacity onPress={() => copyToClipboard(result?.parentResult?.credential_document || '', 'Parent credential document')}>
                                             <Text style={{ color: '#3b82f6', fontWeight: '700' }}>Copy credential document</Text>
                                         </TouchableOpacity>
                                     </View>
@@ -1261,10 +1314,18 @@ export default function CreateUserScreen() {
                         <Text style={{ fontWeight: '700', color: textPrimary }}>{step === 0 ? 'Cancel' : 'Back'}</Text>
                     </TouchableOpacity>
                     <TouchableOpacity onPress={nextStep} disabled={!canGoNext() || loading}
-                        style={{ flex: 1, backgroundColor: canGoNext() ? '#FF6B00' : (isDark ? 'rgba(255,255,255,0.1)' : '#d1d5db'), paddingVertical: 16, borderRadius: 12, alignItems: 'center' }}>
+                        style={{ 
+                            flex: 1, 
+                            backgroundColor: canGoNext() && !loading ? '#FF6B00' : (isDark ? 'rgba(255,255,255,0.1)' : '#e5e7eb'), 
+                            paddingVertical: 16, 
+                            borderRadius: 12, 
+                            alignItems: 'center',
+                            opacity: canGoNext() && !loading ? 1 : 0.6,
+                            cursor: (Platform.OS === 'web' ? (canGoNext() && !loading ? 'pointer' : 'not-allowed') : undefined) as any
+                        }}>
                         {loading
                             ? <ActivityIndicator color="white" />
-                            : <Text style={{ fontWeight: '700', color: 'white' }}>{step === 3 ? 'Confirm & Enroll' : 'Next'}</Text>
+                            : <Text style={{ fontWeight: '700', color: canGoNext() && !loading ? 'white' : (isDark ? '#6b7280' : '#9ca3af') }}>{step === 3 ? 'Confirm & Enroll' : 'Next'}</Text>
                         }
                     </TouchableOpacity>
                 </View>

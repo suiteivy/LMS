@@ -6,6 +6,7 @@ import { router } from "expo-router";
 import { Calendar, Clock, MapPin, Users } from 'lucide-react-native';
 import React, { useEffect, useState } from "react";
 import { Alert, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { showFetchError } from "@/utils/toast";
 
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
@@ -64,7 +65,7 @@ export default function TimetablePage() {
             setTimetable(data || []);
         } catch (error) {
             console.error("Fetch timetable error:", error);
-            Alert.alert("Error", "Could not fetch your timetable.");
+            showFetchError("timetable", error);
         } finally {
             setLoading(false);
         }
