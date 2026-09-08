@@ -1,5 +1,7 @@
 # Getting Started
 
+> 📘 **Institutional Training & Deployment**: For a complete step-by-step institutional setup, operator handbook for every module, and training checklist, consult the [**Institutional Training & Master Guide**](institution_training_guide.md).
+
 ## Prerequisites
 - Node.js (v18+)
 - Expo CLI

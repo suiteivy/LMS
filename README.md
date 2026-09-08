@@ -3,6 +3,7 @@
 A comprehensive, role-based mobile application for managing educational institutions. Built with **React Native (Expo)** and **Supabase**.
 
 ## 🚀 Quick Links
+- [**Institutional Training & Master Guide**](docs/institution_training_guide.md) - Complete step-by-step onboarding, module handbook & competitive analysis.
 - [**Getting Started**](docs/getting_started.md) - Setup and installation guide.
 - [**Architecture**](docs/architecture.md) - High-level system design.
 - [**API Reference**](docs/api_endpoints.md) - Backend API documentation.
