@@ -1,5 +1,7 @@
 import { SettingsService } from '@/services/SettingsService';
-import { validateEmail } from '@/utils/validation';
+import { validateEmail, getPasswordRequirementStatuses } from '@/utils/validation';
+import { safeSignOut } from '@/utils/safeSignOut';
+import { LogoutReason } from '@/types/logout';
 import { Ionicons } from '@expo/vector-icons';
 import { router, Stack } from 'expo-router';
 import { Shield } from 'lucide-react-native';
@@ -625,19 +627,24 @@ export default function VerifySecurityQuestionsScreen() {
     }
   };
 
+  const passwordStatuses = getPasswordRequirementStatuses(newPassword);
+  const isPasswordValid = passwordStatuses.every((s) => s.met);
+  const passwordsMatch = newPassword.length > 0 && newPassword === confirmPassword;
+  const isStep3Valid = isPasswordValid && passwordsMatch;
+
+  const inlineStep3Error = (() => {
+    if (!newPassword && !confirmPassword) return null;
+    if (!isPasswordValid) return 'Password does not meet all policy requirements.';
+    if (!confirmPassword) return 'Please confirm your new password.';
+    if (!passwordsMatch) return 'Passwords do not match.';
+    return null;
+  })();
+
   const handleResetPassword = async () => {
-    if (!newPassword.trim() || !confirmPassword.trim()) {
-      showError('Missing Password', 'Fill both password fields.');
-      shakeCard();
-      return;
-    }
-    if (newPassword.length < 6) {
-      showError('Password Too Short', 'Password must be at least 6 characters.');
-      shakeCard();
-      return;
-    }
-    if (newPassword !== confirmPassword) {
-      showError('Mismatch', 'Passwords do not match.');
+    if (!isStep3Valid) {
+      if (inlineStep3Error) {
+        showError('Validation Error', inlineStep3Error);
+      }
       shakeCard();
       return;
     }
@@ -651,7 +658,20 @@ export default function VerifySecurityQuestionsScreen() {
         return;
       }
 
-      showSuccess('Password Updated', 'Sign in with your new password.');
+      // Explicitly sign out / invalidate session if one exists to prevent stale session errors
+      await safeSignOut('local', LogoutReason.USER_INITIATED, true);
+      if (Platform.OS === 'web' && typeof window !== 'undefined') {
+        try {
+          for (let i = window.localStorage.length - 1; i >= 0; i--) {
+            const key = window.localStorage.key(i);
+            if (key && (key.startsWith('sb-') || key.includes('supabase.auth.token'))) {
+              window.localStorage.removeItem(key);
+            }
+          }
+        } catch {}
+      }
+
+      showSuccess('Password Updated', 'Your password has been updated. Please sign in with your new password.');
       router.replace('/(auth)/signIn' as any);
     } catch (err: any) {
       const raw = err?.response?.data?.error || err?.response?.data?.message || err?.message;
@@ -922,7 +942,7 @@ export default function VerifySecurityQuestionsScreen() {
                     <Animated.View style={fieldStyle(field3)}>
                       <GlassInput
                         label="New Password"
-                        placeholder="Minimum 6 characters"
+                        placeholder="At least 8 characters"
                         value={newPassword}
                         onChangeText={(value: string) => {
                           setNewPassword(value);
@@ -943,6 +963,25 @@ export default function VerifySecurityQuestionsScreen() {
                           </TouchableOpacity>
                         }
                       />
+
+                      {/* Live Password Requirements Checklist */}
+                      <View style={{ marginTop: -8, marginBottom: 18, paddingHorizontal: 4 }}>
+                        <Text style={{ fontSize: 11, fontWeight: '700', color: 'rgba(255,255,255,0.4)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: 1 }}>
+                          Password Requirements:
+                        </Text>
+                        {passwordStatuses.map((req) => (
+                          <View key={req.id} style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4, gap: 6 }}>
+                            <IconIonicons
+                              name={req.met ? "checkmark-circle" : "ellipse-outline"}
+                              size={14}
+                              color={req.met ? "#4ade80" : "rgba(255,255,255,0.3)"}
+                            />
+                            <Text style={{ fontSize: 12, color: req.met ? "#4ade80" : "rgba(255,255,255,0.5)", fontWeight: req.met ? '600' : '400' }}>
+                              {req.label}
+                            </Text>
+                          </View>
+                        ))}
+                      </View>
 
                       <GlassInput
                         label="Confirm Password"
@@ -968,12 +1007,47 @@ export default function VerifySecurityQuestionsScreen() {
                         }
                       />
 
+                      {/* Live Password Match Indicator */}
+                      {confirmPassword.length > 0 && (
+                        <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: -10, marginBottom: 18, marginLeft: 4, gap: 6 }}>
+                          <IconIonicons
+                            name={passwordsMatch ? "checkmark-circle" : "close-circle"}
+                            size={14}
+                            color={passwordsMatch ? "#4ade80" : "#f87171"}
+                          />
+                          <Text style={{ fontSize: 12, fontWeight: '600', color: passwordsMatch ? "#4ade80" : "#f87171" }}>
+                            {passwordsMatch ? "Passwords match" : "Passwords do not match"}
+                          </Text>
+                        </View>
+                      )}
+
+                      {/* Specific Inline Error for Step 3 */}
+                      {inlineStep3Error && (newPassword.length > 0 || confirmPassword.length > 0) && (
+                        <View style={{
+                          flexDirection: 'row',
+                          alignItems: 'center',
+                          marginBottom: 14,
+                          paddingHorizontal: 12,
+                          paddingVertical: 10,
+                          borderRadius: 14,
+                          backgroundColor: 'rgba(239,68,68,0.12)',
+                          borderWidth: 1,
+                          borderColor: 'rgba(239,68,68,0.25)',
+                          gap: 8,
+                        }}>
+                          <IconIonicons name="alert-circle" size={16} color="#f87171" />
+                          <Text style={{ color: '#fca5a5', fontSize: 12, fontWeight: '600', flex: 1 }}>
+                            {inlineStep3Error}
+                          </Text>
+                        </View>
+                      )}
+
                       <View style={{ marginTop: 8 }}>
                         <PrimaryButton
                           title="Reset Password"
                           onPress={handleResetPassword}
                           loading={loading}
-                          disabled={!newPassword.trim() || !confirmPassword.trim()}
+                          disabled={!isStep3Valid}
                           scale={btnScale}
                         />
                       </View>

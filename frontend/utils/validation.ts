@@ -3,6 +3,42 @@ export const validateEmail = (email: string): boolean => {
   return emailRegex.test(email);
 };
 
+export interface PasswordRequirement {
+  id: string;
+  label: string;
+  test: (password: string) => boolean;
+}
+
+export const PASSWORD_REQUIREMENTS: PasswordRequirement[] = [
+  {
+    id: "length",
+    label: "At least 8 characters (max 72)",
+    test: (p: string) => p.length >= 8 && p.length <= 72,
+  },
+  {
+    id: "lowercase",
+    label: "At least one lowercase letter",
+    test: (p: string) => /(?=.*[a-z])/.test(p),
+  },
+  {
+    id: "uppercase",
+    label: "At least one uppercase letter",
+    test: (p: string) => /(?=.*[A-Z])/.test(p),
+  },
+  {
+    id: "number",
+    label: "At least one number",
+    test: (p: string) => /(?=.*\d)/.test(p),
+  },
+];
+
+export const getPasswordRequirementStatuses = (password: string) => {
+  return PASSWORD_REQUIREMENTS.map((req) => ({
+    ...req,
+    met: req.test(password || ""),
+  }));
+};
+
 export const validatePassword = (
   password: string
 ): {
@@ -10,20 +46,23 @@ export const validatePassword = (
   errors: string[];
 } => {
   const errors: string[] = [];
+  const safePassword = password || "";
 
-  if (password.length < 8) {
+  if (safePassword.length < 8) {
     errors.push("Password must be at least 8 characters long");
+  } else if (safePassword.length > 72) {
+    errors.push("Password cannot be longer than 72 characters");
   }
 
-  if (!/(?=.*[a-z])/.test(password)) {
+  if (!/(?=.*[a-z])/.test(safePassword)) {
     errors.push("Password must contain at least one lowercase letter");
   }
 
-  if (!/(?=.*[A-Z])/.test(password)) {
+  if (!/(?=.*[A-Z])/.test(safePassword)) {
     errors.push("Password must contain at least one uppercase letter");
   }
 
-  if (!/(?=.*\d)/.test(password)) {
+  if (!/(?=.*\d)/.test(safePassword)) {
     errors.push("Password must contain at least one number");
   }
 

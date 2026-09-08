@@ -30,11 +30,11 @@ export const useSubjectForm = () => {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
-  // Validate required form fields
+  // Validate required form fields (Title only, description is optional)
   const validateForm = () => {
-    const { title, description } = formData;
-    if (!title || !description) {
-      Alert.alert("Error", "Please fill in all required fields (Title, Description)");
+    const { title } = formData;
+    if (!title || !title.trim()) {
+      Alert.alert("Error", "Please enter a subject title");
       return false;
     }
     return true;
@@ -46,9 +46,9 @@ export const useSubjectForm = () => {
 
     setIsSubmitting(true);
     try {
-      const created = await SubjectAPI.createSubject({
-        title: formData.title,
-        description: formData.description,
+      await SubjectAPI.createSubject({
+        title: formData.title.trim(),
+        description: formData.description || "",
         institution_id: profile?.institution_id || "",
         class_id: formData.class_id || undefined,
         class_ids: formData.class_ids || [],
@@ -60,7 +60,6 @@ export const useSubjectForm = () => {
       router.back();
     } catch (err: any) {
       console.error("Submit failed:", err);
-      // Global interceptor handles the toast, but we might want a specific error here
     } finally {
       setIsSubmitting(false);
     }
@@ -69,10 +68,8 @@ export const useSubjectForm = () => {
   // Save the current form state as a draft
   const saveDraft = () => {
     Alert.alert("Draft", "Subject saved as draft (locally)");
-    // Here you could save to AsyncStorage
   };
 
-  //  all form state and handler functions Returned
   return {
     formData,
     isSubmitting,

@@ -9,6 +9,7 @@ import { useTheme } from "@/contexts/ThemeContext";
 import { CacheService } from "@/services/CacheService";
 import { supabase } from "@/libs/supabase";
 import { useRouter } from "expo-router";
+import { showFetchError } from "@/utils/toast";
 import {
   ArrowRight,
   Book,
@@ -384,6 +385,7 @@ export default function Index() {
       }
     } catch (error) {
       console.error("Error fetching dashboard data:", error);
+      showFetchError("dashboard data", error);
     } finally {
       setLoadingData(false);
       setRefreshing(false);

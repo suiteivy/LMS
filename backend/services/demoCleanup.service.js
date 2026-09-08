@@ -1,4 +1,5 @@
 const supabase = require('../utils/supabaseClient');
+const { withSupabaseRetry, isTransientSupabaseError } = require('../utils/supabaseRetry');
 
 const TEMPLATE_INSTITUTION_ID = process.env.TEMPLATE_INSTITUTION_ID || 'b5bd788c-8297-4a96-b8b3-157814504fba';
 
@@ -6,14 +7,21 @@ async function cleanupExpiredDemoSessions() {
     try {
         const now = new Date().toISOString();
 
-        const { data: expiredSessions, error: fetchError } = await supabase
-            .from('trial_sessions')
-            .select('id, demo_user_id, role')
-            .lt('expires_at', now);
+        const { data: expiredSessions, error: fetchError } = await withSupabaseRetry(() =>
+            supabase
+                .from('trial_sessions')
+                .select('id, demo_user_id, role')
+                .lt('expires_at', now),
+            { attempts: 3, delaysMs: [300, 1000] }
+        );
 
         if (fetchError) {
             // Table may not exist yet — not a fatal error
             if (fetchError.message?.includes('does not exist') || fetchError.code === '42P01') {
+                return;
+            }
+            if (isTransientSupabaseError(fetchError)) {
+                console.warn('[DemoCleanup] Transient network error querying expired sessions, skipping cycle:', fetchError.message || fetchError);
                 return;
             }
             throw fetchError;
@@ -78,7 +86,11 @@ async function cleanupExpiredDemoSessions() {
         }
 
     } catch (err) {
-        console.error('[DemoCleanup] Failed to run:', err);
+        if (isTransientSupabaseError(err)) {
+            console.warn('[DemoCleanup] Transient network error during run, skipping cycle:', err.message || err);
+        } else {
+            console.error('[DemoCleanup] Failed to run:', err);
+        }
     }
 }
 

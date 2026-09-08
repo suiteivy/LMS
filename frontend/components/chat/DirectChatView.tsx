@@ -5,6 +5,7 @@ import { MessageService } from "@/services/MessageService";
 import { groupMessagesByDate, isDateSeparator } from "@/utils/chatDateGrouping";
 import { Spinner } from "@/components/ui/Spinner";
 import { ChatMessageSkeleton, ConversationListItemSkeleton } from "@/components/ui/skeletons";
+import { showFetchError } from "@/utils/toast";
 import { Alert, Image, Modal, RefreshControl, ScrollView, Text, TextInput, TouchableOpacity, View, useWindowDimensions } from "react-native";
 import { useIsFocused } from "@react-navigation/native";
 import { AlertCircle, Check, CheckCheck, CheckCircle2, ChevronLeft, ChevronRight, Clock3, MessageCircle, MoreVertical, Plus, Search, Send, User } from "lucide-react-native";
@@ -275,6 +276,7 @@ export function DirectChatView({
       }
     } catch (error) {
       console.error("Failed to fetch conversations", error);
+      showFetchError("conversations", error);
       conversationSignatureRef.current = "";
       setConversations([]);
       setSelectedConversation(null);
@@ -308,6 +310,9 @@ export function DirectChatView({
         }
         setHasMore(Boolean(data.hasMore));
         setCursor(data.nextCursor || null);
+      } catch (error) {
+        console.error("Failed to load messages", error);
+        showFetchError("messages", error);
       } finally {
         if (reset) {
           setLoadingMessages(false);
@@ -336,6 +341,7 @@ export function DirectChatView({
       await loadMessages(selectedConversation.id, false);
     } catch (error) {
       console.error("Failed to load older messages", error);
+      showFetchError("older messages", error);
     } finally {
       setLoadingMore(false);
     }
@@ -539,6 +545,7 @@ export function DirectChatView({
       contactsLoadedRef.current = true;
     } catch (error) {
       console.error("Failed to load contacts", error);
+      showFetchError("contacts", error);
     } finally {
       setLoadingContacts(false);
     }

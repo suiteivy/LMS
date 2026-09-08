@@ -24,6 +24,9 @@ import { Ionicons } from '@expo/vector-icons';
 import Toast from 'react-native-toast-message';
 import { LivingBackground } from '@/components/landing/LivingBackground';
 import { GlassCard } from '@/components/ui/GlassCard';
+import { getPasswordRequirementStatuses } from '@/utils/validation';
+import { safeSignOut } from '@/utils/safeSignOut';
+import { LogoutReason } from '@/types/logout';
 
 const IconIonicons = Ionicons as any;
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -480,25 +483,33 @@ export default function SecurityQuestionsSetup() {
 
   const isPasswordSetupRequired = mustChangePassword;
 
-  const submit = async () => {
-    if (!selectedQuestionKey || !selectedAnswer.trim()) {
-      Toast.show({ type: 'error', text1: 'Missing answer', text2: 'Please select one question and provide your answer.' });
-      return;
-    }
+  // Real-time password requirement statuses
+  const passwordStatuses = getPasswordRequirementStatuses(newPassword);
+  const isPasswordValid = passwordStatuses.every((r) => r.met);
+  const passwordsMatch = newPassword.length > 0 && newPassword === confirmPassword;
+  const isAnswerValid = selectedAnswer.trim().length > 0;
 
+  const isFormValid = isPasswordSetupRequired
+    ? isAnswerValid && isPasswordValid && passwordsMatch
+    : isAnswerValid;
+
+  const inlineValidationError = (() => {
+    if (!isAnswerValid) return 'Please provide an answer for your security question.';
     if (isPasswordSetupRequired) {
-      if (!newPassword || !confirmPassword) {
-        Toast.show({ type: 'error', text1: 'Missing password fields', text2: 'Enter your new password and confirmation.' });
-        return;
+      if (!newPassword) return 'Please enter a new password.';
+      if (!isPasswordValid) return 'New password does not meet all policy requirements.';
+      if (!confirmPassword) return 'Please confirm your new password.';
+      if (!passwordsMatch) return 'Passwords do not match.';
+    }
+    return null;
+  })();
+
+  const submit = async () => {
+    if (!isFormValid) {
+      if (inlineValidationError) {
+        Toast.show({ type: 'error', text1: 'Validation Error', text2: inlineValidationError });
       }
-      if (newPassword.length < 6) {
-        Toast.show({ type: 'error', text1: 'Weak password', text2: 'New password must be at least 6 characters.' });
-        return;
-      }
-      if (newPassword !== confirmPassword) {
-        Toast.show({ type: 'error', text1: 'Password mismatch', text2: 'New password and confirm password must match.' });
-        return;
-      }
+      return;
     }
 
     try {
@@ -513,20 +524,30 @@ export default function SecurityQuestionsSetup() {
         await SettingsService.setupSecurityQuestions(selectedQuestionKey, selectedAnswer.trim());
       }
 
-      const latestProfile = await refreshProfile();
-      const redirectPath = getRoleRedirect(latestProfile, isPlatformAdmin);
+      // Explicitly sign out to invalidate current session and prevent stale session errors
+      await safeSignOut('local', LogoutReason.USER_INITIATED, true);
+      if (Platform.OS === 'web' && typeof window !== 'undefined') {
+        try {
+          for (let i = window.localStorage.length - 1; i >= 0; i--) {
+            const key = window.localStorage.key(i);
+            if (key && (key.startsWith('sb-') || key.includes('supabase.auth.token'))) {
+              window.localStorage.removeItem(key);
+            }
+          }
+        } catch {}
+      }
 
       Toast.show({
         type: 'success',
-        text1: 'Success',
+        text1: 'Setup Complete',
         text2: isPasswordSetupRequired
-          ? 'Security question saved and password updated.'
-          : 'Security question saved.',
+          ? 'Your password and security question have been updated. Please sign in with your new password.'
+          : 'Security question saved. Please sign in to continue.',
+        position: 'top',
+        visibilityTime: 6000,
       });
 
-      if (redirectPath) {
-        router.replace(redirectPath as any);
-      }
+      router.replace('/(auth)/signIn' as any);
     } catch (err: any) {
       const message = err?.response?.data?.error || err?.message || 'Failed to complete setup';
       if (isPasswordSetupRequired && String(err?.response?.data?.code || '').startsWith('CREDENTIAL_SETUP_PARTIAL_')) {
@@ -687,7 +708,7 @@ export default function SecurityQuestionsSetup() {
                     <>
                       <GlassInput
                         label="New Password"
-                        placeholder="Minimum 6 characters"
+                        placeholder="At least 8 characters"
                         value={newPassword}
                         onChangeText={setNewPassword}
                         secureTextEntry={!showPassword}
@@ -706,6 +727,25 @@ export default function SecurityQuestionsSetup() {
                           </TouchableOpacity>
                         }
                       />
+
+                      {/* Live Password Requirements Checklist */}
+                      <View style={{ marginTop: -8, marginBottom: 18, paddingHorizontal: 4 }}>
+                        <Text style={{ fontSize: 11, fontWeight: '700', color: 'rgba(255,255,255,0.4)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: 1 }}>
+                          Password Requirements:
+                        </Text>
+                        {passwordStatuses.map((req) => (
+                          <View key={req.id} style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4, gap: 6 }}>
+                            <IconIonicons
+                              name={req.met ? "checkmark-circle" : "ellipse-outline"}
+                              size={14}
+                              color={req.met ? "#4ade80" : "rgba(255,255,255,0.3)"}
+                            />
+                            <Text style={{ fontSize: 12, color: req.met ? "#4ade80" : "rgba(255,255,255,0.5)", fontWeight: req.met ? '600' : '400' }}>
+                              {req.label}
+                            </Text>
+                          </View>
+                        ))}
+                      </View>
 
                       <GlassInput
                         label="Confirm Password"
@@ -728,11 +768,46 @@ export default function SecurityQuestionsSetup() {
                           </TouchableOpacity>
                         }
                       />
+
+                      {/* Live Password Match Indicator */}
+                      {confirmPassword.length > 0 && (
+                        <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: -10, marginBottom: 18, marginLeft: 4, gap: 6 }}>
+                          <IconIonicons
+                            name={passwordsMatch ? "checkmark-circle" : "close-circle"}
+                            size={14}
+                            color={passwordsMatch ? "#4ade80" : "#f87171"}
+                          />
+                          <Text style={{ fontSize: 12, fontWeight: '600', color: passwordsMatch ? "#4ade80" : "#f87171" }}>
+                            {passwordsMatch ? "Passwords match" : "Passwords do not match"}
+                          </Text>
+                        </View>
+                      )}
                     </>
                   )}
 
+                  {/* Specific Inline Error for whichever condition is failing */}
+                  {inlineValidationError && (selectedAnswer.length > 0 || newPassword.length > 0 || confirmPassword.length > 0) && (
+                    <View style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      marginBottom: 14,
+                      paddingHorizontal: 12,
+                      paddingVertical: 10,
+                      borderRadius: 14,
+                      backgroundColor: 'rgba(239,68,68,0.12)',
+                      borderWidth: 1,
+                      borderColor: 'rgba(239,68,68,0.25)',
+                      gap: 8,
+                    }}>
+                      <IconIonicons name="alert-circle" size={16} color="#fca5a5" />
+                      <Text style={{ color: '#fca5a5', fontSize: 12, fontWeight: '600', flex: 1 }}>
+                        {inlineValidationError}
+                      </Text>
+                    </View>
+                  )}
+
                   {/* ── SUBMIT BUTTON ── */}
-                  <View style={{ marginTop: 12 }}>
+                  <View style={{ marginTop: 6 }}>
                     <PrimaryButton
                       title={
                         isPasswordSetupRequired
@@ -741,7 +816,7 @@ export default function SecurityQuestionsSetup() {
                       }
                       onPress={submit}
                       loading={loading}
-                      disabled={isProfileLoading}
+                      disabled={!isFormValid || loading || isProfileLoading}
                       scale={btnScale}
                     />
                   </View>

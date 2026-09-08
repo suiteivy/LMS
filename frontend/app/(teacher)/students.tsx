@@ -7,6 +7,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { StudentService } from "@/services/StudentService";
 import { TeacherAPI } from "@/services/TeacherService";
 import { useTheme } from "@/contexts/ThemeContext";
+import { showFetchError } from "@/utils/toast";
 
 interface StudentListItem {
     id: string;
@@ -70,6 +71,7 @@ export default function StudentsPage() {
             setStudents(data || []);
         } catch (error) {
             console.error("Error fetching students:", error);
+            showFetchError("students", error);
         } finally {
             setLoading(false);
         }
@@ -86,6 +88,7 @@ export default function StudentsPage() {
             setStudentDetails(details);
         } catch (error) {
             console.error("Error fetching student details:", error);
+            showFetchError("student details", error);
         } finally {
             setDetailsLoading(false);
         }

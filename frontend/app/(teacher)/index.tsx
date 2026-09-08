@@ -11,6 +11,7 @@ import { RefreshControl, ScrollView, Text, TouchableOpacity, View, StatusBar } f
 import { SubscriptionBanner, SubscriptionGate, SubscriptionBadge } from '@/components/shared/SubscriptionComponents';
 import { formatClassLabel } from '@/utils/classLabel';
 import { useTeacherRoleMode } from '@/hooks/useTeacherRoleMode';
+import { showFetchError } from '@/utils/toast';
 
 // Define Interface for the QuickAction props
 interface QuickActionProps {
@@ -205,6 +206,7 @@ export default function TeacherHome() {
             }
         } catch (error) {
             console.error("Error fetching dashboard data:", error);
+            showFetchError("dashboard data", error);
         } finally {
             setLoading(false);
             setRefreshing(false);

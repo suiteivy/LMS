@@ -124,12 +124,6 @@ function hasRelationMissingError(error) {
     );
 }
 
-function buildDefaultLevelRange(levelLabel) {
-    if (levelLabel === 'Form') return [1, 2, 3, 4, 5, 6];
-    if (levelLabel === 'KG') return [1, 2, 3];
-    return [1, 2, 3, 4, 5, 6, 7];
-}
-
 let classesDeletedAtSupportPromise = null;
 async function supportsClassesDeletedAt() {
     if (!classesDeletedAtSupportPromise) {
@@ -214,20 +208,14 @@ async function getClassDomainOptions(institutionId) {
 
     const scopedCategoryIds = [...new Set((scopedInstitutionCategories || []).map((row) => row.category_id).filter(Boolean))];
 
-    let categoriesQuery = supabase
-        .from('class_categories')
-        .select('id, name, description, sort_order, school_category_id')
-        .eq('institution_id', institutionId)
-        .is('deleted_at', null)
-        .order('sort_order', { ascending: true })
-        .order('name', { ascending: true });
-
-    if (scopedCategoryIds.length > 0) {
-        categoriesQuery = categoriesQuery.in('school_category_id', scopedCategoryIds);
-    }
-
     const [categoriesRes, levelsRes, streamsRes] = await Promise.all([
-        categoriesQuery,
+        supabase
+            .from('class_categories')
+            .select('id, name, description, sort_order, school_category_id')
+            .eq('institution_id', institutionId)
+            .is('deleted_at', null)
+            .order('sort_order', { ascending: true })
+            .order('name', { ascending: true }),
         supabase
             .from('class_levels')
             .select('id, category_id, level_number, name, sort_order, type_id, category_types:type_id(name, sort_order)')
@@ -249,8 +237,7 @@ async function getClassDomainOptions(institutionId) {
     if (streamsRes.error) throw streamsRes.error;
 
     const categories = categoriesRes.data || [];
-    const allowedCategoryIds = new Set(categories.map((item) => item.id));
-    const levels = (levelsRes.data || []).filter((item) => allowedCategoryIds.has(item.category_id));
+    const levels = levelsRes.data || [];
     const allowedLevelIds = new Set(levels.map((item) => item.id));
     const streams = (streamsRes.data || []).filter((item) => allowedLevelIds.has(item.level_id));
 
@@ -459,37 +446,121 @@ exports.createClassDomainCategory = async (req, res) => {
 exports.createClassDomainLevel = async (req, res) => {
     try {
         const institution_id = req.institution_id;
-        const { category_id, level_number, name, sort_order } = req.body;
+        let { category_id, level_number, name, sort_order } = req.body;
         if (!institution_id) return res.status(400).json({ error: 'Institution context is required' });
-        if (!category_id) return res.status(400).json({ error: 'category_id is required' });
+        
         const levelNumber = toFiniteNumber(level_number);
         if (!levelNumber || levelNumber <= 0) return res.status(400).json({ error: 'level_number must be a positive integer' });
 
-        const { data: category, error: categoryError } = await supabase
-            .from('class_categories')
-            .select('id')
-            .eq('id', category_id)
-            .eq('institution_id', institution_id)
-            .is('deleted_at', null)
-            .single();
-        if (categoryError || !category) return res.status(404).json({ error: 'Category not found' });
+        // Auto-resolve or create category if not provided
+        if (!category_id) {
+            let { data: cat } = await supabase
+                .from('class_categories')
+                .select('id')
+                .eq('institution_id', institution_id)
+                .is('deleted_at', null)
+                .order('created_at', { ascending: true })
+                .limit(1)
+                .maybeSingle();
 
-        const { data, error } = await supabase
+            if (!cat) {
+                const { data: newCat, error: catCreateErr } = await supabase
+                    .from('class_categories')
+                    .insert({
+                        institution_id,
+                        name: 'General',
+                        description: 'Default category for grade levels',
+                        sort_order: 0,
+                    })
+                    .select('id')
+                    .single();
+                if (catCreateErr) throw catCreateErr;
+                cat = newCat;
+            }
+            category_id = cat.id;
+        } else {
+            const { data: category, error: categoryError } = await supabase
+                .from('class_categories')
+                .select('id')
+                .eq('id', category_id)
+                .eq('institution_id', institution_id)
+                .is('deleted_at', null)
+                .single();
+            if (categoryError || !category) return res.status(404).json({ error: 'Category not found' });
+        }
+
+        const formattedName = name && String(name).trim() ? String(name).trim() : `Grade ${levelNumber}`;
+
+        // Check if an active level already exists with this number for this institution
+        const { data: existingLevel } = await supabase
             .from('class_levels')
-            .insert({
-                institution_id,
-                category_id,
-                level_number: levelNumber,
-                name: name ? String(name).trim() : null,
-                sort_order: toFiniteNumber(sort_order) ?? levelNumber,
-            })
-            .select('id, category_id, level_number, name, sort_order')
-            .single();
+            .select('id, name, level_number')
+            .eq('institution_id', institution_id)
+            .eq('level_number', levelNumber)
+            .is('deleted_at', null)
+            .maybeSingle();
 
-        if (error) throw error;
+        if (existingLevel) {
+            return res.status(409).json({
+                code: 'DUPLICATE_GRADE_LEVEL',
+                error: `Grade level ${levelNumber} (${existingLevel.name || 'Level ' + levelNumber}) already exists.`,
+            });
+        }
+
+        // Check if there is a soft-deleted level with this number, un-delete it
+        const { data: softDeletedLevel } = await supabase
+            .from('class_levels')
+            .select('id')
+            .eq('institution_id', institution_id)
+            .eq('category_id', category_id)
+            .eq('level_number', levelNumber)
+            .not('deleted_at', 'is', null)
+            .maybeSingle();
+
+        let data;
+        if (softDeletedLevel) {
+            const { data: restored, error: restoreErr } = await supabase
+                .from('class_levels')
+                .update({
+                    deleted_at: null,
+                    name: formattedName,
+                    sort_order: toFiniteNumber(sort_order) ?? levelNumber,
+                    updated_at: new Date().toISOString(),
+                })
+                .eq('id', softDeletedLevel.id)
+                .select('id, category_id, level_number, name, sort_order')
+                .single();
+            if (restoreErr) throw restoreErr;
+            data = restored;
+        } else {
+            const { data: inserted, error } = await supabase
+                .from('class_levels')
+                .insert({
+                    institution_id,
+                    category_id,
+                    level_number: levelNumber,
+                    name: formattedName,
+                    sort_order: toFiniteNumber(sort_order) ?? levelNumber,
+                })
+                .select('id, category_id, level_number, name, sort_order')
+                .single();
+
+            if (error) throw error;
+            data = inserted;
+        }
+
         res.status(201).json(data);
     } catch (err) {
         console.error('createClassDomainLevel error:', err);
+        const isDuplicate = err?.code === '23505' || 
+            String(err?.message || '').toLowerCase().includes('duplicate') ||
+            String(err?.message || '').toLowerCase().includes('unique');
+        if (isDuplicate) {
+            return res.status(409).json({
+                code: 'DUPLICATE_GRADE_LEVEL',
+                error: `This grade level already exists.`,
+            });
+        }
         res.status(500).json({ error: err.message });
     }
 };
@@ -678,7 +749,8 @@ exports.createClass = async (req, res) => {
             if (resolved.grade_level !== null) insertData.grade_level = resolved.grade_level;
             if (resolved.form_level !== null) insertData.form_level = resolved.form_level;
             if (resolved.stream) insertData.stream = resolved.stream;
-            if (hasClassType) insertData.class_type = resolved.class_type;
+            else if (derivedStream !== undefined) insertData.stream = derivedStream;
+            if (hasClassType) insertData.class_type = resolved.class_type || requestClassType;
         } else {
             if (normalizedGradeLevel !== undefined) insertData.grade_level = normalizedGradeLevel;
             if (normalizedFormLevel !== undefined) insertData.form_level = normalizedFormLevel;
@@ -742,8 +814,8 @@ exports.updateClass = async (req, res) => {
             updates.stream_id = resolved.stream_id;
             updates.grade_level = resolved.grade_level;
             updates.form_level = resolved.form_level;
-            updates.stream = resolved.stream;
-            if (hasClassType) updates.class_type = resolved.class_type;
+            updates.stream = resolved.stream || (stream !== undefined ? (normalizeStream(stream) || null) : (existingClass.stream ?? null));
+            if (hasClassType) updates.class_type = resolved.class_type || requestClassType;
         } else {
             if (grade_level !== undefined) updates.grade_level = normalizedGradeLevel ?? null;
             if (form_level !== undefined) updates.form_level = normalizedFormLevel ?? null;
@@ -1004,13 +1076,33 @@ exports.getClassOptions = async (req, res) => {
         if (useDomain) {
             const domain = await getClassDomainOptions(institution_id);
 
-            const levelOptions = domain.levels.map((level) => ({
+            let levelOptions = domain.levels.map((level) => ({
                 value: level.level_number,
                 label: level.name || `${level.category_types?.name || defaultClassType} ${level.level_number}`,
                 level_id: level.id,
                 category_id: level.category_id,
                 class_type: level.category_types?.name || defaultClassType,
             }));
+
+            // If no domain class_levels exist yet, check if existing classes have grade/form levels
+            if (levelOptions.length === 0) {
+                const levelColumn = defaultClassType === 'Form' ? 'form_level' : 'grade_level';
+                const { data: legacyRows } = await (hasDeletedAt
+                    ? supabase.from('classes').select(levelColumn).eq('institution_id', institution_id).is('deleted_at', null)
+                    : supabase.from('classes').select(levelColumn).eq('institution_id', institution_id));
+
+                const foundLegacyLevels = new Set();
+                for (const row of legacyRows || []) {
+                    const v = toFiniteNumber(row?.[levelColumn]);
+                    if (v !== undefined) foundLegacyLevels.add(v);
+                }
+                const sortedLegacy = Array.from(foundLegacyLevels).sort((a, b) => a - b);
+                levelOptions = sortedLegacy.map((value) => ({
+                    value,
+                    label: `${defaultClassType} ${value}`,
+                    class_type: defaultClassType,
+                }));
+            }
 
             const streamOptions = domain.streams.map((streamRow) => ({
                 id: streamRow.id,
@@ -1066,7 +1158,7 @@ exports.getClassOptions = async (req, res) => {
         }
 
         const sortedLevels = Array.from(levelSet).sort((a, b) => a - b);
-        const finalLevels = sortedLevels.length > 0 ? sortedLevels : buildDefaultLevelRange(defaultClassType);
+        const finalLevels = sortedLevels;
 
         const streamSet = new Set();
         for (const row of classesResponse.data || []) {

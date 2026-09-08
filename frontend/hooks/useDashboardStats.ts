@@ -4,6 +4,7 @@ import { supabase } from '@/libs/supabase';
 import { RevenueService } from '@/services/RevenueService';
 import { CacheService } from '@/services/CacheService';
 import { StatsData } from '@/types/types';
+import { showFetchError } from '@/utils/toast';
 import { useEffect, useState } from 'react';
 
 export const useDashboardStats = () => {
@@ -175,6 +176,7 @@ export const useDashboardStats = () => {
             }
         } catch (e) {
             console.error('Exception in useDashboardStats:', e);
+            showFetchError('dashboard statistics', e);
         } finally {
             setLoading(false);
         }

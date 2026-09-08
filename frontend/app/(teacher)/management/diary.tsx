@@ -4,7 +4,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import Toast from 'react-native-toast-message';
 import { DiaryAPI, DiaryEntry } from "@/services/DiaryService";
 import { ClassAPI, ClassItem } from "@/services/ClassService";
-import { showError, showSuccess } from "@/utils/toast";
+import { showError, showSuccess, showFetchError } from "@/utils/toast";
 import { router } from "expo-router";
 import { BookOpen, Calendar, ChevronDown, Edit2, Plus, Send, Trash2, X, Zap } from 'lucide-react-native';
 import React, { useEffect, useState } from "react";
@@ -94,7 +94,7 @@ export default function TeacherDiaryPage() {
             }
         } catch (error: any) {
             console.error("Error fetching classes:", error);
-            showError("Load Error", error.response?.data?.error || "Failed to load assigned classes.");
+            showFetchError("assigned classes", error);
         } finally {
             setLoading(false);
         }
@@ -108,7 +108,7 @@ export default function TeacherDiaryPage() {
             setEntries(data);
         } catch (error: any) {
             console.error("Error fetching diary entries:", error);
-            showError("Load Error", error.response?.data?.error || "Failed to load diary entries.");
+            showFetchError("diary entries", error);
         } finally {
             setLoading(false);
         }

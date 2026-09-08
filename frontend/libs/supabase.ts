@@ -43,6 +43,23 @@ export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
   },
 });
 
+// Handle Back-Forward Cache (bfcache) in web environments to avoid WebSocket abortion errors
+if (Platform.OS === 'web' && typeof window !== 'undefined') {
+  window.addEventListener('pagehide', () => {
+    try {
+      supabase.realtime?.disconnect?.();
+    } catch {}
+  });
+
+  window.addEventListener('pageshow', (event: any) => {
+    if (event?.persisted) {
+      try {
+        supabase.realtime?.connect?.();
+      } catch {}
+    }
+  });
+}
+
 // Auth service functions
 export const authService = {
   // Sign in with email and password

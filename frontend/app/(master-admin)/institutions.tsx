@@ -157,6 +157,13 @@ export default function MasterInstitutionsPage() {
   const [adminsModalOpen, setAdminsModalOpen] = useState(false);
   const [adminsLoading, setAdminsLoading] = useState(false);
   const [admins, setAdmins] = useState<AdminUser[]>([]);
+  const [adminInstitution, setAdminInstitution] = useState<any>(null);
+  const [showAddAdminForm, setShowAddAdminForm] = useState(false);
+  const [addAdminFirst, setAddAdminFirst] = useState('');
+  const [addAdminLast, setAddAdminLast] = useState('');
+  const [addAdminEmail, setAddAdminEmail] = useState('');
+  const [addAdminPhone, setAddAdminPhone] = useState('');
+  const [addAdminSaving, setAddAdminSaving] = useState(false);
   const [adminResetLoadingId, setAdminResetLoadingId] = useState<string | null>(null);
   const [adminResetResult, setAdminResetResult] = useState<any>(null);
   const [adminResetResultOpen, setAdminResetResultOpen] = useState(false);
@@ -631,12 +638,68 @@ export default function MasterInstitutionsPage() {
       setActiveInstitutionId(institutionId);
       setAdminsModalOpen(true);
       setAdminsLoading(true);
+      setShowAddAdminForm(false);
+      setAddAdminFirst('');
+      setAddAdminLast('');
+      setAddAdminEmail('');
+      setAddAdminPhone('');
       const data = await authedFetch(`/api/master-admin/institutions/${institutionId}`);
+      setAdminInstitution(data?.institution || null);
       setAdmins((data?.admins || []).filter((u: any) => !!u?.id));
     } catch (e: any) {
       Toast.show({ type: 'error', text1: 'Admins', text2: e.message || 'Unable to load admins', position: 'top' });
     } finally {
       setAdminsLoading(false);
+    }
+  };
+
+  const submitAddAdmin = async () => {
+    if (!activeInstitutionId) return;
+    const fName = addAdminFirst.trim();
+    const lName = addAdminLast.trim();
+    if (!fName || !lName) {
+      Toast.show({ type: 'error', text1: 'Required', text2: 'First name and last name are required', position: 'top' });
+      return;
+    }
+    try {
+      setAddAdminSaving(true);
+      const res = await authedFetch(`/api/master-admin/institutions/${activeInstitutionId}/admins`, {
+        method: 'POST',
+        body: JSON.stringify({
+          first_name: fName,
+          last_name: lName,
+          email: addAdminEmail.trim() || undefined,
+          phone: addAdminPhone.trim() || undefined,
+        }),
+      });
+
+      Toast.show({
+        type: 'success',
+        text1: 'Admin Added',
+        text2: 'Temporary credential generated for administrator.',
+        position: 'top',
+      });
+
+      setShowAddAdminForm(false);
+      setAddAdminFirst('');
+      setAddAdminLast('');
+      setAddAdminEmail('');
+      setAddAdminPhone('');
+
+      setAdminResetResult({
+        tempPassword: res?.temporary_credentials?.password,
+        email: res?.temporary_credentials?.email,
+        credential_delivery: res?.credential_delivery,
+      });
+      setAdminResetResultOpen(true);
+
+      const data = await authedFetch(`/api/master-admin/institutions/${activeInstitutionId}`);
+      setAdminInstitution(data?.institution || null);
+      setAdmins((data?.admins || []).filter((u: any) => !!u?.id));
+    } catch (e: any) {
+      Toast.show({ type: 'error', text1: 'Add Admin Failed', text2: e.message || 'Could not add administrator', position: 'top' });
+    } finally {
+      setAddAdminSaving(false);
     }
   };
 
@@ -974,19 +1037,6 @@ export default function MasterInstitutionsPage() {
           }
         />
       )}
-
-      <ConfirmModal
-        open={confirmModal.open}
-        title={confirmModal.title}
-        body={confirmModal.body}
-        c={c}
-        onCancel={() => setConfirmModal({ open: false, title: '', body: '' })}
-        onConfirm={async () => {
-          const fn = confirmModal.onConfirm;
-          setConfirmModal({ open: false, title: '', body: '' });
-          if (fn) await fn();
-        }}
-      />
 
       <Modal visible={categoryModalOpen} animationType="fade" transparent>
         <View style={overlayStyle}>
@@ -1449,8 +1499,160 @@ export default function MasterInstitutionsPage() {
 
       <Modal visible={adminsModalOpen} animationType="fade" transparent>
         <View style={overlayStyle}>
-          <View style={[modalCardStyle, { backgroundColor: c.card, borderColor: c.border, maxHeight: '80%' }]}>
+          <View style={[modalCardStyle, { backgroundColor: c.card, borderColor: c.border, maxHeight: '85%' }]}>
             <ModalHeader title="Institution Admins" c={c} onClose={() => setAdminsModalOpen(false)} />
+
+            {/* Capacity & Plan Bar */}
+            <View style={{
+              flexDirection: 'row',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              paddingBottom: 12,
+              marginBottom: 12,
+              borderBottomWidth: 1,
+              borderBottomColor: c.border,
+            }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <Text style={{ color: c.sub, fontSize: 13 }}>
+                  Plan: <Text style={{ fontWeight: '700', color: c.text }}>{(adminInstitution?.subscription_plan || 'basic').toUpperCase()}</Text>
+                </Text>
+                <View style={{
+                  backgroundColor: adminInstitution?.at_admin_capacity ? (isDark ? 'rgba(239,68,68,0.2)' : '#FEE2E2') : (isDark ? 'rgba(16,185,129,0.2)' : '#D1FAE5'),
+                  borderRadius: 6,
+                  paddingHorizontal: 6,
+                  paddingVertical: 2,
+                }}>
+                  <Text style={{
+                    fontSize: 11,
+                    fontWeight: '700',
+                    color: adminInstitution?.at_admin_capacity ? c.danger : c.success,
+                  }}>
+                    {`Admins: ${admins.length}${adminInstitution?.max_admins ? ` / ${adminInstitution.max_admins}` : ''}`}
+                  </Text>
+                </View>
+              </View>
+
+              {!showAddAdminForm && (
+                <TouchableOpacity
+                  onPress={() => {
+                    if (adminInstitution?.at_admin_capacity) {
+                      Toast.show({
+                        type: 'info',
+                        text1: 'Plan Capacity Reached',
+                        text2: `The ${(adminInstitution?.subscription_plan || '').toUpperCase()} plan allows up to ${adminInstitution?.max_admins} admins. Upgrade plan to add more.`,
+                        position: 'top',
+                      });
+                      return;
+                    }
+                    setShowAddAdminForm(true);
+                  }}
+                  disabled={!!adminInstitution?.at_admin_capacity}
+                  style={{
+                    backgroundColor: adminInstitution?.at_admin_capacity ? c.sub : c.primary,
+                    paddingHorizontal: 12,
+                    paddingVertical: 6,
+                    borderRadius: 8,
+                    opacity: adminInstitution?.at_admin_capacity ? 0.6 : 1,
+                  }}
+                >
+                  <Text style={{ color: '#fff', fontSize: 12, fontWeight: '700' }}>+ Add Admin</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+
+            {/* Collapsible Add Admin Form */}
+            {showAddAdminForm && (
+              <View style={{
+                borderWidth: 1,
+                borderColor: c.border,
+                borderRadius: 12,
+                padding: 12,
+                marginBottom: 12,
+                backgroundColor: c.bg,
+              }}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                  <Text style={{ color: c.text, fontWeight: '800', fontSize: 13 }}>Add Administrator</Text>
+                  <TouchableOpacity onPress={() => setShowAddAdminForm(false)}>
+                    <MaterialCommunityIcons name="close" size={18} color={c.sub} />
+                  </TouchableOpacity>
+                </View>
+
+                <Text style={{ color: c.sub, fontSize: 11, marginBottom: 4 }}>First Name *</Text>
+                <TextInput
+                  value={addAdminFirst}
+                  onChangeText={setAddAdminFirst}
+                  placeholder="First Name"
+                  placeholderTextColor={c.sub}
+                  style={[inputStyle(c), { marginBottom: 8, height: 38 }]}
+                />
+
+                <Text style={{ color: c.sub, fontSize: 11, marginBottom: 4 }}>Last Name *</Text>
+                <TextInput
+                  value={addAdminLast}
+                  onChangeText={setAddAdminLast}
+                  placeholder="Last Name"
+                  placeholderTextColor={c.sub}
+                  style={[inputStyle(c), { marginBottom: 8, height: 38 }]}
+                />
+
+                <Text style={{ color: c.sub, fontSize: 11, marginBottom: 4 }}>
+                  Email {adminInstitution?.email_domain ? `(auto-assigned @${adminInstitution.email_domain} if blank)` : '*'}
+                </Text>
+                <TextInput
+                  value={addAdminEmail}
+                  onChangeText={setAddAdminEmail}
+                  placeholder={adminInstitution?.email_domain ? `admin@${adminInstitution.email_domain}` : 'admin@example.com'}
+                  placeholderTextColor={c.sub}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  style={[inputStyle(c), { marginBottom: 8, height: 38 }]}
+                />
+
+                <Text style={{ color: c.sub, fontSize: 11, marginBottom: 4 }}>Phone (optional)</Text>
+                <TextInput
+                  value={addAdminPhone}
+                  onChangeText={setAddAdminPhone}
+                  placeholder="+254..."
+                  placeholderTextColor={c.sub}
+                  keyboardType="phone-pad"
+                  style={[inputStyle(c), { marginBottom: 10, height: 38 }]}
+                />
+
+                <View style={{ flexDirection: 'row', gap: 8, justifyContent: 'flex-end' }}>
+                  <TouchableOpacity
+                    onPress={() => setShowAddAdminForm(false)}
+                    disabled={addAdminSaving}
+                    style={{
+                      borderWidth: 1,
+                      borderColor: c.border,
+                      borderRadius: 8,
+                      paddingHorizontal: 12,
+                      paddingVertical: 7,
+                    }}
+                  >
+                    <Text style={{ color: c.sub, fontWeight: '700', fontSize: 12 }}>Cancel</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    onPress={submitAddAdmin}
+                    disabled={addAdminSaving}
+                    style={{
+                      backgroundColor: c.primary,
+                      borderRadius: 8,
+                      paddingHorizontal: 14,
+                      paddingVertical: 7,
+                      opacity: addAdminSaving ? 0.7 : 1,
+                    }}
+                  >
+                    {addAdminSaving ? (
+                      <ActivityIndicator size="small" color="#fff" />
+                    ) : (
+                      <Text style={{ color: '#fff', fontWeight: '800', fontSize: 12 }}>Create Admin</Text>
+                    )}
+                  </TouchableOpacity>
+                </View>
+              </View>
+            )}
 
             {adminsLoading ? (
               <ListItemSkeleton loading={adminsLoading} count={4} label="Loading institution admins..." />
@@ -1492,13 +1694,60 @@ export default function MasterInstitutionsPage() {
       </Modal>
 
       <Modal visible={adminResetResultOpen} animationType="fade" transparent>
-        <View style={overlayStyle}>
+        <View style={[overlayStyle, { zIndex: 100001, elevation: 100001 }]}>
           <View style={[modalCardStyle, { backgroundColor: c.card, borderColor: c.border }]}> 
             <ModalHeader title="Temporary Credential" c={c} onClose={() => setAdminResetResultOpen(false)} />
-            <View style={{ borderWidth: 1, borderColor: c.border, borderRadius: 12, padding: 12, backgroundColor: c.bg }}>
-              <Text style={{ color: c.sub, marginBottom: 4 }}>Regenerated Password: {adminResetResult?.tempPassword || 'N/A'}</Text>
-              {!!adminResetResult?.credential_delivery?.url && <Text style={{ color: c.sub, marginBottom: 4 }}>One-time credential link generated.</Text>}
-              <Text style={{ color: c.sub }}>User will be forced to re-login and complete setup on next sign in.</Text>
+            <View style={{ borderWidth: 1, borderColor: c.border, borderRadius: 12, padding: 14, backgroundColor: c.bg }}>
+              {!!adminResetResult?.email && (
+                <Text style={{ color: c.sub, fontSize: 13, marginBottom: 8 }}>
+                  Login Email: <Text style={{ color: c.text, fontWeight: '700' }}>{adminResetResult.email}</Text>
+                </Text>
+              )}
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                <Text style={{ color: c.sub, fontSize: 13 }}>Temporary Password:</Text>
+                <TouchableOpacity
+                  onPress={() => {
+                    const pwd = adminResetResult?.tempPassword;
+                    if (pwd) {
+                      if (Platform.OS === 'web' && (navigator as any)?.clipboard) {
+                        (navigator as any).clipboard.writeText(pwd);
+                      }
+                      Toast.show({ type: 'success', text1: 'Copied', text2: 'Password copied to clipboard', position: 'top' });
+                    }
+                  }}
+                  style={{ backgroundColor: c.primary, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 }}
+                >
+                  <Text style={{ color: '#fff', fontSize: 11, fontWeight: '700' }}>Copy Password</Text>
+                </TouchableOpacity>
+              </View>
+              <Text style={{ color: c.text, fontWeight: '800', fontSize: 16, marginBottom: 10, letterSpacing: 1 }}>
+                {adminResetResult?.tempPassword || 'N/A'}
+              </Text>
+
+              {!!adminResetResult?.credential_delivery?.url && (
+                <View style={{ marginTop: 6, paddingTop: 10, borderTopWidth: 1, borderTopColor: c.border }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+                    <Text style={{ color: c.sub, fontSize: 12 }}>One-Time Credential Link:</Text>
+                    <TouchableOpacity
+                      onPress={() => {
+                        const url = adminResetResult.credential_delivery.url;
+                        if (url) {
+                          if (Platform.OS === 'web' && (navigator as any)?.clipboard) {
+                            (navigator as any).clipboard.writeText(url);
+                          }
+                          Toast.show({ type: 'success', text1: 'Copied', text2: 'Link copied to clipboard', position: 'top' });
+                        }
+                      }}
+                      style={{ borderWidth: 1, borderColor: c.border, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 }}
+                    >
+                      <Text style={{ color: c.text, fontSize: 11, fontWeight: '700' }}>Copy Link</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              )}
+              <Text style={{ color: c.sub, fontSize: 12, marginTop: 8 }}>
+                User will be forced to logout of all sessions and complete password and security question setup at next login.
+              </Text>
             </View>
             <TouchableOpacity
               onPress={() => setAdminResetResultOpen(false)}
@@ -1693,6 +1942,18 @@ export default function MasterInstitutionsPage() {
           </View>
         </View>
       </Modal>
+      <ConfirmModal
+        open={confirmModal.open}
+        title={confirmModal.title}
+        body={confirmModal.body}
+        c={c}
+        onCancel={() => setConfirmModal({ open: false, title: '', body: '' })}
+        onConfirm={async () => {
+          const fn = confirmModal.onConfirm;
+          setConfirmModal({ open: false, title: '', body: '' });
+          if (fn) await fn();
+        }}
+      />
     </SafeAreaView>
   );
 }
@@ -1759,8 +2020,8 @@ function ConfirmModal({
 }) {
   return (
     <Modal visible={open} animationType="fade" transparent>
-      <View style={overlayStyle}>
-        <View style={[modalCardStyle, { backgroundColor: c.card, borderColor: c.border }]}>
+      <View style={[overlayStyle, { zIndex: 999999, elevation: 999999 }]}>
+        <View style={[modalCardStyle, { backgroundColor: c.card, borderColor: c.border, zIndex: 1000000, elevation: 1000000 }]}>
           <Text style={{ color: c.text, fontSize: 19, fontWeight: '800' }}>{title}</Text>
           <Text style={{ color: c.sub, marginTop: 8 }}>{body}</Text>
           <View style={{ flexDirection: 'row', gap: 10, marginTop: 18 }}>

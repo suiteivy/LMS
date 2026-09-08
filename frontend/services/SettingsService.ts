@@ -91,8 +91,23 @@ export const SettingsService = {
         return response.data;
     },
 
-    adminResetPassword: async (targetUserId: string, newPassword: string): Promise<{ message: string }> => {
-        const response = await api.post('/auth/admin-reset-password', { targetUserId, newPassword });
+    adminResetPassword: async (targetUserId: string, newPassword?: string): Promise<{
+        message: string;
+        tempPassword?: string;
+        credential_delivery?: {
+            url: string;
+            token: string;
+            expires_at: string;
+        };
+        credential_document?: string;
+        force_logout?: boolean;
+        must_change_password?: boolean;
+        requires_security_questions_setup?: boolean;
+        [key: string]: any;
+    }> => {
+        const payload: { targetUserId: string; newPassword?: string } = { targetUserId };
+        if (newPassword) payload.newPassword = newPassword;
+        const response = await api.post('/auth/admin-reset-password', payload);
         return response.data;
     },
 

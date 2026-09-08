@@ -7,6 +7,7 @@ import { useTheme } from "@/contexts/ThemeContext";
 import { useSubscriptionTier } from "@/hooks/useSubscriptionTier";
 import { BursaryService } from "@/services/BursaryService";
 import { StudentService } from "@/services/StudentService";
+import { showFetchError } from "@/utils/toast";
 import { router } from "expo-router";
 import {
     ArrowDownLeft,
@@ -74,7 +75,7 @@ export default function StudentFinancePage() {
 
         } catch (error) {
             console.error(error);
-            Alert.alert("Error", "Failed to load financial records");
+            showFetchError("financial records", error);
         } finally {
             setLoading(false);
         }
@@ -88,6 +89,7 @@ export default function StudentFinancePage() {
             setBursaries(data);
         } catch (err) {
             console.error(err);
+            showFetchError("bursary records", err);
         } finally {
             setBursaryLoading(false);
         }

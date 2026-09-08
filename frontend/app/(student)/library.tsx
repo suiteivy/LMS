@@ -10,6 +10,7 @@ import { Modal, RefreshControl, ScrollView, Text, TextInput, TouchableOpacity, V
 import { useRealtimeQuery } from '@/hooks/useRealtimeQuery';
 import { SubscriptionGate } from "@/components/shared/SubscriptionComponents";
 import { Zap } from "lucide-react-native";
+import { showFetchError } from "@/utils/toast";
 
 export default function StudentLibrary() {
     const { studentId } = useAuth();
@@ -43,6 +44,7 @@ export default function StudentLibrary() {
             setBorrowingHistory(finalHistory);
         } catch (error) {
             console.error("Error loading library data:", error);
+            showFetchError("library data", error);
             setBooks([]);
             setBorrowingHistory([]);
         } finally {

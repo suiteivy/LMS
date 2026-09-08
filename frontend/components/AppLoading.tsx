@@ -17,7 +17,7 @@ import Svg, {
   Path,
   Rect,
 } from 'react-native-svg';
-import { Shield } from 'lucide-react-native';
+import { LogOut } from 'lucide-react-native';
 import { useTheme } from '@/contexts/ThemeContext';
 import { LivingBackground } from '@/components/landing/LivingBackground';
 import { CloudoraLogo } from '@/components/common/CloudoraLogo';
@@ -483,6 +483,7 @@ export function AppLoading({
 }) {
   const { isDark } = useTheme();
   const [showRescue, setShowRescue] = useState(false);
+  const [connectionNote, setConnectionNote] = useState<string | null>(null);
 
   // Animated progress state
   const progressAnim = useRef(new Animated.Value(0)).current;
@@ -510,10 +511,16 @@ export function AppLoading({
       }),
     ]).start();
 
-    // Rescue override timeout (8 seconds)
-    const rescueTimer = setTimeout(() => setShowRescue(true), 8000);
+    // Informative status updates for slower connections
+    const noteTimer = setTimeout(() => {
+      setConnectionNote('CONNECTING TO YOUR ACCOUNT...');
+    }, 3500);
+
+    // Timeout option to sign out if loading takes longer than usual (5 seconds)
+    const rescueTimer = setTimeout(() => setShowRescue(true), 5000);
 
     return () => {
+      clearTimeout(noteTimer);
       clearTimeout(rescueTimer);
     };
   }, []);
@@ -543,26 +550,28 @@ export function AppLoading({
             {message || 'CLOUDORA'}
           </Text>
           <Text style={styles.brandSubtitle}>
-            INTELLIGENT LEARNING ECOSYSTEM
+            {connectionNote || 'INTELLIGENT LEARNING ECOSYSTEM'}
           </Text>
         </View>
       </View>
 
-      {/* ── 3. BOTTOM RESCUE OVERRIDE ACTION ── */}
+      {/* ── 3. BOTTOM RESCUE ACTION ── */}
       <View style={styles.bottomHudZone}>
         {showRescue && onLogout ? (
           <Animated.View style={styles.rescueContainer}>
             <Text style={styles.rescuePrompt}>
-              Boot latency exceeds typical envelope?
+              Taking longer than usual to load?
             </Text>
             <TouchableOpacity
               onPress={onLogout}
               activeOpacity={0.8}
               style={styles.rescueButton}
+              accessibilityRole="button"
+              accessibilityLabel="Sign out and try again"
             >
-              <Shield size={14} color="#FFA040" />
+              <LogOut size={14} color="#FFA040" />
               <Text style={styles.rescueButtonText}>
-                OVERRIDE & EMERGENCY SIGN OUT
+                SIGN OUT & TRY AGAIN
               </Text>
             </TouchableOpacity>
           </Animated.View>

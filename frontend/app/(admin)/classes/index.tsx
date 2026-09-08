@@ -14,11 +14,13 @@ import {
     ClassStudent,
 } from '@/services/ClassService';
 import { formatClassLabel } from '@/utils/classLabel';
+import { showError, showSuccess } from '@/utils/toast';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
     Alert, Modal, Platform,
+    RefreshControl,
     ScrollView,
     Text,
     TextInput,
@@ -26,6 +28,7 @@ import {
     View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+
 
 // ─── Types ─────────────────────────────────────────────────
 interface Teacher {
@@ -46,6 +49,7 @@ export default function AdminClassManagement() {
     const { profile } = useAuth();
     const [classes, setClasses] = useState<ClassItem[]>([]);
     const [loading, setLoading] = useState(true);
+    const [refreshing, setRefreshing] = useState(false);
 
     // Modal state
     const [showModal, setShowModal] = useState(false);
@@ -54,6 +58,7 @@ export default function AdminClassManagement() {
     const [formCategoryId, setFormCategoryId] = useState('');
     const [formLevelId, setFormLevelId] = useState('');
     const [formStreamId, setFormStreamId] = useState('');
+    const [formStream, setFormStream] = useState('');
     const [formCapacity, setFormCapacity] = useState('');
     const [formTeacher, setFormTeacher] = useState('');
     const [saving, setSaving] = useState(false);
@@ -83,6 +88,7 @@ export default function AdminClassManagement() {
     const [domainSaving, setDomainSaving] = useState(false);
     const [newLevelCategoryId, setNewLevelCategoryId] = useState('');
     const [newLevelNumber, setNewLevelNumber] = useState('');
+    const [newLevelName, setNewLevelName] = useState('');
     const [newStreamLevelId, setNewStreamLevelId] = useState('');
     const [newStreamCode, setNewStreamCode] = useState('');
 
@@ -130,36 +136,28 @@ export default function AdminClassManagement() {
             setFormClassType(options.class_type || 'Grade');
             setClassTypes((options.class_types || [options.class_type || 'Grade']).filter(Boolean));
             setDomainCategories(options.categories || []);
-            const levelOptionMap = new Map((options.level_options || []).map((item) => [item.level_id, item]));
-            setDomainLevels((options.levels || []).map((level) => ({
-                ...level,
-                class_type: levelOptionMap.get(level.id)?.class_type || options.class_type || 'Grade',
-            })));
+            setDomainLevels((options.levels || []));
             setDomainStreams(options.streams || []);
         } catch (err: any) {
             console.error('loadClassOptions error:', err);
-            const fallback = Array.from(
-                { length: isSecondary ? 6 : (safeLevelLabel === 'KG' ? 3 : 7) },
-                (_, i) => `${safeLevelLabel} ${i + 1}`
-            );
-            setGradeOptions(fallback);
+            setGradeOptions([]);
             setDomainCategories([]);
             setDomainLevels([]);
             setDomainStreams([]);
         }
-    }, [isSecondary, safeLevelLabel]);
+    }, []);
 
     const selectedLevel = domainLevels.find((l) => l.id === formLevelId) || null;
 
     const availableLevels = formCategoryId
-        ? domainLevels.filter((level) => level.category_id === formCategoryId && level.class_type === formClassType)
-        : [];
+        ? domainLevels.filter((level) => level.category_id === formCategoryId)
+        : domainLevels;
 
     const availableStreams = formLevelId
         ? domainStreams.filter((stream) => stream.level_id === formLevelId)
         : [];
 
-    const loadTeachers = async () => {
+    const loadTeachers = useCallback(async () => {
         const { data } = await supabase
             .from('teachers')
             .select('id, user_id, users:user_id(full_name)') as any;
@@ -170,7 +168,20 @@ export default function AdminClassManagement() {
                 full_name: t.users?.full_name || t.id,
             })));
         }
-    };
+    }, []);
+
+    const handleRefresh = useCallback(async () => {
+        setRefreshing(true);
+        try {
+            await Promise.all([loadClasses(), loadTeachers(), loadClassOptions()]);
+            showSuccess('Refreshed', 'Classes and grade levels up to date');
+        } catch (err: any) {
+            console.error('handleRefresh error:', err);
+            showError('Refresh Failed', err?.message || 'Could not refresh data');
+        } finally {
+            setRefreshing(false);
+        }
+    }, [loadClasses, loadTeachers, loadClassOptions]);
 
     useEffect(() => {
         const init = async () => {
@@ -179,7 +190,7 @@ export default function AdminClassManagement() {
             setLoading(false);
         };
         init();
-    }, [loadClasses, loadClassOptions]);
+    }, [loadClasses, loadTeachers, loadClassOptions]);
 
     // ─── Grade helper ──────────────────────────────────────
     const gradeToNumber = (grade: string): number | undefined => {
@@ -189,52 +200,124 @@ export default function AdminClassManagement() {
 
     const handleCreateLevel = async () => {
         const levelNumber = Number(newLevelNumber);
-        if (!newLevelCategoryId) {
-            Alert.alert('Validation', 'Select a category first');
+        if (!Number.isFinite(levelNumber) || levelNumber <= 0) {
+            showError('Validation', 'Please enter a valid positive level number (e.g. 1, 2, 3)');
             return;
         }
-        if (!Number.isFinite(levelNumber) || levelNumber <= 0) {
-            Alert.alert('Validation', 'Level number must be a positive number');
+
+        const candidateName = newLevelName.trim() || `${safeLevelLabel} ${levelNumber}`;
+
+        // Client-side pre-check against already loaded domain levels
+        const existingLevel = domainLevels.find(
+            (l) => l.level_number === levelNumber || (l.name && l.name.trim().toLowerCase() === candidateName.toLowerCase())
+        );
+        if (existingLevel) {
+            showError('Duplicate Grade Level', `Grade level ${levelNumber} (${existingLevel.name || candidateName}) already exists.`);
             return;
         }
 
         setDomainSaving(true);
         try {
-            await ClassService.createDomainLevel({
-                category_id: newLevelCategoryId,
+            const created = await ClassService.createDomainLevel({
+                category_id: newLevelCategoryId || undefined,
                 level_number: levelNumber,
-                name: `${safeLevelLabel} ${levelNumber}`,
+                name: candidateName,
             });
+
+            // Optimistic update so list renders immediately
+            const newDomainLevel: ClassDomainLevel = created?.id ? created : {
+                id: `temp-${Date.now()}`,
+                category_id: newLevelCategoryId || '',
+                level_number: levelNumber,
+                name: candidateName,
+            };
+
+            setDomainLevels((prev) => {
+                const updated = [...prev.filter((l) => l.level_number !== levelNumber), newDomainLevel];
+                return updated.sort((a, b) => a.level_number - b.level_number);
+            });
+
+            setGradeOptions((prev) => {
+                if (!prev.includes(candidateName)) {
+                    return [...prev, candidateName];
+                }
+                return prev;
+            });
+
             setNewLevelNumber('');
-            await loadClassOptions();
+            setNewLevelName('');
+
+            // Full refetch from backend to ensure complete synchronization with DB
+            await Promise.all([loadClassOptions(), loadClasses()]);
+
+            showSuccess('Grade Level Added', `"${candidateName}" has been added successfully.`);
         } catch (err: any) {
-            Alert.alert('Error', err.response?.data?.error || err.message);
+            console.error('handleCreateLevel error:', err);
+            const status = err.response?.status;
+            const errCode = err.response?.data?.code;
+            const errMsg = err.response?.data?.error || err.message;
+            if (status === 409 || errCode === 'DUPLICATE_GRADE_LEVEL' || errMsg?.toLowerCase().includes('already exists')) {
+                showError('Duplicate Grade Level', errMsg || `Grade level ${levelNumber} already exists.`);
+            } else {
+                showError('Error Adding Grade Level', errMsg || 'An error occurred while creating grade level.');
+            }
         } finally {
             setDomainSaving(false);
         }
     };
 
+    const handleDeleteLevel = async (level: ClassDomainLevel) => {
+        const label = level.name || `${safeLevelLabel} ${level.level_number}`;
+        Alert.alert(
+            'Remove Grade Level',
+            `Are you sure you want to remove "${label}"? This level cannot be removed if classes are assigned to it.`,
+            [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                    text: 'Remove',
+                    style: 'destructive',
+                    onPress: async () => {
+                        setDomainSaving(true);
+                        try {
+                            await ClassService.archiveDomainLevel(level.id);
+                            setDomainLevels((prev) => prev.filter((l) => l.id !== level.id));
+                            setGradeOptions((prev) => prev.filter((g) => g !== label));
+                            await Promise.all([loadClassOptions(), loadClasses()]);
+                            showSuccess('Grade Level Removed', `Grade level "${label}" removed`);
+                        } catch (err: any) {
+                            showError('Unable to Remove Level', err.response?.data?.error || err.message);
+                        } finally {
+                            setDomainSaving(false);
+                        }
+                    },
+                },
+            ]
+        );
+    };
+
     const handleCreateStream = async () => {
         if (!newStreamLevelId) {
-            Alert.alert('Validation', 'Select a level first');
+            showError('Validation', 'Select a level first');
             return;
         }
         if (!newStreamCode.trim()) {
-            Alert.alert('Validation', 'Stream code is required');
+            showError('Validation', 'Stream code is required');
             return;
         }
 
+        const streamCode = newStreamCode.trim();
         setDomainSaving(true);
         try {
             await ClassService.createDomainStream({
                 level_id: newStreamLevelId,
-                code: newStreamCode.trim(),
-                name: newStreamCode.trim(),
+                code: streamCode,
+                name: streamCode,
             });
             setNewStreamCode('');
             await loadClassOptions();
+            showSuccess('Stream Added', `Stream "${streamCode}" added successfully.`);
         } catch (err: any) {
-            Alert.alert('Error', err.response?.data?.error || err.message);
+            showError('Error Adding Stream', err.response?.data?.error || err.message);
         } finally {
             setDomainSaving(false);
         }
@@ -244,6 +327,7 @@ export default function AdminClassManagement() {
     const openCreateModal = () => {
         setEditingClass(null);
         setFormLevel('');
+        setFormStream('');
         setFormCategoryId('');
         setFormLevelId('');
         setFormStreamId('');
@@ -258,6 +342,7 @@ export default function AdminClassManagement() {
         setFormClassType(clsType);
         const level = cls.grade_level || cls.form_level;
         setFormLevel(level ? `${clsType} ${level}` : '');
+        setFormStream(cls.stream || '');
         setFormCategoryId(cls.category_id || '');
         setFormLevelId(cls.level_id || '');
         setFormStreamId(cls.stream_id || '');
@@ -277,20 +362,23 @@ export default function AdminClassManagement() {
                 category_id: formCategoryId || undefined,
                 level_id: formLevelId || undefined,
                 stream_id: formStreamId || undefined,
+                stream: formStream ? formStream.trim() : undefined,
                 capacity: formCapacity ? parseInt(formCapacity, 10) : undefined,
                 teacher_id: formTeacher || undefined,
             };
 
             if (editingClass) {
                 await ClassService.updateClass(editingClass.id, payload);
+                showSuccess('Class Updated', 'Class details updated successfully');
             } else {
                 await ClassService.createClass(payload);
+                showSuccess('Class Created', 'New class stream created successfully');
             }
             setShowModal(false);
             await loadClasses();
             await loadClassOptions();
         } catch (err: any) {
-            Alert.alert('Error', err.response?.data?.error || err.message);
+            showError('Error Saving Class', err.response?.data?.error || err.message);
         } finally {
             setSaving(false);
         }
@@ -311,12 +399,10 @@ export default function AdminClassManagement() {
             setPendingDeleteClass(null);
             await loadClasses();
             await loadClassOptions();
+            showSuccess('Class Deleted', 'Class removed successfully');
         } catch (err: any) {
             const backendMsg = err?.response?.data?.error || err?.message || 'Failed to delete class';
-            Alert.alert(
-                'Unable to remove class',
-                `${backendMsg}\n\nIf this class should be removable, ensure the classes deleted_at migration is applied and that no dependent records still reference it.`
-            );
+            showError('Unable to Remove Class', backendMsg);
         } finally {
             setDeletingClass(false);
         }
@@ -478,79 +564,136 @@ export default function AdminClassManagement() {
                 style={{ flex: 1 }}
                 contentContainerStyle={{ paddingBottom: 100 }}
                 showsVerticalScrollIndicator={false}
+                refreshControl={
+                    <RefreshControl
+                        refreshing={refreshing}
+                        onRefresh={handleRefresh}
+                        colors={['#FF6B00']}
+                        tintColor="#FF6B00"
+                    />
+                }
             >
                 <View style={{ padding: 16 }}>
 
                     {/* ── Action Bar ── */}
-                    <View style={{ justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                    <View style={{ justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexDirection: 'row' }}>
                         <Text style={{ fontSize: 12, fontWeight: '700', color: textSecondary, textTransform: 'uppercase', letterSpacing: 1 }}>Active Streams</Text>
                         <View style={{ flexDirection: 'row', gap: 8 }}>
                             <TouchableOpacity
-                                onPress={async () => {
-                                    setLoading(true);
-                                    await Promise.all([loadClasses(), loadClassOptions()]);
-                                    setLoading(false);
+                                onPress={handleRefresh}
+                                disabled={refreshing}
+                                style={{
+                                    backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : '#F3F4F6',
+                                    borderWidth: 1,
+                                    borderColor: isDark ? 'rgba(255,255,255,0.15)' : '#E5E7EB',
+                                    paddingHorizontal: 10,
+                                    paddingVertical: 8,
+                                    borderRadius: 12,
+                                    flexDirection: 'row',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
                                 }}
-                                style={{ backgroundColor: isDark ? '#1E293B' : '#E2E8F0', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 12, flexDirection: 'row', alignItems: 'center' }}
+                                accessibilityLabel="Refresh class data"
                             >
-                                <Ionicons name="refresh" size={15} color={isDark ? '#CBD5E1' : '#334155'} />
-                                <Text style={{ color: isDark ? '#CBD5E1' : '#334155', fontWeight: '700', fontSize: 12, marginLeft: 5 }}>Refresh</Text>
+                                <Ionicons name="refresh" size={16} color={textPrimary} />
                             </TouchableOpacity>
 
                             <TouchableOpacity
                                 onPress={() => { setAutoAssignLevel(''); setShowAutoAssignModal(true); }}
-                                style={{ backgroundColor: '#7C3AED', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 12, flexDirection: 'row', alignItems: 'center' }}
+                                style={{ backgroundColor: '#7C3AED', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 12, flexDirection: 'row', alignItems: 'center' }}
                             >
                                 <Ionicons name="shuffle" size={15} color="white" />
-                                <Text style={{ color: 'white', fontWeight: '700', fontSize: 12, marginLeft: 5 }}>Auto</Text>
+                                <Text style={{ color: 'white', fontWeight: '700', fontSize: 12, marginLeft: 5 }}>Auto-Assign</Text>
                             </TouchableOpacity>
 
                             <TouchableOpacity
                                 onPress={() => setShowDomainDrawer(true)}
-                                style={{ backgroundColor: '#FF6B00', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 12, flexDirection: 'row', alignItems: 'center' }}
+                                style={{ backgroundColor: '#0284C7', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 12, flexDirection: 'row', alignItems: 'center' }}
                             >
-                                <Ionicons name="apps" size={15} color="white" />
-                                <Text style={{ color: 'white', fontWeight: '700', fontSize: 12, marginLeft: 5 }}>Domain</Text>
+                                <Ionicons name="layers-outline" size={15} color="white" />
+                                <Text style={{ color: 'white', fontWeight: '700', fontSize: 12, marginLeft: 5 }}>
+                                    Grade Levels{domainLevels.length > 0 ? ` (${domainLevels.length})` : ''}
+                                </Text>
                             </TouchableOpacity>
 
                             <TouchableOpacity
                                 onPress={openCreateModal}
-                                style={{ backgroundColor: isDark ? '#FF6B00' : '#111827', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 12, flexDirection: 'row', alignItems: 'center' }}
+                                style={{ backgroundColor: '#FF6B00', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 12, flexDirection: 'row', alignItems: 'center' }}
                             >
-                                <Ionicons name="add" size={16} color="white" />
-                                <Text style={{ color: 'white', fontWeight: '700', fontSize: 12, marginLeft: 4 }}>New</Text>
+                                <Ionicons name="add" size={18} color="white" />
+                                <Text style={{ color: 'white', fontWeight: '700', fontSize: 13, marginLeft: 4 }}>New Class</Text>
                             </TouchableOpacity>
                         </View>
                     </View>
 
-                    {/* ── Level Filter ── */}
-                    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 16 }}>
-                        <View style={{ flexDirection: 'row', gap: 8 }}>
+                    {/* ── Prompt to configure grade levels if none exist ── */}
+                    {domainLevels.length === 0 && gradeOptions.length === 0 && (
+                        <View style={{
+                            backgroundColor: isDark ? 'rgba(2, 132, 199, 0.12)' : '#E0F2FE',
+                            borderWidth: 1,
+                            borderColor: isDark ? 'rgba(2, 132, 199, 0.3)' : '#BAE6FD',
+                            borderRadius: 16,
+                            padding: 16,
+                            marginBottom: 16,
+                            flexDirection: 'row',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                        }}>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, marginRight: 12 }}>
+                                <Ionicons name="information-circle" size={24} color="#0284C7" style={{ marginRight: 12 }} />
+                                <View style={{ flex: 1 }}>
+                                    <Text style={{ fontWeight: '700', color: isDark ? '#38BDF8' : '#0369A1', fontSize: 14 }}>
+                                        No Grade Levels Configured
+                                    </Text>
+                                    <Text style={{ color: textSecondary, fontSize: 12, marginTop: 2 }}>
+                                        Add your school's grade levels (e.g. Grade 1, Grade 2) before creating classes.
+                                    </Text>
+                                </View>
+                            </View>
                             <TouchableOpacity
-                                onPress={() => setLevelFilter('')}
+                                onPress={() => setShowDomainDrawer(true)}
                                 style={{
-                                    paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20, borderWidth: 1,
-                                    backgroundColor: !levelFilter ? '#FF6B00' : pillInactive,
-                                    borderColor: !levelFilter ? '#FF6B00' : pillInactiveBorder,
+                                    backgroundColor: '#0284C7',
+                                    paddingHorizontal: 12,
+                                    paddingVertical: 8,
+                                    borderRadius: 10,
                                 }}
                             >
-                                <Text style={{ fontSize: 12, fontWeight: '700', color: !levelFilter ? 'white' : pillInactiveText }}>All</Text>
+                                <Text style={{ color: 'white', fontWeight: '700', fontSize: 12 }}>Configure</Text>
                             </TouchableOpacity>
-                            {gradeOptions.map(g => (
+                        </View>
+                    )}
+
+                    {/* ── Level Filter ── */}
+                    {gradeOptions.length > 0 && (
+                        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 16 }}>
+                            <View style={{ flexDirection: 'row', gap: 8 }}>
                                 <TouchableOpacity
-                                    key={g}
-                                    onPress={() => setLevelFilter(levelFilter === g ? '' : g)}
+                                    onPress={() => setLevelFilter('')}
                                     style={{
-                                        paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20, borderWidth: 1,
-                                        backgroundColor: levelFilter === g ? '#FF6B00' : pillInactive,
-                                        borderColor: levelFilter === g ? '#FF6B00' : pillInactiveBorder,
+                                        paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, borderWidth: 1.5,
+                                        backgroundColor: !levelFilter ? '#FF6B00' : pillInactive,
+                                        borderColor: !levelFilter ? '#FF6B00' : pillInactiveBorder,
                                     }}
                                 >
-                                    <Text style={{ fontSize: 12, fontWeight: '700', color: levelFilter === g ? 'white' : pillInactiveText }}>{g}</Text>
+                                    <Text style={{ fontSize: 12, fontWeight: '700', color: !levelFilter ? 'white' : pillInactiveText }}>All Levels</Text>
                                 </TouchableOpacity>
-                            ))}
-                        </View>
-                    </ScrollView>
+                                {gradeOptions.map(g => (
+                                    <TouchableOpacity
+                                        key={g}
+                                        onPress={() => setLevelFilter(levelFilter === g ? '' : g)}
+                                        style={{
+                                            paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, borderWidth: 1.5,
+                                            backgroundColor: levelFilter === g ? '#FF6B00' : pillInactive,
+                                            borderColor: levelFilter === g ? '#FF6B00' : pillInactiveBorder,
+                                        }}
+                                    >
+                                        <Text style={{ fontSize: 12, fontWeight: '700', color: levelFilter === g ? 'white' : pillInactiveText }}>{g}</Text>
+                                    </TouchableOpacity>
+                                ))}
+                            </View>
+                        </ScrollView>
+                    )}
 
                     {/* ── Class List ── */}
                     {filteredClasses.length === 0 ? (
@@ -777,142 +920,129 @@ export default function AdminClassManagement() {
 
                             {/* Dynamic Level Selection */}
                             <View style={{ marginBottom: 20 }}>
-                                <Text style={{ fontSize: 13, fontWeight: '700', color: textSecondary, marginBottom: 10, textTransform: 'uppercase', letterSpacing: 0.5 }}>{safeLevelLabel} Level</Text>
-                                <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                                    <View style={{ flexDirection: 'row', gap: 8 }}>
-                                        {gradeOptions.map(g => (
-                                            <TouchableOpacity
-                                                key={g}
-                                                onPress={() => setFormLevel(formLevel === g ? '' : g)}
-                                                style={{
-                                                    paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, borderWidth: 1.5,
-                                                    backgroundColor: formLevel === g ? '#FF6B00' : pillInactive,
-                                                    borderColor: formLevel === g ? '#FF6B00' : pillInactiveBorder,
-                                                }}
-                                            >
-                                                <Text style={{ fontSize: 12, fontWeight: '700', color: formLevel === g ? 'white' : pillInactiveText }}>{g}</Text>
-                                            </TouchableOpacity>
-                                        ))}
+                                <Text style={{ fontSize: 13, fontWeight: '700', color: textSecondary, marginBottom: 10, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                                    {safeLevelLabel} Level *
+                                </Text>
+                                {domainLevels.length === 0 && gradeOptions.length === 0 ? (
+                                    <View style={{ backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#F3F4F6', padding: 14, borderRadius: 12 }}>
+                                        <Text style={{ color: textSecondary, fontSize: 13, marginBottom: 8 }}>
+                                            No grade levels configured yet for your school.
+                                        </Text>
+                                        <TouchableOpacity
+                                            onPress={() => {
+                                                setShowModal(false);
+                                                setShowDomainDrawer(true);
+                                            }}
+                                            style={{ backgroundColor: '#0284C7', paddingVertical: 8, paddingHorizontal: 12, borderRadius: 8, alignSelf: 'flex-start' }}
+                                        >
+                                            <Text style={{ color: 'white', fontWeight: '700', fontSize: 12 }}>+ Add Grade Level</Text>
+                                        </TouchableOpacity>
                                     </View>
-                                </ScrollView>
+                                ) : (
+                                    <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                                        <View style={{ flexDirection: 'row', gap: 8 }}>
+                                            {domainLevels.length > 0 ? (
+                                                domainLevels.map((lvl) => {
+                                                    const isSelected = formLevelId === lvl.id || formLevel === `${safeLevelLabel} ${lvl.level_number}`;
+                                                    const label = lvl.name || `${safeLevelLabel} ${lvl.level_number}`;
+                                                    return (
+                                                        <TouchableOpacity
+                                                            key={lvl.id}
+                                                            onPress={() => {
+                                                                if (isSelected) {
+                                                                    setFormLevelId('');
+                                                                    setFormLevel('');
+                                                                    setFormCategoryId('');
+                                                                    setFormStreamId('');
+                                                                } else {
+                                                                    setFormLevelId(lvl.id);
+                                                                    setFormLevel(`${safeLevelLabel} ${lvl.level_number}`);
+                                                                    if (lvl.category_id) setFormCategoryId(lvl.category_id);
+                                                                    setFormStreamId('');
+                                                                }
+                                                            }}
+                                                            style={{
+                                                                paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, borderWidth: 1.5,
+                                                                backgroundColor: isSelected ? '#FF6B00' : pillInactive,
+                                                                borderColor: isSelected ? '#FF6B00' : pillInactiveBorder,
+                                                            }}
+                                                        >
+                                                            <Text style={{ fontSize: 12, fontWeight: '700', color: isSelected ? 'white' : pillInactiveText }}>{label}</Text>
+                                                        </TouchableOpacity>
+                                                    );
+                                                })
+                                            ) : (
+                                                gradeOptions.map(g => (
+                                                    <TouchableOpacity
+                                                        key={g}
+                                                        onPress={() => setFormLevel(formLevel === g ? '' : g)}
+                                                        style={{
+                                                            paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, borderWidth: 1.5,
+                                                            backgroundColor: formLevel === g ? '#FF6B00' : pillInactive,
+                                                            borderColor: formLevel === g ? '#FF6B00' : pillInactiveBorder,
+                                                        }}
+                                                    >
+                                                        <Text style={{ fontSize: 12, fontWeight: '700', color: formLevel === g ? 'white' : pillInactiveText }}>{g}</Text>
+                                                    </TouchableOpacity>
+                                                ))
+                                            )}
+                                        </View>
+                                    </ScrollView>
+                                )}
                             </View>
 
-                            {domainCategories.length > 0 && (
-                                <View style={{ marginBottom: 20 }}>
-                                    <Text style={{ fontSize: 13, fontWeight: '700', color: textSecondary, marginBottom: 10, textTransform: 'uppercase', letterSpacing: 0.5 }}>Category</Text>
-                                    <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                                        <View style={{ flexDirection: 'row', gap: 8 }}>
-                                            {domainCategories.map((category) => (
-                                                <TouchableOpacity
-                                                    key={category.id}
-                                                    onPress={() => {
-                                                        const nextCategoryId = formCategoryId === category.id ? '' : category.id;
-                                                        setFormCategoryId(nextCategoryId);
-                                                        setFormLevelId('');
-                                                        setFormStreamId('');
-                                                    }}
-                                                    style={{
-                                                        paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, borderWidth: 1.5,
-                                                        backgroundColor: formCategoryId === category.id ? '#0EA5E9' : pillInactive,
-                                                        borderColor: formCategoryId === category.id ? '#0EA5E9' : pillInactiveBorder,
-                                                    }}
-                                                >
-                                                    <Text style={{ fontSize: 12, fontWeight: '700', color: formCategoryId === category.id ? 'white' : pillInactiveText }}>{category.name}</Text>
-                                                </TouchableOpacity>
-                                            ))}
-                                        </View>
-                                    </ScrollView>
-                                </View>
-                            )}
-
-                            {availableLevels.length > 0 && (
-                                <View style={{ marginBottom: 20 }}>
-                                    <Text style={{ fontSize: 13, fontWeight: '700', color: textSecondary, marginBottom: 10, textTransform: 'uppercase', letterSpacing: 0.5 }}>Level</Text>
-                                    <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                                        <View style={{ flexDirection: 'row', gap: 8 }}>
-                                            {availableLevels.map((level) => (
-                                                <TouchableOpacity
-                                                    key={level.id}
-                                                    onPress={() => {
-                                                        const nextLevelId = formLevelId === level.id ? '' : level.id;
-                                                        setFormLevelId(nextLevelId);
-                                                        setFormStreamId('');
-                                                        if (nextLevelId) {
-                                                            setFormLevel(`${safeLevelLabel} ${level.level_number}`);
-                                                        }
-                                                    }}
-                                                    style={{
-                                                        paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, borderWidth: 1.5,
-                                                        backgroundColor: formLevelId === level.id ? '#0EA5E9' : pillInactive,
-                                                        borderColor: formLevelId === level.id ? '#0EA5E9' : pillInactiveBorder,
-                                                    }}
-                                                >
-                                                    <Text style={{ fontSize: 12, fontWeight: '700', color: formLevelId === level.id ? 'white' : pillInactiveText }}>
-                                                        {level.name || `${safeLevelLabel} ${level.level_number}`}
-                                                    </Text>
-                                                </TouchableOpacity>
-                                            ))}
-                                        </View>
-                                    </ScrollView>
-                                </View>
-                            )}
-
-                            {availableStreams.length > 0 && (
-                                <View style={{ marginBottom: 20 }}>
-                                    <Text style={{ fontSize: 13, fontWeight: '700', color: textSecondary, marginBottom: 10, textTransform: 'uppercase', letterSpacing: 0.5 }}>Stream</Text>
-                                    <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                                        <View style={{ flexDirection: 'row', gap: 8 }}>
-                                            {availableStreams.map((streamItem) => (
-                                                <TouchableOpacity
-                                                    key={streamItem.id}
-                                                    onPress={() => {
-                                                        const nextStreamId = formStreamId === streamItem.id ? '' : streamItem.id;
-                                                        setFormStreamId(nextStreamId);
-                                                    }}
-                                                    style={{
-                                                        paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, borderWidth: 1.5,
-                                                        backgroundColor: formStreamId === streamItem.id ? '#0EA5E9' : pillInactive,
-                                                        borderColor: formStreamId === streamItem.id ? '#0EA5E9' : pillInactiveBorder,
-                                                    }}
-                                                >
-                                                    <Text style={{ fontSize: 12, fontWeight: '700', color: formStreamId === streamItem.id ? 'white' : pillInactiveText }}>
-                                                        {streamItem.name || streamItem.code}
-                                                    </Text>
-                                                </TouchableOpacity>
-                                            ))}
-                                        </View>
-                                    </ScrollView>
-                                </View>
-                            )}
-
+                            {/* Stream / Section Input */}
                             <View style={{ marginBottom: 20 }}>
-                                <Text style={{ fontSize: 13, fontWeight: '700', color: textSecondary, marginBottom: 10, textTransform: 'uppercase', letterSpacing: 0.5 }}>Type</Text>
-                                <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                                    <View style={{ flexDirection: 'row', gap: 8 }}>
-                                        {classTypes.map((typeName) => (
-                                            <TouchableOpacity
-                                                key={typeName}
-                                                onPress={() => {
-                                                    setFormClassType(typeName);
-                                                    setFormCategoryId('');
-                                                    setFormLevelId('');
-                                                    setFormStreamId('');
-                                                    setFormLevel('');
-                                                }}
-                                                style={{
-                                                    paddingHorizontal: 14,
-                                                    paddingVertical: 8,
-                                                    borderRadius: 20,
-                                                    borderWidth: 1.5,
-                                                    backgroundColor: formClassType === typeName ? '#0EA5E9' : pillInactive,
-                                                    borderColor: formClassType === typeName ? '#0EA5E9' : pillInactiveBorder,
-                                                }}
-                                            >
-                                                <Text style={{ fontSize: 12, fontWeight: '700', color: formClassType === typeName ? 'white' : pillInactiveText }}>{typeName}</Text>
-                                            </TouchableOpacity>
-                                        ))}
-                                    </View>
-                                </ScrollView>
+                                <Text style={{ fontSize: 13, fontWeight: '700', color: textSecondary, marginBottom: 10, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                                    Stream / Section Name (e.g. A, East, Blue)
+                                </Text>
+                                {availableStreams.length > 0 && (
+                                    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 8 }}>
+                                        <View style={{ flexDirection: 'row', gap: 8 }}>
+                                            {availableStreams.map((s) => {
+                                                const isSelected = formStreamId === s.id || formStream.toLowerCase() === (s.name || s.code).toLowerCase();
+                                                return (
+                                                    <TouchableOpacity
+                                                        key={s.id}
+                                                        onPress={() => {
+                                                            if (isSelected) {
+                                                                setFormStreamId('');
+                                                                setFormStream('');
+                                                            } else {
+                                                                setFormStreamId(s.id);
+                                                                setFormStream(s.name || s.code);
+                                                            }
+                                                        }}
+                                                        style={{
+                                                            paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16, borderWidth: 1.5,
+                                                            backgroundColor: isSelected ? '#0EA5E9' : pillInactive,
+                                                            borderColor: isSelected ? '#0EA5E9' : pillInactiveBorder,
+                                                        }}
+                                                    >
+                                                        <Text style={{ fontSize: 12, fontWeight: '700', color: isSelected ? 'white' : pillInactiveText }}>
+                                                            {s.name || s.code}
+                                                        </Text>
+                                                    </TouchableOpacity>
+                                                );
+                                            })}
+                                        </View>
+                                    </ScrollView>
+                                )}
+                                <TextInput
+                                    style={{
+                                        backgroundColor: inputBg, borderWidth: 1.5, borderColor: inputBorder,
+                                        borderRadius: 14, paddingHorizontal: 16, paddingVertical: 14,
+                                        color: textPrimary, fontSize: 15, fontWeight: '500',
+                                    }}
+                                    placeholder="Enter stream name (e.g. A, East, Yellow)"
+                                    value={formStream}
+                                    onChangeText={(text) => {
+                                        setFormStream(text);
+                                        const matched = availableStreams.find(s => (s.name || s.code).toLowerCase() === text.trim().toLowerCase());
+                                        setFormStreamId(matched ? matched.id : '');
+                                    }}
+                                    placeholderTextColor={textMuted}
+                                />
                             </View>
 
                             {/* Capacity */}
@@ -1059,7 +1189,7 @@ export default function AdminClassManagement() {
                 </View>
             </Modal>
 
-            {/* ═══ Domain Management Drawer ═══ */}
+            {/* ═══ School Grade Levels Manager Drawer ═══ */}
             <Modal visible={showDomainDrawer} animationType="slide" transparent>
                 <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' }}>
                     <View style={{
@@ -1070,112 +1200,266 @@ export default function AdminClassManagement() {
                     }}>
                         {/* Modal Header */}
                         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 20, borderBottomWidth: 1, borderBottomColor: border }}>
-                            <View>
-                                <Text style={{ fontSize: 20, fontWeight: '800', color: textPrimary }}>Class Domain Manager</Text>
+                            <View style={{ flex: 1, marginRight: 8 }}>
+                                <Text style={{ fontSize: 20, fontWeight: '800', color: textPrimary }}>School Grade Levels</Text>
                                 <Text style={{ fontSize: 13, color: textSecondary, marginTop: 2 }}>
-                                    Manage categories, levels, and streams
+                                    Manage the grade levels and streams offered by your school
                                 </Text>
                             </View>
-                            <TouchableOpacity onPress={() => setShowDomainDrawer(false)} style={{ padding: 4 }}>
-                                <Ionicons name="close" size={24} color={textSecondary} />
-                            </TouchableOpacity>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                                <TouchableOpacity
+                                    onPress={async () => {
+                                        setDomainSaving(true);
+                                        try {
+                                            await loadClassOptions();
+                                            showSuccess('Refreshed', 'Grade levels updated');
+                                        } catch (e: any) {
+                                            showError('Refresh Failed', e?.message || 'Could not refresh');
+                                        } finally {
+                                            setDomainSaving(false);
+                                        }
+                                    }}
+                                    disabled={domainSaving}
+                                    style={{
+                                        padding: 6,
+                                        borderRadius: 8,
+                                        backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : '#F3F4F6',
+                                    }}
+                                    accessibilityLabel="Refresh grade levels"
+                                >
+                                    <Ionicons name="refresh" size={18} color={textPrimary} />
+                                </TouchableOpacity>
+                                <TouchableOpacity onPress={() => setShowDomainDrawer(false)} style={{ padding: 4 }}>
+                                    <Ionicons name="close" size={24} color={textSecondary} />
+                                </TouchableOpacity>
+                            </View>
                         </View>
 
-                        <ScrollView style={{ padding: 20 }} keyboardShouldPersistTaps="handled">
-                            <View style={{ marginBottom: 20 }}>
-                                <Text style={{ fontSize: 13, fontWeight: '700', color: textSecondary, marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.5 }}>New Level</Text>
-                                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 8 }}>
-                                    <View style={{ flexDirection: 'row', gap: 8 }}>
-                                        {domainCategories.map((category) => (
-                                            <TouchableOpacity
-                                                key={category.id}
-                                                onPress={() => setNewLevelCategoryId(newLevelCategoryId === category.id ? '' : category.id)}
-                                                style={{
-                                                    paddingHorizontal: 10, paddingVertical: 6, borderRadius: 20, borderWidth: 1,
-                                                    backgroundColor: newLevelCategoryId === category.id ? '#0891B2' : pillInactive,
-                                                    borderColor: newLevelCategoryId === category.id ? '#0891B2' : pillInactiveBorder,
-                                                }}
-                                            >
-                                                <Text style={{ color: newLevelCategoryId === category.id ? 'white' : pillInactiveText, fontWeight: '700' }}>{category.name}</Text>
-                                            </TouchableOpacity>
-                                        ))}
+                        <ScrollView
+                            style={{ padding: 20 }}
+                            keyboardShouldPersistTaps="handled"
+                            refreshControl={
+                                <RefreshControl
+                                    refreshing={domainSaving}
+                                    onRefresh={async () => {
+                                        setDomainSaving(true);
+                                        try {
+                                            await loadClassOptions();
+                                        } finally {
+                                            setDomainSaving(false);
+                                        }
+                                    }}
+                                    colors={['#0284C7']}
+                                    tintColor="#0284C7"
+                                />
+                            }
+                        >
+                            {/* 1. Active Grade Levels List */}
+                            <View style={{ marginBottom: 24 }}>
+                                <Text style={{ fontSize: 13, fontWeight: '700', color: textSecondary, marginBottom: 12, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                                    Active Grade Levels ({domainLevels.length})
+                                </Text>
+                                {domainLevels.length === 0 ? (
+                                    <View style={{ backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#F9FAFB', padding: 16, borderRadius: 14, alignItems: 'center', borderWidth: 1, borderColor: border, borderStyle: 'dashed' }}>
+                                        <Ionicons name="layers-outline" size={32} color={textMuted} />
+                                        <Text style={{ color: textSecondary, fontSize: 13, marginTop: 8, textAlign: 'center' }}>
+                                            No grade levels added yet. Use the form below to add your school's grade levels.
+                                        </Text>
                                     </View>
-                                </ScrollView>
-                                <View style={{ flexDirection: 'row', gap: 8 }}>
-                                    <TextInput
-                                        style={{
-                                            flex: 1,
-                                            backgroundColor: inputBg,
-                                            borderWidth: 1,
-                                            borderColor: inputBorder,
-                                            borderRadius: 12,
-                                            paddingHorizontal: 12,
-                                            paddingVertical: 10,
-                                            color: textPrimary,
-                                        }}
-                                        placeholder="Level number"
-                                        value={newLevelNumber}
-                                        onChangeText={setNewLevelNumber}
-                                        keyboardType="number-pad"
-                                        placeholderTextColor={textMuted}
-                                    />
+                                ) : (
+                                    <View style={{ gap: 8 }}>
+                                        {domainLevels.slice().sort((a, b) => a.level_number - b.level_number).map((level) => {
+                                            const label = level.name || `${safeLevelLabel} ${level.level_number}`;
+                                            const levelStreams = domainStreams.filter(s => s.level_id === level.id);
+                                            return (
+                                                <View
+                                                    key={level.id}
+                                                    style={{
+                                                        flexDirection: 'row',
+                                                        alignItems: 'center',
+                                                        justifyContent: 'space-between',
+                                                        backgroundColor: isDark ? '#1F2937' : '#F9FAFB',
+                                                        paddingHorizontal: 14,
+                                                        paddingVertical: 12,
+                                                        borderRadius: 14,
+                                                        borderWidth: 1,
+                                                        borderColor: border,
+                                                    }}
+                                                >
+                                                    <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+                                                        <View style={{
+                                                            width: 34, height: 34, borderRadius: 10,
+                                                            backgroundColor: isDark ? '#082F49' : '#E0F2FE',
+                                                            alignItems: 'center', justifyContent: 'center',
+                                                            marginRight: 12,
+                                                        }}>
+                                                            <Text style={{ fontWeight: '800', color: '#0284C7', fontSize: 15 }}>
+                                                                {level.level_number}
+                                                            </Text>
+                                                        </View>
+                                                        <View style={{ flex: 1 }}>
+                                                            <Text style={{ color: textPrimary, fontWeight: '700', fontSize: 14 }}>
+                                                                {label}
+                                                            </Text>
+                                                            {levelStreams.length > 0 && (
+                                                                <Text style={{ color: textMuted, fontSize: 11, marginTop: 2 }}>
+                                                                    Streams: {levelStreams.map(s => s.name || s.code).join(', ')}
+                                                                </Text>
+                                                            )}
+                                                        </View>
+                                                    </View>
+
+                                                    <TouchableOpacity
+                                                        onPress={() => handleDeleteLevel(level)}
+                                                        style={{ padding: 6 }}
+                                                        disabled={domainSaving}
+                                                    >
+                                                        <Ionicons name="trash-outline" size={18} color="#EF4444" />
+                                                    </TouchableOpacity>
+                                                </View>
+                                            );
+                                        })}
+                                    </View>
+                                )}
+                            </View>
+
+                            {/* 2. Add New Grade Level Form */}
+                            <View style={{ marginBottom: 24, backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : '#F3F4F6', padding: 16, borderRadius: 16 }}>
+                                <Text style={{ fontSize: 13, fontWeight: '700', color: textSecondary, marginBottom: 12, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                                    + Add New Grade Level
+                                </Text>
+                                {domainCategories.length > 1 && (
+                                    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 10 }}>
+                                        <View style={{ flexDirection: 'row', gap: 8 }}>
+                                            {domainCategories.map((category) => (
+                                                <TouchableOpacity
+                                                    key={category.id}
+                                                    onPress={() => setNewLevelCategoryId(newLevelCategoryId === category.id ? '' : category.id)}
+                                                    style={{
+                                                        paddingHorizontal: 10, paddingVertical: 6, borderRadius: 20, borderWidth: 1,
+                                                        backgroundColor: newLevelCategoryId === category.id ? '#0284C7' : pillInactive,
+                                                        borderColor: newLevelCategoryId === category.id ? '#0284C7' : pillInactiveBorder,
+                                                    }}
+                                                >
+                                                    <Text style={{ color: newLevelCategoryId === category.id ? 'white' : pillInactiveText, fontWeight: '700' }}>{category.name}</Text>
+                                                </TouchableOpacity>
+                                            ))}
+                                        </View>
+                                    </ScrollView>
+                                )}
+                                <View style={{ gap: 10 }}>
+                                    <View style={{ flexDirection: 'row', gap: 8 }}>
+                                        <TextInput
+                                            style={{
+                                                width: 100,
+                                                backgroundColor: inputBg,
+                                                borderWidth: 1.5,
+                                                borderColor: inputBorder,
+                                                borderRadius: 12,
+                                                paddingHorizontal: 14,
+                                                paddingVertical: 10,
+                                                color: textPrimary,
+                                                fontSize: 14,
+                                            }}
+                                            placeholder="Level #"
+                                            value={newLevelNumber}
+                                            onChangeText={setNewLevelNumber}
+                                            keyboardType="number-pad"
+                                            placeholderTextColor={textMuted}
+                                        />
+                                        <TextInput
+                                            style={{
+                                                flex: 1,
+                                                backgroundColor: inputBg,
+                                                borderWidth: 1.5,
+                                                borderColor: inputBorder,
+                                                borderRadius: 12,
+                                                paddingHorizontal: 14,
+                                                paddingVertical: 10,
+                                                color: textPrimary,
+                                                fontSize: 14,
+                                            }}
+                                            placeholder={`Custom label (e.g. ${safeLevelLabel} 1)`}
+                                            value={newLevelName}
+                                            onChangeText={setNewLevelName}
+                                            placeholderTextColor={textMuted}
+                                        />
+                                    </View>
                                     <TouchableOpacity
                                         onPress={handleCreateLevel}
-                                        disabled={domainSaving}
-                                        style={{ backgroundColor: '#0891B2', borderRadius: 12, paddingHorizontal: 14, justifyContent: 'center' }}
+                                        disabled={domainSaving || !newLevelNumber.trim()}
+                                        style={{
+                                            backgroundColor: newLevelNumber.trim() ? '#0284C7' : (isDark ? '#374151' : '#D1D5DB'),
+                                            borderRadius: 12,
+                                            paddingVertical: 12,
+                                            alignItems: 'center',
+                                        }}
                                     >
-                                        <Text style={{ color: 'white', fontWeight: '700' }}>Add</Text>
+                                        <Text style={{ color: 'white', fontWeight: '700', fontSize: 14 }}>
+                                            {domainSaving ? 'Adding...' : '+ Add Grade Level'}
+                                        </Text>
                                     </TouchableOpacity>
                                 </View>
                             </View>
 
-                            <View style={{ marginBottom: 24 }}>
-                                <Text style={{ fontSize: 13, fontWeight: '700', color: textSecondary, marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.5 }}>New Stream</Text>
-                                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 8 }}>
+                            {/* 3. Add Stream Section */}
+                            {domainLevels.length > 0 && (
+                                <View style={{ marginBottom: 24, backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : '#F3F4F6', padding: 16, borderRadius: 16 }}>
+                                    <Text style={{ fontSize: 13, fontWeight: '700', color: textSecondary, marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                                        + Add Stream to Level (Optional)
+                                    </Text>
+                                    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 10 }}>
+                                        <View style={{ flexDirection: 'row', gap: 8 }}>
+                                            {domainLevels.map((level) => (
+                                                <TouchableOpacity
+                                                    key={level.id}
+                                                    onPress={() => setNewStreamLevelId(newStreamLevelId === level.id ? '' : level.id)}
+                                                    style={{
+                                                        paddingHorizontal: 10, paddingVertical: 6, borderRadius: 16, borderWidth: 1.5,
+                                                        backgroundColor: newStreamLevelId === level.id ? '#0284C7' : pillInactive,
+                                                        borderColor: newStreamLevelId === level.id ? '#0284C7' : pillInactiveBorder,
+                                                    }}
+                                                >
+                                                    <Text style={{ color: newStreamLevelId === level.id ? 'white' : pillInactiveText, fontWeight: '700', fontSize: 12 }}>
+                                                        {level.name || `${safeLevelLabel} ${level.level_number}`}
+                                                    </Text>
+                                                </TouchableOpacity>
+                                            ))}
+                                        </View>
+                                    </ScrollView>
                                     <View style={{ flexDirection: 'row', gap: 8 }}>
-                                        {domainLevels.map((level) => (
-                                            <TouchableOpacity
-                                                key={level.id}
-                                                onPress={() => setNewStreamLevelId(newStreamLevelId === level.id ? '' : level.id)}
-                                                style={{
-                                                    paddingHorizontal: 10, paddingVertical: 6, borderRadius: 20, borderWidth: 1,
-                                                    backgroundColor: newStreamLevelId === level.id ? '#0891B2' : pillInactive,
-                                                    borderColor: newStreamLevelId === level.id ? '#0891B2' : pillInactiveBorder,
-                                                }}
-                                            >
-                                                <Text style={{ color: newStreamLevelId === level.id ? 'white' : pillInactiveText, fontWeight: '700' }}>
-                                                    {level.name || `${safeLevelLabel} ${level.level_number}`}
-                                                </Text>
-                                            </TouchableOpacity>
-                                        ))}
+                                        <TextInput
+                                            style={{
+                                                flex: 1,
+                                                backgroundColor: inputBg,
+                                                borderWidth: 1.5,
+                                                borderColor: inputBorder,
+                                                borderRadius: 12,
+                                                paddingHorizontal: 14,
+                                                paddingVertical: 10,
+                                                color: textPrimary,
+                                                fontSize: 14,
+                                            }}
+                                            placeholder="Stream code (e.g. A, East, Blue)"
+                                            value={newStreamCode}
+                                            onChangeText={setNewStreamCode}
+                                            placeholderTextColor={textMuted}
+                                        />
+                                        <TouchableOpacity
+                                            onPress={handleCreateStream}
+                                            disabled={domainSaving || !newStreamLevelId || !newStreamCode.trim()}
+                                            style={{
+                                                backgroundColor: (newStreamLevelId && newStreamCode.trim()) ? '#0284C7' : (isDark ? '#374151' : '#D1D5DB'),
+                                                borderRadius: 12,
+                                                paddingHorizontal: 16,
+                                                justifyContent: 'center',
+                                            }}
+                                        >
+                                            <Text style={{ color: 'white', fontWeight: '700' }}>Add</Text>
+                                        </TouchableOpacity>
                                     </View>
-                                </ScrollView>
-                                <View style={{ flexDirection: 'row', gap: 8 }}>
-                                    <TextInput
-                                        style={{
-                                            flex: 1,
-                                            backgroundColor: inputBg,
-                                            borderWidth: 1,
-                                            borderColor: inputBorder,
-                                            borderRadius: 12,
-                                            paddingHorizontal: 12,
-                                            paddingVertical: 10,
-                                            color: textPrimary,
-                                        }}
-                                        placeholder="Stream code (e.g. A, East)"
-                                        value={newStreamCode}
-                                        onChangeText={setNewStreamCode}
-                                        placeholderTextColor={textMuted}
-                                    />
-                                    <TouchableOpacity
-                                        onPress={handleCreateStream}
-                                        disabled={domainSaving}
-                                        style={{ backgroundColor: '#0891B2', borderRadius: 12, paddingHorizontal: 14, justifyContent: 'center' }}
-                                    >
-                                        <Text style={{ color: 'white', fontWeight: '700' }}>Add</Text>
-                                    </TouchableOpacity>
                                 </View>
-                            </View>
+                            )}
 
                         </ScrollView>
                     </View>

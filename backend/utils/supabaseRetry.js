@@ -62,23 +62,35 @@ const assertCircuitAllowsRequest = () => {
 };
 
 const isTransientSupabaseError = (errorLike) => {
-  const msg = String(
+  const causeMsg = String(
+    errorLike?.cause?.message ||
+    errorLike?.cause?.code ||
+    errorLike?.cause || ''
+  ).toLowerCase();
+
+  const msg = (String(
     errorLike?.message ||
     errorLike?.details ||
     errorLike?.code ||
     errorLike || ''
-  ).toLowerCase();
+  ) + ' ' + causeMsg).toLowerCase();
 
   return (
     msg.includes('fetch failed') ||
     msg.includes('connect timeout') ||
     msg.includes('und_err_connect_timeout') ||
+    msg.includes('und_err_socket') ||
+    msg.includes('other side closed') ||
+    msg.includes('socketerror') ||
+    msg.includes('socket error') ||
     msg.includes('supabase circuit breaker open') ||
     msg.includes('supabase_circuit_open') ||
     msg.includes('etimedout') ||
     msg.includes('econnreset') ||
+    msg.includes('econnrefused') ||
     msg.includes('enotfound') ||
-    msg.includes('network')
+    msg.includes('network') ||
+    msg.includes('broken pipe')
   );
 };
 

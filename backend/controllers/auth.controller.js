@@ -500,7 +500,8 @@ const { createClient } = require("@supabase/supabase-js");
       customId = data?.id;
     }
 
-    const isMain = userData.admins?.[0]?.is_main || false;
+    const adminRecord = Array.isArray(userData.admins) ? userData.admins[0] : (userData.admins || null);
+    const isMain = adminRecord?.is_main || false;
 
     // Check if this is a platform admin (dedicated role or matching registry)
     let isPlatformAdmin = userData.role === 'master_admin';
@@ -1624,6 +1625,10 @@ exports.changePassword = async (req, res) => {
       return res.status(400).json({ error: "New password must be at least 6 characters" });
     }
 
+    if (new_password.length > 72) {
+      return res.status(400).json({ error: "New password cannot be longer than 72 characters" });
+    }
+
     // Verify current password by attempting sign-in
     const { data: userData } = await supabase
       .from('users')
@@ -1727,11 +1732,15 @@ exports.adminResetPassword = async (req, res) => {
     const otpReset = !!req.body.otpReset;
     const generatedPassword = !newPassword && !otpReset;
     const finalPassword = otpReset
-      ? crypto.randomUUID() + '-' + crypto.randomUUID()
+      ? crypto.randomUUID()
       : (generatedPassword ? generateTempPassword() : String(newPassword || ''));
 
     if (!otpReset && finalPassword.length < 6) {
       return res.status(400).json({ error: "Password must be at least 6 characters" });
+    }
+
+    if (!otpReset && finalPassword.length > 72) {
+      return res.status(400).json({ error: "Password cannot be longer than 72 characters" });
     }
 
     // Fetch target user info
@@ -1860,7 +1869,20 @@ exports.adminResetPassword = async (req, res) => {
       password: finalPassword,
     });
 
-    if (updateError) throw updateError;
+    if (updateError) {
+      console.error("adminResetPassword updateUserById error:", updateError);
+      await writePasswordAuditLog({
+        action: otpReset ? 'admin_reset_credentials_otp' : 'admin_reset_password',
+        actorUserId: adminId,
+        targetUserId,
+        outcome: 'failure',
+        reason: updateError.message || 'auth_update_failed',
+        ipAddress,
+        userAgent,
+        metadata: { admin_role: adminRole, error: updateError.message },
+      });
+      return res.status(400).json({ error: updateError.message || "Failed to update user password" });
+    }
 
     await supabase
       .from('users')
@@ -2336,6 +2358,10 @@ exports.resetPassword = async (req, res) => {
       return res.status(400).json({ error: "Password must be at least 6 characters" });
     }
 
+    if (new_password.length > 72) {
+      return res.status(400).json({ error: "Password cannot be longer than 72 characters" });
+    }
+
     // Get user from the access token
     const { createClient } = require("@supabase/supabase-js");
     const scopedClient = createClient(
@@ -2361,7 +2387,10 @@ exports.resetPassword = async (req, res) => {
       password: new_password,
     });
 
-    if (updateError) throw updateError;
+    if (updateError) {
+      console.error("resetPassword updateUserById error:", updateError);
+      return res.status(400).json({ error: updateError.message || "Failed to reset password" });
+    }
 
     await supabase
       .from('users')
@@ -2483,6 +2512,10 @@ exports.completeCredentialSetup = async (req, res) => {
 
     if (!new_password || String(new_password).length < 6) {
       return res.status(400).json({ error: 'Password must be at least 6 characters' });
+    }
+
+    if (String(new_password).length > 72) {
+      return res.status(400).json({ error: 'Password cannot be longer than 72 characters' });
     }
 
     const { data: userRow, error: userError } = await supabase
@@ -2685,11 +2718,14 @@ exports.verifySecurityQuestions = async (req, res) => {
         return res.status(400).json({ error: 'Password must be at least 6 characters' });
       }
 
+      if (new_password.length > 72) {
+        return res.status(400).json({ error: 'Password cannot be longer than 72 characters' });
+      }
+
       const { error: updateError } = await supabase.auth.admin.updateUserById(userRow.id, {
         password: new_password,
       });
       if (updateError) throw updateError;
-
       await supabase
         .from('users')
         .update({

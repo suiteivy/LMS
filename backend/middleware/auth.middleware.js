@@ -87,7 +87,7 @@ async function authMiddleware(req, res, next) {
     const {
       data: { user },
       error,
-    } = await withSupabaseRetry(() => supabase.auth.getUser(token), { attempts: 1 });
+    } = await withSupabaseRetry(() => supabase.auth.getUser(token), { attempts: 2, delaysMs: [300] });
 
     if (error || !user) {
       if (isLogoutPath) {
@@ -313,8 +313,79 @@ async function authMiddleware(req, res, next) {
         }
       }
 
-      const isMain = profileData.admins?.[0]?.is_main || false;
-      const canManageUsers = profileData.admins?.[0]?.can_manage_users || false;
+      const adminRecord = Array.isArray(profileData.admins)
+        ? profileData.admins[0]
+        : (profileData.admins || null);
+      let isMain = adminRecord?.is_main || false;
+      let canManageUsers = adminRecord?.can_manage_users || false;
+
+      // Auto-heal and ensure institution admins have administrative rights
+      if (profileData.role === 'admin' && profileData.institution_id) {
+        if (!adminRecord) {
+          try {
+            const { data: directAdmin } = await withSupabaseRetry(() =>
+              supabase
+                .from('admins')
+                .select('id, is_main, can_manage_users')
+                .eq('user_id', user.id)
+                .maybeSingle()
+            );
+
+            if (directAdmin) {
+              isMain = !!directAdmin.is_main;
+              canManageUsers = !!directAdmin.can_manage_users || isMain;
+            } else {
+              // Check if another main admin exists for this institution
+              const { data: otherMain } = await withSupabaseRetry(() =>
+                supabase
+                  .from('admins')
+                  .select('id')
+                  .eq('institution_id', profileData.institution_id)
+                  .eq('is_main', true)
+                  .maybeSingle()
+              );
+
+              isMain = !otherMain;
+              canManageUsers = isMain;
+
+              await supabase.from('admins').upsert({
+                user_id: user.id,
+                institution_id: profileData.institution_id,
+                is_main: isMain,
+                can_manage_users: canManageUsers,
+              }, { onConflict: 'user_id' }).catch((e) => {
+                console.error('[AuthMiddleware] Error healing admin record:', e.message);
+              });
+            }
+          } catch (healErr) {
+            console.error('[AuthMiddleware] Admin check error:', healErr.message);
+          }
+        } else if (!isMain && !canManageUsers) {
+          // If admin record exists but is neither main nor delegated, check if any main admin exists
+          try {
+            const { data: existingMain } = await withSupabaseRetry(() =>
+              supabase
+                .from('admins')
+                .select('id')
+                .eq('institution_id', profileData.institution_id)
+                .eq('is_main', true)
+                .maybeSingle()
+            );
+
+            if (!existingMain) {
+              isMain = true;
+              canManageUsers = true;
+              await supabase
+                .from('admins')
+                .update({ is_main: true, can_manage_users: true })
+                .eq('user_id', user.id)
+                .catch(() => {});
+            }
+          } catch (e) {
+            console.error('[AuthMiddleware] Error verifying main admin status:', e.message);
+          }
+        }
+      }
 
       // Query custom roles and permissions
       const { data: userRolesData } = await supabase

@@ -63,7 +63,6 @@ export function useRealtimeQuery(
     const startPolling = () => {
       if (pollingRef.current || !mountedRef.current) return;
       setRealtimeUnavailable(true);
-      if (__DEV__) console.log(`[Realtime] Falling back to polling for ${tableName}`);
       pollingRef.current = setInterval(() => {
         if (mountedRef.current) handleUpdate();
       }, POLL_INTERVAL_MS);
@@ -94,17 +93,14 @@ export function useRealtimeQuery(
           if (status === 'SUBSCRIBED') {
             retriesRef.current = 0;
             setRealtimeUnavailable(false);
-            if (__DEV__) console.log(`[Realtime] Subscribed to ${tableName}`);
           } else if (status === 'CHANNEL_ERROR') {
             retriesRef.current++;
             if (retriesRef.current > MAX_RETRIES) {
-              console.warn(`[Realtime] Exhausted retries for ${tableName}. Falling back to polling.`);
               cleanup();
               startPolling();
               return;
             }
             const delay = Math.min(INITIAL_BACKOFF_MS * Math.pow(2, retriesRef.current - 1), MAX_BACKOFF_MS);
-            console.warn(`[Realtime] Channel error for ${tableName}. Retry ${retriesRef.current}/${MAX_RETRIES} in ${delay}ms`);
             // Remove failed channel and retry after delay
             supabase.removeChannel(channel);
             if (mountedRef.current) {

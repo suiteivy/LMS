@@ -6,15 +6,17 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { supabase } from '@/libs/supabase';
 import { User } from '@/types/types';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { Href, router, useLocalSearchParams } from 'expo-router';
 import { Users } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
 import {
-    Alert, FlatList, Platform,
+    ActivityIndicator, Alert, FlatList, Modal, Platform,
     ScrollView, Text, TextInput, TouchableOpacity, View, useWindowDimensions
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SettingsService } from '@/services/SettingsService';
+import Toast from 'react-native-toast-message';
 
 export default function UsersManagementScreen() {
     const params = useLocalSearchParams();
@@ -29,6 +31,68 @@ export default function UsersManagementScreen() {
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
     const [activeFilter, setActiveFilter] = useState<'all' | 'student' | 'teacher' | 'admin'>('all');
+
+    const [showResetModal, setShowResetModal] = useState(false);
+    const [resettingUser, setResettingUser] = useState<User | null>(null);
+    const [resettingLoading, setResettingLoading] = useState(false);
+    const [showResultModal, setShowResultModal] = useState(false);
+    const [resetResult, setResetResult] = useState<any>(null);
+
+    const openCredentialReset = (targetUser: User) => {
+        setResettingUser(targetUser);
+        setShowResetModal(true);
+    };
+
+    const copyToClipboard = (text: string, label: string) => {
+        if (Platform.OS === 'web' && typeof navigator !== 'undefined' && (navigator as any)?.clipboard?.writeText) {
+            (navigator as any).clipboard.writeText(text);
+        } else {
+            try {
+                const { Clipboard } = require('react-native');
+                Clipboard.setString(text);
+            } catch (err) {
+                console.error('Clipboard copy error:', err);
+            }
+        }
+        Toast.show({
+            type: 'success',
+            text1: 'Copied',
+            text2: `${label} copied to clipboard`,
+            position: 'top',
+        });
+    };
+
+    const confirmCredentialReset = async () => {
+        if (!resettingUser || resettingLoading) return;
+        setResettingLoading(true);
+        try {
+            const res = await SettingsService.adminResetPassword(resettingUser.id);
+            setResetResult({
+                ...res,
+                user: resettingUser,
+            });
+            setShowResetModal(false);
+            setShowResultModal(true);
+            Toast.show({
+                type: 'success',
+                text1: 'Credentials Reset',
+                text2: 'Temporary credential generated. All active sessions were revoked.',
+                position: 'top',
+            });
+        } catch (err: any) {
+            console.error('confirmCredentialReset error:', err);
+            const errorMsg = err?.response?.data?.error || err.message || 'Failed to reset credentials';
+            Toast.show({
+                type: 'error',
+                text1: 'Reset Failed',
+                text2: errorMsg,
+                position: 'top',
+            });
+            Alert.alert('Reset Failed', errorMsg);
+        } finally {
+            setResettingLoading(false);
+        }
+    };
 
     // Theme shorthands
     const bg = isDark ? '#161B22' : '#FFFFFF';
@@ -186,7 +250,12 @@ export default function UsersManagementScreen() {
                     columnWrapperStyle={numColumns > 1 ? { gap: 16 } : undefined}
                     renderItem={({ item }) => (
                         <View style={{ width: cardWidth }}>
-                            <UserCard user={item} onPress={u => router.push(`/(admin)/users/${u.id}` as Href)} />
+                            <UserCard
+                                user={item}
+                                showActions={true}
+                                onResetCredentialsPress={openCredentialReset}
+                                onPress={u => router.push(`/(admin)/users/${u.id}` as Href)}
+                            />
                         </View>
                     )}
                     ListEmptyComponent={
@@ -202,6 +271,206 @@ export default function UsersManagementScreen() {
                     }
                 />
             )}
+
+            {/* Credential Reset Confirmation Modal */}
+            <Modal
+                visible={showResetModal}
+                transparent
+                animationType="fade"
+                onRequestClose={() => {
+                    if (!resettingLoading) setShowResetModal(false);
+                }}
+            >
+                <View style={{
+                    flex: 1,
+                    backgroundColor: 'rgba(0,0,0,0.6)',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    padding: 16,
+                }}>
+                    <View style={{
+                        backgroundColor: card,
+                        borderColor: border,
+                        borderWidth: 1,
+                        borderRadius: 16,
+                        padding: 20,
+                        width: '100%',
+                        maxWidth: 440,
+                    }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
+                            <View style={{ backgroundColor: isDark ? 'rgba(239,68,68,0.2)' : '#FEE2E2', padding: 8, borderRadius: 10, marginRight: 10 }}>
+                                <MaterialCommunityIcons name="lock-reset" size={24} color="#DC2626" />
+                            </View>
+                            <Text style={{ color: textPrimary, fontWeight: '800', fontSize: 18 }}>
+                                Confirm Credential Reset
+                            </Text>
+                        </View>
+
+                        {!!resettingUser && (
+                            <View style={{
+                                backgroundColor: inputBg,
+                                borderColor: border,
+                                borderWidth: 1,
+                                borderRadius: 10,
+                                padding: 12,
+                                marginBottom: 14,
+                            }}>
+                                <Text style={{ color: textPrimary, fontWeight: '700', fontSize: 14 }}>
+                                    {resettingUser.name || 'User'}
+                                </Text>
+                                <Text style={{ color: textSecondary, fontSize: 12, marginTop: 2 }}>
+                                    Email: {resettingUser.email || 'N/A'}
+                                </Text>
+                                <Text style={{ color: textSecondary, fontSize: 12, marginTop: 2, textTransform: 'capitalize' }}>
+                                    Role: {resettingUser.role || 'User'}
+                                </Text>
+                            </View>
+                        )}
+
+                        <View style={{
+                            backgroundColor: isDark ? 'rgba(239,68,68,0.12)' : '#FEF2F2',
+                            borderColor: isDark ? '#7f1d1d' : '#FCA5A5',
+                            borderWidth: 1,
+                            borderRadius: 10,
+                            padding: 12,
+                            marginBottom: 16,
+                        }}>
+                            <Text style={{ color: '#B91C1C', fontWeight: '700', fontSize: 13, marginBottom: 4 }}>
+                                Security Action Notice
+                            </Text>
+                            <Text style={{ color: isDark ? '#FCA5A5' : '#991B1B', fontSize: 12, lineHeight: 18 }}>
+                                Reset credentials for <Text style={{ fontWeight: '800' }}>{resettingUser?.name || resettingUser?.email || 'this user'}</Text>? This will generate a new temporary credential, force logout all active sessions, and require password + security question setup at next login.
+                            </Text>
+                        </View>
+
+                        <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: 10 }}>
+                            <TouchableOpacity
+                                onPress={() => setShowResetModal(false)}
+                                disabled={resettingLoading}
+                                style={{
+                                    borderWidth: 1,
+                                    borderColor: border,
+                                    borderRadius: 10,
+                                    paddingHorizontal: 14,
+                                    paddingVertical: 10,
+                                    backgroundColor: inputBg,
+                                }}
+                            >
+                                <Text style={{ color: textSecondary, fontWeight: '700' }}>Cancel</Text>
+                            </TouchableOpacity>
+
+                            <TouchableOpacity
+                                onPress={confirmCredentialReset}
+                                disabled={resettingLoading}
+                                style={{
+                                    borderWidth: 1,
+                                    borderColor: '#DC2626',
+                                    borderRadius: 10,
+                                    paddingHorizontal: 16,
+                                    paddingVertical: 10,
+                                    backgroundColor: '#DC2626',
+                                    minWidth: 110,
+                                    alignItems: 'center',
+                                }}
+                            >
+                                {resettingLoading ? (
+                                    <ActivityIndicator size="small" color="#FFF" />
+                                ) : (
+                                    <Text style={{ color: '#FFF', fontWeight: '800' }}>Confirm Reset</Text>
+                                )}
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </View>
+            </Modal>
+
+            {/* Temporary Credential Result Modal */}
+            <Modal
+                visible={showResultModal}
+                transparent
+                animationType="fade"
+                onRequestClose={() => setShowResultModal(false)}
+            >
+                <View style={{
+                    flex: 1,
+                    backgroundColor: 'rgba(0,0,0,0.6)',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    padding: 16,
+                    zIndex: 100000,
+                    elevation: 100000,
+                }}>
+                    <View style={{
+                        backgroundColor: card,
+                        borderColor: border,
+                        borderWidth: 1,
+                        borderRadius: 16,
+                        padding: 20,
+                        width: '100%',
+                        maxWidth: 460,
+                    }}>
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+                            <Text style={{ color: textPrimary, fontSize: 19, fontWeight: '800' }}>Temporary Credential</Text>
+                            <TouchableOpacity onPress={() => setShowResultModal(false)}>
+                                <MaterialCommunityIcons name="close" size={22} color={textSecondary} />
+                            </TouchableOpacity>
+                        </View>
+
+                        <View style={{ borderWidth: 1, borderColor: border, borderRadius: 12, padding: 14, backgroundColor: inputBg }}>
+                            {!!(resetResult?.user?.email || resetResult?.email) && (
+                                <Text style={{ color: textSecondary, fontSize: 13, marginBottom: 8 }}>
+                                    Login Email: <Text style={{ color: textPrimary, fontWeight: '700' }}>{resetResult?.user?.email || resetResult?.email}</Text>
+                                </Text>
+                            )}
+
+                            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                                <Text style={{ color: textSecondary, fontSize: 13 }}>Temporary Password:</Text>
+                                <TouchableOpacity
+                                    onPress={() => {
+                                        const pwd = resetResult?.tempPassword;
+                                        if (pwd) copyToClipboard(pwd, 'Password');
+                                    }}
+                                    style={{ backgroundColor: '#FF6900', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 }}
+                                >
+                                    <Text style={{ color: '#fff', fontSize: 11, fontWeight: '700' }}>Copy Password</Text>
+                                </TouchableOpacity>
+                            </View>
+
+                            <Text style={{ color: textPrimary, fontWeight: '800', fontSize: 16, marginBottom: 10, letterSpacing: 1 }}>
+                                {resetResult?.tempPassword || 'N/A'}
+                            </Text>
+
+                            {!!resetResult?.credential_delivery?.url && (
+                                <View style={{ marginTop: 6, paddingTop: 10, borderTopWidth: 1, borderTopColor: border }}>
+                                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+                                        <Text style={{ color: textSecondary, fontSize: 12 }}>One-Time Credential Link:</Text>
+                                        <TouchableOpacity
+                                            onPress={() => {
+                                                const url = resetResult.credential_delivery.url;
+                                                if (url) copyToClipboard(url, 'Link');
+                                            }}
+                                            style={{ borderWidth: 1, borderColor: border, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 }}
+                                        >
+                                            <Text style={{ color: textPrimary, fontSize: 11, fontWeight: '700' }}>Copy Link</Text>
+                                        </TouchableOpacity>
+                                    </View>
+                                </View>
+                            )}
+
+                            <Text style={{ color: textSecondary, fontSize: 12, marginTop: 8 }}>
+                                User will be forced to logout of all sessions and complete password and security question setup at next login.
+                            </Text>
+                        </View>
+
+                        <TouchableOpacity
+                            onPress={() => setShowResultModal(false)}
+                            style={{ marginTop: 14, backgroundColor: '#FF6900', borderRadius: 12, paddingVertical: 12, alignItems: 'center' }}
+                        >
+                            <Text style={{ color: '#fff', fontWeight: '800' }}>Done</Text>
+                        </TouchableOpacity>
+                    </View>
+                </View>
+            </Modal>
         </View>
     );
 }
