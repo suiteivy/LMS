@@ -17,7 +17,7 @@ export const AuthGuard: React.FC<AuthGuardProps> = ({
  requireAuth = true,
  allowedRoles
 }) => {
- const { user, profile, isInitializing, getRoleRedirect, isPlatformAdmin } = useAuth()
+ const { user, profile, isInitializing, getRoleRedirect, isPlatformAdmin, activeRole, availableRoles } = useAuth()
  const { isDark } = useTheme()
  const hasBeenInitialized = React.useRef(false)
  const [shouldShowOverlay, setShouldShowOverlay] = React.useState(false)
@@ -35,8 +35,13 @@ export const AuthGuard: React.FC<AuthGuardProps> = ({
  useEffect(() => {
  if (!isInitializing && requireAuth) {
  if (!user) {
- } else if (allowedRoles && profile && !allowedRoles.includes(profile.role)) {
- const redirectPath = getRoleRedirect(profile, isPlatformAdmin) || '/(auth)/signIn';
+ } else if (allowedRoles && profile) {
+ const currentRole = activeRole || profile.role
+ const isAllowed = allowedRoles.includes(currentRole) ||
+   (availableRoles && availableRoles.length > 0 && allowedRoles.some(r => allowedRoles.includes(r)))
+
+ if (!isAllowed) {
+ const redirectPath = getRoleRedirect(profile, isPlatformAdmin, activeRole || undefined) || '/(auth)/signIn';
  
  
  // Loop prevention
@@ -54,7 +59,8 @@ export const AuthGuard: React.FC<AuthGuardProps> = ({
  router.replace(redirectPath as any)
  }
  }
- }, [isInitializing, user, profile, requireAuth, allowedRoles, getRoleRedirect, isPlatformAdmin])
+ }
+ }, [isInitializing, user, profile, requireAuth, allowedRoles, getRoleRedirect, isPlatformAdmin, activeRole, availableRoles])
 
  // If we require auth and have no user, we naturally want to block the view 
  // until the redirect happens. We use an overlay to keep the component mounted.

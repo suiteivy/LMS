@@ -234,7 +234,15 @@ const schemas = {
         last_name: { ...commonRules.name, required: false },
         phone: { ...commonRules.phone, required: false },
         gender: { type: 'string', enum: ['male', 'female', 'other'], required: false },
-        address: { type: 'string', maxLength: 500, required: false }
+        address: { type: 'string', maxLength: 500, required: false },
+        teacher_role_enabled: { type: 'boolean', required: false },
+        department: { type: 'string', required: false },
+        qualification: { type: 'string', required: false },
+        specialization: { type: 'string', required: false },
+        position: { type: 'string', required: false },
+        hire_date: { type: 'string', required: false },
+        subject_ids: { type: 'array', required: false },
+        class_teacher_id: { ...commonRules.uuid, required: false }
     },
 
     idParam: {

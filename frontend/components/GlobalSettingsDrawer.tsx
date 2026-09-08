@@ -3,7 +3,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { UserRole } from '@/types/types';
 import { ThemeMode, useTheme } from '@/contexts/ThemeContext';
 import { useNotifications } from '@/contexts/NotificationContext';
-import { ChevronRight, HelpCircle, LogOut, Settings, ShieldCheck, UserCircle, Laptop, AlertTriangle } from 'lucide-react-native';
+import { ChevronRight, HelpCircle, LogOut, Settings, ShieldCheck, UserCircle, Laptop, AlertTriangle, ArrowLeftRight } from 'lucide-react-native';
 import React, { useState } from 'react';
 import { Alert, Image, Platform, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { SubscriptionStatusBadge } from '@/components/shared/SubscriptionComponents';
@@ -157,7 +157,7 @@ const MenuItem = ({ icon, label, onPress, danger, isDark }: MenuItemProps) => (
 );
 
 function SettingsMenu({ userRole, onNavigate }: { userRole: string; onNavigate: (screen: 'profile' | 'settings' | 'help' | 'overview' | 'ownership' | 'sessions') => void }) {
-  const { signOut, profile, loading, displayId, isTrial, isMain } = useAuth();
+  const { signOut, profile, loading, displayId, isTrial, isMain, availableRoles, activeRole, switchActiveRole } = useAuth();
   const { isDark } = useTheme();
   const tier = useSubscriptionTier();
   const isPlatformAdminRole = userRole === 'master_admin' || userRole === 'platform_admin';
@@ -216,6 +216,60 @@ function SettingsMenu({ userRole, onNavigate }: { userRole: string; onNavigate: 
             {!isPlatformAdminRole && <SubscriptionStatusBadge />}
           </View>
         </View>
+
+        {/* Multi-role Switcher in drawer */}
+        {availableRoles && availableRoles.length > 1 && (
+          <View style={{
+            marginTop: 16,
+            padding: 12,
+            borderRadius: 12,
+            backgroundColor: isDark ? '#111827' : '#f3f4f6',
+            borderWidth: 1,
+            borderColor: isDark ? '#374151' : '#e5e7eb',
+          }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+              <Text style={{ fontSize: 11, fontWeight: '800', color: textSecondary, textTransform: 'uppercase', letterSpacing: 1 }}>
+                Switch Active Role
+              </Text>
+              <ArrowLeftRight size={13} color="#FF6900" />
+            </View>
+            <View style={{ flexDirection: 'row', gap: 8 }}>
+              {availableRoles.map((r) => {
+                const isCurrent = (activeRole || profile?.role) === r;
+                const label = r === 'admin' ? 'Admin' : r === 'teacher' ? 'Teacher' : r === 'parent' ? 'Parent' : r === 'student' ? 'Student' : r;
+                return (
+                  <TouchableOpacity
+                    key={r}
+                    onPress={() => {
+                      if (!isCurrent) {
+                        switchActiveRole(r);
+                      }
+                    }}
+                    style={{
+                      flex: 1,
+                      paddingVertical: 8,
+                      borderRadius: 8,
+                      backgroundColor: isCurrent ? '#FF6900' : (isDark ? '#1f2937' : '#ffffff'),
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      borderWidth: isCurrent ? 0 : 1,
+                      borderColor: isDark ? '#374151' : '#d1d5db',
+                    }}
+                  >
+                    <Text style={{
+                      fontSize: 12,
+                      fontWeight: isCurrent ? '700' : '600',
+                      color: isCurrent ? '#ffffff' : textPrimary,
+                      textTransform: 'capitalize',
+                    }}>
+                      {label}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </View>
+        )}
       </View>
 
       {/* Menu Items */}

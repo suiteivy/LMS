@@ -4,6 +4,7 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { supabase } from '@/libs/supabase';
 import { api } from '@/services/api';
 import { formatClassLabel } from '@/utils/classLabel';
+import { formatCredentialExpiry } from '@/utils/formatExpiry';
 import { showSuccess } from '@/utils/toast';
 import { Ionicons } from '@expo/vector-icons';
 import { Stack, useRouter } from 'expo-router';
@@ -1210,6 +1211,9 @@ export default function CreateUserScreen() {
                         <TouchableOpacity onPress={() => copyToClipboard(result?.credential_delivery?.url || '', 'Secure link')}>
                             <Text style={{ color: '#FF6B00', fontWeight: '700' }}>Copy secure link</Text>
                         </TouchableOpacity>
+                        <Text style={{ color: '#FF6900', fontSize: 11, fontWeight: '600', marginTop: 4 }}>
+                            ⏱ {formatCredentialExpiry(result.credential_delivery.expiresAt)}
+                        </Text>
                     </View>
                 )}
                 {!!result?.credential_document && (
@@ -1256,6 +1260,9 @@ export default function CreateUserScreen() {
                                         <TouchableOpacity onPress={() => copyToClipboard(result?.parentResult?.credential_delivery?.url || '', 'Parent secure link')}>
                                             <Text style={{ color: '#3b82f6', fontWeight: '700' }}>Copy secure link</Text>
                                         </TouchableOpacity>
+                                        <Text style={{ color: '#3b82f6', fontSize: 11, fontWeight: '600', marginTop: 4 }}>
+                                            ⏱ {formatCredentialExpiry(result.parentResult.credential_delivery.expiresAt)}
+                                        </Text>
                                     </View>
                                 )}
                                 {!!result?.parentResult?.credential_document && (

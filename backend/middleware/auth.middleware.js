@@ -275,7 +275,7 @@ async function authMiddleware(req, res, next) {
       ({ data: profileData, error: profileError } = await withSupabaseRetry(() =>
         supabase
           .from('users')
-          .select('*, admins(id, is_main, can_manage_users), platform_admins(id)')
+          .select('*, admins(id, is_main, can_manage_users), teachers(id), parents(id), students(id), platform_admins(id)')
           .eq('id', user.id)
           .maybeSingle()
       ));
@@ -284,7 +284,7 @@ async function authMiddleware(req, res, next) {
         ({ data: profileData, error: profileError } = await withSupabaseRetry(() =>
           supabase
             .from('users')
-            .select('*, admins(id, is_main), platform_admins(id)')
+            .select('*, admins(id, is_main), teachers(id), parents(id), students(id), platform_admins(id)')
             .eq('id', user.id)
             .maybeSingle()
         ));
@@ -435,11 +435,30 @@ async function authMiddleware(req, res, next) {
         console.error("[AuthMiddleware] Error fetching librarian designation:", err.message);
       }
 
+      const availableRolesSet = new Set();
+      if (profileData.role) availableRolesSet.add(String(profileData.role).toLowerCase());
+      if (isPlatformAdmin) availableRolesSet.add('master_admin');
+      if (profileData.admins && (Array.isArray(profileData.admins) ? profileData.admins.length > 0 : !!profileData.admins.id)) {
+        availableRolesSet.add('admin');
+      }
+      if (profileData.teachers && (Array.isArray(profileData.teachers) ? profileData.teachers.length > 0 : !!profileData.teachers.id)) {
+        availableRolesSet.add('teacher');
+      }
+      if (profileData.parents && (Array.isArray(profileData.parents) ? profileData.parents.length > 0 : !!profileData.parents.id)) {
+        availableRolesSet.add('parent');
+      }
+      if (profileData.students && (Array.isArray(profileData.students) ? profileData.students.length > 0 : !!profileData.students.id)) {
+        availableRolesSet.add('student');
+      }
+      customRoles.forEach((r) => availableRolesSet.add(String(r).toLowerCase()));
+      const availableRoles = Array.from(availableRolesSet);
+
       profile = {
         id: profileData.id,
         email: profileData.email,
         institution_id: profileData.institution_id,
         role: profileData.role,
+        available_roles: availableRoles,
         must_change_password: !!profileData.must_change_password,
         requires_security_questions_setup: !!profileData.requires_security_questions_setup,
         role_alias: canonicalRoleFrom(profileData.role, isPlatformAdmin),
@@ -463,12 +482,19 @@ async function authMiddleware(req, res, next) {
       }
     }
 
+    const requestedActiveRole = String(req.headers['x-active-role'] || '').trim().toLowerCase();
+    const activeRole = (profile.available_roles || []).includes(requestedActiveRole)
+      ? requestedActiveRole
+      : (profile.role || null);
+
     // Add user info to request object
     req.user = {
       id: profile.id,
       email: profile.email,
       institution_id: profile.institution_id,
       role: profile.role,
+      active_role: activeRole,
+      available_roles: profile.available_roles || (profile.role ? [profile.role] : []),
       role_alias: profile.role_alias,
       must_change_password: !!profile.must_change_password,
       requires_security_questions_setup: !!profile.requires_security_questions_setup,
@@ -486,7 +512,8 @@ async function authMiddleware(req, res, next) {
 
     req.institution_id = sanitizeId(profile.institution_id);
     req.userId = sanitizeId(profile.id);
-    req.userRole = profile.role || null;
+    req.userRole = activeRole || profile.role || null;
+    req.activeRole = activeRole;
     req.isMain = req.user.is_main;
     req.isPlatformAdmin = req.user.is_platform_admin;
     req.isLibrarian = req.user.is_librarian;

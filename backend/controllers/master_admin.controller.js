@@ -463,6 +463,26 @@ const buildCredentialDeliveryUrl = (token) => {
     return `${base.replace(/\/+$/, '')}/credential-delivery?token=${encodeURIComponent(token)}`;
 };
 
+const formatHumanReadableExpiry = (isoOrDate) => {
+    try {
+        const d = new Date(isoOrDate);
+        if (isNaN(d.getTime())) return String(isoOrDate || '24 hours');
+        const formatted = d.toLocaleString('en-US', {
+            timeZone: 'UTC',
+            weekday: 'long',
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+            hour: 'numeric',
+            minute: '2-digit',
+            hour12: true,
+        });
+        return `${formatted} UTC (Valid for 24 hours)`;
+    } catch {
+        return String(isoOrDate || '24 hours');
+    }
+};
+
 const createCredentialDeliveryToken = async ({
     adminClient,
     createdBy,
@@ -473,6 +493,7 @@ const createCredentialDeliveryToken = async ({
 }) => {
     const token = crypto.randomBytes(24).toString('hex');
     const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+    const expiresAtFormatted = formatHumanReadableExpiry(expiresAt);
 
     const { error } = await adminClient.from('credential_delivery_tokens').insert({
         token,
@@ -489,6 +510,7 @@ const createCredentialDeliveryToken = async ({
     return {
         token,
         expiresAt,
+        expiresAtFormatted,
         url: buildCredentialDeliveryUrl(token),
     };
 };
@@ -510,7 +532,7 @@ const buildCredentialDocument = ({
     ];
 
     if (credentialUrl) lines.push(`One-time credential link: ${credentialUrl}`);
-    if (expiresAt) lines.push(`Link expires at (UTC): ${expiresAt}`);
+    if (expiresAt) lines.push(`Link expires: ${formatHumanReadableExpiry(expiresAt)}`);
 
     lines.push('Security notice: Change password immediately on first login.');
     return lines.join('\n');
@@ -1008,6 +1030,8 @@ exports.getCredentialDeliveryByToken = async (req, res) => {
             email: row.target_email,
             temporary_password: row.temporary_password,
             consumed: true,
+            expires_at: row.expires_at,
+            expires_at_formatted: formatHumanReadableExpiry(row.expires_at),
         });
     } catch (err) {
         console.error('getCredentialDeliveryByToken error:', err);

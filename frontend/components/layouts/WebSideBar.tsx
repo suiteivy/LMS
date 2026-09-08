@@ -1,9 +1,11 @@
 import { useTheme } from "@/contexts/ThemeContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { router, useSegments } from "expo-router";
 import {
   ChevronLeft,
   ChevronRight,
-  LucideIcon
+  LucideIcon,
+  ArrowLeftRight,
 } from "lucide-react-native";
 import React, { useState } from "react";
 import { Text, TouchableOpacity, View } from "react-native";
@@ -26,6 +28,7 @@ interface WebSidebarProps {
 
 export const WebSidebar = ({ items, basePath, role, children }: WebSidebarProps) => {
   const { isDark } = useTheme();
+  const { availableRoles, activeRole, switchActiveRole } = useAuth();
   const insets = useSafeAreaInsets();
   const segments = useSegments();
   const [collapsed, setCollapsed] = useState(false);
@@ -41,6 +44,7 @@ export const WebSidebar = ({ items, basePath, role, children }: WebSidebarProps)
   const currentPath = segments.length > 0 ? '/' + segments.join('/') : '/';
 
   const sidebarWidth = collapsed ? 72 : 240;
+  const currentActiveRole = activeRole || basePath.replace(/[()]/g, '');
 
   return (
     <View style={{ flex: 1, flexDirection: 'row', backgroundColor: surface }}>
@@ -57,7 +61,7 @@ export const WebSidebar = ({ items, basePath, role, children }: WebSidebarProps)
     >
         {/* Unboxed Logo / Role badge */}
         {!collapsed && (
-          <View style={{ paddingHorizontal: 24, marginBottom: 28, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+          <View style={{ paddingHorizontal: 24, marginBottom: 20, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
             <CloudoraLogo size={32} glow glowIntensity={0.6} />
             <View>
               <Text style={{ fontSize: 10, fontWeight: '800', color: '#FF6900', textTransform: 'uppercase', letterSpacing: 2 }}>
@@ -70,9 +74,97 @@ export const WebSidebar = ({ items, basePath, role, children }: WebSidebarProps)
           </View>
         )}
         {collapsed && (
-          <View style={{ alignItems: 'center', marginBottom: 28 }}>
+          <View style={{ alignItems: 'center', marginBottom: 20 }}>
             <CloudoraLogo size={28} glow glowIntensity={0.6} />
           </View>
+        )}
+
+        {/* Multi-role switcher */}
+        {availableRoles && availableRoles.length > 1 && !collapsed && (
+          <View style={{
+            marginHorizontal: 16,
+            marginBottom: 16,
+            padding: 10,
+            borderRadius: 12,
+            backgroundColor: isDark ? '#1C2128' : '#EAEEF2',
+            borderWidth: 1,
+            borderColor: isDark ? '#30363D' : '#D0D7DE',
+          }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+              <Text style={{ fontSize: 10, fontWeight: '800', color: textSecondary, textTransform: 'uppercase', letterSpacing: 1 }}>
+                Active Role
+              </Text>
+              <ArrowLeftRight size={12} color="#FF6900" />
+            </View>
+            <View style={{ flexDirection: 'row', gap: 6, flexWrap: 'wrap' }}>
+              {availableRoles.map((r) => {
+                const isSelected = currentActiveRole === r;
+                const roleLabel = r === 'admin' ? 'Admin' : r === 'teacher' ? 'Teacher' : r === 'parent' ? 'Parent' : r === 'student' ? 'Student' : r;
+                return (
+                  <TouchableOpacity
+                    key={r}
+                    onPress={() => {
+                      if (!isSelected) {
+                        switchActiveRole(r);
+                      }
+                    }}
+                    activeOpacity={0.7}
+                    style={{
+                      flex: 1,
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      paddingVertical: 6,
+                      paddingHorizontal: 8,
+                      borderRadius: 8,
+                      backgroundColor: isSelected ? '#FF6900' : (isDark ? '#21262D' : '#FFFFFF'),
+                      shadowColor: '#000',
+                      shadowOffset: { width: 0, height: 1 },
+                      shadowOpacity: isSelected ? 0.2 : 0.05,
+                      shadowRadius: 2,
+                      elevation: isSelected ? 2 : 1,
+                    }}
+                  >
+                    <Text style={{
+                      fontSize: 12,
+                      fontWeight: isSelected ? '700' : '600',
+                      color: isSelected ? '#FFFFFF' : textPrimary,
+                      textTransform: 'capitalize',
+                    }}>
+                      {roleLabel}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </View>
+        )}
+
+        {availableRoles && availableRoles.length > 1 && collapsed && (
+          <TouchableOpacity
+            onPress={() => {
+              const currentIndex = availableRoles.indexOf(currentActiveRole);
+              const nextIndex = (currentIndex + 1) % availableRoles.length;
+              switchActiveRole(availableRoles[nextIndex]);
+            }}
+            activeOpacity={0.7}
+            style={{
+              alignItems: 'center',
+              justifyContent: 'center',
+              marginHorizontal: 12,
+              marginBottom: 16,
+              paddingVertical: 8,
+              borderRadius: 10,
+              backgroundColor: isDark ? '#1C2128' : '#EAEEF2',
+              borderWidth: 1,
+              borderColor: isDark ? '#30363D' : '#D0D7DE',
+            }}
+          >
+            <ArrowLeftRight size={16} color="#FF6900" />
+            <Text style={{ fontSize: 9, fontWeight: '800', color: '#FF6900', marginTop: 2, textTransform: 'uppercase' }}>
+              {currentActiveRole.slice(0, 3)}
+            </Text>
+          </TouchableOpacity>
         )}
 
         {/* Nav items */}

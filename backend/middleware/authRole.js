@@ -15,7 +15,14 @@ function authorizeRoles(roles = []) {
         return res.status(401).json({ error: "Unauthorized" });
       }
 
-      let isAllowed = roles.includes(user.role);
+      const activeRole = (user.active_role || user.role || '').toLowerCase();
+      const normalizedAllowed = roles.map(r => String(r || '').toLowerCase());
+      let isAllowed = normalizedAllowed.includes(activeRole);
+
+      // Check available roles (e.g. admin who is also teacher)
+      if (!isAllowed && Array.isArray(user.available_roles) && user.available_roles.length > 0) {
+        isAllowed = user.available_roles.some(r => normalizedAllowed.includes(String(r || '').toLowerCase()));
+      }
 
       // Check custom roles as well (case-insensitive and handling bursary/bursar normalization)
       if (!isAllowed && user.roles && user.roles.length > 0) {
@@ -28,7 +35,7 @@ function authorizeRoles(roles = []) {
       }
 
       // Master Admins inherit standard 'admin' route privileges 
-      if (!isAllowed && user.role === 'master_admin' && roles.includes('admin')) {
+      if (!isAllowed && ((user.role === 'master_admin') || (user.available_roles?.includes('master_admin'))) && normalizedAllowed.includes('admin')) {
         isAllowed = true;
       }
 

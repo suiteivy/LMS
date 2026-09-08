@@ -20,6 +20,7 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { supabase } from '@/libs/supabase';
 
 import { DatePicker } from '@/components/common/DatePicker';
+import { formatCredentialExpiry } from '@/utils/formatExpiry';
 
 type Institution = {
   id: string;
@@ -1262,7 +1263,17 @@ export default function MasterInstitutionsPage() {
               <Text style={{ color: c.sub, marginBottom: 4 }}>Institution ID: {enrollResult?.institution_id || 'N/A'}</Text>
               <Text style={{ color: c.sub, marginBottom: 4 }}>Admin Email: {enrollResult?.admin_email || 'N/A'}</Text>
               <Text style={{ color: c.sub, marginBottom: 4 }}>Temp Password: {enrollResult?.tempPassword || 'N/A'}</Text>
-              {!!enrollResult?.credential_delivery?.url && <Text style={{ color: c.sub, marginTop: 6 }}>One-time credential link generated.</Text>}
+              {!!enrollResult?.credential_delivery?.url && (
+                <View style={{ marginTop: 8, paddingTop: 8, borderTopWidth: 1, borderTopColor: c.border }}>
+                  <Text style={{ color: c.sub, fontSize: 12, marginBottom: 2 }}>One-Time Credential Link:</Text>
+                  <Text style={{ color: c.text, fontSize: 12 }} numberOfLines={1} ellipsizeMode="middle">
+                    {enrollResult.credential_delivery.url}
+                  </Text>
+                  <Text style={{ color: c.primary, fontSize: 11, fontWeight: '600', marginTop: 4 }}>
+                    ⏱ {formatCredentialExpiry(enrollResult.credential_delivery.expiresAt)}
+                  </Text>
+                </View>
+              )}
             </View>
             <TouchableOpacity
               onPress={closeEnrollModal}
@@ -1743,8 +1754,29 @@ export default function MasterInstitutionsPage() {
                       <Text style={{ color: c.text, fontSize: 11, fontWeight: '700' }}>Copy Link</Text>
                     </TouchableOpacity>
                   </View>
+                  <Text style={{ color: c.text, fontSize: 12, marginTop: 4 }} numberOfLines={1} ellipsizeMode="middle">
+                    {adminResetResult.credential_delivery.url}
+                  </Text>
+                  <Text style={{ color: c.primary, fontSize: 11, fontWeight: '600', marginTop: 4 }}>
+                    ⏱ {formatCredentialExpiry(adminResetResult.credential_delivery.expiresAt)}
+                  </Text>
                 </View>
               )}
+
+              {!!adminResetResult?.credential_document && (
+                <TouchableOpacity
+                  onPress={() => {
+                    if (Platform.OS === 'web' && (navigator as any)?.clipboard) {
+                      (navigator as any).clipboard.writeText(adminResetResult.credential_document);
+                    }
+                    Toast.show({ type: 'success', text1: 'Copied', text2: 'Credentials document copied to clipboard', position: 'top' });
+                  }}
+                  style={{ marginTop: 10, backgroundColor: c.border, paddingVertical: 8, paddingHorizontal: 10, borderRadius: 8, alignItems: 'center' }}
+                >
+                  <Text style={{ color: c.text, fontSize: 12, fontWeight: '700' }}>Copy Full Credentials Document</Text>
+                </TouchableOpacity>
+              )}
+
               <Text style={{ color: c.sub, fontSize: 12, marginTop: 8 }}>
                 User will be forced to logout of all sessions and complete password and security question setup at next login.
               </Text>

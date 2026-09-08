@@ -11,7 +11,9 @@ const logger = require('../utils/logger.js');
  */
 const requireRole = (...allowedRoles) => {
     return (req, res, next) => {
-        const userRole = req.userRole;
+        const userRole = req.user?.active_role || req.userRole;
+        const availableRoles = req.user?.available_roles || (userRole ? [userRole] : []);
+        const normalizedAllowed = allowedRoles.map(r => String(r || '').toLowerCase());
 
         if (!userRole) {
             logger.warn('Role check failed - no role found', {
@@ -26,7 +28,10 @@ const requireRole = (...allowedRoles) => {
             });
         }
 
-        if (!allowedRoles.includes(userRole)) {
+        const hasRole = normalizedAllowed.includes(String(userRole).toLowerCase()) ||
+            availableRoles.some(r => normalizedAllowed.includes(String(r || '').toLowerCase()));
+
+        if (!hasRole) {
             logger.warn('Role check failed - insufficient permissions', {
                 path: req.path,
                 method: req.method,
