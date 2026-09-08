@@ -1,4 +1,5 @@
 import { SettingsService } from '@/services/SettingsService';
+import { formatCredentialExpiry } from '@/utils/formatExpiry';
 import { Stack, useLocalSearchParams, router } from 'expo-router';
 import React, { useEffect, useMemo, useState } from 'react';
 import {
@@ -17,6 +18,8 @@ export default function CredentialDeliveryScreen() {
   const [error, setError] = useState<string | null>(null);
   const [email, setEmail] = useState('');
   const [temporaryPassword, setTemporaryPassword] = useState('');
+  const [expiresAt, setExpiresAt] = useState<string | null>(null);
+  const [expiresAtFormatted, setExpiresAtFormatted] = useState<string | null>(null);
 
   useEffect(() => {
     const load = async () => {
@@ -31,6 +34,8 @@ export default function CredentialDeliveryScreen() {
         const data = await SettingsService.getCredentialDelivery(token);
         setEmail(data.email);
         setTemporaryPassword(data.temporary_password);
+        setExpiresAt(data.expires_at || null);
+        setExpiresAtFormatted(data.expires_at_formatted || null);
       } catch (err: any) {
         setError(err?.response?.data?.error || err?.message || 'Unable to load credentials');
       } finally {
@@ -74,15 +79,24 @@ export default function CredentialDeliveryScreen() {
                 <Text style={{ color: '#fff', fontWeight: '700' }}>{email}</Text>
               </View>
 
-              <View style={{ marginBottom: 20 }}>
+              <View style={{ marginBottom: 16 }}>
                 <Text style={{ color: 'rgba(255,255,255,0.55)', marginBottom: 6 }}>Temporary password</Text>
                 <Text style={{ color: '#fff', fontWeight: '700', letterSpacing: 0.3 }}>{temporaryPassword}</Text>
               </View>
 
+              {!!(expiresAtFormatted || expiresAt) && (
+                <View style={{ marginBottom: 20 }}>
+                  <Text style={{ color: 'rgba(255,255,255,0.55)', marginBottom: 6 }}>Link expires</Text>
+                  <Text style={{ color: '#FF6900', fontWeight: '600', fontSize: 13 }}>
+                    ⏱ {expiresAtFormatted || formatCredentialExpiry(expiresAt)}
+                  </Text>
+                </View>
+              )}
+
               <TouchableOpacity
                 onPress={() => router.replace('/(auth)/signIn' as any)}
                 style={{
-                  backgroundColor: '#FF6B00',
+                  backgroundColor: '#FF6900',
                   paddingVertical: 12,
                   borderRadius: 12,
                   alignItems: 'center',

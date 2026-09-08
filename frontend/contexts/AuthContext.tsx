@@ -30,6 +30,9 @@ interface AuthContextType {
   isPlatformAdmin: boolean
   isLibrarian: boolean
   canonicalRole: string | null
+  availableRoles: string[]
+  activeRole: string | null
+  switchActiveRole: (role: string) => Promise<void>
   loading: boolean
   setLoading: (loading: boolean) => void
   isInitializing: boolean
@@ -58,7 +61,7 @@ interface AuthContextType {
   addonAttendance: boolean
   addonDiary: boolean
   customStudentLimit: number | null
-  getRoleRedirect: (profile: UserProfile | null, isPlatformAdmin: boolean) => string | null
+  getRoleRedirect: (profile: UserProfile | null, isPlatformAdmin: boolean, targetRole?: string | null) => string | null
   maintenanceModeEnabled: boolean
   maintenanceModeMessage: string
   refreshMaintenanceStatus: () => Promise<{ enabled: boolean; message: string }>
@@ -99,6 +102,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [session, setSession] = useState<Session | null>(null)
   const [user, setUser] = useState<User | null>(null)
   const [profile, setProfile] = useState<UserProfile | null>(null)
+
+  const [activeRole, setActiveRole] = useState<string | null>(null)
+  const [availableRoles, setAvailableRoles] = useState<string[]>([])
 
   const [roleInfo, setRoleInfo] = useState({
     studentId: null as string | null,
@@ -346,6 +352,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       userRef.current = null;
       profileRef.current = null;
       setRoleInfo({ studentId: null, teacherId: null, adminId: null, parentId: null, displayId: null });
+      setActiveRole(null);
+      setAvailableRoles([]);
+      delete api.defaults.headers.common['x-active-role'];
       setIsDemo(false);
       setSubscriptionStatus(null);
       setSubscriptionPlan(null);
@@ -557,20 +566,50 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       return roleData.id || null;
     };
 
-    let newRoleInfo = { studentId: null, teacherId: null, adminId: null, parentId: null, displayId: null };
-    if (userData.role === 'student') {
-      const id = getRoleId(userData.students);
-      newRoleInfo = { ...newRoleInfo, studentId: id, displayId: id };
-    } else if (userData.role === 'teacher') {
-      const id = getRoleId(userData.teachers);
-      newRoleInfo = { ...newRoleInfo, teacherId: id, displayId: id };
-    } else if (userData.role === 'admin' || userData.role === 'master_admin') {
-      const id = getRoleId(userData.admins);
-      newRoleInfo = { ...newRoleInfo, adminId: id, displayId: id };
-    } else if (userData.role === 'parent') {
-      const id = getRoleId(userData.parents);
-      newRoleInfo = { ...newRoleInfo, parentId: id, displayId: id };
-    }
+    const studentId = getRoleId(userData.students);
+    const teacherId = getRoleId(userData.teachers);
+    const adminId = getRoleId(userData.admins);
+    const parentId = getRoleId(userData.parents);
+
+    const rolesSet = new Set<string>();
+    if (userData.role) rolesSet.add(String(userData.role).toLowerCase());
+    if (isPlatformAdminFlag) rolesSet.add('master_admin');
+    if (adminId) rolesSet.add('admin');
+    if (teacherId) rolesSet.add('teacher');
+    if (parentId) rolesSet.add('parent');
+    if (studentId) rolesSet.add('student');
+    const newAvailableRoles = Array.from(rolesSet);
+    setAvailableRoles(newAvailableRoles);
+
+    let initialDisplayId: string | null = null;
+    if (userData.role === 'student') initialDisplayId = studentId;
+    else if (userData.role === 'teacher') initialDisplayId = teacherId;
+    else if (userData.role === 'admin' || userData.role === 'master_admin') initialDisplayId = adminId;
+    else if (userData.role === 'parent') initialDisplayId = parentId;
+
+    let newRoleInfo = { studentId, teacherId, adminId, parentId, displayId: initialDisplayId };
+
+    // Resolve active role asynchronously
+    AsyncStorage.getItem(`lms_active_role_${userId}`).then((stored) => {
+      const validStored = stored && newAvailableRoles.includes(stored.toLowerCase()) ? stored.toLowerCase() : null;
+      const targetRole = validStored || (newAvailableRoles.includes(String(userData.role).toLowerCase()) ? String(userData.role).toLowerCase() : (newAvailableRoles[0] || userData.role));
+      setActiveRole(targetRole);
+      api.defaults.headers.common['x-active-role'] = targetRole;
+
+      if (targetRole === 'teacher' && teacherId) {
+        setRoleInfo(prev => ({ ...prev, displayId: teacherId }));
+      } else if (targetRole === 'admin' && adminId) {
+        setRoleInfo(prev => ({ ...prev, displayId: adminId }));
+      } else if (targetRole === 'student' && studentId) {
+        setRoleInfo(prev => ({ ...prev, displayId: studentId }));
+      } else if (targetRole === 'parent' && parentId) {
+        setRoleInfo(prev => ({ ...prev, displayId: parentId }));
+      }
+    }).catch(() => {
+      const fallback = String(userData.role || '').toLowerCase();
+      setActiveRole(fallback);
+      api.defaults.headers.common['x-active-role'] = fallback;
+    });
 
     if (subscriptionStatus !== newSubscriptionStatus) setSubscriptionStatus(newSubscriptionStatus);
     if (subscriptionPlan !== newSubscriptionPlan) setSubscriptionPlan(newSubscriptionPlan);
@@ -702,18 +741,51 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     return null;
   };
 
-  const getRoleRedirect = React.useCallback((userProfile: UserProfile | null, platformAdmin: boolean): string | null => {
+  const getRoleRedirect = React.useCallback((userProfile: UserProfile | null, platformAdmin: boolean, targetRole?: string | null): string | null => {
     if (!userProfile) return null;
-    if (platformAdmin) return "/(master-admin)";
+    const roleToRedirect = (targetRole || activeRole || userProfile.role || '').toLowerCase();
+    if (platformAdmin || roleToRedirect === 'master_admin') return "/(master-admin)";
 
-    switch (userProfile.role) {
+    switch (roleToRedirect) {
       case "admin": return "/(admin)";
       case "teacher": return "/(teacher)";
       case "student": return "/(student)";
       case "parent": return "/(parent)";
       default: return "/(auth)/signIn";
     }
-  }, []);
+  }, [activeRole]);
+
+  const switchActiveRole = useCallback(async (newRole: string) => {
+    if (!newRole) return;
+    const normalized = newRole.toLowerCase();
+    if (!availableRoles.includes(normalized)) {
+      console.warn(`[AuthContext] Cannot switch to role "${newRole}" because it is not in availableRoles:`, availableRoles);
+      return;
+    }
+
+    setActiveRole(normalized);
+    if (user?.id) {
+      await AsyncStorage.setItem(`lms_active_role_${user.id}`, normalized).catch(() => {});
+    }
+    api.defaults.headers.common['x-active-role'] = normalized;
+
+    // Update displayId according to switched role
+    if (normalized === 'teacher' && roleInfo.teacherId) {
+      setRoleInfo(prev => ({ ...prev, displayId: roleInfo.teacherId }));
+    } else if (normalized === 'admin' && roleInfo.adminId) {
+      setRoleInfo(prev => ({ ...prev, displayId: roleInfo.adminId }));
+    } else if (normalized === 'student' && roleInfo.studentId) {
+      setRoleInfo(prev => ({ ...prev, displayId: roleInfo.studentId }));
+    } else if (normalized === 'parent' && roleInfo.parentId) {
+      setRoleInfo(prev => ({ ...prev, displayId: roleInfo.parentId }));
+    }
+
+    // Navigate to role portal
+    const targetPath = getRoleRedirect(profile, isPlatformAdmin, normalized);
+    if (targetPath) {
+      router.replace(targetPath as any);
+    }
+  }, [availableRoles, user?.id, profile, isPlatformAdmin, roleInfo, getRoleRedirect]);
 
   useEffect(() => {
     const initializeAuth = async () => {
@@ -965,10 +1037,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     addonDiary: addonFlags.diary,
     customStudentLimit,
     getRoleRedirect,
+    availableRoles,
+    activeRole,
+    switchActiveRole,
     maintenanceModeEnabled,
     maintenanceModeMessage,
     refreshMaintenanceStatus,
-  }), [session, user, profile, roleInfo, subscriptionStatus, subscriptionPlan, trialEndDate, institutionName, loading, isInitializing, isNavReady, isProfileLoading, isSessionExpiring, sessionWarningDismissed, isDemo, isDemoExiting, exitDemoSession, wasDemo, clearWasDemo, isMain, isPlatformAdmin, isLibrarian, canonicalRole, addonFlags, customStudentLimit, maintenanceModeEnabled, maintenanceModeMessage, refreshMaintenanceStatus]);
+  }), [session, user, profile, roleInfo, subscriptionStatus, subscriptionPlan, trialEndDate, institutionName, loading, isInitializing, isNavReady, isProfileLoading, isSessionExpiring, sessionWarningDismissed, isDemo, isDemoExiting, exitDemoSession, wasDemo, clearWasDemo, isMain, isPlatformAdmin, isLibrarian, canonicalRole, addonFlags, customStudentLimit, getRoleRedirect, availableRoles, activeRole, switchActiveRole, maintenanceModeEnabled, maintenanceModeMessage, refreshMaintenanceStatus]);
 
   return (
     <AuthContext.Provider value={value}>

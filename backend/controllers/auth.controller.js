@@ -274,6 +274,26 @@ const buildCredentialDeliveryUrl = (token) => {
   return `${base.replace(/\/+$/, '')}/credential-delivery?token=${encodeURIComponent(token)}`;
 };
 
+const formatHumanReadableExpiry = (isoOrDate) => {
+  try {
+    const d = new Date(isoOrDate);
+    if (isNaN(d.getTime())) return String(isoOrDate || '24 hours');
+    const formatted = d.toLocaleString('en-US', {
+      timeZone: 'UTC',
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true,
+    });
+    return `${formatted} UTC (Valid for 24 hours)`;
+  } catch {
+    return String(isoOrDate || '24 hours');
+  }
+};
+
 const createCredentialDeliveryToken = async ({
   createdBy,
   targetUserId,
@@ -283,6 +303,7 @@ const createCredentialDeliveryToken = async ({
 }) => {
   const token = crypto.randomBytes(24).toString('hex');
   const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+  const expiresAtFormatted = formatHumanReadableExpiry(expiresAt);
 
   const { error } = await supabase.from('credential_delivery_tokens').insert({
     token,
@@ -299,6 +320,7 @@ const createCredentialDeliveryToken = async ({
   return {
     token,
     expiresAt,
+    expiresAtFormatted,
     url: buildCredentialDeliveryUrl(token),
   };
 };
@@ -324,7 +346,7 @@ const buildCredentialDocument = ({
   }
 
   if (expiresAt) {
-    lines.push(`Link expires at (UTC): ${expiresAt}`);
+    lines.push(`Link expires: ${formatHumanReadableExpiry(expiresAt)}`);
   }
 
   lines.push('Security notice: Change password immediately on first login.');
@@ -1403,24 +1425,79 @@ exports.adminUpdateUser = async (req, res) => {
       }
     }
 
-    if (role === 'teacher') {
-      const updates = {};
-      if (department !== undefined) updates.department = department || null;
-      if (qualification !== undefined) updates.qualification = qualification || null;
-      if (specialization !== undefined) updates.specialization = specialization || null;
-      if (position !== undefined) updates.position = position || null;
-      if (hire_date !== undefined) updates.hire_date = hire_date || null;
+    const shouldUpdateTeacher = role === 'teacher' ||
+      (role === 'admin' && (
+        req.body.teacher_role_enabled !== undefined ||
+        department !== undefined ||
+        qualification !== undefined ||
+        specialization !== undefined ||
+        position !== undefined ||
+        hire_date !== undefined ||
+        subject_ids !== undefined ||
+        req.body.class_teacher_id !== undefined
+      ));
 
-      if (Object.keys(updates).length > 0) {
-        await supabase.from('teachers').update(updates).eq('user_id', id);
-      }
+    if (shouldUpdateTeacher) {
+      if (role === 'admin' && req.body.teacher_role_enabled === false) {
+        // Explicitly disable teacher role for admin
+        const { data: existingTeacher } = await supabase
+          .from('teachers')
+          .select('id')
+          .eq('user_id', id)
+          .maybeSingle();
 
-      // Update subject assignments
-      if (subject_ids !== undefined) {
-        const { data: teacherData } = await supabase.from('teachers').select('id').eq('user_id', id).single();
+        if (existingTeacher?.id) {
+          // Clear subjects and classes assigned to this teacher
+          await supabase.from('subjects').update({ teacher_id: null }).eq('teacher_id', existingTeacher.id);
+          await supabase.from('classes').update({ teacher_id: null }).eq('teacher_id', existingTeacher.id);
+          await supabase.from('teachers').delete().eq('id', existingTeacher.id);
+        }
+      } else {
+        // Ensure teacher record exists (create if not present)
+        let { data: teacherData } = await supabase
+          .from('teachers')
+          .select('id')
+          .eq('user_id', id)
+          .maybeSingle();
+
+        if (!teacherData) {
+          const targetInstId = targetUser.institution_id || req.institution_id;
+          const { data: insertedTeacher, error: insertTeacherError } = await supabase
+            .from('teachers')
+            .insert({
+              user_id: id,
+              institution_id: targetInstId,
+              department: department || null,
+              qualification: qualification || null,
+              specialization: specialization || null,
+              position: position || 'teacher',
+              hire_date: hire_date || new Date().toISOString().split('T')[0],
+            })
+            .select('id')
+            .single();
+
+          if (insertTeacherError) {
+            console.error('[AdminUpdate] Failed to insert teacher record for user:', insertTeacherError.message);
+          } else {
+            teacherData = insertedTeacher;
+          }
+        }
+
+        const updates = {};
+        if (department !== undefined) updates.department = department || null;
+        if (qualification !== undefined) updates.qualification = qualification || null;
+        if (specialization !== undefined) updates.specialization = specialization || null;
+        if (position !== undefined) updates.position = position || null;
+        if (hire_date !== undefined) updates.hire_date = hire_date || null;
+
+        if (Object.keys(updates).length > 0 && teacherData?.id) {
+          await supabase.from('teachers').update(updates).eq('id', teacherData.id);
+        }
+
         const customTeacherId = teacherData?.id;
 
-        if (customTeacherId) {
+        // Update subject assignments
+        if (subject_ids !== undefined && customTeacherId) {
           // Reset old subjects
           await supabase.from('subjects').update({ teacher_id: null }).eq('teacher_id', customTeacherId);
           // Assign new ones
@@ -1428,15 +1505,10 @@ exports.adminUpdateUser = async (req, res) => {
             await supabase.from('subjects').update({ teacher_id: customTeacherId }).in('id', subject_ids);
           }
         }
-      }
 
-      // Update class teacher assignment
-      if (req.body.class_teacher_id !== undefined) {
-        const { data: teacherData } = await supabase.from('teachers').select('id').eq('user_id', id).single();
-        const customTeacherId = teacherData?.id;
-        const class_teacher_id = req.body.class_teacher_id;
-
-        if (customTeacherId) {
+        // Update class teacher assignment
+        if (req.body.class_teacher_id !== undefined && customTeacherId) {
+          const class_teacher_id = req.body.class_teacher_id;
           // Reset old classes where this teacher was class teacher
           await supabase.from('classes').update({ teacher_id: null }).eq('teacher_id', customTeacherId);
           // Assign new one
@@ -1933,20 +2005,27 @@ exports.adminResetPassword = async (req, res) => {
       });
     }
 
-    let credentialDelivery = null;
-    if (generatedPassword) {
-      credentialDelivery = await createCredentialDeliveryToken({
-        createdBy: adminId,
-        targetUserId,
-        targetEmail: targetUser.email,
-        temporaryPassword: finalPassword,
-        metadata: {
-          role: targetUser.role,
-          institution_id: targetUser.institution_id,
-          action: 'admin_reset_password',
-        },
-      });
-    }
+    const credentialDelivery = await createCredentialDeliveryToken({
+      createdBy: adminId,
+      targetUserId,
+      targetEmail: targetUser.email,
+      temporaryPassword: finalPassword,
+      metadata: {
+        role: targetUser.role,
+        institution_id: targetUser.institution_id,
+        action: 'admin_reset_password',
+        generated_password: generatedPassword,
+      },
+    });
+
+    const credentialDocument = buildCredentialDocument({
+      fullName: targetUser.full_name,
+      role: targetUser.role,
+      email: targetUser.email,
+      temporaryPassword: finalPassword,
+      credentialUrl: credentialDelivery?.url,
+      expiresAt: credentialDelivery?.expiresAt,
+    });
 
     await writePasswordAuditLog({
       action: 'admin_reset_password',
@@ -1964,18 +2043,9 @@ exports.adminResetPassword = async (req, res) => {
       must_change_password: true,
       requires_security_questions_setup: true,
       generated_password: generatedPassword,
-      tempPassword: generatedPassword ? finalPassword : undefined,
+      tempPassword: finalPassword,
       credential_delivery: credentialDelivery,
-      credential_document: generatedPassword
-        ? buildCredentialDocument({
-            fullName: targetUser.full_name,
-            role: targetUser.role,
-            email: targetUser.email,
-            temporaryPassword: finalPassword,
-            credentialUrl: credentialDelivery?.url,
-            expiresAt: credentialDelivery?.expiresAt,
-          })
-        : undefined,
+      credential_document: credentialDocument,
     });
   } catch (err) {
     console.error("adminResetPassword error:", err);
@@ -2801,6 +2871,8 @@ exports.getCredentialDeliveryByToken = async (req, res) => {
       email: row.target_email,
       temporary_password: row.temporary_password,
       consumed: true,
+      expires_at: row.expires_at,
+      expires_at_formatted: formatHumanReadableExpiry(row.expires_at),
     });
   } catch (err) {
     console.error('getCredentialDeliveryByToken error:', err);

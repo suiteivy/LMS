@@ -14,10 +14,11 @@ import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
     ActivityIndicator, Alert, Modal, ScrollView, Text,
-    TextInput, TouchableOpacity, View, Platform
+    TextInput, TouchableOpacity, View, Platform, Switch
 } from 'react-native';
 import { SettingsService } from '@/services/SettingsService';
 import { formatClassLabel } from '@/utils/classLabel';
+import { formatCredentialExpiry } from '@/utils/formatExpiry';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
 
@@ -114,6 +115,10 @@ export default function UserDetailsScreen() {
     const [studentGrades, setStudentGrades] = useState<any[]>([]);
     const [studentReports, setStudentReports] = useState<any[]>([]);
     const [loadingAcademics, setLoadingAcademics] = useState(false);
+
+    // Multi-role state (for admins who also teach / act as class teachers)
+    const [isTeacherRoleEnabled, setIsTeacherRoleEnabled] = useState(false);
+    const [teacherRecord, setTeacherRecord] = useState<any>(null);
 
     const computedAge = calculateAgeFromDob(dob);
 
@@ -249,6 +254,34 @@ export default function UserDetailsScreen() {
                     if (role === 'teacher') {
                         const { data: subData } = await supabase.from('subjects').select('id').eq('teacher_id', nd.id);
                         if (subData) setSubjectIds(subData.map((s: any) => s.id));
+                    }
+
+                    if (role === 'admin') {
+                        const { data: tData } = await supabase
+                            .from('teachers')
+                            .select('*')
+                            .eq('user_id', id as string)
+                            .maybeSingle();
+
+                        if (tData) {
+                            setIsTeacherRoleEnabled(true);
+                            setTeacherRecord(tData);
+                            setDepartment(tData.department || '');
+                            setQualification(tData.qualification || '');
+                            setSpecialization(tData.specialization || '');
+                            setPosition(tData.position || '');
+                            setHireDate(tData.hire_date || '');
+
+                            const [subRes, clsRes] = await Promise.all([
+                                supabase.from('subjects').select('id').eq('teacher_id', tData.id),
+                                supabase.from('classes').select('id').eq('teacher_id', tData.id)
+                            ]);
+                            if (subRes.data) setSubjectIds(subRes.data.map((s: any) => s.id));
+                            if (clsRes.data && clsRes.data.length > 0) setClassId(clsRes.data[0].id);
+                        } else {
+                            setIsTeacherRoleEnabled(false);
+                            setTeacherRecord(null);
+                        }
                     }
                 }
             }
@@ -432,6 +465,25 @@ export default function UserDetailsScreen() {
     const handleCancel = () => {
         if (user) populateUserFields(user);
         if (roleData && user) populateRoleFields(user.role, roleData);
+        if (user?.role === 'admin') {
+            if (teacherRecord) {
+                setIsTeacherRoleEnabled(true);
+                setDepartment(teacherRecord.department || '');
+                setQualification(teacherRecord.qualification || '');
+                setSpecialization(teacherRecord.specialization || '');
+                setPosition(teacherRecord.position || '');
+                setHireDate(teacherRecord.hire_date || '');
+            } else {
+                setIsTeacherRoleEnabled(false);
+                setDepartment('');
+                setQualification('');
+                setSpecialization('');
+                setPosition('');
+                setHireDate('');
+                setSubjectIds([]);
+                setClassId(null);
+            }
+        }
         setIsEditing(false);
     };
     
@@ -480,6 +532,18 @@ export default function UserDetailsScreen() {
                     occupation: occupation || null,
                     parent_address: parentAddress || null,
                     linked_students: linkedStudents ?? []
+                });
+            }
+            else if (user?.role === 'admin') {
+                Object.assign(body, {
+                    teacher_role_enabled: isTeacherRoleEnabled,
+                    department: isTeacherRoleEnabled ? (department || null) : null,
+                    qualification: isTeacherRoleEnabled ? (qualification || null) : null,
+                    specialization: isTeacherRoleEnabled ? (specialization || null) : null,
+                    position: isTeacherRoleEnabled ? (position || 'teacher') : null,
+                    hire_date: isTeacherRoleEnabled ? (hireDate || null) : null,
+                    subject_ids: isTeacherRoleEnabled ? (subjectIds ?? []) : [],
+                    class_teacher_id: isTeacherRoleEnabled ? (classId ?? null) : null
                 });
             }
 
@@ -844,6 +908,65 @@ export default function UserDetailsScreen() {
                     </View>
                 )}
 
+                {/* Admin Multi-role Section */}
+                {user.role === 'admin' && (
+                    <View style={{ marginHorizontal: 24, marginTop: 16, backgroundColor: card, borderRadius: 16, borderWidth: 1, borderColor: border, padding: 16 }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                            <View style={{ flex: 1, marginRight: 12 }}>
+                                <Text style={{ fontSize: 13, fontWeight: '700', color: textPrimary }}>
+                                    Teacher / Class Teacher Role
+                                </Text>
+                                <Text style={{ fontSize: 11, color: textSecondary, marginTop: 2 }}>
+                                    Allow this administrator to teach subjects, manage classes as class teacher, and toggle to Teacher Portal
+                                </Text>
+                            </View>
+                            {isEditing ? (
+                                <Switch
+                                    value={isTeacherRoleEnabled}
+                                    onValueChange={setIsTeacherRoleEnabled}
+                                    trackColor={{ false: isDark ? '#21262D' : '#D0D7DE', true: '#FF6900' }}
+                                />
+                            ) : (
+                                <View style={{
+                                    paddingHorizontal: 8,
+                                    paddingVertical: 4,
+                                    borderRadius: 6,
+                                    backgroundColor: isTeacherRoleEnabled ? (isDark ? 'rgba(16,185,129,0.2)' : '#D1FAE5') : (isDark ? 'rgba(107,114,128,0.2)' : '#F3F4F6'),
+                                }}>
+                                    <Text style={{
+                                        fontSize: 11,
+                                        fontWeight: '700',
+                                        color: isTeacherRoleEnabled ? '#10B981' : textSecondary,
+                                    }}>
+                                        {isTeacherRoleEnabled ? 'Active' : 'Disabled'}
+                                    </Text>
+                                </View>
+                            )}
+                        </View>
+
+                        {isTeacherRoleEnabled && (
+                            <View style={{ marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: border }}>
+                                <Text style={{ fontSize: 11, fontWeight: '700', color: '#3b82f6', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 4 }}>
+                                    👨‍🏫 Teacher Details & Assignments
+                                </Text>
+                                {renderField('Specialization', specialization, setSpecialization)}
+                                {renderField('Department', department, setDepartment)}
+                                {renderField('Position (e.g. Class Teacher, Teacher)', position, setPosition)}
+                                <DatePicker label="Hire Date" value={hireDate} onChange={setHireDate} isDark={isDark} inline />
+                                {renderChipList('Assigned Subjects', allSubjects, subjectIds, setSubjectIds, s => s.title, '#3b82f6')}
+                                {renderChipList(
+                                    'Class Teacher Assignment (Assigned Class)',
+                                    classes,
+                                    classId ? [classId] : [],
+                                    (ids) => setClassId(ids[ids.length - 1] ?? null),
+                                    c => c.name,
+                                    '#3b82f6'
+                                )}
+                            </View>
+                        )}
+                    </View>
+                )}
+
                 {/* Permissions */}
                 <View style={{ marginHorizontal: 24, marginTop: 16, backgroundColor: card, borderRadius: 16, borderWidth: 1, borderColor: border, padding: 16 }}>
                     <Text style={{ fontSize: 11, fontWeight: '700', color: textSecondary, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>Role Permissions</Text>
@@ -955,7 +1078,7 @@ export default function UserDetailsScreen() {
                                     backgroundColor: '#DC2626',
                                     minWidth: 110,
                                     alignItems: 'center',
-                                }}
+                                    }}
                             >
                                 {resettingLoading ? (
                                     <ActivityIndicator size="small" color="#FFF" />
@@ -1038,7 +1161,22 @@ export default function UserDetailsScreen() {
                                             <Text style={{ color: textPrimary, fontSize: 11, fontWeight: '700' }}>Copy Link</Text>
                                         </TouchableOpacity>
                                     </View>
+                                    <Text style={{ color: textPrimary, fontSize: 12, marginTop: 4 }} numberOfLines={1} ellipsizeMode="middle">
+                                        {resetResult.credential_delivery.url}
+                                    </Text>
+                                    <Text style={{ color: '#FF6900', fontSize: 11, fontWeight: '600', marginTop: 4 }}>
+                                        ⏱ {formatCredentialExpiry(resetResult.credential_delivery.expiresAt)}
+                                    </Text>
                                 </View>
+                            )}
+
+                            {!!resetResult?.credential_document && (
+                                <TouchableOpacity
+                                    onPress={() => copyToClipboard(resetResult.credential_document, 'Credentials Document')}
+                                    style={{ marginTop: 10, backgroundColor: isDark ? '#21262D' : '#E5E7EB', paddingVertical: 8, paddingHorizontal: 10, borderRadius: 8, alignItems: 'center' }}
+                                >
+                                    <Text style={{ color: textPrimary, fontSize: 12, fontWeight: '700' }}>Copy Full Credentials Document</Text>
+                                </TouchableOpacity>
                             )}
 
                             <Text style={{ color: textSecondary, fontSize: 12, marginTop: 8 }}>

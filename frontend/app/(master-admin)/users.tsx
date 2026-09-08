@@ -16,6 +16,7 @@ import { supabase } from '@/libs/supabase';
 import Toast from 'react-native-toast-message';
 import { ListItemSkeleton } from '@/components/ui/skeletons';
 import { getApiBaseUrl } from '@/utils/backendUrl';
+import { formatCredentialExpiry } from '@/utils/formatExpiry';
 
 type Institution = { id: string; name: string };
 type Category = { id: string; name: string };
@@ -1320,7 +1321,27 @@ export default function MasterAdminUsersScreen() {
                                             <Text style={{ color: colors.text, fontSize: 11, fontWeight: '700' }}>Copy Link</Text>
                                         </TouchableOpacity>
                                     </View>
+                                    <Text style={{ color: colors.text, fontSize: 12, marginTop: 4 }} numberOfLines={1} ellipsizeMode="middle">
+                                        {resetResult.credential_delivery.url}
+                                    </Text>
+                                    <Text style={{ color: colors.primary, fontSize: 11, fontWeight: '600', marginTop: 4 }}>
+                                        ⏱ {formatCredentialExpiry(resetResult.credential_delivery.expiresAt)}
+                                    </Text>
                                 </View>
+                            )}
+
+                            {!!resetResult?.credential_document && (
+                                <TouchableOpacity
+                                    onPress={() => {
+                                        if (Platform.OS === 'web' && (navigator as any)?.clipboard) {
+                                            (navigator as any).clipboard.writeText(resetResult.credential_document);
+                                        }
+                                        Toast.show({ type: 'success', text1: 'Copied', text2: 'Credentials document copied to clipboard', position: 'top' });
+                                    }}
+                                    style={{ marginTop: 10, backgroundColor: colors.border, paddingVertical: 8, paddingHorizontal: 10, borderRadius: 8, alignItems: 'center' }}
+                                >
+                                    <Text style={{ color: colors.text, fontSize: 12, fontWeight: '700' }}>Copy Full Credentials Document</Text>
+                                </TouchableOpacity>
                             )}
 
                             <Text style={{ color: colors.subtext, fontSize: 12, marginTop: 8 }}>

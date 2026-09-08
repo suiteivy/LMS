@@ -173,7 +173,13 @@ export const SettingsService = {
         return response.data;
     },
 
-    getCredentialDelivery: async (token: string): Promise<{ email: string; temporary_password: string; consumed: boolean }> => {
+    getCredentialDelivery: async (token: string): Promise<{
+        email: string;
+        temporary_password: string;
+        consumed: boolean;
+        expires_at?: string;
+        expires_at_formatted?: string;
+    }> => {
         const response = await api.get(`/auth/credential-delivery/${encodeURIComponent(token)}`, { skipErrorToast: true });
         return response.data;
     },
